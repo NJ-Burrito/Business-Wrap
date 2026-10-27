@@ -27,6 +27,27 @@ export function resolveValue(v) {
   return s;
 }
 
+// a control whose options are language names is the site's language switcher, never a form field
+const LANG_NAMES = /^(english|arabic|العربية|عربي|عربى|الإنجليزية|الانجليزية|انجليزي|إنجليزي|en|ar|fr|français|french|deutsch|español|türkçe|اردو|فارسی)$/i;
+export const isLanguageSwitch = (options = []) => options.length >= 2 && options.length <= 12 && options.every((o) => LANG_NAMES.test(String(o).trim()));
+/** Share of Arabic letters among the letters of a set of strings (0..1). */
+export function arabicShare(strings) {
+  const all = strings.join(' ');
+  const ar = (all.match(/[\u0600-\u06FF]/g) || []).length;
+  const la = (all.match(/[A-Za-z]/g) || []).length;
+  return ar + la ? ar / (ar + la) : 0.5;
+}
+/** A run captured in the wrong language (the portal switched under it): what the site itself localises
+ * (titles, step titles, options, validation messages) is mostly in the other script. */
+export function wrongLanguage(code, L) {
+  const strings = [L.card?.title, ...(L.steps || []).flatMap((s) => [s.title, ...s.validations, ...s.fields.flatMap((f) => [f.label, ...(f.options || [])])])].filter(Boolean);
+  if (strings.length < 3) return null;
+  const share = arabicShare(strings);
+  if (code === 'ar' && share < 0.25) return `the Arabic run captured mostly Latin text (${Math.round(share * 100)}% Arabic)`;
+  if (code === 'en' && share > 0.35) return `the English run captured mostly Arabic text (${Math.round(share * 100)}% Arabic)`;
+  return null;
+}
+
 async function robotsAllows(page, url, ua = '*') {
   const u = new URL(url);
   let txt = '';
@@ -68,20 +89,54 @@ async function pauses(page, rules, log) {
   }
 }
 
-/** Everything the page shows about the service before the form. */
-async function readCard(page, scope) {
-  return page.evaluate((scope) => {
-    const root = (scope && document.querySelector(scope)) || document.querySelector('main') || document.body;
-    const t = (e) => (e?.innerText || '').replace(/\s+/g, ' ').trim();
+/** Everything the page shows about the service before the form: h1 / p / dl / two-cell tables, and the
+ * SPA patterns: label/value pairs in divs, PrimeNG cards, panels, fieldsets and tabs, description blocks,
+ * fee / duration / steps lists. `map` (config `card`) names the selectors when the page needs it:
+ * { root, title, description, item, label, value, lists }. */
+async function readCard(page, scope, map = {}) {
+  return page.evaluate(({ scope, map }) => {
+    const NOISE = 'header, nav, footer, [role="banner"], [role="navigation"], [role="contentinfo"], .p-menubar, .layout-topbar, .topbar';
+    const root = (map.root && document.querySelector(map.root)) || (scope && document.querySelector(scope)) || document.querySelector('main, [role="main"], app-root, body') || document.body;
+    const t = (e) => (e?.innerText || e?.textContent || '').replace(/\s+/g, ' ').trim();
+    const ok = (e) => e && !e.closest(NOISE);
+    const all = (sel) => [...root.querySelectorAll(sel)].filter(ok);
     const pairs = [];
-    root.querySelectorAll('dl').forEach((dl) => dl.querySelectorAll('dt').forEach((dt) => pairs.push([t(dt), t(dt.nextElementSibling)])));
-    root.querySelectorAll('table').forEach((tb) => tb.querySelectorAll('tr').forEach((tr) => { const c = tr.querySelectorAll('th,td'); if (c.length === 2) pairs.push([t(c[0]), t(c[1])]); }));
-    return {
-      title: t(root.querySelector('h1')) || document.title,
-      description: [...root.querySelectorAll('p')].map(t).filter(Boolean).slice(0, 6),
-      facts: pairs.filter(([k, v]) => k && v),
+    const add = (k, v) => { k = String(k || '').replace(/[:：]\s*$/, '').trim(); v = String(v || '').trim(); if (k && v && k !== v && k.length <= 80 && !pairs.some(([a]) => a === k)) pairs.push([k, v]); };
+    if (map.item) all(map.item).forEach((it) => add(t(it.querySelector(map.label || '.label, [class*="label"], dt, th, strong, b')), t(it.querySelector(map.value || '.value, [class*="value"], dd, td, span:last-child'))));
+    all('dl').forEach((dl) => dl.querySelectorAll('dt').forEach((dt) => add(t(dt), t(dt.nextElementSibling))));
+    all('table').forEach((tb) => tb.querySelectorAll('tr').forEach((tr) => { const c = tr.querySelectorAll('th,td'); if (c.length === 2) add(t(c[0]), t(c[1])); }));
+    // label/value siblings in divs: <x class="…label…">Fee</x><y class="…value…">Free</y>, or "Fee:" then the value
+    all('[class*="label"], [class*="title"]:not(h1), [class*="key"], strong, b, .p-text-bold, .font-bold').forEach((k) => {
+      const v = k.nextElementSibling;
+      if (!v || v.querySelector('input, select, textarea, button')) return;
+      if (/value|content|text|desc|data/i.test(v.className || '') || /[:：]\s*$/.test(t(k))) add(t(k), t(v));
+    });
+    // description blocks and lists: PrimeNG cards, panels, fieldsets, tab panels; any heading followed by a list
+    const blocks = [];
+    const lists = [];
+    const section = (title, body) => {
+      if (!body) return;
+      const items = [...body.querySelectorAll('li')].map(t).filter(Boolean);
+      if (items.length) lists.push({ title, items });
+      const text = [...body.querySelectorAll('p, .p-card-content > div, .description, [class*="desc"]')].map(t).filter(Boolean);
+      const plain = text.length ? text : (!items.length && t(body) ? [t(body)] : []);
+      for (const x of plain) if (x && x.length > 3 && !blocks.includes(x)) blocks.push(x);
     };
-  }, scope);
+    all('.p-card').forEach((c) => section(t(c.querySelector('.p-card-title')), c.querySelector('.p-card-content, .p-card-body')));
+    all('.p-panel').forEach((c) => section(t(c.querySelector('.p-panel-title, .p-panel-header')), c.querySelector('.p-panel-content')));
+    all('.p-fieldset').forEach((c) => section(t(c.querySelector('.p-fieldset-legend, legend')), c.querySelector('.p-fieldset-content')));
+    const tabs = all('.p-tabview-nav li, [role="tab"]').map(t);
+    all('.p-tabview-panel, [role="tabpanel"]').forEach((c, i) => section(tabs[i] || '', c));
+    if (map.lists) all(map.lists).forEach((c) => section(t(c.previousElementSibling), c));
+    all('h2, h3, h4, h5').forEach((h) => { const n = h.nextElementSibling; if (n && n.matches('ul, ol')) section(t(h), n); });
+    const paras = (map.description ? all(map.description) : all('p')).map(t).filter(Boolean);
+    return {
+      title: t((map.title && document.querySelector(map.title)) || root.querySelector('h1') || document.querySelector('h1, .p-card-title, h2')) || document.title,
+      description: [...paras, ...blocks.filter((b) => !paras.includes(b))].slice(0, 12),
+      facts: pairs,
+      lists,
+    };
+  }, { scope, map });
 }
 
 /** The visible form controls of the current step, as a user reads them. Native controls and the
@@ -90,14 +145,24 @@ async function readCard(page, scope) {
  * data-bw-field so it can be filled by that tag when it has no id or name. Labels come from the
  * control's own label (for/id, wrapping label, aria-labelledby, aria-label), then the label of its
  * field container or the label just before it, then the placeholder; never the section title. */
-async function readFields(page) {
-  return page.evaluate(() => {
+async function readFields(page, scope = {}) {
+  return page.evaluate(({ formRoot, exclude }) => {
     const t = (e) => (e?.innerText || e?.textContent || '').replace(/\s+/g, ' ').trim();
     const bare = (s) => String(s || '').replace(/\s*[*＊]\s*/g, ' ').replace(/\s+/g, ' ').trim();
     const starred = (s) => /[*＊]/.test(String(s || ''));
+    const cssStar = (l) => !!l && [l, ...l.querySelectorAll('*')].some((x) => ['::after', '::before'].some((pe) => /[*＊]/.test(getComputedStyle(x, pe).content || '')));
     const shown = (e) => !!(e.offsetWidth || e.offsetHeight || e.getClientRects().length) && getComputedStyle(e).visibility !== 'hidden';
     const PRIME = 'p-dropdown, p-select, p-multiselect, p-calendar, p-datepicker, p-radiobutton, p-checkbox, p-inputnumber, p-inputswitch, p-autocomplete';
     const FIELDBOX = '.p-field, .field, .form-group, .form-field, .p-float-label, mat-form-field, [class*="col-"]';
+    // only the form: never the header's language switcher, the navigation, the footer, or what the config excludes
+    const NOISE = ['header', 'nav', 'footer', '[role="banner"]', '[role="navigation"]', '[role="contentinfo"]', '.p-menubar', '.layout-topbar', '.topbar', ...(exclude || [])].join(', ');
+    const CONTROLS = 'input, select, textarea, ' + PRIME;
+    const forms = [...document.querySelectorAll('form')].filter((f) => !f.closest(NOISE));
+    const ROOT = (formRoot && document.querySelector(formRoot)) || forms.sort((a, b) => b.querySelectorAll(CONTROLS).length - a.querySelectorAll(CONTROLS).length)[0] || document.querySelector('main, [role="main"]') || document.body;
+    const inScope = (e) => ROOT.contains(e) && !e.closest(NOISE);
+    const CAPTCHA = /captcha|recaptcha|turnstile|hcaptcha/i;
+    const isCaptcha = (e) => CAPTCHA.test(`${e.name || ''} ${e.id || ''} ${e.className || ''}`) || !!e.closest('.g-recaptcha, .h-captcha, .cf-turnstile, [class*="captcha"]');
+    const CAPTION = '.p-panel-header, .p-panel-title, .p-card-title, .p-card-header, .p-fieldset-legend, legend, h1, h2, h3, h4, h5, h6, .p-tabview-nav';
     const fcn = (e) => e.getAttribute('formcontrolname') || e.closest('[formcontrolname]')?.getAttribute('formcontrolname') || '';
     const labelEl = (e) => {
       if (e.id) { const l = document.querySelector(`label[for="${CSS.escape(e.id)}"]`); if (l) return l; }
@@ -106,15 +171,23 @@ async function readFields(page) {
       const wrap = e.closest('label'); if (wrap) return wrap;
       const by = e.getAttribute('aria-labelledby') || e.querySelector?.('[aria-labelledby]')?.getAttribute('aria-labelledby');
       if (by) { const l = document.getElementById(by.split(/\s+/)[0]); if (l) return l; }
-      // the label just before the control (sibling, or a sibling of an ancestor inside the same field box)
-      for (let n = e; n && n !== document.body; n = n.parentElement) {
-        let p = n.previousElementSibling;
-        while (p && !p.matches('label, .p-field-label, .field-label, .form-label') && !p.querySelector?.('input,select,textarea,' + PRIME)) {
-          const l = p.querySelector?.('label'); if (l && !p.querySelector('input,select,textarea,' + PRIME)) return l;
-          p = p.previousElementSibling;
-        }
-        if (p && p.matches('label, .p-field-label, .field-label, .form-label')) return p;
-        if (n.matches?.(FIELDBOX)) { const l = n.querySelector('label, .p-field-label, .field-label, .form-label'); if (l) return l; break; }
+      // the field's own container: the highest ancestor that holds no other control. Its label wins (before
+      // the control, else after it); otherwise the label just before that container. Never a panel caption.
+      const mine = (c) => c === e || e.contains(c) || c.contains(e) || (c.closest(PRIME) && c.closest(PRIME).contains(e)) || (e.closest(PRIME) && e.closest(PRIME).contains(c));
+      const others = (n) => [...n.querySelectorAll(CONTROLS)].some((c) => !mine(c) && !isCaptcha(c) && c.type !== 'hidden');
+      const LABELISH = 'label, .p-field-label, .field-label, .form-label, [class*="label"]:not(.p-dropdown-label):not(.p-multiselect-label):not(.p-button-label):not(.p-checkbox-label)';
+      const usable = (x) => !x.closest(CAPTION) && !x.matches(CONTROLS) && !x.querySelector(CONTROLS) && t(x);
+      let box = e;
+      for (let n = e.parentElement; n && n !== document.body && n !== ROOT && !others(n); n = n.parentElement) box = n;
+      const inBox = [...box.querySelectorAll(LABELISH)].filter(usable);
+      const before = inBox.filter((x) => x.compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING);
+      if (before.length) return before.at(-1);
+      if (inBox.length) return inBox[0];
+      for (let p = box.previousElementSibling; p && !p.matches(CONTROLS) && !p.querySelector(CONTROLS); p = p.previousElementSibling) {
+        if (p.closest(CAPTION) || p.matches(CAPTION)) break;
+        if (p.matches(LABELISH) && usable(p)) return p;
+        const l = [...p.querySelectorAll(LABELISH)].filter(usable).at(-1);
+        if (l) return l;
       }
       return null;
     };
@@ -125,7 +198,7 @@ async function readFields(page) {
       const inner = e.matches('input,select,textarea') ? e : e.querySelector('input,select,textarea');
       const empty = !inner || !inner.value;
       const required = !!(inner?.required || e.hasAttribute('required') || e.getAttribute('aria-required') === 'true' || inner?.getAttribute('aria-required') === 'true'
-        || starred(raw) || !!l?.querySelector('.required, .p-required, .text-danger, .asterisk')
+        || starred(raw) || cssStar(l) || !!l?.querySelector('.required, .p-required, .text-danger, .asterisk')
         // Angular marks an empty control that has a required validator ng-invalid before anyone touches it
         || (empty && (e.classList.contains('ng-invalid') || !!inner?.classList.contains('ng-invalid'))));
       return { label: bare(raw), required };
@@ -137,6 +210,7 @@ async function readFields(page) {
     const seen = new Set();
     // PrimeNG-style components first; their inner inputs are not fields of their own
     document.querySelectorAll(PRIME).forEach((e) => {
+      if (!inScope(e)) return;
       const name = e.tagName.toLowerCase();
       const kind = name === 'p-multiselect' ? 'multiselect' : /dropdown|select|autocomplete/.test(name) ? 'select' : /calendar|datepicker/.test(name) ? 'date' : name === 'p-radiobutton' ? 'radio' : /checkbox|switch/.test(name) ? 'checkbox' : 'number';
       if (kind === 'radio') {
@@ -158,7 +232,7 @@ async function readFields(page) {
     const inPrime = (e) => !!e.closest(PRIME);
     const seenRadio = new Set();
     document.querySelectorAll('input, select, textarea').forEach((e) => {
-      if (inPrime(e)) return;
+      if (inPrime(e) || !inScope(e) || isCaptcha(e)) return;
       const type = e.tagName === 'SELECT' ? 'select' : e.tagName === 'TEXTAREA' ? 'textarea' : (e.type || 'text');
       if (['hidden', 'submit', 'button', 'reset', 'image'].includes(type)) return;
       if (type === 'radio') {
@@ -186,7 +260,7 @@ async function readFields(page) {
     // in the order the user meets them
     const at = (f) => document.querySelector(f.selector);
     return out.sort((a, b) => (at(a) && at(b) && at(a).compareDocumentPosition(at(b)) & Node.DOCUMENT_POSITION_PRECEDING ? 1 : -1));
-  });
+  }, { formRoot: scope.formRoot || '', exclude: scope.exclude || [] });
 }
 
 const OVERLAY_OPTIONS = '.p-dropdown-item, .p-select-option, .p-multiselect-item, .p-autocomplete-item, [role="option"]';
@@ -202,7 +276,7 @@ async function primeOptions(page, fields) {
     await page.keyboard.press('Escape').catch(() => {});
     await page.locator(OVERLAY_OPTIONS).first().waitFor({ state: 'hidden', timeout: 1500 }).catch(() => {});
   }
-  return fields;
+  return fields.filter((f) => !isLanguageSwitch(f.options));
 }
 
 async function readMessages(page) {
@@ -253,10 +327,11 @@ async function fill(page, fields, cfg, outDir) {
 }
 
 /** Option by option, which hidden fields a choice reveals. */
-async function conditions(page, fields) {
+async function conditions(page, fields, scope) {
   const out = {};
-  const visibleKeys = async () => new Set((await readFields(page)).filter((x) => x.visible).map((x) => x.key));
-  for (const f of fields.filter((x) => x.visible && (x.type === 'select' || x.type === 'radio'))) {
+  const visibleKeys = async () => new Set((await readFields(page, scope)).filter((x) => x.visible).map((x) => x.key));
+  // a language switcher is never cycled: choosing an option would switch the portal's language
+  for (const f of fields.filter((x) => x.visible && (x.type === 'select' || x.type === 'radio') && !isLanguageSwitch(x.options))) {
     const base = await visibleKeys();
     const choose = [];
     if (f.type === 'radio') (f.selectors || [f.selector]).forEach((sel, i) => choose.push([f.options?.[i] || String(i + 1), async () => {
@@ -344,7 +419,8 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
       await page.goto(base);
       await ready('card');
       await pauses(page, cfg.pause, log);
-      L.card = await readCard(page, cfg.cardSelector);
+      L.card = await readCard(page, cfg.cardSelector, cfg.card || {});
+      const lang0 = await page.evaluate(() => (document.documentElement.lang || '').slice(0, 2).toLowerCase());
       await shot('card');
       save();
       if (cfg.openForm) { await press(page, cfg.openForm); await wait(); await maybeLogin(); await pauses(page, cfg.pause, log); }
@@ -353,10 +429,11 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
       for (let n = 0; n < (cfg.maxSteps ?? 10); n += 1) {
         await maybeLogin();
         await pauses(page, cfg.pause, log);
-        const fields = await primeOptions(page, await readFields(page));
+        const scope = { formRoot: cfg.formRoot, exclude: cfg.exclude };
+        const fields = await primeOptions(page, await readFields(page, scope));
         if (!fields.some((f) => f.visible)) break; // past the forms
-        const cond = await conditions(page, fields);
-        const all = await primeOptions(page, await readFields(page));
+        const cond = await conditions(page, fields, scope);
+        const all = await primeOptions(page, await readFields(page, scope));
         const title = await page.evaluate(() => (document.querySelector('form h2, main h2, h2, .p-steps-current, .p-card-title, legend, h1')?.innerText || '').trim());
         await shot(`step${n + 1}`);
         // empty attempt: the validation messages a user meets
@@ -367,9 +444,26 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
           await page.waitForTimeout(200);
           messages = await readMessages(page);
           if (messages.length) await shot(`step${n + 1}-validation`);
+          // required, as the site itself says after an empty attempt: an error shown in the field's own box,
+          // the control ng-invalid once touched, or the field's label named in a validation message
+          const flagged = await page.evaluate((sels) => sels.map((sel) => {
+            const e = document.querySelector(sel);
+            if (!e) return false;
+            const box = e.closest('.p-field, .field, .form-group, .form-field, mat-form-field') || e.parentElement;
+            const err = box && [...box.querySelectorAll('.p-error, small.p-invalid, .invalid-feedback, .field-error, mat-error, [role="alert"]')].some((x) => x.offsetWidth || x.offsetHeight);
+            const inner = e.matches('input,select,textarea') ? e : e.querySelector('input,select,textarea');
+            const ng = [e, inner].some((x) => x && x.classList.contains('ng-invalid') && (x.classList.contains('ng-touched') || x.classList.contains('ng-dirty') || !!x.closest('form.ng-submitted')));
+            return !!(err || ng);
+          }), all.map((f) => f.selector));
+          const named = requiredByMessage(all.map((f) => f.label), messages);
+          all.forEach((f, i) => { if (flagged[i] || named.has(f.label)) f.required = true; });
         }
         L.steps.push({ title, url: page.url(), fields: all.map(({ selector, selectors, prime, ...f }) => ({ ...f, shownWhen: cond[f.key] })), validations: messages });
         save(); // a crash later keeps what was read
+        const langNow = await page.evaluate(() => (document.documentElement.lang || '').slice(0, 2).toLowerCase());
+        if (lang0 && langNow && langNow !== lang0) throw new Error(`the page switched language during the ${lang.code} run (${lang0} → ${langNow}); add the switcher to "exclude" or set "formRoot"`);
+        const wrong = wrongLanguage(lang.code, L);
+        if (wrong) throw new Error(`${wrong}; the portal language may have switched: check "exclude" / "formRoot" and the start URL`);
         await fill(page, all.filter((f) => f.visible || cond[f.key]), cfg, outDir);
         await wait();
         const before = page.url();
@@ -402,3 +496,4 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
 }
 
 export { harvestToDocument } from './docs.mjs';
+import { requiredByMessage } from './docs.mjs';

@@ -381,6 +381,44 @@
             "$ref": "#/$defs/loginStep"
           },
           "description": "Steps between the card and the form: tick terms (check), click through (press), sign in again (login: true), wait (waitFor / ready)."
+        },
+        "formRoot": {
+          "type": "string",
+          "description": "The form container; fields are read only inside it. Default: the form with the most controls, outside header / nav / footer / [role=banner]."
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Selectors never read or touched (a language switcher, a search box, a chat widget). Header, nav, footer and [role=banner] are always excluded; a control whose options are language names is never cycled."
+        },
+        "card": {
+          "type": "object",
+          "description": "Selectors for the service card when the page needs them.",
+          "properties": {
+            "root": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "item": {
+              "type": "string"
+            },
+            "label": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            },
+            "lists": {
+              "type": "string"
+            }
+          }
         }
       }
     },
@@ -484,6 +522,23 @@
                       },
                       "minItems": 2,
                       "maxItems": 2
+                    }
+                  },
+                  "lists": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
                     }
                   }
                 }

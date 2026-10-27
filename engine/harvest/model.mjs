@@ -255,6 +255,7 @@ export function applyNames(ir, map = {}) {
 }
 /** ${action=='approve' && fee!=0} → action = approve and fee ≠ 0 */
 export const plainCond = (c) => String(c || '').replace(/^\s*[$#]\{\s*|\s*\}\s*$/g, '').replace(/\s*===?\s*/g, ' = ').replace(/\s*!==?\s*/g, ' ≠ ').replace(/\s*&&\s*/g, ' and ').replace(/\s*\|\|\s*/g, ' or ').replace(/['"]/g, '').replace(/\s+/g, ' ').trim();
+const GENERIC_GATE = /^\s*(action|actions|decision|gateway|exclusive\s*gateway|xor|choice|condition|status|outcome|result|قرار|بوابة)\s*\d*\s*$/i;
 const DIGITS_AR = '٠١٢٣٤٥٦٧٨٩';
 const numIn = (n, locale) => (locale === 'ar' ? String(n).replace(/\d/g, (d) => DIGITS_AR[d]) : String(n));
 /** The IR as one edition reads it: mapped names, generated names for unnamed decisions and steps. */
@@ -265,6 +266,8 @@ export function localIR(ir, locale, L = {}) {
   for (const s of x.steps) {
     s.name = s.names?.[locale] || s.name || '';
     if (RAW_ID.test(s.name)) s.name = '';
+    // a gateway named after the variable it tests ("action", "decision", "gateway"…) is unnamed for a reader
+    if (s.type === 'decision' && GENERIC_GATE.test(s.name || '') && !s.names?.[locale]) s.name = '';
     if (s.type === 'decision' && !s.name) s.name = `${L.decisionN || (locale === 'ar' ? 'قرار' : 'Decision')} ${numIn(++dn, locale)}`;
     if ((s.type === 'task' || s.type === 'system') && !s.name) s.name = `${L.stepN || (locale === 'ar' ? 'خطوة' : 'Step')} ${numIn(++sn, locale)}`;
   }

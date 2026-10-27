@@ -31,7 +31,7 @@ Then say: **"build the requirements document for …"** or **"open it in the edi
 
 **MCP server only** (stdio, local only; Node 20+, Chrome or Edge for the PDF, `uv` for the DOCX):
 ```
-claude mcp add business-wrap -- npx -y -p business-wrap@0.8.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p business-wrap@0.8.1 business-wrap-mcp
 ```
 From a clone instead of npm: `npm ci`, then `claude mcp add business-wrap -- node <clone>/mcp/cli.mjs`.
 Tools: `build_editor`, `validate_edits`, `apply_edits`, `export_document`, `export_design_pack`, `check_fonts` — see `mcp/README.md`.

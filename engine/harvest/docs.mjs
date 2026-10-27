@@ -3,9 +3,29 @@
 import { modelToDocument, docCode } from './model.mjs';
 
 /* ── raw harvest → document JSON (one edition) ─────────────────────────── */
+// what a crawl may have picked up that is not a form field, and the required flags the site's own messages give
+const LANG_NAMES = /^(english|arabic|العربية|عربي|عربى|الإنجليزية|الانجليزية|انجليزي|إنجليزي|en|ar|fr|français|french)$/i;
+const notAField = (f) => /captcha|recaptcha|turnstile/i.test(`${f.key} ${f.label}`) || ((f.options || []).length >= 2 && f.options.every((o) => LANG_NAMES.test(String(o).trim())));
+const escRe = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/** The labels a site's validation messages name as missing («Label: required»). A label that only matches as
+ * the tail of a longer named label («form» inside «Dosage form:») is not counted. */
+export function requiredByMessage(labels, messages) {
+  const said = (messages || []).join(' \n ').toLowerCase();
+  const hit = (label) => label && label.length > 1 && new RegExp(`(^|[\\s,،;|])${escRe(label.toLowerCase())}\\s*([:：]|is required|مطلوب|إجباري)`, 'i').test(said);
+  const named = [...new Set(labels.filter(hit))];
+  return new Set(named.filter((l) => !named.some((m) => m !== l && m.toLowerCase().endsWith(l.toLowerCase()))));
+}
+/** A harvested step as the document should read it: no captcha or language switcher, required from the messages. */
+export function cleanStep(s) {
+  const fields = (s.fields || []).filter((f) => !notAField(f));
+  const req = requiredByMessage(fields.map((f) => f.label), s.validations);
+  return { ...s, fields: fields.map((f) => (req.has(f.label) ? { ...f, required: true } : f)) };
+}
+
 export function harvestToDocument(raw, { locale = 'en', L, today = new Date().toISOString().slice(0, 10) }) {
   const langs = Object.keys(raw.languages || {});
-  const H = raw.languages[locale] || raw.languages[langs[0]] || { steps: [], statuses: [] };
+  const H0 = raw.languages[locale] || raw.languages[langs[0]] || { steps: [], statuses: [] };
+  const H = { ...H0, steps: (H0.steps || []).map(cleanStep) };
   const name = H.card?.title || raw.name || L.untitled;
   const svc = String(raw.name || H.card?.title || 'service').toLowerCase().normalize('NFKD').replace(/[^\w؀-ۿ]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'service';
   const yn = (b) => (b ? L.yes : L.no);

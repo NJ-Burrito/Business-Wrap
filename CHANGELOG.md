@@ -8,6 +8,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.8.1] - 2026-10-27
+
+From the live re-crawl with 0.8.0 (9 of 11 checks, 1 workaround). / من المرور الحي بالإصدار 0.8.0.
+
+### Fixed / أصلح
+- **Language flip (high):** the header's language dropdown was read as a form field and cycled, which switched the portal language. Fields are now read only inside the form (`formRoot`, or the form with the most controls; header / nav / footer / `[role=banner]` and `exclude` left alone), a language switcher is never cycled, and a run whose captured text is in the other script, or whose page `lang` changed, stops with an error. / قلب اللغة: الحقول من داخل النموذج فقط، ومبدّل اللغة لا يُلمس، والمرور يتوقف بخطأ إن تبدلت اللغة.
+- **Empty card:** SPA cards are read (div label/value pairs, PrimeNG cards, panels, fieldsets, tabs, description blocks, fee / duration / steps lists); a `card` selector map. / البطاقة الفارغة.
+- **Required flags:** also from CSS `::after` asterisks, `ng-invalid` after touch or submit, an error in the field's own box, and the site's validation message naming the field (also applied when a saved harvest is mapped again). / الحقول الإلزامية.
+- **Attachment label:** from the field's own container, never a panel caption. / تسمية المرفق.
+- Captcha fields (`g-recaptcha-response`) skipped; a gateway named "action" is numbered «قرار ١» / "Decision 1". / حقول التحقق البشري والبوابات.
+
+### Tests / الاختبارات
+- The fixture SPA gains a header language switcher that really switches the page, a div / panel / tabs card, a CSS `::after` asterisk, a field named only in the validation summary, a file labelled after it inside a captioned panel and a captcha field; a script check on a swapped harvest; a gateway named "action". / اختبارات جديدة.
+
 ## [0.8.0] - 2026-10-27
 
 From the first field test (one live service, clean room, the skill only: partial pass, 6 workarounds). / من أول اختبار ميداني.

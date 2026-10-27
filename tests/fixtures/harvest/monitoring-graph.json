@@ -8,7 +8,7 @@
   "nodes": [
    { "id": "start", "kind": "start", "tag": "startEvent", "name": "start" },
    { "id": "sid-0A1B2C3D-0000-4000-8000-000000000001", "kind": "userTask", "tag": "userTask", "name": "Task_Check_VenueHireRequest", "groups": ["${taskRoles.assigneeOf(execution", "'Role_booking-desk_VenueHireRequest')}"] },
-   { "id": "sid-0A1B2C3D-0000-4000-8000-000000000002", "kind": "exclusiveGateway", "tag": "exclusiveGateway" },
+   { "id": "sid-0A1B2C3D-0000-4000-8000-000000000002", "kind": "exclusiveGateway", "tag": "exclusiveGateway", "name": "action" },
    { "id": "edit-by-applicant", "kind": "userTask", "tag": "userTask", "name": "edit-by-applicant", "assignee": "${initiator}" },
    { "id": "sid-0A1B2C3D-0000-4000-8000-000000000003", "kind": "serviceTask", "tag": "serviceTask", "name": "notify_applicant", "impl": "${notifier.send(execution)}" },
    { "id": "sid-0A1B2C3D-0000-4000-8000-000000000004", "kind": "userTask", "tag": "userTask", "name": "Task_approve_VenueHireRequest", "groups": ["${taskRoles.assigneeOf(execution", "'Role_venue-manager_VenueHireRequest')}"] },

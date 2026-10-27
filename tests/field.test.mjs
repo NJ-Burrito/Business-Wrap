@@ -11,6 +11,7 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { chromium } from 'playwright-core';
 import { harvestCrawl, harvestModel, harvestMerge } from '../engine/harvest/cli.mjs';
+import { isLanguageSwitch, wrongLanguage } from '../engine/harvest/crawl.mjs';
 import { parseModel } from '../engine/harvest/model.mjs';
 import { launchOptions, exportDocx, loadTheme, fontsFor, REPO, fileStem } from '../engine/export.mjs';
 import { buildSpa } from './fixtures/harvest/spa.mjs';
@@ -57,6 +58,19 @@ try {
     check(`spa ${l}: dropdown, multiselect, calendar and radio options`, by('purpose')?.options?.length === 3 && by('guests')?.options?.length === 2 && by('eventDate')?.type === 'date' && by('kind')?.options?.length === 2, JSON.stringify([by('purpose')?.options, by('guests')?.options, by('kind')?.options]));
     check(`spa ${l}: conditional field, attachment, validation messages`, /=/.test((by('weeks')?.shownWhen || [])[0] || '') && by('plan')?.accept === '.pdf,image/*' && L.steps[0].validations.length >= 1, JSON.stringify([by('weeks')?.shownWhen, L.steps[0].validations]));
   }
+  // 0.8.1 (the live re-crawl): the header language switcher, the card, required from CSS and from the site's own message,
+  // the attachment label inside a captioned panel, the captcha field
+  for (const l of ['ar', 'en']) {
+    const L = cr.raw.languages[l];
+    const f = L.steps[0]?.fields || [];
+    const by = (k) => f.find((x) => x.key === k);
+    check(`spa ${l}: the header language switcher is not a field, the run stayed in its language`, !f.some((x) => isLanguageSwitch(x.options)) && !wrongLanguage(l, L) && L.steps[0].title && by('organiser')?.label === (l === 'ar' ? 'اسم المنظم' : 'Organiser name'), f.map((x) => x.key).join(','));
+    check(`spa ${l}: a card made of divs, a panel and tabs`, L.card.facts.length === 2 && L.card.description.some((d) => d === (l === 'ar' ? 'احجز قاعة مجتمعية لفعالية.' : 'Book a community venue for an event.')) && L.card.lists?.some((x) => x.items.length === 3), JSON.stringify(L.card).slice(0, 200));
+    check(`spa ${l}: required from a CSS ::after asterisk and from the site's validation message`, by('eventDate')?.required && by('ref')?.required && !by('notes')?.required, JSON.stringify([by('eventDate')?.required, by('ref')?.required]));
+    check(`spa ${l}: the attachment label from its own box, not the panel caption; no captcha field`, by('plan')?.label === (l === 'ar' ? 'مخطط القاعة' : 'Floor plan') && !f.some((x) => /captcha/i.test(x.key)), `${by('plan')?.label} / ${f.map((x) => x.key).join(',')}`);
+  }
+  const swapped = { card: { title: 'Venue hire request' }, steps: [{ title: 'Applicant', validations: ['This field is required'], fields: [{ label: 'Organiser name', options: [] }, { label: 'Purpose', options: ['Meeting', 'Workshop'] }] }] };
+  check('a run captured in the other language fails loudly (script check)', !!wrongLanguage('ar', swapped) && !wrongLanguage('en', swapped) && isLanguageSwitch(['English', 'العربية']) && !isLanguageSwitch(['Meeting', 'Workshop']), wrongLanguage('ar', swapped));
   check('spa: harvest.json is written as the crawl goes (kept on a crash)', fs.existsSync(path.join(cr.rawDir, 'harvest.json')) && read(path.join(cr.rawDir, 'harvest.json')).languages.en.steps.length === 1);
 
   // ── 3. the model side: a monitoring-graph JSON, expression assignees, unnamed gateways ──
@@ -72,6 +86,7 @@ try {
   const gm = await harvestModel(graphFile, { out: path.join(OUT, 'model'), name: 'Venue hire', roles, editor: false });
   const [arM, enM] = gm.documents.map(read);
   const enText = JSON.stringify(enM);
+  check('a gateway named after its variable ("action") is numbered like an unnamed one', !JSON.stringify(enM.chapters).includes('>action<') && !tableIn(enM, 'Steps')?.rows.some((r) => r[0] === 'action'), tableIn(enM, 'Steps')?.rows.map((r) => r[0]).join(' | '));
   check('unnamed gateways get readable names, no raw sid- ids printed', !/sid-[0-9A-F]{4}/.test(enText.replace(/"process":\{.*$/s, '')) && /Decision 1/.test(enText) && /قرار ١/.test(JSON.stringify(arM)), (enText.match(/sid-[0-9A-F-]{8}/) || [''])[0]);
   check('--name is honoured for a model', enM.control.title.endsWith('Venue hire') && enM.service === 'venue-hire', enM.control.title);
   const bp = await harvestModel(path.join(FIX, 'permit.bpmn20.xml'), { out: path.join(OUT, 'bpmn'), name: 'Night market permit', editor: false });
