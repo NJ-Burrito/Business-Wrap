@@ -40,6 +40,26 @@ export function serve(editorFile, port = 4317) {
         const type = f.endsWith('.pdf') ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
         return send(200, fs.readFileSync(f), type);
       }
+      if (req.method === 'POST' && url.pathname === '/api/webhook') {
+        // the editor's webhooks: the browser cannot reach other origins (CSP connect-src 'self', CORS), so the server delivers
+        if (req.headers.origin && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(req.headers.origin)) return send(403, { error: 'origin' });
+        const chunks = [];
+        let size = 0;
+        for await (const c of req) { size += c.length; if (size > MAX_BODY) return send(413, { error: 'too large' }); chunks.push(c); }
+        const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+        let target;
+        try { target = new URL(String(body.url || '')); } catch { return send(400, { ok: false, error: 'bad url' }); }
+        if (!/^https?:$/.test(target.protocol)) return send(400, { ok: false, error: 'http or https only' });
+        const p = body.payload || {};
+        // only the documented fields leave the machine (bible/contracts/webhook.schema.json): never fonts, never the watermark
+        const payload = Object.fromEntries(['schema', 'version', 'event', 'service', 'edition', 'timestamp', 'summary', 'document'].filter((k) => k in p).map((k) => [k, p[k]]));
+        try {
+          const r = await fetch(target, { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'business-wrap-webhook/1' }, body: JSON.stringify(payload), signal: AbortSignal.timeout(8000), redirect: 'manual' });
+          return send(200, { ok: r.status >= 200 && r.status < 300, status: r.status });
+        } catch (e) {
+          return send(200, { ok: false, status: 0, error: String(e.message || e).slice(0, 200) });
+        }
+      }
       if (req.method === 'POST' && url.pathname === '/api/pages') {
         if (req.headers.origin && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(req.headers.origin)) return send(403, { error: 'origin' });
         const chunks = [];

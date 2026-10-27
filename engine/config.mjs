@@ -21,6 +21,7 @@ export function config() {
     watermarkDir: process.env.BW_WATERMARK_DIR || file.watermarkDir || '',
     chrome: process.env.BW_CHROME || file.chrome || '',
     poppler: process.env.BW_POPPLER || file.poppler || '',
+    brandDir: process.env.BW_BRAND_DIR || file.brandDir || '',
   };
   return cached;
 }

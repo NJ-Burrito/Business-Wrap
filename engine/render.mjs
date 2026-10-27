@@ -91,6 +91,9 @@ export const safeSvg = (svg) =>
     .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
     .replace(/(href\s*=\s*["']?)\s*javascript:[^"'\s>]*/gi, '$1#');
 
+/** Only re-encoded raster data URIs reach a page (the editor re-encodes every image it accepts). */
+export const SAFE_IMG = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
+
 const blank = (c) => ['', '—', '-', '–', 'N/A', 'n/a'].includes(String(c ?? '').trim());
 
 /* ── the renderer ─────────────────────────────────────────────────────────── */
@@ -309,6 +312,14 @@ tbody:first-of-type tr:first-child{break-before:avoid}
 figure,.fig,.gap{break-inside:avoid}
 .bw-logo-slot{display:none}
 .bw-break{break-before:page;height:0}
+.bw-doc{position:relative}
+.cover{position:relative}
+.bw-anchor{position:relative;height:0;break-after:avoid}
+.bw-ov{position:absolute;z-index:2;line-height:1.3}
+.bw-ov img{display:block;width:100%;height:auto}
+.bw-ov-cap{font-size:var(--t-meta);color:var(--muted);text-align:center;margin-top:1mm}
+.bw-every{position:absolute;top:297mm;left:0;width:210mm;height:0}
+@media print{.bw-every{position:static}.bw-every>.bw-ov{position:fixed}}
 `;
 }
 
@@ -320,6 +331,7 @@ ${parts.front}
 ${parts.body}
 ${parts.questions}
 </div>
+${parts.every || ''}
 </main>`;
 }
 
@@ -330,6 +342,15 @@ export function renderParts(doc, o) {
   const bidi = o.bidi || makeBidi(locale);
   const none = L.none;
 
+  // free-placed logos and images (doc.overlays): mm coordinates against their anchor
+  const OV = (doc.overlays || []).map((o, i) => ({ ...o, i })).filter((o) => SAFE_IMG.test(String(o.src || '')));
+  const num = (v, d, lo, hi) => Math.min(hi, Math.max(lo, Number.isFinite(+v) ? +v : d));
+  const ovHtml = (o) => `<div class="bw-ov" data-ov="${attr(o.id || String(o.i))}" data-i="${o.i}" data-kind="${o.kind === 'logo' ? 'logo' : 'image'}" style="left:${num(o.x, 0, -20, 290).toFixed(2)}mm;top:${num(o.y, 0, -20, 290).toFixed(2)}mm;width:${num(o.w, 30, 4, 200).toFixed(2)}mm"><img src="${attr(o.src)}" alt="${attr(o.alt || '')}" draggable="false" />${o.caption ? `<div class="bw-ov-cap"${dp(`/overlays/${o.i}/caption`)}>${bidi(o.caption)}</div>` : ''}</div>`;
+  const overlaysFor = (pred) => OV.filter(pred).map(ovHtml).join('');
+  const anchorsAt = (ptrs) => {
+    const hit = OV.filter((o) => o.mode === 'anchor' && ptrs.includes(o.anchor));
+    return hit.length ? `<div class="bw-anchor" data-anchor="${attr(hit[0].anchor)}">${hit.map(ovHtml).join('')}</div>` : '';
+  };
   const guarded = (rows, wrap) =>
     rows.length < KEEP_ROWS * 2
       ? wrap(rows, true)
@@ -565,6 +586,18 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     const out = [];
     let pending = heading;
     for (let i = 0; i < blocks.length; i += 1) {
+      const start = out.length;
+      const first = i;
+      i = stepPaging(i);
+      const pre = anchorsAt(Array.from({ length: i - first + 1 }, (_, k) => `${base}/${first + k}`));
+      if (pre) {
+        if (out.length > start) out[start] = pre + out[start];
+        else out.push(pre);
+      }
+    }
+    return (pending ? pending + NL : '') + out.join(NL);
+
+    function stepPaging(i) {
       const block = blocks[i];
       const next = blocks[i + 1];
       const b = `${base}/${i}`;
@@ -573,27 +606,25 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
       if (block.layout?.keepNext && next) {
         out.push(`<div class="keep">${pending}${renderBlock(block, b)}${NL}${renderBlock(next, nb)}</div>`);
         pending = '';
-        i += 1;
-        continue;
+        return i + 1;
       }
       if (block.kind === 'stories') {
         out.push(renderBlock(block, b));
         pending = '';
-        continue;
+        return i;
       }
       const shortTable = next?.kind === 'table' && (next.rows?.length ?? 0) <= GROUPABLE_ROWS;
       if (block.kind === 'subhead' && next) {
         if (next.kind !== 'table' || shortTable) {
           out.push(`<div class="keep">${renderBlock(block, b)}${NL}${renderBlock(next, nb)}</div>`);
           i += 1;
-          continue;
+          return i;
         }
       }
       if (block.kind === 'prose' && shortTable) {
         out.push(`<div class="keep">${pending}${renderBlock(block, b)}${NL}${renderBlock(next, nb)}</div>`);
         pending = '';
-        i += 1;
-        continue;
+        return i + 1;
       }
       if (block.kind === 'prose' && next?.kind === 'table' && !shortTable) {
         const all = paras(block, b);
@@ -604,20 +635,19 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
             tableOf(next, nb, '', lead ? `<span data-b="${attr(b)}"${dp(lead.p)}>${bidi(lead.text)}</span>` : '')
         );
         pending = '';
-        i += 1;
-        continue;
+        return i + 1;
       }
       if (pending && block.kind === 'table') {
         const short = (block.rows?.length ?? 0) <= GROUPABLE_ROWS;
         const headed = tableOf(block, b, 'headed', pending);
         out.push(short ? `<div class="hold head whole">${headed}</div>` : headed);
         pending = '';
-        continue;
+        return i;
       }
       out.push(pending ? `<div class="keep">${pending}${NL}${renderBlock(block, b)}</div>` : renderBlock(block, b));
       pending = '';
+      return i;
     }
-    return (pending ? pending + NL : '') + out.join(NL);
   }
 
   function contentsRows() {
@@ -684,12 +714,11 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     sheets.reduce((w, s) => (!w || s.widthMm > w.widthMm ? s : w), null) ??
     { widthMm: 297, heightMm: 210, drawHeightMm: 146, name: 'A4 landscape' };
 
+  // design-pack logos still print in the lockup; empty slots print nothing (logos are placed freely as overlays)
   const slot = (logos, name) =>
-    logos[name]
-      ? `<img class="logo-${name}" data-logo="${name}" src="${attr(logos[name])}" alt="" />`
-      : `<span class="bw-logo-slot logo-${name}" data-logo="${name}"></span>`;
+    logos[name] && SAFE_IMG.test(logos[name]) ? `<img class="logo-${name}" data-logo="${name}" src="${attr(logos[name])}" alt="" />` : '';
 
-  const cover = (logos) => `<div class="cover">
+  const cover = (logos) => `<div class="cover">${overlaysFor((o) => o.mode === 'cover')}
   <div class="spine"><i class="cap"></i><span class="id"><bdi dir="ltr">${esc(c.documentId)}</bdi></span></div>
   <div class="cover-main">
   <div class="lockup">${slot(logos, 'start')}${slot(logos, 'center')}${slot(logos, 'end')}</div>
@@ -724,7 +753,9 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
   })}</section>`
     : '';
 
-  return { cover, front, body, questions, sheet, tocRows: rows.length };
+  const everyOv = overlaysFor((o) => o.mode === 'every');
+  const every = everyOv ? `<div class="bw-every">${everyOv}</div>` : '';
+  return { cover, front, body, questions, every, sheet, tocRows: rows.length };
 }
 
 /**
