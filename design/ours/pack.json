@@ -1,0 +1,21 @@
+{
+  "$schema": "../../bible/contracts/design-pack.schema.json",
+  "name": "business-wrap-ours",
+  "version": "1.0.0",
+  "description": "The default Business-Wrap look: warm paper, deep primary for structure, an accent kept for rules and marks, hairline tables, serif throughout.",
+  "tokens": {
+    "palette": "../../palette/tokens.json",
+    "typography": "../../typography/tokens.json"
+  },
+  "fonts": "../../fonts/manifest.json",
+  "bannedFonts": ["Cairo"],
+  "layout": {
+    "page": "A4 portrait; one A4 landscape sheet only for a wide workflow figure",
+    "cover": "full-bleed cover page with a primary-deep spine on the start side, title in display black",
+    "chapters": "chapter heading in primary on a primary heading rule; section numbers in accent",
+    "tables": "no fill band: bold primary header text over a 1.2pt primary rule, body rows on hairlines",
+    "stories": "story cards on the card ground, id in accent",
+    "status": "every coloured status is also worded (icon + word), never colour alone"
+  },
+  "logoSlots": ["start", "center", "end", "header"]
+}

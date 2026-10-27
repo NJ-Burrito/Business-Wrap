@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://business-wrap.local/contracts/design-pack.schema.json",
+  "title": "Business-Wrap design pack",
+  "description": "A design pack points at DTCG token files and names the layout rules. design/build.py compiles it to theme.json (the renderer's flat theme) after the palette contrast gate passes. Ships with no logos and no font binaries.",
+  "type": "object",
+  "required": ["name", "version", "tokens", "fonts"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "description": { "type": "string" },
+    "tokens": {
+      "type": "object",
+      "required": ["palette", "typography"],
+      "properties": {
+        "palette": { "type": "string", "description": "Relative path to a DTCG colour token file with color.ramp, color.role, color.diagram, color.white and $extensions.business-wrap.contrastPairs" },
+        "typography": { "type": "string", "description": "Relative path to a DTCG file with font.family (text, display), font.weight, font.size, font.lineHeight, space, rule, page" }
+      },
+      "additionalProperties": false
+    },
+    "fonts": { "type": "string", "description": "Relative path to a font manifest (fonts/manifest.json shape)" },
+    "bannedFonts": { "type": "array", "items": { "type": "string" } },
+    "layout": { "type": "object", "additionalProperties": { "type": "string" } },
+    "logoSlots": { "type": "array", "items": { "enum": ["start", "center", "end", "header"] } }
+  },
+  "additionalProperties": false
+}
