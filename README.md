@@ -29,7 +29,7 @@ Then say: **"build the requirements document for …"** or **"open it in the edi
 
 **MCP server only** (stdio, local only; Node 20+, Chrome or Edge for the PDF, `uv` for the DOCX):
 ```
-claude mcp add business-wrap -- npx -y -p business-wrap@0.4.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p business-wrap@0.5.0 business-wrap-mcp
 ```
 From a clone instead of npm: `npm ci`, then `claude mcp add business-wrap -- node <clone>/mcp/cli.mjs`.
 Tools: `build_editor`, `validate_edits`, `apply_edits`, `export_document`, `export_design_pack`, `check_fonts` — see `mcp/README.md`.
@@ -66,6 +66,13 @@ node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|e
 ```
 Opened from disk (file://), "PDF + DOCX" downloads the edited document JSON and shows the `export.mjs` command; through `npm run serve` it exports in one click.
 
+### The editor at a glance
+- **The island** (top): the logo, the service, the edition switch **RTL / LTR**, Undo and Redo, Image and Add logo, Find, Pages, Save and PDF + DOCX, the live changes counter, the interface switch **RTL / LTR**, View and Commands.
+- **The selection rail** appears beside whatever you select (block, table cell, logo, image) with only the actions that apply.
+- **Commands** (`Ctrl+K`): every action, searchable, grouped, with its shortcut.
+- **Logos and images** go anywhere: drag onto the cover, a header or next to any block; resize from the corner; arrow keys nudge, Delete removes; optional snap guides. The position is saved in the document and prints exactly there.
+- **Focus mode** (`F`) hides the tools; **Calm mode** turns all motion off (also on when the system asks for reduced motion). **Webhooks** (panel) are off until you add a URL; they are sent through `npm run serve`.
+
 ### Machine settings (never committed)
 `.local/config.json` (gitignored) or environment variables; env wins.
 
@@ -75,6 +82,7 @@ Opened from disk (file://), "PDF + DOCX" downloads the edited document JSON and 
 | `watermarkDir` | `BW_WATERMARK_DIR` | the tool's watermark images (svg/png), editor UI only |
 | `chrome` | `BW_CHROME` | Chrome or Edge executable |
 | `poppler` | `BW_POPPLER` | poppler `bin` folder (pdftotext / pdffonts in the tests) |
+| `brandDir` | `BW_BRAND_DIR` | the tool's logo folder (default `brand/logo/`), UI only |
 
 Browser support: Chrome and Edge, latest stable (Chromium 120+); Firefox and Safari are not supported (no `plaintext-only` contenteditable in Firefox; the print path is Chromium's).
 

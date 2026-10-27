@@ -579,6 +579,7 @@ function startDrag(ev) {
   if (!b) return;
   ev.preventDefault();
   overlay.grip.setPointerCapture(ev.pointerId);
+  host.style.pointerEvents = 'none'; // the floating tools must not hide the drop target from elementFromPoint
   let target = null;
   const move = (e) => {
     // Auto-scroll near the edges so a block can travel past the visible part of the page.
@@ -604,6 +605,7 @@ function startDrag(ev) {
     overlay.drop.hidden = false;
   };
   const up = () => {
+    host.style.pointerEvents = '';
     overlay.grip.removeEventListener('pointermove', move);
     overlay.grip.removeEventListener('pointerup', up);
     overlay.drop.hidden = true;
@@ -728,13 +730,13 @@ function buildUi() {
   const theme = S.dark ? 'dark' : 'light';
   setRootFlags();
   root.innerHTML = `<style>${DATA.uiCss}</style>
-<section class="shell" aria-label="${esc(t('appName'))}" dir="${dirOf(S.ui)}" lang="${S.ui}" data-theme="${theme}" data-calm="${isCalm() ? '1' : '0'}">
+<section class="shell${buildUi.done ? '' : ' first'}" aria-label="${esc(t('appName'))}" dir="${dirOf(S.ui)}" lang="${S.ui}" data-theme="${theme}" data-calm="${isCalm() ? '1' : '0'}">
   <div class="island bar" role="toolbar" aria-label="${esc(t('toolbar'))}">
     <span class="brand" role="img" aria-label="${esc(t('appName'))}">${DATA.brand?.mark || ''}</span>
     <div class="grp doc">
       <label class="pick"><span class="vh">${esc(t('service'))}</span><select data-a="svc" aria-label="${esc(t('service'))}">${svcOpts}</select></label>
       <div class="seg" role="group" aria-label="${esc(t('edition'))}"><span class="cap" aria-hidden="true">${esc(t('edition'))}</span>
-        ${eds.map((ed) => `<button type="button" data-a="ed" data-ed="${ed}" aria-pressed="${ed === S.ed}" aria-label="${esc(t(ed === 'ar' ? 'editionAr' : 'editionEn'))} (${esc(dirWord(ed))})" title="${esc(t(ed === 'ar' ? 'editionAr' : 'editionEn'))}">${esc(dirWord(ed))}</button>`).join('')}
+        ${eds.map((ed) => `<button type="button" data-a="ed" data-ed="${ed}" aria-pressed="${ed === S.ed}" aria-label="${esc(dirWord(ed))}: ${esc(t(ed === 'ar' ? 'editionAr' : 'editionEn'))}" title="${esc(t(ed === 'ar' ? 'editionAr' : 'editionEn'))}">${esc(dirWord(ed))}</button>`).join('')}
       </div>
     </div>
     <div class="grp">${btn('undo')}${btn('redo')}</div>
@@ -747,8 +749,8 @@ function buildUi() {
       <span class="sel vh">${esc(selDesc())}</span><span class="flash vh"></span>
     </div>
     <div class="seg ui" role="group" aria-label="${esc(t('uiDir'))}"><span class="cap" aria-hidden="true">${esc(t('uiDir'))}</span>
-      <button type="button" data-a="uiLang" data-l="ar" aria-pressed="${S.ui === 'ar'}" aria-label="${esc(t('uiAr'))}" title="${esc(t('uiAr'))}">${esc(t('rtl'))}</button>
-      <button type="button" data-a="uiLang" data-l="en" aria-pressed="${S.ui === 'en'}" aria-label="${esc(t('uiEn'))}" title="${esc(t('uiEn'))}">${esc(t('ltr'))}</button>
+      <button type="button" data-a="uiLang" data-l="ar" aria-pressed="${S.ui === 'ar'}" aria-label="${esc(t('rtl'))}: ${esc(t('uiAr'))}" title="${esc(t('uiAr'))}">${esc(t('rtl'))}</button>
+      <button type="button" data-a="uiLang" data-l="en" aria-pressed="${S.ui === 'en'}" aria-label="${esc(t('ltr'))}: ${esc(t('uiEn'))}" title="${esc(t('uiEn'))}">${esc(t('ltr'))}</button>
     </div>
     ${btn('view', { extra: ` aria-expanded="${S.view}" aria-controls="viewpop"` })}
     ${btn('palette', { cls: 'cmd', label: t('palette'), extra: ' aria-keyshortcuts="Control+K"' })}
@@ -775,6 +777,7 @@ function buildUi() {
   <button type="button" class="b focus-exit" data-a="focus" ${S.focus ? '' : 'hidden'}><span class="i">${ic('focus')}</span><span class="w">${esc(t('focusExit'))}</span></button>
 </section>`;
   const shell = root.querySelector('.shell');
+  if (!buildUi.done) { buildUi.done = true; setTimeout(() => document.documentElement.classList.add('bw-ready'), 900); }
   shell.addEventListener('click', onBar);
   root.querySelector('[data-a="svc"]').addEventListener('change', (e) => { S.svc = e.target.value; if (!M[S.svc][S.ed]) S.ed = Object.keys(M[S.svc])[0]; S.sel = null; buildUi(); render(false); });
   root.querySelector('[data-a="both"]').addEventListener('change', (e) => { S.both = e.target.checked; });
@@ -784,10 +787,13 @@ function buildUi() {
   if (S.drawer) openDrawer(S.drawer);
   placeCtx();
 }
+// The page never jumps under the reader: the reserved band only grows (wrap, font load), resets only for focus mode.
+let barH = 0;
 function measureBar() {
   const bar = root.querySelector('.island');
-  const h = S.focus || !bar ? 12 : bar.getBoundingClientRect().bottom + 12;
-  document.documentElement.style.setProperty('--bw-bar-h', `${Math.round(h)}px`);
+  if (S.focus || !bar) { barH = 0; document.documentElement.style.setProperty('--bw-bar-h', '12px'); return; }
+  const h = Math.round(bar.getBoundingClientRect().bottom + 12);
+  if (h > barH) { barH = h; document.documentElement.style.setProperty('--bw-bar-h', `${h}px`); }
 }
 let lastCount = -1;
 function refreshUi() {
@@ -844,9 +850,21 @@ function placeCtx() {
   const r = anchor.getBoundingClientRect();
   const m = main.getBoundingClientRect();
   const top0 = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bw-bar-h')) || 80;
-  const h = ctx.offsetHeight || 48;
-  let top = r.top - h - 10;
-  if (top < top0) top = Math.min(innerHeight - h - 12, r.bottom + 10);
+  // a rail in the page margin, beside the selection and never over the text; the drag grip owns the other margin
+  const docRtl = getComputedStyle(main).direction === 'rtl';
+  ctx.classList.add('rail');
+  const w = ctx.offsetWidth || 170;
+  const h = ctx.offsetHeight || 300;
+  const room = docRtl ? m.left - 16 : innerWidth - m.right - 16;
+  if (room >= w) {
+    ctx.style.left = `${docRtl ? m.left - w - 12 : m.right + 12}px`;
+    ctx.style.top = `${Math.max(top0, Math.min(innerHeight - h - 12, r.top))}px`;
+    return;
+  }
+  ctx.classList.remove('rail');
+  const hh = ctx.offsetHeight || 48;
+  let top = r.top - hh - 10;
+  if (top < top0) top = Math.min(innerHeight - hh - 12, r.bottom + 10);
   ctx.style.top = `${Math.max(top0, top)}px`;
   ctx.style.left = `${Math.max(8, Math.min(innerWidth - ctx.offsetWidth - 8, m.left + m.width / 2 - ctx.offsetWidth / 2))}px`;
 }

@@ -4,11 +4,12 @@
   :root { --bw-desk: #e3eaf3; --bw-sel: #003c7a; --bw-gold: #be9a41; --bw-hover: #84b7eb; --bw-stale: #9c7e36; --bw-stale-wash: #f8f2e2; --bw-hit: #f4e7b2; }
   :root[data-bw-dark="1"] { --bw-desk: #0b1626; --bw-sel: #84b7eb; --bw-hover: #3492f4; }
   @media (prefers-color-scheme: dark) { :root:not([data-bw-dark="0"]) { --bw-desk: #0b1626; } }
-  html { scroll-behavior: smooth; }
+
   html { background: var(--bw-desk); }
   body { padding-top: var(--bw-bar-h, 120px); background: var(--bw-desk); }
   #bw-pair { padding: 12px 0 80px; }
-  #bw-pair main.bw-doc { width: 210mm; margin: 0 auto 24px; background: var(--paper); box-shadow: 0 1px 2px rgba(0,30,61,.12), 0 24px 60px -28px rgba(0,30,61,.45); zoom: var(--bw-zoom, 1); position: relative; z-index: 1; border-radius: 3px; animation: bw-page-in .7s cubic-bezier(.16,1,.3,1) both; }
+  #bw-pair main.bw-doc { width: 210mm; margin: 0 auto 24px; background: var(--paper); box-shadow: 0 1px 2px rgba(0,30,61,.12), 0 24px 60px -28px rgba(0,30,61,.45); zoom: var(--bw-zoom, 1); position: relative; z-index: 1; border-radius: 3px; }
+  html:not(.bw-ready) #bw-pair main.bw-doc { animation: bw-page-in .7s cubic-bezier(.16,1,.3,1) both; }
   @keyframes bw-page-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
   main.bw-doc [data-p] { transition: background-color .25s cubic-bezier(.16,1,.3,1), box-shadow .25s cubic-bezier(.16,1,.3,1); }
   main.bw-doc .bw-sel { animation: bw-sel-in .35s cubic-bezier(.16,1,.3,1); }

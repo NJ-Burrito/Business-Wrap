@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://business-wrap.local/contracts/webhook.schema.json",
+  "title": "Business-Wrap webhook payload",
+  "description": "The JSON body the editor's webhooks POST to a user-entered URL. Off by default, no default URLs. Delivered by the local server (POST /api/webhook), which forwards only the fields below: never fonts, never the tool watermark.",
+  "type": "object",
+  "required": ["schema", "version", "event", "service", "edition", "timestamp", "summary"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "bw-webhook" },
+    "version": { "const": 1 },
+    "event": { "enum": ["save", "export", "edits.exported", "import.merged", "validation.failed", "test"], "description": "save = Save pressed; export = PDF + DOCX exported; edits.exported = edits bundle exported (one service or all); import.merged = an edits file or a colleague's Save-HTML merged; validation.failed = the Check panel turned red; test = the panel's Send test button." },
+    "service": { "type": "string", "description": "Service id (document.service)." },
+    "edition": { "enum": ["ar", "en"] },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "summary": {
+      "type": "object",
+      "required": ["changes", "text", "structural", "rejected"],
+      "properties": {
+        "changes": { "type": "integer", "minimum": 0, "description": "Live (not rejected) edits in this edition." },
+        "text": { "type": "integer", "minimum": 0 },
+        "structural": { "type": "integer", "minimum": 0, "description": "move / delete / insert / duplicate." },
+        "rejected": { "type": "integer", "minimum": 0 },
+        "scope": { "enum": ["service", "all"] },
+        "merged": { "type": "integer", "minimum": 0 },
+        "conflicts": { "type": "integer", "minimum": 0 },
+        "problems": { "type": "array", "items": { "type": "string" } },
+        "pdf": { "type": "boolean" },
+        "docx": { "type": "boolean" },
+        "test": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "document": { "type": "object", "description": "The full edited document JSON. Present only when the user ticked “Include the full document”." }
+  }
+}

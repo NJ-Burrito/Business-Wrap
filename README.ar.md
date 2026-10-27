@@ -25,7 +25,7 @@
 
 **خادم MCP وحده** (stdio ومحلي فقط؛ يحتاج Node 20 أو أحدث، وChrome أو Edge لملف PDF، و`uv` لملف DOCX):
 ```
-claude mcp add business-wrap -- npx -y -p business-wrap@0.4.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p business-wrap@0.5.0 business-wrap-mcp
 ```
 ومن نسخة محلية بدل npm: `npm ci` ثم `claude mcp add business-wrap -- node <clone>/mcp/cli.mjs`.
 الأدوات: `build_editor` و`validate_edits` و`apply_edits` و`export_document` و`export_design_pack` و`check_fonts`، والتفاصيل في `mcp/README.ar.md`.
@@ -62,6 +62,13 @@ node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|e
 ```
 عند فتحه من القرص (file://) ينزل زر «PDF وDOCX» ملف JSON المعدل ويعرض أمر `export.mjs`؛ وعند فتحه عبر `npm run serve` يصدر بنقرة واحدة.
 
+### المحرر باختصار
+- **الشريط العائم** (أعلى الصفحة): الشعار، والخدمة، ومبدّل النسخة **RTL / LTR**، والتراجع والإعادة، والصورة وإضافة شعار، والبحث، والصفحات، والحفظ وتصدير PDF + DOCX، وعداد التغييرات الحي، ومبدّل اتجاه الواجهة **RTL / LTR**، والعرض، والأوامر.
+- **شريط التحديد** يظهر بجانب ما تحدده (كتلة، خلية جدول، شعار، صورة) وفيه الأوامر الخاصة به فقط.
+- **لوحة الأوامر** (`Ctrl+K`): كل الأوامر، قابلة للبحث، مجمّعة، مع اختصار كل منها.
+- **الشعارات والصور** توضع في أي مكان: اسحبها إلى الغلاف أو الترويسة أو بجانب أي كتلة، وغيّر حجمها من الزاوية، وحرّكها بالأسهم، واحذفها بـ Delete، مع أدلة محاذاة اختيارية. ويُحفظ الموضع في الوثيقة ويُطبع في المكان ذاته.
+- **وضع التركيز** (`F`) يخفي الأدوات، و**الوضع الهادئ** يوقف كل الحركة (ويعمل تلقائياً عند طلب النظام تقليل الحركة). و**خطافات الويب** (لوحة) متوقفة حتى تضيف رابطاً، وتُرسل عبر `npm run serve`.
+
 ### إعدادات الجهاز (لا ترفع إلى المستودع أبدا)
 الملف `.local/config.json` (مستثنى من git) أو متغيرات البيئة؛ ومتغيرات البيئة تغلب.
 
@@ -71,6 +78,7 @@ node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|e
 | `watermarkDir` | `BW_WATERMARK_DIR` | صور العلامة المائية للأداة (svg أو png)، في واجهة المحرر فقط |
 | `chrome` | `BW_CHROME` | ملف تشغيل Chrome أو Edge |
 | `poppler` | `BW_POPPLER` | مجلد `bin` لأداة poppler (pdftotext وpdffonts في الاختبارات) |
+| `brandDir` | `BW_BRAND_DIR` | مجلد شعار الأداة (الافتراضي `brand/logo/`)، للواجهة فقط |
 
 المتصفحات المدعومة: Chrome وEdge بآخر إصدار مستقر (Chromium 120 فأحدث)؛ ولا يدعم Firefox ولا Safari (لا يدعم Firefox التحرير `plaintext-only`، ومسار الطباعة مسار Chromium).
 
