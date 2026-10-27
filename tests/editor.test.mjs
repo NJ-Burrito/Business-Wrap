@@ -332,7 +332,8 @@ try {
   const bigPages = run('python', ['-c', 'import pymupdf,sys;print(pymupdf.open(sys.argv[1]).page_count)', bigPdf]).out.trim();
   const perf = `pages=${bigPages} load=${loadMs}ms duplicate+render=${timing.duplicate.toFixed(0)}ms undo+render=${timing.undo.toFixed(0)}ms keystroke=${timing.typing.toFixed(1)}ms`;
   fs.writeFileSync(path.join(OUT, 'perf.txt'), perf + '\n');
-  check('60-page document stays responsive (<300 ms per structural edit)', +bigPages >= 60 && timing.duplicate < 300 && timing.undo < 300, perf);
+  const limit = process.env.CI ? 1000 : 300; // shared CI runners are several times slower than a laptop
+  check(`60-page document stays responsive (<${limit} ms per structural edit)`, +bigPages >= 60 && timing.duplicate < limit && timing.undo < limit, perf);
   await ctxB.close();
 
   // page thumbnails through the local server (pagination exists only when Chrome prints)

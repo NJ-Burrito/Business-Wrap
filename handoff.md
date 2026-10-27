@@ -1,28 +1,33 @@
 # goals
-Business-Wrap: a client-neutral, bilingual (AR RTL / EN LTR) requirements-document skill and bible, private repo `NJ-Burrito/Business-Wrap`. Branch `bible` (this worktree) holds the method, tokens, design packs, fonts manifest, logos slot, security gate, docs, CI and repo hygiene; branch `editor` holds the HTML editor engine.
+Business-Wrap: client-neutral, bilingual (AR RTL / EN LTR) requirements-document skill, bible and HTML editor. Private repo `NJ-Burrito/Business-Wrap`, `main` at v0.1.0. This pass (branch `finish`) closes the ten "finish everything" items for v0.2.0.
 
 ## current state
-- `bible` branch: all brief and AMEND items done (status table in `docs/receipt-bible.md`). Gate on this branch: `python security/check.py --rev=HEAD` → 0 findings.
-- Whole-repo gate (`--all`) → 31 findings, all on the `editor` branch (client terms in the copied DOCX builder and renderer, absolute local paths in the font manifest stub and the sample HTML).
-- Nothing pushed, nothing merged, no GitHub repo created.
+- Branch `finish` (worktree `Business-Wrap-wt-finish`): all ten items done or documented — status table in `docs/receipt-editor.md` § v0.2.0. Committed, not merged, not pushed, not tagged.
+- Gates on `finish`: `security/check.py --all` 0 findings, `--selftest` PASS, gitleaks 8.30.1 no leaks, `npm test` 69/69 + 18/18.
+- CI not yet re-run: the fix is on `finish` and runs on the Lead's push.
 
 ## files in flight
-- `security/check.py` `ALLOW_BINARY`: empty until the editor watermark files exist under `editor/`.
-- `.github/CODEOWNERS`: commented stub, needs the owner's login.
+- none open. Machine-local, gitignored: `.local/config.json` (font root, watermark dir, Chrome, poppler), `.local/tools/gitleaks.exe`.
 
 ## changed
-- New: `bible/` (7 AR+EN pairs, `contracts/edits.schema.json`, `contracts/design-pack.schema.json`), `palette/`, `typography/`, `design/` (`build.py`, `ours/`, `custom/`), `fonts/` (manifest + READMEs), `logos/` (READMEs only), `security/` (`gitleaks.toml`, `check.py`, `denylist.sha256`), `docs/` (research, guide, glossary, architecture, decisions, roadmap, privacy, receipt), `SKILL.md`, `evals/evals.json`, `README`, `CONTRIBUTING`, `CHANGELOG`, `LICENSE`, `.github/`, `.githooks/`, `.gitignore`, `.gitattributes`.
-- Outside the repo: nj-kit `scripts/export.py` (`PROJECT_SKILLS` += business-wrap), nj-kit `manifest.json` (`project_skills.business-wrap`), zip re-exported and extracted to the Desktop copy.
+- CI: uv, poppler, Noto, Python libs, pinned gitleaks; tests SKIP the Thmanyah-only checks when the fonts are absent.
+- Editor: structural conflict prompt, page thumbnails (`/api/pages`), accessibility fixes; tests for columns, design pack, structure, thumbnails; `tests/a11y.test.mjs` in `npm test`.
+- DOCX: chapter-level landscape, numbered section headings; `tests/docx_fidelity.py` (Word, read-only export).
+- Docs (AR + EN): CHANGELOG 0.2.0, CONTRIBUTING free-plan substitute, bible/04 pair rules, eval results; SKILL quick reference; `palette/check.py --help`.
 
 ## failed attempts
-- Bash heredocs with backslashes or Arabic were mangled on this machine; write such files with the Write tool or a script file.
-- A Write of a regex with `\u` escapes landed as literal characters, and the later tashkeel strip broke it; the regex is now built from `chr()` codepoints.
-- First commit containing an Arabic word that is also a client term was caught by the history scan; amended before any push.
+- Docker Desktop was not running, so the Linux CI path was simulated on Windows (no-font run: 63/63, 6 SKIP) instead of in a container.
+- Repository rulesets: 403 on the free plan for a private repo (checked with a read-only GET).
 
 ## next step
-Integration done on the branches (2026-10-27): `bible/contracts/wrappers.schema.json` + bible 02/04 AR+EN, editor README in the root README pair, Serif Text + Display converted to TTF in `<family>/ttf/` under the font root (originals kept), both manifests search there first, CODEOWNERS = @NJ-Burrito, `.gitignore` union (`out/`). A scratch tree of editor + bible files passed: `npm test` 55/55, `check.py` 0 findings on `--all`, `--selftest` PASS, no tracked font files.
-The worker hook refuses the integration and publishing git verbs, so the Lead runs them:
-1. On `main` in `Business-Wrap`: fast-forward to `bible`, then bring in `editor`; for conflicts in `.gitignore` and `README.md` take the `bible` side (it already holds both).
-2. Re-run on main: `python security/check.py`, `--selftest`, `git ls-files | grep -Ei '\.(otf|ttf|woff2?)$'` (must print nothing), `npm ci && npm test` (55/55).
-3. Create the private repo `NJ-Burrito/Business-Wrap` from this source, confirm visibility PRIVATE, apply branch protection (`CONTRIBUTING.md`), tag `v0.1.0`.
-4. Remove both worktrees (untracked leftovers to the recycle bin first).
+1. Lead: merge `finish` into `main`, push, watch the `gates` run; tag `v0.2.0` when green.
+2. Owner decision: commit author/committer identities are not scanned by the gate (eval 4).
+3. DOCX: tables run taller in Word than in the PDF (AR one page longer); next cheapest gap is cell padding/line height in `engine/docx/theme.py`.
+4. Watermark: when images land in `NJ-Avatar`, rebuild; no code change needed.
+
+<div dir="rtl">
+
+## خلاصة بالعربية
+الفرع `finish` يغلق البنود العشرة للإصدار 0.2.0، والبوابات كلها خضراء محلياً. الخطوة التالية: يدمج القائد ويرفع ويراقب CI ثم يضع الوسم `v0.2.0`. قرار للمالك: هوية كاتب الالتزامات لا تُفحص. والعلامة المائية ما زالت بلا صور.
+
+</div>

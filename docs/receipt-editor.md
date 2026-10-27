@@ -70,13 +70,13 @@ it is now one run (editing it writes the story's `goal` field).
 | 1 | Paste sanitising, CSP, offline | DONE | paste = text only after stripping script/style/iframe; CSP `default-src 'none'`, script allowed only by the app script's SHA-256; no CDN; inline SVG figures stripped of script/handlers/foreignObject/js: links; theme values filtered before they reach CSS; server binds 127.0.0.1 and checks Origin. Tested. |
 | 2 | Autosave + recovery; version history + diff; change log export | DONE | autosave 400 ms after each change; reopen offers the draft (tested); named versions with a before/after table; `bw-change-log` JSON export |
 | 3 | Find & replace AR/EN with alef/hamza folding; spell check per edition | DONE | folding: hamza forms, ta marbuta, alef maqsura, diacritics, tatweel, case; spell toggle per edition |
-| 4 | Renumbering, auto TOC, page-break controls, page navigator, zoom | PARTIAL | renumber chapters/sections/story cards DONE; tables/figures carry no number field in the document format, so nothing to renumber; TOC is generated from the chapters DONE; "New page before" / "Keep with next" DONE (block `layout` flags); outline navigator DONE; **page thumbnails DEFERRED** — the screen view is one continuous column, pages exist only when Chrome paginates for print; thumbnails would need a print + rasterise per edit |
+| 4 | Renumbering, auto TOC, page-break controls, page navigator, zoom | DONE | renumber chapters/sections/story cards DONE; tables/figures carry no number field in the document format, so nothing to renumber; TOC is generated from the chapters DONE; "New page before" / "Keep with next" DONE (block `layout` flags); outline navigator DONE; page thumbnails DONE in v0.2.0 (printed and rasterised by the local server, 9 sheets in ~2.2–2.8 s; from file:// the panel says the server is needed) |
 | 5 | Figures and images: insert, replace, caption, resize | DONE | image → `shots` block (data URI, PNG/JPEG/SVG), width 10–100 % of the 150 mm measure; DOCX places PNG/JPEG (SVG logos/images are skipped by python-docx — PARTIAL there) |
 | 6 | Comments; approve/reject per change | DONE | comments never print, exported as `bw-comments`; rejected changes drop out of the document and the export |
 | 7 | Validation panel | DONE | empty section, numbering, pair out of sync, stale fields, overflowing table, font not loaded, empty logo slots — icon + word |
 | 8 | Import back with conflict view | DONE | edits file, bundle, comments file or a colleague's Save-HTML (parsed as data); same field changed both sides → Mine/Theirs choice. Tested. |
 | 9 | Schema version + migration stub | DONE | `migrate()` in `engine/edits.mjs` (v0 bare op array → v1) |
-| 10 | Accessibility | PARTIAL | every field reachable by Tab, every action has a key or a button, ARIA toolbar/dialog/status/aria-pressed, 3 px focus rings, reduced motion respected, UI contrast measured ≥ 5.5:1 in both themes; no screen-reader / axe audit run |
+| 10 | Accessibility | DONE | axe-core 4.14 on the editor, UI in AR and in EN, toolbar + every panel: 0 violations of any impact (v0.2.0); keyboard-only pass (Tab to toolbar and fields, edit, Alt+↓ move, Ctrl+Z); ARIA toolbar/dialog/status/aria-pressed; 3 px focus rings; reduced motion; UI contrast ≥ 5.5:1 in both themes. No human screen-reader session |
 | 11 | Dark mode (UI only), laptop, responsive toolbar | DONE | toggle + `prefers-color-scheme`; the document never changes; toolbar wraps, tested at 1366 px |
 | 12 | Performance | DONE | 63-page document: load 366 ms, duplicate + full re-render 64 ms, undo 52 ms, keystroke 1.7 ms (`out/test/perf.txt`) |
 | 13 | Browser support | DONE | Chrome/Edge latest, stated in `editor/README.md` (section for Agent A) |
@@ -112,3 +112,41 @@ paths: font root, watermark dir, Chrome and poppler come from env or the gitigno
 `.local/config.json` (`engine/config.mjs`); the sample editor is generated into `out/`;
 (c) branch history squashed into clean commits; (d) `npm test` runs the real check;
 (e) `NJ-Avatar` empty → no files under `editor/brand/watermark/`, nothing to allow-list.
+
+## v0.2.0 — finish pass (2026-10-27, branch `finish`)
+
+| # | Item | Status | Evidence |
+|---|---|---|---|
+| 1 | CI failure (run 40525225192) | DONE | Root cause from the log, not fonts first: `uv` missing on the runner → `spawnSync('uv')` returned no stdout → `.trim()` crashed the run at 7/8. Fonts were the second problem waiting. Fix: tools never throw; Thmanyah-only checks `SKIP` with the reason; CI installs uv, poppler, Noto (Arabic fallback), pymupdf/python-docx/lxml/jsonschema; Chrome `--no-sandbox` on Linux CI only. Simulated no-font run: 63/63, 6 SKIP. CI itself not re-run (no push from a worker) |
+| 2 | gitleaks | DONE | 8.30.1, checksum verified, in `.local/tools` (gitignored) and pinned in CI. `gitleaks git --log-opts=--all` with `security/gitleaks.toml`: no leaks. `security/check.py --all` with gitleaks on PATH: git exit 0, dir exit 0 (generated folders allowlisted for dir scans), 0 findings |
+| 3 | DOCX vs PDF | DONE (gaps remain) | Word exports the DOCX read-only (`tests/docx_fidelity.py`). Before fixes: AR 9/9 pages, EN 9 vs 8. Fixed: chapter-level landscape with its heading, numbered section headings, no heading for one-section chapters. After: AR 8 vs 9 pages, content-word overlap 0.941; EN 8 vs 8 pages, overlap 0.987; pixel MAD 15–17 (Word reflows lines and rows; tables are taller in Word) |
+| 4 | Column add/delete, design-pack import, structural conflict | DONE | conflict prompt for move/delete/insert/duplicate on the same block/row/paragraph; Keep mine / Take theirs; 10 new test lines, both editions |
+| 5 | axe-core + keyboard | DONE | 0 violations (AR and EN UI, 6 states each); keyboard pass; fixes: caret on keyboard focus, toolbar region, drawer element role |
+| 6 | Page thumbnails | DONE | `/api/pages` prints + rasterises; panel “Pages”; click jumps to the page; tested 9/9 |
+| 7 | Skill evals | DONE | 3 PASS, 2 PARTIAL, 0 FAIL — `evals/results-2026-10-27.md` (AR + EN); gaps fixed in SKILL, bible/04, palette/check.py |
+| 8 | Branch protection | DONE (substitute) | `gh api …/rulesets` → 403 “Upgrade to GitHub Pro or make this repository public”; hooks + CI documented in CONTRIBUTING (AR + EN) |
+| 9 | Watermark | UNCHANGED | `NJ-Avatar` still empty; nothing shown, nothing committed |
+| 10 | CHANGELOG, receipt, handoff | DONE | CHANGELOG 0.2.0 (AR + EN lines) |
+
+Gates on `finish`: `security/check.py --all` 0 findings; `--selftest` PASS; gitleaks 0; `npm test` 69/69 + 18/18.
+Owner decision raised by eval 4: commit author/committer identities are not scanned by the gate.
+
+<div dir="rtl">
+
+## الإصدار 0.2.0 — جولة الإكمال (2026-10-27، الفرع `finish`)
+
+| # | البند | الحالة | الدليل |
+|---|---|---|---|
+| 1 | فشل CI | منجز | السبب من السجل: `uv` غير موجود على المشغّل فتعطل الاختبار، وغياب خطوط ثمانية مشكلة ثانية. الأدوات لا تتعطل الآن، وفحوص الخط تُتخطى بسطر SKIP، وCI يثبت الأدوات |
+| 2 | gitleaks | منجز | الإصدار 8.30.1 بمجموع تحقق، محلياً وفي CI؛ لا تسريبات |
+| 3 | DOCX مقابل PDF | منجز مع فروق باقية | العربية 8 مقابل 9 صفحات وتطابق كلمات 0.941؛ الإنجليزية 8 مقابل 8 وتطابق 0.987 |
+| 4 | الأعمدة وحزمة التصميم والتعارض البنيوي | منجز | تنبيه تعارض بنيوي مع «أبقِ نسختي / خذ نسختهم» واختبارات للنسختين |
+| 5 | إمكانية الوصول | منجز | axe بلا مخالفات بالواجهتين، ومرور كامل بلوحة المفاتيح |
+| 6 | مصغرات الصفحات | منجز | عبر الخادم المحلي، والنقر ينتقل إلى الصفحة |
+| 7 | تقييم المهارة | منجز | 3 ناجح، 2 جزئي، 0 فاشل؛ وأُصلحت ثغرات التوثيق |
+| 8 | حماية الفرع | بديل موثق | GitHub يرفض القواعد على الخطة المجانية للمستودع الخاص؛ الخطافات وCI في CONTRIBUTING |
+| 9 | العلامة المائية | دون تغيير | المجلد ما زال فارغاً |
+| 10 | السجل والإيصال والتسليم | منجز | |
+
+</div>
+
