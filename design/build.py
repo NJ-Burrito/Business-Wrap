@@ -42,6 +42,9 @@ def build(pack_path: Path) -> int:
         for step, t in steps.items():
             if not step.startswith("$"):
                 vars_[f"{name}-{step}"] = palette.hex_of(t["$value"])
+    for k in pal["color"].get("component", {}):
+        if not k.startswith("$"):
+            vars_[k] = palette.role_hex(pal, k)
     for k, t in pal["color"]["diagram"].items():
         if not k.startswith("$"):
             vars_[f"diagram-{k}"] = palette.hex_of(t["$value"])

@@ -8,6 +8,20 @@
 | `check.py` | Gate: resolves aliases, checks every pair, writes `swatches.html`. `--css` prints the roles as CSS variables `--c-<role>` |
 | `swatches.html` | Generated preview (open in a browser) |
 
+## On the page (`color.component`)
+These are the exact colours of the delivered requirements documents: a delivered PDF was rendered and every colour it draws matched a step here.
+
+| Component | Hex | Component | Hex |
+|---|---|---|---|
+| page ground | #fafaf9 | body text | #1b1813 |
+| heading, table header text, heading rule, chapter chip | #003c7a | section number, story id | #5f4d21 |
+| accent rule | #9c7e36 | cover band (spine) | #001e3d |
+| spine cap and spine code | #be9a41 | table header fill (data table) | #e1eaf4 |
+| zebra rows | #f2f6fa | row rule | #e8e4de |
+| strong rule, card border | #d5cfc3 | story card | #efede6 |
+| callout rule / tag | #a81a1f | callout fill | #f2e4e4 |
+| ready text / fill | #16644e / #e4f1ed | secondary text | #544c3b |
+
 ## Ramps
 `primary` (deep blue), `accent` (gold), `signal` (red), `success` (green), `neutral` (warm sand). Each ramp is an even lightness ladder around one anchor in HLS, keeping its hue; the pale end loses saturation so a tint reads as paper touched by the colour. Neutrals carry a trace of the accent's hue so rules belong to the page.
 
