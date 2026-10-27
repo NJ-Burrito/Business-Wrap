@@ -11,7 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { renderDocument, chromeTemplates, relaxTallGroups, relaxArgs, PAGE } from './render.mjs';
+import { renderDocument, chromeTemplates, relaxTallGroups, relaxArgs, PAGE, designTheme, confidentialText } from './render.mjs';
 import { applyOps, migrate } from './edits.mjs';
 import { loadManifest, resolveFonts, fontFaceCss } from './fonts.mjs';
 import { config } from './config.mjs';
@@ -49,7 +49,7 @@ export function fontsFor(theme) {
 
 /** The print HTML — what the editor shows minus the editor layer. */
 export function printHtml(doc, { locale, theme, embed = true }) {
-  const { used } = fontsFor(theme);
+  const { used } = fontsFor(designTheme(theme, doc));
   const fontCss = fontFaceCss(used, { embed });
   const labels = i18n().doc[locale];
   return { html: renderDocument(doc, { locale, labels, theme, fontCss, logos: theme.logos }), fontCss, labels, used };
@@ -73,7 +73,7 @@ export async function exportPdf(doc, { locale, theme, pdfPath, browser: shared }
     await page.goto(pathToFileURL(tmp).href, { waitUntil: 'load' });
     await page.evaluate(() => document.fonts.ready.then(() => true));
     await page.evaluate(relaxTallGroups, relaxArgs());
-    const chrome = chromeTemplates(doc, { theme, labels, fontCss: fontFaceCss(used.filter((c) => [400, 700].includes(c.weight)), { embed: true }), logos: theme.logos });
+    const chrome = chromeTemplates(doc, { theme, labels, locale, fontCss: fontFaceCss(used.filter((c) => [400, 700].includes(c.weight)), { embed: true }), logos: theme.logos });
     fs.mkdirSync(path.dirname(pdfPath), { recursive: true });
     await page.pdf({
       path: pdfPath,
@@ -90,7 +90,7 @@ export async function exportPdf(doc, { locale, theme, pdfPath, browser: shared }
     fs.rmSync(tmp, { force: true });
   }
   const folioFace = used.find((c) => c.family === theme.fonts.display && c.weight === 700 && c.format === 'truetype') || used.find((c) => c.format === 'truetype');
-  const anchor = theme.brand?.confidential || labels.confidential;
+  const anchor = confidentialText(doc, theme, labels, locale);
   const r = spawnSync('python', [path.join(HERE, 'pdf_post.py'), pdfPath, folioFace?.file || '', anchor, locale === 'ar' ? 'rtl' : 'ltr'], {
     encoding: 'utf8',
     env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
@@ -132,7 +132,7 @@ export function exportDocx(doc, { locale, theme, docxPath }) {
   const docJson = path.join(work, 'document.json');
   const themeJson = path.join(work, 'theme.json');
   fs.writeFileSync(docJson, JSON.stringify(doc), 'utf8');
-  fs.writeFileSync(themeJson, JSON.stringify(theme), 'utf8');
+  fs.writeFileSync(themeJson, JSON.stringify(designTheme(theme, doc)), 'utf8');
   fs.mkdirSync(path.dirname(docxPath), { recursive: true });
   const r = spawnSync('uv', ['run', '--no-project', '--with', 'python-docx', '--with', 'lxml', 'python', path.join(HERE, 'docx', 'build_docx.py'), docJson, docxPath, '--workdir', work], {
     encoding: 'utf8',

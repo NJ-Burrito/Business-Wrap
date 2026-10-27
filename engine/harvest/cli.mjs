@@ -10,8 +10,41 @@ import { parseModel, modelToDocument } from './model.mjs';
 import { crawl, harvestToDocument } from './crawl.mjs';
 import { i18n, REPO } from '../export.mjs';
 import { buildEditor } from '../build-editor.mjs';
+import { get, applyOp, applyOps, migrate } from '../edits.mjs';
 
 const inflateRaw = (bin) => zlib.inflateRawSync(Buffer.from(bin)).toString('latin1');
+
+/**
+ * A re-harvest keeps what people changed: every value the editor flagged «manual» (doc.manual, pointer →
+ * {generated}) keeps the person's text, and a source that now says something else is reported as a conflict
+ * (doc.harvestConflicts, shown in the editor). The document's own labels, design and layout carry over.
+ */
+export function reharvest(next, prev) {
+  if (!prev) return { doc: next, conflicts: [] };
+  const conflicts = [];
+  const manual = {};
+  for (const [ptr, m] of Object.entries(prev.manual || {})) {
+    const mine = get(prev, ptr);
+    const theirs = get(next, ptr);
+    if (mine === undefined) continue;
+    if (theirs !== undefined && theirs !== m.generated && theirs !== mine) conflicts.push({ path: ptr, generated: m.generated, harvested: theirs, manual: mine });
+    try { applyOp(next, { op: 'replace', path: ptr, value: mine }); manual[ptr] = { generated: theirs ?? m.generated }; } catch { conflicts.push({ path: ptr, generated: m.generated, harvested: null, manual: mine }); }
+  }
+  for (const k of ['labels', 'design', 'layout']) if (prev[k] !== undefined) next[k] = prev[k];
+  if (Object.keys(manual).length) next.manual = manual;
+  if (conflicts.length) next.harvestConflicts = conflicts; else delete next.harvestConflicts;
+  return { doc: next, conflicts };
+}
+
+/** The previous edition in the output folder, with its edits file (<service>.<ed>.edits.json) applied if there is one. */
+function previous(dir, service, ed) {
+  const f = path.join(dir, `document.${ed}.json`);
+  if (!fs.existsSync(f)) return null;
+  let doc = JSON.parse(fs.readFileSync(f, 'utf8'));
+  const edits = path.join(dir, `${service}.${ed}.edits.json`);
+  if (fs.existsSync(edits)) doc = applyOps(doc, migrate(JSON.parse(fs.readFileSync(edits, 'utf8'))).ops);
+  return doc;
+}
 
 /** Write both editions (and the editor) for one document builder. */
 export function writeDocuments(build, outRoot, { editor = true, extra = {} } = {}) {
@@ -19,9 +52,16 @@ export function writeDocuments(build, outRoot, { editor = true, extra = {} } = {
   const docs = { ar: build('ar', H.ar), en: build('en', H.en) };
   const dir = path.resolve(outRoot, docs.en.service);
   fs.mkdirSync(dir, { recursive: true });
+  const conflicts = {};
+  for (const [ed, d0] of Object.entries(docs)) {
+    d0.harvest = { at: new Date().toISOString().slice(0, 10) };
+    const r = reharvest(d0, previous(dir, docs.en.service, ed));
+    docs[ed] = r.doc;
+    if (r.conflicts.length) conflicts[ed] = r.conflicts;
+  }
   for (const [ed, d] of Object.entries(docs)) fs.writeFileSync(path.join(dir, `document.${ed}.json`), JSON.stringify(d, null, 1) + '\n');
   for (const [name, v] of Object.entries(extra)) fs.writeFileSync(path.join(dir, name), JSON.stringify(v, null, 1) + '\n');
-  const out = { dir, documents: [path.join(dir, 'document.ar.json'), path.join(dir, 'document.en.json')], service: docs.en.service };
+  const out = { dir, documents: [path.join(dir, 'document.ar.json'), path.join(dir, 'document.en.json')], service: docs.en.service, conflicts };
   if (editor) out.editor = buildEditor({ inputs: out.documents, out: path.join(dir, `${docs.en.service}.editor.html`), set: docs.en.service, watermarkDir: null }).out;
   return out;
 }
@@ -51,6 +91,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       : await harvestCrawl(rest.includes('--headless') ? { ...JSON.parse(fs.readFileSync(input, 'utf8')), headed: false } : path.resolve(input), opts);
     console.log(`documents  ${r.documents.join('  ')}`);
     if (r.editor) console.log(`editor     ${r.editor}`);
+    for (const [ed, cs] of Object.entries(r.conflicts || {})) for (const c of cs) console.log(`CONFLICT   ${ed} ${c.path}: kept your edit; the source now says: ${c.harvested}`);
   } catch (e) {
     console.error(`harvest failed: ${e.message}`);
     process.exit(1);

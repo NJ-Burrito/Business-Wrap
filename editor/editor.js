@@ -70,7 +70,7 @@ const docCssEl = document.getElementById('bw-doc-css');
 const fontsEl = document.getElementById('bw-fonts');
 function renderOne(ed) {
   const e = cur(ed);
-  const parts = renderParts(e.doc, { locale: ed, labels: I18N.doc[ed] });
+  const parts = renderParts(e.doc, { locale: ed, labels: I18N.doc[ed], theme: S.theme });
   return { html: documentMain(parts, S.theme.logos, ed), sheet: parts.sheet };
 }
 function render(keepScroll = true) {
@@ -83,7 +83,8 @@ function render(keepScroll = true) {
     if (ed === S.ed) sheet = r.sheet;
     html += ed === S.ed ? r.html : r.html.replace('<main class="bw-doc"', '<main class="bw-doc bw-other"');
   }
-  docCssEl.textContent = documentCss(S.theme, sheet);
+  docCssEl.textContent = documentCss(S.theme, sheet, cur().doc);
+  document.documentElement.classList.add('bw-ed');
   let pair = document.getElementById('bw-pair');
   if (!pair) {
     pair = document.createElement('div');
@@ -147,10 +148,37 @@ function commit(ops, { ed = S.ed, rerender = true, group = newGroup(), mirror = 
   touched();
   if (rerender) render();
 }
-function setText(path, value, ed = S.ed) {
+/** The labels this edition prints: house ← design pack ← document. */
+const labelsOf = (ed = S.ed) => withLabels(I18N.doc[ed], S.theme.labels?.[ed], cur(ed).doc.labels);
+/** /labels/<key>[/<sub>] edited for the first time: create the map (and an array or control map) from what prints now. */
+function ensurePath(path, ed) {
   const e = cur(ed);
-  const old = get(e.doc, path);
+  const m = /^\/labels\/([^/]+)(\/.*)?$/.exec(path);
+  const pre = [];
+  if (m) {
+    if (!e.doc.labels) pre.push({ op: 'replace', path: '/labels', value: {} });
+    if (m[2] && (e.doc.labels || {})[m[1]] === undefined) { const now = labelsOf(ed)[m[1]]; pre.push({ op: 'replace', path: `/labels/${m[1]}`, value: Array.isArray(now) ? [...now] : {} }); }
+  }
+  if (/^\/control\/(coverTitle|subtitle)$/.test(path) && !e.doc.control) pre.push({ op: 'replace', path: '/control', value: {} });
+  if (pre.length) commit(pre, { ed, rerender: false });
+}
+/** A harvested (generated) value edited by hand is flagged manual, so a re-harvest keeps it and reports a conflict. */
+function flagManual(path, old, ed) {
+  const e = cur(ed);
+  if (!e.doc.harvest || path.startsWith('/labels') || path.startsWith('/manual')) return;
+  if (e.doc.manual?.[path]) return;
+  const pre = [];
+  if (!e.doc.manual) pre.push({ op: 'replace', path: '/manual', value: {} });
+  pre.push({ op: 'replace', path: `/manual/${path.replace(/~/g, '~0').replace(/\//g, '~1')}`, value: { generated: old ?? '' } });
+  commit(pre, { ed, rerender: false });
+}
+function setText(path, value, ed = S.ed) {
+  ensurePath(path, ed);
+  const e = cur(ed);
+  const old = get(e.doc, path) ?? (path.startsWith('/labels/') ? get(labelsOf(ed), path.slice(7)) : undefined);
   if (old === value) return;
+  if (path.startsWith('/labels/')) S.labelEdit = { path, value, ed };
+  flagManual(path, old, ed);
   const last = e.ops.at(-1);
   if (last && last.op === 'setText' && last.path === path && S.typingGroup && last.id.startsWith(S.typingGroup + '.')) {
     last.value = value;
@@ -364,14 +392,14 @@ async function saveHtml(embedFonts) {
   let fontCss = DATA.fontCss;
   if (embedFonts) fontCss = await inlineFonts(fontCss);
   const data = { ...DATA, setId: `${DATA.setId}:${S.svc}`, services: [{ id: s.id, editions }], theme: S.theme, fontCss, uiLang: S.ui };
-  const parts = renderParts(cur().doc, { locale: S.ed, labels: I18N.doc[S.ed] });
+  const parts = renderParts(cur().doc, { locale: S.ed, labels: I18N.doc[S.ed], theme: S.theme });
   const html = `<!doctype html>
 <html lang="${S.ed}" dir="${S.ed === 'ar' ? 'rtl' : 'ltr'}"><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="${DATA.csp}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(cur().doc.control.title)}</title>
 <style id="bw-fonts">${fontCss}</style>
-<style id="bw-doc-css">${documentCss(S.theme, parts.sheet)}</style>
+<style id="bw-doc-css">${documentCss(S.theme, parts.sheet, cur().doc)}</style>
 <style id="bw-editor-css">${document.getElementById('bw-editor-css').textContent}</style>
 </head><body>
 ${documentMain(parts, S.theme.logos, S.ed)}
@@ -472,6 +500,151 @@ function tableCtx() {
   return { rows: el.dataset.rows, cols: el.dataset.cols || null, w: +el.dataset.w, r: cell ? +cell.dataset.r : -1, c: cell ? +cell.dataset.c : -1 };
 }
 let lastCell = null;
+
+/* ── Design: every visual property, labels, template parts, per-instance style, advanced CSS ──
+ * Document-level design is saved in the document (doc.design, doc.layout, doc.labels) through ops,
+ * so undo/redo, the edits JSON, the PDF and the DOCX all carry it; the design pack export bundles it. */
+const DESIGN_COLOURS = ['primary', 'primary-deep', 'accent', 'accent-bright', 'accent-rule', 'ink', 'muted', 'rule', 'rule-strong', 'card', 'paper', 'signal', 'th-fill', 'th-ink', 'zebra'];
+const DESIGN_SIZES = ['title', 'h1', 'h2', 'h3', 'body', 'table', 'meta', 'micro'];
+const DESIGN_SPACING = [['line', '1.8'], ['page-side', '16mm'], ['rule-w', '1px'], ['th-rule-w', '1.2pt']];
+const STYLE_FIELDS = [['color', 'color'], ['background-color', 'color'], ['font-size', 'text'], ['font-weight', 'text'], ['line-height', 'text'], ['letter-spacing', 'text'], ['text-align', 'text'], ['padding', 'text'], ['margin', 'text'], ['border', 'text'], ['border-radius', 'text']];
+const hex = (v) => (/^#[0-9a-f]{6}$/i.test(String(v || '')) ? v : '#ffffff');
+function labelToPack(key, value, ed) {
+  const parts = key.split('/');
+  const pack = JSON.parse(JSON.stringify(S.theme.labels || {}));
+  pack[ed] = pack[ed] || {};
+  if (parts.length === 1) pack[ed][parts[0]] = value;
+  else { const now = labelsOf(ed)[parts[0]]; const node = pack[ed][parts[0]] ?? (Array.isArray(now) ? [...now] : {}); node[parts[1]] = value; pack[ed][parts[0]] = node; }
+  S.theme = { ...S.theme, labels: pack };
+  touched();
+  toast(t('labelAllDone'), 'ok');
+}
+const DESIGN = {
+  /** a document-level design write: one replace of /design (or /layout), mirrored to the other edition */
+  set(root, key, sub, value) {
+    const d = cur().doc;
+    const next = JSON.parse(JSON.stringify(d[root] || {}));
+    if (sub) { next[sub] = { ...(next[sub] || {}) }; if (value === '' || value == null) delete next[sub][key]; else next[sub][key] = value; }
+    else if (value === '' || value == null) delete next[key]; else next[key] = value;
+    commit([{ op: 'replace', path: `/${root}`, value: next, old: d[root] }], { mirror: root !== 'labels' });
+  },
+  panel() {
+    const d = cur().doc;
+    const th = designTheme(S.theme, d);
+    const L = labelsOf();
+    const hide = new Set(d.layout?.hide || []);
+    const front = [...(d.layout?.front || []), ...['control', 'revisions', 'toc'].filter((k) => !(d.layout?.front || []).includes(k))];
+    const labRows = Object.entries(L).flatMap(([k, v]) => (k === 'control' ? Object.entries(v).map(([ck, cv]) => [`control/${ck}`, cv]) : Array.isArray(v) ? v.map((x, i) => [`${k}/${i}`, x]) : typeof v === 'string' ? [[k, v]] : []));
+    const rej = sanitizeCss(d.design?.css).rejected;
+    return `<h3>${esc(t('dColours'))}</h3><div class="row3">${DESIGN_COLOURS.map((k) => `<label>${esc(k)}<input type="color" data-dv="${k}" value="${esc(hex(th.vars[k]))}"></label>`).join('')}</div>
+<h3>${esc(t('dSizes'))}</h3><div class="row3">${DESIGN_SIZES.map((k) => `<label>${esc(k)}<input type="text" data-ds="${k}" value="${esc(th.sizes?.[k] || '')}" spellcheck="false"></label>`).join('')}</div>
+<h3>${esc(t('dSpacing'))}</h3><div class="row3">${DESIGN_SPACING.map(([k, def]) => `<label>${esc(k)}<input type="text" data-dv="${k}" value="${esc(th.vars[k] || def)}" spellcheck="false"></label>`).join('')}</div>
+<h3>${esc(t('dParts'))}</h3><ul class="list">${['cover', ...front, 'questions'].map((k) => `<li><label class="chk"><input type="checkbox" data-dpart="${k}" ${hide.has(k) ? '' : 'checked'}> ${esc(t('part_' + k))}</label>${front.includes(k) ? ` <button type="button" data-dmove="${k}" data-d="-1" aria-label="${esc(t('moveUp'))}: ${esc(t('part_' + k))}">${ic('moveUp')}</button><button type="button" data-dmove="${k}" data-d="1" aria-label="${esc(t('moveDown'))}: ${esc(t('part_' + k))}">${ic('moveDown')}</button>` : ''}</li>`).join('')}</ul>
+<h3>${esc(t('dChapters'))}</h3><ul class="list">${d.chapters.map((ch, i) => `<li><label class="chk"><input type="checkbox" data-dch="${i}" ${ch.hidden ? '' : 'checked'}> ${esc(ch.number)} ${esc(ch.title)}</label> <button type="button" data-dchm="${i}" data-d="-1" aria-label="${esc(t('moveUp'))}: ${esc(ch.title)}">${ic('moveUp')}</button><button type="button" data-dchm="${i}" data-d="1" aria-label="${esc(t('moveDown'))}: ${esc(ch.title)}">${ic('moveDown')}</button><button type="button" data-dchd="${i}" aria-label="${esc(t('duplicate'))}: ${esc(ch.title)}">${ic('duplicate')}</button><button type="button" data-dchx="${i}" aria-label="${esc(t('delete'))}: ${esc(ch.title)}">${ic('delete')}</button></li>`).join('')}</ul>
+<div class="btns"><button type="button" class="b" data-k="addTable"><span class="i">${ic('rowAdd')}</span><span class="w">${esc(t('addTable'))}</span></button><button type="button" class="b" data-k="addSection"><span class="i">${ic('add')}</span><span class="w">${esc(t('addSection'))}</span></button></div>
+<h3>${esc(t('dLabels'))}</h3><p class="hint">${esc(t('dLabelsHint'))}</p><label class="chk"><input type="checkbox" data-k="laball" ${S.labelAll ? 'checked' : ''}> ${esc(t('labelAll'))}</label>
+<div class="labs">${labRows.map(([k, v]) => `<label>${esc(k)}<input type="text" data-lab="${esc(k)}" value="${esc(v)}" ${String(v).trim() || k === 'comma' ? '' : 'aria-invalid="true"'}></label>`).join('')}</div>
+<h3>${esc(t('dCss'))}</h3><p class="hint">${esc(t('dCssHint'))}</p><textarea data-dcss rows="6" spellcheck="false" dir="ltr" aria-label="${esc(t('dCss'))}">${esc(d.design?.css || '')}</textarea>${rej.length ? `<p class="warn" role="status">${esc(t('vCss', { x: rej.join(' · ') }))}</p>` : ''}
+<div class="btns"><button type="button" class="b" data-k="dcssApply"><span class="w">${esc(t('apply'))}</span></button></div>`;
+  },
+  inspector() {
+    const b = blockOf(S.sel?.b);
+    if (!b) return `<p class="hint">${esc(t('styleNone'))}</p>`;
+    const node = get(cur().doc, b.ptr) || {};
+    const st = node.style || {};
+    return `<p class="hint">${esc(t('styleHint'))} <code>${esc(b.ptr)}</code></p><div class="row3">${STYLE_FIELDS.map(([k, type]) => `<label>${esc(k)}<input type="${type}" data-st="${k}" value="${esc(type === 'color' ? hex(st[k]) : st[k] || '')}" spellcheck="false"></label>`).join('')}</div>
+<label class="chk"><input type="checkbox" data-k="sthide" ${node.hidden ? 'checked' : ''}> ${esc(t('hideBlock'))}</label>
+<div class="btns"><button type="button" class="b" data-k="stclear"><span class="w">${esc(t('styleClear'))}</span></button></div>`;
+  },
+  setStyle(prop, value) {
+    const b = blockOf(S.sel?.b);
+    if (!b) return;
+    const node = get(cur().doc, b.ptr);
+    const st = { ...(node.style || {}) };
+    if (value === '' || value == null) delete st[prop]; else st[prop] = value;
+    commit([node.style ? { op: 'replace', path: `${b.ptr}/style`, value: st, old: node.style } : { op: 'insert', path: `${b.ptr}/style`, value: st }], { mirror: true });
+  },
+  toggleHidden() {
+    const b = blockOf(S.sel?.b);
+    if (!b) return;
+    const node = get(cur().doc, b.ptr);
+    commit([node.hidden ? { op: 'delete', path: `${b.ptr}/hidden`, old: true } : { op: 'insert', path: `${b.ptr}/hidden`, value: true }], { mirror: true });
+    toast(t(node.hidden ? 'hiddenOn' : 'hiddenOff'), 'info');
+  },
+  moveRow(dir) {
+    const x = tableCtx();
+    if (!x || x.r < 0) return;
+    const rows = get(cur().doc, x.rows);
+    const to = x.r + dir;
+    if (to < 0 || to >= rows.length) return;
+    commit([{ op: 'move', from: `${x.rows}/${x.r}`, path: `${x.rows}/${to}` }], { mirror: true });
+  },
+  input(el) {
+    if (el.dataset.st && el.type === 'color') DESIGN.setStyle(el.dataset.st, el.value);
+    if (el.dataset.dv && el.type === 'color') DESIGN.set('design', el.dataset.dv, 'vars', el.value);
+  },
+  change(el) {
+    const f = el.dataset;
+    if (f.st && el.type !== 'color') DESIGN.setStyle(f.st, el.value.trim());
+    if (f.dv && el.type !== 'color') DESIGN.set('design', f.dv, 'vars', el.value.trim());
+    if (f.ds) DESIGN.set('design', f.ds, 'sizes', el.value.trim());
+    if (f.k === 'sthide') DESIGN.toggleHidden();
+    if (f.k === 'laball') S.labelAll = el.checked;
+    if (f.lab !== undefined) {
+      if (S.labelAll) labelToPack(f.lab, el.value, S.ed), render();
+      else setText(`/labels/${f.lab}`, el.value), render();
+      S.typingGroup = null;
+    }
+    if (f.dpart) {
+      const hide = new Set(cur().doc.layout?.hide || []);
+      el.checked ? hide.delete(f.dpart) : hide.add(f.dpart);
+      DESIGN.set('layout', 'hide', null, [...hide]);
+    }
+    if (f.dch !== undefined) {
+      const p = `/chapters/${f.dch}/hidden`;
+      commit([el.checked ? { op: 'delete', path: p, old: true } : { op: 'insert', path: p, value: true }], { mirror: true });
+    }
+  },
+  click(x) {
+    const d = cur().doc;
+    const f = x.dataset;
+    const n = d.chapters.length;
+    if (f.dmove) {
+      const front = [...(d.layout?.front || []), ...['control', 'revisions', 'toc'].filter((k) => !(d.layout?.front || []).includes(k))];
+      const i = front.indexOf(f.dmove);
+      const j = i + Number(f.d);
+      if (j < 0 || j >= front.length) return true;
+      [front[i], front[j]] = [front[j], front[i]];
+      DESIGN.set('layout', 'front', null, front);
+    } else if (f.dchm !== undefined) {
+      const i = +f.dchm; const j = i + Number(f.d);
+      if (j < 0 || j >= n) return true;
+      commit([{ op: 'move', from: `/chapters/${i}`, path: `/chapters/${j}` }], { mirror: true });
+    } else if (f.dchd !== undefined) commit([{ op: 'duplicate', path: `/chapters/${f.dchd}` }], { mirror: true });
+    else if (f.dchx !== undefined) { if (n > 1) commit([{ op: 'delete', path: `/chapters/${f.dchx}`, old: d.chapters[+f.dchx] }], { mirror: true }); }
+    else if (f.k === 'addTable' || f.k === 'addSection') {
+      const b = blockOf(S.sel?.b);
+      const ch = d.chapters.length - 1;
+      if (f.k === 'addTable') {
+        const at = b ? `${b.arr}/${b.i + 1}` : `/chapters/${ch}/sections/0/blocks/-`;
+        commit([{ op: 'insert', path: at, value: { kind: 'table', columns: ['', ''], rows: [['', '']] } }], { mirror: true });
+      } else {
+        const c = d.chapters[ch];
+        commit([{ op: 'insert', path: `/chapters/${ch}/sections/-`, value: { number: `${c.number}.${c.sections.length + 1}`, title: t('newSection'), blocks: [{ kind: 'prose', paragraphs: [labelsOf().newParagraph] }] } }], { mirror: true });
+      }
+    } else if (f.k === 'dcssApply') {
+      const v = root.querySelector('.drawer textarea[data-dcss]').value;
+      DESIGN.set('design', 'css', null, v);
+      const rej = sanitizeCss(v).rejected;
+      if (rej.length) toast(t('vCss', { x: rej.join(' · ') }), 'warn');
+    } else if (f.k === 'stclear') {
+      const b = blockOf(S.sel?.b);
+      if (b && get(d, `${b.ptr}/style`)) commit([{ op: 'delete', path: `${b.ptr}/style`, old: get(d, `${b.ptr}/style`) }], { mirror: true });
+    } else return false;
+    openDrawer(S.drawer);
+    return true;
+  },
+};
 
 /* ── block actions ─────────────────────────────────────────────────────── */
 const A = {
@@ -698,6 +871,9 @@ function validate() {
   });
   for (const f of [S.theme.fonts.text, S.theme.fonts.display])
     if (!document.fonts.check(`16px '${f}'`) || !DATA.fontFamilies.includes(f)) out.push(['err', t('vFont', { x: f })]);
+  for (const k of emptyLabels(labelsOf())) out.push(['err', t('vLabel', { x: k })]);
+  const rej = sanitizeCss(d.design?.css).rejected;
+  if (rej.length) out.push(['warn', t('vCss', { x: rej.join(' · ') })]);
   const emptyLogos = ['start', 'center', 'end', 'header'].filter((k) => !S.theme.logos?.[k]).length;
   if (emptyLogos) out.push(['info', t('vLogos', { n: emptyLogos })]);
   return out;
@@ -838,6 +1014,7 @@ function refreshUi() {
   if (v.some((x) => x[0] === 'err') && !refreshUi.err) emitHook('validation.failed', { problems: v.filter((x) => x[0] === 'err').map((x) => x[1]) });
   refreshUi.err = v.some((x) => x[0] === 'err');
   if (S.drawer && !['find', 'theme', 'pages', 'webhooks', 'newdoc', 'process'].includes(S.drawer)) openDrawer(S.drawer, true);
+  else if (S.drawer === 'style') openDrawer('style', true);
   buildCtx(b, tb);
   measureBar();
 }
@@ -850,7 +1027,7 @@ function buildCtx(b, tb) {
   if (!b && !ov) { ctx.hidden = true; return; }
   const groups = ov
     ? [['replace', 'caption', ...(ov.kind === 'logo' ? ['every'] : []), 'delete']]
-    : [['duplicate', 'delete', 'moveUp', 'moveDown'], ['addPara', 'comment', 'breakBefore', 'keepNext'], ...(tb ? [['rowAdd', 'rowDel', 'colAdd', 'colDel']] : [])];
+    : [['duplicate', 'delete', 'moveUp', 'moveDown'], ['addPara', 'comment', 'breakBefore', 'keepNext'], ['styleThis', 'hideBlock'], ...(tb ? [['rowAdd', 'rowDel', 'colAdd', 'colDel', 'rowUp', 'rowDown']] : [])];
   const key = JSON.stringify([groups, ov ? `ov${S.selOv}${ov.mode}` : b?.ptr]);
   if (ctx.dataset.key !== key) {
     ctx.dataset.key = key;
@@ -1067,6 +1244,10 @@ async function runAction(a) {
     case 'comment': await A.comment(); break;
     case 'breakBefore': A.layout('breakBefore'); break;
     case 'keepNext': A.layout('keepNext'); break;
+    case 'styleThis': openDrawer('style'); break;
+    case 'hideBlock': DESIGN.toggleHidden(); break;
+    case 'rowUp': DESIGN.moveRow(-1); break;
+    case 'rowDown': DESIGN.moveRow(1); break;
     case 'renumber': A.renumber(); break;
     case 'find': case 'outline': case 'check': case 'history': case 'theme': case 'pages': case 'webhooks': case 'newdoc': case 'process':
       S.drawer === a ? closeDrawer() : openDrawer(a); break;
@@ -1136,7 +1317,11 @@ ${e.comments.length ? `<h3>${esc(t('comment'))}</h3><ul class="list">${e.comment
 <h3>${esc(t('imgWidth'))}</h3><input type="range" min="10" max="100" step="5" data-k="width" aria-label="${esc(t('imgWidth'))}" value="${(() => { const b = blockOf(S.sel?.b); return (b && get(cur().doc, b.ptr)?.width) || 100; })()}">
 <label class="chk"><input type="checkbox" data-k="embed" ${S.embedFonts ? 'checked' : ''}> ${esc(t('embedFonts'))}</label>
 <div class="btns"><button type="button" class="b" data-k="texp"><span class="w">${esc(t('themeExport'))}</span></button><button type="button" class="b" data-k="timp"><span class="w">${esc(t('themeImport'))}</span></button></div>
+${DESIGN.panel()}
 <h3>${esc(t('shortcuts'))}</h3><p class="hint">${esc(t('shortcutsText'))}</p>`;
+  } else if (kind === 'style') {
+    d.setAttribute('aria-label', t('styleThis'));
+    html = head(t('styleThis')) + DESIGN.inspector();
   } else if (kind === 'newdoc') {
     d.setAttribute('aria-label', t('newdoc'));
     html = head(t('newdoc')) + newdocPanel();
@@ -1156,12 +1341,14 @@ ${e.comments.length ? `<h3>${esc(t('comment'))}</h3><ul class="list">${e.comment
   d.onclick = onDrawer;
   d.oninput = (e) => {
     if (e.target.dataset.k === 'width') A.width(e.target.value);
+    DESIGN.input(e.target);
   };
   d.onchange = (e) => {
     if (e.target.dataset.font) { S.theme = { ...S.theme, fonts: { ...S.theme.fonts, [e.target.dataset.font]: e.target.value } }; touched(); render(); }
     if (e.target.dataset.k === 'embed') S.embedFonts = e.target.checked;
     if (e.target.dataset.hook) hooksChange(e.target);
     if (e.target.dataset.pr) processChange(e.target);
+    DESIGN.change(e.target);
   };
   if (!soft) d.querySelector('input,button:not([data-k="close"])')?.focus();
 }
@@ -1225,7 +1412,8 @@ async function onDrawer(e) {
   if (k === 'nd-model') { const f = await pickFile('.bpmn,.bpmn20.xml,.xml,.drawio,.yaml,.yml,.json'); if (f) await newFromModel(f); return; }
   if (k === 'nd-crawl') { await newFromCrawl(root.querySelector('.drawer [data-f="crawl"]').value); return; }
   if (await processClick(x)) return;
-  if (k === 'texp') download(`design-pack.json`, JSON.stringify({ kind: 'bw-design-pack', version: 1, ...S.theme }, null, 1));
+  if (k === 'texp') { const th = designTheme(S.theme, cur().doc); const { css, ...rest } = th; download(`design-pack.json`, JSON.stringify({ kind: 'bw-design-pack', version: 1, ...rest, labels: S.theme.labels || {} }, null, 1)); }
+  if (DESIGN.click(x)) return;
   if (k === 'timp') {
     const f = await pickFile('.json,application/json');
     if (!f) return;
@@ -1818,6 +2006,8 @@ document.addEventListener('focusout', (e) => {
   const el = e.target.closest?.('#bw-pair [data-p]');
   if (el && el.isContentEditable) el.removeAttribute('contenteditable');
   S.typingGroup = null;
+  const le = S.labelEdit;
+  if (le) { S.labelEdit = null; toast(t('labelEdited'), 'info', { actions: [[t('labelAll'), () => labelToPack(le.path.slice(8), le.value, le.ed)]] }); }
 });
 // Pasted HTML never enters the document: text only, scripts and handlers cannot survive.
 document.addEventListener('paste', (e) => {
@@ -1984,5 +2174,8 @@ function boot() {
   render(false);
   offerRecovery();
 }
+// a re-harvest that met a hand edit: the person's text was kept; show the source's new text beside it
+for (const [svc, eds] of Object.entries(M)) for (const [ed, e] of Object.entries(eds)) for (const c of e.doc.harvestConflicts || []) if (svc === S.svc) S.conflicts.push({ ed, path: c.path, mine: c.manual, theirs: c.harvested, kind: 'text' });
+if (S.conflicts.length) toast(t('reharvestConflicts', { n: S.conflicts.length }), 'warn', { actions: [[t('show'), () => openDrawer('conflicts')]], persist: true });
 window.BW = { S, M, commit, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll };
 boot();

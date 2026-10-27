@@ -18,7 +18,7 @@ const MAP = {
   side: 'columns-2', uiLang: 'languages', palette: 'command', calm: 'wind', focus: 'focus', webhooks: 'webhook',
   send: 'send', close: 'x', grip: 'grip-vertical', snap: 'magnet', every: 'layers', replace: 'refresh-ccw',
   caption: 'type', ok: 'circle-check', warn: 'triangle-alert', err: 'circle-x', info: 'info', view: 'eye',
-  both: 'link-2', ed: 'languages', newdoc: 'file-plus-2', process: 'workflow', crawl: 'globe', add: 'plus', connect: 'route', dir: 'arrow-left-right',
+  both: 'link-2', ed: 'languages', newdoc: 'file-plus-2', process: 'workflow', crawl: 'globe', add: 'plus', connect: 'route', dir: 'arrow-left-right', styleThis: 'paintbrush', hideBlock: 'eye-off', rowUp: 'arrow-up', rowDown: 'arrow-down',
 };
 const out = {};
 for (const [k, name] of Object.entries(MAP)) {

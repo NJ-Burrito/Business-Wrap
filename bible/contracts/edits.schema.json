@@ -4,58 +4,317 @@
   "title": "Business-Wrap edits file",
   "description": "Ordered list of human edits made in the HTML editor on top of a document JSON. Replaying ops in order on the base document (matched by baseHash) must give the edited document. Targets are RFC 6901 JSON Pointers into the document JSON (e.g. /chapters/2/sections/0/blocks/1/rows/3/2). Pointers are resolved against the document state AFTER all previous ops.",
   "type": "object",
-  "required": ["version", "document", "baseHash", "locale", "ops"],
+  "required": [
+    "version",
+    "document",
+    "baseHash",
+    "locale",
+    "ops"
+  ],
   "additionalProperties": false,
   "properties": {
-    "version": { "const": 1 },
-    "document": { "type": "string", "description": "Document id (control.documentId or file stem)." },
-    "baseHash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "sha256 of the base document JSON bytes the ops apply to. Replay refuses on mismatch." },
-    "locale": { "enum": ["ar", "en"], "description": "Edition edited. ar = RTL, en = LTR." },
-    "createdAt": { "type": "string", "format": "date-time" },
-    "author": { "type": "string", "description": "Free text initials; never an email or ID number." },
-    "theme": { "$ref": "#/$defs/themeOverrides" },
-    "ops": { "type": "array", "items": { "$ref": "#/$defs/op" } }
+    "version": {
+      "const": 1
+    },
+    "document": {
+      "type": "string",
+      "description": "Document id (control.documentId or file stem)."
+    },
+    "baseHash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "sha256 of the base document JSON bytes the ops apply to. Replay refuses on mismatch."
+    },
+    "locale": {
+      "enum": [
+        "ar",
+        "en"
+      ],
+      "description": "Edition edited. ar = RTL, en = LTR."
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "author": {
+      "type": "string",
+      "description": "Free text initials; never an email or ID number."
+    },
+    "theme": {
+      "$ref": "#/$defs/themeOverrides"
+    },
+    "ops": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/op"
+      }
+    }
   },
   "$defs": {
-    "pointer": { "type": "string", "pattern": "^(/([^~/]|~[01])*)*$" },
+    "pointer": {
+      "type": "string",
+      "pattern": "^(/([^~/]|~[01])*)*$"
+    },
     "op": {
       "type": "object",
-      "required": ["op", "path"],
+      "required": [
+        "op",
+        "path"
+      ],
       "properties": {
-        "id": { "type": "string", "description": "Optional op id for undo/redo bookkeeping." },
-        "at": { "type": "string", "format": "date-time" },
-        "op": { "enum": ["setText", "replace", "insert", "delete", "move", "duplicate"] },
-        "path": { "$ref": "#/$defs/pointer" }
+        "id": {
+          "type": "string",
+          "description": "Optional op id for undo/redo bookkeeping."
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "op": {
+          "enum": [
+            "setText",
+            "replace",
+            "insert",
+            "delete",
+            "move",
+            "duplicate"
+          ]
+        },
+        "path": {
+          "$ref": "#/$defs/pointer"
+        }
       },
       "oneOf": [
-        { "properties": { "op": { "const": "setText" }, "value": { "type": "string" }, "old": { "type": "string" } }, "required": ["value"],
-          "description": "Replace a string leaf (paragraph, cell, title, caption). old = previous text, for conflict check and undo." },
-        { "properties": { "op": { "const": "replace" }, "value": {}, "old": {} }, "required": ["value"],
-          "description": "Replace any node (object/array) with value." },
-        { "properties": { "op": { "const": "insert" }, "value": {} }, "required": ["value"],
-          "description": "Insert value into an array; path ends with the target index or '-' for append (block, row, column cell, paragraph, story)." },
-        { "properties": { "op": { "const": "delete" }, "old": {} },
-          "description": "Remove the array item or object member at path. old = removed value, for undo." },
-        { "properties": { "op": { "const": "move" }, "from": { "$ref": "#/$defs/pointer" } }, "required": ["from"],
-          "description": "Move the node at from to path (JSON Patch move semantics). Used for drag-reorder of blocks, rows, sections." },
-        { "properties": { "op": { "const": "duplicate" }, "to": { "$ref": "#/$defs/pointer" } },
-          "description": "Copy the array item at path and insert it at to (default: right after path)." }
+        {
+          "properties": {
+            "op": {
+              "const": "setText"
+            },
+            "value": {
+              "type": "string"
+            },
+            "old": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "value"
+          ],
+          "description": "Replace a string leaf (paragraph, cell, title, caption). old = previous text, for conflict check and undo."
+        },
+        {
+          "properties": {
+            "op": {
+              "const": "replace"
+            },
+            "value": {},
+            "old": {}
+          },
+          "required": [
+            "value"
+          ],
+          "description": "Replace any node (object/array) with value."
+        },
+        {
+          "properties": {
+            "op": {
+              "const": "insert"
+            },
+            "value": {}
+          },
+          "required": [
+            "value"
+          ],
+          "description": "Insert value into an array; path ends with the target index or '-' for append (block, row, column cell, paragraph, story)."
+        },
+        {
+          "properties": {
+            "op": {
+              "const": "delete"
+            },
+            "old": {}
+          },
+          "description": "Remove the array item or object member at path. old = removed value, for undo."
+        },
+        {
+          "properties": {
+            "op": {
+              "const": "move"
+            },
+            "from": {
+              "$ref": "#/$defs/pointer"
+            }
+          },
+          "required": [
+            "from"
+          ],
+          "description": "Move the node at from to path (JSON Patch move semantics). Used for drag-reorder of blocks, rows, sections."
+        },
+        {
+          "properties": {
+            "op": {
+              "const": "duplicate"
+            },
+            "to": {
+              "$ref": "#/$defs/pointer"
+            }
+          },
+          "description": "Copy the array item at path and insert it at to (default: right after path)."
+        }
       ]
     },
     "themeOverrides": {
       "type": "object",
       "description": "Token overrides by DTCG token path (e.g. 'color.accent.primary', 'type.size.body'), value in the token's own type. Applied on top of the design pack.",
-      "additionalProperties": { "type": ["string", "number"] }
+      "additionalProperties": {
+        "type": [
+          "string",
+          "number"
+        ]
+      }
+    },
+    "documentFields": {
+      "description": "Document JSON members the ops may write (any pointer is allowed; these are the ones the renderer, the PDF and the DOCX read). Everything printed is editable.",
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "object",
+          "description": "This document's printed labels over the house defaults (engine/i18n.json doc.<locale>) and the design pack's (theme.labels.<locale>): kicker, subtitle, controlChapter, controlData, control.<key>, revisions, revVersion, revDate, contents, openQuestions, questionCols[], userStory, storyId, storyName, storyUser, storyGoalLabel, storyGoal, acceptance, actionsTable, dictionary, confidential, figure, owner, openQuestion, none, comma ... An empty label is flagged by the check."
+        },
+        "control": {
+          "type": "object",
+          "description": "Adds coverTitle (cover title when it differs from the derived service name) and subtitle (cover subtitle) to the control fields; documentId is the cover spine code and the running header."
+        },
+        "design": {
+          "type": "object",
+          "properties": {
+            "vars": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Theme variables by role: primary, accent, ink, muted, rule, card, paper, signal, th-fill, th-ink, zebra, line, page-side, rule-w, th-rule-w ..."
+            },
+            "sizes": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "fonts": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string"
+                },
+                "display": {
+                  "type": "string"
+                }
+              }
+            },
+            "css": {
+              "type": "string",
+              "description": "Advanced CSS for this document, sanitised before use: @import, @charset, url() other than data images, expression(), javascript:, bindings, backslash escapes and closing tags are removed."
+            }
+          }
+        },
+        "layout": {
+          "type": "object",
+          "properties": {
+            "hide": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "cover",
+                  "control",
+                  "revisions",
+                  "toc",
+                  "questions"
+                ]
+              }
+            },
+            "front": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "control",
+                  "revisions",
+                  "toc"
+                ]
+              }
+            },
+            "style": {
+              "type": "object",
+              "description": "Per template part: {part: style}."
+            }
+          }
+        },
+        "chapters/*/hidden, sections/*/hidden, blocks/*/hidden": {
+          "type": "boolean",
+          "description": "Hidden from the PDF and DOCX, dimmed in the editor."
+        },
+        "chapters/*/style, sections/*/style, blocks/*/style": {
+          "type": "object",
+          "description": "Per-instance style ({css property: value}), whitelisted properties: color, background-color, font-family, font-size, font-weight, line-height, letter-spacing, text-align, padding, margin, border, border-color, border-width, border-style, border-radius."
+        },
+        "manual": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "generated": {}
+            }
+          },
+          "description": "Harvested values edited by hand: pointer -> {generated}. A re-harvest keeps the person's value."
+        },
+        "harvestConflicts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "generated": {},
+              "harvested": {},
+              "manual": {}
+            }
+          },
+          "description": "Written by a re-harvest when the source changed a value that was edited by hand; the editor shows them in the conflicts panel."
+        }
+      }
     }
   },
-  "examples": [{
-    "version": 1, "document": "SAMPLE-001", "baseHash": "sha256:0000000000000000000000000000000000000000000000000000000000000000", "locale": "en",
-    "ops": [
-      { "op": "setText", "path": "/chapters/0/sections/0/blocks/0/paragraphs/0", "value": "New wording.", "old": "Old wording." },
-      { "op": "move", "from": "/chapters/1/sections/0/blocks/2", "path": "/chapters/1/sections/0/blocks/0" },
-      { "op": "duplicate", "path": "/chapters/1/sections/0/blocks/1/rows/0" },
-      { "op": "delete", "path": "/chapters/2/sections/1/blocks/0/rows/4" }
-    ],
-    "theme": { "color.accent.primary": "#1F6F5C" }
-  }]
+  "examples": [
+    {
+      "version": 1,
+      "document": "SAMPLE-001",
+      "baseHash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "locale": "en",
+      "ops": [
+        {
+          "op": "setText",
+          "path": "/chapters/0/sections/0/blocks/0/paragraphs/0",
+          "value": "New wording.",
+          "old": "Old wording."
+        },
+        {
+          "op": "move",
+          "from": "/chapters/1/sections/0/blocks/2",
+          "path": "/chapters/1/sections/0/blocks/0"
+        },
+        {
+          "op": "duplicate",
+          "path": "/chapters/1/sections/0/blocks/1/rows/0"
+        },
+        {
+          "op": "delete",
+          "path": "/chapters/2/sections/1/blocks/0/rows/4"
+        }
+      ],
+      "theme": {
+        "color.accent.primary": "#1F6F5C"
+      }
+    }
+  ]
 }

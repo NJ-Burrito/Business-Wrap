@@ -35,6 +35,78 @@ export const ptr = (...parts) =>
   parts.map((p) => '/' + String(p).replace(/~/g, '~0').replace(/\//g, '~1')).join('');
 const dp = (p) => (p ? ` data-p="${attr(p)}"` : '');
 
+// ---- everything editable: labels, design, per-instance style, advanced CSS, template parts ----
+/** House labels (i18n) ← design-pack labels (theme.labels[locale]) ← this document's labels (doc.labels). */
+export function withLabels(base, ...over) {
+  const out = { ...base, control: { ...(base?.control || {}) } };
+  for (const o of over) for (const [k, v] of Object.entries(o || {})) {
+    if (k === 'control' && v && typeof v === 'object') Object.assign(out.control, v);
+    else if (v !== undefined && v !== null) out[k] = v;
+  }
+  return out;
+}
+/** The design pack with this document's own design on top (doc.design: vars, sizes, fonts, css). */
+export function designTheme(theme, doc) {
+  const d = doc?.design;
+  if (!d) return theme;
+  return { ...theme, vars: { ...theme.vars, ...(d.vars || {}) }, sizes: { ...(theme.sizes || {}), ...(d.sizes || {}) }, fonts: { ...theme.fonts, ...(d.fonts || {}) } };
+}
+const STYLE_PROPS = ['color', 'background-color', 'font-family', 'font-size', 'font-weight', 'line-height', 'letter-spacing', 'text-align', 'padding', 'margin', 'border', 'border-color', 'border-width', 'border-style', 'border-radius'];
+const SAFE_VALUE = /^[#a-zA-Z0-9(),.\s%'-]+$/;
+/** One instance's own style ({prop: value}), whitelisted properties and plain values only. */
+export function styleDecls(style) {
+  return Object.entries(style || {})
+    .filter(([k, v]) => STYLE_PROPS.includes(k) && SAFE_VALUE.test(String(v)) && !/url|expression|javascript/i.test(String(v)))
+    .map(([k, v]) => `${k}:${v} !important`).join(';');
+}
+/** Advanced CSS: no @import, no url() except data images, no expressions, scripts, bindings, escapes or closing tags. */
+export function sanitizeCss(css) {
+  const rejected = [];
+  let out = String(css || '');
+  const drop = (re, why) => { out = out.replace(re, (m) => { rejected.push(`${why}: ${m.slice(0, 60)}`); return ''; }); };
+  drop(/\/\*[\s\S]*?\*\//g, 'comment');
+  drop(/\\/g, 'escape');
+  drop(/<\/?\s*style|<!--|-->/gi, 'tag');
+  drop(/@import[^;]*;?/gi, '@import');
+  drop(/@charset[^;]*;?/gi, '@charset');
+  drop(/url\(\s*(?!['"]?data:image\/(png|jpeg|gif|webp);base64,)[^)]*\)/gi, 'remote url()');
+  drop(/expression\s*\(/gi, 'expression()');
+  drop(/javascript\s*:/gi, 'javascript:');
+  drop(/behavior\s*:|-moz-binding/gi, 'binding');
+  return { css: out.trim(), rejected: rejected.filter((r) => !r.startsWith('comment')) };
+}
+/** CSS for per-instance styles and hidden parts, keyed by the pointers the renderer prints. */
+export function instanceCss(doc) {
+  const rules = [];
+  const add = (sel, node) => {
+    const d = styleDecls(node.style);
+    if (d) rules.push(`${sel}{${d}}`);
+    if (node.hidden) rules.push(`html:not(.bw-ed) ${sel}{display:none !important}`, `html.bw-ed ${sel}{opacity:.4;outline:1px dashed var(--muted)}`);
+  };
+  (doc?.chapters || []).forEach((ch, ci) => {
+    const cp = `/chapters/${ci}`;
+    add(`[data-ch="${cp}"]`, ch);
+    (ch.sections || []).forEach((sec, si) => {
+      const sp = `${cp}/sections/${si}`;
+      add(`[data-s="${sp}"]`, sec);
+      (sec.blocks || []).forEach((b, bi) => add(`[data-b="${sp}/blocks/${bi}"]`, b));
+    });
+  });
+  for (const [part, st] of Object.entries(doc?.layout?.style || {})) if (/^[a-z]+$/.test(part)) add(`[data-part="${part}"]`, { style: st });
+  return rules.join('\n');
+}
+export const TEMPLATE_PARTS = ['cover', 'control', 'revisions', 'toc', 'questions'];
+/** Labels a document cannot print empty (validation flags them). */
+export function emptyLabels(L) {
+  const out = [];
+  for (const [k, v] of Object.entries(L)) {
+    if (k === 'control') { for (const [ck, cv] of Object.entries(v)) if (!String(cv).trim()) out.push(`control/${ck}`); }
+    else if (Array.isArray(v)) { v.forEach((x, i) => { if (!String(x).trim()) out.push(`${k}/${i}`); }); }
+    else if (typeof v === 'string' && !v.trim() && !['comma'].includes(k)) out.push(k);
+  }
+  return out;
+}
+
 /* ── text polish + bidi isolation (port of src/support/bidi.ts, locale-aware) ── */
 
 export function polish(text, locale = 'ar') {
@@ -111,9 +183,9 @@ const blank = (c) => ['', '—', '-', '–', 'N/A', 'n/a'].includes(String(c ?? 
  */
 export function renderDocument(doc, o) {
   const locale = o.locale || 'ar';
-  const L = o.labels;
+  const theme = designTheme(o.theme, doc);
+  const L = withLabels(o.labels, theme?.labels?.[locale], doc.labels);
   const bidi = makeBidi(locale);
-  const theme = o.theme;
   const logos = o.logos || {};
   const parts = renderParts(doc, { ...o, locale, bidi, L });
 
@@ -125,7 +197,7 @@ export function renderDocument(doc, o) {
 ${o.fontCss || ''}
 </style>
 <style id="bw-doc-css">
-${documentCss(theme, parts.sheet)}</style>
+${documentCss(theme, parts.sheet, doc)}</style>
 ${o.extraHead || ''}</head>
 <body>
 ${documentMain(parts, logos, locale)}
@@ -137,7 +209,13 @@ ${o.extraBody || ''}
 const sz = (v, d) => (/^\d+(\.\d+)?(pt|px|mm)$/.test(String(v)) ? v : d);
 const safeFamily = (f) => String(f || '').replace(/[^\w\s-]/g, '');
 const safeToken = ([k, v]) => /^[a-z0-9-]+$/.test(k) && /^[#a-zA-Z0-9(),.\s%-]+$/.test(String(v));
-export function documentCss(theme, sheet) {
+export function documentCss(themeIn, sheet, doc) {
+  const theme = designTheme(themeIn, doc);
+  const tail = doc ? `
+/* this document: instance styles, hidden parts, advanced CSS */
+${instanceCss(doc)}
+${sanitizeCss(doc.design?.css).css}
+` : '';
   const text = `'${safeFamily(theme.fonts.text)}'`;
   const display = `'${safeFamily(theme.fonts.display || theme.fonts.text)}'`;
   const vars = Object.entries(theme.vars).filter(safeToken).map(([k, v]) => `  --${k}:${v};`).join(NL);
@@ -154,10 +232,10 @@ ${vars}
   --t-table:${sz(theme.sizes?.table, '12pt')};
   --t-meta:${sz(theme.sizes?.meta, '10pt')};
   --t-micro:${sz(theme.sizes?.micro, '9pt')};
-  --page-side:16mm;
+  --page-side:${sz(theme.vars['page-side'], '16mm')};
 }
 body{font-family:${text},system-ui,sans-serif;
-  color:var(--ink);margin:0;line-height:1.8;font-size:var(--t-body);font-kerning:none}
+  color:var(--ink);margin:0;line-height:var(--line,1.8);font-size:var(--t-body);font-kerning:none}
 h1,h2,h3,h4,h5,h2 .num,.kicker,.spine .id,caption.story-head{font-family:${display},${text},system-ui,sans-serif}
 .cover h1{font-weight:900}
 svg text{font-family:${text},system-ui,sans-serif}
@@ -176,9 +254,10 @@ p{margin:0 0 3.5mm}
 table{width:100%;border-collapse:collapse;font-size:var(--t-table);line-height:1.5;margin:0 0 7mm;
   table-layout:fixed}
 thead{display:table-header-group}
-th{text-align:start;background:none;color:var(--primary);font-weight:700;padding:0 3mm 2mm;
-  font-size:var(--t-table);border-bottom:1.2pt solid var(--primary)}
-td{text-align:start;padding:2.5mm 3mm;vertical-align:top;border-bottom:1px solid var(--rule)}
+th{text-align:start;background:var(--th-fill,none);color:var(--th-ink,var(--primary));font-weight:700;padding:0 3mm 2mm;
+  font-size:var(--t-table);border-bottom:var(--th-rule-w,1.2pt) solid var(--primary)}
+table:not(.control):not(.toc):not(.story) tbody tr:nth-child(even) td{background:var(--zebra,transparent)}
+td{text-align:start;padding:2.5mm 3mm;vertical-align:top;border-bottom:var(--rule-w,1px) solid var(--rule)}
 td.long{text-align:justify;text-justify:inter-word}
 td,th{word-break:normal;overflow-wrap:normal;hyphens:none}
 td bdi,th bdi{overflow-wrap:anywhere}
@@ -320,7 +399,7 @@ figure,.fig,.gap{break-inside:avoid}
 .bw-ov-cap{font-size:var(--t-meta);color:var(--muted);text-align:center;margin-top:1mm}
 .bw-every{position:absolute;top:297mm;left:0;width:210mm;height:0}
 @media print{.bw-every{position:static}.bw-every>.bw-ov{position:fixed}}
-`;
+${tail}`;
 }
 
 export function documentMain(parts, logos, locale) {
@@ -338,7 +417,10 @@ ${parts.every || ''}
 /** The pieces of the document body. Exported for the editor's re-render. */
 export function renderParts(doc, o) {
   const locale = o.locale || 'ar';
-  const L = o.L || o.labels;
+  const L = withLabels(o.L || o.labels, o.theme?.labels?.[locale], doc.labels);
+  // a printed label, editable in place: it writes /labels/<key> of this document
+  const lb = (k, v = L[k]) => `<span${dp('/labels/' + k)}>${bidi(v)}</span>`;
+  const hide = new Set(doc.layout?.hide || []);
   const bidi = o.bidi || makeBidi(locale);
   const none = L.none;
 
@@ -410,7 +492,7 @@ export function renderParts(doc, o) {
   ${
     columns.length
       ? `<thead><tr>${columns
-          .map((c, j) => `<th${dp(t.colsPtr && t.colsPtr + '/' + idx[j])} data-c="${idx[j]}">${bidi(c)}</th>`)
+          .map((c, j) => `<th${dp(t.colPtrs ? t.colPtrs[idx[j]] : t.colsPtr && t.colsPtr + '/' + idx[j])} data-c="${idx[j]}">${bidi(c)}</th>`)
           .join('')}</tr></thead>`
       : ''
   }
@@ -521,7 +603,7 @@ export function renderParts(doc, o) {
               : s.as || s.want || s.so
                 ? `<span${dp(sp + '/goal')}>${L.storyGoal.split(/(\{as\}|\{want\}|\{so\})/).map((x) => (x === '{as}' ? bidi(s.as) : x === '{want}' ? bidi(s.want) : x === '{so}' ? bidi(s.so) : esc(x))).join('')}</span>`
                 : '';
-            const row = (label, value) => (value ? `<tr><th>${bidi(label)}</th><td>${value}</td></tr>` : '');
+            const row = (label, value) => (value ? `<tr><th>${lb(label)}</th><td>${value}</td></tr>` : '');
             const criteria = (s.acceptance || [])
               .map((a, k) => `<li${dp(`${sp}/acceptance/${k}`)}>${bidi(a)}</li>`)
               .join('');
@@ -541,21 +623,21 @@ export function renderParts(doc, o) {
             const colgroup = '<colgroup><col style="width:22%" /><col style="width:78%" /></colgroup>';
             const partsArr = [
               `<div class="id-card"><table class="control story-info">${colgroup}
-    <caption class="story-head"><span class="sn"${dp(b + '/number')}>${bidi(block.number ?? '')}</span>${bidi(L.userStory)}</caption>
+    <caption class="story-head"><span class="sn"${dp(b + '/number')}>${bidi(block.number ?? '')}</span>${lb('userStory')}</caption>
     <tbody>
-      ${row(L.storyId, `<bdi dir="ltr"${dp(sp + '/id')}>${esc(s.id)}</bdi>`)}
+      ${row('storyId', `<bdi dir="ltr"${dp(sp + '/id')}>${esc(s.id)}</bdi>`)}
     </tbody>
   </table></div>
   <table class="control story-info story-info-body">${colgroup}
     <tbody>
-      ${row(L.storyName, `<span${dp(sp + '/name')}>${bidi(s.name)}</span>`)}
-      ${row(L.storyUser, `<span${dp(sp + '/as')}>${bidi(s.as)}</span>`)}
-      ${row(L.storyGoalLabel, goal)}
-      ${criteria ? `<tr class="ac"><th>${bidi(L.acceptance)}</th><td><ol>${criteria}</ol></td></tr>` : ''}
+      ${row('storyName', `<span${dp(sp + '/name')}>${bidi(s.name)}</span>`)}
+      ${row('storyUser', `<span${dp(sp + '/as')}>${bidi(s.as)}</span>`)}
+      ${row('storyGoalLabel', goal)}
+      ${criteria ? `<tr class="ac"><th>${lb('acceptance')}</th><td><ol>${criteria}</ol></td></tr>` : ''}
     </tbody>
   </table>`,
-              ...(actions ? [`<p class="run-in dict-label">${bidi(L.actionsTable)}</p>`, PLAIN + actions] : []),
-              ...(dictionary ? [`<p class="run-in dict-label">${bidi(L.dictionary)}</p>`, PLAIN + dictionary] : []),
+              ...(actions ? [`<p class="run-in dict-label">${lb('actionsTable')}</p>`, PLAIN + actions] : []),
+              ...(dictionary ? [`<p class="run-in dict-label">${lb('dictionary')}</p>`, PLAIN + dictionary] : []),
             ];
             const partClass = (k) => {
               const plain = partsArr[k].startsWith(PLAIN) ? ' plain' : '';
@@ -574,9 +656,9 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
           })
           .join(NL);
       case 'gap':
-        return `<div class="gap" data-b="${attr(b)}"><span class="gap-tag">${bidi(L.openQuestion)}</span>
+        return `<div class="gap" data-b="${attr(b)}"><span class="gap-tag">${lb('openQuestion')}</span>
   <p${dp(b + '/question')}>${bidi(block.question)}</p>
-  <p class="owner">${bidi(L.owner)}: <span${dp(b + '/owner')}>${bidi(block.owner)}</span></p></div>`;
+  <p class="owner">${lb('owner')}: <span${dp(b + '/owner')}>${bidi(block.owner)}</span></p></div>`;
       default:
         return '';
     }
@@ -664,7 +746,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
   }
 
   const c = doc.control;
-  const serviceName = c.title.split(/\s*[:—]\s+/).slice(1).join(': ') || c.title;
+  const serviceName = c.coverTitle ?? (c.title.split(/\s*[:—]\s+/).slice(1).join(': ') || c.title);
   const controlKeys = ['documentId', 'title', 'preparedBy', 'documentType', 'classification', 'owner', 'issuedOn', 'version', 'status', 'reviewCycle'];
 
   const rows = contentsRows();
@@ -718,37 +800,43 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
   const slot = (logos, name) =>
     logos[name] && SAFE_IMG.test(logos[name]) ? `<img class="logo-${name}" data-logo="${name}" src="${attr(logos[name])}" alt="" />` : '';
 
-  const cover = (logos) => `<div class="cover">${overlaysFor((o) => o.mode === 'cover')}
-  <div class="spine"><i class="cap"></i><span class="id"><bdi dir="ltr">${esc(c.documentId)}</bdi></span></div>
+  const cover = (logos) => hide.has('cover') ? '' : `<div class="cover" data-part="cover">${overlaysFor((o) => o.mode === 'cover')}
+  <div class="spine"><i class="cap"></i><span class="id"><bdi dir="ltr"${dp('/control/documentId')}>${esc(c.documentId)}</bdi></span></div>
   <div class="cover-main">
   <div class="lockup">${slot(logos, 'start')}${slot(logos, 'center')}${slot(logos, 'end')}</div>
   <div class="cover-rule"></div>
   <div class="cover-body">
-    <div class="kicker">${bidi(L.kicker)}</div>
+    <div class="kicker">${lb('kicker')}</div>
     <div class="rule-short"></div>
-    <h1>${bidi(serviceName)}</h1>
-    <div class="subtitle">${esc(L.subtitle)}</div>
+    <h1${dp(c.coverTitle != null || serviceName !== c.title ? '/control/coverTitle' : '/control/title')}>${bidi(serviceName)}</h1>
+    <div class="subtitle"${dp(c.subtitle != null ? '/control/subtitle' : '/labels/subtitle')}>${bidi(c.subtitle ?? L.subtitle)}</div>
   </div>
   <div class="cover-foot">
-    <span><bdi dir="ltr">${esc(c.version)}</bdi>${L.comma}${esc(c.status)}${L.comma}<bdi dir="ltr">${esc(c.issuedOn)}</bdi></span>
+    <span><bdi dir="ltr"${dp('/control/version')}>${esc(c.version)}</bdi>${L.comma}<span${dp('/control/status')}>${esc(c.status)}</span>${L.comma}<bdi dir="ltr"${dp('/control/issuedOn')}>${esc(c.issuedOn)}</bdi></span>
   </div>
   </div>
 </div>`;
 
-  const front = `<h2>${bidi(L.controlChapter)}</h2>
-  <h3>${bidi(L.controlData)}</h3>
+  const FRONT = {
+    control: () => `<div data-part="control"><h3>${lb('controlData')}</h3>
   <table class="control"><colgroup><col style="width:34%" /><col style="width:66%" /></colgroup>${controlKeys
-    .map((k) => `<tr><th>${bidi(L.control[k])}</th><td${dp('/control/' + k)}>${bidi(c[k])}</td></tr>`)
-    .join('')}</table>
-  <h3>${bidi(L.revisions)}</h3>
-  ${table({ columns: [L.revVersion, L.revDate], rows: (doc.revisions || []).map((r) => r.slice(0, 2)), rowsPtr: '/revisions' })}
-  <h3>${bidi(L.contents)}</h3>
-  ${toc}`;
+    .map((k) => `<tr><th${dp('/labels/control/' + k)}>${bidi(L.control[k])}</th><td${dp('/control/' + k)}>${bidi(c[k])}</td></tr>`)
+    .join('')}</table></div>`,
+    revisions: () => `<div data-part="revisions"><h3>${lb('revisions')}</h3>
+  ${table({ columns: [L.revVersion, L.revDate], colPtrs: ['/labels/revVersion', '/labels/revDate'], rows: (doc.revisions || []).map((r) => r.slice(0, 2)), rowsPtr: '/revisions' })}</div>`,
+    toc: () => `<div data-part="toc"><h3>${lb('contents')}</h3>
+  ${toc}</div>`,
+  };
+  const order = [...(doc.layout?.front || []).filter((k) => FRONT[k]), ...Object.keys(FRONT).filter((k) => !(doc.layout?.front || []).includes(k))];
+  const shown = order.filter((k) => !hide.has(k));
+  const front = shown.length ? `<h2>${lb('controlChapter')}</h2>
+  ${shown.map((k) => FRONT[k]()).join(NL)}` : '';
 
-  const questions = (doc.openQuestions || []).length
-    ? `<section class="chapter"><h2><span class="num">؟</span>${bidi(L.openQuestions)}</h2>
+  const questions = (doc.openQuestions || []).length && !hide.has('questions')
+    ? `<section class="chapter" data-part="questions"><h2><span class="num">؟</span>${lb('openQuestions')}</h2>
   ${table({
     columns: L.questionCols,
+    colsPtr: '/labels/questionCols',
     rows: doc.openQuestions.map((q) => [q.id, q.question, q.owner, q.blocks]),
   })}</section>`
     : '';
@@ -825,7 +913,11 @@ export function relaxTallGroups([limit, keepRows, pageH, floor]) {
 export const relaxArgs = () => [PAGE.contentPx * PAGE.relaxAbove, PAGE.keepRows, PAGE.contentPx, PAGE.fillFloor];
 
 /** Header/footer templates for Chrome's print (separate documents: inline styles only). */
-export function chromeTemplates(doc, o) {
+/** The footer's confidentiality mark: this document's label, else the design pack's, else the house label. */
+export const confidentialText = (doc, theme, labels, locale) => doc?.labels?.confidential ?? theme?.labels?.[locale]?.confidential ?? (theme?.brand?.confidential || labels.confidential);
+
+export function chromeTemplates(doc, oIn) {
+  const o = { ...oIn, theme: designTheme(oIn.theme, doc) };
   const roles = o.theme.vars;
   const stack = [o.theme.fonts.text, o.theme.fonts.display].filter(Boolean).map((f) => `'${f}'`).join(',');
   const wrap = (inner) =>
@@ -835,7 +927,7 @@ export function chromeTemplates(doc, o) {
       `<span>${esc(doc.control.documentId)}</span><span>${esc(doc.control.issuedOn)}</span>`
   );
   const footer = wrap(
-    `<span style="color:${roles.signal};font-weight:700;">${esc(o.theme.brand?.confidential || o.labels.confidential)}</span>` +
+    `<span style="color:${roles.signal};font-weight:700;">${esc(confidentialText(doc, o.theme, o.labels, o.locale))}</span>` +
       `<span style="font-weight:700;letter-spacing:.08em;">${esc(o.theme.brand?.producer || '')}</span>` +
       '<span style="font-weight:700;"></span>'
   );

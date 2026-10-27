@@ -384,8 +384,9 @@ REVISIONS_COLUMNS = [L['revVersion'], L['revDate']]
 APPROVALS_COLUMNS = L['approvalCols']
 
 def add_control_front_matter(document, data, font, counters, toc: bool=False):
-    control = data.get('control') or {}
-    revisions = data.get('revisions') or []
+    hide = set((data.get('layout') or {}).get('hide') or [])
+    control = (data.get('control') or {}) if 'control' not in hide else {}
+    revisions = (data.get('revisions') or []) if 'revisions' not in hide else []
     approvals = data.get('approvals') or []
     if not control and (not revisions) and (not approvals):
         return
@@ -416,7 +417,9 @@ def add_control_front_matter(document, data, font, counters, toc: bool=False):
         add_table(document, APPROVALS_COLUMNS, approvals, font)
         document.add_paragraph()
         counters['approvals_table'] = 1
-    if toc:
+    if 'toc' in hide:
+        pass
+    elif toc:
         add_toc_field(document, font)
         counters['toc_field'] = 1
     else:
@@ -720,9 +723,28 @@ def anchor_overlays(document, data, workdir, ptr):
             anchored_picture(host, img, float(o.get('x', 0)) + 16, float(o.get('y', 0)), float(o.get('w', 30)), 'page', 'paragraph')
 
 
+def merge_labels(data: dict) -> None:
+    """House labels <- design-pack labels <- this document's labels (as render.mjs withLabels)."""
+    global CONTROL_LABELS, REVISIONS_COLUMNS, APPROVALS_COLUMNS
+    try:
+        pack = (json.loads(theme_mod.THEME_JSON.read_text(encoding='utf-8')).get('labels') or {}).get(LOCALE) or {}
+    except Exception:
+        pack = {}
+    for over in (pack, data.get('labels') or {}):
+        for k, v in over.items():
+            if k == 'control' and isinstance(v, dict):
+                L['control'] = {**L['control'], **v}
+            elif v is not None:
+                L[k] = v
+    CONTROL_LABELS = [(k, L['control'][k]) for k, _ in CONTROL_LABELS]
+    REVISIONS_COLUMNS = [L['revVersion'], L['revDate']]
+    APPROVALS_COLUMNS = L['approvalCols']
+
 def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir: Path, toc: bool=False):
     global _THEME_ROLES
     data = json.loads(doc_json.read_text(encoding='utf-8'))
+    merge_labels(data)
+    hide = set((data.get('layout') or {}).get('hide') or [])
     document = Document()
     section = document.sections[0]
     section.page_width, section.page_height = (Inches(8.27), Inches(11.69))
@@ -742,7 +764,7 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     counters = {'table_block': 0, 'figure': 0, 'stories_block': 0, 'prose_block': 0, 'subhead_block': 0}
     cover_logos = theme_logos(workdir, ('end', 'center', 'start') if LOCALE == 'ar' else ('start', 'center', 'end'))
     header_logo = (theme_logos(workdir, ('header',)) or [None])[0]
-    theme_mod.build_cover(document, data.get('control') or {}, roles, font, cover_logos)
+    theme_mod.build_cover(document, data.get('control') or {}, roles, font, cover_logos) if 'cover' not in hide else None
     from docx.enum.section import WD_SECTION
     body_section = document.add_section(WD_SECTION.NEW_PAGE)
     if document.paragraphs:
@@ -765,6 +787,8 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     body_geometry = {'page_width': body_section.page_width, 'page_height': body_section.page_height, 'top_margin': body_section.top_margin, 'bottom_margin': body_section.bottom_margin, 'left_margin': body_section.left_margin}
     place_overlays(document, data, workdir, cover_section, body_section)
     for ci, ch in enumerate(data['chapters']):
+        if ch.get('hidden'):
+            continue
         # as the print renderer: a chapter holding a figure is set on turned (landscape) sheets, heading included
         wide = any((b.get('kind') == 'figure' for sec in ch['sections'] for b in sec.get('blocks', [])))
         if wide:
@@ -775,6 +799,8 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
         add_script_runs(h1, ch['title'], F['display'], bold=True)
         story_seq = [0]
         for si, sec in enumerate(ch['sections']):
+            if sec.get('hidden'):
+                continue
             # as the print renderer: a one-section chapter prints no section heading; otherwise «n.m title»
             if len(ch['sections']) > 1:
                 h2 = document.add_heading(level=2)
@@ -784,6 +810,8 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                 num.font.color.rgb = theme_mod.rgb(roles['gold'])
                 add_script_runs(h2, sec['title'], F['display'], bold=True)
             for bi, block in enumerate(sec.get('blocks', [])):
+                if block.get('hidden'):
+                    continue
                 anchor_overlays(document, data, workdir, f'/chapters/{ci}/sections/{si}/blocks/{bi}')
                 kind = block.get('kind')
                 if kind == 'prose':

@@ -22,7 +22,8 @@
     "fonts": { "type": "string", "description": "Relative path to a font manifest (fonts/manifest.json shape)" },
     "bannedFonts": { "type": "array", "items": { "type": "string" } },
     "layout": { "type": "object", "additionalProperties": { "type": "string" } },
-    "logoSlots": { "type": "array", "items": { "enum": ["start", "center", "end", "header"] } }
+    "logoSlots": { "type": "array", "items": { "enum": ["start", "center", "end", "header"] } },
+    "labels": { "type": "object", "description": "Labels applied to all documents ({ar: {...}, en: {...}}), written by the editor's «apply to all documents»; a document's own labels win." }
   },
   "additionalProperties": false
 }

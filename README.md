@@ -71,6 +71,9 @@ node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|e
 ```
 Opened from disk (file://), "PDF + DOCX" downloads the edited document JSON and shows the `export.mjs` command; through `npm run serve` it exports in one click.
 
+### Everything is editable
+Every printed text (labels, table headers, title, subtitle, cover code, field names and values), every design property (Design panel, live), one element at a time (**Style this**), template parts (show, hide, order) and advanced CSS (sanitised). All of it is undoable, travels in the edits JSON and reaches the PDF and DOCX. See `bible/04-edits-contract.md`.
+
 ### Start a document (harvest)
 From a process model (`npm run harvest:model -- <bpmn|drawio|yaml>`) or by walking the live service (`npm run harvest:crawl -- <crawl.json>`); both give the AR and EN document JSON and an editor. See `bible/08-harvest.md`.
 

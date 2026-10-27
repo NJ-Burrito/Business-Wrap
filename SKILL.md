@@ -42,6 +42,7 @@ Two ways in, one result: `document.ar.json` + `document.en.json` and an editor.
 Rules that cost a rebuild if skipped:
 - Never put a password in a crawl config; use `$env:` or `.local/harvest-secrets.json`.
 - Harvested names are kept as written; a one-language source gives both editions the same names: review before issuing.
+- Everything printed is editable (labels, title, cover code, field names and values, design, template parts); the rules and pointers are in `bible/04-edits-contract.md` § Everything is editable.
 - After editing the flow in the **Process** panel, press **Rebuild the sections**; control data, revisions and placed logos stay.
 
 <div dir="rtl">
@@ -56,6 +57,7 @@ Rules that cost a rebuild if skipped:
 قواعد يكلّف تجاوزها إعادة البناء:
 - لا تضع كلمة مرور في إعدادات المرور؛ استخدم `$env:` أو `.local/harvest-secrets.json`.
 - الأسماء المستخرجة تبقى كما وردت؛ والمصدر المكتوب بلغة واحدة يعطي النسختين الأسماء نفسها، فراجعها قبل الإصدار.
+- كل ما يُطبع قابل للتحرير (التسميات والعنوان ورمز الغلاف وأسماء الحقول وقيمها والتصميم وأجزاء القالب)؛ والقواعد والمؤشرات في `bible/04-edits-contract.ar.md`.
 - بعد تعديل السير في لوحة **الإجراء** اضغط **أعد بناء الأقسام**؛ ويبقى ضبط الوثيقة والمراجعات والشعارات الموضوعة.
 
 </div>

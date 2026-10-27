@@ -391,7 +391,7 @@ def build_cover(document, control: dict, roles: dict, font: str, logos: list[Pat
     spacer_p.paragraph_format.space_before = Inches(2.36)
     full_title = control.get('title', '')
     parts = re.split('\\s*[:—]\\s+', full_title, maxsplit=1)
-    service_name = parts[1] if len(parts) > 1 else full_title
+    service_name = control.get('coverTitle') or (parts[1] if len(parts) > 1 else full_title)
     import build_docx as _b4
     KICKER_TEXT = _b4.L['kicker']
     label_p = main_cell.add_paragraph()
@@ -426,7 +426,7 @@ def build_cover(document, control: dict, roles: dict, font: str, logos: list[Pat
     subtitle_p = main_cell.add_paragraph()
     set_para_bidi(subtitle_p)
     subtitle_p.paragraph_format.space_before = Pt(9)
-    subtitle_p.add_run(_b4.L['subtitle']).font.color.rgb = rgb(roles['muted'])
+    subtitle_p.add_run(control.get('subtitle') or _b4.L['subtitle']).font.color.rgb = rgb(roles['muted'])
     for r in subtitle_p.runs:
         r.font.size = Pt(SIZES['table'])
     foot_p = foot_cell.paragraphs[0]
@@ -450,8 +450,11 @@ def style_table_theme(table, roles: dict[str, str], has_header: bool) -> None:
     if not rows:
         return
     if has_header:
+        fill = roles.get('th-fill', '')
         for cell in rows[0].cells:
             set_cell_border(cell, 'bottom', roles['navy'], 10)
+            if isinstance(fill, str) and len(fill) == 7 and fill.startswith('#'):
+                set_cell_shading(cell, fill)
             for p in cell.paragraphs:
                 for run in p.runs:
                     run.font.color.rgb = rgb(roles['navy'])

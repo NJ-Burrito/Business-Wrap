@@ -74,3 +74,17 @@ The document may carry `overlays: [{id, kind: "logo"|"image", src, mode, x, y, w
 ## Webhooks (`contracts/webhook.schema.json`)
 Off by default, no default URLs. In the **Webhooks** panel the user adds URLs, picks events (save, PDF + DOCX export, edits exported, import merged, check failed) and may tick “Include the full document”. The page sends nothing itself: `POST /api/webhook` on the local server (`npm run serve`) delivers it, because a page opened from disk cannot reach other origins (CORS, and the editor's CSP keeps `connect-src 'self'`). The server forwards only the schema's fields; fonts and the tool watermark are never sent. Each delivery is listed with its status and time; **Send test** sends a `test` event.
 
+## Everything is editable (0.7.0)
+Nothing the document prints is fixed. All of it lives in the document JSON, travels as ops in the edits file, and lands in the PDF and the DOCX (`contracts/edits.schema.json` → `$defs.documentFields`).
+| What | Where it is written | How |
+|---|---|---|
+| Fixed labels: chapter/section titles of the front matter, table headers (revision table, open questions), story labels, caption prefixes, kicker, confidentiality mark … | `/labels/<key>` (`/labels/control/<key>`, `/labels/questionCols/<i>`) | edit in place, or the **Labels** list in the Design panel; «apply to all documents» writes the design pack (`theme.labels.<locale>`) |
+| Title, subtitle, cover code (spine and running header), version/status/date on the cover | `/control/coverTitle`, `/control/subtitle`, `/control/documentId` … | edit in place |
+| Field names and values (service card, inputs, attachments, statuses) | the table cells (`…/rows/<r>/<c>`) | edit in place; rows add, delete, move up and down |
+| Design: colours per role, sizes, line height, page side margin, rule widths, table header fill and ink, zebra | `/design/vars`, `/design/sizes` | Design panel, live |
+| One element only | `<block>/style`, `<block>/hidden` | select → **Style this** / **Hide** |
+| Template parts (cover, control data, revisions, contents, open questions): show, hide, order | `/layout/hide`, `/layout/front` | Design panel |
+| Chapters: hide, move, duplicate, delete; add a section or a table | `/chapters/…` | Design panel |
+| Advanced CSS | `/design/css` | Design panel; sanitised (no `@import`, no remote `url()`, no expressions), applied to the editor and the PDF |
+
+Undo and redo cover all of it (they are ops). The check flags an empty label. A harvested value edited by hand is recorded in `/manual`; a re-harvest keeps it and writes `harvestConflicts`, which the editor shows on open.
