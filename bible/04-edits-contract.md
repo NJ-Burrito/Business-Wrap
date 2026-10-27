@@ -63,3 +63,14 @@ Older files are migrated on import (`migrate()`: v0 bare op array → v1).
 - Text edits stay per edition: editing a field flags the same field in the other edition **Needs update** until it is edited there too.
 - Before export, the **Check** panel must show no "Editions differ in structure" line (same chapters, sections, block kinds and table sizes in both) and no stale fields.
 - Importing a file whose structural edits touch the same block, row or paragraph as yours opens the conflict view (**Keep mine** / **Take theirs**), as text conflicts do.
+
+## Free-placed logos and images (`overlays`)
+The document may carry `overlays: [{id, kind: "logo"|"image", src, mode, x, y, w, anchor?, caption?}]`. Positions are millimetres and print exactly there in the PDF and the DOCX:
+- `mode: "cover"`: from the cover page's top-left corner.
+- `mode: "every"`: on every page after the cover (headers and footers): x from the page's left edge, y from the top of the text area.
+- `mode: "anchor"`: next to a block (`anchor` = its pointer); x from the text column's left edge, y from the block's top. It moves with that block.
+`src` is a PNG or JPEG data URI that the editor re-encoded through a canvas (metadata stripped, SVG rasterised, at most 2000 px). Ops: `insert /overlays/-`, `replace /overlays/<i>` (move, resize, every-page toggle), `delete /overlays/<i>`; the first overlay creates the array with `replace /overlays []`. The renderer and the DOCX builder print nothing for a `src` that is not such a data URI.
+
+## Webhooks (`contracts/webhook.schema.json`)
+Off by default, no default URLs. In the **Webhooks** panel the user adds URLs, picks events (save, PDF + DOCX export, edits exported, import merged, check failed) and may tick “Include the full document”. The page sends nothing itself: `POST /api/webhook` on the local server (`npm run serve`) delivers it, because a page opened from disk cannot reach other origins (CORS, and the editor's CSP keeps `connect-src 'self'`). The server forwards only the schema's fields; fonts and the tool watermark are never sent. Each delivery is listed with its status and time; **Send test** sends a `test` event.
+

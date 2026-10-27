@@ -35,9 +35,16 @@ try {
     await page.goto(pathToFileURL(file).href);
     await page.waitForFunction(() => window.BW);
     await page.addScriptTag({ path: AXE });
-    const states = ['toolbar', 'check', 'history', 'theme', 'find', 'outline'];
+    const states = ['toolbar', 'check', 'history', 'theme', 'find', 'outline', 'webhooks', 'view', 'selection', 'palette'];
     for (const st of states) {
-      if (st !== 'toolbar') await page.locator(`button[data-a="${st}"]`).click();
+      if (st === 'selection') await page.locator('main.bw-doc [data-p="/chapters/1/sections/0/blocks/1/rows/0/1"]').click();
+      else if (st === 'palette') await page.keyboard.press('Control+K');
+      else if (st !== 'toolbar') {
+        const b = page.locator(`.island button[data-a="${st}"]`);
+        if (await b.count()) await b.click();
+        else { await page.keyboard.press('Control+K'); await page.locator(`#cmdlist [data-cmd="${st}"]`).click(); }
+      }
+      await page.waitForTimeout(650); // let open/close motion settle: axe measures colours mid-fade otherwise
       const v = await page.evaluate(async () => {
         const r = await window.axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'] });
         return r.violations.map((x) => ({ id: x.id, impact: x.impact, n: x.nodes.length, target: x.nodes[0]?.target?.join(' ') }));
@@ -46,6 +53,7 @@ try {
       const bad = v.filter((x) => x.impact === 'serious' || x.impact === 'critical');
       check(`axe ${ui} UI, ${st}: no serious/critical`, bad.length === 0, bad.map((x) => `${x.id}×${x.n} @${x.target}`).join(' | '));
       if (st !== 'toolbar') await page.keyboard.press('Escape');
+      if (st === 'view') await page.locator('.island button[data-a="view"]').click();
     }
 
     // keyboard only: Tab reaches the toolbar and a document field, Enter-less edit, move, undo

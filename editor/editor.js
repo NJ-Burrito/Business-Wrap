@@ -118,15 +118,9 @@ function decorate() {
     main.querySelectorAll('[data-b]').forEach((el) => {
       if (commented.has(el.dataset.b) && !el.previousElementSibling?.matches?.(`[data-b="${CSS.escape(el.dataset.b)}"]`)) el.classList.add('bw-has-comment');
     });
-    main.querySelectorAll('.bw-logo-slot').forEach((el) => {
-      el.setAttribute('role', 'button');
-      el.tabIndex = 0;
-      el.setAttribute('aria-label', `${t('emptySlot')}: ${t(slotKey(el.dataset.logo))}`);
-      el.textContent = `＋ ${t(slotKey(el.dataset.logo))}`;
-    });
+    decorateOverlays(main);
   }
 }
-const slotKey = (s) => ({ start: 'logoStart', center: 'logoCenter', end: 'logoEnd', header: 'logoHeader' })[s];
 
 /* ── ops ───────────────────────────────────────────────────────────────── */
 function commit(ops, { ed = S.ed, rerender = true, group = newGroup(), mirror = false } = {}) {
@@ -270,6 +264,7 @@ function saveAll() {
   download(`${S.svc}.${S.ed}.edits.json`, JSON.stringify(editsFile(S.svc, S.ed), null, 1));
   S.dirty = false;
   flash(t('saved'));
+  emitHook('save');
 }
 function pickFile(accept) {
   return new Promise((res) => {
@@ -327,6 +322,7 @@ async function importFile(file) {
   touched();
   render();
   flash(t('merged', { n }));
+  emitHook('import.merged', { merged: n, conflicts: S.conflicts.length });
   if (S.conflicts.length) openDrawer('conflicts');
 }
 function mergeComments(j) {
@@ -384,6 +380,7 @@ async function exportPdfDocx() {
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || r.status);
       flash(t('exportDone', { x: [j.pdf, j.docx].filter(Boolean).join(' · ') }));
+      emitHook('export', { pdf: !!j.pdf, docx: !!j.docx });
       for (const u of [j.pdfUrl, j.docxUrl].filter(Boolean)) window.open(u, '_blank', 'noopener');
       return;
     } catch (err) { flash(String(err.message || err), true); return; }
@@ -407,6 +404,7 @@ window.addEventListener('afterprint', () => {
 
 /* ── selection ─────────────────────────────────────────────────────────── */
 function selectEl(el) {
+  S.selOv = null;
   const main = el.closest('main.bw-doc');
   if (!main) return;
   const ed = main.dataset.locale;
@@ -506,10 +504,9 @@ const A = {
     lastCell = null;
   },
   async image() {
-    const f = await pickFile('image/png,image/jpeg,image/svg+xml');
-    if (!f) return;
-    const url = await readAs(f, 'url');
-    if (!/^data:image\/(png|jpeg|svg\+xml);/.test(url)) { flash(t('badFile'), true); return; }
+    const img = await pickImage();
+    if (!img) return;
+    const url = img.src;
     const b = blockOf(S.sel?.b);
     const blk = b && get(cur().doc, b.ptr);
     if (blk?.kind === 'shots') commit([{ op: 'replace', path: `${b.ptr}/images`, value: [url], old: blk.images }]);
@@ -582,6 +579,7 @@ function startDrag(ev) {
   if (!b) return;
   ev.preventDefault();
   overlay.grip.setPointerCapture(ev.pointerId);
+  host.style.pointerEvents = 'none'; // the floating tools must not hide the drop target from elementFromPoint
   let target = null;
   const move = (e) => {
     // Auto-scroll near the edges so a block can travel past the visible part of the page.
@@ -607,6 +605,7 @@ function startDrag(ev) {
     overlay.drop.hidden = false;
   };
   const up = () => {
+    host.style.pointerEvents = '';
     overlay.grip.removeEventListener('pointermove', move);
     overlay.grip.removeEventListener('pointerup', up);
     overlay.drop.hidden = true;
@@ -683,95 +682,245 @@ function validate() {
   return out;
 }
 
-/* ── UI (Shadow DOM) ───────────────────────────────────────────────────── */
+/* ── UI (Shadow DOM): a floating island, a selection bar, a command palette ──
+ * Design read: an authoring tool for bilingual requirement documents; the
+ * island carries the SRS navy and gold so the tool and the document read as one.
+ * Motion answers actions (press, open, confirm, count); calm mode and
+ * prefers-reduced-motion turn it all to instant cross-fades. */
 const host = document.createElement('div');
 host.id = 'bw-ui-host';
 document.body.prepend(host);
 const root = host.attachShadow({ mode: 'open' });
-const ICON = {
-  undo: '↶', redo: '↷', duplicate: '⧉', delete: '✕', moveUp: '↑', moveDown: '↓', drag: '✥', addPara: '¶',
-  rowAdd: '⊞', rowDel: '⊟', colAdd: '⊞', colDel: '⊟', image: '▣', comment: '✎', renumber: '#', breakBefore: '⤓', keepNext: '⛓',
-  find: '⌕', outline: '☰', pages: '▤', check: '✓', history: '⟲', theme: '◐', save: '⬇', saveHtml: '⎘', import: '⬆', exportEdits: '{ }', exportAll: '{ }',
-  exportPdf: '⎙', print: '⎙', zoomIn: '+', zoomOut: '−', spell: 'ab', dark: '☾', side: '◫', uiLang: '⇄',
+const IC = DATA.icons || {};
+const ic = (k) => IC[k] || '';
+const RMQ = matchMedia('(prefers-reduced-motion: reduce)');
+S.calm = ls.get('bw:calm') === '1';
+S.focus = false;
+S.snap = ls.get('bw:snap') !== '0';
+S.view = false;
+const isCalm = () => S.calm || RMQ.matches;
+const setRootFlags = () => {
+  const d = document.documentElement.dataset;
+  d.bwCalm = S.calm ? '1' : '0';
+  d.bwFocus = S.focus ? '1' : '0';
+  d.bwDark = S.dark ? '1' : '0';
 };
-function btn(id, action, { label = t(id), tip = '', pressed } = {}) {
-  return `<button type="button" data-a="${id}" ${action ? '' : ''} title="${esc(tip || label)}" ${pressed !== undefined ? `aria-pressed="${pressed}"` : ''}><span class="i" aria-hidden="true">${ICON[id] || '•'}</span><span class="w">${esc(label)}</span></button>`;
+
+/** Every action, in one registry: the island, the selection bar and the palette read from it. */
+const CMDS = [
+  ['undo', 'edit', 'Ctrl+Z'], ['redo', 'edit', 'Ctrl+Y'],
+  ['duplicate', 'block', 'Ctrl+D'], ['delete', 'block', 'Del'], ['moveUp', 'block', 'Alt+↑'], ['moveDown', 'block', 'Alt+↓'],
+  ['addPara', 'block'], ['rowAdd', 'table'], ['rowDel', 'table'], ['colAdd', 'table'], ['colDel', 'table'],
+  ['comment', 'block'], ['breakBefore', 'block'], ['keepNext', 'block'], ['renumber', 'document'],
+  ['image', 'insert'], ['logo', 'insert'],
+  ['find', 'panels', 'Ctrl+F'], ['outline', 'panels'], ['pages', 'panels'], ['check', 'panels'], ['history', 'panels'], ['theme', 'panels'], ['webhooks', 'panels'],
+  ['save', 'file', 'Ctrl+S'], ['saveHtml', 'file'], ['import', 'file'], ['exportEdits', 'file'], ['exportAll', 'file'], ['exportPdf', 'file'], ['print', 'file', 'Ctrl+P'],
+  ['side', 'view'], ['uiLang', 'view'], ['dark', 'view'], ['calm', 'view'], ['focus', 'view', 'F'], ['spell', 'view'], ['snap', 'view'], ['zoomOut', 'view'], ['zoomIn', 'view'],
+].map(([id, group, key]) => ({ id, group, key }));
+
+function btn(id, { label = t(id), tip = '', pressed, cls = '', extra = '' } = {}) {
+  return `<button type="button" class="b ${cls}" data-a="${id}" title="${esc(tip || label)}"${pressed !== undefined ? ` aria-pressed="${pressed}"` : ''}${extra}><span class="i">${ic(id)}</span><span class="w">${esc(label)}</span></button>`;
 }
+const dirOf = (l) => (l === 'ar' ? 'rtl' : 'ltr');
+const dirWord = (l) => (l === 'ar' ? t('rtl') : t('ltr'));
+
 function buildUi() {
   const svcOpts = DATA.services.map((s) => `<option value="${esc(s.id)}" ${s.id === S.svc ? 'selected' : ''}>${esc(s.editions[S.ed]?.name || s.editions.ar?.name || s.id)}</option>`).join('');
   const eds = Object.keys(M[S.svc]);
+  const theme = S.dark ? 'dark' : 'light';
+  setRootFlags();
   root.innerHTML = `<style>${DATA.uiCss}</style>
-<section aria-label="${esc(t('appName'))}"><div class="bar" role="toolbar" aria-label="${esc(t('toolbar'))}" dir="${S.ui === 'ar' ? 'rtl' : 'ltr'}" lang="${S.ui}" data-theme="${S.dark ? 'dark' : 'light'}">
-  <div class="row top">
-    <strong class="app">${esc(t('appName'))}</strong>
-    <label class="field">${esc(t('service'))} <select data-a="svc" aria-label="${esc(t('service'))}">${svcOpts}</select></label>
-    <span class="seg" role="group" aria-label="${esc(t('edition'))}">
-      ${eds.map((ed) => `<button type="button" data-a="ed" data-ed="${ed}" aria-pressed="${ed === S.ed}">${esc(t(ed === 'ar' ? 'editionAr' : 'editionEn'))}</button>`).join('')}
-    </span>
-    ${eds.length > 1 ? btn('side', true, { label: t('sideBySide'), pressed: S.side }) : ''}
-    <label class="chk"><input type="checkbox" data-a="both" ${S.both ? 'checked' : ''}> ${esc(t('bothEditions'))}</label>
-    <span class="status" role="status" aria-live="polite"><span class="count">${esc(t('changes', { n: liveOps(cur()).length }))}</span> · <span class="sel">${esc(selDesc())}</span> · <span class="flash"></span></span>
+<section class="shell${buildUi.done ? '' : ' first'}" aria-label="${esc(t('appName'))}" dir="${dirOf(S.ui)}" lang="${S.ui}" data-theme="${theme}" data-calm="${isCalm() ? '1' : '0'}">
+  <div class="island bar" role="toolbar" aria-label="${esc(t('toolbar'))}">
+    <span class="brand" role="img" aria-label="${esc(t('appName'))}">${DATA.brand?.mark || ''}</span>
+    <div class="grp doc">
+      <label class="pick"><span class="vh">${esc(t('service'))}</span><select data-a="svc" aria-label="${esc(t('service'))}">${svcOpts}</select></label>
+      <div class="seg" role="group" aria-label="${esc(t('edition'))}"><span class="cap" aria-hidden="true">${esc(t('edition'))}</span>
+        ${eds.map((ed) => `<button type="button" data-a="ed" data-ed="${ed}" aria-pressed="${ed === S.ed}" aria-label="${esc(dirWord(ed))}: ${esc(t(ed === 'ar' ? 'editionAr' : 'editionEn'))}" title="${esc(t(ed === 'ar' ? 'editionAr' : 'editionEn'))}">${esc(dirWord(ed))}</button>`).join('')}
+      </div>
+    </div>
+    <div class="grp">${btn('undo')}${btn('redo')}</div>
+    <div class="grp">${btn('image', { tip: t('imageTip') })}${btn('logo', { tip: t('logoTip') })}</div>
+    <div class="grp">${btn('find')}${btn('pages')}</div>
+    <div class="grp">${btn('save', { cls: 'primary' })}${btn('exportPdf', { tip: t('exportPdfTip') })}</div>
     <span class="spacer"></span>
-    ${btn('uiLang', true, { label: t('uiLang'), tip: t('uiLangTip') })}
-    ${btn('dark', true, { label: t('dark'), pressed: S.dark })}
+    <div class="status" role="status" aria-live="polite">
+      <span class="count" aria-label="${esc(t('changes', { n: liveOps(cur()).length }))}"><span class="n">${liveOps(cur()).length}</span><span class="w">${esc(t('changesWord'))}</span></span>
+      <span class="sel vh">${esc(selDesc())}</span><span class="flash vh"></span>
+    </div>
+    <div class="seg ui" role="group" aria-label="${esc(t('uiDir'))}"><span class="cap" aria-hidden="true">${esc(t('uiDir'))}</span>
+      <button type="button" data-a="uiLang" data-l="ar" aria-pressed="${S.ui === 'ar'}" aria-label="${esc(t('rtl'))}: ${esc(t('uiAr'))}" title="${esc(t('uiAr'))}">${esc(t('rtl'))}</button>
+      <button type="button" data-a="uiLang" data-l="en" aria-pressed="${S.ui === 'en'}" aria-label="${esc(t('ltr'))}: ${esc(t('uiEn'))}" title="${esc(t('uiEn'))}">${esc(t('ltr'))}</button>
+    </div>
+    ${btn('view', { extra: ` aria-expanded="${S.view}" aria-controls="viewpop"` })}
+    ${btn('palette', { cls: 'cmd', label: t('palette'), extra: ' aria-keyshortcuts="Control+K"' })}
+    <div class="progress" hidden aria-hidden="true"><i></i></div>
   </div>
-  <div class="row">
-    <span class="grp">${btn('undo')}${btn('redo')}</span>
-    <span class="grp">${btn('duplicate')}${btn('delete')}${btn('moveUp')}${btn('moveDown')}${btn('addPara')}</span>
-    <span class="grp">${btn('rowAdd')}${btn('rowDel')}${btn('colAdd')}${btn('colDel')}</span>
-    <span class="grp">${btn('image', true, { tip: t('imageTip') })}${btn('comment')}${btn('breakBefore')}${btn('keepNext')}${btn('renumber')}</span>
-    <span class="grp">${btn('find')}${btn('outline')}${btn('pages')}${btn('check')}${btn('history')}${btn('theme')}</span>
-    <span class="grp">${btn('save')}${btn('saveHtml', true, { tip: t('saveHtmlTip') })}${btn('import', true, { tip: t('importTip') })}${btn('exportEdits')}${btn('exportAll', true, { label: t('exportAll') })}${btn('exportPdf', true, { tip: t('exportPdfTip') })}${btn('print')}</span>
-    <span class="grp">${btn('zoomOut', true, { label: t('zoom') + ' −' })}${btn('zoomIn', true, { label: t('zoom') + ' +' })}${btn('spell', true, { label: t('spell'), pressed: S.spell[S.ed] })}</span>
+  <div class="pop" id="viewpop" role="group" aria-label="${esc(t('view'))}" ${S.view ? '' : 'hidden'}>
+    ${eds.length > 1 ? btn('side', { label: t('sideBySide'), pressed: S.side }) : ''}
+    <label class="chk"><input type="checkbox" data-a="both" ${S.both ? 'checked' : ''}> <span class="i">${ic('both')}</span>${esc(t('bothEditions'))}</label>
+    ${btn('dark', { pressed: S.dark })}${btn('calm', { pressed: S.calm })}${btn('focus', { pressed: S.focus })}
+    ${btn('spell', { pressed: S.spell[S.ed] })}${btn('snap', { pressed: S.snap })}
+    ${btn('zoomOut', { label: t('zoom') + ' −' })}${btn('zoomIn', { label: t('zoom') + ' +' })}
   </div>
-  <div class="banner" hidden></div>
-</div></header>
-<div class="drawer" role="dialog" aria-modal="false" hidden dir="${S.ui === 'ar' ? 'rtl' : 'ltr'}" lang="${S.ui}" data-theme="${S.dark ? 'dark' : 'light'}"></div>
-<div class="dialog" role="dialog" aria-modal="true" hidden dir="${S.ui === 'ar' ? 'rtl' : 'ltr'}" data-theme="${S.dark ? 'dark' : 'light'}"></div>`;
-  root.querySelector('.bar').addEventListener('click', onBar);
+  <div class="ctx" role="toolbar" aria-label="${esc(t('ctxToolbar'))}" hidden></div>
+  <div class="drawer" role="dialog" aria-modal="false" hidden data-theme="${theme}"></div>
+  <div class="dialog" role="dialog" aria-modal="true" hidden data-theme="${theme}"></div>
+  <div class="scrim" hidden>
+    <div class="palette" role="dialog" aria-modal="true" aria-label="${esc(t('paletteTitle'))}">
+      <div class="pin"><span class="i">${ic('palette')}</span><input type="text" role="combobox" aria-expanded="true" aria-controls="cmdlist" aria-autocomplete="list" aria-label="${esc(t('paletteTitle'))}" placeholder="${esc(t('palettePlaceholder'))}" spellcheck="false"></div>
+      <ul id="cmdlist" role="listbox" aria-label="${esc(t('paletteTitle'))}"></ul>
+      <p class="empty" hidden>${esc(t('paletteEmpty'))}</p>
+    </div>
+  </div>
+  <div class="toasts" aria-live="polite"></div>
+  <button type="button" class="b focus-exit" data-a="focus" ${S.focus ? '' : 'hidden'}><span class="i">${ic('focus')}</span><span class="w">${esc(t('focusExit'))}</span></button>
+</section>`;
+  const shell = root.querySelector('.shell');
+  if (!buildUi.done) { buildUi.done = true; setTimeout(() => document.documentElement.classList.add('bw-ready'), 900); }
+  shell.addEventListener('click', onBar);
   root.querySelector('[data-a="svc"]').addEventListener('change', (e) => { S.svc = e.target.value; if (!M[S.svc][S.ed]) S.ed = Object.keys(M[S.svc])[0]; S.sel = null; buildUi(); render(false); });
   root.querySelector('[data-a="both"]').addEventListener('change', (e) => { S.both = e.target.checked; });
-  document.documentElement.style.setProperty('--bw-bar-h', `${root.querySelector('.bar').offsetHeight + 8}px`);
+  root.querySelector('.scrim').addEventListener('click', (e) => { if (e.target.classList.contains('scrim')) closePalette(); });
+  wirePalette();
+  measureBar();
   if (S.drawer) openDrawer(S.drawer);
+  placeCtx();
 }
+// The page never jumps under the reader: the reserved band only grows (wrap, font load), resets only for focus mode.
+let barH = 0;
+function measureBar() {
+  const bar = root.querySelector('.island');
+  if (S.focus || !bar) { barH = 0; document.documentElement.style.setProperty('--bw-bar-h', '12px'); return; }
+  const h = Math.round(bar.getBoundingClientRect().bottom + 12);
+  if (h > barH) { barH = h; document.documentElement.style.setProperty('--bw-bar-h', `${h}px`); }
+}
+let lastCount = -1;
 function refreshUi() {
   const c = root.querySelector('.count');
   if (!c) return;
-  c.textContent = t('changes', { n: liveOps(cur()).length });
+  const n = liveOps(cur()).length;
+  if (n !== lastCount) {
+    const el = c.querySelector('.n');
+    el.textContent = String(n);
+    c.setAttribute('aria-label', t('changes', { n }));
+    if (lastCount >= 0 && !isCalm()) { el.classList.remove('tick'); void el.offsetWidth; el.classList.add('tick'); }
+    lastCount = n;
+  }
   root.querySelector('.sel').textContent = selDesc();
   const b = blockOf(S.sel?.b);
   const tb = !!tableCtx();
-  const dis = { duplicate: !b, delete: !b, moveUp: !b, moveDown: !b, drag: !b, breakBefore: !b, keepNext: !b, rowAdd: !tb, rowDel: !tb, colAdd: !tb, colDel: !tb, comment: !S.sel, undo: !cur().ops.length, redo: !cur().redo.length };
-  root.querySelectorAll('button[data-a]').forEach((x) => { if (x.dataset.a in dis) x.disabled = dis[x.dataset.a]; });
+  const dis = { undo: !cur().ops.length, redo: !cur().redo.length };
+  root.querySelectorAll('.island button[data-a]').forEach((x) => { if (x.dataset.a in dis) x.disabled = dis[x.dataset.a]; });
   const v = validate();
-  const chk = root.querySelector('[data-a="check"] .i');
-  if (chk) chk.textContent = v.some((x) => x[0] === 'err') ? '⚠' : '✓';
-  if (S.drawer && S.drawer !== 'find' && S.drawer !== 'theme') openDrawer(S.drawer, true);
-  document.documentElement.style.setProperty('--bw-bar-h', `${root.querySelector('.bar').offsetHeight + 8}px`);
+  if (v.some((x) => x[0] === 'err') && !refreshUi.err) emitHook('validation.failed', { problems: v.filter((x) => x[0] === 'err').map((x) => x[1]) });
+  refreshUi.err = v.some((x) => x[0] === 'err');
+  if (S.drawer && !['find', 'theme', 'pages', 'webhooks'].includes(S.drawer)) openDrawer(S.drawer, true);
+  buildCtx(b, tb);
+  measureBar();
+}
+
+/* selection bar: the block, table and image actions, next to what is selected */
+function buildCtx(b, tb) {
+  const ctx = root.querySelector('.ctx');
+  if (!ctx) return;
+  const ov = S.selOv != null ? (cur().doc.overlays || [])[S.selOv] : null;
+  if (!b && !ov) { ctx.hidden = true; return; }
+  const groups = ov
+    ? [['replace', 'caption', ...(ov.kind === 'logo' ? ['every'] : []), 'delete']]
+    : [['duplicate', 'delete', 'moveUp', 'moveDown'], ['addPara', 'comment', 'breakBefore', 'keepNext'], ...(tb ? [['rowAdd', 'rowDel', 'colAdd', 'colDel']] : [])];
+  const key = JSON.stringify([groups, ov ? `ov${S.selOv}${ov.mode}` : b?.ptr]);
+  if (ctx.dataset.key !== key) {
+    ctx.dataset.key = key;
+    ctx.innerHTML = groups.map((g) => `<div class="grp">${g.map((id) => (id === 'every' ? btn('every', { pressed: ov.mode === 'every' }) : id === 'delete' && ov ? btn('ovDelete', { label: t('delete') }) : btn(id))).join('')}</div>`).join('');
+    ctx.querySelectorAll('[data-a="ovDelete"] .i').forEach((x) => { x.innerHTML = ic('delete'); });
+    ctx.querySelectorAll('[data-a="replace"] .i,[data-a="caption"] .i').forEach(() => {});
+  }
+  ctx.hidden = false;
+  placeCtx();
+}
+function placeCtx() {
+  const ctx = root.querySelector('.ctx');
+  if (!ctx || ctx.hidden) return;
+  const main = mainOf(S.ed);
+  let anchor = null;
+  if (S.selOv != null) anchor = main?.querySelector(`.bw-ov[data-i="${S.selOv}"]`);
+  else if (S.sel?.b) anchor = main?.querySelector(`[data-b="${CSS.escape(S.sel.b)}"]`);
+  if (!anchor || !main) { ctx.hidden = true; return; }
+  const r = anchor.getBoundingClientRect();
+  const m = main.getBoundingClientRect();
+  const top0 = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bw-bar-h')) || 80;
+  // a rail in the page margin, beside the selection and never over the text; the drag grip owns the other margin
+  const docRtl = getComputedStyle(main).direction === 'rtl';
+  ctx.classList.add('rail');
+  const w = ctx.offsetWidth || 170;
+  const h = ctx.offsetHeight || 300;
+  const room = docRtl ? m.left - 16 : innerWidth - m.right - 16;
+  if (room >= w) {
+    ctx.style.left = `${docRtl ? m.left - w - 12 : m.right + 12}px`;
+    ctx.style.top = `${Math.max(top0, Math.min(innerHeight - h - 12, r.top))}px`;
+    return;
+  }
+  ctx.classList.remove('rail');
+  const hh = ctx.offsetHeight || 48;
+  let top = r.top - hh - 10;
+  if (top < top0) top = Math.min(innerHeight - hh - 12, r.bottom + 10);
+  ctx.style.top = `${Math.max(top0, top)}px`;
+  ctx.style.left = `${Math.max(8, Math.min(innerWidth - ctx.offsetWidth - 8, m.left + m.width / 2 - ctx.offsetWidth / 2))}px`;
+}
+let ctxRaf = 0;
+window.addEventListener('scroll', () => { if (!ctxRaf) ctxRaf = requestAnimationFrame(() => { ctxRaf = 0; placeCtx(); }); }, { passive: true });
+
+/* toasts, banner, progress */
+function toast(msg, kind = 'info', { actions = [], persist = false, cls = '' } = {}) {
+  const box = root.querySelector('.toasts');
+  if (!box) return null;
+  const el = document.createElement('div');
+  el.className = `toast ${kind} ${cls}`;
+  el.setAttribute('role', kind === 'err' ? 'alert' : 'status');
+  el.innerHTML = `<span class="i">${ic(kind === 'err' ? 'err' : kind === 'ok' ? 'ok' : kind === 'warn' ? 'warn' : 'info')}</span><span class="m">${esc(msg)}</span>${actions.map(([l], i) => `<button type="button" data-k="${i}">${esc(l)}</button>`).join('')}`;
+  el.onclick = (e) => {
+    const k = e.target.closest('button')?.dataset.k;
+    if (k === undefined) return;
+    dismiss(el);
+    actions[k][1]();
+  };
+  box.appendChild(el);
+  while (box.children.length > 4) box.firstElementChild.remove();
+  if (!persist) setTimeout(() => dismiss(el), 4600);
+  return el;
+}
+function dismiss(el) {
+  if (!el.isConnected) return;
+  if (isCalm()) { el.remove(); return; }
+  el.classList.add('out');
+  setTimeout(() => el.remove(), 260);
 }
 function flash(msg, bad = false) {
   const f = root.querySelector('.flash');
-  if (!f) return;
-  f.textContent = msg;
-  f.className = `flash ${bad ? 'bad' : ''}`;
+  if (f) f.textContent = msg;
+  toast(msg, bad ? 'err' : 'ok');
 }
 function banner(msg, actions) {
-  const b = root.querySelector('.banner');
-  b.hidden = false;
-  b.innerHTML = `<span>${esc(msg)}</span>${actions.map(([l], i) => `<button type="button" data-k="${i}">${esc(l)}</button>`).join('')}`;
-  b.onclick = (e) => {
-    const k = e.target.closest('button')?.dataset.k;
-    if (k === undefined) return;
-    b.hidden = true;
-    actions[k][1]();
-  };
-  b.querySelector('button')?.focus();
+  const el = toast(msg, 'info', { actions, persist: true, cls: 'banner' });
+  el?.querySelector('button')?.focus();
 }
-function ask(label) {
+function busy(on) {
+  const p = root.querySelector('.progress');
+  if (p) p.hidden = !on;
+}
+function pop(id) {
+  const b = root.querySelector(`.island [data-a="${id}"], .ctx [data-a="${id}"]`);
+  if (!b || isCalm()) return;
+  b.classList.remove('done'); void b.offsetWidth; b.classList.add('done');
+  setTimeout(() => b.classList.remove('done'), 900);
+}
+
+function ask(label, value = '') {
   const d = root.querySelector('.dialog');
   d.hidden = false;
   d.setAttribute('aria-label', label);
-  d.innerHTML = `<label>${esc(label)}<textarea rows="3"></textarea></label><div><button type="button" data-k="ok">${esc(t('save'))}</button><button type="button" data-k="no">${esc(t('close'))}</button></div>`;
+  d.innerHTML = `<label>${esc(label)}<textarea rows="3">${esc(value)}</textarea></label><div class="btns"><button type="button" class="b primary" data-k="ok"><span class="w">${esc(t('save'))}</span></button><button type="button" class="b" data-k="no"><span class="w">${esc(t('close'))}</span></button></div>`;
   const ta = d.querySelector('textarea');
   ta.focus();
   return new Promise((res) => {
@@ -784,18 +933,90 @@ function ask(label) {
     d.onkeydown = (e) => { if (e.key === 'Escape') { d.hidden = true; res(''); } };
   });
 }
+
+/* command palette (Ctrl+K): type to filter, arrows to move, Enter to run, Esc to close */
+let palIdx = 0;
+function wirePalette() {
+  const input = root.querySelector('.palette input');
+  input.addEventListener('input', () => { palIdx = 0; fillPalette(); });
+  input.addEventListener('keydown', (e) => {
+    const items = [...root.querySelectorAll('#cmdlist [role="option"]')];
+    if (e.key === 'ArrowDown') { e.preventDefault(); palIdx = Math.min(items.length - 1, palIdx + 1); markPal(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); palIdx = Math.max(0, palIdx - 1); markPal(); }
+    else if (e.key === 'Enter') { e.preventDefault(); items[palIdx]?.click(); }
+    else if (e.key === 'Escape') { e.preventDefault(); closePalette(); }
+  });
+  root.querySelector('#cmdlist').addEventListener('click', (e) => {
+    const li = e.target.closest('[data-cmd]');
+    if (!li) return;
+    closePalette();
+    runAction(li.dataset.cmd);
+  });
+}
+function fillPalette() {
+  const q = fold(root.querySelector('.palette input').value.trim());
+  const list = root.querySelector('#cmdlist');
+  const hits = CMDS.filter((c) => !q || fold(`${t(c.id)} ${t('grp_' + c.group)} ${c.id}`).includes(q));
+  let html = '';
+  let g = '';
+  hits.forEach((c, i) => {
+    if (c.group !== g) { g = c.group; html += `<li role="presentation" class="gh">${esc(t('grp_' + g))}</li>`; }
+    html += `<li role="option" id="cmd-${c.id}" data-cmd="${c.id}" aria-selected="${i === palIdx}" style="--k:${i}"><span class="i">${ic(c.id)}</span><span class="w">${esc(t(c.id))}</span>${c.key ? `<kbd>${esc(c.key)}</kbd>` : ''}</li>`;
+  });
+  list.innerHTML = html;
+  root.querySelector('.palette .empty').hidden = hits.length > 0;
+  markPal();
+}
+function markPal() {
+  const items = [...root.querySelectorAll('#cmdlist [role="option"]')];
+  items.forEach((x, i) => x.setAttribute('aria-selected', String(i === palIdx)));
+  const cur2 = items[palIdx];
+  root.querySelector('.palette input').setAttribute('aria-activedescendant', cur2?.id || '');
+  cur2?.scrollIntoView({ block: 'nearest' });
+}
+function openPalette() {
+  const s = root.querySelector('.scrim');
+  s.hidden = false;
+  palIdx = 0;
+  const input = root.querySelector('.palette input');
+  input.value = '';
+  fillPalette();
+  input.focus();
+}
+function closePalette() {
+  const s = root.querySelector('.scrim');
+  if (s) s.hidden = true;
+}
+
 async function onBar(e) {
   const b = e.target.closest('button[data-a]');
-  if (!b) return;
+  if (!b || b.closest('.palette')) return;
   const a = b.dataset.a;
+  if (a === 'ed') { S.ed = b.dataset.ed; S.sel = null; S.selOv = null; buildUi(); render(false); return; }
+  if (a === 'uiLang') { setUi(b.dataset.l || (S.ui === 'ar' ? 'en' : 'ar')); return; }
+  await runAction(a);
+}
+function setUi(l) {
+  if (l === S.ui) return;
+  S.ui = l;
+  ls.set('bw:ui', S.ui);
+  buildUi();
+  render();
+  window.BW_WM?.relabel();
+}
+async function runAction(a) {
   switch (a) {
-    case 'ed': S.ed = b.dataset.ed; S.sel = null; buildUi(); render(false); break;
     case 'side': S.side = !S.side; buildUi(); render(false); break;
-    case 'uiLang': S.ui = S.ui === 'ar' ? 'en' : 'ar'; ls.set('bw:ui', S.ui); buildUi(); render(); window.BW_WM?.relabel(); break;
-    case 'dark': S.dark = !S.dark; ls.set('bw:dark', S.dark ? '1' : '0'); document.documentElement.dataset.bwDark = S.dark ? '1' : '0'; buildUi(); break;
+    case 'uiLang': setUi(S.ui === 'ar' ? 'en' : 'ar'); break;
+    case 'dark': S.dark = !S.dark; ls.set('bw:dark', S.dark ? '1' : '0'); buildUi(); break;
+    case 'calm': S.calm = !S.calm; ls.set('bw:calm', S.calm ? '1' : '0'); buildUi(); toast(t(S.calm ? 'calmOn' : 'calmOff'), 'info'); break;
+    case 'focus': S.focus = !S.focus; S.view = false; buildUi(); toast(t(S.focus ? 'focusOn' : 'focusOff'), 'info'); break;
+    case 'view': S.view = !S.view; buildUi(); break;
+    case 'snap': S.snap = !S.snap; ls.set('bw:snap', S.snap ? '1' : '0'); buildUi(); break;
+    case 'palette': openPalette(); break;
     case 'undo': undo(); break;
     case 'redo': redo(); break;
-    case 'duplicate': A.duplicate(); break;
+    case 'duplicate': A.duplicate(); pop('duplicate'); break;
     case 'delete': A.delete(); break;
     case 'moveUp': A.move(-1); break;
     case 'moveDown': A.move(1); break;
@@ -805,18 +1026,23 @@ async function onBar(e) {
     case 'colAdd': A.colAdd(); break;
     case 'colDel': A.colDel(); break;
     case 'image': await A.image(); break;
+    case 'logo': await OVL.add('logo'); break;
+    case 'replace': await OVL.replace(); break;
+    case 'caption': await OVL.caption(); break;
+    case 'every': OVL.every(); break;
+    case 'ovDelete': OVL.remove(); break;
     case 'comment': await A.comment(); break;
     case 'breakBefore': A.layout('breakBefore'); break;
     case 'keepNext': A.layout('keepNext'); break;
     case 'renumber': A.renumber(); break;
-    case 'find': case 'outline': case 'check': case 'history': case 'theme': case 'pages':
+    case 'find': case 'outline': case 'check': case 'history': case 'theme': case 'pages': case 'webhooks':
       S.drawer === a ? closeDrawer() : openDrawer(a); break;
-    case 'save': saveAll(); break;
+    case 'save': saveAll(); pop('save'); break;
     case 'saveHtml': await saveHtml(!!S.embedFonts); break;
     case 'import': { const f = await pickFile('.json,.html,application/json,text/html'); if (f) await importFile(f); break; }
-    case 'exportEdits': download(`${S.svc}.edits-bundle.json`, JSON.stringify(bundle([S.svc]), null, 1)); break;
-    case 'exportAll': download(`all-services.edits-bundle.json`, JSON.stringify(bundle(Object.keys(M)), null, 1)); break;
-    case 'exportPdf': await exportPdfDocx(); break;
+    case 'exportEdits': download(`${S.svc}.edits-bundle.json`, JSON.stringify(bundle([S.svc]), null, 1)); emitHook('edits.exported', { scope: 'service' }); break;
+    case 'exportAll': download(`all-services.edits-bundle.json`, JSON.stringify(bundle(Object.keys(M)), null, 1)); emitHook('edits.exported', { scope: 'all' }); break;
+    case 'exportPdf': busy(true); try { await exportPdfDocx(); } finally { busy(false); } break;
     case 'print': window.print(); break;
     case 'zoomIn': S.zoom = Math.min(2, +(S.zoom + 0.1).toFixed(2)); render(); break;
     case 'zoomOut': S.zoom = Math.max(0.4, +(S.zoom - 0.1).toFixed(2)); render(); break;
@@ -825,54 +1051,67 @@ async function onBar(e) {
   }
 }
 
-/* ── drawers ───────────────────────────────────────────────────────────── */
-function closeDrawer() { S.drawer = null; root.querySelector('.drawer').hidden = true; }
+/* ── drawers (slide-over panels) ───────────────────────────────────────── */
+function closeDrawer() {
+  S.drawer = null;
+  const d = root.querySelector('.drawer');
+  if (!d || d.hidden) return;
+  if (isCalm()) { d.hidden = true; return; }
+  d.classList.add('closing');
+  setTimeout(() => { d.hidden = true; d.classList.remove('closing'); }, 220);
+}
 function openDrawer(kind, soft = false) {
   const d = root.querySelector('.drawer');
   if (soft && d.contains(root.activeElement)) return;
   S.drawer = kind;
   d.hidden = false;
-  const head = (title) => `<header><h2>${esc(title)}</h2><button type="button" data-k="close" aria-label="${esc(t('close'))}">✕ ${esc(t('close'))}</button></header>`;
-  const icon = { err: '⛔', warn: '⚠', info: 'ℹ', ok: '✓' };
+  d.classList.remove('closing');
+  const head = (title) => `<header><h2>${esc(title)}</h2><button type="button" class="b" data-k="close" aria-label="${esc(t('close'))}"><span class="i">${ic('close')}</span><span class="w">${esc(t('close'))}</span></button></header>`;
+  const icon = { err: ic('err'), warn: ic('warn'), info: ic('info'), ok: ic('ok') };
   const word = { err: t('err'), warn: t('warn'), info: t('info'), ok: t('ok') };
   let html = '';
   if (kind === 'check') {
     const v = validate();
     d.setAttribute('aria-label', t('checkTitle'));
-    html = head(t('checkTitle')) + (v.length ? `<ul class="list">${v.map(([lv, msg]) => `<li class="${lv}"><span class="i">${icon[lv]}</span> <b>${esc(word[lv])}</b> ${esc(msg)}</li>`).join('')}</ul>` : `<p class="ok">✓ ${esc(t('vAllGood'))}</p>`);
+    html = head(t('checkTitle')) + (v.length ? `<ul class="list">${v.map(([lv, msg]) => `<li class="${lv}"><span class="i">${icon[lv]}</span> <b>${esc(word[lv])}</b> ${esc(msg)}</li>`).join('')}</ul>` : `<p class="ok"><span class="i">${icon.ok}</span> ${esc(t('vAllGood'))}</p>`);
   } else if (kind === 'pages') {
     d.setAttribute('aria-label', t('pagesTitle'));
-    html = head(t('pagesTitle')) + `<p class="hint out" role="status"></p><ol class="thumbs"></ol>`;
+    html = head(t('pagesTitle')) + `<p class="hint out" role="status"></p><ol class="thumbs">${Array.from({ length: 6 }, () => '<li class="skel" aria-hidden="true"><i></i></li>').join('')}</ol>`;
     setTimeout(() => loadThumbs(d), 0);
   } else if (kind === 'outline') {
     d.setAttribute('aria-label', t('outline'));
     html = head(t('outline')) + `<ol class="list nav">${cur().doc.chapters.map((ch, i) => `<li><button type="button" data-go="/chapters/${i}/title">${esc(ch.number)} ${esc(ch.title)}</button><ol>${ch.sections.map((s, j) => `<li><button type="button" data-go="/chapters/${i}/sections/${j}/title">${esc(s.number)} ${esc(s.title)}</button></li>`).join('')}</ol></li>`).join('')}</ol>`;
   } else if (kind === 'find') {
     d.setAttribute('aria-label', t('find'));
-    html = head(t('find')) + `<label>${esc(t('findLabel'))}<input data-f="q" type="search"></label><label>${esc(t('replaceLabel'))}<input data-f="r" type="text"></label><p class="hint">${esc(t('foldHint'))}</p><div class="btns"><button type="button" data-k="next">${esc(t('findNext'))}</button><button type="button" data-k="all">${esc(t('replaceAll'))}</button></div><p class="out" role="status"></p>`;
+    html = head(t('find')) + `<label>${esc(t('findLabel'))}<input data-f="q" type="search"></label><label>${esc(t('replaceLabel'))}<input data-f="r" type="text"></label><p class="hint">${esc(t('foldHint'))}</p><div class="btns"><button type="button" class="b primary" data-k="next"><span class="w">${esc(t('findNext'))}</span></button><button type="button" class="b" data-k="all"><span class="w">${esc(t('replaceAll'))}</span></button></div><p class="out" role="status"></p>`;
   } else if (kind === 'history') {
     d.setAttribute('aria-label', t('historyTitle'));
     const e = cur();
     const st = (o) => e.status[o.id] || 'pending';
-    html = head(t('historyTitle')) + `<div class="btns"><button type="button" data-k="snap">${esc(t('snapshot'))}</button><button type="button" data-k="log">${esc(t('exportLog'))}</button></div>
-<ol class="list log">${e.ops.map((o, i) => `<li class="${st(o)}"><code>${esc(o.op)}</code> <span class="path">${esc(o.path)}</span>${o.op === 'setText' ? `<div class="diff"><del>${esc(o.old ?? '')}</del><ins>${esc(o.value)}</ins></div>` : ''}<div class="btns"><span class="badge">${esc(t(st(o)))}</span><button type="button" data-ok="${i}" aria-pressed="${st(o) === 'approved'}">✓ ${esc(t('approve'))}</button><button type="button" data-no="${i}" aria-pressed="${st(o) === 'rejected'}">✕ ${esc(t('reject'))}</button></div></li>`).reverse().join('')}</ol>
+    html = head(t('historyTitle')) + `<div class="btns"><button type="button" class="b" data-k="snap"><span class="w">${esc(t('snapshot'))}</span></button><button type="button" class="b" data-k="log"><span class="w">${esc(t('exportLog'))}</span></button></div>
+<ol class="list log">${e.ops.map((o, i) => `<li class="${st(o)}"><code>${esc(o.op)}</code> <span class="path">${esc(o.path)}</span>${o.op === 'setText' ? `<div class="diff"><del>${esc(o.old ?? '')}</del><ins>${esc(o.value)}</ins></div>` : ''}<div class="btns"><span class="badge">${esc(t(st(o)))}</span><button type="button" data-ok="${i}" aria-pressed="${st(o) === 'approved'}">${esc(t('approve'))}</button><button type="button" data-no="${i}" aria-pressed="${st(o) === 'rejected'}">${esc(t('reject'))}</button></div></li>`).reverse().join('')}</ol>
 <h3>${esc(t('snapshot'))}</h3><ul class="list">${e.versions.map((v, i) => `<li>${esc(v.name)} <small>${esc(v.at)}</small> <button type="button" data-diff="${i}">${esc(t('diff'))}</button></li>`).join('')}</ul><div class="difftable"></div>
-${e.comments.length ? `<h3>${esc(t('comment'))}</h3><ul class="list">${e.comments.map((c, i) => `<li><button type="button" data-go="${esc(c.path)}">${esc(c.text)}</button> <button type="button" data-delc="${i}" aria-label="${esc(t('delete'))}">✕</button></li>`).join('')}</ul><div class="btns"><button type="button" data-k="cexp">${esc(t('comment'))} ⬇</button></div>` : ''}`;
+${e.comments.length ? `<h3>${esc(t('comment'))}</h3><ul class="list">${e.comments.map((c, i) => `<li><button type="button" data-go="${esc(c.path)}">${esc(c.text)}</button> <button type="button" data-delc="${i}" aria-label="${esc(t('delete'))}">${ic('close')}</button></li>`).join('')}</ul><div class="btns"><button type="button" class="b" data-k="cexp"><span class="w">${esc(t('comment'))}</span></button></div>` : ''}`;
   } else if (kind === 'theme') {
     d.setAttribute('aria-label', t('theme'));
     const fam = DATA.fontFamilies;
     const sel = (key, val) => `<select data-font="${key}">${fam.map((f) => `<option ${f === val ? 'selected' : ''}>${esc(f)}</option>`).join('')}</select>`;
+    const ovs = cur().doc.overlays || [];
     html = head(t('theme')) + `<h3>${esc(t('font'))}</h3><label>${esc(t('fontText'))} ${sel('text', S.theme.fonts.text)}</label><label>${esc(t('fontDisplay'))} ${sel('display', S.theme.fonts.display)}</label>
-<h3>${esc(t('logos'))}</h3><ul class="list">${['start', 'center', 'end', 'header'].map((k) => `<li>${S.theme.logos?.[k] ? `<img alt="" src="${esc(S.theme.logos[k])}" class="thumb">` : '<span class="thumb empty">—</span>'} ${esc(t(slotKey(k)))} <button type="button" data-logo="${k}">⬆ ${esc(t('upload'))}</button><button type="button" data-logoclr="${k}" ${S.theme.logos?.[k] ? '' : 'disabled'}>✕ ${esc(t('clear'))}</button></li>`).join('')}</ul>
+<h3>${esc(t('logos'))}</h3><p class="hint">${esc(t('logosHint'))}</p><ul class="list">${ovs.map((o, i) => (o.kind === 'logo' ? `<li><img alt="" src="${esc(o.src)}" class="thumb"> ${esc(t('mode_' + o.mode))} <button type="button" data-ovgo="${i}">${esc(t('show'))}</button></li>` : '')).join('')}</ul>
+<div class="btns"><button type="button" class="b primary" data-k="logoAdd"><span class="i">${ic('logo')}</span><span class="w">${esc(t('logo'))}</span></button></div>
 <h3>${esc(t('imgWidth'))}</h3><input type="range" min="10" max="100" step="5" data-k="width" aria-label="${esc(t('imgWidth'))}" value="${(() => { const b = blockOf(S.sel?.b); return (b && get(cur().doc, b.ptr)?.width) || 100; })()}">
 <label class="chk"><input type="checkbox" data-k="embed" ${S.embedFonts ? 'checked' : ''}> ${esc(t('embedFonts'))}</label>
-<div class="btns"><button type="button" data-k="texp">⬇ ${esc(t('themeExport'))}</button><button type="button" data-k="timp">⬆ ${esc(t('themeImport'))}</button></div>
+<div class="btns"><button type="button" class="b" data-k="texp"><span class="w">${esc(t('themeExport'))}</span></button><button type="button" class="b" data-k="timp"><span class="w">${esc(t('themeImport'))}</span></button></div>
 <h3>${esc(t('shortcuts'))}</h3><p class="hint">${esc(t('shortcutsText'))}</p>`;
+  } else if (kind === 'webhooks') {
+    d.setAttribute('aria-label', t('webhooks'));
+    html = head(t('webhooks')) + hooksPanel();
   } else if (kind === 'conflicts') {
     d.setAttribute('aria-label', t('conflictTitle'));
     const opText = (o) => `${o.op} ${o.from ? `${o.from} → ` : ''}${o.path}`;
     const side = (c, k) => (c.kind === 'structure' ? c[k].map(opText).join(' · ') : JSON.stringify(c[k]));
-    html = head(t('conflictTitle')) + `<ul class="list">${S.conflicts.map((c, i) => `<li data-kind="${c.kind || 'text'}"><span class="path">${esc(c.ed)} ${esc(c.path)}${c.kind === 'structure' ? ` — ${esc(t('structConflict'))}` : ''}</span><div class="diff"><div><b>${esc(t('mine'))}</b> ${esc(side(c, 'mine'))}</div><div><b>${esc(t('theirs'))}</b> ${esc(side(c, 'theirs'))}</div></div><div class="btns"><button type="button" data-mine="${i}">${esc(t('keepMine'))}</button><button type="button" data-theirs="${i}">${esc(t('keepTheirs'))}</button></div></li>`).join('')}</ul>`;
+    html = head(t('conflictTitle')) + `<ul class="list">${S.conflicts.map((c, i) => `<li data-kind="${c.kind || 'text'}"><span class="path">${esc(c.ed)} ${esc(c.path)}${c.kind === 'structure' ? ` (${esc(t('structConflict'))})` : ''}</span><div class="diff"><div><b>${esc(t('mine'))}</b> ${esc(side(c, 'mine'))}</div><div><b>${esc(t('theirs'))}</b> ${esc(side(c, 'theirs'))}</div></div><div class="btns"><button type="button" data-mine="${i}">${esc(t('keepMine'))}</button><button type="button" data-theirs="${i}">${esc(t('keepTheirs'))}</button></div></li>`).join('')}</ul>`;
   }
   d.innerHTML = html;
   d.onclick = onDrawer;
@@ -882,9 +1121,11 @@ ${e.comments.length ? `<h3>${esc(t('comment'))}</h3><ul class="list">${e.comment
   d.onchange = (e) => {
     if (e.target.dataset.font) { S.theme = { ...S.theme, fonts: { ...S.theme.fonts, [e.target.dataset.font]: e.target.value } }; touched(); render(); }
     if (e.target.dataset.k === 'embed') S.embedFonts = e.target.checked;
+    if (e.target.dataset.hook) hooksChange(e.target);
   };
-  if (!soft) d.querySelector('input,button')?.focus();
+  if (!soft) d.querySelector('input,button:not([data-k="close"])')?.focus();
 }
+
 async function onDrawer(e) {
   const x = e.target.closest('button');
   if (!x) return;
@@ -938,15 +1179,9 @@ async function onDrawer(e) {
   }
   if (k === 'cexp') download(`${S.svc}.comments.json`, JSON.stringify({ kind: 'bw-comments', version: 1, comments: Object.values(M[S.svc]).flatMap((x) => x.comments) }, null, 1));
   if (x.dataset.delc !== undefined) { e2.comments.splice(+x.dataset.delc, 1); touched(); render(); openDrawer('history'); }
-  if (x.dataset.logo) {
-    const f = await pickFile('image/png,image/jpeg,image/svg+xml');
-    if (!f) return;
-    const url = await readAs(f, 'url');
-    if (!/^data:image\/(png|jpeg|svg\+xml);/.test(url)) { flash(t('badFile'), true); return; }
-    S.theme = { ...S.theme, logos: { ...S.theme.logos, [x.dataset.logo]: url } };
-    touched(); render(); openDrawer('theme');
-  }
-  if (x.dataset.logoclr) { S.theme = { ...S.theme, logos: { ...S.theme.logos, [x.dataset.logoclr]: '' } }; touched(); render(); openDrawer('theme'); }
+  if (k === 'logoAdd') { await OVL.add('logo'); openDrawer('theme'); }
+  if (x.dataset.ovgo !== undefined) { const el = mainOf(S.ed)?.querySelector(`.bw-ov[data-i="${x.dataset.ovgo}"]`); el?.scrollIntoView({ block: 'center', behavior: isCalm() ? 'auto' : 'smooth' }); el?.focus(); }
+  if (x.dataset.hk) { await hooksClick(x); return; }
   if (k === 'texp') download(`design-pack.json`, JSON.stringify({ kind: 'bw-design-pack', version: 1, ...S.theme }, null, 1));
   if (k === 'timp') {
     const f = await pickFile('.json,application/json');
@@ -1011,6 +1246,344 @@ async function loadThumbs(d) {
   list.innerHTML = data.pages.map((p) => `<li><button type="button" data-page="${p.n}" data-first="${esc(p.first)}" aria-label="${esc(t('page', { n: p.n }))}"><img alt="" src="${p.png}" class="${p.wide ? 'wide' : ''}"><span>${p.n}</span></button></li>`).join('');
 }
 
+/* ── images: every accepted image is re-encoded through a canvas (metadata gone,
+ * SVG rasterised, size capped) before it can enter the document ─────────── */
+async function reencode(blob, maxPx = 2000) {
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const k = Math.min(1, maxPx / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+    const w = Math.max(1, Math.round((img.naturalWidth || 300) * k));
+    const h = Math.max(1, Math.round((img.naturalHeight || 150) * k));
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0, w, h);
+    const px = g.getImageData(0, 0, w, h).data;
+    let alpha = false;
+    for (let i = 3; i < px.length; i += 16) if (px[i] < 250) { alpha = true; break; }
+    const out = alpha || /svg|png/.test(blob.type) ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.9);
+    return { src: out, ratio: h / w };
+  } finally { URL.revokeObjectURL(url); }
+}
+const ACCEPT_IMG = 'image/png,image/jpeg,image/webp,image/gif,image/svg+xml';
+async function pickImage() {
+  const f = await pickFile(ACCEPT_IMG);
+  if (!f) return null;
+  if (!/^image\//.test(f.type)) { flash(t('badFile'), true); return null; }
+  try { return await reencode(f); } catch { flash(t('badFile'), true); return null; }
+}
+
+/* ── overlays: logos and images placed freely; positions in mm, saved in the document ── */
+const MM = 96 / 25.4;
+const mmScale = () => { const m = mainOf(S.ed); return m ? m.getBoundingClientRect().width / 210 : MM; };
+const ovList = () => cur().doc.overlays || [];
+const ovPtr = (i) => `/overlays/${i}`;
+function ovOps(next, old) {
+  // the document may not have the array yet: the first overlay creates it
+  return cur().doc.overlays ? next : [{ op: 'replace', path: '/overlays', value: [], old: undefined }, ...next];
+}
+const OVL = {
+  async add(kind, img, at) {
+    img = img || await pickImage();
+    if (!img) return;
+    const w = kind === 'logo' ? 36 : 70;
+    const o = { id: `ov${Date.now().toString(36)}`, kind, src: img.src, mode: 'cover', x: kind === 'logo' ? 140 : 40, y: kind === 'logo' ? 16 : 120, w };
+    if (at) Object.assign(o, at);
+    else if (kind !== 'logo' && S.sel?.b) {
+      const b = blockOf(S.sel.b);
+      if (b) Object.assign(o, { mode: 'anchor', anchor: b.ptr, x: 30, y: 0 });
+    }
+    commit(ovOps([{ op: 'insert', path: '/overlays/-', value: o }]), { mirror: true });
+    S.selOv = ovList().length - 1;
+    S.sel = null;
+    paintSel();
+    refreshUi();
+    toast(t(kind === 'logo' ? 'logoAdded' : 'imageAdded'), 'ok');
+  },
+  async replace() {
+    const i = S.selOv;
+    if (i == null) return;
+    const img = await pickImage();
+    if (!img) return;
+    commit([{ op: 'replace', path: `${ovPtr(i)}/src`, value: img.src, old: ovList()[i].src }]);
+  },
+  async caption() {
+    const i = S.selOv;
+    if (i == null) return;
+    const text = await ask(t('captionPrompt'), ovList()[i].caption || '');
+    commit([{ op: 'replace', path: `${ovPtr(i)}/caption`, value: text, old: ovList()[i].caption }]);
+  },
+  every() {
+    const i = S.selOv;
+    if (i == null) return;
+    const o = ovList()[i];
+    const mode = o.mode === 'every' ? 'cover' : 'every';
+    commit([{ op: 'replace', path: ovPtr(i), value: { ...o, mode, anchor: undefined, y: mode === 'every' ? 2 : o.y }, old: o }], { mirror: true });
+  },
+  remove() {
+    const i = S.selOv;
+    if (i == null) return;
+    commit([{ op: 'delete', path: ovPtr(i), old: ovList()[i] }], { mirror: true });
+    S.selOv = null;
+    refreshUi();
+  },
+};
+
+/** Where a point lands: the cover, the every-page layer, or a block it anchors to (mm coordinates). */
+function placeAt(clientX, clientY, kind, wMm) {
+  const main = mainOf(S.ed);
+  const k = mmScale();
+  const mr = main.getBoundingClientRect();
+  const cover = main.querySelector('.cover');
+  const cr = cover.getBoundingClientRect();
+  if (kind !== 'every' && clientY >= cr.top && clientY <= cr.bottom) {
+    return { mode: 'cover', x: (clientX - cr.left) / k, y: (clientY - cr.top) / k };
+  }
+  if (kind === 'every') {
+    const ev = main.querySelector('.bw-every') || cover;
+    const er = ev === cover ? { left: mr.left, top: cr.bottom } : ev.getBoundingClientRect();
+    return { mode: 'every', x: (clientX - er.left) / k, y: Math.max(0, (clientY - er.top) / k) };
+  }
+  // anchor: the block under the point (probed in the page column), else the nearest one above
+  const blocks = [...main.querySelectorAll('.wrap [data-b]')];
+  let best = null;
+  for (const el of blocks) {
+    const r = el.getBoundingClientRect();
+    if (r.top <= clientY + 1) best = el; else break;
+  }
+  best = best || blocks[0];
+  const ptr = blockOf(best.dataset.b)?.ptr || best.dataset.b;
+  const anchorEl = main.querySelector(`.bw-anchor[data-anchor="${CSS.escape(ptr)}"]`) || best;
+  const ar = anchorEl.getBoundingClientRect();
+  const wrap = main.querySelector('.wrap').getBoundingClientRect();
+  const padL = parseFloat(getComputedStyle(main.querySelector('.wrap')).paddingLeft) || 16 * k;
+  return { mode: 'anchor', anchor: ptr, x: (clientX - (wrap.left + padL)) / k, y: (clientY - ar.top) / k, _anchorEl: !!main.querySelector(`.bw-anchor[data-anchor="${CSS.escape(ptr)}"]`) };
+}
+function snapMm(p, wMm) {
+  if (!S.snap) return { p, guides: [] };
+  const guides = [];
+  const xs = p.mode === 'anchor' ? [0, 89 - wMm / 2, 178 - wMm] : [16, 105 - wMm / 2, 194 - wMm];
+  for (const gx of xs) if (Math.abs(p.x - gx) < 3) { p.x = gx; guides.push(['x', gx]); break; }
+  p.y = Math.round(p.y / 2.5) * 2.5;
+  return { p, guides };
+}
+function showGuides(main, guides, base) {
+  main.querySelectorAll('.bw-guide').forEach((g) => g.remove());
+  for (const [axis, v] of guides) {
+    const g = document.createElement('div');
+    g.className = `bw-guide ${axis}`;
+    g.style.setProperty('--at', `${(base + v) * mmScale()}px`);
+    main.appendChild(g);
+  }
+}
+
+/** Move (body) and resize (corner handle) on pointer events; one commit on release, corrected to the drop point. */
+function startOvDrag(e, el, resize) {
+  const i = +el.dataset.i;
+  const o = ovList()[i];
+  if (!o) return;
+  e.preventDefault();
+  el.setPointerCapture(e.pointerId);
+  S.selOv = i; S.sel = null; paintSel(); refreshUi();
+  const k = mmScale();
+  const r0 = el.getBoundingClientRect();
+  const sx = e.clientX, sy = e.clientY;
+  const main = mainOf(S.ed);
+  let last = null;
+  el.classList.add('bw-dragging');
+  const move = (ev) => {
+    const dx = ev.clientX - sx, dy = ev.clientY - sy;
+    if (resize) {
+      const w = Math.max(6, Math.min(200, o.w + (getComputedStyle(el).direction === 'rtl' && false ? -dx : dx) / k));
+      el.style.width = `${w}mm`;
+      last = { w };
+    } else {
+      el.style.transform = `translate(${dx}px, ${dy}px)`;
+      const target = placeAt(r0.left + dx, r0.top + dy, o.mode === 'every' ? 'every' : o.kind, o.w);
+      const { p, guides } = snapMm(target, o.w);
+      showGuides(main, guides.map((g) => [g[0], g[1]]), p.mode === 'anchor' ? 16 : 0);
+      last = { p, dx, dy };
+    }
+  };
+  const up = () => {
+    el.removeEventListener('pointermove', move);
+    el.removeEventListener('pointerup', up);
+    el.classList.remove('bw-dragging');
+    main.querySelectorAll('.bw-guide').forEach((g) => g.remove());
+    if (!last) { el.style.transform = ''; return; }
+    if (resize) { commit([{ op: 'replace', path: `${ovPtr(i)}/w`, value: +last.w.toFixed(1), old: o.w }]); return; }
+    const p = last.p;
+    const next = { ...o, mode: p.mode, x: +p.x.toFixed(1), y: +p.y.toFixed(1) };
+    if (p.mode === 'anchor') next.anchor = p.anchor; else delete next.anchor;
+    const group = newGroup();
+    commit([{ op: 'replace', path: ovPtr(i), value: next, old: o }], { group, mirror: false });
+    // the anchor box only exists once something is anchored there: measure it and land exactly on the drop point
+    if (p.mode === 'anchor') {
+      const box = mainOf(S.ed).querySelector(`.bw-ov[data-i="${i}"]`);
+      if (box) {
+        const br = box.getBoundingClientRect();
+        const ddy = (r0.top + last.dy - br.top) / mmScale();
+        const ddx = (r0.left + last.dx - br.left) / mmScale();
+        if (Math.abs(ddy) > 0.3 || Math.abs(ddx) > 0.3) {
+          const fixed = { ...next, x: +(next.x + ddx).toFixed(1), y: +(next.y + ddy).toFixed(1) };
+          applyOp(cur().doc, { op: 'replace', path: ovPtr(i), value: fixed });
+          cur().ops.at(-1).value = fixed;
+          render();
+        }
+      }
+    }
+  };
+  el.addEventListener('pointermove', move);
+  el.addEventListener('pointerup', up);
+}
+function decorateOverlays(main) {
+  main.querySelectorAll('.bw-ov').forEach((el) => {
+    el.tabIndex = 0;
+    el.setAttribute('role', 'button');
+    el.setAttribute('aria-label', t(el.dataset.kind === 'logo' ? 'logoItem' : 'imageItem'));
+    if (+el.dataset.i === S.selOv) el.classList.add('bw-ov-sel');
+    if (!el.querySelector('.bw-ov-handle')) {
+      const h = document.createElement('span');
+      h.className = 'bw-ov-handle';
+      h.setAttribute('aria-hidden', 'true');
+      el.appendChild(h);
+    }
+  });
+}
+document.addEventListener('pointerdown', (e) => {
+  const el = e.target.closest?.('#bw-pair .bw-ov');
+  if (!el || e.target.closest('[data-p]')) return;
+  startOvDrag(e, el, e.target.classList.contains('bw-ov-handle'));
+});
+document.addEventListener('keydown', (e) => {
+  const el = e.target.closest?.('#bw-pair .bw-ov');
+  if (!el) return;
+  const i = +el.dataset.i;
+  const o = ovList()[i];
+  const step = e.shiftKey ? 5 : 1;
+  const d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+  if (d && o) { e.preventDefault(); commit([{ op: 'replace', path: ovPtr(i), value: { ...o, x: o.x + d[0], y: o.y + d[1] }, old: o }]); mainOf(S.ed)?.querySelector(`.bw-ov[data-i="${i}"]`)?.focus(); }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && o) { e.preventDefault(); S.selOv = i; OVL.remove(); }
+});
+document.addEventListener('focusin', (e) => {
+  const el = e.target.closest?.('#bw-pair .bw-ov');
+  if (el) { S.selOv = +el.dataset.i; S.sel = null; paintSel(); refreshUi(); }
+});
+
+/* drag-drop and paste of image files: drop = free position at the point, paste = after the block */
+document.addEventListener('dragover', (e) => { if ([...(e.dataTransfer?.items || [])].some((x) => x.kind === 'file')) { e.preventDefault(); document.documentElement.classList.add('bw-drop'); } });
+document.addEventListener('dragleave', (e) => { if (!e.relatedTarget) document.documentElement.classList.remove('bw-drop'); });
+document.addEventListener('drop', async (e) => {
+  document.documentElement.classList.remove('bw-drop');
+  const f = [...(e.dataTransfer?.files || [])].find((x) => /^image\//.test(x.type));
+  if (!f || !e.target.closest?.('#bw-pair main.bw-doc')) return;
+  e.preventDefault();
+  let img;
+  try { img = await reencode(f); } catch { flash(t('badFile'), true); return; }
+  const p = placeAt(e.clientX, e.clientY, 'image', 70);
+  delete p._anchorEl;
+  await OVL.add('image', img, { ...p, w: 70 });
+});
+async function pasteImage(f) {
+  let img;
+  try { img = await reencode(f); } catch { flash(t('badFile'), true); return true; }
+  const b = blockOf(S.sel?.b);
+  const arr = b ? b.arr : '/chapters/0/sections/0/blocks';
+  const at = b ? b.i + 1 : 0;
+  commit([{ op: 'insert', path: `${arr}/${at}`, value: { kind: 'shots', caption: I18N.doc[S.ed].figure, images: [img.src], width: 80 } }]);
+  toast(t('imageAdded'), 'ok');
+  return true;
+}
+
+/* ── webhooks: off by default, no default URLs, sent only through the local server ── */
+const HOOK_EVENTS = ['save', 'export', 'edits.exported', 'import.merged', 'validation.failed'];
+const H = (() => {
+  try { return JSON.parse(ls.get('bw:hooks') || 'null') || { enabled: false, full: false, urls: [], log: [] }; } catch { return { enabled: false, full: false, urls: [], log: [] }; }
+})();
+const saveHooks = () => ls.set('bw:hooks', JSON.stringify(H));
+function hookPayload(event, extra = {}) {
+  const e = cur();
+  const ops = liveOps(e);
+  return {
+    schema: 'bw-webhook', version: 1, event,
+    service: S.svc, edition: S.ed, timestamp: new Date().toISOString(),
+    summary: {
+      changes: ops.length,
+      text: ops.filter((o) => o.op === 'setText').length,
+      structural: ops.filter((o) => ['move', 'delete', 'insert', 'duplicate'].includes(o.op)).length,
+      rejected: e.ops.filter((o) => e.status[o.id] === 'rejected').length,
+      ...extra,
+    },
+    ...(H.full ? { document: e.doc } : {}),
+  };
+}
+async function sendHook(url, payload) {
+  const t0 = performance.now();
+  try {
+    const r = await fetch('/api/webhook', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url, payload }) });
+    const j = await r.json().catch(() => ({}));
+    return { ok: r.ok && j.ok, status: j.status || r.status, ms: Math.round(performance.now() - t0), error: j.error };
+  } catch (err) { return { ok: false, status: 0, ms: Math.round(performance.now() - t0), error: String(err.message || err) }; }
+}
+async function emitHook(event, extra) {
+  if (!H.enabled || !H.urls.length) return;
+  if (!location.protocol.startsWith('http')) return; // file:// cannot deliver: the panel explains why
+  const payload = hookPayload(event, extra);
+  for (const h of H.urls.filter((x) => x.events?.includes(event))) {
+    const r = await sendHook(h.url, payload);
+    logHook(event, h.url, r);
+  }
+}
+function logHook(event, url, r) {
+  let host = url;
+  try { host = new URL(url).host; } catch { /* keep the text */ }
+  H.log.unshift({ at: new Date().toISOString(), event, host, ok: r.ok, status: r.status, ms: r.ms, error: r.error });
+  H.log = H.log.slice(0, 30);
+  saveHooks();
+  if (S.drawer === 'webhooks') openDrawer('webhooks', true);
+}
+function hooksPanel() {
+  const served = location.protocol.startsWith('http');
+  return `<p class="hint">${esc(t(served ? 'hooksHint' : 'hooksNeedServer'))}</p>
+<label class="chk"><input type="checkbox" data-hook="enabled" ${H.enabled ? 'checked' : ''} ${served ? '' : 'disabled'}> ${esc(t('hooksEnable'))}</label>
+<label class="chk"><input type="checkbox" data-hook="full" ${H.full ? 'checked' : ''}> ${esc(t('hooksFull'))}</label>
+<ul class="list hooks">${H.urls.map((h, i) => `<li><span class="path">${esc(h.url)}</span><div class="evs">${HOOK_EVENTS.map((ev) => `<label class="chk"><input type="checkbox" data-hook="ev" data-i="${i}" data-ev="${ev}" ${h.events?.includes(ev) ? 'checked' : ''}> ${esc(t('ev_' + ev))}</label>`).join('')}</div><div class="btns"><button type="button" class="b" data-hk="test" data-i="${i}" ${served ? '' : 'disabled'}><span class="i">${ic('send')}</span><span class="w">${esc(t('hooksTest'))}</span></button><button type="button" class="b" data-hk="del" data-i="${i}"><span class="i">${ic('delete')}</span><span class="w">${esc(t('delete'))}</span></button></div></li>`).join('')}</ul>
+<label>${esc(t('hooksUrl'))}<input type="url" data-hook="url" placeholder="https://"></label>
+<div class="btns"><button type="button" class="b primary" data-hk="add"><span class="i">${ic('webhooks')}</span><span class="w">${esc(t('hooksAdd'))}</span></button></div>
+<h3>${esc(t('hooksLog'))}</h3><ol class="list log">${H.log.map((l) => `<li class="${l.ok ? 'approved' : 'rejected'}"><span class="i">${ic(l.ok ? 'ok' : 'err')}</span> <b>${esc(t('ev_' + l.event) || l.event)}</b> ${esc(l.host)} · ${esc(String(l.status))} · ${l.ms} ms${l.error ? ` · ${esc(l.error)}` : ''}</li>`).join('') || `<li class="hint">${esc(t('hooksNone'))}</li>`}</ol>`;
+}
+function hooksChange(el) {
+  const k = el.dataset.hook;
+  if (k === 'enabled') H.enabled = el.checked;
+  if (k === 'full') H.full = el.checked;
+  if (k === 'ev') {
+    const h = H.urls[+el.dataset.i];
+    const ev = el.dataset.ev;
+    h.events = el.checked ? [...new Set([...(h.events || []), ev])] : (h.events || []).filter((x) => x !== ev);
+  }
+  saveHooks();
+}
+async function hooksClick(x) {
+  const a = x.dataset.hk;
+  if (a === 'add') {
+    const v = root.querySelector('.drawer [data-hook="url"]').value.trim();
+    let u;
+    try { u = new URL(v); } catch { flash(t('hooksBadUrl'), true); return; }
+    if (!/^https?:$/.test(u.protocol)) { flash(t('hooksBadUrl'), true); return; }
+    H.urls.push({ url: u.href, events: [...HOOK_EVENTS] });
+    saveHooks();
+    openDrawer('webhooks');
+  }
+  if (a === 'del') { H.urls.splice(+x.dataset.i, 1); saveHooks(); openDrawer('webhooks'); }
+  if (a === 'test') {
+    const h = H.urls[+x.dataset.i];
+    const r = await sendHook(h.url, hookPayload('test', { test: true }));
+    logHook('test', h.url, r);
+    toast(r.ok ? t('hooksSent', { s: r.status }) : t('hooksFailed', { s: r.status || r.error }), r.ok ? 'ok' : 'err');
+  }
+}
+
 /* ── document events ───────────────────────────────────────────────────── */
 const pair = () => document.getElementById('bw-pair');
 document.addEventListener('focusin', (e) => {
@@ -1034,8 +1607,6 @@ document.addEventListener('focusin', (e) => {
   selectEl(el);
 });
 document.addEventListener('click', (e) => {
-  const slot = e.target.closest?.('#bw-pair .bw-logo-slot');
-  if (slot) { openDrawer('theme'); return; }
   const el = e.target.closest?.('#bw-pair main.bw-doc [data-b], #bw-pair main.bw-doc [data-p]');
   if (el) {
     const cell = e.target.closest('td[data-r]');
@@ -1057,6 +1628,8 @@ document.addEventListener('focusout', (e) => {
 });
 // Pasted HTML never enters the document: text only, scripts and handlers cannot survive.
 document.addEventListener('paste', (e) => {
+  const imgFile = [...(e.clipboardData?.files || [])].find((x) => /^image\//.test(x.type));
+  if (imgFile && e.target.closest?.('#bw-pair')) { e.preventDefault(); pasteImage(imgFile); return; }
   const el = e.target.closest?.('#bw-pair [data-p]');
   if (!el) return;
   e.preventDefault();
@@ -1089,7 +1662,10 @@ document.addEventListener('keydown', (e) => {
   const inText = e.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName || '') || e.composedPath?.().some((x) => x === host);
   if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); saveAll(); return; }
   if (mod && e.key.toLowerCase() === 'f') { e.preventDefault(); openDrawer('find'); return; }
-  if (e.composedPath?.().some((x) => x === host)) { if (e.key === 'Escape') closeDrawer(); return; }
+  if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); openPalette(); return; }
+  if (e.composedPath?.().some((x) => x === host)) { if (e.key === 'Escape') { if (S.view) { S.view = false; buildUi(); } else closeDrawer(); } return; }
+  if (!inText && !mod && !e.altKey && e.key.toLowerCase() === 'f') { e.preventDefault(); runAction('focus'); return; }
+  if (e.key === 'Escape' && S.focus) { runAction('focus'); return; }
   if (mod && !e.shiftKey && e.key.toLowerCase() === 'z' && !e.target.isContentEditable) { e.preventDefault(); undo(); return; }
   if (mod && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z')) && !e.target.isContentEditable) { e.preventDefault(); redo(); return; }
   if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); A.duplicate(); return; }
@@ -1112,7 +1688,8 @@ window.addEventListener('beforeunload', () => { if (S.dirty) ls.set(KEY, JSON.st
  * reduced motion: no float, no tilt, no letter motion, transitions .2s (l.375, l.1040).
  * Here it is a watermark: UI only, print-hidden, never written into an export. */
 function mountWatermark() {
-  const RM = matchMedia('(prefers-reduced-motion: reduce)');
+  const RMm = matchMedia('(prefers-reduced-motion: reduce)');
+  const RM = { get matches() { return RMm.matches || document.documentElement.dataset.bwCalm === '1'; }, addEventListener: (...a) => RMm.addEventListener(...a) };
   const roles = WATERMARK.filter((w) => !w.intro);
   const intro = WATERMARK.find((w) => w.intro);
   if (!roles.length && !intro) return;

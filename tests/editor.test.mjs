@@ -11,6 +11,9 @@
 // conflict (#8), the tool watermark in the UI and never in any output, Save-HTML
 // round trip, and a 60-page timing.
 import fs from 'node:fs';
+import http from 'node:http';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -88,8 +91,15 @@ async function open(ctx) {
   return { page, errors };
 }
 const ui = (page, a, extra = '') => page.locator(`button[data-a="${a}"]${extra}`);
+// An action is clicked where it is visible (island, selection bar, view menu), else run from the command palette.
+async function act(page, a, extra = '') {
+  const b = page.locator(`button[data-a="${a}"]${extra}`);
+  if ((await b.count()) && (await b.first().isVisible())) return b.first().click();
+  await page.keyboard.press('Control+K');
+  await page.locator(`#cmdlist [data-cmd="${a}"]`).click();
+}
 async function pickEdition(page, ed) {
-  await ui(page, 'ed', `[data-ed="${ed}"]`).click();
+  await act(page, 'ed', `[data-ed="${ed}"]`);
   await page.waitForSelector(`main.bw-doc[data-locale="${ed}"]`);
 }
 async function download(page, action) {
@@ -117,11 +127,11 @@ try {
 
     // 2 — duplicate a block (the service-data table, 2.1)
     await page.locator(`${main} [data-p="/chapters/1/sections/0/blocks/1/rows/0/1"]`).click();
-    await ui(page, 'duplicate').click();
+    await act(page, 'duplicate');
 
     // 3 — delete a row (attachments table 2.3, row 2)
     await page.locator(`${main} [data-p="/chapters/1/sections/2/blocks/0/rows/1/0"]`).click();
-    await ui(page, 'rowDel').click();
+    await act(page, 'rowDel');
 
     // 4 — drag a block with the cursor: the 2.1 lead paragraph to after the duplicated table
     const lead = page.locator(`${main} [data-p="/chapters/1/sections/0/blocks/0/paragraphs/0"]`);
@@ -148,7 +158,7 @@ try {
     const domA = await normDom(page, ed);
 
     // Save → the edits JSON (this edition)
-    const editsPath = await download(page, () => ui(page, 'save').click());
+    const editsPath = await download(page, () => act(page, 'save'));
     const edits = JSON.parse(fs.readFileSync(editsPath, 'utf8'));
     check(`${ed}: edits file valid (engine check)`, validateEdits(edits).length === 0, validateEdits(edits).join('; '));
     check(`${ed}: edits file free of watermark`, !fs.readFileSync(editsPath, 'utf8').includes(WM_PNG.slice(0, 40)));
@@ -157,7 +167,7 @@ try {
       check(`${ed}: edits file valid against bible/contracts/edits.schema.json`, r.out.trim() === 'ok', r.err.split('\n').filter(Boolean).slice(-1)[0] || '');
     }
     // per-service + global bundles
-    const bundleFile = await download(page, () => ui(page, 'exportEdits').click());
+    const bundleFile = await download(page, () => act(page, 'exportEdits'));
     check(`${ed}: per-service edits bundle`, JSON.parse(fs.readFileSync(bundleFile, 'utf8')).files.length === 2);
 
     // #1 — paste sanitising: HTML with script and handlers lands as plain text
@@ -190,7 +200,7 @@ try {
     await p2.close();
 
     // Save HTML: this service only, no watermark, opens and keeps editing
-    const savedHtml = await download(page, () => ui(page, 'saveHtml').click());
+    const savedHtml = await download(page, () => act(page, 'saveHtml'));
     const savedText = fs.readFileSync(savedHtml, 'utf8');
     check(`${ed}: Save-HTML has no watermark`, !savedText.includes('id="bw-watermark') && !savedText.includes(WM_PNG.slice(0, 40)));
 
@@ -198,7 +208,7 @@ try {
     const ctx2 = await browser.newContext({ acceptDownloads: true, viewport: { width: 1366, height: 1300 } });
     const { page: fresh, errors: errors2 } = await open(ctx2);
     await pickEdition(fresh, ed);
-    const [chooser] = await Promise.all([fresh.waitForEvent('filechooser'), ui(fresh, 'import').click()]);
+    const [chooser] = await Promise.all([fresh.waitForEvent('filechooser'), act(fresh, 'import')]);
     await chooser.setFiles(editsPath);
     await fresh.waitForFunction((n) => window.BW.M[window.BW.S.svc][window.BW.S.ed].ops.length >= n, edits.ops.length);
     const domB = await normDom(fresh, ed);
@@ -208,7 +218,7 @@ try {
     const theirs = { ...edits, ops: [{ op: 'setText', path: '/chapters/0/sections/0/blocks/0/paragraphs/0', value: 'THEIRS', old: '' }] };
     const theirsFile = path.join(OUT, `theirs.${ed}.json`);
     fs.writeFileSync(theirsFile, JSON.stringify(theirs));
-    const [ch2] = await Promise.all([fresh.waitForEvent('filechooser'), ui(fresh, 'import').click()]);
+    const [ch2] = await Promise.all([fresh.waitForEvent('filechooser'), act(fresh, 'import')]);
     await ch2.setFiles(theirsFile);
     await fresh.locator('.drawer [data-theirs]').first().waitFor({ timeout: 5000 }).catch(() => {});
     const conflicts = await fresh.locator('.drawer [data-theirs]').count();
@@ -217,7 +227,7 @@ try {
     const theirsStruct = { ...edits, ops: [{ op: 'delete', path: '/chapters/1/sections/0/blocks/0' }] };
     const theirsStructFile = path.join(OUT, `theirs-struct.${ed}.json`);
     fs.writeFileSync(theirsStructFile, JSON.stringify(theirsStruct));
-    const [chS] = await Promise.all([fresh.waitForEvent('filechooser'), ui(fresh, 'import').click()]);
+    const [chS] = await Promise.all([fresh.waitForEvent('filechooser'), act(fresh, 'import')]);
     await chS.setFiles(theirsStructFile);
     const structLi = fresh.locator('.drawer li[data-kind="structure"]');
     await structLi.first().waitFor({ timeout: 5000 }).catch(() => {});
@@ -233,11 +243,11 @@ try {
     // table column add + delete through the toolbar (fees table 2.2, 3 columns)
     const fees = '/chapters/1/sections/1/blocks/1';
     await fresh.locator(`${main} [data-p="${fees}/rows/0/1"]`).click();
-    await ui(fresh, 'colAdd').click();
+    await act(fresh, 'colAdd');
     const added = await fresh.evaluate(([ed, f]) => { const b = window.BW.applyOps ? null : null; const d = window.BW.M[window.BW.S.svc][ed].doc; const t = f.split('/').filter(Boolean).reduce((o, k) => o[k], d); return [t.columns.length, ...t.rows.map((r) => r.length)]; }, [ed, fees]);
     check(`${ed}: column added (header + every row)`, added.every((n) => n === 4), JSON.stringify(added));
     await fresh.locator(`${main} [data-p="${fees}/rows/0/2"]`).click();
-    await ui(fresh, 'colDel').click();
+    await act(fresh, 'colDel');
     const removed = await fresh.evaluate(([ed, f]) => { const d = window.BW.M[window.BW.S.svc][ed].doc; const t = f.split('/').filter(Boolean).reduce((o, k) => o[k], d); return [t.columns.length, ...t.rows.map((r) => r.length), t.columns[2]]; }, [ed, fees]);
     check(`${ed}: column deleted (header + every row)`, removed.slice(0, -1).every((n) => n === 3) && removed.at(-1) !== '…', JSON.stringify(removed));
 
@@ -245,7 +255,7 @@ try {
     const pack = { kind: 'bw-design-pack', version: 1, vars: { primary: '#7a1f5c', ink: 'red;}</style><script>window.__pwned=3</script>' }, logos: { start: 'javascript:alert(1)' }, fonts: { text: 'Thmanyah Serif Text', display: 'Thmanyah Serif Display' } };
     const packFile = path.join(OUT, `pack.${ed}.json`);
     fs.writeFileSync(packFile, JSON.stringify(pack));
-    await ui(fresh, 'theme').click();
+    await act(fresh, 'theme');
     const [chP] = await Promise.all([fresh.waitForEvent('filechooser'), fresh.locator('.drawer button[data-k="timp"]').click()]);
     await chP.setFiles(packFile);
     await fresh.waitForFunction(() => window.BW.S.theme.vars.primary === '#7a1f5c', null, { timeout: 5000 }).catch(() => {});
@@ -253,7 +263,7 @@ try {
     check(`${ed}: design pack import applies tokens, refuses hostile values`, applied.primary === '#7a1f5c' && !applied.ink.includes('<') && applied.logo === '' && !applied.pwned, JSON.stringify(applied));
 
     // the colleague's Save-HTML imports too (data only)
-    const [ch3] = await Promise.all([fresh.waitForEvent('filechooser'), ui(fresh, 'import').click()]);
+    const [ch3] = await Promise.all([fresh.waitForEvent('filechooser'), act(fresh, 'import')]);
     await ch3.setFiles(savedHtml);
     check(`${ed}: Save-HTML file imports`, (await fresh.locator('.flash').textContent()).length > 0);
 
@@ -374,7 +384,7 @@ try {
     await field.click();
     check(`${ui}: avatar never blocks editing`, await field.evaluate((e) => document.activeElement === e));
     // exclusion: print, Save-HTML
-    const saved = await download(pa, () => ui === 'ar' ? pa.locator('button[data-a="saveHtml"]').click() : pa.locator('button[data-a="saveHtml"]').click());
+    const saved = await download(pa, () => act(pa, 'saveHtml'));
     const savedTxt = fs.readFileSync(saved, 'utf8');
     check(`${ui}: avatar absent from Save-HTML`, !savedTxt.includes(avatarB64) && !savedTxt.includes('id="bw-watermark'));
     await pa.emulateMedia({ media: 'print' });
@@ -394,6 +404,107 @@ try {
   check('reduced motion: avatar skips the intro and does not move', rm.intro === 'done' && rm.role === 'tester' && !rm.transform, JSON.stringify(rm));
   await ctxR.close();
 
+  // ── the redesigned shell ──────────────────────────────────────────────
+  // a PNG carrying a text chunk: the editor must re-encode it (metadata gone) before it enters the document
+  const pngWithMeta = (() => {
+    const zlib = require('node:zlib');
+    const crc = (buf) => { let c, crcT = []; for (let n = 0; n < 256; n++) { c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; crcT[n] = c >>> 0; } let x = 0xffffffff; for (const b of buf) x = crcT[(x ^ b) & 0xff] ^ (x >>> 8); return (x ^ 0xffffffff) >>> 0; };
+    const chunk = (type, data) => { const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const td = Buffer.concat([Buffer.from(type), data]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([len, td, c]); };
+    const w = 80, h = 40;
+    const raw = Buffer.concat(Array.from({ length: h }, () => Buffer.concat([Buffer.from([0]), Buffer.alloc(w * 3, 0)]).fill(200, 1, 1 + w * 3)));
+    const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 2;
+    return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('tEXt', Buffer.from('Author\0secret-camera-owner')), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
+  })();
+  const pngFile = path.join(OUT, 'logo-with-meta.png');
+  fs.writeFileSync(pngFile, pngWithMeta);
+  for (const uiL of ['ar', 'en']) {
+    const ctxU = await browser.newContext({ acceptDownloads: true, viewport: { width: 1366, height: 1000 } });
+    await ctxU.addInitScript((l) => { try { localStorage.setItem('bw:ui', l); } catch {} }, uiL);
+    const pu = await ctxU.newPage();
+    const errU = [];
+    pu.on('pageerror', (e) => errU.push(e.message));
+    await pu.goto(editorUrl);
+    await pu.waitForFunction(() => window.BW);
+    const labels = await pu.evaluate(() => { const sh = document.getElementById('bw-ui-host').shadowRoot; return { ed: [...sh.querySelectorAll('[data-a="ed"]')].map((b) => b.textContent.trim()), ui: [...sh.querySelectorAll('[data-a="uiLang"]')].map((b) => b.textContent.trim()), brandWords: sh.querySelector('.brand').innerText.trim(), brandSvg: !!sh.querySelector('.brand svg'), dir: sh.querySelector('.shell').dir }; });
+    check(`${uiL} UI: language toggles read RTL / LTR, the brand is a logo not words`, JSON.stringify(labels.ed) === '["RTL","LTR"]' && JSON.stringify(labels.ui) === '["RTL","LTR"]' && labels.brandWords === '' && labels.brandSvg && labels.dir === (uiL === 'ar' ? 'rtl' : 'ltr'), JSON.stringify(labels));
+    // command palette: Ctrl+K, filter, Enter runs
+    await pu.keyboard.press('Control+K');
+    await pu.locator('.palette input').fill(uiL === 'ar' ? 'المخطط' : 'outline');
+    await pu.keyboard.press('Enter');
+    const drawer = await pu.evaluate(() => window.BW.S.drawer);
+    check(`${uiL} UI: command palette filters and runs (Ctrl+K)`, drawer === 'outline', String(drawer));
+    await pu.keyboard.press('Escape');
+    // add a logo (re-encoded), drag it on the cover, the position is remembered (autosave → reopen) and printed
+    const [chL] = await Promise.all([pu.waitForEvent('filechooser'), act(pu, 'logo')]);
+    await chL.setFiles(pngFile);
+    await pu.waitForFunction(() => (window.BW.M['event-permit'][window.BW.S.ed].doc.overlays || []).length > 0, null, { timeout: 5000 }).catch(() => {});
+    const ov = pu.locator('main.bw-doc .bw-ov').first();
+    await ov.waitFor();
+    const o0 = await pu.evaluate(() => window.BW.M['event-permit'][window.BW.S.ed].doc.overlays[0]);
+    check(`${uiL} UI: logo re-encoded, metadata stripped`, /^data:image\/png;base64,/.test(o0.src) && !Buffer.from(o0.src.split(',')[1], 'base64').includes('secret-camera-owner'), o0.src.slice(0, 40));
+    await ov.scrollIntoViewIfNeeded();
+    const bx = await ov.boundingBox();
+    await pu.mouse.move(bx.x + bx.width / 2, bx.y + bx.height / 2);
+    await pu.mouse.down();
+    await pu.mouse.move(bx.x + bx.width / 2 - 120, bx.y + bx.height / 2 + 150, { steps: 10 });
+    await pu.mouse.up();
+    const o1 = await pu.evaluate(() => window.BW.M['event-permit'][window.BW.S.ed].doc.overlays[0]);
+    const scale = await pu.evaluate(() => document.querySelector('main.bw-doc').getBoundingClientRect().width / 210);
+    check(`${uiL} UI: logo dragged on the cover (mm position updated)`, o1.mode === 'cover' && Math.abs(o1.x - (o0.x - 120 / scale)) < 4 && Math.abs(o1.y - (o0.y + 150 / scale)) < 4, JSON.stringify({ x0: o0.x, y0: o0.y, x1: o1.x, y1: o1.y }));
+    await pu.waitForTimeout(600);
+    const pu2 = await ctxU.newPage();
+    await pu2.goto(editorUrl);
+    await pu2.waitForFunction(() => window.BW);
+    await pu2.locator('.banner button').first().click({ timeout: 5000 }).catch(() => {});
+    const o2 = await pu2.evaluate(() => window.BW.M['event-permit'][window.BW.S.ed].doc.overlays?.[0]);
+    check(`${uiL} UI: logo position remembered after reopening`, !!o2 && o2.x === o1.x && o2.y === o1.y, JSON.stringify(o2 && { x: o2.x, y: o2.y }));
+    // an inline image through the Image button
+    await pu2.locator('main.bw-doc [data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]').click();
+    const [chI] = await Promise.all([pu2.waitForEvent('filechooser'), act(pu2, 'image')]);
+    await chI.setFiles(pngFile);
+    await pu2.waitForFunction(() => window.BW.M['event-permit'][window.BW.S.ed].doc.chapters[0].sections[0].blocks.some((b) => b.kind === 'shots'), null, { timeout: 5000 }).catch(() => {});
+    const kinds = await pu2.evaluate(() => window.BW.M['event-permit'][window.BW.S.ed].doc.chapters[0].sections[0].blocks.map((b) => b.kind));
+    check(`${uiL} UI: image inserted after the selected block`, kinds.includes('shots'), JSON.stringify(kinds));
+    // PDF + DOCX carry the logo at its position and the image
+    const editsU = await download(pu2, () => act(pu2, 'save'));
+    const ef = JSON.parse(fs.readFileSync(editsU, 'utf8'));
+    const edU = ef.locale;
+    const baseU = JSON.parse(fs.readFileSync(path.join(SAMPLE, `document.${edU}.json`), 'utf8'));
+    const docU = applyOps(baseU, ef.ops);
+    const pdfU = path.join(OUT, `overlay.${uiL}.pdf`);
+    await exportPdf(docU, { locale: edU, theme: loadTheme(), pdfPath: pdfU, browser });
+    const rects = JSON.parse(run('python', ['-c', 'import pymupdf,sys,json\nd=pymupdf.open(sys.argv[1]);mm=72/25.4;out=[]\nfor i,p in enumerate(d):\n  for im in p.get_images(full=True):\n    for r in p.get_image_rects(im[0]): out.append([i+1,round(r.x0/mm,1),round(r.y0/mm,1),round(r.width/mm,1)])\nprint(json.dumps(out))', pdfU]).out || '[]');
+    const onCover = rects.find((r) => r[0] === 1);
+    check(`${uiL} UI: logo printed on the cover at its exact position`, !!onCover && Math.abs(onCover[1] - o1.x) < 1 && Math.abs(onCover[2] - o1.y) < 1 && Math.abs(onCover[3] - o1.w) < 1, JSON.stringify({ onCover, want: [o1.x, o1.y, o1.w] }));
+    check(`${uiL} UI: inserted image printed in the PDF`, rects.some((r) => r[0] > 1), JSON.stringify(rects));
+    const docxU = exportDocx(docU, { locale: edU, theme: loadTheme(), docxPath: path.join(OUT, `overlay.${uiL}.docx`) }).docx;
+    const xmlU = run('python', ['-c', 'import zipfile,sys;z=zipfile.ZipFile(sys.argv[1]);print(sum(z.read(n).decode("utf-8","ignore").count("<wp:anchor") for n in z.namelist() if n.endswith(".xml")), z.read("word/document.xml").decode().count("<pic:pic"))', docxU]).out.trim().split(/\s+/);
+    check(`${uiL} UI: DOCX carries the logo as a positioned (anchored) picture and the image`, +xmlU[0] >= 1 && +xmlU[1] >= 1, xmlU.join(' '));
+    // calm mode stops motion; reduced motion is honoured separately below
+    await act(pu2, 'view');
+    await act(pu2, 'calm');
+    const calmState = await pu2.evaluate(() => ({ flag: document.documentElement.dataset.bwCalm, anim: getComputedStyle(document.getElementById('bw-ui-host').shadowRoot.querySelector('.island')).animationName, trans: getComputedStyle(document.getElementById('bw-ui-host').shadowRoot.querySelector('.b')).transitionDuration }));
+    check(`${uiL} UI: calm mode turns motion off`, calmState.flag === '1' && calmState.anim === 'none' && /^0s/.test(calmState.trans), JSON.stringify(calmState));
+    check(`${uiL} UI: no page errors in the shell flows`, errU.length === 0, errU.join(' | '));
+    await ctxU.close();
+  }
+  // reduced motion and the brand mark's reveal
+  const ctxM = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+  const pm = await ctxM.newPage();
+  await pm.goto(editorUrl);
+  const reveal = await pm.evaluate(() => new Promise((res) => { const s = document.getElementById('bw-ui-host')?.shadowRoot?.querySelector('.brand svg path'); const a = s ? getComputedStyle(s).strokeDashoffset : 'none'; setTimeout(() => res([a, s ? getComputedStyle(s).strokeDashoffset : 'none', s ? getComputedStyle(s).animationName : 'none']), 1400); }));
+  const { brandMarks } = await import('../engine/build-editor.mjs');
+  if (brandMarks().stub) skip('brand mark draws itself on load', 'brand/logo/mark-animated.svg not present (brand branch not merged here)');
+  else check('brand mark draws itself on load (animated SVG works inline)', reveal[2] !== 'none' && parseFloat(reveal[0]) > 0 && parseFloat(reveal[1]) === 0, JSON.stringify(reveal));
+  await ctxM.close();
+  const ctxR2 = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 1366, height: 900 } });
+  const pr2 = await ctxR2.newPage();
+  await pr2.goto(editorUrl);
+  await pr2.waitForFunction(() => window.BW);
+  const rm2 = await pr2.evaluate(() => { const sh = document.getElementById('bw-ui-host').shadowRoot; return { island: getComputedStyle(sh.querySelector('.island')).animationName, mark: getComputedStyle(sh.querySelector('.brand svg path')).strokeDashoffset }; });
+  check('reduced motion: the shell and the brand mark stay still', rm2.island === 'none' && parseFloat(rm2.mark) === 0, JSON.stringify(rm2));
+  await ctxR2.close();
+
   // page thumbnails through the local server (pagination exists only when Chrome prints)
   const { serve } = await import('../engine/serve.mjs');
   const served = path.join(OUT, 'served.editor.html');
@@ -404,7 +515,7 @@ try {
     const pt = await ctxT.newPage();
     await pt.goto('http://127.0.0.1:4399/');
     await pt.waitForFunction(() => window.BW);
-    await ui(pt, 'pages').click();
+    await act(pt, 'pages');
     await pt.locator('.drawer .thumbs img').nth(8).waitFor({ timeout: 60000 }).catch(() => {});
     const thumbs = await pt.locator('.drawer .thumbs img').count();
     const status = await pt.locator('.drawer .out').textContent();
@@ -415,6 +526,33 @@ try {
     const why = jumped ? '' : JSON.stringify(await pt.evaluate(() => ({ y: window.scrollY, first: document.getElementById('bw-ui-host').shadowRoot.querySelector('.thumbs button[data-page="7"]')?.dataset.first })));
     check('page thumbnail click jumps to that page', jumped, why);
     await ctxT.close();
+    // webhooks: off by default; a test-send reaches a local mock through the server; never fonts or the watermark
+    const received = [];
+    const mock = http.createServer((rq, rs) => { let b = ''; rq.on('data', (c) => { b += c; }); rq.on('end', () => { received.push(JSON.parse(b || '{}')); rs.writeHead(204); rs.end(); }); });
+    await new Promise((ok) => mock.listen(4398, '127.0.0.1', ok));
+    try {
+      const ctxW = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+      const pw = await ctxW.newPage();
+      await pw.goto('http://127.0.0.1:4399/');
+      await pw.waitForFunction(() => window.BW);
+      await act(pw, 'webhooks');
+      const offByDefault = await pw.locator('.drawer [data-hook="enabled"]').isChecked();
+      await pw.locator('.drawer [data-hook="url"]').fill('http://127.0.0.1:4398/hook');
+      await pw.locator('.drawer [data-hk="add"]').click();
+      await pw.locator('.drawer [data-hook="enabled"]').check();
+      await pw.locator('.drawer [data-hk="test"]').click();
+      await pw.waitForFunction(() => document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer .log li.approved'), null, { timeout: 10000 }).catch(() => {});
+      const t0 = received[0] || {};
+      check('webhooks: off by default, test-send delivered to a local mock through the server', !offByDefault && t0.event === 'test' && t0.schema === 'bw-webhook' && t0.service === 'event-permit' && !!t0.timestamp && !('document' in t0), JSON.stringify(t0).slice(0, 200));
+      const leak = JSON.stringify(received);
+      check('webhooks: payload never carries fonts or the watermark', !/font-face|woff|ttf|bw-watermark|nj-avatar/i.test(leak));
+      await act(pw, 'save').catch(() => {});
+      await pw.waitForTimeout(1200);
+      check('webhooks: Save sends a save event', received.some((x) => x.event === 'save'), received.map((x) => x.event).join(','));
+      await ctxW.close();
+    } finally {
+      mock.close();
+    }
   } finally {
     srv.close();
   }

@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { renderDocument } from './render.mjs';
+import { renderDocument, safeSvg } from './render.mjs';
 import { fontFaceCss } from './fonts.mjs';
 import { i18n, loadTheme, fontsFor, REPO } from './export.mjs';
 
@@ -46,6 +46,17 @@ function docFiles(inputs) {
 }
 const editionOf = (file, doc) =>
   /\.en\.json$/i.test(file) ? 'en' : /\.ar\.json$/i.test(file) ? 'ar' : /[\u0600-\u06FF]/.test(doc.control?.title || '') ? 'ar' : 'en';
+
+/**
+ * The tool's own logo (brand/logo/, from the brand branch; BW_BRAND_DIR or .local/config.json brandDir
+ * to preview it before the merge). UI only. Missing → a neutral stub so the island never shows words.
+ */
+const BRAND_STUB = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Business-Wrap"><g fill="none" stroke="#be9a41" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M35 8H22a7 7 0 0 0-7 7v34a7 7 0 0 0 7 7h20a7 7 0 0 0 7-7V22"/><path d="M24 32h16M24 43h8"/><path d="M35 8v10a4 4 0 0 0 4 4h10"/></g></svg>';
+export function brandMarks() {
+  const dir = config().brandDir || path.join(REPO, 'brand', 'logo');
+  const pick = (f) => { const p = path.join(dir, f); return fs.existsSync(p) ? safeSvg(read(p).replace(/<!--[\s\S]*?-->/g, '').trim()) : null; };
+  return { mark: pick('mark-animated.svg') || pick('mark.svg') || BRAND_STUB, stub: !pick('mark.svg') };
+}
 
 /** The app script: edits + render (exports stripped) + editor, one IIFE. */
 export function appScript() {
@@ -85,6 +96,8 @@ export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, w
   const doc0 = JSON.parse(first.editions[ed0].raw);
   const data = {
     version: 1,
+    icons: JSON.parse(read(path.join(REPO, 'editor', 'icons.json'))).icons,
+    brand: brandMarks(),
     setId: set || [...services.keys()].join('+'),
     uiLang: ui,
     services: [...services.values()],

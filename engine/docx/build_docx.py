@@ -647,6 +647,79 @@ def theme_logos(workdir: Path, slots) -> list:
         out.append(p)
     return out
 
+# ── free-placed logos and images (document "overlays"), at the PDF's exact position ──
+# Coordinates are millimetres: cover = from the cover page's top-left; every = page x, y below the
+# body top margin (18 mm, as the print @page); anchor = page x (content starts at 16 mm) and y from
+# the anchor block's own position. Images are re-encoded PNG/JPEG data URIs from the editor.
+_OV_SEQ = [0]
+
+
+def _ov_image(o, workdir):
+    import base64
+    m = re.match(r'data:image/(png|jpeg);base64,(.+)$', str(o.get('src', '')))
+    if not m:
+        return None
+    _OV_SEQ[0] += 1
+    f = Path(workdir) / f'overlay-{_OV_SEQ[0]}.{"png" if m.group(1) == "png" else "jpg"}'
+    f.write_bytes(base64.b64decode(m.group(2)))
+    return f
+
+
+def anchored_picture(paragraph, img, x_mm, y_mm, w_mm, h_rel='page', v_rel='page'):
+    from docx.shared import Mm
+    run = paragraph.add_run()
+    inline = run.add_picture(str(img), width=Mm(max(4.0, float(w_mm))))._inline
+    emu = lambda mm: int(round(float(mm) * 36000))
+    _OV_SEQ[0] += 1
+    anchor = parse_xml(
+        f'<wp:anchor {nsdecls("wp")} distT="0" distB="0" distL="0" distR="0" simplePos="0" '
+        f'relativeHeight="{251659264 + _OV_SEQ[0]}" behindDoc="0" locked="0" layoutInCell="1" allowOverlap="1">'
+        f'<wp:simplePos x="0" y="0"/>'
+        f'<wp:positionH relativeFrom="{h_rel}"><wp:posOffset>{emu(x_mm)}</wp:posOffset></wp:positionH>'
+        f'<wp:positionV relativeFrom="{v_rel}"><wp:posOffset>{emu(y_mm)}</wp:posOffset></wp:positionV>'
+        f'</wp:anchor>')
+    anchor.append(inline.find(qn('wp:extent')))
+    anchor.append(parse_xml(f'<wp:effectExtent {nsdecls("wp")} l="0" t="0" r="0" b="0"/>'))
+    anchor.append(parse_xml(f'<wp:wrapNone {nsdecls("wp")}/>'))
+    anchor.append(inline.find(qn('wp:docPr')))
+    cnv = inline.find(qn('wp:cNvGraphicFramePr'))
+    if cnv is not None:
+        anchor.append(cnv)
+    anchor.append(inline.find(qn('a:graphic')))
+    inline.getparent().replace(inline, anchor)
+
+
+def _ov_host(paragraph_parent_add):
+    p = paragraph_parent_add()
+    pf = p.paragraph_format
+    pf.space_before = pf.space_after = Pt(0)
+    pf.line_spacing = Pt(1)
+    return p
+
+
+def place_overlays(document, data, workdir, cover_section, body_section):
+    for o in data.get('overlays') or []:
+        img = _ov_image(o, workdir)
+        if not img:
+            continue
+        x, y, w = float(o.get('x', 0)), float(o.get('y', 0)), float(o.get('w', 30))
+        if o.get('mode') == 'cover':
+            anchored_picture(_ov_host(cover_section.header.add_paragraph), img, x, y, w)
+        elif o.get('mode') == 'every':
+            anchored_picture(_ov_host(body_section.header.add_paragraph), img, x, y + 18, w)
+
+
+def anchor_overlays(document, data, workdir, ptr):
+    hits = [o for o in (data.get('overlays') or []) if o.get('mode') == 'anchor' and o.get('anchor') == ptr]
+    if not hits:
+        return
+    host = _ov_host(document.add_paragraph)
+    for o in hits:
+        img = _ov_image(o, workdir)
+        if img:
+            anchored_picture(host, img, float(o.get('x', 0)) + 16, float(o.get('y', 0)), float(o.get('w', 30)), 'page', 'paragraph')
+
+
 def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir: Path, toc: bool=False):
     global _THEME_ROLES
     data = json.loads(doc_json.read_text(encoding='utf-8'))
@@ -690,7 +763,8 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     theme_mod.add_header_footer(document, roles, font, header_logo, ctrl.get('documentId', ''), ctrl.get('issuedOn', ''), cover_section=cover_section, body_section=body_section)
     add_control_front_matter(document, data, font, counters, toc=toc)
     body_geometry = {'page_width': body_section.page_width, 'page_height': body_section.page_height, 'top_margin': body_section.top_margin, 'bottom_margin': body_section.bottom_margin, 'left_margin': body_section.left_margin}
-    for ch in data['chapters']:
+    place_overlays(document, data, workdir, cover_section, body_section)
+    for ci, ch in enumerate(data['chapters']):
         # as the print renderer: a chapter holding a figure is set on turned (landscape) sheets, heading included
         wide = any((b.get('kind') == 'figure' for sec in ch['sections'] for b in sec.get('blocks', [])))
         if wide:
@@ -700,7 +774,7 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
         theme_mod.add_chapter_chip(h1, ch['number'], F['display'], roles)
         add_script_runs(h1, ch['title'], F['display'], bold=True)
         story_seq = [0]
-        for sec in ch['sections']:
+        for si, sec in enumerate(ch['sections']):
             # as the print renderer: a one-section chapter prints no section heading; otherwise «n.m title»
             if len(ch['sections']) > 1:
                 h2 = document.add_heading(level=2)
@@ -709,7 +783,8 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                 num.bold = True
                 num.font.color.rgb = theme_mod.rgb(roles['gold'])
                 add_script_runs(h2, sec['title'], F['display'], bold=True)
-            for block in sec.get('blocks', []):
+            for bi, block in enumerate(sec.get('blocks', [])):
+                anchor_overlays(document, data, workdir, f'/chapters/{ci}/sections/{si}/blocks/{bi}')
                 kind = block.get('kind')
                 if kind == 'prose':
                     for para_text in block.get('paragraphs', []):
