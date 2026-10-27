@@ -1,0 +1,119 @@
+// Builds the local interactive editor: ONE self-contained HTML file holding the
+// print markup (engine/render.mjs), the documents, the theme, the i18n strings
+// and the editor app. Opens from disk (file://) or through engine/serve.mjs.
+//
+//   node engine/build-editor.mjs <doc.json | dir>... [--out file] [--set name]
+//        [--theme theme.json] [--embed-fonts] [--watermark-dir dir] [--ui ar|en]
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import { renderDocument } from './render.mjs';
+import { fontFaceCss } from './fonts.mjs';
+import { i18n, loadTheme, fontsFor, REPO } from './export.mjs';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const read = (p) => fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
+const sha256hex = (s) => crypto.createHash('sha256').update(s).digest('hex');
+const jsonInScript = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
+
+import { config } from './config.mjs';
+
+/** Tool watermark folder: BW_WATERMARK_DIR or .local/config.json watermarkDir. */
+export const DEFAULT_WATERMARK_DIR = config().watermarkDir;
+
+/** Tool watermark images (UI only). Empty folder → [] and nothing is shown. */
+export function watermarkImages(dir) {
+  if (!dir || !fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir)
+    .filter((f) => /\.(svg|png)$/i.test(f))
+    .map((f) => `data:image/${/\.svg$/i.test(f) ? 'svg+xml' : 'png'};base64,${fs.readFileSync(path.join(dir, f)).toString('base64')}`);
+}
+
+function docFiles(inputs) {
+  return inputs.flatMap((p) =>
+    fs.statSync(p).isDirectory()
+      ? fs.readdirSync(p).filter((f) => /\.json$/.test(f) && !/edits|theme|pack/.test(f)).map((f) => path.join(p, f))
+      : [p]
+  );
+}
+const editionOf = (file, doc) =>
+  /\.en\.json$/i.test(file) ? 'en' : /\.ar\.json$/i.test(file) ? 'ar' : /[\u0600-\u06FF]/.test(doc.control?.title || '') ? 'ar' : 'en';
+
+/** The app script: edits + render (exports stripped) + editor, one IIFE. */
+export function appScript() {
+  const strip = (s) => s.replace(/^export /gm, '').replace(/^import .*$/gm, '');
+  return `(() => {\n'use strict';\n${strip(read(path.join(HERE, 'edits.mjs')))}\n${strip(read(path.join(HERE, 'render.mjs')))}\n${read(path.join(REPO, 'editor', 'editor.js'))}\n})();`;
+}
+
+export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, watermarkDir = DEFAULT_WATERMARK_DIR, ui = 'ar', ops = {} }) {
+  const theme = loadTheme(themeFile);
+  const I = i18n();
+  const services = new Map();
+  for (const f of docFiles(inputs)) {
+    const raw = read(f);
+    const doc = JSON.parse(raw);
+    if (!doc.chapters || !doc.control) continue;
+    const id = doc.service || path.basename(f).split('.')[0];
+    const ed = editionOf(f, doc);
+    if (!services.has(id)) services.set(id, { id, editions: {} });
+    services.get(id).editions[ed] = { name: doc.control.title.split(/\s*[:—]\s+/).slice(1).join(': ') || doc.control.title, raw, hash: `sha256:${sha256hex(raw)}`, ops: ops[`${id}.${ed}`] || [] };
+  }
+  if (!services.size) throw new Error('no document JSON found');
+  const { cuts, used } = fontsFor(theme);
+  const fontCss = fontFaceCss(cuts, { embed: embedFonts });
+  const app = appScript();
+  const csp = [
+    "default-src 'none'",
+    `script-src 'sha256-${crypto.createHash('sha256').update(app).digest('base64')}'`,
+    "style-src 'unsafe-inline'",
+    "font-src 'self' file: data:",
+    'img-src data: blob: file:',
+    "connect-src 'self' file:",
+    "base-uri 'none'",
+    "form-action 'none'",
+  ].join('; ');
+  const first = [...services.values()][0];
+  const ed0 = first.editions.ar ? 'ar' : 'en';
+  const doc0 = JSON.parse(first.editions[ed0].raw);
+  const data = {
+    version: 1,
+    setId: set || [...services.keys()].join('+'),
+    uiLang: ui,
+    services: [...services.values()],
+    theme,
+    i18n: I,
+    fontCss,
+    fontFamilies: [...new Set(cuts.map((c) => c.family))],
+    uiCss: read(path.join(REPO, 'editor', 'ui.css')),
+    csp,
+  };
+  const wm = watermarkImages(watermarkDir);
+  const head = `<meta http-equiv="Content-Security-Policy" content="${csp}">
+<style id="bw-editor-css">${read(path.join(REPO, 'editor', 'editor.css'))}</style>
+`;
+  const body = `<script type="application/json" id="bw-data">${jsonInScript(data)}</script>
+${wm.length ? `<script type="application/json" id="bw-watermark-data">${jsonInScript(wm)}</script>\n` : ''}<script id="bw-app">${app}</script>`;
+  const html = renderDocument(doc0, { locale: ed0, labels: I.doc[ed0], theme, fontCss, logos: theme.logos, extraHead: head, extraBody: body });
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, html, 'utf8');
+  return { out, services: [...services.keys()], watermark: wm.length, fonts: used.length, bytes: Buffer.byteLength(html) };
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const argv = process.argv.slice(2);
+  const opt = {};
+  const inputs = [];
+  for (let i = 0; i < argv.length; i += 1) {
+    const a = argv[i];
+    if (a === '--embed-fonts') opt.embedFonts = true;
+    else if (a.startsWith('--')) { opt[a.slice(2).replace(/-(\w)/g, (_, c) => c.toUpperCase())] = argv[i + 1]; i += 1; }
+    else inputs.push(a);
+  }
+  if (!inputs.length) {
+    console.error('usage: node engine/build-editor.mjs <doc.json|dir>... [--out file] [--theme t.json] [--embed-fonts] [--ui ar|en]');
+    process.exit(2);
+  }
+  const r = buildEditor({ inputs, out: path.resolve(opt.out || path.join(REPO, 'out', 'editor.html')), set: opt.set, themeFile: opt.theme, embedFonts: opt.embedFonts, watermarkDir: opt.watermarkDir ?? DEFAULT_WATERMARK_DIR, ui: opt.ui });
+  console.log(`editor  ${r.out}  services=${r.services.join(',')}  fonts=${r.fonts}  watermark=${r.watermark}  ${(r.bytes / 1024).toFixed(0)} KB`);
+}
