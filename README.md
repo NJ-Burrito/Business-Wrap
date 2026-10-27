@@ -1,4 +1,6 @@
-# Business-Wrap (EN) — pair: README.ar.md
+<h1 align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="brand/logo/lockup-en-dark.svg"><img src="brand/logo/lockup-en.svg" alt="Business Wrap" height="64"></picture></h1>
+
+<p align="center">EN · pair: <a href="README.ar.md">README.ar.md</a></p>
 
 [![gates](https://github.com/NJ-Burrito/Business-Wrap/actions/workflows/gates.yml/badge.svg)](https://github.com/NJ-Burrito/Business-Wrap/actions/workflows/gates.yml)
 [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-d97757.svg)](.claude-plugin/plugin.json)

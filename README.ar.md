@@ -1,6 +1,8 @@
 <div dir="rtl">
 
-# Business-Wrap (عربي) — الملف المقابل: README.md
+<h1 align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="brand/logo/lockup-ar-dark.svg"><img src="brand/logo/lockup-ar.svg" alt="بزنس راب" height="64"></picture></h1>
+
+<p align="center">عربي · الملف المقابل: <a href="README.md">README.md</a></p>
 
 **وثائق متطلبات محكومة وثنائية اللغة: أدلة تدخل، ونسخة HTML قابلة للتعديل مطابقة لـ PDF وDOCX في الوسط، وتخرج PDF وDOCX والتعديلات والسمة. وخلف كل قاعدة فحص.**
 
