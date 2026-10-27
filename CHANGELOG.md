@@ -8,6 +8,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.8.2] - 2026-10-27
+
+Urgent safety fix: the 0.8.1 live crawl filed two real staging requests. / إصلاح أمان عاجل: مرور 0.8.1 قدّم طلبين حقيقيين.
+
+### Fixed / أصلح
+- **Never submit by default.** `submit` defaults to false: the crawl stops before any final action (Send / Submit / Confirm / Pay / Finish, «إرسال» «تقديم» «حفظ وإرسال» «تأكيد» «دفع», or a plain `type=submit` with no step word) and logs «stopped before submit»; on that step the validation messages come from touching the fields, never from pressing. Filing needs `submit: true` **and** `--yes-file-real-request` or a typed YES; the editor and the MCP tool never file. Statuses come from the model or the config's `statuses`. / لا تقديم افتراضياً.
+- The same form recorded twice after filling is one step, keeping the richer reading (options, required), live and when a saved harvest is mapped again. / الخطوة المكررة.
+- The attachment field disappeared in 0.8.1 (it sat outside the main form): the scope is now the container of every form on the page, and file inputs in the main area are always read; the label still comes from the field's own container. / عودة حقل المرفقات.
+- Card: fees, recipients and channels (a heading or title followed by its value or list). / البطاقة: الرسوم والمتلقون والقنوات.
+- Required: starred fields stay required; the site's validation message only adds. / الإلزامي: النجمة تبقى، والرسالة تضيف فقط.
+- Docs: «Safety: the crawler never files a request unless you ask» in SKILL.md, bible 08 and the README (AR + EN). / توثيق الأمان.
+
+### Tests / الاختبارات
+- The fixture counts filed requests: 0 in the default run, 0 with `submit: true` alone, 1 only with the flag; the attachment in a sibling form; fees / recipients / channels; no duplicate step. / اختبارات الأمان.
+
 ## [0.8.1] - 2026-10-27
 
 From the live re-crawl with 0.8.0 (9 of 11 checks, 1 workaround). / من المرور الحي بالإصدار 0.8.0.

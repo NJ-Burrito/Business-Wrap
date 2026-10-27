@@ -22,10 +22,24 @@ export function cleanStep(s) {
   return { ...s, fields: fields.map((f) => (req.has(f.label) ? { ...f, required: true } : f)) };
 }
 
+/** Consecutive readings of the same form (same fields) are one step: the richer field wins (more options, required). */
+export function dedupeSteps(steps) {
+  const sig = (x) => x.fields.map((f) => `${f.key}:${f.type}`).join('|');
+  const out = [];
+  for (const st of steps) {
+    const prev = out.at(-1);
+    if (prev && sig(prev) === sig(st)) {
+      prev.fields = prev.fields.map((f, i) => { const g = st.fields[i]; return { ...g, ...f, options: (f.options?.length || 0) >= (g.options?.length || 0) ? f.options : g.options, required: f.required || g.required }; });
+      prev.validations = [...new Set([...(prev.validations || []), ...(st.validations || [])])];
+    } else out.push({ ...st });
+  }
+  return out;
+}
+
 export function harvestToDocument(raw, { locale = 'en', L, today = new Date().toISOString().slice(0, 10) }) {
   const langs = Object.keys(raw.languages || {});
   const H0 = raw.languages[locale] || raw.languages[langs[0]] || { steps: [], statuses: [] };
-  const H = { ...H0, steps: (H0.steps || []).map(cleanStep) };
+  const H = { ...H0, steps: dedupeSteps((H0.steps || []).map(cleanStep)) };
   const name = H.card?.title || raw.name || L.untitled;
   const svc = String(raw.name || H.card?.title || 'service').toLowerCase().normalize('NFKD').replace(/[^\w؀-ۿ]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'service';
   const yn = (b) => (b ? L.yes : L.no);

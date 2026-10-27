@@ -67,7 +67,8 @@ export function serve(editorFile, port = 4317, { out } = {}) {
         for await (const c of req) chunks.push(c);
         const cfg = JSON.parse(Buffer.concat(chunks).toString('utf8'));
         if (!Array.isArray(cfg.languages) && !cfg.startUrl) return send(400, { error: 'no start URL' });
-        const { raw } = await crawl({ ...cfg, outDir: path.join(OUT, '..', 'harvest', 'raw', slug(cfg.name)) });
+        // the editor never files a request: a dry run, whatever the config says
+        const { raw } = await crawl({ ...cfg, submit: false, outDir: path.join(OUT, '..', 'harvest', 'raw', slug(cfg.name)) });
         const H = i18n().harvest;
         return send(200, { documents: { ar: harvestToDocument(raw, { locale: 'ar', L: H.ar }), en: harvestToDocument(raw, { locale: 'en', L: H.en }) } });
       }

@@ -31,7 +31,7 @@ Then say: **"build the requirements document for …"** or **"open it in the edi
 
 **MCP server only** (stdio, local only; Node 20+, Chrome or Edge for the PDF, `uv` for the DOCX):
 ```
-claude mcp add business-wrap -- npx -y -p business-wrap@0.8.1 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p business-wrap@0.8.2 business-wrap-mcp
 ```
 From a clone instead of npm: `npm ci`, then `claude mcp add business-wrap -- node <clone>/mcp/cli.mjs`.
 Tools: `build_editor`, `validate_edits`, `apply_edits`, `export_document`, `export_design_pack`, `check_fonts` — see `mcp/README.md`.
@@ -75,6 +75,8 @@ Opened from disk (file://), "PDF + DOCX" downloads the edited document JSON and 
 Every printed text (labels, table headers, title, subtitle, cover code, field names and values), every design property (Design panel, live), one element at a time (**Style this**), template parts (show, hide, order) and advanced CSS (sanitised). All of it is undoable, travels in the edits JSON and reaches the PDF and DOCX. See `bible/04-edits-contract.md`.
 
 ### Start a document (harvest)
+> **Safety: the crawler never files a request unless you ask.** A crawl is a dry run: it reads every step and stops before the final action (Send, Submit, Confirm, Pay, Finish; «إرسال»، «تقديم»، «حفظ وإرسال»، «تأكيد»، «دفع»), logging «stopped before submit». Filing a real request needs `submit: true` in the config **and** `--yes-file-real-request` (or typing YES when asked). The editor and the MCP tool never file. Statuses then come from the model or the config's `statuses` list.
+
 From a process model (`npm run harvest:model -- <bpmn|drawio|yaml>`) or by walking the live service (`npm run harvest:crawl -- <crawl.json>`); both give the AR and EN document JSON and an editor. See `bible/08-harvest.md`.
 
 ### The editor at a glance

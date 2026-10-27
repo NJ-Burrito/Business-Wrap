@@ -103,11 +103,11 @@ export async function harvestModel(file, { out = path.join(userCwd(), 'bw-harves
 }
 
 /** `raw`: a saved harvest.json to map again without a browser (offline re-run). */
-export async function harvestCrawl(config, { out = path.join(userCwd(), 'bw-harvest'), editor = true, log, browser, raw: rawFile, into } = {}) {
+export async function harvestCrawl(config, { out = path.join(userCwd(), 'bw-harvest'), editor = true, log, browser, raw: rawFile, into, yesFileRealRequest = false, ask } = {}) {
   const cfg = typeof config === 'string' ? JSON.parse(fs.readFileSync(config, 'utf8')) : config;
   const { raw, outDir } = rawFile
     ? { raw: readRaw(rawFile), outDir: path.dirname(path.resolve(rawFile)) }
-    : await crawl({ ...cfg, outDir: cfg.outDir || path.join(out, 'raw', String(cfg.name || 'service').replace(/[^\w-]+/g, '-')) }, { log, browser });
+    : await crawl({ ...cfg, outDir: cfg.outDir || path.join(out, 'raw', String(cfg.name || 'service').replace(/[^\w-]+/g, '-')) }, { log, browser, yesFileRealRequest, ask });
   return { ...writeDocuments((locale, L) => harvestToDocument(raw, { locale, L }), out, { editor, into, sources: { raw } }), raw, rawDir: outDir };
 }
 
@@ -123,7 +123,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const flag = (k) => { const i = rest.indexOf(`--${k}`); return i < 0 ? undefined : rest[i + 1]; };
   const opts = { out: flag('out') ? path.resolve(userCwd(), flag('out')) : undefined, editor: !rest.includes('--no-editor'), into: flag('into') && path.resolve(flag('into')), roles: flag('roles') && path.resolve(flag('roles')), name: flag('name') };
   if (!input || !['model', 'crawl', 'merge'].includes(cmd) || (cmd === 'merge' && (!rest[0] || rest[0].startsWith('--')))) {
-    console.error('usage: node engine/harvest/cli.mjs model <file> [--out dir] [--name n] [--roles roles.json] [--into dir]\n       node engine/harvest/cli.mjs crawl <config.json> [--out dir] [--headless] [--raw harvest.json] [--into dir]\n       node engine/harvest/cli.mjs merge <harvest.json> <process.json|model file> [--out dir] [--name n] [--roles roles.json]');
+    console.error('usage: node engine/harvest/cli.mjs model <file> [--out dir] [--name n] [--roles roles.json] [--into dir]\n       node engine/harvest/cli.mjs crawl <config.json> [--out dir] [--headless] [--raw harvest.json] [--into dir] [--yes-file-real-request]\n       node engine/harvest/cli.mjs merge <harvest.json> <process.json|model file> [--out dir] [--name n] [--roles roles.json]');
     process.exit(2);
   }
   try {
@@ -131,7 +131,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       ? await harvestModel(path.resolve(input), opts)
       : cmd === 'merge'
         ? await harvestMerge(path.resolve(input), path.resolve(rest[0]), opts)
-        : await harvestCrawl(rest.includes('--headless') ? { ...JSON.parse(fs.readFileSync(input, 'utf8')), headed: false } : path.resolve(input), { ...opts, raw: flag('raw') && path.resolve(flag('raw')) });
+        : await harvestCrawl(rest.includes('--headless') ? { ...JSON.parse(fs.readFileSync(input, 'utf8')), headed: false } : path.resolve(input), { ...opts, raw: flag('raw') && path.resolve(flag('raw')), yesFileRealRequest: rest.includes('--yes-file-real-request') });
     console.log(`documents  ${r.documents.join('  ')}`);
     if (r.editor) console.log(`editor     ${r.editor}`);
     for (const [ed, cs] of Object.entries(r.conflicts || {})) for (const c of cs) console.log(c.source ? `CONFLICT   ${ed} ${c.path}: kept «${c.kept}»; the ${c.source} says «${c.other}»` : `CONFLICT   ${ed} ${c.path}: kept your edit; the source now says: ${c.harvested}`);

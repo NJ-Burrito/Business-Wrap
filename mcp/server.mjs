@@ -174,14 +174,15 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
 
   server.registerTool('harvest_crawl', {
     title: 'Harvest by walking the live service',
-    description: 'Walk an e-service in a real browser from a crawl config (start URL per language, optional login steps with $env: / $secret: values, OTP pause rule) and turn what it shows into the document JSON + the editor. Opens a visible Chrome unless the config says headed: false; an OTP or captcha pause waits for the human.',
+    description: 'Walk an e-service in a real browser from a crawl config (start URL per language, optional login steps with $env: / $secret: values, OTP pause rule) and turn what it shows into the document JSON + the editor. Opens a visible Chrome unless the config says headed: false; an OTP or captcha pause waits for the human. It never files a request: it stops before Send / Submit / Pay (a dry run).',
     inputSchema: {
       config: z.string().describe('Path of the crawl config JSON (see bible/contracts/harvest.schema.json#/$defs/crawlConfig)'),
       out_dir: z.string().describe('Folder for the raw harvest, screenshots, documents and the editor'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
   }, guard(async ({ config, out_dir }) => {
-    const r = await harvestCrawl(path.resolve(config), { out: path.resolve(out_dir), log: () => {} });
+    // never files a request from an agent: a dry run that stops before Send / Submit / Pay
+    const r = await harvestCrawl(path.resolve(config), { out: path.resolve(out_dir), log: () => {}, ask: async () => false });
     return { documents: r.documents, editor: r.editor, raw: path.join(r.rawDir, 'harvest.json'), languages: Object.keys(r.raw.languages), steps: Object.values(r.raw.languages)[0]?.steps.length ?? 0 };
   }));
 

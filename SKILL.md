@@ -32,6 +32,9 @@ Fonts: the shipped file names the Thmanyah fonts installed in the OS (`local()`)
 </div>
 
 ## Start a document: harvest / ابدأ وثيقة: الاستخراج (`bible/08-harvest.md`)
+
+> **Safety: the crawler never files a request unless you ask.** A crawl is a dry run: it reads every step and stops before the final action (Send, Submit, Confirm, Pay, Finish; «إرسال»، «تقديم»، «حفظ وإرسال»، «تأكيد»، «دفع»), logging «stopped before submit». Filing a real request needs `submit: true` in the config **and** `--yes-file-real-request` (or typing YES when asked). The editor and the MCP tool never file. Statuses then come from the model or the config's `statuses` list.
+
 Two ways in, one result: `document.ar.json` + `document.en.json` and an editor.
 
 | You have | Run | Notes |
@@ -48,6 +51,8 @@ Rules that cost a rebuild if skipped:
 - After editing the flow in the **Process** panel, press **Rebuild the sections**; control data, revisions and placed logos stay.
 
 <div dir="rtl">
+
+> **الأمان: المرور لا يقدّم طلباً أبداً إلا إذا طلبت ذلك.** المرور تشغيل تجريبي: يقرأ كل خطوة ويتوقف قبل الإجراء النهائي («إرسال» و«تقديم» و«حفظ وإرسال» و«تأكيد» و«دفع»، وSend وSubmit وConfirm وPay وFinish)، ويسجل «stopped before submit». ولتقديم طلب حقيقي يلزم `submit: true` في الإعدادات **و**`--yes-file-real-request` (أو كتابة YES عند السؤال). والمحرر وأداة MCP لا يقدّمان أبداً. وتؤخذ الحالات حينها من النموذج أو من قائمة `statuses` في الإعدادات.
 
 طريقان والنتيجة واحدة: `document.ar.json` و`document.en.json` ومحرر.
 

@@ -48,6 +48,32 @@ export function wrongLanguage(code, L) {
   return null;
 }
 
+// ── safety: the crawler never files a request unless asked ───────────────────────────────────────
+// A final action is a control that sends, submits, confirms, pays or finishes; "Next / Continue" is not.
+const FINAL = /(^|\s)(إرسال|ارسال|تقديم|قدّم|حفظ\s*و\s*إرسال|حفظ\s*وإرسال|تأكيد|تاكيد|دفع|ادفع|إنهاء|انهاء|اعتماد|send|submit|confirm|pay|finish|complete|place\s+order|file\s+(the\s+)?request|apply\s+now)(\s|$|[.!؟?])/i;
+const STEP = /(^|\s)(التالي|التالى|متابعة|استمرار|السابق|next|continue|proceed|back|previous)(\s|$)/i;
+export const isFinalLabel = (text) => FINAL.test(String(text || '').trim()) && !STEP.test(String(text || '').trim());
+/** Is this control a final action? Its own text / aria-label / value, or a plain type=submit with no step word. */
+async function isFinalAction(page, selector) {
+  const el = page.locator(selector).first();
+  const info = await el.evaluate((e) => ({ text: (e.innerText || e.value || e.getAttribute('aria-label') || e.title || '').replace(/\s+/g, ' ').trim(), type: (e.getAttribute('type') || '').toLowerCase(), tag: e.tagName })).catch(() => null);
+  if (!info) return false;
+  if (isFinalLabel(info.text)) return true;
+  if (STEP.test(info.text)) return false;
+  return info.type === 'submit' || (info.tag === 'BUTTON' && !info.type); // a form's default button with no step word: treat as final
+}
+/** Filing a real request needs submit: true in the config AND the explicit go-ahead (flag or typed YES). */
+export async function mayFile(cfg, { yesFileRealRequest = false, ask } = {}) {
+  if (cfg.submit !== true) return false;
+  if (yesFileRealRequest) return true;
+  if (ask) return !!(await ask());
+  if (!process.stdin.isTTY) return false;
+  const rl = (await import('node:readline')).createInterface({ input: process.stdin, output: process.stderr });
+  const answer = await new Promise((ok) => rl.question('This crawl will FILE A REAL REQUEST on the live service. Type YES to go ahead: ', ok));
+  rl.close();
+  return answer.trim() === 'YES';
+}
+
 async function robotsAllows(page, url, ua = '*') {
   const u = new URL(url);
   let txt = '';
@@ -128,7 +154,13 @@ async function readCard(page, scope, map = {}) {
     const tabs = all('.p-tabview-nav li, [role="tab"]').map(t);
     all('.p-tabview-panel, [role="tabpanel"]').forEach((c, i) => section(tabs[i] || '', c));
     if (map.lists) all(map.lists).forEach((c) => section(t(c.previousElementSibling), c));
-    all('h2, h3, h4, h5').forEach((h) => { const n = h.nextElementSibling; if (n && n.matches('ul, ol')) section(t(h), n); });
+    // a heading (or title) followed by its value or its list: fees, duration, recipients, channels…
+    all('h2, h3, h4, h5, h6, [class*="title"]:not(h1):not(.p-card-title):not(.p-panel-title)').forEach((h) => {
+      const n = h.nextElementSibling;
+      if (!n || n.querySelector('input, select, textarea, button')) return;
+      if (n.matches('ul, ol')) { section(t(h), n); add(t(h), [...n.querySelectorAll('li')].map(t).filter(Boolean).join('، ')); }
+      else if (t(n) && t(n).length <= 160 && !n.querySelector('h1, h2, h3, h4, h5, h6')) add(t(h), t(n));
+    });
     const paras = (map.description ? all(map.description) : all('p')).map(t).filter(Boolean);
     return {
       title: t((map.title && document.querySelector(map.title)) || root.querySelector('h1') || document.querySelector('h1, .p-card-title, h2')) || document.title,
@@ -158,10 +190,14 @@ async function readFields(page, scope = {}) {
     const NOISE = ['header', 'nav', 'footer', '[role="banner"]', '[role="navigation"]', '[role="contentinfo"]', '.p-menubar', '.layout-topbar', '.topbar', ...(exclude || [])].join(', ');
     const CONTROLS = 'input, select, textarea, ' + PRIME;
     const forms = [...document.querySelectorAll('form')].filter((f) => !f.closest(NOISE));
-    const ROOT = (formRoot && document.querySelector(formRoot)) || forms.sort((a, b) => b.querySelectorAll(CONTROLS).length - a.querySelectorAll(CONTROLS).length)[0] || document.querySelector('main, [role="main"]') || document.body;
-    const inScope = (e) => ROOT.contains(e) && !e.closest(NOISE);
+    // the scope: the configured root, else the container shared by every form on the page (an attachments
+    // form or section often sits beside the main one), else main. Header, nav, footer and `exclude` stay out.
+    const common = (els) => { if (!els.length) return null; let c = els[0]; while (c && !els.every((x) => c.contains(x))) c = c.parentElement; return c; };
+    const ROOT = (formRoot && document.querySelector(formRoot)) || (forms.length > 1 ? common(forms) : forms[0]) || document.querySelector('main, [role="main"]') || document.body;
+    const main = document.querySelector('main, [role="main"], app-root') || document.body;
+    const inScope = (e) => (ROOT.contains(e) || (e.type === 'file' && main.contains(e))) && !e.closest(NOISE);
     const CAPTCHA = /captcha|recaptcha|turnstile|hcaptcha/i;
-    const isCaptcha = (e) => CAPTCHA.test(`${e.name || ''} ${e.id || ''} ${e.className || ''}`) || !!e.closest('.g-recaptcha, .h-captcha, .cf-turnstile, [class*="captcha"]');
+    const isCaptcha = (e) => e.type !== 'file' && (CAPTCHA.test(`${e.name || ''} ${e.id || ''}`) || !!e.closest('.g-recaptcha, .h-captcha, .cf-turnstile'));
     const CAPTION = '.p-panel-header, .p-panel-title, .p-card-title, .p-card-header, .p-fieldset-legend, legend, h1, h2, h3, h4, h5, h6, .p-tabview-nav';
     const fcn = (e) => e.getAttribute('formcontrolname') || e.closest('[formcontrolname]')?.getAttribute('formcontrolname') || '';
     const labelEl = (e) => {
@@ -357,7 +393,9 @@ async function conditions(page, fields, scope) {
   return out;
 }
 
-export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), browser: shared } = {}) {
+export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), browser: shared, yesFileRealRequest = false, ask } = {}) {
+  const filing = await mayFile(cfg, { yesFileRealRequest, ask });
+  if (cfg.submit === true && !filing) log('submit: true without the go-ahead (--yes-file-real-request or a typed YES): running as a dry run');
   const outDir = path.resolve(cfg.outDir || path.join(REPO, 'out', 'harvest', String(cfg.name || 'service').replace(/[^\w-]+/g, '-')));
   fs.mkdirSync(outDir, { recursive: true });
   const { chromium } = await import(pathToFileURL(path.join(REPO, 'node_modules', 'playwright-core', 'index.mjs')).href);
@@ -436,11 +474,20 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
         const all = await primeOptions(page, await readFields(page, scope));
         const title = await page.evaluate(() => (document.querySelector('form h2, main h2, h2, .p-steps-current, .p-card-title, legend, h1')?.innerText || '').trim());
         await shot(`step${n + 1}`);
-        // empty attempt: the validation messages a user meets
+        // empty attempt: the validation messages a user meets. On a final action (Send / Submit / Pay…) the dry
+        // run never presses it: it touches each field instead (focus + blur), which shows the same messages.
         const next = cfg.next || 'button[type=submit]';
         let messages = [];
-        if (await page.locator(next).first().isVisible().catch(() => false)) {
-          await press(page, next);
+        const hasNext = await page.locator(next).first().isVisible().catch(() => false);
+        const finalStep = hasNext && (await isFinalAction(page, next));
+        if (hasNext) {
+          if (finalStep && !filing) {
+            for (const f of all.filter((x) => x.visible && x.type !== 'file')) {
+              const el = page.locator(f.prime ? `${f.selector} input, ${f.selector} [tabindex]` : f.selector).first();
+              await el.focus().catch(() => {});
+              await page.keyboard.press('Tab').catch(() => {});
+            }
+          } else await press(page, next);
           await page.waitForTimeout(200);
           messages = await readMessages(page);
           if (messages.length) await shot(`step${n + 1}-validation`);
@@ -458,7 +505,18 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
           const named = requiredByMessage(all.map((f) => f.label), messages);
           all.forEach((f, i) => { if (flagged[i] || named.has(f.label)) f.required = true; });
         }
-        L.steps.push({ title, url: page.url(), fields: all.map(({ selector, selectors, prime, ...f }) => ({ ...f, shownWhen: cond[f.key] })), validations: messages });
+        const step = { title, url: page.url(), fields: all.map(({ selector, selectors, prime, ...f }) => ({ ...f, shownWhen: cond[f.key] })), validations: messages };
+        // the same form read twice (it did not advance): one step, the richer reading of each field
+        const sig = (x) => x.fields.map((f) => `${f.key}:${f.type}`).join('|');
+        const prev = L.steps.at(-1);
+        if (prev && sig(prev) === sig(step)) {
+          prev.fields = prev.fields.map((f, i) => { const g = step.fields[i]; return { ...g, ...f, options: (f.options?.length || 0) >= (g.options?.length || 0) ? f.options : g.options, required: f.required || g.required, shownWhen: f.shownWhen || g.shownWhen }; });
+          prev.validations = [...new Set([...prev.validations, ...step.validations])];
+          log(`stopped: step ${n + 1} is the same form again`);
+          save();
+          break;
+        }
+        L.steps.push(step);
         save(); // a crash later keeps what was read
         const langNow = await page.evaluate(() => (document.documentElement.lang || '').slice(0, 2).toLowerCase());
         if (lang0 && langNow && langNow !== lang0) throw new Error(`the page switched language during the ${lang.code} run (${lang0} → ${langNow}); add the switcher to "exclude" or set "formRoot"`);
@@ -468,6 +526,8 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
         await wait();
         const before = page.url();
         if (!(await page.locator(next).first().isVisible().catch(() => false))) break;
+        if (finalStep && !filing) { log('stopped before submit (dry run: nothing was filed; set submit: true and pass --yes-file-real-request to file a real request)'); L.stoppedBeforeSubmit = true; break; }
+        if (finalStep) log('FILING A REAL REQUEST (submit: true and the go-ahead were given)');
         await press(page, next);
         await page.waitForLoadState('domcontentloaded').catch(() => {});
         await ready('form').catch(() => {});
@@ -481,10 +541,15 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
         const rows = [...scope.querySelectorAll(sel ? 'li, tr td:first-child' : '[data-status], .status, table.statuses td:first-child, ul.statuses li')].map(t).filter(Boolean);
         return [...new Set(rows)];
       }, cfg.statusesSelector);
-      L.after = { title: await page.evaluate(() => (document.querySelector('h1, h2')?.innerText || '').trim()), url: page.url() };
-      L.statuses = await statusesFrom();
+      // the statuses: from the page after sending (only when filing), else the config's list (or the model, in a merge)
+      const given = Array.isArray(cfg.statuses) ? cfg.statuses : cfg.statuses?.[lang.code] || [];
+      if (!L.stoppedBeforeSubmit) {
+        L.after = { title: await page.evaluate(() => (document.querySelector('h1, h2')?.innerText || '').trim()), url: page.url() };
+        L.statuses = await statusesFrom();
+      }
       if (cfg.statusesUrl && !L.statuses.length) { await page.goto(new URL(cfg.statusesUrl, base).href); await wait(); L.statuses = await statusesFrom(); }
-      await shot('after-submit');
+      if (!L.statuses.length) L.statuses = given;
+      await shot(L.stoppedBeforeSubmit ? 'stopped-before-submit' : 'after-submit');
       save();
       await ctx.close();
     }

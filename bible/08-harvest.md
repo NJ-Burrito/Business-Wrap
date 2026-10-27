@@ -20,6 +20,9 @@ npm run harvest:model -- path/to/model.bpmn20.xml [--out out/harvest] [--name "S
 ```
 
 ## B. Crawl and harvest a live service
+
+> **Safety: the crawler never files a request unless you ask.** A crawl is a dry run: it reads every step and stops before the final action (Send, Submit, Confirm, Pay, Finish; «إرسال»، «تقديم»، «حفظ وإرسال»، «تأكيد»، «دفع»), logging «stopped before submit». Filing a real request needs `submit: true` in the config **and** `--yes-file-real-request` (or typing YES when asked). The editor and the MCP tool never file. Statuses then come from the model or the config's `statuses` list.
+
 A real Chrome (headed by default) walks the service the way a person does:
 1. robots.txt is read first; a disallowed start page stops the crawl (`respectRobots: false` overrides it, deliberately).
 2. The service card: title, paragraphs, label/value facts (`dl`, two-column tables).

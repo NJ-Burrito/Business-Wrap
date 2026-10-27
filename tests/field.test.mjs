@@ -30,7 +30,9 @@ const browser = await chromium.launch(launchOptions());
 try {
   // ── 1. an SPA portal: async render, terms gate, PrimeNG-style controls, no ids or names ──
   const site = buildSpa(path.join(OUT, 'spa'));
+  let filed = 0; // requests the fixture received: a dry run must file none
   const srv = http.createServer((q, r) => {
+    if (q.method === 'POST' && q.url.startsWith('/api/submit')) { filed += 1; r.writeHead(200); r.end('ok'); return; }
     const f = path.join(site, decodeURIComponent(q.url.split('?')[0]));
     if (!f.startsWith(site) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); r.end(); return; }
     r.writeHead(200, { 'content-type': f.endsWith('.html') ? 'text/html; charset=utf-8' : 'text/plain' });
@@ -45,14 +47,27 @@ try {
     openForm: '#start',
     preForm: [{ check: '.p-checkbox-box' }, { press: 'button.go' }],
     next: 'button[type=submit]', statusesSelector: 'ul.statuses',
+    statuses: { ar: ['مقدم', 'قيد المراجعة', 'مقبول', 'مرفوض'], en: ['Submitted', 'Under review', 'Approved', 'Rejected'] },
   };
   let cr;
-  try { cr = await harvestCrawl(cfg, { out: path.join(OUT, 'crawl'), browser, log: () => {} }); } finally { srv.close(); }
+  const logs = [];
+  let filedWithFlag = -1, filedNoFlag = -1, flagged;
+  try {
+    cr = await harvestCrawl(cfg, { out: path.join(OUT, 'crawl'), browser, log: (m) => logs.push(m) });
+    const dry = filed;
+    // submit: true alone is still a dry run (no go-ahead); with the flag, exactly one request is filed
+    await harvestCrawl({ ...cfg, submit: true, languages: [cfg.languages[1]] }, { out: path.join(OUT, 'crawl-noflag'), browser, log: () => {}, ask: async () => false });
+    filedNoFlag = filed - dry;
+    flagged = await harvestCrawl({ ...cfg, submit: true, languages: [cfg.languages[1]] }, { out: path.join(OUT, 'crawl-filed'), browser, log: () => {}, yesFileRealRequest: true });
+    filedWithFlag = filed - dry - filedNoFlag;
+    check('SAFETY: the default crawl files no request and says it stopped before submit', dry === 0 && logs.filter((m) => m.startsWith('stopped before submit')).length === 2 && cr.raw.languages.en.stoppedBeforeSubmit, `${dry} filed; ${logs.filter((m) => m.startsWith('stopped')).join(' / ')}`);
+    check('SAFETY: submit: true without the go-ahead files nothing; with --yes-file-real-request exactly one', filedNoFlag === 0 && filedWithFlag === 1 && flagged.raw.languages.en.statuses.length === 4 && !flagged.raw.languages.en.stoppedBeforeSubmit, `${filedNoFlag} / ${filedWithFlag}`);
+  } finally { srv.close(); }
   for (const l of ['ar', 'en']) {
     const L = cr.raw.languages[l];
     const f = L.steps[0]?.fields || [];
     const by = (k) => f.find((x) => x.key === k);
-    check(`spa ${l}: waited for the async card and form, passed the terms gate, read one form step and the statuses`, L.card.title && L.card.facts.length === 2 && L.steps.length === 1 && L.statuses.length === 4, `${L.card.facts.length} facts, ${L.steps.length} steps, ${L.statuses.length} statuses`);
+    check(`spa ${l}: waited for the async card and form, passed the terms gate, read one form step and the statuses`, L.card.title && L.card.facts.length >= 2 && L.steps.length === 1 && L.statuses.length === 4, `${L.card.facts.length} facts, ${L.steps.length} steps, ${L.statuses.length} statuses`);
     check(`spa ${l}: labels from the sibling label, never the section title`, f.length >= 7 && f.every((x) => x.label && x.label !== (l === 'ar' ? 'الطلب' : 'Request')) && by('organiser')?.label === (l === 'ar' ? 'اسم المنظم' : 'Organiser name'), f.map((x) => x.label).join(' | '));
     check(`spa ${l}: required from the asterisk / ng-invalid`, by('organiser')?.required && by('purpose')?.required && by('eventDate')?.required && by('kind')?.required && !by('notes')?.required && !by('guests')?.required, JSON.stringify(f.map((x) => [x.key, x.required])));
     check(`spa ${l}: dropdown, multiselect, calendar and radio options`, by('purpose')?.options?.length === 3 && by('guests')?.options?.length === 2 && by('eventDate')?.type === 'date' && by('kind')?.options?.length === 2, JSON.stringify([by('purpose')?.options, by('guests')?.options, by('kind')?.options]));
@@ -65,12 +80,21 @@ try {
     const f = L.steps[0]?.fields || [];
     const by = (k) => f.find((x) => x.key === k);
     check(`spa ${l}: the header language switcher is not a field, the run stayed in its language`, !f.some((x) => isLanguageSwitch(x.options)) && !wrongLanguage(l, L) && L.steps[0].title && by('organiser')?.label === (l === 'ar' ? 'اسم المنظم' : 'Organiser name'), f.map((x) => x.key).join(','));
-    check(`spa ${l}: a card made of divs, a panel and tabs`, L.card.facts.length === 2 && L.card.description.some((d) => d === (l === 'ar' ? 'احجز قاعة مجتمعية لفعالية.' : 'Book a community venue for an event.')) && L.card.lists?.some((x) => x.items.length === 3), JSON.stringify(L.card).slice(0, 200));
+    check(`spa ${l}: a card made of divs, a panel and tabs`, L.card.facts.length >= 2 && L.card.description.some((d) => d === (l === 'ar' ? 'احجز قاعة مجتمعية لفعالية.' : 'Book a community venue for an event.')) && L.card.lists?.some((x) => x.items.length === 3), JSON.stringify(L.card).slice(0, 200));
     check(`spa ${l}: required from a CSS ::after asterisk and from the site's validation message`, by('eventDate')?.required && by('ref')?.required && !by('notes')?.required, JSON.stringify([by('eventDate')?.required, by('ref')?.required]));
     check(`spa ${l}: the attachment label from its own box, not the panel caption; no captcha field`, by('plan')?.label === (l === 'ar' ? 'مخطط القاعة' : 'Floor plan') && !f.some((x) => /captcha/i.test(x.key)), `${by('plan')?.label} / ${f.map((x) => x.key).join(',')}`);
   }
   const swapped = { card: { title: 'Venue hire request' }, steps: [{ title: 'Applicant', validations: ['This field is required'], fields: [{ label: 'Organiser name', options: [] }, { label: 'Purpose', options: ['Meeting', 'Workshop'] }] }] };
   check('a run captured in the other language fails loudly (script check)', !!wrongLanguage('ar', swapped) && !wrongLanguage('en', swapped) && isLanguageSwitch(['English', 'العربية']) && !isLanguageSwitch(['Meeting', 'Workshop']), wrongLanguage('ar', swapped));
+  for (const l of ['ar', 'en']) {
+    const L = cr.raw.languages[l];
+    const f = L.steps[0]?.fields || [];
+    const facts = Object.fromEntries(L.card.facts);
+    const T = l === 'ar' ? { fees: 'الرسوم المالية', rec: 'متلقو الخدمة', ch: 'قنوات تقديم الخدمة' } : { fees: 'Fees', rec: 'Service recipients', ch: 'Channels' };
+    check(`spa ${l}: one form step (no duplicate), the attachment kept beside the form, the statuses from the config`, L.steps.length === 1 && f.some((x) => x.type === 'file' && x.label === (l === 'ar' ? 'مخطط القاعة' : 'Floor plan')) && L.statuses.length === 4, `${L.steps.length} steps, ${f.filter((x) => x.type === 'file').map((x) => x.label)}`);
+    check(`spa ${l}: card fees, recipients and channels`, !!facts[T.fees] && (facts[T.rec] || '').includes('،') && !!facts[T.ch], JSON.stringify(L.card.facts));
+    check(`spa ${l}: every starred field is required; the message only adds`, ['organiser', 'purpose', 'eventDate', 'kind', 'plan', 'ref'].every((k) => f.find((x) => x.key === k)?.required) && !f.find((x) => x.key === 'notes')?.required, JSON.stringify(f.map((x) => [x.key, x.required])));
+  }
   check('spa: harvest.json is written as the crawl goes (kept on a crash)', fs.existsSync(path.join(cr.rawDir, 'harvest.json')) && read(path.join(cr.rawDir, 'harvest.json')).languages.en.steps.length === 1);
 
   // ── 3. the model side: a monitoring-graph JSON, expression assignees, unnamed gateways ──

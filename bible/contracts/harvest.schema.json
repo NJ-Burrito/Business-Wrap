@@ -419,6 +419,39 @@
               "type": "string"
             }
           }
+        },
+        "submit": {
+          "type": "boolean",
+          "default": false,
+          "description": "SAFETY. Default false: a dry run that stops before any final action (Send, Submit, Confirm, Pay, Finish; إرسال، تقديم، حفظ وإرسال، تأكيد، دفع). true files a REAL request, and only with --yes-file-real-request or a typed YES; the editor and the MCP tool never file."
+        },
+        "statuses": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ar": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "en": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          ],
+          "description": "The request statuses when the crawl does not file (the usual case); a merge takes them from the model as well."
         }
       }
     },
@@ -616,6 +649,9 @@
                   "type": "string"
                 },
                 "description": "Viewport screenshots by step, file names in the harvest folder."
+              },
+              "stoppedBeforeSubmit": {
+                "type": "boolean"
               }
             }
           }

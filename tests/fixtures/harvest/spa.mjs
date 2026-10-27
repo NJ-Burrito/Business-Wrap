@@ -15,6 +15,7 @@ const T = {
     terms: 'I accept the terms of use', go: 'Continue', section: 'Request', start: 'Apply',
     name: 'Organiser name', purpose: 'Purpose', purposes: ['Meeting', 'Workshop', 'Celebration'], guests: 'Guest groups', groups: ['Adults', 'Children'],
     date: 'Event date', kind: 'Booking type', kinds: ['Once', 'Weekly'], weeks: 'Number of weeks', notes: 'Notes', plan: 'Floor plan',
+    fees: 'Fees', fee: '10 dinars', recipients: 'Service recipients', who: ['Citizens', 'Residents'], channels: 'Channels', via: ['Online', 'Service centre'],
     ref: 'Reference number', refMsg: 'Reference number: this field is required', caption: 'Supporting files', about: 'About the service', steps: 'Steps', stepsList: ['Fill in the form', 'Attach the floor plan', 'Send'], langs: ['English', 'العربية'], lang: 'Language',
     send: 'Send', req: 'This field is required', done: 'Request received', statuses: ['Submitted', 'Under review', 'Approved', 'Rejected'],
   },
@@ -23,6 +24,7 @@ const T = {
     terms: 'أوافق على شروط الاستخدام', go: 'متابعة', section: 'الطلب', start: 'تقديم',
     name: 'اسم المنظم', purpose: 'الغرض', purposes: ['اجتماع', 'ورشة عمل', 'احتفال'], guests: 'فئات الضيوف', groups: ['بالغون', 'أطفال'],
     date: 'تاريخ الفعالية', kind: 'نوع الحجز', kinds: ['مرة واحدة', 'أسبوعي'], weeks: 'عدد الأسابيع', notes: 'ملاحظات', plan: 'مخطط القاعة',
+    fees: 'الرسوم المالية', fee: '10 دنانير', recipients: 'متلقو الخدمة', who: ['المواطنون', 'المقيمون'], channels: 'قنوات تقديم الخدمة', via: ['إلكترونياً', 'مركز الخدمة'],
     ref: 'الرقم المرجعي', refMsg: 'الرقم المرجعي: هذا الحقل مطلوب', caption: 'الملفات الداعمة', about: 'عن الخدمة', steps: 'الخطوات', stepsList: ['تعبئة النموذج', 'إرفاق مخطط القاعة', 'الإرسال'], langs: ['English', 'العربية'], lang: 'اللغة',
     send: 'إرسال', req: 'هذا الحقل مطلوب', done: 'تم استلام الطلب', statuses: ['مقدم', 'قيد المراجعة', 'مقبول', 'مرفوض'],
   },
@@ -60,6 +62,7 @@ document.querySelector('.lang-switch .p-dropdown').onclick = (e) => {
 function card() {
   root.innerHTML = '<main><h1>' + X.title + '</h1><div class="info">' + X.facts.map(([k, v]) => '<div class="info-item"><span class="info-label">' + k + '</span><span class="info-value">' + v + '</span></div>').join('') + '</div>'
     + '<div class="p-panel"><div class="p-panel-header"><span class="p-panel-title">' + X.about + '</span></div><div class="p-panel-content"><div class="description">' + X.intro + '</div></div></div>'
+    + '<div class="service-meta"><h4>' + X.fees + '</h4><p>' + X.fee + '</p></div><div class="service-meta"><h4>' + X.recipients + '</h4><ul>' + X.who.map((w) => '<li>' + w + '</li>').join('') + '</ul></div><div class="service-meta"><h4>' + X.channels + '</h4><ul>' + X.via.map((w) => '<li>' + w + '</li>').join('') + '</ul></div>'
     + '<div class="p-tabview"><ul class="p-tabview-nav"><li>' + X.steps + '</li></ul><div class="p-tabview-panel"><ul>' + X.stepsList.map((t) => '<li>' + t + '</li>').join('') + '</ul></div></div><button type="button" id="start">' + X.start + '</button></main>';
   document.getElementById('start').onclick = terms;
 }
@@ -83,13 +86,19 @@ function form() {
     + X.kinds.map((k, i) => '<p-radiobutton formcontrolname="kind" value="' + i + '"><div class="p-radiobutton"><div class="p-radiobutton-box"></div></div></p-radiobutton><label>' + k + '</label>').join('') + '</div></div>'
     + '<div class="weeks hidden">' + field('weeks', X.weeks, '<input type="number" class="p-inputtext">', false) + '</div>'
     + field('notes', X.notes, '<textarea class="p-inputtextarea"></textarea>', false)
-    + '<div class="p-panel"><div class="p-panel-header"><label class="p-panel-title">' + X.caption + '</label></div><div class="p-panel-content"><div formcontrolname="plan" class="ng-invalid" data-req="1"><p-fileupload><input type="file" accept=".pdf,image/*"></p-fileupload><label>' + X.plan + ' *</label></div><small class="p-error hidden">' + X.req + '</small></div></div>'
     + '<div class="g-recaptcha"><textarea name="g-recaptcha-response" id="g-recaptcha-response"></textarea></div><div role="alert" class="summary hidden"></div>'
-    + '</fieldset><button type="submit">' + X.send + '</button></form></main>';
+    + '</fieldset><button type="submit">' + X.send + '</button></form><form class="attachments"><div class="p-panel"><div class="p-panel-header"><label class="p-panel-title">' + X.caption + '</label></div><div class="p-panel-content"><div formcontrolname="plan" class="ng-invalid" data-req="1"><p-fileupload><input type="file" accept=".pdf,image/*"></p-fileupload><label>' + X.plan + ' *</label></div><small class="p-error hidden">' + X.req + '</small></div></div></form></main>';
   const state = {};
   const mark = (ctrl, ok) => { const w = root.querySelector('[formcontrolname="' + ctrl + '"]'); if (!w) return; w.classList.toggle('ng-invalid', !ok && w.dataset.req === '1'); w.classList.toggle('ng-valid', ok || w.dataset.req !== '1'); };
   root.querySelectorAll('[formcontrolname] input, [formcontrolname] textarea').forEach((i) => i.addEventListener('input', () => mark(i.closest('[formcontrolname]').getAttribute('formcontrolname'), !!i.value)));
   root.querySelector('input[type=file]').addEventListener('change', () => mark('plan', true));
+  root.addEventListener('focusout', (e) => {
+    const w = e.target.closest && e.target.closest('[formcontrolname]');
+    if (!w) return;
+    w.classList.add('ng-touched');
+    if (w.dataset.req === '1' && w.classList.contains('ng-invalid')) w.parentElement.querySelector('.p-error')?.classList.remove('hidden');
+    if (w.getAttribute('formcontrolname') === 'ref' && !e.target.value) { const sum = root.querySelector('.summary'); sum.textContent = X.refMsg; sum.classList.remove('hidden'); }
+  });
   const overlay = (host, opts, multi, ctrl) => {
     document.querySelectorAll('.p-overlay').forEach((o) => o.remove());
     const r = host.getBoundingClientRect();
@@ -117,6 +126,7 @@ function form() {
     root.querySelectorAll('.p-error').forEach((m) => m.classList.add('hidden'));
     bad.forEach((w) => w.parentElement.querySelector('.p-error').classList.remove('hidden'));
     if (bad.length || state.kind === undefined || !ref.value) return;
+    fetch('/api/submit', { method: 'POST', body: 'filed' }).catch(() => {});
     root.innerHTML = '<main><h1>' + X.done + '</h1><ul class="statuses">' + X.statuses.map((s) => '<li>' + s + '</li>').join('') + '</ul></main>';
   };
 }

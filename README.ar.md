@@ -27,7 +27,7 @@
 
 **خادم MCP وحده** (stdio ومحلي فقط؛ يحتاج Node 20 أو أحدث، وChrome أو Edge لملف PDF، و`uv` لملف DOCX):
 ```
-claude mcp add business-wrap -- npx -y -p business-wrap@0.8.1 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p business-wrap@0.8.2 business-wrap-mcp
 ```
 ومن نسخة محلية بدل npm: `npm ci` ثم `claude mcp add business-wrap -- node <clone>/mcp/cli.mjs`.
 الأدوات: `build_editor` و`validate_edits` و`apply_edits` و`export_document` و`export_design_pack` و`check_fonts`، والتفاصيل في `mcp/README.ar.md`.
@@ -71,6 +71,8 @@ node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|e
 كل نص مطبوع (التسميات ورؤوس الجداول والعنوان والعنوان الفرعي ورمز الغلاف وأسماء الحقول وقيمها)، وكل خاصية تصميم (لوحة التصميم بمعاينة حية)، وعنصر واحد بمفرده (**نسّق هذا**)، وأجزاء القالب (إظهار وإخفاء وترتيب)، وCSS متقدم منقّى. وكل ذلك قابل للتراجع، وينتقل في ملف التعديلات، ويصل إلى PDF وDOCX. انظر `bible/04-edits-contract.ar.md`.
 
 ### ابدأ وثيقة (الاستخراج)
+> **الأمان: المرور لا يقدّم طلباً أبداً إلا إذا طلبت ذلك.** المرور تشغيل تجريبي: يقرأ كل خطوة ويتوقف قبل الإجراء النهائي («إرسال» و«تقديم» و«حفظ وإرسال» و«تأكيد» و«دفع»، وSend وSubmit وConfirm وPay وFinish)، ويسجل «stopped before submit». ولتقديم طلب حقيقي يلزم `submit: true` في الإعدادات **و**`--yes-file-real-request` (أو كتابة YES عند السؤال). والمحرر وأداة MCP لا يقدّمان أبداً. وتؤخذ الحالات حينها من النموذج أو من قائمة `statuses` في الإعدادات.
+
 من نموذج إجراء (`npm run harvest:model -- <bpmn|drawio|yaml>`) أو بالمرور على الخدمة الفعلية (`npm run harvest:crawl -- <crawl.json>`)؛ والطريقان يعطيان ملفي الوثيقة بالعربية والإنجليزية ومحرراً. انظر `bible/08-harvest.ar.md`.
 
 ### المحرر باختصار

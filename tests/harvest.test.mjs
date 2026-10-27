@@ -92,9 +92,10 @@ try {
     login: { when: '#user', steps: [{ fill: '#user', value: '$env:BW_TEST_USER' }, { fill: '#pass', value: '$env:BW_TEST_PASS' }, { press: 'button[type=submit]' }] },
     pause: [{ selector: '#otp', until: 'gone', message: 'Type the one-time code', timeoutMs: 20000 }],
     next: 'button[type=submit]', statusesSelector: 'ul.statuses',
+    submit: true, // a local fixture: filing is the point here (field.test.mjs proves the dry-run default)
   };
   try {
-    const cr = await harvestCrawl(cfg, { out: OUT, log: (m) => logs.push(m), browser });
+    const cr = await harvestCrawl(cfg, { out: OUT, log: (m) => logs.push(m), browser, yesFileRealRequest: true });
     const raw = cr.raw;
     check('crawl: the OTP pause waited for the human and resumed', logs.filter((m) => m.startsWith('PAUSED')).length === 2 && logs.filter((m) => m === 'RESUMED').length === 2, logs.join(' / '));
     for (const l of ['ar', 'en']) {
