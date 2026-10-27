@@ -33,7 +33,7 @@ try {
     await ctx.addInitScript((ui) => { try { localStorage.setItem('bw:ui', ui); } catch {} }, ui);
     const page = await ctx.newPage();
     await page.goto(pathToFileURL(file).href);
-    await page.waitForFunction(() => window.BW);
+    await page.waitForFunction(() => window.BW?.ready);
     await page.addScriptTag({ path: AXE });
     const states = ['toolbar', 'check', 'history', 'theme', 'find', 'outline', 'webhooks', 'view', 'selection', 'palette'];
     for (const st of states) {
@@ -58,7 +58,7 @@ try {
 
     // keyboard only: Tab reaches the toolbar and a document field, Enter-less edit, move, undo
     await page.reload();
-    await page.waitForFunction(() => window.BW);
+    await page.waitForFunction(() => window.BW?.ready);
     const seen = new Set();
     for (let i = 0; i < 60; i += 1) {
       await page.keyboard.press('Tab');

@@ -95,7 +95,7 @@ try {
   const errs = [];
   page.on('pageerror', (e) => errs.push(e.message));
   await page.goto(pathToFileURL(ed).href);
-  await page.waitForFunction(() => window.BW);
+  await page.waitForFunction(() => window.BW?.ready);
   const before = await page.evaluate(() => document.querySelector('th[data-p="/labels/revVersion"]')?.textContent);
   await page.evaluate(() => { const el = document.querySelector('th[data-p="/labels/revVersion"]'); el.scrollIntoView(); });
   await page.dblclick('th[data-p="/labels/revVersion"]');
@@ -119,7 +119,7 @@ try {
   const c2 = await browser.newContext({ viewport: { width: 1366, height: 900 } });
   const p2 = await c2.newPage();
   await p2.goto(pathToFileURL(first.editor).href);
-  await p2.waitForFunction(() => window.BW);
+  await p2.waitForFunction(() => window.BW?.ready);
   const STEP = '/chapters/3/sections/0/blocks/0/rows/0/0';
   const m = await p2.evaluate((ptr) => { window.BW.S.ed = 'en'; window.BW.setText(ptr, 'My own step name', 'en'); const e = window.BW.M[window.BW.S.svc].en; return { manual: e.doc.manual, file: window.BW.editsFile(window.BW.S.svc, 'en') }; }, STEP);
   check('editor: editing a harvested value flags it «manual»', !!m.manual?.[STEP.replace(/\//g, '~1')] || !!Object.keys(m.manual || {}).length, JSON.stringify(m.manual));
@@ -134,7 +134,7 @@ try {
   const c3 = await browser.newContext({ viewport: { width: 1366, height: 900 } });
   const p3 = await c3.newPage();
   await p3.goto(pathToFileURL(again.editor).href);
-  await p3.waitForFunction(() => window.BW);
+  await p3.waitForFunction(() => window.BW?.ready);
   const shown = await p3.evaluate(() => window.BW.S.conflicts.length);
   check('editor: the re-harvest conflict is shown on open', shown >= 1, String(shown));
   await c3.close();

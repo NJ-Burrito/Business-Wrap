@@ -31,7 +31,7 @@ async function opens(editor, label) {
   const errs = [];
   p.on('pageerror', (e) => errs.push(e.message));
   await p.goto(pathToFileURL(editor).href);
-  await p.waitForFunction(() => window.BW, null, { timeout: 15000 }).catch(() => {});
+  await p.waitForFunction(() => window.BW?.ready, null, { timeout: 15000 }).catch(() => {});
   const n = await p.evaluate(() => document.querySelectorAll('main.bw-doc h2').length);
   check(`${label}: the editor opens the harvested document`, n >= 7 && !errs.length, `${n} headings ${errs.join(' | ')}`);
   await ctx.close();
@@ -126,7 +126,7 @@ try {
   const errs = [];
   p.on('pageerror', (e) => errs.push(e.message));
   await p.goto(pathToFileURL(bp.editor).href);
-  await p.waitForFunction(() => window.BW);
+  await p.waitForFunction(() => window.BW?.ready);
   const before = await p.evaluate(() => Object.keys(window.BW.M).length);
   await p.locator('.island button[data-a="newdoc"]').click();
   const [fc] = await Promise.all([p.waitForEvent('filechooser'), p.locator('.drawer [data-k="nd-model"]').click()]);

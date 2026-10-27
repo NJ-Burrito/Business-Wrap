@@ -227,12 +227,22 @@ function snapshotState() {
   }
   return out;
 }
+// The draft write. S.pending is true while a debounced write has not happened yet; every write bumps
+// <html data-bw-draft>, so a caller (or a test) waits on the outcome, never on a guessed delay.
+let draftSeq = 0;
+function writeDraft() {
+  clearTimeout(saveTimer);
+  S.pending = false;
+  if (!ls.set(KEY, JSON.stringify(snapshotState()))) return false;
+  S.savedAt = new Date();
+  document.documentElement.dataset.bwDraft = String(++draftSeq);
+  return true;
+}
 function touched() {
   S.dirty = true;
+  S.pending = true;
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    if (ls.set(KEY, JSON.stringify(snapshotState()))) { S.savedAt = new Date(); flash(t('autosaved')); }
-  }, 400);
+  saveTimer = setTimeout(() => { if (writeDraft()) flash(t('autosaved')); }, 400);
   refreshUi();
 }
 function loadDraft(d) {
@@ -290,7 +300,7 @@ function editsFile(svc, ed) {
 }
 const bundle = (svcs) => ({ kind: 'bw-edits-bundle', version: 1, createdAt: new Date().toISOString(), files: svcs.flatMap((sid) => Object.keys(M[sid]).map((ed) => editsFile(sid, ed))) });
 function saveAll() {
-  ls.set(KEY, JSON.stringify(snapshotState()));
+  writeDraft();
   download(`${S.svc}.${S.ed}.edits.json`, JSON.stringify(editsFile(S.svc, S.ed), null, 1));
   S.dirty = false;
   flash(t('saved'));
@@ -2058,7 +2068,11 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target.isContentEditable) { e.preventDefault(); e.target.blur(); }
 });
 window.addEventListener('resize', () => paintSel());
-window.addEventListener('beforeunload', () => { if (S.dirty) ls.set(KEY, JSON.stringify(snapshotState())); });
+// leaving, hiding or closing the tab flushes a pending draft at once (a debounce must never lose the last edit)
+const flushDraft = () => { if (S.pending || S.dirty) writeDraft(); };
+window.addEventListener('pagehide', flushDraft);
+window.addEventListener('beforeunload', flushDraft);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushDraft(); });
 
 /* ── tool watermark: the NJ role mark, behaving as on the owner's portfolio ──────
  * Copied from NJ-Burrito.github.io index.html: roles in the order tester → teacher →
@@ -2173,9 +2187,10 @@ function boot() {
   buildUi();
   render(false);
   offerRecovery();
+  window.BW.ready = true; // booted and rendered with the remembered state
 }
 // a re-harvest that met a hand edit: the person's text was kept; show the source's new text beside it
 for (const [svc, eds] of Object.entries(M)) for (const [ed, e] of Object.entries(eds)) for (const c of e.doc.harvestConflicts || []) if (svc === S.svc) S.conflicts.push({ ed, path: c.path, mine: c.manual, theirs: c.harvested, kind: 'text' });
 if (S.conflicts.length) toast(t('reharvestConflicts', { n: S.conflicts.length }), 'warn', { actions: [[t('show'), () => openDrawer('conflicts')]], persist: true });
-window.BW = { S, M, commit, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll };
+window.BW = { flushDraft, S, M, commit, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll };
 boot();

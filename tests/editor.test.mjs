@@ -87,7 +87,7 @@ async function open(ctx) {
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   await page.goto(editorUrl);
-  await page.waitForFunction(() => window.BW);
+  await page.waitForFunction(() => window.BW?.ready);
   return { page, errors };
 }
 const ui = (page, a, extra = '') => page.locator(`button[data-a="${a}"]${extra}`);
@@ -189,7 +189,7 @@ try {
     await page.evaluate(() => window.BW.undo()); // drop the paste op, keep the four scripted edits
 
     // #2 — autosave + recovery: a reopened tab offers the draft and restores it
-    await page.waitForTimeout(600);
+    await page.waitForFunction(() => !window.BW.S.pending);
     const { page: p2 } = await open(ctx);
     const banner = p2.locator('.banner');
     await banner.waitFor({ state: 'visible', timeout: 4000 }).catch(() => {});
@@ -271,7 +271,7 @@ try {
     const ctx3 = await browser.newContext({ viewport: { width: 1366, height: 1300 } });
     const p3 = await ctx3.newPage();
     await p3.goto(pathToFileURL(savedHtml).href);
-    await p3.waitForFunction(() => window.BW);
+    await p3.waitForFunction(() => window.BW?.ready);
     await pickEdition(p3, ed);
     check(`${ed}: Save-HTML reopens with the edits`, (await normDom(p3, ed)) === domA);
     check(`${ed}: watermark absent in reopened Save-HTML`, (await p3.locator('#bw-watermark').count()) === 0);
@@ -335,7 +335,7 @@ try {
   const pb = await ctxB.newPage();
   const t0 = Date.now();
   await pb.goto(pathToFileURL(bigEditor).href);
-  await pb.waitForFunction(() => window.BW);
+  await pb.waitForFunction(() => window.BW?.ready);
   const loadMs = Date.now() - t0;
   const timing = await pb.evaluate(() => {
     const B = window.BW;
@@ -424,20 +424,25 @@ try {
     const errU = [];
     pu.on('pageerror', (e) => errU.push(e.message));
     await pu.goto(editorUrl);
-    await pu.waitForFunction(() => window.BW);
+    await pu.waitForFunction(() => window.BW?.ready);
     const labels = await pu.evaluate(() => { const sh = document.getElementById('bw-ui-host').shadowRoot; return { ed: [...sh.querySelectorAll('[data-a="ed"]')].map((b) => b.textContent.trim()), ui: [...sh.querySelectorAll('[data-a="dir"]')].map((b) => b.textContent.trim()), named: [...sh.querySelectorAll('[data-a="ed"], [data-a="dir"]')].every((b) => b.getAttribute('aria-label') && b.title), icons: sh.querySelectorAll('.seg.lang .cap svg, .seg.ui .cap svg').length, brandWords: sh.querySelector('.brand').innerText.trim(), brandSvg: !!sh.querySelector('.brand svg'), dir: sh.querySelector('.shell').dir }; });
     check(`${uiL} UI: language reads «ع» / «E», direction reads RTL / LTR (icon, tooltip, name), the brand is a logo not words`, JSON.stringify(labels.ed) === '["ع","E"]' && JSON.stringify(labels.ui) === '["RTL","LTR"]' && labels.named && labels.icons === 2 && labels.brandWords === '' && labels.brandSvg && labels.dir === (uiL === 'ar' ? 'rtl' : 'ltr'), JSON.stringify(labels));
     {
       // direction is independent of the language: flip it, the language and edition stay; the choice is remembered
-      const flip = uiL === 'ar' ? 'ltr' : 'rtl';
+      // flip against the edition's own direction (the UI language alone does not pick the edition)
+      const natural = await pu.evaluate(() => (window.BW.S.ed === 'ar' ? 'rtl' : 'ltr'));
+      const flip = natural === 'rtl' ? 'ltr' : 'rtl';
       const sh = () => pu.evaluateHandle(() => document.getElementById('bw-ui-host').shadowRoot);
       await (await sh()).evaluate((r, d) => r.querySelector(`[data-a="dir"][data-d="${d}"]`).click(), flip);
       const st = await pu.evaluate(() => ({ ui: window.BW.S.ui, ed: window.BW.S.ed, shell: document.getElementById('bw-ui-host').shadowRoot.querySelector('.shell').dir, doc: document.querySelector('main.bw-doc').dir, saved: localStorage.getItem('bw:dir') }));
       await pu.reload();
-      await pu.waitForFunction(() => window.BW);
-      const kept = await pu.evaluate(() => document.querySelector('main.bw-doc').dir);
-      check(`${uiL} UI: direction toggles independently of the language and is remembered`, st.ui === uiL && st.shell === flip && st.doc === flip && st.saved === flip && kept === flip, JSON.stringify({ ...st, kept }));
-      await (await sh()).evaluate((r, d) => r.querySelector(`[data-a="dir"][data-d="${d}"]`).click(), uiL === 'ar' ? 'rtl' : 'ltr');
+      await pu.waitForFunction(() => window.BW?.ready);
+      // wait on the outcome (the remembered direction applied), then report what the reopened page holds
+      await pu.waitForFunction((d) => document.querySelector('main.bw-doc')?.dir === d, flip, { timeout: 5000 }).catch(() => {});
+      const after = await pu.evaluate(() => ({ kept: document.querySelector('main.bw-doc').dir, S: window.BW.S.dir, ls: localStorage.getItem('bw:dir') }));
+      const kept = after.kept;
+      check(`${uiL} UI: direction toggles independently of the language and is remembered`, st.ui === uiL && st.shell === flip && st.doc === flip && st.saved === flip && kept === flip, JSON.stringify({ ...st, ...after }));
+      await (await sh()).evaluate((r, d) => r.querySelector(`[data-a="dir"][data-d="${d}"]`).click(), natural);
     }
     // command palette: Ctrl+K, filter, Enter runs
     await pu.keyboard.press('Control+K');
@@ -463,10 +468,10 @@ try {
     const o1 = await pu.evaluate(() => window.BW.M['event-permit'][window.BW.S.ed].doc.overlays[0]);
     const scale = await pu.evaluate(() => document.querySelector('main.bw-doc').getBoundingClientRect().width / 210);
     check(`${uiL} UI: logo dragged on the cover (mm position updated)`, o1.mode === 'cover' && Math.abs(o1.x - (o0.x - 120 / scale)) < 4 && Math.abs(o1.y - (o0.y + 150 / scale)) < 4, JSON.stringify({ x0: o0.x, y0: o0.y, x1: o1.x, y1: o1.y }));
-    await pu.waitForTimeout(600);
+    await pu.waitForFunction(() => !window.BW.S.pending);
     const pu2 = await ctxU.newPage();
     await pu2.goto(editorUrl);
-    await pu2.waitForFunction(() => window.BW);
+    await pu2.waitForFunction(() => window.BW?.ready);
     await pu2.locator('.banner button').first().click({ timeout: 5000 }).catch(() => {});
     const o2 = await pu2.evaluate(() => window.BW.M['event-permit'][window.BW.S.ed].doc.overlays?.[0]);
     check(`${uiL} UI: logo position remembered after reopening`, !!o2 && o2.x === o1.x && o2.y === o1.y, JSON.stringify(o2 && { x: o2.x, y: o2.y }));
@@ -512,7 +517,7 @@ try {
   const ctxR2 = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 1366, height: 900 } });
   const pr2 = await ctxR2.newPage();
   await pr2.goto(editorUrl);
-  await pr2.waitForFunction(() => window.BW);
+  await pr2.waitForFunction(() => window.BW?.ready);
   const rm2 = await pr2.evaluate(() => { const sh = document.getElementById('bw-ui-host').shadowRoot; return { island: getComputedStyle(sh.querySelector('.island')).animationName, mark: getComputedStyle(sh.querySelector('.brand svg path')).strokeDashoffset }; });
   check('reduced motion: the shell and the brand mark stay still', rm2.island === 'none' && parseFloat(rm2.mark) === 0, JSON.stringify(rm2));
   await ctxR2.close();
@@ -526,7 +531,7 @@ try {
     const ctxT = await browser.newContext({ viewport: { width: 1366, height: 900 } });
     const pt = await ctxT.newPage();
     await pt.goto('http://127.0.0.1:4399/');
-    await pt.waitForFunction(() => window.BW);
+    await pt.waitForFunction(() => window.BW?.ready);
     await act(pt, 'pages');
     await pt.locator('.drawer .thumbs img').nth(8).waitFor({ timeout: 60000 }).catch(() => {});
     const thumbs = await pt.locator('.drawer .thumbs img').count();
@@ -546,7 +551,7 @@ try {
       const ctxW = await browser.newContext({ viewport: { width: 1366, height: 900 } });
       const pw = await ctxW.newPage();
       await pw.goto('http://127.0.0.1:4399/');
-      await pw.waitForFunction(() => window.BW);
+      await pw.waitForFunction(() => window.BW?.ready);
       await act(pw, 'webhooks');
       const offByDefault = await pw.locator('.drawer [data-hook="enabled"]').isChecked();
       await pw.locator('.drawer [data-hook="url"]').fill('http://127.0.0.1:4398/hook');

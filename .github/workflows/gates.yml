@@ -79,8 +79,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-outputs
-          path: |
-            out/test/*.pdf
-            out/test/results.txt
-            out/a11y/axe-report.json
+          # everything the run wrote (PDF, DOCX, HTML, editors, harvests, screenshots, results, axe report)
+          path: out/
+          if-no-files-found: warn
           retention-days: 7
