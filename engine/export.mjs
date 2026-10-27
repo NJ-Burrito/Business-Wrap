@@ -23,6 +23,9 @@ export const i18n = () => JSON.parse(fs.readFileSync(path.join(HERE, 'i18n.json'
 
 export function loadTheme(file) {
   const base = JSON.parse(fs.readFileSync(path.join(HERE, 'defaults', 'theme.json'), 'utf8'));
+  // the house pack (design/ours, the original SRS palette) is the default theme; the stub is only a fallback
+  const ours = path.join(REPO, 'design', 'ours', 'theme.json');
+  if (!file && fs.existsSync(ours)) file = ours;
   if (!file) return base;
   const t = JSON.parse(fs.readFileSync(file, 'utf8'));
   return { ...base, ...t, vars: { ...base.vars, ...(t.vars || {}) }, fonts: { ...base.fonts, ...(t.fonts || {}) }, sizes: { ...base.sizes, ...(t.sizes || {}) }, brand: { ...base.brand, ...(t.brand || {}) }, logos: { ...base.logos, ...(t.logos || {}) } };
