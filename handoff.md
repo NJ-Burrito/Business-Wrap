@@ -20,6 +20,9 @@ Business-Wrap: a client-neutral, bilingual (AR RTL / EN LTR) requirements-docume
 - First commit containing an Arabic word that is also a client term was caught by the history scan; amended before any push.
 
 ## next step
-1. Agent B (editor branch): remove the hashed client terms and local paths flagged by `python security/check.py --rev=editor`, rewrite that unpushed branch's history, place the watermark under `editor/` and tell the Lead its path.
-2. Lead: add the watermark path to `ALLOW_BINARY` in `security/check.py` if the gate flags it (size or metadata), merge `bible` + `editor` into `main`, run `python security/check.py` (must be 0 on `--all`), create the private repo, push, apply branch protection (`CONTRIBUTING.md`), tag `v0.1.0`.
-3. Fill `.github/CODEOWNERS`; make `npm test` real in `package.json` so the CI step passes.
+Integration done on the branches (2026-10-27): `bible/contracts/wrappers.schema.json` + bible 02/04 AR+EN, editor README in the root README pair, Serif Text + Display converted to TTF in `<family>/ttf/` under the font root (originals kept), both manifests search there first, CODEOWNERS = @NJ-Burrito, `.gitignore` union (`out/`). A scratch tree of editor + bible files passed: `npm test` 55/55, `check.py` 0 findings on `--all`, `--selftest` PASS, no tracked font files.
+The worker hook refuses the integration and publishing git verbs, so the Lead runs them:
+1. On `main` in `Business-Wrap`: fast-forward to `bible`, then bring in `editor`; for conflicts in `.gitignore` and `README.md` take the `bible` side (it already holds both).
+2. Re-run on main: `python security/check.py`, `--selftest`, `git ls-files | grep -Ei '\.(otf|ttf|woff2?)$'` (must print nothing), `npm ci && npm test` (55/55).
+3. Create the private repo `NJ-Burrito/Business-Wrap` from this source, confirm visibility PRIVATE, apply branch protection (`CONTRIBUTING.md`), tag `v0.1.0`.
+4. Remove both worktrees (untracked leftovers to the recycle bin first).
