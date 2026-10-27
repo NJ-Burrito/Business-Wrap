@@ -22,3 +22,5 @@ design/custom/*
 __pycache__/
 *.pyc
 node_modules/
+# generated editor builds and test output
+out/
