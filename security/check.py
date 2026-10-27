@@ -9,7 +9,8 @@ Prints rule id, place and line number only; the matched text is never printed.
 Also runs gitleaks (git + dir) with the same config when it is on PATH.
 
   python security/check.py                 # full gate
-  python security/check.py --tree-only     # skip history (pre-commit uses the full gate)
+  python security/check.py --tree-only     # skip history (pre-commit; pre-push and CI run the full gate)
+  python security/check.py --rev=HEAD      # history of one ref instead of every branch (default: --all)
   python security/check.py --add-term      # read one term per line on stdin, append its hash
   python security/check.py --selftest      # prove each rule fires on a planted sample
 Inline escape for documentation lines: put `bw-allow:<rule-id>` (or `gitleaks:allow`) on the line.
@@ -161,9 +162,9 @@ def tree_files():
     return [p for p in out.decode("utf-8").split("\0") if p and (ROOT / p).is_file()]
 
 
-def history_blobs():
+def history_blobs(revs):
     seen = set()
-    for line in git("rev-list", "--all", "--objects").decode("utf-8", "replace").splitlines():
+    for line in git("rev-list", *revs, "--objects").decode("utf-8", "replace").splitlines():
         parts = line.split(" ", 1)
         if len(parts) == 2 and parts[0] not in seen:
             seen.add(parts[0])
@@ -183,7 +184,7 @@ def run_gitleaks() -> int:
     return rc
 
 
-def gate(tree_only: bool) -> int:
+def gate(tree_only: bool, revs=("--all",)) -> int:
     rules, gallow = load_rules()
     deny, longest = load_deny()
     findings: set = set()
@@ -192,14 +193,14 @@ def gate(tree_only: bool) -> int:
         scan_blob(p, (ROOT / p).read_bytes(), p, rules, gallow, deny, longest, findings)
     nblobs = 0
     if not tree_only:
-        objs = list(history_blobs())
+        objs = list(history_blobs(revs))
         types = git("cat-file", "--batch-check=%(objecttype)", input="\n".join(o for o, _ in objs).encode()).decode().split()
         for (oid, path), kind in zip(objs, types):
             if kind != "blob":
                 continue
             nblobs += 1
             scan_blob(path, git("cat-file", "blob", oid), f"history:{oid[:8]}:{path}", rules, gallow, deny, longest, findings)
-        msgs = git("log", "--all", "--format=%H%x00%B%x01").decode("utf-8", "replace")
+        msgs = git("log", *revs, "--format=%H%x00%B%x01").decode("utf-8", "replace")
         for chunk in msgs.split("\x01"):
             if "\x00" in chunk:
                 sha, body = chunk.strip("\n").split("\x00", 1)
@@ -265,7 +266,8 @@ if __name__ == "__main__":
             sys.exit(add_terms())
         if "--selftest" in sys.argv:
             sys.exit(selftest())
-        sys.exit(gate("--tree-only" in sys.argv))
+        revs = tuple(a.split("=", 1)[1] for a in sys.argv if a.startswith("--rev=")) or ("--all",)
+        sys.exit(gate("--tree-only" in sys.argv, revs))
     except (subprocess.CalledProcessError, tomllib.TOMLDecodeError, re.error) as e:
         print(f"security/check: gate error: {e}")
         sys.exit(2)
