@@ -8,6 +8,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.8.4] - 2026-10-28
+
+From the final live run with 0.8.3 (10 of 11 checks, 0 filed, 0 workarounds). / من التشغيل الحي الأخير.
+
+### Fixed / أصلح
+- A textarea's inline «هذا الحقل مطلوب» was not captured: the field's message is now looked for in its own box, in the element its `aria-describedby` names, and just after its box; each field also gets an explicit blur after the Tab, and `aria-invalid` counts like `ng-invalid` once touched. / رسالة الحقل النصي متعدد الأسطر.
+
+### Tests / الاختبارات
+- An Angular-like textarea with a touched-only validator whose message sits after the field box. / اختبار جديد.
+
 ## [0.8.3] - 2026-10-28
 
 From the fourth live run with 0.8.2 (0 requests filed, 0 workarounds, 8 of 11 checks). / من التشغيل الحي الرابع.

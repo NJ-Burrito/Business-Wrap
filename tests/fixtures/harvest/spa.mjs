@@ -17,6 +17,7 @@ const T = {
     date: 'Event date', kind: 'Booking type', kinds: ['Once', 'Weekly'], weeks: 'Number of weeks', notes: 'Notes', plan: 'Floor plan',
     docs: 'Required documents', docsList: ['Floor plan (optional attachment)'], attName: 'Attachment name', attOpts: ['Floor plan (optional attachment)'],
     fees: 'Fees', fee: '10 dinars', recipients: 'Service recipients', who: ['Citizens', 'Residents'], channels: 'Channels', via: ['Online', 'Service centre'],
+    details: 'Active ingredient details',
     ref: 'Reference number', refMsg: 'Reference number: this field is required', caption: 'Supporting files', about: 'About the service', steps: 'Steps', stepsList: ['Fill in the form', 'Attach the floor plan', 'Send'], langs: ['English', 'العربية'], lang: 'Language',
     send: 'Send', req: 'This field is required', done: 'Request received', statuses: ['Submitted', 'Under review', 'Approved', 'Rejected'],
   },
@@ -27,6 +28,7 @@ const T = {
     date: 'تاريخ الفعالية', kind: 'نوع الحجز', kinds: ['مرة واحدة', 'أسبوعي'], weeks: 'عدد الأسابيع', notes: 'ملاحظات', plan: 'مخطط القاعة',
     docs: 'المستندات المطلوبة', docsList: ['مخطط القاعة (المرفق غير إجباري)'], attName: 'اسم المرفق', attOpts: ['مخطط القاعة (المرفق غير إجباري)'],
     fees: 'الرسوم المالية', fee: '10 دنانير', recipients: 'متلقو الخدمة', who: ['المواطنون', 'المقيمون'], channels: 'قنوات تقديم الخدمة', via: ['إلكترونياً', 'مركز الخدمة'],
+    details: 'تفاصيل المادة الفعالة',
     ref: 'الرقم المرجعي', refMsg: 'الرقم المرجعي: هذا الحقل مطلوب', caption: 'الملفات الداعمة', about: 'عن الخدمة', steps: 'الخطوات', stepsList: ['تعبئة النموذج', 'إرفاق مخطط القاعة', 'الإرسال'], langs: ['English', 'العربية'], lang: 'اللغة',
     send: 'إرسال', req: 'هذا الحقل مطلوب', done: 'تم استلام الطلب', statuses: ['مقدم', 'قيد المراجعة', 'مقبول', 'مرفوض'],
   },
@@ -87,6 +89,8 @@ function form() {
     + '<div class="p-field col-12"><label>' + X.kind + ' <span class="required">*</span></label><div class="p-field">'
     + X.kinds.map((k, i) => '<p-radiobutton formcontrolname="kind" value="' + i + '"><div class="p-radiobutton"><div class="p-radiobutton-box"></div></div></p-radiobutton><label>' + k + '</label>').join('') + '</div></div>'
     + '<div class="weeks hidden">' + field('weeks', X.weeks, '<input type="number" class="p-inputtext">', false) + '</div>'
+    // an Angular-like textarea: no star, a validator that shows only once touched; its message sits after the field box, linked by aria-describedby
+    + '<div class="p-field col-12"><label>' + X.details + '</label><textarea formcontrolname="details" class="p-inputtextarea ng-untouched ng-pristine" aria-describedby="details-err"></textarea></div><small id="details-err" class="p-error hidden">' + X.req + '</small>'
     + field('notes', X.notes, '<textarea class="p-inputtextarea"></textarea>', false)
     + '<div class="g-recaptcha"><textarea name="g-recaptcha-response" id="g-recaptcha-response"></textarea></div><div role="alert" class="summary hidden"></div>'
     + '</fieldset><button type="submit">' + X.send + '</button></form><form class="attachments"><div class="p-panel"><div class="p-panel-header"><label class="p-panel-title">' + X.caption + '</label></div><div class="p-panel-content"><div class="p-field"><label>' + X.attName + ' *</label><p-dropdown formcontrolname="attName"><div class="p-dropdown att" role="combobox" tabindex="0"><span class="p-dropdown-label">—</span></div></p-dropdown></div><div formcontrolname="plan" class="ng-invalid" data-req="1"><p-fileupload><input type="file" accept=".pdf,image/*"></p-fileupload><label>' + X.plan + ' *</label></div><small class="p-error hidden">' + X.req + '</small></div></div></form></main>';
@@ -94,6 +98,8 @@ function form() {
   const mark = (ctrl, ok) => { const w = root.querySelector('[formcontrolname="' + ctrl + '"]'); if (!w) return; w.classList.toggle('ng-invalid', !ok && w.dataset.req === '1'); w.classList.toggle('ng-valid', ok || w.dataset.req !== '1'); };
   root.querySelectorAll('[formcontrolname] input, [formcontrolname] textarea').forEach((i) => i.addEventListener('input', () => mark(i.closest('[formcontrolname]').getAttribute('formcontrolname'), !!i.value)));
   root.querySelector('input[type=file]').addEventListener('change', () => mark('plan', true));
+  const ta = root.querySelector('textarea[formcontrolname="details"]');
+  ta.addEventListener('blur', () => { ta.classList.remove('ng-untouched'); ta.classList.add('ng-touched'); const bad = !ta.value; ta.classList.toggle('ng-invalid', bad); ta.classList.toggle('ng-valid', !bad); document.getElementById('details-err').classList.toggle('hidden', !bad); });
   root.addEventListener('focusout', (e) => {
     const w = e.target.closest && e.target.closest('[formcontrolname]');
     if (!w) return;

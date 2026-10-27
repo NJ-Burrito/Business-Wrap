@@ -485,6 +485,7 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
           const el = page.locator(f.prime ? `${f.selector} input, ${f.selector} [tabindex]` : f.selector).first();
           await el.focus().catch(() => {});
           await page.keyboard.press('Tab').catch(() => {});
+          await el.evaluate((x) => { x.dispatchEvent(new FocusEvent('blur')); x.dispatchEvent(new FocusEvent('focusout', { bubbles: true })); }).catch(() => {});
         }
         await page.waitForTimeout(150);
         {
@@ -497,12 +498,17 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
           const flagged = await page.evaluate((sels) => sels.map((sel) => {
             const e = document.querySelector(sel);
             if (!e) return false;
-            const msgOf = (box) => [...(box?.querySelectorAll('.p-error, small.p-invalid, .invalid-feedback, .field-error, mat-error, [role="alert"]') || [])].filter((x) => x.offsetWidth || x.offsetHeight).map((x) => x.innerText.replace(/\s+/g, ' ').trim()).filter(Boolean)[0] || '';
-            const box = e.closest('.p-field, .field, .form-group, .form-field, mat-form-field') || e.parentElement;
-            const err = box && [...box.querySelectorAll('.p-error, small.p-invalid, .invalid-feedback, .field-error, mat-error, [role="alert"]')].some((x) => x.offsetWidth || x.offsetHeight);
+            // the field's message wherever the site puts it: its own box, the element its aria-describedby names,
+            // or the error just after its box (a textarea's message often sits outside the field wrapper)
+            const ERR = '.p-error, small.p-invalid, .invalid-feedback, .field-error, mat-error, [role="alert"], .error-message, .text-danger';
+            const seen = (x) => !!x && !!(x.offsetWidth || x.offsetHeight) && !!x.innerText.trim();
             const inner = e.matches('input,select,textarea') ? e : e.querySelector('input,select,textarea');
-            const ng = [e, inner].some((x) => x && x.classList.contains('ng-invalid') && (x.classList.contains('ng-touched') || x.classList.contains('ng-dirty') || !!x.closest('form.ng-submitted')));
-            return { on: !!(err || ng), message: err ? msgOf(box) : '' };
+            const box = e.closest('.p-field, .field, .form-group, .form-field, mat-form-field') || e.parentElement;
+            const describedBy = [e, inner].flatMap((x) => (x?.getAttribute('aria-describedby') || '').split(/\s+/)).filter(Boolean).map((id) => document.getElementById(id));
+            const after = [box?.nextElementSibling, e.nextElementSibling, inner?.nextElementSibling].filter((x) => x && x.matches(ERR));
+            const found = [...(box ? box.querySelectorAll(ERR) : []), ...describedBy, ...after].find(seen);
+            const ng = [e, inner].some((x) => x && (x.classList.contains('ng-invalid') || x.getAttribute('aria-invalid') === 'true') && (x.classList.contains('ng-touched') || x.classList.contains('ng-dirty') || !!x.closest('form.ng-submitted')));
+            return { on: !!(found || ng), message: found ? found.innerText.replace(/\s+/g, ' ').trim() : '' };
           }), all.map((f) => f.selector));
           const named = requiredByMessage(all.map((f) => f.label), messages);
           all.forEach((f, i) => { if (flagged[i]?.on || named.has(f.label)) f.required = true; if (flagged[i]?.message) f.message = flagged[i].message; });

@@ -113,6 +113,10 @@ try {
     const txt = spawnSync('pdftotext', ['-enc', 'UTF-8', pdf, '-'], { encoding: 'utf8' }).stdout.replace(/\s+/g, ' ');
     check('PDF: the card channels are printed', txt.includes('Channels') && txt.includes('Service centre'), '');
   }
+  for (const l of ['ar', 'en']) {
+    const d = cr.raw.languages[l].steps[0].fields.find((x) => x.key === 'details');
+    check(`spa ${l}: a textarea with a touched-only validator: required, its inline message captured`, d?.type === 'textarea' && d.required && d.message === (l === 'ar' ? 'هذا الحقل مطلوب' : 'This field is required'), JSON.stringify(d));
+  }
   check('spa: harvest.json is written as the crawl goes (kept on a crash)', fs.existsSync(path.join(cr.rawDir, 'harvest.json')) && read(path.join(cr.rawDir, 'harvest.json')).languages.en.steps.length === 1);
 
   // ── 3. the model side: a monitoring-graph JSON, expression assignees, unnamed gateways ──
