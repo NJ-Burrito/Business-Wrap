@@ -14,6 +14,22 @@
 | المسرد بالعربية والإنجليزية | `docs/glossary.md` |
 | البحث خلف الاختيارات | `docs/research/README.ar.md` |
 
+## التثبيت
+
+**إضافة Claude Code** (المهارة وخادم MCP معاً؛ تحتاج صلاحية الوصول إلى هذا المستودع):
+```
+/plugin marketplace add NJ-Burrito/Business-Wrap
+/plugin install business-wrap@business-wrap
+```
+ثم قل: **«ابنِ وثيقة المتطلبات لـ…»** أو **«افتحها في المحرر»**.
+
+**خادم MCP وحده** (stdio ومحلي فقط؛ يحتاج Node 20 أو أحدث، وChrome أو Edge لملف PDF، و`uv` لملف DOCX):
+```
+claude mcp add business-wrap -- npx -y -p business-wrap@0.3.0 business-wrap-mcp
+```
+ومن نسخة محلية بدل npm: `npm ci` ثم `claude mcp add business-wrap -- node <clone>/mcp/cli.mjs`.
+الأدوات: `build_editor` و`validate_edits` و`apply_edits` و`export_document` و`export_design_pack` و`check_fonts`، والتفاصيل في `mcp/README.ar.md`.
+
 ## المجلدات
 | المجلد | يحوي |
 |---|---|

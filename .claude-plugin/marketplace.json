@@ -1,0 +1,33 @@
+{
+  "name": "business-wrap",
+  "owner": {
+    "name": "NJ-Burrito",
+    "url": "https://github.com/NJ-Burrito"
+  },
+  "metadata": {
+    "description": "Business-Wrap: bilingual requirements documents, an HTML editor that is the print layout, PDF + DOCX export.",
+    "version": "0.3.0"
+  },
+  "plugins": [
+    {
+      "name": "business-wrap",
+      "source": "./",
+      "description": "Bilingual (Arabic RTL / English LTR) requirements documents from evidence: an interactive HTML editor that is the print layout, PDF + DOCX export, design packs and security gates.",
+      "version": "0.3.0",
+      "license": "UNLICENSED",
+      "category": "productivity",
+      "keywords": [
+        "requirements",
+        "srs",
+        "arabic",
+        "bilingual",
+        "rtl",
+        "pdf",
+        "docx",
+        "html-editor",
+        "design-tokens",
+        "mcp"
+      ]
+    }
+  ]
+}

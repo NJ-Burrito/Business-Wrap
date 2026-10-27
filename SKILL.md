@@ -33,6 +33,7 @@ Turns observed evidence into a governed, bilingual (AR RTL / EN LTR) requirement
 | Editor with one-click PDF + DOCX and page thumbnails | `node engine/serve.mjs out/x.editor.html` → http://127.0.0.1:4317/ |
 | Export without the UI (edits replayed) | `node engine/export.mjs --doc <document.json> --edits <edits.json> --locale ar\|en` |
 | Sample, editor check, accessibility check | `npm run sample` · `npm test` |
+| The same actions as MCP tools (build_editor, apply_edits, export_document, …) | `node mcp/cli.mjs` — see `mcp/README.md` |
 
 Always `PYTHONUTF8=1` on Windows; Python packages through `uv`.
 

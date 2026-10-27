@@ -1,16 +1,67 @@
 {
   "name": "business-wrap",
-  "version": "1.0.0",
-  "description": "Business-Wrap: interactive HTML editor + PDF/DOCX export for requirements documents",
+  "version": "0.3.0",
+  "description": "Bilingual (Arabic RTL / English LTR) requirements documents from evidence: an interactive HTML editor that is the print layout, PDF + DOCX export, design packs and security gates.",
+  "private": true,
+  "license": "UNLICENSED",
+  "mcpName": "io.github.NJ-Burrito/business-wrap",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NJ-Burrito/Business-Wrap.git"
+  },
+  "homepage": "https://github.com/NJ-Burrito/Business-Wrap",
+  "keywords": [
+    "requirements",
+    "srs",
+    "arabic",
+    "bilingual",
+    "rtl",
+    "pdf",
+    "docx",
+    "html-editor",
+    "design-tokens",
+    "mcp",
+    "model-context-protocol",
+    "mcp-server",
+    "claude-code"
+  ],
+  "type": "module",
+  "bin": {
+    "business-wrap-mcp": "mcp/cli.mjs"
+  },
+  "files": [
+    "engine",
+    "!**/__pycache__",
+    "editor",
+    "mcp/cli.mjs",
+    "mcp/server.mjs",
+    "mcp/README.md",
+    "mcp/README.ar.md",
+    "mcp/server.json",
+    "fonts/manifest.json",
+    "samples/event-permit/*.json",
+    "bible/contracts",
+    "SKILL.md",
+    "README.md",
+    "README.ar.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "test": "node tests/editor.test.mjs && node tests/a11y.test.mjs",
+    "test": "node tests/editor.test.mjs && node tests/a11y.test.mjs && node mcp/test/server.test.mjs",
+    "test:mcp": "node mcp/test/server.test.mjs",
+    "mcp": "node mcp/cli.mjs",
     "sample": "node engine/build-editor.mjs samples/event-permit --out out/sample/event-permit.editor.html --set sample",
     "serve": "node engine/serve.mjs out/sample/event-permit.editor.html"
   },
-  "type": "module",
-  "devDependencies": {
-    "axe-core": "^4.14.0",
-    "playwright-core": "^1.62.1"
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "playwright-core": "^1.62.1",
+    "zod": "^4.6.7"
   },
-  "private": true
+  "devDependencies": {
+    "axe-core": "^4.14.0"
+  }
 }

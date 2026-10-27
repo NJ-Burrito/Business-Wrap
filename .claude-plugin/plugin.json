@@ -1,0 +1,38 @@
+{
+  "name": "business-wrap",
+  "version": "0.3.0",
+  "description": "Bilingual (Arabic RTL / English LTR) requirements documents from evidence: an interactive HTML editor that is the print layout, PDF + DOCX export, design packs and security gates.",
+  "author": {
+    "name": "NJ-Burrito",
+    "url": "https://github.com/NJ-Burrito"
+  },
+  "homepage": "https://github.com/NJ-Burrito/Business-Wrap",
+  "repository": "https://github.com/NJ-Burrito/Business-Wrap",
+  "license": "UNLICENSED",
+  "keywords": [
+    "requirements",
+    "srs",
+    "arabic",
+    "bilingual",
+    "rtl",
+    "pdf",
+    "docx",
+    "html-editor",
+    "design-tokens",
+    "mcp"
+  ],
+  "skills": [
+    "./"
+  ],
+  "mcpServers": {
+    "business-wrap": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "-p",
+        "business-wrap@0.3.0",
+        "business-wrap-mcp"
+      ]
+    }
+  }
+}

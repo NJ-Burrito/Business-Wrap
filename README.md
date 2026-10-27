@@ -1,5 +1,11 @@
 # Business-Wrap (EN) — pair: README.ar.md
 
+[![gates](https://github.com/NJ-Burrito/Business-Wrap/actions/workflows/gates.yml/badge.svg)](https://github.com/NJ-Burrito/Business-Wrap/actions/workflows/gates.yml)
+[![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-d97757.svg)](.claude-plugin/plugin.json)
+[![MCP server](https://img.shields.io/badge/MCP-server-6f42c1.svg)](mcp/README.md)
+[![Arabic and English](https://img.shields.io/badge/Arabic%20%2B%20English-first--class-0d9488.svg)](bible/02-document-standard.md)
+[![Licence: proprietary](https://img.shields.io/badge/licence-proprietary-lightgrey.svg)](LICENSE)
+
 **Governed, bilingual requirements documents: evidence in, an editable HTML replica of the PDF and DOCX in the middle, PDF + DOCX + edits + theme out. Every rule has a gate.**
 
 | Start here | |
@@ -11,6 +17,22 @@
 | Decisions, roadmap, privacy | `docs/decisions.md`, `docs/roadmap.md`, `docs/privacy.md` |
 | Glossary AR/EN | `docs/glossary.md` |
 | Research behind the choices | `docs/research/README.md` |
+
+## Install
+
+**Claude Code plugin** (skill + MCP server in one go; needs access to this repository):
+```
+/plugin marketplace add NJ-Burrito/Business-Wrap
+/plugin install business-wrap@business-wrap
+```
+Then say: **"build the requirements document for …"** or **"open it in the editor"**.
+
+**MCP server only** (stdio, local only; Node 20+, Chrome or Edge for the PDF, `uv` for the DOCX):
+```
+claude mcp add business-wrap -- npx -y -p business-wrap@0.3.0 business-wrap-mcp
+```
+From a clone instead of npm: `npm ci`, then `claude mcp add business-wrap -- node <clone>/mcp/cli.mjs`.
+Tools: `build_editor`, `validate_edits`, `apply_edits`, `export_document`, `export_design_pack`, `check_fonts` — see `mcp/README.md`.
 
 ## Folders
 | Folder | Holds |
