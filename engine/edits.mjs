@@ -82,7 +82,7 @@ export function migrate(file) {
   if (!file || typeof file !== 'object') throw new Error('not an edits file');
   if (file.version === EDITS_VERSION) return file;
   if (file.version == null && Array.isArray(file.ops)) return { ...file, version: 1, migratedFrom: 0 };
-  throw new Error(`edits version ${file.version} is newer than this editor (${EDITS_VERSION})`);
+  throw new Error(`edits version ${file.version} is newer than this editor (${EDITS_VERSION}): update Business-Wrap first`);
 }
 
 /** Minimal shape check against the v1 contract (no JSON-schema dependency). */

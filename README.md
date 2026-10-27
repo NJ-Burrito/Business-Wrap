@@ -36,6 +36,9 @@ claude mcp add business-wrap -- npx -y -p business-wrap@0.5.0 business-wrap-mcp
 From a clone instead of npm: `npm ci`, then `claude mcp add business-wrap -- node <clone>/mcp/cli.mjs`.
 Tools: `build_editor`, `validate_edits`, `apply_edits`, `export_document`, `export_design_pack`, `check_fonts` — see `mcp/README.md`.
 
+## For AI agents
+Claude Code, Claude Desktop, Codex, Cursor, Gemini CLI or any MCP client: read `AGENTS.md` (and `SKILL.md`). At the start of a Business-Wrap task run `npx business-wrap update --check` (or MCP `check_update`); if a newer release exists, tell the user in one line with three highlights and offer `npx business-wrap update --apply --yes`. Never update without consent; after an update follow the «Migration notes» (`npx business-wrap update --notes`). The MCP server also announces an update in its initialize instructions. Details: `bible/07-updates.md`.
+
 ## Folders
 | Folder | Holds |
 |---|---|

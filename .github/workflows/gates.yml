@@ -42,6 +42,9 @@ jobs:
           PYTHONUTF8: "1"
         run: python security/check.py --selftest
 
+      - name: One version everywhere (package, plugin, marketplace, MCP registry, Smithery, READMEs, CHANGELOG)
+        run: node update/version-sync.mjs
+
       - name: Palette contrast + theme build
         env:
           PYTHONUTF8: "1"

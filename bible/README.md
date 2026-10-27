@@ -11,6 +11,7 @@
 | 4 | `04-edits-contract.md` | The edits JSON the editor writes and the exporter replays |
 | 5 | `05-lessons.md` | Lessons from the source pipeline, generalised |
 | 6 | `06-design-system.md` | Design packs, tokens to outputs, contrast, print geometry |
+| 7 | `07-updates.md` | Update check, notice to people and agents, applying an update, migrations |
 | — | `contracts/edits.schema.json`, `contracts/wrappers.schema.json`, `contracts/design-pack.schema.json` | Machine contracts |
 
 ## House rules (non-negotiable)

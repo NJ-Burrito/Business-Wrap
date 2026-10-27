@@ -18,6 +18,7 @@ const sha256hex = (s) => crypto.createHash('sha256').update(s).digest('hex');
 const jsonInScript = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
 
 import { config } from './config.mjs';
+import { installedNotes } from '../update/check.mjs';
 
 /** Tool watermark folder: BW_WATERMARK_DIR / .local/config.json watermarkDir, else the repo's editor/brand/watermark. */
 export const DEFAULT_WATERMARK_DIR = config().watermarkDir || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'editor', 'brand', 'watermark');
@@ -61,7 +62,7 @@ export function brandMarks() {
 /** The app script: edits + render (exports stripped) + editor, one IIFE. */
 export function appScript() {
   const strip = (s) => s.replace(/^export /gm, '').replace(/^import .*$/gm, '');
-  return `(() => {\n'use strict';\n${strip(read(path.join(HERE, 'edits.mjs')))}\n${strip(read(path.join(HERE, 'render.mjs')))}\n${read(path.join(REPO, 'editor', 'editor.js'))}\n})();`;
+  return `(() => {\n'use strict';\n${strip(read(path.join(HERE, 'edits.mjs')))}\n${strip(read(path.join(HERE, 'render.mjs')))}\n${read(path.join(REPO, 'editor', 'editor.js'))}\n${read(path.join(REPO, 'editor', 'update.js'))}\n})();`;
 }
 
 export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, localFonts = false, watermarkDir = DEFAULT_WATERMARK_DIR, ui = 'ar', ops = {} }) {
@@ -108,6 +109,8 @@ export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, l
     fontFamilies: local ? local.families : [...new Set(cuts.map((c) => c.family))],
     uiCss: read(path.join(REPO, 'editor', 'ui.css')),
     csp,
+    version: installedNotes().version,
+    whatsNew: (({ human, migration }) => ({ human, migration }))(installedNotes()),
   };
   const wm = watermarkImages(watermarkDir);
   const head = `<meta http-equiv="Content-Security-Policy" content="${csp}">

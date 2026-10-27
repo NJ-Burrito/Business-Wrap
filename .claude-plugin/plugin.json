@@ -1,6 +1,6 @@
 {
   "name": "business-wrap",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Bilingual (Arabic RTL / English LTR) requirements documents from evidence: an interactive HTML editor that is the print layout, PDF + DOCX export, design packs and security gates.",
   "author": {
     "name": "NJ-Burrito",
@@ -30,7 +30,7 @@
       "args": [
         "-y",
         "-p",
-        "business-wrap@0.5.1",
+        "business-wrap@0.6.0",
         "business-wrap-mcp"
       ]
     }

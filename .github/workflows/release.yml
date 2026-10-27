@@ -1,0 +1,40 @@
+# Pushing a tag v<major.minor.patch> publishes the GitHub release the update check reads (update/source.json).
+# Mirrors QA Wrap's .github/workflows/release.yml: the tag must match package.json (and every other version
+# field), the notes are cut from CHANGELOG.md by script (no model), one zip + its .sha256 are attached.
+name: release
+on:
+  push:
+    tags:
+      - 'v*'
+permissions: {}
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # creates the release; nothing else is granted
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: The tag matches every version field
+        run: node update/version-sync.mjs --tag "$TAG"
+      - name: Release notes from CHANGELOG.md
+        run: node update/release-notes.mjs "$TAG" > "$RUNNER_TEMP/notes.md"
+      - name: Zip the tagged tree as business-wrap-<version>.zip, with its SHA-256
+        run: |
+          V="${TAG#v}"
+          git archive --format=zip --prefix="business-wrap-$V/" -o "$RUNNER_TEMP/business-wrap-$V.zip" "$TAG"
+          cd "$RUNNER_TEMP" && sha256sum "business-wrap-$V.zip" > "business-wrap-$V.zip.sha256"
+      - name: Create the release
+        run: |
+          V="${TAG#v}"
+          gh release create "$TAG" "$RUNNER_TEMP/business-wrap-$V.zip" "$RUNNER_TEMP/business-wrap-$V.zip.sha256" \
+            --title "Business-Wrap $V" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag --repo "$GITHUB_REPOSITORY"

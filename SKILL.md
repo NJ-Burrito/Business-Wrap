@@ -7,6 +7,10 @@ description: Use when a requirements or specification document (SRS, service car
 
 Turns observed evidence into a governed, bilingual (AR RTL / EN LTR) requirements document; a person edits an HTML replica of the PDF+DOCX; export writes PDF, DOCX, the edits file and a theme pack. Every rule has a gate.
 
+## First: check for an update (once a day, never auto-update)
+At the start of any Business-Wrap task run `node update/cli.mjs --check --lang <ar|en>` from this skill folder (or `npx business-wrap update --check`, or the MCP tool `check_update`). It is cached and makes at most one request a day; "can't check" means say nothing.
+If it prints a notice, tell the user in ONE line, in their language: the new version and the three highlights it printed, and offer `node update/cli.mjs --apply --yes` (Claude Code plugin: `/plugin update business-wrap`). Never update without their consent. After an update, read `node update/cli.mjs --notes`: follow its «Migration notes» (changed commands, schemas) before anything else. An edits file whose `version` is newer than the engine is refused: update first, never down-convert it. Full rules: `bible/07-updates.md`.
+
 ## Open the editor / افتح المحرر
 The editor ships with this skill, ready to open: **`assets/editor/business-wrap.html`** (path relative to this SKILL.md; one self-contained file).
 

@@ -10,6 +10,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fileURLToPath as toPath } from 'node:url';
 import { exportPdf, exportDocx, pageThumbs, loadTheme, fontsFor, REPO } from './export.mjs';
+import { checkForUpdate, token, currentVersion } from '../update/check.mjs';
+import { applyUpdate } from '../update/apply.mjs';
 
 const MAX_BODY = 60 * 1024 * 1024;
 const OUT = path.join(REPO, 'out', 'exports');
@@ -39,6 +41,21 @@ export function serve(editorFile, port = 4317) {
         if (!f.startsWith(OUT + path.sep) || !fs.existsSync(f)) return send(404, { error: 'not found' });
         const type = f.endsWith('.pdf') ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
         return send(200, fs.readFileSync(f), type);
+      }
+      if (url.pathname === '/api/update' || url.pathname === '/api/update/apply') {
+        // the editor's update notice (editor/update.js): checked here with the user's gh auth or token, at most once a day
+        if (req.headers.origin && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(req.headers.origin)) return send(403, { error: 'origin' });
+        if (req.method === 'GET' && url.pathname === '/api/update') return send(200, await checkForUpdate());
+        if (req.method === 'POST' && url.pathname === '/api/update/apply') {
+          const chunks = [];
+          for await (const c of req) chunks.push(c);
+          const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+          if (body.confirm !== true) return send(400, { ok: false, error: 'confirm: true required' });
+          const u = await checkForUpdate({ force: true });
+          if (u.status !== 'available') return send(200, { ok: false, status: u.status });
+          const repo = JSON.parse(fs.readFileSync(path.join(REPO, 'update', 'source.json'), 'utf8')).repo;
+          return send(200, await applyUpdate({ dir: REPO, release: { version: u.latest, zip: u.zip, zipApi: u.zipApi, sha256: u.sha256 }, repo, token: token(), current: currentVersion() }));
+        }
       }
       if (req.method === 'POST' && url.pathname === '/api/webhook') {
         // the editor's webhooks: the browser cannot reach other origins (CSP connect-src 'self', CORS), so the server delivers

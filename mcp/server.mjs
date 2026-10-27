@@ -9,6 +9,8 @@ import { z } from 'zod';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { exportPdf, exportDocx, loadTheme, fontsFor, REPO } from '../engine/export.mjs';
 import { applyOps, migrate, validateEdits } from '../engine/edits.mjs';
+import { checkForUpdate, oneLiner, token, currentVersion } from '../update/check.mjs';
+import { applyUpdate } from '../update/apply.mjs';
 
 const pkg = JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8'));
 const readJson = (p) => JSON.parse(fs.readFileSync(path.resolve(p), 'utf8'));
@@ -30,12 +32,31 @@ function loadDocument(file, editsFile) {
   if (errs.length) throw new Error(`edits file invalid: ${errs.join('; ')}`);
   return { doc: applyOps(doc, edits.ops), ops: edits.ops.length };
 }
+// update_available rides once per session on the first tool result, so any MCP client's model sees it.
+let decorate = (d) => d;
 const guard = (fn) => async (args) => {
-  try { return ok(await fn(args)); } catch (e) { return fail(String(e?.message || e)); }
+  try { return ok(decorate(await fn(args))); } catch (e) { return fail(String(e?.message || e)); }
 };
 
-export function createServer() {
-  const server = new McpServer({ name: 'business-wrap', version: pkg.version });
+const BASE_INSTRUCTIONS = 'Business-Wrap: bilingual (AR RTL / EN LTR) requirements documents. build_editor makes the HTML editor; '
+  + 'apply_edits / validate_edits work on edits files (contract v1; a newer edits version is refused until Business-Wrap is updated); '
+  + 'export_document prints PDF + DOCX. check_update reports a newer release; apply_update installs it only with confirm: true after the user agreed.';
+
+/** The notice an agent shows its user: version, three highlights, the update command; migration notes for the agent itself. */
+export function updateNotice(u) {
+  if (!u || u.status !== 'available') return null;
+  return { current: u.current, latest: u.latest, highlights: u.highlights || [], migration_notes: u.migration || [], command: 'npx business-wrap update --apply --yes', url: u.url, message_en: oneLiner(u, 'en'), message_ar: oneLiner(u, 'ar') };
+}
+
+export function createServer({ update = null } = {}) {
+  const notice = updateNotice(update);
+  const instructions = notice
+    ? `${BASE_INSTRUCTIONS}
+UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). Tell the user in one line with these highlights: ${notice.highlights.join(' | ')}. Offer: ${notice.command}. Never update without the user's consent.${notice.migration_notes.length ? ` Migration notes for you: ${notice.migration_notes.join(' | ')}` : ''}`
+    : BASE_INSTRUCTIONS;
+  let told = false;
+  decorate = (d) => (notice && !told && d && typeof d === 'object' ? ((told = true), { ...d, update_available: notice }) : d);
+  const server = new McpServer({ name: 'business-wrap', version: pkg.version }, { instructions });
 
   server.registerTool('build_editor', {
     title: 'Build the HTML editor',
@@ -134,6 +155,30 @@ export function createServer() {
       missing,
       type3_risk: used.some((c) => c.format !== 'truetype'),
     };
+  }));
+
+  server.registerTool('check_update', {
+    title: 'Check for a Business-Wrap update',
+    description: 'Report whether a newer Business-Wrap release exists (cached; at most one request a day unless force). Returns status (available | current | unknown | off), the versions, three highlights, migration notes and a one-line message in English and Arabic to show the user.',
+    inputSchema: { force: z.boolean().optional().describe('Ignore the one-day cache') },
+    annotations: { readOnlyHint: true, openWorldHint: true },
+  }, guard(async ({ force }) => {
+    const u = await checkForUpdate({ force: !!force });
+    return { ...u, message_en: oneLiner(u, 'en'), message_ar: oneLiner(u, 'ar') };
+  }));
+
+  server.registerTool('apply_update', {
+    title: 'Install the Business-Wrap update',
+    description: "Install the newer release into this Business-Wrap folder, keeping the user's settings, design packs, logos, fonts and drafts; one backup is kept and restored on failure. Ask the user first: without confirm: true it only describes what would happen.",
+    inputSchema: { confirm: z.boolean().optional().describe('true only after the user agreed to update') },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+  }, guard(async ({ confirm }) => {
+    const u = await checkForUpdate({ force: true });
+    if (u.status !== 'available') return { applied: false, status: u.status, current: u.current };
+    if (confirm !== true) return { applied: false, needs_confirmation: true, would_update: { from: u.current, to: u.latest }, keeps: ['.local', 'design/custom', 'logos', 'fonts/custom', 'drafts', 'out'], ask_user: oneLiner(u, 'en') };
+    const repo = JSON.parse(fs.readFileSync(path.join(REPO, 'update', 'source.json'), 'utf8')).repo;
+    const r = await applyUpdate({ dir: REPO, release: { version: u.latest, zip: u.zip, zipApi: u.zipApi, sha256: u.sha256 }, repo, token: token(), current: currentVersion() });
+    return { applied: !!r.ok, ...r, migration_notes: u.migration || [], restart: 'restart the MCP server to load the new version' };
   }));
 
   return server;

@@ -3,4 +3,8 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createServer } from './server.mjs';
 
-await createServer().connect(new StdioServerTransport());
+import { checkForUpdate } from '../update/check.mjs';
+
+// cached (one request a day at most), bounded to 4 s so a slow network never delays the client
+const update = await Promise.race([checkForUpdate().catch(() => null), new Promise((r) => setTimeout(() => r(null), 4000))]);
+await createServer({ update }).connect(new StdioServerTransport());

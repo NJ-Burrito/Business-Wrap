@@ -11,6 +11,6 @@ startCommand:
   commandFunction: |-
     (config) => ({
       command: "npx",
-      args: ["-y", "-p", "business-wrap@0.5.1", "business-wrap-mcp"],
+      args: ["-y", "-p", "business-wrap@0.6.0", "business-wrap-mcp"],
       env: config.fontDir ? { BW_FONT_DIR: config.fontDir } : {}
     })

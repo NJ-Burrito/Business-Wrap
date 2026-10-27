@@ -40,6 +40,11 @@ try {
   }, text);
   const want = `sha256:${(await import('node:crypto')).createHash('sha256').update(text).digest('hex')}`;
   ok('Import opens a document JSON as its own service', r.svc === 'opened-at-runtime' && r.hash === want, r.hash);
+  await page.evaluate(() => localStorage.setItem('bw:seen-version', '0.0.1'));
+  await page.reload();
+  await page.waitForFunction(() => window.BW_UPDATE);
+  const wn = await page.evaluate(() => { const c = document.getElementById('bw-update')?.shadowRoot?.querySelector('.card'); return { shown: !!c && !c.hidden, text: c?.textContent || '', seen: localStorage.getItem('bw:seen-version'), v: window.BW_UPDATE.version }; });
+  ok("what's new shows once after an update (editor/update.js)", wn.shown && wn.text.includes(wn.v) && wn.seen === wn.v, wn.text.slice(0, 60));
   ok('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 } finally {
   await browser.close();

@@ -1,0 +1,16 @@
+{
+  "description": "Business-Wrap update notice: one line at session start when a newer release exists. OFF by default (prints nothing) until the user runs `npx business-wrap update --enable-hook`; the check is cached and makes at most one request a day.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/update/cli.mjs\" --hook",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
