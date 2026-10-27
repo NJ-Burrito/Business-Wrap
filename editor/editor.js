@@ -19,7 +19,8 @@ const ls = {
 
 const S = {
   ui: ls.get('bw:ui') || DATA.uiLang || 'ar',
-  dir: ls.get('bw:dir') || null, // layout direction override; null = follows the language
+  dir: ls.get('bw:dir') || null,
+  docxFonts: ls.get('bw:docx-fonts') !== '0', // DOCX carries the fonts unless turned off // layout direction override; null = follows the language
   dark: ls.get('bw:dark') === '1',
   svc: DATA.services[0].id,
   ed: DATA.services[0].editions.ar ? 'ar' : 'en',
@@ -432,7 +433,7 @@ async function inlineFonts(css) {
 /* ── export PDF + DOCX ─────────────────────────────────────────────────── */
 async function exportPdfDocx() {
   const e = cur();
-  const body = { service: S.svc, locale: S.ed, doc: e.doc, theme: S.theme };
+  const body = { service: S.svc, locale: S.ed, doc: e.doc, theme: S.theme, embedFonts: S.docxFonts };
   if (location.protocol.startsWith('http')) {
     try {
       const r = await fetch('/api/export', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
@@ -884,8 +885,11 @@ function validate() {
   for (const k of emptyLabels(labelsOf())) out.push(['err', t('vLabel', { x: k })]);
   const rej = sanitizeCss(d.design?.css).rejected;
   if (rej.length) out.push(['warn', t('vCss', { x: rej.join(' · ') })]);
-  const emptyLogos = ['start', 'center', 'end', 'header'].filter((k) => !S.theme.logos?.[k]).length;
-  if (emptyLogos) out.push(['info', t('vLogos', { n: emptyLogos })]);
+  // logos are placed freely (overlays) or sit in the design pack's slots: count both, flag only when there are none
+  const placed = (d.overlays || []).filter((o) => o.kind === 'logo').length;
+  const slotted = ['start', 'center', 'end', 'header'].filter((k) => S.theme.logos?.[k]).length;
+  if (placed + slotted) out.push(['ok', t('vLogosPlaced', { n: placed + slotted })]);
+  else out.push(['info', t('vLogos', { n: 4 })]);
   return out;
 }
 
@@ -1326,6 +1330,7 @@ ${e.comments.length ? `<h3>${esc(t('comment'))}</h3><ul class="list">${e.comment
 <div class="btns"><button type="button" class="b primary" data-k="logoAdd"><span class="i">${ic('logo')}</span><span class="w">${esc(t('logo'))}</span></button></div>
 <h3>${esc(t('imgWidth'))}</h3><input type="range" min="10" max="100" step="5" data-k="width" aria-label="${esc(t('imgWidth'))}" value="${(() => { const b = blockOf(S.sel?.b); return (b && get(cur().doc, b.ptr)?.width) || 100; })()}">
 <label class="chk"><input type="checkbox" data-k="embed" ${S.embedFonts ? 'checked' : ''}> ${esc(t('embedFonts'))}</label>
+<label class="chk"><input type="checkbox" data-k="docxFonts" ${S.docxFonts ? 'checked' : ''}> ${esc(t('docxFonts'))}</label>
 <div class="btns"><button type="button" class="b" data-k="texp"><span class="w">${esc(t('themeExport'))}</span></button><button type="button" class="b" data-k="timp"><span class="w">${esc(t('themeImport'))}</span></button></div>
 ${DESIGN.panel()}
 <h3>${esc(t('shortcuts'))}</h3><p class="hint">${esc(t('shortcutsText'))}</p>`;
@@ -1356,6 +1361,7 @@ ${DESIGN.panel()}
   d.onchange = (e) => {
     if (e.target.dataset.font) { S.theme = { ...S.theme, fonts: { ...S.theme.fonts, [e.target.dataset.font]: e.target.value } }; touched(); render(); }
     if (e.target.dataset.k === 'embed') S.embedFonts = e.target.checked;
+    if (e.target.dataset.k === 'docxFonts') { S.docxFonts = e.target.checked; ls.set('bw:docx-fonts', S.docxFonts ? '1' : '0'); }
     if (e.target.dataset.hook) hooksChange(e.target);
     if (e.target.dataset.pr) processChange(e.target);
     DESIGN.change(e.target);
@@ -1420,6 +1426,7 @@ async function onDrawer(e) {
   if (x.dataset.ovgo !== undefined) { const el = mainOf(S.ed)?.querySelector(`.bw-ov[data-i="${x.dataset.ovgo}"]`); el?.scrollIntoView({ block: 'center', behavior: isCalm() ? 'auto' : 'smooth' }); el?.focus(); }
   if (x.dataset.hk) { await hooksClick(x); return; }
   if (k === 'nd-model') { const f = await pickFile('.bpmn,.bpmn20.xml,.xml,.drawio,.yaml,.yml,.json'); if (f) await newFromModel(f); return; }
+  if (k === 'nd-merge') { await newFromMerge(); return; }
   if (k === 'nd-crawl') { await newFromCrawl(root.querySelector('.drawer [data-f="crawl"]').value); return; }
   if (await processClick(x)) return;
   if (k === 'texp') { const th = designTheme(S.theme, cur().doc); const { css, ...rest } = th; download(`design-pack.json`, JSON.stringify({ kind: 'bw-design-pack', version: 1, ...rest, labels: S.theme.labels || {} }, null, 1)); }
@@ -1865,8 +1872,28 @@ async function newFromModel(file) {
   busy(true);
   try {
     const text = await readAs(file, 'text');
-    const ir = await HV.parseModel(text, { inflateRaw: inflateRawBrowser, name: file.name.replace(/\.[^.]+$/, '') });
+    const ir = await HV.parseModel(text, { inflateRaw: inflateRawBrowser });
+    if (!ir.name || ir.name === 'Process') ir.name = file.name.replace(/\.[^.]+$/, '');
     return await addService({ ar: HV.modelToDocument(ir, { locale: 'ar', L: HL('ar') }), en: HV.modelToDocument(ir, { locale: 'en', L: HL('en') }) });
+  } catch (err) { toast(`${t('newdocFailed')} ${err.message || err}`, 'err', { persist: true }); return null; } finally { busy(false); }
+}
+/** The documented union of a crawl harvest and a process model, in the page: two files, one document. */
+async function newFromMerge() {
+  const crawlFile = await pickFile('.json,application/json');
+  if (!crawlFile) return null;
+  const modelFile = await pickFile('.json,.bpmn,.bpmn20.xml,.xml,.drawio,.yaml,.yml');
+  if (!modelFile) return null;
+  busy(true);
+  try {
+    const raw = JSON.parse(await readAs(crawlFile, 'text'));
+    if (raw.kind !== 'bw-harvest') throw new Error('harvest.json expected first');
+    const text = await readAs(modelFile, 'text');
+    const ir = /"kind"\s*:\s*"bw-process"/.test(text) ? JSON.parse(text) : await HV.parseModel(text, { inflateRaw: inflateRawBrowser });
+    const docs = { ar: HV.mergeToDocument(ir, raw, { locale: 'ar', L: HL('ar') }), en: HV.mergeToDocument(ir, raw, { locale: 'en', L: HL('en') }) };
+    const r = await addService(docs);
+    for (const [ed, d] of Object.entries(docs)) for (const c of d.harvestConflicts || []) S.conflicts.push({ ed, path: c.path, mine: c.kept, theirs: c.other, kind: 'text' });
+    if (S.conflicts.length) toast(t('reharvestConflicts', { n: S.conflicts.length }), 'warn', { actions: [[t('show'), () => openDrawer('conflicts')]], persist: true });
+    return r;
   } catch (err) { toast(`${t('newdocFailed')} ${err.message || err}`, 'err', { persist: true }); return null; } finally { busy(false); }
 }
 async function newFromCrawl(configText) {
@@ -1898,7 +1925,9 @@ function newdocPanel() {
 <div class="btns"><button type="button" class="b primary" data-k="nd-model"><span class="i">${ic('import')}</span><span class="w">${esc(t('newdocPick'))}</span></button></div></section>
 <section class="card"><h3><span class="i">${ic('crawl')}</span> ${esc(t('newdocCrawl'))}</h3><p class="hint">${esc(t(served ? 'newdocCrawlHint' : 'crawlNeedServer'))}</p>
 <label>${esc(t('crawlConfig'))}<textarea data-f="crawl" rows="12" spellcheck="false" dir="ltr">${esc(CRAWL_TEMPLATE)}</textarea></label>
-<div class="btns"><button type="button" class="b primary" data-k="nd-crawl" ${served ? '' : 'disabled'}><span class="i">${ic('crawl')}</span><span class="w">${esc(t('newdocRun'))}</span></button></div></section>`;
+<div class="btns"><button type="button" class="b primary" data-k="nd-crawl" ${served ? '' : 'disabled'}><span class="i">${ic('crawl')}</span><span class="w">${esc(t('newdocRun'))}</span></button></div></section>
+<section class="card"><h3><span class="i">${ic('connect')}</span> ${esc(t('ndMerge'))}</h3><p class="hint">${esc(t('ndMergeHint'))}</p>
+<div class="btns"><button type="button" class="b primary" data-k="nd-merge"><span class="i">${ic('import')}</span><span class="w">${esc(t('ndMergeCrawl'))} + ${esc(t('ndMergeModel'))}</span></button></div></section>`;
 }
 
 /* ── Process panel: edit the steps as a flowchart; regenerate the sections from it ── */
@@ -1910,7 +1939,7 @@ function processPanel() {
   const stepOpts = (sel) => ir.steps.map((s) => `<option value="${esc(s.id)}" ${s.id === sel ? 'selected' : ''}>${esc(s.name || t('kind_' + s.type))}</option>`).join('');
   const kindOf = (s) => t('kind_' + s.type);
   return `<div class="proc-fig" aria-label="${esc(t('procPreview'))}">${HV.processFigure(ir, { locale: S.ed, L: HL(S.ed) })}</div>
-<h3>${esc(t('procActors'))}</h3><ul class="list">${ir.actors.map((a, i) => `<li><input type="text" data-pr="actor" data-i="${i}" value="${esc(a.name)}" aria-label="${esc(t('procActorName'))}"></li>`).join('')}</ul>
+<h3>${esc(t('procActors'))}</h3><ul class="list">${ir.actors.map((a, i) => `<li><input type="text" data-pr="actor" data-i="${i}" value="${esc(a.names?.[S.ed] || a.name)}" aria-label="${esc(t('procActorName'))}${a.unresolved ? `: ${esc(t('procUnresolved'))}` : ''}"${a.unresolved ? ' aria-invalid="true"' : ''}>${a.unresolved ? ` <small class="warn">${esc(t('procUnresolved'))}: <code>${esc(a.raw || '')}</code></small>` : ''}</li>`).join('')}</ul>
 <div class="btns"><button type="button" class="b" data-k="pr-actor"><span class="i">${ic('add')}</span><span class="w">${esc(t('procAddActor'))}</span></button></div>
 <h3>${esc(t('procSteps'))}</h3><ul class="list">${ir.steps.filter((s) => ['task', 'decision', 'end', 'start', 'system'].includes(s.type)).map((s) => { const i = ir.steps.indexOf(s); return `<li><span class="badge">${esc(kindOf(s))}</span> <input type="text" data-pr="name" data-i="${i}" value="${esc(s.name)}" aria-label="${esc(t('procStepName'))}"> ${['task', 'decision'].includes(s.type) ? `<select data-pr="actorOf" data-i="${i}" aria-label="${esc(t('colActorUi'))}">${actorOpts(s.actor)}</select>` : ''} <button type="button" data-pr-del="${i}" aria-label="${esc(t('delete'))}">${ic('close')}</button></li>`; }).join('')}</ul>
 <div class="btns"><button type="button" class="b" data-k="pr-step"><span class="i">${ic('add')}</span><span class="w">${esc(t('procAddStep'))}</span></button><button type="button" class="b" data-k="pr-decision"><span class="i">${ic('add')}</span><span class="w">${esc(t('procAddDecision'))}</span></button><button type="button" class="b" data-k="pr-end"><span class="i">${ic('add')}</span><span class="w">${esc(t('procAddEnd'))}</span></button></div>
@@ -1969,7 +1998,7 @@ async function processClick(x) {
 function processChange(el) {
   const ir = JSON.parse(JSON.stringify(procOf()));
   const i = +el.dataset.i;
-  if (el.dataset.pr === 'actor') ir.actors[i].name = el.value;
+  if (el.dataset.pr === 'actor') { const a = ir.actors[i]; a.name = el.value; if (a.names) a.names = { ...a.names, [S.ed]: el.value }; delete a.unresolved; }
   if (el.dataset.pr === 'name') ir.steps[i].name = el.value;
   if (el.dataset.pr === 'actorOf') ir.steps[i].actor = el.value || undefined;
   setProcess(ir);
@@ -2192,5 +2221,6 @@ function boot() {
 // a re-harvest that met a hand edit: the person's text was kept; show the source's new text beside it
 for (const [svc, eds] of Object.entries(M)) for (const [ed, e] of Object.entries(eds)) for (const c of e.doc.harvestConflicts || []) if (svc === S.svc) S.conflicts.push({ ed, path: c.path, mine: c.manual, theirs: c.harvested, kind: 'text' });
 if (S.conflicts.length) toast(t('reharvestConflicts', { n: S.conflicts.length }), 'warn', { actions: [[t('show'), () => openDrawer('conflicts')]], persist: true });
+{ const n = (cur().doc.process?.actors || []).filter((a) => a.unresolved).length; if (n) toast(t('rolesUnresolved', { n }), 'warn', { actions: [[t('show'), () => openDrawer('process')]], persist: true }); }
 window.BW = { flushDraft, S, M, commit, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll };
 boot();

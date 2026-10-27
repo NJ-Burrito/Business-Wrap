@@ -11,7 +11,7 @@ import { exportPdf, exportDocx, loadTheme, fontsFor, REPO } from '../engine/expo
 import { applyOps, migrate, validateEdits } from '../engine/edits.mjs';
 import { checkForUpdate, oneLiner, token, currentVersion } from '../update/check.mjs';
 import { applyUpdate } from '../update/apply.mjs';
-import { harvestModel, harvestCrawl } from '../engine/harvest/cli.mjs';
+import { harvestModel, harvestCrawl, harvestMerge } from '../engine/harvest/cli.mjs';
 
 const pkg = JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8'));
 const readJson = (p) => JSON.parse(fs.readFileSync(path.resolve(p), 'utf8'));
@@ -143,16 +143,33 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
 
   server.registerTool('harvest_model', {
     title: 'Harvest from a process model',
-    description: 'Turn a BPMN 2.0 file (Flowable, Camunda, Activiti), a draw.io diagram or a YAML/JSON step list into the Arabic and English document JSON (actors, workflow figure of the steps people do, steps, rules, user stories, statuses) and build the editor for it.',
+    description: 'Turn a BPMN 2.0 file (Flowable, Camunda, Activiti), a monitoring-graph JSON, a draw.io diagram or a YAML/JSON step list into the Arabic and English document JSON (actors, workflow figure of the steps people do, steps, rules, user stories, statuses) and build the editor for it.',
     inputSchema: {
       model: z.string().describe('Path of the .bpmn / .xml / .drawio / .yaml / .json file'),
       out_dir: z.string().describe('Folder for the documents and the editor'),
-      name: z.string().optional().describe('Service name when the model has none'),
+      name: z.string().optional().describe('Service name (wins over the name in the model)'),
+      roles: z.string().optional().describe('Path of a roles mapping JSON: readable names (string or {ar, en}) for expression assignees and raw keys'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-  }, guard(async ({ model, out_dir, name }) => {
-    const r = await harvestModel(path.resolve(model), { out: path.resolve(out_dir), name });
-    return { documents: r.documents, editor: r.editor, actors: r.ir.actors.length, steps: r.ir.steps.filter((s) => s.type === 'task').length };
+  }, guard(async ({ model, out_dir, name, roles }) => {
+    const r = await harvestModel(path.resolve(model), { out: path.resolve(out_dir), name, roles: roles && path.resolve(roles) });
+    return { documents: r.documents, editor: r.editor, actors: r.ir.actors.length, unresolved_roles: r.ir.actors.filter((a) => a.unresolved).map((a) => a.raw), steps: r.ir.steps.filter((s) => s.type === 'task').length };
+  }));
+
+  server.registerTool('harvest_merge', {
+    title: 'Merge a crawl harvest with a process model',
+    description: 'The union of a crawl harvest (what the applicant meets: card, inputs, attachments, validations) and a process model (actors, workflow, rules, tasks, statuses) into one Arabic and English document, each chapter and status row marked with its source; where the two disagree the crawl wording is kept and the other is listed as a conflict.',
+    inputSchema: {
+      crawl: z.string().describe('Path of the raw crawl harvest (harvest.json) or its folder'),
+      model: z.string().describe('Path of process.json or a model file (BPMN, monitoring-graph JSON, draw.io, YAML)'),
+      out_dir: z.string().describe('Folder for the documents and the editor'),
+      name: z.string().optional().describe('Service name for both editions'),
+      roles: z.string().optional().describe('Path of a roles mapping JSON'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  }, guard(async ({ crawl, model, out_dir, name, roles }) => {
+    const r = await harvestMerge(path.resolve(crawl), path.resolve(model), { out: path.resolve(out_dir), name, roles: roles && path.resolve(roles) });
+    return { documents: r.documents, editor: r.editor, conflicts: r.conflicts };
   }));
 
   server.registerTool('harvest_crawl', {

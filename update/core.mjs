@@ -66,14 +66,18 @@ export async function checkLatest({ repo, current, state = {}, token = '', fetch
   if (state?.etag) headers['If-None-Match'] = state.etag;
   if (token) headers.Authorization = `Bearer ${token}`;
   try {
-    const res = await f(`https://api.github.com/repos/${repo}/releases/latest`, { method: 'GET', headers, cache: 'no-store', redirect: 'follow' });
-    if (res.status === 304) return { ...state, checkedAt: now };
+    const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined;
+    const res = await f(`https://api.github.com/repos/${repo}/releases/latest`, { method: 'GET', headers, cache: 'no-store', redirect: 'follow', signal });
+    // a response whose body is never read keeps its socket open; release it so the process can exit cleanly
+    const drop = () => { try { res.body?.cancel?.(); } catch { /* already consumed */ } };
+    if (res.status === 304) { drop(); return { ...state, checkedAt: now }; }
     if (res.status === 403 || res.status === 429) {
       const reset = Number(res.headers?.get?.('x-ratelimit-reset')) * 1000 - now;
       const wait = Number(res.headers?.get?.('retry-after')) * 1000;
+      drop();
       return { ...state, backoffUntil: now + Math.min(Math.max(wait || reset || BACKOFF_MS, BACKOFF_MS), 24 * BACKOFF_MS) };
     }
-    if (!res.ok) return null;
+    if (!res.ok) { drop(); return null; }
     const rel = pickRelease(await res.json(), repo);
     return { etag: res.headers?.get?.('etag') || '', checkedAt: now, latest: rel && isNewer(rel.version, current) ? rel : null };
   } catch {

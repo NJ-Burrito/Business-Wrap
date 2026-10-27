@@ -1,6 +1,8 @@
 // Local server for one-click PDF + DOCX export from the editor.
 //
-//   node engine/serve.mjs <editor.html> [--port 4317]
+//   node engine/serve.mjs <editor.html> [--port 4317] [--out <exports folder>]
+//
+// Exports go to --out, or to an «exports» folder beside the editor file: never into this repository.
 //
 // Binds 127.0.0.1 only. Serves the editor at /, exports at POST /api/export,
 // and the exported files under /files/. Stdlib only.
@@ -9,16 +11,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fileURLToPath as toPath } from 'node:url';
-import { exportPdf, exportDocx, pageThumbs, loadTheme, fontsFor, REPO, i18n } from './export.mjs';
+import { exportPdf, exportDocx, pageThumbs, loadTheme, fontsFor, REPO, i18n, fileStem, userCwd } from './export.mjs';
 import { checkForUpdate, token, currentVersion } from '../update/check.mjs';
 import { applyUpdate } from '../update/apply.mjs';
 import { crawl, harvestToDocument } from './harvest/crawl.mjs';
 
 const MAX_BODY = 60 * 1024 * 1024;
-const OUT = path.join(REPO, 'out', 'exports');
-const slug = (s) => String(s || 'document').replace(/[^\w.-]+/g, '-').slice(0, 80);
+const slug = fileStem;
 
-export function serve(editorFile, port = 4317) {
+export function serve(editorFile, port = 4317, { out } = {}) {
+  const OUT = path.resolve(out || path.join(path.dirname(editorFile), 'exports'));
   const fontFiles = new Set(fontsFor(loadTheme()).cuts.map((c) => path.resolve(c.file)));
   const server = http.createServer(async (req, res) => {
     const send = (code, body, type = 'application/json') => {
@@ -121,7 +123,7 @@ export function serve(editorFile, port = 4317) {
         const pdf = await exportPdf(body.doc, { locale, theme, pdfPath: path.join(dir, `${stem}.pdf`) });
         let docx = null;
         let docxError = null;
-        try { docx = exportDocx(body.doc, { locale, theme, docxPath: path.join(dir, `${stem}.docx`) }).docx; } catch (e) { docxError = String(e.message).slice(0, 400); }
+        try { docx = exportDocx(body.doc, { locale, theme, docxPath: path.join(dir, `${stem}.docx`), embedFonts: body.embedFonts !== false }).docx; } catch (e) { docxError = String(e.message).slice(0, 400); }
         const rel = (f) => `/files/${path.relative(OUT, f).split(path.sep).map(encodeURIComponent).join('/')}`;
         return send(200, { pdf: pdf.pdf, docx, docxError, pdfUrl: rel(pdf.pdf), docxUrl: docx && rel(docx) });
       }
@@ -133,10 +135,26 @@ export function serve(editorFile, port = 4317) {
   return new Promise((ok) => server.listen(port, '127.0.0.1', () => ok(server)));
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const file = process.argv[2];
-  const port = Number(process.argv[process.argv.indexOf('--port') + 1]) || 4317;
-  if (!file || !fs.existsSync(file)) { console.error('usage: node engine/serve.mjs <editor.html> [--port 4317]'); process.exit(2); }
-  await serve(path.resolve(file), port);
-  console.log(`Business-Wrap editor on http://127.0.0.1:${port}/  (Ctrl+C to stop)`);
+// run as the entry point, also when started through a junction or a symlink (compare real paths)
+const real = (f) => { try { return fs.realpathSync.native(path.resolve(f)); } catch { return path.resolve(f); } };
+if (process.argv[1] && real(process.argv[1]) === real(fileURLToPath(import.meta.url))) {
+  const args = process.argv.slice(2);
+  const opt = (k) => { const i = args.indexOf(`--${k}`); return i < 0 ? undefined : args[i + 1]; };
+  const file = args.find((a, i) => !a.startsWith('--') && !['--port', '--out'].includes(args[i - 1]));
+  const port = opt('port') !== undefined ? Number(opt('port')) : 4317;
+  if (!file) { console.error('usage: node engine/serve.mjs <editor.html> [--port 4317] [--out <exports folder>]'); process.exit(2); }
+  const editor = path.resolve(userCwd(), file);
+  if (!fs.existsSync(editor)) { console.error(`editor file not found: ${editor}
+usage: node engine/serve.mjs <editor.html> [--port 4317] [--out <exports folder>]`); process.exit(2); }
+  try {
+    const server = await serve(editor, Number.isFinite(port) ? port : 4317, { out: opt('out') && path.resolve(userCwd(), opt('out')) });
+    console.log(`Business-Wrap editor on http://127.0.0.1:${server.address().port}/  (Ctrl+C to stop)`);
+  } catch (e) {
+    console.error(`serve failed: ${e.message}`);
+    process.exit(1);
+  }
+} else if (process.argv[1] && /serve\.mjs$/.test(process.argv[1]) && !process.argv[1].includes('test')) {
+  // started as a script but the paths did not match: say so instead of exiting silently
+  console.error(`serve.mjs was started as ${process.argv[1]} but resolves to ${fileURLToPath(import.meta.url)}; run it by its real path.`);
+  process.exitCode = 1;
 }

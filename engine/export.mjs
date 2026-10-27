@@ -47,6 +47,11 @@ export function fontsFor(theme) {
   return { manifest, cuts, used, missing: missing.filter((m) => families.some((f) => m.startsWith(f))) };
 }
 
+/** A file name stem that keeps every script readable (Arabic included): only path-hostile characters go. */
+export const fileStem = (s) => String(s || 'document').normalize('NFC').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '-').replace(/\s+/g, '-').replace(/-{2,}/g, '-').replace(/^[-.]+|[-.]+$/g, '').slice(0, 80) || 'document';
+/** Where the user started the command (npm runs scripts from the package folder; INIT_CWD keeps theirs). */
+export const userCwd = () => process.env.INIT_CWD || process.cwd();
+
 /** The print HTML — what the editor shows minus the editor layer. */
 export function printHtml(doc, { locale, theme, embed = true }) {
   const { used } = fontsFor(designTheme(theme, doc));
@@ -127,7 +132,9 @@ export async function pageThumbs(doc, { locale, theme, dpi = 36 }) {
 }
 
 /** DOCX through the copied builder. Writes the edited JSON beside it first. */
-export function exportDocx(doc, { locale, theme, docxPath }) {
+/** DOCX replica. embedFonts (default true): the TrueType cuts travel inside the file (word/fonts/*.odttf). */
+export function exportDocx(doc, { locale, theme, docxPath, embedFonts = true }) {
+  const cuts = embedFonts ? fontsFor(designTheme(theme, doc)).used.filter((c) => c.format === 'truetype').map((c) => ({ family: c.family, weight: c.weight, file: c.file })) : [];
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-docx-'));
   const docJson = path.join(work, 'document.json');
   const themeJson = path.join(work, 'theme.json');
@@ -136,7 +143,7 @@ export function exportDocx(doc, { locale, theme, docxPath }) {
   fs.mkdirSync(path.dirname(docxPath), { recursive: true });
   const r = spawnSync('uv', ['run', '--no-project', '--with', 'python-docx', '--with', 'lxml', 'python', path.join(HERE, 'docx', 'build_docx.py'), docJson, docxPath, '--workdir', work], {
     encoding: 'utf8',
-    env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8', BW_CHROME: chromePath() || '', BW_LOCALE: locale, BW_THEME: themeJson },
+    env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8', BW_CHROME: chromePath() || '', BW_LOCALE: locale, BW_THEME: themeJson, BW_EMBED_FONTS: cuts.length ? JSON.stringify(cuts) : '' },
   });
   fs.rmSync(work, { recursive: true, force: true });
   if (r.status !== 0) throw new Error(`docx build failed: ${(r.stderr || r.stdout).slice(-2000)}`);
@@ -164,14 +171,15 @@ export function loadEdited(docFile, editsFile) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const a = args(process.argv.slice(2));
   if (!a.doc) {
-    console.error('usage: node engine/export.mjs --doc <document.json> [--edits e.json] [--locale ar|en] [--theme t.json] [--out dir] [--no-docx]');
+    console.error('usage: node engine/export.mjs --doc <document.json> [--edits e.json] [--locale ar|en] [--theme t.json] [--out dir] [--no-docx] [--no-embed-fonts]');
     process.exit(2);
   }
-  const doc = loadEdited(a.doc, a.edits);
+  const doc = loadEdited(path.resolve(userCwd(), a.doc), a.edits && path.resolve(userCwd(), a.edits));
   const locale = a.locale || (/\.en\.json$/.test(a.doc) ? 'en' : 'ar');
   const theme = loadTheme(a.theme);
-  const out = path.resolve(a.out || path.join(REPO, 'out', doc.service || 'document', locale));
-  const stem = `${doc.service || 'document'}.${locale}`;
+  // beside the user's document (or --out), never inside this repository
+  const out = path.resolve(userCwd(), a.out || path.join(path.dirname(path.resolve(userCwd(), a.doc)), 'exports', locale));
+  const stem = `${fileStem(doc.service)}.${locale}`;
   if (a['html-only']) {
     fs.mkdirSync(out, { recursive: true });
     fs.writeFileSync(path.join(out, `${stem}.print.html`), printHtml(doc, { locale, theme }).html);
@@ -179,6 +187,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   } else {
     const r = await exportPdf(doc, { locale, theme, pdfPath: path.join(out, `${stem}.pdf`) });
     console.log(`PDF  ${r.pdf}  (${r.post})`);
-    if (!a['no-docx']) console.log(`DOCX ${exportDocx(doc, { locale, theme, docxPath: path.join(out, `${stem}.docx`) }).docx}`);
+    if (!a['no-docx']) console.log(`DOCX ${exportDocx(doc, { locale, theme, docxPath: path.join(out, `${stem}.docx`), embedFonts: !a['no-embed-fonts'] }).docx}`);
   }
 }

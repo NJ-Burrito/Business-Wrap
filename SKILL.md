@@ -37,10 +37,12 @@ Two ways in, one result: `document.ar.json` + `document.en.json` and an editor.
 | You have | Run | Notes |
 |---|---|---|
 | A BPMN 2.0 export (Flowable, Camunda, Activiti), a draw.io diagram, or a YAML/JSON step list | `npm run harvest:model -- <file> [--out dir]` · MCP `harvest_model` · editor **New document → From a process model** | lanes/groups → actors, user tasks → stories, gateways/conditions/timers → rules, end events → statuses; the figure shows people's steps only |
+| Both: a crawl and a model of the same service | `npm run harvest:merge -- <harvest.json> <process.json\|model>` · MCP `harvest_merge` · editor **New document → Merge two harvests** | the union with the source of each chapter and status row; disagreements listed as conflicts; a second harvest `--into` the same folder merges, never overwrites |
 | A live e-service | `npm run harvest:crawl -- <crawl.json>` · MCP `harvest_crawl` · editor **New document → Walk the live service** (needs `npm run serve`) | headed Chrome, one tab, keyboard first, robots respected, OTP/captcha pause waits for the human; credentials only as `$env:NAME` / `$secret:key` |
 
 Rules that cost a rebuild if skipped:
 - Never put a password in a crawl config; use `$env:` or `.local/harvest-secrets.json`.
+- SPA portals: give the crawl a `waitFor` ready selector and `preForm` steps (terms, Continue); expression assignees need `--roles roles.json` (an unmapped role is asked for, never called "User").
 - Harvested names are kept as written; a one-language source gives both editions the same names: review before issuing.
 - Everything printed is editable (labels, title, cover code, field names and values, design, template parts); the rules and pointers are in `bible/04-edits-contract.md` § Everything is editable.
 - After editing the flow in the **Process** panel, press **Rebuild the sections**; control data, revisions and placed logos stay.
@@ -52,10 +54,12 @@ Rules that cost a rebuild if skipped:
 | لديك | شغّل | ملاحظات |
 |---|---|---|
 | تصدير BPMN 2.0 (Flowable أو Camunda أو Activiti)، أو مخطط draw.io، أو قائمة خطوات YAML أو JSON | `npm run harvest:model -- <file> [--out dir]` · أداة MCP `harvest_model` · في المحرر **وثيقة جديدة ← من نموذج إجراء** | المسارات والمجموعات ← الأطراف، ومهام المستخدم ← القصص، والبوابات والشروط والمهل ← القواعد، وأحداث النهاية ← الحالات؛ والمخطط يعرض خطوات الأشخاص فقط |
+| مرور ونموذج للخدمة نفسها | `npm run harvest:merge -- <harvest.json> <process.json\|model>` · أداة MCP `harvest_merge` · في المحرر **وثيقة جديدة ← دمج حصادين** | الاتحاد مع مصدر كل فصل وكل صف حالة؛ والاختلافات تُعرض تعارضات؛ والحصاد الثاني `--into` المجلد نفسه يُدمج ولا يحل محل الأول |
 | خدمة إلكترونية فعلية | `npm run harvest:crawl -- <crawl.json>` · أداة MCP `harvest_crawl` · في المحرر **وثيقة جديدة ← المرور على الخدمة الفعلية** (يحتاج `npm run serve`) | Chrome ظاهر، وتبويب واحد، ولوحة المفاتيح أولاً، واحترام robots، والتوقف للرمز المؤقت أو التحقق البشري حتى يتدخل الإنسان؛ وبيانات الدخول فقط بصيغة `$env:NAME` أو `$secret:key` |
 
 قواعد يكلّف تجاوزها إعادة البناء:
 - لا تضع كلمة مرور في إعدادات المرور؛ استخدم `$env:` أو `.local/harvest-secrets.json`.
+- بوابات SPA: أعطِ المرور محدد الجاهزية `waitFor` وخطوات `preForm` (الشروط والمتابعة)؛ والمكلَّفون بالتعبيرات يحتاجون `--roles roles.json` (والدور غير المحسوم يُسأل عنه، ولا يُسمى "User").
 - الأسماء المستخرجة تبقى كما وردت؛ والمصدر المكتوب بلغة واحدة يعطي النسختين الأسماء نفسها، فراجعها قبل الإصدار.
 - كل ما يُطبع قابل للتحرير (التسميات والعنوان ورمز الغلاف وأسماء الحقول وقيمها والتصميم وأجزاء القالب)؛ والقواعد والمؤشرات في `bible/04-edits-contract.ar.md`.
 - بعد تعديل السير في لوحة **الإجراء** اضغط **أعد بناء الأقسام**؛ ويبقى ضبط الوثيقة والمراجعات والشعارات الموضوعة.

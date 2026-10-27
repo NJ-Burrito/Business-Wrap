@@ -17,7 +17,7 @@
 
 ## التشغيل
 ```
-claude mcp add business-wrap -- npx -y -p business-wrap@0.7.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p business-wrap@0.8.0 business-wrap-mcp
 # أو من نسخة محلية بعد npm ci:
 node mcp/cli.mjs
 ```

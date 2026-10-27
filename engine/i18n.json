@@ -406,7 +406,15 @@
       "part_revisions": "سجل المراجعات",
       "part_toc": "جدول المحتويات",
       "part_questions": "الأسئلة المفتوحة",
-      "reharvestConflicts": "أُعيد الاستخراج: {n} قيمة عدّلتها يدوياً بقيت كما هي، والمصدر يقول الآن شيئاً آخر"
+      "reharvestConflicts": "أُعيد الاستخراج: {n} قيمة عدّلتها يدوياً بقيت كما هي، والمصدر يقول الآن شيئاً آخر",
+      "ndMerge": "دمج حصادين",
+      "ndMergeHint": "حصاد المرور (harvest.json) ونموذج الإجراء (process.json أو BPMN أو draw.io أو YAML أو مخطط مراقبة JSON): الاتحاد بينهما، وكل قسم معلَّم بمصدره، والاختلافات تُعرض تعارضات.",
+      "ndMergeCrawl": "حصاد المرور (harvest.json)",
+      "ndMergeModel": "نموذج الإجراء",
+      "rolesUnresolved": "{n} دور يحتاج إلى اسم مقروء",
+      "procUnresolved": "يحتاج إلى اسم مقروء",
+      "docxFonts": "تضمين الخطوط في DOCX (يظهر صحيحاً دون تثبيت ثمانية)",
+      "vLogosPlaced": "الشعارات الموضوعة: {n}"
     },
     "en": {
       "appName": "Business-Wrap editor",
@@ -703,7 +711,15 @@
       "part_revisions": "Revision history",
       "part_toc": "Table of contents",
       "part_questions": "Open questions",
-      "reharvestConflicts": "Re-harvested: {n} value(s) you edited were kept; the source now says something else"
+      "reharvestConflicts": "Re-harvested: {n} value(s) you edited were kept; the source now says something else",
+      "ndMerge": "Merge two harvests",
+      "ndMergeHint": "A crawl harvest (harvest.json) and a process model (process.json, BPMN, draw.io, YAML or a monitoring graph JSON): the union of both, each section marked with its source; disagreements are listed as conflicts.",
+      "ndMergeCrawl": "Crawl harvest (harvest.json)",
+      "ndMergeModel": "Process model",
+      "rolesUnresolved": "{n} role(s) need a readable name",
+      "procUnresolved": "needs a readable name",
+      "docxFonts": "Embed the fonts in the DOCX (opens right without Thmanyah installed)",
+      "vLogosPlaced": "Logos placed: {n}"
     }
   },
   "harvest": {
@@ -784,7 +800,15 @@
       "noAttachments": "The forms ask for no attachments.",
       "noValidations": "No validation message was shown.",
       "noStatuses": "No status list was found after sending.",
-      "gapLang": "The service was harvested in one language only; check the {l} wording."
+      "gapLang": "The service was harvested in one language only; check the {l} wording.",
+      "decisionN": "Decision",
+      "stepN": "Step",
+      "gapRole": "Which role is «{x}»? Give it a readable name (Process panel or a roles mapping file).",
+      "provCrawl": "Live service (crawl)",
+      "provModel": "Process model",
+      "provBoth": "Both",
+      "colSource": "Source",
+      "src_graph": "a monitoring graph of the process"
     },
     "ar": {
       "unassigned": "غير محدد",
@@ -863,7 +887,15 @@
       "noAttachments": "لا تطلب النماذج أي مرفقات.",
       "noValidations": "لم تظهر أي رسالة تحقق.",
       "noStatuses": "لم توجد قائمة حالات بعد الإرسال.",
-      "gapLang": "استُخرجت الخدمة بلغة واحدة فقط؛ راجع صياغة {l}."
+      "gapLang": "استُخرجت الخدمة بلغة واحدة فقط؛ راجع صياغة {l}.",
+      "decisionN": "قرار",
+      "stepN": "خطوة",
+      "gapRole": "ما الدور «{x}»؟ أعطه اسماً مقروءاً (لوحة الإجراء أو ملف أسماء الأدوار).",
+      "provCrawl": "الخدمة الفعلية (مرور)",
+      "provModel": "نموذج الإجراء",
+      "provBoth": "كلاهما",
+      "colSource": "المصدر",
+      "src_graph": "مخطط مراقبة للإجراء"
     }
   }
 }

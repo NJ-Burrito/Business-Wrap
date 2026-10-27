@@ -36,6 +36,38 @@ Raw output: `harvest.json` + screenshots. Sections written: Introduction · Serv
 npm run harvest:crawl -- path/to/crawl.json [--out out/harvest] [--headless]
 ```
 
+## C. Merge the two harvests (0.8.0)
+A crawl knows what the applicant meets (card, inputs, attachments, validation messages); a model knows what happens after (actors, workflow, rules, tasks, statuses). The merge is their **union, never a pick**:
+
+| Chapter | From |
+|---|---|
+| Introduction | both (each source named) |
+| Service card, Inputs, Attachments, Validation messages | crawl |
+| Actors and roles, Workflow diagram, Steps, Business rules | model |
+| User stories | the form steps (crawl), then the people's tasks (model) |
+| Request statuses | the union, each row with its source (crawl / model / both) |
+
+Every chapter and status row is recorded in `provenance` (pointer → `crawl` · `model` · `both`). Where the two say different things about one fact (the service title today), the crawl's wording is kept, because it is what the applicant reads, and the other is recorded in `harvestConflicts`; the editor lists it in the conflicts panel on open. A second harvest of the other kind **written into the same document folder** (`--into <dir>`) merges in the same way and never replaces the first; hand edits flagged «manual» stay.
+
+```
+npm run harvest:merge -- path/to/harvest.json path/to/process.json [--out dir] [--name "Service name"] [--roles roles.json]
+```
+MCP `harvest_merge {crawl, model, out_dir, name?, roles?}`; editor **New document → Merge two harvests**.
+
+## Readable names (0.8.0)
+- **Expression assignees** (`${service.getAssignee(execution,'Role_head-of-section_Key')}`) are resolved through a **roles mapping file** (`--roles roles.json`: `{ "Role_head-of-section_Key": {"ar": "…", "en": "Head of section"}, "_name": {"ar": "…", "en": "…"} }`; the key can be the whole expression, the quoted literal or its readable form). Without a mapping the name is a readable fallback ("Head of section") and the actor is flagged **unresolved**: an open question is written and the editor's Process panel asks for the name. A user task with candidate groups or an assignee is never called "User".
+- Raw keys (`Task_Verification_Key`, `edit-by-applicant`) become readable words; **unnamed gateways** are numbered per edition («قرار ١» / «Decision 1»); raw `sid-…` ids are never printed.
+- `--name` wins over the name in any model (BPMN included), in both editions.
+- **Monitoring-graph JSON**: back offices that show the process but do not export the XML give a graph (`{key, description, graph: {nodes, edges}}`); `harvest:model` reads it like BPMN.
+
+## The crawler on SPA portals (0.8.0)
+`waitFor` (one ready selector, or `{card, form}`) after network idle (`idleMs`); `preForm` steps between the card and the form (`check` a terms box once, `press` Continue, `login: true` to sign in again, `ready`); labels from the control's own label, `aria-labelledby`, the label before it or its field box (`.p-field`), the placeholder: **never the section title**; required from `required`/`aria-required`, an asterisk, or an empty control marked `ng-invalid`; options of `p-dropdown` / `p-select` / `p-multiselect` (read from their overlay), `p-calendar` / `p-datepicker` as dates, `p-radiobutton` groups by `formcontrolname`; a control with no id or name is filled through the tag the crawler gives it; `harvest.json` is written after every step, so a crash keeps what was read; `--raw harvest.json` maps a saved harvest again without a browser.
+
+## Editions, files, fonts (0.8.0)
+- The document code (`control.documentId`, the running header and the cover spine) is Latin in both editions: the process key, the crawl name, or a transliteration; never the Arabic slug.
+- Export file names keep Arabic readable (`طلب-حجز-قاعة.ar.pdf`); exports go to `--out`, or an `exports` folder beside the document / the editor, never into this repository.
+- The DOCX carries its TrueType fonts (`word/fonts/*.odttf`, default on; editor toggle «Embed the fonts in the DOCX», CLI `--no-embed-fonts`), so it opens right without Thmanyah installed.
+
 ## In the editor
 **New document** (island button or `Ctrl+K`): *From a process model* reads the file in the page; *Walk the live service* needs `npm run serve` because it runs a browser on this machine. The new service opens at once in both editions.
 **Process** panel: add actors, steps, decisions and end statuses, connect them, see the figure, then **Rebuild the sections** (both editions; document control, revisions and placed logos stay).

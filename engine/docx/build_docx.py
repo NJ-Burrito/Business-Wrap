@@ -525,116 +525,13 @@ def refresh_fields(out_docx: Path, font: str=DEFAULT_BODY_FONT) -> str:
         except Exception:
             pass
         pythoncom.CoUninitialize()
-FONT_PARTS_PREFIX = 'word/fonts/'
-CT_ODTTF = '<Default Extension="odttf" ContentType="application/vnd.openxmlformats-officedocument.obfuscatedFont"/>'
-
 def embed_fonts(out_docx: Path) -> str:
-    try:
-        import pythoncom, win32com.client
-    except Exception as exc:
-        print(f'WARN: fonts NOT embedded ({exc}); the client needs Thmanyah installed.', file=sys.stderr)
-        return 'NOT_EMBEDDED'
-    tmpdir = Path(tempfile.mkdtemp(prefix='bw-embed-'))
-    try:
-        probe = tmpdir / 'probe.docx'
-        shutil.copy2(out_docx, probe)
-        pythoncom.CoInitialize()
-        app = doc = None
-        try:
-            app = win32com.client.DispatchEx('Word.Application')
-            app.Visible = False
-            app.DisplayAlerts = 0
-            doc = app.Documents.Open(str(probe.resolve()), ConfirmConversions=False, AddToRecentFiles=False)
-            doc.EmbedTrueTypeFonts = True
-            doc.SaveSubsetFonts = True
-            doc.DoNotEmbedSystemFonts = True
-            doc.Save()
-        except Exception as exc:
-            print(f'WARN: fonts NOT embedded ({exc}); the client needs Thmanyah installed.', file=sys.stderr)
-            return 'NOT_EMBEDDED'
-        finally:
-            try:
-                if doc is not None:
-                    doc.Close(0)
-            except Exception:
-                pass
-            try:
-                if app is not None:
-                    app.Quit()
-            except Exception:
-                pass
-            pythoncom.CoUninitialize()
-        with zipfile.ZipFile(probe) as z:
-            grafted = {n: z.read(n) for n in z.namelist() if n.startswith(FONT_PARTS_PREFIX) or n in ('word/fontTable.xml', 'word/_rels/fontTable.xml.rels')}
-            has_italic = b'<w:i/>' in z.read('word/document.xml')
-        grafted = _prune_embeds(grafted, has_italic)
-        odttf = [n for n in grafted if n.startswith(FONT_PARTS_PREFIX)]
-        if not odttf:
-            print('WARN: Word embedded no font outlines; the client needs Thmanyah installed.', file=sys.stderr)
-            return 'NOT_EMBEDDED'
-        with zipfile.ZipFile(out_docx) as z:
-            ours = [(i, z.read(i.filename)) for i in z.infolist()]
-        merged = tmpdir / 'merged.docx'
-        with zipfile.ZipFile(merged, 'w', zipfile.ZIP_DEFLATED) as out:
-            for info, data in ours:
-                name = info.filename
-                if name in grafted:
-                    data = grafted.pop(name)
-                elif name == '[Content_Types].xml':
-                    text = data.decode('utf-8')
-                    if 'Extension="odttf"' not in text:
-                        data = text.replace('</Types>', CT_ODTTF + '</Types>', 1).encode('utf-8')
-                elif name == 'word/settings.xml':
-                    data = _with_embed_flags(data.decode('utf-8')).encode('utf-8')
-                out.writestr(info, data)
-            for name, data in grafted.items():
-                out.writestr(name, data)
-        shutil.copy2(merged, out_docx)
-        return f'EMBEDDED:{len(odttf)}'
-    finally:
-        shutil.rmtree(tmpdir, ignore_errors=True)
-
-def _prune_embeds(grafted: dict[str, bytes], has_italic: bool) -> dict[str, bytes]:
-    from lxml import etree
-    W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
-    R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
-    DROP_FACES = {'calibri', 'cambria', 'arial', 'times new roman', 'courier', 'symbol', 'ms mincho', 'ms gothic'}
-    ft = etree.fromstring(grafted['word/fontTable.xml'])
-    keep_rids = set()
-    for font in ft.findall(f'{{{W}}}font'):
-        name = (font.get(f'{{{W}}}name') or '').lower()
-        for slot in list(font):
-            tag = etree.QName(slot).localname
-            if not tag.startswith('embed'):
-                continue
-            italic = 'Italic' in tag
-            if name in DROP_FACES or (italic and (not has_italic)):
-                font.remove(slot)
-            else:
-                keep_rids.add(slot.get(f'{{{R}}}id'))
-    rels = etree.fromstring(grafted['word/_rels/fontTable.xml.rels'])
-    keep_parts = set()
-    for rel in list(rels):
-        if rel.get('Id') in keep_rids:
-            keep_parts.add('word/' + rel.get('Target'))
-        else:
-            rels.remove(rel)
-    out = {'word/fontTable.xml': etree.tostring(ft, xml_declaration=True, encoding='UTF-8', standalone=True), 'word/_rels/fontTable.xml.rels': etree.tostring(rels, xml_declaration=True, encoding='UTF-8', standalone=True)}
-    for name, data in grafted.items():
-        if name.startswith(FONT_PARTS_PREFIX) and name in keep_parts:
-            out[name] = data
-    return out
-
-def _with_embed_flags(settings_xml: str) -> str:
-    if 'w:embedTrueTypeFonts' in settings_xml:
-        return settings_xml
-    flags = '<w:embedTrueTypeFonts/><w:saveSubsetFonts/>'
-    for anchor in ('<w:proofState', '<w:defaultTabStop'):
-        i = settings_xml.find(anchor)
-        if i != -1:
-            return settings_xml[:i] + flags + settings_xml[i:]
-    return settings_xml
-ASSETS = Path(__file__).resolve().parents[2] / 'manuals' / 'templates'
+    """Fonts travel inside the DOCX (default on; BW_EMBED_FONTS='' turns it off). Pure Python, see embed_fonts.py."""
+    raw = os.environ.get('BW_EMBED_FONTS', '')
+    if not raw:
+        return 'OFF'
+    import embed_fonts as _ef
+    return _ef.embed(out_docx, json.loads(raw))
 
 def theme_logos(workdir: Path, slots) -> list:
     import base64

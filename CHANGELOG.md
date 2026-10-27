@@ -8,6 +8,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.8.0] - 2026-10-27
+
+From the first field test (one live service, clean room, the skill only: partial pass, 6 workarounds). / من أول اختبار ميداني.
+
+### Added / أضيف
+- `npm run harvest:merge -- <harvest.json> <process.json|model>`, MCP `harvest_merge`, editor **New document → Merge two harvests**: the union of a crawl and a model with provenance per chapter and status row; disagreements kept as conflicts and shown; a second harvest `--into` the same folder merges instead of overwriting. / أمر الدمج وأداته ومعالجه.
+- Model: a **roles mapping file** (`--roles`) for expression assignees and raw keys, per edition; unmapped roles get a readable fallback, an open question and a prompt in the Process panel; a **monitoring-graph JSON** harvester for back offices that do not export XML. / ملف أسماء الأدوار وقارئ مخطط المراقبة.
+- Crawler: `waitFor` ready selectors after network idle, `preForm` steps (terms, Continue, re-login), PrimeNG-style controls (`p-dropdown`, `p-select`, `p-multiselect`, `p-calendar`, `p-datepicker`, `p-radiobutton`, `p-checkbox`, `p-inputnumber`), `--raw` to map a saved harvest offline. / المرور على بوابات SPA.
+- DOCX font embedding without Word (`engine/docx/embed_fonts.py`, `word/fonts/*.odttf`), default on, editor toggle and `--no-embed-fonts`. / تضمين الخطوط في DOCX دون Word.
+- `serve.mjs --out`, `export.mjs` writes beside the document. / مجلد التصدير.
+
+### Fixed / أصلح
+- Labels came from the section title on SPA forms; required flags were lost; fields with no id or name could not be filled; a crash lost the whole harvest. / التسميات والإلزامي والملء والحفظ التدريجي.
+- A user task with candidate groups was called "User"; expression assignees and `sid-…` ids were printed raw; unnamed gateways printed nothing readable; `--name` was ignored for BPMN. / أسماء الأدوار والبوابات و`--name`.
+- The EN edition printed the Arabic slug as its document code, running header and spine. / رمز الوثيقة في النسخة الإنجليزية.
+- Export file names turned Arabic into `-------`; exports landed in the repository's `out/exports`. / أسماء ملفات التصدير ومكانها.
+- `serve.mjs` exited 0 silently when started through a junction or a symlink; it now compares real paths and prints an error on a bad path. / تشغيل الخادم عبر رابط.
+- The check panel reported empty logo slots while logos were placed; `update --check` could hit a libuv assertion on exit (unread response bodies, `process.exit`). / عدّ الشعارات وخروج فحص التحديث.
+
+### Tests / الاختبارات
+- `tests/field.test.mjs`: an invented SPA (async render, terms gate, PrimeNG-style controls, sibling labels, asterisks, no ids or names) crawled end to end in both languages; the merge with a conflict; a monitoring graph → document; expression-assignee mapping; the EN code; Arabic file names; DOCX fonts embedded (word/fonts parts, toggle, obfuscation self-test); the server through a junction. / اختبارات الفجوات الميدانية.
+
 ## [0.7.0] - 2026-10-27
 
 ### Added / أضيف

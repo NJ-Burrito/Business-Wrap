@@ -63,8 +63,8 @@ export function brandMarks() {
 export function appScript() {
   const strip = (s) => s.replace(/^export /gm, '').replace(/^import .*$/gm, '');
   // the harvest model code lives in its own scope (HV), so its helper names stay out of the editor's
-  const hv = ['xml.mjs', 'yaml.mjs', 'model.mjs'].map((f) => strip(read(path.join(HERE, 'harvest', f)))).join('\n');
-  return `(() => {\n'use strict';\n${strip(read(path.join(HERE, 'edits.mjs')))}\n${strip(read(path.join(HERE, 'render.mjs')))}\nconst HV = (() => {\n${hv}\nreturn { parseModel, modelToDocument, processFigure, humanGraph };\n})();\n${read(path.join(REPO, 'editor', 'editor.js'))}\n${read(path.join(REPO, 'editor', 'update.js'))}\n})();`;
+  const hv = ['xml.mjs', 'yaml.mjs', 'model.mjs', 'docs.mjs'].map((f) => strip(read(path.join(HERE, 'harvest', f)))).join('\n');
+  return `(() => {\n'use strict';\n${strip(read(path.join(HERE, 'edits.mjs')))}\n${strip(read(path.join(HERE, 'render.mjs')))}\nconst HV = (() => {\n${hv}\nreturn { parseModel, modelToDocument, processFigure, humanGraph, harvestToDocument, mergeToDocument };\n})();\n${read(path.join(REPO, 'editor', 'editor.js'))}\n${read(path.join(REPO, 'editor', 'update.js'))}\n})();`;
 }
 
 export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, localFonts = false, watermarkDir = DEFAULT_WATERMARK_DIR, ui = 'ar', ops = {} }) {

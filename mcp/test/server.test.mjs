@@ -47,7 +47,7 @@ try {
   await client.connect(transport);
   const { tools } = await client.listTools();
   const names = tools.map((t) => t.name).sort();
-  check('tools/list', JSON.stringify(names) === JSON.stringify(['apply_edits', 'apply_update', 'build_editor', 'check_fonts', 'check_update', 'export_design_pack', 'export_document', 'harvest_crawl', 'harvest_model', 'validate_edits']), names.join(','));
+  check('tools/list', JSON.stringify(names) === JSON.stringify(['apply_edits', 'apply_update', 'build_editor', 'check_fonts', 'check_update', 'export_design_pack', 'export_document', 'harvest_crawl', 'harvest_merge', 'harvest_model', 'validate_edits']), names.join(','));
   check('every tool has a description and an input schema', tools.every((t) => t.description && t.inputSchema?.type === 'object'));
 
   let r = await client.callTool({ name: 'validate_edits', arguments: { edits: editsFile } });

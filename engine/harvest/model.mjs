@@ -11,6 +11,10 @@ import { parseYaml } from './yaml.mjs';
 
 // draw.io labels are HTML inside the attribute: tags out, entities decoded once more
 const clean = (s) => unescapeXml(String(s ?? '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ')).replace(/\s+/g, ' ').trim();
+// a document code is Latin in every edition: the user's slug, the process key, or a transliteration
+const TR = { 'ا': 'a', 'أ': 'a', 'إ': 'i', 'آ': 'a', 'ب': 'b', 'ت': 't', 'ث': 'th', 'ج': 'j', 'ح': 'h', 'خ': 'kh', 'د': 'd', 'ذ': 'dh', 'ر': 'r', 'ز': 'z', 'س': 's', 'ش': 'sh', 'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z', 'ع': 'a', 'غ': 'gh', 'ف': 'f', 'ق': 'q', 'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n', 'ه': 'h', 'ة': 'a', 'و': 'w', 'ي': 'y', 'ى': 'a', 'ئ': 'e', 'ؤ': 'o', 'ء': '' };
+export const latin = (s) => String(s || '').replace(/[\u0600-\u06FF]/g, (c) => TR[c] ?? '').normalize('NFKD').replace(/[^\x00-\x7F]/g, '');
+export const docCode = (s) => `BW-SRS-${(latin(String(s || '').replace(/([a-z])([A-Z])/g, '$1-$2')).toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 32) || 'DOC')}`;
 const slug = (s) => String(s || 'process').toLowerCase().normalize('NFKD').replace(/[^\w؀-ۿ]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'process';
 
 /* ── BPMN 2.0 ─────────────────────────────────────────────────────────── */
@@ -36,6 +40,7 @@ export function parseBpmn(xml) {
   const subEnds = {};
   for (const proc of processes) {
     if (!ir.name) ir.name = clean(attr(proc, 'name')) || pools[attr(proc, 'id')] || clean(attr(proc, 'id'));
+    if (!ir.key) ir.key = attr(proc, 'id') || undefined;
     const laneOf = {};
     for (const lane of find(proc, 'lane')) for (const ref of kids(lane, 'flowNodeRef')) laneOf[textOf(ref)] = clean(attr(lane, 'name'));
     const poolName = pools[attr(proc, 'id')];
@@ -55,7 +60,7 @@ export function parseBpmn(xml) {
           continue;
         }
         if (HUMAN.has(t)) {
-          const who = laneOf[id] || clean(attr(el, 'candidateGroups')) || clean(attr(el, 'candidateUsers')) || clean(attr(el, 'assignee')) || poolName;
+          const who = laneOf[id] || clean(attr(el, 'candidateGroups')) || clean(attr(el, 'candidateUsers')) || clean(attr(el, 'assignee')) || poolName || '';
           const fields = find(el, 'formProperty').map((f) => ({
             name: attr(f, 'id') || attr(f, 'name'),
             label: clean(attr(f, 'name')) || attr(f, 'id'),
@@ -63,8 +68,8 @@ export function parseBpmn(xml) {
             required: attr(f, 'required') === 'true',
             options: kids(f, 'value').map((v) => clean(attr(v, 'name')) || attr(v, 'id')).filter(Boolean),
           }));
-          ir.steps.push({ id, type: 'task', name: name || id, actor: actorOf(who || 'User'), fields: fields.length ? fields : undefined, formKey: attr(el, 'formKey') || undefined });
-        } else if (SYSTEM.has(t)) ir.steps.push({ id, type: 'system', name: name || id });
+          ir.steps.push({ id, type: 'task', name: name || '', actor: who ? actorOf(who) : undefined, fields: fields.length ? fields : undefined, formKey: attr(el, 'formKey') || undefined });
+        } else if (SYSTEM.has(t)) ir.steps.push({ id, type: 'system', name: name || '' });
         else if (GATEWAY.has(t)) ir.steps.push({ id, type: 'decision', name: name || '', actor: laneOf[id] ? actorOf(laneOf[id]) : undefined, gateway: t });
         else if (t === 'startEvent') {
           ir.steps.push({ id, type: parentSub ? 'pass' : 'start', name });
@@ -167,16 +172,123 @@ export function parseSteps(text) {
   return ir;
 }
 
-/** Pick the parser from the content. */
-export async function parseModel(text, { inflateRaw, name } = {}) {
-  const t = String(text).trim();
-  if (t.startsWith('<')) {
-    if (/<(\w+:)?definitions[\s>]/.test(t) && /bpmn|omg\.org\/spec\/BPMN/i.test(t)) return parseBpmn(t);
-    if (/<mxfile|<mxGraphModel/.test(t)) return parseDrawio(t, inflateRaw);
-    throw new Error('XML that is neither BPMN 2.0 nor draw.io');
+
+/* ── Flowable monitoring graph JSON (back offices that show the process but do not export XML) ── */
+// Shape: { key?, name?, description?, graph: { nodes:[{id, kind, name, groups?, assignee?, timer?, attachedTo?}], edges:[{from, to, name?, condition?}] } }
+const G_HUMAN = new Set(['userTask', 'manualTask', 'task']);
+const G_SYSTEM = new Set(['serviceTask', 'scriptTask', 'sendTask', 'receiveTask', 'businessRuleTask', 'callActivity']);
+const G_GATE = new Set(['exclusiveGateway', 'inclusiveGateway', 'parallelGateway', 'eventBasedGateway', 'complexGateway']);
+export function parseGraph(json) {
+  const d = typeof json === 'string' ? JSON.parse(json) : json;
+  const g = d.graph || d;
+  if (!Array.isArray(g.nodes) || !Array.isArray(g.edges)) throw new Error('not a monitoring graph: no nodes/edges');
+  const ir = { kind: 'bw-process', version: 1, name: String(d.description || d.name || d.key || 'Process'), key: d.key || undefined, source: 'graph', actors: [], steps: [], flows: [] };
+  const actorIds = new Map();
+  const actorOf = (n) => { if (!n) return undefined; if (!actorIds.has(n)) { const id = `a${actorIds.size + 1}`; actorIds.set(n, id); ir.actors.push({ id, name: n }); } return actorIds.get(n); };
+  for (const n of g.nodes) {
+    const kind = n.kind || n.tag || '';
+    const name = String(n.name || '').trim();
+    // an expression with commas arrives split into several "groups": join them back
+    const who = (Array.isArray(n.groups) ? n.groups.join(',') : n.groups || '') || n.assignee || n.users || '';
+    if (kind === 'start' || kind === 'startEvent') ir.steps.push({ id: n.id, type: 'start', name: '' });
+    else if (kind === 'end' || kind === 'endEvent') ir.steps.push({ id: n.id, type: 'end', name: name === 'end' ? '' : name });
+    else if (G_HUMAN.has(kind)) ir.steps.push({ id: n.id, type: 'task', name, actor: who ? actorOf(who) : undefined });
+    else if (G_SYSTEM.has(kind)) ir.steps.push({ id: n.id, type: 'system', name });
+    else if (G_GATE.has(kind)) ir.steps.push({ id: n.id, type: 'decision', name, gateway: kind });
+    else if (n.timer || kind === 'boundary' || kind === 'boundaryEvent' || kind === 'timer') ir.steps.push({ id: n.id, type: n.timer ? 'timer' : 'pass', name: n.timer ? String(n.timer) : name, timer: n.timer ? String(n.timer) : undefined, attachedTo: n.attachedTo || undefined });
+    else ir.steps.push({ id: n.id, type: 'pass', name });
   }
-  const ir = parseSteps(t);
-  if (name && ir.name === 'Process') ir.name = name;
+  for (const e of g.edges) ir.flows.push({ from: e.from, to: e.to, label: e.name || undefined, condition: e.condition || undefined });
+  for (const s of ir.steps.filter((x) => x.type === 'timer' && x.attachedTo)) ir.flows.push({ from: s.attachedTo, to: s.id, label: s.timer, timer: true });
+  return ir;
+}
+
+/* ── readable names: expression assignees, raw keys, unnamed gateways ──────────────────────────
+ * A mapping file ({ "<raw key or expression>": "Name" | {ar, en} }, "_name": the service name)
+ * gives each actor, step and flow label its name per edition. What it does not cover gets a
+ * readable fallback from the key itself ("Role_head-of-section_<Process>" → "Head of section"),
+ * and an expression without a mapping is flagged unresolved for the editor to ask about. */
+const isExpr = (s) => /\$\{|#\{/.test(String(s || ''));
+const RAW_ID = /^(sid-[0-9a-f-]{8,}|[0-9a-f]{8}-[0-9a-f-]{20,}|_?[A-Z][A-Za-z0-9]*_[0-9a-f]{6,})$/i;
+export function rawKey(s, processKey = '') {
+  let k = String(s || '').trim();
+  if (isExpr(k)) {
+    const lit = /['"]([^'"]+)['"]/.exec(k);
+    const id = /\$\{\s*([\w.]+)\s*\}/.exec(k);
+    k = lit ? lit[1] : id ? id[1].split('.').pop() : k.replace(/[${}#()]/g, ' ');
+  }
+  return k;
+}
+export function humanize(s, processKey = '') {
+  let k = rawKey(s, processKey);
+  if (!k || RAW_ID.test(k)) return '';
+  if (processKey) k = k.split(processKey).join('');
+  k = k.replace(/^(Role|Task|Group|role|task|group)[_-]/, '').replace(/[_-](Role|Task)$/i, '').replace(/_[A-Z][A-Za-z0-9]+$/, '');
+  const words = k.replace(/([a-z0-9])([A-Z])/g, '$1 $2').split(/[\s_\-.]+/).filter(Boolean);
+  if (!words.length) return '';
+  const out = words.join(' ').toLowerCase();
+  return out.charAt(0).toUpperCase() + out.slice(1);
+}
+export function applyNames(ir, map = {}) {
+  const pick = (raw) => {
+    if (!raw) return null;
+    for (const k of [raw, rawKey(raw, ir.key), humanize(raw, ir.key).toLowerCase()]) if (k && map[k] !== undefined) return typeof map[k] === 'string' ? { ar: map[k], en: map[k] } : map[k];
+    return null;
+  };
+  if (map._name) ir.names = typeof map._name === 'string' ? { ar: map._name, en: map._name } : map._name;
+  for (const a of ir.actors) {
+    const m = pick(a.raw ?? a.name);
+    a.raw ??= a.name;
+    if (m) { a.names = m; a.name = m.en || m.ar; delete a.unresolved; }
+    else if (isExpr(a.raw) || RAW_ID.test(rawKey(a.raw)) || /^(Role|Group)[_-]/.test(rawKey(a.raw))) {
+      a.name = humanize(a.raw, ir.key) || a.name;
+      a.unresolved = true;
+    }
+  }
+  for (const st of ir.steps) {
+    const m = pick(st.name) || pick(st.id);
+    if (m) st.names = m;
+    else if (st.name && (/^(Task|Role)[_-]/.test(st.name) || (ir.key && st.name.includes(ir.key)) || /^[a-z0-9]+([_-][a-z0-9]+)+$/i.test(st.name))) st.name = humanize(st.name, ir.key) || st.name;
+  }
+  for (const f of ir.flows) { const m = pick(f.label); if (m) f.names = m; else if (f.label && /^[a-z0-9]+([_-][a-z0-9]+)+$/i.test(f.label)) f.label = humanize(f.label, ir.key); }
+  return ir;
+}
+/** ${action=='approve' && fee!=0} → action = approve and fee ≠ 0 */
+export const plainCond = (c) => String(c || '').replace(/^\s*[$#]\{\s*|\s*\}\s*$/g, '').replace(/\s*===?\s*/g, ' = ').replace(/\s*!==?\s*/g, ' ≠ ').replace(/\s*&&\s*/g, ' and ').replace(/\s*\|\|\s*/g, ' or ').replace(/['"]/g, '').replace(/\s+/g, ' ').trim();
+const DIGITS_AR = '٠١٢٣٤٥٦٧٨٩';
+const numIn = (n, locale) => (locale === 'ar' ? String(n).replace(/\d/g, (d) => DIGITS_AR[d]) : String(n));
+/** The IR as one edition reads it: mapped names, generated names for unnamed decisions and steps. */
+export function localIR(ir, locale, L = {}) {
+  const x = JSON.parse(JSON.stringify(ir));
+  let dn = 0, sn = 0;
+  for (const a of x.actors) a.name = a.names?.[locale] || a.name;
+  for (const s of x.steps) {
+    s.name = s.names?.[locale] || s.name || '';
+    if (RAW_ID.test(s.name)) s.name = '';
+    if (s.type === 'decision' && !s.name) s.name = `${L.decisionN || (locale === 'ar' ? 'قرار' : 'Decision')} ${numIn(++dn, locale)}`;
+    if ((s.type === 'task' || s.type === 'system') && !s.name) s.name = `${L.stepN || (locale === 'ar' ? 'خطوة' : 'Step')} ${numIn(++sn, locale)}`;
+  }
+  for (const f of x.flows) {
+    f.label = f.names?.[locale] || f.label;
+    // a condition is an engine expression: with a label it adds nothing a reader needs; without one, say it plainly
+    if (isExpr(f.condition)) f.condition = f.label ? undefined : plainCond(f.condition);
+  }
+  x.name = ir.names?.[locale] || ir.name;
+  return x;
+}
+
+/** Pick the parser from the content. */
+export async function parseModel(text, { inflateRaw, name, roles } = {}) {
+  const t = String(text).trim();
+  let ir;
+  if (t.startsWith('<')) {
+    if (/<(\w+:)?definitions[\s>]/.test(t) && /bpmn|omg\.org\/spec\/BPMN/i.test(t)) ir = parseBpmn(t);
+    else if (/<mxfile|<mxGraphModel/.test(t)) ir = await parseDrawio(t, inflateRaw);
+    else throw new Error('XML that is neither BPMN 2.0 nor draw.io');
+  } else if (/^\{/.test(t) && /"(graph|nodes)"\s*:/.test(t) && /"edges"\s*:/.test(t)) ir = parseGraph(t);
+  else ir = parseSteps(t);
+  applyNames(ir, roles || {});
+  if (name) { ir.name = name; delete ir.names; } // the user's name wins in both editions
   return ir;
 }
 
@@ -292,7 +404,8 @@ export function processFigure(ir, { locale = 'en', L = {} } = {}) {
 }
 
 /* ── IR → document JSON (one edition) ─────────────────────────────────── */
-export function modelToDocument(ir, { locale = 'en', L, today = new Date().toISOString().slice(0, 10) } = {}) {
+export function modelToDocument(irIn, { locale = 'en', L, today = new Date().toISOString().slice(0, 10), code } = {}) {
+  const ir = localIR(irIn, locale, L);
   const { nodes, edges } = humanGraph(ir);
   const actorName = (id) => ir.actors.find((a) => a.id === id)?.name || L.unassigned;
   const nameOf = (id) => { const n = ir.steps.find((s) => s.id === id); return n?.name || (n?.type === 'end' ? L.end : n?.type === 'start' ? L.start : id); };
@@ -300,8 +413,9 @@ export function modelToDocument(ir, { locale = 'en', L, today = new Date().toISO
   const decisions = nodes.filter((n) => n.type === 'decision');
   const ends = nodes.filter((n) => n.type === 'end');
   const name = ir.name || L.untitled;
-  const svc = slug(name);
+  const svc = slug(irIn.name || name);
   const gaps = [];
+  for (const a of ir.actors.filter((x) => x.unresolved)) gaps.push({ id: `Q${gaps.length + 1}`, question: (L.gapRole || 'Which role is «{x}»?').replace('{x}', a.raw || a.name), owner: L.ownerAnalyst, blocks: '2' });
   for (const t of tasks) if (!t.actor) gaps.push({ id: `Q${gaps.length + 1}`, question: L.gapActor.replace('{x}', t.name), owner: L.ownerAnalyst, blocks: '2' });
   if (!ends.length) gaps.push({ id: `Q${gaps.length + 1}`, question: L.gapEnd, owner: L.ownerAnalyst, blocks: '6' });
   const rules = [];
@@ -339,11 +453,11 @@ export function modelToDocument(ir, { locale = 'en', L, today = new Date().toISO
   return {
     service: svc,
     composedAt: new Date().toISOString(),
-    control: { documentId: `BW-SRS-${svc.toUpperCase().slice(0, 24)}`, title: `${L.titlePrefix}: ${name}`, preparedBy: '', documentType: L.docType, classification: L.classification, owner: '', issuedOn: today, version: 'V0.1', status: L.draft, reviewCycle: '' },
+    control: { documentId: docCode(code || irIn.key || irIn.name), title: `${L.titlePrefix}: ${name}`, preparedBy: '', documentType: L.docType, classification: L.classification, owner: '', issuedOn: today, version: 'V0.1', status: L.draft, reviewCycle: '' },
     revisions: [['V0.1', today]],
     approvals: [],
     chapters,
     openQuestions: gaps,
-    process: ir,
+    process: irIn,
   };
 }

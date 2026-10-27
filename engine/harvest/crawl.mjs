@@ -84,52 +84,132 @@ async function readCard(page, scope) {
   }, scope);
 }
 
-/** The visible form controls of the current step, grouped radios, labels as the user reads them. */
+/** The visible form controls of the current step, as a user reads them. Native controls and the
+ * PrimeNG-style components of SPA portals (p-dropdown / p-select / p-multiselect / p-calendar /
+ * p-datepicker / p-radiobutton / p-checkbox / p-inputnumber). Each control is tagged with
+ * data-bw-field so it can be filled by that tag when it has no id or name. Labels come from the
+ * control's own label (for/id, wrapping label, aria-labelledby, aria-label), then the label of its
+ * field container or the label just before it, then the placeholder; never the section title. */
 async function readFields(page) {
   return page.evaluate(() => {
-    const t = (e) => (e?.innerText || e?.textContent || '').replace(/\s+/g, ' ').replace(/\s*\*\s*$/, '').trim();
+    const t = (e) => (e?.innerText || e?.textContent || '').replace(/\s+/g, ' ').trim();
+    const bare = (s) => String(s || '').replace(/\s*[*＊]\s*/g, ' ').replace(/\s+/g, ' ').trim();
+    const starred = (s) => /[*＊]/.test(String(s || ''));
     const shown = (e) => !!(e.offsetWidth || e.offsetHeight || e.getClientRects().length) && getComputedStyle(e).visibility !== 'hidden';
-    const labelOf = (e) => {
-      if (e.id) { const l = document.querySelector(`label[for="${CSS.escape(e.id)}"]`); if (l) return t(l); }
-      const wrap = e.closest('label'); if (wrap) return t(wrap);
-      if (e.getAttribute('aria-label')) return e.getAttribute('aria-label');
-      const by = e.getAttribute('aria-labelledby'); if (by) return t(document.getElementById(by));
-      const fs = e.closest('fieldset'); if (fs && fs.querySelector('legend')) return t(fs.querySelector('legend'));
-      return e.name || e.id || '';
+    const PRIME = 'p-dropdown, p-select, p-multiselect, p-calendar, p-datepicker, p-radiobutton, p-checkbox, p-inputnumber, p-inputswitch, p-autocomplete';
+    const FIELDBOX = '.p-field, .field, .form-group, .form-field, .p-float-label, mat-form-field, [class*="col-"]';
+    const fcn = (e) => e.getAttribute('formcontrolname') || e.closest('[formcontrolname]')?.getAttribute('formcontrolname') || '';
+    const labelEl = (e) => {
+      if (e.id) { const l = document.querySelector(`label[for="${CSS.escape(e.id)}"]`); if (l) return l; }
+      const inner = e.querySelector?.('input[id]');
+      if (inner) { const l = document.querySelector(`label[for="${CSS.escape(inner.id)}"]`); if (l) return l; }
+      const wrap = e.closest('label'); if (wrap) return wrap;
+      const by = e.getAttribute('aria-labelledby') || e.querySelector?.('[aria-labelledby]')?.getAttribute('aria-labelledby');
+      if (by) { const l = document.getElementById(by.split(/\s+/)[0]); if (l) return l; }
+      // the label just before the control (sibling, or a sibling of an ancestor inside the same field box)
+      for (let n = e; n && n !== document.body; n = n.parentElement) {
+        let p = n.previousElementSibling;
+        while (p && !p.matches('label, .p-field-label, .field-label, .form-label') && !p.querySelector?.('input,select,textarea,' + PRIME)) {
+          const l = p.querySelector?.('label'); if (l && !p.querySelector('input,select,textarea,' + PRIME)) return l;
+          p = p.previousElementSibling;
+        }
+        if (p && p.matches('label, .p-field-label, .field-label, .form-label')) return p;
+        if (n.matches?.(FIELDBOX)) { const l = n.querySelector('label, .p-field-label, .field-label, .form-label'); if (l) return l; break; }
+      }
+      return null;
     };
+    const describe = (e, kind) => {
+      const l = labelEl(e);
+      const raw = l ? t(l) : e.getAttribute('aria-label') || e.getAttribute('placeholder') || e.querySelector?.('[placeholder]')?.getAttribute('placeholder') || '';
+      const box = e.closest(FIELDBOX) || e.parentElement;
+      const inner = e.matches('input,select,textarea') ? e : e.querySelector('input,select,textarea');
+      const empty = !inner || !inner.value;
+      const required = !!(inner?.required || e.hasAttribute('required') || e.getAttribute('aria-required') === 'true' || inner?.getAttribute('aria-required') === 'true'
+        || starred(raw) || !!l?.querySelector('.required, .p-required, .text-danger, .asterisk')
+        // Angular marks an empty control that has a required validator ng-invalid before anyone touches it
+        || (empty && (e.classList.contains('ng-invalid') || !!inner?.classList.contains('ng-invalid'))));
+      return { label: bare(raw), required };
+    };
+    let n = 0;
+    const tag = (e) => { if (!e.dataset.bwField) e.dataset.bwField = String((window.__bwSeq = (window.__bwSeq || 0) + 1)); return `[data-bw-field="${e.dataset.bwField}"]`; };
+    const keyOf = (e, label) => e.getAttribute('name') || e.id || fcn(e) || label.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || `field-${n}`;
     const out = [];
-    const seenRadio = new Set();
-    document.querySelectorAll('input, select, textarea').forEach((e) => {
-      const type = e.tagName === 'SELECT' ? 'select' : e.tagName === 'TEXTAREA' ? 'textarea' : (e.type || 'text');
-      if (['hidden', 'submit', 'button', 'reset', 'image'].includes(type)) return;
-      const key = e.name || e.id;
-      if (type === 'radio') {
-        if (seenRadio.has(key)) return;
-        seenRadio.add(key);
-        const group = [...document.querySelectorAll(`input[type=radio][name="${CSS.escape(e.name)}"]`)];
-        const fs = e.closest('fieldset');
-        out.push({ key, selector: `input[name="${e.name}"]`, type, label: fs?.querySelector('legend') ? t(fs.querySelector('legend')) : key, required: group.some((g) => g.required), options: group.map((g) => labelOf(g)), visible: group.some(shown) });
+    const seen = new Set();
+    // PrimeNG-style components first; their inner inputs are not fields of their own
+    document.querySelectorAll(PRIME).forEach((e) => {
+      const name = e.tagName.toLowerCase();
+      const kind = name === 'p-multiselect' ? 'multiselect' : /dropdown|select|autocomplete/.test(name) ? 'select' : /calendar|datepicker/.test(name) ? 'date' : name === 'p-radiobutton' ? 'radio' : /checkbox|switch/.test(name) ? 'checkbox' : 'number';
+      if (kind === 'radio') {
+        const group = fcn(e) || e.getAttribute('name') || e.querySelector('input')?.name || '';
+        const gk = `radio:${group}`;
+        if (seen.has(gk)) return;
+        seen.add(gk);
+        const members = [...document.querySelectorAll('p-radiobutton')].filter((r) => (fcn(r) || r.getAttribute('name') || r.querySelector('input')?.name || '') === group);
+        const optLabel = (r) => { const l = r.nextElementSibling?.matches('label') ? r.nextElementSibling : r.parentElement?.querySelector('label'); return bare(t(l)) || r.getAttribute('value') || ''; };
+        const box = e.closest(FIELDBOX)?.parentElement?.closest(FIELDBOX) || e.closest('fieldset') || e.closest(FIELDBOX);
+        const gl = box?.querySelector(':scope > label, :scope > .p-field-label, :scope > legend, :scope > .field-label');
+        const raw = gl ? t(gl) : group;
+        out.push({ key: group || keyOf(e, raw), selector: tag(members[0] || e), selectors: members.map(tag), type: 'radio', label: bare(raw), required: starred(raw) || members.some((r) => r.classList.contains('ng-invalid')), options: members.map(optLabel), visible: members.some(shown) });
         return;
       }
+      const d = describe(e, kind);
+      out.push({ key: keyOf(e, d.label), selector: tag(e), type: kind, label: d.label, required: d.required, visible: shown(e), prime: true });
+    });
+    const inPrime = (e) => !!e.closest(PRIME);
+    const seenRadio = new Set();
+    document.querySelectorAll('input, select, textarea').forEach((e) => {
+      if (inPrime(e)) return;
+      const type = e.tagName === 'SELECT' ? 'select' : e.tagName === 'TEXTAREA' ? 'textarea' : (e.type || 'text');
+      if (['hidden', 'submit', 'button', 'reset', 'image'].includes(type)) return;
+      if (type === 'radio') {
+        const key = e.name || fcn(e) || e.id;
+        if (seenRadio.has(key)) return;
+        seenRadio.add(key);
+        const group = [...document.querySelectorAll('input[type=radio]')].filter((g) => (g.name || fcn(g) || g.id) === key);
+        const fs = e.closest('fieldset');
+        const raw = fs?.querySelector('legend') ? t(fs.querySelector('legend')) : (labelEl(e.closest(FIELDBOX) || e) && t(labelEl(e.closest(FIELDBOX) || e))) || key;
+        out.push({ key, selector: tag(e), selectors: group.map(tag), type, label: bare(raw), required: group.some((g) => g.required) || starred(raw), options: group.map((g) => bare(t(labelEl(g))) || g.value), visible: group.some(shown) });
+        return;
+      }
+      const d = describe(e, type);
       out.push({
-        key,
-        selector: e.id ? `#${CSS.escape(e.id)}` : `[name="${e.name}"]`,
+        key: keyOf(e, d.label),
+        selector: tag(e),
         type,
-        label: labelOf(e),
-        required: e.required || e.getAttribute('aria-required') === 'true',
+        label: d.label || e.name || e.id || '',
+        required: d.required,
         options: type === 'select' ? [...e.options].filter((o) => o.value !== '').map((o) => t(o)) : undefined,
         accept: type === 'file' ? e.accept || '' : undefined,
         visible: shown(e),
       });
     });
-    return out;
+    // in the order the user meets them
+    const at = (f) => document.querySelector(f.selector);
+    return out.sort((a, b) => (at(a) && at(b) && at(a).compareDocumentPosition(at(b)) & Node.DOCUMENT_POSITION_PRECEDING ? 1 : -1));
   });
 }
+
+const OVERLAY_OPTIONS = '.p-dropdown-item, .p-select-option, .p-multiselect-item, .p-autocomplete-item, [role="option"]';
+/** A component's options live in an overlay that only exists while it is open: open, read, close. */
+async function primeOptions(page, fields) {
+  for (const f of fields.filter((x) => x.prime && x.visible && (x.type === 'select' || x.type === 'multiselect'))) {
+    const el = page.locator(f.selector).first();
+    try {
+      await el.locator('.p-dropdown, .p-select, .p-multiselect, .p-autocomplete-dropdown, [role="combobox"]').first().click({ timeout: 3000 }).catch(() => el.click({ timeout: 3000 }));
+      await page.locator(OVERLAY_OPTIONS).first().waitFor({ state: 'visible', timeout: 3000 });
+      f.options = (await page.locator(OVERLAY_OPTIONS).allInnerTexts()).map((s) => s.replace(/\s+/g, ' ').trim()).filter(Boolean);
+    } catch { f.options = f.options || []; }
+    await page.keyboard.press('Escape').catch(() => {});
+    await page.locator(OVERLAY_OPTIONS).first().waitFor({ state: 'hidden', timeout: 1500 }).catch(() => {});
+  }
+  return fields;
+}
+
 async function readMessages(page) {
   return page.evaluate(() => {
     const t = (e) => (e?.innerText || '').replace(/\s+/g, ' ').trim();
     const shown = (e) => !!(e.offsetWidth || e.offsetHeight);
-    const msgs = [...document.querySelectorAll('[role="alert"], .error, .invalid-feedback, .field-error, .validation-message')].filter(shown).map(t).filter(Boolean);
+    const msgs = [...document.querySelectorAll('[role="alert"], .error, .invalid-feedback, .field-error, .validation-message, .p-error, small.p-invalid, .p-message-error, .p-inline-message-error, .p-toast-message, mat-error')].filter(shown).map(t).filter(Boolean);
     // the site's own messages first; the browser's built-in ones only when the site shows none
     if (!msgs.length) document.querySelectorAll('input:invalid, select:invalid, textarea:invalid').forEach((e) => { if (e.validationMessage && shown(e)) msgs.push(e.validationMessage); });
     return [...new Set(msgs)];
@@ -139,17 +219,36 @@ async function readMessages(page) {
 const SAMPLE = { email: 'name@example.com', number: '1', tel: '0700000000', date: '2026-11-15', url: 'https://example.com', text: 'Sample', textarea: 'Sample text' };
 async function fill(page, fields, cfg, outDir) {
   for (const f of fields.filter((x) => x.visible && (x.required || cfg.fillOptional))) {
-    const given = cfg.values?.[f.key] ?? cfg.values?.[f.selector];
+    const given = cfg.values?.[f.key] ?? cfg.values?.[f.label];
     const el = page.locator(f.selector).first();
-    if (f.type === 'select') { const v = await el.evaluate((e) => [...e.options].find((o) => o.value !== '')?.value); if (v) await el.selectOption(given ? resolveValue(given) : v); }
-    else if (f.type === 'radio') { await el.focus(); await page.keyboard.press('Space'); }
-    else if (f.type === 'checkbox') { await el.focus(); await page.keyboard.press('Space'); }
-    else if (f.type === 'file') {
-      const sample = path.join(outDir, 'sample-attachment.pdf');
-      if (!fs.existsSync(sample)) fs.writeFileSync(sample, '%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n');
-      await el.setInputFiles(sample);
-    } else if (given !== undefined) await el.fill(resolveValue(given));
-    else if (f.type !== 'password') await el.fill(SAMPLE[f.type] || SAMPLE.text); // a secret field is typed only from the config
+    try {
+      if (f.prime && (f.type === 'select' || f.type === 'multiselect')) {
+        await el.locator('.p-dropdown, .p-select, .p-multiselect, [role="combobox"]').first().click({ timeout: 3000 }).catch(() => el.click({ timeout: 3000 }));
+        const opts = page.locator(OVERLAY_OPTIONS);
+        await opts.first().waitFor({ state: 'visible', timeout: 3000 });
+        const want = given !== undefined ? opts.filter({ hasText: resolveValue(given) }).first() : opts.first();
+        await want.click({ timeout: 3000 });
+        if (f.type === 'multiselect') await page.keyboard.press('Escape');
+      } else if (f.prime && f.type === 'date') {
+        const input = el.locator('input').first();
+        await input.fill(given !== undefined ? resolveValue(given) : SAMPLE.date);
+        await page.keyboard.press('Escape');
+      } else if (f.prime && f.type === 'checkbox') await el.locator('.p-checkbox-box, .p-inputswitch, input').first().click({ timeout: 3000 });
+      else if (f.prime && f.type === 'number') await el.locator('input').first().fill(given !== undefined ? resolveValue(given) : SAMPLE.number);
+      else if (f.type === 'radio') {
+        const first = page.locator((f.selectors || [f.selector])[0]).first();
+        const box = first.locator('.p-radiobutton-box').first();
+        if (await box.count()) await box.click({ timeout: 3000 });
+        else { await first.focus(); await page.keyboard.press('Space'); }
+      } else if (f.type === 'select') { const v = await el.evaluate((e) => [...e.options].find((o) => o.value !== '')?.value); if (v) await el.selectOption(given ? resolveValue(given) : v); }
+      else if (f.type === 'checkbox') { await el.focus(); await page.keyboard.press('Space'); }
+      else if (f.type === 'file') {
+        const sample = path.join(outDir, 'sample-attachment.pdf');
+        if (!fs.existsSync(sample)) fs.writeFileSync(sample, '%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n');
+        await el.setInputFiles(sample);
+      } else if (given !== undefined) await el.fill(resolveValue(given));
+      else if (f.type !== 'password') await el.fill(SAMPLE[f.type] || SAMPLE.text); // a secret field is typed only from the config
+    } catch { /* a control that refuses a sample value: the validation step reports it */ }
   }
 }
 
@@ -159,16 +258,26 @@ async function conditions(page, fields) {
   const visibleKeys = async () => new Set((await readFields(page)).filter((x) => x.visible).map((x) => x.key));
   for (const f of fields.filter((x) => x.visible && (x.type === 'select' || x.type === 'radio'))) {
     const base = await visibleKeys();
-    const values = f.type === 'select'
-      ? await page.locator(f.selector).first().evaluate((e) => [...e.options].filter((o) => o.value !== '').map((o) => [o.value, (o.innerText || o.textContent).trim()]))
-      : await page.locator(f.selector).evaluateAll((els) => els.map((e) => [e.value, (document.querySelector(`label[for="${e.id}"]`)?.innerText || e.value).trim()]));
-    for (const [v, lab] of values) {
-      if (f.type === 'select') await page.locator(f.selector).first().selectOption(v);
-      else await page.locator(`${f.selector}[value="${v}"]`).first().check();
+    const choose = [];
+    if (f.type === 'radio') (f.selectors || [f.selector]).forEach((sel, i) => choose.push([f.options?.[i] || String(i + 1), async () => {
+      const m = page.locator(sel).first();
+      const box = m.locator('.p-radiobutton-box').first();
+      if (await box.count()) await box.click({ timeout: 3000 }); else await m.check({ timeout: 3000 });
+    }]));
+    else if (f.prime) (f.options || []).forEach((o, i) => choose.push([o, async () => {
+      await page.locator(f.selector).first().locator('.p-dropdown, .p-select, [role="combobox"]').first().click({ timeout: 3000 });
+      await page.locator(OVERLAY_OPTIONS).nth(i).click({ timeout: 3000 });
+    }]));
+    else {
+      const values = await page.locator(f.selector).first().evaluate((e) => [...e.options].filter((o) => o.value !== '').map((o) => [o.value, (o.innerText || o.textContent).trim()]));
+      for (const [v, lab] of values) choose.push([lab, () => page.locator(f.selector).first().selectOption(v)]);
+    }
+    for (const [lab, act] of choose) {
+      try { await act(); } catch { continue; }
       await page.waitForTimeout(120);
       for (const k of await visibleKeys()) if (!base.has(k)) (out[k] ||= []).push(`${f.label} = ${lab}`);
     }
-    if (f.type === 'select') await page.locator(f.selector).first().selectOption({ index: 0 }).catch(() => {});
+    if (f.type === 'select' && !f.prime) await page.locator(f.selector).first().selectOption({ index: 0 }).catch(() => {});
   }
   return out;
 }
@@ -180,6 +289,7 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
   const browser = shared || (await chromium.launch({ ...launchOptions(), headless: cfg.headed === false }));
   const raw = { kind: 'bw-harvest', version: 1, name: cfg.name || '', harvestedAt: new Date().toISOString(), languages: {} };
   const delay = Math.max(0, cfg.delayMs ?? 400);
+  const save = () => fs.writeFileSync(path.join(outDir, 'harvest.json'), JSON.stringify(raw, null, 1));
   try {
     for (const lang of cfg.languages || [{ code: cfg.locale || 'ar', startUrl: cfg.startUrl }]) {
       const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 }, locale: lang.code === 'ar' ? 'ar' : 'en-US' });
@@ -194,17 +304,35 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
       if (cfg.respectRobots !== false && !(await robotsAllows(page, lang.startUrl))) throw new Error(`robots.txt disallows ${lang.startUrl}`);
       const wait = () => page.waitForTimeout(delay);
       const base = lang.startUrl;
+      // an SPA renders after load: wait for the network to settle and for the page's ready selector
+      const ready = async (where) => {
+        await page.waitForLoadState('networkidle', { timeout: cfg.idleMs ?? 8000 }).catch(() => {});
+        const sel = typeof cfg.waitFor === 'string' ? cfg.waitFor : cfg.waitFor?.[where];
+        if (sel) await page.locator(sel).first().waitFor({ state: 'visible', timeout: cfg.waitForMs ?? 30000 });
+      };
       // login: either steps run up front (`login: [...]`), or run when its form appears (`login: {when, steps}`)
       const loginSteps = Array.isArray(cfg.login) ? cfg.login : cfg.login?.steps || [];
       let loggedIn = false;
-      const runLogin = async () => {
-        for (const step of loginSteps) {
-          if (step.goto) await page.goto(new URL(step.goto, base).href);
+      // one step grammar for login and preForm: goto, fill, press, check (tick once), waitFor, login (sign in again), ready
+      const runSteps = async (steps) => {
+        for (const step of steps) {
+          if (step.goto) { await page.goto(new URL(step.goto, base).href); await ready('card'); }
           if (step.fill) await page.locator(step.fill).first().fill(resolveValue(step.value));
+          if (step.check) {
+            const box = page.locator(step.check).first();
+            await box.waitFor({ state: 'visible', timeout: step.timeoutMs ?? 30000 });
+            const on = await box.evaluate((e) => (e.matches('input') ? e.checked : !!e.querySelector('input:checked') || e.getAttribute('aria-checked') === 'true' || e.classList.contains('p-highlight') || e.classList.contains('p-checkbox-checked')));
+            if (!on) await press(page, step.check);
+          }
           if (step.press) await press(page, step.press);
           if (step.waitFor) await page.locator(step.waitFor).first().waitFor({ timeout: step.timeoutMs ?? 30000 });
+          if (step.login) { loggedIn = false; await runLogin(); }
+          if (step.ready) await ready(step.ready === true ? 'form' : step.ready);
           await wait();
         }
+      };
+      const runLogin = async () => {
+        await runSteps(loginSteps);
         loggedIn = true;
         log('login steps done');
       };
@@ -214,18 +342,22 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
       };
       if (Array.isArray(cfg.login)) { await runLogin(); await pauses(page, cfg.pause, log); }
       await page.goto(base);
+      await ready('card');
       await pauses(page, cfg.pause, log);
       L.card = await readCard(page, cfg.cardSelector);
       await shot('card');
+      save();
       if (cfg.openForm) { await press(page, cfg.openForm); await wait(); await maybeLogin(); await pauses(page, cfg.pause, log); }
+      if (cfg.preForm?.length) { await runSteps(cfg.preForm); await maybeLogin(); await pauses(page, cfg.pause, log); }
+      await ready('form').catch((e) => log(`form not ready: ${e.message.split('\n')[0]}`));
       for (let n = 0; n < (cfg.maxSteps ?? 10); n += 1) {
         await maybeLogin();
         await pauses(page, cfg.pause, log);
-        const fields = await readFields(page);
+        const fields = await primeOptions(page, await readFields(page));
         if (!fields.some((f) => f.visible)) break; // past the forms
         const cond = await conditions(page, fields);
-        const all = await readFields(page);
-        const title = await page.evaluate(() => (document.querySelector('form h2, main h2, h2, h1')?.innerText || '').trim());
+        const all = await primeOptions(page, await readFields(page));
+        const title = await page.evaluate(() => (document.querySelector('form h2, main h2, h2, .p-steps-current, .p-card-title, legend, h1')?.innerText || '').trim());
         await shot(`step${n + 1}`);
         // empty attempt: the validation messages a user meets
         const next = cfg.next || 'button[type=submit]';
@@ -236,13 +368,15 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
           messages = await readMessages(page);
           if (messages.length) await shot(`step${n + 1}-validation`);
         }
-        L.steps.push({ title, url: page.url(), fields: all.map(({ selector, ...f }) => ({ ...f, shownWhen: cond[f.key] })), validations: messages });
+        L.steps.push({ title, url: page.url(), fields: all.map(({ selector, selectors, prime, ...f }) => ({ ...f, shownWhen: cond[f.key] })), validations: messages });
+        save(); // a crash later keeps what was read
         await fill(page, all.filter((f) => f.visible || cond[f.key]), cfg, outDir);
         await wait();
         const before = page.url();
         if (!(await page.locator(next).first().isVisible().catch(() => false))) break;
         await press(page, next);
         await page.waitForLoadState('domcontentloaded').catch(() => {});
+        await ready('form').catch(() => {});
         await wait();
         if (page.url() === before && (await readMessages(page)).length) { log(`stopped: the form refused the sample values at step ${n + 1}`); break; }
       }
@@ -257,51 +391,14 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
       L.statuses = await statusesFrom();
       if (cfg.statusesUrl && !L.statuses.length) { await page.goto(new URL(cfg.statusesUrl, base).href); await wait(); L.statuses = await statusesFrom(); }
       await shot('after-submit');
+      save();
       await ctx.close();
     }
   } finally {
+    save();
     if (!shared) await browser.close();
   }
-  fs.writeFileSync(path.join(outDir, 'harvest.json'), JSON.stringify(raw, null, 1));
   return { raw, outDir };
 }
 
-/* ── raw harvest → document JSON (one edition) ─────────────────────────── */
-export function harvestToDocument(raw, { locale = 'en', L, today = new Date().toISOString().slice(0, 10) }) {
-  const langs = Object.keys(raw.languages || {});
-  const H = raw.languages[locale] || raw.languages[langs[0]] || { steps: [], statuses: [] };
-  const name = raw.name || H.card?.title || L.untitled;
-  const svc = String(raw.name || H.card?.title || 'service').toLowerCase().normalize('NFKD').replace(/[^\w؀-ۿ]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'service';
-  const yn = (b) => (b ? L.yes : L.no);
-  const fieldsOf = (s) => s.fields.filter((f) => f.type !== 'file');
-  const files = H.steps.flatMap((s) => s.fields.filter((f) => f.type === 'file'));
-  const sec = (number, title, blocks) => ({ number, title, blocks });
-  const gaps = [];
-  if (!raw.languages[locale]) gaps.push({ id: 'Q1', question: L.gapLang.replace('{l}', locale === 'ar' ? 'العربية' : 'English'), owner: L.ownerAnalyst, blocks: '2' });
-  const stories = H.steps.map((s, k) => ({
-    id: `US-${String(k + 1).padStart(2, '0')}`,
-    name: s.title || L.formStep.replace('{n}', k + 1),
-    as: L.unassigned,
-    want: L.storyWant.replace('{t}', s.title || L.formStep.replace('{n}', k + 1)),
-    so: k + 1 < H.steps.length ? L.storySo.replace('{t}', H.steps[k + 1].title || L.formStep.replace('{n}', k + 2)) : L.storySoEnd,
-    acceptance: [...s.fields.filter((f) => f.required).map((f) => L.accRequired.replace('{f}', f.label)), ...s.validations],
-    dictionary: { columns: [L.colField, L.colType, L.colRequired, L.colOptions], rows: s.fields.map((f) => [f.label, f.type, yn(f.required), (f.options || []).join(L.listSep)]) },
-  }));
-  return {
-    service: svc,
-    composedAt: new Date().toISOString(),
-    control: { documentId: `BW-SRS-${svc.toUpperCase().slice(0, 24)}`, title: `${L.titlePrefix}: ${name}`, preparedBy: '', documentType: L.docType, classification: L.classification, owner: '', issuedOn: today, version: 'V0.1', status: L.draft, reviewCycle: '' },
-    revisions: [['V0.1', today]],
-    approvals: [],
-    chapters: [
-      { number: '1', title: L.chIntro, sections: [sec('1.1', L.secPurpose, [{ kind: 'prose', paragraphs: [L.introCrawl.replace('{name}', name), L.introSource.replace('{s}', L.src_crawl)] }])] },
-      { number: '2', title: L.chCard, sections: [sec('2.1', L.secCardInfo, [...(H.card?.description?.length ? [{ kind: 'prose', paragraphs: H.card.description }] : []), { kind: 'table', columns: [L.colItem, L.colValue], rows: H.card?.facts?.length ? H.card.facts : [[L.none, L.none]] }])] },
-      { number: '3', title: L.chInputs, sections: H.steps.length ? H.steps.map((s, k) => sec(`3.${k + 1}`, s.title || L.formStep.replace('{n}', k + 1), [{ kind: 'table', columns: [L.colLabel, L.colType, L.colRequired, L.colOptions, L.colConditional], rows: fieldsOf(s).map((f) => [f.label, f.type, yn(f.required), (f.options || []).join(L.listSep), (f.shownWhen || []).join(L.listSep)]) }])) : [sec('3.1', L.chInputs, [{ kind: 'prose', paragraphs: [L.none] }])] },
-      { number: '4', title: L.chAttachments, sections: [sec('4.1', L.chAttachments, [files.length ? { kind: 'table', columns: [L.colLabel, L.colRequired, L.colAccept], rows: files.map((f) => [f.label, yn(f.required), f.accept || '']) } : { kind: 'prose', paragraphs: [L.noAttachments] }])] },
-      { number: '5', title: L.chValidations, sections: [sec('5.1', L.chValidations, [H.steps.some((s) => s.validations.length) ? { kind: 'table', columns: [L.colMessage, L.colWhere], rows: H.steps.flatMap((s, k) => s.validations.map((m) => [m, s.title || L.formStep.replace('{n}', k + 1)])) } : { kind: 'prose', paragraphs: [L.noValidations] }])] },
-      { number: '6', title: L.chStories, sections: [sec('6.1', L.chStories, stories.length ? [{ kind: 'stories', number: '6.1', lead: L.storyCards, items: stories }] : [{ kind: 'prose', paragraphs: [L.noTasks] }])] },
-      { number: '7', title: L.chStatuses, sections: [sec('7.1', L.chStatuses, [H.statuses?.length ? { kind: 'table', columns: [L.colStatus], rows: H.statuses.map((s) => [s]) } : { kind: 'prose', paragraphs: [L.noStatuses] }])] },
-    ],
-    openQuestions: gaps,
-  };
-}
+export { harvestToDocument } from './docs.mjs';

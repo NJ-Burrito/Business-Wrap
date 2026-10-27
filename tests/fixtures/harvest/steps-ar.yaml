@@ -1,0 +1,10 @@
+# Invented test fixture: a step list named in Arabic only.
+process: طلب حجز قاعة
+actors: [مقدم الطلب, مكتب الحجز]
+steps:
+  - id: apply
+    name: تقديم الطلب
+    actor: مقدم الطلب
+  - id: check
+    name: تدقيق الطلب
+    actor: مكتب الحجز

@@ -57,4 +57,5 @@ async function main() {
   return 0;
 }
 
-main().then((code) => process.exit(code), () => process.exit(0));
+// set the exit code and let the loop drain: process.exit() with a socket still closing trips a libuv assertion on Windows
+main().then((code) => { process.exitCode = code; }, () => { process.exitCode = 0; });

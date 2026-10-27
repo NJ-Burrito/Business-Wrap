@@ -1,0 +1,9 @@
+{
+ "_comment": "Invented test fixture: readable names for expression assignees and raw keys, per edition.",
+ "_name": { "ar": "طلب حجز قاعة", "en": "Venue hire request" },
+ "Role_booking-desk_VenueHireRequest": { "ar": "مكتب الحجز", "en": "Booking desk" },
+ "Role_venue-manager_VenueHireRequest": { "ar": "مدير القاعة", "en": "Venue manager" },
+ "initiator": { "ar": "مقدم الطلب", "en": "Applicant" },
+ "Task_Check_VenueHireRequest": { "ar": "تدقيق الطلب", "en": "Check the request" },
+ "Task_approve_VenueHireRequest": { "ar": "اعتماد الطلب", "en": "Approve the request" }
+}

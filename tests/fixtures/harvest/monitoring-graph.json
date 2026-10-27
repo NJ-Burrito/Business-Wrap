@@ -1,0 +1,33 @@
+{
+ "_comment": "Invented test fixture: the shape of a Flowable back-office monitoring graph (definition + graph) for a process with no XML export.",
+ "key": "VenueHireRequest",
+ "name": "VenueHireRequest",
+ "description": "Venue hire request",
+ "version": 2,
+ "graph": {
+  "nodes": [
+   { "id": "start", "kind": "start", "tag": "startEvent", "name": "start" },
+   { "id": "sid-0A1B2C3D-0000-4000-8000-000000000001", "kind": "userTask", "tag": "userTask", "name": "Task_Check_VenueHireRequest", "groups": ["${taskRoles.assigneeOf(execution", "'Role_booking-desk_VenueHireRequest')}"] },
+   { "id": "sid-0A1B2C3D-0000-4000-8000-000000000002", "kind": "exclusiveGateway", "tag": "exclusiveGateway" },
+   { "id": "edit-by-applicant", "kind": "userTask", "tag": "userTask", "name": "edit-by-applicant", "assignee": "${initiator}" },
+   { "id": "sid-0A1B2C3D-0000-4000-8000-000000000003", "kind": "serviceTask", "tag": "serviceTask", "name": "notify_applicant", "impl": "${notifier.send(execution)}" },
+   { "id": "sid-0A1B2C3D-0000-4000-8000-000000000004", "kind": "userTask", "tag": "userTask", "name": "Task_approve_VenueHireRequest", "groups": ["${taskRoles.assigneeOf(execution", "'Role_venue-manager_VenueHireRequest')}"] },
+   { "id": "sid-0A1B2C3D-0000-4000-8000-000000000005", "kind": "boundary", "tag": "boundaryEvent", "timer": "P3D", "attachedTo": "sid-0A1B2C3D-0000-4000-8000-000000000004", "interrupting": true },
+   { "id": "sid-0A1B2C3D-0000-4000-8000-000000000006", "kind": "exclusiveGateway", "tag": "exclusiveGateway" },
+   { "id": "approved", "kind": "end", "tag": "endEvent", "name": "Approved" },
+   { "id": "rejected", "kind": "end", "tag": "endEvent", "name": "Rejected" }
+  ],
+  "edges": [
+   { "id": "e1", "from": "start", "to": "sid-0A1B2C3D-0000-4000-8000-000000000001" },
+   { "id": "e2", "from": "sid-0A1B2C3D-0000-4000-8000-000000000001", "to": "sid-0A1B2C3D-0000-4000-8000-000000000002" },
+   { "id": "e3", "from": "sid-0A1B2C3D-0000-4000-8000-000000000002", "to": "sid-0A1B2C3D-0000-4000-8000-000000000003", "name": "return-to-applicant", "condition": "${action=='return'}" },
+   { "id": "e4", "from": "sid-0A1B2C3D-0000-4000-8000-000000000003", "to": "edit-by-applicant" },
+   { "id": "e5", "from": "edit-by-applicant", "to": "sid-0A1B2C3D-0000-4000-8000-000000000001" },
+   { "id": "e6", "from": "sid-0A1B2C3D-0000-4000-8000-000000000002", "to": "sid-0A1B2C3D-0000-4000-8000-000000000004", "name": "send-to-manager", "condition": "${action=='send'}" },
+   { "id": "e7", "from": "sid-0A1B2C3D-0000-4000-8000-000000000004", "to": "sid-0A1B2C3D-0000-4000-8000-000000000006" },
+   { "id": "e8", "from": "sid-0A1B2C3D-0000-4000-8000-000000000006", "to": "approved", "name": "approve", "condition": "${action=='approve'}" },
+   { "id": "e9", "from": "sid-0A1B2C3D-0000-4000-8000-000000000006", "to": "rejected", "name": "reject", "condition": "${action=='reject'}" },
+   { "id": "e10", "from": "sid-0A1B2C3D-0000-4000-8000-000000000005", "to": "rejected" }
+  ]
+ }
+}
