@@ -282,7 +282,10 @@ try {
     const latinWords = (txt.match(/\b(Document|Service|request|Business|rules)\b/g) || []).length;
     if (ed === 'ar') check('ar: PDF has Arabic text', arabic > 500, `arabic chars=${arabic}`);
     else check('en: PDF has English text', latinWords > 5 && arabic === 0, `words=${latinWords} arabic=${arabic}`);
-    check(`${ed}: PDF carries the edited text`, txt.replace(/\s+/g, ' ').includes(ed === 'ar' ? 'للاختبار' : 'Edited text for the test'));
+    const want = ed === 'ar' ? 'للاختبار' : 'Edited text for the test';
+    const squash = (x) => x.normalize('NFKC').replace(/[\s\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '');
+    if (HAVE_FONTS) check(`${ed}: PDF carries the edited text (words whole)`, txt.replace(/\s+/g, ' ').includes(want));
+    else check(`${ed}: PDF carries the edited text (fallback face: spaces and bidi marks ignored)`, squash(txt).includes(squash(want)), squash(txt).includes(squash(want)) ? '' : JSON.stringify(txt.slice(0, 160)));
     fontCheck(`${ed}: PDF fonts are Thmanyah`, /thmanyah/i.test(fonts));
     fontCheck(`${ed}: PDF has no Type 3`, !/Type 3/.test(fonts));
     fontCheck(`${ed}: PDF has no Cairo / Segoe / Arial fallback`, !/cairo|segoe|arial|times|tahoma/i.test(fonts));
@@ -353,8 +356,9 @@ try {
     check('page thumbnails (served): one per printed sheet', thumbs === 9, `${thumbs} thumbnails; ${status}`);
     const y0 = await pt.evaluate(() => window.scrollY);
     await pt.locator('.drawer .thumbs button[data-page="7"]').click();
-    await pt.waitForTimeout(400);
-    check('page thumbnail click jumps to that page', (await pt.evaluate(() => window.scrollY)) > y0 + 500);
+    const jumped = await pt.waitForFunction((y0) => window.scrollY > y0 + 500, y0, { timeout: 10000 }).then(() => true, () => false);
+    const why = jumped ? '' : JSON.stringify(await pt.evaluate(() => ({ y: window.scrollY, first: document.getElementById('bw-ui-host').shadowRoot.querySelector('.thumbs button[data-page="7"]')?.dataset.first })));
+    check('page thumbnail click jumps to that page', jumped, why);
     await ctxT.close();
   } finally {
     srv.close();

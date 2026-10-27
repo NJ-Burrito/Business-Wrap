@@ -894,12 +894,15 @@ async function onDrawer(e) {
   if (x.dataset.page) {
     const first = x.dataset.first || '';
     // the PDF's first line, matched loosely (numbers, punctuation and spaces dropped) to a document field
-    const norm = (x) => fold(String(x)).replace(/[^\p{L}]+/gu, '');
-    const f = norm(first);
-    const hit = f.length < 3 ? null : [...(mainOf(S.ed)?.querySelectorAll('[data-p]') || [])].find((el) => {
-      const e = norm(el.innerText);
-      return e.length >= 3 && (f.includes(e) || e.startsWith(f.slice(0, 16)));
-    });
+    const norm = (x) => fold(String(x).normalize('NFKC')).replace(/[^\p{L}]+/gu, '');
+    // up to three lines per page: a page may open in the middle of a paragraph or a table
+    const fields = [...(mainOf(S.ed)?.querySelectorAll('[data-p]') || [])].map((el) => [el, norm(el.innerText)]);
+    let hit = null;
+    for (const line of first.split(' | ').map(norm).filter((l) => l.length >= 3)) {
+      const probe = line.slice(0, 16);
+      hit = fields.find(([, e]) => e.length >= 3 && (line.includes(e) || e.includes(probe)))?.[0];
+      if (hit) break;
+    }
     if (hit) { hit.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' }); hit.focus(); }
     return;
   }

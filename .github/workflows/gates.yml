@@ -70,3 +70,14 @@ jobs:
           CI: "true"
         if: hashFiles('tests/**') != ''
         run: npm test
+
+      - name: Keep test outputs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-outputs
+          path: |
+            out/test/*.pdf
+            out/test/results.txt
+            out/a11y/axe-report.json
+          retention-days: 7

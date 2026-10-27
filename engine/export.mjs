@@ -112,7 +112,7 @@ export async function pageThumbs(doc, { locale, theme, dpi = 36 }) {
       '    pix = p.get_pixmap(dpi=int(sys.argv[2]))',
       '    top = pymupdf.Rect(0, 18 * 72 / 25.4, p.rect.width, p.rect.height - 16 * 72 / 25.4)',
       '    lines = [l.strip() for l in p.get_text("text", clip=top).splitlines() if l.strip()]',
-      '    out.append({"n": i + 1, "png": "data:image/png;base64," + base64.b64encode(pix.tobytes("png")).decode(), "first": lines[0] if lines else "", "wide": p.rect.width > p.rect.height})',
+      '    out.append({"n": i + 1, "png": "data:image/png;base64," + base64.b64encode(pix.tobytes("png")).decode(), "first": " | ".join(lines[:3]), "wide": p.rect.width > p.rect.height})',
       'sys.stdout.write(json.dumps(out))',
     ].join('\n');
     const r = spawnSync('python', ['-c', py, pdfPath, String(dpi)], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, env: { ...process.env, PYTHONUTF8: '1' } });
