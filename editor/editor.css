@@ -1,0 +1,40 @@
+/* Light-DOM editor affordances. Screen only: nothing here reaches print. */
+@media screen {
+  :root { --bw-desk: #e7e9ea; --bw-sel: #2f6f8a; --bw-hover: #7fa9ba; --bw-stale: #b7791f; --bw-stale-wash: #fdf3e1; --bw-hit: #fff2a8; }
+  :root[data-bw-dark="1"] { --bw-desk: #1d2226; --bw-sel: #7cc3dd; --bw-hover: #4f7f91; }
+  html { background: var(--bw-desk); }
+  body { padding-top: var(--bw-bar-h, 120px); background: var(--bw-desk); }
+  #bw-pair { padding: 12px 0 80px; }
+  #bw-pair main.bw-doc { width: 210mm; margin: 0 auto 24px; background: var(--paper); box-shadow: 0 1px 6px rgba(0,0,0,.18); zoom: var(--bw-zoom, 1); position: relative; z-index: 1; }
+  #bw-pair.bw-side { display: flex; gap: 16px; justify-content: center; align-items: flex-start; overflow-x: auto; }
+  #bw-pair.bw-side main.bw-doc { margin: 0; zoom: calc(var(--bw-zoom, 1) * .62); flex: 0 0 auto; }
+  main.bw-doc .cover { height: 297mm; }
+  main.bw-doc [data-p] { cursor: text; border-radius: 2px; }
+  main.bw-doc [data-p]:hover { outline: 1px dashed var(--bw-hover); outline-offset: 1px; }
+  main.bw-doc [data-p]:focus { outline: 2px solid var(--bw-sel); outline-offset: 1px; }
+  main.bw-doc [data-p]:focus-visible { outline: 3px solid var(--bw-sel); }
+  main.bw-doc .bw-sel { box-shadow: inset 0 0 0 2px var(--bw-sel); }
+  main.bw-doc .bw-stale { background: var(--bw-stale-wash); box-shadow: inset 0 -2px 0 var(--bw-stale); }
+  main.bw-doc .bw-hit { background: var(--bw-hit); }
+  main.bw-doc .bw-has-comment { position: relative; }
+  main.bw-doc .bw-has-comment::before { content: "✎"; position: absolute; inset-inline-end: -9mm; top: 0; font: 700 12pt system-ui, sans-serif; color: var(--bw-sel); }
+  main.bw-doc .bw-logo-slot { display: inline-flex; align-items: center; justify-content: center; min-width: 34mm; height: 18mm; border: 1.5px dashed #8a949a; border-radius: 3mm; color: #4d545b; font: 600 10pt system-ui, sans-serif; cursor: pointer; padding: 0 3mm; }
+  main.bw-doc .bw-logo-slot:focus { outline: 2px solid var(--bw-sel); }
+  main.bw-doc .bw-break { border-top: 2px dashed var(--bw-sel); margin: 4mm 0; }
+  #bw-overlay .bw-grip { position: absolute; z-index: 30; font: 600 13px system-ui, sans-serif; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--bw-sel); background: #fff; color: #15303b; cursor: grab; touch-action: none; }
+  #bw-overlay .bw-grip:focus-visible { outline: 3px solid var(--bw-sel); }
+  #bw-overlay .bw-drop { position: absolute; z-index: 29; height: 0; border-top: 3px solid var(--bw-sel); pointer-events: none; }
+  #bw-watermark { position: fixed; inset: auto 16px 16px auto; z-index: 0; pointer-events: none; opacity: .07; display: flex; gap: 12px; }
+  #bw-watermark img { max-width: 160px; max-height: 160px; }
+  #bw-ui-host { position: fixed; inset: 0 0 auto 0; z-index: 40; }
+}
+@media print {
+  #bw-ui-host, #bw-overlay, #bw-watermark { display: none !important; }
+  body { padding: 0 !important; }
+  main.bw-doc { zoom: 1 !important; box-shadow: none !important; width: auto !important; margin: 0 !important; }
+  main.bw-other { display: none !important; }
+  #bw-pair { padding: 0 !important; display: block !important; }
+  .bw-sel, .bw-stale, .bw-hit { box-shadow: none !important; background: none !important; outline: none !important; }
+  .bw-has-comment::before { content: none !important; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }

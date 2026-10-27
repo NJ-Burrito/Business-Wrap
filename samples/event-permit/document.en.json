@@ -1,0 +1,355 @@
+{
+ "service": "event-permit",
+ "composedAt": "2026-10-27T00:00:00Z",
+ "control": {
+  "documentId": "BW-SRS-SAMPLE-001",
+  "title": "Service requirements: Public event permit request",
+  "preparedBy": "Analysis team (example)",
+  "documentType": "Requirements document",
+  "classification": "Internal",
+  "owner": "Owning authority (example)",
+  "issuedOn": "2026-10-27",
+  "version": "V1.0",
+  "status": "Draft",
+  "reviewCycle": "On every change to the service"
+ },
+ "revisions": [
+  [
+   "V0.1",
+   "2026-10-01"
+  ],
+  [
+   "V1.0",
+   "2026-10-27"
+  ]
+ ],
+ "approvals": [],
+ "chapters": [
+  {
+   "number": "1",
+   "title": "Introduction",
+   "sections": [
+    {
+     "number": "1.1",
+     "title": "Purpose of this document",
+     "blocks": [
+      {
+       "kind": "prose",
+       "paragraphs": [
+        "This document describes the requirements of a sample e-service that lets an applicant request a permit to hold a public event and follow the request until a decision is issued.",
+        "The document is an anonymised example; every name and number in it is invented."
+       ]
+      }
+     ]
+    },
+    {
+     "number": "1.2",
+     "title": "Scope of the service",
+     "blocks": [
+      {
+       "kind": "prose",
+       "paragraphs": [
+        "The service covers the following:",
+        "• Filling in the request form and attaching the required documents.",
+        "• Review of the request by the responsible officer.",
+        "• Issuing the decision and notifying the applicant."
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": "2",
+   "title": "Service card",
+   "sections": [
+    {
+     "number": "2.1",
+     "title": "Service data",
+     "blocks": [
+      {
+       "kind": "prose",
+       "paragraphs": [
+        "The table below lists the basic data of the service."
+       ]
+      },
+      {
+       "kind": "table",
+       "columns": [
+        "Item",
+        "Value"
+       ],
+       "rows": [
+        [
+         "Service name",
+         "Public event permit request"
+        ],
+        [
+         "Service code",
+         "SRV-000"
+        ],
+        [
+         "Audience",
+         "Individuals and organisations"
+        ],
+        [
+         "Completion time",
+         "Five working days"
+        ],
+        [
+         "Channel",
+         "Online portal"
+        ],
+        [
+         "Output",
+         "Electronic permit in PDF"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "number": "2.2",
+     "title": "Fees",
+     "blocks": [
+      {
+       "kind": "prose",
+       "paragraphs": [
+        "The following fees are collected when the request is filed."
+       ]
+      },
+      {
+       "kind": "table",
+       "columns": [
+        "Fee",
+        "Amount",
+        "Notes"
+       ],
+       "rows": [
+        [
+         "Review fee",
+         "10 dinars",
+         ""
+        ],
+        [
+         "Permit issue fee",
+         "25 dinars",
+         "Collected after approval"
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "number": "2.3",
+     "title": "Required attachments",
+     "blocks": [
+      {
+       "kind": "table",
+       "columns": [
+        "Attachment",
+        "Required",
+        "Format"
+       ],
+       "rows": [
+        [
+         "Event site plan",
+         "Yes",
+         "PDF"
+        ],
+        [
+         "Safety plan",
+         "Yes",
+         "PDF"
+        ],
+        [
+         "Site owner consent",
+         "No",
+         "PDF or image"
+        ]
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": "3",
+   "title": "Workflow diagram",
+   "sections": [
+    {
+     "number": "3.1",
+     "title": "Workflow diagram",
+     "blocks": [
+      {
+       "kind": "figure",
+       "caption": "Workflow of the public event permit request",
+       "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 190\" width=\"800\" height=\"190\"><defs><marker id=\"a\" markerWidth=\"10\" markerHeight=\"10\" refX=\"9\" refY=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"#4d545b\"/></marker></defs><rect x=\"40\" y=\"60\" width=\"200\" height=\"70\" rx=\"10\" fill=\"#dde8eb\" stroke=\"#264d5c\" stroke-width=\"2\"/><text x=\"140\" y=\"102\" text-anchor=\"middle\" font-size=\"18\" fill=\"#15303b\">File request</text><rect x=\"300\" y=\"60\" width=\"200\" height=\"70\" rx=\"10\" fill=\"#dde8eb\" stroke=\"#264d5c\" stroke-width=\"2\"/><text x=\"400\" y=\"102\" text-anchor=\"middle\" font-size=\"18\" fill=\"#15303b\">Review request</text><rect x=\"560\" y=\"60\" width=\"200\" height=\"70\" rx=\"10\" fill=\"#dde8eb\" stroke=\"#264d5c\" stroke-width=\"2\"/><text x=\"660\" y=\"102\" text-anchor=\"middle\" font-size=\"18\" fill=\"#15303b\">Issue decision</text><line x1=\"240\" y1=\"95\" x2=\"296\" y2=\"95\" stroke=\"#4d545b\" stroke-width=\"2\" marker-end=\"url(#a)\"/><line x1=\"500\" y1=\"95\" x2=\"556\" y2=\"95\" stroke=\"#4d545b\" stroke-width=\"2\" marker-end=\"url(#a)\"/></svg>",
+       "compact": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": "4",
+   "title": "Business rules",
+   "sections": [
+    {
+     "number": "4.1",
+     "title": "Business rules",
+     "blocks": [
+      {
+       "kind": "table",
+       "columns": [
+        "Code",
+        "Rule"
+       ],
+       "rows": [
+        [
+         "BR-01",
+         "A request is not accepted until every required attachment is uploaded."
+        ],
+        [
+         "BR-02",
+         "The event date must be at least seven days after the filing date."
+        ],
+        [
+         "BR-03",
+         "The applicant is notified on every change of the request status."
+        ]
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": "5",
+   "title": "User stories",
+   "sections": [
+    {
+     "number": "5.1",
+     "title": "Filing the request",
+     "blocks": [
+      {
+       "kind": "subhead",
+       "text": "Filing stage"
+      },
+      {
+       "kind": "stories",
+       "number": "5.1",
+       "lead": "Story cards",
+       "items": [
+        {
+         "id": "US-01",
+         "name": "File a permit request",
+         "as": "the applicant",
+         "want": "to fill in the request form and attach the documents",
+         "so": "I obtain a permit to hold the event",
+         "acceptance": [
+          "The form shows every required field.",
+          "The request cannot be sent before the required attachments are uploaded.",
+          "The request number is shown after sending."
+         ],
+         "actions": {
+          "columns": [
+           "Action",
+           "Effect on the request"
+          ],
+          "rows": [
+           [
+            "Send",
+            "The request moves to review"
+           ],
+           [
+            "Save as draft",
+            "The request stays with the applicant"
+           ]
+          ]
+         },
+         "dictionary": {
+          "columns": [
+           "Field",
+           "Type",
+           "Required",
+           "Description"
+          ],
+          "rows": [
+           [
+            "Event name",
+            "Text",
+            "Yes",
+            "The announced name of the event"
+           ],
+           [
+            "Event date",
+            "Date",
+            "Yes",
+            "The first day of the event"
+           ],
+           [
+            "Expected attendance",
+            "Number",
+            "Yes",
+            "Estimated number of attendees"
+           ]
+          ]
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "number": "5.2",
+     "title": "Reviewing the request",
+     "blocks": [
+      {
+       "kind": "subhead",
+       "text": "Review stage"
+      },
+      {
+       "kind": "stories",
+       "number": "5.2",
+       "items": [
+        {
+         "id": "US-02",
+         "name": "Review the request",
+         "as": "the responsible officer",
+         "want": "to review the request and its attachments",
+         "so": "I take the right decision",
+         "acceptance": [
+          "The officer sees all request data and attachments.",
+          "The officer can approve, reject or return the request for changes."
+         ],
+         "actions": {
+          "columns": [
+           "Action",
+           "Effect on the request"
+          ],
+          "rows": [
+           [
+            "Approve",
+            "The permit is issued"
+           ],
+           [
+            "Reject",
+            "The request is closed and the applicant notified"
+           ],
+           [
+            "Return for changes",
+            "The request goes back to the applicant"
+           ]
+          ]
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "openQuestions": []
+}

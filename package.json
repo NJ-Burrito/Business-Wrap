@@ -1,0 +1,15 @@
+{
+  "name": "business-wrap",
+  "version": "1.0.0",
+  "description": "Business-Wrap: interactive HTML editor + PDF/DOCX export for requirements documents",
+  "scripts": {
+    "test": "node tests/editor.test.mjs",
+    "sample": "node engine/build-editor.mjs samples/event-permit --out out/sample/event-permit.editor.html --set sample",
+    "serve": "node engine/serve.mjs out/sample/event-permit.editor.html"
+  },
+  "type": "module",
+  "devDependencies": {
+    "playwright-core": "^1.62.1"
+  },
+  "private": true
+}

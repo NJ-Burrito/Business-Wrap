@@ -1,0 +1,33 @@
+{
+  "$comment": "STUB until the fonts/ manifest lands. Font binaries are never in the repo. fontDirs entries may use ${VAR}: BW_FONT_DIR comes from the env or .local/config.json (fontDir); LOCALAPPDATA is the per-user Windows font folder. .ttf is preferred over .woff2 because Chrome's PDF backend writes CFF outlines (.otf/.woff2) as Type 3 glyph procedures.",
+  "fontDirs": [
+    "${BW_FONT_DIR}/thmanyahseriftext/ttf",
+    "${BW_FONT_DIR}/thmanyahserifdisplay/ttf",
+    "${BW_FONT_DIR}",
+    "${LOCALAPPDATA}/Microsoft/Windows/Fonts"
+  ],
+  "families": {
+    "Thmanyah Serif Text": {
+      "stem": "thmanyahseriftext",
+      "role": "text"
+    },
+    "Thmanyah Serif Display": {
+      "stem": "thmanyahserifdisplay",
+      "role": "display"
+    },
+    "Thmanyah Sans": {
+      "stem": "thmanyahsans",
+      "role": "any"
+    }
+  },
+  "weights": {
+    "300": "Light",
+    "400": "Regular",
+    "500": "Medium",
+    "700": "Bold",
+    "900": "Black"
+  },
+  "banned": [
+    "Cairo"
+  ]
+}

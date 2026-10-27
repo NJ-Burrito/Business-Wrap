@@ -1,0 +1,25 @@
+{
+  "$comment": "STUB until Agent A's design pack (palette/, typography/, design/) lands. Neutral calm slate + sand; role names are the renderer's CSS variables. Replace by importing a design pack in the editor or with --theme.",
+  "name": "business-wrap-neutral",
+  "fonts": { "text": "Thmanyah Serif Text", "display": "Thmanyah Serif Display" },
+  "sizes": { "title": "24pt", "h1": "18pt", "h2": "16pt", "h3": "14pt", "body": "14pt", "table": "12pt", "meta": "10pt", "micro": "9pt" },
+  "brand": { "producer": "", "confidential": "" },
+  "vars": {
+    "ink": "#1c1f22",
+    "muted": "#4d545b",
+    "paper": "#fafaf9",
+    "card": "#eef0f0",
+    "rule": "#e3e6e7",
+    "rule-strong": "#cdd2d4",
+    "primary": "#264d5c",
+    "primary-deep": "#15303b",
+    "primary-50": "#f1f5f6",
+    "primary-100": "#dde8eb",
+    "accent": "#5c4f2e",
+    "accent-rule": "#9a8556",
+    "accent-bright": "#b9a06a",
+    "signal": "#a3322b",
+    "signal-wash": "#f4e6e4"
+  },
+  "logos": { "start": "", "center": "", "end": "", "header": "" }
+}
