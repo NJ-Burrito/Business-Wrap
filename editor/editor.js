@@ -732,7 +732,7 @@ const CMDS = [
   ['addPara', 'block'], ['rowAdd', 'table'], ['rowDel', 'table'], ['colAdd', 'table'], ['colDel', 'table'],
   ['comment', 'block'], ['breakBefore', 'block'], ['keepNext', 'block'], ['renumber', 'document'],
   ['image', 'insert'], ['logo', 'insert'],
-  ['find', 'panels', 'Ctrl+F'], ['outline', 'panels'], ['pages', 'panels'], ['check', 'panels'], ['history', 'panels'], ['theme', 'panels'], ['webhooks', 'panels'],
+  ['find', 'panels', 'Ctrl+F'], ['outline', 'panels'], ['pages', 'panels'], ['check', 'panels'], ['history', 'panels'], ['theme', 'panels'], ['webhooks', 'panels'], ['newdoc', 'document'], ['process', 'document'],
   ['save', 'file', 'Ctrl+S'], ['saveHtml', 'file'], ['import', 'file'], ['exportEdits', 'file'], ['exportAll', 'file'], ['exportPdf', 'file'], ['print', 'file', 'Ctrl+P'],
   ['side', 'view'], ['uiLang', 'view'], ['dark', 'view'], ['calm', 'view'], ['focus', 'view', 'F'], ['spell', 'view'], ['snap', 'view'], ['zoomOut', 'view'], ['zoomIn', 'view'],
 ].map(([id, group, key]) => ({ id, group, key }));
@@ -758,6 +758,7 @@ function buildUi() {
         ${eds.map((ed) => `<button type="button" data-a="ed" data-ed="${ed}" aria-pressed="${ed === S.ed}" aria-label="${esc(dirWord(ed))}: ${esc(t(ed === 'ar' ? 'editionAr' : 'editionEn'))}" title="${esc(t(ed === 'ar' ? 'editionAr' : 'editionEn'))}">${esc(dirWord(ed))}</button>`).join('')}
       </div>
     </div>
+    <div class="grp">${btn('newdoc')}${btn('process')}</div>
     <div class="grp">${btn('undo')}${btn('redo')}</div>
     <div class="grp">${btn('image', { tip: t('imageTip') })}${btn('logo', { tip: t('logoTip') })}</div>
     <div class="grp">${btn('find')}${btn('pages')}</div>
@@ -834,7 +835,7 @@ function refreshUi() {
   const v = validate();
   if (v.some((x) => x[0] === 'err') && !refreshUi.err) emitHook('validation.failed', { problems: v.filter((x) => x[0] === 'err').map((x) => x[1]) });
   refreshUi.err = v.some((x) => x[0] === 'err');
-  if (S.drawer && !['find', 'theme', 'pages', 'webhooks'].includes(S.drawer)) openDrawer(S.drawer, true);
+  if (S.drawer && !['find', 'theme', 'pages', 'webhooks', 'newdoc', 'process'].includes(S.drawer)) openDrawer(S.drawer, true);
   buildCtx(b, tb);
   measureBar();
 }
@@ -1054,7 +1055,7 @@ async function runAction(a) {
     case 'breakBefore': A.layout('breakBefore'); break;
     case 'keepNext': A.layout('keepNext'); break;
     case 'renumber': A.renumber(); break;
-    case 'find': case 'outline': case 'check': case 'history': case 'theme': case 'pages': case 'webhooks':
+    case 'find': case 'outline': case 'check': case 'history': case 'theme': case 'pages': case 'webhooks': case 'newdoc': case 'process':
       S.drawer === a ? closeDrawer() : openDrawer(a); break;
     case 'save': saveAll(); pop('save'); break;
     case 'saveHtml': await saveHtml(!!S.embedFonts); break;
@@ -1123,6 +1124,12 @@ ${e.comments.length ? `<h3>${esc(t('comment'))}</h3><ul class="list">${e.comment
 <label class="chk"><input type="checkbox" data-k="embed" ${S.embedFonts ? 'checked' : ''}> ${esc(t('embedFonts'))}</label>
 <div class="btns"><button type="button" class="b" data-k="texp"><span class="w">${esc(t('themeExport'))}</span></button><button type="button" class="b" data-k="timp"><span class="w">${esc(t('themeImport'))}</span></button></div>
 <h3>${esc(t('shortcuts'))}</h3><p class="hint">${esc(t('shortcutsText'))}</p>`;
+  } else if (kind === 'newdoc') {
+    d.setAttribute('aria-label', t('newdoc'));
+    html = head(t('newdoc')) + newdocPanel();
+  } else if (kind === 'process') {
+    d.setAttribute('aria-label', t('process'));
+    html = head(t('process')) + processPanel();
   } else if (kind === 'webhooks') {
     d.setAttribute('aria-label', t('webhooks'));
     html = head(t('webhooks')) + hooksPanel();
@@ -1141,6 +1148,7 @@ ${e.comments.length ? `<h3>${esc(t('comment'))}</h3><ul class="list">${e.comment
     if (e.target.dataset.font) { S.theme = { ...S.theme, fonts: { ...S.theme.fonts, [e.target.dataset.font]: e.target.value } }; touched(); render(); }
     if (e.target.dataset.k === 'embed') S.embedFonts = e.target.checked;
     if (e.target.dataset.hook) hooksChange(e.target);
+    if (e.target.dataset.pr) processChange(e.target);
   };
   if (!soft) d.querySelector('input,button:not([data-k="close"])')?.focus();
 }
@@ -1201,6 +1209,9 @@ async function onDrawer(e) {
   if (k === 'logoAdd') { await OVL.add('logo'); openDrawer('theme'); }
   if (x.dataset.ovgo !== undefined) { const el = mainOf(S.ed)?.querySelector(`.bw-ov[data-i="${x.dataset.ovgo}"]`); el?.scrollIntoView({ block: 'center', behavior: isCalm() ? 'auto' : 'smooth' }); el?.focus(); }
   if (x.dataset.hk) { await hooksClick(x); return; }
+  if (k === 'nd-model') { const f = await pickFile('.bpmn,.bpmn20.xml,.xml,.drawio,.yaml,.yml,.json'); if (f) await newFromModel(f); return; }
+  if (k === 'nd-crawl') { await newFromCrawl(root.querySelector('.drawer [data-f="crawl"]').value); return; }
+  if (await processClick(x)) return;
   if (k === 'texp') download(`design-pack.json`, JSON.stringify({ kind: 'bw-design-pack', version: 1, ...S.theme }, null, 1));
   if (k === 'timp') {
     const f = await pickFile('.json,application/json');
@@ -1601,6 +1612,156 @@ async function hooksClick(x) {
     logHook('test', h.url, r);
     toast(r.ok ? t('hooksSent', { s: r.status }) : t('hooksFailed', { s: r.status || r.error }), r.ok ? 'ok' : 'err');
   }
+}
+
+/* ── New document wizard: harvest a process model (in the page) or walk the live service (server) ── */
+const HL = (ed) => I18N.harvest[ed];
+async function sha256Hex(text) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+const inflateRawBrowser = async (bin) => {
+  const ds = new DecompressionStream('deflate-raw');
+  const buf = await new Response(new Blob([bin]).stream().pipeThrough(ds)).arrayBuffer();
+  return [...new Uint8Array(buf)].map((c) => String.fromCharCode(c)).join('');
+};
+/** A new service from two editions; it opens at once and is saved like any other. */
+async function addService(docs) {
+  let id = docs.en.service || docs.ar.service || 'service';
+  while (M[id]) id = `${id}-2`;
+  const editions = {};
+  M[id] = {};
+  for (const [ed, doc] of Object.entries(docs)) {
+    doc.service = id;
+    const raw = JSON.stringify(doc, null, 1) + '\n';
+    const hash = `sha256:${await sha256Hex(raw)}`;
+    const name = doc.control.title.split(/\s*[:—]\s+/).slice(1).join(': ') || doc.control.title;
+    editions[ed] = { name, raw, hash, ops: [] };
+    M[id][ed] = { base: JSON.parse(raw), raw, hash, name, ops: [], redo: [], status: {}, stale: new Set(), comments: [], versions: [], doc: null };
+    rebuild(M[id][ed]);
+  }
+  DATA.services.push({ id, editions });
+  S.svc = id;
+  S.sel = null;
+  closeDrawer();
+  buildUi();
+  render(false);
+  window.scrollTo(0, 0);
+  toast(t('newdocDone'), 'ok');
+  return id;
+}
+async function newFromModel(file) {
+  busy(true);
+  try {
+    const text = await readAs(file, 'text');
+    const ir = await HV.parseModel(text, { inflateRaw: inflateRawBrowser, name: file.name.replace(/\.[^.]+$/, '') });
+    return await addService({ ar: HV.modelToDocument(ir, { locale: 'ar', L: HL('ar') }), en: HV.modelToDocument(ir, { locale: 'en', L: HL('en') }) });
+  } catch (err) { toast(`${t('newdocFailed')} ${err.message || err}`, 'err', { persist: true }); return null; } finally { busy(false); }
+}
+async function newFromCrawl(configText) {
+  if (!location.protocol.startsWith('http')) { toast(t('crawlNeedServer'), 'warn', { persist: true }); return null; }
+  let cfg;
+  try { cfg = JSON.parse(configText); } catch { toast(t('crawlBadConfig'), 'err'); return null; }
+  busy(true);
+  toast(t('crawlRunning'), 'info');
+  try {
+    const r = await fetch('/api/harvest/crawl', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cfg) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.status);
+    return await addService(j.documents);
+  } catch (err) { toast(`${t('newdocFailed')} ${err.message || err}`, 'err', { persist: true }); return null; } finally { busy(false); }
+}
+const CRAWL_TEMPLATE = JSON.stringify({
+  name: 'Service name',
+  languages: [{ code: 'ar', startUrl: 'https://example.org/ar/service' }, { code: 'en', startUrl: 'https://example.org/en/service' }],
+  openForm: '#start',
+  login: { when: '#username', steps: [{ fill: '#username', value: '$env:BW_HARVEST_USER' }, { fill: '#password', value: '$env:BW_HARVEST_PASS' }, { press: 'button[type=submit]' }] },
+  pause: [{ selector: '#otp', until: 'gone', message: 'Type the one-time code in the browser' }],
+  next: 'button[type=submit]',
+  delayMs: 600,
+}, null, 2);
+function newdocPanel() {
+  const served = location.protocol.startsWith('http');
+  return `<p class="hint">${esc(t('newdocHint'))}</p>
+<section class="card"><h3><span class="i">${ic('process')}</span> ${esc(t('newdocModel'))}</h3><p class="hint">${esc(t('newdocModelHint'))}</p>
+<div class="btns"><button type="button" class="b primary" data-k="nd-model"><span class="i">${ic('import')}</span><span class="w">${esc(t('newdocPick'))}</span></button></div></section>
+<section class="card"><h3><span class="i">${ic('crawl')}</span> ${esc(t('newdocCrawl'))}</h3><p class="hint">${esc(t(served ? 'newdocCrawlHint' : 'crawlNeedServer'))}</p>
+<label>${esc(t('crawlConfig'))}<textarea data-f="crawl" rows="12" spellcheck="false" dir="ltr">${esc(CRAWL_TEMPLATE)}</textarea></label>
+<div class="btns"><button type="button" class="b primary" data-k="nd-crawl" ${served ? '' : 'disabled'}><span class="i">${ic('crawl')}</span><span class="w">${esc(t('newdocRun'))}</span></button></div></section>`;
+}
+
+/* ── Process panel: edit the steps as a flowchart; regenerate the sections from it ── */
+function procOf() { return cur().doc.process || null; }
+function processPanel() {
+  const ir = procOf();
+  if (!ir) return `<p class="hint">${esc(t('procNone'))}</p><div class="btns"><button type="button" class="b primary" data-k="pr-new"><span class="i">${ic('add')}</span><span class="w">${esc(t('procStart'))}</span></button></div>`;
+  const actorOpts = (sel) => `<option value="">${esc(t('procNoActor'))}</option>` + ir.actors.map((a) => `<option value="${esc(a.id)}" ${a.id === sel ? 'selected' : ''}>${esc(a.name)}</option>`).join('');
+  const stepOpts = (sel) => ir.steps.map((s) => `<option value="${esc(s.id)}" ${s.id === sel ? 'selected' : ''}>${esc(s.name || t('kind_' + s.type))}</option>`).join('');
+  const kindOf = (s) => t('kind_' + s.type);
+  return `<div class="proc-fig" aria-label="${esc(t('procPreview'))}">${HV.processFigure(ir, { locale: S.ed, L: HL(S.ed) })}</div>
+<h3>${esc(t('procActors'))}</h3><ul class="list">${ir.actors.map((a, i) => `<li><input type="text" data-pr="actor" data-i="${i}" value="${esc(a.name)}" aria-label="${esc(t('procActorName'))}"></li>`).join('')}</ul>
+<div class="btns"><button type="button" class="b" data-k="pr-actor"><span class="i">${ic('add')}</span><span class="w">${esc(t('procAddActor'))}</span></button></div>
+<h3>${esc(t('procSteps'))}</h3><ul class="list">${ir.steps.filter((s) => ['task', 'decision', 'end', 'start', 'system'].includes(s.type)).map((s) => { const i = ir.steps.indexOf(s); return `<li><span class="badge">${esc(kindOf(s))}</span> <input type="text" data-pr="name" data-i="${i}" value="${esc(s.name)}" aria-label="${esc(t('procStepName'))}"> ${['task', 'decision'].includes(s.type) ? `<select data-pr="actorOf" data-i="${i}" aria-label="${esc(t('colActorUi'))}">${actorOpts(s.actor)}</select>` : ''} <button type="button" data-pr-del="${i}" aria-label="${esc(t('delete'))}">${ic('close')}</button></li>`; }).join('')}</ul>
+<div class="btns"><button type="button" class="b" data-k="pr-step"><span class="i">${ic('add')}</span><span class="w">${esc(t('procAddStep'))}</span></button><button type="button" class="b" data-k="pr-decision"><span class="i">${ic('add')}</span><span class="w">${esc(t('procAddDecision'))}</span></button><button type="button" class="b" data-k="pr-end"><span class="i">${ic('add')}</span><span class="w">${esc(t('procAddEnd'))}</span></button></div>
+<h3>${esc(t('procConnect'))}</h3><ul class="list">${ir.flows.map((f, i) => `<li>${esc(ir.steps.find((s) => s.id === f.from)?.name || f.from)} → ${esc(ir.steps.find((s) => s.id === f.to)?.name || f.to)}${f.label ? ` (${esc(f.label)})` : ''} <button type="button" data-pr-unlink="${i}" aria-label="${esc(t('delete'))}">${ic('close')}</button></li>`).join('')}</ul>
+<div class="row3"><label>${esc(t('procFrom'))}<select data-f="pr-from">${stepOpts()}</select></label><label>${esc(t('procTo'))}<select data-f="pr-to">${stepOpts()}</select></label><label>${esc(t('procLabel'))}<input type="text" data-f="pr-label"></label></div>
+<div class="btns"><button type="button" class="b" data-k="pr-link"><span class="i">${ic('connect')}</span><span class="w">${esc(t('procLink'))}</span></button></div>
+<div class="btns"><button type="button" class="b primary" data-k="pr-regen"><span class="i">${ic('replace')}</span><span class="w">${esc(t('procRegen'))}</span></button></div><p class="hint">${esc(t('procRegenHint'))}</p>`;
+}
+/** Process edits are ordinary ops on /process, mirrored to the other edition. */
+function setProcess(next) {
+  const old = procOf();
+  commit([{ op: 'replace', path: '/process', value: next, old }], { mirror: true, rerender: false });
+  openDrawer('process');
+}
+async function processClick(x) {
+  const ir = procOf() ? JSON.parse(JSON.stringify(procOf())) : null;
+  const k = x.dataset.k;
+  const nid = (p) => `${p}${Date.now().toString(36)}${Math.floor(Math.random() * 99)}`;
+  if (k === 'pr-new') {
+    const fresh = { kind: 'bw-process', version: 1, name: cur().doc.control.title.split(/\s*[:—]\s+/).slice(1).join(': ') || cur().doc.control.title, source: 'editor', actors: [{ id: 'a1', name: t('procFirstActor') }], steps: [{ id: 'start', type: 'start', name: '' }, { id: 's1', type: 'task', name: t('procFirstStep'), actor: 'a1' }, { id: 'end1', type: 'end', name: t('procFirstEnd') }], flows: [{ from: 'start', to: 's1' }, { from: 's1', to: 'end1' }] };
+    commit([{ op: 'replace', path: '/process', value: fresh, old: undefined }], { mirror: true, rerender: false });
+    openDrawer('process');
+    return true;
+  }
+  if (!ir) return false;
+  if (k === 'pr-actor') { ir.actors.push({ id: nid('a'), name: t('procNewActor') }); setProcess(ir); return true; }
+  if (k === 'pr-step' || k === 'pr-decision' || k === 'pr-end') {
+    const type = { 'pr-step': 'task', 'pr-decision': 'decision', 'pr-end': 'end' }[k];
+    ir.steps.push({ id: nid(type[0]), type, name: t({ task: 'procNewStep', decision: 'procNewDecision', end: 'procNewEnd' }[type]), actor: type === 'end' ? undefined : ir.actors[0]?.id });
+    setProcess(ir);
+    return true;
+  }
+  if (x.dataset.prDel !== undefined) { const s = ir.steps[+x.dataset.prDel]; ir.steps.splice(+x.dataset.prDel, 1); ir.flows = ir.flows.filter((f) => f.from !== s.id && f.to !== s.id); setProcess(ir); return true; }
+  if (x.dataset.prUnlink !== undefined) { ir.flows.splice(+x.dataset.prUnlink, 1); setProcess(ir); return true; }
+  if (k === 'pr-link') {
+    const d = root.querySelector('.drawer');
+    const from = d.querySelector('[data-f="pr-from"]').value, to = d.querySelector('[data-f="pr-to"]').value, label = d.querySelector('[data-f="pr-label"]').value.trim();
+    if (!from || !to || from === to) return true;
+    ir.flows.push({ from, to, ...(label ? { label } : {}) });
+    setProcess(ir);
+    return true;
+  }
+  if (k === 'pr-regen') {
+    // the sections that come from the process are rebuilt in both editions; control data, revisions and logos stay
+    for (const ed of Object.keys(M[S.svc])) {
+      const e = cur(ed);
+      const gen = HV.modelToDocument(e.doc.process || ir, { locale: ed, L: HL(ed) });
+      commit([{ op: 'replace', path: '/chapters', value: gen.chapters, old: e.doc.chapters }, { op: 'replace', path: '/openQuestions', value: gen.openQuestions, old: e.doc.openQuestions }], { ed, rerender: false });
+    }
+    render();
+    toast(t('procRegenDone'), 'ok');
+    return true;
+  }
+  return false;
+}
+function processChange(el) {
+  const ir = JSON.parse(JSON.stringify(procOf()));
+  const i = +el.dataset.i;
+  if (el.dataset.pr === 'actor') ir.actors[i].name = el.value;
+  if (el.dataset.pr === 'name') ir.steps[i].name = el.value;
+  if (el.dataset.pr === 'actorOf') ir.steps[i].actor = el.value || undefined;
+  setProcess(ir);
 }
 
 /* ── document events ───────────────────────────────────────────────────── */

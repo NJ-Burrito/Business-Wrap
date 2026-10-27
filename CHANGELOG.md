@@ -8,6 +8,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.7.0] - 2026-10-27
+
+### Added / أضيف
+- Harvest path A, from a process model: BPMN 2.0 (Flowable, Camunda, Activiti, with their extension attributes: user tasks, candidate groups, assignee, form properties, conditions, timers, gateways, subprocesses), draw.io (plain and compressed) and a YAML/JSON step list → the process IR → both document editions; the workflow figure shows people's steps only. / الاستخراج من نموذج إجراء.
+- Harvest path B, crawl a live service: headed Chrome, one tab, keyboard-first triggers, robots.txt respected, rate limit, OTP/captcha pause for the human, credentials only from `$env:` or the gitignored `.local/harvest-secrets.json`; card, form steps (labels, required, options, conditional fields, attachments), validation messages, statuses, both languages, viewport-only screenshots. / الاستخراج بالمرور على الخدمة الفعلية.
+- `npm run harvest:model`, `npm run harvest:crawl`, MCP `harvest_model` and `harvest_crawl`, the editor's **New document** wizard and **Process** panel (draw the flow, rebuild the sections in both editions). / الأوامر وأدوات MCP ومعالج الوثيقة الجديدة ولوحة الإجراء.
+- `bible/08-harvest` (AR + EN), `bible/contracts/harvest.schema.json`, SKILL.md «Start a document: harvest» (AR + EN). / الفصل والعقد ونص المهارة.
+- Tests: invented Flowable-style BPMN, draw.io plain and compressed, YAML list, a local bilingual site crawled end to end with an OTP pause that resumes by itself, the wizard and the Process panel. / الاختبارات.
+
 ## [0.6.0] - 2026-10-27
 
 ### Added / أضيف

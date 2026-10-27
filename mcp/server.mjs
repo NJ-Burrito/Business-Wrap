@@ -11,6 +11,7 @@ import { exportPdf, exportDocx, loadTheme, fontsFor, REPO } from '../engine/expo
 import { applyOps, migrate, validateEdits } from '../engine/edits.mjs';
 import { checkForUpdate, oneLiner, token, currentVersion } from '../update/check.mjs';
 import { applyUpdate } from '../update/apply.mjs';
+import { harvestModel, harvestCrawl } from '../engine/harvest/cli.mjs';
 
 const pkg = JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8'));
 const readJson = (p) => JSON.parse(fs.readFileSync(path.resolve(p), 'utf8'));
@@ -138,6 +139,33 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     const f = out(o, '.json');
     fs.writeFileSync(f, JSON.stringify({ kind: 'bw-design-pack', version: 1, ...th }, null, 1) + '\n', 'utf8');
     return { design_pack: f, fonts: th.fonts, vars: Object.keys(th.vars).length };
+  }));
+
+  server.registerTool('harvest_model', {
+    title: 'Harvest from a process model',
+    description: 'Turn a BPMN 2.0 file (Flowable, Camunda, Activiti), a draw.io diagram or a YAML/JSON step list into the Arabic and English document JSON (actors, workflow figure of the steps people do, steps, rules, user stories, statuses) and build the editor for it.',
+    inputSchema: {
+      model: z.string().describe('Path of the .bpmn / .xml / .drawio / .yaml / .json file'),
+      out_dir: z.string().describe('Folder for the documents and the editor'),
+      name: z.string().optional().describe('Service name when the model has none'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  }, guard(async ({ model, out_dir, name }) => {
+    const r = await harvestModel(path.resolve(model), { out: path.resolve(out_dir), name });
+    return { documents: r.documents, editor: r.editor, actors: r.ir.actors.length, steps: r.ir.steps.filter((s) => s.type === 'task').length };
+  }));
+
+  server.registerTool('harvest_crawl', {
+    title: 'Harvest by walking the live service',
+    description: 'Walk an e-service in a real browser from a crawl config (start URL per language, optional login steps with $env: / $secret: values, OTP pause rule) and turn what it shows into the document JSON + the editor. Opens a visible Chrome unless the config says headed: false; an OTP or captcha pause waits for the human.',
+    inputSchema: {
+      config: z.string().describe('Path of the crawl config JSON (see bible/contracts/harvest.schema.json#/$defs/crawlConfig)'),
+      out_dir: z.string().describe('Folder for the raw harvest, screenshots, documents and the editor'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  }, guard(async ({ config, out_dir }) => {
+    const r = await harvestCrawl(path.resolve(config), { out: path.resolve(out_dir), log: () => {} });
+    return { documents: r.documents, editor: r.editor, raw: path.join(r.rawDir, 'harvest.json'), languages: Object.keys(r.raw.languages), steps: Object.values(r.raw.languages)[0]?.steps.length ?? 0 };
   }));
 
   server.registerTool('check_fonts', {

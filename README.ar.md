@@ -27,7 +27,7 @@
 
 **خادم MCP وحده** (stdio ومحلي فقط؛ يحتاج Node 20 أو أحدث، وChrome أو Edge لملف PDF، و`uv` لملف DOCX):
 ```
-claude mcp add business-wrap -- npx -y -p business-wrap@0.5.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p business-wrap@0.7.0 business-wrap-mcp
 ```
 ومن نسخة محلية بدل npm: `npm ci` ثم `claude mcp add business-wrap -- node <clone>/mcp/cli.mjs`.
 الأدوات: `build_editor` و`validate_edits` و`apply_edits` و`export_document` و`export_design_pack` و`check_fonts`، والتفاصيل في `mcp/README.ar.md`.
@@ -66,6 +66,9 @@ node engine/build-editor.mjs <doc.json | folder>... --out out/my.editor.html [--
 node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|en] [--out dir]
 ```
 عند فتحه من القرص (file://) ينزل زر «PDF وDOCX» ملف JSON المعدل ويعرض أمر `export.mjs`؛ وعند فتحه عبر `npm run serve` يصدر بنقرة واحدة.
+
+### ابدأ وثيقة (الاستخراج)
+من نموذج إجراء (`npm run harvest:model -- <bpmn|drawio|yaml>`) أو بالمرور على الخدمة الفعلية (`npm run harvest:crawl -- <crawl.json>`)؛ والطريقان يعطيان ملفي الوثيقة بالعربية والإنجليزية ومحرراً. انظر `bible/08-harvest.ar.md`.
 
 ### المحرر باختصار
 - **الشريط العائم** (أعلى الصفحة): الشعار، والخدمة، ومبدّل النسخة **RTL / LTR**، والتراجع والإعادة، والصورة وإضافة شعار، والبحث، والصفحات، والحفظ وتصدير PDF + DOCX، وعداد التغييرات الحي، ومبدّل اتجاه الواجهة **RTL / LTR**، والعرض، والأوامر.

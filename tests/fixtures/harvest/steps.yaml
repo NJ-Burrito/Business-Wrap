@@ -1,0 +1,31 @@
+# Invented test fixture: a step list for someone with no process model.
+process: Membership renewal
+actors: [Member, Membership office]
+steps:
+  - id: apply
+    name: Submit the renewal form
+    actor: Member
+    fields:
+      - name: memberNo
+        label: Member number
+        required: true
+      - name: plan
+        label: Plan
+        options: [Basic, Plus]
+  - id: check
+    name: Check the payment
+    system: true
+  - id: approve
+    decision: Payment received?
+    actor: Membership office
+    options:
+      Yes: renewed
+      No: apply
+    timer:
+      after: 10 days
+      to: lapsed
+ends:
+  - id: renewed
+    name: Renewed
+  - id: lapsed
+    name: Lapsed

@@ -47,7 +47,7 @@ try {
   await client.connect(transport);
   const { tools } = await client.listTools();
   const names = tools.map((t) => t.name).sort();
-  check('tools/list', JSON.stringify(names) === JSON.stringify(['apply_edits', 'apply_update', 'build_editor', 'check_fonts', 'check_update', 'export_design_pack', 'export_document', 'validate_edits']), names.join(','));
+  check('tools/list', JSON.stringify(names) === JSON.stringify(['apply_edits', 'apply_update', 'build_editor', 'check_fonts', 'check_update', 'export_design_pack', 'export_document', 'harvest_crawl', 'harvest_model', 'validate_edits']), names.join(','));
   check('every tool has a description and an input schema', tools.every((t) => t.description && t.inputSchema?.type === 'object'));
 
   let r = await client.callTool({ name: 'validate_edits', arguments: { edits: editsFile } });
@@ -72,6 +72,9 @@ try {
 
   r = await client.callTool({ name: 'check_fonts', arguments: {} });
   check('check_fonts: answers', !r.isError && Array.isArray(data(r)?.found), `found=${data(r)?.found?.length} missing=${data(r)?.missing?.length} type3_risk=${data(r)?.type3_risk}`);
+
+  r = await client.callTool({ name: 'harvest_model', arguments: { model: path.join(REPO, 'tests', 'fixtures', 'harvest', 'steps.yaml'), out_dir: path.join(OUT, 'harvest') } });
+  check('harvest_model: a step list becomes both editions + an editor', !r.isError && data(r)?.documents?.length === 2 && fs.existsSync(data(r).editor || '') && data(r).steps === 1, text(r).slice(0, 160));
 
   r = await client.callTool({ name: 'export_document', arguments: { document: AR, edits: editsFile, out_dir: path.join(OUT, 'export') } });
   const ex = data(r) || {};

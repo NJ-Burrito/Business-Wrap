@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://business-wrap.local/contracts/harvest.schema.json",
+  "title": "Business-Wrap harvest contracts",
+  "description": "The three shapes between a source and the document JSON: the process IR (path A: BPMN 2.0, draw.io, YAML/JSON steps), the crawl config and the raw crawl harvest (path B). Both paths are mapped into the same document JSON (engine/harvest/model.mjs modelToDocument, engine/harvest/crawl.mjs harvestToDocument).",
+  "oneOf": [{ "$ref": "#/$defs/process" }, { "$ref": "#/$defs/crawlConfig" }, { "$ref": "#/$defs/rawHarvest" }],
+  "$defs": {
+    "process": {
+      "type": "object",
+      "required": ["kind", "version", "name", "actors", "steps", "flows"],
+      "properties": {
+        "kind": { "const": "bw-process" },
+        "version": { "const": 1 },
+        "name": { "type": "string" },
+        "source": { "enum": ["bpmn", "drawio", "steps", "editor"] },
+        "actors": { "type": "array", "items": { "type": "object", "required": ["id", "name"], "properties": { "id": { "type": "string" }, "name": { "type": "string" } } } },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "type"],
+            "properties": {
+              "id": { "type": "string" },
+              "type": { "enum": ["task", "system", "decision", "start", "end", "timer", "pass"], "description": "task = done by a person (drawn); system = done by the system (not drawn, collapsed); pass = subprocess boundary or throw event (collapsed)." },
+              "name": { "type": "string" },
+              "actor": { "type": "string", "description": "Actor id: BPMN lane, else candidateGroups / candidateUsers / assignee, else the pool." },
+              "fields": { "type": "array", "items": { "$ref": "#/$defs/modelField" } },
+              "formKey": { "type": "string" },
+              "timer": { "type": "string", "description": "ISO 8601 duration / date / cycle as written in the model." },
+              "attachedTo": { "type": "string" },
+              "gateway": { "type": "string" }
+            }
+          }
+        },
+        "flows": { "type": "array", "items": { "type": "object", "required": ["from", "to"], "properties": { "from": { "type": "string" }, "to": { "type": "string" }, "label": { "type": "string" }, "condition": { "type": "string" }, "timer": { "type": "boolean" } } } }
+      }
+    },
+    "modelField": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" }, "label": { "type": "string" }, "type": { "type": "string" }, "required": { "type": "boolean" }, "options": { "type": "array", "items": { "type": "string" } } } },
+    "crawlConfig": {
+      "type": "object",
+      "required": ["languages"],
+      "properties": {
+        "name": { "type": "string" },
+        "languages": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["code", "startUrl"], "properties": { "code": { "enum": ["ar", "en"] }, "startUrl": { "type": "string", "format": "uri" } } } },
+        "openForm": { "type": "string", "description": "Selector of the control that opens the form from the service card." },
+        "login": {
+          "description": "Either steps run first, or {when, steps} run when the login form appears. Values may be $env:NAME or $secret:key (.local/harvest-secrets.json); never plain passwords.",
+          "oneOf": [{ "type": "array", "items": { "$ref": "#/$defs/loginStep" } }, { "type": "object", "required": ["steps"], "properties": { "when": { "type": "string" }, "steps": { "type": "array", "items": { "$ref": "#/$defs/loginStep" } } } }]
+        },
+        "pause": { "type": "array", "items": { "type": "object", "required": ["selector"], "properties": { "selector": { "type": "string" }, "until": { "type": "string", "description": "'gone' (default) or a selector that must appear." }, "message": { "type": "string" }, "timeoutMs": { "type": "integer" } } }, "description": "OTP / captcha pauses: the crawl stops and waits for the human." },
+        "next": { "type": "string", "description": "The Next / Send button (default button[type=submit])." },
+        "values": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Values to type, by field name or selector ($env:/$secret: allowed). Otherwise neutral samples are used." },
+        "fillOptional": { "type": "boolean" },
+        "statusesSelector": { "type": "string" },
+        "statusesUrl": { "type": "string" },
+        "cardSelector": { "type": "string" },
+        "maxSteps": { "type": "integer", "minimum": 1 },
+        "delayMs": { "type": "integer", "minimum": 0, "description": "Pause between actions (rate limit), default 400." },
+        "respectRobots": { "type": "boolean", "description": "Default true." },
+        "headed": { "type": "boolean", "description": "Default true: a visible Chrome." },
+        "outDir": { "type": "string" }
+      }
+    },
+    "loginStep": { "type": "object", "properties": { "goto": { "type": "string" }, "fill": { "type": "string" }, "value": { "type": "string" }, "press": { "type": "string" }, "waitFor": { "type": "string" }, "timeoutMs": { "type": "integer" } } },
+    "rawHarvest": {
+      "type": "object",
+      "required": ["kind", "version", "languages"],
+      "properties": {
+        "kind": { "const": "bw-harvest" },
+        "version": { "const": 1 },
+        "name": { "type": "string" },
+        "harvestedAt": { "type": "string", "format": "date-time" },
+        "languages": {
+          "type": "object",
+          "propertyNames": { "enum": ["ar", "en"] },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "startUrl": { "type": "string" },
+              "card": { "type": "object", "properties": { "title": { "type": "string" }, "description": { "type": "array", "items": { "type": "string" } }, "facts": { "type": "array", "items": { "type": "array", "items": { "type": "string" }, "minItems": 2, "maxItems": 2 } } } },
+              "steps": { "type": "array", "items": { "type": "object", "properties": { "title": { "type": "string" }, "url": { "type": "string" }, "validations": { "type": "array", "items": { "type": "string" } }, "fields": { "type": "array", "items": { "type": "object", "properties": { "key": { "type": "string" }, "type": { "type": "string" }, "label": { "type": "string" }, "required": { "type": "boolean" }, "options": { "type": "array", "items": { "type": "string" } }, "accept": { "type": "string" }, "visible": { "type": "boolean" }, "shownWhen": { "type": "array", "items": { "type": "string" } } } } } } } },
+              "statuses": { "type": "array", "items": { "type": "string" } },
+              "after": { "type": "object" },
+              "shots": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Viewport screenshots by step, file names in the harvest folder." }
+            }
+          }
+        }
+      }
+    }
+  }
+}

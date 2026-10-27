@@ -9,11 +9,13 @@ A stdio MCP server over the Business-Wrap engine. Local only: it reads and write
 | `apply_edits` | document, edits, out .json | replays an edits file and writes the edited document |
 | `export_document` | document, edits?, locale?, out_dir, theme?, docx? | PDF (headless Chrome, the editor markup) + DOCX |
 | `export_design_pack` | out .json, theme? | the theme as a `bw-design-pack` the editor imports |
+| `harvest_model` | model, out_dir, name? | a BPMN / draw.io / step-list file → both document editions + the editor |
+| `harvest_crawl` | config, out_dir | walk a live service (headed Chrome, OTP pause) → both editions + the editor |
 | `check_fonts` | theme? | which faces resolve and whether any would print as Type 3 |
 
 ## Run
 ```
-claude mcp add business-wrap -- npx -y -p business-wrap@0.6.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p business-wrap@0.7.0 business-wrap-mcp
 # or, from a clone after npm ci:
 node mcp/cli.mjs
 ```

@@ -9,9 +9,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fileURLToPath as toPath } from 'node:url';
-import { exportPdf, exportDocx, pageThumbs, loadTheme, fontsFor, REPO } from './export.mjs';
+import { exportPdf, exportDocx, pageThumbs, loadTheme, fontsFor, REPO, i18n } from './export.mjs';
 import { checkForUpdate, token, currentVersion } from '../update/check.mjs';
 import { applyUpdate } from '../update/apply.mjs';
+import { crawl, harvestToDocument } from './harvest/crawl.mjs';
 
 const MAX_BODY = 60 * 1024 * 1024;
 const OUT = path.join(REPO, 'out', 'exports');
@@ -56,6 +57,17 @@ export function serve(editorFile, port = 4317) {
           const repo = JSON.parse(fs.readFileSync(path.join(REPO, 'update', 'source.json'), 'utf8')).repo;
           return send(200, await applyUpdate({ dir: REPO, release: { version: u.latest, zip: u.zip, zipApi: u.zipApi, sha256: u.sha256 }, repo, token: token(), current: currentVersion() }));
         }
+      }
+      if (req.method === 'POST' && url.pathname === '/api/harvest/crawl') {
+        // the wizard's "walk the live service": a real (headed) browser on this machine; credentials only via $env:/$secret:
+        if (req.headers.origin && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(req.headers.origin)) return send(403, { error: 'origin' });
+        const chunks = [];
+        for await (const c of req) chunks.push(c);
+        const cfg = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+        if (!Array.isArray(cfg.languages) && !cfg.startUrl) return send(400, { error: 'no start URL' });
+        const { raw } = await crawl({ ...cfg, outDir: path.join(OUT, '..', 'harvest', 'raw', slug(cfg.name)) });
+        const H = i18n().harvest;
+        return send(200, { documents: { ar: harvestToDocument(raw, { locale: 'ar', L: H.ar }), en: harvestToDocument(raw, { locale: 'en', L: H.en }) } });
       }
       if (req.method === 'POST' && url.pathname === '/api/webhook') {
         // the editor's webhooks: the browser cannot reach other origins (CSP connect-src 'self', CORS), so the server delivers

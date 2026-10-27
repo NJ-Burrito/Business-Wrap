@@ -1,6 +1,6 @@
 ---
 name: business-wrap
-description: Use when a requirements or specification document (SRS, service card, business requirements, workflow, user stories and acceptance criteria) must be produced, rebuilt, edited or exported as an Arabic and/or English PDF and DOCX from evidence; when someone wants to open the Business-Wrap editor or make small edits in an HTML replica instead of regenerating; when a design pack, palette, typography tokens, logo slot or font setup is changed; when a document's fonts, RTL text, pagination, colours or Type 3 glyphs look wrong; or before publishing the repo (security gate). Arabic triggers - وثيقة متطلبات، مواصفات الخدمة، بطاقة الخدمة، قصص المستخدمين، معايير القبول، مخطط سير العمل، افتح المحرر، محرر الوثيقة، تعديل الوثيقة، تصدير PDF أو DOCX، حزمة التصميم، لوحة الألوان، الخطوط، فحص الأمان.
+description: Use when a requirements or specification document (SRS, service card, business requirements, workflow, user stories and acceptance criteria) must be produced, rebuilt, edited or exported as an Arabic and/or English PDF and DOCX from evidence; when someone wants to open the Business-Wrap editor or make small edits in an HTML replica instead of regenerating; when a design pack, palette, typography tokens, logo slot or font setup is changed; when a document's fonts, RTL text, pagination, colours or Type 3 glyphs look wrong; when a document should start from a process model (BPMN, Flowable, Camunda, draw.io, step list) or from crawling a live e-service; or before publishing the repo (security gate). Arabic triggers - وثيقة متطلبات، مواصفات الخدمة، بطاقة الخدمة، قصص المستخدمين، معايير القبول، مخطط سير العمل، افتح المحرر، محرر الوثيقة، تعديل الوثيقة، تصدير PDF أو DOCX، استخراج من نموذج إجراء، المرور على الخدمة، حزمة التصميم، لوحة الألوان، الخطوط، فحص الأمان.
 ---
 
 # Business-Wrap
@@ -31,6 +31,35 @@ Fonts: the shipped file names the Thmanyah fonts installed in the OS (`local()`)
 
 </div>
 
+## Start a document: harvest / ابدأ وثيقة: الاستخراج (`bible/08-harvest.md`)
+Two ways in, one result: `document.ar.json` + `document.en.json` and an editor.
+
+| You have | Run | Notes |
+|---|---|---|
+| A BPMN 2.0 export (Flowable, Camunda, Activiti), a draw.io diagram, or a YAML/JSON step list | `npm run harvest:model -- <file> [--out dir]` · MCP `harvest_model` · editor **New document → From a process model** | lanes/groups → actors, user tasks → stories, gateways/conditions/timers → rules, end events → statuses; the figure shows people's steps only |
+| A live e-service | `npm run harvest:crawl -- <crawl.json>` · MCP `harvest_crawl` · editor **New document → Walk the live service** (needs `npm run serve`) | headed Chrome, one tab, keyboard first, robots respected, OTP/captcha pause waits for the human; credentials only as `$env:NAME` / `$secret:key` |
+
+Rules that cost a rebuild if skipped:
+- Never put a password in a crawl config; use `$env:` or `.local/harvest-secrets.json`.
+- Harvested names are kept as written; a one-language source gives both editions the same names: review before issuing.
+- After editing the flow in the **Process** panel, press **Rebuild the sections**; control data, revisions and placed logos stay.
+
+<div dir="rtl">
+
+طريقان والنتيجة واحدة: `document.ar.json` و`document.en.json` ومحرر.
+
+| لديك | شغّل | ملاحظات |
+|---|---|---|
+| تصدير BPMN 2.0 (Flowable أو Camunda أو Activiti)، أو مخطط draw.io، أو قائمة خطوات YAML أو JSON | `npm run harvest:model -- <file> [--out dir]` · أداة MCP `harvest_model` · في المحرر **وثيقة جديدة ← من نموذج إجراء** | المسارات والمجموعات ← الأطراف، ومهام المستخدم ← القصص، والبوابات والشروط والمهل ← القواعد، وأحداث النهاية ← الحالات؛ والمخطط يعرض خطوات الأشخاص فقط |
+| خدمة إلكترونية فعلية | `npm run harvest:crawl -- <crawl.json>` · أداة MCP `harvest_crawl` · في المحرر **وثيقة جديدة ← المرور على الخدمة الفعلية** (يحتاج `npm run serve`) | Chrome ظاهر، وتبويب واحد، ولوحة المفاتيح أولاً، واحترام robots، والتوقف للرمز المؤقت أو التحقق البشري حتى يتدخل الإنسان؛ وبيانات الدخول فقط بصيغة `$env:NAME` أو `$secret:key` |
+
+قواعد يكلّف تجاوزها إعادة البناء:
+- لا تضع كلمة مرور في إعدادات المرور؛ استخدم `$env:` أو `.local/harvest-secrets.json`.
+- الأسماء المستخرجة تبقى كما وردت؛ والمصدر المكتوب بلغة واحدة يعطي النسختين الأسماء نفسها، فراجعها قبل الإصدار.
+- بعد تعديل السير في لوحة **الإجراء** اضغط **أعد بناء الأقسام**؛ ويبقى ضبط الوثيقة والمراجعات والشعارات الموضوعة.
+
+</div>
+
 ## When NOT to use
 - A free-form letter, slide deck or marketing page (no evidence chain, no gates).
 - Editing a delivered PDF/DOCX by hand: edit through the editor so the change survives the next rebuild.
@@ -45,6 +74,7 @@ Fonts: the shipped file names the Thmanyah fonts installed in the OS (`local()`)
 | A symptom you have seen before | `bible/05-lessons.md` |
 | Colours, sizes, page geometry, custom design | `bible/06-design-system.md`, `design/README.md` |
 | Fonts setup, Type 3 | `fonts/README.md` |
+| Start a document from a BPMN / draw.io / YAML model or a live service | `bible/08-harvest.md`, `bible/contracts/harvest.schema.json` |
 | Install, quickstart, troubleshooting | `docs/guide.md` |
 
 ## Quick reference

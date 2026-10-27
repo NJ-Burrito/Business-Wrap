@@ -219,3 +219,15 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
 @media (prefers-reduced-transparency: reduce) { .island, .pop, .ctx { background: var(--deep); backdrop-filter: none; } }
 @media (max-width: 1520px) { .island { gap: 6px 8px; padding: 7px 10px; } .grp { gap: 2px; padding-inline-end: 7px; } .b { padding: 6px 8px; gap: 6px; font-size: 13.5px; } .seg .cap { display: none; } .pick select { max-width: 170px; } }
 @media (max-width: 1100px) { .b .w { font-size: 12.5px; } .count .w { display: none; } }
+/* new-document wizard and the process panel */
+.drawer .card { margin: 10px 0 14px; padding: 12px 14px; border-radius: 16px; background: var(--wash-2); box-shadow: 0 0 0 1px var(--panel-line); animation: rise .4s var(--e-out) both; }
+.drawer .card + .card { animation-delay: .06s; }
+.drawer .card h3 { display: flex; align-items: center; gap: 8px; margin-top: 0; color: var(--navy); font-size: 15px; }
+.shell[data-theme="dark"] .drawer .card h3 { color: #9cc3ef; }
+.drawer textarea[data-f="crawl"] { font: 12.5px/1.45 ui-monospace, Consolas, monospace; color: var(--panel-ink); background: var(--panel); border: 1px solid var(--panel-line); border-radius: 10px; padding: 8px; width: 100%; }
+.drawer .proc-fig { border-radius: 12px; overflow: auto; background: #fff; box-shadow: 0 0 0 1px var(--panel-line); max-height: 260px; }
+.drawer .proc-fig svg { display: block; width: 100%; height: auto; min-width: 560px; }
+.drawer .row3 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+.drawer .row3 label:last-child { grid-column: 1 / -1; }
+.drawer .list input[type="text"] { font: inherit; color: var(--panel-ink); background: var(--panel); border: 1px solid var(--panel-line); border-radius: 8px; padding: 5px 8px; min-width: 0; width: 55%; }
+.drawer .list select { font: inherit; color: var(--panel-ink); background: var(--panel); border: 1px solid var(--panel-line); border-radius: 8px; padding: 4px 6px; max-width: 34%; }

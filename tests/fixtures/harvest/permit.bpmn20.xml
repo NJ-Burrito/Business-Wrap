@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Invented test fixture: a generic permit request in Flowable's BPMN 2.0 dialect. No real organisation. -->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://example.org/permits">
+  <collaboration id="collab">
+    <participant id="pool" name="Permit office" processRef="permitRequest"/>
+  </collaboration>
+  <process id="permitRequest" name="Event permit request" isExecutable="true">
+    <laneSet id="lanes">
+      <lane id="laneApplicant" name="Applicant">
+        <flowNodeRef>start</flowNodeRef>
+        <flowNodeRef>fileRequest</flowNodeRef>
+        <flowNodeRef>fixRequest</flowNodeRef>
+      </lane>
+      <lane id="laneOfficer" name="Reviewing officer">
+        <flowNodeRef>review</flowNodeRef>
+        <flowNodeRef>decide</flowNodeRef>
+      </lane>
+    </laneSet>
+    <startEvent id="start" name="Request opened"/>
+    <userTask id="fileRequest" name="File the request" flowable:formKey="permit-form">
+      <extensionElements>
+        <flowable:formProperty id="eventName" name="Event name" type="string" required="true"/>
+        <flowable:formProperty id="eventDate" name="Event date" type="date" required="true"/>
+        <flowable:formProperty id="venueType" name="Venue type" type="enum" required="false">
+          <flowable:value id="indoor" name="Indoor"/>
+          <flowable:value id="outdoor" name="Outdoor"/>
+        </flowable:formProperty>
+      </extensionElements>
+    </userTask>
+    <serviceTask id="checkFee" name="Calculate the fee" flowable:class="org.example.FeeCalculator"/>
+    <userTask id="review" name="Review the request" flowable:candidateGroups="Reviewing officer"/>
+    <boundaryEvent id="slaTimer" name="Review overdue" attachedToRef="review" cancelActivity="false">
+      <timerEventDefinition><timeDuration>P5D</timeDuration></timerEventDefinition>
+    </boundaryEvent>
+    <exclusiveGateway id="decide" name="Request complete?"/>
+    <subProcess id="fixLoop" name="Corrections">
+      <startEvent id="fixStart"/>
+      <userTask id="fixRequest" name="Correct the request" flowable:assignee="${initiator}"/>
+      <endEvent id="fixEnd"/>
+      <sequenceFlow id="f10" sourceRef="fixStart" targetRef="fixRequest"/>
+      <sequenceFlow id="f11" sourceRef="fixRequest" targetRef="fixEnd"/>
+    </subProcess>
+    <endEvent id="approved" name="Approved"/>
+    <endEvent id="rejected" name="Rejected"/>
+    <endEvent id="escalated" name="Escalated to supervisor"/>
+    <sequenceFlow id="f1" sourceRef="start" targetRef="fileRequest"/>
+    <sequenceFlow id="f2" sourceRef="fileRequest" targetRef="checkFee"/>
+    <sequenceFlow id="f3" sourceRef="checkFee" targetRef="review"/>
+    <sequenceFlow id="f4" sourceRef="review" targetRef="decide"/>
+    <sequenceFlow id="f5" name="Complete" sourceRef="decide" targetRef="approved">
+      <conditionExpression xsi:type="tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><![CDATA[${complete == true}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f6" name="Needs changes" sourceRef="decide" targetRef="fixLoop">
+      <conditionExpression xsi:type="tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><![CDATA[${complete == false && fixable}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f7" name="Not allowed" sourceRef="decide" targetRef="rejected"/>
+    <sequenceFlow id="f8" sourceRef="fixLoop" targetRef="review"/>
+    <sequenceFlow id="f9" sourceRef="slaTimer" targetRef="escalated"/>
+  </process>
+</definitions>

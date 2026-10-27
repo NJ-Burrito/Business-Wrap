@@ -31,7 +31,7 @@ Then say: **"build the requirements document for …"** or **"open it in the edi
 
 **MCP server only** (stdio, local only; Node 20+, Chrome or Edge for the PDF, `uv` for the DOCX):
 ```
-claude mcp add business-wrap -- npx -y -p business-wrap@0.5.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p business-wrap@0.7.0 business-wrap-mcp
 ```
 From a clone instead of npm: `npm ci`, then `claude mcp add business-wrap -- node <clone>/mcp/cli.mjs`.
 Tools: `build_editor`, `validate_edits`, `apply_edits`, `export_document`, `export_design_pack`, `check_fonts` — see `mcp/README.md`.
@@ -70,6 +70,9 @@ node engine/build-editor.mjs <doc.json | folder>... --out out/my.editor.html [--
 node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|en] [--out dir]
 ```
 Opened from disk (file://), "PDF + DOCX" downloads the edited document JSON and shows the `export.mjs` command; through `npm run serve` it exports in one click.
+
+### Start a document (harvest)
+From a process model (`npm run harvest:model -- <bpmn|drawio|yaml>`) or by walking the live service (`npm run harvest:crawl -- <crawl.json>`); both give the AR and EN document JSON and an editor. See `bible/08-harvest.md`.
 
 ### The editor at a glance
 - **The island** (top): the logo, the service, the edition switch **RTL / LTR**, Undo and Redo, Image and Add logo, Find, Pages, Save and PDF + DOCX, the live changes counter, the interface switch **RTL / LTR**, View and Commands.

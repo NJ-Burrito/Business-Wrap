@@ -11,11 +11,13 @@
 | `apply_edits` | document, edits, out .json | يعيد تطبيق ملف التعديلات ويكتب الوثيقة المعدلة |
 | `export_document` | document, edits?, locale?, out_dir, theme?, docx? | ملف PDF (Chrome بلا واجهة، بترميز المحرر نفسه) وملف DOCX |
 | `export_design_pack` | out .json, theme? | السمة بصيغة `bw-design-pack` التي يستوردها المحرر |
+| `harvest_model` | model, out_dir, name? | ملف BPMN أو draw.io أو قائمة خطوات ← نسختا الوثيقة والمحرر |
+| `harvest_crawl` | config, out_dir | المرور على خدمة فعلية (Chrome ظاهر وتوقف للرمز المؤقت) ← النسختان والمحرر |
 | `check_fonts` | theme? | أي الخطوط متاح وهل سيطبع أي منها بصيغة Type 3 |
 
 ## التشغيل
 ```
-claude mcp add business-wrap -- npx -y -p business-wrap@0.6.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p business-wrap@0.7.0 business-wrap-mcp
 # أو من نسخة محلية بعد npm ci:
 node mcp/cli.mjs
 ```
