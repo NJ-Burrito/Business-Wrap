@@ -294,9 +294,9 @@ async function importFile(file) {
   let extra = null;
   try {
     if (/^\s*</.test(text)) {
-      // A Save-HTML file: parsed as inert data only, nothing in it runs.
-      const dom = new DOMParser().parseFromString(text, 'text/html');
-      const data = JSON.parse(dom.getElementById('bw-data')?.textContent || 'null');
+      // A Save-HTML file: only its data block is read, as a string; the HTML is never parsed.
+      const m = /<script type="application\/json" id="bw-data">([\s\S]*?)<\/script>/.exec(text);
+      const data = m ? JSON.parse(m[1]) : null;
       if (!data) throw new Error('no data');
       for (const s of data.services)
         for (const [ed, x] of Object.entries(s.editions)) files.push({ version: 1, baseHash: x.hash, locale: ed, ops: x.ops || [], comments: x.comments });
@@ -1063,10 +1063,26 @@ document.addEventListener('paste', (e) => {
   const text = sanitizePaste(e.clipboardData.getData('text/plain') || e.clipboardData.getData('text/html'));
   document.execCommand('insertText', false, text);
 });
+// Pasted HTML is reduced to text by string work only: it never reaches an HTML
+// parser, so no element (and no on*= handler in it) is ever created. On Linux
+// Chrome a DOMParser document still tried the payload's inline handler, which the
+// page CSP then blocked and reported as a console error (CI run 40532044817).
+const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
 function sanitizePaste(s) {
-  const d = new DOMParser().parseFromString(`<body>${s}`, 'text/html');
-  d.querySelectorAll('script,style,iframe,object,embed').forEach((x) => x.remove());
-  return (d.body.textContent || '').replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, '').replace(/\s+/g, ' ');
+  return String(s ?? '')
+    .replace(/<(script|style|iframe|object|embed|template|svg|math)\b[\s\S]*?<\/\1\s*>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) => {
+      if (e[0] === '#') {
+        const n = e[1].toLowerCase() === 'x' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
+        return n > 0 && n < 0x110000 ? String.fromCodePoint(n) : '';
+      }
+      return ENTITIES[e.toLowerCase()] ?? m;
+    })
+    .replace(/[<>]/g, '')
+    .replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, '')
+    .replace(/\s+/g, ' ');
 }
 document.addEventListener('keydown', (e) => {
   const mod = e.ctrlKey || e.metaKey;

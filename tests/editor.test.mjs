@@ -79,6 +79,8 @@ const normDom = (page, ed) =>
 async function open(ctx) {
   const page = await ctx.newPage();
   const errors = [];
+  // name the source of any CSP report, so a blocked handler points at its element
+  await page.addInitScript(() => document.addEventListener('securitypolicyviolation', (e) => console.error(`CSP-SOURCE ${e.violatedDirective} sample=${JSON.stringify(e.sample)} at ${e.sourceFile}:${e.lineNumber} target=${e.target?.outerHTML?.slice?.(0, 120) || e.target?.nodeName}`)));
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   await page.goto(editorUrl);
@@ -283,9 +285,15 @@ try {
     if (ed === 'ar') check('ar: PDF has Arabic text', arabic > 500, `arabic chars=${arabic}`);
     else check('en: PDF has English text', latinWords > 5 && arabic === 0, `words=${latinWords} arabic=${arabic}`);
     const want = ed === 'ar' ? 'للاختبار' : 'Edited text for the test';
-    const squash = (x) => x.normalize('NFKC').replace(/[\s\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '');
+    // Fallback faces (CI: DejaVu/Noto, partly Type 3) lose the shadda and come back from poppler
+    // with the lam-alef ligature reversed ('لالختبار' for 'للاختبار', 'األسماء' for 'الأسماء'), so the
+    // whole typed sentence is compared without lam and alef.
+    // Thmanyah, where installed, takes the strict branch above.
+    const squash = (x) => x.normalize('NFKC')
+      .replace(/[\s\u200e\u200f\u202a-\u202e\u2066-\u2069\u064b-\u0652]/g, '')
+      .replace(/[لاأإآ]/g, ''); // lam and alef dropped: the reversed ligature cannot be told apart
     if (HAVE_FONTS) check(`${ed}: PDF carries the edited text (words whole)`, txt.replace(/\s+/g, ' ').includes(want));
-    else check(`${ed}: PDF carries the edited text (fallback face: spaces and bidi marks ignored)`, squash(txt).includes(squash(want)), squash(txt).includes(squash(want)) ? '' : JSON.stringify(txt.slice(0, 160)));
+    else check(`${ed}: PDF carries the edited text (fallback face: spacing, marks, lam/alef ignored)`, squash(txt).includes(squash(TYPED[ed])), squash(txt).includes(squash(TYPED[ed])) ? '' : JSON.stringify(txt.slice(0, 160)));
     fontCheck(`${ed}: PDF fonts are Thmanyah`, /thmanyah/i.test(fonts));
     fontCheck(`${ed}: PDF has no Type 3`, !/Type 3/.test(fonts));
     fontCheck(`${ed}: PDF has no Cairo / Segoe / Arial fallback`, !/cairo|segoe|arial|times|tahoma/i.test(fonts));
