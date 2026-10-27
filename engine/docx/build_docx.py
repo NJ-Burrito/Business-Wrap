@@ -689,16 +689,26 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     cover_section = document.sections[0]
     theme_mod.add_header_footer(document, roles, font, header_logo, ctrl.get('documentId', ''), ctrl.get('issuedOn', ''), cover_section=cover_section, body_section=body_section)
     add_control_front_matter(document, data, font, counters, toc=toc)
+    body_geometry = {'page_width': body_section.page_width, 'page_height': body_section.page_height, 'top_margin': body_section.top_margin, 'bottom_margin': body_section.bottom_margin, 'left_margin': body_section.left_margin}
     for ch in data['chapters']:
+        # as the print renderer: a chapter holding a figure is set on turned (landscape) sheets, heading included
+        wide = any((b.get('kind') == 'figure' for sec in ch['sections'] for b in sec.get('blocks', [])))
+        if wide:
+            open_landscape_section(document)
         h1 = document.add_heading(level=1)
         set_para_bidi(h1)
         theme_mod.add_chapter_chip(h1, ch['number'], F['display'], roles)
         add_script_runs(h1, ch['title'], F['display'], bold=True)
         story_seq = [0]
         for sec in ch['sections']:
-            h2 = document.add_heading(level=2)
-            set_para_bidi(h2)
-            add_script_runs(h2, sec['title'], F['display'], bold=True)
+            # as the print renderer: a one-section chapter prints no section heading; otherwise «n.m title»
+            if len(ch['sections']) > 1:
+                h2 = document.add_heading(level=2)
+                set_para_bidi(h2)
+                num = h2.add_run(f"{sec.get('number', '')}  ")
+                num.bold = True
+                num.font.color.rgb = theme_mod.rgb(roles['gold'])
+                add_script_runs(h2, sec['title'], F['display'], bold=True)
             for block in sec.get('blocks', []):
                 kind = block.get('kind')
                 if kind == 'prose':
@@ -715,15 +725,12 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                     add_table(document, block.get('columns', []), block.get('rows', []), font)
                     counters['table_block'] += 1
                 elif kind == 'figure':
-                    body_geometry = {'page_width': body_section.page_width, 'page_height': body_section.page_height, 'top_margin': body_section.top_margin, 'bottom_margin': body_section.bottom_margin, 'left_margin': body_section.left_margin}
                     svg_src = block.get('svg', '')
                     vb = re.search('viewBox="0 0 ([\\d.]+) ([\\d.]+)"', svg_src)
                     svg_w, svg_h = (float(vb.group(1)), float(vb.group(2))) if vb else (1200.0, 700.0)
                     MAX_W_IN, MAX_H_IN = (10.59, 5.7)
                     scale = min(MAX_W_IN / svg_w, MAX_H_IN / svg_h)
-                    open_landscape_section(document)
                     add_figure(document, svg_src, block.get('caption', ''), font, workdir, counters, pic_width=Inches(svg_w * scale))
-                    close_landscape_section(document, body_geometry)
                 elif kind == 'stories':
                     if block.get('lead'):
                         p = document.add_paragraph()
@@ -737,6 +744,8 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                     add_shots_block(document, block, font, counters)
                 else:
                     raise ValueError(f"block kind {kind!r} has no handler in build_docx.py (section {sec['title']!r}); add one and list it in HANDLED_KINDS")
+        if wide:
+            close_landscape_section(document, body_geometry)
     from docx.enum.text import WD_LINE_SPACING
     from docx.text.paragraph import Paragraph
     _flow = [c for c in document.element.body.iterchildren() if c.tag in (qn('w:p'), qn('w:tbl'))]

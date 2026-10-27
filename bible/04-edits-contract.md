@@ -57,3 +57,9 @@ Older files are migrated on import (`migrate()`: v0 bare op array → v1).
 - Any block may carry `layout: {breakBefore?: bool, keepNext?: bool}` (page-break controls: "New page before", "Keep with next"). Set with a `replace` op on `<block>/layout`, mirrored to both editions.
 - Image block `{kind: "shots", caption, images: ["data:image/png|jpeg|svg+xml;base64,…"], width: 10–100}`; width is a percent of the 150 mm measure. The DOCX places PNG/JPEG; SVG images are skipped there.
 - Editing the composed story goal sentence writes the story's `goal` field.
+
+## The AR/EN pair
+- The two editions are one unit. A structural edit (move, delete, insert, duplicate, row/column, page-break flags) made with **Both editions** ticked (the default) is applied to the other edition at the same pointer; an edits file still records each edition separately (`locale`, `baseHash`).
+- Text edits stay per edition: editing a field flags the same field in the other edition **Needs update** until it is edited there too.
+- Before export, the **Check** panel must show no "Editions differ in structure" line (same chapters, sections, block kinds and table sizes in both) and no stale fields.
+- Importing a file whose structural edits touch the same block, row or paragraph as yours opens the conflict view (**Keep mine** / **Take theirs**), as text conflicts do.

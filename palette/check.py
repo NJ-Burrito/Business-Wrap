@@ -56,6 +56,9 @@ def role_hex(root, name):
 
 
 def main(argv):
+    if '--help' in argv or '-h' in argv:
+        print(__doc__)
+        return 0
     path = Path(next((a for a in argv if not a.startswith("--")), Path(__file__).with_name("tokens.json")))
     root = load(path)
     roles = {k: role_hex(root, k) for k in root["color"]["role"] if not k.startswith("$")}

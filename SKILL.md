@@ -29,7 +29,10 @@ Turns observed evidence into a governed, bilingual (AR RTL / EN LTR) requirement
 | Palette contrast gate + swatches | `python palette/check.py` |
 | Build a theme from a design pack | `python design/build.py [design/custom/<name>/pack.json]` |
 | Security gate (tree + history) | `python security/check.py` |
-| Editor, render, export | see `editor/` and `engine/` README |
+| Build the editor for documents (`*.ar.json` / `*.en.json`) | `node engine/build-editor.mjs <doc.json or folder> --out out/x.editor.html` |
+| Editor with one-click PDF + DOCX and page thumbnails | `node engine/serve.mjs out/x.editor.html` → http://127.0.0.1:4317/ |
+| Export without the UI (edits replayed) | `node engine/export.mjs --doc <document.json> --edits <edits.json> --locale ar\|en` |
+| Sample, editor check, accessibility check | `npm run sample` · `npm test` |
 
 Always `PYTHONUTF8=1` on Windows; Python packages through `uv`.
 
