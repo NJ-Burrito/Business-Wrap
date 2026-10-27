@@ -1,0 +1,35 @@
+{
+  "skill_name": "business-wrap",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have the harvest files for a new permit service in ./work/permit (form controls ar/en, the process model export and the service record). Build the requirements document in Arabic and English and open it in the editor so I can fix two sentences before I send the PDF and Word file to the client.",
+      "expected_output": "Follows the five checkpoints (harvest -> evidence -> document JSON -> HTML editor -> export); builds AR (rtl) and EN (ltr) editions; the person's fixes are recorded in edits.json, not by hand-editing the document JSON; export runs the output gates and reports gate lines; no invented values for missing sources (stated gaps instead).",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "الملف PDF طلع والخط فيه غريب، والنسخ من الملف يعطي كلمات مقطعة، مع إنه في المحرر شكله تمام. شو السبب وكيف أصلحه؟",
+      "expected_output": "Answers in Arabic; diagnoses CFF fonts printed as Type 3 and/or a refused file:// font, and Arabic kerning / letter-spacing gaps; prescribes TrueType conversion into a local folder, base64 inlined fonts with document.fonts.ready, kerning off, and checking with poppler pdftotext -enc UTF-8 and the font-coverage gate on the printed PDF.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Our brand team wants their own colours and a different heading size for the documents. Add their design and make sure nothing ugly or unreadable ships.",
+      "expected_output": "Creates design/custom/<name>/pack.json with copied DTCG token files, keeps role names, runs design/build.py (palette contrast gate) and reports the failing pair if any; logos go to logos/ (gitignored); no hex or pt typed into templates; DOCX and PDF both read theme.json.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Before I push this repo to GitHub, check that nothing from our client or my own machine is inside it, including old commits.",
+      "expected_output": "Runs python security/check.py (tree + history + commit messages), reports the summary line and any rule ids/places without printing the matched text; explains how to remove a hit from unpushed history; does not push.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "I moved a table row up and deleted a paragraph in the English edition. Do I need to do anything for the Arabic one before export?",
+      "expected_output": "Yes: the AR/EN pair is one unit; structural ops (move/delete) are repeated in the Arabic edition before export; the edition-parity gate compares structure; text edits stay per locale.",
+      "files": []
+    }
+  ]
+}

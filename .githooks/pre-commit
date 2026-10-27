@@ -1,0 +1,11 @@
+#!/bin/sh
+# Business-Wrap pre-commit: run the security gate on the tree before every commit.
+# Enable once per clone:  git config core.hooksPath .githooks
+# The full gate (with history) runs in CI and before every push.
+export PYTHONUTF8=1
+PY=python
+command -v python >/dev/null 2>&1 || PY=python3
+"$PY" security/check.py --tree-only || {
+  echo "pre-commit: security gate FAILED - fix the lines above (or add bw-allow:<rule-id> to a documentation line)"
+  exit 1
+}

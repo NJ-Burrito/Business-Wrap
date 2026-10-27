@@ -1,0 +1,9 @@
+#!/bin/sh
+# Business-Wrap pre-push: full security gate (tree + every blob in history + commit messages).
+export PYTHONUTF8=1
+PY=python
+command -v python >/dev/null 2>&1 || PY=python3
+"$PY" security/check.py || {
+  echo "pre-push: security gate FAILED - nothing was pushed"
+  exit 1
+}

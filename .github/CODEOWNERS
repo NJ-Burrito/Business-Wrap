@@ -1,0 +1,5 @@
+# CODEOWNERS stub. Replace <owner-login> with the owner's GitHub login (or an org team
+# like <org>/<team>) and uncomment. Contracts and the security gate always need the owner.
+# *                    @<owner-login>
+# /bible/contracts/    @<owner-login>
+# /security/           @<owner-login>

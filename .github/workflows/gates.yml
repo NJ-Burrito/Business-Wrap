@@ -1,0 +1,49 @@
+name: gates
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the security gate scans the whole history
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Security gate (tree + history + commit messages)
+        env:
+          PYTHONUTF8: "1"
+        run: python security/check.py
+
+      - name: Security gate self-test
+        env:
+          PYTHONUTF8: "1"
+        run: python security/check.py --selftest
+
+      - name: Palette contrast + theme build
+        env:
+          PYTHONUTF8: "1"
+        run: python design/build.py
+
+      - uses: actions/setup-node@v4
+        if: hashFiles('package.json') != ''
+        with:
+          node-version: "24"
+
+      - name: Install
+        if: hashFiles('package-lock.json') != ''
+        run: npm ci
+
+      - name: Editor engine tests
+        if: hashFiles('tests/**') != ''
+        run: npm test
