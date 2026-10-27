@@ -42,3 +42,18 @@ Pointers resolve against the state after all previous ops. `old` makes every op 
     { "op": "duplicate", "path": "/chapters/1/sections/0/blocks/1/rows/0" },
     { "op": "delete", "path": "/chapters/2/sections/1/blocks/0/rows/4" } ] }
 ```
+
+## Editor exports beyond one edits file (`contracts/wrappers.schema.json`)
+| `kind` | What | Notes |
+|---|---|---|
+| `bw-edits-bundle` | `{kind, version: 1, createdAt, files: [edits v1…]}` | "Export edits" for one service (both editions) or "All services" |
+| `bw-design-pack` | the compiled theme (`name, fonts, sizes, vars, brand, logos`) + kind/version | same shape `design/build.py` writes to `theme.json`; import keeps token-shaped values and data/relative logo URIs only |
+| `bw-comments` | `{kind, version: 1, comments: [{id, path, text, at, service, locale}]}` | comments never print and never enter the document JSON |
+| `bw-change-log` | `{kind, version: 1, service, locale, baseHash, exportedAt, changes: [op + status], versions: [{name, at, ops}]}` | status `pending` / `approved` / `rejected`; rejected ops drop out of the document and every export |
+
+Older files are migrated on import (`migrate()`: v0 bare op array → v1).
+
+## Document JSON additions written by the editor
+- Any block may carry `layout: {breakBefore?: bool, keepNext?: bool}` (page-break controls: "New page before", "Keep with next"). Set with a `replace` op on `<block>/layout`, mirrored to both editions.
+- Image block `{kind: "shots", caption, images: ["data:image/png|jpeg|svg+xml;base64,…"], width: 10–100}`; width is a percent of the 150 mm measure. The DOCX places PNG/JPEG; SVG images are skipped there.
+- Editing the composed story goal sentence writes the story's `goal` field.

@@ -15,7 +15,9 @@
 2. Put it in one folder with `thmanyahseriftext/`, `thmanyahserifdisplay/`, `thmanyahsans/`, each holding `otf/` and `woff2/`.
 3. Set the folder as an environment variable (PowerShell, current user):
    `[Environment]::SetEnvironmentVariable('BW_FONT_DIR', '<your font folder>', 'User')`
-4. Convert to TrueType for printing (next section) and set `BW_FONT_TTF_DIR` to the output folder.
+4. Convert the Serif Text and Serif Display cuts to TrueType (next section) into `<family>/ttf/` beside `otf/`, keeping the originals:
+   `uv run --with fonttools --with cu2qu python otf-to-ttf.py <family>/otf/*.otf`, then move the `.ttf` files into `<family>/ttf/`. The manifest searches `ttf/` first.
+   Instead of the environment variable you can put `{"fontDir": "<your font folder>"}` in the gitignored `.local/config.json`.
 
 ## Why TrueType for print
 Chrome's PDF backend (Skia) prints CFF outlines (`.otf`, `.woff2`) as Type 3 glyph procedures with no font name. A font-coverage audit then cannot see a fallback face that drew a glyph, which is how silent substitution ships. TrueType (glyf) outlines embed as real, named fonts. Convert with fontTools (`uvx --from fonttools ...` with an otf-to-ttf script) into a local folder; never commit the result. Source: `docs/research/01-print-fidelity.md`.

@@ -1,17 +1,36 @@
 {
-  "$comment": "Font manifest. Binaries are NEVER in the repo (licence: no redistribution, hosting or extraction). Each cut is looked up in fontDirs in order; ${VAR} expands from the environment. Set BW_FONT_DIR to the folder holding thmanyahseriftext/, thmanyahserifdisplay/, thmanyahsans/ (each with otf/ and woff2/), or to the folder of converted .ttf files. .ttf is preferred: Chrome prints CFF outlines (.otf/.woff2) as Type 3.",
+  "$comment": "Font manifest. Binaries are NEVER in the repo (licence: no redistribution, hosting or extraction). BW_FONT_DIR is the font root (env, or fontDir in the gitignored .local/config.json). Under it each family folder holds otf/, woff2/ and a local ttf/ made with otf-to-ttf.py; ttf/ is searched first because Chrome prints CFF outlines (.otf/.woff2) as Type 3. ${VAR} expands from the environment.",
   "version": 1,
   "fontDirs": [
+    "${BW_FONT_DIR}/thmanyahseriftext/ttf",
+    "${BW_FONT_DIR}/thmanyahserifdisplay/ttf",
     "${BW_FONT_DIR}",
-    "${BW_FONT_TTF_DIR}",
     "${LOCALAPPDATA}/Microsoft/Windows/Fonts"
   ],
   "families": {
-    "Thmanyah Serif Text": { "stem": "thmanyahseriftext", "role": "text", "use": "body, tables, dictionaries, story cards" },
-    "Thmanyah Serif Display": { "stem": "thmanyahserifdisplay", "role": "display", "use": "cover title, headings, chapter chips, spine code" },
-    "Thmanyah Sans": { "stem": "thmanyahsans", "role": "ui", "use": "editor interface only; not used in documents" }
+    "Thmanyah Serif Text": {
+      "stem": "thmanyahseriftext",
+      "role": "text",
+      "use": "body, tables, dictionaries, story cards"
+    },
+    "Thmanyah Serif Display": {
+      "stem": "thmanyahserifdisplay",
+      "role": "display",
+      "use": "cover title, headings, chapter chips, spine code"
+    },
+    "Thmanyah Sans": {
+      "stem": "thmanyahsans",
+      "role": "ui",
+      "use": "editor interface only; not used in documents"
+    }
   },
-  "weights": { "300": "Light", "400": "Regular", "500": "Medium", "700": "Bold", "900": "Black" },
+  "weights": {
+    "300": "Light",
+    "400": "Regular",
+    "500": "Medium",
+    "700": "Bold",
+    "900": "Black"
+  },
   "weightUse": {
     "300": "only where a design already uses a light weight",
     "400": "body",
@@ -19,7 +38,15 @@
     "700": "headings, table heads",
     "900": "cover title only"
   },
-  "formats": { "source": ["otf", "woff2"], "print": "ttf" },
-  "banned": ["Cairo"],
+  "formats": {
+    "source": [
+      "otf",
+      "woff2"
+    ],
+    "print": "ttf (in <family>/ttf/ under the font root)"
+  },
+  "banned": [
+    "Cairo"
+  ],
   "uploadSlot": "fonts/custom/ (gitignored; only its README is tracked)"
 }

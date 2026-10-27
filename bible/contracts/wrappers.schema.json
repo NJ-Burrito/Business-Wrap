@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://business-wrap.local/contracts/wrappers.schema.json",
+  "title": "Business-Wrap editor export wrappers",
+  "description": "Files the editor exports besides a single edits file. Each carries kind + version. The edits files inside a bundle follow edits.schema.json v1. A reader migrates older versions (engine/edits.mjs migrate()).",
+  "oneOf": [
+    { "$ref": "#/$defs/editsBundle" },
+    { "$ref": "#/$defs/designPackExport" },
+    { "$ref": "#/$defs/comments" },
+    { "$ref": "#/$defs/changeLog" }
+  ],
+  "$defs": {
+    "editsBundle": {
+      "type": "object",
+      "required": ["kind", "version", "files"],
+      "properties": {
+        "kind": { "const": "bw-edits-bundle" },
+        "version": { "const": 1 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "files": { "type": "array", "items": { "$ref": "edits.schema.json" }, "description": "One edits file per service and edition ('All services' export)" }
+      }
+    },
+    "designPackExport": {
+      "type": "object",
+      "description": "The compiled theme as the editor exports/imports it (the same shape design/build.py writes to theme.json), wrapped with kind + version. Import keeps only token-shaped values and logo data/relative URIs.",
+      "required": ["kind", "version", "vars"],
+      "properties": {
+        "kind": { "const": "bw-design-pack" },
+        "version": { "const": 1 },
+        "name": { "type": "string" },
+        "fonts": { "type": "object", "properties": { "text": { "type": "string" }, "display": { "type": "string" } } },
+        "sizes": { "type": "object", "additionalProperties": { "type": "string", "pattern": "^[0-9.]+(pt|mm|px)$" } },
+        "vars": { "type": "object", "additionalProperties": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" } },
+        "brand": { "type": "object", "properties": { "producer": { "type": "string" }, "confidential": { "type": "string" } } },
+        "logos": { "type": "object", "properties": { "start": { "type": "string" }, "center": { "type": "string" }, "end": { "type": "string" }, "header": { "type": "string" } } }
+      }
+    },
+    "comments": {
+      "type": "object",
+      "required": ["kind", "version", "comments"],
+      "properties": {
+        "kind": { "const": "bw-comments" },
+        "version": { "const": 1 },
+        "comments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "path", "text"],
+            "properties": {
+              "id": { "type": "string" },
+              "path": { "type": "string", "description": "JSON Pointer of the commented field" },
+              "text": { "type": "string" },
+              "at": { "type": "string", "format": "date-time" },
+              "service": { "type": "string" },
+              "locale": { "enum": ["ar", "en"] }
+            }
+          }
+        }
+      },
+      "description": "Comments never print and never enter the document JSON."
+    },
+    "changeLog": {
+      "type": "object",
+      "required": ["kind", "version", "changes"],
+      "properties": {
+        "kind": { "const": "bw-change-log" },
+        "version": { "const": 1 },
+        "service": { "type": "string" },
+        "locale": { "enum": ["ar", "en"] },
+        "baseHash": { "type": "string" },
+        "exportedAt": { "type": "string", "format": "date-time" },
+        "changes": { "type": "array", "items": { "type": "object", "required": ["op"], "properties": { "status": { "enum": ["pending", "approved", "rejected"] } } }, "description": "The ops with their review status; rejected ops drop out of the document and the export" },
+        "versions": { "type": "array", "items": { "type": "object", "properties": { "name": { "type": "string" }, "at": { "type": "string" }, "ops": { "type": "integer" } } } }
+      }
+    },
+    "blockLayout": {
+      "type": "object",
+      "description": "Optional on any block in the document JSON: page-break controls set by the editor.",
+      "properties": { "breakBefore": { "type": "boolean" }, "keepNext": { "type": "boolean" } },
+      "additionalProperties": false
+    },
+    "shotsBlock": {
+      "type": "object",
+      "description": "Image block added by the editor.",
+      "required": ["kind", "images"],
+      "properties": {
+        "kind": { "const": "shots" },
+        "width": { "type": "number", "minimum": 10, "maximum": 100, "description": "percent of the 150 mm measure" },
+        "images": { "type": "array", "items": { "type": "string", "pattern": "^data:image/(png|jpeg|svg\\+xml);base64," } },
+        "caption": { "type": "string" },
+        "layout": { "$ref": "#/$defs/blockLayout" }
+      }
+    }
+  }
+}

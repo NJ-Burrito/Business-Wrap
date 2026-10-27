@@ -13,7 +13,7 @@
 | 4 | `04-edits-contract.ar.md` | ملف التعديلات JSON الذي يكتبه المحرر ويعيد المصدر تطبيقه |
 | 5 | `05-lessons.ar.md` | دروس خط الإنتاج الأصلي، بصيغة عامة |
 | 6 | `06-design-system.ar.md` | حزم التصميم، ووصول الرموز إلى المخرجات، والتباين، وأبعاد الطباعة |
-| — | `contracts/edits.schema.json` و`contracts/design-pack.schema.json` | العقود الآلية |
+| — | `contracts/edits.schema.json` و`contracts/wrappers.schema.json` و`contracts/design-pack.schema.json` | العقود الآلية |
 
 ## قواعد ثابتة
 1. **لا محتوى لأي عميل في هذا المستودع.** لا أسماء جهات ولا شعارات ولا أسماء خدمات ولا أسماء خوادم ولا بيانات دخول ولا أرقام هويات ولا عناوين بريد ولا أرقام هواتف ولا بيانات مجموعة من أنظمة. ويفرض `security/check.py` ذلك على الشجرة وعلى التاريخ كله.

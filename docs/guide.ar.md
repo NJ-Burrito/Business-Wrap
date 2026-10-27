@@ -17,7 +17,7 @@
 ## 2. البدء السريع (Windows، خطوة بخطوة)
 1. انسخ المستودع الخاص: `git clone <رابط المستودع>` ثم `cd Business-Wrap`.
 2. ثبت حزم Node: `npm install`.
-3. الخطوط: اتبع `fonts/README.ar.md` (اضبط `BW_FONT_DIR`، وحول إلى TrueType، واضبط `BW_FONT_TTF_DIR`).
+3. الخطوط: اتبع `fonts/README.ar.md` (اضبط `BW_FONT_DIR`، وحول كل عائلة Serif إلى TrueType في المجلد `<family>/ttf/` تحت ذلك الجذر).
 4. فعل UTF-8 لـ Python في هذه الطرفية: `$env:PYTHONUTF8 = "1"` (PowerShell).
 5. ثبت خطاف الأمان المحلي: `git config core.hooksPath .githooks`.
 6. افحص التصميم: `python design/build.py` ← يطبع نتائج التباين ويكتب `design/ours/theme.json`.

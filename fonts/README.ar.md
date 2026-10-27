@@ -17,7 +17,9 @@
 2. ضعها في مجلد واحد فيه `thmanyahseriftext/` و`thmanyahserifdisplay/` و`thmanyahsans/`، وفي كل منها `otf/` و`woff2/`.
 3. اضبط المجلد متغير بيئة (PowerShell للمستخدم الحالي):
    `[Environment]::SetEnvironmentVariable('BW_FONT_DIR', '<مجلد الخطوط>', 'User')`
-4. حول الخطوط إلى TrueType للطباعة (القسم التالي)، واضبط `BW_FONT_TTF_DIR` على مجلد الناتج.
+4. حول قطع Serif Text وSerif Display إلى TrueType (القسم التالي) في المجلد `<family>/ttf/` بجانب `otf/` مع الإبقاء على الأصول:
+   `uv run --with fonttools --with cu2qu python otf-to-ttf.py <family>/otf/*.otf`، ثم انقل ملفات `.ttf` إلى `<family>/ttf/`. ويبحث ملف التعريف في `ttf/` أولا.
+   وبدل متغير البيئة يمكنك وضع `{"fontDir": "<مجلد الخطوط>"}` في الملف المستثنى من git `.local/config.json`.
 
 ## لماذا TrueType للطباعة
 محرك PDF في Chrome (Skia) يطبع الخطوط ذات المخططات CFF (`.otf` و`.woff2`) على هيئة رسوم Type 3 بلا اسم خط، فلا يستطيع فحص تغطية الخط أن يرى خطا بديلا رسم حرفا ما، وهكذا يمر الاستبدال الصامت. مخططات TrueType تضمن خطوطا حقيقية بأسمائها. حول بأداة fontTools إلى مجلد محلي، ولا ترفع الناتج إلى المستودع أبدا. المصدر: `docs/research/01-print-fidelity.md`.

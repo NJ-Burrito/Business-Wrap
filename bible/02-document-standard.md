@@ -22,6 +22,8 @@ Front matter: a control table (document id, title, prepared by, type, classifica
 | `table` | `{kind, columns[], rows[][]}` | header repeats on every page (`thead`); an empty column is dropped by the renderer; long cells (>200 chars) justify |
 | `figure` | `{kind, caption, sheet, svg}` | caption in the table size, primary colour; the workflow figure is ONE figure on ONE landscape sheet, fitted by carrying less, never by shrinking type |
 | `stories` | `{kind, number, lead, items[]}` | one card per story; acceptance criteria as a numbered list; a payment step is a stage, not a desk (no role, no card) |
+| `shots` | `{kind, caption, images[], width}` | images as data URIs; width 10–100 % of the 150 mm measure |
+| any block | `layout: {breakBefore, keepNext}` | editor page-break controls; never used to hide a fill problem |
 
 ## Numbering
 Chapters `1…7`; sections `n.m`; requirements `FR-01…`, rules `BR-01…`, stories `US-01…`, each gap-free and renumbered on insert/delete (the editor renumbers; a gate checks gaps). Cross-references cite numbers that exist.

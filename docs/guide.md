@@ -15,7 +15,7 @@
 ## 2. Quickstart (Windows, step by step)
 1. Clone the private repo: `git clone <repo url>` then `cd Business-Wrap`.
 2. Install Node packages: `npm install`.
-3. Fonts: follow `fonts/README.md` (set `BW_FONT_DIR`, convert to TrueType, set `BW_FONT_TTF_DIR`).
+3. Fonts: follow `fonts/README.md` (set `BW_FONT_DIR`, convert each Serif family to TrueType into `<family>/ttf/` under that root).
 4. Turn on UTF-8 for Python in this terminal: `$env:PYTHONUTF8 = "1"` (PowerShell).
 5. Install the local security hook: `git config core.hooksPath .githooks`.
 6. Check the design: `python design/build.py` → prints contrast results and writes `design/ours/theme.json`.

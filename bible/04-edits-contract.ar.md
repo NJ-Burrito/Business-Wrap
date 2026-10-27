@@ -44,3 +44,22 @@
 ```
 
 </div>
+
+<div dir="rtl">
+
+## صادرات المحرر غير ملف التعديلات الواحد (`contracts/wrappers.schema.json`)
+| `kind` | المحتوى | ملاحظات |
+|---|---|---|
+| `bw-edits-bundle` | `{kind, version: 1, createdAt, files: [edits v1…]}` | «تصدير التعديلات» لخدمة واحدة (بالنسختين) أو «كل الخدمات» |
+| `bw-design-pack` | السمة المبنية (`name, fonts, sizes, vars, brand, logos`) مع النوع والإصدار | بالشكل نفسه الذي يكتبه `design/build.py` في `theme.json`؛ والاستيراد لا يقبل إلا قيما بشكل الرموز وروابط شعارات من نوع data أو نسبية |
+| `bw-comments` | `{kind, version: 1, comments: [{id, path, text, at, service, locale}]}` | التعليقات لا تطبع أبدا ولا تدخل ملف JSON للوثيقة |
+| `bw-change-log` | `{kind, version: 1, service, locale, baseHash, exportedAt, changes: [العملية مع حالتها], versions: [{name, at, ops}]}` | الحالة `pending` أو `approved` أو `rejected`؛ والعمليات المرفوضة تخرج من الوثيقة ومن كل تصدير |
+
+ترحل الملفات الأقدم عند الاستيراد (`migrate()`: من مصفوفة عمليات مجردة في الإصدار 0 إلى الإصدار 1).
+
+## إضافات المحرر إلى ملف JSON للوثيقة
+- يجوز أن تحمل أي كتلة `layout: {breakBefore?: bool, keepNext?: bool}` (ضوابط فواصل الصفحات: «صفحة جديدة قبلها» و«إبقاء مع ما يليها»). تضبط بعملية `replace` على `<block>/layout`، وتنعكس على النسختين.
+- كتلة الصورة `{kind: "shots", caption, images: ["data:image/png|jpeg|svg+xml;base64,…"], width: 10–100}`؛ والعرض نسبة مئوية من عرض السطر البالغ 150 مم. ويضع DOCX صور PNG وJPEG، ويتخطى صور SVG.
+- تعديل جملة هدف القصة المركبة يكتب في الحقل `goal` للقصة.
+
+</div>

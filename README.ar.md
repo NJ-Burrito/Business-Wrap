@@ -33,6 +33,44 @@ python security/check.py      # الشجرة والتاريخ ورسائل ال�
 git config core.hooksPath .githooks
 ```
 
+## المحرر
+محرر HTML محلي في ملف واحد **هو** تخطيط الطباعة نفسه: الصفحة التي تعدلها هي الترميز وملف الأنماط اللذان تطبع منهما PDF (`engine/render.mjs`). وتسجل التعديلات في ملف تعديلات (`bible/contracts/edits.schema.json` الإصدار 1)، ثم تصدر إلى PDF وDOCX.
+
+```powershell
+npm install        # playwright-core only (drives the local Chrome)
+npm run sample     # builds out/sample/event-permit.editor.html
+npm run serve      # http://127.0.0.1:4317/ - one-click PDF + DOCX
+npm test           # the editor check, both editions
+node engine/build-editor.mjs <doc.json | folder>... --out out/my.editor.html [--theme design/ours/theme.json] [--embed-fonts] [--ui ar|en]
+node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|en] [--out dir]
+```
+عند فتحه من القرص (file://) ينزل زر «PDF وDOCX» ملف JSON المعدل ويعرض أمر `export.mjs`؛ وعند فتحه عبر `npm run serve` يصدر بنقرة واحدة.
+
+### إعدادات الجهاز (لا ترفع إلى المستودع أبدا)
+الملف `.local/config.json` (مستثنى من git) أو متغيرات البيئة؛ ومتغيرات البيئة تغلب.
+
+| المفتاح | متغير البيئة | الوظيفة |
+|---|---|---|
+| `fontDir` | `BW_FONT_DIR` | جذر الخطوط: `<family>/otf` و`woff2` والمجلد المحلي `ttf/` الذي يبحث فيه ملف التعريف أولا |
+| `watermarkDir` | `BW_WATERMARK_DIR` | صور العلامة المائية للأداة (svg أو png)، في واجهة المحرر فقط |
+| `chrome` | `BW_CHROME` | ملف تشغيل Chrome أو Edge |
+| `poppler` | `BW_POPPLER` | مجلد `bin` لأداة poppler (pdftotext وpdffonts في الاختبارات) |
+
+المتصفحات المدعومة: Chrome وEdge بآخر إصدار مستقر (Chromium 120 فأحدث)؛ ولا يدعم Firefox ولا Safari (لا يدعم Firefox التحرير `plaintext-only`، ومسار الطباعة مسار Chromium).
+
+| المسار | الدور |
+|---|---|
+| `engine/render.mjs` | ملف JSON للوثيقة ← HTML الطباعة (في المتصفح وفي Node) |
+| `engine/edits.mjs` | عقد التعديلات: التطبيق والترحيل والتحقق والدمج وطي الحروف في البحث والاستبدال والمقارنة |
+| `engine/build-editor.mjs` | يجمع المحرر في ملف واحد (مع سياسة أمان المحتوى وبصمة نص التطبيق) |
+| `engine/export.mjs` و`engine/pdf_post.py` | PDF (Chrome بلا واجهة مع أرقام الصفحات) وDOCX |
+| `engine/docx/` | منشئ DOCX (python-docx)، والتسميات من `engine/i18n.json` |
+| `engine/serve.mjs` | خادم على 127.0.0.1 فقط للتصدير بنقرة واحدة |
+| `engine/i18n.json` | كل نصوص الواجهة والتسميات المطبوعة، بالعربية والإنجليزية |
+| `editor/` | تطبيق المحرر وأنماطه |
+| `samples/event-permit/` | الخدمة النموذجية مجهولة الهوية، بالعربية والإنجليزية |
+| `tests/` | `editor.test.mjs` (المتحقق)، و`fidelity.mjs` و`pdf_compare.py` |
+
 خاص ومملوك: انظر `LICENSE`. ولا يرفع أي شيء: انظر `docs/privacy.ar.md`.
 
 </div>
