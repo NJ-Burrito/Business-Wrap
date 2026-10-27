@@ -5,3 +5,20 @@
 .local/
 profiles/
 .env
+*.ttc
+*.eot
+# local settings (font directory, user paths) — never committed
+.local/
+*.local.json
+# user uploads: only the README of each slot is tracked
+logos/*
+!logos/README.md
+!logos/README.ar.md
+fonts/custom/*
+!fonts/custom/README.md
+design/custom/*
+!design/custom/README.md
+!design/custom/README.ar.md
+__pycache__/
+*.pyc
+node_modules/

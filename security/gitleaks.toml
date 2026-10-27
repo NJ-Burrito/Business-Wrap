@@ -1,0 +1,85 @@
+# Business-Wrap secret + client-content rules.
+# One source for two engines: gitleaks (Go RE2) and security/check.py (Python re).
+# Keep every regex in the common subset: no look-around, no backreferences.
+# Client and personal names are NOT listed here (that would publish them): they live as
+# SHA-256 hashes in security/denylist.sha256 and only check.py tests them.
+title = "business-wrap"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "bw-password-assignment"
+description = "A password, PIN or passphrase written as a value"
+regex = '''(?i)(password|passwd|pwd|passphrase|\bpin\b|كلمة المرور|كلمة السر|الرقم السري)\s*[:=]\s*\S{3,}'''
+keywords = ["password", "passwd", "pwd", "passphrase", "pin", "كلمة"]
+
+[[rules]]
+id = "bw-generic-api-key"
+description = "api key / secret / token assignment with a long value"
+regex = '''(?i)(api[_-]?key|secret|access[_-]?token|auth[_-]?token|bearer)\s*[:=]?\s*['"]?[A-Za-z0-9_\-\.]{20,}'''
+keywords = ["api", "secret", "token", "bearer"]
+
+[[rules]]
+id = "bw-openrouter-key"
+description = "OpenRouter key"
+regex = '''sk-or-v1-[0-9a-f]{32,}'''
+keywords = ["sk-or-"]
+
+[[rules]]
+id = "bw-sk-key"
+description = "sk- style provider key (OpenAI, Anthropic and similar)"
+regex = '''\bsk-(ant-)?[A-Za-z0-9_\-]{24,}'''
+keywords = ["sk-"]
+
+[[rules]]
+id = "bw-private-key"
+description = "PEM private key block"
+regex = '''-----BEGIN ([A-Z]+ )*PRIVATE KEY-----'''
+keywords = ["private key"]
+
+[[rules]]
+id = "bw-staging-host"
+description = "A staging / internal host name"
+regex = '''(?i)\b[a-z0-9\-]*(staging|stage|uat|preprod|internal)[a-z0-9\-]*\.[a-z0-9\-\.]+\.[a-z]{2,}\b'''
+keywords = ["staging", "stage", "uat", "preprod", "internal"]
+
+[[rules]]
+id = "bw-email"
+description = "An email address (allowlisted: example domains, noreply)"
+regex = '''[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}'''
+keywords = ["@"]
+
+[[rules.allowlists]]
+regexTarget = "match"
+regexes = ['''@example\.(com|org|net)$''', '''^noreply@''', '''^git@github\.com$''']
+
+[[rules]]
+id = "bw-jo-national-id"
+description = "A 10-digit national-number shape (starts 9 or 2)"
+regex = '''\b[29][0-9]{9}\b'''
+
+[[rules]]
+id = "bw-jo-phone"
+description = "A mobile number shape (+962 / 07x)"
+regex = '''(\+?962[\s\-]?|\b0)7[789][\s\-]?[0-9]{3}[\s\-]?[0-9]{4}\b'''
+
+[[rules]]
+id = "bw-local-path"
+description = "An absolute local user path (Windows, Git Bash, macOS, Linux)"
+regex = '''(?i)([a-z]:[\\/]+users[\\/]+[^\\/\s"'<>]+|/c/users/[^/\s"'<>]+|/Users/[A-Za-z][^/\s"'<>]*/|/home/[a-z][^/\s"'<>]*/)'''
+keywords = ["users", "home"]
+
+[[rules]]
+id = "bw-font-binary"
+description = "A font binary (licence forbids redistribution)"
+path = '''(?i)\.(otf|ttf|ttc|woff2?|eot)$'''
+
+[[rules]]
+id = "bw-secret-file"
+description = "An env file or key/certificate file"
+path = '''(?i)(^|/)(\.env(\..+)?|id_rsa|id_ed25519|.+\.(pem|key|p12|pfx|jks|keystore))$'''
+
+[[allowlists]]
+description = "Examples of the env format are allowed"
+paths = ['''(^|/)\.env\.example$''']
