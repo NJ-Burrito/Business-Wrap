@@ -282,6 +282,24 @@ const readAs = (file, how) => new Promise((res, rej) => {
   how === 'url' ? r.readAsDataURL(file) : r.readAsText(file);
 });
 
+/** A document JSON opened at run time (Import): it becomes a service of its own, hashed like the build does. */
+async function addDocument(raw, doc, name) {
+  if (!globalThis.crypto?.subtle) { flash(t('badFile'), true); return; }
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+  const hash = `sha256:${[...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+  const ed = /\.en\.json$/i.test(name) ? 'en' : /\.ar\.json$/i.test(name) ? 'ar' : /[؀-ۿ]/.test(doc.control?.title || '') ? 'ar' : 'en';
+  const id = String(doc.service || name.split('.')[0] || 'document');
+  const title = String(doc.control?.title || id);
+  let svc = DATA.services.find((s) => s.id === id);
+  if (!svc) { svc = { id, editions: {} }; DATA.services.push(svc); M[id] = {}; }
+  svc.editions[ed] = { name: title.split(/\s*[:—]\s+/).slice(1).join(': ') || title, raw, hash, ops: [] };
+  M[id][ed] = { base: doc, raw, hash, name: svc.editions[ed].name, ops: [], redo: [], status: {}, stale: new Set(), comments: [], versions: [], doc: null };
+  rebuild(M[id][ed]);
+  S.svc = id; S.ed = ed; S.sel = null;
+  buildUi();
+  render(false);
+  flash(t('docLoaded', { name: svc.editions[ed].name }));
+}
 /** Import an edits file / bundle / colleague's Save-HTML and merge with conflicts. */
 async function importFile(file) {
   const text = await readAs(file, 'text');
@@ -297,6 +315,7 @@ async function importFile(file) {
         for (const [ed, x] of Object.entries(s.editions)) files.push({ version: 1, baseHash: x.hash, locale: ed, ops: x.ops || [], comments: x.comments });
     } else {
       const j = JSON.parse(text);
+      if (j.chapters && j.control) { await addDocument(text, j, file.name || ''); return; }
       if (j.kind === 'bw-edits-bundle') files = j.files.map(migrate);
       else if (j.kind === 'bw-comments') extra = j;
       else files = [migrate(j)];

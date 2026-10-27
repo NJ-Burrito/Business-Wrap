@@ -70,3 +70,21 @@ export function fontFaceCss(cuts, { embed = false, families } = {}) {
     })
     .join('\n');
 }
+
+/**
+ * @font-face rules that name the installed system fonts only (src: local()), for the editor shipped
+ * inside the skill: no path and no font bytes go into that file. Fonts must be installed in the OS
+ * (fonts/README.md); a personal editor built with build-editor.mjs reads the configured font folder.
+ */
+export function localFontCss(manifest = loadManifest()) {
+  const banned = (manifest.banned || []).map((b) => b.toLowerCase());
+  const rules = [];
+  for (const [family, info] of Object.entries(manifest.families)) {
+    if (banned.some((b) => family.toLowerCase().includes(b))) continue;
+    for (const [weight, label] of Object.entries(manifest.weights)) {
+      const full = `${family.toLowerCase().replace(/\s+/g, ' ')} ${label}`;
+      rules.push(`@font-face{font-family:'${family}';font-style:normal;font-weight:${weight};font-display:swap;src:local('${info.stem}-${label}'),local('${full}');}`);
+    }
+  }
+  return { css: rules.join('\n'), families: Object.keys(manifest.families).filter((f) => !banned.some((b) => f.toLowerCase().includes(b))) };
+}

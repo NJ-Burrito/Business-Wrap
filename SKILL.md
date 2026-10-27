@@ -1,11 +1,31 @@
 ---
 name: business-wrap
-description: Use when a requirements or specification document (SRS, service card, business requirements, workflow, user stories and acceptance criteria) must be produced, rebuilt, edited or exported as an Arabic and/or English PDF and DOCX from evidence; when someone wants to make small edits in an HTML replica instead of regenerating; when a design pack, palette, typography tokens, logo slot or font setup is changed; when a document's fonts, RTL text, pagination, colours or Type 3 glyphs look wrong; or before publishing the repo (security gate). Arabic triggers - وثيقة متطلبات، مواصفات الخدمة، بطاقة الخدمة، قصص المستخدمين، معايير القبول، مخطط سير العمل، تعديل الوثيقة، تصدير PDF أو DOCX، حزمة التصميم، لوحة الألوان، الخطوط، فحص الأمان.
+description: Use when a requirements or specification document (SRS, service card, business requirements, workflow, user stories and acceptance criteria) must be produced, rebuilt, edited or exported as an Arabic and/or English PDF and DOCX from evidence; when someone wants to open the Business-Wrap editor or make small edits in an HTML replica instead of regenerating; when a design pack, palette, typography tokens, logo slot or font setup is changed; when a document's fonts, RTL text, pagination, colours or Type 3 glyphs look wrong; or before publishing the repo (security gate). Arabic triggers - وثيقة متطلبات، مواصفات الخدمة، بطاقة الخدمة، قصص المستخدمين، معايير القبول، مخطط سير العمل، افتح المحرر، محرر الوثيقة، تعديل الوثيقة، تصدير PDF أو DOCX، حزمة التصميم، لوحة الألوان، الخطوط، فحص الأمان.
 ---
 
 # Business-Wrap
 
 Turns observed evidence into a governed, bilingual (AR RTL / EN LTR) requirements document; a person edits an HTML replica of the PDF+DOCX; export writes PDF, DOCX, the edits file and a theme pack. Every rule has a gate.
+
+## Open the editor / افتح المحرر
+The editor ships with this skill, ready to open: **`assets/editor/business-wrap.html`** (path relative to this SKILL.md; one self-contained file).
+
+| Want | Do |
+|---|---|
+| Start a new document | open the file in Chrome or Edge (Windows: `start "" "<skill dir>/assets/editor/business-wrap.html"`); it opens on a blank AR + EN document |
+| See the sample | pick «event-permit» in the service list |
+| Open your own document JSON | Import (or Ctrl+K → Import) and choose the `*.ar.json` / `*.en.json`; it opens as its own service |
+| One-click PDF + DOCX, page thumbnails, webhooks | from a clone: `npm install`, then `node engine/serve.mjs assets/editor/business-wrap.html` → http://127.0.0.1:4317/ (opened from disk, PDF + DOCX downloads the edited JSON and shows the export command) |
+| A dedicated editor for your documents | `node engine/build-editor.mjs <doc.json or folder> --out out/<name>.editor.html` (reads your configured font folder) |
+| Rebuild the shipped file after changing `editor/` or `engine/` | `npm run skill-html` (`npm test` fails while it is stale) |
+
+Fonts: the shipped file names the Thmanyah fonts installed in the OS (`local()`), never a path or font bytes; without them it falls back to a system face until you install them (`fonts/README.md`).
+
+<div dir="rtl">
+
+المحرر جزء من المهارة وجاهز للفتح: **`assets/editor/business-wrap.html`**. افتحه في Chrome أو Edge فيبدأ على وثيقة فارغة بالعربية والإنجليزية؛ والمثال في قائمة الخدمات؛ ولفتح ملف JSON لوثيقتك استخدم «استيراد». للتصدير إلى PDF وDOCX بنقرة، والصور المصغرة للصفحات، وخطافات الويب: شغل `node engine/serve.mjs assets/editor/business-wrap.html` من نسخة المستودع بعد `npm install`. ولبناء محرر خاص بوثائقك: `node engine/build-editor.mjs`. وبعد تغيير `editor/` أو `engine/` أعد بناء الملف بالأمر `npm run skill-html`.
+
+</div>
 
 ## When NOT to use
 - A free-form letter, slide deck or marketing page (no evidence chain, no gates).

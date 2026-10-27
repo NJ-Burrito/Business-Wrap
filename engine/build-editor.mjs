@@ -9,7 +9,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { renderDocument, safeSvg } from './render.mjs';
-import { fontFaceCss } from './fonts.mjs';
+import { fontFaceCss, localFontCss } from './fonts.mjs';
 import { i18n, loadTheme, fontsFor, REPO } from './export.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -64,7 +64,7 @@ export function appScript() {
   return `(() => {\n'use strict';\n${strip(read(path.join(HERE, 'edits.mjs')))}\n${strip(read(path.join(HERE, 'render.mjs')))}\n${read(path.join(REPO, 'editor', 'editor.js'))}\n})();`;
 }
 
-export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, watermarkDir = DEFAULT_WATERMARK_DIR, ui = 'ar', ops = {} }) {
+export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, localFonts = false, watermarkDir = DEFAULT_WATERMARK_DIR, ui = 'ar', ops = {} }) {
   const theme = loadTheme(themeFile);
   const I = i18n();
   const services = new Map();
@@ -78,8 +78,9 @@ export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, w
     services.get(id).editions[ed] = { name: doc.control.title.split(/\s*[:—]\s+/).slice(1).join(': ') || doc.control.title, raw, hash: `sha256:${sha256hex(raw)}`, ops: ops[`${id}.${ed}`] || [] };
   }
   if (!services.size) throw new Error('no document JSON found');
-  const { cuts, used } = fontsFor(theme);
-  const fontCss = fontFaceCss(cuts, { embed: embedFonts });
+  const local = localFonts ? localFontCss() : null;
+  const { cuts, used } = local ? { cuts: [], used: local.families } : fontsFor(theme);
+  const fontCss = local ? local.css : fontFaceCss(cuts, { embed: embedFonts });
   const app = appScript();
   const csp = [
     "default-src 'none'",
@@ -104,7 +105,7 @@ export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, w
     theme,
     i18n: I,
     fontCss,
-    fontFamilies: [...new Set(cuts.map((c) => c.family))],
+    fontFamilies: local ? local.families : [...new Set(cuts.map((c) => c.family))],
     uiCss: read(path.join(REPO, 'editor', 'ui.css')),
     csp,
   };

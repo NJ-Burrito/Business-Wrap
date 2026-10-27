@@ -1,0 +1,41 @@
+{
+  "service": "blank",
+  "composedAt": "",
+  "control": {
+    "documentId": "BW-SRS-NEW-001",
+    "title": "Service requirements: New service",
+    "preparedBy": "Your name",
+    "documentType": "Requirements document",
+    "classification": "Internal",
+    "owner": "Owning authority",
+    "issuedOn": "",
+    "version": "V0.1",
+    "status": "Draft",
+    "reviewCycle": "On every change to the service"
+  },
+  "revisions": [["V0.1", "", "First draft", "—"]],
+  "approvals": [],
+  "chapters": [
+    { "number": "1", "title": "Introduction", "sections": [
+      { "number": "1.1", "title": "Purpose of this document", "blocks": [{ "kind": "prose", "paragraphs": ["Write what this document is for."] }] },
+      { "number": "1.2", "title": "Scope", "blocks": [{ "kind": "prose", "paragraphs": ["Write what the service covers and what it does not."] }] }
+    ] },
+    { "number": "2", "title": "Service card", "sections": [
+      { "number": "2.1", "title": "Service description", "blocks": [{ "kind": "prose", "paragraphs": ["Describe the service in two or three sentences."] }] },
+      { "number": "2.2", "title": "Service identifier and coding", "blocks": [{ "kind": "table", "columns": [], "rows": [["Service code", ""], ["Request number format", ""]] }] },
+      { "number": "2.3", "title": "Users and roles", "blocks": [{ "kind": "table", "columns": ["Role", "Description", "Portal"], "rows": [["Applicant", "", "Applicant portal"]] }] }
+    ] },
+    { "number": "3", "title": "Functional requirements", "sections": [
+      { "number": "3.1", "title": "Requirements table", "blocks": [{ "kind": "table", "columns": ["Code", "Requirement", "Type"], "rows": [["FR-01", "", "System"]] }] }
+    ] },
+    { "number": "4", "title": "Business rules", "sections": [
+      { "number": "4.1", "title": "Business rules table", "blocks": [{ "kind": "table", "columns": ["Code", "Rule"], "rows": [["BR-01", ""]] }] }
+    ] },
+    { "number": "5", "title": "User stories and acceptance criteria", "sections": [
+      { "number": "5.1", "title": "Submit the request", "blocks": [{ "kind": "stories", "number": "5.1", "lead": "Story cards", "items": [
+        { "id": "US-01", "name": "Submit the request", "as": "applicant", "want": "fill in the request form and attach the documents", "so": "the request can be sent", "acceptance": ["Write the first acceptance criterion."] }
+      ] }] }
+    ] }
+  ],
+  "openQuestions": []
+}

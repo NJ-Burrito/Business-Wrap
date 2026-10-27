@@ -1,0 +1,41 @@
+{
+  "service": "blank",
+  "composedAt": "",
+  "control": {
+    "documentId": "BW-SRS-NEW-001",
+    "title": "وثيقة متطلبات الخدمة: خدمة جديدة",
+    "preparedBy": "اسمك",
+    "documentType": "وثيقة متطلبات",
+    "classification": "داخلي",
+    "owner": "الجهة المالكة",
+    "issuedOn": "",
+    "version": "V0.1",
+    "status": "مسودة",
+    "reviewCycle": "عند كل تغيير على الخدمة"
+  },
+  "revisions": [["V0.1", "", "المسودة الأولى", "—"]],
+  "approvals": [],
+  "chapters": [
+    { "number": "1", "title": "المقدمة", "sections": [
+      { "number": "1.1", "title": "الغرض من الوثيقة", "blocks": [{ "kind": "prose", "paragraphs": ["اكتب الغرض من هذه الوثيقة."] }] },
+      { "number": "1.2", "title": "نطاق الخدمة", "blocks": [{ "kind": "prose", "paragraphs": ["اكتب ما تغطيه الخدمة وما لا تغطيه."] }] }
+    ] },
+    { "number": "2", "title": "بطاقة الخدمة", "sections": [
+      { "number": "2.1", "title": "وصف الخدمة", "blocks": [{ "kind": "prose", "paragraphs": ["صف الخدمة في جملتين أو ثلاث."] }] },
+      { "number": "2.2", "title": "معرف الخدمة وترميزها", "blocks": [{ "kind": "table", "columns": [], "rows": [["رمز الخدمة", ""], ["صيغة رقم الطلب", ""]] }] },
+      { "number": "2.3", "title": "المستخدمون والأدوار", "blocks": [{ "kind": "table", "columns": ["الدور", "الوصف", "البوابة"], "rows": [["مقدم الطلب", "", "بوابة متلقي الخدمة"]] }] }
+    ] },
+    { "number": "3", "title": "المتطلبات الوظيفية", "sections": [
+      { "number": "3.1", "title": "جدول المتطلبات", "blocks": [{ "kind": "table", "columns": ["الرمز", "المتطلب", "النوع"], "rows": [["FR-01", "", "النظام"]] }] }
+    ] },
+    { "number": "4", "title": "قواعد العمل", "sections": [
+      { "number": "4.1", "title": "جدول قواعد العمل", "blocks": [{ "kind": "table", "columns": ["الرمز", "القاعدة"], "rows": [["BR-01", ""]] }] }
+    ] },
+    { "number": "5", "title": "قصص المستخدمين ومعايير القبول", "sections": [
+      { "number": "5.1", "title": "تقديم الطلب", "blocks": [{ "kind": "stories", "number": "5.1", "lead": "بطاقات القصص", "items": [
+        { "id": "US-01", "name": "تقديم الطلب", "as": "مقدم الطلب", "want": "تعبئة نموذج الطلب وإرفاق الوثائق", "so": "يصبح الطلب قابلا للإرسال", "acceptance": ["اكتب أول معيار قبول."] }
+      ] }] }
+    ] }
+  ],
+  "openQuestions": []
+}
