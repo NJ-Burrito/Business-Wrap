@@ -425,8 +425,20 @@ try {
     pu.on('pageerror', (e) => errU.push(e.message));
     await pu.goto(editorUrl);
     await pu.waitForFunction(() => window.BW);
-    const labels = await pu.evaluate(() => { const sh = document.getElementById('bw-ui-host').shadowRoot; return { ed: [...sh.querySelectorAll('[data-a="ed"]')].map((b) => b.textContent.trim()), ui: [...sh.querySelectorAll('[data-a="uiLang"]')].map((b) => b.textContent.trim()), brandWords: sh.querySelector('.brand').innerText.trim(), brandSvg: !!sh.querySelector('.brand svg'), dir: sh.querySelector('.shell').dir }; });
-    check(`${uiL} UI: language toggles read RTL / LTR, the brand is a logo not words`, JSON.stringify(labels.ed) === '["RTL","LTR"]' && JSON.stringify(labels.ui) === '["RTL","LTR"]' && labels.brandWords === '' && labels.brandSvg && labels.dir === (uiL === 'ar' ? 'rtl' : 'ltr'), JSON.stringify(labels));
+    const labels = await pu.evaluate(() => { const sh = document.getElementById('bw-ui-host').shadowRoot; return { ed: [...sh.querySelectorAll('[data-a="ed"]')].map((b) => b.textContent.trim()), ui: [...sh.querySelectorAll('[data-a="dir"]')].map((b) => b.textContent.trim()), named: [...sh.querySelectorAll('[data-a="ed"], [data-a="dir"]')].every((b) => b.getAttribute('aria-label') && b.title), icons: sh.querySelectorAll('.seg.lang .cap svg, .seg.ui .cap svg').length, brandWords: sh.querySelector('.brand').innerText.trim(), brandSvg: !!sh.querySelector('.brand svg'), dir: sh.querySelector('.shell').dir }; });
+    check(`${uiL} UI: language reads «ع» / «E», direction reads RTL / LTR (icon, tooltip, name), the brand is a logo not words`, JSON.stringify(labels.ed) === '["ع","E"]' && JSON.stringify(labels.ui) === '["RTL","LTR"]' && labels.named && labels.icons === 2 && labels.brandWords === '' && labels.brandSvg && labels.dir === (uiL === 'ar' ? 'rtl' : 'ltr'), JSON.stringify(labels));
+    {
+      // direction is independent of the language: flip it, the language and edition stay; the choice is remembered
+      const flip = uiL === 'ar' ? 'ltr' : 'rtl';
+      const sh = () => pu.evaluateHandle(() => document.getElementById('bw-ui-host').shadowRoot);
+      await (await sh()).evaluate((r, d) => r.querySelector(`[data-a="dir"][data-d="${d}"]`).click(), flip);
+      const st = await pu.evaluate(() => ({ ui: window.BW.S.ui, ed: window.BW.S.ed, shell: document.getElementById('bw-ui-host').shadowRoot.querySelector('.shell').dir, doc: document.querySelector('main.bw-doc').dir, saved: localStorage.getItem('bw:dir') }));
+      await pu.reload();
+      await pu.waitForFunction(() => window.BW);
+      const kept = await pu.evaluate(() => document.querySelector('main.bw-doc').dir);
+      check(`${uiL} UI: direction toggles independently of the language and is remembered`, st.ui === uiL && st.shell === flip && st.doc === flip && st.saved === flip && kept === flip, JSON.stringify({ ...st, kept }));
+      await (await sh()).evaluate((r, d) => r.querySelector(`[data-a="dir"][data-d="${d}"]`).click(), uiL === 'ar' ? 'rtl' : 'ltr');
+    }
     // command palette: Ctrl+K, filter, Enter runs
     await pu.keyboard.press('Control+K');
     await pu.locator('.palette input').fill(uiL === 'ar' ? 'المخطط' : 'outline');

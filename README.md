@@ -75,7 +75,7 @@ Opened from disk (file://), "PDF + DOCX" downloads the edited document JSON and 
 From a process model (`npm run harvest:model -- <bpmn|drawio|yaml>`) or by walking the live service (`npm run harvest:crawl -- <crawl.json>`); both give the AR and EN document JSON and an editor. See `bible/08-harvest.md`.
 
 ### The editor at a glance
-- **The island** (top): the logo, the service, the edition switch **RTL / LTR**, Undo and Redo, Image and Add logo, Find, Pages, Save and PDF + DOCX, the live changes counter, the interface switch **RTL / LTR**, View and Commands.
+- **The island** (top): the logo, the service, the language switch **«ع» / «E»** (interface language and document edition), Undo and Redo, Image and Add logo, Find, Pages, Save and PDF + DOCX, the live changes counter, the layout direction switch **RTL / LTR** (independent of the language; follows it until you choose, then remembered), View and Commands.
 - **The selection rail** appears beside whatever you select (block, table cell, logo, image) with only the actions that apply.
 - **Commands** (`Ctrl+K`): every action, searchable, grouped, with its shortcut.
 - **Logos and images** go anywhere: drag onto the cover, a header or next to any block; resize from the corner; arrow keys nudge, Delete removes; optional snap guides. The position is saved in the document and prints exactly there.

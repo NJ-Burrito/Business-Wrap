@@ -16,6 +16,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 - `npm run harvest:model`, `npm run harvest:crawl`, MCP `harvest_model` and `harvest_crawl`, the editor's **New document** wizard and **Process** panel (draw the flow, rebuild the sections in both editions). / الأوامر وأدوات MCP ومعالج الوثيقة الجديدة ولوحة الإجراء.
 - `bible/08-harvest` (AR + EN), `bible/contracts/harvest.schema.json`, SKILL.md «Start a document: harvest» (AR + EN). / الفصل والعقد ونص المهارة.
 - Tests: invented Flowable-style BPMN, draw.io plain and compressed, YAML list, a local bilingual site crawled end to end with an OTP pause that resumes by itself, the wizard and the Process panel. / الاختبارات.
+### Changed / تغير
+- Two separate switches: **Language «ع» / «E»** sets the interface language and the document edition; **Direction RTL / LTR** sets the layout direction independently (follows the language until chosen, then remembered; view only). Each has an icon, a tooltip and an accessible name in both languages. / مبدّلان منفصلان: اللغة «ع» / «E»، والاتجاه RTL / LTR مستقل عنها ويُحفظ.
+- Tests assert both label sets and that the direction toggles independently of the language. / الاختبارات تتحقق من المجموعتين ومن استقلال الاتجاه.
 
 ## [0.6.0] - 2026-10-27
 

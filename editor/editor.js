@@ -19,6 +19,7 @@ const ls = {
 
 const S = {
   ui: ls.get('bw:ui') || DATA.uiLang || 'ar',
+  dir: ls.get('bw:dir') || null, // layout direction override; null = follows the language
   dark: ls.get('bw:dark') === '1',
   svc: DATA.services[0].id,
   ed: DATA.services[0].editions.ar ? 'ar' : 'en',
@@ -93,8 +94,9 @@ function render(keepScroll = true) {
   }
   pair.className = S.side && eds.length > 1 ? 'bw-side' : '';
   pair.innerHTML = html;
+  if (S.dir) pair.querySelectorAll('main.bw-doc').forEach((m) => { m.dir = S.dir; }); // view only; exports keep the edition's direction
   document.documentElement.lang = S.ed;
-  document.documentElement.dir = S.ed === 'ar' ? 'rtl' : 'ltr';
+  document.documentElement.dir = S.dir || dirOf(S.ed);
   document.documentElement.style.setProperty('--bw-zoom', String(S.zoom));
   decorate();
   if (keepScroll) window.scrollTo(0, y);
@@ -734,14 +736,15 @@ const CMDS = [
   ['image', 'insert'], ['logo', 'insert'],
   ['find', 'panels', 'Ctrl+F'], ['outline', 'panels'], ['pages', 'panels'], ['check', 'panels'], ['history', 'panels'], ['theme', 'panels'], ['webhooks', 'panels'], ['newdoc', 'document'], ['process', 'document'],
   ['save', 'file', 'Ctrl+S'], ['saveHtml', 'file'], ['import', 'file'], ['exportEdits', 'file'], ['exportAll', 'file'], ['exportPdf', 'file'], ['print', 'file', 'Ctrl+P'],
-  ['side', 'view'], ['uiLang', 'view'], ['dark', 'view'], ['calm', 'view'], ['focus', 'view', 'F'], ['spell', 'view'], ['snap', 'view'], ['zoomOut', 'view'], ['zoomIn', 'view'],
+  ['side', 'view'], ['uiLang', 'view'], ['dir', 'view'], ['dark', 'view'], ['calm', 'view'], ['focus', 'view', 'F'], ['spell', 'view'], ['snap', 'view'], ['zoomOut', 'view'], ['zoomIn', 'view'],
 ].map(([id, group, key]) => ({ id, group, key }));
 
 function btn(id, { label = t(id), tip = '', pressed, cls = '', extra = '' } = {}) {
   return `<button type="button" class="b ${cls}" data-a="${id}" title="${esc(tip || label)}"${pressed !== undefined ? ` aria-pressed="${pressed}"` : ''}${extra}><span class="i">${ic(id)}</span><span class="w">${esc(label)}</span></button>`;
 }
 const dirOf = (l) => (l === 'ar' ? 'rtl' : 'ltr');
-const dirWord = (l) => (l === 'ar' ? t('rtl') : t('ltr'));
+const langWord = (l) => (l === 'ar' ? 'ع' : 'E');
+const uiDir = () => S.dir || dirOf(S.ui);
 
 function buildUi() {
   const svcOpts = DATA.services.map((s) => `<option value="${esc(s.id)}" ${s.id === S.svc ? 'selected' : ''}>${esc(s.editions[S.ed]?.name || s.editions.ar?.name || s.id)}</option>`).join('');
@@ -749,13 +752,13 @@ function buildUi() {
   const theme = S.dark ? 'dark' : 'light';
   setRootFlags();
   root.innerHTML = `<style>${DATA.uiCss}</style>
-<section class="shell${buildUi.done ? '' : ' first'}" aria-label="${esc(t('appName'))}" dir="${dirOf(S.ui)}" lang="${S.ui}" data-theme="${theme}" data-calm="${isCalm() ? '1' : '0'}">
+<section class="shell${buildUi.done ? '' : ' first'}" aria-label="${esc(t('appName'))}" dir="${uiDir()}" lang="${S.ui}" data-theme="${theme}" data-calm="${isCalm() ? '1' : '0'}">
   <div class="island bar" role="toolbar" aria-label="${esc(t('toolbar'))}">
     <span class="brand" role="img" aria-label="${esc(t('appName'))}">${DATA.brand?.mark || ''}</span>
     <div class="grp doc">
       <label class="pick"><span class="vh">${esc(t('service'))}</span><select data-a="svc" aria-label="${esc(t('service'))}">${svcOpts}</select></label>
-      <div class="seg" role="group" aria-label="${esc(t('edition'))}"><span class="cap" aria-hidden="true">${esc(t('edition'))}</span>
-        ${eds.map((ed) => `<button type="button" data-a="ed" data-ed="${ed}" aria-pressed="${ed === S.ed}" aria-label="${esc(dirWord(ed))}: ${esc(t(ed === 'ar' ? 'editionAr' : 'editionEn'))}" title="${esc(t(ed === 'ar' ? 'editionAr' : 'editionEn'))}">${esc(dirWord(ed))}</button>`).join('')}
+      <div class="seg lang" role="group" aria-label="${esc(t('language'))}"><span class="cap" aria-hidden="true"><span class="i">${ic('ed')}</span>${esc(t('language'))}</span>
+        ${['ar', 'en'].map((l) => `<button type="button" data-a="ed" data-ed="${l}" lang="${l}" aria-pressed="${l === S.ui}" aria-label="${langWord(l)}: ${esc(t(l === 'ar' ? 'langAr' : 'langEn'))}" title="${esc(t(l === 'ar' ? 'langAr' : 'langEn'))}">${langWord(l)}</button>`).join('')}
       </div>
     </div>
     <div class="grp">${btn('newdoc')}${btn('process')}</div>
@@ -768,9 +771,8 @@ function buildUi() {
       <span class="count" aria-label="${esc(t('changes', { n: liveOps(cur()).length }))}"><span class="n">${liveOps(cur()).length}</span><span class="w">${esc(t('changesWord'))}</span></span>
       <span class="sel vh">${esc(selDesc())}</span><span class="flash vh"></span>
     </div>
-    <div class="seg ui" role="group" aria-label="${esc(t('uiDir'))}"><span class="cap" aria-hidden="true">${esc(t('uiDir'))}</span>
-      <button type="button" data-a="uiLang" data-l="ar" aria-pressed="${S.ui === 'ar'}" aria-label="${esc(t('rtl'))}: ${esc(t('uiAr'))}" title="${esc(t('uiAr'))}">${esc(t('rtl'))}</button>
-      <button type="button" data-a="uiLang" data-l="en" aria-pressed="${S.ui === 'en'}" aria-label="${esc(t('ltr'))}: ${esc(t('uiEn'))}" title="${esc(t('uiEn'))}">${esc(t('ltr'))}</button>
+    <div class="seg ui" role="group" aria-label="${esc(t('direction'))}"><span class="cap" aria-hidden="true"><span class="i">${ic('dir')}</span>${esc(t('direction'))}</span>
+      ${['rtl', 'ltr'].map((d) => `<button type="button" data-a="dir" data-d="${d}" aria-pressed="${uiDir() === d}" aria-label="${esc(t(d))}: ${esc(t(d === 'rtl' ? 'dirRtl' : 'dirLtr'))}" title="${esc(t(d === 'rtl' ? 'dirRtl' : 'dirLtr'))}">${esc(t(d))}</button>`).join('')}
     </div>
     ${btn('view', { extra: ` aria-expanded="${S.view}" aria-controls="viewpop"` })}
     ${btn('palette', { cls: 'cmd', label: t('palette'), extra: ' aria-keyshortcuts="Control+K"' })}
@@ -1012,22 +1014,33 @@ async function onBar(e) {
   const b = e.target.closest('button[data-a]');
   if (!b || b.closest('.palette')) return;
   const a = b.dataset.a;
-  if (a === 'ed') { S.ed = b.dataset.ed; S.sel = null; S.selOv = null; buildUi(); render(false); return; }
-  if (a === 'uiLang') { setUi(b.dataset.l || (S.ui === 'ar' ? 'en' : 'ar')); return; }
+  if (a === 'ed') { setLang(b.dataset.ed); return; }
+  if (a === 'dir') { setDir(b.dataset.d); return; }
   await runAction(a);
 }
-function setUi(l) {
-  if (l === S.ui) return;
+// Language «ع» / «E»: the interface language and the document edition together.
+function setLang(l) {
+  const edChange = !!M[S.svc][l] && l !== S.ed;
+  if (l === S.ui && !edChange) return;
   S.ui = l;
   ls.set('bw:ui', S.ui);
+  if (edChange) { S.ed = l; S.sel = null; S.selOv = null; }
+  buildUi();
+  render(!edChange);
+  window.BW_WM?.relabel();
+}
+// Layout direction RTL / LTR: independent of the language; once chosen it is remembered.
+function setDir(d) {
+  S.dir = d;
+  ls.set('bw:dir', d);
   buildUi();
   render();
-  window.BW_WM?.relabel();
 }
 async function runAction(a) {
   switch (a) {
     case 'side': S.side = !S.side; buildUi(); render(false); break;
-    case 'uiLang': setUi(S.ui === 'ar' ? 'en' : 'ar'); break;
+    case 'uiLang': setLang(S.ui === 'ar' ? 'en' : 'ar'); break;
+    case 'dir': setDir(uiDir() === 'rtl' ? 'ltr' : 'rtl'); break;
     case 'dark': S.dark = !S.dark; ls.set('bw:dark', S.dark ? '1' : '0'); buildUi(); break;
     case 'calm': S.calm = !S.calm; ls.set('bw:calm', S.calm ? '1' : '0'); buildUi(); toast(t(S.calm ? 'calmOn' : 'calmOff'), 'info'); break;
     case 'focus': S.focus = !S.focus; S.view = false; buildUi(); toast(t(S.focus ? 'focusOn' : 'focusOff'), 'info'); break;

@@ -366,7 +366,14 @@
       "procNewStep": "خطوة جديدة",
       "procNewDecision": "قرار؟",
       "procNewEnd": "حالة جديدة",
-      "procRegenDone": "أُعيد بناء الأقسام من الإجراء"
+      "procRegenDone": "أُعيد بناء الأقسام من الإجراء",
+      "language": "اللغة",
+      "langAr": "العربية: لغة الواجهة ونسخة الوثيقة",
+      "langEn": "الإنجليزية: لغة الواجهة ونسخة الوثيقة",
+      "direction": "الاتجاه",
+      "dirRtl": "التخطيط من اليمين إلى اليسار (مستقل عن اللغة، ويُحفظ اختيارك)",
+      "dirLtr": "التخطيط من اليسار إلى اليمين (مستقل عن اللغة، ويُحفظ اختيارك)",
+      "dir": "اتجاه التخطيط"
     },
     "en": {
       "appName": "Business-Wrap editor",
@@ -623,7 +630,14 @@
       "procNewStep": "New step",
       "procNewDecision": "Decision?",
       "procNewEnd": "New status",
-      "procRegenDone": "Sections rebuilt from the process"
+      "procRegenDone": "Sections rebuilt from the process",
+      "language": "Language",
+      "langAr": "Arabic: interface language and document edition",
+      "langEn": "English: interface language and document edition",
+      "direction": "Direction",
+      "dirRtl": "Lay out right to left (independent of the language; your choice is remembered)",
+      "dirLtr": "Lay out left to right (independent of the language; your choice is remembered)",
+      "dir": "Layout direction"
     }
   },
   "harvest": {
