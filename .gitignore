@@ -1,0 +1,7 @@
+*.otf
+*.ttf
+*.woff
+*.woff2
+.local/
+profiles/
+.env
