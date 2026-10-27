@@ -24,8 +24,20 @@
   #bw-overlay .bw-grip { position: absolute; z-index: 30; font: 600 13px system-ui, sans-serif; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--bw-sel); background: #fff; color: #15303b; cursor: grab; touch-action: none; }
   #bw-overlay .bw-grip:focus-visible { outline: 3px solid var(--bw-sel); }
   #bw-overlay .bw-drop { position: absolute; z-index: 29; height: 0; border-top: 3px solid var(--bw-sel); pointer-events: none; }
-  #bw-watermark { position: fixed; inset: auto 16px 16px auto; z-index: 0; pointer-events: none; opacity: .07; display: flex; gap: 12px; }
-  #bw-watermark img { max-width: 160px; max-height: 160px; }
+  /* the tool's own mark: bottom corner on the UI's start side, behind the page, never over it */
+  #bw-watermark { position: fixed; bottom: 16px; inset-inline-start: 16px; z-index: 0; display: grid; justify-items: center; gap: 4px; opacity: .3; transition: opacity .3s cubic-bezier(.16,1,.3,1); pointer-events: none; }
+  #bw-watermark:hover, #bw-watermark:focus-within { opacity: 1; }
+  #bw-watermark .bw-wm-stage { pointer-events: auto; width: 84px; height: 84px; perspective: 1100px; cursor: pointer; border-radius: 14px; -webkit-tap-highlight-color: transparent; }
+  #bw-watermark .bw-wm-stage:focus-visible { outline: 3px solid var(--bw-sel); outline-offset: 4px; }
+  #bw-watermark .bw-wm-mark { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; will-change: transform; }
+  #bw-watermark img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 14px; opacity: 0; transform: scale(.94); transition: opacity .96s cubic-bezier(.76,0,.24,1), transform .96s cubic-bezier(.76,0,.24,1); box-shadow: 0 6px 18px rgba(0,0,0,.25); user-select: none; }
+  #bw-watermark img.on { opacity: 1; transform: none; }
+  #bw-watermark .bw-wm-tag { font: 900 11px/1 system-ui, sans-serif; letter-spacing: .32em; color: #4d545b; min-height: 14px; }
+  #bw-watermark[lang="ar"] .bw-wm-tag { letter-spacing: 0; font-size: 13px; }
+  #bw-watermark .bw-wm-tag span { display: inline-block; overflow: hidden; padding-bottom: .08em; }
+  #bw-watermark .bw-wm-tag i { display: block; font-style: normal; }
+  #bw-watermark .bw-wm-live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  :root[data-bw-dark="1"] #bw-watermark .bw-wm-tag { color: #b9c2c7; }
   #bw-ui-host { position: fixed; inset: 0 0 auto 0; z-index: 40; }
 }
 @media print {
@@ -37,4 +49,7 @@
   .bw-sel, .bw-stale, .bw-hit { box-shadow: none !important; background: none !important; outline: none !important; }
   .bw-has-comment::before { content: none !important; }
 }
-@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto !important; transition: none !important; }
+  #bw-watermark img { transition: opacity .2s linear !important; transform: none !important; }
+}

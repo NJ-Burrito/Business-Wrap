@@ -35,7 +35,7 @@ MAX_BYTES = 5 * 1024 * 1024
 SELF = {"security/gitleaks.toml", "security/check.py", "security/denylist.sha256"}
 # Paths whose binary images may carry metadata or size by design. Add the editor watermark here
 # once it is placed under editor/ (never a document logo slot).
-ALLOW_BINARY = [re.compile(p) for p in []]
+ALLOW_BINARY = [re.compile(p) for p in [r"^editor/brand/watermark/nj-avatar-[a-z]+\.webp$"]]
 FONT_MAGIC = (b"OTTO", b"\x00\x01\x00\x00", b"wOFF", b"wOF2", b"ttcf", b"true")
 IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".gif", ".heic")
 

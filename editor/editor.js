@@ -791,7 +791,7 @@ async function onBar(e) {
   switch (a) {
     case 'ed': S.ed = b.dataset.ed; S.sel = null; buildUi(); render(false); break;
     case 'side': S.side = !S.side; buildUi(); render(false); break;
-    case 'uiLang': S.ui = S.ui === 'ar' ? 'en' : 'ar'; ls.set('bw:ui', S.ui); buildUi(); render(); break;
+    case 'uiLang': S.ui = S.ui === 'ar' ? 'en' : 'ar'; ls.set('bw:ui', S.ui); buildUi(); render(); window.BW_WM?.relabel(); break;
     case 'dark': S.dark = !S.dark; ls.set('bw:dark', S.dark ? '1' : '0'); document.documentElement.dataset.bwDark = S.dark ? '1' : '0'; buildUi(); break;
     case 'undo': undo(); break;
     case 'redo': redo(); break;
@@ -1101,6 +1101,104 @@ document.addEventListener('keydown', (e) => {
 window.addEventListener('resize', () => paintSel());
 window.addEventListener('beforeunload', () => { if (S.dirty) ls.set(KEY, JSON.stringify(snapshotState())); });
 
+/* ── tool watermark: the NJ role mark, behaving as on the owner's portfolio ──────
+ * Copied from NJ-Burrito.github.io index.html: roles in the order tester → teacher →
+ * volunteer → professional (PER, l.1042-1043); click / Enter / Space = next role
+ * (nextPersona + listeners, l.1082-1087); the role word rises letter by letter, 560 ms,
+ * 40 ms stagger, cubic-bezier(.2,.8,.2,1) (setTag, l.1076-1081); the colour change runs
+ * .96s on --e-move cubic-bezier(.76,0,.24,1) (l.68, l.130); idle float sin(t·.9)·6px and
+ * a pointer tilt on a spring k=90 c=16 (frame, l.1094-1112), paused when the tab is hidden
+ * (l.1116); the intro plays once per browser and a click skips it (l.58, l.1197);
+ * reduced motion: no float, no tilt, no letter motion, transitions .2s (l.375, l.1040).
+ * Here it is a watermark: UI only, print-hidden, never written into an export. */
+function mountWatermark() {
+  const RM = matchMedia('(prefers-reduced-motion: reduce)');
+  const roles = WATERMARK.filter((w) => !w.intro);
+  const intro = WATERMARK.find((w) => w.intro);
+  if (!roles.length && !intro) return;
+  const wm = document.createElement('div');
+  wm.id = 'bw-watermark';
+  wm.innerHTML = `<div class="bw-wm-stage" role="button" tabindex="0"><div class="bw-wm-mark">${[...roles, ...(intro ? [intro] : [])]
+    .map((w, i) => `<img alt="" draggable="false" data-i="${i}" ${w.intro ? 'data-intro="1"' : ''} src="${esc(w.src)}">`).join('')}</div></div><span class="bw-wm-tag" aria-hidden="true"></span><span class="bw-wm-live" aria-live="polite"></span>`;
+  document.body.appendChild(wm);
+  const stage = wm.querySelector('.bw-wm-stage');
+  const mark = wm.querySelector('.bw-wm-mark');
+  const imgs = [...mark.querySelectorAll('img')];
+  const tag = wm.querySelector('.bw-wm-tag');
+  const live = wm.querySelector('.bw-wm-live');
+  let pi = 0;
+  const roleName = () => { const r = roles[pi]?.role; return r ? t(`role_${r}`) : ''; };
+  const show = (img) => imgs.forEach((x) => x.classList.toggle('on', x === img));
+  const setTag = (animate) => {
+    const word = roleName();
+    const parts = S.ui === 'ar' ? [word] : [...word];
+    tag.innerHTML = parts.map((ch) => `<span><i>${esc(ch)}</i></span>`).join('');
+    if (!animate || RM.matches) return;
+    [...tag.querySelectorAll('i')].forEach((el, k) => el.animate([{ transform: 'translateY(110%)' }, { transform: 'translateY(-8%)', offset: 0.7 }, { transform: 'translateY(0)' }],
+      { duration: 560, delay: k * 40, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' }));
+  };
+  const label = () => {
+    wm.dir = S.ui === 'ar' ? 'rtl' : 'ltr';
+    wm.lang = S.ui;
+    stage.setAttribute('aria-label', t('wmLabel', { r: roleName() }));
+  };
+  const settle = () => { wm.dataset.intro = 'done'; show(imgs[pi]); setTag(false); label(); };
+  const next = (e) => {
+    e?.preventDefault?.();
+    if (wm.dataset.intro === 'playing') { settle(); return; } // a click skips the intro, as on the portfolio
+    if (!roles.length) return;
+    pi = (pi + 1) % roles.length;
+    show(imgs[pi]);
+    wm.dataset.role = roles[pi].role || String(pi);
+    S2.vy += RM.matches ? 0 : 5;
+    setTag(true);
+    label();
+    live.textContent = t('wmLive', { r: roleName() });
+  };
+  stage.addEventListener('click', next);
+  stage.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') next(e); });
+  wm.dataset.role = roles[0]?.role || '0';
+
+  // the intro plays once per browser, never under reduced motion
+  let seen = false;
+  try { seen = localStorage.getItem('bw:wm-intro') === '1'; } catch { /* storage unavailable */ }
+  if (intro && !seen && !RM.matches) {
+    wm.dataset.intro = 'playing';
+    show(imgs[imgs.length - 1]);
+    try { localStorage.setItem('bw:wm-intro', '1'); } catch { /* storage unavailable */ }
+    setTimeout(() => { if (wm.dataset.intro === 'playing') settle(); }, 8000); // the animation's own length
+    label();
+  } else settle();
+
+  // idle float + pointer tilt on a spring (the portfolio's frame loop)
+  const S2 = { rx: 0, ry: 0, vx: 0, vy: 0 };
+  let pointer = null, last = 0, raf = 0;
+  const t0 = performance.now();
+  const spring = (v, target, vel, k, c, dt) => { const a = k * (target - v) - c * vel; vel += a * dt; return [v + vel * dt, vel]; };
+  wm.addEventListener('pointermove', (e) => { if (e.pointerType === 'touch') return; const r = stage.getBoundingClientRect(); pointer = { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }; });
+  wm.addEventListener('pointerleave', () => { pointer = null; });
+  const frame = (now) => {
+    raf = 0;
+    const dt = Math.min(0.033, (now - (last || now)) / 1000);
+    last = now;
+    const tt = (now - t0) / 1000;
+    const rm = RM.matches;
+    const p = pointer && !rm ? pointer : null;
+    const tx = p ? (p.y - 0.5) * -18 : rm ? 0 : Math.sin(tt * 0.55) * 4;
+    const ty = p ? (p.x - 0.5) * 22 : rm ? 0 : Math.sin(tt * 0.37 + 1) * 6;
+    [S2.rx, S2.vx] = spring(S2.rx, tx, S2.vx, 90, 16, dt);
+    [S2.ry, S2.vy] = spring(S2.ry, ty, S2.vy, 90, 16, dt);
+    const floatY = rm || p ? 0 : Math.sin(tt * 0.9) * 6;
+    mark.style.transform = `translateY(${floatY.toFixed(2)}px) rotateX(${S2.rx.toFixed(3)}deg) rotateY(${S2.ry.toFixed(3)}deg)`;
+    if (!document.hidden && !rm) raf = requestAnimationFrame(frame);
+  };
+  const start = () => { if (!raf && !document.hidden && !RM.matches) { last = 0; raf = requestAnimationFrame(frame); } };
+  document.addEventListener('visibilitychange', start);
+  RM.addEventListener?.('change', () => { mark.style.transform = ''; start(); });
+  start();
+  window.BW_WM = { next, roles: () => roles.map((r) => r.role), current: () => wm.dataset.role, relabel: () => { setTag(false); label(); } };
+}
+
 /* ── boot ──────────────────────────────────────────────────────────────── */
 function boot() {
   const ov = document.createElement('div');
@@ -1110,13 +1208,7 @@ function boot() {
   overlay.grip = ov.querySelector('.bw-grip');
   overlay.drop = ov.querySelector('.bw-drop');
   overlay.grip.addEventListener('pointerdown', startDrag);
-  if (WATERMARK.length) {
-    const wm = document.createElement('div');
-    wm.id = 'bw-watermark';
-    wm.setAttribute('aria-hidden', 'true');
-    wm.innerHTML = WATERMARK.map((src) => `<img alt="" src="${esc(src)}">`).join('');
-    document.body.prepend(wm);
-  }
+  if (WATERMARK.length) mountWatermark();
   document.documentElement.dataset.bwDark = S.dark ? '1' : '0';
   buildUi();
   render(false);

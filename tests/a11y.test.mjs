@@ -15,7 +15,7 @@ const AXE = require.resolve('axe-core/axe.min.js');
 const OUT = path.join(REPO, 'out', 'a11y');
 fs.mkdirSync(OUT, { recursive: true });
 const file = path.join(OUT, 'editor.html');
-buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, watermarkDir: null });
+buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, watermarkDir: path.join(REPO, 'editor', 'brand', 'watermark') }); // the avatar is part of the UI under test
 
 const results = [];
 let failed = 0;

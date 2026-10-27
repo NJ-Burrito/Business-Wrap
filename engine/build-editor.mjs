@@ -19,15 +19,22 @@ const jsonInScript = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
 
 import { config } from './config.mjs';
 
-/** Tool watermark folder: BW_WATERMARK_DIR or .local/config.json watermarkDir. */
-export const DEFAULT_WATERMARK_DIR = config().watermarkDir;
+/** Tool watermark folder: BW_WATERMARK_DIR / .local/config.json watermarkDir, else the repo's editor/brand/watermark. */
+export const DEFAULT_WATERMARK_DIR = config().watermarkDir || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'editor', 'brand', 'watermark');
 
-/** Tool watermark images (UI only). Empty folder → [] and nothing is shown. */
+/**
+ * Tool watermark images (UI only): [{name, role, intro, src}]. Empty folder → [] and nothing is shown.
+ * `nj-avatar-<role>.*` are the roles in the portfolio's order; `*animated*` is the one-time intro.
+ */
+const ROLES = ['tester', 'teacher', 'volunteer', 'professional'];
+const MIME = { svg: 'image/svg+xml', png: 'image/png', webp: 'image/webp', gif: 'image/gif' };
 export function watermarkImages(dir) {
   if (!dir || !fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir)
-    .filter((f) => /\.(svg|png)$/i.test(f))
-    .map((f) => `data:image/${/\.svg$/i.test(f) ? 'svg+xml' : 'png'};base64,${fs.readFileSync(path.join(dir, f)).toString('base64')}`);
+  const files = fs.readdirSync(dir).filter((f) => /\.(svg|png|webp|gif)$/i.test(f)).sort();
+  const role = (f) => ROLES.find((r) => new RegExp(`(^|[-_])${r}\\.`, 'i').test(f)) || null;
+  return files
+    .map((f) => ({ name: f, role: role(f), intro: /animated/i.test(f), src: `data:${MIME[f.split('.').pop().toLowerCase()]};base64,${fs.readFileSync(path.join(dir, f)).toString('base64')}` }))
+    .sort((a, b) => (a.role ? ROLES.indexOf(a.role) : 9) - (b.role ? ROLES.indexOf(b.role) : 9));
 }
 
 function docFiles(inputs) {

@@ -347,6 +347,53 @@ try {
   check(`60-page document stays responsive (<${limit} ms per structural edit)`, +bigPages >= 60 && timing.duplicate < limit && timing.undo < limit, perf);
   await ctxB.close();
 
+  // the tool watermark: the NJ role mark from editor/brand/watermark, clicked through its roles
+  const avatarEditor = path.join(OUT, 'avatar.editor.html');
+  buildEditor({ inputs: [SAMPLE], out: avatarEditor, set: 'avatar', watermarkDir: path.join(REPO, 'editor', 'brand', 'watermark') });
+  const avatarB64 = fs.readFileSync(path.join(REPO, 'editor', 'brand', 'watermark', 'nj-avatar-teacher.webp')).toString('base64').slice(0, 60);
+  for (const ui of ['ar', 'en']) {
+    const ctxA = await browser.newContext({ acceptDownloads: true, viewport: { width: 1366, height: 900 } });
+    await ctxA.addInitScript((ui) => { try { localStorage.setItem('bw:ui', ui); } catch {} }, ui);
+    const pa = await ctxA.newPage();
+    await pa.goto(pathToFileURL(avatarEditor).href);
+    await pa.waitForFunction(() => window.BW_WM);
+    const wm = pa.locator('#bw-watermark');
+    const st = await pa.evaluate(() => { const w = document.getElementById('bw-watermark'); const r = w.getBoundingClientRect(); return { n: w.querySelectorAll('img').length, intro: w.dataset.intro, x: r.left, dir: w.dir }; });
+    check(`${ui}: avatar mounted with 4 roles + intro, intro plays first`, st.n === 5 && st.intro === 'playing', JSON.stringify(st));
+    check(`${ui}: avatar sits on the UI's start side (mirrors)`, ui === 'ar' ? st.x > 1000 && st.dir === 'rtl' : st.x < 200 && st.dir === 'ltr', JSON.stringify(st));
+    await wm.locator('.bw-wm-stage').click(); // skips the intro, as on the portfolio
+    const r0 = await pa.evaluate(() => [document.getElementById('bw-watermark').dataset.role, document.querySelector('#bw-watermark img.on').dataset.i]);
+    await wm.locator('.bw-wm-stage').click();
+    const r1 = await pa.evaluate(() => [document.getElementById('bw-watermark').dataset.role, document.querySelector('#bw-watermark img.on').dataset.i, document.querySelector('#bw-watermark .bw-wm-tag').textContent]);
+    await wm.locator('.bw-wm-stage').focus();
+    await pa.keyboard.press('Enter');
+    const r2 = await pa.evaluate(() => document.getElementById('bw-watermark').dataset.role);
+    check(`${ui}: clicking the avatar changes it (tester → teacher), Enter → volunteer`, r0[0] === 'tester' && r1[0] === 'teacher' && r1[1] !== r0[1] && r1[2] === (ui === 'ar' ? 'يعلم' : 'TEACHER') && r2 === 'volunteer', JSON.stringify([r0, r1, r2]));
+    // never blocks editing: a document field next to it still takes the click
+    const field = pa.locator('main.bw-doc [data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]');
+    await field.click();
+    check(`${ui}: avatar never blocks editing`, await field.evaluate((e) => document.activeElement === e));
+    // exclusion: print, Save-HTML
+    const saved = await download(pa, () => ui === 'ar' ? pa.locator('button[data-a="saveHtml"]').click() : pa.locator('button[data-a="saveHtml"]').click());
+    const savedTxt = fs.readFileSync(saved, 'utf8');
+    check(`${ui}: avatar absent from Save-HTML`, !savedTxt.includes(avatarB64) && !savedTxt.includes('id="bw-watermark'));
+    await pa.emulateMedia({ media: 'print' });
+    const ap = path.join(OUT, `avatar-print.${ui}.pdf`);
+    await pa.pdf({ path: ap, preferCSSPageSize: true, printBackground: true });
+    const imgsA = run('python', ['-c', 'import pymupdf,sys;print(sum(len(p.get_images()) for p in pymupdf.open(sys.argv[1])))', ap]).out.trim();
+    check(`${ui}: avatar absent from the editor's print`, imgsA === '0', `images=${imgsA}`);
+    await ctxA.close();
+  }
+  // reduced motion: no intro, no float or tilt
+  const ctxR = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 1366, height: 900 } });
+  const pr = await ctxR.newPage();
+  await pr.goto(pathToFileURL(avatarEditor).href);
+  await pr.waitForFunction(() => window.BW_WM);
+  await pr.waitForTimeout(300);
+  const rm = await pr.evaluate(() => { const w = document.getElementById('bw-watermark'); return { intro: w.dataset.intro, role: w.dataset.role, transform: w.querySelector('.bw-wm-mark').style.transform }; });
+  check('reduced motion: avatar skips the intro and does not move', rm.intro === 'done' && rm.role === 'tester' && !rm.transform, JSON.stringify(rm));
+  await ctxR.close();
+
   // page thumbnails through the local server (pagination exists only when Chrome prints)
   const { serve } = await import('../engine/serve.mjs');
   const served = path.join(OUT, 'served.editor.html');
