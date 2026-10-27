@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fileURLToPath as toPath } from 'node:url';
-import { exportPdf, exportDocx, loadTheme, fontsFor, REPO } from './export.mjs';
+import { exportPdf, exportDocx, pageThumbs, loadTheme, fontsFor, REPO } from './export.mjs';
 
 const MAX_BODY = 60 * 1024 * 1024;
 const OUT = path.join(REPO, 'out', 'exports');
@@ -39,6 +39,19 @@ export function serve(editorFile, port = 4317) {
         if (!f.startsWith(OUT + path.sep) || !fs.existsSync(f)) return send(404, { error: 'not found' });
         const type = f.endsWith('.pdf') ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
         return send(200, fs.readFileSync(f), type);
+      }
+      if (req.method === 'POST' && url.pathname === '/api/pages') {
+        if (req.headers.origin && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(req.headers.origin)) return send(403, { error: 'origin' });
+        const chunks = [];
+        let size = 0;
+        for await (const c of req) { size += c.length; if (size > MAX_BODY) return send(413, { error: 'too large' }); chunks.push(c); }
+        const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+        if (!body.doc?.chapters || !body.doc?.control) return send(400, { error: 'no document' });
+        const base = loadTheme();
+        const theme = { ...base, ...body.theme, vars: { ...base.vars, ...(body.theme?.vars || {}) } };
+        const t0 = Date.now();
+        const pages = await pageThumbs(body.doc, { locale: body.locale === 'en' ? 'en' : 'ar', theme });
+        return send(200, { pages, ms: Date.now() - t0 });
       }
       if (req.method === 'POST' && url.pathname === '/api/export') {
         if (req.headers.origin && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(req.headers.origin)) return send(403, { error: 'origin' });

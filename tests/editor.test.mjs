@@ -334,6 +334,30 @@ try {
   fs.writeFileSync(path.join(OUT, 'perf.txt'), perf + '\n');
   check('60-page document stays responsive (<300 ms per structural edit)', +bigPages >= 60 && timing.duplicate < 300 && timing.undo < 300, perf);
   await ctxB.close();
+
+  // page thumbnails through the local server (pagination exists only when Chrome prints)
+  const { serve } = await import('../engine/serve.mjs');
+  const served = path.join(OUT, 'served.editor.html');
+  buildEditor({ inputs: [SAMPLE], out: served, set: 'served', watermarkDir: null });
+  const srv = await serve(served, 4399);
+  try {
+    const ctxT = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+    const pt = await ctxT.newPage();
+    await pt.goto('http://127.0.0.1:4399/');
+    await pt.waitForFunction(() => window.BW);
+    await ui(pt, 'pages').click();
+    await pt.locator('.drawer .thumbs img').nth(8).waitFor({ timeout: 60000 }).catch(() => {});
+    const thumbs = await pt.locator('.drawer .thumbs img').count();
+    const status = await pt.locator('.drawer .out').textContent();
+    check('page thumbnails (served): one per printed sheet', thumbs === 9, `${thumbs} thumbnails; ${status}`);
+    const y0 = await pt.evaluate(() => window.scrollY);
+    await pt.locator('.drawer .thumbs button[data-page="7"]').click();
+    await pt.waitForTimeout(400);
+    check('page thumbnail click jumps to that page', (await pt.evaluate(() => window.scrollY)) > y0 + 500);
+    await ctxT.close();
+  } finally {
+    srv.close();
+  }
 } catch (e) {
   check('test run', false, e.stack?.split('\n').slice(0, 3).join(' / '));
 } finally {

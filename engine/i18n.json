@@ -239,7 +239,13 @@
         "text": "نص"
       },
       "info": "معلومة",
-      "structConflict": "تعديل بنيوي على العنصر نفسه عند الطرفين"
+      "structConflict": "تعديل بنيوي على العنصر نفسه عند الطرفين",
+      "pages": "الصفحات",
+      "pagesTitle": "معاينة الصفحات",
+      "pagesNeedServer": "معاينة الصفحات تحتاج الخادم المحلي (npm run serve): التقسيم إلى صفحات يحدث عند الطباعة فقط.",
+      "pagesLoading": "جارٍ تجهيز الصفحات…",
+      "pagesCount": "{n} صفحة · {ms} ملّي ثانية",
+      "page": "صفحة {n}"
     },
     "en": {
       "appName": "Business-Wrap editor",
@@ -369,7 +375,13 @@
         "text": "text"
       },
       "info": "Info",
-      "structConflict": "structural edit to the same element on both sides"
+      "structConflict": "structural edit to the same element on both sides",
+      "pages": "Pages",
+      "pagesTitle": "Page preview",
+      "pagesNeedServer": "Page preview needs the local server (npm run serve): pages only exist when the document is printed.",
+      "pagesLoading": "Preparing pages…",
+      "pagesCount": "{n} pages · {ms} ms",
+      "page": "Page {n}"
     }
   }
 }

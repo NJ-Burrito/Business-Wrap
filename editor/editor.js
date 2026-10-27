@@ -691,7 +691,7 @@ const root = host.attachShadow({ mode: 'open' });
 const ICON = {
   undo: '↶', redo: '↷', duplicate: '⧉', delete: '✕', moveUp: '↑', moveDown: '↓', drag: '✥', addPara: '¶',
   rowAdd: '⊞', rowDel: '⊟', colAdd: '⊞', colDel: '⊟', image: '▣', comment: '✎', renumber: '#', breakBefore: '⤓', keepNext: '⛓',
-  find: '⌕', outline: '☰', check: '✓', history: '⟲', theme: '◐', save: '⬇', saveHtml: '⎘', import: '⬆', exportEdits: '{ }', exportAll: '{ }',
+  find: '⌕', outline: '☰', pages: '▤', check: '✓', history: '⟲', theme: '◐', save: '⬇', saveHtml: '⎘', import: '⬆', exportEdits: '{ }', exportAll: '{ }',
   exportPdf: '⎙', print: '⎙', zoomIn: '+', zoomOut: '−', spell: 'ab', dark: '☾', side: '◫', uiLang: '⇄',
 };
 function btn(id, action, { label = t(id), tip = '', pressed } = {}) {
@@ -701,7 +701,7 @@ function buildUi() {
   const svcOpts = DATA.services.map((s) => `<option value="${esc(s.id)}" ${s.id === S.svc ? 'selected' : ''}>${esc(s.editions[S.ed]?.name || s.editions.ar?.name || s.id)}</option>`).join('');
   const eds = Object.keys(M[S.svc]);
   root.innerHTML = `<style>${DATA.uiCss}</style>
-<div class="bar" role="toolbar" aria-label="${esc(t('toolbar'))}" dir="${S.ui === 'ar' ? 'rtl' : 'ltr'}" lang="${S.ui}" data-theme="${S.dark ? 'dark' : 'light'}">
+<section aria-label="${esc(t('appName'))}"><div class="bar" role="toolbar" aria-label="${esc(t('toolbar'))}" dir="${S.ui === 'ar' ? 'rtl' : 'ltr'}" lang="${S.ui}" data-theme="${S.dark ? 'dark' : 'light'}">
   <div class="row top">
     <strong class="app">${esc(t('appName'))}</strong>
     <label class="field">${esc(t('service'))} <select data-a="svc" aria-label="${esc(t('service'))}">${svcOpts}</select></label>
@@ -720,13 +720,13 @@ function buildUi() {
     <span class="grp">${btn('duplicate')}${btn('delete')}${btn('moveUp')}${btn('moveDown')}${btn('addPara')}</span>
     <span class="grp">${btn('rowAdd')}${btn('rowDel')}${btn('colAdd')}${btn('colDel')}</span>
     <span class="grp">${btn('image', true, { tip: t('imageTip') })}${btn('comment')}${btn('breakBefore')}${btn('keepNext')}${btn('renumber')}</span>
-    <span class="grp">${btn('find')}${btn('outline')}${btn('check')}${btn('history')}${btn('theme')}</span>
+    <span class="grp">${btn('find')}${btn('outline')}${btn('pages')}${btn('check')}${btn('history')}${btn('theme')}</span>
     <span class="grp">${btn('save')}${btn('saveHtml', true, { tip: t('saveHtmlTip') })}${btn('import', true, { tip: t('importTip') })}${btn('exportEdits')}${btn('exportAll', true, { label: t('exportAll') })}${btn('exportPdf', true, { tip: t('exportPdfTip') })}${btn('print')}</span>
     <span class="grp">${btn('zoomOut', true, { label: t('zoom') + ' −' })}${btn('zoomIn', true, { label: t('zoom') + ' +' })}${btn('spell', true, { label: t('spell'), pressed: S.spell[S.ed] })}</span>
   </div>
   <div class="banner" hidden></div>
-</div>
-<aside class="drawer" role="dialog" aria-modal="false" hidden dir="${S.ui === 'ar' ? 'rtl' : 'ltr'}" lang="${S.ui}" data-theme="${S.dark ? 'dark' : 'light'}"></aside>
+</div></header>
+<div class="drawer" role="dialog" aria-modal="false" hidden dir="${S.ui === 'ar' ? 'rtl' : 'ltr'}" lang="${S.ui}" data-theme="${S.dark ? 'dark' : 'light'}"></div>
 <div class="dialog" role="dialog" aria-modal="true" hidden dir="${S.ui === 'ar' ? 'rtl' : 'ltr'}" data-theme="${S.dark ? 'dark' : 'light'}"></div>`;
   root.querySelector('.bar').addEventListener('click', onBar);
   root.querySelector('[data-a="svc"]').addEventListener('change', (e) => { S.svc = e.target.value; if (!M[S.svc][S.ed]) S.ed = Object.keys(M[S.svc])[0]; S.sel = null; buildUi(); render(false); });
@@ -809,7 +809,7 @@ async function onBar(e) {
     case 'breakBefore': A.layout('breakBefore'); break;
     case 'keepNext': A.layout('keepNext'); break;
     case 'renumber': A.renumber(); break;
-    case 'find': case 'outline': case 'check': case 'history': case 'theme':
+    case 'find': case 'outline': case 'check': case 'history': case 'theme': case 'pages':
       S.drawer === a ? closeDrawer() : openDrawer(a); break;
     case 'save': saveAll(); break;
     case 'saveHtml': await saveHtml(!!S.embedFonts); break;
@@ -840,6 +840,10 @@ function openDrawer(kind, soft = false) {
     const v = validate();
     d.setAttribute('aria-label', t('checkTitle'));
     html = head(t('checkTitle')) + (v.length ? `<ul class="list">${v.map(([lv, msg]) => `<li class="${lv}"><span class="i">${icon[lv]}</span> <b>${esc(word[lv])}</b> ${esc(msg)}</li>`).join('')}</ul>` : `<p class="ok">✓ ${esc(t('vAllGood'))}</p>`);
+  } else if (kind === 'pages') {
+    d.setAttribute('aria-label', t('pagesTitle'));
+    html = head(t('pagesTitle')) + `<p class="hint out" role="status"></p><ol class="thumbs"></ol>`;
+    setTimeout(() => loadThumbs(d), 0);
   } else if (kind === 'outline') {
     d.setAttribute('aria-label', t('outline'));
     html = head(t('outline')) + `<ol class="list nav">${cur().doc.chapters.map((ch, i) => `<li><button type="button" data-go="/chapters/${i}/title">${esc(ch.number)} ${esc(ch.title)}</button><ol>${ch.sections.map((s, j) => `<li><button type="button" data-go="/chapters/${i}/sections/${j}/title">${esc(s.number)} ${esc(s.title)}</button></li>`).join('')}</ol></li>`).join('')}</ol>`;
@@ -887,6 +891,18 @@ async function onDrawer(e) {
   const d = root.querySelector('.drawer');
   const k = x.dataset.k;
   if (k === 'close') { closeDrawer(); return; }
+  if (x.dataset.page) {
+    const first = x.dataset.first || '';
+    // the PDF's first line, matched loosely (numbers, punctuation and spaces dropped) to a document field
+    const norm = (x) => fold(String(x)).replace(/[^\p{L}]+/gu, '');
+    const f = norm(first);
+    const hit = f.length < 3 ? null : [...(mainOf(S.ed)?.querySelectorAll('[data-p]') || [])].find((el) => {
+      const e = norm(el.innerText);
+      return e.length >= 3 && (f.includes(e) || e.startsWith(f.slice(0, 16)));
+    });
+    if (hit) { hit.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' }); hit.focus(); }
+    return;
+  }
   if (x.dataset.go) {
     const el = mainOf(S.ed)?.querySelector(`[data-p="${CSS.escape(x.dataset.go)}"],[data-b="${CSS.escape(x.dataset.go)}"]`);
     if (el) { el.scrollIntoView({ block: 'center', behavior: reduced() ? 'auto' : 'smooth' }); el.focus?.(); selectEl(el); }
@@ -970,6 +986,28 @@ async function onDrawer(e) {
   }
 }
 
+/* ── page thumbnails (printed by the local server: pagination exists only in print) ── */
+const thumbCache = new Map();
+async function loadThumbs(d) {
+  const out = d.querySelector('.out');
+  const list = d.querySelector('.thumbs');
+  if (!location.protocol.startsWith('http')) { out.textContent = t('pagesNeedServer'); return; }
+  const key = `${S.svc}|${S.ed}|${JSON.stringify(liveOps(cur()).map((o) => o.id))}|${JSON.stringify(S.theme)}`;
+  let data = thumbCache.get(key);
+  if (!data) {
+    out.textContent = t('pagesLoading');
+    try {
+      const r = await fetch('/api/pages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ locale: S.ed, doc: cur().doc, theme: S.theme }) });
+      data = await r.json();
+      if (!r.ok) throw new Error(data.error || r.status);
+      thumbCache.clear();
+      thumbCache.set(key, data);
+    } catch (err) { out.textContent = String(err.message || err); return; }
+  }
+  out.textContent = t('pagesCount', { n: data.pages.length, ms: data.ms });
+  list.innerHTML = data.pages.map((p) => `<li><button type="button" data-page="${p.n}" data-first="${esc(p.first)}" aria-label="${esc(t('page', { n: p.n }))}"><img alt="" src="${p.png}" class="${p.wide ? 'wide' : ''}"><span>${p.n}</span></button></li>`).join('');
+}
+
 /* ── document events ───────────────────────────────────────────────────── */
 const pair = () => document.getElementById('bw-pair');
 document.addEventListener('focusin', (e) => {
@@ -977,7 +1015,18 @@ document.addEventListener('focusin', (e) => {
   if (!el) return;
   if (el.closest('td[data-r]')) lastCell = el.closest('td[data-r]');
   else if (el.matches('td[data-r],th[data-c]')) lastCell = el;
-  if (!el.isContentEditable) el.contentEditable = 'plaintext-only';
+  if (!el.isContentEditable) {
+    el.contentEditable = 'plaintext-only';
+    // keyboard focus (Tab) leaves no caret: put it at the end so typing works at once
+    const sel = getSelection();
+    if (!sel.rangeCount || !el.contains(sel.anchorNode)) {
+      const r = document.createRange();
+      r.selectNodeContents(el);
+      r.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
+  }
   S.typingGroup = null;
   selectEl(el);
 });

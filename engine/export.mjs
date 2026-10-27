@@ -96,6 +96,33 @@ export async function exportPdf(doc, { locale, theme, pdfPath, browser: shared }
   return { pdf: pdfPath, post: r.stdout.trim() };
 }
 
+/**
+ * Page thumbnails: the real pagination only exists when Chrome prints, so the
+ * document is printed (same path as the PDF export) and each sheet rasterised.
+ * Returns [{n, png (data URI), first (first text line), wide}].
+ */
+export async function pageThumbs(doc, { locale, theme, dpi = 36 }) {
+  const pdfPath = path.join(os.tmpdir(), `bw-thumbs-${process.pid}-${Date.now()}.pdf`);
+  try {
+    await exportPdf(doc, { locale, theme, pdfPath });
+    const py = [
+      'import pymupdf, sys, json, base64',
+      'd = pymupdf.open(sys.argv[1]); out = []',
+      'for i, p in enumerate(d):',
+      '    pix = p.get_pixmap(dpi=int(sys.argv[2]))',
+      '    top = pymupdf.Rect(0, 18 * 72 / 25.4, p.rect.width, p.rect.height - 16 * 72 / 25.4)',
+      '    lines = [l.strip() for l in p.get_text("text", clip=top).splitlines() if l.strip()]',
+      '    out.append({"n": i + 1, "png": "data:image/png;base64," + base64.b64encode(pix.tobytes("png")).decode(), "first": lines[0] if lines else "", "wide": p.rect.width > p.rect.height})',
+      'sys.stdout.write(json.dumps(out))',
+    ].join('\n');
+    const r = spawnSync('python', ['-c', py, pdfPath, String(dpi)], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, env: { ...process.env, PYTHONUTF8: '1' } });
+    if (r.status !== 0) throw new Error(`thumbnails failed: ${r.stderr}`);
+    return JSON.parse(r.stdout);
+  } finally {
+    fs.rmSync(pdfPath, { force: true });
+  }
+}
+
 /** DOCX through the copied builder. Writes the edited JSON beside it first. */
 export function exportDocx(doc, { locale, theme, docxPath }) {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-docx-'));
