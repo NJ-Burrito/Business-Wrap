@@ -83,3 +83,7 @@ path = '''(?i)(^|/)(\.env(\..+)?|id_rsa|id_ed25519|.+\.(pem|key|p12|pfx|jks|keys
 [[allowlists]]
 description = "Examples of the env format are allowed"
 paths = ['''(^|/)\.env\.example$''']
+
+[[allowlists]]
+description = "Gitignored, generated or machine-local folders (dir scans only; never committed)"
+paths = ['''(^|/)(node_modules|out|\.local|__pycache__)/''']

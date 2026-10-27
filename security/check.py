@@ -178,7 +178,7 @@ def run_gitleaks() -> int:
         return 0
     rc = 0
     for mode in (["git", str(ROOT)], ["dir", str(ROOT)]):
-        r = subprocess.run([exe, *mode, "--config", str(CONFIG), "--redact", "--no-banner", "-v"], capture_output=True, text=True)
+        r = subprocess.run([exe, *mode, "--config", str(CONFIG), "--redact", "--no-banner", "-v"], capture_output=True, text=True, encoding="utf-8", errors="replace")
         print(f"gitleaks {mode[0]}: exit {r.returncode}")
         rc |= r.returncode
     return rc

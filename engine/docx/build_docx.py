@@ -216,7 +216,7 @@ def rasterize_svg(svg: str, out_png: Path, scale: int=3) -> None:
     html_path.write_text(html, encoding='utf-8')
     repo_root = Path(__file__).resolve().parents[2]
     script = out_png.with_suffix('.raster.cjs')
-    script.write_text(f"\nconst path = require('path');\nconst playwrightPath = require.resolve('playwright-core', {{ paths: [{json.dumps(str(repo_root))}] }});\nconst {{ chromium }} = require(playwrightPath);\n(async () => {{\n  const browser = await chromium.launch({{ executablePath: process.env.BW_CHROME || undefined }});\n  const page = await browser.newPage({{ viewport: {{ width: Math.ceil({w}), height: Math.ceil({h}) }}, deviceScaleFactor: {scale} }});\n  await page.goto('file:///{html_path.as_posix()}');\n  await page.locator('svg').screenshot({{ path: {json.dumps(str(out_png))} }});\n  await browser.close();\n}})();\n", encoding='utf-8')
+    script.write_text(f"\nconst path = require('path');\nconst playwrightPath = require.resolve('playwright-core', {{ paths: [{json.dumps(str(repo_root))}] }});\nconst {{ chromium }} = require(playwrightPath);\n(async () => {{\n  const browser = await chromium.launch({{ executablePath: process.env.BW_CHROME || undefined, args: process.env.CI && process.platform === 'linux' ? ['--no-sandbox'] : [] }});\n  const page = await browser.newPage({{ viewport: {{ width: Math.ceil({w}), height: Math.ceil({h}) }}, deviceScaleFactor: {scale} }});\n  await page.goto({json.dumps(html_path.resolve().as_uri())});\n  await page.locator('svg').screenshot({{ path: {json.dumps(str(out_png))} }});\n  await browser.close();\n}})();\n", encoding='utf-8')
     subprocess.run(['node', str(script)], check=True, cwd=str(repo_root))
     html_path.unlink(missing_ok=True)
     script.unlink(missing_ok=True)

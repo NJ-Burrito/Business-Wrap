@@ -2,9 +2,9 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright-core';
-import { chromePath } from '../engine/export.mjs';
+import { launchOptions } from '../engine/export.mjs';
 const [file, shot, js] = process.argv.slice(2);
-const b = await chromium.launch({ headless: true, executablePath: chromePath() });
+const b = await chromium.launch(launchOptions());
 try {
   const p = await b.newPage({ viewport: { width: 1366, height: 800 } });
   const errs = [];

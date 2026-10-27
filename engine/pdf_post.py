@@ -31,13 +31,16 @@ def main(pdf_path, fontfile, anchor_text, direction):
     cover.add_redact_annot(band)
     cover.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_REMOVE, graphics=pymupdf.PDF_REDACT_LINE_ART_NONE)
 
-    font = pymupdf.Font(fontfile=fontfile)
+    font = pymupdf.Font(fontfile=fontfile) if fontfile else pymupdf.Font('helv')
+    if not fontfile:
+        print('post: WARN no TrueType face found; folios set in a built-in face (install the fonts)')
     done, missed = 0, []
     for i in range(1, doc.page_count):
         page = doc[i]
         runs = footer_runs(page)
         bottom = page.rect.height - 16 * 72 / 25.4
-        anchor = next((r for r in runs if anchor_text and anchor_text in r[0] and r[1][1] > bottom), None)
+        # a fallback face can split the anchor into several runs: any footer run that is part of it will do
+        anchor = next((r for r in runs if anchor_text and r[1][1] > bottom and (anchor_text in r[0] or r[0] in anchor_text)), None)
         if not anchor:
             missed.append(i + 1)
             continue
@@ -49,8 +52,8 @@ def main(pdf_path, fontfile, anchor_text, direction):
         width = font.text_length(label, fontsize=size)
         # the footer row is LTR whatever the page is: the folio slot is the right end
         x = page.rect.width - side - width
-        page.insert_text(pymupdf.Point(x, baseline), label, fontname="bwfolio", fontfile=fontfile,
-                         fontsize=size, color=tuple(c / 255 for c in rgb))
+        face = {"fontname": "bwfolio", "fontfile": fontfile} if fontfile else {"fontname": "helv"}
+        page.insert_text(pymupdf.Point(x, baseline), label, fontsize=size, color=tuple(c / 255 for c in rgb), **face)
         done += 1
     if missed:
         raise SystemExit("no footer run found on sheet(s) %s" % ", ".join(map(str, missed)))

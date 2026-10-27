@@ -866,7 +866,9 @@ ${e.comments.length ? `<h3>${esc(t('comment'))}</h3><ul class="list">${e.comment
 <h3>${esc(t('shortcuts'))}</h3><p class="hint">${esc(t('shortcutsText'))}</p>`;
   } else if (kind === 'conflicts') {
     d.setAttribute('aria-label', t('conflictTitle'));
-    html = head(t('conflictTitle')) + `<ul class="list">${S.conflicts.map((c, i) => `<li><span class="path">${esc(c.ed)} ${esc(c.path)}</span><div class="diff"><div><b>${esc(t('mine'))}</b> ${esc(JSON.stringify(c.mine))}</div><div><b>${esc(t('theirs'))}</b> ${esc(JSON.stringify(c.theirs))}</div></div><div class="btns"><button type="button" data-mine="${i}">${esc(t('keepMine'))}</button><button type="button" data-theirs="${i}">${esc(t('keepTheirs'))}</button></div></li>`).join('')}</ul>`;
+    const opText = (o) => `${o.op} ${o.from ? `${o.from} → ` : ''}${o.path}`;
+    const side = (c, k) => (c.kind === 'structure' ? c[k].map(opText).join(' · ') : JSON.stringify(c[k]));
+    html = head(t('conflictTitle')) + `<ul class="list">${S.conflicts.map((c, i) => `<li data-kind="${c.kind || 'text'}"><span class="path">${esc(c.ed)} ${esc(c.path)}${c.kind === 'structure' ? ` — ${esc(t('structConflict'))}` : ''}</span><div class="diff"><div><b>${esc(t('mine'))}</b> ${esc(side(c, 'mine'))}</div><div><b>${esc(t('theirs'))}</b> ${esc(side(c, 'theirs'))}</div></div><div class="btns"><button type="button" data-mine="${i}">${esc(t('keepMine'))}</button><button type="button" data-theirs="${i}">${esc(t('keepTheirs'))}</button></div></li>`).join('')}</ul>`;
   }
   d.innerHTML = html;
   d.onclick = onDrawer;
@@ -943,7 +945,21 @@ async function onDrawer(e) {
   if (x.dataset.mine !== undefined || x.dataset.theirs !== undefined) {
     const i = +(x.dataset.mine ?? x.dataset.theirs);
     const c = S.conflicts[i];
-    if (x.dataset.theirs !== undefined) {
+    if (c.kind === 'structure') {
+      const e3 = cur(c.ed);
+      try {
+        const next = resolveStructure(e3.base, e3.ops, c, x.dataset.theirs !== undefined ? 'theirs' : 'mine');
+        if (next !== e3.ops) {
+          const group = newGroup();
+          next.forEach((o, k) => { if (!o.id) o.id = `${group}.${k}`; });
+          e3.ops = next;
+          e3.redo = [];
+          rebuild(e3);
+          touched();
+          render();
+        }
+      } catch (err) { flash(String(err.message || err), true); return; }
+    } else if (x.dataset.theirs !== undefined) {
       const keepEd = S.ed;
       S.ed = c.ed;
       commit([{ op: typeof c.theirs === 'string' ? 'setText' : 'replace', path: c.path, value: c.theirs, old: c.mine }], { ed: c.ed });

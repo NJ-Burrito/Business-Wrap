@@ -33,6 +33,9 @@ export function chromePath() {
   return c.find((p) => p && fs.existsSync(p));
 }
 
+/** Chrome launch options. Linux CI runners forbid the user-namespace sandbox. */
+export const launchOptions = () => ({ headless: true, executablePath: chromePath(), args: process.env.CI && process.platform === 'linux' ? ['--no-sandbox'] : [] });
+
 export function fontsFor(theme) {
   const manifest = loadManifest();
   const { cuts, missing } = resolveFonts(manifest);
@@ -60,7 +63,7 @@ export async function exportPdf(doc, { locale, theme, pdfPath, browser: shared }
   const { html, fontCss, labels, used } = printHtml(doc, { locale, theme, embed: true });
   const tmp = path.join(os.tmpdir(), `bw-print-${process.pid}-${Date.now()}.html`);
   fs.writeFileSync(tmp, html, 'utf8');
-  const browser = shared || (await (await chromium()).launch({ headless: true, executablePath: chromePath() }));
+  const browser = shared || (await (await chromium()).launch(launchOptions()));
   try {
     const page = await browser.newPage({ viewport: { width: PAGE.measurePx, height: PAGE.contentPx } });
     await page.emulateMedia({ media: 'print' });

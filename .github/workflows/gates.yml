@@ -20,6 +20,18 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install gitleaks (pinned release, checksum verified)
+        run: |
+          V=8.30.1
+          curl -sSLo gl.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${V}/gitleaks_${V}_linux_x64.tar.gz"
+          curl -sSLo gl.sum "https://github.com/gitleaks/gitleaks/releases/download/v${V}/gitleaks_${V}_checksums.txt"
+          grep "gitleaks_${V}_linux_x64.tar.gz" gl.sum | sed 's/gitleaks_.*$/gl.tgz/' | sha256sum -c -
+          mkdir -p "$HOME/.local/bin" && tar -xzf gl.tgz -C "$HOME/.local/bin" gitleaks && rm gl.tgz gl.sum
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: gitleaks (full history, repo config)
+        run: gitleaks git --config security/gitleaks.toml --redact --no-banner --log-opts="--all" .
+
       - name: Security gate (tree + history + commit messages)
         env:
           PYTHONUTF8: "1"
@@ -44,6 +56,17 @@ jobs:
         if: hashFiles('package-lock.json') != ''
         run: npm ci
 
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Test tools (poppler, an Arabic-capable fallback face, Python libs)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq poppler-utils fonts-noto-core
+          uv pip install --system pymupdf python-docx lxml jsonschema
+
       - name: Editor engine tests
+        env:
+          PYTHONUTF8: "1"
+          CI: "true"
         if: hashFiles('tests/**') != ''
         run: npm test

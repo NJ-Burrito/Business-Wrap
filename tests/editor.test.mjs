@@ -17,7 +17,7 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { exportPdf, exportDocx, chromePath, loadTheme, REPO } from '../engine/export.mjs';
+import { exportPdf, exportDocx, launchOptions, loadTheme, fontsFor, REPO } from '../engine/export.mjs';
 import { applyOps, validateEdits } from '../engine/edits.mjs';
 import { config } from '../engine/config.mjs';
 
@@ -32,6 +32,21 @@ const BIBLE_SCHEMA = [path.join(REPO, 'bible', 'contracts', 'edits.schema.json')
 
 let failed = 0;
 const results = [];
+// spawn that never throws on a missing tool: stdout '' and status null instead
+const run = (cmd, args, opts = {}) => {
+  const r = spawnSync(cmd, args, { encoding: 'utf8', ...opts });
+  return { ok: r.status === 0, out: r.stdout || '', err: r.stderr || String(r.error || '') };
+};
+// Thmanyah is licensed and never committed: a runner without it skips the face-specific checks.
+const THEME0 = loadTheme();
+const FACES = fontsFor(THEME0).used.filter((c) => c.format === 'truetype').map((c) => c.family);
+const HAVE_FONTS = [THEME0.fonts.text, THEME0.fonts.display].every((f) => FACES.includes(f));
+const skips = [];
+function skip(name, why) {
+  results.push(`SKIP  ${name}  — ${why}`);
+  skips.push(name);
+}
+const fontCheck = (name, ok, detail = '') => (HAVE_FONTS ? check(name, ok, detail) : skip(name, 'Thmanyah TTF not installed on this machine (fonts are never committed)'));
 function check(name, ok, detail = '') {
   results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`);
   if (!ok) failed += 1;
@@ -47,7 +62,7 @@ const editorFile = path.join(OUT, 'editor.html');
 buildEditor({ inputs: [SAMPLE], out: editorFile, set: 'test', watermarkDir: WM_DIR });
 const editorUrl = pathToFileURL(editorFile).href;
 
-const browser = await chromium.launch({ headless: true, executablePath: chromePath() });
+const browser = await chromium.launch(launchOptions());
 const normDom = (page, ed) =>
   page.evaluate((ed) => {
     const m = document.querySelector(`main.bw-doc[data-locale="${ed}"]`).cloneNode(true);
@@ -136,8 +151,8 @@ try {
     check(`${ed}: edits file valid (engine check)`, validateEdits(edits).length === 0, validateEdits(edits).join('; '));
     check(`${ed}: edits file free of watermark`, !fs.readFileSync(editsPath, 'utf8').includes(WM_PNG.slice(0, 40)));
     if (fs.existsSync(BIBLE_SCHEMA)) {
-      const r = spawnSync('uv', ['run', '--no-project', '--with', 'jsonschema', 'python', '-c', 'import json,sys,jsonschema;jsonschema.validate(json.load(open(sys.argv[1],encoding="utf-8")),json.load(open(sys.argv[2],encoding="utf-8")));print("ok")', editsPath, BIBLE_SCHEMA], { encoding: 'utf8' });
-      check(`${ed}: edits file valid against bible/contracts/edits.schema.json`, r.stdout.trim() === 'ok', (r.stderr || '').split('\n').filter(Boolean).slice(-1)[0] || '');
+      const r = run('uv', ['run', '--no-project', '--with', 'jsonschema', 'python', '-c', 'import json,sys,jsonschema;jsonschema.validate(json.load(open(sys.argv[1],encoding="utf-8")),json.load(open(sys.argv[2],encoding="utf-8")));print("ok")', editsPath, BIBLE_SCHEMA]);
+      check(`${ed}: edits file valid against bible/contracts/edits.schema.json`, r.out.trim() === 'ok', r.err.split('\n').filter(Boolean).slice(-1)[0] || '');
     }
     // per-service + global bundles
     const bundleFile = await download(page, () => ui(page, 'exportEdits').click());
@@ -196,6 +211,45 @@ try {
     await fresh.locator('.drawer [data-theirs]').first().waitFor({ timeout: 5000 }).catch(() => {});
     const conflicts = await fresh.locator('.drawer [data-theirs]').count();
     check(`${ed}: conflict view on import (#8)`, conflicts === 1, `conflicts=${conflicts}`);
+    // structural conflict: they deleted the block I dragged → a structural prompt, and "take theirs" applies
+    const theirsStruct = { ...edits, ops: [{ op: 'delete', path: '/chapters/1/sections/0/blocks/0' }] };
+    const theirsStructFile = path.join(OUT, `theirs-struct.${ed}.json`);
+    fs.writeFileSync(theirsStructFile, JSON.stringify(theirsStruct));
+    const [chS] = await Promise.all([fresh.waitForEvent('filechooser'), ui(fresh, 'import').click()]);
+    await chS.setFiles(theirsStructFile);
+    const structLi = fresh.locator('.drawer li[data-kind="structure"]');
+    await structLi.first().waitFor({ timeout: 5000 }).catch(() => {});
+    const nStruct = await structLi.count();
+    check(`${ed}: structural conflict prompt on import`, nStruct >= 1, `structural=${nStruct}`);
+    if (nStruct) {
+      const before = await fresh.evaluate((ed) => window.BW.M[window.BW.S.svc][ed].doc.chapters[1].sections[0].blocks.length, ed);
+      await structLi.first().locator('[data-theirs]').click();
+      const after = await fresh.evaluate((ed) => window.BW.M[window.BW.S.svc][ed].doc.chapters[1].sections[0].blocks.map((b) => b.kind), ed);
+      check(`${ed}: structural "take theirs" applies their delete`, after.length === before - 1, JSON.stringify(after));
+    }
+
+    // table column add + delete through the toolbar (fees table 2.2, 3 columns)
+    const fees = '/chapters/1/sections/1/blocks/1';
+    await fresh.locator(`${main} [data-p="${fees}/rows/0/1"]`).click();
+    await ui(fresh, 'colAdd').click();
+    const added = await fresh.evaluate(([ed, f]) => { const b = window.BW.applyOps ? null : null; const d = window.BW.M[window.BW.S.svc][ed].doc; const t = f.split('/').filter(Boolean).reduce((o, k) => o[k], d); return [t.columns.length, ...t.rows.map((r) => r.length)]; }, [ed, fees]);
+    check(`${ed}: column added (header + every row)`, added.every((n) => n === 4), JSON.stringify(added));
+    await fresh.locator(`${main} [data-p="${fees}/rows/0/2"]`).click();
+    await ui(fresh, 'colDel').click();
+    const removed = await fresh.evaluate(([ed, f]) => { const d = window.BW.M[window.BW.S.svc][ed].doc; const t = f.split('/').filter(Boolean).reduce((o, k) => o[k], d); return [t.columns.length, ...t.rows.map((r) => r.length), t.columns[2]]; }, [ed, fees]);
+    check(`${ed}: column deleted (header + every row)`, removed.slice(0, -1).every((n) => n === 3) && removed.at(-1) !== '…', JSON.stringify(removed));
+
+    // design pack import: a token applies; a hostile token and a script logo are refused
+    const pack = { kind: 'bw-design-pack', version: 1, vars: { primary: '#7a1f5c', ink: 'red;}</style><script>window.__pwned=3</script>' }, logos: { start: 'javascript:alert(1)' }, fonts: { text: 'Thmanyah Serif Text', display: 'Thmanyah Serif Display' } };
+    const packFile = path.join(OUT, `pack.${ed}.json`);
+    fs.writeFileSync(packFile, JSON.stringify(pack));
+    await ui(fresh, 'theme').click();
+    const [chP] = await Promise.all([fresh.waitForEvent('filechooser'), fresh.locator('.drawer button[data-k="timp"]').click()]);
+    await chP.setFiles(packFile);
+    await fresh.waitForFunction(() => window.BW.S.theme.vars.primary === '#7a1f5c', null, { timeout: 5000 }).catch(() => {});
+    const applied = await fresh.evaluate(() => ({ primary: getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(), ink: getComputedStyle(document.documentElement).getPropertyValue('--ink').trim(), logo: window.BW.S.theme.logos.start, pwned: window.__pwned || 0 }));
+    check(`${ed}: design pack import applies tokens, refuses hostile values`, applied.primary === '#7a1f5c' && !applied.ink.includes('<') && applied.logo === '' && !applied.pwned, JSON.stringify(applied));
+
     // the colleague's Save-HTML imports too (data only)
     const [ch3] = await Promise.all([fresh.waitForEvent('filechooser'), ui(fresh, 'import').click()]);
     await ch3.setFiles(savedHtml);
@@ -221,21 +275,22 @@ try {
     const edited = applyOps(base, edits.ops);
     const pdf = path.join(OUT, `event-permit.${ed}.pdf`);
     await exportPdf(edited, { locale: ed, theme: loadTheme(), pdfPath: pdf, browser });
-    const txt = spawnSync(tool('pdftotext'), ['-enc', 'UTF-8', pdf, '-'], { encoding: 'utf8' }).stdout || '';
-    const fonts = spawnSync(tool('pdffonts'), [pdf], { encoding: 'utf8' }).stdout || '';
+    const txt = run(tool('pdftotext'), ['-enc', 'UTF-8', pdf, '-']).out;
+    const fonts = run(tool('pdffonts'), [pdf]).out;
+    check(`${ed}: poppler available (pdftotext, pdffonts)`, txt.length > 0 && fonts.length > 0, POPPLER || 'from PATH');
     const arabic = (txt.match(/[\u0600-\u06FF]/g) || []).length;
     const latinWords = (txt.match(/\b(Document|Service|request|Business|rules)\b/g) || []).length;
     if (ed === 'ar') check('ar: PDF has Arabic text', arabic > 500, `arabic chars=${arabic}`);
     else check('en: PDF has English text', latinWords > 5 && arabic === 0, `words=${latinWords} arabic=${arabic}`);
     check(`${ed}: PDF carries the edited text`, txt.replace(/\s+/g, ' ').includes(ed === 'ar' ? 'للاختبار' : 'Edited text for the test'));
-    check(`${ed}: PDF fonts are Thmanyah`, /thmanyah/i.test(fonts));
-    check(`${ed}: PDF has no Type 3`, !/Type 3/.test(fonts));
-    check(`${ed}: PDF has no Cairo / Segoe / Arial fallback`, !/cairo|segoe|arial|times|tahoma/i.test(fonts));
-    const imgs = spawnSync('python', ['-c', 'import pymupdf,sys\nfor f in sys.argv[1:]:\n d=pymupdf.open(f); print(sum(len(p.get_images()) for p in d), d.page_count)', pdf, editorPdf], { encoding: 'utf8' }).stdout.trim().split(/\r?\n/).map((l) => l.trim());
+    fontCheck(`${ed}: PDF fonts are Thmanyah`, /thmanyah/i.test(fonts));
+    fontCheck(`${ed}: PDF has no Type 3`, !/Type 3/.test(fonts));
+    fontCheck(`${ed}: PDF has no Cairo / Segoe / Arial fallback`, !/cairo|segoe|arial|times|tahoma/i.test(fonts));
+    const imgs = run('python', ['-c', 'import pymupdf,sys\nfor f in sys.argv[1:]:\n d=pymupdf.open(f); print(sum(len(p.get_images()) for p in d), d.page_count)', pdf, editorPdf]).out.trim().split(/\r?\n/).map((l) => l.trim());
     check(`${ed}: watermark absent from export PDF and editor print (no images)`, imgs.every((l) => l.split(' ')[0] === '0'), imgs.join(' | '));
     check(`${ed}: editor print and export have the same page count`, imgs[0].split(' ')[1] === imgs[1].split(' ')[1], imgs.join(' | '));
     const docx = exportDocx(edited, { locale: ed, theme: loadTheme(), docxPath: path.join(OUT, `event-permit.${ed}.docx`) }).docx;
-    const docxXml = spawnSync('python', ['-c', 'import zipfile,sys;z=zipfile.ZipFile(sys.argv[1]);print(z.read("word/document.xml").decode())', docx], { encoding: 'utf8' }).stdout;
+    const docxXml = run('python', ['-c', 'import zipfile,sys;z=zipfile.ZipFile(sys.argv[1]);print(z.read("word/document.xml").decode())', docx]).out;
     check(`${ed}: DOCX carries the edited text`, docxXml.includes(ed === 'ar' ? 'للاختبار' : 'Edited text for the test'));
     check(`${ed}: DOCX has no watermark image`, !/<pic:pic/.test(docxXml) || !docxXml.includes('tool-mark'));
     check(`${ed}: no page errors`, errors.length === 0 && errors2.length === 0, [...errors, ...errors2].join(' | '));
@@ -274,7 +329,7 @@ try {
   await pb.emulateMedia({ media: 'print' });
   const bigPdf = path.join(OUT, 'big.editor-print.pdf');
   await pb.pdf({ path: bigPdf, preferCSSPageSize: true, printBackground: true });
-  const bigPages = spawnSync('python', ['-c', 'import pymupdf,sys;print(pymupdf.open(sys.argv[1]).page_count)', bigPdf], { encoding: 'utf8' }).stdout.trim();
+  const bigPages = run('python', ['-c', 'import pymupdf,sys;print(pymupdf.open(sys.argv[1]).page_count)', bigPdf]).out.trim();
   const perf = `pages=${bigPages} load=${loadMs}ms duplicate+render=${timing.duplicate.toFixed(0)}ms undo+render=${timing.undo.toFixed(0)}ms keystroke=${timing.typing.toFixed(1)}ms`;
   fs.writeFileSync(path.join(OUT, 'perf.txt'), perf + '\n');
   check('60-page document stays responsive (<300 ms per structural edit)', +bigPages >= 60 && timing.duplicate < 300 && timing.undo < 300, perf);
@@ -286,6 +341,7 @@ try {
 }
 
 console.log(results.join('\n'));
-console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: ${results.length - failed}/${results.length}`);
+const ran = results.length - skips.length;
+console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: ${ran - failed}/${ran}${skips.length ? ` (${skips.length} skipped: ${HAVE_FONTS ? '' : 'no Thmanyah fonts'})` : ''}`);
 fs.writeFileSync(path.join(OUT, 'results.txt'), results.join('\n') + '\n');
 process.exit(failed ? 1 : 0);

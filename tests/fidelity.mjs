@@ -13,7 +13,7 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { chromePath, REPO } from '../engine/export.mjs';
+import { launchOptions, REPO } from '../engine/export.mjs';
 import { PAGE } from '../engine/render.mjs';
 
 const a = Object.fromEntries(process.argv.slice(2).reduce((acc, x, i, arr) => (x.startsWith('--') ? [...acc, [x.slice(2), arr[i + 1]]] : acc), []));
@@ -23,7 +23,7 @@ export async function editorPrint(docFile, themeFile, outPdf) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-fid-'));
   const html = path.join(tmp, 'editor.html');
   buildEditor({ inputs: [docFile], out: html, themeFile, watermarkDir: null });
-  const b = await chromium.launch({ executablePath: chromePath() });
+  const b = await chromium.launch(launchOptions());
   try {
     const p = await b.newPage({ viewport: { width: PAGE.measurePx, height: PAGE.contentPx } });
     await p.goto(pathToFileURL(html).href);

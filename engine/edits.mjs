@@ -123,8 +123,47 @@ export function mergeOps(base, mine, theirs) {
   }
   const conflictPaths = new Set(conflicts.map((c) => c.path));
   const mineKeys = new Set(mine.map((o) => JSON.stringify(o)));
-  const extra = theirs.filter((o) => !conflictPaths.has(o.path) && !mineKeys.has(JSON.stringify(o)));
+  // Structural edits (move / delete / insert / duplicate) on the same unit — a block,
+  // a row, a story, a paragraph — on both sides are a conflict too: replaying both
+  // would shift each other's indices.
+  const sig = (o) => JSON.stringify({ op: o.op, path: o.path, from: o.from, to: o.to, value: o.value });
+  const mineSigs = new Set(mine.map(sig));
+  const theirStruct = new Set();
+  for (const t of theirs) {
+    if (!STRUCT.has(t.op) || mineSigs.has(sig(t))) continue;
+    const tk = unitsOf(t);
+    const hit = mine.filter((m) => STRUCT.has(m.op) && unitsOf(m).some((a) => tk.some((b) => overlaps(a, b))));
+    if (!hit.length) continue;
+    const key = tk[0];
+    const same = conflicts.find((c) => c.kind === 'structure' && c.path === key);
+    if (same) same.theirs.push(t);
+    else conflicts.push({ kind: 'structure', path: key, mine: hit, theirs: [t] });
+    theirStruct.add(t);
+  }
+  const extra = theirs.filter((o) => !theirStruct.has(o) && !conflictPaths.has(o.path) && !mineKeys.has(JSON.stringify(o)));
   return { merged: [...mine, ...extra], conflicts };
+}
+
+const STRUCT = new Set(['move', 'delete', 'insert', 'duplicate']);
+/** The deepest array element a pointer names (…/blocks/3, …/rows/2/…→…/rows/2). */
+function unitOf(p) {
+  const m = [...String(p).matchAll(/\/(chapters|sections|blocks|rows|items|paragraphs|columns|acceptance)\/(\d+|-)/g)];
+  if (!m.length) return p;
+  const last = m.at(-1);
+  return p.slice(0, last.index + last[0].length);
+}
+const unitsOf = (o) => [o.path, o.from, o.to].filter(Boolean).map(unitOf);
+const overlaps = (a, b) => a === b || a.startsWith(b + '/') || b.startsWith(a + '/');
+
+/**
+ * Resolve a structural conflict: 'mine' drops their ops; 'theirs' swaps my ops on
+ * that unit for theirs. Returns the new op list, or throws if it no longer applies.
+ */
+export function resolveStructure(base, ops, conflict, side) {
+  if (side === 'mine') return ops;
+  const next = [...ops.filter((o) => !conflict.mine.includes(o)), ...conflict.theirs];
+  applyOps(base, next);
+  return next;
 }
 
 /** Every string leaf that the editor may edit: [{path, value}]. */
