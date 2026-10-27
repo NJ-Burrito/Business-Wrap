@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://business-wrap.local/contracts/edits.schema.json",
+  "title": "Business-Wrap edits file",
+  "description": "Ordered list of human edits made in the HTML editor on top of a document JSON. Replaying ops in order on the base document (matched by baseHash) must give the edited document. Targets are RFC 6901 JSON Pointers into the document JSON (e.g. /chapters/2/sections/0/blocks/1/rows/3/2). Pointers are resolved against the document state AFTER all previous ops.",
+  "type": "object",
+  "required": ["version", "document", "baseHash", "locale", "ops"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "document": { "type": "string", "description": "Document id (control.documentId or file stem)." },
+    "baseHash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "sha256 of the base document JSON bytes the ops apply to. Replay refuses on mismatch." },
+    "locale": { "enum": ["ar", "en"], "description": "Edition edited. ar = RTL, en = LTR." },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "author": { "type": "string", "description": "Free text initials; never an email or ID number." },
+    "theme": { "$ref": "#/$defs/themeOverrides" },
+    "ops": { "type": "array", "items": { "$ref": "#/$defs/op" } }
+  },
+  "$defs": {
+    "pointer": { "type": "string", "pattern": "^(/([^~/]|~[01])*)*$" },
+    "op": {
+      "type": "object",
+      "required": ["op", "path"],
+      "properties": {
+        "id": { "type": "string", "description": "Optional op id for undo/redo bookkeeping." },
+        "at": { "type": "string", "format": "date-time" },
+        "op": { "enum": ["setText", "replace", "insert", "delete", "move", "duplicate"] },
+        "path": { "$ref": "#/$defs/pointer" }
+      },
+      "oneOf": [
+        { "properties": { "op": { "const": "setText" }, "value": { "type": "string" }, "old": { "type": "string" } }, "required": ["value"],
+          "description": "Replace a string leaf (paragraph, cell, title, caption). old = previous text, for conflict check and undo." },
+        { "properties": { "op": { "const": "replace" }, "value": {}, "old": {} }, "required": ["value"],
+          "description": "Replace any node (object/array) with value." },
+        { "properties": { "op": { "const": "insert" }, "value": {} }, "required": ["value"],
+          "description": "Insert value into an array; path ends with the target index or '-' for append (block, row, column cell, paragraph, story)." },
+        { "properties": { "op": { "const": "delete" }, "old": {} },
+          "description": "Remove the array item or object member at path. old = removed value, for undo." },
+        { "properties": { "op": { "const": "move" }, "from": { "$ref": "#/$defs/pointer" } }, "required": ["from"],
+          "description": "Move the node at from to path (JSON Patch move semantics). Used for drag-reorder of blocks, rows, sections." },
+        { "properties": { "op": { "const": "duplicate" }, "to": { "$ref": "#/$defs/pointer" } },
+          "description": "Copy the array item at path and insert it at to (default: right after path)." }
+      ]
+    },
+    "themeOverrides": {
+      "type": "object",
+      "description": "Token overrides by DTCG token path (e.g. 'color.accent.primary', 'type.size.body'), value in the token's own type. Applied on top of the design pack.",
+      "additionalProperties": { "type": ["string", "number"] }
+    }
+  },
+  "examples": [{
+    "version": 1, "document": "SAMPLE-001", "baseHash": "sha256:0000000000000000000000000000000000000000000000000000000000000000", "locale": "en",
+    "ops": [
+      { "op": "setText", "path": "/chapters/0/sections/0/blocks/0/paragraphs/0", "value": "New wording.", "old": "Old wording." },
+      { "op": "move", "from": "/chapters/1/sections/0/blocks/2", "path": "/chapters/1/sections/0/blocks/0" },
+      { "op": "duplicate", "path": "/chapters/1/sections/0/blocks/1/rows/0" },
+      { "op": "delete", "path": "/chapters/2/sections/1/blocks/0/rows/4" }
+    ],
+    "theme": { "color.accent.primary": "#1F6F5C" }
+  }]
+}
