@@ -8,6 +8,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.8.3] - 2026-10-28
+
+From the fourth live run with 0.8.2 (0 requests filed, 0 workarounds, 8 of 11 checks). / من التشغيل الحي الرابع.
+
+### Fixed / أصلح
+- Card channels (and every card list: recipients, fees, required documents) were harvested but dropped by the mapper; they are now rows of the service-card table, so they reach the PDF and DOCX. / قنوات تقديم الخدمة في الوثيقة.
+- An attachment is one row: the file input paired with its «attachment name» select (names, required, accepted types); the card's statement on required documents wins over the select's star, and a disagreement becomes an open question; the paired select leaves the inputs table. / صف مرفق واحد.
+- Required in a dry run: every field is blurred first (Tab through), each inline message is kept with its field and listed with it under Validation messages; a non-final Next may be pressed, a final action never. / الإلزامي دون ضغط «إرسال».
+
+### Tests / الاختبارات
+- The fixture's card lists its documents; an «attachment name» select sits beside the file; the card's channels are checked in the PDF text; inline messages carry their field. / اختبارات جديدة.
+
 ## [0.8.2] - 2026-10-27
 
 Urgent safety fix: the 0.8.1 live crawl filed two real staging requests. / إصلاح أمان عاجل: مرور 0.8.1 قدّم طلبين حقيقيين.

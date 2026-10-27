@@ -73,6 +73,11 @@ MCP `harvest_merge {crawl, model, out_dir, name?, roles?}`; editor **New documen
 - **Labels:** the field's own container is the highest ancestor that holds no other control; its label wins (before or after the control); a panel, card or tab caption is never a field label.
 - Captcha fields (`g-recaptcha-response` and the like) are skipped; a gateway named after its variable ("action", "decision") is numbered like an unnamed one.
 
+## Card lists, attachments, required in a dry run (0.8.3)
+- The card's lists (recipients, fees, required documents, channels) are rows of the service-card table, in the document and the PDF / DOCX.
+- An attachment is the file input together with the «attachment name» select beside it: one row with the names (the select's options), required, and the accepted types. The card's statement on required documents (e.g. "not required") wins over the select's star; when they disagree, an open question records it.
+- Required in a dry run: every field is focused and left (Tab) first, as a user would, and each field's inline message is read and kept with the field (Validation messages: message, field). A Next that is not a final action may still be pressed; a final action never is.
+
 ## Editions, files, fonts (0.8.0)
 - The document code (`control.documentId`, the running header and the cover spine) is Latin in both editions: the process key, the crawl name, or a transliteration; never the Arabic slug.
 - Export file names keep Arabic readable (`طلب-حجز-قاعة.ar.pdf`); exports go to `--out`, or an `exports` folder beside the document / the editor, never into this repository.

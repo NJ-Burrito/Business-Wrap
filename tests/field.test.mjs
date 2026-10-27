@@ -13,7 +13,7 @@ import { chromium } from 'playwright-core';
 import { harvestCrawl, harvestModel, harvestMerge } from '../engine/harvest/cli.mjs';
 import { isLanguageSwitch, wrongLanguage } from '../engine/harvest/crawl.mjs';
 import { parseModel } from '../engine/harvest/model.mjs';
-import { launchOptions, exportDocx, loadTheme, fontsFor, REPO, fileStem } from '../engine/export.mjs';
+import { launchOptions, exportDocx, exportPdf, loadTheme, fontsFor, REPO, fileStem } from '../engine/export.mjs';
 import { buildSpa } from './fixtures/harvest/spa.mjs';
 
 const OUT = path.join(REPO, 'out', 'field-test');
@@ -94,6 +94,24 @@ try {
     check(`spa ${l}: one form step (no duplicate), the attachment kept beside the form, the statuses from the config`, L.steps.length === 1 && f.some((x) => x.type === 'file' && x.label === (l === 'ar' ? 'مخطط القاعة' : 'Floor plan')) && L.statuses.length === 4, `${L.steps.length} steps, ${f.filter((x) => x.type === 'file').map((x) => x.label)}`);
     check(`spa ${l}: card fees, recipients and channels`, !!facts[T.fees] && (facts[T.rec] || '').includes('،') && !!facts[T.ch], JSON.stringify(L.card.facts));
     check(`spa ${l}: every starred field is required; the message only adds`, ['organiser', 'purpose', 'eventDate', 'kind', 'plan', 'ref'].every((k) => f.find((x) => x.key === k)?.required) && !f.find((x) => x.key === 'notes')?.required, JSON.stringify(f.map((x) => [x.key, x.required])));
+  }
+  // 0.8.3: the card's lists reach the document (and the PDF), one attachment row per file + its name select,
+  // inline messages read by blurring the fields (the dry run never presses Send)
+  const [arD, enD] = cr.documents.map(read);
+  for (const [l, d] of [['ar', arD], ['en', enD]]) {
+    const T = l === 'ar' ? { card: 'بطاقة الخدمة', att: 'المرفقات', val: 'رسائل التحقق', ch: 'قنوات تقديم الخدمة', via: 'مركز الخدمة', docs: 'المستندات المطلوبة', name: 'مخطط القاعة (المرفق غير إجباري)', no: 'لا', where: 'اسم المنظم' } : { card: 'Service card', att: 'Attachments', val: 'Validation messages', ch: 'Channels', via: 'Service centre', docs: 'Required documents', name: 'Floor plan (optional attachment)', no: 'No', where: 'Organiser name' };
+    const card = tableIn(d, T.card)?.rows || [];
+    check(`spa ${l}: card lists (channels, documents) are rows of the service card`, card.some(([k, v]) => k === T.ch && v.includes(T.via)) && card.some(([k]) => k === T.docs), JSON.stringify(card).slice(0, 220));
+    const att = tableIn(d, T.att)?.rows || [];
+    check(`spa ${l}: one attachment row: the name select + the file, accepted types, required from the card`, att.length === 1 && att[0][0] === T.name && att[0][1] === T.no && att[0][2] === '.pdf,image/*' && !JSON.stringify(tableIn(d, l === 'ar' ? 'المدخلات' : 'Inputs')?.rows || []).includes(T.name) && d.openQuestions.some((q) => q.blocks === '4'), JSON.stringify([att, d.openQuestions.map((q) => q.question)]));
+    const val = tableIn(d, T.val)?.rows || [];
+    check(`spa ${l}: inline messages from blurring the fields, with the field they belong to`, val.some(([, w]) => w === T.where), JSON.stringify(val).slice(0, 200));
+  }
+  {
+    const pdf = path.join(OUT, 'card.en.pdf');
+    await exportPdf(enD, { locale: 'en', theme: loadTheme(), pdfPath: pdf, browser });
+    const txt = spawnSync('pdftotext', ['-enc', 'UTF-8', pdf, '-'], { encoding: 'utf8' }).stdout.replace(/\s+/g, ' ');
+    check('PDF: the card channels are printed', txt.includes('Channels') && txt.includes('Service centre'), '');
   }
   check('spa: harvest.json is written as the crawl goes (kept on a crash)', fs.existsSync(path.join(cr.rawDir, 'harvest.json')) && read(path.join(cr.rawDir, 'harvest.json')).languages.en.steps.length === 1);
 

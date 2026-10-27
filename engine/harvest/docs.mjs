@@ -43,10 +43,36 @@ export function harvestToDocument(raw, { locale = 'en', L, today = new Date().to
   const name = H.card?.title || raw.name || L.untitled;
   const svc = String(raw.name || H.card?.title || 'service').toLowerCase().normalize('NFKD').replace(/[^\w؀-ۿ]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'service';
   const yn = (b) => (b ? L.yes : L.no);
-  const fieldsOf = (s) => s.fields.filter((f) => f.type !== 'file');
-  const files = H.steps.flatMap((s) => s.fields.filter((f) => f.type === 'file'));
+  const fieldsOf = (s) => s.fields.filter((f) => f.type !== 'file' && !pairedSelects.has(f.key));
+  // the card: its label/value facts, then each list (recipients, fees, documents, channels) as one row
+  const cardRows = [...(H.card?.facts || [])];
+  for (const li of H.card?.lists || []) if (li.title && li.items?.length && !cardRows.some(([k]) => k === li.title)) cardRows.push([li.title, li.items.join(L.listSep)]);
+  // an attachment is the file input with the «attachment name» select beside it: one row (names, required, types).
+  // The card's own statement on required documents wins over the select's star; a disagreement is a question.
+  const ATT_NAME = /(اسم|نوع)\s*المرفق|attachment\s*(name|type)|document\s*(name|type)/i;
+  const OPTIONAL = /غير\s*(إجباري|اجباري|إلزامي|الزامي|مطلوب)|اختياري|not\s*required|optional/i;
+  const REQUIRED = /(إجباري|اجباري|إلزامي|الزامي)(?!\S)|\bmandatory\b|\brequired\b/i;
+  const docsList = (H.card?.lists || []).find((li) => /المستندات|المرفقات|documents|attachments/i.test(li.title || ''));
+  const cardSays = (names) => {
+    const said = [...(docsList?.items || []), ...names].join(' | ');
+    return OPTIONAL.test(said) ? false : REQUIRED.test(said) && !OPTIONAL.test(said) ? true : null;
+  };
+  const files = [];
+  const pairGaps = [];
+  for (const s of H.steps) s.fields.forEach((f, i) => {
+    if (f.type !== 'file') return;
+    const near = [s.fields[i - 1], s.fields[i + 1]].find((g) => g && g.type === 'select' && ATT_NAME.test(g.label || ''));
+    const names = near?.options?.length ? near.options : [];
+    const statement = cardSays(names);
+    const starred = !!(f.required || near?.required);
+    const required = statement ?? starred;
+    if (statement !== null && statement !== starred) pairGaps.push((L.gapAttachment || 'The card says the attachment is {c}, the form marks it {f}: which is right?').replace('{c}', statement ? L.yes : L.no).replace('{f}', starred ? L.yes : L.no));
+    files.push({ label: names.join(L.listSep) || f.label || near?.label || L.none, required, accept: f.accept || '' });
+  });
+  const pairedSelects = new Set(H.steps.flatMap((s) => s.fields.filter((g, i) => g.type === 'select' && ATT_NAME.test(g.label || '') && [s.fields[i - 1], s.fields[i + 1]].some((x) => x?.type === 'file')).map((g) => g.key)));
   const sec = (number, title, blocks) => ({ number, title, blocks });
   const gaps = [];
+  for (const q of pairGaps) gaps.push({ id: `Q${gaps.length + 1}`, question: q, owner: L.ownerAnalyst, blocks: '4' });
   if (!raw.languages[locale]) gaps.push({ id: 'Q1', question: L.gapLang.replace('{l}', locale === 'ar' ? 'العربية' : 'English'), owner: L.ownerAnalyst, blocks: '2' });
   const stories = H.steps.map((s, k) => ({
     id: `US-${String(k + 1).padStart(2, '0')}`,
@@ -65,10 +91,10 @@ export function harvestToDocument(raw, { locale = 'en', L, today = new Date().to
     approvals: [],
     chapters: [
       { number: '1', title: L.chIntro, sections: [sec('1.1', L.secPurpose, [{ kind: 'prose', paragraphs: [L.introCrawl.replace('{name}', name), L.introSource.replace('{s}', L.src_crawl)] }])] },
-      { number: '2', title: L.chCard, sections: [sec('2.1', L.secCardInfo, [...(H.card?.description?.length ? [{ kind: 'prose', paragraphs: H.card.description }] : []), { kind: 'table', columns: [L.colItem, L.colValue], rows: H.card?.facts?.length ? H.card.facts : [[L.none, L.none]] }])] },
+      { number: '2', title: L.chCard, sections: [sec('2.1', L.secCardInfo, [...(H.card?.description?.length ? [{ kind: 'prose', paragraphs: H.card.description }] : []), { kind: 'table', columns: [L.colItem, L.colValue], rows: cardRows.length ? cardRows : [[L.none, L.none]] }])] },
       { number: '3', title: L.chInputs, sections: H.steps.length ? H.steps.map((s, k) => sec(`3.${k + 1}`, s.title || L.formStep.replace('{n}', k + 1), [{ kind: 'table', columns: [L.colLabel, L.colType, L.colRequired, L.colOptions, L.colConditional], rows: fieldsOf(s).map((f) => [f.label, f.type, yn(f.required), (f.options || []).join(L.listSep), (f.shownWhen || []).join(L.listSep)]) }])) : [sec('3.1', L.chInputs, [{ kind: 'prose', paragraphs: [L.none] }])] },
-      { number: '4', title: L.chAttachments, sections: [sec('4.1', L.chAttachments, [files.length ? { kind: 'table', columns: [L.colLabel, L.colRequired, L.colAccept], rows: files.map((f) => [f.label, yn(f.required), f.accept || '']) } : { kind: 'prose', paragraphs: [L.noAttachments] }])] },
-      { number: '5', title: L.chValidations, sections: [sec('5.1', L.chValidations, [H.steps.some((s) => s.validations.length) ? { kind: 'table', columns: [L.colMessage, L.colWhere], rows: H.steps.flatMap((s, k) => s.validations.map((m) => [m, s.title || L.formStep.replace('{n}', k + 1)])) } : { kind: 'prose', paragraphs: [L.noValidations] }])] },
+      { number: '4', title: L.chAttachments, sections: [sec('4.1', L.chAttachments, [files.length ? { kind: 'table', columns: [L.colLabel, L.colRequired, L.colAccept], rows: files.map((f) => [f.label, yn(f.required), f.accept]) } : { kind: 'prose', paragraphs: [L.noAttachments] }])] },
+      { number: '5', title: L.chValidations, sections: [sec('5.1', L.chValidations, [H.steps.some((s) => s.validations.length || s.fields.some((f) => f.message)) ? { kind: 'table', columns: [L.colMessage, L.colWhere], rows: H.steps.flatMap((s, k) => [...s.fields.filter((f) => f.message).map((f) => [f.message, f.label || s.title]), ...s.validations.filter((m) => !s.fields.some((f) => f.message === m)).map((m) => [m, s.title || L.formStep.replace('{n}', k + 1)])]) } : { kind: 'prose', paragraphs: [L.noValidations] }])] },
       { number: '6', title: L.chStories, sections: [sec('6.1', L.chStories, stories.length ? [{ kind: 'stories', number: '6.1', lead: L.storyCards, items: stories }] : [{ kind: 'prose', paragraphs: [L.noTasks] }])] },
       { number: '7', title: L.chStatuses, sections: [sec('7.1', L.chStatuses, [H.statuses?.length ? { kind: 'table', columns: [L.colStatus], rows: H.statuses.map((s) => [s]) } : { kind: 'prose', paragraphs: [L.noStatuses] }])] },
     ],

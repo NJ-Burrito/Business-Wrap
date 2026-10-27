@@ -480,14 +480,15 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
         let messages = [];
         const hasNext = await page.locator(next).first().isVisible().catch(() => false);
         const finalStep = hasNext && (await isFinalAction(page, next));
-        if (hasNext) {
-          if (finalStep && !filing) {
-            for (const f of all.filter((x) => x.visible && x.type !== 'file')) {
-              const el = page.locator(f.prime ? `${f.selector} input, ${f.selector} [tabindex]` : f.selector).first();
-              await el.focus().catch(() => {});
-              await page.keyboard.press('Tab').catch(() => {});
-            }
-          } else await press(page, next);
+        // the safe trigger first, on every step: focus and leave each field (Tab), as a user would
+        for (const f of all.filter((x) => x.visible && x.type !== 'file')) {
+          const el = page.locator(f.prime ? `${f.selector} input, ${f.selector} [tabindex]` : f.selector).first();
+          await el.focus().catch(() => {});
+          await page.keyboard.press('Tab').catch(() => {});
+        }
+        await page.waitForTimeout(150);
+        {
+          if (hasNext && !(finalStep && !filing)) await press(page, next); // a Next that is not a final action, or filing was asked for
           await page.waitForTimeout(200);
           messages = await readMessages(page);
           if (messages.length) await shot(`step${n + 1}-validation`);
@@ -496,14 +497,15 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
           const flagged = await page.evaluate((sels) => sels.map((sel) => {
             const e = document.querySelector(sel);
             if (!e) return false;
+            const msgOf = (box) => [...(box?.querySelectorAll('.p-error, small.p-invalid, .invalid-feedback, .field-error, mat-error, [role="alert"]') || [])].filter((x) => x.offsetWidth || x.offsetHeight).map((x) => x.innerText.replace(/\s+/g, ' ').trim()).filter(Boolean)[0] || '';
             const box = e.closest('.p-field, .field, .form-group, .form-field, mat-form-field') || e.parentElement;
             const err = box && [...box.querySelectorAll('.p-error, small.p-invalid, .invalid-feedback, .field-error, mat-error, [role="alert"]')].some((x) => x.offsetWidth || x.offsetHeight);
             const inner = e.matches('input,select,textarea') ? e : e.querySelector('input,select,textarea');
             const ng = [e, inner].some((x) => x && x.classList.contains('ng-invalid') && (x.classList.contains('ng-touched') || x.classList.contains('ng-dirty') || !!x.closest('form.ng-submitted')));
-            return !!(err || ng);
+            return { on: !!(err || ng), message: err ? msgOf(box) : '' };
           }), all.map((f) => f.selector));
           const named = requiredByMessage(all.map((f) => f.label), messages);
-          all.forEach((f, i) => { if (flagged[i] || named.has(f.label)) f.required = true; });
+          all.forEach((f, i) => { if (flagged[i]?.on || named.has(f.label)) f.required = true; if (flagged[i]?.message) f.message = flagged[i].message; });
         }
         const step = { title, url: page.url(), fields: all.map(({ selector, selectors, prime, ...f }) => ({ ...f, shownWhen: cond[f.key] })), validations: messages };
         // the same form read twice (it did not advance): one step, the richer reading of each field

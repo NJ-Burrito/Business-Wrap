@@ -3,7 +3,7 @@
   "name": "io.github.NJ-Burrito/business-wrap",
   "title": "Business-Wrap",
   "description": "Build the bilingual requirements-document editor, apply edits files, export PDF + DOCX and design packs. Local only.",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "websiteUrl": "https://github.com/NJ-Burrito/Business-Wrap/blob/main/mcp/README.md",
   "repository": {
     "url": "https://github.com/NJ-Burrito/Business-Wrap",
@@ -15,7 +15,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "business-wrap",
-      "version": "0.8.2",
+      "version": "0.8.3",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"

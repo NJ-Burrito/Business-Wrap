@@ -808,7 +808,8 @@
       "provModel": "Process model",
       "provBoth": "Both",
       "colSource": "Source",
-      "src_graph": "a monitoring graph of the process"
+      "src_graph": "a monitoring graph of the process",
+      "gapAttachment": "The service card says the attachment is required: {c}; the form marks it required: {f}. Which is right?"
     },
     "ar": {
       "unassigned": "غير محدد",
@@ -895,7 +896,8 @@
       "provModel": "نموذج الإجراء",
       "provBoth": "كلاهما",
       "colSource": "المصدر",
-      "src_graph": "مخطط مراقبة للإجراء"
+      "src_graph": "مخطط مراقبة للإجراء",
+      "gapAttachment": "بطاقة الخدمة تقول إن المرفق إلزامي: {c}؛ والنموذج يعلّمه إلزامياً: {f}. أيهما الصحيح؟"
     }
   }
 }
