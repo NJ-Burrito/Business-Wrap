@@ -5,7 +5,7 @@ labels: enhancement
 ---
 
 ## Problem / المشكلة
-<!-- What goes wrong today, with a count if you have one. / ما الذي يخطئ اليوم، مع العدد إن وُجد. -->
+<!-- What goes wrong today, with a count if you have one. / ما الذي يخطئ اليوم، مع العدد إن وجد. -->
 
 ## Proposal / الاقتراح
 

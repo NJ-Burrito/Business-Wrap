@@ -46,7 +46,7 @@ def git(*args: str, input: bytes | None = None) -> bytes:
 def norm(text: str) -> str:
     # casefold, drop Arabic diacritics and tatweel, unify alef/yeh/teh-marbuta forms
     t = unicodedata.normalize("NFKC", text).casefold()
-    t = re.sub(r"[ً-ٰٟـ]", "", t)
+    t = re.sub("[" + chr(0x64B) + "-" + chr(0x65F) + chr(0x670) + chr(0x640) + "]", "", t)  # tashkeel + tatweel
     return t.translate(str.maketrans("أإآٱىة", "اااايه"))
 
 

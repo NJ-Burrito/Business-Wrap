@@ -4,6 +4,6 @@ EN: Put your own licensed font files here for a custom design pack. Everything i
 
 <div dir="rtl">
 
-عربي: ضع هنا ملفات الخطوط المرخّصة لديك لحزمة تصميم مخصّصة. كل ما في هذا المجلد، عدا هذا الملف، مستثنى من git ويمنعه `security/check.py`. أشر إلى المجلد من ملف تعريف الخطوط في حزمتك عبر `${BW_FONT_DIR}` أو مدخل نسبي في `fontDirs`.
+عربي: ضع هنا ملفات الخطوط المرخصة لديك لحزمة تصميم مخصصة. كل ما في هذا المجلد، عدا هذا الملف، مستثنى من git ويمنعه `security/check.py`. أشر إلى المجلد من ملف تعريف الخطوط في حزمتك عبر `${BW_FONT_DIR}` أو مدخل نسبي في `fontDirs`.
 
 </div>

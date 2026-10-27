@@ -20,4 +20,4 @@ labels: bug
 - [ ] English (LTR) / الإنجليزية
 
 ## Evidence / الدليل
-<!-- A screenshot of the viewport (no full-page), the gate line. NEVER paste client data, credentials or IDs. / لقطة للشاشة الظاهرة وسطر الفحص. لا تلصق بيانات عميل أو بيانات دخول أو أرقام هويات أبدًا. -->
+<!-- A screenshot of the viewport (no full-page), the gate line. NEVER paste client data, credentials or IDs. / لقطة للشاشة الظاهرة وسطر الفحص. لا تلصق بيانات عميل أو بيانات دخول أو أرقام هويات أبدا. -->

@@ -4,7 +4,7 @@ EN: what lives where, and which way data flows. Folder ownership: `engine/`, `ed
 
 <div dir="rtl">
 
-عربي: ما الذي يقيم أين، وفي أي اتجاه تسير البيانات. ملكية المجلدات: ‏`engine/` و`editor/` و`samples/` و`tests/` (محرّك المحرر)؛ وكل ما عداها (المرجع والرموز والتصميم والخطوط والشعارات والأمان والتوثيق).
+عربي: ما الذي يقيم أين، وفي أي اتجاه تسير البيانات. ملكية المجلدات: `engine/` و`editor/` و`samples/` و`tests/` (محرك المحرر)؛ وكل ما عداها (المرجع والرموز والتصميم والخطوط والشعارات والأمان والتوثيق).
 
 </div>
 
@@ -20,7 +20,7 @@ flowchart TB
     FON["fonts/manifest.json<br/>(local licensed files)"]
     BUILD --> THEME["theme.json"]
   end
-  subgraph Editor["Editor engine / محرّك المحرر"]
+  subgraph Editor["Editor engine / محرك المحرر"]
     REN["engine render<br/>HTML = print template"]
     UI["editor UI<br/>(watermark here only)"]
     ED["edits.json<br/>contracts/edits.schema.json"]
