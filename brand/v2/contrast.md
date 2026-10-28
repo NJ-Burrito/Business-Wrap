@@ -12,6 +12,8 @@
 | `primary` | `surface` | links on cards | 4.5 | 6.50 pass | 8.29 pass |
 | `on-primary` | `primary` | primary button label | 4.5 | 6.50 pass | 9.35 pass |
 | `on-accent` | `accent` | label on the highlighter | 4.5 | 12.52 pass | 12.52 pass |
+| `on-marker` | `marker` | text under the highlighter sweep (AAA) | 7.0 | 13.67 pass | 13.65 pass |
+| `primary` | `marker-icon` | icon strokes across the icon highlighter | 3.0 | 4.95 pass | 3.54 pass |
 | `accent-strong` | `bg` | accent as a graphic (icons, rules) | 3.0 | 4.96 pass | 13.65 pass |
 | `line-strong` | `surface` | input borders | 3.0 | 3.58 pass | 4.01 pass |
 | `focus` | `bg` | focus ring | 3.0 | 5.85 pass | 13.65 pass |
@@ -21,5 +23,7 @@
 | `info` | `surface` | status text | 4.5 | 6.45 pass | 7.85 pass |
 
 The highlighter `accent` is a fill behind `on-accent` ink, never text or a thin line on a light ground (accent on light bg = 1.18:1); on light grounds a graphic accent uses `accent-strong`.
+
+Text under the highlighter (the heading sweep, `.bw-highlight`) is always `on-marker` on `marker`, in both themes, and the marker covers the whole glyph box (ascenders to descenders), so no letter stroke sits half on the marker and half on the page. Never page ink on the marker: before this rule, dark `ink` on `accent` was 1.16:1. Icons fill their highlighter part with `marker-icon`, which in dark is a deep lime so the `primary` strokes stay legible across it.
 
 Result: all pairs pass.

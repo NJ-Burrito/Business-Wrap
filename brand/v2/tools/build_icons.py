@@ -141,7 +141,7 @@ def css() -> str:
            "/* Plays on hover of the icon or its parent, on keyboard focus of the parent, and when the icon or an ancestor gets",
            "   .is-inview (add it with an IntersectionObserver) or the icon gets .is-playing. Nothing moves under reduced motion. */",
            ".bw-i { width: 1.5em; height: 1.5em; vertical-align: middle; overflow: visible; }",
-           ".bw-i .hl { fill: var(--bw-accent, #C8F04A); }",
+           ".bw-i .hl { fill: var(--bw-marker-icon, var(--bw-accent, #C8F04A)); }",
            ".bw-i .mv { transform-box: fill-box; transform-origin: 50% 50%; }",
            ".bw-i [pathLength='1'].mv { stroke-dasharray: 1; stroke-dashoffset: 0; }"]
     out += sorted({v[0] for v in ANIM.values()})
@@ -172,7 +172,7 @@ def main():
         'stroke-linejoin="round"><use href="sprite.svg#bw-i-NAME"/></svg>. Animations need the inline SVG (a <use> shadow tree is not styled by icons.css). -->\n'
         + "\n".join(symbols) + "\n</svg>\n", encoding="utf-8", newline="\n")
     (OUT / "icons.json").write_text(json.dumps({"grid": 24, "stroke": 1.75, "caps": "round", "colour": "currentColor",
-                                                "highlighter": "class hl, fill var(--bw-accent)", "moving part": "class mv",
+                                                "highlighter": "class hl, fill var(--bw-marker-icon)", "moving part": "class mv",
                                                 "icons": meta}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
     (OUT / "icons.css").write_text(css(), encoding="utf-8", newline="\n")
     page = OUT / "index.html"

@@ -6,7 +6,8 @@ html, body { width: var(--w); height: var(--h); overflow: hidden; background: #0
   background: radial-gradient(120% 90% at 85% 50%, #143428 0%, #0B1A16 62%); padding: 64px 72px; }
 .lockup { height: 52px; display: block; }
 h1 { margin-top: 56px; font-family: var(--bw-font-display); font-weight: 900; font-size: 64px; line-height: 1.08; letter-spacing: -0.01em; max-width: 640px; }
-h1 .hl { background: linear-gradient(transparent 14%, #C8F04A 14%, #C8F04A 90%, transparent 90%); color: #0F231E; padding: 0 .12em; border-radius: 3px; }
+/* the marker covers the whole glyph box: every letter of the word is ink on lime (13.65:1), none half on the dark card */
+h1 .hl { background: #C8F04A; color: #0B1A16; padding: 0 .12em; border-radius: .14em .3em .16em .28em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .ar { margin-top: 22px; font-family: var(--bw-font-ui); font-weight: 700; font-size: 30px; color: #A9B8B1; direction: rtl; text-align: left; unicode-bidi: plaintext; }
 .chips { position: absolute; left: 72px; bottom: 60px; display: flex; gap: 12px; }
 .chip { height: 44px; padding: 0 18px; border-radius: 999px; border: 2px solid #2A4339; display: flex; align-items: center; font-weight: 700; font-size: 20px; color: #EEF2EA; background: #12261F; }

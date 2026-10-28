@@ -3,7 +3,7 @@
   "stroke": 1.75,
   "caps": "round",
   "colour": "currentColor",
-  "highlighter": "class hl, fill var(--bw-accent)",
+  "highlighter": "class hl, fill var(--bw-marker-icon)",
   "moving part": "class mv",
   "icons": [
     {

@@ -19,6 +19,7 @@ from fontTools.ttLib import TTFont
 V2 = Path(__file__).resolve().parent.parent
 OUT = V2 / "logo"
 INK, PAPER, DARK, LIME = "#0F231E", "#EEF2EA", "#0B1A16", "#C8F04A"
+GROUND = {"light": "#F5F3EC", "dark": DARK}  # the page each colour version sits on: the band's keyline
 
 # ---- the mark: 64 grid ------------------------------------------------------------------------------
 LEFT = "M5 15Q5 11 9 11L30 13V55L9 53Q5 53 5 49Z"
@@ -34,14 +35,16 @@ def lines_d(rev_ar: bool = False) -> str:
     return "".join(f"M{a} {b}H{c}" for a, b, c, _ in LINES)
 
 
-def mark_body(ink: str, band: str | None, uid: str, mono: bool = False) -> str:
-    """Pages in `ink` with the text lines cut out (mask), so the ground shows through on any colour."""
+def mark_body(ink: str, band: str | None, uid: str, mono: bool = False, key: str | None = None) -> str:
+    """Pages in `ink` with the text lines cut out (mask), so the ground shows through on any colour.
+    `key`: a keyline in the ground colour around the band, so lime never touches light pages edge to edge (1.2:1)."""
     slot = f'<path d="{BAND_SLOT}" fill="#000" stroke="#000" stroke-width="0" />' if mono else ""
     mask = (f'<mask id="{uid}" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">'
             f'<rect width="64" height="64" fill="#fff"/>'
             f'<path d="{lines_d()}" stroke="#000" stroke-width="3.6" stroke-linecap="round" fill="none"/>{slot}</mask>')
     pages = f'<g mask="url(#{uid})" fill="{ink}"><path d="{LEFT}"/><path d="{RIGHT}"/></g>'
-    hl = f'<path class="hl" d="{BAND}" fill="{band}" stroke="{band}" stroke-width="1" stroke-linejoin="round"/>' if band else ""
+    hl = (f'<path class="hl" d="{BAND}" fill="{band}" stroke="{key or band}" stroke-width="{2.6 if key else 1}" '
+          f'stroke-linejoin="round" paint-order="stroke"/>') if band else ""
     return f"<defs>{mask}</defs>{pages}{hl}"
 
 
@@ -72,18 +75,22 @@ class Face:
             x += pos.x_advance
         return out, x
 
-    def outline(self, text: str, size: float, x0: float, baseline: float, rtl: bool = False):
-        """SVG path for `text` at `size` px; returns (d, advance_px, per-cluster x extents in px)."""
+    def outline(self, text: str, size: float, x0: float, baseline: float, rtl: bool = False, keep=None):
+        """SVG path for `text` at `size` px (only clusters where keep(cluster) is true, when given);
+        returns (d, advance_px, per-cluster x extents in px for every cluster, (xmin, ymin, xmax, ymax) of the kept glyphs)."""
         glyphs, adv = self.shape(text, rtl)
         s = size / self.upm
         pen = SVGPathPen(self.gs, ntos=lambda v: f"{v:.1f}".rstrip("0").rstrip("."))
+        bp = BoundsPen(self.gs)
         spans = {}
         for name, gx, gy, cl, a in glyphs:
-            tp = TransformPen(pen, (s, 0, 0, -s, x0 + gx * s, baseline - gy * s))
-            self.gs[name].draw(tp)
+            if keep is None or keep(cl):
+                m = (s, 0, 0, -s, x0 + gx * s, baseline - gy * s)
+                self.gs[name].draw(TransformPen(pen, m))
+                self.gs[name].draw(TransformPen(bp, m))
             lo, hi = spans.get(cl, (1e9, -1e9))
             spans[cl] = (min(lo, x0 + gx * s), max(hi, x0 + (gx + a) * s))
-        return pen.getCommands(), adv * s, spans
+        return pen.getCommands(), adv * s, spans, bp.bounds
 
     def bounds(self, text: str, size: float, rtl: bool = False):
         glyphs, _ = self.shape(text, rtl)
@@ -101,10 +108,10 @@ def font_dir(arg: str | None) -> Path:
     raise SystemExit("FAILED: no thmanyahserifdisplay-Black.otf; pass --fonts <dir> or set BW_FONT_DIR")
 
 
-def band_path(x1: float, x2: float, top: float, bot: float, rise: float = 2.0) -> str:
-    """A highlighter band: slightly rising to the right, ends cut on a slant like a chisel tip."""
+def band_path(x1: float, x2: float, top: float, bot: float, rise: float = 2.0, lean1: float = 3.0) -> str:
+    """A highlighter band: slightly rising to the right, ends cut on a slant like a chisel tip (lean1 = 0: upright start)."""
     return (f"M{x1:.1f} {top + rise:.1f}L{x2:.1f} {top:.1f}L{x2 - 3:.1f} {bot - rise:.1f}"
-            f"L{x1 - 3:.1f} {bot:.1f}Z")
+            f"L{x1 - lean1:.1f} {bot:.1f}Z")
 
 
 def lockup(face: Face, lang: str, mode: str, with_mark: bool = True) -> str:
@@ -126,21 +133,30 @@ def lockup(face: Face, lang: str, mode: str, with_mark: bool = True) -> str:
     else:
         mark_x = 0
         tx = mark_h + gap - xmin
-    d, adv, spans = face.outline(text, size, tx, baseline, rtl)
-    xs = [v for k, v in spans.items() if k >= hl_from]
-    hx1, hx2 = min(a for a, _ in xs) + (-5 if rtl else 2), max(b for _, b in xs) + 7
-    top, bot = baseline - (cap * 0.78 if not rtl else 24), baseline + (7 if not rtl else 9)
+    d, adv, spans, _ = face.outline(text, size, tx, baseline, rtl)
+    # EN: the hyphen sits 1.2 px from the W, too close for a band edge between them, so it rides on the band with the word
+    ink_from = hl_from if rtl else text.index("-Wrap")
+    d_rest, _, _, (rx1, _, rx2, _) = face.outline(text, size, tx, baseline, rtl, keep=lambda c: c < ink_from)
+    d_hl, _, _, (gx1, gy1, gx2, gy2) = face.outline(text, size, tx, baseline, rtl, keep=lambda c: c >= ink_from)
     uid = f"bw-m-{lang}-{mode}"
     if mode == "mono":
+        xs = [v for k, v in spans.items() if k >= hl_from]
+        hx1, hx2 = min(a for a, _ in xs) + (-5 if rtl else 2), max(b for _, b in xs) + 7
+        bot = baseline + (7 if not rtl else 9)
         band = f'<path d="{band_path(hx1, hx2, bot - 1, bot + 5, 1)}" fill="currentColor"/>'
         word = f'<path d="{d}" fill="currentColor"/>'
     else:
-        band = f'<path class="hl" d="{band_path(hx1, hx2, top, bot)}" fill="{LIME}"/>'
-        # the highlighted word is always ink on lime, so it reads on paper and on dark
-        clip = f'<clipPath id="{uid}-c"><path d="{band_path(hx1, hx2, top, bot)}"/></clipPath>'
-        word = (f'<defs>{clip}</defs><path d="{d}" fill="{ink}"/>'
-                f'<path d="{d}" fill="{INK}" clip-path="url(#{uid}-c)"/>')
-    mark = f'<g transform="translate({mark_x:.1f} 0)">{mark_body(ink, None if mode == "mono" else LIME, uid, mode == "mono")}' \
+        # the band covers the whole highlighted word (top of its tallest glyph to the foot of its descenders), and the
+        # word is drawn whole in INK on lime (12.5:1) on paper and on dark alike: no letter is half page ink, half lime
+        top, bot = gy1 - 2.5, min(gy2 + 2.5, mark_h - 0.5)
+        if rtl:  # the word is on the left, far from the rest (12 px): chisel ends both sides
+            hx1, hx2, lean = gx1 - 3, min(gx2 + 5.5, rx1 - 1.5 + 3), 3.0
+        else:    # the band starts upright, halfway between the last page-ink glyph and the hyphen (1.7 px gap)
+            hx1, hx2, lean = (rx2 + gx1) / 2, gx2 + 5.5, 0.0
+        band = f'<path class="hl" d="{band_path(hx1, hx2, top, bot, 1.2, lean)}" fill="{LIME}"/>'
+        word = f'<path d="{d_rest}" fill="{ink}"/><path d="{d_hl}" fill="{INK}"/>'
+    key = None if mode == "mono" else GROUND[mode]
+    mark = f'<g transform="translate({mark_x:.1f} 0)">{mark_body(ink, None if mode == "mono" else LIME, uid, mode == "mono", key)}' \
            f'{"" if mode != "mono" else f"<path d=\"{BAND}\" fill=\"currentColor\"/>"}</g>'
     title = "بزنس راب" if rtl else "Business-Wrap"
     if not with_mark:  # the wordmark alone: drop the mark and the gap
@@ -153,23 +169,23 @@ def mark_file(mode: str) -> str:
     if mode == "mono":
         body = mark_body("currentColor", None, "bw-mk-mono", True) + f'<path class="hl" d="{BAND}" fill="var(--bw-accent, currentColor)"/>'
     else:
-        body = mark_body(INK if mode == "light" else PAPER, LIME, f"bw-mk-{mode}")
+        body = mark_body(INK if mode == "light" else PAPER, LIME, f"bw-mk-{mode}", key=GROUND[mode])
     return svg(64, 64, body, "Business-Wrap")
 
 
 def app_icon() -> str:
     body = (f'<rect width="64" height="64" rx="14" fill="{DARK}"/>'
-            f'<g transform="translate(6 6.5) scale(.8125)">{mark_body(PAPER, LIME, "bw-app")}</g>')
+            f'<g transform="translate(6 6.5) scale(.8125)">{mark_body(PAPER, LIME, "bw-app", key=DARK)}</g>')
     return svg(64, 64, body, "Business-Wrap")
 
 
 def favicon() -> str:
     """Follows the system scheme (a favicon has no host colour to follow)."""
-    style = (f"<style>.p{{fill:{INK}}}@media (prefers-color-scheme: dark){{.p{{fill:{PAPER}}}}}</style>")
+    style = (f"<style>.p{{fill:{INK}}}.k{{stroke:{GROUND['light']}}}@media (prefers-color-scheme: dark){{.p{{fill:{PAPER}}}.k{{stroke:{DARK}}}}}</style>")
     mask = (f'<mask id="bw-fv" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><rect width="64" height="64" fill="#fff"/>'
             f'<path d="{lines_d()}" stroke="#000" stroke-width="4.4" stroke-linecap="round" fill="none"/></mask>')
     body = (f"{style}<defs>{mask}</defs><g mask=\"url(#bw-fv)\" class=\"p\"><path d=\"{LEFT}\"/><path d=\"{RIGHT}\"/></g>"
-            f'<path d="{BAND}" fill="{LIME}" stroke="{LIME}" stroke-width="1.6" stroke-linejoin="round"/>')
+            f'<path class="k" d="{BAND}" fill="{LIME}" stroke-width="3" stroke-linejoin="round" paint-order="stroke"/>')
     return svg(64, 64, body, "Business-Wrap")
 
 
@@ -181,7 +197,7 @@ def animated() -> str:
 :root{--i:var(--bw-ink,#0F231E);--g:var(--bw-bg,#F5F3EC);--a:var(--bw-accent,#C8F04A)}
 .pg{fill:var(--i)}
 .ln{stroke:var(--g);stroke-width:3.6;stroke-linecap:round;fill:none;stroke-dasharray:20;stroke-dashoffset:20;animation:bw-w 5s cubic-bezier(.22,1,.36,1) infinite}
-.hl{fill:var(--a);transform-box:fill-box;transform-origin:0 50%;transform:scaleX(0);animation:bw-s 5s cubic-bezier(.65,0,.35,1) infinite}
+.hl{fill:var(--a);stroke:var(--g);stroke-width:2.6;stroke-linejoin:round;paint-order:stroke;transform-box:fill-box;transform-origin:0 50%;transform:scaleX(0);animation:bw-s 5s cubic-bezier(.65,0,.35,1) infinite}
 .l2{animation-delay:.12s}.l3{animation-delay:.24s}
 .pl{transform-box:fill-box;transform-origin:100% 50%;animation:bw-o 5s cubic-bezier(.65,0,.35,1) infinite}
 .pr{transform-box:fill-box;transform-origin:0 50%;animation:bw-o 5s cubic-bezier(.65,0,.35,1) infinite}

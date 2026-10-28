@@ -39,7 +39,7 @@ html,body{width:1280px;height:640px;overflow:hidden;background:var(--bg)}
 #mark{width:290px;height:290px;overflow:visible}
 #mark .pg{fill:var(--ink)}
 #mark .ln{stroke:var(--bg);stroke-width:3.6;stroke-linecap:round;fill:none}
-#mark .hl{fill:var(--lime);stroke:var(--lime);stroke-width:1;stroke-linejoin:round}
+#mark .hl{fill:var(--lime);stroke:var(--bg);stroke-width:2.6;stroke-linejoin:round;paint-order:stroke}
 #shadow{position:absolute;left:122px;top:384px;width:238px;height:22px;border-radius:50%;background:radial-gradient(closest-side,rgba(15,35,30,.22),transparent)}
 #wm{position:absolute;left:452px;top:130px;height:104px}
 #wmAr{position:absolute;left:452px;top:250px;height:72px}

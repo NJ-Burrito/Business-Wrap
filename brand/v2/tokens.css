@@ -18,6 +18,9 @@
   --bw-accent: #C8F04A;
   --bw-accent-hover: #B6E02E;
   --bw-on-accent: #0F231E;
+  --bw-marker: #DDF589;
+  --bw-on-marker: #0F231E;
+  --bw-marker-icon: #C8F04A;
   --bw-accent-strong: #4D7400;
   --bw-focus: #0B6B50;
   --bw-success: #1C7438;
@@ -98,6 +101,9 @@
     --bw-accent: #C8F04A;
     --bw-accent-hover: #D6F773;
     --bw-on-accent: #0F231E;
+    --bw-marker: #C8F04A;
+    --bw-on-marker: #0B1A16;
+    --bw-marker-icon: #4A6320;
     --bw-accent-strong: #C8F04A;
     --bw-focus: #C8F04A;
     --bw-success: #6FD48A;
@@ -127,6 +133,9 @@
   --bw-accent: #C8F04A;
   --bw-accent-hover: #D6F773;
   --bw-on-accent: #0F231E;
+  --bw-marker: #C8F04A;
+  --bw-on-marker: #0B1A16;
+  --bw-marker-icon: #4A6320;
   --bw-accent-strong: #C8F04A;
   --bw-focus: #C8F04A;
   --bw-success: #6FD48A;
@@ -149,5 +158,5 @@
   }
 }
 /* Base helpers any consumer may use. */
-.bw-highlight { background: linear-gradient(transparent 12%, var(--bw-accent) 12%, var(--bw-accent) 88%, transparent 88%); color: var(--bw-on-accent); padding-inline: .15em; border-radius: 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.bw-highlight { background: var(--bw-marker); color: var(--bw-on-marker); padding-inline: .15em; border-radius: .14em .3em .16em .28em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 :where(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 3px solid var(--bw-focus); outline-offset: 2px; }
