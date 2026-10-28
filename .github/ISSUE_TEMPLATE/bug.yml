@@ -1,0 +1,74 @@
+name: "🐞 Bug / خلل"
+description: "Something in a document, the editor or a gate is wrong / خطأ في وثيقة أو في المحرر أو في فحص"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        🚫 Never paste client data, credentials or IDs. Use the sample or made-up values.
+        🚫 لا تلصق بيانات عميل أو بيانات دخول أو أرقام هويات أبدا. استخدم المثال أو قيما مختلقة.
+  - type: input
+    id: version
+    attributes:
+      label: "Version / الإصدار"
+      description: "Run `npx business-wrap update --check` (or `node update/cli.mjs --check`) and paste the version. / شغل الأمر والصق رقم الإصدار."
+      placeholder: "0.12.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: "OS / نظام التشغيل"
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - "Other / غير ذلك"
+    validations:
+      required: true
+  - type: dropdown
+    id: browser
+    attributes:
+      label: "Browser / المتصفح"
+      options:
+        - Chrome
+        - Edge
+        - "Other / غير ذلك"
+    validations:
+      required: true
+  - type: checkboxes
+    id: edition
+    attributes:
+      label: "Edition / النسخة"
+      options:
+        - label: "Arabic (RTL) / العربية"
+        - label: "English (LTR) / الإنجليزية"
+  - type: textarea
+    id: steps
+    attributes:
+      label: "Steps / الخطوات"
+      placeholder: |
+        1.
+        2.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: "What you expected / ما توقعته"
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: "What happened / ما حدث"
+      description: "The gate line or error message, if any. / سطر الفحص أو رسالة الخطأ إن وجدت."
+    validations:
+      required: true
+  - type: checkboxes
+    id: clean
+    attributes:
+      label: "Client data / بيانات العملاء"
+      options:
+        - label: "I removed client data and credentials. / أزلت بيانات العملاء وبيانات الدخول."
+          required: true

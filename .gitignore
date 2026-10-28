@@ -31,3 +31,12 @@ bw-learning*.json
 # bundled fallback fonts (the owner's licensed Thmanyah copy, 2026-10-28): the only tracked font binaries
 !fonts/nj-fonts/
 !fonts/nj-fonts/**
+# site web fonts (DESIGN f.1): the three self-hosted Thmanyah woff2 files the security gate allows
+!site/assets/fonts/
+!site/assets/fonts/thmanyah-sans-400.woff2
+!site/assets/fonts/thmanyah-sans-700.woff2
+!site/assets/fonts/thmanyah-serif-display-700.woff2
+# internal working files (kept locally, not published): session handoff and agent receipts
+handoff.md
+docs/receipt-*.md
+docs/DISTRIBUTION.md

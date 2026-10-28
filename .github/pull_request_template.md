@@ -1,6 +1,10 @@
 ## What / ماذا
 <!-- One line. / سطر واحد. -->
 
+> 🔒 A security problem? Do not open a pull request: follow [SECURITY.md](https://github.com/NJ-Burrito/Business-Wrap/blob/main/SECURITY.md). / مشكلة أمنية؟ لا تفتح طلب دمج: اتبع [SECURITY.ar.md](https://github.com/NJ-Burrito/Business-Wrap/blob/main/SECURITY.ar.md).
+>
+> 🆘 A question? [Support / الدعم](https://nj-burrito.github.io/Business-Wrap/support.html) · 📖 [CONTRIBUTING.md](https://github.com/NJ-Burrito/Business-Wrap/blob/main/CONTRIBUTING.md) · [CONTRIBUTING.ar.md](https://github.com/NJ-Burrito/Business-Wrap/blob/main/CONTRIBUTING.ar.md)
+
 ## Checklist / قائمة التحقق
 - [ ] `python security/check.py` → `0 finding(s)` / فحص الأمان ناجح
 - [ ] `python design/build.py` passes (if tokens changed) / بناء التصميم ناجح
