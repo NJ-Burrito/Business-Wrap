@@ -66,7 +66,7 @@ export function buildModel({ ir = null, raw = null, record = null, profile = {},
   const T = text; // core text (ar/en), for derived captions
   const m = {
     kind: 'bw-requirements', version: 1,
-    key: record?.key || ir?.key || raw?.name || '',
+    key: record?.key || raw?.name || ir?.key || '',
     name: bi(F.name) || (ir?.names ? bi(ir.names) : null) || bi(raw?.languages?.ar?.card?.title && { ar: raw.languages.ar.card.title, en: raw.languages.en?.card?.title || ir?.names?.en || raw.languages.ar.card.title }) || bi(ir?.name || raw?.name || 'Service'),
     code: null, actors: [], stages: [], ends: [], systemSteps: [], timers: [], fields: [], documents: [], fees: [], outputs: [], recipients: [],
     channels: [], legislation: [], assumptions: [], adminReference: [], integrations: { internal: [], services: [], dataSources: [], partners: [] },
