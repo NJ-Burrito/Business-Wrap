@@ -40,7 +40,7 @@ const run = (cmd, args, opts = {}) => {
   const r = spawnSync(cmd, args, { encoding: 'utf8', ...opts });
   return { ok: r.status === 0, out: r.stdout || '', err: r.stderr || String(r.error || '') };
 };
-// Thmanyah is licensed and never committed: a runner without it skips the face-specific checks.
+// Thmanyah ships as a fallback in fonts/nj-fonts: a runner without any copy skips the face-specific checks.
 const THEME0 = loadTheme();
 const FACES = fontsFor(THEME0).used.filter((c) => c.format === 'truetype').map((c) => c.family);
 const HAVE_FONTS = [THEME0.fonts.text, THEME0.fonts.display].every((f) => FACES.includes(f));
@@ -49,7 +49,7 @@ function skip(name, why) {
   results.push(`SKIP  ${name}  — ${why}`);
   skips.push(name);
 }
-const fontCheck = (name, ok, detail = '') => (HAVE_FONTS ? check(name, ok, detail) : skip(name, 'Thmanyah TTF not installed on this machine (fonts are never committed)'));
+const fontCheck = (name, ok, detail = '') => (HAVE_FONTS ? check(name, ok, detail) : skip(name, 'Thmanyah TTF not found (fonts/nj-fonts missing and none installed)'));
 function check(name, ok, detail = '') {
   results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`);
   if (!ok) failed += 1;

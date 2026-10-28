@@ -42,7 +42,7 @@ const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}
 const skip = (name, why) => { results.push(`SKIP  ${name}  — ${why}`); skips.push(name); };
 const info = (name, detail) => results.push(`INFO  ${name}  — ${detail}`);
 
-// A TrueType font of this machine stands in for "a font the user has" (fonts are never committed).
+// A TrueType font of this machine stands in for "a font the user has" (the bundled fonts/nj-fonts is Thmanyah only).
 const PREFER = ['DejaVu Sans', 'Liberation Sans', 'Arial', 'Segoe UI', 'Noto Sans', 'Verdana'];
 const ttfs = systemFonts().filter((f) => f.format === 'ttf' && f.outlines === 'truetype' && f.embeddable && !f.italic && f.weight === 400 && /^[\x20-\x7e]+$/.test(f.family) && fs.statSync(f.file).size < 1.9 * 1024 * 1024);
 const FONT = PREFER.map((n) => ttfs.find((f) => f.family === n)).find(Boolean) || ttfs[0];

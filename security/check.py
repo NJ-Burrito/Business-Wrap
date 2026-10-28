@@ -36,6 +36,9 @@ SELF = {"security/gitleaks.toml", "security/check.py", "security/denylist.sha256
 # Paths whose binary images may carry metadata or size by design. Add the editor watermark here
 # once it is placed under editor/ (never a document logo slot).
 ALLOW_BINARY = [re.compile(p) for p in [r"^editor/brand/watermark/nj-avatar-[a-z]+\.webp$"]]
+# The one path where font binaries may live: the owner's bundled Thmanyah fallback (owner decision, 2026-10-28).
+# The bw-font-binary rule (extension and magic bytes) still fires on every other path, tree and history.
+ALLOW_FONT = re.compile(r"^fonts/nj-fonts/thmanyah/thmanyah(sans|seriftext|serifdisplay)/(otf|ttf|woff2)/[A-Za-z0-9-]+\.(otf|ttf|woff2)$")
 FONT_MAGIC = (b"OTTO", b"\x00\x01\x00\x00", b"wOFF", b"wOF2", b"ttcf", b"true")
 # Local learning (engine/learning) keeps the user's journal in .local/learning: it must never be committed.
 LEARNING = re.compile(r"(^|/)\.local/learning/|(^|/)journal(\.\d+)?\.jsonl$")
@@ -147,10 +150,13 @@ def scan_blob(path: str, data: bytes, place: str, rules, gallow, deny, longest, 
     if any(g.search(path) for g in gallow):
         return
     binary_ok = any(a.search(path) for a in ALLOW_BINARY)
+    font_ok = bool(ALLOW_FONT.search(path))
     for rule in rules:
         if rule["path"] is not None and rule["regex"] is None and rule["path"].search(path):
+            if rule["id"] == "bw-font-binary" and font_ok:
+                continue
             findings.add((rule["id"], place, 0))
-    if data[:4] in FONT_MAGIC and not path.endswith((".txt", ".md")):
+    if data[:4] in FONT_MAGIC and not path.endswith((".txt", ".md")) and not font_ok:
         findings.add(("bw-font-binary", place, 0))
     if len(data) > MAX_BYTES and not binary_ok:
         findings.add(("bw-large-file", place, 0))
@@ -262,6 +268,12 @@ def selftest() -> int:
     for p in (".local/learning/journal.jsonl", "x/journal.2.jsonl", ".local/learning/rules.md"):
         ok = bool(LEARNING.search(p))
         print(f"{'ok ' if ok else 'XX '} bw-learning-journal {p}")
+        bad += not ok
+    for p, want in (("fonts/nj-fonts/thmanyah/thmanyahsans/woff2/thmanyahsans-Bold.woff2", True),
+                    ("fonts/nj-fonts/thmanyah/thmanyahseriftext/ttf/thmanyahseriftext-Regular.ttf", True),
+                    ("fonts/custom/x.ttf", False), ("fonts/nj-fonts/other/x.ttf", False), ("assets/thmanyahsans-Bold.otf", False)):
+        ok = bool(ALLOW_FONT.search(p)) == want
+        print(f"{'ok ' if ok else 'XX '} bw-font-binary allow={want} {p}")
         bad += not ok
     print("selftest:", "PASS" if not bad else f"{bad} FAIL")
     return 1 if bad else 0

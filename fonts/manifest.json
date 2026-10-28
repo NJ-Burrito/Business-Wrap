@@ -1,11 +1,14 @@
 {
-  "$comment": "Font manifest. Binaries are NEVER in the repo (licence: no redistribution, hosting or extraction). BW_FONT_DIR is the font root (env, or fontDir in the gitignored .local/config.json). Under it each family folder holds otf/, woff2/ and a local ttf/ made with otf-to-ttf.py; ttf/ is searched first because Chrome prints CFF outlines (.otf/.woff2) as Type 3. ${VAR} expands from the environment.",
+  "$comment": "Font manifest. User fonts win: BW_FONT_DIR (env, or fontDir in the gitignored .local/config.json), then the per-user Windows font folder. Under BW_FONT_DIR each family folder holds otf/, woff2/ and a local ttf/ made with otf-to-ttf.py; ttf/ is searched first because Chrome prints CFF outlines (.otf/.woff2) as Type 3. The LAST fallback is fonts/nj-fonts: the owner's licensed Thmanyah copy bundled in the repo (Thmanyah licence, not MIT). ${BW_ROOT} is the repo or plugin root; other ${VAR} expand from the environment.",
   "version": 1,
   "fontDirs": [
     "${BW_FONT_DIR}/thmanyahseriftext/ttf",
     "${BW_FONT_DIR}/thmanyahserifdisplay/ttf",
     "${BW_FONT_DIR}",
-    "${LOCALAPPDATA}/Microsoft/Windows/Fonts"
+    "${LOCALAPPDATA}/Microsoft/Windows/Fonts",
+    "${BW_ROOT}/fonts/nj-fonts/thmanyah/thmanyahseriftext/ttf",
+    "${BW_ROOT}/fonts/nj-fonts/thmanyah/thmanyahserifdisplay/ttf",
+    "${BW_ROOT}/fonts/nj-fonts"
   ],
   "families": {
     "Thmanyah Serif Text": {

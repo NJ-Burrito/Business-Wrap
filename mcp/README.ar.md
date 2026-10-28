@@ -17,7 +17,7 @@
 
 ## التشغيل
 ```
-claude mcp add business-wrap -- npx -y -p business-wrap@0.11.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.1 business-wrap-mcp
 # أو من نسخة محلية بعد npm ci:
 node mcp/cli.mjs
 ```

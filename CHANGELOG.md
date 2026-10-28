@@ -8,6 +8,31 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.11.1] - 2026-10-28
+
+🔓 Public repo, and a plugin that works on a fresh machine. / 🔓 مستودع عام، وإضافة تعمل على جهاز جديد.
+
+**In 10 seconds / في عشر ثوانٍ**
+- ⚖️ MIT licence; the repo is public. / رخصة MIT، والمستودع عام.
+- 🔌 The Claude Code plugin's MCP server now starts on a fresh machine. / خادم MCP في الإضافة يعمل الآن على جهاز جديد.
+- 🔤 Thmanyah ships as a fallback, so PDFs print with the right fonts out of the box. / خطوط ثمانية مضمنة احتياطيًا، فتطبع ملفات PDF بالخط الصحيح مباشرة.
+- 📖 README pair rewritten for visitors. / إعادة كتابة ملفي README للزوار.
+
+### Added / أضيف
+- 🔤 **Bundled fallback fonts** in `fonts/nj-fonts/thmanyah/` (Serif Text, Serif Display: otf, ttf, woff2; Sans: otf, woff2). Used only when no other copy is found: `BW_FONT_DIR`, `.local/config.json` and the system font folder still win. These files are under the Thmanyah licence, not MIT. / خطوط احتياطية مضمنة في `fonts/nj-fonts/thmanyah/`، تُستخدم فقط إن لم توجد نسخة أخرى؛ ومجلد المستخدم وإعداداته وخطوط النظام لها الأولوية. هذه الملفات تحت رخصة ثمانية، لا MIT.
+- ⚖️ **MIT licence** (`LICENSE`) and licence fields in the package, plugin and marketplace. / رخصة MIT وحقول الرخصة في الحزمة والإضافة والسوق.
+
+### Changed / تغيّر
+- 📖 **README pair rewritten** for the public repo; private wording removed from the docs. / إعادة كتابة ملفي README للمستودع العام، وحذف الصياغات الخاصة من الوثائق.
+- 🔐 `security/check.py` and `security/gitleaks.toml` allow font binaries at exactly one path, `fonts/nj-fonts/thmanyah/<family>/<otf|ttf|woff2>/`; the rule still fails everywhere else, in the tree and in history. / بوابة الأمان تسمح بملفات الخط في مسار واحد فقط، وتبقى القاعدة سارية في كل مكان آخر.
+- 🧩 `fonts/manifest.json` gains `${BW_ROOT}` (the repo or plugin root) and lists `fonts/nj-fonts` last. / ملف الخطوط يضيف `${BW_ROOT}` ويضع `fonts/nj-fonts` في آخر القائمة.
+
+### Fixed / أصلح
+- 🔌 **Plugin MCP launch**: `business-wrap` is not on npm, so `npx -p business-wrap@0.11.0` failed on a fresh machine. The plugin and Smithery now run `npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.1 business-wrap-mcp`, which installs from the release tag with its dependencies. `update/version-sync.mjs` keeps the `#vX.Y.Z` ref in step with `package.json`. / إصلاح تشغيل خادم MCP في الإضافة: الحزمة ليست على npm، فصار التشغيل من وسم الإصدار على GitHub مع اعتمادياته، وأداة مزامنة الإصدار تتحقق من الوسم.
+
+### Migration notes / ملاحظات الترحيل
+- Nothing to do. A machine with its own Thmanyah copy keeps using it. / لا شيء مطلوب؛ الجهاز الذي لديه نسخته من ثمانية يبقى عليها.
+
 ## [0.11.0] - 2026-10-28
 
 Update from inside the editor, and a Settings page. / التحديث من داخل المحرر، وصفحة الإعدادات.

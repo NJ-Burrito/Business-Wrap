@@ -1,5 +1,5 @@
-// Font manifest → @font-face CSS. Node only. Binaries are read from local
-// folders at build time and never copied into the repo.
+// Font manifest → @font-face CSS. Node only. Binaries are read from the user's folders first;
+// the bundled fonts/nj-fonts copy (${BW_ROOT}, the repo or plugin root) is the last fallback.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -24,7 +24,7 @@ export function loadManifest(explicit) {
 }
 
 const expand = (d) =>
-  String(d || '').replace(/\$\{(\w+)\}/g, (_, k) => (k === 'BW_FONT_DIR' ? config().fontDir : process.env[k] || ''));
+  String(d || '').replace(/\$\{(\w+)\}/g, (_, k) => (k === 'BW_FONT_DIR' ? config().fontDir : k === 'BW_ROOT' ? REPO : process.env[k] || ''));
 
 function walk(dir, out = []) {
   let entries = [];

@@ -28,3 +28,6 @@ out/
 .local/learning/
 journal*.jsonl
 bw-learning*.json
+# bundled fallback fonts (the owner's licensed Thmanyah copy, 2026-10-28): the only tracked font binaries
+!fonts/nj-fonts/
+!fonts/nj-fonts/**

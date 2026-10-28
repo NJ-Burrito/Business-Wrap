@@ -118,7 +118,7 @@ try {
   await exportPdf(docAr, { locale: 'ar', theme, pdfPath: pdf, browser });
   const bin = config().poppler ? path.join(config().poppler, 'pdftotext') : 'pdftotext';
   const txt = spawnSync(bin, ['-enc', 'UTF-8', pdf, '-'], { encoding: 'utf8' }).stdout || '';
-  // Thmanyah is licensed and never committed: without it the fallback font breaks Arabic extraction in pdftotext,
+  // Thmanyah ships in fonts/nj-fonts: without any copy the fallback font breaks Arabic extraction in pdftotext,
   // so the AR label match is strict only where the real face is present; otherwise the EN edition's PDF is checked.
   const FACES = fontsFor(theme).used.filter((c) => c.format === 'truetype').map((c) => c.family);
   const HAVE_FONTS = [theme.fonts.text, theme.fonts.display].every((f) => FACES.includes(f));
@@ -136,7 +136,7 @@ try {
   check('pdf: diagram labels extract as text (pdftotext -enc UTF-8)', !missing.length, ltxt.length + ' chars' + (HAVE_FONTS ? '' : ' (EN edition: fallback font)') + (missing.length ? ' | missing: ' + JSON.stringify(missing) + ' | first 600: ' + JSON.stringify(ltxt.slice(0, 600)) : ''));
   const fonts = spawnSync(config().poppler ? path.join(config().poppler, 'pdffonts') : 'pdffonts', [pdf], { encoding: 'utf8' }).stdout || '';
   if (HAVE_FONTS) check('pdf: no Type 3 font', !/Type 3/.test(fonts));
-  else results.push('SKIP  pdf: no Type 3 font  — Thmanyah TTF not installed on this machine (fonts are never committed)');
+  else results.push('SKIP  pdf: no Type 3 font  — Thmanyah TTF not installed on this machine (fonts/nj-fonts missing and none installed)');
   const docx = path.join(OUT, 'sample.ar.docx');
   exportDocx(docAr, { locale: 'ar', theme, docxPath: docx, embedFonts: false });
   const py = 'import zipfile,sys;x=zipfile.ZipFile(sys.argv[1]).read("word/document.xml").decode();print(x.count("<wps:wsp>"),x.count("wpg:wgp"),x.count("<pic:pic"),int("رئيس القسم" in x))';
