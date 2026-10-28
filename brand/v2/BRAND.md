@@ -63,11 +63,23 @@ Scale: major third on 16 px (`--bw-size-2xs` 12 px to `--bw-size-5xl` 76 px). Bo
 | `logo/mark.svg`, `mark-dark.svg`, `mark-mono.svg` | the mark; mono is `currentColor` with the highlighter as `var(--bw-accent)` |
 | `logo/lockup-en.svg`, `-dark`, `-mono` | horizontal lockup, mark then "Business-Wrap" |
 | `logo/lockup-ar.svg`, `-dark`, `-mono` | Arabic lockup, mark on the right, «بزنس راب» |
-| `logo/mark-animated.svg` | looping CSS animation (pages open, lines write, highlighter sweeps); stops under reduced motion |
+| `logo/wordmark-en.svg`, `wordmark-ar.svg` (+ `-dark`, `-mono`) | the name alone, for places that already show the mark |
+| `logo/mark-animated.svg` | looping CSS animation (lines write, highlighter sweeps); stops under reduced motion |
 | `logo/app-icon.svg` | the mark on its tile (dark ground) for app and favicon sizes |
 | `favicon/` | `favicon.svg` (follows the system scheme), `favicon.ico` (16, 32, 48), PNG 16 to 512, `apple-touch-icon.png` (180) |
-| `social/social-card.png` (1280x640, GitHub social preview), `social/og.png` (1200x630) | link previews |
-| `motion/logo-loop.gif`, `logo-loop.mp4` | the animated mark as media |
+| `social/social-card.png` (1280x640), `social/og.png` (1200x630) | link previews (og, Twitter/X, LinkedIn) |
+| `motion/logo-loop.gif`, `logo-loop.mp4` (512x512, 5 s) | the animated mark as media |
+
+## Banners
+
+| File | Use |
+|---|---|
+| `banner/hero.gif` (1280x640, 9 s, 17 fps), `hero.mp4` (25 fps) | README top and site hero: evidence in, the highlighter finds a fact, the spread opens English left and Arabic right, PDF and DOCX stamp out. The GIF runs at 17 fps so it stays under the repository's 5 MB file limit |
+| `banner/hero-site-1920.mp4` + `hero-site-poster.png` (1920x960) | site hero as a `<video autoplay muted loop playsinline poster>` |
+| `banner/github-banner.gif` (1280x640, 6 s, 25 fps) | the separate animated GitHub banner: paper ground, the mark writes itself, the highlighter steps along the tool chain |
+| `banner/github-banner-still.png` (1280x640, under 1 MB) | the GitHub social preview (Settings, Social preview) |
+
+Sources: `motion/banner`, `motion/banner-site`, `motion/github-banner`, `motion/logo-loop` (HyperFrames 0.8.144; fonts are copied in locally and gitignored). Render: `npx --yes hyperframes@0.8.144 render . -q delivery --crf 10 --browser-gpu --gpu`, then a GIF from a 256-colour palette with no dithering.
 
 Rules: clear space = the width of one page of the mark on every side. Minimum: mark 16 px, lockup 24 px high. The mark is never mirrored for RTL: only the lockup order changes. The highlighter stays lime in colour versions; in mono versions it is the only filled part.
 
