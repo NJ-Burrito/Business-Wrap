@@ -1,16 +1,18 @@
 <h1 align="center">Business-Wrap: bilingual requirements document generator (Arabic + English)</h1>
 
-<p align="center"><img src="site/assets/media/hero.gif" alt="Business-Wrap: evidence in, one Arabic and English requirements document out" width="720"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/NJ-Burrito/Business-Wrap/main/site/assets/media/hero.gif" alt="Business-Wrap: evidence in, one Arabic and English requirements document out" width="720"></p>
+
+<h3 align="center">📄 Evidence in. One Arabic and English requirements document out.</h3>
 
 <p align="center">
-  <a href="https://nj-burrito.github.io/Business-Wrap/"><img src="https://img.shields.io/badge/website-nj--burrito.github.io-C8F04A?labelColor=0F231E" alt="Website"></a>
-  <a href="https://github.com/NJ-Burrito/Business-Wrap/releases/latest"><img src="https://img.shields.io/github/v/release/NJ-Burrito/Business-Wrap?label=release&color=C8F04A&labelColor=0F231E" alt="Release"></a>
-  <a href="https://www.npmjs.com/package/business-wrap"><img src="https://img.shields.io/npm/v/business-wrap?label=npm&logo=npm&logoColor=white&color=C8F04A&labelColor=0F231E" alt="npm"></a>
+  <a href="https://nj-burrito.github.io/Business-Wrap/"><img src="https://img.shields.io/badge/website-nj--burrito.github.io-d3c6a6?labelColor=001e3d" alt="Website"></a>
+  <a href="https://github.com/NJ-Burrito/Business-Wrap/releases/latest"><img src="https://img.shields.io/github/v/release/NJ-Burrito/Business-Wrap?label=release&color=d3c6a6&labelColor=001e3d" alt="Release"></a>
+  <a href="https://www.npmjs.com/package/business-wrap"><img src="https://img.shields.io/npm/v/business-wrap?label=npm&logo=npm&logoColor=be9a41&color=d3c6a6&labelColor=001e3d" alt="npm"></a>
   <a href="https://github.com/NJ-Burrito/Business-Wrap/actions/workflows/gates.yml"><img src="https://github.com/NJ-Burrito/Business-Wrap/actions/workflows/gates.yml/badge.svg" alt="Gates"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-C8F04A?labelColor=0F231E" alt="License: MIT"></a>
-  <a href=".claude-plugin/marketplace.json"><img src="https://img.shields.io/badge/Claude%20Code-plugin-C8F04A?labelColor=0F231E" alt="Claude Code plugin"></a>
-  <a href="mcp/server.json"><img src="https://img.shields.io/badge/MCP-server-C8F04A?labelColor=0F231E" alt="MCP server"></a>
-  <a href="README.ar.md"><img src="https://img.shields.io/badge/Arabic%20%2B%20English-first--class-C8F04A?labelColor=0F231E" alt="Arabic and English"></a>
+  <a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-d3c6a6?labelColor=001e3d" alt="License: MIT"></a>
+  <a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/.claude-plugin/marketplace.json"><img src="https://img.shields.io/badge/Claude%20Code-plugin-d3c6a6?labelColor=001e3d" alt="Claude Code plugin"></a>
+  <a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/mcp/server.json"><img src="https://img.shields.io/badge/MCP-server-d3c6a6?labelColor=001e3d" alt="MCP server"></a>
+  <a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/README.ar.md"><img src="https://img.shields.io/badge/Arabic%20%2B%20English-first--class-d3c6a6?labelColor=001e3d" alt="Arabic and English"></a>
   <a href="https://github.com/NJ-Burrito/Business-Wrap/stargazers"><img src="https://img.shields.io/github/stars/NJ-Burrito/Business-Wrap?style=social" alt="Stars"></a>
 </p>
 
@@ -24,7 +26,7 @@
 
 🆓 Free and open source (MIT). Runs on your computer. Nothing is uploaded.
 
-**Jump to:** [▶️ Quick start](#️-quick-start) · [✅ Before you start](#-before-you-start) · [🧩 Install](#-install) · [🚀 Commands](#-commands) · [🔁 Updates](#-updates) · [🧰 What it does](#-what-it-does) · [🔤 Fonts](#-fonts) · [🤖 For AI agents](#-for-ai-agents)
+**Jump to:** [▶️ Quick start](#️-quick-start) · [✅ Before you start](#-before-you-start) · [🧩 Install](#-install) · [🚀 Commands](#-commands) · [🔁 Updates](#-updates) · [🧰 What it does](#-what-it-does) · [🔤 Fonts](#-fonts) · [🤖 For AI agents](#-for-ai-agents) · [🔒 Is it safe?](#-is-it-safe) · [❓ Questions](#-questions) · [🆘 Problems?](#-problems)
 
 ## ▶️ Quick start
 
@@ -34,7 +36,7 @@
 
 ▶️ Start the local server: `npm run serve` (the first time it builds the sample editor)
 
-🌐 Open the address it prints, http://127.0.0.1:4317/, in Chrome or Edge.
+🌐 Open the address it prints, `http://127.0.0.1:4317/`, in Chrome or Edge.
 
 ⚠️ Always open the editor **through the local server**, not by double-clicking the HTML file. Export, print, the printers list and updates need the server.
 
@@ -73,7 +75,7 @@ claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp
 - Release zip: `business-wrap-<version>.zip` + `.sha256` from https://github.com/NJ-Burrito/Business-Wrap/releases/latest. In that folder: `npm ci`.
 - MCP from a clone: `claude mcp add business-wrap -- node <path-to>/Business-Wrap/mcp/cli.mjs`
 - MCP from the GitHub tag (no npm): `claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.1 business-wrap-mcp`
-- Tools: `build_editor`, `validate_edits`, `apply_edits`, `export_document`, `export_design_pack`, `check_fonts`, `harvest_model`, `harvest_crawl`, `harvest_merge`, `diagram_mermaid`, `check_update`, `apply_update`, plus the `learning_*` tools. See `mcp/README.md`.
+- Tools: `build_editor`, `validate_edits`, `apply_edits`, `export_document`, `export_design_pack`, `check_fonts`, `harvest_model`, `harvest_crawl`, `harvest_merge`, `diagram_mermaid`, `check_update`, `apply_update`, plus the `learning_*` tools. See [mcp/README.md](mcp/README.md).
 
 </details>
 
@@ -112,7 +114,7 @@ Opened from disk (file://), «PDF + DOCX» downloads the edited document JSON an
 <details>
 <summary>📖 How the in-editor update works</summary>
 
-At launch the editor (served by `npm run serve -- <editor.html>` or `node engine/serve.mjs <editor.html>`) checks for a newer release, at most once a day and without blocking anything. Update now downloads the release, checks its fingerprint, backs up, replaces the program files only, verifies the new version, restarts the server and reopens your document where you were. Your documents, edits and their history, design packs, fonts, logos, `out/` and `.local/` are never touched. **Settings** (toolbar View section, or Ctrl+K) shows About, the update state with **Check now** and the auto-check switch, and your preferences. Opened from disk (`file://`), the page cannot check: Settings says how to update. Every release: https://github.com/NJ-Burrito/Business-Wrap/releases. Details: `bible/07-updates.md`.
+At launch the editor (served by `npm run serve -- <editor.html>` or `node engine/serve.mjs <editor.html>`) checks for a newer release, at most once a day and without blocking anything. Update now downloads the release, checks its fingerprint, backs up, replaces the program files only, verifies the new version, restarts the server and reopens your document where you were. Your documents, edits and their history, design packs, fonts, logos, `out/` and `.local/` are never touched. **Settings** (toolbar View section, or Ctrl+K) shows About, the update state with **Check now** and the auto-check switch, and your preferences. Opened from disk (`file://`), the page cannot check: Settings says how to update. Every release: https://github.com/NJ-Burrito/Business-Wrap/releases. Details: [bible/07-updates.md](bible/07-updates.md).
 
 </details>
 
@@ -122,11 +124,11 @@ At launch the editor (served by `npm run serve -- <editor.html>` or `node engine
 
 📝 **Editor:** one HTML file. The page you edit is the page that prints. Every change is undoable and recorded.
 
-🔀 **Two languages, one layout:** «ع» / «E» switches language; RTL / LTR switches word direction. Nothing jumps.
+🔀 **Two languages, one layout:** «ع» / «E» switches language; RTL / LTR switches word direction. The toolbar and the page stay where they are.
 
 🧭 **Diagrams:** the workflow figure is editable on the page. Mermaid in and out.
 
-🎨 **Design:** colours, sizes, template parts, any font. All in plain language.
+🎨 **Design:** colours, sizes, template parts, any font. Labels say what they do, in Arabic and English.
 
 📤 **Exports:** PDF, DOCX, edits JSON, design pack, Save HTML, webhooks.
 
@@ -149,7 +151,7 @@ At launch the editor (served by `npm run serve -- <editor.html>` or `node engine
 | **Automation** | Webhooks on save and export; an MCP server; a Claude Code plugin; `node update/cli.mjs` to stay current. |
 | **Safety** | A security gate keeps client content, credentials and local paths out of the repository; the crawler never files a real request unless you ask twice. |
 
-Owner decision 2026-10-28: every chosen font is embedded as real text in PDF and DOCX; the font's licence is the user's responsibility.
+🔤 Every chosen font is embedded as real text in PDF and DOCX; the font's licence is your responsibility.
 
 </details>
 
@@ -163,7 +165,7 @@ npm run harvest:model -- <process.bpmn | .drawio | .yaml>   # roles, workflow, r
 npm run harvest:crawl -- <crawl.json>                        # card, form, attachments, messages
 npm run harvest:merge -- <harvest.json> <process.json>       # the union of both
 ```
-Each gives the Arabic and English document JSON and an editor. In the editor: **New document**. See `bible/08-harvest.md`.
+Each gives the Arabic and English document JSON and an editor. In the editor: **New document**. See [bible/08-harvest.md](bible/08-harvest.md).
 
 </details>
 
@@ -191,9 +193,9 @@ Each gives the Arabic and English document JSON and an editor. In the editor: **
 
 **Export & Print:** one Export menu and one Print entry; PDF and DOCX per language or both, HTML, print HTML, edits, design pack, Mermaid / SVG / PNG of diagrams; page range and cover option.
 
-**Template packs:** e-service, e-commerce, call-centre, approval, SaaS, generic IEEE 29148, plus your own (`templates/_example-custom`). Every requirement cites its evidence. See `bible/09-template-packs.md`.
+**Template packs:** e-service, e-commerce, call-centre, approval, SaaS, generic IEEE 29148, plus your own (`templates/_example-custom`). Every requirement cites its evidence. See [bible/09-template-packs.md](bible/09-template-packs.md).
 
-**Local learning:** a journal of your edits in `.local/learning/` on this machine only; `npm run learn` turns repeated corrections into rules for your AI agent. Settings → "Local learning" to switch it off or forget everything. See `bible/10-learning.md`.
+**Local learning:** a journal of your edits in `.local/learning/` on this machine only; `npm run learn` turns repeated corrections into rules for your AI agent. Settings → "Local learning" to switch it off or forget everything. See [bible/10-learning.md](bible/10-learning.md).
 
 </details>
 
@@ -205,11 +207,11 @@ Each gives the Arabic and English document JSON and an editor. In the editor: **
 
 🎁 **No copy on this machine?** A bundled fallback in `fonts/nj-fonts/` is used, so the PDF prints right out of the box.
 
-⚖️ `fonts/nj-fonts/` is under the Thmanyah licence, **not** MIT. Details: `fonts/README.md`.
+⚖️ `fonts/nj-fonts/` is under the Thmanyah licence, **not** MIT. Details: [fonts/README.md](fonts/README.md).
 
 ## 🤖 For AI agents
 
-📘 Read `AGENTS.md` and `SKILL.md` (Claude Code, Claude Desktop, Codex, Cursor, Gemini CLI or any MCP client).
+📘 Read [AGENTS.md](AGENTS.md) and [SKILL.md](SKILL.md) (Claude Code, Claude Desktop, Codex, Cursor, Gemini CLI or any MCP client).
 
 🔔 At the start of a task run `node update/cli.mjs --check` (or MCP `check_update`); tell the user about a newer release in one line; never update without consent.
 
@@ -224,7 +226,7 @@ Each gives the Arabic and English document JSON and an editor. In the editor: **
 | `watermarkDir` | `BW_WATERMARK_DIR` | the tool's watermark images, editor UI only |
 | `chrome` | `BW_CHROME` | Chrome or Edge executable |
 | `poppler` | `BW_POPPLER` | poppler `bin` folder (pdftotext / pdffonts in the tests) |
-| `brandDir` | `BW_BRAND_DIR` | the tool's logo folder (default `brand/logo/`), UI only |
+| `brandDir` | `BW_BRAND_DIR` | the tool's logo folder (default `brand/v3/logo/`), UI only |
 
 Browser support: Chrome and Edge, latest stable (Chromium 120+).
 
@@ -250,7 +252,82 @@ git config core.hooksPath .githooks
 
 </details>
 
-⚖️ MIT licence: see `LICENSE`. `fonts/nj-fonts/` keeps the Thmanyah licence. 🔒 Nothing is uploaded: see `docs/privacy.md`.
+## 🔒 Is it safe?
+
+🏠 **Local only:** the editor, the PDF printer and the DOCX builder run on your computer. Nothing is uploaded ([docs/privacy.md](docs/privacy.md)).
+
+🔁 **One automatic request:** the update check, at most once a day, to the public GitHub release list. Webhooks send only to an address you set.
+
+🌾 **The crawler is a dry run:** it stops before Send, Submit, Confirm or Pay unless you ask twice.
+
+🛡️ **A security gate** (`security/check.py`, plus gitleaks in CI) keeps client content, credentials and local paths out of the repo. Found a problem? [SECURITY.md](SECURITY.md).
+
+## ❓ Questions
+
+<details>
+<summary>🆓 Is it free?</summary>
+
+Yes. MIT licence, no paid plan, no account.
+
+</details>
+
+<details>
+<summary>🏠 Does my document leave my computer?</summary>
+
+No. The editor, the PDF printer and the DOCX builder run locally.
+
+The one automatic request is the update check: at most once a day, to the public GitHub release list. Webhooks send only to an address you set.
+
+</details>
+
+<details>
+<summary>🤖 Do I need Claude?</summary>
+
+No. The editor and the command line work on their own. The plugin and the MCP server are optional.
+
+</details>
+
+<details>
+<summary>🔄 What goes in, what comes out?</summary>
+
+In: a process model (BPMN, draw.io, YAML) or a crawl of a live service.
+
+Out: PDF, DOCX, the edits JSON, a design pack, and the editor saved as HTML.
+
+</details>
+
+<details>
+<summary>🌾 Will the crawler file a real request?</summary>
+
+Not unless you ask twice: `submit: true` in the config and `--yes-file-real-request`. Otherwise it stops before Send, Submit, Confirm or Pay.
+
+</details>
+
+<details>
+<summary>🔤 Which fonts can I use?</summary>
+
+Thmanyah by default: your own copy wins, and a bundled fallback (under the Thmanyah licence, not MIT) makes the PDF right out of the box. Any font on your computer, or a file you upload, also works; its licence is your responsibility.
+
+</details>
+
+<details>
+<summary>💻 What does it run on?</summary>
+
+Tested on Windows 11 with Node 24 and Chrome. It needs Node 20+, Chrome or Edge, and Python with uv for DOCX. macOS and Linux are untested.
+
+</details>
+
+## 🆘 Problems?
+
+🆘 **[Support page](https://nj-burrito.github.io/Business-Wrap/support.html):** the common fixes.
+
+📖 **[The guide](docs/guide.md):** install, quick start, troubleshooting, backup.
+
+🐞 **[Open an issue](https://github.com/NJ-Burrito/Business-Wrap/issues/new/choose):** pick Bug or Feature; include the version (`node update/cli.mjs --check`).
+
+🔒 **Security problem?** Report it privately: [SECURITY.md](SECURITY.md).
 
 ## 🌐 More from NJ
 [Portfolio](https://nj-burrito.github.io/) · [NJ-Kit](https://nj-burrito.github.io/NJ-Kit/) · [QA-Wrap](https://nj-burrito.github.io/QA-Wrap/) · [Profile-Wrap](https://nj-burrito.github.io/Profile-Wrap/) · [Story-Wrap](https://nj-burrito.github.io/story-wrap/) · [GitHub](https://github.com/NJ-Burrito)
+
+⚖️ [MIT](LICENSE) · [NOTICE.md](NOTICE.md) (fonts) · [fonts/README.md](fonts/README.md)

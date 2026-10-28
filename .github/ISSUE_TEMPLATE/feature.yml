@@ -1,0 +1,44 @@
+name: "💡 Feature / ميزة"
+description: "Propose a change to the method, a gate, a token or the editor / اقتراح تغيير في المنهج أو فحص أو رمز أو المحرر"
+labels: ["enhancement"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: "Version / الإصدار"
+      description: "Run `npx business-wrap update --check` (or `node update/cli.mjs --check`) and paste the version. / شغل الأمر والصق رقم الإصدار."
+      placeholder: "0.12.0"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Problem / المشكلة"
+      description: "What goes wrong today, with a count if you have one. / ما الذي يخطئ اليوم، مع العدد إن وجد."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: "Proposal / الاقتراح"
+    validations:
+      required: true
+  - type: textarea
+    id: gate
+    attributes:
+      label: "Gate that will prove it / الفحص الذي سيثبته"
+  - type: checkboxes
+    id: contract
+    attributes:
+      label: "Contract impact / الأثر على العقد"
+      options:
+        - label: "none / لا شيء"
+        - label: "edits schema / مخطط التعديلات"
+        - label: "design pack / حزمة التصميم"
+  - type: checkboxes
+    id: clean
+    attributes:
+      label: "Client data / بيانات العملاء"
+      options:
+        - label: "I removed client data and credentials. / أزلت بيانات العملاء وبيانات الدخول."
+          required: true

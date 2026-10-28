@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "🆘 Support and common fixes / الدعم والحلول الشائعة"
+    url: https://nj-burrito.github.io/Business-Wrap/support.html
+    about: "The guide and the common fixes first. / الدليل والحلول الشائعة أولا."
+  - name: "🔒 Security problem / مشكلة أمنية"
+    url: https://github.com/NJ-Burrito/Business-Wrap/blob/main/SECURITY.md
+    about: "Report privately, never in a public issue. / أبلغ بشكل خاص، لا في بلاغ عام."
