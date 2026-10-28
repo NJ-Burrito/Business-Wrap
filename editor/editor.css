@@ -27,6 +27,11 @@
   #bw-pair.bw-side main.bw-doc { margin: 0; zoom: calc(var(--bw-zoom, 1) * .62); flex: 0 0 auto; }
   main.bw-doc .cover { height: 297mm; }
   main.bw-doc [data-p] { cursor: text; border-radius: 2px; }
+  /* diagrams: shapes are grabbed, arrows picked, the empty drawing selects the diagram */
+  main.bw-doc figure[data-dg] svg { cursor: default; touch-action: none; user-select: none; }
+  main.bw-doc figure[data-dg] [data-dg-node] { cursor: grab; }
+  main.bw-doc figure[data-dg] [data-dg-edge] { cursor: pointer; }
+  main.bw-doc figure[data-dg].dg-on .fig-art { outline: 2px solid var(--bw-gold); outline-offset: 2px; }
   main.bw-doc [data-p]:hover { outline: 1px dashed var(--bw-hover); outline-offset: 1px; }
   main.bw-doc [data-p]:focus { outline: 2px solid var(--bw-sel); outline-offset: 1px; }
   main.bw-doc [data-p]:focus-visible { outline: 3px solid var(--bw-sel); }

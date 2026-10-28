@@ -8,6 +8,7 @@
 // step.type: task (a person does it) | system | decision | start | end | timer | pass
 import { parseXml, find, kids, child, attr, textOf, unescapeXml } from './xml.mjs';
 import { parseYaml } from './yaml.mjs';
+import { DIAGRAM } from '../diagram.mjs';
 
 // draw.io labels are HTML inside the attribute: tags out, entities decoded once more
 const clean = (s) => unescapeXml(String(s ?? '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ')).replace(/\s+/g, ' ').trim();
@@ -447,7 +448,7 @@ export function modelToDocument(irIn, { locale = 'en', L, today = new Date().toI
   const chapters = [
     { number: '1', title: L.chIntro, sections: [sec('1.1', L.secPurpose, [{ kind: 'prose', paragraphs: [L.introModel.replace('{name}', name), L.introSource.replace('{s}', L['src_' + ir.source] || ir.source)] }])] },
     { number: '2', title: L.chActors, sections: [sec('2.1', L.chActors, [{ kind: 'table', columns: [L.colActor, L.colTasks], rows: ir.actors.map((a) => [a.name, tasks.filter((t) => t.actor === a.id).map((t) => t.name).join(L.listSep) || L.none]) }])] },
-    { number: '3', title: L.chWorkflow, sections: [sec('3.1', L.chWorkflow, [{ kind: 'figure', caption: L.figureCaption.replace('{name}', name), svg: processFigure(ir, { locale, L }), compact: true }])] },
+    { number: '3', title: L.chWorkflow, sections: [sec('3.1', L.chWorkflow, [{ kind: 'diagram', caption: L.figureCaption.replace('{name}', name), model: DIAGRAM.fromGraph(humanGraph(ir), { actors: ir.actors, locale }) }])] },
     { number: '4', title: L.chSteps, sections: [sec('4.1', L.chSteps, [{ kind: 'table', columns: [L.colStep, L.colActor, L.colNext], rows: [...tasks, ...decisions].map((n) => [n.name || L.decision, n.actor ? actorName(n.actor) : L.none, edges.filter((e) => e.from === n.id).map((e) => (e.label ? `${e.label}: ` : '') + nameOf(e.to)).join(L.listSep) || L.none]) }])] },
     { number: '5', title: L.chRules, sections: [sec('5.1', L.chRules, [rules.length ? { kind: 'table', columns: [L.colCode, L.colRule], rows: rules } : { kind: 'prose', paragraphs: [L.noRules] }])] },
     { number: '6', title: L.chStories, sections: tasks.length ? [sec('6.1', L.chStories, [{ kind: 'stories', number: '6.1', lead: L.storyCards, items: stories }])] : [sec('6.1', L.chStories, [{ kind: 'prose', paragraphs: [L.noTasks] }])] },

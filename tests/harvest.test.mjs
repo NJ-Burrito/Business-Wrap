@@ -42,7 +42,8 @@ try {
   const bp = await harvestModel(path.join(FIX, 'permit.bpmn20.xml'), { out: OUT });
   const [arB, enB] = bp.documents.map(read);
   check('bpmn: lanes and candidate groups become actors', JSON.stringify(enB.chapters[1].sections[0].blocks[0].rows.map((r) => r[0])) === '["Applicant","Reviewing officer"]', JSON.stringify(enB.chapters[1].sections[0].blocks[0].rows));
-  const svg = enB.chapters[2].sections[0].blocks[0].svg;
+  const dg = enB.chapters[2].sections[0].blocks[0];
+  const svg = dg.kind === 'diagram' ? dg.model.nodes.map((n) => n.label).join(' | ') : dg.svg;
   check('bpmn: the figure shows people\'s steps only (the service task is left out)', svg.includes('File the request') && svg.includes('Review the request') && !svg.includes('Calculate the fee'));
   const rules = table(enB, 4).rows.map((r) => r[1]).join(' | ');
   check('bpmn: gateway conditions and the boundary timer become rules', /Complete/.test(rules) && /Needs changes/.test(rules) && /P5D/.test(rules), rules.slice(0, 200));
@@ -56,14 +57,14 @@ try {
   // ── A. draw.io, plain and compressed ──
   const dr = await harvestModel(path.join(FIX, 'permit.drawio'), { out: OUT, editor: false });
   const enD = read(dr.documents[1]);
-  check('drawio: swimlanes → actors, the process-shape system step left out, labels decoded', JSON.stringify(enD.chapters[1].sections[0].blocks[0].rows) === '[["Customer","Choose a date & room"],["Booking desk","Confirm the booking"]]' && !enD.chapters[2].sections[0].blocks[0].svg.includes('Check availability'), JSON.stringify(enD.chapters[1].sections[0].blocks[0].rows));
+  check('drawio: swimlanes → actors, the process-shape system step left out, labels decoded', JSON.stringify(enD.chapters[1].sections[0].blocks[0].rows) === '[["Customer","Choose a date & room"],["Booking desk","Confirm the booking"]]' && !JSON.stringify(enD.chapters[2].sections[0].blocks[0].model).includes('Check availability'), JSON.stringify(enD.chapters[1].sections[0].blocks[0].rows));
   const plain = fs.readFileSync(path.join(FIX, 'permit.drawio'), 'utf8');
   const model = plain.match(/<mxGraphModel>[\s\S]*<\/mxGraphModel>/)[0];
   const packed = zlib.deflateRawSync(Buffer.from(encodeURIComponent(model))).toString('base64');
   const compressedFile = path.join(OUT, 'compressed.drawio');
   fs.writeFileSync(compressedFile, `<mxfile><diagram id="c" name="Venue booking">${packed}</diagram></mxfile>`);
   const dc = await harvestModel(compressedFile, { out: path.join(OUT, 'c'), editor: false });
-  check('drawio: a compressed diagram gives the same document', JSON.stringify(read(dc.documents[1]).chapters.slice(1, 7).map((c) => c.sections.map((s) => s.blocks.filter((b) => b.kind !== 'figure')))) === JSON.stringify(enD.chapters.slice(1, 7).map((c) => c.sections.map((s) => s.blocks.filter((b) => b.kind !== 'figure')))));
+  check('drawio: a compressed diagram gives the same document', JSON.stringify(read(dc.documents[1]).chapters.slice(1, 7).map((c) => c.sections.map((s) => s.blocks.filter((b) => !['figure', 'diagram'].includes(b.kind))))) === JSON.stringify(enD.chapters.slice(1, 7).map((c) => c.sections.map((s) => s.blocks.filter((b) => !['figure', 'diagram'].includes(b.kind))))));
 
   // ── A. YAML step list ──
   const ym = await harvestModel(path.join(FIX, 'steps.yaml'), { out: OUT, editor: false });

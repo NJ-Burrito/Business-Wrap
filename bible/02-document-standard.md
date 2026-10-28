@@ -21,6 +21,7 @@ Front matter: a control table (document id, title, prepared by, type, classifica
 | `prose` | `{kind, paragraphs[]}` | no reporting voice ("was observed", "we saw"); state the requirement |
 | `table` | `{kind, columns[], rows[][]}` | header repeats on every page (`thead`); an empty column is dropped by the renderer; long cells (>200 chars) justify |
 | `figure` | `{kind, caption, sheet, svg}` | caption in the table size, primary colour; the workflow figure is ONE figure on ONE landscape sheet, fitted by carrying less, never by shrinking type |
+| `diagram` | `{kind, caption, model}` | 0.9.0: the workflow figure as an editable model (`contracts/diagram.schema.json`), drawn in the house look — applicant band, sage staff stages, «إجراء» diamonds, ✓/⊗ stadium ends, solid / dashed brown / red lines, legend; real text in the PDF, native Word shapes in the DOCX; printed «Figure N: caption» above a framed sheet |
 | `stories` | `{kind, number, lead, items[]}` | one card per story; acceptance criteria as a numbered list; a payment step is a stage, not a desk (no role, no card) |
 | `shots` | `{kind, caption, images[], width}` | images as data URIs; width 10–100 % of the 150 mm measure |
 | any block | `layout: {breakBefore, keepNext}` | editor page-break controls; never used to hide a fill problem |

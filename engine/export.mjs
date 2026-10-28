@@ -15,6 +15,7 @@ import { renderDocument, chromeTemplates, relaxTallGroups, relaxArgs, PAGE, desi
 import { applyOps, migrate } from './edits.mjs';
 import { loadManifest, resolveFonts, fontFaceCss } from './fonts.mjs';
 import { config } from './config.mjs';
+import { DIAGRAM } from './diagram.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO = path.resolve(HERE, '..');
@@ -131,6 +132,19 @@ export async function pageThumbs(doc, { locale, theme, dpi = 36 }) {
   }
 }
 
+/** Each diagram block carries its drawing primitives for the DOCX builder (native Word shapes). */
+export function withResolvedDiagrams(doc, theme, locale) {
+  const label = i18n().doc[locale]?.figureNo || i18n().doc[locale]?.figure || '';
+  const copy = JSON.parse(JSON.stringify(doc));
+  for (const ch of copy.chapters || []) for (const sec of ch.sections || []) for (const b of sec.blocks || []) {
+    if (b.kind !== 'diagram') continue;
+    const r = DIAGRAM.resolve(b.model || {}, { theme, locale });
+    b.resolved = { view: r.view, items: r.items.map(({ d, ...it }) => it) };
+    b.figureLabel = label;
+  }
+  return copy;
+}
+
 /** DOCX through the copied builder. Writes the edited JSON beside it first. */
 /** DOCX replica. embedFonts (default true): the TrueType cuts travel inside the file (word/fonts/*.odttf). */
 export function exportDocx(doc, { locale, theme, docxPath, embedFonts = true }) {
@@ -138,7 +152,7 @@ export function exportDocx(doc, { locale, theme, docxPath, embedFonts = true }) 
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-docx-'));
   const docJson = path.join(work, 'document.json');
   const themeJson = path.join(work, 'theme.json');
-  fs.writeFileSync(docJson, JSON.stringify(doc), 'utf8');
+  fs.writeFileSync(docJson, JSON.stringify(withResolvedDiagrams(doc, designTheme(theme, doc), locale)), 'utf8');
   fs.writeFileSync(themeJson, JSON.stringify(designTheme(theme, doc)), 'utf8');
   fs.mkdirSync(path.dirname(docxPath), { recursive: true });
   const r = spawnSync('uv', ['run', '--no-project', '--with', 'python-docx', '--with', 'lxml', 'python', path.join(HERE, 'docx', 'build_docx.py'), docJson, docxPath, '--workdir', work], {

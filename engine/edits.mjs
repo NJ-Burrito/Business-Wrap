@@ -175,6 +175,12 @@ export function textLeaves(doc) {
     else if (v && typeof v === 'object')
       for (const [k, x] of Object.entries(v)) {
         if (['svg', 'images', 'kind', 'service', 'composedAt'].includes(k)) continue;
+        // a diagram's words are its labels; ids, kinds and geometry are not text
+        if (k === 'model' && x && typeof x === 'object') {
+          (x.nodes || []).forEach((n, i) => ['label', 'sub'].forEach((f) => typeof n?.[f] === 'string' && n[f] && out.push({ path: `${p}/model/nodes/${i}/${f}`, value: n[f] })));
+          (x.edges || []).forEach((e, i) => typeof e?.label === 'string' && e.label && out.push({ path: `${p}/model/edges/${i}/label`, value: e.label }));
+          continue;
+        }
         walk(x, `${p}/${k.replace(/~/g, '~0').replace(/\//g, '~1')}`);
       }
   };

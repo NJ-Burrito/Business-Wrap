@@ -182,10 +182,215 @@
      "title": "مخطط سير العمل",
      "blocks": [
       {
-       "kind": "figure",
-       "caption": "مخطط سير عمل طلب تصريح فعالية عامة",
-       "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 190\" width=\"800\" height=\"190\"><defs><marker id=\"a\" markerWidth=\"10\" markerHeight=\"10\" refX=\"9\" refY=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"#4d545b\"/></marker></defs><rect x=\"40\" y=\"60\" width=\"200\" height=\"70\" rx=\"10\" fill=\"#dde8eb\" stroke=\"#264d5c\" stroke-width=\"2\"/><text x=\"140\" y=\"102\" text-anchor=\"middle\" font-size=\"18\" fill=\"#15303b\">إصدار القرار</text><rect x=\"300\" y=\"60\" width=\"200\" height=\"70\" rx=\"10\" fill=\"#dde8eb\" stroke=\"#264d5c\" stroke-width=\"2\"/><text x=\"400\" y=\"102\" text-anchor=\"middle\" font-size=\"18\" fill=\"#15303b\">دراسة الطلب</text><rect x=\"560\" y=\"60\" width=\"200\" height=\"70\" rx=\"10\" fill=\"#dde8eb\" stroke=\"#264d5c\" stroke-width=\"2\"/><text x=\"660\" y=\"102\" text-anchor=\"middle\" font-size=\"18\" fill=\"#15303b\">تقديم الطلب</text><line x1=\"300\" y1=\"95\" x2=\"244\" y2=\"95\" stroke=\"#4d545b\" stroke-width=\"2\" marker-end=\"url(#a)\"/><line x1=\"560\" y1=\"95\" x2=\"504\" y2=\"95\" stroke=\"#4d545b\" stroke-width=\"2\" marker-end=\"url(#a)\"/></svg>",
-       "compact": true
+       "kind": "diagram",
+       "caption": "مخطط سير العمل: من تقديم الطلب حتى نتيجة الطلب",
+       "model": {
+        "kind": "bw-diagram",
+        "version": 1,
+        "flow": "ltr",
+        "nodes": [
+         {
+          "id": "s",
+          "kind": "start",
+          "label": "تقديم الطلب"
+         },
+         {
+          "id": "pay",
+          "kind": "payment",
+          "label": "دفع الرسوم"
+         },
+         {
+          "id": "d1",
+          "kind": "decision",
+          "label": "إجراء"
+         },
+         {
+          "id": "rev",
+          "kind": "staff",
+          "label": "التدقيق"
+         },
+         {
+          "id": "d2",
+          "kind": "decision",
+          "label": "إجراء"
+         },
+         {
+          "id": "head",
+          "kind": "staff",
+          "label": "رئيس القسم"
+         },
+         {
+          "id": "d3",
+          "kind": "decision",
+          "label": "إجراء"
+         },
+         {
+          "id": "mgr",
+          "kind": "staff",
+          "label": "مدير الإدارة"
+         },
+         {
+          "id": "d4",
+          "kind": "decision",
+          "label": "إجراء"
+         },
+         {
+          "id": "gm",
+          "kind": "staff",
+          "label": "المدير العام"
+         },
+         {
+          "id": "d5",
+          "kind": "decision",
+          "label": "إجراء"
+         },
+         {
+          "id": "ok",
+          "kind": "ok",
+          "label": "مخرج موافقة",
+          "sub": "تمت الموافقة على الطلب"
+         },
+         {
+          "id": "no",
+          "kind": "stop",
+          "label": "مخرج رفض",
+          "sub": "الطلب ملغى أو مرفوض"
+         },
+         {
+          "id": "fix",
+          "kind": "rework",
+          "label": "إعادة تقديم الطلب"
+         }
+        ],
+        "edges": [
+         {
+          "id": "e1",
+          "from": "s",
+          "to": "pay",
+          "label": ""
+         },
+         {
+          "id": "e2",
+          "from": "pay",
+          "to": "d1",
+          "label": ""
+         },
+         {
+          "id": "e3",
+          "from": "d1",
+          "to": "rev",
+          "label": "دفع الرسوم"
+         },
+         {
+          "id": "e4",
+          "from": "d1",
+          "to": "no",
+          "label": "إلغاء أو انتهاء المهلة"
+         },
+         {
+          "id": "e5",
+          "from": "rev",
+          "to": "d2",
+          "label": ""
+         },
+         {
+          "id": "e6",
+          "from": "d2",
+          "to": "head",
+          "label": "موافقة"
+         },
+         {
+          "id": "e7",
+          "from": "d2",
+          "to": "fix",
+          "label": "طلب استكمال النواقص"
+         },
+         {
+          "id": "e8",
+          "from": "d2",
+          "to": "no",
+          "label": "رفض"
+         },
+         {
+          "id": "e9",
+          "from": "fix",
+          "to": "rev",
+          "label": "إعادة الإرسال"
+         },
+         {
+          "id": "e10",
+          "from": "head",
+          "to": "d3",
+          "label": ""
+         },
+         {
+          "id": "e11",
+          "from": "d3",
+          "to": "mgr",
+          "label": "موافقة"
+         },
+         {
+          "id": "e12",
+          "from": "d3",
+          "to": "rev",
+          "label": "إرجاع للتدقيق"
+         },
+         {
+          "id": "e13",
+          "from": "d3",
+          "to": "no",
+          "label": "رفض"
+         },
+         {
+          "id": "e14",
+          "from": "mgr",
+          "to": "d4",
+          "label": ""
+         },
+         {
+          "id": "e15",
+          "from": "d4",
+          "to": "gm",
+          "label": "موافقة"
+         },
+         {
+          "id": "e16",
+          "from": "d4",
+          "to": "head",
+          "label": "إرجاع لرئيس القسم"
+         },
+         {
+          "id": "e17",
+          "from": "d4",
+          "to": "no",
+          "label": "رفض"
+         },
+         {
+          "id": "e18",
+          "from": "gm",
+          "to": "d5",
+          "label": ""
+         },
+         {
+          "id": "e19",
+          "from": "d5",
+          "to": "ok",
+          "label": "موافقة"
+         },
+         {
+          "id": "e20",
+          "from": "d5",
+          "to": "mgr",
+          "label": "إرجاع لمدير الإدارة"
+         },
+         {
+          "id": "e21",
+          "from": "d5",
+          "to": "no",
+          "label": "رفض"
+         }
+        ]
+       }
       }
      ]
     }

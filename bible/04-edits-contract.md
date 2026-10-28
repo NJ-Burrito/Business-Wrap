@@ -88,3 +88,11 @@ Nothing the document prints is fixed. All of it lives in the document JSON, trav
 | Advanced CSS | `/design/css` | Design panel; sanitised (no `@import`, no remote `url()`, no expressions), applied to the editor and the PDF |
 
 Undo and redo cover all of it (they are ops). The check flags an empty label. A harvested value edited by hand is recorded in `/manual`; a re-harvest keeps it and writes `harvestConflicts`, which the editor shows on open.
+
+## Diagrams (0.9.0)
+
+A `diagram` block's `model` (`contracts/diagram.schema.json`) is edited with the ops above: the editor writes ONE `replace` on `<block>/model` per gesture (move, resize, add, connect, kind, colour, align, layout, Mermaid import), and find/replace reaches node and edge labels through `setText` on `<block>/model/nodes/<i>/label`. Positions are optional: a node without `x`/`y` is placed by the auto layout; arrows are always routed from the shapes, so moving a shape re-routes its arrows. The version stays 1: no op changed.
+
+### The toolbar follows the selection
+
+Nothing selected (or Esc, or a click on the page) → the general sections: File · Insert · Edit · Document · Design · Export · View. A selection adds one highlighted section first, named for what is selected: Text, Table cell, Image, Logo, Shape («Shape: stage box»), Arrow, N shapes (align, distribute, group), Diagram (add shapes and symbols, auto layout, reset, flow, legend, Mermaid). Four tools stay in view, the rest sit in its «More» menu; the general sections fold to icons beside it. The Ctrl+K palette lists every command under the same categories.

@@ -24,7 +24,7 @@ import theme as theme_mod
 DEFAULT_BODY_FONT = 'thmanyah serif text'
 ARABIC = re.compile('[\u0600-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-\ufeff]')
 LATIN_DIGIT = re.compile('[A-Za-z0-9]')
-HANDLED_KINDS = frozenset({'prose', 'subhead', 'table', 'figure', 'stories', 'gap', 'shots'})
+HANDLED_KINDS = frozenset({'prose', 'subhead', 'table', 'figure', 'diagram', 'stories', 'gap', 'shots'})
 OPENERS = set('([{«')
 
 def split_by_script(text: str) -> list[tuple[str, bool]]:
@@ -687,7 +687,7 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
         if ch.get('hidden'):
             continue
         # as the print renderer: a chapter holding a figure is set on turned (landscape) sheets, heading included
-        wide = any((b.get('kind') == 'figure' for sec in ch['sections'] for b in sec.get('blocks', [])))
+        wide = any((b.get('kind') in ('figure', 'diagram') for sec in ch['sections'] for b in sec.get('blocks', [])))
         if wide:
             open_landscape_section(document)
         h1 = document.add_heading(level=1)
@@ -731,6 +731,18 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                     MAX_W_IN, MAX_H_IN = (10.59, 5.7)
                     scale = min(MAX_W_IN / svg_w, MAX_H_IN / svg_h)
                     add_figure(document, svg_src, block.get('caption', ''), font, workdir, counters, pic_width=Inches(svg_w * scale))
+                elif kind == 'diagram' and block.get('resolved'):
+                    # native Word shapes (engine/docx/diagram_docx.py): every box, line and label stays editable
+                    from diagram_docx import diagram_run
+                    counters['figure'] = counters.get('figure', 0) + 1
+                    cap = document.add_paragraph()
+                    set_para_bidi(cap)
+                    cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    cap.paragraph_format.keep_with_next = True
+                    add_script_runs(cap, f"{block.get('figureLabel', '')} {counters['figure']}200f: {block.get('caption', '')}".strip(), font, bold=True)
+                    p = document.add_paragraph()
+                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    p._p.append(diagram_run(block['resolved'], font, block.get('caption', '')))
                 elif kind == 'stories':
                     if block.get('lead'):
                         p = document.add_paragraph()

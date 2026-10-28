@@ -19,6 +19,14 @@ const MAP = {
   send: 'send', close: 'x', grip: 'grip-vertical', snap: 'magnet', every: 'layers', replace: 'refresh-ccw',
   caption: 'type', ok: 'circle-check', warn: 'triangle-alert', err: 'circle-x', info: 'info', view: 'eye',
   both: 'link-2', ed: 'languages', newdoc: 'file-plus-2', process: 'workflow', crawl: 'globe', add: 'plus', connect: 'route', dir: 'arrow-left-right', styleThis: 'paintbrush', hideBlock: 'eye-off', rowUp: 'arrow-up', rowDown: 'arrow-down',
+  // diagrams and the categorised toolbar (0.9.0)
+  addDiagram: 'git-fork', dgStaff: 'square', dgApplicant: 'squircle', dgStart: 'pill', dgPayment: 'rectangle-horizontal', dgRework: 'square-dashed', dgSystem: 'circle-dashed',
+  dgDecision: 'diamond', dgOk: 'circle-check-big', dgStop: 'circle-x', dgNote: 'sticky-note', dgGroup: 'group', dgText: 'type', dgSymbol: 'shapes',
+  dgConnect: 'move-right', dgLabel: 'pencil', dgSub: 'text-cursor-input', dgDup: 'copy', dgDel: 'trash-2', dgFront: 'bring-to-front', dgBack: 'send-to-back',
+  dgAlignL: 'align-start-vertical', dgAlignC: 'align-center-vertical', dgAlignR: 'align-end-vertical', dgAlignT: 'align-start-horizontal', dgAlignM: 'align-center-horizontal', dgAlignB: 'align-end-horizontal',
+  dgDistH: 'align-horizontal-distribute-center', dgDistV: 'align-vertical-distribute-center', dgWrap: 'group', dgAuto: 'wand-sparkles', dgReset: 'rotate-ccw', dgFlow: 'arrow-left-right',
+  dgMermaidIn: 'file-input', dgMermaidOut: 'file-output', dgReverse: 'arrow-right-left', dgFrom: 'unplug', dgTo: 'unplug', dgLegend: 'list', dgEdgeLabel: 'pencil',
+  secFile: 'folder', secInsert: 'square-plus', secEdit: 'pen-line', secDocument: 'file-text', secDesign: 'palette', secView: 'eye', secExport: 'file-down', more: 'ellipsis', secSel: 'spline',
 };
 const out = {};
 for (const [k, name] of Object.entries(MAP)) {

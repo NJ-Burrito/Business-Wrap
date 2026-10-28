@@ -12,6 +12,7 @@
 // tables carry `data-rows` / `data-cols`, cells `data-r` / `data-c`. Attributes
 // do not move a line, so the editor's markup and the printed markup are one.
 
+import { DIAGRAM } from './diagram.mjs';
 const NL = '\n';
 const KEEP_ROWS = 3;
 const GROUPABLE_ROWS = 12;
@@ -354,6 +355,8 @@ section.chapter.wide + section.chapter > h2{margin-top:0}
 .fig.sheet.hug > .fig-art{flex:0 0 auto;display:block}
 .fig.sheet.hug > .fig-art svg{width:100%;height:auto;max-height:${PAGE_ART_MM - 24}mm;margin:0}
 figcaption{font-size:var(--t-table);color:var(--primary);margin:0 0 5px;font-weight:700}
+.fig.dg > figcaption{font-family:${display},${text},serif;font-size:var(--t-h3);margin:0 0 4mm}
+.fig.dg > .fig-art{padding:4mm}
 .fig-note{font-size:var(--t-table);color:var(--muted);margin:4px 0 0}
 @page{size:A4 portrait;margin:18mm 0 16mm;background:${paper}}
 .wrap{padding-inline:var(--page-side)}
@@ -573,6 +576,7 @@ export function renderParts(doc, o) {
       b,
     });
 
+  let figNo = 0;
   function renderBlock(block, b) {
     switch (block.kind) {
       case 'prose':
@@ -587,6 +591,15 @@ export function renderParts(doc, o) {
   <div class="fig-art">${safeSvg(block.svg)}</div>
   ${block.note ? `<p class="fig-note"${dp(b + '/note')}>${bidi(block.note)}</p>` : ''}
 </figure>`;
+      case 'diagram': {
+        // a workflow diagram: an editable model drawn as shapes and real text (engine/diagram.mjs)
+        figNo += 1;
+        return `<figure class="fig sheet hug dg" data-b="${attr(b)}" data-dg="${attr(b)}">
+  <figcaption><span class="fig-no">${esc(L.figureNo || L.figure)} ${figNo}: </span><span${dp(b + '/caption')}>${bidi(block.caption)}</span></figcaption>
+  <div class="fig-art">${DIAGRAM.render(block.model || {}, { theme: o.theme, locale, title: block.caption, editor: !!o.editor })}</div>
+  ${block.note ? `<p class="fig-note"${dp(b + '/note')}>${bidi(block.note)}</p>` : ''}
+</figure>`;
+      }
       case 'shots':
         return `<figure class="fig shots" data-b="${attr(b)}">
   ${(block.images || []).map((src) => (String(src).startsWith('data:') ? `<img class="shot" src="${attr(src)}" alt="" style="width:${Math.min(100, Math.max(10, Number(block.width) || 100))}%" />` : '')).join(NL)}
@@ -761,11 +774,11 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
   const body = doc.chapters
     .map((ch, ci) => {
       const cp = `/chapters/${ci}`;
-      const hasFigure = ch.sections.some((sec) => sec.blocks.some((x) => x.kind === 'figure'));
+      const hasFigure = ch.sections.some((sec) => sec.blocks.some((x) => x.kind === 'figure' || x.kind === 'diagram'));
       const single = ch.sections.length === 1;
       const h2 = `<h2><span class="num"${dp(cp + '/number')}>${bidi(ch.number)}</span><span${dp(cp + '/title')}>${bidi(ch.title)}</span></h2>`;
       const first = ch.sections[0];
-      const opensLong = !!first?.blocks[0] && !['figure', 'stories', 'shots'].includes(first.blocks[0].kind);
+      const opensLong = !!first?.blocks[0] && !['figure', 'diagram', 'stories', 'shots'].includes(first.blocks[0].kind);
       const inner = single
         ? groupForPaging(ch.sections[0].blocks, `${cp}/sections/0/blocks`, opensLong ? h2 : '')
         : ch.sections

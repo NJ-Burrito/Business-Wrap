@@ -47,10 +47,15 @@ try {
   await client.connect(transport);
   const { tools } = await client.listTools();
   const names = tools.map((t) => t.name).sort();
-  check('tools/list', JSON.stringify(names) === JSON.stringify(['apply_edits', 'apply_update', 'build_editor', 'check_fonts', 'check_update', 'export_design_pack', 'export_document', 'harvest_crawl', 'harvest_merge', 'harvest_model', 'validate_edits']), names.join(','));
+  check('tools/list', JSON.stringify(names) === JSON.stringify(['apply_edits', 'apply_update', 'build_editor', 'check_fonts', 'check_update', 'diagram_mermaid', 'export_design_pack', 'export_document', 'harvest_crawl', 'harvest_merge', 'harvest_model', 'validate_edits']), names.join(','));
   check('every tool has a description and an input schema', tools.every((t) => t.description && t.inputSchema?.type === 'object'));
 
   let r = await client.callTool({ name: 'validate_edits', arguments: { edits: editsFile } });
+  {
+    const dm = await client.callTool({ name: 'diagram_mermaid', arguments: { mermaid: ['flowchart LR', 'A([Start]) --> B[Review]', 'B --> C{Decide}', 'C -->|No| D([Refused])'].join('\n') } });
+    const back = await client.callTool({ name: 'diagram_mermaid', arguments: { model_file: AR } });
+    check('diagram_mermaid: Mermaid → model, and a document diagram → Mermaid', dm.structuredContent?.nodes >= 4 && /flowchart LR/.test(back.structuredContent?.mermaid || ''), JSON.stringify(dm.structuredContent?.nodes));
+  }
   check('validate_edits: valid file', data(r)?.valid === true, text(r).slice(0, 120));
   r = await client.callTool({ name: 'validate_edits', arguments: { edits: path.join(OUT, 'bad-edits.json') } });
   check('validate_edits: invalid file reported', data(r)?.valid === false && data(r).errors.length > 0, JSON.stringify(data(r)?.errors).slice(0, 160));

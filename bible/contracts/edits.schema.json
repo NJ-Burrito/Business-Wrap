@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://business-wrap.local/contracts/edits.schema.json",
   "title": "Business-Wrap edits file",
-  "description": "Ordered list of human edits made in the HTML editor on top of a document JSON. Replaying ops in order on the base document (matched by baseHash) must give the edited document. Targets are RFC 6901 JSON Pointers into the document JSON (e.g. /chapters/2/sections/0/blocks/1/rows/3/2). Pointers are resolved against the document state AFTER all previous ops.",
+  "description": "Ordered list of human edits made in the HTML editor on top of a document JSON. Replaying ops in order on the base document (matched by baseHash) must give the edited document. Targets are RFC 6901 JSON Pointers into the document JSON (e.g. /chapters/2/sections/0/blocks/1/rows/3/2). Pointers are resolved against the document state AFTER all previous ops. Diagram blocks (kind 'diagram', bible/contracts/diagram.schema.json) are edited with the same ops: replace on <block>/model (the editor writes one replace per gesture) or setText on a node or edge label. Version 1 files stay valid; nothing changed in the op set.",
   "type": "object",
   "required": [
     "version",

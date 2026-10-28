@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://business-wrap.local/contracts/diagram.schema.json",
+  "title": "Business-Wrap diagram model",
+  "description": "The model of a document block {kind:'diagram', caption, model}. engine/diagram.mjs draws it (house workflow look) as SVG shapes with real text for the editor and the PDF, and as native Word shapes for the DOCX. A node without x/y is placed by the auto layout; edges are always routed from the node geometry (orthogonal, rounded corners). Edits change it with the edits contract: {op:'replace', path:'<block>/model', value:<model>} or setText on <block>/model/nodes/<i>/label.",
+  "type": "object",
+  "required": ["nodes", "edges"],
+  "properties": {
+    "kind": { "const": "bw-diagram" },
+    "version": { "const": 1 },
+    "flow": { "enum": ["ltr", "rtl"], "description": "Direction of the chain (the house reference runs left to right in both editions)." },
+    "legend": { "description": "false hides the legend; an object renames entries by key (staff, applicant, rework, payment, system, stop, ok, note, wire-main, wire-return, wire-stop).", "oneOf": [{ "const": false }, { "type": "object", "additionalProperties": { "type": "string" } }] },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind"],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "enum": ["staff", "applicant", "start", "payment", "rework", "system", "decision", "ok", "stop", "note", "group", "text", "symbol"] },
+          "label": { "type": "string" },
+          "sub": { "type": "string", "description": "Caption under the label (end states)." },
+          "x": { "type": "number" }, "y": { "type": "number" }, "w": { "type": "number" }, "h": { "type": "number" },
+          "color": { "enum": ["staff", "applicant", "payment", "rework", "system", "ok", "stop", "note"], "description": "Theme colour role; absent = the kind's own." },
+          "icons": { "type": "array", "items": { "type": "string" }, "description": "Badges; absent = the kind's own, [] = none." },
+          "icon": { "enum": ["person", "people", "clock", "check", "cross", "cog", "document", "mail", "warning", "calendar", "lock", "flag", "star"], "description": "The symbol a 'symbol' node draws." },
+          "auto": { "type": "boolean", "description": "A group band the auto layout made (rebuilt on re-layout)." }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to"],
+        "properties": {
+          "id": { "type": "string" },
+          "from": { "type": "string" }, "to": { "type": "string" },
+          "kind": { "enum": ["main", "return", "stop"], "description": "main = solid forward path, return = dashed brown, stop = thin red refusal. Absent = derived (to a refusal end = stop; backwards or via rework = return)." },
+          "label": { "type": "string" }
+        }
+      }
+    }
+  }
+}

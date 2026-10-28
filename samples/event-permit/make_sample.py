@@ -6,20 +6,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 
 
-def svg(a, b, c, rtl):
-    order = [a, b, c][::-1] if rtl else [a, b, c]
-    xs = [40, 300, 560]
-    boxes = ''.join(
-        f'<rect x="{x}" y="60" width="200" height="70" rx="10" fill="#dde8eb" stroke="#264d5c" stroke-width="2"/>'
-        f'<text x="{x + 100}" y="102" text-anchor="middle" font-size="18" fill="#15303b">{t}</text>'
-        for x, t in zip(xs, order))
-    if rtl:
-        arrows = ''.join(f'<line x1="{x + 260}" y1="95" x2="{x + 204}" y2="95" stroke="#4d545b" stroke-width="2" marker-end="url(#a)"/>' for x in xs[:2])
-    else:
-        arrows = ''.join(f'<line x1="{x + 200}" y1="95" x2="{x + 256}" y2="95" stroke="#4d545b" stroke-width="2" marker-end="url(#a)"/>' for x in xs[:2])
-    return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 190" width="800" height="190">'
-            '<defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">'
-            '<path d="M0,0 L10,5 L0,10 z" fill="#4d545b"/></marker></defs>' + boxes + arrows + '</svg>')
+WORKFLOW = json.loads((HERE / "workflow.json").read_text(encoding="utf-8"))
 
 
 def story(id_, name, as_, want, so, acc, actions=None, dictionary=None):
@@ -46,7 +33,7 @@ def doc(t):
                                                                 {"kind": "table", "columns": t["t22c"], "rows": t["t22"]}]},
                 {"number": "2.3", "title": t["s23"], "blocks": [{"kind": "table", "columns": t["t23c"], "rows": t["t23"]}]}]},
             {"number": "3", "title": t["c3"], "sections": [
-                {"number": "3.1", "title": t["c3"], "blocks": [{"kind": "figure", "caption": t["fig"], "svg": svg(*t["steps"], t["rtl"]), "compact": True}]}]},
+                {"number": "3.1", "title": t["c3"], "blocks": [{"kind": "diagram", "caption": t["fig"], "model": WORKFLOW[t["loc"]]}]}]},
             {"number": "4", "title": t["c4"], "sections": [
                 {"number": "4.1", "title": t["c4"], "blocks": [{"kind": "table", "columns": t["t4c"], "rows": t["t4"]}]}]},
             {"number": "5", "title": t["c5"], "sections": [
@@ -60,7 +47,7 @@ def doc(t):
 
 
 AR = {
-    "rtl": True,
+    "rtl": True, "loc": "ar",
     "control": {"documentId": "BW-SRS-SAMPLE-001", "title": "وثيقة متطلبات الخدمة: طلب تصريح فعالية عامة",
                 "preparedBy": "فريق التحليل (مثال)", "documentType": "وثيقة متطلبات", "classification": "داخلي",
                 "owner": "الجهة المالكة (مثال)", "issuedOn": "2026-10-27", "version": "V1.0", "status": "مسودة",
@@ -80,7 +67,7 @@ AR = {
     "t22": [["رسم دراسة الطلب", "10 دنانير", ""], ["رسم إصدار التصريح", "25 ديناراً", "يُستوفى بعد الموافقة"]],
     "s23": "المرفقات المطلوبة", "t23c": ["المرفق", "إلزامي", "الصيغة"],
     "t23": [["مخطط موقع الفعالية", "نعم", "PDF"], ["خطة السلامة", "نعم", "PDF"], ["موافقة مالك الموقع", "لا", "PDF أو صورة"]],
-    "c3": "مخطط سير العمل", "fig": "مخطط سير عمل طلب تصريح فعالية عامة",
+    "c3": "مخطط سير العمل", "fig": "مخطط سير العمل: من تقديم الطلب حتى نتيجة الطلب",
     "steps": ["تقديم الطلب", "دراسة الطلب", "إصدار القرار"],
     "c4": "قواعد العمل", "t4c": ["الرمز", "القاعدة"],
     "t4": [["BR-01", "لا يُقبل الطلب قبل إرفاق جميع المرفقات الإلزامية."],
@@ -101,7 +88,7 @@ AR = {
 }
 
 EN = {
-    "rtl": False,
+    "rtl": False, "loc": "en",
     "control": {"documentId": "BW-SRS-SAMPLE-001", "title": "Service requirements: Public event permit request",
                 "preparedBy": "Analysis team (example)", "documentType": "Requirements document", "classification": "Internal",
                 "owner": "Owning authority (example)", "issuedOn": "2026-10-27", "version": "V1.0", "status": "Draft",
@@ -121,7 +108,7 @@ EN = {
     "t22": [["Review fee", "10 dinars", ""], ["Permit issue fee", "25 dinars", "Collected after approval"]],
     "s23": "Required attachments", "t23c": ["Attachment", "Required", "Format"],
     "t23": [["Event site plan", "Yes", "PDF"], ["Safety plan", "Yes", "PDF"], ["Site owner consent", "No", "PDF or image"]],
-    "c3": "Workflow diagram", "fig": "Workflow of the public event permit request",
+    "c3": "Workflow diagram", "fig": "Workflow diagram: from the request to its outcome",
     "steps": ["File request", "Review request", "Issue decision"],
     "c4": "Business rules", "t4c": ["Code", "Rule"],
     "t4": [["BR-01", "A request is not accepted until every required attachment is uploaded."],

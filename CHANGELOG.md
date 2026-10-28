@@ -8,6 +8,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.9.0] - 2026-10-28
+
+The workflow diagram is the house SRS figure again, and it is shapes and text you can edit; the toolbar follows what you select. / مخطط سير العمل بتصميم وثائق المتطلبات المعتمد، أشكالاً ونصوصاً قابلة للتحرير، وشريط أدوات يتبع ما تحدده.
+
+### Added / أضيف
+- **Diagram block** (`kind: 'diagram'`, contract `bible/contracts/diagram.schema.json`): a model of nodes, edges and group bands drawn by `engine/diagram.mjs` in the house look: the applicant's steps in a soft dashed band, sage staff stages with a person badge, white «إجراء» diamonds, a salmon rework box, stadium ends (✓ approval, ⊗ refusal) with a caption, a heavy solid forward path, dashed brown returns, red refusal lines, orthogonal routing with rounded corners, plated edge labels and a legend of every shape and line kind; the chain wraps onto the landscape sheet's proportion. Colours come from the theme's `diagram-*` tokens, so a design pack restyles it. / كتلة المخطط بتصميم الشكل المعتمد.
+- Harvest writes a diagram block (from the process graph: applicant, payment, rework, staff, decisions, approval/refusal ends) instead of a picture. / الحصاد يكتب نموذج المخطط.
+- **Editing in place**: click a shape, an arrow or the empty drawing; drag to move (grid snap), corner handle to resize, arrow keys nudge, double-click edits a label; add stage/applicant/start/payment/rework/system/decision/end/note/group/free text and 13 symbols; arrow from a shape, reconnect either end, reverse, arrow kind; kind, colour role and badge; duplicate, delete, front/back, align ×6, distribute ×2, group in a band; auto layout, reset to the harvested layout, flow direction, legend on/off; «New diagram». One `replace` op per gesture, so undo/redo, edits files, Save HTML, PDF and DOCX carry it. / التحرير في مكانه.
+- **Mermaid**: import flowchart code into the model (laid out in the house style) and export the model as Mermaid, in the editor, `npm run diagram:mermaid` and the MCP tool `diagram_mermaid`. / مسار Mermaid.
+- **Contextual, categorised toolbar** docked at the top: labelled sections (File · Insert · Edit · Document · Design · Export · View), and a highlighted selection section named for what is selected (text, table cell, image, logo, shape, arrow, several shapes, diagram) with a «More» menu so 1366 px never jams; Esc or a click on the page brings the general tools back. The Ctrl+K palette lists every command under the same categories. / شريط أدوات سياقي مصنّف.
+
+### Changed / تغيّر
+- PDF: the diagram is inline SVG with real text (searchable, Arabic shaped, no Type 3). DOCX: the diagram is **native Word shapes** (one DrawingML group of boxes, diamonds, stadiums, polylines with arrowheads and text boxes), editable in Word, no picture. / الوثيقة النصية بأشكال Word أصلية.
+- Figure captions print «الشكل N: …» / "Figure N: …" above a framed sheet; the harvested caption reads «مخطط سير العمل: …». / عنوان الشكل.
+
+### Tests / الاختبارات
+- `tests/diagram.test.mjs`: structure (kinds, wires, legend), orthogonal routing, Mermaid round-trip, PDF text, DOCX native shapes, editing round-trip, and the toolbar context swap (none / shape / arrow / diagram / several / text / Esc). MCP lists and runs `diagram_mermaid`. / اختبارات جديدة.
+
 ## [0.8.4] - 2026-10-28
 
 From the final live run with 0.8.3 (10 of 11 checks, 0 filed, 0 workarounds). / من التشغيل الحي الأخير.

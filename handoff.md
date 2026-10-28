@@ -1,33 +1,31 @@
 # goals
-Business-Wrap: client-neutral, bilingual (AR RTL / EN LTR) requirements-document skill, bible and HTML editor. Private repo `NJ-Burrito/Business-Wrap`, `main` at v0.1.0. This pass (branch `finish`) closes the ten "finish everything" items for v0.2.0.
+Business-Wrap 0.9.0 (branch `diagram`, worktree `Business-Wrap-wt-diagram`): the workflow diagram replicates the house SRS figure and is editable shapes + text (editor, PDF, DOCX), with a Mermaid path; the editor toolbar is docked, categorised and follows the selection (owner AMEND 2026-10-28).
 
 ## current state
-- Branch `finish` (worktree `Business-Wrap-wt-finish`): all ten items done or documented — status table in `docs/receipt-editor.md` § v0.2.0. Committed, not merged, not pushed, not tagged.
-- Gates on `finish`: `security/check.py --all` 0 findings, `--selftest` PASS, gitleaks 8.30.1 no leaks, `npm test` 69/69 + 18/18.
-- CI not yet re-run: the fix is on `finish` and runs on the Lead's push.
+- Committed on `diagram`, not merged, not pushed, not tagged (the Lead merges/pushes/releases).
+- New: `engine/diagram.mjs` (model → layout → orthogonal routing → primitives → SVG), `engine/docx/diagram_docx.py` (primitives → native DrawingML group), `editor/diagram-ui.js` (in-place editing), `engine/diagram-cli.mjs` + MCP `diagram_mermaid`, `bible/contracts/diagram.schema.json`, `tests/diagram.test.mjs`.
+- Harvest writes `{kind:'diagram', model}`; the sample's model lives in `samples/event-permit/workflow.json` (make_sample.py reads it).
+- Visual compare: `out/diagram-compare/` (gitignored): compare-ar.png, compare-en.png, docx-ar-5.png, toolbar-*.png, notes.md.
 
 ## files in flight
-- none open. Machine-local, gitignored: `.local/config.json` (font root, watermark dir, Chrome, poppler), `.local/tools/gitleaks.exe`.
+- none open.
 
 ## changed
-- CI: uv, poppler, Noto, Python libs, pinned gitleaks; tests SKIP the Thmanyah-only checks when the fonts are absent.
-- Editor: structural conflict prompt, page thumbnails (`/api/pages`), accessibility fixes; tests for columns, design pack, structure, thumbnails; `tests/a11y.test.mjs` in `npm test`.
-- DOCX: chapter-level landscape, numbered section headings; `tests/docx_fidelity.py` (Word, read-only export).
-- Docs (AR + EN): CHANGELOG 0.2.0, CONTRIBUTING free-plan substitute, bible/04 pair rules, eval results; SKILL quick reference; `palette/check.py --help`.
+- engine: diagram.mjs, diagram-cli.mjs, render.mjs (diagram block, «الشكل N:» caption), build-editor.mjs (concatenates diagram.mjs + diagram-ui.js), export.mjs (resolved primitives for the DOCX), edits.mjs (diagram labels in textLeaves), harvest/model.mjs, i18n.json, vendor-icons.mjs; docx/build_docx.py + diagram_docx.py.
+- editor: editor.js (docked categorised toolbar, selection section with «More», Esc/background → general tools, palette categories), diagram-ui.js, ui.css, editor.css, icons.json.
+- mcp/server.mjs (+ test), tests/harvest.test.mjs, package.json (test + `diagram:mermaid`), bible 02/04 AR+EN, contracts, CHANGELOG 0.9.0, version 0.9.0 everywhere, assets/editor/business-wrap.html.
 
 ## failed attempts
-- Docker Desktop was not running, so the Linux CI path was simulated on Windows (no-font run: 63/63, 6 SKIP) instead of in a container.
-- Repository rulesets: 403 on the free plan for a private repo (checked with a read-only GET).
+- None blocking. Mermaid's own layout engine was not vendored: the native layout handled every graph tried (sample, harvest fixtures, hand-written Mermaid), and mermaid.min.js (~3 MB) would crowd the 5 MB file gate.
 
 ## next step
-1. Lead: merge `finish` into `main`, push, watch the `gates` run; tag `v0.2.0` when green.
-2. Owner decision: commit author/committer identities are not scanned by the gate (eval 4).
-3. DOCX: tables run taller in Word than in the PDF (AR one page longer); next cheapest gap is cell padding/line height in `engine/docx/theme.py`.
-4. Watermark: when images land in `NJ-Avatar`, rebuild; no code change needed.
+1. Lead: review, merge `diagram` into `main`, push, watch CI, tag `v0.9.0`.
+2. Owner eye on out/diagram-compare/compare-ar.png and toolbar-*.png (run-once rule: not re-verified by a person here).
+3. Known gaps: legend wraps to two lines (reference: one); no manual waypoints on arrows (routing is always automatic); DOCX keeps Word's own text metrics, so labels can sit a few px off the SVG positions.
 
 <div dir="rtl">
 
 ## خلاصة بالعربية
-الفرع `finish` يغلق البنود العشرة للإصدار 0.2.0، والبوابات كلها خضراء محلياً. الخطوة التالية: يدمج القائد ويرفع ويراقب CI ثم يضع الوسم `v0.2.0`. قرار للمالك: هوية كاتب الالتزامات لا تُفحص. والعلامة المائية ما زالت بلا صور.
+الفرع `diagram` يحمل الإصدار 0.9.0: مخطط سير العمل بتصميم وثائق المتطلبات المعتمد، أشكالاً ونصوصاً قابلة للتحرير في المحرر، ونصاً حقيقياً في PDF، وأشكال Word أصلية في DOCX، مع استيراد Mermaid وتصديره، وشريط أدوات مثبت في الأعلى بأقسام مصنفة يتبع ما يحدده المستخدم. الخطوة التالية: يدمج القائد ويرفع ويضع الوسم.
 
 </div>

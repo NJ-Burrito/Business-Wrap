@@ -71,7 +71,7 @@ const docCssEl = document.getElementById('bw-doc-css');
 const fontsEl = document.getElementById('bw-fonts');
 function renderOne(ed) {
   const e = cur(ed);
-  const parts = renderParts(e.doc, { locale: ed, labels: I18N.doc[ed], theme: S.theme });
+  const parts = renderParts(e.doc, { locale: ed, labels: I18N.doc[ed], theme: S.theme, editor: true });
   return { html: documentMain(parts, S.theme.logos, ed), sheet: parts.sheet };
 }
 function render(keepScroll = true) {
@@ -104,6 +104,7 @@ function render(keepScroll = true) {
   if (keepScroll) window.scrollTo(0, y);
   restoreSel();
   refreshUi();
+  if (S.dg) dgPaint();
 }
 function mainOf(ed) {
   return document.querySelector(`#bw-pair main.bw-doc[data-locale="${ed}"]`);
@@ -465,6 +466,7 @@ window.addEventListener('afterprint', () => {
 /* ── selection ─────────────────────────────────────────────────────────── */
 function selectEl(el) {
   S.selOv = null;
+  if (S.dg && !el.closest?.('figure[data-dg]')) dgClear();
   const main = el.closest('main.bw-doc');
   if (!main) return;
   const ed = main.dataset.locale;
@@ -919,16 +921,26 @@ const setRootFlags = () => {
 
 /** Every action, in one registry: the island, the selection bar and the palette read from it. */
 const CMDS = [
-  ['undo', 'edit', 'Ctrl+Z'], ['redo', 'edit', 'Ctrl+Y'],
-  ['duplicate', 'block', 'Ctrl+D'], ['delete', 'block', 'Del'], ['moveUp', 'block', 'Alt+↑'], ['moveDown', 'block', 'Alt+↓'],
-  ['addPara', 'block'], ['rowAdd', 'table'], ['rowDel', 'table'], ['colAdd', 'table'], ['colDel', 'table'],
-  ['comment', 'block'], ['breakBefore', 'block'], ['keepNext', 'block'], ['renumber', 'document'],
-  ['image', 'insert'], ['logo', 'insert'],
-  ['find', 'panels', 'Ctrl+F'], ['outline', 'panels'], ['pages', 'panels'], ['check', 'panels'], ['history', 'panels'], ['theme', 'panels'], ['webhooks', 'panels'], ['newdoc', 'document'], ['process', 'document'],
-  ['save', 'file', 'Ctrl+S'], ['saveHtml', 'file'], ['import', 'file'], ['exportEdits', 'file'], ['exportAll', 'file'], ['exportPdf', 'file'], ['print', 'file', 'Ctrl+P'],
+  ['save', 'file', 'Ctrl+S'], ['saveHtml', 'file'], ['import', 'file'], ['exportEdits', 'file'], ['exportAll', 'file'],
+  ['image', 'insert'], ['logo', 'insert'], ['addDiagram', 'insert'], ['addPara', 'insert'],
+  ['undo', 'edit', 'Ctrl+Z'], ['redo', 'edit', 'Ctrl+Y'], ['find', 'edit', 'Ctrl+F'],
+  ['newdoc', 'document'], ['process', 'document'], ['outline', 'document'], ['pages', 'document'], ['check', 'document'], ['history', 'document'], ['renumber', 'document'], ['webhooks', 'document'],
+  ['theme', 'design'], ['styleThis', 'design'], ['hideBlock', 'design'],
   ['side', 'view'], ['uiLang', 'view'], ['dir', 'view'], ['dark', 'view'], ['calm', 'view'], ['focus', 'view', 'F'], ['spell', 'view'], ['snap', 'view'], ['zoomOut', 'view'], ['zoomIn', 'view'],
+  ['exportPdf', 'export'], ['print', 'export', 'Ctrl+P'],
+  ['duplicate', 'text', 'Ctrl+D'], ['delete', 'text', 'Del'], ['moveUp', 'text', 'Alt+↑'], ['moveDown', 'text', 'Alt+↓'], ['comment', 'text'], ['breakBefore', 'text'], ['keepNext', 'text'],
+  ['rowAdd', 'table'], ['rowDel', 'table'], ['colAdd', 'table'], ['colDel', 'table'],
+  ['dgStaff', 'diagram'], ['dgApplicant', 'diagram'], ['dgStart', 'diagram'], ['dgPayment', 'diagram'], ['dgRework', 'diagram'], ['dgSystem', 'diagram'], ['dgDecision', 'diagram'], ['dgOk', 'diagram'], ['dgStop', 'diagram'],
+  ['dgNote', 'diagram'], ['dgGroup', 'diagram'], ['dgText', 'diagram'], ['dgAuto', 'diagram'], ['dgReset', 'diagram'], ['dgFlow', 'diagram'], ['dgLegend', 'diagram'], ['dgMermaidIn', 'diagram'], ['dgMermaidOut', 'diagram'],
+  ['dgLabel', 'shape'], ['dgSub', 'shape'], ['dgConnect', 'shape'], ['dgDup', 'shape'], ['dgDel', 'shape', 'Del'], ['dgFront', 'shape'], ['dgBack', 'shape'],
+  ['dgAlignL', 'arrange'], ['dgAlignC', 'arrange'], ['dgAlignR', 'arrange'], ['dgAlignT', 'arrange'], ['dgAlignM', 'arrange'], ['dgAlignB', 'arrange'], ['dgDistH', 'arrange'], ['dgDistV', 'arrange'], ['dgWrap', 'arrange'],
+  ['dgEdgeLabel', 'arrow'], ['dgReverse', 'arrow'], ['dgFrom', 'arrow'], ['dgTo', 'arrow'],
 ].map(([id, group, key]) => ({ id, group, key }));
 
+/** A labelled toolbar section: icon + short title, then its tools (the same categories as the palette). */
+function sec(cat, tools) {
+  return `<div class="sec" data-cat="${cat}" role="group" aria-label="${esc(t('sec' + cat[0].toUpperCase() + cat.slice(1)))}"><span class="sc" aria-hidden="true"><span class="i">${ic('sec' + cat[0].toUpperCase() + cat.slice(1))}</span><span class="st">${esc(t('sec' + cat[0].toUpperCase() + cat.slice(1)))}</span></span><div class="sb">${tools.join('')}</div></div>`;
+}
 function btn(id, { label = t(id), tip = '', pressed, cls = '', extra = '' } = {}) {
   return `<button type="button" class="b ${cls}" data-a="${id}" title="${esc(tip || label)}"${pressed !== undefined ? ` aria-pressed="${pressed}"` : ''}${extra}><span class="i">${ic(id)}</span><span class="w">${esc(label)}</span></button>`;
 }
@@ -951,21 +963,25 @@ function buildUi() {
         ${['ar', 'en'].map((l) => `<button type="button" data-a="ed" data-ed="${l}" lang="${l}" aria-pressed="${l === S.ui}" aria-label="${langWord(l)}: ${esc(t(l === 'ar' ? 'langAr' : 'langEn'))}" title="${esc(t(l === 'ar' ? 'langAr' : 'langEn'))}">${langWord(l)}</button>`).join('')}
       </div>
     </div>
-    <div class="grp">${btn('newdoc')}${btn('process')}</div>
-    <div class="grp">${btn('undo')}${btn('redo')}</div>
-    <div class="grp">${btn('image', { tip: t('imageTip') })}${btn('logo', { tip: t('logoTip') })}</div>
-    <div class="grp">${btn('find')}${btn('pages')}</div>
-    <div class="grp">${btn('save', { cls: 'primary' })}${btn('exportPdf', { tip: t('exportPdfTip') })}</div>
+    <div class="ctx sec now" role="group" hidden></div>
+    ${sec('file', [btn('save', { cls: 'primary' }), btn('saveHtml'), btn('import')])}
+    ${sec('insert', [btn('image', { tip: t('imageTip') }), btn('logo', { tip: t('logoTip') }), btn('addDiagram')])}
+    ${sec('edit', [btn('undo', { tip: `${t('undo')} (Ctrl+Z)` }), btn('redo', { tip: `${t('redo')} (Ctrl+Y)` }), btn('find', { tip: `${t('find')} (Ctrl+F)` })])}
+    ${sec('document', [btn('newdoc'), btn('process'), btn('pages')])}
+    ${sec('design', [btn('theme')])}
+    ${sec('export', [btn('exportPdf', { tip: t('exportPdfTip') })])}
     <span class="spacer"></span>
     <div class="status" role="status" aria-live="polite">
       <span class="count" aria-label="${esc(t('changes', { n: liveOps(cur()).length }))}"><span class="n">${liveOps(cur()).length}</span><span class="w">${esc(t('changesWord'))}</span></span>
       <span class="sel vh">${esc(selDesc())}</span><span class="flash vh"></span>
     </div>
+    <div class="sec" data-cat="view" role="group" aria-label="${esc(t('secView'))}"><span class="sc" aria-hidden="true"><span class="i">${ic('secView')}</span><span class="st">${esc(t('secView'))}</span></span><div class="sb">
     <div class="seg ui" role="group" aria-label="${esc(t('direction'))}"><span class="cap" aria-hidden="true"><span class="i">${ic('dir')}</span>${esc(t('direction'))}</span>
       ${['rtl', 'ltr'].map((d) => `<button type="button" data-a="dir" data-d="${d}" aria-pressed="${uiDir() === d}" aria-label="${esc(t(d))}: ${esc(t(d === 'rtl' ? 'dirRtl' : 'dirLtr'))}" title="${esc(t(d === 'rtl' ? 'dirRtl' : 'dirLtr'))}">${esc(t(d))}</button>`).join('')}
     </div>
     ${btn('view', { extra: ` aria-expanded="${S.view}" aria-controls="viewpop"` })}
-    ${btn('palette', { cls: 'cmd', label: t('palette'), extra: ' aria-keyshortcuts="Control+K"' })}
+    </div></div>
+    ${btn('palette', { cls: 'cmd', label: t('palette'), tip: `${t('palette')} (Ctrl+K)`, extra: ' aria-keyshortcuts="Control+K"' })}
     <div class="progress" hidden aria-hidden="true"><i></i></div>
   </div>
   <div class="pop" id="viewpop" role="group" aria-label="${esc(t('view'))}" ${S.view ? '' : 'hidden'}>
@@ -975,7 +991,6 @@ function buildUi() {
     ${btn('spell', { pressed: S.spell[S.ed] })}${btn('snap', { pressed: S.snap })}
     ${btn('zoomOut', { label: t('zoom') + ' −' })}${btn('zoomIn', { label: t('zoom') + ' +' })}
   </div>
-  <div class="ctx" role="toolbar" aria-label="${esc(t('ctxToolbar'))}" hidden></div>
   <div class="drawer" role="dialog" aria-modal="false" hidden data-theme="${theme}"></div>
   <div class="dialog" role="dialog" aria-modal="true" hidden data-theme="${theme}"></div>
   <div class="scrim" hidden>
@@ -1033,54 +1048,47 @@ function refreshUi() {
   measureBar();
 }
 
-/* selection bar: the block, table and image actions, next to what is selected */
+/* the selection section: the tools of what is selected, first in the docked toolbar; nothing selected → the general sections only */
+function ctxModel(b, tb) {
+  const ov = S.selOv != null ? (cur().doc.overlays || [])[S.selOv] : null;
+  if (ov) return { cat: ov.kind === 'logo' ? 'logo' : 'image', label: t(ov.kind === 'logo' ? 'selLogo' : 'selImage'), groups: [['replace', 'caption', ...(ov.kind === 'logo' ? ['every'] : []), 'ovDelete']] };
+  const dg = dgContext();
+  if (dg) return dg;
+  if (!b) return null;
+  const blk = get(cur().doc, b.ptr);
+  if (tb) return { cat: 'table', label: t('selTable'), groups: [['rowAdd', 'rowDel', 'colAdd', 'colDel', 'rowUp', 'rowDown'], ['duplicate', 'delete', 'moveUp', 'moveDown'], ['comment', 'styleThis', 'hideBlock', 'breakBefore', 'keepNext']] };
+  return { cat: 'text', label: t('selText', { x: kindName(blk?.kind || 'text') }), groups: [['duplicate', 'delete', 'moveUp', 'moveDown', 'addPara'], ['comment', 'styleThis', 'hideBlock', 'breakBefore', 'keepNext']] };
+}
+function ctxTool(id, ov) {
+  if (typeof id === 'string' && id.startsWith('<')) return id; // a ready control (a select)
+  if (id === 'every') return btn('every', { pressed: ov?.mode === 'every' });
+  if (id === 'ovDelete') return btn('ovDelete', { label: t('delete') }).replace('<span class="i"></span>', `<span class="i">${ic('delete')}</span>`);
+  return btn(id);
+}
 function buildCtx(b, tb) {
   const ctx = root.querySelector('.ctx');
   if (!ctx) return;
+  const island = root.querySelector('.island');
+  const m = ctxModel(b, tb);
+  island?.classList.toggle('has-sel', !!m);
+  if (!m) { ctx.hidden = true; ctx.dataset.key = ''; return; }
   const ov = S.selOv != null ? (cur().doc.overlays || [])[S.selOv] : null;
-  if (!b && !ov) { ctx.hidden = true; return; }
-  const groups = ov
-    ? [['replace', 'caption', ...(ov.kind === 'logo' ? ['every'] : []), 'delete']]
-    : [['duplicate', 'delete', 'moveUp', 'moveDown'], ['addPara', 'comment', 'breakBefore', 'keepNext'], ['styleThis', 'hideBlock'], ...(tb ? [['rowAdd', 'rowDel', 'colAdd', 'colDel', 'rowUp', 'rowDown']] : [])];
-  const key = JSON.stringify([groups, ov ? `ov${S.selOv}${ov.mode}` : b?.ptr]);
+  const key = JSON.stringify([m.label, m.groups, ov?.mode, S.ui]);
   if (ctx.dataset.key !== key) {
     ctx.dataset.key = key;
-    ctx.innerHTML = groups.map((g) => `<div class="grp">${g.map((id) => (id === 'every' ? btn('every', { pressed: ov.mode === 'every' }) : id === 'delete' && ov ? btn('ovDelete', { label: t('delete') }) : btn(id))).join('')}</div>`).join('');
-    ctx.querySelectorAll('[data-a="ovDelete"] .i').forEach((x) => { x.innerHTML = ic('delete'); });
-    ctx.querySelectorAll('[data-a="replace"] .i,[data-a="caption"] .i').forEach(() => {});
+    ctx.dataset.cat = m.cat;
+    ctx.setAttribute('aria-label', m.label);
+    // the first group stays in view; the rest wait in this section's «more» menu, so a row never jams at 1366 px
+    // at most four tools in view; the rest wait in «more»
+    const all = m.groups.flat();
+    const first = all.slice(0, 4);
+    const more = all.slice(4);
+    ctx.innerHTML = `<span class="sc"><span class="i" aria-hidden="true">${ic('secSel')}</span><span class="st">${esc(m.label)}</span></span><div class="sb">${first.map((id) => ctxTool(id, ov)).join('')}${more.length ? `<div class="more"><button type="button" class="b" data-a="more" aria-expanded="false" aria-haspopup="true" title="${esc(t('more'))}"><span class="i">${ic('more')}</span><span class="w">${esc(t('more'))}</span></button><div class="menu" role="group" aria-label="${esc(t('more'))}" hidden>${more.map((id) => ctxTool(id, ov)).join('')}</div></div>` : ''}</div>`;
+    if (!isCalm()) { ctx.classList.remove('swap'); void ctx.offsetWidth; ctx.classList.add('swap'); }
   }
   ctx.hidden = false;
-  placeCtx();
 }
-function placeCtx() {
-  const ctx = root.querySelector('.ctx');
-  if (!ctx || ctx.hidden) return;
-  const main = mainOf(S.ed);
-  let anchor = null;
-  if (S.selOv != null) anchor = main?.querySelector(`.bw-ov[data-i="${S.selOv}"]`);
-  else if (S.sel?.b) anchor = main?.querySelector(`[data-b="${CSS.escape(S.sel.b)}"]`);
-  if (!anchor || !main) { ctx.hidden = true; return; }
-  const r = anchor.getBoundingClientRect();
-  const m = main.getBoundingClientRect();
-  const top0 = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bw-bar-h')) || 80;
-  // a rail in the page margin, beside the selection and never over the text; the drag grip owns the other margin
-  const docRtl = getComputedStyle(main).direction === 'rtl';
-  ctx.classList.add('rail');
-  const w = ctx.offsetWidth || 170;
-  const h = ctx.offsetHeight || 300;
-  const room = docRtl ? m.left - 16 : innerWidth - m.right - 16;
-  if (room >= w) {
-    ctx.style.left = `${docRtl ? m.left - w - 12 : m.right + 12}px`;
-    ctx.style.top = `${Math.max(top0, Math.min(innerHeight - h - 12, r.top))}px`;
-    return;
-  }
-  ctx.classList.remove('rail');
-  const hh = ctx.offsetHeight || 48;
-  let top = r.top - hh - 10;
-  if (top < top0) top = Math.min(innerHeight - hh - 12, r.bottom + 10);
-  ctx.style.top = `${Math.max(top0, top)}px`;
-  ctx.style.left = `${Math.max(8, Math.min(innerWidth - ctx.offsetWidth - 8, m.left + m.width / 2 - ctx.offsetWidth / 2))}px`;
-}
+function placeCtx() { /* docked in the toolbar since 0.9.0: nothing to position */ }
 let ctxRaf = 0;
 window.addEventListener('scroll', () => { if (!ctxRaf) ctxRaf = requestAnimationFrame(() => { ctxRaf = 0; placeCtx(); }); }, { passive: true });
 
@@ -1205,6 +1213,8 @@ async function onBar(e) {
   const b = e.target.closest('button[data-a]');
   if (!b || b.closest('.palette')) return;
   const a = b.dataset.a;
+  if (a === 'more') { const menu = b.nextElementSibling; const open = menu.hidden; menu.hidden = !open; b.setAttribute('aria-expanded', String(open)); return; }
+  if (b.closest('.menu')) { b.closest('.menu').hidden = true; }
   if (a === 'ed') { setLang(b.dataset.ed); return; }
   if (a === 'dir') { setDir(b.dataset.d); return; }
   await runAction(a);
@@ -1275,7 +1285,7 @@ async function runAction(a) {
     case 'zoomIn': S.zoom = Math.min(2, +(S.zoom + 0.1).toFixed(2)); render(); break;
     case 'zoomOut': S.zoom = Math.max(0.4, +(S.zoom - 0.1).toFixed(2)); render(); break;
     case 'spell': S.spell[S.ed] = !S.spell[S.ed]; buildUi(); render(); break;
-    default: break;
+    default: await dgAction(a); break;
   }
 }
 
@@ -1938,7 +1948,7 @@ function processPanel() {
   const actorOpts = (sel) => `<option value="">${esc(t('procNoActor'))}</option>` + ir.actors.map((a) => `<option value="${esc(a.id)}" ${a.id === sel ? 'selected' : ''}>${esc(a.name)}</option>`).join('');
   const stepOpts = (sel) => ir.steps.map((s) => `<option value="${esc(s.id)}" ${s.id === sel ? 'selected' : ''}>${esc(s.name || t('kind_' + s.type))}</option>`).join('');
   const kindOf = (s) => t('kind_' + s.type);
-  return `<div class="proc-fig" aria-label="${esc(t('procPreview'))}">${HV.processFigure(ir, { locale: S.ed, L: HL(S.ed) })}</div>
+  return `<div class="proc-fig" aria-label="${esc(t('procPreview'))}">${DIAGRAM.render(DIAGRAM.fromGraph(HV.humanGraph(ir), { actors: ir.actors, locale: S.ed }), { theme: S.theme, locale: S.ed })}</div>
 <h3>${esc(t('procActors'))}</h3><ul class="list">${ir.actors.map((a, i) => `<li><input type="text" data-pr="actor" data-i="${i}" value="${esc(a.names?.[S.ed] || a.name)}" aria-label="${esc(t('procActorName'))}${a.unresolved ? `: ${esc(t('procUnresolved'))}` : ''}"${a.unresolved ? ' aria-invalid="true"' : ''}>${a.unresolved ? ` <small class="warn">${esc(t('procUnresolved'))}: <code>${esc(a.raw || '')}</code></small>` : ''}</li>`).join('')}</ul>
 <div class="btns"><button type="button" class="b" data-k="pr-actor"><span class="i">${ic('add')}</span><span class="w">${esc(t('procAddActor'))}</span></button></div>
 <h3>${esc(t('procSteps'))}</h3><ul class="list">${ir.steps.filter((s) => ['task', 'decision', 'end', 'start', 'system'].includes(s.type)).map((s) => { const i = ir.steps.indexOf(s); return `<li><span class="badge">${esc(kindOf(s))}</span> <input type="text" data-pr="name" data-i="${i}" value="${esc(s.name)}" aria-label="${esc(t('procStepName'))}"> ${['task', 'decision'].includes(s.type) ? `<select data-pr="actorOf" data-i="${i}" aria-label="${esc(t('colActorUi'))}">${actorOpts(s.actor)}</select>` : ''} <button type="button" data-pr-del="${i}" aria-label="${esc(t('delete'))}">${ic('close')}</button></li>`; }).join('')}</ul>
@@ -2032,6 +2042,9 @@ document.addEventListener('click', (e) => {
     const cell = e.target.closest('td[data-r]');
     if (cell) lastCell = cell;
     selectEl(e.target);
+  } else if (e.target.closest?.('#bw-pair') || e.target === document.body || e.target === document.documentElement) {
+    // a click on empty page or background: the general tools come back
+    if (S.sel || S.selOv != null || S.dg) { S.sel = null; S.selOv = null; dgClear(); paintSel(); refreshUi(); }
   }
 });
 document.addEventListener('input', (e) => {
@@ -2092,7 +2105,7 @@ document.addEventListener('keydown', (e) => {
   if (mod && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z')) && !e.target.isContentEditable) { e.preventDefault(); redo(); return; }
   if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); A.duplicate(); return; }
   if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); A.move(e.key === 'ArrowUp' ? -1 : 1); return; }
-  if (e.key === 'Escape') { if (e.target.isContentEditable) e.target.blur(); S.sel = null; paintSel(); refreshUi(); return; }
+  if (e.key === 'Escape') { if (e.target.isContentEditable) e.target.blur(); S.sel = null; S.selOv = null; dgClear(); paintSel(); refreshUi(); return; }
   if ((e.key === 'Delete') && !inText && S.sel?.b) { e.preventDefault(); A.delete(); }
   if (e.key === 'Enter' && e.target.isContentEditable) { e.preventDefault(); e.target.blur(); }
 });
@@ -2222,5 +2235,5 @@ function boot() {
 for (const [svc, eds] of Object.entries(M)) for (const [ed, e] of Object.entries(eds)) for (const c of e.doc.harvestConflicts || []) if (svc === S.svc) S.conflicts.push({ ed, path: c.path, mine: c.manual, theirs: c.harvested, kind: 'text' });
 if (S.conflicts.length) toast(t('reharvestConflicts', { n: S.conflicts.length }), 'warn', { actions: [[t('show'), () => openDrawer('conflicts')]], persist: true });
 { const n = (cur().doc.process?.actors || []).filter((a) => a.unresolved).length; if (n) toast(t('rolesUnresolved', { n }), 'warn', { actions: [[t('show'), () => openDrawer('process')]], persist: true }); }
-window.BW = { flushDraft, S, M, commit, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll };
+window.BW = { flushDraft, S, M, commit, runAction, DIAGRAM, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll };
 boot();

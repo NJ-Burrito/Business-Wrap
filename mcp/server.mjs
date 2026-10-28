@@ -12,6 +12,8 @@ import { applyOps, migrate, validateEdits } from '../engine/edits.mjs';
 import { checkForUpdate, oneLiner, token, currentVersion } from '../update/check.mjs';
 import { applyUpdate } from '../update/apply.mjs';
 import { harvestModel, harvestCrawl, harvestMerge } from '../engine/harvest/cli.mjs';
+import { DIAGRAM } from '../engine/diagram.mjs';
+import { modelIn } from '../engine/diagram-cli.mjs';
 
 const pkg = JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8'));
 const readJson = (p) => JSON.parse(fs.readFileSync(path.resolve(p), 'utf8'));
@@ -139,6 +141,21 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     const f = out(o, '.json');
     fs.writeFileSync(f, JSON.stringify({ kind: 'bw-design-pack', version: 1, ...th }, null, 1) + '\n', 'utf8');
     return { design_pack: f, fonts: th.fonts, vars: Object.keys(th.vars).length };
+  }));
+
+  server.registerTool('diagram_mermaid', {
+    title: 'Diagram ⇄ Mermaid',
+    description: 'Convert Mermaid flowchart code into a Business-Wrap diagram model (laid out in the house workflow style: stages, «إجراء» decisions, approval/refusal ends, solid/dashed/red arrows), or a diagram model (or the first diagram block of a document) into Mermaid code. To put a model into a document, use apply_edits with {op:"replace", path:"<diagram block>/model", value:<model>}.',
+    inputSchema: {
+      mermaid: z.string().optional().describe('Mermaid flowchart code to import (flowchart LR/RL/TD; [] stage, {} decision, ([ ]) start/end pill, -.-> return, --x refusal)'),
+      model_file: z.string().optional().describe('Path of a diagram model JSON or a document JSON to export as Mermaid'),
+      locale: z.enum(['ar', 'en']).optional().describe('Edition the words belong to (default ar)'),
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  }, guard(async ({ mermaid, model_file, locale = 'ar' }) => {
+    if (mermaid) { const model = DIAGRAM.fromMermaid(mermaid, { locale }); return { model, nodes: model.nodes.length, edges: model.edges.length }; }
+    if (model_file) return { mermaid: DIAGRAM.toMermaid(modelIn(readJson(model_file))) };
+    throw new Error('give mermaid (code to import) or model_file (to export)');
   }));
 
   server.registerTool('harvest_model', {

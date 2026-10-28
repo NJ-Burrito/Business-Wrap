@@ -182,10 +182,215 @@
      "title": "Workflow diagram",
      "blocks": [
       {
-       "kind": "figure",
-       "caption": "Workflow of the public event permit request",
-       "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 190\" width=\"800\" height=\"190\"><defs><marker id=\"a\" markerWidth=\"10\" markerHeight=\"10\" refX=\"9\" refY=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"#4d545b\"/></marker></defs><rect x=\"40\" y=\"60\" width=\"200\" height=\"70\" rx=\"10\" fill=\"#dde8eb\" stroke=\"#264d5c\" stroke-width=\"2\"/><text x=\"140\" y=\"102\" text-anchor=\"middle\" font-size=\"18\" fill=\"#15303b\">File request</text><rect x=\"300\" y=\"60\" width=\"200\" height=\"70\" rx=\"10\" fill=\"#dde8eb\" stroke=\"#264d5c\" stroke-width=\"2\"/><text x=\"400\" y=\"102\" text-anchor=\"middle\" font-size=\"18\" fill=\"#15303b\">Review request</text><rect x=\"560\" y=\"60\" width=\"200\" height=\"70\" rx=\"10\" fill=\"#dde8eb\" stroke=\"#264d5c\" stroke-width=\"2\"/><text x=\"660\" y=\"102\" text-anchor=\"middle\" font-size=\"18\" fill=\"#15303b\">Issue decision</text><line x1=\"240\" y1=\"95\" x2=\"296\" y2=\"95\" stroke=\"#4d545b\" stroke-width=\"2\" marker-end=\"url(#a)\"/><line x1=\"500\" y1=\"95\" x2=\"556\" y2=\"95\" stroke=\"#4d545b\" stroke-width=\"2\" marker-end=\"url(#a)\"/></svg>",
-       "compact": true
+       "kind": "diagram",
+       "caption": "Workflow diagram: from the request to its outcome",
+       "model": {
+        "kind": "bw-diagram",
+        "version": 1,
+        "flow": "ltr",
+        "nodes": [
+         {
+          "id": "s",
+          "kind": "start",
+          "label": "Submit request"
+         },
+         {
+          "id": "pay",
+          "kind": "payment",
+          "label": "Pay the fee"
+         },
+         {
+          "id": "d1",
+          "kind": "decision",
+          "label": "Action"
+         },
+         {
+          "id": "rev",
+          "kind": "staff",
+          "label": "Review"
+         },
+         {
+          "id": "d2",
+          "kind": "decision",
+          "label": "Action"
+         },
+         {
+          "id": "head",
+          "kind": "staff",
+          "label": "Head of section"
+         },
+         {
+          "id": "d3",
+          "kind": "decision",
+          "label": "Action"
+         },
+         {
+          "id": "mgr",
+          "kind": "staff",
+          "label": "Department manager"
+         },
+         {
+          "id": "d4",
+          "kind": "decision",
+          "label": "Action"
+         },
+         {
+          "id": "gm",
+          "kind": "staff",
+          "label": "Director general"
+         },
+         {
+          "id": "d5",
+          "kind": "decision",
+          "label": "Action"
+         },
+         {
+          "id": "ok",
+          "kind": "ok",
+          "label": "Approved",
+          "sub": "The request is approved"
+         },
+         {
+          "id": "no",
+          "kind": "stop",
+          "label": "Refused",
+          "sub": "Request cancelled or refused"
+         },
+         {
+          "id": "fix",
+          "kind": "rework",
+          "label": "Resubmit the request"
+         }
+        ],
+        "edges": [
+         {
+          "id": "e1",
+          "from": "s",
+          "to": "pay",
+          "label": ""
+         },
+         {
+          "id": "e2",
+          "from": "pay",
+          "to": "d1",
+          "label": ""
+         },
+         {
+          "id": "e3",
+          "from": "d1",
+          "to": "rev",
+          "label": "Fee paid"
+         },
+         {
+          "id": "e4",
+          "from": "d1",
+          "to": "no",
+          "label": "Cancelled or time-out"
+         },
+         {
+          "id": "e5",
+          "from": "rev",
+          "to": "d2",
+          "label": ""
+         },
+         {
+          "id": "e6",
+          "from": "d2",
+          "to": "head",
+          "label": "Approve"
+         },
+         {
+          "id": "e7",
+          "from": "d2",
+          "to": "fix",
+          "label": "Complete missing items"
+         },
+         {
+          "id": "e8",
+          "from": "d2",
+          "to": "no",
+          "label": "Refuse"
+         },
+         {
+          "id": "e9",
+          "from": "fix",
+          "to": "rev",
+          "label": "Resend"
+         },
+         {
+          "id": "e10",
+          "from": "head",
+          "to": "d3",
+          "label": ""
+         },
+         {
+          "id": "e11",
+          "from": "d3",
+          "to": "mgr",
+          "label": "Approve"
+         },
+         {
+          "id": "e12",
+          "from": "d3",
+          "to": "rev",
+          "label": "Back to review"
+         },
+         {
+          "id": "e13",
+          "from": "d3",
+          "to": "no",
+          "label": "Refuse"
+         },
+         {
+          "id": "e14",
+          "from": "mgr",
+          "to": "d4",
+          "label": ""
+         },
+         {
+          "id": "e15",
+          "from": "d4",
+          "to": "gm",
+          "label": "Approve"
+         },
+         {
+          "id": "e16",
+          "from": "d4",
+          "to": "head",
+          "label": "Back to head"
+         },
+         {
+          "id": "e17",
+          "from": "d4",
+          "to": "no",
+          "label": "Refuse"
+         },
+         {
+          "id": "e18",
+          "from": "gm",
+          "to": "d5",
+          "label": ""
+         },
+         {
+          "id": "e19",
+          "from": "d5",
+          "to": "ok",
+          "label": "Approve"
+         },
+         {
+          "id": "e20",
+          "from": "d5",
+          "to": "mgr",
+          "label": "Back to manager"
+         },
+         {
+          "id": "e21",
+          "from": "d5",
+          "to": "no",
+          "label": "Refuse"
+         }
+        ]
+       }
       }
      ]
     }
