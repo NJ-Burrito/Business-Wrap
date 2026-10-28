@@ -88,5 +88,9 @@ description = "Examples of the env format are allowed"
 paths = ['''(^|/)\.env\.example$''']
 
 [[allowlists]]
+description = "Binary media: random bytes match text rules (bw-email hit hero.mp4); check.py still scans their metadata"
+paths = ['''(?i)\.(mp4|webm|gif|png|webp|jpe?g|ico)$''']
+
+[[allowlists]]
 description = "Gitignored, generated or machine-local folders (dir scans only; never committed)"
 paths = ['''(^|/)(node_modules|out|\.local|__pycache__)/''']
