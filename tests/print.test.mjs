@@ -46,7 +46,7 @@ let winOut = WIN_A;
 const calls = [];
 function mockWin(cmd, args, opt = {}) {
   calls.push({ cmd, args, env: opt.env || {} });
-  if (cmd === 'powershell.exe' && /Win32_Printer/.test(args.at(-1))) return Promise.resolve({ status: 0, stdout: winOut, stderr: '' });
+  if (cmd === 'powershell.exe' && !opt.env?.BW_JOB) return Promise.resolve({ status: 0, stdout: winOut, stderr: '' });
   if (cmd === 'python') return Promise.resolve({ status: 0, stdout: JSON.stringify(['C:/t/p0001.png', 'C:/t/p0002.png']), stderr: '' });
   if (cmd === 'powershell.exe') return Promise.resolve({ status: 0, stdout: '{"ok":true,"jobId":42}', stderr: '' });
   return Promise.resolve({ status: 1, stdout: '', stderr: 'unexpected ' + cmd });
