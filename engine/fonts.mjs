@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { config } from './config.mjs';
+import { sfntInfo } from './fontinfo.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..');
@@ -87,4 +88,42 @@ export function localFontCss(manifest = loadManifest()) {
     }
   }
   return { css: rules.join('\n'), families: Object.keys(manifest.families).filter((f) => !banned.some((b) => f.toLowerCase().includes(b))) };
+}
+
+/* ── fonts installed on this machine (the editor's «خطوط جهازك»), for the PDF and the DOCX ── */
+let SYSTEM;
+/** Every face installed in the usual font folders: {file, format, outlines, fsType, embeddable, family, names, weight, italic}. */
+export function systemFonts(dirs) {
+  if (SYSTEM && !dirs) return SYSTEM;
+  const home = process.env.HOME || process.env.USERPROFILE || '';
+  const list = dirs || [
+    process.env.WINDIR && path.join(process.env.WINDIR, 'Fonts'),
+    process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Microsoft', 'Windows', 'Fonts'),
+    '/usr/share/fonts', '/usr/local/share/fonts', home && path.join(home, '.fonts'), home && path.join(home, '.local', 'share', 'fonts'),
+    '/Library/Fonts', '/System/Library/Fonts', home && path.join(home, 'Library', 'Fonts'),
+  ].filter(Boolean);
+  const out = [];
+  for (const d of list) for (const file of walk(d)) {
+    if (!/\.(ttf|otf|ttc)$/i.test(file)) continue;
+    let fd;
+    try {
+      fd = fs.openSync(file, 'r');
+      const read = (off, len) => { const b = Buffer.alloc(Math.max(0, len)); const n = fs.readSync(fd, b, 0, b.length, off); return new Uint8Array(b.buffer, b.byteOffset, n); };
+      const info = sfntInfo(read);
+      if (info) for (const f of info.faces || [info]) out.push({ ...f, format: info.format, embeddable: info.format === 'ttc' ? false : f.embeddable, file, faces: undefined });
+    } catch { /* unreadable file: not a candidate */ } finally { if (fd !== undefined) fs.closeSync(fd); }
+  }
+  if (!dirs) SYSTEM = out;
+  return out;
+}
+
+/** The upright faces of one installed family, nearest to Regular (400) and Bold (700). */
+export function systemFamily(family, dirs) {
+  const low = String(family || '').toLowerCase();
+  const hits = systemFonts(dirs).filter((f) => !f.italic && f.names.some((n) => n.toLowerCase() === low));
+  // TrueType outlines first at equal distance: Chrome prints CFF as Type 3, and Word embeds TrueType only
+  const near = (w) => hits.slice().sort((a, b) => Math.abs(a.weight - w) - Math.abs(b.weight - w) || (a.outlines !== 'truetype') - (b.outlines !== 'truetype'))[0];
+  const regular = near(400);
+  const bold = hits.find((f) => f.weight >= 600) ? near(700) : null;
+  return { regular, bold: bold && bold !== regular ? bold : null, found: hits.length > 0 };
 }

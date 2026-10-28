@@ -29,7 +29,8 @@
         "version": { "const": 1 },
         "name": { "type": "string" },
         "fonts": { "type": "object", "properties": { "text": { "type": "string" }, "display": { "type": "string" } } },
-        "sizes": { "type": "object", "additionalProperties": { "type": "string", "pattern": "^[0-9.]+(pt|mm|px)$" } },
+        "sizes": { "type": "object", "additionalProperties": { "type": "string", "pattern": "^[0-9.]+(pt|mm|cm|px|em)$" } },
+        "fontFaces": { "type": "array", "description": "Uploaded fonts whose licence (OS/2 fsType) allows embedding; a machine font travels by name only.", "items": { "type": "object", "required": ["family", "src"], "properties": { "family": { "type": "string" }, "weight": { "enum": [400, 700] }, "src": { "type": "string", "pattern": "^data:font/(ttf|otf|woff|woff2);base64," } } } },
         "vars": { "type": "object", "additionalProperties": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" } },
         "brand": { "type": "object", "properties": { "producer": { "type": "string" }, "confidential": { "type": "string" } } },
         "logos": { "type": "object", "properties": { "start": { "type": "string" }, "center": { "type": "string" }, "end": { "type": "string" }, "header": { "type": "string" } } }

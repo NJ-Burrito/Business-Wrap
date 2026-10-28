@@ -207,8 +207,18 @@ ${o.extraBody || ''}
 }
 
 /** The print stylesheet. Depends on the theme and the widest figure sheet only. */
-const sz = (v, d) => (/^\d+(\.\d+)?(pt|px|mm)$/.test(String(v)) ? v : d);
-const safeFamily = (f) => String(f || '').replace(/[^\w\s-]/g, '');
+const sz = (v, d) => (/^\d+(\.\d+)?(pt|px|mm|cm|em)$/.test(String(v)) ? v : d);
+// any script's letters (a machine font may be named in Arabic or Japanese); quotes, slashes and markup never pass
+const safeFamily = (f) => String(f || '').replace(/[^\p{L}\p{N}\s._-]/gu, '').trim();
+const FONT_SRC = /^data:font\/(ttf|otf|woff|woff2);base64,[A-Za-z0-9+/]+=*$/;
+const FONT_FMT = { ttf: 'truetype', otf: 'opentype', woff: 'woff', woff2: 'woff2' };
+/** @font-face rules for the fonts uploaded into this document (doc.design.fontFaces): data URIs only. */
+export function uploadedFontCss(doc) {
+  return (doc?.design?.fontFaces || [])
+    .filter((f) => f && safeFamily(f.family) && FONT_SRC.test(String(f.src || '')))
+    .map((f) => `@font-face{font-family:'${safeFamily(f.family)}';font-style:normal;font-weight:${[300, 400, 500, 700, 900].includes(+f.weight) ? +f.weight : 400};font-display:block;src:url(${f.src}) format('${FONT_FMT[FONT_SRC.exec(f.src)[1]]}');}`)
+    .join('\n');
+}
 const safeToken = ([k, v]) => /^[a-z0-9-]+$/.test(k) && /^[#a-zA-Z0-9(),.\s%-]+$/.test(String(v));
 export function documentCss(themeIn, sheet, doc) {
   const theme = designTheme(themeIn, doc);
@@ -222,7 +232,8 @@ ${sanitizeCss(doc.design?.css).css}
   const vars = Object.entries(theme.vars).filter(safeToken).map(([k, v]) => `  --${k}:${v};`).join(NL);
   const paper = safeToken(['paper', theme.vars.paper]) ? theme.vars.paper : '#fff';
   const PAGE_ART_MM = 140;
-  return `*{box-sizing:border-box}
+  return `${doc ? uploadedFontCss(doc) : ''}
+*{box-sizing:border-box}
 :root{
 ${vars}
   --t-title:${sz(theme.sizes?.title, '24pt')};
@@ -932,7 +943,7 @@ export const confidentialText = (doc, theme, labels, locale) => doc?.labels?.con
 export function chromeTemplates(doc, oIn) {
   const o = { ...oIn, theme: designTheme(oIn.theme, doc) };
   const roles = o.theme.vars;
-  const stack = [o.theme.fonts.text, o.theme.fonts.display].filter(Boolean).map((f) => `'${f}'`).join(',');
+  const stack = [o.theme.fonts.text, o.theme.fonts.display].map(safeFamily).filter(Boolean).map((f) => `'${f}'`).join(',');
   const wrap = (inner) =>
     `<style>${o.fontCss || ''}</style><div style="width:100%;font-size:8pt;font-family:${stack},serif;color:${roles.muted};padding:0 16mm;display:flex;justify-content:space-between;align-items:center;">${inner}</div>`;
   const header = wrap(

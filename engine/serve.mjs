@@ -124,9 +124,10 @@ export function serve(editorFile, port = 4317, { out } = {}) {
         const pdf = await exportPdf(body.doc, { locale, theme, pdfPath: path.join(dir, `${stem}.pdf`) });
         let docx = null;
         let docxError = null;
-        try { docx = exportDocx(body.doc, { locale, theme, docxPath: path.join(dir, `${stem}.docx`), embedFonts: body.embedFonts !== false }).docx; } catch (e) { docxError = String(e.message).slice(0, 400); }
+        let fontNotes = [];
+        try { ({ docx, fontNotes } = exportDocx(body.doc, { locale, theme, docxPath: path.join(dir, `${stem}.docx`), embedFonts: body.embedFonts !== false })); } catch (e) { docxError = String(e.message).slice(0, 400); }
         const rel = (f) => `/files/${path.relative(OUT, f).split(path.sep).map(encodeURIComponent).join('/')}`;
-        return send(200, { pdf: pdf.pdf, docx, docxError, pdfUrl: rel(pdf.pdf), docxUrl: docx && rel(docx) });
+        return send(200, { pdf: pdf.pdf, docx, docxError, fontNotes, pdfUrl: rel(pdf.pdf), docxUrl: docx && rel(docx) });
       }
       send(404, { error: 'not found' });
     } catch (e) {

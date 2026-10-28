@@ -64,7 +64,7 @@ export function appScript() {
   const strip = (s) => s.replace(/^export /gm, '').replace(/^import .*$/gm, '');
   // the harvest model code lives in its own scope (HV), so its helper names stay out of the editor's
   const hv = ['xml.mjs', 'yaml.mjs', 'model.mjs', 'docs.mjs'].map((f) => strip(read(path.join(HERE, 'harvest', f)))).join('\n');
-  return `(() => {\n'use strict';\n${strip(read(path.join(HERE, 'edits.mjs')))}\n${strip(read(path.join(HERE, 'diagram.mjs')))}\n${strip(read(path.join(HERE, 'render.mjs')))}\nconst HV = (() => {\n${hv}\nreturn { parseModel, modelToDocument, processFigure, humanGraph, harvestToDocument, mergeToDocument };\n})();\n${read(path.join(REPO, 'editor', 'editor.js'))}\n${read(path.join(REPO, 'editor', 'diagram-ui.js'))}\n${read(path.join(REPO, 'editor', 'update.js'))}\n})();`;
+  return `(() => {\n'use strict';\n${strip(read(path.join(HERE, 'edits.mjs')))}\n${strip(read(path.join(HERE, 'diagram.mjs')))}\n${strip(read(path.join(HERE, 'render.mjs')))}\n${strip(read(path.join(HERE, 'fontinfo.mjs')))}\nconst HV = (() => {\n${hv}\nreturn { parseModel, modelToDocument, processFigure, humanGraph, harvestToDocument, mergeToDocument };\n})();\n${['value-control.js', 'fonts.js', 'design-panel.js', 'editor.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${read(path.join(REPO, 'editor', 'diagram-ui.js'))}\n${read(path.join(REPO, 'editor', 'update.js'))}\n})();`;
 }
 
 export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, localFonts = false, watermarkDir = DEFAULT_WATERMARK_DIR, ui = 'ar', ops = {} }) {
@@ -109,7 +109,7 @@ export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, l
     i18n: I,
     fontCss,
     fontFamilies: local ? local.families : [...new Set(cuts.map((c) => c.family))],
-    uiCss: read(path.join(REPO, 'editor', 'ui.css')),
+    uiCss: read(path.join(REPO, 'editor', 'ui.css')) + read(path.join(REPO, 'editor', 'design.css')),
     csp,
     version: installedNotes().version,
     whatsNew: (({ human, migration }) => ({ human, migration }))(installedNotes()),

@@ -82,7 +82,11 @@ def set_cell_box(cell, color_hex: str, sz_eighths_pt: int) -> None:
     for edge in ('top', 'left', 'bottom', 'right'):
         set_cell_border(cell, edge, color_hex, sz_eighths_pt)
 
+DISPLAY_FONT = os.environ.get('BW_DISPLAY_FONT', '')  # a chosen heading family other than the house pair
+
 def faces(body: str) -> dict[str, str]:
+    if DISPLAY_FONT:
+        return {'body': body, 'display': DISPLAY_FONT, 'subhead': body, 'cover': DISPLAY_FONT}
     if 'serif text' not in body:
         return {'body': body, 'display': body, 'subhead': body, 'cover': body}
     display = body.replace('serif text', 'serif display')
