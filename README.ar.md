@@ -4,12 +4,13 @@
 
 <p align="center"><img src="site/assets/media/hero.gif" alt="بزنس راب: أدلة تدخل، ووثيقة متطلبات واحدة بالعربية والإنجليزية تخرج" width="720"></p>
 
-<p align="center">عربي · English: <a href="README.md">README.md</a></p>
-
-[![release](https://img.shields.io/github/v/release/NJ-Burrito/Business-Wrap)](https://github.com/NJ-Burrito/Business-Wrap/releases/latest)
-[![licence: MIT](https://img.shields.io/badge/licence-MIT-0B6B50.svg)](LICENSE)
-[![site](https://img.shields.io/badge/site-nj--burrito.github.io%2FBusiness--Wrap-C8F04A.svg)](https://nj-burrito.github.io/Business-Wrap/?lang=ar)
-[![gates](https://github.com/NJ-Burrito/Business-Wrap/actions/workflows/gates.yml/badge.svg)](https://github.com/NJ-Burrito/Business-Wrap/actions/workflows/gates.yml)
+<p align="center">
+  <a href="https://github.com/NJ-Burrito/Business-Wrap/releases/latest"><img src="https://img.shields.io/github/v/release/NJ-Burrito/Business-Wrap?style=for-the-badge&label=release&color=0B6B50" alt="release"></a>
+  <a href="https://www.npmjs.com/package/business-wrap"><img src="https://img.shields.io/npm/v/business-wrap?style=for-the-badge&label=npm&color=0B6B50" alt="npm"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-0B6B50?style=for-the-badge" alt="licence: MIT"></a>
+  <a href="https://nj-burrito.github.io/Business-Wrap/?lang=ar"><img src="https://img.shields.io/badge/website-live-C8F04A?style=for-the-badge&labelColor=0B6B50" alt="website"></a>
+  <a href="https://github.com/NJ-Burrito/Business-Wrap/actions/workflows/gates.yml"><img src="https://img.shields.io/github/actions/workflow/status/NJ-Burrito/Business-Wrap/gates.yml?style=for-the-badge&label=gates" alt="gates"></a>
+</p>
 
 ## ⚡ في عشر ثوانٍ
 
