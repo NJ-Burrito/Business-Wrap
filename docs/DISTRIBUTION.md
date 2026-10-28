@@ -2,7 +2,7 @@
 
 Business-Wrap is independent and not affiliated with Anthropic or any government service. No listing or package name
 contains "claude-" or "anthropic-". Privacy policy for every listing: https://nj-burrito.github.io/Business-Wrap/privacy.html
-(source `docs/privacy.md`). Listing images: `brand/v2/social/og.png` and `brand/v2/banner/github-banner-still.png`. Social card: `brand/v2/social/social-card.png` (1280x640).
+(source `docs/privacy.md`). Listing images: `brand/v3/social/og.png` (Arabic: `brand/v3/social/og-ar.png`) and `brand/v3/banner/github-banner-still.png`. Social card: `brand/v3/social/social-card.png` (1280x640).
 
 Who: **Lead** = the build session; **The maintainer** = needs his own login or click. Status values: `todo`, `ready`
 (files done, waiting for a step), `submitted`, `live`. Update the dated row after each step.
@@ -10,9 +10,10 @@ Who: **Lead** = the build session; **The maintainer** = needs his own login or c
 ## Order
 
 1. Repo public, MIT `LICENSE` on `main`, site live (`pages.yml`).
-2. npm `business-wrap` published (the MCP registry entry starts `npx -y -p business-wrap@<version> business-wrap-mcp`,
-   which fails until then). Since 0.11.1 the plugin's `mcpServers` and Smithery start
-   `npx -y -p github:NJ-Burrito/Business-Wrap#v<version> business-wrap-mcp`, which works without npm.
+2. npm `business-wrap` published (done: 0.11.1). The MCP registry entry, the plugin's `mcpServers` and Smithery start
+   `npx -y -p business-wrap@<version> business-wrap-mcp` from npm. People install with
+   `claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp`. Without npm,
+   `npx -y -p github:NJ-Burrito/Business-Wrap#v<version> business-wrap-mcp` installs from the release tag.
 3. Official MCP Registry (needs 2).
 4. Glama, Smithery (need the public repo; Smithery also needs 2 or a bundle).
 5. Anthropic plugin directory (needs 2, because the plugin starts the MCP server from npm).
@@ -22,7 +23,7 @@ Who: **Lead** = the build session; **The maintainer** = needs his own login or c
 
 | Directory | Needs first | Who | Status | Date | Link |
 |---|---|---|---|---|---|
-| npm `business-wrap` | `"private": true` removed from `package.json`, npm account | The maintainer (once) | todo | 2026-10-28 | |
+| npm `business-wrap` | `"private": true` removed from `package.json`, npm account | The maintainer (once) | live (0.11.1) | 2026-10-28 | https://www.npmjs.com/package/business-wrap |
 | Official MCP Registry | npm live | The maintainer (login) | ready (`mcp/server.json`) | 2026-10-28 | |
 | Glama | `glama.json` on `main`, repo public | The maintainer (claim) | ready | 2026-10-28 | |
 | Smithery | npm live, `mcp/smithery.yaml` | The maintainer (login) | ready | 2026-10-28 | |
@@ -72,7 +73,7 @@ https://glama.ai/mcp/servers if it is not indexed, claim it, paste:
 
 ## 4. Smithery
 
-Files: `mcp/smithery.yaml` (stdio, launches `npx -y -p github:NJ-Burrito/Business-Wrap#v<version> business-wrap-mcp` (from 0.11.1; switch to `business-wrap@<version>` once npm is published), optional `fontDir`).
+Files: `mcp/smithery.yaml` (stdio, launches `npx -y -p business-wrap@<version> business-wrap-mcp` from npm, optional `fontDir`).
 A stdio server is published as an MCPB bundle; a URL publish needs a hosted HTTPS server, which Business-Wrap does not run.
 **Lead:** build `business-wrap-mcp.mcpb` (`npx @anthropic-ai/mcpb pack` with a `manifest.json`; not in the repo yet).
 **The maintainer:** `smithery auth login`, then `smithery mcp publish ./business-wrap-mcp.mcpb -n NJ-Burrito/business-wrap`
@@ -87,7 +88,7 @@ Optional fields the portal asks for: homepage `https://nj-burrito.github.io/Busi
 `https://nj-burrito.github.io/Business-Wrap/privacy.html`, support `https://nj-burrito.github.io/Business-Wrap/support.html`,
 terms `https://nj-burrito.github.io/Business-Wrap/terms.html`.
 **The maintainer:** open https://claude.ai/directory/manage , submit the repository, paste the Glama text, upload
-`brand/v2/social/og.png` and `brand/v2/banner/github-banner-still.png`.
+`brand/v3/social/og.png` and `brand/v3/banner/github-banner-still.png`.
 Self-hosted route, no review, works now: `/plugin marketplace add NJ-Burrito/Business-Wrap`, then
 `/plugin install business-wrap@business-wrap`.
 
@@ -98,6 +99,5 @@ the site URL. No repo files needed. Submission rules were not verified.
 
 ## Known gaps
 
-- The npm package is not published (404 on 2026-10-28); `package.json` still says `"private": true`.
 - No `.mcpb` manifest yet (Smithery).
 - Directory rules change; where a screen differs from this file, follow the screen and keep the intent.
