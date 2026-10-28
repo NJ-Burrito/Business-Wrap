@@ -1,0 +1,7 @@
+/* A2 document library drawer */
+.drawer .lib-q { display: block; margin: 8px 0; }
+.drawer .lib-q input { width: 100%; box-sizing: border-box; }
+.drawer .lib-docs li[aria-current="true"] .lib-t { text-decoration: underline; text-underline-offset: 3px; }
+.drawer .lib-docs small, .drawer .lib-trash small { opacity: .7; }
+.drawer .lib-trash { margin-top: 12px; }
+.drawer .lib-trash summary { cursor: pointer; }
