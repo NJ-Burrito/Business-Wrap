@@ -30,6 +30,8 @@ const MAP = {
   secFile: 'folder', secInsert: 'square-plus', secEdit: 'pen-line', secDocument: 'file-text', secDesign: 'palette', secView: 'eye', secExport: 'file-down', more: 'ellipsis', secSel: 'spline',
   // page view modes (0.10.0)
   'view.continuous': 'scroll-text', 'view.single': 'file', 'view.spread': 'book-open', 'view.left': 'chevron-left', 'view.right': 'chevron-right',
+  // settings and updates (0.11.0)
+  settings: 'settings', updCheck: 'refresh-cw', update: 'download', about: 'info', prefs: 'sliders-horizontal', link: 'external-link', updDone: 'circle-check', updStep: 'circle', updFail: 'circle-x',
 };
 const out = {};
 for (const [k, name] of Object.entries(MAP)) {

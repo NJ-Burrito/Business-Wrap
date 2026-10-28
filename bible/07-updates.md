@@ -16,7 +16,7 @@ Private repo: without a token the check answers "can't check" quietly. A token i
 ## Who sees what
 | Audience | Channel | Behaviour |
 |---|---|---|
-| Person, editor | `editor/update.js` (one module, one mount point in `engine/build-editor.mjs`) | "What's new" once after an update (from the embedded CHANGELOG section); "Update available" card only when served by `engine/serve.mjs` (`GET /api/update`), with Update / Later / Turn off; animated, honours reduced motion; never printed or saved into Save-HTML |
+| Person, editor | `editor/update.js` + `editor/settings.js` (mounted in `engine/build-editor.mjs`) | served by `engine/serve.mjs`: auto-check at launch (at most once per 24 h, switch in Settings, on by default), a popup with the notes and Update now / Later / Skip this version, one-click update with progress steps, then the editor reopens where the user was; Settings (About, Update, Preferences); "What's new" once after an update; from `file://` no request at all, Settings explains how to update; never printed or saved into Save-HTML |
 | Person, terminal | `npx business-wrap update --check` | one line + three highlights; `--apply --yes`; `--notes`; `--off` / `--on` |
 | Agent with the skill | SKILL.md "First: check for an update" | check at task start, one line to the user, offer the command, never auto-update |
 | Codex, Cursor, Gemini CLI | `AGENTS.md` | the same instruction |
@@ -28,6 +28,31 @@ Private repo: without a token the check answers "can't check" quietly. A token i
 - Zip install: downloads the release zip (token for the private repo), verifies SHA-256 (GitHub digest or the `.sha256` asset), keeps ONE backup `<folder>.backup-<old>`, swaps product files, rolls back on failure.
 - Never touched: `.local`, `design/custom`, `logos`, `fonts/custom`, `drafts`, `out`, `.git`, `node_modules`.
 - Then user data is migrated by the NEW engine (`*.edits.json` v0 → v1).
+
+## In the editor (0.11.0)
+The page is a self-contained HTML, often opened from `file://`, and the repository is private: the page never holds a token and never calls GitHub. Everything goes through the local server, which uses the same check and apply as the CLI.
+
+| Endpoint (`engine/serve.mjs`, 127.0.0.1 only, other origins refused) | What |
+|---|---|
+| `GET /api/version` | name, version, release date, repository, licence, credits, install mode, the last check |
+| `GET /api/update/check[?force=1]` | the check (daily cache; `force` for «Check now»); `status` available / current / off / unknown with a `reason` (offline, no-access, rate-limit, error); the notes as plain-text sections; no download address leaves the server |
+| `POST /api/update/apply {confirm: true}` | starts the update (202) and returns; one at a time |
+| `GET /api/update/progress` | the stage: download → backup → replace → verify → done, or the error and whether it rolled back |
+
+The update, step by step:
+1. **download**: the release zip (gh auth token for the private repo), SHA-256 checked; refused before anything changes on a mismatch.
+2. **backup**: one full copy `<folder>.backup-<old>`, user data included (not `node_modules`, not `.git`).
+3. **replace**: every release file is written except into user folders; a file the release dropped is removed only inside the program folders (`CODE_ROOTS`: engine, editor, mcp, update, hooks, bible, assets, tests, security, evals, .claude-plugin, .github, .githooks). Anything else the release does not carry (a document saved at the root, `samples/<yours>`) stays byte-identical.
+4. **verify**: the folder says the new version and its engine loads; user edits files are migrated by the new engine.
+5. **done**: the server exits with code 75 and its supervisor (`npm run serve`) starts it again on the new code; the editor waits for `/api/version` to report the new version, saves the draft and its place (`bw:resume`: service, edition, page, scroll) and reloads; the draft loads without a restore question.
+
+Any failure in replace or verify restores the backup exactly: the release's new files are removed and every backed-up file, program and data, is copied back. A Git checkout fast-forwards instead and resets to the previous commit if the new one does not load.
+
+Never touched: documents, `*.edits.json`, the browser stores (draft, history, preferences, uploaded fonts), design packs, uploaded fonts, logos, `out/`, `exports/`, `harvest/`, `drafts/`, `.local/`.
+
+**Old work.** When the server serves an editor or a Save-HTML file built by an older version, it re-wraps it in the current editor (`rewrapEditorHtml`): documents, edits, history, comments, snapshots, theme, fonts and set id are carried over, and the file on disk is never rewritten. The stored draft has a schema (`STATE_SCHEMA`, 2 since 0.11.0); `migrateState` moves it forward, idempotently, after copying the original byte for byte to `bw:draft-backup:<set>:v<old>`. A schema newer than the editor is never loaded or changed.
+
+Tests: `tests/updater.test.mjs` (endpoints, apply, rollback, migration, re-wrap) and `tests/settings.test.mjs` (popup, skip, throttle, toggle, file://, progress and reload, old Save-HTML files, axe).
 
 ## Release notes for two audiences
 Every CHANGELOG section is bilingual and may carry `### Migration notes / ملاحظات الترحيل`: changed commands, schemas, breaking changes, written for the agent. The check splits it: highlights for the person, migration notes for the agent (`--notes`, `check_update`, the MCP notice).

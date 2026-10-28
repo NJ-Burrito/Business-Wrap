@@ -79,14 +79,20 @@ node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|e
 <div dir="ltr">
 
 ```
-claude mcp add business-wrap -- npx -y -p business-wrap@0.10.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p business-wrap@0.11.0 business-wrap-mcp
 ```
 
 </div>
 
 الأدوات: `build_editor` و`validate_edits` و`apply_edits` و`export_document` و`export_design_pack` و`check_fonts` و`harvest_model` و`harvest_crawl` و`harvest_merge` و`diagram_mermaid` و`check_update` و`apply_update`، والتفاصيل في `mcp/README.ar.md`.
 
-**التحديثات:** يخبرك `npx business-wrap update --check` بصدور إصدار جديد (طلب واحد في اليوم على الأكثر)، ويثبّته `npx business-wrap update --apply --yes`، ويعرض `--notes` ما تغيّر وملاحظات الترحيل. لا يُحدَّث شيء دون موافقتك. التفاصيل في `bible/07-updates.ar.md`.
+## التحديثات
+
+**من داخل المحرر** (0.11.0): افتح المحرر عبر الخادم المحلي بالأمر `npm run serve -- <editor.html>` (أو `node engine/serve.mjs <editor.html>`). عند الفتح يفحص وجود إصدار أحدث، مرة في اليوم على الأكثر ودون أن يعطّل شيئاً. وإن وُجد ظهرت نافذة فيها رقم الإصدار وما الجديد فيه، مع **حدّث الآن** و**لاحقاً** و**تخطَّ هذا الإصدار**. «حدّث الآن» ينزّل الإصدار ويتحقق من بصمته، ويأخذ نسخة احتياطية، ويستبدل ملفات البرنامج فقط، ويتحقق من الإصدار الجديد، ثم يعيد تشغيل الخادم ويفتح مستندك حيث كنت. مستنداتك وتعديلاتك وسجلّها وحزم التصميم والخطوط والشعارات و`out/` و`.local/` لا تُمسّ أبداً، وأي فشل يعيد الإصدار السابق كما كان تماماً. و**الإعدادات** (قسم «العرض» في الشريط، أو Ctrl+K) تعرض معلومات البرنامج، وحالة التحديث مع **تحقّق الآن** ومفتاح الفحص التلقائي، وتفضيلاتك. وإن فُتح المحرر من ملف على الجهاز (`file://`) فالصفحة لا تستطيع الفحص، وتشرح الإعدادات طريقة التحديث.
+
+![نافذة التحديث](docs/screens/update-popup.ar.png)
+
+**من الطرفية أو عبر وكيل:** يخبرك `npx business-wrap update --check` بصدور إصدار جديد (طلب واحد في اليوم على الأكثر)، ويثبّته `npx business-wrap update --apply --yes`، ويعرض `--notes` ما تغيّر وملاحظات الترحيل. لا يُحدَّث شيء دون موافقتك. المستودع خاص: يستخدم الفحص تسجيل دخولك `gh auth` على هذا الجهاز، والصفحة لا تحمل أي رمز دخول. التفاصيل في `bible/07-updates.ar.md`.
 
 ## ابدأ وثيقة (الحصاد)
 

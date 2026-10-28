@@ -85,6 +85,37 @@ export function migrate(file) {
   throw new Error(`edits version ${file.version} is newer than this editor (${EDITS_VERSION}): update Business-Wrap first`);
 }
 
+/**
+ * The editor's stored state (the localStorage draft and the editions embedded in a saved editor HTML).
+ * Schema 1 = 0.5.0 … 0.10.0 (`{v: 1, at, theme, svc: {id: {ed: {hash, ops, status, stale, comments, versions}}}}`,
+ * some fields missing in older builds); schema 2 = 0.11.0, every field present and typed, ops without an id get one.
+ * Forward-only and idempotent: migrateState(migrateState(x)) deep-equals migrateState(x); a newer schema is refused.
+ */
+export const STATE_SCHEMA = 2;
+const arr = (x) => (Array.isArray(x) ? x : []);
+const obj = (x) => (x && typeof x === 'object' && !Array.isArray(x) ? x : {});
+/** One edition's stored fields → schema 2 (also the `editions[ed]` of a saved editor HTML: extra keys are kept). */
+export function migrateEdition(e) {
+  const x = obj(e);
+  let n = 0;
+  const ops = arr(x.ops).filter((o) => o && typeof o === 'object' && typeof o.op === 'string' && typeof o.path === 'string')
+    .map((o) => (o.id ? o : { ...o, id: `m${(n++).toString(36)}${String(o.at || '').replace(/\D/g, '').slice(-6)}` }));
+  return { ...x, ops, status: obj(x.status), stale: arr(x.stale).filter((s) => typeof s === 'string'), comments: arr(x.comments), versions: arr(x.versions) };
+}
+/** @returns {{state: object, from: number, changed: boolean}} */
+export function migrateState(state) {
+  const s = obj(state);
+  const from = Number.isInteger(s.v) ? s.v : 1;
+  if (from > STATE_SCHEMA) throw new Error(`stored editor state schema ${from} is newer than this editor (${STATE_SCHEMA}): update Business-Wrap first`);
+  const svc = {};
+  for (const [id, eds] of Object.entries(obj(s.svc))) {
+    svc[id] = {};
+    for (const [ed, e] of Object.entries(obj(eds))) svc[id][ed] = migrateEdition(e);
+  }
+  const out = { ...s, v: STATE_SCHEMA, svc };
+  return { state: out, from, changed: JSON.stringify(out) !== JSON.stringify(s) };
+}
+
 /** Minimal shape check against the v1 contract (no JSON-schema dependency). */
 export function validateEdits(file) {
   const errs = [];

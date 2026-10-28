@@ -57,11 +57,17 @@ Then say **"build the requirements document for …"** or **"open it in the edit
 
 **MCP server only** (stdio, local; Node 20+, Chrome or Edge for the PDF, `uv` for the DOCX):
 ```
-claude mcp add business-wrap -- npx -y -p business-wrap@0.10.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p business-wrap@0.11.0 business-wrap-mcp
 ```
 Tools: `build_editor`, `validate_edits`, `apply_edits`, `export_document`, `export_design_pack`, `check_fonts`, `harvest_model`, `harvest_crawl`, `harvest_merge`, `diagram_mermaid`, `check_update`, `apply_update` — see `mcp/README.md`.
 
-**Updates:** `npx business-wrap update --check` tells you when a release is out (at most one request a day); `npx business-wrap update --apply --yes` installs it; `--notes` shows what changed and the migration notes. Nothing updates without your consent. Details: `bible/07-updates.md`.
+## Updates
+
+**In the editor** (0.11.0): open the editor through the local server, `npm run serve -- <editor.html>` (or `node engine/serve.mjs <editor.html>`). At launch it checks for a newer release, at most once a day and without blocking anything. When one is out, a popup shows the version and what is new, with **Update now**, **Later** and **Skip this version**. Update now downloads the release, checks its fingerprint, backs up, replaces the program files only, verifies the new version, restarts the server and reopens your document where you were. Your documents, edits and their history, design packs, fonts, logos, `out/` and `.local/` are never touched, and any failure puts the previous version back exactly. **Settings** (toolbar View section, or Ctrl+K) shows About, the update state with **Check now** and the auto-check switch, and your preferences. Opened from disk (`file://`), the page cannot check: Settings says how to update.
+
+![Update popup](docs/screens/update-popup.en.png)
+
+**From a terminal or an agent:** `npx business-wrap update --check` tells you when a release is out (at most one request a day); `npx business-wrap update --apply --yes` installs it; `--notes` shows what changed and the migration notes. Nothing updates without your consent. The repository is private: the check uses your `gh auth` sign-in on this computer, and the page never holds a token. Details: `bible/07-updates.md`.
 
 ## Start a document (harvest)
 

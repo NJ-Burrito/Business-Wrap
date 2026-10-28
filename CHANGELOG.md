@@ -8,6 +8,33 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.11.0] - 2026-10-28
+
+Update from inside the editor, and a Settings page. / التحديث من داخل المحرر، وصفحة الإعدادات.
+
+### Added / أضيف
+- **Settings page** (toolbar View section, or Ctrl+K → Settings): About (name, logo, version, release date, repository, licence, credits), Update (installed and latest version, last check, Check now, check automatically at launch, on by default) and Preferences (interface language, word direction, page view, reduce motion, explainer cards). / صفحة الإعدادات: حول البرنامج، والتحديث، والتفضيلات.
+- **Update check at launch**: when the editor is opened through the local server (`npm run serve`), it asks the server whether a newer release exists, without blocking anything and at most once a day unless you press Check now; offline or on any error it stays silent and Settings shows why. / فحص التحديث عند الفتح، مرة في اليوم على الأكثر.
+- **Update popup**: a newer release shows its version and what is new (Added, Changed, Fixed), with Update now, Later and Skip this version. / نافذة التحديث مع ما الجديد.
+- **One-click update**: Update now runs the updater on the server and shows its steps (download and fingerprint check, backup, replace, verify, done); the server restarts on the new version and the editor reopens your document where you were, with no other step. / تحديث بنقرة واحدة، ويعود المحرر إلى موضعك.
+- **Old work keeps working**: an editor or a Save-HTML file from 0.9.x or 0.10.0 opened through the server opens in the new editor with its edits, history, comments and snapshots; the stored draft is migrated to the new schema after a byte-for-byte backup. / الأعمال القديمة تفتح في المحرر الجديد كما هي.
+
+### Changed / تغيّر
+- **The updater replaces program files only**: a file the release dropped is removed only inside the program folders; documents, edits files, design packs, uploaded fonts, logos, `out/`, `exports/`, `harvest/` and `.local/` are never written; one full backup first; any failure in the replace or the verify restores the previous version and the data exactly. A Git checkout fast-forwards and resets to the old commit if the new one does not load. / المحدّث يستبدل ملفات البرنامج فقط.
+- `npm run serve` supervises the server so an in-editor update can restart it on the new code. / الخادم المحلي يعيد تشغيل نفسه بعد التحديث.
+
+### Fixed / أصلح
+- Unpacking a release zip on Linux (GNU tar cannot read zips: `unzip` is used) and on Windows from Git Bash (Windows' own tar is used). / فك ضغط الإصدار على لينكس وويندوز.
+
+### Tests / الاختبارات
+- `tests/updater.test.mjs` (new): server endpoints with a mocked release feed; a fake newer release applied with every user file byte-identical; forced failures and a broken release roll back to the exact previous tree; checksum refusal; the state migration (forward-only, idempotent); 0.9.1 and 0.10.0 Save-HTML files re-wrapped with their edits.
+- `tests/settings.test.mjs` (new): Settings in Arabic and English, the popup on a newer release only, skip remembered, the 24 h throttle and the toggle, file:// makes no update request, the progress steps and the reload back to the same place with the edits, 0.9.1 and 0.10.0 Save-HTML files opened and edited, axe.
+
+### Migration notes / ملاحظات الترحيل
+- The editor's stored draft (`localStorage bw:draft:<set>`) moves from schema 1 to 2 on first open (`engine/edits.mjs migrateState`); the original is kept under `bw:draft-backup:<set>:v1`. Edits files (`*.edits.json`) are unchanged (version 1).
+- New server endpoints: `GET /api/version`, `GET /api/update/check[?force=1]`, `POST /api/update/apply {confirm:true}` (202, runs on), `GET /api/update/progress`; `GET /api/update` still answers as before.
+- `applyUpdate` accepts `onStage`; `swapInstall` is now async and removes dropped files only inside `CODE_ROOTS`.
+
 ## [0.10.0] - 2026-10-28
 
 The editor's shell, reworked from the owner's field notes, and any font as real text. / هيكل المحرر من ملاحظات المالك الميدانية، وأي خط نصاً حقيقياً.

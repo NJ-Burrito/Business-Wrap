@@ -42,7 +42,8 @@ const newGroup = () => `g${Date.now().toString(36)}${(gseq++).toString(36)}`;
 const M = {}; // M[svc][ed] = {base, raw, hash, ops, redo, status, stale:Set, comments:[], versions:[], doc}
 for (const s of DATA.services) {
   M[s.id] = {};
-  for (const [ed, e] of Object.entries(s.editions)) {
+  for (const [ed, e0] of Object.entries(s.editions)) {
+    const e = migrateEdition(e0); // a saved editor HTML from an older build (0.9.x, 0.10.0): its stored fields → this schema, the file itself untouched
     const base = JSON.parse(e.raw);
     M[s.id][ed] = {
       base, raw: e.raw, hash: e.hash, name: e.name,
@@ -224,7 +225,7 @@ function redo(ed = S.ed) {
 /* ── autosave + recovery ───────────────────────────────────────────────── */
 let saveTimer;
 function snapshotState() {
-  const out = { v: 1, at: new Date().toISOString(), theme: S.theme, svc: {} };
+  const out = { v: STATE_SCHEMA, at: new Date().toISOString(), theme: S.theme, svc: {} };
   for (const [sid, s] of Object.entries(M)) {
     out.svc[sid] = {};
     for (const [ed, e] of Object.entries(s))
@@ -260,11 +261,29 @@ function loadDraft(d) {
       rebuild(e);
     }
 }
-function offerRecovery() {
+/**
+ * The stored draft, migrated forward to STATE_SCHEMA (engine/edits.mjs migrateState). Before the first
+ * migration the stored text is copied, byte for byte, to `bw:draft-backup:<set>:v<old>` (never overwritten),
+ * then the migrated draft replaces it. A draft from a newer build is left alone and not loaded.
+ */
+function readDraft() {
   const raw = ls.get(KEY);
-  if (!raw) return;
+  if (!raw) return null;
   let d;
-  try { d = JSON.parse(raw); } catch { return; }
+  try { d = JSON.parse(raw); } catch { return null; }
+  let m;
+  try { m = migrateState(d); } catch { return null; }
+  if (m.from < STATE_SCHEMA || m.changed) {
+    const bk = `bw:draft-backup:${DATA.setId}:v${m.from}`;
+    if (ls.get(bk) == null && !ls.set(bk, raw)) return m.state; // no room for the backup: use the migrated copy in memory, keep the stored one
+    ls.set(KEY, JSON.stringify(m.state));
+  }
+  return m.state;
+}
+function offerRecovery() {
+  const d = readDraft();
+  if (resumeAfterUpdate(d)) return; // update.js: reopened by the updater, the draft loads without asking
+  if (!d) return;
   const embedded = JSON.stringify(Object.values(M).flatMap((s) => Object.values(s).map((e) => e.ops)));
   const drafted = JSON.stringify(Object.entries(d.svc || {}).flatMap(([sid, s]) => Object.entries(s).filter(([ed]) => M[sid]?.[ed]).map(([, x]) => x.ops)));
   if (drafted === embedded) return;
@@ -902,7 +921,7 @@ const CMDS = [
   ['undo', 'edit', 'Ctrl+Z'], ['redo', 'edit', 'Ctrl+Y'], ['find', 'edit', 'Ctrl+F'],
   ['newdoc', 'document'], ['process', 'document'], ['outline', 'document'], ['pages', 'document'], ['check', 'document'], ['history', 'document'], ['renumber', 'document'], ['webhooks', 'document'],
   ['theme', 'design'], ['styleThis', 'design'], ['hideBlock', 'design'],
-  ['side', 'view'], ['uiLang', 'view'], ['dir', 'view'], ['dark', 'view'], ['calm', 'view'], ['focus', 'view', 'F'], ['spell', 'view'], ['snap', 'view'], ['zoomOut', 'view'], ['zoomIn', 'view'], ['view.continuous', 'view'], ['view.single', 'view'], ['view.spread', 'view'],
+  ['side', 'view'], ['uiLang', 'view'], ['dir', 'view'], ['dark', 'view'], ['calm', 'view'], ['focus', 'view', 'F'], ['spell', 'view'], ['snap', 'view'], ['zoomOut', 'view'], ['zoomIn', 'view'], ['view.continuous', 'view'], ['view.single', 'view'], ['view.spread', 'view'], ['settings', 'view'],
   ['exportPdf', 'export'], ['print', 'export', 'Ctrl+P'],
   ['duplicate', 'text', 'Ctrl+D'], ['delete', 'text', 'Del'], ['moveUp', 'text', 'Alt+↑'], ['moveDown', 'text', 'Alt+↓'], ['comment', 'text'], ['breakBefore', 'text'], ['keepNext', 'text'],
   ['rowAdd', 'table'], ['rowDel', 'table'], ['colAdd', 'table'], ['colDel', 'table'],
@@ -962,6 +981,7 @@ function buildUi() {
       ${['rtl', 'ltr'].map((d) => `<button type="button" data-a="dir" data-d="${d}" aria-pressed="${uiDir() === d}" aria-label="${esc(t(d))}: ${esc(t(d === 'rtl' ? 'ux.dirRtl' : 'ux.dirLtr'))}" title="${esc(t(d === 'rtl' ? 'ux.dirRtl' : 'ux.dirLtr'))}"><span class="sw">${esc(t(d))}</span></button>`).join('')}
     </div>
     ${btn('view', { extra: ` aria-expanded="${S.view}" aria-controls="viewpop"` })}
+    ${btn('settings')}
     </div></div>
     ${btn('palette', { cls: 'cmd', label: t('palette'), tip: `${t('palette')} (Ctrl+K)`, extra: ' aria-keyshortcuts="Control+K"' })}
     <div class="progress" hidden aria-hidden="true"><i></i></div>
@@ -1281,7 +1301,7 @@ async function runAction(a) {
     case 'rowUp': DESIGN.moveRow(-1); break;
     case 'rowDown': DESIGN.moveRow(1); break;
     case 'renumber': A.renumber(); break;
-    case 'find': case 'outline': case 'check': case 'history': case 'theme': case 'pages': case 'webhooks': case 'newdoc': case 'process':
+    case 'find': case 'outline': case 'check': case 'history': case 'theme': case 'pages': case 'webhooks': case 'newdoc': case 'process': case 'settings':
       S.drawer === a ? closeDrawer() : openDrawer(a); break;
     case 'save': saveAll(); pop('save'); break;
     case 'saveHtml': await saveHtml(!!S.embedFonts); break;
@@ -1357,6 +1377,9 @@ ${e.comments.length ? `<h3>${esc(t('comment'))}</h3><ul class="list">${e.comment
   } else if (kind === 'process') {
     d.setAttribute('aria-label', t('process'));
     html = head(t('process')) + processPanel();
+  } else if (kind === 'settings') {
+    d.setAttribute('aria-label', t('settings'));
+    html = head(t('settings')) + settingsPanel(); // settings.js
   } else if (kind === 'webhooks') {
     d.setAttribute('aria-label', t('webhooks'));
     html = head(t('webhooks')) + hooksPanel();
@@ -1380,6 +1403,7 @@ ${e.comments.length ? `<h3>${esc(t('comment'))}</h3><ul class="list">${e.comment
     if (e.target.dataset.k === 'embed') S.embedFonts = e.target.checked;
     if (e.target.dataset.k === 'docxFonts') { S.docxFonts = e.target.checked; ls.set('bw:docx-fonts', S.docxFonts ? '1' : '0'); }
     if (e.target.dataset.hook) hooksChange(e.target);
+    if (e.target.dataset.set) settingsChange(e.target);
     if (e.target.dataset.pr) processChange(e.target);
     DESIGN.change(e.target);
   };
@@ -1393,6 +1417,7 @@ async function onDrawer(e) {
   const d = root.querySelector('.drawer');
   const k = x.dataset.k;
   if (k === 'close') { closeDrawer(); return; }
+  if (S.drawer === 'settings' && await settingsClick(x)) return;
   if (x.dataset.page) {
     const first = x.dataset.first || '';
     // the PDF's first line, matched loosely (numbers, punctuation and spaces dropped) to a document field

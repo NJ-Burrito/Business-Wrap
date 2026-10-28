@@ -15,7 +15,7 @@ A stdio MCP server over the Business-Wrap engine. Local only: it reads and write
 
 ## Run
 ```
-claude mcp add business-wrap -- npx -y -p business-wrap@0.10.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p business-wrap@0.11.0 business-wrap-mcp
 # or, from a clone after npm ci:
 node mcp/cli.mjs
 ```

@@ -63,27 +63,33 @@ export function splitNotes(text) {
 }
 
 /**
- * @param {{force?: boolean, now?: number}} o
+ * @param {{force?: boolean, now?: number, current?: string}} o  `current`: the installed version to compare with (default: this folder's)
  * @returns {Promise<{status: 'available'|'current'|'unknown'|'off', current: string, latest?: string, url?: string,
- *   highlights?: string[], migration?: string[], checkedAt?: number, cached?: boolean}>}
+ *   highlights?: string[], notes?: {human, migration}, migration?: string[], checkedAt?: number, cached?: boolean,
+ *   reason?: 'offline'|'no-access'|'rate-limit'|'error'}>}  `reason` says why an answer is 'unknown'.
  */
-export async function checkForUpdate({ force = false, now = Date.now() } = {}) {
-  const current = currentVersion();
+export async function checkForUpdate({ force = false, now = Date.now(), current = currentVersion() } = {}) {
   if (!force && !settings().check) return { status: 'off', current };
   const state = readJson(STATE_FILE, {});
   let next = state;
   let cached = true;
+  let reason = '';
   if (force || !state.checkedAt || now - state.checkedAt >= DAY_MS || state.forVersion !== current) {
-    next = await checkLatest({ repo: repoOf(), current, state: state.forVersion === current ? state : {}, token: token(), fetch: feedFetch(), now });
+    const base = feedFetch();
+    // what went wrong, for the Settings page: the request threw (offline), or GitHub said no (private repo, no sign-in), or rate limit
+    const f = async (...a) => { try { const r = await base(...a); if (r.status === 404 || r.status === 401) reason = 'no-access'; else if (r.status === 403 || r.status === 429) reason = 'rate-limit'; else if (!r.ok && r.status !== 304) reason = 'error'; return r; } catch (e) { reason = 'offline'; throw e; } };
+    const prev = state.forVersion === current ? state : {};
+    if (prev.backoffUntil > now) reason = 'rate-limit';
+    next = await checkLatest({ repo: repoOf(), current, state: prev, token: token(), fetch: f, now });
     cached = false;
     if (next) writeJson(STATE_FILE, { ...next, forVersion: current });
   }
-  if (!next || (!next.checkedAt && !next.latest)) return { status: 'unknown', current };
+  if (!next || (!next.checkedAt && !next.latest)) return { status: 'unknown', current, reason: reason || 'error', checkedAt: state.checkedAt };
   const l = next.latest;
   if (!l || !isNewer(l.version, current)) return { status: 'current', current, checkedAt: next.checkedAt, cached };
   const { human, migration } = splitNotes(l.notes);
   const highlights = human.flatMap((s) => s.items).slice(0, 3);
-  return { status: 'available', current, latest: l.version, url: l.url, zip: l.zip, zipApi: l.zipApi, sha256: l.sha256, highlights, migration, checkedAt: next.checkedAt, cached };
+  return { status: 'available', current, latest: l.version, url: l.url, zip: l.zip, zipApi: l.zipApi, sha256: l.sha256, publishedAt: l.publishedAt, highlights, notes: { human, migration }, migration, checkedAt: next.checkedAt, cached };
 }
 
 /** The one line an agent or a terminal shows. AR or EN. Empty string when there is nothing to say. */

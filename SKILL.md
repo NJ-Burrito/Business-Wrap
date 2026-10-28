@@ -9,7 +9,7 @@ Turns observed evidence into a governed, bilingual (AR RTL / EN LTR) requirement
 
 ## First: check for an update (once a day, never auto-update)
 At the start of any Business-Wrap task run `node update/cli.mjs --check --lang <ar|en>` from this skill folder (or `npx business-wrap update --check`, or the MCP tool `check_update`). It is cached and makes at most one request a day; "can't check" means say nothing.
-If it prints a notice, tell the user in ONE line, in their language: the new version and the three highlights it printed, and offer `node update/cli.mjs --apply --yes` (Claude Code plugin: `/plugin update business-wrap`). Never update without their consent. After an update, read `node update/cli.mjs --notes`: follow its «Migration notes» (changed commands, schemas) before anything else. An edits file whose `version` is newer than the engine is refused: update first, never down-convert it. Full rules: `bible/07-updates.md`.
+If it prints a notice, tell the user in ONE line, in their language: the new version and the three highlights it printed, and offer `node update/cli.mjs --apply --yes` (Claude Code plugin: `/plugin update business-wrap`). Never update without their consent. In the editor (0.11.0) the person updates themselves: opened through `npm run serve -- <editor.html>` it checks at launch, shows the notes in a popup and updates on their click, keeping their documents, edits and history (Settings → Update; from `file://` it explains how). So open the editor through the server when you can. After an update, read `node update/cli.mjs --notes`: follow its «Migration notes» (changed commands, schemas) before anything else. An edits file whose `version` is newer than the engine is refused: update first, never down-convert it. Full rules: `bible/07-updates.md`.
 
 ## Open the editor / افتح المحرر
 The editor ships with this skill, ready to open: **`assets/editor/business-wrap.html`** (path relative to this SKILL.md; one self-contained file).
@@ -19,7 +19,8 @@ The editor ships with this skill, ready to open: **`assets/editor/business-wrap.
 | Start a new document | open the file in Chrome or Edge (Windows: `start "" "<skill dir>/assets/editor/business-wrap.html"`); it opens on a blank AR + EN document |
 | See the sample | pick «event-permit» in the service list |
 | Open your own document JSON | Import (or Ctrl+K → Import) and choose the `*.ar.json` / `*.en.json`; it opens as its own service |
-| One-click PDF + DOCX, page thumbnails, webhooks | from a clone: `npm install`, then `node engine/serve.mjs assets/editor/business-wrap.html` → http://127.0.0.1:4317/ (opened from disk, PDF + DOCX downloads the edited JSON and shows the export command) |
+| One-click PDF + DOCX, page thumbnails, webhooks, in-editor updates | from a clone: `npm install`, then `node engine/serve.mjs assets/editor/business-wrap.html` → http://127.0.0.1:4317/ (the preferred way to open it: the editor checks for updates there and updates on one click; opened from disk, PDF + DOCX downloads the edited JSON and shows the export command) |
+| Settings, About, update now | toolbar View section → Settings (gear), or Ctrl+K → Settings |
 | A dedicated editor for your documents | `node engine/build-editor.mjs <doc.json or folder> --out out/<name>.editor.html` (reads your configured font folder) |
 | Rebuild the shipped file after changing `editor/` or `engine/` | `npm run skill-html` (`npm test` fails while it is stale) |
 
@@ -27,7 +28,7 @@ Fonts: the shipped file names the Thmanyah fonts installed in the OS (`local()`)
 
 <div dir="rtl">
 
-المحرر جزء من المهارة وجاهز للفتح: **`assets/editor/business-wrap.html`**. افتحه في Chrome أو Edge فيبدأ على وثيقة فارغة بالعربية والإنجليزية؛ والمثال في قائمة الخدمات؛ ولفتح ملف JSON لوثيقتك استخدم «استيراد». للتصدير إلى PDF وDOCX بنقرة، والصور المصغرة للصفحات، وخطافات الويب: شغل `node engine/serve.mjs assets/editor/business-wrap.html` من نسخة المستودع بعد `npm install`. ولبناء محرر خاص بوثائقك: `node engine/build-editor.mjs`. وبعد تغيير `editor/` أو `engine/` أعد بناء الملف بالأمر `npm run skill-html`.
+المحرر جزء من المهارة وجاهز للفتح: **`assets/editor/business-wrap.html`**. افتحه في Chrome أو Edge فيبدأ على وثيقة فارغة بالعربية والإنجليزية؛ والمثال في قائمة الخدمات؛ ولفتح ملف JSON لوثيقتك استخدم «استيراد». للتصدير إلى PDF وDOCX بنقرة، والصور المصغرة للصفحات، وخطافات الويب: شغل `node engine/serve.mjs assets/editor/business-wrap.html` من نسخة المستودع بعد `npm install`، وهي الطريقة المفضلة لفتحه لأن المحرر يفحص التحديثات عندها ويحدّث نفسه بنقرة مع بقاء المستندات والتعديلات وسجلها. والإعدادات ومعلومات البرنامج والتحديث من قسم «العرض» في الشريط أو Ctrl+K ← الإعدادات. ولبناء محرر خاص بوثائقك: `node engine/build-editor.mjs`. وبعد تغيير `editor/` أو `engine/` أعد بناء الملف بالأمر `npm run skill-html`.
 
 </div>
 

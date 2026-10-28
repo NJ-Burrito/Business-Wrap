@@ -101,7 +101,7 @@ put(inst, 'logos/mine.svg', '<svg/>');
 put(inst, 'drafts/a.edits.json', JSON.stringify([{ op: 'setText', path: '/control/title', value: 'x' }]));
 put(fresh, 'SKILL.md', 'new skill');
 put(fresh, 'engine/edits.mjs', fs.readFileSync(path.join(REPO, 'engine', 'edits.mjs'), 'utf8'));
-const sw = swapInstall(inst, fresh, CUR);
+const sw = await swapInstall(inst, fresh, CUR);
 const read = (rel) => (fs.existsSync(path.join(inst, rel)) ? fs.readFileSync(path.join(inst, rel), 'utf8') : null);
 ok('swap: product files replaced, removed files gone', sw.ok && read('SKILL.md') === 'new skill' && read('engine/old-only.mjs') === null);
 ok('swap: settings, design packs, logos, drafts kept', read('.local/config.json') && read('design/custom/mine/pack.json') && read('logos/mine.svg') && read('drafts/a.edits.json'));
