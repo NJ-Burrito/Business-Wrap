@@ -17,6 +17,7 @@ import { applyUpdate, STAGES } from '../update/apply.mjs';
 import { rewrapEditorHtml, aboutInfo } from './build-editor.mjs';
 import { fork } from 'node:child_process';
 import { crawl, harvestToDocument } from './harvest/crawl.mjs';
+import { learningRoute } from './learning/http.mjs';
 
 const MAX_BODY = 60 * 1024 * 1024;
 const slug = fileStem;
@@ -94,6 +95,8 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
           return send(202, { ok: true, started: true, from, to: u.latest, stages: STAGES });
         }
       }
+      // local learning (engine/learning): the journal stays in .local/learning on this machine
+      if (url.pathname.startsWith('/api/learning/')) return await learningRoute(req, url, send);
       if (req.method === 'POST' && url.pathname === '/api/harvest/crawl') {
         // the wizard's "walk the live service": a real (headed) browser on this machine; credentials only via $env:/$secret:
         if (req.headers.origin && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(req.headers.origin)) return send(403, { error: 'origin' });
@@ -119,6 +122,7 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
         const p = body.payload || {};
         // only the documented fields leave the machine (bible/contracts/webhook.schema.json): never fonts, never the watermark
         const payload = Object.fromEntries(['schema', 'version', 'event', 'service', 'edition', 'timestamp', 'summary', 'document'].filter((k) => k in p).map((k) => [k, p[k]]));
+        if (payload.document && typeof payload.document === 'object') { const { learned, ...doc } = payload.document; payload.document = doc; } // learning never leaves the machine
         try {
           const r = await fetch(target, { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'business-wrap-webhook/1' }, body: JSON.stringify(payload), signal: AbortSignal.timeout(8000), redirect: 'manual' });
           return send(200, { ok: r.status >= 200 && r.status < 300, status: r.status });

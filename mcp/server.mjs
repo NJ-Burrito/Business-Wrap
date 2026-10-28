@@ -14,6 +14,7 @@ import { applyUpdate } from '../update/apply.mjs';
 import { harvestModel, harvestCrawl, harvestMerge } from '../engine/harvest/cli.mjs';
 import { DIAGRAM } from '../engine/diagram.mjs';
 import { modelIn } from '../engine/diagram-cli.mjs';
+import { registerLearningTools } from '../engine/learning/mcp-tools.mjs';
 
 const pkg = JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8'));
 const readJson = (p) => JSON.parse(fs.readFileSync(path.resolve(p), 'utf8'));
@@ -43,7 +44,8 @@ const guard = (fn) => async (args) => {
 
 const BASE_INSTRUCTIONS = 'Business-Wrap: bilingual (AR RTL / EN LTR) requirements documents. build_editor makes the HTML editor; '
   + 'apply_edits / validate_edits work on edits files (contract v1; a newer edits version is refused until Business-Wrap is updated); '
-  + 'export_document prints PDF + DOCX. check_update reports a newer release; apply_update installs it only with confirm: true after the user agreed.';
+  + 'export_document prints PDF + DOCX. check_update reports a newer release; apply_update installs it only with confirm: true after the user agreed. '
+  + 'Local learning: call learning_rules before harvesting, authoring or generating and apply the rules; call learning_distill after the user edits or exports; tell the user in one line which learned rules were applied.';
 
 /** The notice an agent shows its user: version, three highlights, the update command; migration notes for the agent itself. */
 export function updateNotice(u) {
@@ -170,7 +172,7 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   }, guard(async ({ model, out_dir, name, roles }) => {
     const r = await harvestModel(path.resolve(model), { out: path.resolve(out_dir), name, roles: roles && path.resolve(roles) });
-    return { documents: r.documents, editor: r.editor, actors: r.ir.actors.length, unresolved_roles: r.ir.actors.filter((a) => a.unresolved).map((a) => a.raw), steps: r.ir.steps.filter((s) => s.type === 'task').length };
+    return { documents: r.documents, editor: r.editor, actors: r.ir.actors.length, unresolved_roles: r.ir.actors.filter((a) => a.unresolved).map((a) => a.raw), steps: r.ir.steps.filter((s) => s.type === 'task').length, learned_rules_applied: r.learned };
   }));
 
   server.registerTool('harvest_merge', {
@@ -186,7 +188,7 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   }, guard(async ({ crawl, model, out_dir, name, roles }) => {
     const r = await harvestMerge(path.resolve(crawl), path.resolve(model), { out: path.resolve(out_dir), name, roles: roles && path.resolve(roles) });
-    return { documents: r.documents, editor: r.editor, conflicts: r.conflicts };
+    return { documents: r.documents, editor: r.editor, conflicts: r.conflicts, learned_rules_applied: r.learned };
   }));
 
   server.registerTool('harvest_crawl', {
@@ -200,7 +202,7 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
   }, guard(async ({ config, out_dir }) => {
     // never files a request from an agent: a dry run that stops before Send / Submit / Pay
     const r = await harvestCrawl(path.resolve(config), { out: path.resolve(out_dir), log: () => {}, ask: async () => false });
-    return { documents: r.documents, editor: r.editor, raw: path.join(r.rawDir, 'harvest.json'), languages: Object.keys(r.raw.languages), steps: Object.values(r.raw.languages)[0]?.steps.length ?? 0 };
+    return { documents: r.documents, editor: r.editor, raw: path.join(r.rawDir, 'harvest.json'), languages: Object.keys(r.raw.languages), steps: Object.values(r.raw.languages)[0]?.steps.length ?? 0, learned_rules_applied: r.learned };
   }));
 
   server.registerTool('check_fonts', {
@@ -244,5 +246,6 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     return { applied: !!r.ok, ...r, migration_notes: u.migration || [], restart: 'restart the MCP server to load the new version' };
   }));
 
+  registerLearningTools(server, z, guard);
   return server;
 }

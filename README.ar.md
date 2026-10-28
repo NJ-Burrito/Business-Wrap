@@ -146,6 +146,9 @@ npm run harvest:merge -- <harvest.json> <process.json>       # the union of both
 ## لوكلاء الذكاء الاصطناعي
 Claude Code وClaude Desktop وCodex وCursor وGemini CLI وأي عميل MCP: اقرأ `AGENTS.md` و`SKILL.md`. في بداية أي مهمة على بزنس راب شغّل `npx business-wrap update --check` (أو أداة MCP `check_update`)، وأخبر المستخدم بالإصدار الأحدث في سطر واحد، ولا تحدّث أبداً دون موافقته.
 
+### التعلّم المحلي
+يحتفظ المحرّر بصمت بسجلّ لتعديلاتك وملاحظاتك وتصديراتك في `.local/learning/` على هذا الجهاز فقط (لا يدخل وثيقة ولا ملف تصدير ولا webhook، ولا يُرسل إلى أي مكان). يحوّل `npm run learn` التصحيحات المتكرّرة إلى قواعد (`.local/learning/rules.md` بالعربية والإنجليزية) يقرؤها مساعدك الذكي قبل مسوّدته التالية (أداة MCP ‏`learning_rules`). Ctrl+K ← «التعلّم المحلي» لإيقافه أو تصديره أو استيراده أو مسح كل ما تعلّمه. التفاصيل في `bible/09-learning.ar.md`.
+
 ## الفحص الأمني
 
 <div dir="ltr">

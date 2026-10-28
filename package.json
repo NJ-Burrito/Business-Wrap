@@ -58,7 +58,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "test": "node engine/build-skill-html.mjs --check && node tests/editor.test.mjs && node tests/a11y.test.mjs && node mcp/test/server.test.mjs && node tests/skill-html.test.mjs && node tests/update.test.mjs && node tests/harvest.test.mjs && node tests/editable.test.mjs && node tests/field.test.mjs && node tests/diagram.test.mjs && node tests/design.test.mjs && node tests/ux.test.mjs && node tests/updater.test.mjs && node tests/settings.test.mjs",
+    "test": "node engine/build-skill-html.mjs --check && node tests/editor.test.mjs && node tests/a11y.test.mjs && node mcp/test/server.test.mjs && node tests/skill-html.test.mjs && node tests/update.test.mjs && node tests/harvest.test.mjs && node tests/editable.test.mjs && node tests/field.test.mjs && node tests/diagram.test.mjs && node tests/design.test.mjs && node tests/ux.test.mjs && node tests/updater.test.mjs && node tests/settings.test.mjs && node tests/learning.test.mjs",
     "test:mcp": "node mcp/test/server.test.mjs",
     "mcp": "node mcp/cli.mjs",
     "sample": "node engine/build-editor.mjs samples/event-permit --out out/sample/event-permit.editor.html --set sample",
@@ -69,7 +69,9 @@
     "harvest:model": "node engine/harvest/cli.mjs model",
     "harvest:crawl": "node engine/harvest/cli.mjs crawl",
     "harvest:merge": "node engine/harvest/cli.mjs merge",
-    "diagram:mermaid": "node engine/diagram-cli.mjs"
+    "diagram:mermaid": "node engine/diagram-cli.mjs",
+    "learn": "node engine/learning/cli.mjs",
+    "test:learning": "node tests/learning.test.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",

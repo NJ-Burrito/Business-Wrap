@@ -24,3 +24,7 @@ __pycache__/
 node_modules/
 # generated editor builds and test output
 out/
+# local learning (engine/learning): the journal, lessons and rules never leave this machine
+.local/learning/
+journal*.jsonl
+bw-learning*.json

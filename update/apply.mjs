@@ -12,7 +12,7 @@ import { pathToFileURL } from 'node:url';
 import { isReleaseZipUrl } from './core.mjs';
 
 /** User-owned paths that an update never replaces or removes (relative to the install folder). */
-export const KEEP = ['.local', '.git', 'node_modules', 'out', 'design/custom', 'logos', 'fonts/custom', 'drafts', 'exports', 'harvest', 'profiles'];
+export const KEEP = ['.local', '.local/learning', '.git', 'node_modules', 'out', 'design/custom', 'logos', 'fonts/custom', 'drafts', 'exports', 'harvest', 'profiles'];
 /**
  * The only folders where a file the new release no longer ships is deleted: program code. Anywhere else
  * (the root, samples/, docs/ …) a file the release does not carry is the user's and stays byte-identical.

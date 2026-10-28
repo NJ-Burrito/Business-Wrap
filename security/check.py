@@ -37,6 +37,8 @@ SELF = {"security/gitleaks.toml", "security/check.py", "security/denylist.sha256
 # once it is placed under editor/ (never a document logo slot).
 ALLOW_BINARY = [re.compile(p) for p in [r"^editor/brand/watermark/nj-avatar-[a-z]+\.webp$"]]
 FONT_MAGIC = (b"OTTO", b"\x00\x01\x00\x00", b"wOFF", b"wOF2", b"ttcf", b"true")
+# Local learning (engine/learning) keeps the user's journal in .local/learning: it must never be committed.
+LEARNING = re.compile(r"(^|/)\.local/learning/|(^|/)journal(\.\d+)?\.jsonl$")
 IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".gif", ".heic")
 
 
@@ -140,6 +142,8 @@ def image_meta(data: bytes) -> bool:
 
 
 def scan_blob(path: str, data: bytes, place: str, rules, gallow, deny, longest, findings):
+    if LEARNING.search(path):  # before the allowlist: .local/ is skipped for dir scans, but a tracked journal is a leak
+        findings.add(("bw-learning-journal", place, 0))
     if any(g.search(path) for g in gallow):
         return
     binary_ok = any(a.search(path) for a in ALLOW_BINARY)
@@ -254,6 +258,10 @@ def selftest() -> int:
         m = rule["regex"].search(s)
         ok = m is not None and any(a.search(m.group(0)) for a in rule["allow"])
         print(f"{'ok ' if ok else 'XX '} {rid} allowlist")
+        bad += not ok
+    for p in (".local/learning/journal.jsonl", "x/journal.2.jsonl", ".local/learning/rules.md"):
+        ok = bool(LEARNING.search(p))
+        print(f"{'ok ' if ok else 'XX '} bw-learning-journal {p}")
         bad += not ok
     print("selftest:", "PASS" if not bad else f"{bad} FAIL")
     return 1 if bad else 0

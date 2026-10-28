@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { parseModel, modelToDocument } from './model.mjs';
 import { crawl } from './crawl.mjs';
 import { harvestToDocument, mergeToDocument } from './docs.mjs';
+import { applyLearned } from '../learning/store.mjs';
 import { i18n, REPO, userCwd } from '../export.mjs';
 import { buildEditor } from '../build-editor.mjs';
 import { get, applyOp, applyOps, migrate } from '../edits.mjs';
@@ -71,14 +72,14 @@ export function writeDocuments(build, outRoot, { editor = true, extra = {}, into
     d0.harvest = { at: new Date().toISOString().slice(0, 10), kinds: [keptIr && 'model', keptRaw && 'crawl'].filter(Boolean) };
     const merging = d0.harvestConflicts || [];
     const r = reharvest(d0, previous(dir, docs.en.service, ed));
-    docs[ed] = r.doc;
+    docs[ed] = applyLearned(r.doc).doc; // promoted local-learning rules on the new generation; hand edits (doc.manual) untouched
     if (merging.length) { const key = (c) => `${c.path}|${c.kept ?? c.manual}|${c.other ?? c.harvested}`; docs[ed].harvestConflicts = [...new Map([...merging, ...(docs[ed].harvestConflicts || [])].map((c) => [key(c), c])).values()]; }
     const all = docs[ed].harvestConflicts || [];
     if (all.length) conflicts[ed] = all;
   }
   for (const [ed, d] of Object.entries(docs)) fs.writeFileSync(path.join(dir, `document.${ed}.json`), JSON.stringify(d, null, 1) + '\n');
   for (const [name, v] of Object.entries(extra)) fs.writeFileSync(path.join(dir, name), JSON.stringify(v, null, 1) + '\n');
-  const out = { dir, documents: [path.join(dir, 'document.ar.json'), path.join(dir, 'document.en.json')], service: docs.en.service, conflicts };
+  const out = { dir, documents: [path.join(dir, 'document.ar.json'), path.join(dir, 'document.en.json')], service: docs.en.service, conflicts, learned: [...new Set(Object.values(docs).flatMap((d) => (d.learned || []).map((x) => x.rule)))] };
   if (editor) out.editor = buildEditor({ inputs: out.documents, out: path.join(dir, `${docs.en.service}.editor.html`), set: docs.en.service, watermarkDir: null }).out;
   return out;
 }
