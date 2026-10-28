@@ -20,7 +20,7 @@ const URL = pathToFileURL(file).href;
 const UX = JSON.parse(fs.readFileSync(path.join(REPO, 'editor', 'ux-i18n.json'), 'utf8'));
 const PC = JSON.parse(fs.readFileSync(path.join(REPO, 'editor', 'print-i18n.json'), 'utf8')); // 0.11.0 strings join the same table
 for (const l of ['ar', 'en']) Object.assign(UX[l], PC[l]);
-const PNG = path.join(REPO, 'brand', 'png', 'mark-128.png');
+const PNG = path.join(REPO, 'brand', 'v3', 'favicon', 'icon-128.png');
 
 const results = [];
 let failed = 0;
