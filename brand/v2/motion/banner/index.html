@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1280, height=640" />
+<title>Business-Wrap hero (9 s loop)</title>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+@font-face{font-family:"Thmanyah Sans";src:url("./assets/fonts/thmanyahsans-Medium.woff2") format("woff2");font-weight:500;font-display:block}
+@font-face{font-family:"Thmanyah Sans";src:url("./assets/fonts/thmanyahsans-Bold.woff2") format("woff2");font-weight:700;font-display:block}
+@font-face{font-family:"Thmanyah Serif Display";src:url("./assets/fonts/thmanyahserifdisplay-Bold.woff2") format("woff2");font-weight:700;font-display:block}
+@font-face{font-family:"Thmanyah Serif Display";src:url("./assets/fonts/thmanyahserifdisplay-Black.woff2") format("woff2");font-weight:900;font-display:block}
+/* Business-Wrap v2 dark tokens (brand/v2/tokens.css) */
+:root{--bg:#0B1A16;--surface:#12261F;--s2:#1A3229;--ink:#EEF2EA;--muted:#A9B8B1;--line:#2A4339;--green:#4FD1A1;--lime:#C8F04A;--dark:#0F231E;--paper:#EEF2EA;--rule:#C9D1CB;
+ --sans:"Thmanyah Sans",sans-serif;--serif:"Thmanyah Serif Display",serif}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1280px;height:640px;overflow:hidden;background:var(--bg)}
+#stage{position:relative;width:1280px;height:640px;overflow:hidden;background:radial-gradient(70% 90% at 76% 50%,#163A2D 0%,#0B1A16 70%);color:var(--ink);font-family:var(--sans)}
+.abs{position:absolute}
+.ruled{position:absolute;left:640px;top:0;width:640px;height:640px;background:repeating-linear-gradient(transparent 0 39px,rgba(238,242,234,.045) 39px 40px)}
+#lockup{left:64px;top:52px;height:44px}
+h1{position:absolute;left:64px;top:140px;font-family:var(--serif);font-weight:900;font-size:62px;line-height:1.08;letter-spacing:-.01em;white-space:nowrap}
+h1 .w{position:relative;display:inline-block;color:var(--ink)}
+h1 .w b{position:relative;font-weight:900;z-index:1}
+#hlh{position:absolute;left:-6px;right:-8px;top:12%;bottom:4%;background:var(--lime);border-radius:3px;transform-origin:0 50%;z-index:0}
+h1 .w.on b{color:var(--dark)}
+#ar{left:64px;top:372px;font-weight:700;font-size:29px;color:var(--muted);direction:rtl;white-space:nowrap}
+#chips{position:absolute;left:64px;top:452px;display:flex;gap:10px}
+.chip{height:44px;padding:0 16px;border-radius:999px;border:2px solid var(--line);display:flex;align-items:center;gap:8px;font-weight:700;font-size:19px;color:var(--muted);background:transparent;white-space:nowrap}
+.chip svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#note{left:64px;top:528px;font-weight:500;font-size:19px;color:var(--muted)}
+#note b{color:var(--ink);font-weight:700}
+/* evidence cards */
+.card{position:absolute;background:var(--surface);border:2px solid var(--line);border-radius:16px;box-shadow:0 24px 50px rgba(0,0,0,.45);overflow:hidden}
+.card .hd{height:38px;display:flex;align-items:center;gap:8px;padding:0 14px;font-weight:700;font-size:15px;color:var(--muted);border-bottom:2px solid var(--line)}
+.card .hd i{width:9px;height:9px;border-radius:50%;background:var(--line);display:inline-block}
+#bpmn{left:700px;top:64px;width:320px;height:170px;transform:rotate(-4deg)}
+#bpmn svg{position:absolute;left:14px;top:52px;width:292px;height:100px;overflow:visible}
+#bpmn text{font:700 13px var(--sans);fill:var(--ink)}
+#web{left:930px;top:300px;width:300px;height:226px;transform:rotate(3deg)}
+.fld{position:absolute;left:16px;width:268px}
+.fld .lb{font-size:13px;font-weight:700;color:var(--muted);margin-bottom:5px}
+.fld .bx{position:relative;height:30px;border-radius:8px;background:var(--s2);border:2px solid var(--line);font-size:14px;font-weight:700;display:flex;align-items:center;padding:0 10px;color:var(--ink);overflow:hidden}
+.mk{position:absolute;inset:3px;border-radius:5px;background:var(--lime)}
+.fld .bx span{position:relative}
+#btn{position:absolute;left:16px;bottom:16px;height:32px;padding:0 16px;border-radius:9px;background:var(--s2);border:2px solid var(--line);font-size:14px;font-weight:700;display:flex;align-items:center;color:var(--muted)}
+#stop{position:absolute;right:16px;bottom:18px;font-size:12px;font-weight:700;color:var(--muted);display:flex;gap:6px;align-items:center}
+.find{position:absolute;height:34px;padding:0 14px;border-radius:999px;background:var(--lime);color:var(--dark);font-weight:700;font-size:16px;display:flex;align-items:center;opacity:0;white-space:nowrap;box-shadow:0 10px 24px rgba(0,0,0,.4)}
+/* the spread */
+#spread{position:absolute;left:744px;top:96px;width:440px;height:420px}
+.page{position:absolute;top:0;width:214px;height:420px;background:var(--paper);color:var(--dark);padding:30px 22px;box-shadow:0 30px 60px rgba(0,0,0,.5);overflow:hidden}
+#pen{left:0;border-radius:20px 4px 4px 20px;transform-origin:100% 50%}
+#par{right:0;border-radius:4px 20px 20px 4px;transform-origin:0 50%;direction:rtl}
+.page h2{font-family:var(--serif);font-weight:900;font-size:25px;line-height:1.1;white-space:nowrap}
+.page .ln{height:10px;border-radius:5px;background:var(--rule);margin-top:14px}
+#pen .ln{transform-origin:0 50%} #par .ln{transform-origin:100% 50%}
+.page .row{position:relative;margin-top:16px;height:34px;display:flex;align-items:center;padding:0 10px;font-weight:700;font-size:16px}
+.page .row .mk{inset:0;border-radius:4px}
+
+.page .row span{position:relative}
+.page .tag{position:absolute;bottom:24px;font-weight:700;font-size:13px;letter-spacing:.06em;color:#4A5A55}
+#pen .tag{left:22px} #par .tag{right:22px;letter-spacing:0}
+.stamp{position:absolute;top:452px;height:52px;padding:0 20px;border-radius:12px;background:var(--lime);color:var(--dark);font-weight:700;font-size:22px;display:flex;align-items:center;gap:10px;box-shadow:0 16px 32px rgba(0,0,0,.45);opacity:0}
+.stamp svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+#s1{left:820px} #s2{left:976px}
+#glow{left:760px;top:120px;width:420px;height:420px;border-radius:50%;background:radial-gradient(closest-side,rgba(200,240,74,.16),transparent);opacity:0}
+</style>
+</head>
+<body>
+<div id="stage" data-composition-id="bw-hero" data-start="0" data-duration="9" data-fps="25" data-width="1280" data-height="640">
+  <div class="ruled"></div>
+  <div id="glow" class="abs"></div>
+
+  <img id="lockup" class="abs" src="./assets/logo/lockup-en-dark.svg" alt="Business-Wrap" />
+  <h1>Evidence in.<br>A <span class="w" id="hw"><span id="hlh"></span><b>bilingual</b></span><br>document out.</h1>
+  <div id="ar" class="abs" dir="rtl">من الأدلة إلى وثيقة متطلبات بلغتين</div>
+  <div id="chips">
+    <span class="chip" id="cEN">English · LTR</span>
+    <span class="chip" id="cAR">عربي · RTL</span>
+    <span class="chip" id="cPDF"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>PDF</span>
+    <span class="chip" id="cDOCX"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>DOCX</span>
+  </div>
+  <div id="note" class="abs">Edited in an HTML editor that <b>is</b> the print layout.</div>
+
+  <!-- evidence -->
+  <div class="card" id="bpmn"><div class="hd"><i></i><i></i><i></i>&nbsp;process.bpmn</div>
+    <svg viewBox="0 0 292 100">
+      <g fill="none" stroke="#A9B8B1" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="14" cy="40" r="11"/><path d="M25 40h17M112 40h16M164 40h14M248 40h14"/><path d="M146 22l18 18-18 18-18-18Z"/>
+        <circle cx="274" cy="40" r="11" stroke-width="4"/>
+      </g>
+      <rect x="42" y="22" width="70" height="36" rx="8" fill="#1A3229" stroke="#A9B8B1" stroke-width="2.4"/>
+      <g id="taskB"><rect x="178" y="22" width="70" height="36" rx="8" fill="#1A3229" stroke="#A9B8B1" stroke-width="2.4"/>
+        <rect id="mkB" x="181" y="25" width="64" height="30" rx="5" fill="#C8F04A"/></g>
+      <text x="77" y="45" text-anchor="middle">Review</text><text id="tB" x="213" y="45" text-anchor="middle">Approve</text>
+      <text x="0" y="88" style="font-size:12px;fill:#A9B8B1">roles · workflow · rules · statuses</text>
+    </svg>
+  </div>
+  <div class="card" id="web"><div class="hd"><i></i><i></i><i></i>&nbsp;live e-service</div>
+    <div class="fld" style="top:52px"><div class="lb">Applicant</div><div class="bx"><span>Company name</span></div></div>
+    <div class="fld" style="top:112px"><div class="lb">Status</div><div class="bx"><i class="mk" id="mkW"></i><span>Submitted</span></div></div>
+    <div id="btn">Submit</div>
+    <div id="stop"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C8F04A" stroke-width="2.6" stroke-linecap="round"><path d="M8.5 3h7L21 8.5v7L15.5 21h-7L3 15.5v-7Z"/><path d="M8 12h8"/></svg>stops before submit</div>
+  </div>
+  <div class="find" id="f1" style="left:892px;top:108px">Workflow</div>
+  <div class="find" id="f2" style="left:1000px;top:410px">Statuses</div>
+
+  <!-- the bilingual document -->
+  <div id="spread">
+    <div class="page" id="pen"><h2>Service card</h2><div class="ln" style="width:86%"></div><div class="ln"></div>
+      <div class="row"><i class="mk"></i><span>Statuses</span></div><div class="ln" style="width:64%"></div><div class="ln" style="width:80%"></div><div class="ln" style="width:52%"></div><span class="tag">EN · LTR</span></div>
+    <div class="page" id="par"><h2>بطاقة الخدمة</h2><div class="ln" style="width:86%"></div><div class="ln"></div>
+      <div class="row"><i class="mk"></i><span>الحالات</span></div><div class="ln" style="width:64%"></div><div class="ln" style="width:80%"></div><div class="ln" style="width:52%"></div><span class="tag">عربي · RTL</span></div>
+  </div>
+  <div class="stamp" id="s1"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>PDF</div>
+  <div class="stamp" id="s2"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>DOCX</div>
+</div>
+<script>
+(() => {
+  const ID = "bw-hero", D = 9;
+  const tl = gsap.timeline({ paused: true });
+  const IDLE = { backgroundColor: "rgba(0,0,0,0)", borderColor: "#2A4339", color: "#A9B8B1" };
+  const LIT = { backgroundColor: "#C8F04A", borderColor: "#C8F04A", color: "#0F231E" };
+
+  // ---- base state (t=0 == t=D): evidence cards at rest, document closed, nothing highlighted ----
+  gsap.set("#hlh", { scaleX: 0 });
+  gsap.set(".page", { scaleX: 0, opacity: 0 });
+  gsap.set(".page .ln", { scaleX: 0 });
+  gsap.set("#pen .row .mk", { scaleX: 0, transformOrigin: "0% 50%" });
+  gsap.set("#par .row .mk", { scaleX: 0, transformOrigin: "100% 50%" });
+  gsap.set("#mkB, #mkW", { scaleX: 0, transformOrigin: "0% 50%" });
+  gsap.set(".page h2, .page .row span, .page .tag", { opacity: 0 });
+  gsap.set(".chip", IDLE);
+
+  // ambient drift of the evidence, yoyo over exactly D
+  tl.fromTo("#bpmn", { y: 0 }, { y: -6, duration: D / 2, ease: "sine.inOut" }, 0).to("#bpmn", { y: 0, duration: D / 2, ease: "sine.inOut" }, D / 2);
+  tl.fromTo("#web", { y: 0 }, { y: 6, duration: D / 2, ease: "sine.inOut" }, 0).to("#web", { y: 0, duration: D / 2, ease: "sine.inOut" }, D / 2);
+
+  // 1. the headline's highlighter sweep
+  tl.to("#hlh", { scaleX: 1, duration: 0.55, ease: "power2.inOut" }, 0.25);
+  tl.set("#hw", { className: "w on" }, 0.5);
+
+  // 2. the highlighter finds a fact in each piece of evidence
+  tl.to("#mkB", { scaleX: 1, duration: 0.45, ease: "power2.inOut" }, 1.2);
+  tl.to("#tB", { fill: "#0F231E", duration: 0.1 }, 1.4);
+  tl.to("#mkW", { scaleX: 1, duration: 0.45, ease: "power2.inOut" }, 1.55);
+  tl.to("#web .fld:nth-child(3) .bx span", { color: "#0F231E", duration: 0.1 }, 1.75);
+
+  // 3. the facts lift off and fly to the spine
+  tl.fromTo("#f1", { opacity: 0, scale: .7 }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2)" }, 2.15);
+  tl.fromTo("#f2", { opacity: 0, scale: .7 }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2)" }, 2.3);
+  tl.to("#f1", { x: 20, y: 172, duration: 0.6, ease: "power3.inOut" }, 2.6);
+  tl.to("#f2", { x: -88, y: -110, duration: 0.6, ease: "power3.inOut" }, 2.65);
+  tl.to("#bpmn", { opacity: 0, scale: .86, x: -40, duration: 0.45, ease: "power2.in" }, 2.7);
+  tl.to("#web", { opacity: 0, scale: .86, x: 40, duration: 0.45, ease: "power2.in" }, 2.75);
+  tl.to(["#f1", "#f2"], { opacity: 0, scale: .4, duration: 0.25, ease: "power2.in" }, 3.2);
+
+  // 4. the document opens on its spine: English left, Arabic right
+  tl.to("#glow", { opacity: 1, duration: 0.6 }, 3.2);
+  tl.to(".page", { scaleX: 1, opacity: 1, duration: 0.6, ease: "power3.out" }, 3.3);
+  tl.to(".page h2", { opacity: 1, duration: 0.3 }, 3.75);
+  tl.to("#pen .ln", { scaleX: 1, duration: 0.35, stagger: 0.07, ease: "power2.out" }, 3.85);
+  tl.to("#par .ln", { scaleX: 1, duration: 0.35, stagger: 0.07, ease: "power2.out" }, 3.85);
+  tl.to("#cEN", { ...LIT, duration: 0.2 }, 3.9);
+  tl.to("#cAR", { ...LIT, duration: 0.2 }, 3.9);
+  // the same fact, highlighted once, lands in both editions
+  tl.to(".page .row .mk", { scaleX: 1, duration: 0.45, ease: "power2.inOut" }, 4.35);
+  tl.to(".page .row span", { opacity: 1, duration: 0.2 }, 4.45);
+  tl.to(".page .tag", { opacity: 1, duration: 0.3 }, 4.6);
+
+  // 5. export: PDF and DOCX stamp out
+  tl.fromTo("#s1", { opacity: 0, y: 24, scale: .8 }, { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: "back.out(2.2)" }, 5.2);
+  tl.fromTo("#s2", { opacity: 0, y: 24, scale: .8 }, { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: "back.out(2.2)" }, 5.35);
+  tl.to("#cPDF", { ...LIT, duration: 0.2 }, 5.3);
+  tl.to("#cDOCX", { ...LIT, duration: 0.2 }, 5.45);
+
+  // 6. hold, then return to the base state by D
+  tl.to([".stamp"], { opacity: 0, y: 16, duration: 0.3, ease: "power2.in" }, 7.3);
+  tl.to(".page h2, .page .row span, .page .tag", { opacity: 0, duration: 0.2 }, 7.4);
+  tl.to(".page .ln, .page .row .mk", { scaleX: 0, duration: 0.25, ease: "power2.in" }, 7.4);
+  tl.to(".page", { scaleX: 0, opacity: 0, duration: 0.45, ease: "power3.in" }, 7.6);
+  tl.to("#glow", { opacity: 0, duration: 0.5 }, 7.7);
+  tl.to(".chip", { ...IDLE, duration: 0.3 }, 7.6);
+  tl.set("#mkB, #mkW", { scaleX: 0 }, 7.7);
+  tl.set(["#f1", "#f2"], { x: 0, y: 0 }, 7.7);
+  tl.set("#tB", { fill: "#EEF2EA" }, 7.7);
+  tl.set("#web .fld:nth-child(3) .bx span", { color: "#EEF2EA" }, 7.7);
+  tl.to("#bpmn", { opacity: 1, scale: 1, x: 0, duration: 0.55, ease: "power3.out" }, 8.0);
+  tl.to("#web", { opacity: 1, scale: 1, x: 0, duration: 0.55, ease: "power3.out" }, 8.1);
+  tl.set("#hw", { className: "w" }, 8.3);
+  tl.to("#hlh", { scaleX: 0, transformOrigin: "100% 50%", duration: 0.4, ease: "power2.inOut" }, 8.25);
+  tl.set("#hlh", { transformOrigin: "0% 50%" }, 8.7);
+  tl.set({}, {}, D);
+
+  window.__timelines = window.__timelines || {};
+  window.__timelines[ID] = tl;
+})();
+</script>
+</body>
+</html>
