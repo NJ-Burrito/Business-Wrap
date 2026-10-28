@@ -143,7 +143,7 @@ export async function run(check) {
     check('D16 id MGC-SRS-GDN-01 from docCodes; without an entry MGC-SRS-41-01 + a WARN naming it', ar.control.documentId === 'MGC-SRS-GDN-01' && r2.docs.ar.control.documentId === 'MGC-SRS-41-01' && H(r2, 'record-present').status === 'WARN' && /no letter code/.test(H(r2, 'record-present').detail), `${ar.control.documentId} / ${r2.docs.ar.control.documentId} · ${H(r2, 'record-present').detail}`);
   } catch (e) { check('D16 (threw)', false, e.message); }
   // D17 export names from the profile pattern (spaces kept)
-  try { check('D17 export name «تصريح حديقة مجتمعية - وثيقة المتطلبات»', exportStem(ar, prof, 'ar') === 'تصريح حديقة مجتمعية - وثيقة المتطلبات' && exportStem(en, prof, 'en') === 'Community garden permit - Requirements' && exportStem(ar, {}, 'ar') === null, String(exportStem(ar, prof, 'ar'))); } catch (e) { check('D17 (threw)', false, e.message); }
+  try { check('D17 export name «تصريح حديقة مجتمعية - وثيقة المتطلبات»', exportStem(ar, prof, 'ar') === 'تصريح حديقة مجتمعية - وثيقة المتطلبات' && exportStem(en, prof, 'en') === 'Community garden permit - Requirements' && exportStem(ar, {}, 'ar') === null && exportStem({ control: { title: `x: ${'long name '.repeat(20)}`, documentId: 'D' } }, { fileName: { en: '{name} - Requirements' } }, 'en')?.endsWith(' - Requirements'), String(exportStem(ar, prof, 'ar'))); } catch (e) { check('D17 (threw)', false, e.message); }
   // D18 the footer mark from the profile
   try { check('D18 footer «سري · شركة مثال» / «Confidential · EXAMPLE CO» from the profile', ar.labels?.confidential === 'سري · شركة مثال' && en.labels?.confidential === 'Confidential · EXAMPLE CO'); } catch (e) { check('D18 (threw)', false, e.message); }
   // D19 NFC + hamza fold at load

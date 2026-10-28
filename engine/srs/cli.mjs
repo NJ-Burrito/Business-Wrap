@@ -81,7 +81,9 @@ export function exportStem(doc, profile, locale) {
   const pat = pick(profile?.fileName, locale);
   if (!pat) return null;
   const name = String(doc.control.title).split(/:\s*/).slice(1).join(': ') || doc.control.title;
-  return fillName(pat, { name, code: doc.control.documentId, locale }).normalize('NFC').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '-').replace(/\s+/g, ' ').trim().replace(/[ .]+$/, '').slice(0, 120) || null;
+  // a long name is shortened, never the pattern's own words after it
+  const room = 120 - fillName(pat, { name: '', code: doc.control.documentId, locale }).length;
+  return fillName(pat, { name: name.length > room ? name.slice(0, room).trim() : name, code: doc.control.documentId, locale }).normalize('NFC').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '-').replace(/\s+/g, ' ').trim().replace(/[ .]+$/, '').slice(0, 120) || null;
 }
 const fillName = (s, v) => String(s).replace(/\{(\w+)\}/g, (m, k) => (v[k] !== undefined ? v[k] : m));
 
