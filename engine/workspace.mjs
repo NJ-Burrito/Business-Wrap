@@ -81,3 +81,19 @@ export async function pickParent() {
   if (!out) return null;
   return setParent(out).parent;
 }
+
+/** The document's title for file names: control.coverTitle, else the service-name part of control.title. */
+export function docTitle(doc, fallback = 'document') {
+  const c = doc?.control || {};
+  const t = String(c.title || '');
+  return String(c.coverTitle || t.split(/\s*[:—]\s+/).slice(1).join(': ') || t || fallback).trim() || fallback;
+}
+
+/** A JSON request body, refused (413) over `max` bytes. Shared by engine/routes/{workspace,library,session}.mjs. */
+export async function readJson(req, max = 60 * 1024 * 1024) {
+  const chunks = [];
+  let size = 0;
+  for await (const c of req) { size += c.length; if (size > max) throw Object.assign(new Error('too large'), { code: 413 }); chunks.push(c); }
+  const s = Buffer.concat(chunks).toString('utf8');
+  try { return s ? JSON.parse(s) : {}; } catch { throw Object.assign(new Error('bad json'), { code: 400 }); }
+}

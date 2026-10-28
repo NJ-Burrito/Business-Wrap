@@ -21,6 +21,7 @@ import { fork, spawnSync } from 'node:child_process';
 import { crawl, harvestToDocument } from './harvest/crawl.mjs';
 import { learningRoute } from './learning/http.mjs';
 import { printApi } from './printers.mjs';
+import { workspace as liveWorkspace, ensure as ensureWorkspace, outName, uniquePath, docTitle } from './workspace.mjs';
 
 const MAX_BODY = 60 * 1024 * 1024;
 const slug = fileStem;
@@ -38,10 +39,13 @@ const loadRoutes = (dir) => Promise.all((fs.existsSync(dir) ? fs.readdirSync(dir
  * @param {{out?: string, installDir?: string, onUpdated?: (r: object) => void}} o  `installDir`: the folder the
  *   updater replaces (default: this repository); `onUpdated`: called after a successful update (the CLI restarts).
  */
-export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdated = () => {}, routesDir = ROUTES_DIR, workspace = null } = {}) {
-  const OUT = path.resolve(out || path.join(path.dirname(editorFile), 'exports'));
+export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdated = () => {}, routesDir = ROUTES_DIR, workspace = null, onIdle = null } = {}) {
+  // workspace (A11): true = the chosen save folder (engine/workspace.mjs, read on each use), an object = that one; null = none
+  const wsOf = () => (workspace === true ? liveWorkspace() : workspace);
+  const OUT = path.resolve(out || wsOf()?.root || path.join(path.dirname(editorFile), 'exports'));
+  const filesRoot = () => path.resolve((!out && wsOf()?.root) || OUT); // /files/: the save folder as it is now (HISTORY never served)
   const routes = loadRoutes(routesDir);
-  const ctx = { OUT, editorFile, workspace };
+  const ctx = { OUT, editorFile, get workspace() { return wsOf(); }, onIdle, server: null };
   const versionOf = () => JSON.parse(fs.readFileSync(path.join(installDir, 'package.json'), 'utf8')).version;
   let job = null; // the one update that may run: {stage, stages, ok, error, from, to}
   let last = null; // the last check's answer, for /api/version
@@ -67,8 +71,9 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
       // the Export & Print centre (0.11.0): engine/printers.mjs answers /api/print/* and /api/export/*
       if (await printApi(req, res, url, { send, OUT, maxBody: MAX_BODY })) return;
       if (req.method === 'GET' && url.pathname.startsWith('/files/')) {
-        const f = path.resolve(OUT, '.' + decodeURIComponent(url.pathname.slice(6)));
-        if (!f.startsWith(OUT + path.sep) || !fs.existsSync(f)) return send(404, { error: 'not found' });
+        const base = filesRoot();
+        const f = path.resolve(base, '.' + decodeURIComponent(url.pathname.slice(6)));
+        if (!f.startsWith(base + path.sep) || f.startsWith(path.join(base, 'HISTORY') + path.sep) || !fs.existsSync(f)) return send(404, { error: 'not found' });
         const type = f.endsWith('.pdf') ? 'application/pdf' : f.endsWith('.html') ? 'text/html; charset=utf-8' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
         return send(200, fs.readFileSync(f), type);
       }
@@ -169,12 +174,18 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
         const theme = { ...base, ...body.theme, vars: { ...base.vars, ...(body.theme?.vars || {}) } };
         const stem = `${slug(body.service)}.${locale}`;
         const dir = path.join(OUT, slug(body.service), locale);
-        const pdf = await exportPdf(body.doc, { locale, theme, pdfPath: path.join(dir, `${stem}.pdf`) });
+        const ws = !out && wsOf();
+        // the save folder (A11): PDF\ and DOCX\, "<title>-<date>-<AR|ENG>", a clash gets -2, -3 (never an overwrite)
+        if (ws) ensureWorkspace(ws);
+        const title = docTitle(body.doc, body.service);
+        const pdfPath = ws ? uniquePath(ws.dirs.pdf, outName(title, new Date(), locale, 'pdf')) : path.join(dir, `${stem}.pdf`);
+        const docxPath = ws ? uniquePath(ws.dirs.docx, outName(title, new Date(), locale, 'docx')) : path.join(dir, `${stem}.docx`);
+        const pdf = await exportPdf(body.doc, { locale, theme, pdfPath });
         let docx = null;
         let docxError = null;
         let fontNotes = [];
-        try { ({ docx, fontNotes } = exportDocx(body.doc, { locale, theme, docxPath: path.join(dir, `${stem}.docx`), embedFonts: body.embedFonts !== false })); } catch (e) { docxError = String(e.message).slice(0, 400); }
-        const rel = (f) => `/files/${path.relative(OUT, f).split(path.sep).map(encodeURIComponent).join('/')}`;
+        try { ({ docx, fontNotes } = exportDocx(body.doc, { locale, theme, docxPath, embedFonts: body.embedFonts !== false })); } catch (e) { docxError = String(e.message).slice(0, 400); }
+        const rel = (f) => `/files/${path.relative(filesRoot(), f).split(path.sep).map(encodeURIComponent).join('/')}`;
         return send(200, { pdf: pdf.pdf, docx, docxError, fontNotes, pdfUrl: rel(pdf.pdf), docxUrl: docx && rel(docx) });
       }
       // extension routes: a request that changes anything must come from this server's own page
@@ -185,6 +196,7 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
       send(500, { error: String(e.message || e).slice(0, 400) });
     }
   });
+  ctx.server = server;
   return new Promise((ok) => server.listen(port, '127.0.0.1', () => ok(server)));
 }
 
@@ -217,6 +229,9 @@ usage: node engine/serve.mjs <editor.html> [--port 4317] [--out <exports folder>
     try {
       const server = await serve(editor, Number.isFinite(port) ? port : 4317, {
         out: opt('out') && path.resolve(userCwd(), opt('out')),
+        workspace: !opt('out'), // no --out: the chosen save folder, never beside the editor (A11)
+        // the background host (engine/host.mjs): the last tab closed → every tab already flushed → exit 0, nothing left
+        onIdle: process.env.BW_HOST_TOKEN ? () => { server.close(() => process.exit(0)); server.closeAllConnections?.(); setTimeout(() => process.exit(0), 1500).unref(); } : null,
         onUpdated: () => { server.close(() => process.exit(RESTART_CODE)); server.closeAllConnections?.(); setTimeout(() => process.exit(RESTART_CODE), 3000).unref(); },
       });
       console.log(`Business-Wrap editor on http://127.0.0.1:${server.address().port}/  (Ctrl+C to stop)`);
