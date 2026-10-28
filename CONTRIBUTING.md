@@ -10,6 +10,8 @@
 
 🔒 Nothing from a client, ever.
 
+🛡️ Found a security problem? Report it privately, never in a public issue: [SECURITY.md](SECURITY.md).
+
 **Jump to:** [🏁 Before the first commit](#-before-the-first-commit) · [🧪 Run the checks](#-run-the-checks) · [📋 Every change](#-every-change) · [📝 Commit message](#-commit-message) · [🔰 Branch protection](#-branch-protection-on-main)
 
 ## 🏁 Before the first commit

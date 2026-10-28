@@ -94,3 +94,9 @@ paths = ['''(?i)\.(mp4|webm|gif|png|webp|jpe?g|ico)$''']
 [[allowlists]]
 description = "Gitignored, generated or machine-local folders (dir scans only; never committed)"
 paths = ['''(^|/)(node_modules|out|\.local|__pycache__)/''']
+
+[[allowlists]]
+description = "gitleaks default generic-api-key reads the file name contrast-v3.md in the brand token generator as a secret; this exact string only, for that rule only"
+targetRules = ["generic-api-key"]
+regexTarget = "secret"
+regexes = ['''^contrast-v3\.md$''']
