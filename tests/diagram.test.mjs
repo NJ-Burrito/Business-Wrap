@@ -65,13 +65,22 @@ try {
   await exportPdf(docAr, { locale: 'ar', theme, pdfPath: pdf, browser });
   const bin = config().poppler ? path.join(config().poppler, 'pdftotext') : 'pdftotext';
   const txt = spawnSync(bin, ['-enc', 'UTF-8', pdf, '-'], { encoding: 'utf8' }).stdout || '';
-  // Thmanyah is licensed and never committed: without it the fallback font breaks Arabic word spacing/shaping in pdftotext,
-  // so the match is lenient (NFKC, no spaces/marks) there and exact where the real face is present.
+  // Thmanyah is licensed and never committed: without it the fallback font breaks Arabic extraction in pdftotext,
+  // so the AR label match is strict only where the real face is present; otherwise the EN edition's PDF is checked.
   const FACES = fontsFor(theme).used.filter((c) => c.format === 'truetype').map((c) => c.family);
   const HAVE_FONTS = [theme.fonts.text, theme.fonts.display].every((f) => FACES.includes(f));
-  const flat = (t) => t.normalize('NFKC').replace(/[\sـً-ٟ]+/g, '');
-  const labels = ['رئيس القسم', 'مخرج رفض', 'إرجاع للتدقيق', 'المسار الأساسي للطلب'];
-  check('pdf: diagram labels extract as text (pdftotext -enc UTF-8)', labels.every((w) => (HAVE_FONTS ? txt.includes(w) : flat(txt).includes(flat(w)))), txt.length + ' chars' + (HAVE_FONTS ? '' : ' (lenient: fallback font)'));
+  const flat = (t) => t.normalize('NFKC').replace(/\s+/g, '');
+  let labels = ['رئيس القسم', 'مخرج رفض', 'إرجاع للتدقيق', 'المسار الأساسي للطلب'];
+  let ltxt = txt;
+  if (!HAVE_FONTS) {
+    const docEn = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'document.en.json'), 'utf8'));
+    const pdfEn = path.join(OUT, 'sample.en.pdf');
+    await exportPdf(docEn, { locale: 'en', theme, pdfPath: pdfEn, browser });
+    ltxt = spawnSync(bin, ['-enc', 'UTF-8', pdfEn, '-'], { encoding: 'utf8' }).stdout || '';
+    labels = ['Head of section', 'Department manager', 'Resubmit the request', 'Complete missing items'];
+  }
+  const missing = labels.filter((w) => !(HAVE_FONTS ? ltxt.includes(w) : flat(ltxt).includes(flat(w))));
+  check('pdf: diagram labels extract as text (pdftotext -enc UTF-8)', !missing.length, ltxt.length + ' chars' + (HAVE_FONTS ? '' : ' (EN edition: fallback font)') + (missing.length ? ' | missing: ' + JSON.stringify(missing) + ' | first 600: ' + JSON.stringify(ltxt.slice(0, 600)) : ''));
   const fonts = spawnSync(config().poppler ? path.join(config().poppler, 'pdffonts') : 'pdffonts', [pdf], { encoding: 'utf8' }).stdout || '';
   if (HAVE_FONTS) check('pdf: no Type 3 font', !/Type 3/.test(fonts));
   else results.push('SKIP  pdf: no Type 3 font  — Thmanyah TTF not installed on this machine (fonts are never committed)');
