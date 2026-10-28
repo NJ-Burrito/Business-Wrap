@@ -212,7 +212,9 @@
   "upd.failed": "تعذّر إكمال التحديث، وأُعيد كل شيء كما كان.",
   "upd.failedNone": "تعذّر بدء التحديث، ولم يتغير شيء.",
   "upd.close": "إغلاق",
-  "upd.updated": "تم التحديث إلى {v}، ومستندك كما تركته."
+  "upd.updated": "تم التحديث إلى {v}، ومستندك كما تركته.",
+  "upd.plugin": "في Claude Code:",
+  "upd.cli": "في الطرفية:"
  },
  "en": {
   "ux.dirRtl": "Words run right to left (the layout stays put; your choice is remembered)",
@@ -426,6 +428,8 @@
   "upd.failed": "The update could not finish; everything was put back as it was.",
   "upd.failedNone": "The update could not start; nothing was changed.",
   "upd.close": "Close",
-  "upd.updated": "Updated to {v}; your document is as you left it."
+  "upd.updated": "Updated to {v}; your document is as you left it.",
+  "upd.plugin": "In Claude Code:",
+  "upd.cli": "In a terminal:"
  }
 }

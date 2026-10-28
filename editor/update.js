@@ -46,50 +46,54 @@ function resumeAfterUpdate(d) {
   host.id = 'bw-update';
   const ur = host.attachShadow({ mode: 'open' });
   ur.innerHTML = `<style>
-:host{all:initial;font:500 14px/1.5 'Thmanyah Sans',system-ui,'Segoe UI',sans-serif;color:#1b1813;
-  --navy:#003c7a;--deep:#001e3d;--gold:#be9a41;--gold-deep:#9c7e36;--paper:#fafaf9;--line:#d5cfc3;--soft:#544c3b;--wash:#e1eaf4;
-  --e-out:cubic-bezier(.16,1,.3,1);--e-move:cubic-bezier(.32,.72,0,1)}
-:host([data-dark="1"]){--paper:#0d1b2e;--line:#2b3d57;--soft:#b9c7d8;--wash:#17304f;color:#eef2f7}
+/* brand v3 roles; the notice renders outside the editor's shadow root, so each role carries its value as the fallback (light here, dark below) */
+:host{all:initial;font:500 14px/1.5 'Thmanyah Sans',system-ui,sans-serif;color:var(--bw-ink,#1b1813);
+  --navy:var(--bw-primary,#003c7a);--navy-hover:var(--bw-primary-hover,#002d5c);--on-navy:var(--bw-on-primary,#ffffff);--deep:var(--bw-band,#001e3d);--gold:var(--bw-accent,#be9a41);--gold-deep:var(--bw-accent-strong,#5f4d21);
+  --paper:var(--bw-surface,#ffffff);--line:var(--bw-rule-strong,#d5cfc3);--soft:var(--bw-ink-muted,#544c3b);--wash:var(--bw-primary-soft,#e1eaf4);--focus:var(--bw-focus,#005fc2);
+  --ok:var(--bw-success,#16644e);--bad:var(--bw-signal,#a81a1f);--e-out:var(--bw-ease-out,cubic-bezier(.22,1,.36,1));--e-move:var(--bw-ease-in-out,cubic-bezier(.65,0,.35,1));--e-spring:var(--bw-ease-spring,cubic-bezier(.34,1.36,.64,1))}
+:host([data-dark="1"]){--navy:var(--bw-primary,#bfd6ee);--navy-hover:var(--bw-primary-hover,#e1eaf4);--on-navy:var(--bw-on-primary,#001e3d);--gold-deep:var(--bw-accent-strong,#c6af76);--paper:var(--bw-surface,#002d5c);
+  --line:var(--bw-rule-strong,#004e9e);--soft:var(--bw-ink-muted,#d5cfc3);--wash:var(--bw-primary-soft,#003c7a);--focus:var(--bw-focus,#be9a41);--ok:var(--bw-success,#7cd5bb);--bad:var(--bw-signal,#dc898c);color:var(--bw-ink,#fafaf9)}
 @media print{:host{display:none!important}}
 [hidden]{display:none!important}
 .row:not(:has(button:not([hidden]))){display:none}
 .card{position:fixed;inset-block-end:20px;inset-inline-start:20px;z-index:99990;max-width:min(380px,calc(100vw - 40px));background:var(--paper);
-  border:1px solid var(--line);border-inline-start:4px solid var(--gold-deep);border-radius:14px;box-shadow:0 12px 32px rgba(0,30,61,.18);padding:14px 16px;
-  transform:translateY(12px) scale(.98);opacity:0;transition:transform 320ms var(--e-out),opacity 220ms ease}
-.card.in{transform:none;opacity:1}
-.scrim{position:fixed;inset:0;z-index:99991;display:grid;place-items:center;padding:16px;background:rgba(0,20,40,.38);backdrop-filter:blur(3px);opacity:0;transition:opacity 220ms ease}
+  border:1px solid var(--line);border-inline-start:6px solid var(--deep);border-radius:14px;box-shadow:var(--bw-shadow-3,0 6px 12px rgba(27,24,19,.06),0 28px 56px -12px rgba(0,30,61,.24));padding:16px 18px;
+  transform:translateY(12px);opacity:0;transition:transform 240ms var(--e-out),opacity 240ms var(--e-out)}
+.card.in{transform:none;opacity:1;transition-duration:360ms}
+.scrim{position:fixed;inset:0;z-index:99991;display:grid;place-items:center;padding:16px;background:color-mix(in srgb,var(--bw-band,#001e3d) 42%,transparent);backdrop-filter:blur(3px);opacity:0;transition:opacity 240ms var(--e-out)}
 .scrim.in{opacity:1}
 .dlg{inline-size:min(560px,100%);max-block-size:min(86vh,720px);display:flex;flex-direction:column;background:var(--paper);border-radius:20px;
-  box-shadow:0 0 0 1px var(--line),0 24px 60px rgba(0,30,61,.32);overflow:hidden;transform:translateY(14px) scale(.98);transition:transform 380ms var(--e-out)}
+  box-shadow:0 0 0 1px var(--line),var(--bw-shadow-3,0 6px 12px rgba(27,24,19,.06),0 28px 56px -12px rgba(0,30,61,.24));overflow:hidden;transform:scale(.96);transition:transform 240ms var(--e-out)}
 .scrim.in .dlg{transform:none}
 .dlg:focus{outline:none}
 .top{display:flex;gap:14px;align-items:center;padding:18px 20px 12px;border-block-end:1px solid var(--line)}
-.mark{inline-size:40px;block-size:40px;flex:none;border-radius:12px;background:var(--deep);padding:6px;box-sizing:border-box}
+.mark{inline-size:44px;block-size:44px;flex:none;border-radius:8px;background:var(--bw-on-glass,#fafaf9);padding:6px;box-sizing:border-box;box-shadow:0 0 0 1px var(--line)}
 .mark svg{inline-size:100%;block-size:100%}
-h2{margin:0;font:800 18px/1.25 'Thmanyah Sans',system-ui,sans-serif;color:var(--navy)}:host([data-dark="1"]) h2{color:#9cc3ef}
+h2{margin:0;font:700 20px/1.25 'Thmanyah Sans',system-ui,sans-serif;color:var(--navy)}
 .sub{margin:2px 0 0;color:var(--soft);font-size:13px}
 .body{padding:12px 20px;overflow:auto}
 h3{margin:4px 0 6px;font-size:13px;color:var(--soft)}
-h4{margin:12px 0 4px;font-size:12.5px;font-weight:800;color:#5f4d21}:host([data-dark="1"]) h4{color:#e3c77f}
+h4{margin:12px 0 4px;font-size:12.5px;font-weight:800;color:var(--gold-deep)}
 ul{margin:0;padding-inline-start:20px}li{margin:3px 0}
 .safe{margin:12px 0 0;padding:8px 10px;border-radius:10px;background:var(--wash);font-size:12.5px}
 .row{display:flex;gap:8px;flex-wrap:wrap;padding:12px 20px 18px;border-block-start:1px solid var(--line)}
-button{font:inherit;border-radius:12px;border:1px solid var(--line);background:transparent;color:inherit;padding:7px 14px;cursor:pointer;
+button{font:inherit;min-block-size:44px;border-radius:12px;border:1px solid var(--line);background:transparent;color:inherit;padding:9px 16px;cursor:pointer;
   transition:background .2s var(--e-out),transform .2s var(--e-out)}
 button:hover{background:var(--wash)}button:active{transform:scale(.97)}
-button.primary{background:var(--navy);border-color:var(--navy);color:#fff}button.primary:hover{background:#004e9e}
+button.primary{background:var(--navy);border-color:var(--navy);color:var(--on-navy);font-weight:700}button.primary:hover{background:var(--navy-hover)}
 button.ghost{border-color:transparent;text-decoration:underline;text-underline-offset:3px}
-button:focus-visible{outline:3px solid #005fc2;outline-offset:2px}
+button:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.cmd{margin:10px 0 0;font-size:12.5px;color:var(--soft)}.cmd code{font:12px/1.4 ui-monospace,Consolas,monospace;direction:ltr;unicode-bidi:isolate;padding:1px 6px;border-radius:6px;background:var(--wash);color:inherit}
 .steps{list-style:none;margin:4px 0;padding:0;display:grid;gap:8px}
 .steps li{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:12px;background:var(--wash);opacity:.62;transition:opacity .3s var(--e-out),background .3s var(--e-out)}
 .steps li .dot{inline-size:18px;block-size:18px;flex:none;border-radius:50%;border:2px solid var(--soft);box-sizing:border-box;display:grid;place-items:center;font-size:11px;font-weight:800}
-.steps li[data-s="active"]{opacity:1;background:transparent;box-shadow:0 0 0 1px var(--gold) inset}
-.steps li[data-s="active"] .dot{border-color:var(--gold);border-block-start-color:transparent;animation:spin 900ms linear infinite}
-.steps li[data-s="done"]{opacity:1}.steps li[data-s="done"] .dot{background:#16644e;border-color:#16644e;color:#fff}
-.steps li[data-s="failed"]{opacity:1;box-shadow:0 0 0 1px #a81a1f inset}.steps li[data-s="failed"] .dot{background:#a81a1f;border-color:#a81a1f;color:#fff}
-.msg{margin:10px 0 0;min-block-size:1.4em;font-weight:600}.msg[data-k="err"]{color:#a81a1f}:host([data-dark="1"]) .msg[data-k="err"]{color:#ff8b8f}
+.steps li[data-s="active"]{opacity:1;background:transparent;box-shadow:0 0 0 2px var(--navy) inset}
+.steps li[data-s="active"] .dot{border-color:var(--navy);border-block-start-color:transparent;animation:spin 900ms linear infinite}
+.steps li[data-s="done"]{opacity:1}.steps li[data-s="done"] .dot{background:var(--ok);border-color:var(--ok);color:var(--paper);animation:pop 360ms var(--e-spring)}
+.steps li[data-s="failed"]{opacity:1;box-shadow:0 0 0 1px var(--bad) inset}.steps li[data-s="failed"] .dot{background:var(--bad);border-color:var(--bad);color:var(--paper)}
+.msg{margin:10px 0 0;min-block-size:1.4em;font-weight:600}.msg[data-k="err"]{color:var(--bad)}
 .detail{margin:4px 0 0;font:12px/1.4 ui-monospace,Consolas,monospace;color:var(--soft);overflow-wrap:anywhere}
-@keyframes spin{to{transform:rotate(1turn)}}
+@keyframes spin{to{transform:rotate(1turn)}}@keyframes pop{0%{transform:scale(.6)}100%{transform:scale(1)}}
 :host([data-calm="1"]) *{transition:none!important;animation:none!important}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style><div class="card" role="status" aria-live="polite" hidden></div><div class="scrim" hidden><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="upd-h" aria-label="Business-Wrap" tabindex="-1"></div></div>`;
@@ -132,6 +136,7 @@ button:focus-visible{outline:3px solid #005fc2;outline-offset:2px}
     const top = el('div', null, { class: 'top' });
     const mark = el('span', null, { class: 'mark', 'aria-hidden': 'true' });
     mark.innerHTML = DATA.brand?.mark || ''; // the tool's own logo, sanitised at build time (engine/render.mjs safeSvg)
+    mark.firstElementChild?.classList.add('bw-still'); // a calm notice: the mark stands still here
     const words = el('div', null, { dir: tdir(), lang: lang() });
     words.style.flex = '1';
     top.append(mark, words);
@@ -167,7 +172,7 @@ button:focus-visible{outline:3px solid #005fc2;outline-offset:2px}
     const human = u.notes?.human?.length ? u.notes.human : [{ kind: 'added', items: u.highlights || [] }];
     openModal({
       head: [el('h2', t('upd.title', { v: u.latest }), { id: 'upd-h' }), el('p', t('upd.installed', { v: u.current }) + (u.publishedAt ? ` · ${String(u.publishedAt).slice(0, 10)}` : ''), { class: 'sub' })],
-      body: [el('h3', t('upd.whatsNew')), ...notesNodes(human), el('p', t('set.dataSafe'), { class: 'safe' })],
+      body: [el('h3', t('upd.whatsNew')), ...notesNodes(human), el('p', t('set.dataSafe'), { class: 'safe' }), (() => { const c = el('p', `${t('upd.plugin')} `, { class: 'cmd' }); c.append(el('code', '/plugin marketplace update business-wrap'), ` · ${t('upd.cli')} `, el('code', 'npx business-wrap update --apply')); return c; })()],
     }, [
       button(t('upd.now'), 'primary', () => apply(u)),
       button(t('upd.later'), '', closeModal),

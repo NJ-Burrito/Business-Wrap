@@ -50,14 +50,39 @@ const editionOf = (file, doc) =>
   /\.en\.json$/i.test(file) ? 'en' : /\.ar\.json$/i.test(file) ? 'ar' : /[\u0600-\u06FF]/.test(doc.control?.title || '') ? 'ar' : 'en';
 
 /**
- * The tool's own logo (brand/logo/, from the brand branch; BW_BRAND_DIR or .local/config.json brandDir
+ * The tool's own logo (brand/v3/logo; BW_BRAND_DIR or .local/config.json brandDir
  * to preview it before the merge). UI only. Missing → a neutral stub so the island never shows words.
  */
 const BRAND_STUB = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Business-Wrap"><g fill="none" stroke="#be9a41" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M35 8H22a7 7 0 0 0-7 7v34a7 7 0 0 0 7 7h20a7 7 0 0 0 7-7V22"/><path d="M24 32h16M24 43h8"/><path d="M35 8v10a4 4 0 0 0 4 4h10"/></g></svg>';
 export function brandMarks() {
-  const dir = config().brandDir || path.join(REPO, 'brand', 'logo');
+  // brand v3 only (brand/logo v1 and brand/v2 are retired in 0.12.0): no fallback folder
+  const dir = config().brandDir || path.join(REPO, 'brand', 'v3', 'logo');
   const pick = (f) => { const p = path.join(dir, f); return fs.existsSync(p) ? safeSvg(read(p).replace(/<!--[\s\S]*?-->/g, '').trim()) : null; };
-  return { mark: pick('mark-animated.svg') || pick('mark.svg') || BRAND_STUB, stub: !pick('mark.svg') };
+  // the animated mark is inlined still (.bw-still): editor/chrome.css plays its build once, on first open only
+  const anim = pick('mark-animated.svg');
+  const mark = anim ? anim.replace(/class="bw-logo bw-logo-anim"/, 'class="bw-logo bw-logo-anim bw-still"') : null;
+  return { mark: mark || pick('mark.svg') || BRAND_STUB, stub: !pick('mark.svg') };
+}
+
+/**
+ * Brand v3 tokens (brand/v3/tokens-v3.css, the SRS palette) scoped to the editor's shadow root: `:root` there matches nothing, so the
+ * light set goes on :host and .shell, and the dark set follows the shell's own theme switch (data-theme).
+ * Tool chrome only: the document under it keeps its design pack.
+ */
+export function brandCss() {
+  const f = path.join(REPO, 'brand', 'v3', 'tokens-v3.css');
+  if (!fs.existsSync(f)) return '';
+  return read(f)
+    .replace(/:root:not\(/g, '.shell:not(')
+    .replace(/:root\[/g, '.shell[')
+    .replace(/:root(?=\s*\{)/g, ':host, .shell')
+    .replace(/:where\(a, button, input, select, textarea, \[tabindex\]\):focus-visible \{[^}]*\}/, '') + '\n';
+}
+/** The brand icons' micro-animations, also played when the button holding the icon is hovered or focused. */
+export function iconCss() {
+  const f = path.join(REPO, 'brand', 'v3', 'icons', 'icons.css');
+  if (!fs.existsSync(f)) return '';
+  return read(f).replace(/(\.bw-i--([\w-]+):hover (\.mv(?:\.[ab])?)), /g, '.b:hover:not(:disabled) .bw-i--$2 $3, .b:focus-visible .bw-i--$2 $3, [role="menuitem"]:hover .bw-i--$2 $3, $1, ') + '\n';
 }
 
 /** The app script: edits + render (exports stripped) + editor, one IIFE; local learning goes last (it wraps the editor's functions). */
@@ -138,7 +163,7 @@ function editorHtml({ services, setId, ui = 'ar', theme, fontCss, fontFamilies, 
     i18n: I,
     fontCss,
     fontFamilies,
-    uiCss: read(path.join(REPO, 'editor', 'ui.css')) + read(path.join(REPO, 'editor', 'design.css')) + read(path.join(REPO, 'editor', 'ux.css')) + read(path.join(REPO, 'editor', 'settings.css')) + read(path.join(REPO, 'editor', 'print-center.css')),
+    uiCss: brandCss() + read(path.join(REPO, 'editor', 'ui.css')) + read(path.join(REPO, 'editor', 'design.css')) + read(path.join(REPO, 'editor', 'ux.css')) + read(path.join(REPO, 'editor', 'settings.css')) + read(path.join(REPO, 'editor', 'print-center.css')) + iconCss() + read(path.join(REPO, 'editor', 'chrome.css')),
     csp,
     version: notes.version,
     stateSchema: STATE_SCHEMA,

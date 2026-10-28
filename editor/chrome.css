@@ -1,0 +1,127 @@
+/* Business-Wrap editor chrome, brand v3 "Cover & Rule" layer (loaded last in the shadow root, after brand/v3/icons/icons.css).
+   ADHD-friendly: one gold moment per view (The Rule or the one gold primary), targets of 40 px (44 px on touch),
+   motion from the --bw-dur-* / --bw-ease-* tokens (DESIGN e.5): open slower than close, transforms and opacity only.
+   Calm mode and reduced motion stop all of it (ui.css); every colour here is a token. */
+
+/* type: the UI face and a clearer step between section names, labels and panel titles */
+.shell { font-family: var(--bw-font-ui); }
+.sec .sc { font-size: var(--bw-size-2xs); letter-spacing: var(--bw-tracking-ui); }
+.drawer h2 { font: var(--bw-weight-bold) var(--bw-size-md)/var(--bw-leading-snug) var(--bw-font-ui); }
+.drawer h3 { font-size: var(--bw-size-xs); }
+.drawer .card h3 { font-size: var(--bw-size-sm); }
+
+/* the reading direction of the UI text decides where a rule starts (the toolbar itself never moves, 0.10.0) */
+.shell { --sweep-from: 100% 50%; }
+.shell[data-tdir="ltr"] { --sweep-from: 0 50%; }
+
+/* hit targets: 40 px on a mouse, 44 px on touch; icon-only buttons are square */
+.b { min-height: 40px; min-width: 40px; justify-content: center; }
+/* the toolbar is dense: 38 px wide icon buttons (were 32) keep every section title on one row at 1366 px */
+.island .b { min-width: 38px; }
+@media (max-width: 1520px) { .island .sec { padding: 0 4px; } }
+.seg button { min-height: 36px; min-width: 40px; }
+.drawer .b, .dialog .b, .pc-dlg .b { min-height: 44px; padding-inline: 16px; }
+.drawer .btns > button:not(.b) { min-height: 40px; padding-inline: 12px; }
+@media (pointer: coarse) {
+  .b, .pick select, .btns > button, #cmdlist [role="option"] { min-height: 44px; min-width: 44px; }
+  .seg button { min-height: 40px; min-width: 44px; }
+}
+
+/* brand icons: sized by their slot; the gold part is the marker-icon role on panels and plain gold on the navy glass */
+.ic.bw-i { width: 18px; height: 18px; overflow: visible; }
+.i > .ic.bw-i { width: 100%; height: 100%; }
+.bw-i .hl { fill: var(--bw-marker-icon); }
+.island .bw-i .hl, .pop .bw-i .hl, .ctx .bw-i .hl, .more .menu .bw-i .hl { fill: var(--bw-accent); }
+.island .bw-i .hl.rl, .pop .bw-i .hl.rl, .ctx .bw-i .hl.rl, .more .menu .bw-i .hl.rl { fill: none; stroke: var(--bw-accent); }
+/* toolbar weight (DESIGN d.4): stroke 2 at 18 px on the navy glass */
+.island .ic.bw-i, .pop .ic.bw-i { stroke-width: 2; }
+
+/* depth: tokens instead of one-off shadows; panels 14 px, cards 8 px (the documents are square-cornered) */
+.drawer { border-radius: var(--bw-radius-lg); box-shadow: var(--bw-shadow-3), 0 0 0 1px var(--panel-line); }
+.drawer .card { border-radius: var(--bw-radius-md); }
+.dialog, .palette { border-radius: var(--bw-radius-lg); box-shadow: var(--bw-shadow-3), 0 0 0 1px var(--panel-line); }
+
+/* the drawer's own spine: 4 px on its inline-start edge (band; rule-strong in dark), grows top to bottom as it opens */
+.drawer { --spine: var(--bw-band); background: linear-gradient(var(--spine), var(--spine)) no-repeat, var(--panel); background-size: 4px 100%; background-position: 0 0; }
+.shell[dir="rtl"] .drawer { background-position: 100% 0; }
+.shell[data-theme="dark"] .drawer { --spine: var(--bw-rule-strong); }
+@media (prefers-color-scheme: dark) { .shell:not([data-theme="light"]) .drawer { --spine: var(--bw-rule-strong); } }
+.drawer:not(.closing) { animation-name: drawer-in, drawer-spine; animation-duration: var(--bw-dur-page), var(--bw-dur-page); animation-timing-function: var(--bw-ease-out), var(--bw-ease-in-out); animation-fill-mode: both; }
+@keyframes drawer-spine { from { background-size: 4px 0; } to { background-size: 4px 100%; } }
+/* cards inside a panel rise in turn, 40 ms apart, capped at six */
+.drawer .card + .card { animation-delay: var(--bw-stagger); }
+.drawer .card + .card + .card { animation-delay: calc(var(--bw-stagger) * 2); }
+.drawer .card + .card + .card + .card { animation-delay: calc(var(--bw-stagger) * 3); }
+
+/* hierarchy: the one primary action on the glass is a gold fill with a navy label; everything else stays quiet */
+.island .b.primary { box-shadow: 0 0 0 1px color-mix(in srgb, var(--bw-accent) 45%, transparent); }
+.island .b.primary:hover:not(:disabled) { transform: translateY(-1px); }
+.drawer .b.primary, .dialog .b.primary { box-shadow: var(--bw-shadow-1); }
+
+/* motion (DESIGN e.3 and e.5): hover in fast, out base; press instant at .96; focus ring settles 6 to 2 px */
+.b { transition: background-color var(--bw-dur-base) var(--bw-ease-out), transform var(--bw-dur-slow) var(--e-spring), color var(--bw-dur-fast) var(--bw-ease-out), box-shadow var(--bw-dur-base) var(--bw-ease-out); }
+.b:hover:not(:disabled) { transition-duration: var(--bw-dur-fast), var(--bw-dur-slow), var(--bw-dur-fast), var(--bw-dur-fast); }
+.b:active:not(:disabled) { transform: scale(var(--bw-scale-press)); transition-duration: var(--bw-dur-instant); }
+.b:focus-visible { animation: ring-in var(--bw-dur-base) var(--bw-ease-out); }
+@keyframes ring-in { from { outline-offset: 6px; } to { outline-offset: 2px; } }
+/* popovers and menus grow from their trigger: scale .97, base in, fast out */
+.pop { animation: pop-in var(--bw-dur-base) var(--bw-ease-out) both; }
+.focus-exit { animation: pop-in var(--bw-dur-base) var(--bw-ease-out) both; }
+@keyframes pop-in { from { opacity: 0; transform: translateY(calc(-1 * var(--bw-dist-micro))) scale(var(--bw-scale-pop)); } to { opacity: 1; transform: none; } }
+.seg button { transition: background-color var(--bw-dur-base) var(--bw-ease-out), color var(--bw-dur-base) var(--bw-ease-out), box-shadow var(--bw-dur-base) var(--bw-ease-out), transform var(--bw-dur-slow) var(--e-spring); }
+.count .n.tick { animation-timing-function: var(--bw-ease-spring); }
+.sec.now.swap { animation-duration: var(--bw-dur-slow); }
+
+/* The Rule: a 3 px gold rule draws under the section a selection opened, from the reading start (replaces the lime sweep) */
+.sec.now { position: relative; }
+.sec.now::after { content: ''; position: absolute; inset-inline: 8px; inset-block-end: -2px; height: 3px; border-radius: var(--bw-radius-xs);
+  background: var(--bw-accent); transform-origin: var(--sweep-from); animation: bw-rule var(--bw-dur-page) var(--bw-ease-in-out) both; }
+@keyframes bw-rule { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* the brand mark "Cover" (DESIGN c.3, brand/v3/logo/mark-animated.svg inlined with .bw-still so its own CSS stays quiet):
+   sheet, spine, cap, two lines and The Rule build once when the editor opens; drawn and still otherwise.
+   Hover or focus on the tile replays the rule only. The mark is a logo: it is never mirrored for Arabic.
+   The lines carry pathLength="1": a dash of 1 is the whole line, an offset of 1 hides it (-1 draws it from its end). */
+.brand svg .sheet, .brand svg .spine, .brand svg .cap, .brand svg .ln, .brand svg .rule { transform-box: fill-box; animation: none; }
+.brand svg .spine { transform-origin: 50% 0; }
+.brand svg .rule { transform-origin: 0 50%; }
+.brand svg .ln { stroke-dasharray: 1 1; stroke-dashoffset: 0; opacity: 1; }
+.shell.first .brand svg .sheet { transform-origin: 50% 50%; animation: bwm-sheet var(--bw-dur-base) var(--bw-ease-out) both; }
+.shell.first .brand svg .spine { animation: bwm-spine var(--bw-dur-page) var(--bw-ease-in-out) 80ms both; }
+.shell.first .brand svg .cap { animation: bwm-cap var(--bw-dur-fast) var(--bw-ease-spring) 440ms both; }
+.shell.first .brand svg .ln.l1 { animation: bwm-write var(--bw-dur-slow) var(--bw-ease-out) 520ms both; }
+.shell.first .brand svg .ln.l2 { animation: bwm-write-end var(--bw-dur-slow) var(--bw-ease-out) 600ms both; }
+.shell.first .brand svg .rule { animation: bwm-rule var(--bw-dur-story) var(--bw-ease-in-out) 760ms both; }
+.brand:hover svg .rule, .brand:focus-visible svg .rule { animation: bwm-rule var(--bw-dur-story) var(--bw-ease-in-out) both; }
+@keyframes bwm-sheet { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes bwm-spine { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes bwm-cap { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes bwm-write { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes bwm-write-end { from { stroke-dashoffset: -1; } to { stroke-dashoffset: 0; } }
+@keyframes bwm-rule { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* reduced motion and calm mode: the mark and the rule are drawn, never moving */
+@media (prefers-reduced-motion: reduce) { .sec.now::after, .brand svg * { animation: none !important; } .bw-i .mv { animation: none !important; } }
+.shell[data-calm="1"] .sec.now::after, .shell[data-calm="1"] .brand svg *, .shell[data-calm="1"] .bw-i .mv { animation: none !important; }
+
+/* pop-overs inside a panel move but never fade: their text is readable (and passes contrast) from the first frame */
+.drawer .fp-pop { animation-name: rise-solid; }
+@keyframes rise-solid { from { transform: translateY(var(--bw-dist-base)); } to { transform: none; } }
+
+/* related preferences (DESIGN e.7) */
+@media (prefers-reduced-transparency: reduce) {
+  .island, .pop, .pager, .vpop { background: var(--bw-glass); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@media (prefers-contrast: more) {
+  .shell { --panel-line: var(--bw-line-strong); --hair: color-mix(in srgb, var(--bw-on-glass) 45%, transparent); }
+  .drawer .card, kbd { box-shadow: 0 0 0 1px var(--bw-line-strong); }
+  .b:focus-visible, select:focus-visible, input:focus-visible, [role="option"]:focus-visible { outline-width: 4px; }
+}
+@media (forced-colors: active) {
+  .island, .pop, .drawer, .dialog, .palette, .toast, .more .menu { border: 1px solid CanvasText; }
+  .sec.now::after { background: Highlight; }
+  .drawer { background: Canvas; border-inline-start: 4px solid CanvasText; }
+  .b[aria-pressed="true"], .seg button[aria-pressed="true"] { outline: 2px solid Highlight; }
+  .b:focus-visible, select:focus-visible, input:focus-visible, [role="option"]:focus-visible { outline-color: Highlight; }
+  .bw-i .hl { fill: CanvasText; }
+}

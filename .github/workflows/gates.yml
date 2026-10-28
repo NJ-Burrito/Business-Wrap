@@ -50,6 +50,16 @@ jobs:
           PYTHONUTF8: "1"
         run: python design/build.py
 
+      - name: Brand v3 tokens contrast, light (editor chrome and site, toolbar glass pairs included)
+        env:
+          PYTHONUTF8: "1"
+        run: python palette/check.py brand/v3/tokens-v3.json
+
+      - name: Brand v3 tokens contrast, dark
+        env:
+          PYTHONUTF8: "1"
+        run: python palette/check.py brand/v3/dark/tokens-v3.dark.json
+
       - uses: actions/setup-node@v4
         if: hashFiles('package.json') != ''
         with:

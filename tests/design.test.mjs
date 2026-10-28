@@ -276,7 +276,7 @@ try {
     // axe with the picker open and the number controls on screen
     await page.addScriptTag({ path: AXE });
     await page.locator('.drawer [data-fpopen="text"]').click();
-    const v = await page.evaluate(async () => (await window.axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'] })).violations.filter((x) => ['serious', 'critical'].includes(x.impact)).map((x) => `${x.id}@${x.nodes[0]?.target?.join(' ')}`));
+    const v = await page.evaluate(async () => (await window.axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'] })).violations.filter((x) => ['serious', 'critical'].includes(x.impact)).map((x) => `${x.id}@${x.nodes[0]?.target?.join(' ')} ${x.nodes[0]?.any?.[0]?.message || ''}`));
     check(`${ui} a11y: axe 0 serious/critical with the font list open`, v.length === 0, v.join(' | '));
     await page.keyboard.press('Escape');
 
@@ -385,6 +385,33 @@ try {
     check('B1: a machine font is embedded, a missing one is reported', plan.cuts.some((c) => c.family === FONT.family) && plan.notes.some((n) => n.family === 'No Such Family Probe' && n.why === 'missing'), JSON.stringify(plan.notes));
   }
   info('stand-in font', FONT ? `${FONT.family} (${path.basename(FONT.file)})` : 'none');
+
+  // brand v3 (DESIGN i.3): the editor chrome takes every colour from a token, so the next re-theme is one token file.
+  // Allowed: var(--bw-…, fallback) (its fallback included), color-mix(…var(--…)…) with no literal, or a line marked doc-colour
+  // (colours that show the document itself: page paper, thumbnails, previews). Anything else (#hex, rgb(), rgba()) fails.
+  {
+    const stripVars = (l) => {
+      let out = '', i = 0;
+      for (;;) {
+        const j = l.indexOf('var(--bw-', i);
+        if (j < 0) return out + l.slice(i);
+        out += l.slice(i, j);
+        let d = 0, k = j;
+        for (; k < l.length; k += 1) { if (l[k] === '(') d += 1; else if (l[k] === ')' && (d -= 1) === 0) break; }
+        i = k + 1;
+      }
+    };
+    const dir = path.join(REPO, 'editor');
+    const files = fs.readdirSync(dir).filter((f) => f.endsWith('.css')).concat(['update.js']);
+    const hits = [];
+    for (const f of files) {
+      fs.readFileSync(path.join(dir, f), 'utf8').split('\n').forEach((l, n) => {
+        if (/doc-colour/.test(l)) return;
+        for (const m of stripVars(l).match(/#[0-9a-fA-F]{3,8}\b|\brgba?\(/g) || []) hits.push(`${f}:${n + 1} ${m}`);
+      });
+    }
+    check(`brand v3: no hard-coded colour in the editor chrome (${files.length} files, colour guard count 0)`, hits.length === 0, `${hits.length}: ${hits.slice(0, 8).join(', ')}`);
+  }
 } catch (e) {
   check('test run', false, e.stack?.split('\n').slice(0, 3).join(' / '));
 } finally {
