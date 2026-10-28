@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Invented test fixture: a fictional harbour mooring permit, 16 user tasks, 6 gateways. No real organisation. -->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:flowable="http://flowable.org/bpmn" targetNamespace="http://example.org/harbour">
+  <process id="mooringPermit" name="Mooring permit" isExecutable="true">
+    <laneSet id="lanes">
+      <lane id="laneApplicant" name="Applicant"><flowNodeRef>start</flowNodeRef><flowNodeRef>apply</flowNodeRef><flowNodeRef>amend</flowNodeRef><flowNodeRef>pay</flowNodeRef></lane>
+      <lane id="laneFrontdesk" name="Front desk"><flowNodeRef>intake</flowNodeRef><flowNodeRef>screen</flowNodeRef><flowNodeRef>issue</flowNodeRef><flowNodeRef>archive</flowNodeRef></lane>
+      <lane id="laneInspector" name="Inspector"><flowNodeRef>assign</flowNodeRef><flowNodeRef>inspect</flowNodeRef></lane>
+      <lane id="laneEngineer" name="Engineer"><flowNodeRef>engReview</flowNodeRef><flowNodeRef>safety</flowNodeRef></lane>
+      <lane id="laneFinance" name="Finance"><flowNodeRef>feeCalc</flowNodeRef><flowNodeRef>confirmPay</flowNodeRef></lane>
+      <lane id="laneLegal" name="Legal"><flowNodeRef>legal</flowNodeRef></lane>
+      <lane id="laneDirector" name="Director"><flowNodeRef>deputy</flowNodeRef><flowNodeRef>director</flowNodeRef></lane>
+    </laneSet>
+    <startEvent id="start"/>
+    <userTask id="apply" name="Apply for a mooring permit" flowable:formKey="mooringPermit-apply"/>
+    <userTask id="intake" name="Intake check" flowable:formKey="mooringPermit-intake"/>
+    <userTask id="amend" name="Amend the application" flowable:formKey="mooringPermit-amend"/>
+    <userTask id="screen" name="Screen the documents" flowable:formKey="mooringPermit-screen"/>
+    <userTask id="assign" name="Assign an inspector" flowable:formKey="mooringPermit-assign"/>
+    <userTask id="inspect" name="Inspect the berth" flowable:formKey="mooringPermit-inspect"/>
+    <userTask id="engReview" name="Engineering review" flowable:formKey="mooringPermit-engReview"/>
+    <userTask id="safety" name="Safety sign-off" flowable:formKey="mooringPermit-safety"/>
+    <userTask id="feeCalc" name="Calculate the fee" flowable:formKey="mooringPermit-feeCalc"/>
+    <userTask id="pay" name="Pay the fee" flowable:formKey="mooringPermit-pay"/>
+    <userTask id="confirmPay" name="Confirm the payment" flowable:formKey="mooringPermit-confirmPay"/>
+    <userTask id="legal" name="Legal review" flowable:formKey="mooringPermit-legal"/>
+    <userTask id="deputy" name="Deputy director review" flowable:formKey="mooringPermit-deputy"/>
+    <userTask id="director" name="Director decision" flowable:formKey="mooringPermit-director"/>
+    <userTask id="issue" name="Issue the permit" flowable:formKey="mooringPermit-issue"/>
+    <userTask id="archive" name="File the record" flowable:formKey="mooringPermit-archive"/>
+    <serviceTask id="notify" name="Send the notice" flowable:class="org.example.Notify"/>
+    <exclusiveGateway id="g1"/>
+    <exclusiveGateway id="g2"/>
+    <exclusiveGateway id="g3"/>
+    <exclusiveGateway id="g4"/>
+    <exclusiveGateway id="g5"/>
+    <exclusiveGateway id="g6"/>
+    <endEvent id="approved" name="Permit issued"/>
+    <endEvent id="rejected" name="Refused"/>
+    <endEvent id="cancelled" name="Cancelled"/>
+    <sequenceFlow id="f1" sourceRef="start" targetRef="apply"/>
+    <sequenceFlow id="f2" sourceRef="apply" targetRef="intake"/>
+    <sequenceFlow id="f3" sourceRef="intake" targetRef="g1"/>
+    <sequenceFlow id="f4" sourceRef="g1" targetRef="screen"><conditionExpression>${action=='complete'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f5" sourceRef="g1" targetRef="amend"><conditionExpression>${action=='return-to-applicant'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f6" sourceRef="g1" targetRef="cancelled"><conditionExpression>${action=='reject'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f7" sourceRef="amend" targetRef="intake"/>
+    <sequenceFlow id="f8" sourceRef="screen" targetRef="assign"/>
+    <sequenceFlow id="f9" sourceRef="assign" targetRef="inspect"/>
+    <sequenceFlow id="f10" sourceRef="inspect" targetRef="g2"/>
+    <sequenceFlow id="f11" sourceRef="g2" targetRef="engReview"><conditionExpression>${action=='pass'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f12" sourceRef="g2" targetRef="amend"><conditionExpression>${action=='return-to-applicant'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f13" sourceRef="g2" targetRef="rejected"><conditionExpression>${action=='fail'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f14" sourceRef="engReview" targetRef="g3"/>
+    <sequenceFlow id="f15" sourceRef="g3" targetRef="safety"><conditionExpression>${action=='accept'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f16" sourceRef="g3" targetRef="inspect"><conditionExpression>${action=='return-to-inspector'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f17" sourceRef="safety" targetRef="notify"/>
+    <sequenceFlow id="f18" sourceRef="notify" targetRef="feeCalc"/>
+    <sequenceFlow id="f19" sourceRef="feeCalc" targetRef="pay"/>
+    <sequenceFlow id="f20" sourceRef="pay" targetRef="confirmPay"/>
+    <sequenceFlow id="f21" sourceRef="confirmPay" targetRef="g4"/>
+    <sequenceFlow id="f22" sourceRef="g4" targetRef="legal"><conditionExpression>${action=='paid'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f23" sourceRef="g4" targetRef="cancelled"><conditionExpression>${action=='unpaid'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f24" sourceRef="legal" targetRef="g5"/>
+    <sequenceFlow id="f25" sourceRef="g5" targetRef="deputy"><conditionExpression>${action=='approve'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f26" sourceRef="g5" targetRef="screen"><conditionExpression>${action=='return-to-screening'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f27" sourceRef="g5" targetRef="rejected"><conditionExpression>${action=='reject'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f28" sourceRef="deputy" targetRef="director"/>
+    <sequenceFlow id="f29" sourceRef="director" targetRef="g6"/>
+    <sequenceFlow id="f30" sourceRef="g6" targetRef="issue"><conditionExpression>${action=='approve'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f31" sourceRef="g6" targetRef="legal"><conditionExpression>${action=='return-to-legal'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f32" sourceRef="g6" targetRef="rejected"><conditionExpression>${action=='reject'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f33" sourceRef="issue" targetRef="archive"/>
+    <sequenceFlow id="f34" sourceRef="archive" targetRef="approved"/>
+  </process>
+</definitions>

@@ -14,7 +14,7 @@ import { commonData } from '../engine/srs/heal/cli.mjs';
 import { pageFill, pageBoxes, fontAudit, correctionsInPdf } from '../engine/srs/heal/pdf.mjs';
 import { parsePrevious, popplerBin } from '../engine/harvest/previous.mjs';
 import { recordFromPage, walkFromScreens } from '../engine/harvest/record.mjs';
-import { parseBpmn } from '../engine/harvest/model.mjs';
+import { parseBpmn, humanGraph } from '../engine/harvest/model.mjs';
 import { DIAGRAM } from '../engine/diagram.mjs';
 
 const S = (...p) => path.join(REPO, 'samples', ...p);
@@ -236,6 +236,18 @@ export async function run(check) {
     const m2 = clone(m); const [n1, n2] = m2.nodes.filter((n) => n.kind !== 'group'); n2.x = n1.x + 10; n2.y = n1.y + 5;
     const hit = collisions(m2, { locale: 'en' });
     check('C flow-collisions: a clean two-step figure passes, overlapping shapes are reported', !clean.length && hit.some((x) => /overlap|crosses/.test(x)), `${clean.length} / ${hit.slice(0, 2).join('; ')}`);
+    // the router itself keeps every wire off every shape: the three samples and a 16-task, 6-gateway process
+    const shop = await buildDocuments({ pack: 'e-commerce', profile: S('organisation', 'eshop.profile.json'), harvest: S('e-shop', 'harvest.json'), model: S('e-shop', 'model.json'), roles: S('e-shop', 'names.json'), record: S('e-shop', 'record.json'), today: TODAY });
+    const call = await buildDocuments({ pack: 'call-centre', profile: S('organisation', 'callcentre.profile.json'), harvest: S('telemarketing', 'harvest.json'), model: S('telemarketing', 'model.json'), roles: S('telemarketing', 'names.json'), record: S('telemarketing', 'record.json'), today: TODAY });
+    const st = [ep, shop, call].map((r) => H(r, 'flow-collisions'));
+    check('C flow-collisions: event-permit, e-shop and telemarketing figures PASS', st.every((h) => h.status === 'PASS'), st.map((h) => `${h.status} ${h.detail}`).join(' | '));
+    const ir = parseBpmn(fs.readFileSync(FX('many-tasks.bpmn20.xml'), 'utf8'));
+    const g = humanGraph(ir);
+    const big = ['en', 'ar'].map((lc) => DIAGRAM.fromGraph(g, { actors: ir.actors, locale: lc, flow: lc === 'ar' ? 'rtl' : 'ltr' }));
+    const hits = big.flatMap((m, i) => collisions(m, { locale: ['en', 'ar'][i] }));
+    const tasks = ir.steps.filter((s) => s.type === 'task').length;
+    const gates = big[0].nodes.filter((n) => n.kind === 'decision').length;
+    check('C flow-collisions: 16 user tasks + 6 gateways route clear in both editions, no system step drawn', tasks >= 15 && gates >= 6 && !hits.length && !big[0].nodes.some((n) => n.kind === 'system'), `${tasks} tasks, ${gates} gates, ${hits.join('; ')}`);
   }
   // C flow-fidelity: a model stage with no shape on the sheet FAILs
   {
