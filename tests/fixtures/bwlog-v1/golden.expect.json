@@ -1,0 +1,64 @@
+{
+ "doc": "doc-golden-1",
+ "entries": 6,
+ "kinds": [
+  "actor-key",
+  "open",
+  "op",
+  "op",
+  "op",
+  "saveHtml"
+ ],
+ "head": "7f99fd4c413ae63357890a1b502a652d3860ab8f4b7da09f2f6b1e3114db6236",
+ "editions": {
+  "ar": {
+   "hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+   "ops": [
+    {
+     "op": "setText",
+     "path": "/control/title",
+     "value": "title 0",
+     "old": "title",
+     "id": "g0.0",
+     "at": "2026-10-28T09:00:20.000Z"
+    },
+    {
+     "op": "setText",
+     "path": "/control/title",
+     "value": "title 1",
+     "old": "title 0",
+     "id": "g1.0",
+     "at": "2026-10-28T09:00:40.000Z"
+    },
+    {
+     "op": "setText",
+     "path": "/control/title",
+     "value": "title 2",
+     "old": "title 1",
+     "id": "g2.0",
+     "at": "2026-10-28T09:01:00.000Z"
+    }
+   ]
+  }
+ },
+ "kid": "0b2ef49540fa4fad",
+ "jcs": [
+  "{\"a\":[true,null,\"x\"],\"b\":1,\"c\":{\"y\":0,\"z\":0.5}}",
+  "{\"\\u0000\":\"nul\",\"ar\":\"مرحبا\",\"e\":2,\"é\":1}",
+  "{\"k\":100,\"m\":1e-7,\"n\":1e+21}"
+ ],
+ "fixedEntry": {
+  "seq": 0,
+  "prev": "",
+  "at": "2026-10-28T09:00:00.000Z",
+  "actor": {
+   "id": "7d1f0c5e-0000-4000-8000-00000000000a",
+   "name": "Mark",
+   "kid": "0011223344556677"
+  },
+  "kind": "open",
+  "data": {},
+  "docHash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+ },
+ "fixedHash": "cb0e9e5a243622da7099c04b3b7856e4ceb7cdfc206c26cc56e789f8e175d59e"
+}
