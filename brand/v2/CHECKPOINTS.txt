@@ -1,0 +1,3 @@
+tokens: READY (brand/v2/READY-TOKENS.txt)
+logo: READY (brand/v2/logo, favicon, social)
+icons: READY (brand/v2/icons); READY-ASSETS.txt written

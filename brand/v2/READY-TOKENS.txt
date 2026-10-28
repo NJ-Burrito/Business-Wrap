@@ -1,0 +1,3 @@
+READY 2026-10-28: tokens are final.
+tokens.json (source), tokens.css (--bw-* custom properties; light default, dark via system or [data-theme="dark"]), contrast.md (all pairs AA in light and dark), BRAND.md (rules).
+Fonts: fonts.css (local() Thmanyah faces). Logo, icons and banner follow in logo/, icons/, banner/; see CHECKPOINTS.txt.
