@@ -442,7 +442,6 @@ async function exportPdfDocx() {
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || r.status);
       flash(t('exportDone', { x: [j.pdf, j.docx].filter(Boolean).join(' · ') }));
-      for (const n of j.fontNotes || []) toast(t('font.docxNote', { x: n.family, why: t('font.why.' + n.why) }), 'warn', { persist: true });
       emitHook('export', { pdf: !!j.pdf, docx: !!j.docx });
       for (const u of [j.pdfUrl, j.docxUrl].filter(Boolean)) window.open(u, '_blank', 'noopener');
       return;
@@ -1438,7 +1437,7 @@ async function onDrawer(e) {
     const th = designTheme(S.theme, cur().doc);
     const { css, ...rest } = th;
     const used = [th.fonts.text, th.fonts.display];
-    const fontFaces = (cur().doc.design?.fontFaces || []).filter((f) => f.embed && used.includes(f.family));
+    const fontFaces = (cur().doc.design?.fontFaces || []).filter((f) => used.includes(f.family));
     download(`design-pack.json`, JSON.stringify({ kind: 'bw-design-pack', version: 1, ...rest, ...(fontFaces.length ? { fontFaces } : {}), labels: S.theme.labels || {} }, null, 1));
   }
   if (DESIGN.click(x)) return;

@@ -18,6 +18,9 @@ A pack (`contracts/design-pack.schema.json`) has `name`, `version` (semver), `to
 | `rule.*` | `border-*-width` | `w:sz` in eighths of a point (1.2 pt → 10) |
 | `page.*` | `@page { size; margin }`, named pages for cover and the wide sheet | section page size, orientation, margins |
 
+## Fonts chosen in the editor
+The editor embeds every chosen font (project, installed on the computer, or uploaded) as real text in the PDF and the DOCX: each face is normalised to TrueType outlines with OS/2 fsType 0 before printing and embedding, and the font's licence is the user's responsibility (owner decision, 2026-10-28).
+
 ## Contrast rules
 Body text 7:1 on paper and card; secondary text, numbers, ids and tags 4.5:1; accent that carries words uses its 800 step; no information by colour alone. `palette/check.py` fails the build otherwise.
 

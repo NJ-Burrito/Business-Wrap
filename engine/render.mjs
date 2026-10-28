@@ -212,11 +212,14 @@ const sz = (v, d) => (/^\d+(\.\d+)?(pt|px|mm|cm|em)$/.test(String(v)) ? v : d);
 const safeFamily = (f) => String(f || '').replace(/[^\p{L}\p{N}\s._-]/gu, '').trim();
 const FONT_SRC = /^data:font\/(ttf|otf|woff|woff2);base64,[A-Za-z0-9+/]+=*$/;
 const FONT_FMT = { ttf: 'truetype', otf: 'opentype', woff: 'woff', woff2: 'woff2' };
+/** The weights one face answers for: a family without a bold face uses its regular face for every weight,
+ * so Chrome never fakes bold (a synthesised bold prints as Type 3 shapes, not text). */
+export const faceWeights = (w, hasBold) => (!hasBold ? '100 900' : w === 700 ? '550 900' : '100 549');
 /** @font-face rules for the fonts uploaded into this document (doc.design.fontFaces): data URIs only. */
 export function uploadedFontCss(doc) {
   return (doc?.design?.fontFaces || [])
     .filter((f) => f && safeFamily(f.family) && FONT_SRC.test(String(f.src || '')))
-    .map((f) => `@font-face{font-family:'${safeFamily(f.family)}';font-style:normal;font-weight:${[300, 400, 500, 700, 900].includes(+f.weight) ? +f.weight : 400};font-display:block;src:url(${f.src}) format('${FONT_FMT[FONT_SRC.exec(f.src)[1]]}');}`)
+    .map((f, _, all) => `@font-face{font-family:'${safeFamily(f.family)}';font-style:normal;font-weight:${faceWeights(+f.weight, all.some((x) => x.family === f.family && +x.weight === 700))};font-display:block;src:url(${f.src}) format('${FONT_FMT[FONT_SRC.exec(f.src)[1]]}');}`)
     .join('\n');
 }
 const safeToken = ([k, v]) => /^[a-z0-9-]+$/.test(k) && /^[#a-zA-Z0-9(),.\s%-]+$/.test(String(v));

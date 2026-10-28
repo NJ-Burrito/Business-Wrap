@@ -9,7 +9,6 @@ const FONT_MAX_BYTES = 2 * 1024 * 1024;
 const FONTS = {
   local: null, // [{family, data}] once read, sorted
   status: '', // '' | 'noApi' | 'denied' | 'fileBlocked'
-  meta: {}, // family → sfntInfo of the machine font, read when it is chosen
   open: null, // the role whose list is open: 'text' | 'display'
   collator() { return new Intl.Collator(S.ui === 'ar' ? ['ar', 'en'] : ['en', 'ar'], { sensitivity: 'base', numeric: true }); },
   sort(list) { const c = FONTS.collator(); return list.slice().sort((a, b) => c.compare(a, b)); },
@@ -21,18 +20,9 @@ const FONTS = {
     if (DATA.fontFamilies.includes(fam)) return 'project';
     return 'local';
   },
-  /** [kind, message] about how a family travels into the PDF and the DOCX, or null */
+  /** [kind, message] under the picker: a machine font is named as one (it prints and embeds as real text) */
   warning(fam) {
-    const src = FONTS.sourceOf(fam);
-    if (src === 'project') return null;
-    const info = src === 'uploaded' ? FONTS.uploaded().find((f) => f.family === fam) : FONTS.meta[fam];
-    const note = src === 'local' ? ['info', t('font.machineNote')] : null;
-    if (!info) return note;
-    if (info.format === 'woff' || info.format === 'woff2') return ['warn', t('font.warnFormat')];
-    if (info.format === 'ttc') return ['warn', t('font.warnCollection')];
-    if (info.embed === false || info.embeddable === false) return ['warn', t('font.warnLicence')];
-    if (info.outlines === 'cff') return ['warn', t('font.warnCff')];
-    return note;
+    return FONTS.sourceOf(fam) === 'local' ? ['info', t('font.machineNote')] : null;
   },
 
   /** one picker: a button that shows the chosen font in its own face, and the list it opens */
@@ -129,13 +119,6 @@ const FONTS = {
   },
   async choose(role, fam) {
     const d = cur().doc;
-    if (FONTS.sourceOf(fam) === 'local' && !FONTS.meta[fam]) {
-      // the licence bits of a machine font: read once from its own file, for the warning under the picker
-      try {
-        const fd = FONTS.local?.find((x) => x.family === fam)?.data;
-        if (fd) FONTS.meta[fam] = sfntFromBytes(new Uint8Array(await (await fd.blob()).arrayBuffer()));
-      } catch { /* unreadable: the generic machine-font note stays */ }
-    }
     const next = JSON.parse(JSON.stringify(d.design || {}));
     next.fonts = { ...(next.fonts || {}) };
     if (fam === S.theme.fonts[role]) delete next.fonts[role]; else next.fonts[role] = fam;

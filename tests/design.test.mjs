@@ -2,7 +2,8 @@
 //
 //   node tests/design.test.mjs
 //
-// B1 fonts: the machine list (queryLocalFonts, mocked: CI has no local-font permission) is de-duplicated,
+// B1 fonts (owner decision 2026-10-28: every chosen font is real text in the PDF and the DOCX, fsType
+//    normalised to 0 and CFF converted to TrueType): the machine list (queryLocalFonts, mocked: CI has no local-font permission) is de-duplicated,
 //    sorted A→Z with an Arabic-aware collator and filtered as you type; arrow keys + Enter choose; an upload
 //    adds @font-face to the document; the choice survives Save → fresh load → import; the PDF prints the
 //    chosen face (TrueType, no Type 3); the DOCX embeds it only when its OS/2 fsType allows.
@@ -180,7 +181,7 @@ try {
       await c2.close();
     }
 
-    // ── B1: upload a font file → @font-face in the document, chosen, warning when its licence forbids embedding ──
+    // ── B1: upload a font file → @font-face in the document, chosen; no licence warning (owner override) ──
     if (FONT) {
       await page.locator('.drawer [data-fpopen="display"]').click();
       const up = path.join(OUT, 'upload.ttf');
@@ -194,7 +195,7 @@ try {
       const r1 = await page.evaluate(() => document.fonts.check(`16px '${window.BW.M[window.BW.S.svc][window.BW.S.ed].doc.design.fonts.display}'`));
       check(`${ui} B1: the uploaded face loads in the editor`, r1);
 
-      // the restricted copy: the picker warns
+      // the restricted copy: taken like any other, no licence warning
       const bad = path.join(OUT, 'restricted.ttf');
       fs.writeFileSync(bad, restricted(FONT_BYTES));
       await page.locator('.drawer [data-fpopen="text"]').click();
@@ -203,7 +204,7 @@ try {
       await page.waitForFunction(() => (window.BW.M[window.BW.S.svc][window.BW.S.ed].doc.design?.fontFaces || []).some((f) => f.embed === false), null, { timeout: 5000 }).catch(() => {});
       const warn = await shadow(page, (r) => r.querySelector('.drawer .fp[data-fp="text"] .fp-warn')?.textContent.trim() || '');
       const d3 = await design(page);
-      check(`${ui} B1: a font whose licence forbids embedding is flagged in the UI`, d3.fontFaces.some((f) => f.embed === false) && /DOCX/.test(warn), warn.slice(0, 100));
+      check(`${ui} B1: a restricted-licence font is taken with no licence warning`, d3.fontFaces.some((f) => f.embed === false) && warn === '', warn.slice(0, 100));
       // put the embeddable face back as the body font for the export checks
       await page.locator('.drawer [data-fprm]').count();
       await page.evaluate((fam) => {
@@ -308,14 +309,32 @@ try {
       const docx = exportDocx(doc, { locale: 'en', theme: loadTheme(), docxPath: path.join(OUT, 'font.en.docx') });
       const names = unzip(docx.docx, '?');
       const ft = unzip(docx.docx, 'word/fontTable.xml');
-      check('B1: the DOCX names the chosen font and embeds it (fsType allows)', names.includes('word/fonts/') && new RegExp(`w:name="${FONT.family}">[^]*?embedRegular`).test(ft) && !docx.fontNotes.length, JSON.stringify(docx.fontNotes));
-      // the same family uploaded with fsType = Restricted: named, never embedded, and the export says why
+      check('B1: the DOCX names the chosen font and embeds it', names.includes('word/fonts/') && new RegExp(`w:name="${FONT.family}">[^]*?embedRegular`).test(ft) && !docx.fontNotes.length, JSON.stringify(docx.fontNotes));
+      // GATE (owner override): the same font patched to fsType = 2 (Restricted) is still real text in both outputs
       const rdoc = JSON.parse(JSON.stringify(doc));
       rdoc.design.fontFaces = [{ family: 'Restricted Probe', weight: 400, src: `data:font/ttf;base64,${restricted(FONT_BYTES).toString('base64')}`, format: 'ttf', embed: false }];
       rdoc.design.fonts = { text: 'Restricted Probe', display: 'Restricted Probe' };
+      const rpdf = path.join(OUT, 'restricted.en.pdf');
+      await exportPdf(rdoc, { locale: 'en', theme: loadTheme(), pdfPath: rpdf, browser });
+      const rpf = spawnSync(tool('pdffonts'), [rpdf], { encoding: 'utf8' }).stdout || '';
+      check('B1 gate: a font restricted by fsType prints as real text (pdffonts: TrueType, no Type 3)', /CID TrueType|TrueType/.test(rpf) && !/Type 3/.test(rpf), rpf.split('\n').slice(2, 5).join(' / '));
       const rd = exportDocx(rdoc, { locale: 'en', theme: loadTheme(), docxPath: path.join(OUT, 'restricted.en.docx') });
       const rft = unzip(rd.docx, 'word/fontTable.xml');
-      check('B1: DOCX never embeds a font whose fsType forbids it, and reports it', rd.fontNotes.some((n) => n.why === 'licence') && !/w:name="Restricted Probe">[^<]*<w:embed/.test(rft) && !unzip(rd.docx, '?').includes('word/fonts/'), JSON.stringify(rd.fontNotes));
+      check('B1 gate: the DOCX embeds a font restricted by fsType, with no "left out" note', /w:name="Restricted Probe">[^]*?embedRegular/.test(rft) && unzip(rd.docx, '?').includes('word/fonts/') && !rd.fontNotes.length, JSON.stringify(rd.fontNotes));
+      // a CFF (.otf) font of this machine, uploaded: converted to TrueType for the PDF and the DOCX
+      const OTF = systemFonts().find((f) => f.format === 'otf' && f.outlines === 'cff' && !f.italic && fs.statSync(f.file).size < 1.9 * 1024 * 1024);
+      if (OTF) {
+        const cdoc = JSON.parse(JSON.stringify(doc));
+        cdoc.design.fontFaces = [{ family: 'Cff Probe', weight: 400, src: `data:font/otf;base64,${fs.readFileSync(OTF.file).toString('base64')}`, format: 'otf', outlines: 'cff' }];
+        cdoc.design.fonts = { text: 'Cff Probe', display: 'Cff Probe' };
+        const cpdf = path.join(OUT, 'cff.pdf');
+        await exportPdf(cdoc, { locale: 'en', theme: loadTheme(), pdfPath: cpdf, browser });
+        const cpf = spawnSync(tool('pdffonts'), [cpdf], { encoding: 'utf8' }).stdout || '';
+        check('B1 gate: a CFF (.otf) font prints as real text (converted to TrueType, no Type 3)', /TrueType/.test(cpf) && !/Type 3/.test(cpf), `${path.basename(OTF.file)} · ${cpf.split('\n').slice(2, 4).join(' / ')}`);
+        const cd = exportDocx(cdoc, { locale: 'en', theme: loadTheme(), docxPath: path.join(OUT, 'cff.en.docx') });
+        check('B1 gate: the DOCX embeds the converted CFF font', /w:name="Cff Probe">[^]*?embedRegular/.test(unzip(cd.docx, 'word/fontTable.xml')), JSON.stringify(cd.fontNotes));
+      } else skip('B1 gate: CFF font → TrueType', 'no .otf (CFF) font installed on this machine');
+      check('B1: normalised font copies are not left behind', !fs.existsSync(path.join(REPO, 'out', 'font-norm')) || fs.readdirSync(path.join(REPO, 'out', 'font-norm')).length === 0, fs.existsSync(path.join(REPO, 'out', 'font-norm')) ? fs.readdirSync(path.join(REPO, 'out', 'font-norm')).join(',') : '');
       const css = uploadedFontCss({ design: { fontFaces: [{ family: "x');}body{color:red", src: 'data:font/ttf;base64,AAAA' }, { family: 'ok', src: 'https://evil/x.ttf' }] } });
       check('B1: @font-face from a document is sanitised (family, data URI only)', !css.includes("'x')") && !css.includes('evil'), css.slice(0, 120));
     } else if (!FONT) skip(`${ui} B1: PDF + DOCX`, 'no TrueType font installed on this machine');
