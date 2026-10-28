@@ -13,6 +13,7 @@
 // do not move a line, so the editor's markup and the printed markup are one.
 
 import { DIAGRAM } from './diagram.mjs';
+import { isRich, textOf } from './edits.mjs';
 const NL = '\n';
 const KEEP_ROWS = 3;
 const GROUPABLE_ROWS = 12;
@@ -57,7 +58,7 @@ const SAFE_VALUE = /^[#a-zA-Z0-9(),.\s%'-]+$/;
 /** One instance's own style ({prop: value}), whitelisted properties and plain values only. */
 export function styleDecls(style) {
   return Object.entries(style || {})
-    .filter(([k, v]) => STYLE_PROPS.includes(k) && SAFE_VALUE.test(String(v)) && !/url|expression|javascript/i.test(String(v)))
+    .filter(([k, v]) => STYLE_PROPS.includes(k) && SAFE_VALUE.test(String(v)) && !/url|expression|javascript/i.test(String(v))) // leaf-ok: a style value, not text
     .map(([k, v]) => `${k}:${v} !important`).join(';');
 }
 /** Advanced CSS: no @import, no url() except data images, no expressions, scripts, bindings, escapes or closing tags. */
@@ -167,7 +168,174 @@ export const safeSvg = (svg) =>
 /** Only re-encoded raster data URIs reach a page (the editor re-encodes every image it accepts). */
 export const SAFE_IMG = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
 
-const blank = (c) => ['', '—', '-', '–', 'N/A', 'n/a'].includes(String(c ?? '').trim());
+
+/* ── rich leaves (0.13.0, A26): marks and paragraph style through an allow-list builder ──
+ * A string leaf takes the exact 0.12.0 path; only a rich leaf ({text, marks, style}) goes through here.
+ * User text is escaped by the bidi function; tags come only from this table, never from the document. */
+const HEX = /^#[0-9a-fA-F]{6}$/;
+const HREF = /^(https?:\/\/|mailto:)[^\s"'<>]+$/i;
+const PT = (v) => (Number.isFinite(+v) && +v >= 5 && +v <= 72 ? +v : null);
+const safeFamilyName = (f) => String(f || '').replace(/[^\p{L}\p{N}\s._-]/gu, '').trim();
+/** Thmanyah families only (house rule): any other font mark is ignored. */
+export const FONT_FAMILIES = ['Thmanyah Serif Text', 'Thmanyah Serif Display', 'Thmanyah Sans'];
+const MARK_ORDER = ['link', 'span', 'b', 'i', 'u', 's', 'code'];
+function markOpen(type, ms) {
+  if (type === 'link') { const m = ms.find((x) => x[2] === 'link' && HREF.test(String(x[3] || ''))); return m ? [`<a href="${attr(m[3])}" class="bw-link">`, '</a>'] : null; }
+  if (type === 'span') {
+    const d = [];
+    for (const m of ms) {
+      if (m[2] === 'color' && HEX.test(String(m[3]))) d.push(`color:${m[3]}`);
+      if (m[2] === 'font' && FONT_FAMILIES.includes(safeFamilyName(m[3]))) d.push(`font-family:'${safeFamilyName(m[3])}'`);
+      if (m[2] === 'size' && PT(m[3])) d.push(`font-size:${PT(m[3])}pt`);
+    }
+    return d.length ? [`<span style="${d.join(';')}">`, '</span>'] : null;
+  }
+  return ms.some((x) => x[2] === type) ? [`<${type}>`, `</${type}>`] : null;
+}
+/** A rich leaf's words with their marks. bidi(text) escapes and isolates each run. */
+export function richHtml(leaf, bidi) {
+  const text = textOf(leaf);
+  const marks = (leaf.marks || []).filter((m) => Array.isArray(m) && m[1] > m[0]);
+  const cuts = [...new Set([0, text.length, ...marks.flatMap((m) => [Math.max(0, Math.min(text.length, m[0] | 0)), Math.max(0, Math.min(text.length, m[1] | 0))])])].sort((a, b) => a - b);
+  let out = '';
+  for (let k = 0; k < cuts.length - 1; k += 1) {
+    const [a, b] = [cuts[k], cuts[k + 1]];
+    const raw = text.slice(a, b);
+    if (!raw) continue;
+    // polish trims each run: the spaces at a mark's edge are kept as one space
+    const inner = !raw.trim() ? ' ' : (/^\s/.test(raw) && a > 0 ? ' ' : '') + bidi(raw) + (/\s$/.test(raw) && b < text.length ? ' ' : '');
+    const on = marks.filter((m) => m[0] <= a && m[1] >= b);
+    let open = '', close = '';
+    for (const t of MARK_ORDER) { const w = markOpen(t, on); if (w) { open += w[0]; close = w[1] + close; } }
+    out += open + inner + close;
+  }
+  return out;
+}
+const LEAF_ALIGN = { start: 'start', center: 'center', end: 'end', justify: 'justify' };
+const LEAF_VALIGN = { top: 'top', middle: 'middle', bottom: 'bottom' };
+const mmOk = (v) => (Number.isFinite(+v) && +v >= 0 && +v <= 60 ? +v : null);
+/** style="…" and class for an element holding a rich leaf ('' for a string: the 0.12.0 markup). */
+export function leafAttrs(leaf, cls = '') {
+  const st = isRich(leaf) ? leaf.style || {} : null;
+  if (!st) return cls ? ` class="${cls}"` : '';
+  const d = [];
+  if (LEAF_ALIGN[st.align]) d.push(`text-align:${LEAF_ALIGN[st.align]}`);
+  if (LEAF_VALIGN[st.valign]) d.push(`vertical-align:${LEAF_VALIGN[st.valign]}`);
+  if (Number.isFinite(+st.lineHeight) && +st.lineHeight >= 0.8 && +st.lineHeight <= 4) d.push(`line-height:${+st.lineHeight}`);
+  if (mmOk(st.spaceBefore) != null) d.push(`margin-top:${mmOk(st.spaceBefore)}mm`);
+  if (mmOk(st.spaceAfter) != null) d.push(`margin-bottom:${mmOk(st.spaceAfter)}mm`);
+  const c = [cls, st.quote ? 'bw-quote' : ''].filter(Boolean).join(' ');
+  return (c ? ` class="${c}"` : '') + (d.length ? ` style="${d.join(';')}"` : '');
+}
+/** The list a paragraph belongs to: {kind: 'bullet'|'number'|'shape', shape, level 0–8} or null. */
+export function listOf(leaf) {
+  const l = isRich(leaf) && leaf.style?.list;
+  if (!l) return null;
+  const level = Math.max(0, Math.min(8, (leaf.style.level | 0)));
+  if (l === 'bullet' || l === 'number') return { kind: l, level, numFormat: leaf.style.numFormat };
+  const m = /^shape:(.)$/u.exec(String(l));
+  return m && '•◦▪–✓➤'.includes(m[1]) ? { kind: 'shape', shape: m[1], level } : null;
+}
+/** Word's numbering per level: 1. a. i. 1. a. i. … (numFormat overrides one level). */
+export const NUM_FORMATS = ['decimal', 'lower-alpha', 'lower-roman'];
+const NUM_CSS = { decimal: 1, 'lower-alpha': 1, 'upper-alpha': 1, 'lower-roman': 1, 'upper-roman': 1, 'arabic-indic': 1 };
+export const numFormatAt = (level, fmt) => (NUM_CSS[fmt] ? fmt : NUM_FORMATS[level % 3]);
+
+/* ── pages, segments and running header/footer (0.13.0, A5 A6 A18 A19) ──
+ * One model: a page segment starts at a block carrying layout.page (A18) or at the anchor of a scoped
+ * header/footer item (A6). Segments are numbered in reading order; segment 0 is the document's own page. */
+export const PAPER = { A3: [297, 420], A4: [210, 297], A5: [148, 210], B5: [176, 250], Letter: [215.9, 279.4], Legal: [215.9, 355.6], Tabloid: [279.4, 431.8] };
+/** {size, orientation, w, h} in mm for a page setting (default A4 portrait). */
+export function pageSpec(p) {
+  const size = p?.size;
+  const custom = typeof size === 'object' && size && +size.w > 50 && +size.h > 50 && +size.w < 1200 && +size.h < 1200;
+  let [w, h] = custom ? [+size.w, +size.h] : PAPER[size] || PAPER.A4;
+  const orientation = p?.orientation === 'landscape' ? 'landscape' : 'portrait';
+  if ((orientation === 'landscape') !== (w > h)) [w, h] = [h, w];
+  return { size: custom ? 'custom' : PAPER[size] ? size : 'A4', orientation, w, h };
+}
+/** Print geometry of the document's own page (segment 0): CSS px of the content box. */
+export function pageGeom(doc) {
+  const sp = pageSpec(doc?.layout?.page);
+  return { ...sp, contentPx: Math.round(((sp.h - 18 - 16) / 25.4) * 96), measurePx: Math.round(((sp.w - 16 - 16) / 25.4) * 96) };
+}
+/** Every block in reading order: {ptr, ci, si, bi, block}. */
+export function blocksInOrder(doc) {
+  const out = [];
+  (doc?.chapters || []).forEach((ch, ci) => (ch.sections || []).forEach((sec, si) => (sec.blocks || []).forEach((block, bi) => out.push({ ptr: `/chapters/${ci}/sections/${si}/blocks/${bi}`, ci, si, bi, block }))));
+  return out;
+}
+export const CHROME_FIELDS = ['documentId', 'title', 'version', 'issuedOn', 'status', 'confidentiality', 'producer'];
+/** Today's running header/footer as items (what chromeTemplates prints with no doc.chrome). */
+export function chromeDefaults(locale = 'ar') {
+  const ar = locale === 'ar';
+  return {
+    header: { items: [
+      { id: 'h-logo', kind: 'logo', value: 'header', align: ar ? 'end' : 'start', scope: 'all' },
+      { id: 'h-id', kind: 'field', value: 'documentId', align: 'center', scope: 'all' },
+      { id: 'h-date', kind: 'field', value: 'issuedOn', align: ar ? 'start' : 'end', scope: 'all' },
+    ] },
+    footer: { items: [
+      { id: 'f-conf', kind: 'field', value: 'confidentiality', align: ar ? 'end' : 'start', scope: 'all' },
+      { id: 'f-prod', kind: 'field', value: 'producer', align: 'center', scope: 'all' },
+      { id: 'f-page', kind: 'page', value: 'n', align: ar ? 'start' : 'end', scope: 'all' },
+    ] },
+  };
+}
+/**
+ * The page model: segments [{n, start (block ptr | null), page: pageSpec, only: [item], from: [item]}],
+ * segOf: Map(block ptr → n), ids: Map(block id → ptr). Scoped items whose anchor no longer resolves are dropped.
+ */
+export function pageModel(doc) {
+  const order = blocksInOrder(doc);
+  const ids = new Map();
+  for (const x of order) if (x.block?.id && !ids.has(String(x.block.id))) ids.set(String(x.block.id), x.ptr); // a duplicate keeps the id: the first one holds the anchor
+  const resolve = (a) => (a == null ? null : ids.get(String(a)) || (order.some((x) => x.ptr === a) ? a : null));
+  const scoped = new Map();
+  for (const part of ['header', 'footer']) (doc?.chrome?.[part]?.items || []).forEach((it, i) => {
+    if (it?.scope !== 'only' && it?.scope !== 'from') return;
+    const at = resolve(it.anchor);
+    if (!at) return;
+    if (!scoped.has(at)) scoped.set(at, []);
+    scoped.get(at).push({ ...it, part, i });
+  });
+  let page = pageSpec(doc?.layout?.page);
+  const segments = [{ n: 0, start: null, page, only: [], from: [] }];
+  const segOf = new Map();
+  let from = [];
+  for (const x of order) {
+    const lp = x.block?.layout?.page;
+    const items = scoped.get(x.ptr) || [];
+    if ((lp && typeof lp === 'object') || items.length) {
+      if (lp && typeof lp === 'object') page = pageSpec({ ...(doc?.layout?.page || {}), ...lp });
+      from = [...from, ...items.filter((it) => it.scope === 'from')];
+      segments.push({ n: segments.length, start: x.ptr, page, only: items.filter((it) => it.scope === 'only'), from });
+    }
+    segOf.set(x.ptr, segments.length - 1);
+  }
+  return { segments, segOf, ids };
+}
+
+const blank = (c) => ['', '—', '-', '–', 'N/A', 'n/a'].includes(textOf(c ?? '').trim());
+/** A table cell as the renderer takes it: a rich leaf as is, anything else as its string (0.12.0). */
+const keepLeaf = (v) => (isRich(v) ? v : String(v));
+/** The leaf from character n on (a bullet prefix cut off), marks shifted. */
+export function sliceLeaf(leaf, n) {
+  if (!isRich(leaf)) return textOf(leaf).slice(n);
+  return { ...leaf, text: leaf.text.slice(n), marks: (leaf.marks || []).map(([a, b, ...r]) => [Math.max(0, a - n), Math.max(0, b - n), ...r]).filter(([a, b]) => b > a) };
+}
+/** Word's seven wrap modes (A15); inline = a shots block in the flow. */
+export const WRAPS = ['inline', 'square', 'tight', 'through', 'topBottom', 'behind', 'front'];
+/** A text box's own look (A23): border, fill and padding from tokens or plain values; vertical align. */
+function tbDecl(st = {}) {
+  const tok = (v) => (/^--[a-z0-9-]+$/.test(String(v)) ? `var(${v})` : HEX.test(String(v)) ? v : null); // leaf-ok: a style value, not text
+  const d = [];
+  if (st.border === 'none') d.push('border:0'); else if (tok(st.border)) d.push(`border-color:${tok(st.border)}`);
+  if (tok(st.fill)) d.push(`background:${tok(st.fill)}`);
+  if (mmOk(st.padding) != null) d.push(`padding:${mmOk(st.padding)}mm`);
+  if (LEAF_VALIGN[st.valign]) d.push(`justify-content:${{ top: 'flex-start', middle: 'center', bottom: 'flex-end' }[st.valign]}`);
+  return d.length ? ';' + d.join(';') : '';
+}
 
 /* ── the renderer ─────────────────────────────────────────────────────────── */
 
@@ -207,7 +375,7 @@ ${o.extraBody || ''}
 }
 
 /** The print stylesheet. Depends on the theme and the widest figure sheet only. */
-const sz = (v, d) => (/^\d+(\.\d+)?(pt|px|mm|cm|em)$/.test(String(v)) ? v : d);
+const sz = (v, d) => (/^\d+(\.\d+)?(pt|px|mm|cm|em)$/.test(String(v)) ? v : d); // leaf-ok: a style value, not text
 // any script's letters (a machine font may be named in Arabic or Japanese); quotes, slashes and markup never pass
 const safeFamily = (f) => String(f || '').replace(/[^\p{L}\p{N}\s._-]/gu, '').trim();
 const FONT_SRC = /^data:font\/(ttf|otf|woff|woff2);base64,[A-Za-z0-9+/]+=*$/;
@@ -222,13 +390,13 @@ export function uploadedFontCss(doc) {
     .map((f, _, all) => `@font-face{font-family:'${safeFamily(f.family)}';font-style:normal;font-weight:${faceWeights(+f.weight, all.some((x) => x.family === f.family && +x.weight === 700))};font-display:block;src:url(${f.src}) format('${FONT_FMT[FONT_SRC.exec(f.src)[1]]}');}`)
     .join('\n');
 }
-const safeToken = ([k, v]) => /^[a-z0-9-]+$/.test(k) && /^[#a-zA-Z0-9(),.\s%-]+$/.test(String(v));
+const safeToken = ([k, v]) => /^[a-z0-9-]+$/.test(k) && /^[#a-zA-Z0-9(),.\s%-]+$/.test(String(v)); // leaf-ok: a style value, not text
 export function documentCss(themeIn, sheet, doc) {
   const theme = designTheme(themeIn, doc);
   const tail = doc ? `
 /* this document: instance styles, hidden parts, advanced CSS */
 ${instanceCss(doc)}
-${sanitizeCss(doc.design?.css).css}
+${modelCss(doc)}${sanitizeCss(doc.design?.css).css}
 ` : '';
   const text = `'${safeFamily(theme.fonts.text)}'`;
   const display = `'${safeFamily(theme.fonts.display || theme.fonts.text)}'`;
@@ -419,6 +587,28 @@ figure,.fig,.gap{break-inside:avoid}
 ${tail}`;
 }
 
+/** CSS for the 0.13.0 document model — empty for a document that uses none of it (0.12.0 output unchanged). */
+export function modelCss(doc) {
+  const out = [];
+  const PM = pageModel(doc);
+  if (doc.layout?.page) {
+    const sp = pageSpec(doc.layout.page);
+    out.push(`@page{size:${sp.w}mm ${sp.h}mm}`, `.cover{height:${sp.h}mm}`, `.bw-every{top:${sp.h}mm;width:${sp.w}mm}`);
+  }
+  if (PM.segments.length > 1) {
+    out.push('.bw-seg{display:block;height:1px;margin-bottom:-1px;overflow:hidden;font-size:0;line-height:0}');
+    for (const x of PM.segments.slice(1)) out.push(`@page bw-seg-${x.n}{size:${x.page.w}mm ${x.page.h}mm}`);
+  }
+  // one pass over the units (the editor re-renders on every structural edit: no deep walk, no stringify)
+  const chs = doc.chapters || [];
+  if (chs.some((ch) => ch.layout?.breakBefore || (ch.sections || []).some((x) => x.layout?.breakBefore))) out.push('section.chapter.bw-brk,section.sec.bw-brk{break-before:page}');
+  const richBlock = (b) => isRich(b.text) || isRich(b.caption) || (b.paragraphs || []).some(isRich) || (b.columns || []).some(isRich) || (b.rows || []).some((r) => Array.isArray(r) && r.some(isRich));
+  const anyRich = chs.some((ch) => (ch.sections || []).some((x) => (x.blocks || []).some(richBlock))) || (doc.overlays || []).some((o) => isRich(o.text)) || (doc.controlTable?.rows || []).some((r) => Array.isArray(r) && r.some(isRich));
+  if (anyRich) out.push('.bw-quote{border-inline-start:3px solid var(--accent-rule);padding-inline-start:4mm;color:var(--muted);font-style:italic}', 'code{font-family:inherit;background:var(--card);padding:0 1mm;border-radius:1mm}', 'a.bw-link{color:var(--primary);text-decoration:underline}', 'ol.bw-list,ul.bw-list{margin:2mm 0;padding-inline-start:7mm}', 'li.bw-nest{list-style:none}', 'html.bw-ed a.bw-link{pointer-events:none}');
+  if ((doc.overlays || []).some((o) => o.wrap || o.kind === 'text')) out.push('.bw-ovf{position:relative;z-index:1}', '.bw-ovf img{display:block;width:100%;height:auto}', '.bw-ov.bw-behind{z-index:-1}', '.bw-ov.bw-front{z-index:3}', '.bw-tb{display:flex;flex-direction:column;border:1px solid var(--rule-strong);background:var(--card);padding:3mm;font-size:var(--t-table);line-height:1.5}', '.bw-tb-body{white-space:pre-wrap}');
+  return out.length ? out.join('\n') + '\n' : '';
+}
+
 export function documentMain(parts, logos, locale) {
   return `<main class="bw-doc" data-locale="${locale}" dir="${locale === 'ar' ? 'rtl' : 'ltr'}" lang="${locale}">
 ${parts.cover(logos || {})}
@@ -438,17 +628,55 @@ export function renderParts(doc, o) {
   // a printed label, editable in place: it writes /labels/<key> of this document
   const lb = (k, v = L[k]) => `<span${dp('/labels/' + k)}>${bidi(v)}</span>`;
   const hide = new Set(doc.layout?.hide || []);
-  const bidi = o.bidi || makeBidi(locale);
+  const bidi0 = o.bidi || makeBidi(locale);
+  // a rich leaf (A26) prints its marks; a string takes the 0.12.0 path unchanged
+  const bidi = (v) => (isRich(v) ? richHtml(v, bidi0) : bidi0(v));
   const none = L.none;
+  const PM = pageModel(doc);
+  const segOn = PM.segments.length > 1;
+  const segStarts = new Map(PM.segments.filter((x) => x.start).map((x) => [x.start, x]));
+  const segOfPtr = (p) => PM.segOf.get(p) ?? 0;
+  const pageStyle = (k) => (segOn && k > 0 ? ` style="page:bw-seg-${k}"` : '');
+  const segMark = (x) => `<a class="bw-seg" data-seg="${x.n}" data-w-mm="${x.page.w}" data-h-mm="${x.page.h}" data-orient="${x.page.orientation}" href="https://bw.invalid/seg/${x.n}" aria-hidden="true" tabindex="-1"></a>`;
 
   // free-placed logos and images (doc.overlays): mm coordinates against their anchor
-  const OV = (doc.overlays || []).map((o, i) => ({ ...o, i })).filter((o) => SAFE_IMG.test(String(o.src || '')));
+  const OV = (doc.overlays || []).map((o, i) => ({ ...o, i })).filter((o) => (o.kind === 'text' ? true : SAFE_IMG.test(String(o.src || ''))))
+    .map((o) => (o.wrap && WRAPS.includes(o.wrap) && !o.mode ? { ...o, mode: 'anchor' } : o))
+    .map((o) => (o.mode === 'anchor' && PM.ids.has(String(o.anchor)) ? { ...o, anchor: PM.ids.get(String(o.anchor)) } : o));
   const num = (v, d, lo, hi) => Math.min(hi, Math.max(lo, Number.isFinite(+v) ? +v : d));
-  const ovHtml = (o) => `<div class="bw-ov" data-ov="${attr(o.id || String(o.i))}" data-i="${o.i}" data-kind="${o.kind === 'logo' ? 'logo' : 'image'}" style="left:${num(o.x, 0, -20, 290).toFixed(2)}mm;top:${num(o.y, 0, -20, 290).toFixed(2)}mm;width:${num(o.w, 30, 4, 200).toFixed(2)}mm"><img src="${attr(o.src)}" alt="${attr(o.alt || '')}" draggable="false" />${o.caption ? `<div class="bw-ov-cap"${dp(`/overlays/${o.i}/caption`)}>${bidi(o.caption)}</div>` : ''}</div>`;
+  const ovInner = (o) => (o.kind === 'text'
+    ? `<div class="bw-tb-body"${dp(`/overlays/${o.i}/text`)}${leafAttrs(o.text)}>${bidi(o.text ?? '')}</div>`
+    : `<img src="${attr(o.src)}" alt="${attr(o.alt || '')}" draggable="false" />`) + (o.caption ? `<div class="bw-ov-cap"${dp(`/overlays/${o.i}/caption`)}>${bidi(o.caption)}</div>` : '');
+  const ovKind = (o) => (o.kind === 'logo' ? 'logo' : o.kind === 'text' ? 'text' : 'image');
+  const tbStyle = (o) => (o.kind === 'text' ? `;min-height:${num(o.h, 20, 4, 280).toFixed(2)}mm${tbDecl(o.style)}` : '');
+  const ovHtml = (o) => `<div class="bw-ov${o.kind === 'text' ? ' bw-tb' : ''}${o.wrap === 'behind' ? ' bw-behind' : o.wrap === 'front' ? ' bw-front' : ''}" data-ov="${attr(o.id || String(o.i))}" data-i="${o.i}" data-kind="${ovKind(o)}"${o.wrap ? ` data-wrap="${attr(o.wrap)}"` : ''} style="left:${num(o.x, 0, -20, 290).toFixed(2)}mm;top:${num(o.y, 0, -20, 290).toFixed(2)}mm;width:${num(o.w, 30, 4, 200).toFixed(2)}mm${tbStyle(o)}">${ovInner(o)}</div>`;
+  // in-flow wraps (A15): beside the text (square / tight / through) or on its own line (topBottom)
+  const measureMm = segOn || doc.layout?.page ? pageSpec(doc.layout?.page).w - 32 : 178;
+  const flowHtml = (o) => {
+    const x = num(o.x, 0, 0, 290), w = num(o.w, 30, 4, 200), y = num(o.y, 0, 0, 290);
+    const left = x + w / 2 <= measureMm / 2;
+    const side = o.wrap === 'topBottom' ? `display:block;clear:both;margin-left:${x.toFixed(2)}mm`
+      : left ? `float:left;margin-left:${x.toFixed(2)}mm;margin-right:3mm` : `float:right;margin-right:${Math.max(0, measureMm - x - w).toFixed(2)}mm;margin-left:3mm`;
+    const shape = o.kind !== 'text' && (o.wrap === 'tight' || o.wrap === 'through') ? `;shape-outside:url(${o.src});shape-image-threshold:.3;shape-margin:${o.wrap === 'through' ? 0 : 2}mm` : o.wrap === 'topBottom' ? '' : ';shape-outside:margin-box';
+    return `<div class="bw-ovf${o.kind === 'text' ? ' bw-tb' : ''}" data-ov="${attr(o.id || String(o.i))}" data-i="${o.i}" data-kind="${ovKind(o)}" data-wrap="${attr(o.wrap)}" style="${side};margin-top:${y.toFixed(2)}mm;width:${w.toFixed(2)}mm${shape}${tbStyle(o)}">${ovInner(o)}</div>`;
+  };
+  const inFlow = (o) => ['square', 'tight', 'through', 'topBottom'].includes(o.wrap);
   const overlaysFor = (pred) => OV.filter(pred).map(ovHtml).join('');
   const anchorsAt = (ptrs) => {
     const hit = OV.filter((o) => o.mode === 'anchor' && ptrs.includes(o.anchor));
-    return hit.length ? `<div class="bw-anchor" data-anchor="${attr(hit[0].anchor)}">${hit.map(ovHtml).join('')}</div>` : '';
+    const abs = hit.filter((o) => !inFlow(o));
+    return abs.length ? `<div class="bw-anchor" data-anchor="${attr(abs[0].anchor)}">${abs.map(ovHtml).join('')}</div>` : '';
+  };
+  /** In-flow wraps go right before the anchor block's own first element (after any heading it is grouped with). */
+  const flowInto = (html, ptrs) => {
+    for (const ptr of ptrs) {
+      const f = OV.filter((o) => o.mode === 'anchor' && o.anchor === ptr && inFlow(o)).map(flowHtml).join('');
+      if (!f) continue;
+      const at = html.indexOf(` data-b="${attr(ptr)}"`);
+      const open = at < 0 ? -1 : html.lastIndexOf('<', at);
+      html = open < 0 ? f + html : html.slice(0, open) + f + html.slice(open);
+    }
+    return html;
   };
   const guarded = (rows, wrap) =>
     rows.length < KEEP_ROWS * 2
@@ -475,7 +703,7 @@ export function renderParts(doc, o) {
     const rows = rowsIn.map((r) => idx.map((i) => (blank(r[i]) ? none : r[i])));
     const headings = columns.length ? columns : (rows[0] ?? []).map(() => '');
     const measure = headings.map((c, i) => {
-      const lengths = rows.map((r) => String(r[i] ?? '').length).sort((a, b) => a - b);
+      const lengths = rows.map((r) => textOf(r[i] ?? '').length).sort((a, b) => a - b);
       const median = lengths.length ? lengths[Math.floor(lengths.length / 2)] : 1;
       const longest = lengths.at(-1) ?? 1;
       const p90 = lengths.length
@@ -485,12 +713,12 @@ export function renderParts(doc, o) {
       const longestWord = Math.max(
         1,
         ...[c, ...rows.map((r) => r[i] ?? '')]
-          .flatMap((cell) => String(cell).split(/\s+/))
+          .flatMap((cell) => textOf(cell).split(/\s+/))
           .map((w) => w.length)
       );
       return Math.max(
         Math.sqrt(Math.max(typical, 1)),
-        Math.sqrt(String(c).length) * 1.15,
+        Math.sqrt(textOf(c).length) * 1.15,
         Math.sqrt(longestWord) * 1.25,
         headings.length >= 6 ? 3.4 : 2.6
       );
@@ -502,7 +730,7 @@ export function renderParts(doc, o) {
       (t.b ? ` data-b="${attr(t.b)}"` : '') +
       (t.rowsPtr ? ` data-rows="${attr(t.rowsPtr)}"` : '') +
       (t.colsPtr ? ` data-cols="${attr(t.colsPtr)}"` : '') +
-      ` data-w="${width}"`;
+      ` data-w="${width}"` + (t.meta || '');
     return `<table class="${t.extra || ''}"${meta}>
   <colgroup>${cols}</colgroup>
   ${t.caption ? `<caption>${t.caption}</caption>` : ''}
@@ -519,8 +747,8 @@ export function renderParts(doc, o) {
         `<tr${t.alt && n++ % 2 ? ' class="alt"' : ''} data-r="${ri}">${r
           .map(
             (c, j) =>
-              `<td${String(c).length > 200 ? ' class="long"' : ''}${dp(
-                t.rowsPtr && `${t.rowsPtr}/${ri}/${idx[j]}`
+              `<td${isRich(c) ? leafAttrs(c, textOf(c).length > 200 ? 'long' : '') : String(c).length > 200 ? ' class="long"' : ''}${dp(
+                t.cellPtr ? t.cellPtr(ri, idx[j]) : t.rowsPtr && `${t.rowsPtr}/${ri}/${idx[j]}`
               )} data-r="${ri}" data-c="${idx[j]}">${bidi(c)}</td>`
           )
           .join('')}</tr>`
@@ -543,18 +771,24 @@ export function renderParts(doc, o) {
       out.push(bulletList(bullets));
       bullets = [];
     };
+    let listed = [];
+    const flushList = () => { if (listed.length) { out.push(richList(listed, b)); listed = []; } };
     for (const para of paragraphs) {
+      const li = listOf(para.leaf);
+      if (li) { flush(); listed.push({ ...para, li }); continue; }
+      flushList();
       const bullet = /^[•–-]\s+/.exec(para.text);
       if (bullet) {
         bullets.push(
-          `<li data-b="${attr(b)}"${dp(para.p)} data-pfx="${attr(bullet[0])}">${bidi(para.text.slice(bullet[0].length))}</li>`
+          `<li data-b="${attr(b)}"${dp(para.p)} data-pfx="${attr(bullet[0])}">${isRich(para.leaf) ? richHtml(sliceLeaf(para.leaf, bullet[0].length), bidi0) : bidi(para.text.slice(bullet[0].length))}</li>`
         );
         continue;
       }
       flush();
-      out.push(`<p data-b="${attr(b)}"${dp(para.p)}>${bidi(para.text)}</p>`);
+      out.push(`<p data-b="${attr(b)}"${dp(para.p)}${leafAttrs(para.leaf)}>${bidi(para.leaf ?? para.text)}</p>`);
     }
     flush();
+    flushList();
     const last = out.length - 1;
     if (last >= 0) {
       const block = out[last];
@@ -577,12 +811,35 @@ export function renderParts(doc, o) {
   }
 
   const paras = (block, b) =>
-    (block.paragraphs || []).map((text, k) => ({ text: String(text), p: `${b}/paragraphs/${k}` }));
+    (block.paragraphs || []).map((text, k) => (isRich(text) ? { text: textOf(text), leaf: text, p: `${b}/paragraphs/${k}` } : { text: String(text), p: `${b}/paragraphs/${k}` }));
+  /** Nested lists (A26): bullets / numbers / shapes, levels 0–8, one <ol>/<ul> per level, the text in its own span. */
+  function richList(items, b) {
+    const out = [];
+    const st = [];
+    const listTag = (li) => (li.kind === 'number' ? 'ol' : 'ul');
+    const listType = (li) => (li.kind === 'number' ? numFormatAt(li.level, li.numFormat) : li.kind === 'shape' ? `"${li.shape} "` : ['disc', 'circle', 'square'][li.level % 3]);
+    const openList = (lv, li) => `<${listTag(li)} class="bw-list" data-level="${lv}" style="list-style-type:${lv === li.level ? listType(li) : 'none'}">`;
+    for (const it of items) {
+      const L = it.li.level;
+      const tag = listTag(it.li);
+      while (st.length && st.at(-1).level > L) out.push(`</li></${st.pop().tag}>`);
+      if (st.length && st.at(-1).level === L && st.at(-1).tag !== tag) out.push(`</li></${st.pop().tag}>`);
+      if (st.length && st.at(-1).level === L) out.push('</li>');
+      else {
+        for (let lv = st.length ? st.at(-1).level + 1 : L; lv < L; lv += 1) { out.push(openList(lv, { ...it.li, level: -1 }) + '<li class="bw-nest">'); st.push({ tag: listTag(it.li), level: lv }); }
+        out.push(openList(L, it.li));
+        st.push({ tag, level: L });
+      }
+      out.push(`<li data-b="${attr(b)}" data-level="${L}"${leafAttrs(it.leaf)}><span${dp(it.p)}>${richHtml(it.leaf, bidi0)}</span>`);
+    }
+    while (st.length) out.push(`</li></${st.pop().tag}>`);
+    return out.join('');
+  }
 
   const tableOf = (block, b, extra = '', caption = '') =>
     table({
-      columns: (block.columns || []).map(String),
-      rows: (block.rows || []).map((r) => r.map(String)),
+      columns: (block.columns || []).map(keepLeaf),
+      rows: (block.rows || []).map((r) => r.map(keepLeaf)),
       colsPtr: `${b}/columns`,
       rowsPtr: `${b}/rows`,
       extra,
@@ -596,7 +853,7 @@ export function renderParts(doc, o) {
       case 'prose':
         return prose(paras(block, b), b);
       case 'subhead':
-        return `<h4 data-b="${attr(b)}"${dp(b + '/text')}>${bidi(block.text)}</h4>`;
+        return `<h4 data-b="${attr(b)}"${dp(b + '/text')}${leafAttrs(block.text)}>${bidi(block.text)}</h4>`;
       case 'table':
         return tableOf(block, b);
       case 'figure':
@@ -691,26 +948,38 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     }
   }
 
-  function groupForPaging(blocks, base, heading = '') {
+  function groupForPaging(blocks, base, heading = '', cseg = 0) {
     const out = [];
     let pending = heading;
     for (let i = 0; i < blocks.length; i += 1) {
       const start = out.length;
       const first = i;
       i = stepPaging(i);
-      const pre = anchorsAt(Array.from({ length: i - first + 1 }, (_, k) => `${base}/${first + k}`));
+      const ptrs = Array.from({ length: i - first + 1 }, (_, k) => `${base}/${first + k}`);
+      if (OV.length && out.length > start) out[start] = flowInto(out.splice(start).join(NL), ptrs);
+      const pre = anchorsAt(ptrs);
       if (pre) {
         if (out.length > start) out[start] = pre + out[start];
         else out.push(pre);
+      }
+      if (segOn) {
+        // a page segment (A6/A18) starts here: its marker first; a later segment than the container's gets its own page
+        const at = segStarts.get(`${base}/${first}`);
+        const k = segOfPtr(`${base}/${first}`);
+        const own = cseg >= 0 && k !== cseg; // cseg -1: a figure chapter keeps its turned sheet
+        if (at || own) {
+          const grp = (at ? segMark(at) : '') + out.splice(start).join(NL);
+          out.push(own ? `<div class="bw-pg"${pageStyle(k)}>${grp}</div>` : grp);
+        }
       }
     }
     return (pending ? pending + NL : '') + out.join(NL);
 
     function stepPaging(i) {
       const block = blocks[i];
-      const next = blocks[i + 1];
       const b = `${base}/${i}`;
       const nb = `${base}/${i + 1}`;
+      const next = segOn && segStarts.has(nb) ? undefined : blocks[i + 1];
       if (block.layout?.breakBefore) out.push(`<div class="bw-break" data-b="${attr(b)}"></div>`);
       if (block.layout?.keepNext && next) {
         out.push(`<div class="keep">${pending}${renderBlock(block, b)}${NL}${renderBlock(next, nb)}</div>`);
@@ -760,15 +1029,21 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
   }
 
   function contentsRows() {
-    const row = (num, title, cls = '') =>
-      `<tr${cls ? ` class="${cls}"` : ''}><td>${bidi(num)}</td><td>${bidi(title)}</td></tr>`;
-    return doc.chapters.flatMap((ch) => {
-      const head = row(ch.number, ch.title, 'toc-chapter');
+    // editor only (A25): each row points at the heading it mirrors, so editing the entry edits the heading
+    let r = 0;
+    const row = (num, title, cls = '', sec = '', numP = '', titleP = '') =>
+      o.editor
+        ? `<tr${cls ? ` class="${cls}"` : ''} data-sec="${attr(sec)}" data-r="${r}"><td${dp(numP)} data-r="${r}" data-c="0">${bidi(num)}</td><td${dp(titleP)} data-r="${r++}" data-c="1">${bidi(title)}</td></tr>`
+        : `<tr${cls ? ` class="${cls}"` : ''}><td>${bidi(num)}</td><td>${bidi(title)}</td></tr>`;
+    return doc.chapters.flatMap((ch, ci) => {
+      if (ch.tocHidden) return [];
+      const cp = `/chapters/${ci}`;
+      const head = row(ch.number, ch.title, 'toc-chapter', cp, cp + '/number', cp + '/title');
       if (ch.sections.length === 1) {
-        const cards = ch.sections[0].blocks.filter((x) => x.kind === 'subhead').map((x) => row('', x.text, 'toc-card'));
+        const cards = ch.sections[0].blocks.map((x, k) => [x, k]).filter(([x]) => x.kind === 'subhead' && !x.tocHidden).map(([x, k]) => row('', x.text, 'toc-card', `${cp}/sections/0/blocks/${k}`, '', `${cp}/sections/0/blocks/${k}/text`));
         return [head, ...cards];
       }
-      return [head, ...ch.sections.map((sec) => row(sec.number, sec.title))];
+      return [head, ...ch.sections.map((sec, si) => [sec, si]).filter(([sec]) => !sec.tocHidden).map(([sec, si]) => row(sec.number, sec.title, '', `${cp}/sections/${si}`, `${cp}/sections/${si}/number`, `${cp}/sections/${si}/title`))];
     });
   }
 
@@ -779,11 +1054,12 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
   const rows = contentsRows();
   const TOC_COLS = '<colgroup><col style="width:9%" /><col style="width:91%" /></colgroup>';
   const tocSplit = o.tocSplit || 0;
+  const tocMeta = o.editor ? ' data-rows="/toc" data-w="2"' : '';
   const toc =
     tocSplit > 0 && tocSplit < rows.length
-      ? `<table class="toc">${TOC_COLS}${guardedBody(rows.slice(0, tocSplit))}</table>` +
-        `<table class="toc toc-cont">${TOC_COLS}${guardedBody(rows.slice(tocSplit))}</table>`
-      : `<table class="toc">${TOC_COLS}${guardedBody(rows)}</table>`;
+      ? `<table class="toc"${tocMeta}>${TOC_COLS}${guardedBody(rows.slice(0, tocSplit))}</table>` +
+        `<table class="toc toc-cont"${tocMeta}>${TOC_COLS}${guardedBody(rows.slice(tocSplit))}</table>`
+      : `<table class="toc"${tocMeta}>${TOC_COLS}${guardedBody(rows)}</table>`;
 
   const body = doc.chapters
     .map((ch, ci) => {
@@ -793,22 +1069,27 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
       const h2 = `<h2><span class="num"${dp(cp + '/number')}>${bidi(ch.number)}</span><span${dp(cp + '/title')}>${bidi(ch.title)}</span></h2>`;
       const first = ch.sections[0];
       const opensLong = !!first?.blocks[0] && !['figure', 'diagram', 'stories', 'shots'].includes(first.blocks[0].kind);
+      // page segments (A18 / A6): a container takes the segment of its first block; figure chapters keep their sheet
+      const segAt = (si) => (segOn && !hasFigure ? segOfPtr(`${cp}/sections/${si}/blocks/0`) : 0);
+      const chSeg = segAt(0);
       const inner = single
-        ? groupForPaging(ch.sections[0].blocks, `${cp}/sections/0/blocks`, opensLong ? h2 : '')
+        ? groupForPaging(ch.sections[0].blocks, `${cp}/sections/0/blocks`, opensLong ? h2 : '', segOn && !hasFigure ? chSeg : -1)
         : ch.sections
             .map((sec, i) => {
               const sp = `${cp}/sections/${i}`;
-              return `<section class="sec" data-s="${attr(sp)}">
+              const sSeg = sec.blocks.length ? segAt(i) : chSeg;
+              return `<section class="sec${sec.layout?.breakBefore ? ' bw-brk' : ''}" data-s="${attr(sp)}"${sSeg !== chSeg ? pageStyle(sSeg) : ''}>
     ${groupForPaging(
       sec.blocks,
       `${sp}/blocks`,
       (i === 0 && opensLong ? h2 : '') +
-        `<h3><span class="sn"${dp(sp + '/number')}>${bidi(sec.number)}</span><span${dp(sp + '/title')}>${bidi(sec.title)}</span></h3>`
+        `<h3><span class="sn"${dp(sp + '/number')}>${bidi(sec.number)}</span><span${dp(sp + '/title')}>${bidi(sec.title)}</span></h3>`,
+      segOn && !hasFigure ? sSeg : -1
     )}
   </section>`;
             })
             .join(NL);
-      return `<section class="chapter${hasFigure ? ' wide' : ''}" data-ch="${attr(cp)}">
+      return `<section class="chapter${hasFigure ? ' wide' : ''}${ch.layout?.breakBefore ? ' bw-brk' : ''}" data-ch="${attr(cp)}"${pageStyle(chSeg)}>
   ${opensLong ? '' : h2}
   ${inner}
 </section>`;
@@ -845,32 +1126,52 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
 </div>`;
 
   const FRONT = {
-    control: () => `<div data-part="control"><h3>${lb('controlData')}</h3>
-  <table class="control"><colgroup><col style="width:34%" /><col style="width:66%" /></colgroup>${controlKeys
-    .map((k) => `<tr><th${dp('/labels/control/' + k)}>${bidi(L.control[k])}</th><td${dp('/control/' + k)}>${bidi(c[k])}</td></tr>`)
+    control: () => doc.controlTable ? controlTable() : `<div data-part="control"><h3>${lb('controlData')}</h3>
+  <table class="control"${o.editor ? ' data-rows="/controlTable/rows" data-cols="/controlTable/columns" data-virtual="control" data-w="2"' : ''}><colgroup><col style="width:34%" /><col style="width:66%" /></colgroup>${controlKeys
+    .map((k, r) => o.editor
+      ? `<tr data-r="${r}"><th${dp('/labels/control/' + k)} data-r="${r}" data-c="0">${bidi(L.control[k])}</th><td${dp('/control/' + k)} data-r="${r}" data-c="1">${bidi(c[k])}</td></tr>`
+      : `<tr><th${dp('/labels/control/' + k)}>${bidi(L.control[k])}</th><td${dp('/control/' + k)}>${bidi(c[k])}</td></tr>`)
     .join('')}</table></div>`,
     revisions: () => `<div data-part="revisions"><h3>${lb('revisions')}</h3>
   ${table({ columns: [L.revVersion, L.revDate], colPtrs: ['/labels/revVersion', '/labels/revDate'], rows: (doc.revisions || []).map((r) => r.slice(0, 2)), rowsPtr: '/revisions' })}</div>`,
     toc: () => `<div data-part="toc"><h3>${lb('contents')}</h3>
   ${toc}</div>`,
   };
+  /** The materialised control table (A25): rows of cells; a {bind: key} cell edits /control/<key> (cover and header read it). */
+  function controlTable() {
+    const T = doc.controlTable;
+    const rowsC = (T.rows || []).filter(Array.isArray);
+    const w = Math.max(2, Array.isArray(T.columns) ? T.columns.length : +T.columns || 0, ...rowsC.map((r) => r.length));
+    const cols = `<col style="width:34%" />` + Array.from({ length: w - 1 }, () => `<col style="width:${(66 / (w - 1)).toFixed(2)}%" />`).join('');
+    const cell = (v, r, k) => {
+      const bound = v && typeof v === 'object' && !isRich(v) && controlKeys.includes(v.bind);
+      const p = bound ? `/control/${v.bind}` : `/controlTable/rows/${r}/${k}`;
+      const tag = k === 0 ? 'th' : 'td';
+      return `<${tag}${dp(p)}${o.editor ? ` data-r="${r}" data-c="${k}"` : ''}${bound ? ` data-bind="${attr(v.bind)}"` : leafAttrs(v)}>${bidi(bound ? c[v.bind] : v ?? '')}</${tag}>`;
+    };
+    return `<div data-part="control"><h3>${lb('controlData')}</h3>
+  <table class="control"${o.editor ? ` data-rows="/controlTable/rows" data-cols="/controlTable/columns" data-w="${w}"` : ''}><colgroup>${cols}</colgroup>${rowsC
+    .map((row, r) => `<tr${o.editor ? ` data-r="${r}"` : ''}>${Array.from({ length: w }, (_, k) => cell(row[k], r, k)).join('')}</tr>`).join('')}</table></div>`;
+  }
   const order = [...(doc.layout?.front || []).filter((k) => FRONT[k]), ...Object.keys(FRONT).filter((k) => !(doc.layout?.front || []).includes(k))];
   const shown = order.filter((k) => !hide.has(k));
   const front = shown.length ? `<h2>${lb('controlChapter')}</h2>
   ${shown.map((k) => FRONT[k]()).join(NL)}` : '';
 
   const questions = (doc.openQuestions || []).length && !hide.has('questions')
-    ? `<section class="chapter" data-part="questions"><h2><span class="num">؟</span>${lb('openQuestions')}</h2>
+    ? `<section class="chapter" data-part="questions"${pageStyle(PM.segments.length - 1)}><h2><span class="num">؟</span>${lb('openQuestions')}</h2>
   ${table({
     columns: L.questionCols,
     colsPtr: '/labels/questionCols',
-    rows: doc.openQuestions.map((q) => [q.id, q.question, q.owner, q.blocks]),
+    rows: doc.openQuestions.map((q) => (Array.isArray(q) ? q.slice(0, 4) : [q.id, q.question, q.owner, q.blocks])),
+    ...(o.editor ? { meta: ' data-rows="/openQuestions"', cellPtr: (r, k) => (Array.isArray(doc.openQuestions[r]) ? `/openQuestions/${r}/${k}` : `/openQuestions/${r}/${['id', 'question', 'owner', 'blocks'][k]}`) } : {}),
   })}</section>`
     : '';
 
   const everyOv = overlaysFor((o) => o.mode === 'every');
-  const every = everyOv ? `<div class="bw-every">${everyOv}</div>` : '';
-  return { cover, front, body, questions, every, sheet, tocRows: rows.length };
+  const runs = doc.chrome ? PM.segments.map((x) => ['header', 'footer'].map((part) => `<template class="bw-run" data-seg="${x.n}" data-part="${part === 'header' ? 'head' : 'foot'}">${runBand(doc, { ...o, locale, L, bidi }, part, x)}</template>`).join('')).join('') : '';
+  const every = (everyOv ? `<div class="bw-every">${everyOv}</div>` : '') + runs;
+  return { cover, front, body, questions, every, sheet, tocRows: rows.length, segments: PM.segments };
 }
 
 /**
@@ -937,14 +1238,68 @@ export function relaxTallGroups([limit, keepRows, pageH, floor]) {
   });
   return n;
 }
-export const relaxArgs = () => [PAGE.contentPx * PAGE.relaxAbove, PAGE.keepRows, PAGE.contentPx, PAGE.fillFloor];
+export const relaxArgs = (doc) => { const g = doc ? pageGeom(doc) : PAGE; return [g.contentPx * PAGE.relaxAbove, PAGE.keepRows, g.contentPx, PAGE.fillFloor]; };
 
 /** Header/footer templates for Chrome's print (separate documents: inline styles only). */
 /** The footer's confidentiality mark: this document's label, else the design pack's, else the house label. */
 export const confidentialText = (doc, theme, labels, locale) => doc?.labels?.confidential ?? theme?.labels?.[locale]?.confidential ?? (theme?.brand?.confidential || labels.confidential);
 
-export function chromeTemplates(doc, oIn) {
+/** One running item's words: a field reads the document (so the cover and the band never disagree). */
+export function chromeItemText(it, doc, o) {
+  const c = doc.control || {};
+  if (it.kind === 'text') return textOf(it.value);
+  if (it.kind !== 'field') return '';
+  if (it.value === 'confidentiality') return confidentialText(doc, o.theme, o.labels || o.L || {}, o.locale);
+  if (it.value === 'producer') return o.theme?.brand?.producer || '';
+  return CHROME_FIELDS.includes(it.value) ? textOf(c[it.value] ?? '') : '';
+}
+/** The items a page shows: every "all" item, plus the segment's own "from" and "only" items. */
+export function chromeItems(doc, part, seg) {
+  const all = (doc.chrome?.[part]?.items || []).map((it, i) => ({ ...it, part, i })).filter((it) => !it.scope || it.scope === 'all');
+  return [...all, ...(seg?.from || []).filter((it) => it.part === part), ...(seg?.only || []).filter((it) => it.part === part)].filter((it) => !it.hidden);
+}
+/** The item that carries the folio (pdf_post stamps it): its slot and its format, or null. */
+export function folioOf(doc, locale) {
+  if (!doc.chrome) return { side: 'right', format: 'n' };
+  const it = chromeItems(doc, 'footer').concat(chromeItems(doc, 'header')).find((x) => x.kind === 'page');
+  if (!it) return null;
+  const rtl = locale === 'ar';
+  const phys = it.align === 'center' ? 'center' : (it.align === 'start') === rtl ? 'right' : 'left';
+  return { side: phys, format: it.value === 'n/N' ? 'n/N' : 'n', part: it.part };
+}
+function itemSpan(it, doc, o, roles, logos, edit) {
+  const ci = edit ? ` data-ci="${it.part}:${it.i}"${it.scope && it.scope !== 'all' ? ` data-scope="${attr(it.scope)}"` : ''}` : '';
+  if (it.kind === 'logo') {
+    const src = SAFE_IMG.test(String(it.src || '')) ? it.src : logos?.[it.value || 'header'];
+    return src && SAFE_IMG.test(src) ? `<img src="${attr(src)}" style="height:5mm;"${ci} />` : edit ? `<span${ci} class="bw-ci-empty">▢</span>` : '';
+  }
+  if (it.kind === 'page') return `<span style="font-weight:700;display:inline-block;min-width:8mm;"${ci}${edit ? ' data-bw-page' : ''}>${edit ? (it.value === 'n/N' ? '1 / 1' : '1') : ''}</span>`;
+  const text = chromeItemText(it, doc, o);
+  const look = it.value === 'confidentiality' ? `color:${roles.signal};font-weight:700;` : it.value === 'producer' ? 'font-weight:700;letter-spacing:.08em;' : it.style?.bold ? 'font-weight:700;' : '';
+  const ptr = edit && it.kind === 'text' ? ` data-p="/chrome/${it.part}/items/${it.i}/value"` : '';
+  return `<span style="${look}"${ci}${ptr}>${esc(text)}</span>`;
+}
+/** A band's three slots (start, centre, end) in the locale's direction. */
+function band(items, doc, o, roles, logos, edit) {
+  const slot = (a) => items.filter((it) => (it.align || 'start') === a).map((it) => itemSpan(it, doc, o, roles, logos, edit)).join('');
+  return ['start', 'center', 'end'].map((a) => `<span style="display:flex;gap:3mm;align-items:center;"${edit ? ` data-slot="${a}"` : ''}>${slot(a)}</span>`).join('');
+}
+/** The editor's screen band of one segment (inside <template class="bw-run">): editable items, page placeholder. */
+export function runBand(doc, o, part, seg) {
+  const theme = designTheme(o.theme, doc);
+  const items = chromeItems(doc, part, seg).map((it) => ((seg?.only || []).includes(it) ? { ...it, only: true } : it));
+  return `<div class="bw-band" data-part="${part}" dir="${o.locale === 'ar' ? 'rtl' : 'ltr'}">${band(items, doc, { ...o, theme }, theme.vars, theme.logos || o.logos, true)}</div>`;
+}
+
+export function chromeTemplates(doc, oIn, seg) {
   const o = { ...oIn, theme: designTheme(oIn.theme, doc) };
+  if (doc.chrome) {
+    const roles = o.theme.vars;
+    const stack = [o.theme.fonts.text, o.theme.fonts.display].map(safeFamily).filter(Boolean).map((f) => `'${f}'`).join(',');
+    const wrap = (inner) =>
+      `<style>${o.fontCss || ''}</style><div dir="${o.locale === 'ar' ? 'rtl' : 'ltr'}" style="width:100%;font-size:8pt;font-family:${stack},serif;color:${roles.muted};padding:0 16mm;display:flex;justify-content:space-between;align-items:center;">${inner}</div>`;
+    return { header: wrap(band(chromeItems(doc, 'header', seg), doc, o, roles, o.logos, false)), footer: wrap(band(chromeItems(doc, 'footer', seg), doc, o, roles, o.logos, false)) };
+  }
   const roles = o.theme.vars;
   const stack = [o.theme.fonts.text, o.theme.fonts.display].map(safeFamily).filter(Boolean).map((f) => `'${f}'`).join(',');
   const wrap = (inner) =>
