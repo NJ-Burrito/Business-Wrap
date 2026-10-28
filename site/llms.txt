@@ -1,0 +1,27 @@
+# Business-Wrap
+
+> Business-Wrap is a free, open-source (MIT) bilingual requirements document generator. It turns evidence about an e-service (a process model in BPMN, draw.io or YAML, or a crawl of the live service) into an Arabic (right to left) and English (left to right) requirements document, edited in a local HTML editor that is the print layout, and exported to PDF and DOCX with fonts embedded as real text. Local: nothing is uploaded. Claude Code plugin and a local MCP server.
+
+- [Home](https://nj-burrito.github.io/Business-Wrap/): what it does, how it works, features, screenshots, install, updates, FAQ
+- [Source](https://github.com/NJ-Burrito/Business-Wrap): README in English and Arabic
+- [Latest release](https://github.com/NJ-Burrito/Business-Wrap/releases/latest): zip + .sha256
+- [Guide](https://github.com/NJ-Burrito/Business-Wrap/blob/main/docs/guide.md): requirements, quick start, troubleshooting
+- [MCP server](https://github.com/NJ-Burrito/Business-Wrap/blob/main/mcp/README.md): tools and arguments
+- [Privacy](https://nj-burrito.github.io/Business-Wrap/privacy.html)
+- [Support](https://nj-burrito.github.io/Business-Wrap/support.html)
+- [Terms](https://nj-burrito.github.io/Business-Wrap/terms.html)
+
+## Short answers
+
+- Free? Yes. MIT licence, no paid plan, no account.
+- Install? Claude Code: `/plugin marketplace add NJ-Burrito/Business-Wrap`, then `/plugin install business-wrap@business-wrap`. MCP: clone or download the release zip, `npm ci`, then `claude mcp add business-wrap -- node <path>/Business-Wrap/mcp/cli.mjs`.
+- Data? Stays on the computer. The one automatic request is the update check, at most once a day, to the public GitHub release list.
+- Inputs? A process model (BPMN, draw.io, YAML) or a crawl of a live service; the crawler stops before any final action unless asked twice.
+- Outputs? PDF, DOCX, an edits JSON file, a design pack, the editor saved as HTML.
+- Languages? Arabic and English, both first-class.
+- Updates? In the editor (through `npm run serve`), `node update/cli.mjs --check`, or `/plugin marketplace update business-wrap`. Never without consent.
+- Requirements? Node 20+, Chrome or Edge, Python with uv for DOCX. Tested on Windows 11.
+
+## More from NJ
+
+Portfolio https://nj-burrito.github.io/ · NJ-Kit https://nj-burrito.github.io/NJ-Kit/ · QA-Wrap https://nj-burrito.github.io/QA-Wrap/ · Profile-Wrap https://nj-burrito.github.io/Profile-Wrap/ · GitHub https://github.com/NJ-Burrito
