@@ -1,6 +1,8 @@
 // Shell UX check (0.10.0): the layout never flips (A1), Arabic/English parity of every control (A2), whole-field
 // segmented toggles with a spring thumb (A3), the sticky selection mode (A4), hover/focus explainers (A5) and the
-// page view modes (A6). Headless Chrome, closed at the end. Font-independent: no check reads a Thmanyah glyph.
+// page view modes (A6); 0.13 (WP1): the toolbar is mounted once and patched in place (R2/A4), explainers remember
+// what was shown or pressed (A3), side panels group and close on an outside press (A7, A8), check-panel jumps (A14),
+// table tools on every table (R5/A25). Headless Chrome, closed at the end. Font-independent: no check reads a Thmanyah glyph.
 //
 //   node tests/ux.test.mjs
 import fs from 'node:fs';
@@ -232,7 +234,7 @@ try {
   {
     const keys = new Set();
     for (const ui of ['ar', 'en']) {
-      const { ctx, page } = await open({ ui, width: 1366 });
+      const { ctx, page } = await open({ ui, width: 1366, store: { 'bw:explainers': 'always' } }); // 0.12 behaviour: every hover (0.13 «once» is checked below)
       const tools = await sh(page, (r) => [...r.querySelectorAll('.island [data-a], .pop [data-a]')].map((el) => el.dataset.a));
       tools.forEach((k) => keys.add(k));
       await page.locator('main.bw-doc [data-p="/chapters/1/sections/0/blocks/1/rows/0/1"]').click();
@@ -241,14 +243,14 @@ try {
       await page.locator('.island [data-a="save"]').hover();
       await page.waitForTimeout(300);
       const early = await card();
-      await page.waitForTimeout(600);
+      await page.waitForTimeout(900);
       const shown = await card();
-      check(`A5 ${ui}: hover ~700 ms shows the card (not at 300 ms) with its sentence and a running animation`, !early && shown && shown.text === UX[ui]['explain.save'] && shown.anim > 0 && shown.lang === ui, JSON.stringify({ early, shown }));
+      check(`A5 ${ui}: hover ~900 ms shows the card (not at 300 ms) with its sentence and a running animation`, !early && shown && shown.text === UX[ui]['explain.save'] && shown.anim > 0 && shown.lang === ui, JSON.stringify({ early, shown }));
       await page.keyboard.press('Escape');
       check(`A5 ${ui}: Esc hides the card`, !(await card()));
       await page.mouse.move(700, 600); // leave first: hovering the same spot again sends no pointerover
       await page.locator('.island [data-a="save"]').hover();
-      await page.waitForTimeout(850);
+      await page.waitForTimeout(1150);
       const second = await card();
       await page.mouse.move(700, 600);
       await page.waitForTimeout(150);
@@ -256,7 +258,7 @@ try {
       // keyboard focus shows it too
       await page.keyboard.press('Tab');
       await sh(page, (r) => r.querySelector('.island [data-a="save"]').focus());
-      await page.waitForTimeout(850);
+      await page.waitForTimeout(1150);
       const kb = await card();
       check(`A5 ${ui}: keyboard focus shows the card`, kb?.text === UX[ui]['explain.save'], JSON.stringify(kb));
       // the Design panel's own controls (font picker, machine fonts, slider / number / unit, colour swatch and hex)
@@ -272,7 +274,7 @@ try {
         await page.mouse.move(5, 5);
         await page.waitForTimeout(500);
         await el.hover();
-        await page.waitForTimeout(900);
+        await page.waitForTimeout(1150);
         const c = await card();
         got.push(`${key}:${c?.text === UX[ui][`explain.${key}`] ? 'ok' : JSON.stringify(c)}`);
       }
@@ -283,7 +285,7 @@ try {
     check(`A5: every toolbar, view and selection tool has an explainer in Arabic and English (${keys.size} tools)`, !missing.length, missing.join(' '));
     const rm = await open({ ui: 'ar', reduced: true });
     await rm.page.locator('.island [data-a="save"]').hover();
-    await rm.page.waitForTimeout(900);
+    await rm.page.waitForTimeout(1200);
     const still = await sh(rm.page, (r) => { const c = r.querySelector('.xpl'); return c && !c.hidden ? [...c.querySelectorAll('svg *')].flatMap((e) => e.getAnimations()).length : -1; });
     check('A5: reduced motion → the card shows a still frame', still === 0, String(still));
     await rm.ctx.close();
@@ -481,6 +483,153 @@ try {
       check(`move ${view} ${ui}: no page errors`, !errors.length, errors.join(' | '));
       await ctx.close();
     }
+  }
+  // ── 0.13 WP1: toolbar mounted once (R2/A4), explainer memory (A3), side panels (A7, A8), check-panel jumps (A14),
+  //    table tools on every table incl. front matter (R5/A25; WP2's TOC/control pointers put on by hand as a fixture) ──
+  { // 0.13 R2
+    const { ctx, page, errors } = await open({ width: 1440, height: 900 });
+    const r = await sh(page, (R) => {
+      const isl = R.querySelector('.island'); const out = {};
+      for (const a of ['dark', 'calm', 'calm', 'snap', 'view', 'view', 'uiLang', 'dir', 'dark']) { window.BW.runAction(a); out[a] = R.querySelector('.island') === isl; }
+      return { out, ui: window.BW.S.ui, lang: R.querySelector('.shell').lang, save: R.querySelector('.island [data-a="save"] .w').textContent };
+    });
+    check('0.13 R2: island same node through toggles', Object.values(r.out).every(Boolean), JSON.stringify(r));
+    check('0.13 R2: language words follow in place', r.ui === 'en' && r.lang === 'en' && /Save/i.test(r.save), JSON.stringify(r));
+    // animations after a real RTL->LTR click
+    await page.evaluate(() => window.BW.runAction('uiLang')); await page.waitForTimeout(600);
+    const btn = page.locator('.island [data-a="dir"][data-d="ltr"]');
+    await btn.click();
+    const anims = await sh(page, async (R) => { const seen = new Set(); const t0 = performance.now(); while (performance.now() - t0 < 600) { R.getAnimations().forEach((a) => { const el = a.effect?.target; if (el) seen.add((el.className?.baseVal ?? el.className) + '@' + (el.closest('[data-x]')?.dataset.x || el.dataset?.a || el.tagName)); }); await new Promise((r) => setTimeout(r, 40)); } return [...seen]; });
+    check('0.13 A4: after RTL→LTR only the direction thumb animates', anims.length >= 1 && anims.filter((x) => !/^toast/.test(x)).every((x) => /thumb@dir/.test(x)), JSON.stringify(anims));
+    const xpl = await sh(page, (R) => { const c = R.querySelector('.xpl'); return !!c && !c.hidden; });
+    check('0.13 A4: no explainer after the press', !xpl);
+    check('0.13 R2: no page errors', !errors.length, errors.join(' | '));
+    await ctx.close();
+  }
+  { // 0.13 A3
+    const { ctx, page } = await open({ width: 1440, height: 900 });
+    const card = () => sh(page, (R) => { const c = R.querySelector('.xpl'); return !!c && !c.hidden; });
+    await page.mouse.move(700, 600);
+    const save = page.locator('.island [data-a="save"]');
+    const t0 = Date.now(); await save.hover();
+    let at = -1; while (Date.now() - t0 < 1600) { if (await card()) { at = Date.now() - t0; break; } await page.waitForTimeout(30); }
+    check('0.13 A3: first hover shows the card at 880–1100 ms', at >= 850 && at <= 1150, String(at));
+    await page.mouse.move(700, 600); await page.waitForTimeout(200);
+    await save.hover(); await page.waitForTimeout(2000);
+    check('0.13 A3: second hover within the window: no card in 2 s', !(await card()));
+    await page.mouse.move(700, 600);
+    const und = page.locator('.island [data-a="newdoc"]');
+    await und.click(); await page.mouse.move(700, 600); await page.keyboard.press('Escape'); await und.hover(); await page.waitForTimeout(1500);
+    check('0.13 A3: a pressed tool, hovered again: no card', !(await card()));
+    await ctx.close();
+    const al = await open({ width: 1440, height: 900, store: { 'bw:explainers': 'always' } });
+    const c2 = () => sh(al.page, (R) => { const c = R.querySelector('.xpl'); return !!c && !c.hidden; });
+    await al.page.mouse.move(700, 600); await al.page.locator('.island [data-a="save"]').hover(); await al.page.waitForTimeout(1200); const a1 = await c2();
+    await al.page.mouse.move(700, 600); await al.page.waitForTimeout(200); await al.page.locator('.island [data-a="save"]').hover(); await al.page.waitForTimeout(1200); const a2 = await c2();
+    check('0.13 A3: setting "always" restores the repeat', a1 && a2, JSON.stringify({ a1, a2 }));
+    await al.ctx.close();
+  }
+  { // 0.13 A7
+    const { ctx, page } = await open({ width: 1440, height: 900 });
+    await page.evaluate(() => window.BW.runAction('settings')); await page.waitForTimeout(500);
+    const g = await sh(page, (R) => [...R.querySelectorAll('.drawer details.pgrp')].map((d, i) => d.open === (i === 0 || !!d.closest('[data-grp-open]'))));
+    check('0.13 A7: Settings opens with only the first group (and the live learning panel) expanded', g.length >= 3 && g.every(Boolean), JSON.stringify(g));
+    await sh(page, (R) => { const d = R.querySelectorAll('.drawer details.pgrp')[2]; d.open = true; });
+    await page.waitForTimeout(100);
+    await page.evaluate(() => { window.BW.runAction('settings'); }); await page.waitForTimeout(400); await page.evaluate(() => { window.BW.runAction('settings'); }); await page.waitForTimeout(400);
+    const g2 = await sh(page, (R) => [...R.querySelectorAll('.drawer details.pgrp')].map((d) => d.open));
+    check('0.13 A7: a toggled group stays open across a reopen', g2[2] === true, JSON.stringify(g2));
+    await page.evaluate(() => window.BW.runAction('outline')); await page.waitForTimeout(400);
+    const bg = await sh(page, (R) => { const li = R.querySelectorAll('.drawer .list > li'); return [getComputedStyle(li[0]).backgroundColor, getComputedStyle(li[1]).backgroundColor, getComputedStyle(li[0]).color]; });
+    const lum = (c) => { const v = c.match(/[\d.]+/g).slice(0, 3).map((x) => { x = +x / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+    const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+    check('0.13 A7: alternating row shades differ and both keep text contrast ≥ 4.5:1', bg[0] !== bg[1] && ratio(bg[2], bg[0]) >= 4.5 && ratio(bg[2], bg[1]) >= 4.5, JSON.stringify(bg));
+    await ctx.close();
+  }
+  { // 0.13 A8
+    const { ctx, page } = await open({ width: 1440, height: 900 });
+    const kinds = ['outline', 'settings', 'theme', 'history', 'check', 'find', 'pages', 'webhooks', 'newdoc', 'process', 'styleThis'];
+    const res = [];
+    await page.locator('main.bw-doc [data-p="/chapters/1/sections/0/blocks/1/rows/0/1"]').click();
+    for (const k of kinds) {
+      await page.evaluate((k) => window.BW.runAction(k), k); await page.waitForTimeout(350);
+      const opened = await page.evaluate(() => window.BW.S.drawer);
+      const inside = page.locator('.drawer header h2'); await inside.click(); await page.waitForTimeout(100);
+      const afterIn = await page.evaluate(() => window.BW.S.drawer);
+      await page.mouse.click(1410, 600); await page.waitForTimeout(300);
+      const afterOut = await page.evaluate(() => window.BW.S.drawer);
+      res.push(`${k}:${opened}/${afterIn}/${afterOut}`);
+      if (afterOut) await page.evaluate(() => window.BW.runAction(window.BW.S.drawer));
+      await page.locator('main.bw-doc [data-p="/chapters/1/sections/0/blocks/1/rows/0/1"]').click();
+    }
+    check('0.13 A8: every drawer closes on a page press, stays on an inside press', res.every((x) => { const [o, i, a] = x.split(':')[1].split('/'); return o !== 'null' && i === o && a === 'null'; }), res.join(' '));
+    await ctx.close();
+  }
+  { // 0.13 A14
+    const { ctx, page } = await open({ width: 1440, height: 900 });
+    await page.evaluate(() => { window.BW.setText('/labels/revDate', ''); window.BW.render(); window.scrollTo(0, 99999); window.BW.runAction('check'); });
+    await page.waitForTimeout(400);
+    const n = await sh(page, (R) => R.querySelectorAll('.drawer .list .jump').length);
+    await page.locator('.drawer .jump[data-go="/labels/revDate"]').click(); await page.waitForTimeout(300);
+    const r = await page.evaluate(() => { const el = document.querySelector('main.bw-doc [data-p="/labels/revDate"]'); const b = el.getBoundingClientRect(); return { inView: b.top >= 0 && b.bottom <= innerHeight, p: window.BW.S.sel?.p, ring: el.classList.contains('bw-jump') }; });
+    check('0.13 A14: problem buttons; the jump scrolls the element in view, selects it, rings it', n >= 1 && r.inView && r.p === '/labels/revDate' && r.ring, JSON.stringify({ n, ...r }));
+    await ctx.close();
+  }
+  { // 0.13 R5
+    const { ctx, page, errors } = await open({ width: 1440, height: 900 });
+    const cell = page.locator('main.bw-doc table[data-rows="/revisions"] td[data-r="0"]').first();
+    await cell.scrollIntoViewIfNeeded(); await cell.click(); await page.waitForTimeout(300);
+    const st = await sh(page, (R) => { const c = R.querySelector('.ctx'); return { cat: c.hidden ? '' : c.dataset.cat, tools: [...c.querySelectorAll('[data-a]')].map((x) => x.dataset.a) }; });
+    const n0 = await page.evaluate(() => window.BW.M[window.BW.S.svc][window.BW.S.ed].doc.revisions.length);
+    await page.evaluate(() => window.BW.runAction('rowAdd'));
+    const n1 = await page.evaluate(() => window.BW.M[window.BW.S.svc][window.BW.S.ed].doc.revisions.length);
+    check('0.13 R5: revisions click → table tools (no block move/delete); add row → /revisions +1', st.cat === 'table' && !st.tools.includes('moveUp') && !st.tools.includes('delete') && n1 === n0 + 1, JSON.stringify({ st, n0, n1 }));
+    const body = page.locator('main.bw-doc [data-p$="/paragraphs/0"]').first(); await body.scrollIntoViewIfNeeded(); await body.click(); await page.waitForTimeout(200);
+    const after = await sh(page, (R) => { const c = R.querySelector('.ctx'); return c.hidden ? '' : c.dataset.cat; });
+    check('0.13 R5: a paragraph after a table cell is not a table', after === 'text', after);
+    check('0.13 R5: no page errors', !errors.length, errors.join(' | '));
+    await ctx.close();
+  }
+  { // 0.13 TOC
+    const { ctx, page, errors } = await open({ width: 1440, height: 900 });
+    // WP2's pointers (design.md A25), put on the rendered TOC and control table by hand until render.mjs emits them
+    const fixture = () => page.evaluate(() => {
+      const d = window.BW.M[window.BW.S.svc][window.BW.S.ed].doc;
+      const main = document.querySelector(`main.bw-doc[data-locale="${window.BW.S.ed}"]`);
+      const toc = main.querySelector('table.toc');
+      toc.dataset.rows = '/toc';
+      const secs = d.chapters.flatMap((ch, i) => ch.sections.length > 1 ? ch.sections.map((s, j) => [i, j, s]) : []);
+      let hit = null;
+      toc.querySelectorAll('tr').forEach((tr) => { const td = tr.children[1]; const m = secs.find(([, , s]) => td?.textContent.trim() === String(s.title).trim()); if (m) { tr.dataset.sec = `/chapters/${m[0]}/sections/${m[1]}`; td.dataset.p = `${tr.dataset.sec}/title`; td.tabIndex = 0; hit ||= tr.dataset.sec; } });
+      const ctl = main.querySelector('[data-part="control"] table');
+      if (ctl) ctl.dataset.rows = '/controlTable/rows';
+      return hit;
+    });
+    const sec = await fixture();
+    const cnt = (p) => page.evaluate((p) => p.split('/').slice(1).reduce((o, k) => o?.[k], window.BW.M[window.BW.S.svc][window.BW.S.ed].doc), p);
+    const ch = sec.split('/').slice(0, 3).join('/');
+    const n0 = (await cnt(`${ch}/sections`)).length;
+    const cell = page.locator(`main.bw-doc table.toc td[data-p="${sec}/title"]`).first(); await cell.scrollIntoViewIfNeeded(); await cell.click(); await page.waitForTimeout(250);
+    const tools = await sh(page, (R) => { const c = R.querySelector('.ctx'); return c.hidden ? '' : [...c.querySelectorAll('[data-a]')].map((x) => x.dataset.a).join(','); });
+    await page.evaluate(() => window.BW.runAction('rowAdd')); await page.waitForTimeout(200);
+    const n1 = (await cnt(`${ch}/sections`)).length;
+    check('0.13 A25: TOC row → table tools Add/Delete only; Add inserts a section after the row\'s section', tools === 'rowAdd,rowDel' && n1 === n0 + 1, JSON.stringify({ tools, n0, n1, sec }));
+    await fixture();
+    await page.locator(`main.bw-doc table.toc td[data-p="${sec}/title"]`).first().click(); await page.waitForTimeout(150);
+    await page.evaluate(() => window.BW.runAction('rowDel')); await page.waitForTimeout(200);
+    const hid = await cnt(`${sec}/tocHidden`);
+    const still = !!(await page.locator(`main.bw-doc [data-p="${sec}/title"]`).count());
+    check('0.13 A25: TOC Delete hides the entry (tocHidden), the section stays in the body', hid === true && still && (await cnt(`${ch}/sections`)).length === n1, JSON.stringify({ hid, still }));
+    // control table: virtual rows, materialised by its owner (WP2's materialiseControl) before the first structural op
+    await page.evaluate(() => window.BW.bwExt({ actions: { materialiseControl: () => { window.BW.commit([{ op: 'replace', path: '/controlTable', value: { columns: 2, rows: [['a', 'b'], ['c', 'd']], bind: {} } }], { rerender: false }); } } }));
+    await fixture();
+    const cc = page.locator('main.bw-doc [data-part="control"] td[data-p]').first(); await cc.scrollIntoViewIfNeeded(); await cc.click(); await page.waitForTimeout(200);
+    const ctools = await sh(page, (R) => { const c = R.querySelector('.ctx'); return c.hidden ? '' : c.dataset.cat; });
+    await page.evaluate(() => window.BW.runAction('rowAdd')); await page.waitForTimeout(200);
+    const rows = await cnt('/controlTable/rows');
+    check('0.13 A25: control table → table tools; Add row materialises it first, then adds', ctools === 'table' && rows?.length === 3, JSON.stringify({ ctools, rows }));
+    check('0.13 A25: no page errors', !errors.length, errors.join(' | '));
+    await ctx.close();
   }
 } catch (e) {
   check('ux run', false, e.stack?.split('\n').slice(0, 4).join(' / '));

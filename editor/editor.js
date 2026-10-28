@@ -109,6 +109,7 @@ function render(keepScroll = true) {
   dgZoomAll();
   if (S.dg) dgPaint();
   viewsApply();
+  emit('render');
 }
 function mainOf(ed) {
   return document.querySelector(`#bw-pair main.bw-doc[data-locale="${ed}"]`);
@@ -131,8 +132,40 @@ function decorate() {
   }
 }
 
+/* ── extension seam (0.13.0): editor/ext/*.js register through bwExt; the contract is editor/ext/README.md ── */
+const EXT = { cmds: [], sections: [], actions: {}, drawers: {}, settings: [], status: null, guards: [],
+  on: { boot: [], commit: [], render: [], save: [], saveHtml: [], export: [], pagehide: [], open: [], keydown: [] } };
+function bwExt(def = {}) {
+  for (const c of def.cmds || []) { const x = { group: 'document', edit: false, ...c }; EXT.cmds.push(x); CMDS.push(x); }
+  for (const x of def.sections || []) { EXT.sections.push(x); if (!GENERAL_GROUPS.includes(x.cat)) GENERAL_GROUPS.push(x.cat); }
+  Object.assign(EXT.actions, def.actions);
+  Object.assign(EXT.drawers, def.drawers);
+  EXT.settings.push(...(def.settings || []));
+  EXT.guards.push(...(def.guards || []));
+  if (def.status) EXT.status = def.status;
+  for (const [ev, f] of Object.entries(def.on || {})) {
+    if (!EXT.on[ev]) throw new Error(`bwExt: unknown event "${ev}"`);
+    EXT.on[ev].push(...[].concat(f));
+  }
+  Object.assign(EXT, def.expose); // named services for other extensions, e.g. EXT.ledger
+}
+const emit = (ev, ...a) => EXT.on[ev].forEach((f) => { try { f(...a); } catch (e) { console.error(e); } });
+/** Every guard is asked before a change; false or a reason string refuses it: nothing changes, the reason is toasted, the caller stops (throws). */
+function guard(what, info) {
+  for (const g of EXT.guards) {
+    let r;
+    try { r = g(what, info); } catch (e) { console.error(e); continue; }
+    if (r === false || typeof r === 'string') {
+      const msg = typeof r === 'string' ? r : t('ext.refused');
+      toast(msg, 'warn');
+      throw Object.assign(new Error(msg), { refused: true });
+    }
+  }
+}
+
 /* ── ops ───────────────────────────────────────────────────────────────── */
 function commit(ops, { ed = S.ed, rerender = true, group = newGroup(), mirror = false } = {}) {
+  guard('commit', { ops, ed });
   const e = cur(ed);
   ops.forEach((op, k) => {
     op.id = `${group}.${k}`;
@@ -153,6 +186,7 @@ function commit(ops, { ed = S.ed, rerender = true, group = newGroup(), mirror = 
   }
   touched();
   if (rerender) render();
+  emit('commit', ops, ed, 'commit');
 }
 /** The labels this edition prints: house ← design pack ← document. */
 const labelsOf = (ed = S.ed) => withLabels(I18N.doc[ed], S.theme.labels?.[ed], cur(ed).doc.labels);
@@ -179,6 +213,7 @@ function flagManual(path, old, ed) {
   commit(pre, { ed, rerender: false });
 }
 function setText(path, value, ed = S.ed) {
+  guard('setText', { path, value, ed });
   ensurePath(path, ed);
   const e = cur(ed);
   const old = get(e.doc, path) ?? (path.startsWith('/labels/') ? get(labelsOf(ed), path.slice(7)) : undefined);
@@ -190,6 +225,7 @@ function setText(path, value, ed = S.ed) {
     last.value = value;
     last.at = new Date().toISOString();
     applyOp(e.doc, last);
+    emit('commit', [last], ed, 'type');
   } else {
     S.typingGroup = newGroup();
     commit([{ op: 'setText', path, value, old }], { ed, rerender: false, group: S.typingGroup });
@@ -204,6 +240,7 @@ function undo(ed = S.ed) {
   const e = cur(ed);
   const last = e.ops.at(-1);
   if (!last) return;
+  guard('undo', { ed });
   const g = last.id.split('.')[0];
   const grp = [];
   while (e.ops.length && e.ops.at(-1).id.split('.')[0] === g) grp.unshift(e.ops.pop());
@@ -211,15 +248,18 @@ function undo(ed = S.ed) {
   rebuild(e);
   touched();
   render();
+  emit('commit', grp, ed, 'undo');
 }
 function redo(ed = S.ed) {
   const e = cur(ed);
+  if (!e.redo.length) return;
+  guard('redo', { ed });
   const grp = e.redo.pop();
-  if (!grp) return;
   e.ops.push(...grp);
   rebuild(e);
   touched();
   render();
+  emit('commit', grp, ed, 'redo');
 }
 
 /* ── autosave + recovery ───────────────────────────────────────────────── */
@@ -329,6 +369,7 @@ function saveAll() {
   S.dirty = false;
   flash(t('saved'));
   emitHook('save');
+  emit('save');
 }
 function pickFile(accept) {
   return new Promise((res) => {
@@ -426,6 +467,7 @@ async function saveHtml(embedFonts) {
   let fontCss = DATA.fontCss;
   if (embedFonts) fontCss = await inlineFonts(fontCss);
   const data = { ...DATA, setId: `${DATA.setId}:${S.svc}`, services: [{ id: s.id, editions }], theme: S.theme, fontCss, uiLang: S.ui };
+  emit('saveHtml', data); // an extension may add its own keys to the embedded data
   const parts = renderParts(cur().doc, { locale: S.ed, labels: I18N.doc[S.ed], theme: S.theme });
   const html = `<!doctype html>
 <html lang="${S.ed}" dir="${S.ed === 'ar' ? 'rtl' : 'ltr'}"><head><meta charset="utf-8">
@@ -472,6 +514,7 @@ async function exportPdfDocx() {
       if (!r.ok) throw new Error(j.error || r.status);
       flash(t('exportDone', { x: [j.pdf, j.docx].filter(Boolean).join(' · ') }));
       emitHook('export', { pdf: !!j.pdf, docx: !!j.docx });
+      emit('export', { pdf: !!j.pdf, docx: !!j.docx });
       for (const u of [j.pdfUrl, j.docxUrl].filter(Boolean)) window.open(u, '_blank', 'noopener');
       return;
     } catch (err) { flash(String(err.message || err), true); return; }
@@ -540,8 +583,21 @@ const blockOf = (p) => {
 function tableCtx() {
   const el = S.sel && document.activeElement?.closest?.('table[data-rows]') || lastCell?.closest('table[data-rows]');
   if (!el) return null;
-  const cell = lastCell;
-  return { rows: el.dataset.rows, cols: el.dataset.cols || null, w: +el.dataset.w, r: cell ? +cell.dataset.r : -1, c: cell ? +cell.dataset.c : -1 };
+  const cell = el.contains(lastCell) ? lastCell : document.activeElement?.closest?.('td, th') || lastCell;
+  const rows = el.dataset.rows;
+  // only while the selection is in this table (a cell clicked earlier must not keep the table tools on a paragraph)
+  const p = S.sel?.p;
+  if (!p || !(p.startsWith(`${rows}/`) || p === cell?.dataset.p || (el.contains(cell) && el.querySelector(`[data-p="${CSS.escape(p)}"]`)))) return null;
+  // front matter (no block pointer): TOC rows (virtual /toc) carry the section they mirror in data-sec (render.mjs, WP2)
+  const tr = cell?.closest('tr');
+  const r = cell?.dataset.r != null ? +cell.dataset.r : tr ? [...tr.parentElement.children].indexOf(tr) : -1;
+  return { rows, cols: el.dataset.cols || null, w: +el.dataset.w, r, c: cell?.dataset.c != null ? +cell.dataset.c : -1, b: el.dataset.b || null, sec: tr?.dataset.sec || null };
+}
+/** A25: a front-matter table whose rows are virtual until first edited (control table) is materialised by its owner first. */
+function rowsReady(x) {
+  if (Array.isArray(get(cur().doc, x.rows))) return true;
+  if (x.rows === '/controlTable/rows' && EXT.actions.materialiseControl) EXT.actions.materialiseControl();
+  return Array.isArray(get(cur().doc, x.rows));
 }
 let lastCell = null;
 
@@ -587,11 +643,13 @@ const DESIGN = {
   },
   moveRow(dir) {
     const x = tableCtx();
-    if (!x || x.r < 0) return;
+    if (!x || x.r < 0 || x.rows === '/toc' || !rowsReady(x)) return;
     const rows = get(cur().doc, x.rows);
     const to = x.r + dir;
     if (to < 0 || to >= rows.length) return;
+    const was = S.sel && { ...S.sel };
     commit([{ op: 'move', from: `${x.rows}/${x.r}`, path: `${x.rows}/${to}` }], { mirror: true });
+    selFollow(`${x.rows}/${x.r}`, `${x.rows}/${to}`, was); // R4: the selection (and the row the next move uses) follows
   },
   input(el) {
     if (el.dataset.st && el.type === 'color') DESIGN.setStyle(el.dataset.st, el.value);
@@ -658,6 +716,21 @@ const DESIGN = {
   },
 };
 
+/** R4: after a move from → to, every selection pointer under `from` is rebased onto `to`; the moved part is
+ *  scrolled into view and keeps the focus ring. */
+function selFollow(from, to, was) {
+  if (!was) return;
+  const re = (p) => (p === from ? to : p?.startsWith(`${from}/`) ? to + p.slice(from.length) : p);
+  S.sel = { ...was, p: re(was.p), b: re(was.b) }; // from the selection before the commit (a render may drop a pointer that moved)
+  paintSel();
+  refreshUi();
+  const main = mainOf(S.sel.ed);
+  const el = main && (main.querySelector(`[data-b="${CSS.escape(S.sel.b || '')}"]`) || main.querySelector(`[data-p="${CSS.escape(S.sel.p || '')}"]`));
+  el?.scrollIntoView({ block: 'nearest', behavior: isCalm() ? 'auto' : 'smooth' });
+  const cell = S.sel.p && main?.querySelector(`[data-p="${CSS.escape(S.sel.p)}"]`)?.closest('td[data-r]');
+  if (cell) lastCell = cell;
+  if (S.sel.p && document.activeElement?.closest?.('#bw-pair')) main?.querySelector(`[data-p="${CSS.escape(S.sel.p)}"]`)?.focus?.({ preventScroll: true }); // a keyboard move from the page keeps the caret there
+}
 /* ── block actions ─────────────────────────────────────────────────────── */
 const A = {
   duplicate() { const b = blockOf(S.sel?.b); if (b) { commit([{ op: 'duplicate', path: b.ptr }], { mirror: true }); S.sel.b = `${b.arr}/${b.i + 1}`; paintSel(); } },
@@ -667,15 +740,59 @@ const A = {
     commit([{ op: 'delete', path: b.ptr, old: get(cur().doc, b.ptr) }], { mirror: true });
     S.sel = null; paintSel();
   },
+  /** A21: a block moves within its section, and at the first/last block into the previous/next section;
+   *  a selected section heading moves the section within its chapter. R4: the selection follows the move. */
   move(d) {
+    const doc = cur().doc;
     const b = blockOf(S.sel?.b);
-    if (!b) return;
-    const n = get(cur().doc, b.arr).length;
-    const to = b.i + d;
-    if (to < 0 || to >= n) return;
-    commit([{ op: 'move', from: b.ptr, path: `${b.arr}/${to}` }], { mirror: true });
-    S.sel.b = `${b.arr}/${to}`;
-    paintSel();
+    const sec = !b && /^\/chapters\/(\d+)\/sections\/(\d+)\/(title|number)$/.exec(S.sel?.p || '');
+    let from = null;
+    let to = null;
+    if (b) {
+      const n = get(doc, b.arr).length;
+      from = b.ptr;
+      if (b.i + d >= 0 && b.i + d < n) to = `${b.arr}/${b.i + d}`;
+      else {
+        const m = /^\/chapters\/(\d+)\/sections\/(\d+)\/blocks$/.exec(b.arr);
+        if (!m) return;
+        const flat = doc.chapters.flatMap((ch, i) => ch.sections.map((_, j) => [i, j]));
+        const k = flat.findIndex(([i, j]) => i === +m[1] && j === +m[2]) + d;
+        if (k < 0 || k >= flat.length) return;
+        const [ci, sj] = flat[k];
+        const arr = `/chapters/${ci}/sections/${sj}/blocks`;
+        to = `${arr}/${d > 0 ? 0 : get(doc, arr).length}`;
+      }
+    } else if (sec) {
+      const n = doc.chapters[+sec[1]].sections.length;
+      const j = +sec[2] + d;
+      if (j < 0 || j >= n) return;
+      from = `/chapters/${sec[1]}/sections/${sec[2]}`;
+      to = `/chapters/${sec[1]}/sections/${j}`;
+    } else return;
+    const was = S.sel && { ...S.sel };
+    commit([{ op: 'move', from, path: to }], { mirror: true });
+    selFollow(from, to, was);
+  },
+  /** Alt+↑/↓: the smallest selected unit moves: a table row, a paragraph inside its prose block, else the block. */
+  moveKey(d) {
+    const x = tableCtx();
+    if (x && x.r >= 0 && S.sel?.p && x.rows && S.sel.p.startsWith(`${x.rows}/`)) {
+      const n = get(cur().doc, x.rows)?.length || 0;
+      if (x.r + d < 0 || x.r + d >= n) return;
+      DESIGN.moveRow(d);
+      return;
+    }
+    const m = /^(.*\/paragraphs)\/(\d+)$/.exec(S.sel?.p || '');
+    const n = m ? get(cur().doc, m[1])?.length || 0 : 0;
+    if (m && +m[2] + d >= 0 && +m[2] + d < n) {
+      const from = `${m[1]}/${m[2]}`;
+      const to = `${m[1]}/${+m[2] + d}`;
+      const was = S.sel && { ...S.sel };
+      commit([{ op: 'move', from, path: to }], { mirror: true });
+      selFollow(from, to, was);
+      return;
+    }
+    A.move(d);
   },
   addPara() {
     const m = /^(.*\/paragraphs)\/(\d+)$/.exec(S.sel?.p || '');
@@ -686,17 +803,21 @@ const A = {
   rowAdd() {
     const x = tableCtx();
     if (!x) return;
+    if (x.rows === '/toc') { A.tocAdd(x); return; }
+    if (!rowsReady(x)) return;
     commit([{ op: 'insert', path: `${x.rows}/${x.r + 1}`, value: Array.from({ length: x.w || 1 }, () => '') }], { mirror: true });
   },
   rowDel() {
     const x = tableCtx();
     if (!x || x.r < 0) return;
+    if (x.rows === '/toc') { A.tocHide(x); return; }
+    if (!rowsReady(x)) return;
     commit([{ op: 'delete', path: `${x.rows}/${x.r}`, old: get(cur().doc, `${x.rows}/${x.r}`) }], { mirror: true });
     lastCell = null;
   },
   colAdd() {
     const x = tableCtx();
-    if (!x || !x.cols) return;
+    if (!x || !x.cols || !rowsReady(x)) return;
     const at = x.c + 1;
     const rows = get(cur().doc, x.rows);
     const L = I18N.doc[S.ed];
@@ -708,6 +829,18 @@ const A = {
     const rows = get(cur().doc, x.rows);
     commit([{ op: 'delete', path: `${x.cols}/${x.c}` }, ...rows.map((_, r) => ({ op: 'delete', path: `${x.rows}/${r}/${x.c}` }))], { mirror: true });
     lastCell = null;
+  },
+  /** A25 TOC: «إضافة» inserts a new section after the row's section (a TOC entry with no section would be a lie). */
+  tocAdd(x) {
+    const m = /^\/chapters\/(\d+)\/sections\/(\d+)$/.exec(x.sec || '');
+    if (!m) return;
+    const c = cur().doc.chapters[+m[1]];
+    commit([{ op: 'insert', path: `/chapters/${m[1]}/sections/${+m[2] + 1}`, value: { number: `${c.number}.${c.sections.length + 1}`, title: t('newSection'), blocks: [{ kind: 'prose', paragraphs: [labelsOf().newParagraph] }] } }], { mirror: true });
+  },
+  /** A25 TOC: «حذف من الفهرس» hides the entry only (tocHidden); the section stays in the body. */
+  tocHide(x) {
+    if (!/^\/chapters\/\d+\/sections\/\d+$/.test(x.sec || '')) return;
+    commit([{ op: 'insert', path: `${x.sec}/tocHidden`, value: true }], { mirror: true });
   },
   async image() {
     const img = await pickImage();
@@ -862,11 +995,11 @@ function validate() {
   const out = [];
   const d = cur().doc;
   d.chapters.forEach((ch, i) => {
-    if (ch.number !== String(i + 1)) out.push(['warn', t('vNumbering', { x: `${ch.number} ${ch.title}` })]);
+    if (ch.number !== String(i + 1)) out.push(['warn', t('vNumbering', { x: `${ch.number} ${ch.title}` }), `/chapters/${i}/title`]);
     ch.sections.forEach((s, j) => {
       const empty = !s.blocks.length || s.blocks.every((b) => (b.kind === 'prose' && b.paragraphs.every((p) => !String(p).trim())) || (b.kind === 'table' && !b.rows.length));
-      if (empty) out.push(['err', t('vEmptySection', { x: `${s.number} ${s.title}` })]);
-      if (ch.sections.length > 1 && s.number !== `${ch.number}.${j + 1}`) out.push(['warn', t('vNumbering', { x: `${s.number} ${s.title}` })]);
+      if (empty) out.push(['err', t('vEmptySection', { x: `${s.number} ${s.title}` }), `/chapters/${i}/sections/${j}/title`]);
+      if (ch.sections.length > 1 && s.number !== `${ch.number}.${j + 1}`) out.push(['warn', t('vNumbering', { x: `${s.number} ${s.title}` }), `/chapters/${i}/sections/${j}/title`]);
     });
   });
   if (hasOther()) {
@@ -879,7 +1012,7 @@ function validate() {
   }
   const main = mainOf(S.ed);
   main?.querySelectorAll('table').forEach((tb) => {
-    if (tb.scrollWidth > tb.parentElement.clientWidth + 2) out.push(['warn', t('vOverflow', { x: tb.querySelector('th,td')?.textContent?.slice(0, 30) || '' })]);
+    if (tb.scrollWidth > tb.parentElement.clientWidth + 2) out.push(['warn', t('vOverflow', { x: tb.querySelector('th,td')?.textContent?.slice(0, 30) || '' }), tb.dataset.b || tb.querySelector('[data-p]')?.dataset.p]);
   });
   const fth = designTheme(S.theme, d).fonts;
   for (const f of new Set([fth.text, fth.display])) {
@@ -887,7 +1020,7 @@ function validate() {
     if (src === 'project' && !document.fonts.check(`16px '${f}'`)) out.push(['err', t('vFont', { x: f })]);
     else if (src === 'local') out.push(['info', t('font.vMachine', { x: f })]);
   }
-  for (const k of emptyLabels(labelsOf())) out.push(['err', t('vLabel', { x: k })]);
+  for (const k of emptyLabels(labelsOf())) out.push(['err', t('vLabel', { x: k }), `/labels/${k}`]);
   const rej = sanitizeCss(d.design?.css).rejected;
   if (rej.length) out.push(['warn', t('vCss', { x: rej.join(' · ') })]);
   // logos are placed freely (overlays) or sit in the design pack's slots: count both, flag only when there are none
@@ -922,6 +1055,9 @@ const setRootFlags = () => {
   d.bwDark = S.dark ? '1' : '0';
 };
 
+/** Tools that change the document carry edit: true, so a guard can disable every one of them in one place. */
+const EDIT_GROUPS = new Set(['insert', 'text', 'table', 'diagram', 'shape', 'arrange', 'arrow']);
+const EDIT_IDS = new Set(['import', 'undo', 'redo', 'renumber', 'theme', 'styleThis', 'hideBlock', 'newdoc', 'process']);
 /** Every action, in one registry: the island, the selection bar and the palette read from it. */
 const CMDS = [
   ['save', 'file', 'Ctrl+S'], ['saveHtml', 'file'], ['import', 'file'], ['exportEdits', 'file'], ['exportAll', 'file'],
@@ -939,7 +1075,7 @@ const CMDS = [
   ['dgAlignL', 'arrange'], ['dgAlignC', 'arrange'], ['dgAlignR', 'arrange'], ['dgAlignT', 'arrange'], ['dgAlignM', 'arrange'], ['dgAlignB', 'arrange'], ['dgDistH', 'arrange'], ['dgDistV', 'arrange'], ['dgWrap', 'arrange'],
   ['dgEdgeLabel', 'arrow'], ['dgBendAdd', 'arrow'], ['dgBendDel', 'arrow'], ['dgRouteAuto', 'arrow'], ['dgReverse', 'arrow'], ['dgFrom', 'arrow'], ['dgTo', 'arrow'],
   ['dgZoomIn', 'diagram', 'Ctrl+wheel'], ['dgZoomOut', 'diagram'], ['dgZoomFit', 'diagram'], ['dgZoom100', 'diagram'],
-].map(([id, group, key]) => ({ id, group, key }));
+].map(([id, group, key]) => ({ id, group, key, edit: EDIT_GROUPS.has(group) ? !/^dgZoom/.test(id) : EDIT_IDS.has(id) }));
 
 /** A labelled toolbar section: icon + short title, then its tools (the same categories as the palette). */
 function sec(cat, tools) {
@@ -963,12 +1099,17 @@ const langWord = (l) => (l === 'ar' ? 'ع' : 'E');
 const uiDir = () => S.dir || dirOf(S.ui);
 const LAYOUT_DIR = 'rtl'; // the default (Arabic) layout: toolbar, panels, page and watermark never move (0.10.0)
 
+/** R2/A4: the toolbar is mounted once; every later call patches the live nodes in place (syncUi), so a toggle
+ *  never replays the entry motion, the thumbs or an explainer on controls nobody touched. */
 function buildUi() {
+  if (root.querySelector('.shell')) syncUi();
+  else mountUi();
+}
+function uiHtml() {
   const svcOpts = DATA.services.map((s) => `<option value="${esc(s.id)}" ${s.id === S.svc ? 'selected' : ''}>${esc(s.editions[S.ed]?.name || s.editions.ar?.name || s.id)}</option>`).join('');
   const eds = Object.keys(M[S.svc]);
   const theme = S.dark ? 'dark' : 'light';
-  setRootFlags();
-  root.innerHTML = `<style>${DATA.uiCss}</style>
+  return `<style>${DATA.uiCss}</style>
 <section class="shell${buildUi.done ? '' : ' first'}" aria-label="${esc(t('appName'))}" dir="${LAYOUT_DIR}" data-tdir="${uiDir()}" lang="${S.ui}" data-theme="${theme}" data-calm="${isCalm() ? '1' : '0'}">
   <div class="island bar" role="toolbar" aria-label="${esc(t('toolbar'))}">
     <span class="brand" role="img" aria-label="${esc(t('appName'))}">${DATA.brand?.mark || ''}</span>
@@ -979,11 +1120,11 @@ function buildUi() {
       </div>
     </div>
     <div class="ctx sec now" role="group" hidden></div>
-    ${['file', 'insert', 'edit', 'document', 'design'].map((cat) => sec(cat, CMDS.filter((c) => c.group === cat).map(tool))).join('')}
+    ${['file', 'insert', 'edit', 'document', 'design', ...EXT.sections.map((x) => x.cat)].map((cat) => sec(cat, CMDS.filter((c) => c.group === cat).map(tool))).join('')}
     ${sec('export', [pcExportMenu(), tool(CMDS.find((c) => c.id === 'print')), tool(CMDS.find((c) => c.id === 'exportPdf'))])}
     <span class="spacer"></span>
     <div class="status" role="status" aria-live="polite">
-      <span class="count" aria-label="${esc(t('changes', { n: liveOps(cur()).length }))}"><span class="n">${liveOps(cur()).length}</span><span class="w" data-alt="${esc(tAlt('changesWord'))}">${esc(t('changesWord'))}</span></span>
+      <span class="count" aria-label="${esc(t('changes', { n: opCount() }))}"><span class="n">${opCount()}</span><span class="w" data-alt="${esc(tAlt('changesWord'))}">${esc(t('changesWord'))}</span></span>
       <span class="sel vh">${esc(selDesc())}</span><span class="flash vh"></span>
     </div>
     <div class="sec" data-cat="view" role="group" aria-label="${esc(t('secView'))}"><span class="sc" aria-hidden="true"><span class="i">${ic('secView')}</span><span class="st">${esc(t('secView'))}</span></span><div class="sb">
@@ -1009,10 +1150,15 @@ function buildUi() {
   <div class="toasts" aria-live="polite"></div>
   <button type="button" class="b focus-exit" data-a="focus" ${S.focus ? '' : 'hidden'}><span class="i">${ic('focus')}</span><span class="w">${esc(t('focusExit'))}</span></button>
 </section>`;
+}
+function mountUi() {
+  setRootFlags();
+  root.innerHTML = uiHtml();
+  syncUi.ui = S.ui;
   const shell = root.querySelector('.shell');
   if (!buildUi.done) { buildUi.done = true; setTimeout(() => document.documentElement.classList.add('bw-ready'), 900); }
   shell.addEventListener('click', onBar);
-  root.querySelector('[data-a="svc"]').addEventListener('change', (e) => { S.svc = e.target.value; if (!M[S.svc][S.ed]) S.ed = Object.keys(M[S.svc])[0]; S.sel = null; buildUi(); render(false); });
+  root.querySelector('[data-a="svc"]').addEventListener('change', (e) => { S.svc = e.target.value; if (!M[S.svc][S.ed]) S.ed = Object.keys(M[S.svc])[0]; S.sel = null; buildUi(); render(false); emit('open', S.svc, S.ed); });
   root.querySelector('.scrim').addEventListener('click', (e) => { if (e.target.classList.contains('scrim')) closePalette(); });
   wirePalette();
   fitBar();
@@ -1021,6 +1167,53 @@ function buildUi() {
   placeCtx();
   viewPopAfterBuild(); // views.js: the View menu in the top layer
   uxAfterBuild(); // shell-ux.js: the selection section survives a rebuild, segment thumbs, explainers
+}
+/* syncUi: the new markup is read into a template and the live tree is patched node by node. Kept as they are:
+ * what other code owns at run time (the selection section, panel, dialog, toasts and palette list bodies, the
+ * explainer card, the pager), inline geometry (style), the menu/popover state and the classes fitBar and the
+ * motion add. A node whose kind changed is replaced: only that node is new. */
+const UI_OWN = '.ctx, .drawer, .dialog, .toasts, #cmdlist';
+const UI_OWN_ATTR = new Set(['data-theme', 'lang', 'dir']);
+const UI_RUNTIME = '.xpl, .pager';
+const UI_KEEP_ATTR = new Set(['style', 'data-tt', 'aria-describedby', 'popover', 'data-open', 'disabled']);
+const UI_RUNTIME_CLS = /^(has-sel|sq\d|nw|folded|done|swap|tick|in|closing)$/;
+function uiMorph(a, b) {
+  if (a.nodeType !== b.nodeType || a.nodeName !== b.nodeName) { a.replaceWith(b); return; }
+  if (a.nodeType !== 1) { if (a.nodeValue !== b.nodeValue) a.nodeValue = b.nodeValue; return; }
+  const own = a.matches(UI_OWN);
+  for (const { name, value } of [...b.attributes]) {
+    if (own && !UI_OWN_ATTR.has(name)) continue;
+    if (name === 'class') {
+      const v = [...new Set([...value.split(/\s+/).filter(Boolean), ...[...a.classList].filter((c) => UI_RUNTIME_CLS.test(c))])].join(' ');
+      if (a.getAttribute('class') !== v) a.setAttribute('class', v);
+    } else if (a.getAttribute(name) !== value) a.setAttribute(name, value);
+  }
+  if (own) return;
+  for (const { name } of [...a.attributes]) {
+    if (b.hasAttribute(name) || UI_KEEP_ATTR.has(name)) continue;
+    if (name === 'class') { const keep = [...a.classList].filter((c) => UI_RUNTIME_CLS.test(c)); if (keep.length) a.setAttribute('class', keep.join(' ')); else a.removeAttribute('class'); } else a.removeAttribute(name);
+  }
+  const ak = [...a.childNodes].filter((n) => !(n.nodeType === 1 && n.matches(UI_RUNTIME)));
+  const bk = [...b.childNodes];
+  bk.forEach((n, i) => { if (ak[i]) uiMorph(ak[i], n); else a.appendChild(n); });
+  ak.slice(bk.length).forEach((n) => n.remove());
+}
+function syncUi() {
+  setRootFlags();
+  const tpl = document.createElement('template');
+  tpl.innerHTML = uiHtml();
+  const ak = [...root.childNodes];
+  [...tpl.content.childNodes].forEach((n, i) => { if (ak[i]) uiMorph(ak[i], n); else root.appendChild(n); });
+  const svc = root.querySelector('[data-a="svc"]');
+  if (svc && svc.value !== S.svc) svc.value = S.svc;
+  const pop = root.querySelector('#viewpop');
+  if (!S.view && pop?.matches?.(':popover-open')) pop.hidePopover();
+  fitBar();
+  measureBar();
+  if (S.drawer && (syncUi.ui !== S.ui || S.drawer === 'settings')) openDrawer(S.drawer); // new words; Settings mirrors the toggles; others are left alone
+  syncUi.ui = S.ui;
+  viewPopAfterBuild();
+  uxAfterBuild();
 }
 // The page never jumps under the reader: the reserved band only grows (wrap, font load), resets only for focus mode.
 let barH = 0;
@@ -1059,10 +1252,11 @@ function fitBar() {
 }
 window.addEventListener('resize', () => fitBar());
 let lastCount = -1;
+const opCount = () => EXT.status?.count() ?? liveOps(cur()).length;
 function refreshUi() {
   const c = root.querySelector('.count');
   if (!c) return;
-  const n = liveOps(cur()).length;
+  const n = opCount();
   if (n !== lastCount) {
     const el = c.querySelector('.n');
     el.textContent = String(n);
@@ -1091,7 +1285,16 @@ function ctxModel(b, tb) {
   if (ov) return { cat: ov.kind === 'logo' ? 'logo' : 'image', label: t(ov.kind === 'logo' ? 'selLogo' : 'selImage'), groups: [['replace', 'caption', ...(ov.kind === 'logo' ? ['every'] : []), 'ovDelete']] };
   const dg = dgContext();
   if (dg) return dg;
-  if (!b) return null;
+  // R5: the table tools come first, for every table with rows (front matter too: only the tools that apply there)
+  const x = tb && tableCtx();
+  if (x && !x.b) {
+    if (x.rows === '/toc') return { cat: 'table', label: t('selTable'), groups: [['rowAdd', 'rowDel']] };
+    return { cat: 'table', label: t('selTable'), groups: [['rowAdd', 'rowDel', ...(x.cols ? ['colAdd', 'colDel'] : []), 'rowUp', 'rowDown']] };
+  }
+  if (!b) {
+    if (/^\/chapters\/\d+\/sections\/\d+\/(title|number)$/.test(S.sel?.p || '')) return { cat: 'text', label: t('ux.selSection'), groups: [['moveUp', 'moveDown', 'comment']] };
+    return null;
+  }
   const blk = get(cur().doc, b.ptr);
   if (tb) return { cat: 'table', label: t('selTable'), groups: [['rowAdd', 'rowDel', 'colAdd', 'colDel', 'rowUp', 'rowDown'], ['duplicate', 'delete', 'moveUp', 'moveDown'], ['comment', 'styleThis', 'hideBlock', 'breakBefore', 'keepNext']] };
   return { cat: 'text', label: t('selText', { x: kindName(blk?.kind || 'text') }), groups: [['duplicate', 'delete', 'moveUp', 'moveDown', 'addPara'], ['comment', 'styleThis', 'hideBlock', 'breakBefore', 'keepNext']] };
@@ -1133,22 +1336,38 @@ let ctxRaf = 0;
 window.addEventListener('scroll', () => { if (!ctxRaf) ctxRaf = requestAnimationFrame(() => { ctxRaf = 0; placeCtx(); }); }, { passive: true });
 
 /* toasts, banner, progress */
+/** A1: info/ok live 2.5 s, warn/err 4 s; a click anywhere on it dismisses (an action button still runs its action);
+ *  hover or keyboard focus pauses the timer (WCAG 2.2.1); at most 3 stacked; the same message again refreshes the one shown. */
+const TOAST_MS = { info: 2500, ok: 2500, warn: 4000, err: 4000 };
 function toast(msg, kind = 'info', { actions = [], persist = false, cls = '' } = {}) {
   const box = root.querySelector('.toasts');
   if (!box) return null;
+  const same = !actions.length && !persist && [...box.children].find((x) => x.dataset.msg === `${kind}|${msg}` && !x.classList.contains('out'));
+  if (same) { same.bwArm?.(); return same; }
   const el = document.createElement('div');
   el.className = `toast ${kind} ${cls}`;
+  el.dataset.msg = `${kind}|${msg}`;
   el.setAttribute('role', kind === 'err' ? 'alert' : 'status');
   el.innerHTML = `<span class="i">${ic(kind === 'err' ? 'err' : kind === 'ok' ? 'ok' : kind === 'warn' ? 'warn' : 'info')}</span><span class="m">${esc(msg)}</span>${actions.map(([l], i) => `<button type="button" data-k="${i}">${esc(l)}</button>`).join('')}`;
   el.onclick = (e) => {
     const k = e.target.closest('button')?.dataset.k;
-    if (k === undefined) return;
+    if (k === undefined && persist) return; // a banner waits for its choice
     dismiss(el);
-    actions[k][1]();
+    if (k !== undefined) actions[k][1]();
   };
+  if (!persist) {
+    let timer = 0;
+    let held = 0;
+    el.bwArm = () => { clearTimeout(timer); if (!held) timer = setTimeout(() => dismiss(el), TOAST_MS[kind] || 2500); };
+    const hold = (on) => { held += on ? 1 : -1; if (held < 0) held = 0; if (held) clearTimeout(timer); else el.bwArm(); };
+    el.addEventListener('pointerenter', () => hold(true));
+    el.addEventListener('pointerleave', () => hold(false));
+    el.addEventListener('focusin', () => hold(true));
+    el.addEventListener('focusout', () => hold(false));
+    el.bwArm();
+  }
   box.appendChild(el);
-  while (box.children.length > 4) box.firstElementChild.remove();
-  if (!persist) setTimeout(() => dismiss(el), 4600);
+  while (box.children.length > 3) ([...box.children].find((x) => !x.classList.contains('banner')) || box.firstElementChild).remove();
   return el;
 }
 function dismiss(el) {
@@ -1300,8 +1519,13 @@ async function runAction(a) {
     case 'redo': redo(); break;
     case 'duplicate': A.duplicate(); pop('duplicate'); break;
     case 'delete': A.delete(); break;
-    case 'moveUp': A.move(-1); break;
-    case 'moveDown': A.move(1); break;
+    case 'moveUp': case 'moveDown': {
+      A.move(a === 'moveUp' ? -1 : 1);
+      // R3: the focus stays on the pressed tool, so Alt+↑/↓, Ctrl+Z, Ctrl+D and Delete keep working from the toolbar
+      const keep = root.querySelector(`.ctx [data-a="${a}"]`);
+      if (keep && root.activeElement !== keep && !document.activeElement?.closest?.('#bw-pair')) keep.focus({ preventScroll: true });
+      break;
+    }
     case 'addPara': A.addPara(); break;
     case 'rowAdd': A.rowAdd(); break;
     case 'rowDel': A.rowDel(); break;
@@ -1341,7 +1565,7 @@ async function runAction(a) {
     case 'view.spread': viewsSet('spread'); break;
     case 'view.prev': viewsGo(-1); break;
     case 'view.next': viewsGo(1); break;
-    default: if (/^export\./.test(a)) await pcAction(a); else await dgAction(a); break;
+    default: if (EXT.actions[a]) await EXT.actions[a](a); else if (/^export\./.test(a)) await pcAction(a); else await dgAction(a); break;
   }
 }
 
@@ -1366,10 +1590,14 @@ function openDrawer(kind, soft = false) {
   const icon = { err: ic('err'), warn: ic('warn'), info: ic('info'), ok: ic('ok') };
   const word = { err: t('err'), warn: t('warn'), info: t('info'), ok: t('ok') };
   let html = '';
-  if (kind === 'check') {
+  const x = EXT.drawers[kind]?.(d); // an extension's drawer: { title, html, mount?(drawer) }
+  if (x) {
+    d.setAttribute('aria-label', x.title);
+    html = head(x.title) + x.html;
+  } else if (kind === 'check') {
     const v = validate();
     d.setAttribute('aria-label', t('checkTitle'));
-    html = head(t('checkTitle')) + (v.length ? `<ul class="list">${v.map(([lv, msg]) => `<li class="${lv}"><span class="i">${icon[lv]}</span> <b>${esc(word[lv])}</b> ${esc(msg)}</li>`).join('')}</ul>` : `<p class="ok"><span class="i">${icon.ok}</span> ${esc(t('vAllGood'))}</p>`);
+    html = head(t('checkTitle')) + (v.length ? `<ul class="list">${v.map(([lv, msg, ptr]) => `<li class="${lv}"><span class="i">${icon[lv]}</span> <b>${esc(word[lv])}</b> ${esc(msg)}${ptr ? ` <button type="button" class="jump" data-go="${esc(ptr)}" data-ring="1">${esc(t('ux.jump'))}</button>` : ''}</li>`).join('')}</ul>` : `<p class="ok"><span class="i">${icon.ok}</span> ${esc(t('vAllGood'))}</p>`);
   } else if (kind === 'pages') {
     d.setAttribute('aria-label', t('pagesTitle'));
     html = head(t('pagesTitle')) + `<p class="hint out" role="status"></p><ol class="thumbs">${Array.from({ length: 6 }, () => '<li class="skel" aria-hidden="true"><i></i></li>').join('')}</ol>`;
@@ -1415,7 +1643,10 @@ ${e.comments.length ? `<h3>${esc(t('comment'))}</h3><ul class="list">${e.comment
     html = head(t('conflictTitle')) + `<ul class="list">${S.conflicts.map((c, i) => `<li data-kind="${c.kind || 'text'}"><span class="path">${esc(c.ed)} ${esc(c.path)}${c.kind === 'structure' ? ` (${esc(t('structConflict'))})` : ''}</span><div class="diff"><div><b>${esc(t('mine'))}</b> ${esc(side(c, 'mine'))}</div><div><b>${esc(t('theirs'))}</b> ${esc(side(c, 'theirs'))}</div></div><div class="btns"><button type="button" data-mine="${i}">${esc(t('keepMine'))}</button><button type="button" data-theirs="${i}">${esc(t('keepTheirs'))}</button></div></li>`).join('')}</ul>`;
   }
   d.innerHTML = html;
+  uxDrawerGroups(d, kind); // shell-ux.js (A7): headed groups collapse, alternating rows
   if (kind === 'settings') window.BW_LEARNING?.mount(d.querySelector('[data-lrn-mount]'), { heading: false }); // learning-hook.js
+  if (kind === 'settings') EXT.settings.forEach((c) => c.mount?.(d.querySelector(`.set-x-${c.id}`)));
+  x?.mount?.(d);
   d.onclick = onDrawer;
   d.oninput = (e) => {
     if (DP.input(e)) return;
@@ -1433,7 +1664,10 @@ ${e.comments.length ? `<h3>${esc(t('comment'))}</h3><ul class="list">${e.comment
     if (e.target.dataset.pr) processChange(e.target);
     DESIGN.change(e.target);
   };
-  if (!soft) d.querySelector('input,button:not([data-k="close"])')?.focus();
+  if (!soft) {
+    const f = d.querySelector('input,button:not([data-k="close"])');
+    (f && !f.closest('details:not([open])') ? f : [...d.querySelectorAll('summary, input, button:not([data-k="close"])')].find((x) => x.matches('summary') || !x.closest('details:not([open])')))?.focus();
+  }
 }
 
 async function onDrawer(e) {
@@ -1461,7 +1695,12 @@ async function onDrawer(e) {
   }
   if (x.dataset.go) {
     const el = mainOf(S.ed)?.querySelector(`[data-p="${CSS.escape(x.dataset.go)}"],[data-b="${CSS.escape(x.dataset.go)}"]`);
-    if (el) { el.scrollIntoView({ block: 'center', behavior: reduced() ? 'auto' : 'smooth' }); el.focus?.(); selectEl(el); }
+    if (el) {
+      el.scrollIntoView({ block: 'center', behavior: reduced() || x.dataset.ring ? 'auto' : 'smooth' });
+      el.focus?.({ preventScroll: true });
+      selectEl(el);
+      if (x.dataset.ring) { el.classList.remove('bw-jump'); void el.offsetWidth; el.classList.add('bw-jump'); setTimeout(() => el.classList.remove('bw-jump'), 1200); } // A14: a 1.2 s ring
+    }
     return;
   }
   if (k === 'next') d.querySelector('.out').textContent = t('found', { n: findNext(d.querySelector('[data-f="q"]').value) });
@@ -1710,6 +1949,7 @@ function startOvDrag(e, el, resize) {
   const i = +el.dataset.i;
   const o = ovList()[i];
   if (!o) return;
+  guard('drag', { i, resize });
   e.preventDefault();
   try { el.setPointerCapture(e.pointerId); } catch { /* a synthetic pointer: the window listeners below still track it */ }
   el.focus({ preventScroll: true }); // pressing a logo focuses it, so the arrow keys nudge it at once
@@ -2096,7 +2336,7 @@ const pair = () => document.getElementById('bw-pair');
 document.addEventListener('focusin', (e) => {
   const el = e.target.closest?.('#bw-pair [data-p]');
   if (!el) return;
-  if (el.closest('td[data-r]')) lastCell = el.closest('td[data-r]');
+  if (el.closest('td[data-r], table[data-rows] td')) lastCell = el.closest('td[data-r], table[data-rows] td');
   else if (el.matches('td[data-r],th[data-c]')) lastCell = el;
   if (!el.isContentEditable) {
     el.contentEditable = 'plaintext-only';
@@ -2116,7 +2356,7 @@ document.addEventListener('focusin', (e) => {
 document.addEventListener('click', (e) => {
   const el = e.target.closest?.('#bw-pair main.bw-doc [data-b], #bw-pair main.bw-doc [data-p]');
   if (el) {
-    const cell = e.target.closest('td[data-r]');
+    const cell = e.target.closest('td[data-r], table[data-rows] td');
     if (cell) lastCell = cell;
     selectEl(e.target);
   } else if (uxIsEmptySpace(e.target)) {
@@ -2170,27 +2410,33 @@ function sanitizePaste(s) {
     .replace(/\s+/g, ' ');
 }
 document.addEventListener('keydown', (e) => {
+  if (EXT.on.keydown.some((f) => { try { return f(e) === true; } catch (x) { console.error(x); return false; } })) return; // an extension handled it
   const mod = e.ctrlKey || e.metaKey;
-  const inText = e.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName || '') || e.composedPath?.().some((x) => x === host);
+  // R3: the real target (inside the shadow UI too): typing keys in an input stay there; a toolbar button does not swallow the shortcuts
+  const t0 = e.composedPath?.()[0] || e.target;
+  const inUi = !!e.composedPath?.().some((x) => x === host);
+  const inText = !!t0.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t0.tagName || '');
   if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); saveAll(); return; }
   if (mod && e.key.toLowerCase() === 'f') { e.preventDefault(); openDrawer('find'); return; }
   if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); openPalette(); return; }
   if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'p') { e.preventDefault(); pcOpenPrint(); return; } // the Print panel (print-center.js)
-  if (e.composedPath?.().some((x) => x === host)) { if (e.key === 'Escape') uxEscape(); return; }
-  if (!inText && !mod && !e.altKey && e.key.toLowerCase() === 'f') { e.preventDefault(); runAction('focus'); return; }
+  if (inUi && (inText || e.key === 'Escape')) { if (e.key === 'Escape') uxEscape(); return; }
+  if (!inText && !inUi && !mod && !e.altKey && e.key.toLowerCase() === 'f') { e.preventDefault(); runAction('focus'); return; }
   if (e.key === 'Escape' && S.focus) { runAction('focus'); return; }
   if (mod && !e.shiftKey && e.key.toLowerCase() === 'z' && !e.target.isContentEditable) { e.preventDefault(); undo(); return; }
   if (mod && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z')) && !e.target.isContentEditable) { e.preventDefault(); redo(); return; }
   if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); A.duplicate(); return; }
-  if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); A.move(e.key === 'ArrowUp' ? -1 : 1); return; }
+  if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); A.moveKey(e.key === 'ArrowUp' ? -1 : 1); return; }
+  if ((e.key === 'Delete') && !inText && S.sel?.b) { e.preventDefault(); A.delete(); return; }
+  if (inUi) return; // the toolbar keeps Enter, Space and the arrows for its own buttons
   if (e.key === 'Escape') { if (e.target.isContentEditable) e.target.blur(); S.sel = null; S.selOv = null; dgClear(); paintSel(); refreshUi(); return; }
-  if ((e.key === 'Delete') && !inText && S.sel?.b) { e.preventDefault(); A.delete(); }
   if (e.key === 'Enter' && e.target.isContentEditable) { e.preventDefault(); e.target.blur(); }
 });
 window.addEventListener('resize', () => paintSel());
 // leaving, hiding or closing the tab flushes a pending draft at once (a debounce must never lose the last edit)
 const flushDraft = () => { if (S.pending || S.dirty) writeDraft(); };
 window.addEventListener('pagehide', flushDraft);
+window.addEventListener('pagehide', () => emit('pagehide'));
 window.addEventListener('beforeunload', flushDraft);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushDraft(); });
 
@@ -2308,10 +2554,12 @@ function boot() {
   render(false);
   offerRecovery();
   window.BW.ready = true; // booted and rendered with the remembered state
+  // editor/ext/*.js load after this file: once the whole script has run, draw their sections and tell them
+  queueMicrotask(() => { if (EXT.sections.length || EXT.status) buildUi(); emit('boot'); emit('open', S.svc, S.ed); });
 }
 // a re-harvest that met a hand edit: the person's text was kept; show the source's new text beside it
 for (const [svc, eds] of Object.entries(M)) for (const [ed, e] of Object.entries(eds)) for (const c of e.doc.harvestConflicts || []) if (svc === S.svc) S.conflicts.push({ ed, path: c.path, mine: c.manual, theirs: c.harvested, kind: 'text' });
 if (S.conflicts.length) toast(t('reharvestConflicts', { n: S.conflicts.length }), 'warn', { actions: [[t('show'), () => openDrawer('conflicts')]], persist: true });
 { const n = (cur().doc.process?.actors || []).filter((a) => a.unresolved).length; if (n) toast(t('rolesUnresolved', { n }), 'warn', { actions: [[t('show'), () => openDrawer('process')]], persist: true }); }
-window.BW = { flushDraft, S, M, commit, runAction, DIAGRAM, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll };
+window.BW = { flushDraft, S, M, commit, runAction, toast, DIAGRAM, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll, EXT, emit, bwExt, openDrawer };
 boot();

@@ -27,3 +27,11 @@
 }
 html[data-bw-calm="1"] #bw-pair .bw-view > main.bw-doc { transition: none; }
 @media (prefers-reduced-motion: reduce) { #bw-pair .bw-view > main.bw-doc { transition: none; } }
+
+/* 0.13 A14: the check panel's jump rings what it found for 1.2 s (calm / reduced motion: a static ring) */
+@media screen {
+  main.bw-doc .bw-jump { outline: 3px solid var(--bw-accent, #be9a41); outline-offset: 3px; border-radius: 3px; animation: bw-jump 1.2s ease-out; }
+  @keyframes bw-jump { 0% { outline-offset: 10px; outline-color: transparent; } 30% { outline-offset: 3px; } }
+}
+html[data-bw-calm="1"] main.bw-doc .bw-jump { animation: none; }
+@media (prefers-reduced-motion: reduce) { main.bw-doc .bw-jump { animation: none; } }

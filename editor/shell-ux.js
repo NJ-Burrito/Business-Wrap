@@ -146,3 +146,37 @@ window.addEventListener('pointerdown', (e) => {
   open.forEach((m) => { if (!path.includes(m) && !path.includes(m.previousElementSibling)) uxMenuClose(m); });
 }, true);
 window.addEventListener('resize', () => uxMenusOpen().forEach((m) => uxMenuPlace(m, m.previousElementSibling)));
+
+/* ── 0.13 A7: side panels — each heading and what follows it is a group, collapsed except the first ──────────
+ * (and any the person opened, remembered per panel and position in sessionStorage; a group whose container
+ * carries data-grp-open starts open: Settings → local learning, a live panel). The Design panel keeps its own
+ * groups (design-panel.js); the Process panel is one form and stays flat. */
+function uxDrawerGroups(d, kind) {
+  if (kind === 'theme' || kind === 'process') return;
+  const heads = [...d.querySelectorAll('h3, h4')].filter((h) => !h.closest('details, header'));
+  heads.forEach((h, i) => {
+    const key = `bw:grp:${kind}:${i}`;
+    const det = document.createElement('details');
+    det.className = 'pgrp';
+    const sum = document.createElement('summary');
+    h.before(det);
+    det.append(sum);
+    sum.append(h);
+    for (let n = det.nextSibling; n && !(n.nodeType === 1 && (n.matches('h3, h4') || n.querySelector('h3, h4')));) { const nx = n.nextSibling; det.append(n); n = nx; }
+    let open = i === 0 || !!h.closest('[data-grp-open]'); // a group may declare it starts open (a live panel)
+    try { const v = sessionStorage.getItem(key); if (v != null) open = v === '1'; } catch { /* storage blocked: defaults */ }
+    det.open = open;
+    det.addEventListener('toggle', () => { try { sessionStorage.setItem(key, det.open ? '1' : '0'); } catch { /* storage blocked */ } });
+  });
+}
+
+/* ── 0.13 A8: a pointer press on the page (outside the whole editor UI) closes an open side panel ───────────
+ * The press still selects what it lands on (one click, not two). Presses inside the UI — the panel, its colour
+ * picker or font menu, the toolbar, menus, dialogs — keep it open; Esc keeps working. */
+window.addEventListener('pointerdown', (e) => {
+  if (!S.drawer) return;
+  const path = e.composedPath();
+  if (path.includes(host)) return;
+  if (path.some((x) => x.matches?.('dialog, [popover]'))) return;
+  closeDrawer();
+}, true);

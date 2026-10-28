@@ -12,7 +12,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fileURLToPath as toPath } from 'node:url';
+import { fileURLToPath as toPath, pathToFileURL } from 'node:url';
 import { exportPdf, exportDocx, pageThumbs, loadTheme, fontsFor, REPO, i18n, fileStem, userCwd } from './export.mjs';
 import { checkForUpdate, token, settings as updateSettings } from '../update/check.mjs';
 import { applyUpdate, STAGES } from '../update/apply.mjs';
@@ -28,6 +28,9 @@ const slug = fileStem;
 /** Exit code that asks the supervisor (the CLI below) to start the server again, on the new version. */
 export const RESTART_CODE = 75;
 const LOCAL_ORIGIN = /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/;
+/** Extension routes (0.13.0): engine/routes/*.mjs, sorted, each `export default async (req, url, send, ctx) => handled`. */
+export const ROUTES_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'routes');
+const loadRoutes = (dir) => Promise.all((fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith('.mjs')).sort() : []).map(async (f) => (await import(pathToFileURL(path.join(dir, f)).href)).default));
 
 /**
  * @param {string} editorFile
@@ -35,8 +38,10 @@ const LOCAL_ORIGIN = /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/;
  * @param {{out?: string, installDir?: string, onUpdated?: (r: object) => void}} o  `installDir`: the folder the
  *   updater replaces (default: this repository); `onUpdated`: called after a successful update (the CLI restarts).
  */
-export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdated = () => {} } = {}) {
+export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdated = () => {}, routesDir = ROUTES_DIR, workspace = null } = {}) {
   const OUT = path.resolve(out || path.join(path.dirname(editorFile), 'exports'));
+  const routes = loadRoutes(routesDir);
+  const ctx = { OUT, editorFile, workspace };
   const versionOf = () => JSON.parse(fs.readFileSync(path.join(installDir, 'package.json'), 'utf8')).version;
   let job = null; // the one update that may run: {stage, stages, ok, error, from, to}
   let last = null; // the last check's answer, for /api/version
@@ -172,6 +177,9 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
         const rel = (f) => `/files/${path.relative(OUT, f).split(path.sep).map(encodeURIComponent).join('/')}`;
         return send(200, { pdf: pdf.pdf, docx, docxError, fontNotes, pdfUrl: rel(pdf.pdf), docxUrl: docx && rel(docx) });
       }
+      // extension routes: a request that changes anything must come from this server's own page
+      if (req.method !== 'GET' && req.method !== 'HEAD' && req.headers.origin && !LOCAL_ORIGIN.test(req.headers.origin)) return send(403, { error: 'origin' });
+      for (const r of await routes) if (await r(req, url, send, ctx)) return;
       send(404, { error: 'not found' });
     } catch (e) {
       send(500, { error: String(e.message || e).slice(0, 400) });

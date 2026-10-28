@@ -197,6 +197,7 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
 .toasts { position: fixed; z-index: 60; inset-block-end: 22px; inset-inline-start: 50%; transform: translateX(-50%); display: grid; gap: 8px; justify-items: center; pointer-events: none; }
 .shell[dir="rtl"] .toasts { transform: translateX(50%); }
 .toast { pointer-events: auto; display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 16px; background: var(--deep); color: var(--on-glass); box-shadow: var(--bw-shadow-3); max-width: min(560px, 92vw); animation: toast-in var(--bw-dur-slow) var(--bw-ease-out) both; }
+.toast:not(.banner) { cursor: pointer; }
 .toast.out { animation: toast-out var(--bw-dur-base) var(--bw-ease-in) both; }
 /* status icons on the navy toast: the light ramp steps that read on the band (always beside a word) */
 .toast.ok .i { color: var(--bw-sec-edit); } .toast.err .i { color: var(--bw-sec-design); } .toast.warn .i { color: var(--bw-sec-file); } .toast.info .i { color: var(--bw-sec-insert); }
@@ -284,3 +285,16 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
   .island.has-sel .b.primary .w { display: none; }
 }
 .sec.now .pick select { max-width: 112px; }
+
+/* 0.13 A7: side-panel groups and alternating rows */
+.drawer details.pgrp { margin: 4px 0; }
+.drawer details.pgrp > summary { cursor: pointer; display: flex; align-items: center; gap: 6px; border-radius: 8px; padding: 2px 4px; }
+.drawer details.pgrp > summary > :is(h3, h4) { margin: 10px 0 6px; }
+.drawer details.pgrp > summary::before { content: ""; inline-size: 7px; block-size: 7px; border-inline-end: 2px solid currentColor; border-block-end: 2px solid currentColor; transform: rotate(-45deg); transition: transform .2s var(--e-out); color: var(--panel-soft); flex: none; }
+.shell[data-tdir="rtl"] .drawer details.pgrp > summary::before { transform: rotate(135deg); }
+.drawer details.pgrp[open] > summary::before { transform: rotate(45deg); }
+.drawer details.pgrp > summary::-webkit-details-marker { display: none; }
+.drawer .list > li { padding-inline: 8px; background: var(--panel); }
+.drawer .list > li:nth-child(even), .drawer .set-row:nth-of-type(even) { background: var(--wash-2); }
+.drawer .jump { font: inherit; font-size: 12px; color: var(--panel-ink); background: var(--wash); border: 1px solid var(--panel-line); border-radius: 8px; padding: 2px 8px; margin-inline-start: 6px; cursor: pointer; }
+.shell[data-calm="1"] .drawer details.pgrp > summary::before { transition: none; }

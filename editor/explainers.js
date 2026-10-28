@@ -1,5 +1,5 @@
 /* Business-Wrap editor — hover/focus explainers (0.10.0), concatenated after views.js.
- * Rest on a tool (pointer or keyboard focus) for 700 ms → a card: the tool's name, its shortcut, one plain sentence
+ * Rest on a tool (pointer or keyboard focus) for 900 ms (0.13; was 700) → a card: the tool's name, its shortcut, one plain sentence
  * (i18n `explain.<id>`, Arabic and English) and a small looping illustration of what it does (SVG + CSS motion,
  * one of a few scenes, carrying the tool's own icon). Moving to the next tool while a card is up shows the next card
  * at once (warm-up, as native tooltips do). Leaving, pressing, scrolling or Esc hides it. Reduced motion or calm mode:
@@ -30,8 +30,21 @@ function xplKey(el) {
   if (el.dataset.lab) return 'design.label';
   return '';
 }
+/* 0.13 A3: 900 ms rest; a card shown, or a tool pressed, is not shown again by pointer for 10 minutes
+ * (sessionStorage bw:xpl-seen). Settings: off ('0') / once (default) / always ('always': the 0.12 behaviour). */
+function xplDelay() { return 900; }
+function xplSeenMs() { return 10 * 60 * 1000; }
+function xplMode() { const v = ls.get('bw:explainers'); return v === '0' ? 'off' : v === 'always' ? 'always' : 'once'; }
+function xplSeen(k) {
+  if (xplMode() === 'always') return false;
+  try { const m = JSON.parse(sessionStorage.getItem('bw:xpl-seen') || '{}'); return Date.now() - (m[k] || 0) < xplSeenMs(); } catch { return false; }
+}
+function xplMark(k) {
+  if (!k) return;
+  try { const m = JSON.parse(sessionStorage.getItem('bw:xpl-seen') || '{}'); m[k] = Date.now(); sessionStorage.setItem('bw:xpl-seen', JSON.stringify(m)); } catch { /* storage blocked: no memory */ }
+}
 function xplTarget(node) {
-  if (ls.get('bw:explainers') === '0') return null; // Settings → Preferences: explainer cards off
+  if (xplMode() === 'off') return null; // Settings → Preferences: explainer cards off
   const el = node?.closest?.('button[data-a], select[data-a], select[data-dg], [data-x], .drawer [data-k], .drawer [data-f], .pop label.chk, .drawer :is([data-fpopen], [data-fplocal], [data-fpupload], [data-fprm], .vc-s, .vc-n, .vc-u, .cc-hex, input[type="color"], [data-dpart], [data-dmove], [data-lab])');
   if (!el || el.closest('.palette, .xpl')) return null;
   if (el.matches('.pop label.chk')) { el.dataset.x = el.dataset.x || 'both'; }
@@ -52,22 +65,30 @@ function xplWire() {
   root.addEventListener('pointerover', (e) => {
     if (e.pointerType === 'touch') return;
     const el = xplTarget(e.target);
-    if (!el || el === st.el) return;
-    arm(el, performance.now() < st.warmUntil ? 0 : 700);
+    if (!el || el === st.el || el === st.pressed || xplSeen(xplKey(el))) return;
+    arm(el, performance.now() < st.warmUntil ? 0 : xplDelay());
   });
   root.addEventListener('pointerout', (e) => {
     const el = xplTarget(e.target);
     if (!el || el.contains(e.relatedTarget)) return;
     clearTimeout(st.timer);
+    if (st.pressed === el) st.pressed = null; // the pointer left the pressed tool: it may explain again (unless seen)
     if (st.el === el) xplHide();
   });
   root.addEventListener('focusin', (e) => {
     const el = xplTarget(e.target);
-    if (!el || !el.matches(':focus-visible')) return;
-    arm(el, performance.now() < st.warmUntil ? 0 : 700);
+    if (!el || !el.matches(':focus-visible') || el === st.pressed) return;
+    if (xplSeen(xplKey(el))) { el.setAttribute('aria-description', t(`explain.${xplKey(el)}`)); return; } // seen: the words, no card
+    arm(el, performance.now() < st.warmUntil ? 0 : xplDelay());
   });
   root.addEventListener('focusout', () => { clearTimeout(st.timer); xplHide(); });
-  root.addEventListener('pointerdown', () => { clearTimeout(st.timer); xplHide(); }, true);
+  root.addEventListener('pointerdown', (e) => {
+    clearTimeout(st.timer);
+    xplHide();
+    const el = xplTarget(e.composedPath()[0]);
+    st.pressed = el; // after a press the card waits until the pointer leaves that control
+    if (el) xplMark(xplKey(el));
+  }, true);
   window.addEventListener('scroll', () => xplHide(), { passive: true });
   // Esc hides the card first, wherever the focus is (the next Esc does the usual)
   window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && xplHide()) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
@@ -115,6 +136,7 @@ function xplShow(el) {
   card.classList.remove('in'); void card.offsetWidth; card.classList.add('in');
   el.setAttribute('aria-describedby', 'bw-xpl');
   st.el = el;
+  xplMark(k);
 }
 
 /* ── illustrations: a scene per kind of action, with the tool's own icon ─────────────── */
