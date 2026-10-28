@@ -34,7 +34,7 @@ html[data-theme="dark"] .logo-light { display: none; } html[data-theme="dark"] .
 .topnav { display: flex; gap: 4px; }
 .topnav a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: var(--bw-radius-sm); color: var(--bw-ink); text-decoration: none; font-weight: 500; }
 .topnav a:hover { background: var(--bw-surface-2); }
-.topnav a[aria-current="page"] { box-shadow: inset 0 -3px 0 var(--bw-accent); }
+.topnav a[aria-current="page"] { box-shadow: inset 0 -3px 0 var(--bw-accent-strong); }
 .tbtn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; min-height: 44px; padding: 0 12px; border: 1px solid var(--bw-line); border-radius: var(--bw-radius-pill); background: var(--bw-surface); color: var(--bw-ink); font: 500 .95rem var(--bw-font-ui); cursor: pointer; transition: background var(--bw-dur-fast) var(--bw-ease-out), border-color var(--bw-dur-fast); }
 .tbtn:hover { border-color: var(--bw-line-strong); background: var(--bw-surface-2); }
 .ui { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
@@ -83,10 +83,14 @@ html[data-theme="dark"] .logo-light { display: none; } html[data-theme="dark"] .
 [lang="ar"] .kicker { text-transform: none; letter-spacing: 0; }
 
 /* the sweep: the brand's one highlighter move per view, from the reading start */
-.sweep { position: relative; isolation: isolate; padding-inline: .12em; white-space: nowrap; }
-.sweep::before { content: ""; position: absolute; z-index: -1; inset: 18% -.04em 8%; background: var(--bw-accent); border-radius: 3px; transform-origin: left center; transform: scaleX(1); }
+.sweep { position: relative; isolation: isolate; padding-inline: .12em; white-space: nowrap; color: var(--bw-on-marker); }
+/* the marker covers the whole glyph box, so every letter is on-marker ink on the marker (AAA in both themes, contrast.md) */
+.sweep::before { content: ""; position: absolute; z-index: -1; inset: .02em -.04em -.04em; background: var(--bw-marker); border-radius: .14em .3em .16em .28em; transform-origin: left center; transform: scaleX(1); }
 [dir="rtl"] .sweep::before, .sweep:dir(rtl)::before { transform-origin: right center; }
+/* with motion, the words keep page ink until the marker has crossed them, then take on-marker ink */
+.motion .sweep { color: inherit; }
 .motion .sweep::before { transform: scaleX(0); transition: transform var(--bw-dur-story) var(--bw-ease-in-out) 200ms; }
+.motion .is-inview .sweep, .motion .sweep.is-inview { color: var(--bw-on-marker); transition: color var(--bw-dur-fast) linear 950ms; }
 .motion .is-inview .sweep::before, .motion .sweep.is-inview::before { transform: scaleX(1); }
 
 /* how it works */
@@ -167,7 +171,7 @@ html[data-theme="dark"] .site-foot { background: var(--bw-surface-sunk); color: 
 /* legal pages */
 .doc { max-width: 760px; padding: 48px 0 72px; }
 .doc h1 { font-size: clamp(2rem, 4.5vw, var(--bw-size-3xl)); margin-bottom: 12px; }
-.doc .verdict { font-size: 1.2rem; font-weight: 700; margin: 16px 0 28px; padding: 16px 18px; border-inline-start: 6px solid var(--bw-accent); background: var(--bw-surface); border-radius: var(--bw-radius-sm); }
+.doc .verdict { font-size: 1.2rem; font-weight: 700; margin: 16px 0 28px; padding: 16px 18px; border-inline-start: 6px solid var(--bw-accent-strong); background: var(--bw-surface); border-radius: var(--bw-radius-sm); }
 .doc h2 { font-size: var(--bw-size-xl); margin: 36px 0 12px; }
 .doc ul { padding-inline-start: 1.2em; display: grid; gap: 8px; }
 .doc p + p { margin-top: 12px; }

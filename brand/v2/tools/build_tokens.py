@@ -74,7 +74,7 @@ def css() -> str:
     lines += ["  }", "}"]
     lines += [
         "/* Base helpers any consumer may use. */",
-        ".bw-highlight { background: linear-gradient(transparent 12%, var(--bw-accent) 12%, var(--bw-accent) 88%, transparent 88%); color: var(--bw-on-accent); padding-inline: .15em; border-radius: 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }",
+        ".bw-highlight { background: var(--bw-marker); color: var(--bw-on-marker); padding-inline: .15em; border-radius: .14em .3em .16em .28em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }",
         ":where(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 3px solid var(--bw-focus); outline-offset: 2px; }",
     ]
     return "\n".join(lines) + "\n"
@@ -94,7 +94,11 @@ def contrast() -> tuple[str, int]:
             cells.append(f"{r:.2f} {'pass' if ok else 'FAIL'}")
         rows.append(f"| `{fg}` | `{bg}` | {use} | {mn} | {cells[0]} | {cells[1]} |")
     rows += ["", "The highlighter `accent` is a fill behind `on-accent` ink, never text or a thin line on a light ground "
-             f"(accent on light bg = {ratio(T['color']['light']['accent'], T['color']['light']['bg']):.2f}:1); on light grounds a graphic accent uses `accent-strong`."]
+             f"(accent on light bg = {ratio(T['color']['light']['accent'], T['color']['light']['bg']):.2f}:1); on light grounds a graphic accent uses `accent-strong`.",
+             "", "Text under the highlighter (the heading sweep, `.bw-highlight`) is always `on-marker` on `marker`, in both themes, and the "
+             "marker covers the whole glyph box (ascenders to descenders), so no letter stroke sits half on the marker and half on the page. "
+             f"Never page ink on the marker: before this rule, dark `ink` on `accent` was {ratio(T['color']['dark']['ink'], T['color']['dark']['accent']):.2f}:1. "
+             "Icons fill their highlighter part with `marker-icon`, which in dark is a deep lime so the `primary` strokes stay legible across it."]
     rows.append(f"\nResult: {'all pairs pass' if not fails else f'{fails} FAIL'}.")
     return "\n".join(rows) + "\n", fails
 
