@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // business-wrap update — the version check and the update, for people and for agents.
+// business-wrap <verb> … — any other verb runs engine/cli.mjs (business-wrap help lists them).
 //
 //   business-wrap update --check [--json] [--lang ar|en] [--force]   one line when an update exists (cached, at most one request a day)
 //   business-wrap update --apply --yes                                update this install, keeping .local, design/custom, logos, fonts/custom, drafts, out
@@ -58,4 +59,7 @@ async function main() {
 }
 
 // set the exit code and let the loop drain: process.exit() with a socket still closing trips a libuv assertion on Windows
-main().then((code) => { process.exitCode = code; }, () => { process.exitCode = 0; });
+// 0.13.0 B1: every verb other than `update` is the script-first CLI (engine/cli.mjs: open, close, status, harvest …)
+const FIRST = process.argv[2];
+if (FIRST && FIRST !== 'update' && !FIRST.startsWith('-')) import('../engine/cli.mjs').then((m) => m.main(process.argv.slice(2))).then((code) => { process.exitCode = code; });
+else main().then((code) => { process.exitCode = code; }, () => { process.exitCode = 0; });
