@@ -370,7 +370,7 @@ try {
     const wm = pa.locator('#bw-watermark');
     const st = await pa.evaluate(() => { const w = document.getElementById('bw-watermark'); const r = w.getBoundingClientRect(); return { n: w.querySelectorAll('img').length, intro: w.dataset.intro, x: r.left, dir: w.dir }; });
     check(`${ui}: avatar mounted with 4 roles + intro, intro plays first`, st.n === 5 && st.intro === 'playing', JSON.stringify(st));
-    check(`${ui}: avatar sits on the UI's start side (mirrors)`, ui === 'ar' ? st.x > 1000 && st.dir === 'rtl' : st.x < 200 && st.dir === 'ltr', JSON.stringify(st));
+    check(`${ui}: avatar keeps the default layout's corner (bottom right) in both languages; its words follow the UI`, st.x > 1000 && st.dir === (ui === 'ar' ? 'rtl' : 'ltr'), JSON.stringify(st)); // 0.10.0: the layout never flips
     await wm.locator('.bw-wm-stage').click(); // skips the intro, as on the portfolio
     const r0 = await pa.evaluate(() => [document.getElementById('bw-watermark').dataset.role, document.querySelector('#bw-watermark img.on').dataset.i]);
     await wm.locator('.bw-wm-stage').click();
@@ -425,8 +425,8 @@ try {
     pu.on('pageerror', (e) => errU.push(e.message));
     await pu.goto(editorUrl);
     await pu.waitForFunction(() => window.BW?.ready);
-    const labels = await pu.evaluate(() => { const sh = document.getElementById('bw-ui-host').shadowRoot; return { ed: [...sh.querySelectorAll('[data-a="ed"]')].map((b) => b.textContent.trim()), ui: [...sh.querySelectorAll('[data-a="dir"]')].map((b) => b.textContent.trim()), named: [...sh.querySelectorAll('[data-a="ed"], [data-a="dir"]')].every((b) => b.getAttribute('aria-label') && b.title), icons: sh.querySelectorAll('.seg.lang .cap svg, .seg.ui .cap svg').length, brandWords: sh.querySelector('.brand').innerText.trim(), brandSvg: !!sh.querySelector('.brand svg'), dir: sh.querySelector('.shell').dir }; });
-    check(`${uiL} UI: language reads «ع» / «E», direction reads RTL / LTR (icon, tooltip, name), the brand is a logo not words`, JSON.stringify(labels.ed) === '["ع","E"]' && JSON.stringify(labels.ui) === '["RTL","LTR"]' && labels.named && labels.icons === 2 && labels.brandWords === '' && labels.brandSvg && labels.dir === (uiL === 'ar' ? 'rtl' : 'ltr'), JSON.stringify(labels));
+    const labels = await pu.evaluate(() => { const sh = document.getElementById('bw-ui-host').shadowRoot; return { ed: [...sh.querySelectorAll('[data-a="ed"]')].map((b) => b.textContent.trim()), ui: [...sh.querySelectorAll('[data-a="dir"]')].map((b) => b.textContent.trim()), named: [...sh.querySelectorAll('[data-a="ed"], [data-a="dir"]')].every((b) => b.getAttribute('aria-label') && b.title), icons: sh.querySelectorAll('.seg.lang .cap svg, .seg.ui .cap svg').length, brandWords: sh.querySelector('.brand').innerText.trim(), brandSvg: !!sh.querySelector('.brand svg'), dir: sh.querySelector('.shell').dir, tdir: sh.querySelector('.shell').dataset.tdir }; });
+    check(`${uiL} UI: language reads «ع» / «E», direction reads RTL / LTR (icon, tooltip, name), the brand is a logo not words`, JSON.stringify(labels.ed) === '["ع","E"]' && JSON.stringify(labels.ui) === '["RTL","LTR"]' && labels.named && labels.icons === 2 && labels.brandWords === '' && labels.brandSvg && labels.dir === 'rtl' && labels.tdir === (uiL === 'ar' ? 'rtl' : 'ltr'), JSON.stringify(labels)); // 0.10.0: the layout stays right-to-left, the words follow
     {
       // direction is independent of the language: flip it, the language and edition stay; the choice is remembered
       // flip against the edition's own direction (the UI language alone does not pick the edition)
@@ -434,7 +434,7 @@ try {
       const flip = natural === 'rtl' ? 'ltr' : 'rtl';
       const sh = () => pu.evaluateHandle(() => document.getElementById('bw-ui-host').shadowRoot);
       await (await sh()).evaluate((r, d) => r.querySelector(`[data-a="dir"][data-d="${d}"]`).click(), flip);
-      const st = await pu.evaluate(() => ({ ui: window.BW.S.ui, ed: window.BW.S.ed, shell: document.getElementById('bw-ui-host').shadowRoot.querySelector('.shell').dir, doc: document.querySelector('main.bw-doc').dir, saved: localStorage.getItem('bw:dir') }));
+      const st = await pu.evaluate(() => ({ ui: window.BW.S.ui, ed: window.BW.S.ed, shell: document.getElementById('bw-ui-host').shadowRoot.querySelector('.shell').dataset.tdir, doc: document.querySelector('main.bw-doc').dir, saved: localStorage.getItem('bw:dir') }));
       await pu.reload();
       await pu.waitForFunction(() => window.BW?.ready);
       // wait on the outcome (the remembered direction applied), then report what the reopened page holds

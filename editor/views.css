@@ -1,0 +1,29 @@
+/* Page view modes (0.10.0): single page and two-page book spread. Screen only — print, the PDF and the DOCX never see them.
+   Each page is one CSS column of an A4 sheet; the window (.bw-view) shows one or two and slides between them. */
+@media screen {
+  #bw-pair[data-pages="single"], #bw-pair[data-pages="spread"] { display: flex; justify-content: center; padding: 16px 0 76px; }
+  #bw-pair .bw-view { --pw: 210mm; --pg: 12mm; --ph: 297mm; zoom: var(--bw-pz, .6); width: var(--pw); height: var(--ph); overflow: clip; overflow-clip-margin: 3mm; flex: none; position: relative; }
+  #bw-pair[data-pages="spread"] .bw-view { width: calc(var(--pw) * 2 + var(--pg)); }
+  /* the edition flows into page-sized columns; the window slides along them */
+  #bw-pair .bw-view > main.bw-doc {
+    zoom: 1; width: var(--pw); height: var(--ph); margin: 0; border-radius: 0; box-shadow: none; background: transparent;
+    column-width: var(--pw); column-gap: var(--pg); column-fill: auto;
+    transform: translateX(var(--shift, 0)); transition: transform .62s cubic-bezier(.32, .72, 0, 1);
+  }
+  /* the open book: the cover stands alone on its own side, then pages pair up */
+  #bw-pair[data-pages="spread"] .bw-view > main.bw-doc { margin-inline-start: calc(var(--pw) + var(--pg)); }
+  /* a forced page break starts a new page here too; text pages keep the print margins */
+  #bw-pair .bw-view main.bw-doc .cover { break-after: column; height: var(--ph); }
+  #bw-pair .bw-view main.bw-doc :is(.chapter.wide, .chapter.wide + .chapter, table.toc-cont, .bw-break) { break-before: column; }
+  #bw-pair .bw-view main.bw-doc .wrap { box-decoration-break: clone; -webkit-box-decoration-break: clone; padding-block: 18mm 16mm; }
+  /* paper: one sheet per column, painted behind the flow, each with its own shadow */
+  #bw-pair .bw-view > main.bw-doc::before {
+    content: ""; position: absolute; inset-block: 0; inset-inline-start: 0; z-index: -1; pointer-events: none;
+    width: calc(var(--pages, 60) * (var(--pw) + var(--pg)));
+    background: repeating-linear-gradient(to right, var(--paper, #fafaf9) 0 var(--pw), transparent var(--pw) calc(var(--pw) + var(--pg)));
+    filter: drop-shadow(0 1px 1px rgba(0, 30, 61, .16)) drop-shadow(0 4px 6px rgba(0, 30, 61, .12));
+  }
+  #bw-pair .bw-view > main.bw-doc[dir="rtl"]::before { background: repeating-linear-gradient(to left, var(--paper, #fafaf9) 0 var(--pw), transparent var(--pw) calc(var(--pw) + var(--pg))); }
+}
+html[data-bw-calm="1"] #bw-pair .bw-view > main.bw-doc { transition: none; }
+@media (prefers-reduced-motion: reduce) { #bw-pair .bw-view > main.bw-doc { transition: none; } }

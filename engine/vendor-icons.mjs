@@ -28,6 +28,8 @@ const MAP = {
   dgMermaidIn: 'file-input', dgMermaidOut: 'file-output', dgReverse: 'arrow-right-left', dgFrom: 'unplug', dgTo: 'unplug', dgLegend: 'list', dgEdgeLabel: 'pencil',
   dgBendAdd: 'spline-pointer', dgBendDel: 'circle-minus', dgRouteAuto: 'route', dgZoomIn: 'zoom-in', dgZoomOut: 'zoom-out', dgZoomFit: 'scan', dgZoom100: 'ratio',
   secFile: 'folder', secInsert: 'square-plus', secEdit: 'pen-line', secDocument: 'file-text', secDesign: 'palette', secView: 'eye', secExport: 'file-down', more: 'ellipsis', secSel: 'spline',
+  // page view modes (0.10.0)
+  'view.continuous': 'scroll-text', 'view.single': 'file', 'view.spread': 'book-open', 'view.left': 'chevron-left', 'view.right': 'chevron-right',
 };
 const out = {};
 for (const [k, name] of Object.entries(MAP)) {

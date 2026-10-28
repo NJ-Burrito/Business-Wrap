@@ -64,6 +64,7 @@ const t = (k, vars = {}) => {
   for (const [a, b] of Object.entries(vars)) s = s.replace(`{${a}}`, b);
   return s;
 };
+const tAlt = (k) => I18N.ui[S.ui === 'ar' ? 'en' : 'ar'][k] ?? ''; // the other language's word (toolbar parity measure)
 const kindName = (k) => (I18N.ui[S.ui].kinds || {})[k] || k;
 
 /* ── rendering ─────────────────────────────────────────────────────────── */
@@ -98,7 +99,7 @@ function render(keepScroll = true) {
   pair.innerHTML = html;
   if (S.dir) pair.querySelectorAll('main.bw-doc').forEach((m) => { m.dir = S.dir; }); // view only; exports keep the edition's direction
   document.documentElement.lang = S.ed;
-  document.documentElement.dir = S.dir || dirOf(S.ed);
+  document.documentElement.dir = LAYOUT_DIR; // the layout never flips (0.10.0): only the words' direction follows S.dir / the language
   document.documentElement.style.setProperty('--bw-zoom', String(S.zoom));
   decorate();
   if (keepScroll) window.scrollTo(0, y);
@@ -106,6 +107,7 @@ function render(keepScroll = true) {
   refreshUi();
   dgZoomAll();
   if (S.dg) dgPaint();
+  viewsApply();
 }
 function mainOf(ed) {
   return document.querySelector(`#bw-pair main.bw-doc[data-locale="${ed}"]`);
@@ -457,6 +459,7 @@ window.addEventListener('beforeprint', () => {
   const main = mainOf(S.ed);
   if (!main) return;
   document.documentElement.classList.add('bw-printing');
+  viewsUnpage(); // views.js: print measures the plain sheet, never the paged view (afterprint re-renders it)
   relaxTallGroups(relaxArgs());
 });
 window.addEventListener('afterprint', () => {
@@ -927,7 +930,7 @@ const CMDS = [
   ['undo', 'edit', 'Ctrl+Z'], ['redo', 'edit', 'Ctrl+Y'], ['find', 'edit', 'Ctrl+F'],
   ['newdoc', 'document'], ['process', 'document'], ['outline', 'document'], ['pages', 'document'], ['check', 'document'], ['history', 'document'], ['renumber', 'document'], ['webhooks', 'document'],
   ['theme', 'design'], ['styleThis', 'design'], ['hideBlock', 'design'],
-  ['side', 'view'], ['uiLang', 'view'], ['dir', 'view'], ['dark', 'view'], ['calm', 'view'], ['focus', 'view', 'F'], ['spell', 'view'], ['snap', 'view'], ['zoomOut', 'view'], ['zoomIn', 'view'],
+  ['side', 'view'], ['uiLang', 'view'], ['dir', 'view'], ['dark', 'view'], ['calm', 'view'], ['focus', 'view', 'F'], ['spell', 'view'], ['snap', 'view'], ['zoomOut', 'view'], ['zoomIn', 'view'], ['view.continuous', 'view'], ['view.single', 'view'], ['view.spread', 'view'],
   ['exportPdf', 'export'], ['print', 'export', 'Ctrl+P'],
   ['duplicate', 'text', 'Ctrl+D'], ['delete', 'text', 'Del'], ['moveUp', 'text', 'Alt+↑'], ['moveDown', 'text', 'Alt+↓'], ['comment', 'text'], ['breakBefore', 'text'], ['keepNext', 'text'],
   ['rowAdd', 'table'], ['rowDel', 'table'], ['colAdd', 'table'], ['colDel', 'table'],
@@ -945,14 +948,15 @@ function sec(cat, tools) {
   // the first tool always shows; the rest sit inline while the bar has room and fold into this section's «More» when it has not
   const rest = tools.slice(1);
   const tail = rest.length ? `<div class="more tail"><button type="button" class="b" data-a="more" aria-expanded="false" aria-haspopup="true" title="${esc(t('more'))}: ${esc(name)}" aria-label="${esc(t('more'))}: ${esc(name)}"><span class="i">${ic('more')}</span></button><div class="menu fm" role="group" aria-label="${esc(name)}">${rest.join('')}</div></div>` : '';
-  return `<div class="sec" data-cat="${cat}" role="group" aria-label="${esc(name)}"><span class="sc" aria-hidden="true"><span class="i">${ic('sec' + cat[0].toUpperCase() + cat.slice(1))}</span><span class="st">${esc(name)}</span></span><div class="sb">${tools[0] || ''}${tail}</div></div>`;
+  return `<div class="sec" data-cat="${cat}" role="group" aria-label="${esc(name)}"><span class="sc" aria-hidden="true"><span class="i">${ic('sec' + cat[0].toUpperCase() + cat.slice(1))}</span><span class="st" data-alt="${esc(tAlt('sec' + cat[0].toUpperCase() + cat.slice(1)))}">${esc(name)}</span></span><div class="sb">${tools[0] || ''}${tail}</div></div>`;
 }
 function btn(id, { label = t(id), tip = '', pressed, cls = '', extra = '' } = {}) {
-  return `<button type="button" class="b ${cls}" data-a="${id}" title="${esc(tip || label)}"${pressed !== undefined ? ` aria-pressed="${pressed}"` : ''}${extra}><span class="i">${ic(id)}</span><span class="w">${esc(label)}</span></button>`;
+  return `<button type="button" class="b ${cls}" data-a="${id}" title="${esc(tip || label)}"${pressed !== undefined ? ` aria-pressed="${pressed}"` : ''}${extra}><span class="i">${ic(id)}</span><span class="w"${label === t(id) ? ` data-alt="${esc(tAlt(id))}"` : ''}>${esc(label)}</span></button>`;
 }
 const dirOf = (l) => (l === 'ar' ? 'rtl' : 'ltr');
 const langWord = (l) => (l === 'ar' ? 'ع' : 'E');
 const uiDir = () => S.dir || dirOf(S.ui);
+const LAYOUT_DIR = 'rtl'; // the default (Arabic) layout: toolbar, panels, page and watermark never move (0.10.0)
 
 function buildUi() {
   const svcOpts = DATA.services.map((s) => `<option value="${esc(s.id)}" ${s.id === S.svc ? 'selected' : ''}>${esc(s.editions[S.ed]?.name || s.editions.ar?.name || s.id)}</option>`).join('');
@@ -960,13 +964,13 @@ function buildUi() {
   const theme = S.dark ? 'dark' : 'light';
   setRootFlags();
   root.innerHTML = `<style>${DATA.uiCss}</style>
-<section class="shell${buildUi.done ? '' : ' first'}" aria-label="${esc(t('appName'))}" dir="${uiDir()}" lang="${S.ui}" data-theme="${theme}" data-calm="${isCalm() ? '1' : '0'}">
+<section class="shell${buildUi.done ? '' : ' first'}" aria-label="${esc(t('appName'))}" dir="${LAYOUT_DIR}" data-tdir="${uiDir()}" lang="${S.ui}" data-theme="${theme}" data-calm="${isCalm() ? '1' : '0'}">
   <div class="island bar" role="toolbar" aria-label="${esc(t('toolbar'))}">
     <span class="brand" role="img" aria-label="${esc(t('appName'))}">${DATA.brand?.mark || ''}</span>
     <div class="grp doc">
-      <label class="pick"><span class="vh">${esc(t('service'))}</span><select data-a="svc" aria-label="${esc(t('service'))}">${svcOpts}</select></label>
-      <div class="seg lang" role="group" aria-label="${esc(t('language'))}"><span class="cap" aria-hidden="true"><span class="i">${ic('ed')}</span>${esc(t('language'))}</span>
-        ${['ar', 'en'].map((l) => `<button type="button" data-a="ed" data-ed="${l}" lang="${l}" aria-pressed="${l === S.ui}" aria-label="${langWord(l)}: ${esc(t(l === 'ar' ? 'langAr' : 'langEn'))}" title="${esc(t(l === 'ar' ? 'langAr' : 'langEn'))}">${langWord(l)}</button>`).join('')}
+      <label class="pick"><span class="vh">${esc(t('service'))}</span><select data-a="svc" aria-label="${esc(t('service'))}" data-alt="${esc(DATA.services.find((s) => s.id === S.svc)?.editions[other()]?.name || '')}">${svcOpts}</select></label>
+      <div class="seg lang" role="group" data-x="ed" aria-label="${esc(t('language'))}"><i class="thumb" aria-hidden="true"></i><span class="cap" aria-hidden="true"><span class="i">${ic('ed')}</span><span class="cw" data-alt="${esc(tAlt('language'))}">${esc(t('language'))}</span></span>
+        ${['ar', 'en'].map((l) => `<button type="button" data-a="ed" data-ed="${l}" lang="${l}" aria-pressed="${l === S.ui}" aria-label="${langWord(l)}: ${esc(t(l === 'ar' ? 'langAr' : 'langEn'))}" title="${esc(t(l === 'ar' ? 'langAr' : 'langEn'))}"><span class="sw">${langWord(l)}</span></button>`).join('')}
       </div>
     </div>
     <div class="ctx sec now" role="group" hidden></div>
@@ -978,12 +982,12 @@ function buildUi() {
     ${sec('export', [btn('exportPdf', { tip: t('exportPdfTip') })])}
     <span class="spacer"></span>
     <div class="status" role="status" aria-live="polite">
-      <span class="count" aria-label="${esc(t('changes', { n: liveOps(cur()).length }))}"><span class="n">${liveOps(cur()).length}</span><span class="w">${esc(t('changesWord'))}</span></span>
+      <span class="count" aria-label="${esc(t('changes', { n: liveOps(cur()).length }))}"><span class="n">${liveOps(cur()).length}</span><span class="w" data-alt="${esc(tAlt('changesWord'))}">${esc(t('changesWord'))}</span></span>
       <span class="sel vh">${esc(selDesc())}</span><span class="flash vh"></span>
     </div>
     <div class="sec" data-cat="view" role="group" aria-label="${esc(t('secView'))}"><span class="sc" aria-hidden="true"><span class="i">${ic('secView')}</span><span class="st">${esc(t('secView'))}</span></span><div class="sb">
-    <div class="seg ui" role="group" aria-label="${esc(t('direction'))}"><span class="cap" aria-hidden="true"><span class="i">${ic('dir')}</span>${esc(t('direction'))}</span>
-      ${['rtl', 'ltr'].map((d) => `<button type="button" data-a="dir" data-d="${d}" aria-pressed="${uiDir() === d}" aria-label="${esc(t(d))}: ${esc(t(d === 'rtl' ? 'dirRtl' : 'dirLtr'))}" title="${esc(t(d === 'rtl' ? 'dirRtl' : 'dirLtr'))}">${esc(t(d))}</button>`).join('')}
+    <div class="seg ui" role="group" data-x="dir" aria-label="${esc(t('direction'))}"><i class="thumb" aria-hidden="true"></i><span class="cap" aria-hidden="true"><span class="i">${ic('dir')}</span><span class="cw" data-alt="${esc(tAlt('direction'))}">${esc(t('direction'))}</span></span>
+      ${['rtl', 'ltr'].map((d) => `<button type="button" data-a="dir" data-d="${d}" aria-pressed="${uiDir() === d}" aria-label="${esc(t(d))}: ${esc(t(d === 'rtl' ? 'ux.dirRtl' : 'ux.dirLtr'))}" title="${esc(t(d === 'rtl' ? 'ux.dirRtl' : 'ux.dirLtr'))}"><span class="sw">${esc(t(d))}</span></button>`).join('')}
     </div>
     ${btn('view', { extra: ` aria-expanded="${S.view}" aria-controls="viewpop"` })}
     </div></div>
@@ -996,6 +1000,7 @@ function buildUi() {
     ${btn('dark', { pressed: S.dark })}${btn('calm', { pressed: S.calm })}${btn('focus', { pressed: S.focus })}
     ${btn('spell', { pressed: S.spell[S.ed] })}${btn('snap', { pressed: S.snap })}
     ${btn('zoomOut', { label: t('zoom') + ' −' })}${btn('zoomIn', { label: t('zoom') + ' +' })}
+    ${viewsSeg()}
   </div>
   <div class="drawer" role="dialog" aria-modal="false" hidden data-theme="${theme}"></div>
   <div class="dialog" role="dialog" aria-modal="true" hidden data-theme="${theme}"></div>
@@ -1020,13 +1025,14 @@ function buildUi() {
   measureBar();
   if (S.drawer) openDrawer(S.drawer);
   placeCtx();
+  uxAfterBuild(); // shell-ux.js: the selection section survives a rebuild, segment thumbs, explainers
 }
 // The page never jumps under the reader: the reserved band only grows (wrap, font load), resets only for focus mode.
 let barH = 0;
 function measureBar() {
   const bar = root.querySelector('.island');
   if (S.focus || !bar) { barH = 0; document.documentElement.style.setProperty('--bw-bar-h', '12px'); return; }
-  const h = Math.round(bar.getBoundingClientRect().bottom + 12);
+  const h = Math.round(bar.offsetTop + bar.offsetHeight + 12); // layout box: never the entry animation's mid-flight transform
   if (h > barH) { barH = h; document.documentElement.style.setProperty('--bw-bar-h', `${h}px`); }
 }
 /** The bar never scrolls sideways when it can fold: first each section's extra tools go into its «More»,
@@ -1037,12 +1043,14 @@ function fitBar() {
   bar.classList.remove('sq0', 'sq1', 'sq2', 'sq3', 'sq4');
   const secs = [...bar.querySelectorAll('.sec:not(.now)')].filter((x) => x.querySelector('.more.tail'));
   secs.forEach((x) => x.classList.remove('folded'));
+  const restore = uxWidest(bar); // shell-ux.js: AR/EN parity
   const over = () => bar.scrollWidth > bar.clientWidth;
   // each step only while the bar still overflows: the general tools' words → one section at a time (last first)
   // folds its extra tools into its «More» → the selection's words → the picker; section titles never go
   if (over()) bar.classList.add('sq0');
   for (const x of secs.reverse()) { if (!over()) break; x.classList.add('folded'); bar.classList.add('sq1'); }
   for (const step of ['sq2', 'sq3', 'sq4']) { if (!over()) break; bar.classList.add(step); }
+  restore();
 }
 window.addEventListener('resize', () => fitBar());
 let lastCount = -1;
@@ -1109,7 +1117,8 @@ function buildCtx(b, tb) {
     const more = all.slice(4);
     // kept tools (the diagram's zoom) stay in view as icons, after the first four
     const kept = (m.keep || []).map((id) => btn(id, { cls: 'ico' })).join('');
-    ctx.innerHTML = `<span class="sc"><span class="i" aria-hidden="true">${ic('secSel')}</span><span class="st">${esc(m.label)}</span></span><div class="sb">${first.map((id) => ctxTool(id, ov)).join('')}${kept ? `<span class="keep-tools" role="group" aria-label="${esc(t('zoom'))}">${kept}</span>` : ''}${more.length ? `<div class="more"><button type="button" class="b" data-a="more" aria-expanded="false" aria-haspopup="true" title="${esc(t('more'))}"><span class="i">${ic('more')}</span><span class="w">${esc(t('more'))}</span></button><div class="menu" role="group" aria-label="${esc(t('more'))}" hidden>${more.map((id) => ctxTool(id, ov)).join('')}</div></div>` : ''}</div>`;
+    const ui0 = S.ui; S.ui = other(ui0); const altLabel = ctxModel(b, tb)?.label || ''; S.ui = ui0; // the other language's title, for the parity measure
+    ctx.innerHTML = `<span class="sc"><span class="i" aria-hidden="true">${ic('secSel')}</span><span class="st" data-alt="${esc(altLabel)}">${esc(m.label)}</span></span><div class="sb">${first.map((id) => ctxTool(id, ov)).join('')}${kept ? `<span class="keep-tools" role="group" aria-label="${esc(t('zoom'))}">${kept}</span>` : ''}${more.length ? `<div class="more"><button type="button" class="b" data-a="more" aria-expanded="false" aria-haspopup="true" title="${esc(t('more'))}"><span class="i">${ic('more')}</span><span class="w">${esc(t('more'))}</span></button><div class="menu" role="group" aria-label="${esc(t('more'))}" hidden>${more.map((id) => ctxTool(id, ov)).join('')}</div></div>` : ''}</div>`;
     if (!isCalm()) { ctx.classList.remove('swap'); void ctx.offsetWidth; ctx.classList.add('swap'); }
   }
   ctx.hidden = false;
@@ -1236,6 +1245,7 @@ function closePalette() {
 }
 
 async function onBar(e) {
+  if (uxSegClick(e)) return; // shell-ux.js: a click anywhere on a segmented field toggles it
   const b = e.target.closest('button[data-a]');
   if (!b || b.closest('.palette')) return;
   const a = b.dataset.a;
@@ -1312,6 +1322,11 @@ async function runAction(a) {
     case 'zoomIn': S.zoom = Math.min(2, +(S.zoom + 0.1).toFixed(2)); render(); break;
     case 'zoomOut': S.zoom = Math.max(0.4, +(S.zoom - 0.1).toFixed(2)); render(); break;
     case 'spell': S.spell[S.ed] = !S.spell[S.ed]; buildUi(); render(); break;
+    case 'view.continuous': viewsSet('continuous'); break;
+    case 'view.single': viewsSet('single'); break;
+    case 'view.spread': viewsSet('spread'); break;
+    case 'view.prev': viewsGo(-1); break;
+    case 'view.next': viewsGo(1); break;
     default: await dgAction(a); break;
   }
 }
@@ -2069,7 +2084,7 @@ document.addEventListener('click', (e) => {
     const cell = e.target.closest('td[data-r]');
     if (cell) lastCell = cell;
     selectEl(e.target);
-  } else if (e.target.closest?.('#bw-pair') || e.target === document.body || e.target === document.documentElement) {
+  } else if (uxIsEmptySpace(e.target)) {
     // a click on empty page or background: the general tools come back
     if (S.sel || S.selOv != null || S.dg) { S.sel = null; S.selOv = null; dgClear(); paintSel(); refreshUi(); }
   }
@@ -2125,7 +2140,7 @@ document.addEventListener('keydown', (e) => {
   if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); saveAll(); return; }
   if (mod && e.key.toLowerCase() === 'f') { e.preventDefault(); openDrawer('find'); return; }
   if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); openPalette(); return; }
-  if (e.composedPath?.().some((x) => x === host)) { if (e.key === 'Escape') { if (S.view) { S.view = false; buildUi(); } else closeDrawer(); } return; }
+  if (e.composedPath?.().some((x) => x === host)) { if (e.key === 'Escape') uxEscape(); return; }
   if (!inText && !mod && !e.altKey && e.key.toLowerCase() === 'f') { e.preventDefault(); runAction('focus'); return; }
   if (e.key === 'Escape' && S.focus) { runAction('focus'); return; }
   if (mod && !e.shiftKey && e.key.toLowerCase() === 'z' && !e.target.isContentEditable) { e.preventDefault(); undo(); return; }
