@@ -59,6 +59,6 @@
 
 ## 5. Handing a document to a colleague
 1. Export the outputs (PDF, DOCX).
-2. Send the hand-over set: document JSON + `edits.json` + `theme.json` (+ logos they are allowed to use). Fonts are NOT sent: the colleague installs a licensed copy (`fonts/README.md`).
+2. Send the hand-over set: document JSON + `edits.json` + `theme.json` (+ logos they are allowed to use). Fonts are NOT sent: the colleague's Business-Wrap uses its bundled Thmanyah fallback or their own licensed copy ([fonts/README.md](../fonts/README.md)).
 3. The colleague opens the document JSON, loads the edits file, and continues; their edits append to the same file.
 4. Agree who edits next: one writer at a time per edits file; merge by replaying one file after the other, resolving any `setText` conflict shown by the editor.

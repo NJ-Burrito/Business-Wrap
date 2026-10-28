@@ -1,4 +1,4 @@
-# Contributing (EN) · pair: CONTRIBUTING.ar.md
+# Contributing (EN) · pair: [CONTRIBUTING.ar.md](CONTRIBUTING.ar.md)
 
 ## ⚡ In 10 seconds
 
@@ -10,12 +10,26 @@
 
 🔒 Nothing from a client, ever.
 
-**Jump to:** [🏁 Before the first commit](#-before-the-first-commit) · [📋 Every change](#-every-change) · [📝 Commit message](#-commit-message) · [🔰 Branch protection](#-branch-protection-on-main)
+**Jump to:** [🏁 Before the first commit](#-before-the-first-commit) · [🧪 Run the checks](#-run-the-checks) · [📋 Every change](#-every-change) · [📝 Commit message](#-commit-message) · [🔰 Branch protection](#-branch-protection-on-main)
 
 ## 🏁 Before the first commit
 
 1. `git config core.hooksPath .githooks` (pre-commit: tree gate; pre-push: full gate with history).
-2. `$env:PYTHONUTF8 = "1"`; Python packages via `uv`, never pip.
+2. Turn on UTF-8 for Python: `$env:PYTHONUTF8 = "1"` (PowerShell) or `export PYTHONUTF8=1` (bash). Python packages via `uv`, never pip.
+3. `npm ci`.
+
+## 🧪 Run the checks
+
+The same checks CI runs, before you open a pull request:
+
+```bash
+npm test                          # every suite: editor, accessibility, MCP, harvest, print, updater
+python security/check.py --all    # tree + history + commit messages
+python design/build.py            # palette contrast gate + theme
+node update/version-sync.mjs      # every file names the same version
+```
+
+New to the code? Start at [docs/README.md](docs/README.md) and [docs/architecture.md](docs/architecture.md).
 
 ## 📋 Every change
 
@@ -61,7 +75,7 @@ The same guarantees also come from local hooks and CI (while the repo was privat
 | Nothing unsafe is committed | `pre-commit` hook: `security/check.py --tree-only` (enable once: `git config core.hooksPath .githooks`) |
 | Nothing unsafe is pushed | `pre-push` hook: full gate, tree + every blob in history + commit messages |
 | Checks pass before merge | CI `gates` on every push and pull request: security gate + self-test, gitleaks (pinned, checksum verified, full history), palette gate, `npm test` (editor + accessibility) |
-| No force push, linear history | habit: merge with `--ff-only` or a merge commit, never `push --force` to `main`; the Lead merges, workers only commit on branches |
+| No force push, linear history | habit: merge with `--ff-only` or a merge commit, never `push --force` to `main`; maintainers merge, contributors push to their own branches |
 | Review | pull request + one approval by convention |
 
 Hooks are local and can be bypassed with `--no-verify`; CI cannot. A red `gates` run on `main` is fixed before anything else is merged.
