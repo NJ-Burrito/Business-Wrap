@@ -4,110 +4,181 @@
 
 <p align="center">عربي · الملف المقابل: <a href="README.md">README.md</a></p>
 
-**وثائق متطلبات محكومة وثنائية اللغة: أدلة تدخل، ونسخة HTML قابلة للتعديل مطابقة لـ PDF وDOCX في الوسط، وتخرج PDF وDOCX والتعديلات والسمة. وخلف كل قاعدة فحص.**
+[![gates](https://github.com/NJ-Burrito/Business-Wrap/actions/workflows/gates.yml/badge.svg)](https://github.com/NJ-Burrito/Business-Wrap/actions/workflows/gates.yml)
+[![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-d97757.svg)](.claude-plugin/plugin.json)
+[![MCP server](https://img.shields.io/badge/MCP-server-6f42c1.svg)](mcp/README.md)
+[![Arabic and English](https://img.shields.io/badge/Arabic%20%2B%20English-first--class-0d9488.svg)](bible/02-document-standard.ar.md)
+[![Licence: proprietary](https://img.shields.io/badge/licence-proprietary-lightgrey.svg)](LICENSE)
 
-| ابدأ من هنا | |
+**يحوّل بزنس راب الأدلة عن خدمة إلكترونية (نموذج إجرائها، أو جولة في الخدمة الحية) إلى وثيقة متطلبات ثنائية اللغة: العربية من اليمين إلى اليسار والإنجليزية من اليسار إلى اليمين، تُحرَّر في محرر HTML محلي هو نفسه تخطيط الطباعة، وتُصدَّر إلى PDF وDOCX وملف تعديلات. وخلف كل قاعدة فحص.**
+
+![المحرر: الشريط وغلاف الخدمة النموذجية، والواجهة بالعربية](docs/screens/editor-ar.png)
+
+## ماذا يفعل
+
+| المجال | ما تحصل عليه |
 |---|---|
-| ما هو والقواعد | `bible/README.ar.md` |
-| التثبيت وأول تشغيل (Windows) | `docs/guide.ar.md` |
-| مدخل المهارة (لـ Claude) | `SKILL.md` |
-| مخطط البنية | `docs/architecture.md` |
-| القرارات وخارطة الطريق والخصوصية | `docs/decisions.ar.md` و`docs/roadmap.ar.md` و`docs/privacy.ar.md` |
-| المسرد بالعربية والإنجليزية | `docs/glossary.md` |
-| البحث خلف الاختيارات | `docs/research/README.ar.md` |
+| **الحصاد** | طريقان للدخول ودمج بينهما: نموذج الإجراء (BPMN أو draw.io أو YAML) يعطي الأدوار وسير العمل والقواعد والحالات، ومسح الخدمة الحية يعطي البطاقة والنموذج والمرفقات والرسائل. الدمج يجمع الاثنين ولا يختار أحدهما. |
+| **المحرر** | ملف HTML واحد يُفتح من الجهاز. الصفحة التي تحرّرها هي الصفحة التي تُطبع. كل كلمة مطبوعة وكل جدول وعنوان وخاصية تصميم قابلة للتعديل والتراجع ومسجّلة. |
+| **الشريط** | أقسام معنونة (ملف · إدراج · تحرير · الوثيقة · التصميم · تصدير · العرض). حدّد شيئاً فتتقدّم أدواته **وتبقى** أثناء عملك في اللوحات والقوائم ومنتقيات الألوان، والنقر على مساحة فارغة أو Esc يعيد الأدوات العامة. |
+| **البطاقات الشارحة** | توقّف لحظة على أي أداة (أو اصل إليها بلوحة المفاتيح): تظهر بطاقة باسمها واختصارها وجملة واحدة تشرح عملها مع حركة صغيرة توضّحه، بالعربية والإنجليزية. |
+| **التخطيط** | التخطيط لا ينقلب أبداً. «ع» / «E» يغيّر اللغة والنسخة، وRTL / LTR يغيّر اتجاه الكلمات، ويبقى الشريط واللوحات والصفحة والعلامة في أماكنها. |
+| **عرض الصفحات** | متصل، أو صفحة واحدة، أو كتاب (الغلاف وحده، ثم صفحتان متجاورتان باتجاه قراءة الوثيقة). يُحفظ اختيارك، ولا يمسّ الطباعة ولا التصدير. |
+| **المخططات** | مخطط سير العمل قابل للتعديل على الصفحة: أشكال وأسهم بانحناءات ونصوص تُعدَّل في مكانها ومحاذاة وترتيب تلقائي وتكبير ومفتاح. واستيراد Mermaid وتصديره. |
+| **التصميم** | لوحة تصميم بلغة واضحة: الألوان (مربع لون ورمز hex) والأحجام (منزلق ورقم ووحدة) وأجزاء القالب والعناوين المطبوعة وتنسيق الكتلة الواحدة وCSS متقدم. **أي خط**: خطوط المشروع، أو خطوط هذا الجهاز، أو ملف خط ترفعه. |
+| **التصدير** | PDF وDOCX (الخطوط مضمّنة دائماً نصاً حقيقياً قابلاً للتحديد)، وملف التعديلات JSON، وحزمة التصميم، وحفظ HTML (المحرر بتعديلاتك). |
+| **الأتمتة** | خطافات ويب عند الحفظ والتصدير، وخادم MCP بـ 12 أداة، وإضافة Claude Code، والأمر `npx business-wrap update` للبقاء على آخر إصدار. |
+| **الأمان** | فحص أمني يُبقي محتوى العملاء وبيانات الدخول والمسارات المحلية خارج المستودع، والمسح لا يرسل طلباً حقيقياً إلا إذا طلبت ذلك مرتين. |
 
-## التثبيت
+> قرار المالك 2026-10-28: كل خط تختاره يُضمَّن نصاً حقيقياً في PDF وDOCX، وترخيص الخط مسؤولية المستخدم.
+> (النص الأصلي: "Owner decision 2026-10-28: every chosen font is embedded as real text in PDF and DOCX; the font's licence is the user's responsibility.")
 
-**إضافة Claude Code** (المهارة وخادم MCP معاً؛ تحتاج صلاحية الوصول إلى هذا المستودع):
+## البدء السريع
+
+<div dir="ltr">
+
+```powershell
+npm ci                 # Node 20+; Chrome or Edge drives the PDF
+npm run sample         # builds out/sample/event-permit.editor.html
+npm run serve          # http://127.0.0.1:4317/ - one-click PDF + DOCX
+npm test               # every suite, one after another
+```
+
+</div>
+
+وثائقك أنت:
+
+<div dir="ltr">
+
+```powershell
+node engine/build-editor.mjs <doc.json | folder>... --out out/my.editor.html [--theme design/ours/theme.json] [--embed-fonts] [--ui ar|en]
+node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|en] [--out dir]
+```
+
+</div>
+
+عند فتح المحرر من الجهاز (file://) ينزّل زر «PDF + DOCX» ملف الوثيقة المعدّلة ويعرض أمر `export.mjs`، ومن خلال `npm run serve` يصدّر بنقرة واحدة. المحرر الجاهز هو `assets/editor/business-wrap.html`.
+
+## التثبيت والتحديث
+
+**إضافة Claude Code** (المهارة وخادم MCP معاً، وتحتاج صلاحية الوصول إلى هذا المستودع):
+
+<div dir="ltr">
+
 ```
 /plugin marketplace add NJ-Burrito/Business-Wrap
 /plugin install business-wrap@business-wrap
 ```
-ثم قل: **«ابنِ وثيقة المتطلبات لـ…»** أو **«افتحها في المحرر»**.
 
-**خادم MCP وحده** (stdio ومحلي فقط؛ يحتاج Node 20 أو أحدث، وChrome أو Edge لملف PDF، و`uv` لملف DOCX):
+</div>
+
+ثم قل: **«ابنِ وثيقة المتطلبات لـ …»** أو **«افتحها في المحرر»**.
+
+**خادم MCP وحده** (stdio محلي؛ Node 20+، وChrome أو Edge للـ PDF، و`uv` للـ DOCX):
+
+<div dir="ltr">
+
 ```
-claude mcp add business-wrap -- npx -y -p business-wrap@0.9.1 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p business-wrap@0.10.0 business-wrap-mcp
 ```
-ومن نسخة محلية بدل npm: `npm ci` ثم `claude mcp add business-wrap -- node <clone>/mcp/cli.mjs`.
-الأدوات: `build_editor` و`validate_edits` و`apply_edits` و`export_document` و`export_design_pack` و`check_fonts`، والتفاصيل في `mcp/README.ar.md`.
+
+</div>
+
+الأدوات: `build_editor` و`validate_edits` و`apply_edits` و`export_document` و`export_design_pack` و`check_fonts` و`harvest_model` و`harvest_crawl` و`harvest_merge` و`diagram_mermaid` و`check_update` و`apply_update`، والتفاصيل في `mcp/README.ar.md`.
+
+**التحديثات:** يخبرك `npx business-wrap update --check` بصدور إصدار جديد (طلب واحد في اليوم على الأكثر)، ويثبّته `npx business-wrap update --apply --yes`، ويعرض `--notes` ما تغيّر وملاحظات الترحيل. لا يُحدَّث شيء دون موافقتك. التفاصيل في `bible/07-updates.ar.md`.
+
+## ابدأ وثيقة (الحصاد)
+
+> **المسح لا يرسل طلباً إلا إذا طلبت.** المسح تجربة جافة: يقرأ كل خطوة ويتوقف قبل الإجراء الأخير («إرسال»، «تقديم»، «تأكيد»، «دفع»؛ Send وSubmit وConfirm وPay). الإرسال الحقيقي يحتاج `submit: true` في الإعداد **و** `--yes-file-real-request`.
+
+<div dir="ltr">
+
+```powershell
+npm run harvest:model -- <process.bpmn | .drawio | .yaml>   # roles, workflow, rules, statuses
+npm run harvest:crawl -- <crawl.json>                        # card, form, attachments, messages
+npm run harvest:merge -- <harvest.json> <process.json>       # the union of both
+```
+
+</div>
+
+كل واحد منها يعطي ملف الوثيقة بالعربية والإنجليزية ومحرراً. وفي المحرر: **وثيقة جديدة**. التفاصيل في `bible/08-harvest.ar.md`.
+
+## المحرر
+
+![شكل في المخطط محدد: أدواته تبقى في مقدمة الشريط ولوحة التصميم مفتوحة](docs/screens/sticky-tools.png)
+
+- **أدوات التحديد تبقى.** الكتلة أو خلية الجدول أو الشعار أو الصورة أو شكل المخطط أو السهم يضع قسمه الخاص في مقدمة الشريط، ويبقى أثناء استخدامك القوائم ولوحة التصميم ومنتقيات الألوان والمحررات المضمّنة. النقر على مساحة فارغة أو Esc يعيد الأدوات العامة.
+- **أقسام تُطوى بالطريقة نفسها في اللغتين.** كل كلمة تحجز عرض الأطول بين صيغتيها العربية والإنجليزية، فيُظهر «ع» و«E» الأدوات نفسها في الأماكن نفسها.
+- **«ع» / «E»** يبدّل لغة الواجهة والنسخة التي تحرّرها، و**RTL / LTR** يبدّل اتجاه الكلمات. انقر في أي مكان من الحقل، وينزلق المؤشر الذهبي إلى الاختيار الجديد.
+- **الأوامر** (`Ctrl+K`): كل إجراء مع البحث. **وضع التركيز** (`F`) يخفي الأدوات، و**الوضع الهادئ** يوقف الحركة (ويعمل تلقائياً حين يطلب النظام تقليل الحركة).
+
+![بطاقة شارحة على «بحث واستبدال»](docs/screens/explainer.png)
+
+![عرض الكتاب: صفحتان متجاورتان بترتيب القراءة](docs/screens/book-view.png)
+
+**عرض الصفحات** (العرض ← الصفحات): *متصل* هو الورقة الطويلة، و*صفحة* يعرض صفحة واحدة كل مرة، و*كتاب* يبدأ بالغلاف وحده ثم يضع الصفحات أزواجاً باتجاه قراءة الوثيقة (في العربية: الصفحة الأولى من الزوج على اليمين). تقلّب الصفحات بـ Page Up / Page Down أو الأسهم أو العجلة أو شريط الصفحات، ويمكنك الكتابة في أي منها.
+
+### المخططات
+مخطط سير العمل نموذج لا صورة: انقر شكلاً لأدوات الشكل، أو سهماً لأدوات السهم، أو مساحة الرسم الفارغة لأدوات المخطط. اسحب للنقل، واسحب الزاوية لتغيير الحجم، واسحب جزءاً من السهم لثنيه، وانقر مرتين لتعديل النص في مكانه، وCtrl مع العجلة للتكبير. **استيراد Mermaid وتصديره** (`npm run diagram:mermaid` وأداة MCP `diagram_mermaid`). كل تغيير تعديل واحد مسجّل، فيصل إلى PDF وDOCX.
+
+### التصميم والخطوط
+
+![لوحة التصميم: منتقي الخطوط بخطوط المشروع وخطوط هذا الجهاز](docs/screens/design-fonts.png)
+
+الألوان حسب الدور (مربع لون ورمز hex)، والأحجام والتباعد (منزلق ورقم ووحدة، وتتحوّل القيمة عند تغيير الوحدة)، وأجزاء القالب (إظهار وإخفاء وترتيب)، والعناوين المطبوعة، وتنسيق الكتلة الواحدة (**نسّق هذا**)، وCSS متقدم بعد تنقيته. **الخطوط:** عائلات ثمانية للمشروع افتراضياً، أو أي خط مثبت على هذا الجهاز (يسأل المتصفح مرة واحدة)، أو ملف خط ترفعه. الخط المختار يصل دائماً إلى PDF وDOCX نصاً حقيقياً قابلاً للتحديد ومضمّناً.
+
+### التصدير
+| المخرج | الطريقة |
+|---|---|
+| PDF + DOCX | زر «PDF + DOCX» عبر `npm run serve`، أو `node engine/export.mjs` |
+| ملف التعديلات JSON | «حفظ»: كل تغيير مع قيمته القديمة، وتراجعه في السجل |
+| حزمة التصميم | لوحة التصميم ← تصدير التصميم (واستوردها في وثيقة أخرى) |
+| حفظ HTML | المحرر بتعديلاتك في ملف واحد يُفتح في أي مكان |
+| خطافات الويب | الوثيقة ← خطافات الويب: يُبلَّغ عنوانك عند الحفظ والتصدير (عبر `npm run serve`) |
 
 ## لوكلاء الذكاء الاصطناعي
-‏Claude Code أو Claude Desktop أو Codex أو Cursor أو Gemini CLI أو أي عميل MCP: اقرأ `AGENTS.md` (و`SKILL.md`). في بداية أي مهمة على Business-Wrap شغل `npx business-wrap update --check` (أو أداة MCP ‏`check_update`)؛ وإن وجد إصدار أحدث فأخبر المستخدم بسطر واحد مع ثلاث نقاط، واعرض الأمر `npx business-wrap update --apply --yes`. لا تحدث دون موافقته؛ وبعد التحديث اتبع «ملاحظات الترحيل» (`npx business-wrap update --notes`). ويعلن خادم MCP عن التحديث في تعليمات التهيئة أيضا. التفاصيل: `bible/07-updates.ar.md`.
+Claude Code وClaude Desktop وCodex وCursor وGemini CLI وأي عميل MCP: اقرأ `AGENTS.md` و`SKILL.md`. في بداية أي مهمة على بزنس راب شغّل `npx business-wrap update --check` (أو أداة MCP `check_update`)، وأخبر المستخدم بالإصدار الأحدث في سطر واحد، ولا تحدّث أبداً دون موافقته.
 
-## المجلدات
-| المجلد | يحوي |
-|---|---|
-| `bible/` | المنهج بالعربية والإنجليزية، والعقود الآلية |
-| `engine/` و`editor/` و`samples/` و`tests/` | محرك محرر HTML ومحرك العرض ووثيقة المثال والاختبارات |
-| `palette/` و`typography/` | الرموز التصميمية بصيغة DTCG وفحوصها |
-| `design/` | حزم التصميم (`ours/` وخانة الرفع `custom/`) و`build.py` |
-| `fonts/` | ملف تعريف الخطوط فقط (الترخيص يمنع رفع الملفات) |
-| `logos/` | فارغ: توضع شعاراتك هنا، وهي مستثناة من git |
-| `security/` | الفحص الذي يبقي محتوى العملاء والأسرار خارج المستودع |
+## الفحص الأمني
 
-## ثلاثة أوامر
+<div dir="ltr">
+
 ```powershell
 $env:PYTHONUTF8 = "1"
-python design/build.py        # فحص التباين ثم بناء السمة
-python security/check.py      # الشجرة والتاريخ ورسائل الالتزام
+python security/check.py --all   # tree + history + commit messages: no client content, secrets or local paths
+python design/build.py           # palette contrast gate + theme
 git config core.hooksPath .githooks
 ```
 
-## المحرر
-محرر HTML محلي في ملف واحد **هو** تخطيط الطباعة نفسه: الصفحة التي تعدلها هي الترميز وملف الأنماط اللذان تطبع منهما PDF (`engine/render.mjs`). وتسجل التعديلات في ملف تعديلات (`bible/contracts/edits.schema.json` الإصدار 1)، ثم تصدر إلى PDF وDOCX.
+</div>
 
-```powershell
-npm install        # playwright-core only (drives the local Chrome)
-npm run sample     # builds out/sample/event-permit.editor.html
-npm run serve      # http://127.0.0.1:4317/ - one-click PDF + DOCX
-npm test           # the editor check, both editions
-node engine/build-editor.mjs <doc.json | folder>... --out out/my.editor.html [--theme design/ours/theme.json] [--embed-fonts] [--ui ar|en]
-node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|en] [--out dir]
-```
-عند فتحه من القرص (file://) ينزل زر «PDF وDOCX» ملف JSON المعدل ويعرض أمر `export.mjs`؛ وعند فتحه عبر `npm run serve` يصدر بنقرة واحدة.
+## إعدادات الجهاز (لا تُرفع أبداً)
+`.local/config.json` (مستثنى من git) أو متغيرات البيئة، والبيئة هي الأولى.
 
-### كل شيء قابل للتحرير
-كل نص مطبوع (التسميات ورؤوس الجداول والعنوان والعنوان الفرعي ورمز الغلاف وأسماء الحقول وقيمها)، وكل خاصية تصميم (لوحة التصميم بمعاينة حية)، وعنصر واحد بمفرده (**نسّق هذا**)، وأجزاء القالب (إظهار وإخفاء وترتيب)، وCSS متقدم منقّى. وكل ذلك قابل للتراجع، وينتقل في ملف التعديلات، ويصل إلى PDF وDOCX. انظر `bible/04-edits-contract.ar.md`.
-
-### ابدأ وثيقة (الاستخراج)
-> **الأمان: المرور لا يقدّم طلباً أبداً إلا إذا طلبت ذلك.** المرور تشغيل تجريبي: يقرأ كل خطوة ويتوقف قبل الإجراء النهائي («إرسال» و«تقديم» و«حفظ وإرسال» و«تأكيد» و«دفع»، وSend وSubmit وConfirm وPay وFinish)، ويسجل «stopped before submit». ولتقديم طلب حقيقي يلزم `submit: true` في الإعدادات **و**`--yes-file-real-request` (أو كتابة YES عند السؤال). والمحرر وأداة MCP لا يقدّمان أبداً. وتؤخذ الحالات حينها من النموذج أو من قائمة `statuses` في الإعدادات.
-
-من نموذج إجراء (`npm run harvest:model -- <bpmn|drawio|yaml>`) أو بالمرور على الخدمة الفعلية (`npm run harvest:crawl -- <crawl.json>`)؛ والطريقان يعطيان ملفي الوثيقة بالعربية والإنجليزية ومحرراً. انظر `bible/08-harvest.ar.md`.
-
-### المحرر باختصار
-- **الشريط العائم** (أعلى الصفحة): الشعار، والخدمة، ومبدّل اللغة **«ع» / «E»** (لغة الواجهة ونسخة الوثيقة)، والتراجع والإعادة، والصورة وإضافة شعار، والبحث، والصفحات، والحفظ وتصدير PDF + DOCX، وعداد التغييرات الحي، ومبدّل اتجاه التخطيط **RTL / LTR** (مستقل عن اللغة؛ يتبعها حتى تختار، ثم يُحفظ اختيارك)، والعرض، والأوامر.
-- **شريط التحديد** يظهر بجانب ما تحدده (كتلة، خلية جدول، شعار، صورة) وفيه الأوامر الخاصة به فقط.
-- **لوحة الأوامر** (`Ctrl+K`): كل الأوامر، قابلة للبحث، مجمّعة، مع اختصار كل منها.
-- **الشعارات والصور** توضع في أي مكان: اسحبها إلى الغلاف أو الترويسة أو بجانب أي كتلة، وغيّر حجمها من الزاوية، وحرّكها بالأسهم، واحذفها بـ Delete، مع أدلة محاذاة اختيارية. ويُحفظ الموضع في الوثيقة ويُطبع في المكان ذاته.
-- **وضع التركيز** (`F`) يخفي الأدوات، و**الوضع الهادئ** يوقف كل الحركة (ويعمل تلقائياً عند طلب النظام تقليل الحركة). و**خطافات الويب** (لوحة) متوقفة حتى تضيف رابطاً، وتُرسل عبر `npm run serve`.
-
-### إعدادات الجهاز (لا ترفع إلى المستودع أبدا)
-الملف `.local/config.json` (مستثنى من git) أو متغيرات البيئة؛ ومتغيرات البيئة تغلب.
-
-| المفتاح | متغير البيئة | الوظيفة |
+| المفتاح | متغير البيئة | الغرض |
 |---|---|---|
-| `fontDir` | `BW_FONT_DIR` | جذر الخطوط: `<family>/otf` و`woff2` والمجلد المحلي `ttf/` الذي يبحث فيه ملف التعريف أولا |
-| `watermarkDir` | `BW_WATERMARK_DIR` | صور العلامة المائية للأداة (svg أو png)، في واجهة المحرر فقط |
+| `fontDir` | `BW_FONT_DIR` | مجلد الخطوط (يُبحث فيه بعمق)، ويُفضَّل TrueType |
+| `watermarkDir` | `BW_WATERMARK_DIR` | صور علامة الأداة، لواجهة المحرر فقط |
 | `chrome` | `BW_CHROME` | ملف تشغيل Chrome أو Edge |
-| `poppler` | `BW_POPPLER` | مجلد `bin` لأداة poppler (pdftotext وpdffonts في الاختبارات) |
+| `poppler` | `BW_POPPLER` | مجلد `bin` في poppler (pdftotext وpdffonts في الفحوص) |
 | `brandDir` | `BW_BRAND_DIR` | مجلد شعار الأداة (الافتراضي `brand/logo/`)، للواجهة فقط |
 
-المتصفحات المدعومة: Chrome وEdge بآخر إصدار مستقر (Chromium 120 فأحدث)؛ ولا يدعم Firefox ولا Safari (لا يدعم Firefox التحرير `plaintext-only`، ومسار الطباعة مسار Chromium).
+المتصفحات المدعومة: Chrome وEdge، آخر إصدار مستقر (Chromium 120+).
 
-| المسار | الدور |
+## أين تجد الأشياء
+| المجلد | يحتوي |
 |---|---|
-| `engine/render.mjs` | ملف JSON للوثيقة ← HTML الطباعة (في المتصفح وفي Node) |
-| `engine/edits.mjs` | عقد التعديلات: التطبيق والترحيل والتحقق والدمج وطي الحروف في البحث والاستبدال والمقارنة |
-| `engine/build-editor.mjs` | يجمع المحرر في ملف واحد (مع سياسة أمان المحتوى وبصمة نص التطبيق) |
-| `engine/export.mjs` و`engine/pdf_post.py` | PDF (Chrome بلا واجهة مع أرقام الصفحات) وDOCX |
-| `engine/docx/` | منشئ DOCX (python-docx)، والتسميات من `engine/i18n.json` |
-| `engine/serve.mjs` | خادم على 127.0.0.1 فقط للتصدير بنقرة واحدة |
-| `engine/i18n.json` | كل نصوص الواجهة والتسميات المطبوعة، بالعربية والإنجليزية |
-| `editor/` | تطبيق المحرر وأنماطه |
-| `samples/event-permit/` | الخدمة النموذجية مجهولة الهوية، بالعربية والإنجليزية |
-| `tests/` | `editor.test.mjs` (المتحقق)، و`fidelity.mjs` و`pdf_compare.py` |
+| `bible/` | المنهج بالعربية والإنجليزية، والعقود الآلية |
+| `engine/` | المُخرِج، وعقد التعديلات، وبناء المحرر، وتصدير PDF وDOCX، والحصاد، وأوامر MCP |
+| `editor/` | تطبيق المحرر: الهيكل والشريط والبطاقات الشارحة وعرض الصفحات والمخططات ولوحة التصميم والخطوط |
+| `samples/event-permit/` | الخدمة النموذجية المجهّلة، بالعربية والإنجليزية |
+| `tests/` | فحص لكل مجال، ويشغّلها كلها `npm test` |
+| `design/`، `palette/`، `typography/` | حزم التصميم ورموز DTCG مع فحوصها |
+| `fonts/` | قائمة الخطوط فقط (ملفات الخطوط لا تُرفع أبداً) |
+| `security/` | الفحص الذي يُبقي محتوى العملاء والأسرار خارج المستودع |
+| `docs/` | الدليل والبنية والقرارات وخارطة الطريق والخصوصية والمسرد ولقطات الشاشة |
 
-خاص ومملوك: انظر `LICENSE`. ولا يرفع أي شيء: انظر `docs/privacy.ar.md`.
+خاص ومملوك: انظر `LICENSE`. لا يُرفع شيء: انظر `docs/privacy.ar.md`.
 
 </div>

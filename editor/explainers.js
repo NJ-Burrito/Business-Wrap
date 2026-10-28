@@ -15,10 +15,23 @@ function xplKey(el) {
   if (el.dataset.dg) return `dg_${el.dataset.dg}`;
   if (el.dataset.k) return `k_${el.dataset.k}`;
   if (el.dataset.f) return `k_${el.dataset.f}`;
+  // the Design panel's controls (design-panel.js, value-control.js, fonts.js): one explainer per kind of control
+  if (el.dataset.fpopen) return 'font.pick';
+  if (el.dataset.fplocal) return 'font.local';
+  if (el.dataset.fpupload) return 'font.upload';
+  if (el.dataset.fprm) return 'font.remove';
+  if (el.classList.contains('vc-s')) return 'vc.slider';
+  if (el.classList.contains('vc-n')) return 'vc.number';
+  if (el.classList.contains('vc-u')) return 'vc.unit';
+  if (el.classList.contains('cc-hex')) return 'design.hex';
+  if (el.type === 'color') return 'design.swatch';
+  if (el.dataset.dpart) return 'design.part';
+  if (el.dataset.dmove) return 'design.move';
+  if (el.dataset.lab) return 'design.label';
   return '';
 }
 function xplTarget(node) {
-  const el = node?.closest?.('button[data-a], select[data-a], select[data-dg], [data-x], .drawer [data-k], .drawer [data-f], .pop label.chk');
+  const el = node?.closest?.('button[data-a], select[data-a], select[data-dg], [data-x], .drawer [data-k], .drawer [data-f], .pop label.chk, .drawer :is([data-fpopen], [data-fplocal], [data-fpupload], [data-fprm], .vc-s, .vc-n, .vc-u, .cc-hex, input[type="color"], [data-dpart], [data-dmove], [data-lab])');
   if (!el || el.closest('.palette, .xpl')) return null;
   if (el.matches('.pop label.chk')) { el.dataset.x = el.dataset.x || 'both'; }
   const k = xplKey(el);
@@ -127,7 +140,10 @@ function xplScene(k) {
     align: ['dgAlignL', 'dgAlignC', 'dgAlignR', 'dgAlignT', 'dgAlignM', 'dgAlignB', 'dgDistH', 'dgDistV', 'dgWrap', 'dgAuto', 'dgReset'],
     link: ['dgConnect', 'dgEdgeLabel', 'dgBendAdd', 'dgBendDel', 'dgRouteAuto', 'dgFrom', 'dgTo', 'dg_wire', 'keepNext'],
     split: ['breakBefore'],
-    label: ['dgLabel', 'dgSub', 'caption', 'dg_kind', 'dg_color', 'dg_badge', 'dg_icon', 'dgLegend'],
+    font: ['font.pick', 'font.local', 'font.upload', 'font.remove', 'k_embed', 'k_docxFonts'],
+    slider: ['vc.slider', 'vc.number', 'vc.unit', 'design.part', 'design.move'],
+    swatch: ['design.swatch', 'design.hex', 'k_texp', 'k_timp', 'k_dcssApply', 'k_stclear', 'k_sthide'],
+    label: ['design.label', 'k_laball', 'k_addSection', 'k_addTable', 'dgLabel', 'dgSub', 'caption', 'dg_kind', 'dg_color', 'dg_badge', 'dg_icon', 'dgLegend'],
     single: ['view.single', 'view.prev', 'view.next'],
     spread: ['view.spread', 'view.mode', 'side'],
     flow: ['view.continuous'],
@@ -164,6 +180,9 @@ function xplArt(k) {
     link: `<rect class="sheet" x="18" y="10" width="124" height="76" rx="6"/><rect class="bx" x="28" y="36" width="34" height="22" rx="4"/><rect class="bx" x="98" y="36" width="34" height="22" rx="4"/><path class="wire" d="M62 47 C 76 30, 84 64, 98 47"/><path class="tip" d="M92 42 l6 5 l-6 5"/>`,
     split: `${page(28, 'pg p1')}${page(78, 'pg p2')}<path class="cut" d="M58 4 v88"/>`,
     label: `<rect class="sheet" x="26" y="18" width="108" height="58" rx="8"/><rect class="bx" x="44" y="34" width="72" height="26" rx="5"/><rect class="caret" x="60" y="41" width="2" height="12"/><rect class="type" x="64" y="43" width="36" height="8" rx="2"/>`,
+    font: `<rect class="sheet" x="26" y="14" width="108" height="66" rx="8"/><text class="glyph a" x="80" y="58" text-anchor="middle">Aa</text><text class="glyph e fnt" x="80" y="58" text-anchor="middle">أب</text>`,
+    slider: `<rect class="sheet" x="18" y="22" width="124" height="50" rx="8"/><rect class="track" x="28" y="44" width="70" height="6" rx="3"/><circle class="knob slide" cx="36" cy="47" r="7"/><rect class="cell" x="106" y="36" width="28" height="22" rx="4"/><rect class="type" x="111" y="44" width="18" height="6" rx="2"/>`,
+    swatch: `<rect class="sheet" x="26" y="18" width="108" height="58" rx="8"/><rect class="chip" x="38" y="30" width="34" height="34" rx="6"/><rect class="cell" x="80" y="38" width="44" height="16" rx="3"/><rect class="type" x="85" y="43" width="30" height="6" rx="2"/>`,
     single: `<g class="book one">${page(52)}</g><path class="turn" d="M112 48 l8 0 m-4 -4 l4 4 l-4 4"/>`,
     spread: `<g class="book">${page(24, 'pg l')}${page(84, 'pg r')}</g>`,
     flow: `<g class="scroll">${page(52)}<g transform="translate(0 84)">${page(52)}</g></g>`,

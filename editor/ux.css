@@ -147,6 +147,12 @@
 .xpl svg .scroll { animation: x-scroll 3s linear infinite; }
 @keyframes x-scroll { from { translate: 0 0; } to { translate: 0 -84px; } }
 
+.xpl svg .fnt { font-family: 'Thmanyah Serif Display', serif; }
+.xpl svg .slide { animation: x-slide 2.4s var(--e-move) infinite; }
+@keyframes x-slide { 0%, 15% { translate: 0 0; } 55%, 85% { translate: 52px 0; } 100% { translate: 0 0; } }
+.xpl svg .chip { animation: x-chip 3s steps(1) infinite; fill: #003c7a; }
+@keyframes x-chip { 0% { fill: #003c7a; } 33% { fill: #be9a41; } 66% { fill: #16644e; } }
+
 /* reduced motion / calm mode: still frames (the end state each scene explains) */
 .shell[data-calm="1"] .xpl svg *, .shell[data-calm="1"] .xpl { animation: none !important; }
 @media (prefers-reduced-motion: reduce) { .xpl svg *, .xpl { animation: none !important; } }
