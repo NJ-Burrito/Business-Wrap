@@ -214,7 +214,8 @@
   "upd.close": "إغلاق",
   "upd.updated": "تم التحديث إلى {v}، ومستندك كما تركته.",
   "upd.plugin": "في Claude Code:",
-  "upd.cli": "في الطرفية:"
+  "upd.cli": "في الطرفية:",
+  "ext.refused": "هذا التعديل غير مسموح الآن."
  },
  "en": {
   "ux.dirRtl": "Words run right to left (the layout stays put; your choice is remembered)",
@@ -430,6 +431,7 @@
   "upd.close": "Close",
   "upd.updated": "Updated to {v}; your document is as you left it.",
   "upd.plugin": "In Claude Code:",
-  "upd.cli": "In a terminal:"
+  "upd.cli": "In a terminal:",
+  "ext.refused": "This change is not allowed right now."
  }
 }

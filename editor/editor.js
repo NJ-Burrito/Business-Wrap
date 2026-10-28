@@ -109,6 +109,7 @@ function render(keepScroll = true) {
   dgZoomAll();
   if (S.dg) dgPaint();
   viewsApply();
+  emit('render');
 }
 function mainOf(ed) {
   return document.querySelector(`#bw-pair main.bw-doc[data-locale="${ed}"]`);
@@ -131,8 +132,40 @@ function decorate() {
   }
 }
 
+/* ── extension seam (0.13.0): editor/ext/*.js register through bwExt; the contract is editor/ext/README.md ── */
+const EXT = { cmds: [], sections: [], actions: {}, drawers: {}, settings: [], status: null, guards: [],
+  on: { boot: [], commit: [], render: [], save: [], saveHtml: [], export: [], pagehide: [], open: [], keydown: [] } };
+function bwExt(def = {}) {
+  for (const c of def.cmds || []) { const x = { group: 'document', edit: false, ...c }; EXT.cmds.push(x); CMDS.push(x); }
+  for (const x of def.sections || []) { EXT.sections.push(x); if (!GENERAL_GROUPS.includes(x.cat)) GENERAL_GROUPS.push(x.cat); }
+  Object.assign(EXT.actions, def.actions);
+  Object.assign(EXT.drawers, def.drawers);
+  EXT.settings.push(...(def.settings || []));
+  EXT.guards.push(...(def.guards || []));
+  if (def.status) EXT.status = def.status;
+  for (const [ev, f] of Object.entries(def.on || {})) {
+    if (!EXT.on[ev]) throw new Error(`bwExt: unknown event "${ev}"`);
+    EXT.on[ev].push(...[].concat(f));
+  }
+  Object.assign(EXT, def.expose); // named services for other extensions, e.g. EXT.ledger
+}
+const emit = (ev, ...a) => EXT.on[ev].forEach((f) => { try { f(...a); } catch (e) { console.error(e); } });
+/** Every guard is asked before a change; false or a reason string refuses it: nothing changes, the reason is toasted, the caller stops (throws). */
+function guard(what, info) {
+  for (const g of EXT.guards) {
+    let r;
+    try { r = g(what, info); } catch (e) { console.error(e); continue; }
+    if (r === false || typeof r === 'string') {
+      const msg = typeof r === 'string' ? r : t('ext.refused');
+      toast(msg, 'warn');
+      throw Object.assign(new Error(msg), { refused: true });
+    }
+  }
+}
+
 /* ── ops ───────────────────────────────────────────────────────────────── */
 function commit(ops, { ed = S.ed, rerender = true, group = newGroup(), mirror = false } = {}) {
+  guard('commit', { ops, ed });
   const e = cur(ed);
   ops.forEach((op, k) => {
     op.id = `${group}.${k}`;
@@ -153,6 +186,7 @@ function commit(ops, { ed = S.ed, rerender = true, group = newGroup(), mirror = 
   }
   touched();
   if (rerender) render();
+  emit('commit', ops, ed, 'commit');
 }
 /** The labels this edition prints: house ← design pack ← document. */
 const labelsOf = (ed = S.ed) => withLabels(I18N.doc[ed], S.theme.labels?.[ed], cur(ed).doc.labels);
@@ -179,6 +213,7 @@ function flagManual(path, old, ed) {
   commit(pre, { ed, rerender: false });
 }
 function setText(path, value, ed = S.ed) {
+  guard('setText', { path, value, ed });
   ensurePath(path, ed);
   const e = cur(ed);
   const old = get(e.doc, path) ?? (path.startsWith('/labels/') ? get(labelsOf(ed), path.slice(7)) : undefined);
@@ -190,6 +225,7 @@ function setText(path, value, ed = S.ed) {
     last.value = value;
     last.at = new Date().toISOString();
     applyOp(e.doc, last);
+    emit('commit', [last], ed, 'type');
   } else {
     S.typingGroup = newGroup();
     commit([{ op: 'setText', path, value, old }], { ed, rerender: false, group: S.typingGroup });
@@ -204,6 +240,7 @@ function undo(ed = S.ed) {
   const e = cur(ed);
   const last = e.ops.at(-1);
   if (!last) return;
+  guard('undo', { ed });
   const g = last.id.split('.')[0];
   const grp = [];
   while (e.ops.length && e.ops.at(-1).id.split('.')[0] === g) grp.unshift(e.ops.pop());
@@ -211,15 +248,18 @@ function undo(ed = S.ed) {
   rebuild(e);
   touched();
   render();
+  emit('commit', grp, ed, 'undo');
 }
 function redo(ed = S.ed) {
   const e = cur(ed);
+  if (!e.redo.length) return;
+  guard('redo', { ed });
   const grp = e.redo.pop();
-  if (!grp) return;
   e.ops.push(...grp);
   rebuild(e);
   touched();
   render();
+  emit('commit', grp, ed, 'redo');
 }
 
 /* ── autosave + recovery ───────────────────────────────────────────────── */
@@ -329,6 +369,7 @@ function saveAll() {
   S.dirty = false;
   flash(t('saved'));
   emitHook('save');
+  emit('save');
 }
 function pickFile(accept) {
   return new Promise((res) => {
@@ -426,6 +467,7 @@ async function saveHtml(embedFonts) {
   let fontCss = DATA.fontCss;
   if (embedFonts) fontCss = await inlineFonts(fontCss);
   const data = { ...DATA, setId: `${DATA.setId}:${S.svc}`, services: [{ id: s.id, editions }], theme: S.theme, fontCss, uiLang: S.ui };
+  emit('saveHtml', data); // an extension may add its own keys to the embedded data
   const parts = renderParts(cur().doc, { locale: S.ed, labels: I18N.doc[S.ed], theme: S.theme });
   const html = `<!doctype html>
 <html lang="${S.ed}" dir="${S.ed === 'ar' ? 'rtl' : 'ltr'}"><head><meta charset="utf-8">
@@ -472,6 +514,7 @@ async function exportPdfDocx() {
       if (!r.ok) throw new Error(j.error || r.status);
       flash(t('exportDone', { x: [j.pdf, j.docx].filter(Boolean).join(' · ') }));
       emitHook('export', { pdf: !!j.pdf, docx: !!j.docx });
+      emit('export', { pdf: !!j.pdf, docx: !!j.docx });
       for (const u of [j.pdfUrl, j.docxUrl].filter(Boolean)) window.open(u, '_blank', 'noopener');
       return;
     } catch (err) { flash(String(err.message || err), true); return; }
@@ -922,6 +965,9 @@ const setRootFlags = () => {
   d.bwDark = S.dark ? '1' : '0';
 };
 
+/** Tools that change the document carry edit: true, so a guard can disable every one of them in one place. */
+const EDIT_GROUPS = new Set(['insert', 'text', 'table', 'diagram', 'shape', 'arrange', 'arrow']);
+const EDIT_IDS = new Set(['import', 'undo', 'redo', 'renumber', 'theme', 'styleThis', 'hideBlock', 'newdoc', 'process']);
 /** Every action, in one registry: the island, the selection bar and the palette read from it. */
 const CMDS = [
   ['save', 'file', 'Ctrl+S'], ['saveHtml', 'file'], ['import', 'file'], ['exportEdits', 'file'], ['exportAll', 'file'],
@@ -939,7 +985,7 @@ const CMDS = [
   ['dgAlignL', 'arrange'], ['dgAlignC', 'arrange'], ['dgAlignR', 'arrange'], ['dgAlignT', 'arrange'], ['dgAlignM', 'arrange'], ['dgAlignB', 'arrange'], ['dgDistH', 'arrange'], ['dgDistV', 'arrange'], ['dgWrap', 'arrange'],
   ['dgEdgeLabel', 'arrow'], ['dgBendAdd', 'arrow'], ['dgBendDel', 'arrow'], ['dgRouteAuto', 'arrow'], ['dgReverse', 'arrow'], ['dgFrom', 'arrow'], ['dgTo', 'arrow'],
   ['dgZoomIn', 'diagram', 'Ctrl+wheel'], ['dgZoomOut', 'diagram'], ['dgZoomFit', 'diagram'], ['dgZoom100', 'diagram'],
-].map(([id, group, key]) => ({ id, group, key }));
+].map(([id, group, key]) => ({ id, group, key, edit: EDIT_GROUPS.has(group) ? !/^dgZoom/.test(id) : EDIT_IDS.has(id) }));
 
 /** A labelled toolbar section: icon + short title, then its tools (the same categories as the palette). */
 function sec(cat, tools) {
@@ -979,11 +1025,11 @@ function buildUi() {
       </div>
     </div>
     <div class="ctx sec now" role="group" hidden></div>
-    ${['file', 'insert', 'edit', 'document', 'design'].map((cat) => sec(cat, CMDS.filter((c) => c.group === cat).map(tool))).join('')}
+    ${['file', 'insert', 'edit', 'document', 'design', ...EXT.sections.map((x) => x.cat)].map((cat) => sec(cat, CMDS.filter((c) => c.group === cat).map(tool))).join('')}
     ${sec('export', [pcExportMenu(), tool(CMDS.find((c) => c.id === 'print')), tool(CMDS.find((c) => c.id === 'exportPdf'))])}
     <span class="spacer"></span>
     <div class="status" role="status" aria-live="polite">
-      <span class="count" aria-label="${esc(t('changes', { n: liveOps(cur()).length }))}"><span class="n">${liveOps(cur()).length}</span><span class="w" data-alt="${esc(tAlt('changesWord'))}">${esc(t('changesWord'))}</span></span>
+      <span class="count" aria-label="${esc(t('changes', { n: opCount() }))}"><span class="n">${opCount()}</span><span class="w" data-alt="${esc(tAlt('changesWord'))}">${esc(t('changesWord'))}</span></span>
       <span class="sel vh">${esc(selDesc())}</span><span class="flash vh"></span>
     </div>
     <div class="sec" data-cat="view" role="group" aria-label="${esc(t('secView'))}"><span class="sc" aria-hidden="true"><span class="i">${ic('secView')}</span><span class="st">${esc(t('secView'))}</span></span><div class="sb">
@@ -1012,7 +1058,7 @@ function buildUi() {
   const shell = root.querySelector('.shell');
   if (!buildUi.done) { buildUi.done = true; setTimeout(() => document.documentElement.classList.add('bw-ready'), 900); }
   shell.addEventListener('click', onBar);
-  root.querySelector('[data-a="svc"]').addEventListener('change', (e) => { S.svc = e.target.value; if (!M[S.svc][S.ed]) S.ed = Object.keys(M[S.svc])[0]; S.sel = null; buildUi(); render(false); });
+  root.querySelector('[data-a="svc"]').addEventListener('change', (e) => { S.svc = e.target.value; if (!M[S.svc][S.ed]) S.ed = Object.keys(M[S.svc])[0]; S.sel = null; buildUi(); render(false); emit('open', S.svc, S.ed); });
   root.querySelector('.scrim').addEventListener('click', (e) => { if (e.target.classList.contains('scrim')) closePalette(); });
   wirePalette();
   fitBar();
@@ -1059,10 +1105,11 @@ function fitBar() {
 }
 window.addEventListener('resize', () => fitBar());
 let lastCount = -1;
+const opCount = () => EXT.status?.count() ?? liveOps(cur()).length;
 function refreshUi() {
   const c = root.querySelector('.count');
   if (!c) return;
-  const n = liveOps(cur()).length;
+  const n = opCount();
   if (n !== lastCount) {
     const el = c.querySelector('.n');
     el.textContent = String(n);
@@ -1341,7 +1388,7 @@ async function runAction(a) {
     case 'view.spread': viewsSet('spread'); break;
     case 'view.prev': viewsGo(-1); break;
     case 'view.next': viewsGo(1); break;
-    default: if (/^export\./.test(a)) await pcAction(a); else await dgAction(a); break;
+    default: if (EXT.actions[a]) await EXT.actions[a](a); else if (/^export\./.test(a)) await pcAction(a); else await dgAction(a); break;
   }
 }
 
@@ -1366,7 +1413,11 @@ function openDrawer(kind, soft = false) {
   const icon = { err: ic('err'), warn: ic('warn'), info: ic('info'), ok: ic('ok') };
   const word = { err: t('err'), warn: t('warn'), info: t('info'), ok: t('ok') };
   let html = '';
-  if (kind === 'check') {
+  const x = EXT.drawers[kind]?.(d); // an extension's drawer: { title, html, mount?(drawer) }
+  if (x) {
+    d.setAttribute('aria-label', x.title);
+    html = head(x.title) + x.html;
+  } else if (kind === 'check') {
     const v = validate();
     d.setAttribute('aria-label', t('checkTitle'));
     html = head(t('checkTitle')) + (v.length ? `<ul class="list">${v.map(([lv, msg]) => `<li class="${lv}"><span class="i">${icon[lv]}</span> <b>${esc(word[lv])}</b> ${esc(msg)}</li>`).join('')}</ul>` : `<p class="ok"><span class="i">${icon.ok}</span> ${esc(t('vAllGood'))}</p>`);
@@ -1416,6 +1467,8 @@ ${e.comments.length ? `<h3>${esc(t('comment'))}</h3><ul class="list">${e.comment
   }
   d.innerHTML = html;
   if (kind === 'settings') window.BW_LEARNING?.mount(d.querySelector('[data-lrn-mount]'), { heading: false }); // learning-hook.js
+  if (kind === 'settings') EXT.settings.forEach((c) => c.mount?.(d.querySelector(`.set-x-${c.id}`)));
+  x?.mount?.(d);
   d.onclick = onDrawer;
   d.oninput = (e) => {
     if (DP.input(e)) return;
@@ -1710,6 +1763,7 @@ function startOvDrag(e, el, resize) {
   const i = +el.dataset.i;
   const o = ovList()[i];
   if (!o) return;
+  guard('drag', { i, resize });
   e.preventDefault();
   try { el.setPointerCapture(e.pointerId); } catch { /* a synthetic pointer: the window listeners below still track it */ }
   el.focus({ preventScroll: true }); // pressing a logo focuses it, so the arrow keys nudge it at once
@@ -2170,6 +2224,7 @@ function sanitizePaste(s) {
     .replace(/\s+/g, ' ');
 }
 document.addEventListener('keydown', (e) => {
+  if (EXT.on.keydown.some((f) => { try { return f(e) === true; } catch (x) { console.error(x); return false; } })) return; // an extension handled it
   const mod = e.ctrlKey || e.metaKey;
   const inText = e.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName || '') || e.composedPath?.().some((x) => x === host);
   if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); saveAll(); return; }
@@ -2191,6 +2246,7 @@ window.addEventListener('resize', () => paintSel());
 // leaving, hiding or closing the tab flushes a pending draft at once (a debounce must never lose the last edit)
 const flushDraft = () => { if (S.pending || S.dirty) writeDraft(); };
 window.addEventListener('pagehide', flushDraft);
+window.addEventListener('pagehide', () => emit('pagehide'));
 window.addEventListener('beforeunload', flushDraft);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushDraft(); });
 
@@ -2308,10 +2364,12 @@ function boot() {
   render(false);
   offerRecovery();
   window.BW.ready = true; // booted and rendered with the remembered state
+  // editor/ext/*.js load after this file: once the whole script has run, draw their sections and tell them
+  queueMicrotask(() => { if (EXT.sections.length || EXT.status) buildUi(); emit('boot'); emit('open', S.svc, S.ed); });
 }
 // a re-harvest that met a hand edit: the person's text was kept; show the source's new text beside it
 for (const [svc, eds] of Object.entries(M)) for (const [ed, e] of Object.entries(eds)) for (const c of e.doc.harvestConflicts || []) if (svc === S.svc) S.conflicts.push({ ed, path: c.path, mine: c.manual, theirs: c.harvested, kind: 'text' });
 if (S.conflicts.length) toast(t('reharvestConflicts', { n: S.conflicts.length }), 'warn', { actions: [[t('show'), () => openDrawer('conflicts')]], persist: true });
 { const n = (cur().doc.process?.actors || []).filter((a) => a.unresolved).length; if (n) toast(t('rolesUnresolved', { n }), 'warn', { actions: [[t('show'), () => openDrawer('process')]], persist: true }); }
-window.BW = { flushDraft, S, M, commit, runAction, DIAGRAM, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll };
+window.BW = { flushDraft, S, M, commit, runAction, DIAGRAM, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll, EXT, emit, bwExt, openDrawer };
 boot();

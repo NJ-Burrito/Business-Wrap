@@ -85,20 +85,36 @@ export function iconCss() {
   return read(f).replace(/(\.bw-i--([\w-]+):hover (\.mv(?:\.[ab])?)), /g, '.b:hover:not(:disabled) .bw-i--$2 $3, .b:focus-visible .bw-i--$2 $3, [role="menuitem"]:hover .bw-i--$2 $3, $1, ') + '\n';
 }
 
-/** The app script: edits + render (exports stripped) + editor, one IIFE; local learning goes last (it wraps the editor's functions). */
-export function appScript() {
+/** Editor extensions (0.13.0, editor/ext/README.md): `<dir>/*.<ext>`, sorted by name. No folder → none. */
+export const EXT_DIR = path.join(REPO, 'editor', 'ext');
+export const extFiles = (dir, ext) => (dir && fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith(ext)).sort().map((f) => path.join(dir, f)) : []);
+/** Each extension's strings join the UI table; a key that already exists (or two extensions sharing one) fails the build. */
+export function mergeExtI18n(ui, dir) {
+  const own = { ar: {}, en: {} };
+  for (const f of extFiles(dir, '.i18n.json')) {
+    const j = JSON.parse(read(f));
+    for (const l of ['ar', 'en']) for (const [k, v] of Object.entries(j[l] || {})) {
+      if (k in ui[l] || k in own[l]) throw new Error(`editor extension ${path.basename(f)}: i18n key "${k}" (${l}) already exists`);
+      own[l][k] = v;
+    }
+  }
+  for (const l of ['ar', 'en']) Object.assign(ui[l], own[l]);
+}
+
+/** The app script: edits + render (exports stripped) + editor + extensions, one IIFE; local learning goes last (it wraps the editor's functions). */
+export function appScript(extDir = EXT_DIR) {
   const core = read(path.join(HERE, 'learning', 'core.mjs')).replace(/^export /gm, '').replace(/^import .*$/gm, '');
   const learn = `const LEARN = (() => {\n${core}\nreturn { redact, brief, fieldKind, sectionOf };\n})();\n${read(path.join(REPO, 'editor', 'learning-hook.js'))}`;
-  return editorScript().replace(/\n\}\)\(\);$/, () => `\n${learn}\n})();`);
+  return editorScript(extDir).replace(/\n\}\)\(\);$/, () => `\n${learn}\n})();`);
 }
-function editorScript() {
+function editorScript(extDir) {
   const strip = (s) => s.replace(/^export /gm, '').replace(/^import .*$/gm, '');
   // the harvest model code lives in its own scope (HV), so its helper names stay out of the editor's
   const hv = ['xml.mjs', 'yaml.mjs', 'model.mjs', 'docs.mjs'].map((f) => strip(read(path.join(HERE, 'harvest', f)))).join('\n');
-  return `(() => {\n'use strict';\n${strip(read(path.join(HERE, 'edits.mjs')))}\n${strip(read(path.join(HERE, 'diagram.mjs')))}\n${strip(read(path.join(HERE, 'render.mjs')))}\n${strip(read(path.join(HERE, 'fontinfo.mjs')))}\nconst HV = (() => {\n${hv}\nreturn { parseModel, modelToDocument, processFigure, humanGraph, harvestToDocument, mergeToDocument };\n})();\n${['value-control.js', 'fonts.js', 'design-panel.js', 'editor.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${read(path.join(REPO, 'editor', 'diagram-ui.js'))}\n${['shell-ux.js', 'views.js', 'explainers.js', 'print-center.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${['update.js', 'settings.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n})();`;
+  return `(() => {\n'use strict';\n${strip(read(path.join(HERE, 'edits.mjs')))}\n${strip(read(path.join(HERE, 'diagram.mjs')))}\n${strip(read(path.join(HERE, 'render.mjs')))}\n${strip(read(path.join(HERE, 'fontinfo.mjs')))}\nconst HV = (() => {\n${hv}\nreturn { parseModel, modelToDocument, processFigure, humanGraph, harvestToDocument, mergeToDocument };\n})();\n${['value-control.js', 'fonts.js', 'design-panel.js', 'editor.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${read(path.join(REPO, 'editor', 'diagram-ui.js'))}\n${['shell-ux.js', 'views.js', 'explainers.js', 'print-center.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${['update.js', 'settings.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${extFiles(extDir, '.js').map(read).join('\n')}\n})();`;
 }
 
-export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, localFonts = false, watermarkDir = DEFAULT_WATERMARK_DIR, ui = 'ar', ops = {} }) {
+export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, localFonts = false, watermarkDir = DEFAULT_WATERMARK_DIR, ui = 'ar', ops = {}, extDir = EXT_DIR }) {
   const theme = loadTheme(themeFile);
   const services = new Map();
   for (const f of docFiles(inputs)) {
@@ -114,7 +130,7 @@ export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, l
   const local = localFonts ? localFontCss() : null;
   const { cuts, used } = local ? { cuts: [], used: local.families } : fontsFor(theme);
   const fontCss = local ? local.css : fontFaceCss(cuts, { embed: embedFonts });
-  const html = editorHtml({ services: [...services.values()], setId: set || [...services.keys()].join('+'), ui, theme, fontCss, fontFamilies: local ? local.families : [...new Set(cuts.map((c) => c.family))], wm: watermarkImages(watermarkDir) });
+  const html = editorHtml({ services: [...services.values()], setId: set || [...services.keys()].join('+'), ui, theme, fontCss, fontFamilies: local ? local.families : [...new Set(cuts.map((c) => c.family))], wm: watermarkImages(watermarkDir), extDir });
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, html, 'utf8');
   return { out, services: [...services.keys()], watermark: watermarkImages(watermarkDir).length, fonts: used.length, bytes: Buffer.byteLength(html) };
@@ -126,19 +142,20 @@ export function aboutInfo() {
   const cl = fs.existsSync(path.join(REPO, 'CHANGELOG.md')) ? read(path.join(REPO, 'CHANGELOG.md')) : '';
   const date = /(\d{4}-\d{2}-\d{2})/.exec(cl.split('\n').find((l) => l.startsWith(`## [${pkg.version}]`)) || '')?.[1] || '';
   return {
-    name: 'Business-Wrap', version: pkg.version, date, repo: pkg.homepage, license: 'Proprietary · UNLICENSED',
+    name: 'Business-Wrap', version: pkg.version, date, repo: pkg.homepage, license: 'MIT',
     credits: ['Thmanyah (ثمانية)', 'Lucide icons (ISC)', 'Playwright', 'Model Context Protocol SDK'],
   };
 }
 
 /** One editor HTML from services already in hand (documents + their stored edits, history and comments). */
-function editorHtml({ services, setId, ui = 'ar', theme, fontCss, fontFamilies, wm = [] }) {
+function editorHtml({ services, setId, ui = 'ar', theme, fontCss, fontFamilies, wm = [], extDir = EXT_DIR }) {
   const I = i18n();
   // shell UX strings (0.10.0): ux.*, view.*, explain.* live in their own file and join the UI table here
   const UX = JSON.parse(read(path.join(REPO, 'editor', 'ux-i18n.json')));
   const PC = JSON.parse(read(path.join(REPO, 'editor', 'print-i18n.json'))); // Export & Print centre, View menu (0.11.0)
   for (const l of ['ar', 'en']) Object.assign(I.ui[l], UX[l], PC[l]);
-  const app = appScript();
+  mergeExtI18n(I.ui, extDir);
+  const app = appScript(extDir);
   const csp = [
     "default-src 'none'",
     `script-src 'sha256-${crypto.createHash('sha256').update(app).digest('base64')}'`,
@@ -163,7 +180,7 @@ function editorHtml({ services, setId, ui = 'ar', theme, fontCss, fontFamilies, 
     i18n: I,
     fontCss,
     fontFamilies,
-    uiCss: brandCss() + read(path.join(REPO, 'editor', 'ui.css')) + read(path.join(REPO, 'editor', 'design.css')) + read(path.join(REPO, 'editor', 'ux.css')) + read(path.join(REPO, 'editor', 'settings.css')) + read(path.join(REPO, 'editor', 'print-center.css')) + iconCss() + read(path.join(REPO, 'editor', 'chrome.css')),
+    uiCss: brandCss() + read(path.join(REPO, 'editor', 'ui.css')) + read(path.join(REPO, 'editor', 'design.css')) + read(path.join(REPO, 'editor', 'ux.css')) + read(path.join(REPO, 'editor', 'settings.css')) + read(path.join(REPO, 'editor', 'print-center.css')) + iconCss() + read(path.join(REPO, 'editor', 'chrome.css')) + extFiles(extDir, '.css').map(read).join(''),
     csp,
     version: notes.version,
     stateSchema: STATE_SCHEMA,

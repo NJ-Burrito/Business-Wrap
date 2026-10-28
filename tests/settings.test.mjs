@@ -190,7 +190,7 @@ try {
     });
     const ar = await info();
     check('Settings opens from the toolbar\'s View section and from Ctrl+K', btnOnBar);
-    check('About: name, version, release date, repository, licence, credits', ar.text.includes('Business-Wrap') && ar.text.includes(CUR) && /\d{4}-\d{2}-\d{2}/.test(ar.text) && ar.text.includes('github.com/NJ-Burrito/Business-Wrap') && /UNLICENSED/.test(ar.text) && ar.text.includes('Lucide'));
+    check('About: name, version, release date, repository, licence, credits', ar.text.includes('Business-Wrap') && ar.text.includes(CUR) && /\d{4}-\d{2}-\d{2}/.test(ar.text) && ar.text.includes('github.com/NJ-Burrito/Business-Wrap') && ar.text.includes('MIT') && ar.text.includes('Lucide'));
     check('Update: current vs latest, last checked, «تحقّق الآن», the auto-check toggle', ar.text.includes('أحدث إصدار') && ar.text.includes('آخر فحص') && ar.text.includes('تحقّق الآن') && ar.status.includes('أحدث إصدار'), ar.status);
     await page.evaluate(() => window.scrollTo(0, 0));
     await shot(page, 'settings-ar');
