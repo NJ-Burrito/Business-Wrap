@@ -38,7 +38,10 @@ SELF = {"security/gitleaks.toml", "security/check.py", "security/denylist.sha256
 ALLOW_BINARY = [re.compile(p) for p in [r"^editor/brand/watermark/nj-avatar-[a-z]+\.webp$"]]
 # The one path where font binaries may live: the owner's bundled Thmanyah fallback (owner decision, 2026-10-28).
 # The bw-font-binary rule (extension and magic bytes) still fires on every other path, tree and history.
-ALLOW_FONT = re.compile(r"^fonts/nj-fonts/thmanyah/thmanyah(sans|seriftext|serifdisplay)/(otf|ttf|woff2)/[A-Za-z0-9-]+\.(otf|ttf|woff2)$")
+# Plus exactly three web fonts for the public site (owner decision D2-A, 2026-10-28; the licence covers self-hosting on
+# the owner's sites, recorded 2026-10-18): Thmanyah Sans 400 and 700, Serif Display 700.
+ALLOW_FONT = re.compile(r"^fonts/nj-fonts/thmanyah/thmanyah(sans|seriftext|serifdisplay)/(otf|ttf|woff2)/[A-Za-z0-9-]+\.(otf|ttf|woff2)$"
+                        r"|^site/assets/fonts/thmanyah-(sans-400|sans-700|serif-display-700)\.woff2$")
 FONT_MAGIC = (b"OTTO", b"\x00\x01\x00\x00", b"wOFF", b"wOF2", b"ttcf", b"true")
 # Local learning (engine/learning) keeps the user's journal in .local/learning: it must never be committed.
 LEARNING = re.compile(r"(^|/)\.local/learning/|(^|/)journal(\.\d+)?\.jsonl$")
@@ -271,6 +274,9 @@ def selftest() -> int:
         bad += not ok
     for p, want in (("fonts/nj-fonts/thmanyah/thmanyahsans/woff2/thmanyahsans-Bold.woff2", True),
                     ("fonts/nj-fonts/thmanyah/thmanyahseriftext/ttf/thmanyahseriftext-Regular.ttf", True),
+                    ("site/assets/fonts/thmanyah-sans-400.woff2", True), ("site/assets/fonts/thmanyah-serif-display-700.woff2", True),
+                    ("site/assets/fonts/thmanyah-sans-500.woff2", False), ("site/assets/fonts/other.woff2", False),
+                    ("site/assets/thmanyah-sans-400.woff2", False), ("x/site/assets/fonts/thmanyah-sans-700.woff2", False),
                     ("fonts/custom/x.ttf", False), ("fonts/nj-fonts/other/x.ttf", False), ("assets/thmanyahsans-Bold.otf", False)):
         ok = bool(ALLOW_FONT.search(p)) == want
         print(f"{'ok ' if ok else 'XX '} bw-font-binary allow={want} {p}")

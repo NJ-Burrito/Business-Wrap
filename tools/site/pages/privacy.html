@@ -1,16 +1,16 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr" data-title-en="Privacy · Business-Wrap" data-title-ar="الخصوصية · بزنس راب">
+<html>
 <head>
-{{head path="privacy.html" en="Privacy · Business-Wrap" desc="Business-Wrap uploads nothing. The editor, PDF printing and DOCX building run on your computer; the only automatic request is a daily update check."}}
+{{head path="privacy.html" en="Privacy · Business-Wrap" ar="الخصوصية · بزنس راب" desc-ar="بزنس راب لا يرفع شيئا. المحرر وطباعة PDF وبناء DOCX تعمل على جهازك، والطلب التلقائي الوحيد فحص تحديث يومي." desc="Business-Wrap uploads nothing. The editor, PDF printing and DOCX building run on your computer; the only automatic request is a daily update check."}}
 </head>
 <body>
 {{header page="privacy"}}
 <main id="main" class="wrap">
-<article class="doc" data-l="en" lang="en" dir="ltr">
-  <h1>Privacy</h1>
-  <p class="updated">Updated 2026-10-28 · applies to Business-Wrap 0.11.0 and this website</p>
+<article class="doc" data-l="en">
+  <header class="doc-cover"><h1>Privacy</h1><p class="updated">Last updated 2026-10-28 · applies to Business-Wrap {{version}} and this website</p></header>
   <p class="verdict">Everything stays on your machine. Business-Wrap uploads nothing.</p>
-  <h2>The tool</h2>
+  <nav class="toc" aria-labelledby="toc-h"><p id="toc-h" class="toc-h">On this page</p><ol><li><a href="#tool">The tool</a></li><li><a href="#network">The only network use</a></li><li><a href="#website">This website</a></li><li><a href="#questions">Questions</a></li></ol></nav>
+  <h2 id="tool"><span class="no">1</span>The tool</h2>
   <ul>
     <li>The editor is a local HTML page. It makes no network request for documents, edits, themes or fonts.</li>
     <li>PDF printing runs a local headless Chrome or Edge. DOCX building runs locally in Python.</li>
@@ -18,46 +18,46 @@
     <li>Browser storage, when used for an unsaved draft, stays in that browser profile.</li>
     <li>Local learning keeps its journal in <code>.local/learning/</code> on your computer only. It never enters a document, an export or a webhook.</li>
   </ul>
-  <h2>The only network use</h2>
+  <h2 id="network"><span class="no">2</span>The only network use</h2>
   <ul>
     <li><strong>Update check:</strong> at most once a day, a request to the public GitHub release list. Switch it off in Settings or with <code>node update/cli.mjs --off</code>. Opened from a file (<code>file://</code>), the editor makes no request at all.</li>
     <li><strong>Webhooks:</strong> only to an address you set yourself, on save and export.</li>
     <li><strong>The crawler:</strong> only the service you point it at, and it stops before any final action unless you ask twice.</li>
     <li>What you choose: cloning the repository and installing packages.</li>
   </ul>
-  <h2>This website</h2>
+  <h2 id="website"><span class="no">3</span>This website</h2>
   <ul>
     <li>Hosted on GitHub Pages. GitHub may keep server logs under its own privacy statement.</li>
     <li>No cookies, analytics or third-party requests. Your language and theme choice is kept in your browser's local storage.</li>
   </ul>
-  <h2>Questions</h2>
+  <h2 id="questions"><span class="no">4</span>Questions</h2>
   <p>Open an issue on <a href="https://github.com/NJ-Burrito/Business-Wrap/issues">GitHub</a>, or see <a href="support.html">Support</a>.</p>
 </article>
-<article class="doc" data-l="ar" lang="ar" dir="rtl">
-  <h1>الخصوصية</h1>
-  <p class="updated">آخر تحديث 2026-10-28 · ينطبق على بزنس راب 0.11.0 وعلى هذا الموقع</p>
+<article class="doc" data-l="ar">
+  <header class="doc-cover"><h1>الخصوصية</h1><p class="updated">آخر تحديث <span dir="ltr">2026-10-28</span> · ينطبق على بزنس راب {{version}} وعلى هذا الموقع</p></header>
   <p class="verdict">كل شيء يبقى على جهازك. بزنس راب لا يرفع شيئا.</p>
-  <h2>الأداة</h2>
+  <nav class="toc" aria-labelledby="toc-h"><p id="toc-h" class="toc-h">في هذه الصفحة</p><ol><li><a href="#tool">الأداة</a></li><li><a href="#network">الاستخدام الوحيد للشبكة</a></li><li><a href="#website">هذا الموقع</a></li><li><a href="#questions">أسئلة</a></li></ol></nav>
+  <h2 id="tool"><span class="no">1</span>الأداة</h2>
   <ul>
     <li>المحرر صفحة HTML محلية، لا ترسل أي طلب شبكة للوثائق أو التعديلات أو السمات أو الخطوط.</li>
     <li>طباعة PDF تعمل بمتصفح Chrome أو Edge محلي دون واجهة، وبناء DOCX يعمل محليا بلغة Python.</li>
     <li>لا قياس للاستخدام ولا تحليلات ولا تقارير أعطال ولا حساب. ولا تخزين سحابي.</li>
-    <li>تخزين المتصفح، إن استُخدم لمسودة غير محفوظة، يبقى في ملف ذلك المتصفح.</li>
-    <li>التعلّم المحلي يحفظ سجله في <code>.local/learning/</code> على جهازك فقط، ولا يدخل أي وثيقة أو تصدير أو خطاف ويب.</li>
+    <li>تخزين المتصفح، إن استخدم لمسودة غير محفوظة، يبقى في ملف ذلك المتصفح.</li>
+    <li>التعلم المحلي يحفظ سجله في <code>.local/learning/</code> على جهازك فقط، ولا يدخل أي وثيقة أو تصدير أو خطاف ويب.</li>
   </ul>
-  <h2>الاستخدام الوحيد للشبكة</h2>
+  <h2 id="network"><span class="no">2</span>الاستخدام الوحيد للشبكة</h2>
   <ul>
     <li><strong>فحص التحديث:</strong> مرة في اليوم على الأكثر، طلب إلى قائمة الإصدارات العامة على GitHub. أوقفه من الإعدادات أو بالأمر <code>node update/cli.mjs --off</code>. وعند فتح المحرر من ملف (<code>file://</code>) لا يرسل أي طلب.</li>
     <li><strong>خطافات الويب:</strong> إلى عنوان تحدده أنت فقط، عند الحفظ والتصدير.</li>
-    <li><strong>المسح:</strong> إلى الخدمة التي توجّهه إليها فقط، ويتوقف قبل أي إجراء نهائي إلا إذا طلبت ذلك مرتين.</li>
+    <li><strong>المسح:</strong> إلى الخدمة التي توجهه إليها فقط، ويتوقف قبل أي إجراء نهائي إلا إذا طلبت ذلك مرتين.</li>
     <li>ما تختاره أنت: نسخ المستودع وتثبيت الحزم.</li>
   </ul>
-  <h2>هذا الموقع</h2>
+  <h2 id="website"><span class="no">3</span>هذا الموقع</h2>
   <ul>
     <li>مستضاف على GitHub Pages، وقد يحتفظ GitHub بسجلات الخادم وفق بيان الخصوصية الخاص به.</li>
-    <li>لا ملفات تعريف ارتباط ولا تحليلات ولا طلبات إلى أطراف ثالثة. واختيارك للغة والمظهر يُحفظ في التخزين المحلي لمتصفحك.</li>
+    <li>لا ملفات تعريف ارتباط ولا تحليلات ولا طلبات إلى أطراف ثالثة. واختيارك للغة والمظهر يحفظ في التخزين المحلي لمتصفحك.</li>
   </ul>
-  <h2>أسئلة</h2>
+  <h2 id="questions"><span class="no">4</span>أسئلة</h2>
   <p>افتح بلاغا على <a href="https://github.com/NJ-Burrito/Business-Wrap/issues">GitHub</a>، أو انظر صفحة <a href="support.html">الدعم</a>.</p>
 </article>
 </main>

@@ -2,7 +2,7 @@
 /* Plays on hover of the icon or its parent, on keyboard focus of the parent, and when the icon or an ancestor gets
    .is-inview (add it with an IntersectionObserver) or the icon gets .is-playing. Nothing moves under reduced motion. */
 .bw-i { width: 1.5em; height: 1.5em; vertical-align: middle; overflow: visible; }
-.bw-i .hl { fill: var(--bw-marker-icon, var(--bw-accent, #C8F04A)); }
+.bw-i .hl { fill: var(--bw-marker-icon); }
 .bw-i .mv { transform-box: fill-box; transform-origin: 50% 50%; }
 .bw-i [pathLength='1'].mv { stroke-dasharray: 1; stroke-dashoffset: 0; }
 @keyframes bwi-blink{0%,100%{opacity:1}25%,60%{opacity:.15}}

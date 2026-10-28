@@ -6,6 +6,7 @@
       "@id": "https://nj-burrito.github.io/Business-Wrap/#website",
       "url": "https://nj-burrito.github.io/Business-Wrap/",
       "name": "Business-Wrap",
+      "alternateName": "بزنس راب",
       "inLanguage": ["en", "ar"]
     },
     {
@@ -18,7 +19,7 @@
       "applicationSubCategory": "Requirements document generator",
       "operatingSystem": "Windows 11 (tested); macOS and Linux untested",
       "softwareRequirements": "Node.js 20 or newer, Chrome or Edge, Python with uv for DOCX",
-      "softwareVersion": "0.11.0",
+      "softwareVersion": "{{version}}",
       "downloadUrl": "https://github.com/NJ-Burrito/Business-Wrap/releases/latest",
       "license": "https://opensource.org/licenses/MIT",
       "isAccessibleForFree": true,
@@ -36,7 +37,6 @@
       "inLanguage": ["en", "ar"],
       "url": "https://nj-burrito.github.io/Business-Wrap/",
       "image": "https://nj-burrito.github.io/Business-Wrap/assets/og.png",
-      "screenshot": "https://nj-burrito.github.io/Business-Wrap/assets/social-card.png",
       "author": { "@type": "Person", "name": "NJ-Burrito", "url": "https://nj-burrito.github.io/" },
       "sameAs": ["https://github.com/NJ-Burrito/Business-Wrap"]
     },
