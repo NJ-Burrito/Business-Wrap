@@ -9,6 +9,65 @@ export const joinPtr = (parts) => parts.map((x) => '/' + String(x).replace(/~/g,
 
 const clone = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
 
+/* ── rich text leaves (0.13.0, A26) ─────────────────────────────────────────
+ * A text leaf is either a string (as before) or {text, marks: [[start, end, type, value?]], style: {…}}.
+ * textOf() is the ONLY reader of a leaf's words: render, DOCX, find/replace, learning and the gates go through it. */
+export const isRich = (v) => !!v && typeof v === 'object' && !Array.isArray(v) && typeof v.text === 'string' && ('marks' in v || 'style' in v);
+/** The words of a leaf: a string, a rich leaf's text, '' for nothing. */
+export const textOf = (leaf) => (leaf == null ? '' : isRich(leaf) ? leaf.text : typeof leaf === 'object' ? '' : String(leaf));
+export const MARK_TYPES = ['b', 'i', 'u', 's', 'code', 'link', 'color', 'font', 'size'];
+/** A leaf with new words: a string stays a string; a rich leaf keeps its marks, rebased by common prefix/suffix. */
+export function withText(leaf, text) {
+  text = String(text ?? '');
+  if (!isRich(leaf)) return text;
+  const a = leaf.text;
+  let pre = 0;
+  while (pre < a.length && pre < text.length && a[pre] === text[pre]) pre += 1;
+  let suf = 0;
+  while (suf < a.length - pre && suf < text.length - pre && a[a.length - 1 - suf] === text[text.length - 1 - suf]) suf += 1;
+  const delta = text.length - a.length;
+  // a mark that starts where text is inserted moves with its words; one that ends there does not grow
+  const at = (x, end) => (end ? (x <= pre ? x : x >= a.length - suf ? x + delta : pre + (text.length - pre - suf)) : x >= a.length - suf ? x + delta : x <= pre ? x : pre);
+  const marks = (leaf.marks || []).map(([s, e, ...r]) => [at(s, false), at(e, true), ...r]).filter(([s, e]) => e > s);
+  return { ...leaf, text, marks };
+}
+/** Adds (or with on=false removes) one mark over [start, end); same-type marks merge. Returns a rich leaf (or the string when nothing is left). */
+export function markLeaf(leaf, start, end, type, value, on = true) {
+  const base = isRich(leaf) ? clone(leaf) : { text: textOf(leaf), marks: [] };
+  const n = base.text.length;
+  start = Math.max(0, Math.min(n, start | 0)); end = Math.max(start, Math.min(n, end | 0));
+  if (!MARK_TYPES.includes(type) || end <= start) return leaf;
+  const same = (m) => m[2] === type && (on ? (m[3] ?? null) === (value ?? null) : true);
+  const keep = [];
+  let s0 = start, e0 = end;
+  for (const m of base.marks || []) {
+    if (m[2] !== type) { keep.push(m); continue; }
+    if (m[1] < start || m[0] > end) { keep.push(m); continue; }
+    if (on && same(m)) { s0 = Math.min(s0, m[0]); e0 = Math.max(e0, m[1]); continue; }
+    if (m[0] < start) keep.push([m[0], start, ...m.slice(2)]);
+    if (m[1] > end) keep.push([end, m[1], ...m.slice(2)]);
+  }
+  if (on) keep.push(value == null ? [s0, e0, type] : [s0, e0, type, value]);
+  base.marks = keep.filter((m) => m[1] > m[0]).sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+  return !base.marks.length && !base.style ? base.text : base;
+}
+/** Is [start, end) fully covered by marks of this type? */
+export function hasMark(leaf, start, end, type) {
+  if (!isRich(leaf) || end <= start) return false;
+  const ms = (leaf.marks || []).filter((m) => m[2] === type).sort((x, y) => x[0] - y[0]);
+  let at = start;
+  for (const m of ms) { if (m[0] > at) break; at = Math.max(at, m[1]); }
+  return at >= end;
+}
+/** A leaf with paragraph/cell style merged in (null deletes a key); no style and no marks → the plain string. */
+export function styleLeaf(leaf, patch) {
+  const base = isRich(leaf) ? clone(leaf) : { text: textOf(leaf), marks: [] };
+  const style = { ...(base.style || {}) };
+  for (const [k, v] of Object.entries(patch || {})) { if (v == null) delete style[k]; else style[k] = v; }
+  if (Object.keys(style).length) base.style = style; else delete base.style;
+  return !(base.marks || []).length && !base.style ? base.text : base;
+}
+
 export function get(doc, p) {
   let cur = doc;
   for (const k of parsePtr(p)) {
@@ -29,7 +88,12 @@ function parentOf(doc, p) {
 /** Applies one op in place. Throws on a pointer that does not resolve. */
 export function applyOp(doc, op) {
   switch (op.op) {
-    case 'setText':
+    case 'setText': {
+      // typing into a rich leaf keeps its marks (rebased); a rich value replaces it whole
+      const { parent, key } = parentOf(doc, op.path);
+      parent[key] = typeof op.value === 'string' ? withText(parent[key], op.value) : clone(op.value);
+      return;
+    }
     case 'replace': {
       const { parent, key } = parentOf(doc, op.path);
       parent[key] = clone(op.value);
@@ -201,11 +265,12 @@ export function resolveStructure(base, ops, conflict, side) {
 export function textLeaves(doc) {
   const out = [];
   const walk = (v, p) => {
-    if (typeof v === 'string') { out.push({ path: p, value: v }); return; }
+    if (typeof v === 'string' || isRich(v)) { out.push({ path: p, value: textOf(v) }); return; }
     if (Array.isArray(v)) v.forEach((x, i) => walk(x, `${p}/${i}`));
     else if (v && typeof v === 'object')
       for (const [k, x] of Object.entries(v)) {
-        if (['svg', 'images', 'kind', 'service', 'composedAt'].includes(k)) continue;
+        if (['svg', 'images', 'kind', 'service', 'composedAt', 'layout'].includes(k)) continue;
+        if (k === 'id' && 'kind' in v) continue; // a block's stable id (anchors) is not text; a story's id is
         // a diagram's words are its labels; ids, kinds and geometry are not text
         if (k === 'model' && x && typeof x === 'object') {
           (x.nodes || []).forEach((n, i) => ['label', 'sub'].forEach((f) => typeof n?.[f] === 'string' && n[f] && out.push({ path: `${p}/model/nodes/${i}/${f}`, value: n[f] })));

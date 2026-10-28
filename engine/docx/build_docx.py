@@ -21,6 +21,7 @@ _I18N = json.loads((Path(__file__).resolve().parents[1] / 'i18n.json').read_text
 LOCALE = os.environ.get('BW_LOCALE', 'ar')
 L = dict(_I18N['doc'][LOCALE])
 import theme as theme_mod
+import model_docx as MD
 DEFAULT_BODY_FONT = 'thmanyah serif text'
 ARABIC = re.compile('[\u0600-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-\ufeff]')
 LATIN_DIGIT = re.compile('[A-Za-z0-9]')
@@ -160,7 +161,7 @@ _THEME_ROLES: dict | None = None
 BLANK_CELLS = {'', '—', '-', '–', 'N/A', 'n/a'}
 
 def _is_blank(cell) -> bool:
-    return str(cell if cell is not None else '').strip() in BLANK_CELLS
+    return MD.text_of(cell).strip() in BLANK_CELLS
 
 def apply_render_table_rules(columns, rows):
     width = max([len(columns)] + [len(r) for r in rows] + [0])
@@ -203,7 +204,8 @@ def add_table(document, columns, rows, font, roles=None):
             cell = table.cell(r, c)
             cell.width = col_w
             cell.paragraphs[0].text = ''
-            add_script_runs(cell.paragraphs[0], str(cell_text), font, bold=bool(header) and r == 0)
+            MD.add_leaf(cell.paragraphs[0], cell_text if MD.is_rich(cell_text) else str(cell_text), font, add_script_runs, bold=bool(header) and r == 0)
+            MD.cell_valign(cell, cell_text)
     if roles is not None:
         theme_mod.style_table_theme(table, roles, has_header=bool(header))
     return table
@@ -236,8 +238,8 @@ def close_landscape_section(document, body_geometry: dict):
     from docx.enum.section import WD_SECTION
     from docx.enum.section import WD_ORIENT
     port = document.add_section(WD_SECTION.NEW_PAGE)
-    port.orientation = WD_ORIENT.PORTRAIT
     port.page_width, port.page_height = (body_geometry['page_width'], body_geometry['page_height'])
+    port.orientation = WD_ORIENT.LANDSCAPE if port.page_width > port.page_height else WD_ORIENT.PORTRAIT
     port.top_margin = body_geometry['top_margin']
     port.bottom_margin = body_geometry['bottom_margin']
     port.left_margin = port.right_margin = body_geometry['left_margin']
@@ -398,7 +400,7 @@ def add_control_front_matter(document, data, font, counters, toc: bool=False):
         h2 = document.add_heading(level=2)
         set_para_bidi(h2)
         add_script_runs(h2, L['controlData'], _F['display'], bold=True)
-        rows = [[label, str(control.get(key, ''))] for key, label in CONTROL_LABELS if control.get(key) is not None]
+        rows = MD.control_rows(data, L) if data.get('controlTable') else [[label, str(control.get(key, ''))] for key, label in CONTROL_LABELS if control.get(key) is not None]
         control_tbl = add_table(document, [], rows, font)
         theme_mod.style_control_table(control_tbl, _THEME_ROLES)
         document.add_paragraph()
@@ -430,15 +432,18 @@ CONTENTS_TABLE_TAG = 'contents'
 def contents_rows(data: dict) -> list[tuple[str, str, str]]:
     rows: list[tuple[str, str, str]] = []
     for ch in data.get('chapters', []):
+        if ch.get('tocHidden'):
+            continue
         rows.append((str(ch.get('number', '')), ch.get('title', ''), 'chapter'))
         secs = ch.get('sections', [])
         if len(secs) == 1:
             for b in secs[0].get('blocks', []):
-                if b.get('kind') == 'subhead':
-                    rows.append(('', b.get('text', ''), 'card'))
+                if b.get('kind') == 'subhead' and not b.get('tocHidden'):
+                    rows.append(('', MD.text_of(b.get('text', '')), 'card'))
         else:
             for sec in secs:
-                rows.append((str(sec.get('number', '')), sec.get('title', ''), 'section'))
+                if not sec.get('tocHidden'):
+                    rows.append((str(sec.get('number', '')), sec.get('title', ''), 'section'))
     return rows
 
 def add_contents_table(document, data, font: str):
@@ -599,6 +604,8 @@ def _ov_host(paragraph_parent_add):
 
 def place_overlays(document, data, workdir, cover_section, body_section):
     for o in data.get('overlays') or []:
+        if o.get('kind') == 'text':
+            continue
         img = _ov_image(o, workdir)
         if not img:
             continue
@@ -609,14 +616,22 @@ def place_overlays(document, data, workdir, cover_section, body_section):
             anchored_picture(_ov_host(body_section.header.add_paragraph), img, x, y + 18, w)
 
 
-def anchor_overlays(document, data, workdir, ptr):
-    hits = [o for o in (data.get('overlays') or []) if o.get('mode') == 'anchor' and o.get('anchor') == ptr]
+def anchor_overlays(document, data, workdir, ptr, ids=None, font=DEFAULT_BODY_FONT):
+    ids = ids or {}
+    def at(o):
+        return ids.get(str(o.get('anchor')), o.get('anchor'))
+    hits = [o for o in (data.get('overlays') or []) if (o.get('mode') == 'anchor' or (o.get('wrap') and not o.get('mode'))) and at(o) == ptr]
     if not hits:
         return
     host = _ov_host(document.add_paragraph)
     for o in hits:
+        if o.get('kind') == 'text':
+            MD.text_box(host, o, font, _THEME_ROLES, LOCALE, add_script_runs)
+            continue
         img = _ov_image(o, workdir)
-        if img:
+        if img and o.get('wrap'):
+            MD.wrapped_picture(host, img, o)
+        elif img:
             anchored_picture(host, img, float(o.get('x', 0)) + 16, float(o.get('y', 0)), float(o.get('w', 30)), 'page', 'paragraph')
 
 
@@ -672,6 +687,10 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
         _break_pf.line_spacing_rule = WD_LINE_SPACING.EXACTLY
         _break_pf.line_spacing = Pt(theme_mod.COVER_BREAK_RESERVE_TWIPS / 20)
     body_section.page_width, body_section.page_height = (Inches(8.27), Inches(11.69))
+    doc_page = (data.get('layout') or {}).get('page')
+    if doc_page:
+        MD.apply_page(document.sections[0], MD.page_spec(doc_page))  # the cover (python-docx's last sectPr is the body's)
+        MD.apply_page(body_section, MD.page_spec(doc_page))
     body_section.top_margin = Inches(0.7)
     body_section.bottom_margin = Inches(0.63)
     body_section.left_margin = body_section.right_margin = Inches(0.55)
@@ -680,15 +699,56 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     ctrl = data.get('control') or {}
     cover_section = document.sections[0]
     theme_mod.add_header_footer(document, roles, font, header_logo, ctrl.get('documentId', ''), ctrl.get('issuedOn', ''), cover_section=cover_section, body_section=body_section)
+    def bands(sec, seg=None, first=False):
+        # doc.chrome (A5/A6): the section's header and footer from the items; first=True → this section's first page
+        for part in ('header', 'footer'):
+            hf = (sec.first_page_header if part == 'header' else sec.first_page_footer) if first else (sec.header if part == 'header' else sec.footer)
+            p = MD.write_band(hf, MD.chrome_items(data, part, seg), data, L, roles, LOCALE, font, add_script_runs, header_logo, workdir, theme_mod.SIZES)
+            MD.tab_stops(p, sec)
+        counters['chrome_bands'] = counters.get('chrome_bands', 0) + 1
+    if data.get('chrome'):
+        bands(body_section)
+    seg_starts, block_ids = MD.page_model(data)
+    cur_page = MD.page_spec(doc_page) if doc_page else None
     add_control_front_matter(document, data, font, counters, toc=toc)
     body_geometry = {'page_width': body_section.page_width, 'page_height': body_section.page_height, 'top_margin': body_section.top_margin, 'bottom_margin': body_section.bottom_margin, 'left_margin': body_section.left_margin}
+    first_page_secs = []
+    def open_segment(seg):
+        # a page segment (A18 size/orientation, A6 scoped header/footer items): a new Word section
+        from docx.enum.section import WD_SECTION
+        sec = document.add_section(WD_SECTION.NEW_PAGE)
+        MD.apply_page(sec, seg['page'])
+        sec.top_margin, sec.bottom_margin = body_geometry['top_margin'], body_geometry['bottom_margin']
+        sec.left_margin = sec.right_margin = body_geometry['left_margin']
+        body_geometry['page_width'], body_geometry['page_height'] = sec.page_width, sec.page_height
+        if data.get('chrome') and (seg['only'] or seg['from']):
+            bands(sec, {'from': seg['from'], 'only': []})
+            if seg['only']:
+                sec.different_first_page_header_footer = True
+                bands(sec, seg, first=True)
+                first_page_secs.append(len(document.sections) - 1)  # by index: python-docx's last sectPr moves on
+        counters['segments'] = counters.get('segments', 0) + 1
+        return sec
     place_overlays(document, data, workdir, cover_section, body_section)
     for ci, ch in enumerate(data['chapters']):
         if ch.get('hidden'):
             continue
         # as the print renderer: a chapter holding a figure is set on turned (landscape) sheets, heading included
         wide = any((b.get('kind') in ('figure', 'diagram') for sec in ch['sections'] for b in sec.get('blocks', [])))
-        if wide:
+        first_ptr = f'/chapters/{ci}/sections/0/blocks/0'
+        if first_ptr in seg_starts:
+            seg_sec = open_segment(seg_starts.pop(first_ptr))
+            if wide:
+                # the segment's own section takes the figure chapter's turned sheet (no empty page between)
+                from docx.enum.section import WD_ORIENT
+                seg_sec.orientation = WD_ORIENT.LANDSCAPE
+                seg_sec.page_width, seg_sec.page_height = (Inches(11.69), Inches(8.27))
+                seg_sec.top_margin, seg_sec.bottom_margin = Inches(14 / 25.4), Inches(12 / 25.4)
+                wide = 'opened'
+        elif (ch.get('layout') or {}).get('breakBefore') or (((ch.get('sections') or [{}])[0].get('layout') or {}).get('breakBefore')) or ((((ch.get('sections') or [{}])[0].get('blocks') or [{}]) or [{}])[0].get('layout') or {}).get('breakBefore'):
+            MD.page_break(document)
+            counters['page_breaks'] = counters.get('page_breaks', 0) + 1
+        if wide is True:
             open_landscape_section(document)
         h1 = document.add_heading(level=1)
         set_para_bidi(h1)
@@ -699,6 +759,12 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
             if sec.get('hidden'):
                 continue
             # as the print renderer: a one-section chapter prints no section heading; otherwise «n.m title»
+            sec_ptr = f'/chapters/{ci}/sections/{si}/blocks/0'
+            if sec_ptr in seg_starts:
+                open_segment(seg_starts.pop(sec_ptr))
+            elif si and ((sec.get('layout') or {}).get('breakBefore') or (((sec.get('blocks') or [{}])[0].get('layout') or {}).get('breakBefore'))):
+                MD.page_break(document)
+                counters['page_breaks'] = counters.get('page_breaks', 0) + 1
             if len(ch['sections']) > 1:
                 h2 = document.add_heading(level=2)
                 set_para_bidi(h2)
@@ -709,17 +775,26 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
             for bi, block in enumerate(sec.get('blocks', [])):
                 if block.get('hidden'):
                     continue
-                anchor_overlays(document, data, workdir, f'/chapters/{ci}/sections/{si}/blocks/{bi}')
+                bptr = f'/chapters/{ci}/sections/{si}/blocks/{bi}'
+                if bptr in seg_starts:
+                    open_segment(seg_starts.pop(bptr))
+                elif bi and (block.get('layout') or {}).get('breakBefore'):
+                    MD.page_break(document)
+                    counters['page_breaks'] = counters.get('page_breaks', 0) + 1
+                anchor_overlays(document, data, workdir, bptr, block_ids, font)
                 kind = block.get('kind')
                 if kind == 'prose':
                     for para_text in block.get('paragraphs', []):
                         p = document.add_paragraph()
-                        add_script_runs(p, para_text, font)
+                        MD.add_leaf(p, para_text, font, add_script_runs)
+                        info = MD.list_info(para_text)
+                        if info:
+                            MD.number_paragraph(document, p, info)
                     counters['prose_block'] += 1
                 elif kind == 'subhead':
                     p = document.add_paragraph()
                     p.paragraph_format.keep_with_next = True
-                    add_script_runs(p, block.get('text', ''), F['subhead'], bold=False)
+                    MD.add_leaf(p, block.get('text', ''), F['subhead'], add_script_runs, bold=False)
                     counters['subhead_block'] += 1
                 elif kind == 'table':
                     add_table(document, block.get('columns', []), block.get('rows', []), font)
@@ -758,6 +833,15 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                     raise ValueError(f"block kind {kind!r} has no handler in build_docx.py (section {sec['title']!r}); add one and list it in HANDLED_KINDS")
         if wide:
             close_landscape_section(document, body_geometry)
+    # a new Word section copies the one before it: only the body section restarts the folio at 1, and only a
+    # "this page only" segment keeps a first-page header (0.13.0; before, every figure chapter restarted at 1)
+    for _k, _s in enumerate(document.sections):
+        if _k < 2:
+            continue
+        for _n in _s._sectPr.findall(qn('w:pgNumType')):
+            _s._sectPr.remove(_n)
+        if first_page_secs and _k not in first_page_secs and _s.different_first_page_header_footer:
+            _s.different_first_page_header_footer = False
     from docx.enum.text import WD_LINE_SPACING
     from docx.text.paragraph import Paragraph
     _flow = [c for c in document.element.body.iterchildren() if c.tag in (qn('w:p'), qn('w:tbl'))]

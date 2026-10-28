@@ -12,7 +12,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { py } from './py.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { renderDocument, chromeTemplates, relaxTallGroups, relaxArgs, PAGE, designTheme, confidentialText, uploadedFontCss, faceWeights } from './render.mjs';
+import { renderDocument, chromeTemplates, relaxTallGroups, relaxArgs, PAGE, pageGeom, pageModel, folioOf, designTheme, confidentialText, uploadedFontCss, faceWeights } from './render.mjs';
 import { applyOps, migrate } from './edits.mjs';
 import { loadManifest, resolveFonts, fontFaceCss, systemFamily, normaliseFont, ttfDataUri } from './fonts.mjs';
 import { config } from './config.mjs';
@@ -136,22 +136,27 @@ export async function exportPdf(doc, { locale, theme, pdfPath, browser: shared }
   fs.writeFileSync(tmp, html, 'utf8');
   const browser = shared || (await (await chromium()).launch(launchOptions()));
   try {
-    const page = await browser.newPage({ viewport: { width: PAGE.measurePx, height: PAGE.contentPx } });
+    const geo = doc.layout?.page ? pageGeom(doc) : PAGE;
+    const page = await browser.newPage({ viewport: { width: geo.measurePx, height: geo.contentPx } });
     await page.emulateMedia({ media: 'print' });
     await page.goto(pathToFileURL(tmp).href, { waitUntil: 'load' });
     await page.evaluate(() => document.fonts.ready.then(() => true));
-    await page.evaluate(relaxTallGroups, relaxArgs());
-    const chrome = chromeTemplates(doc, { theme, labels, locale, fontCss: fontFaceCss(used.filter((c) => [400, 700].includes(c.weight)), { embed: true }) + chosen.css + uploadedFontCss(chosen.doc), logos: theme.logos });
+    await page.evaluate(relaxTallGroups, doc.layout?.page ? relaxArgs(doc) : relaxArgs());
+    const chromeOpt = { theme, labels, locale, fontCss: fontFaceCss(used.filter((c) => [400, 700].includes(c.weight)), { embed: true }) + chosen.css + uploadedFontCss(chosen.doc), logos: theme.logos };
+    const chrome = chromeTemplates(doc, chromeOpt);
     fs.mkdirSync(path.dirname(pdfPath), { recursive: true });
-    await page.pdf({
-      path: pdfPath,
+    const print = (file, c, pageRanges) => page.pdf({
+      path: file,
       preferCSSPageSize: true,
       tagged: true,
       printBackground: true,
       displayHeaderFooter: true,
-      headerTemplate: chrome.header,
-      footerTemplate: chrome.footer,
+      headerTemplate: c.header,
+      footerTemplate: c.footer,
+      ...(pageRanges ? { pageRanges } : {}),
     });
+    await print(pdfPath, chrome);
+    await scopedChrome(doc, pdfPath, (file, seg, pages) => print(file, chromeTemplates(doc, chromeOpt, seg), pages));
     await page.close();
   } finally {
     if (!shared) await browser.close();
@@ -164,13 +169,49 @@ export async function exportPdf(doc, { locale, theme, pdfPath, browser: shared }
   if (pick) { fs.mkdirSync(OUT_TMP, { recursive: true }); folioTmp = path.join(OUT_TMP, `folio-${process.pid}-${Date.now()}.ttf`); fs.writeFileSync(folioTmp, pick.bytes); }
   const folioFace = used.find((c) => c.family === display && c.weight === 700 && c.format === 'truetype') || (folioTmp && { file: folioTmp }) || used.find((c) => c.format === 'truetype');
   const anchor = confidentialText(doc, theme, labels, locale);
-  const r = spawnSync(...py([path.join(HERE, 'pdf_post.py'), pdfPath, folioFace?.file || '', anchor, locale === 'ar' ? 'rtl' : 'ltr']), {
+  const folio = folioOf(doc, locale);
+  const r = spawnSync(...py([path.join(HERE, 'pdf_post.py'), pdfPath, folioFace?.file || '', anchor, locale === 'ar' ? 'rtl' : 'ltr', ...(doc.chrome ? [folio ? `${folio.side}:${folio.format}` : 'none'] : [])]), {
     encoding: 'utf8',
     env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
   });
   if (folioTmp) fs.rmSync(folioTmp, { force: true });
   if (r.status !== 0) throw new Error(`pdf post-processing failed: ${r.stderr || r.stdout}`);
   return { pdf: pdfPath, post: r.stdout.trim() };
+}
+
+const postPy = (args) => {
+  const r = spawnSync(...py([path.join(HERE, 'pdf_post.py'), ...args]), { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' } });
+  if (r.status !== 0) throw new Error(`pdf_post ${args[0]} failed: ${r.stderr || r.stdout}`);
+  return r.stdout.trim();
+};
+/**
+ * Header/footer items scoped to "this page only" / "from this page on" (A6). Chrome prints one template per
+ * document, so the pages a scoped item belongs to are printed again (same layout, another template) and
+ * replace their sheets one for one. The pages are read off each segment's marker link.
+ */
+export async function scopedChrome(doc, pdfPath, printPart) {
+  if (!doc.chrome) return 0;
+  const { segments } = pageModel(doc);
+  if (!segments.some((x) => x.only.length || x.from.length)) return 0;
+  const at = JSON.parse(postPy(['links', pdfPath]));
+  const starts = segments.map((x) => ({ x, page: x.n === 0 ? 0 : at[String(x.n)] })).filter((s) => Number.isInteger(s.page));
+  const groups = new Map();
+  for (let p = 1; p < at._pages; p += 1) {
+    const cur = starts.filter((s) => s.page <= p).at(-1);
+    if (!cur) continue;
+    const seg = { from: cur.x.from, only: cur.page === p ? cur.x.only : [] };
+    if (!seg.from.length && !seg.only.length) continue;
+    const key = JSON.stringify([seg.from.map((i) => [i.part, i.i]), seg.only.map((i) => [i.part, i.i])]);
+    if (!groups.has(key)) groups.set(key, { seg, pages: [] });
+    groups.get(key).pages.push(p + 1);
+  }
+  for (const { seg, pages } of groups.values()) {
+    const part = `${pdfPath}.part.pdf`;
+    await printPart(part, seg, pages.join(','));
+    postPy(['splice', pdfPath, part, pages.join(',')]);
+    fs.rmSync(part, { force: true });
+  }
+  return groups.size;
 }
 
 /**
