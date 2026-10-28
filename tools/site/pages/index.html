@@ -159,10 +159,10 @@ npm run serve</code></pre>{{copy}}</div>
         <div class="card">{{icon:plugin}}<span class="tag">الأسهل</span><h3>إضافة Claude Code</h3><p>المهارة وخادم MCP معا.</p>
           <div class="cmd"><pre><code>/plugin marketplace add NJ-Burrito/Business-Wrap
 /plugin install business-wrap@business-wrap</code></pre>{{copy}}</div>
-          <p class="small">ثم قل: «ابنِ وثيقة المتطلبات لـ …» أو «افتحها في المحرر».</p></div>
+          <p class="small">ثم قل: «ابنِ وثيقة متطلبات …» أو «افتحها في المحرر».</p></div>
         <div class="card">{{icon:mcp-server}}<span class="tag">أي عميل MCP</span><h3>خادم MCP</h3><p>احصل على الشيفرة (نسخة من المستودع، أو ملف الإصدار المضغوط مع ملف .sha256)، ونفّذ <code>npm ci</code>، ثم:</p>
           <div class="cmd"><pre><code>claude mcp add business-wrap -- node &lt;path&gt;/Business-Wrap/mcp/cli.mjs</code></pre>{{copy}}</div>
-          <p class="small"><a href="https://github.com/NJ-Burrito/Business-Wrap/releases/latest">ملف آخر إصدار</a>. يحتاج Node 20 أو أحدث، وChrome أو Edge للـ PDF، وuv للـ DOCX.</p></div>
+          <p class="small"><a href="https://github.com/NJ-Burrito/Business-Wrap/releases/latest">ملف آخر إصدار</a>. يحتاج Node 20 أو أحدث، وChrome أو Edge لملفات PDF، وuv لملفات DOCX.</p></div>
         <div class="card">{{icon:editor}}<span class="tag">بلا وكيل</span><h3>من المصدر</h3><p>ابنِ الوثيقة النموذجية وافتحها في المحرر.</p>
           <div class="cmd"><pre><code>git clone https://github.com/NJ-Burrito/Business-Wrap
 cd Business-Wrap
@@ -227,7 +227,7 @@ npm run serve</code></pre>{{copy}}</div>
         <details><summary>ماذا يدخل وماذا يخرج؟{{ui:chevron}}</summary><div><p>يدخل: نموذج إجراء (BPMN أو draw.io أو YAML) أو مسح لخدمة حية.</p><p>يخرج: PDF وDOCX وملف التعديلات JSON وحزمة التصميم والمحرر محفوظا بصيغة HTML.</p></div></details>
         <details><summary>هل يقدّم المسح طلبا حقيقيا؟{{ui:chevron}}</summary><div><p>لا، إلا إذا طلبت ذلك مرتين: <code>submit: true</code> في الإعدادات و<code>--yes-file-real-request</code>. وإلا توقف قبل الإرسال أو التقديم أو التأكيد أو الدفع.</p></div></details>
         <details><summary>أي الخطوط أستخدم؟{{ui:chevron}}</summary><div><p>خط ثمانية افتراضيا، أو أي خط على جهازك، أو ملف ترفعه. ترخيص الخط مسؤوليتك، وملفات الخطوط غير مضمّنة.</p></div></details>
-        <details><summary>على أي نظام يعمل؟{{ui:chevron}}</summary><div><p>جُرّب على Windows 11 مع Node 24 وChrome. ويحتاج Node 20 أو أحدث، وChrome أو Edge، وPython مع uv للـ DOCX. ولم يُجرَّب على macOS ولينكس.</p></div></details>
+        <details><summary>على أي نظام يعمل؟{{ui:chevron}}</summary><div><p>جُرّب على Windows 11 مع Node 24 وChrome. ويحتاج Node 20 أو أحدث، وChrome أو Edge، وPython مع uv لملفات DOCX. ولم يُجرَّب على macOS ولينكس.</p></div></details>
       </div>
     </div>
   </div>

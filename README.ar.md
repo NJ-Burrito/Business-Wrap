@@ -81,9 +81,9 @@ node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|e
 
 </div>
 
-ثم قل: **«ابنِ وثيقة المتطلبات لـ …»** أو **«افتحها في المحرر»**.
+ثم قل: **«ابنِ وثيقة متطلبات …»** أو **«افتحها في المحرر»**.
 
-🔌 **خادم MCP وحده** (stdio محلي؛ Node 20+، وChrome أو Edge للـ PDF، و`uv` للـ DOCX):
+🔌 **خادم MCP وحده** (stdio محلي؛ Node 20+، وChrome أو Edge لملفات PDF، و`uv` لملفات DOCX):
 
 احصل على الشيفرة: `git clone https://github.com/NJ-Burrito/Business-Wrap`، أو ملف الإصدار المضغوط (`business-wrap-<version>.zip` مع `.sha256`) من https://github.com/NJ-Burrito/Business-Wrap/releases/latest. ثم في ذلك المجلد نفّذ `npm ci` ثم:
 
@@ -109,7 +109,7 @@ claude mcp add business-wrap -- node <path-to>/Business-Wrap/mcp/cli.mjs
 
 🧩 **إضافة Claude Code:** `/plugin marketplace update business-wrap` ثم `/plugin update business-wrap`.
 
-**من الطرفية أو عبر وكيل:** يخبرك `node update/cli.mjs --check` بصدور إصدار جديد (طلب واحد في اليوم على الأكثر)، ويثبّته `node update/cli.mjs --apply --yes`، ويعرض `--notes` ما تغيّر وملاحظات الترحيل. لا يُحدَّث شيء دون موافقتك. يقرأ الفحص قائمة الإصدارات العامة على GitHub، والصفحة نفسها لا تتصل بـ GitHub. التفاصيل في `bible/07-updates.ar.md`.
+**من الطرفية أو عبر وكيل:** يخبرك `node update/cli.mjs --check` بصدور إصدار جديد (طلب واحد في اليوم على الأكثر)، ويثبّته `node update/cli.mjs --apply --yes`، ويعرض `--notes` ما تغيّر وملاحظات الترحيل. لا يُحدَّث شيء دون موافقتك. يقرأ الفحص قائمة الإصدارات العامة على GitHub، والصفحة نفسها لا تتصل بموقع GitHub. التفاصيل في `bible/07-updates.ar.md`.
 
 ## ابدأ وثيقة (الحصاد)
 
