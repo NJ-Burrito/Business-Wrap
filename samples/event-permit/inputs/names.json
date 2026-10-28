@@ -1,0 +1,90 @@
+{
+ "_name": {
+  "ar": "طلب تصريح فعالية عامة",
+  "en": "Public event permit"
+ },
+ "Applicant": {
+  "ar": "مقدم الطلب",
+  "en": "Applicant"
+ },
+ "Reviewer": {
+  "ar": "المدقق",
+  "en": "Reviewer"
+ },
+ "Head of section": {
+  "ar": "رئيس القسم",
+  "en": "Head of section"
+ },
+ "Department manager": {
+  "ar": "مدير الإدارة",
+  "en": "Department manager"
+ },
+ "Director general": {
+  "ar": "المدير العام",
+  "en": "Director general"
+ },
+ "Fee payment": {
+  "ar": "دفع الرسوم",
+  "en": "Fee payment"
+ },
+ "Review": {
+  "ar": "التدقيق",
+  "en": "Review"
+ },
+ "Applicant edits the request": {
+  "ar": "تعديل الطلب",
+  "en": "Edit the request"
+ },
+ "Approved": {
+  "ar": "موافق عليه",
+  "en": "Approved"
+ },
+ "Rejected": {
+  "ar": "مرفوض",
+  "en": "Rejected"
+ },
+ "Cancelled": {
+  "ar": "ملغى",
+  "en": "Cancelled"
+ },
+ "pay": {
+  "ar": "دفع",
+  "en": "Pay"
+ },
+ "cancel": {
+  "ar": "إلغاء الطلب",
+  "en": "Cancel request"
+ },
+ "approve": {
+  "ar": "موافقة",
+  "en": "Approve"
+ },
+ "need-edit": {
+  "ar": "إرجاع لمقدم الطلب",
+  "en": "Return to applicant"
+ },
+ "reject": {
+  "ar": "رفض",
+  "en": "Reject"
+ },
+ "re-submit": {
+  "ar": "إعادة الإرسال",
+  "en": "Resubmit"
+ },
+ "return-to-review": {
+  "ar": "إرجاع للتدقيق",
+  "en": "Return to review"
+ },
+ "return-to-head": {
+  "ar": "إرجاع لرئيس القسم",
+  "en": "Return to head of section"
+ },
+ "return-to-manager": {
+  "ar": "إرجاع لمدير الإدارة",
+  "en": "Return to department manager"
+ },
+ "10 working days": {
+  "ar": "10 أيام عمل",
+  "en": "10 working days"
+ }
+}

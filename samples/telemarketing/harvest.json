@@ -1,0 +1,178 @@
+{
+ "kind": "bw-harvest",
+ "version": 1,
+ "name": "renewal-campaign",
+ "harvestedAt": "2026-10-28T00:00:00Z",
+ "languages": {
+  "ar": {
+   "steps": [
+    {
+     "title": "بيانات العميل",
+     "fields": [
+      {
+       "key": "leadName",
+       "type": "text",
+       "required": true,
+       "label": "اسم العميل"
+      },
+      {
+       "key": "plan",
+       "type": "select",
+       "required": true,
+       "label": "الخطة الحالية",
+       "options": [
+        "أساسية",
+        "متقدمة",
+        "مؤسسية"
+       ]
+      },
+      {
+       "key": "endDate",
+       "type": "date",
+       "required": true,
+       "label": "تاريخ انتهاء الاشتراك"
+      },
+      {
+       "key": "script",
+       "type": "select",
+       "required": true,
+       "label": "نص المكالمة",
+       "options": [
+        "نص التجديد القياسي",
+        "نص العرض الخاص"
+       ]
+      },
+      {
+       "key": "disposition",
+       "type": "radio",
+       "required": true,
+       "label": "نتيجة المكالمة",
+       "options": [
+        "مهتم",
+        "معاودة لاحقاً",
+        "غير مهتم",
+        "عدم الاتصال"
+       ]
+      },
+      {
+       "key": "notes",
+       "type": "textarea",
+       "required": false,
+       "label": "ملاحظات المكالمة"
+      }
+     ],
+     "validations": []
+    }
+   ],
+   "statuses": [],
+   "card": {
+    "title": "حملة تجديد الاشتراكات",
+    "description": [
+     "حملة اتصال هاتفي بالمشتركين الذين تقترب نهاية اشتراكهم لعرض التجديد."
+    ],
+    "facts": [],
+    "lists": [
+     {
+      "title": "الشرائح المستهدفة",
+      "items": [
+       "مشتركون أفراد",
+       "مشتركون من الشركات"
+      ]
+     },
+     {
+      "title": "قنوات الاتصال",
+      "items": [
+       "اتصال هاتفي صادر",
+       "رسالة نصية للمتابعة"
+      ]
+     }
+    ]
+   }
+  },
+  "en": {
+   "steps": [
+    {
+     "title": "Lead details",
+     "fields": [
+      {
+       "key": "leadName",
+       "type": "text",
+       "required": true,
+       "label": "Lead name"
+      },
+      {
+       "key": "plan",
+       "type": "select",
+       "required": true,
+       "label": "Current plan",
+       "options": [
+        "Basic",
+        "Plus",
+        "Business"
+       ]
+      },
+      {
+       "key": "endDate",
+       "type": "date",
+       "required": true,
+       "label": "Plan end date"
+      },
+      {
+       "key": "script",
+       "type": "select",
+       "required": true,
+       "label": "Call script",
+       "options": [
+        "Standard renewal script",
+        "Special offer script"
+       ]
+      },
+      {
+       "key": "disposition",
+       "type": "radio",
+       "required": true,
+       "label": "Call disposition",
+       "options": [
+        "Interested",
+        "Call back later",
+        "Not interested",
+        "Do not call"
+       ]
+      },
+      {
+       "key": "notes",
+       "type": "textarea",
+       "required": false,
+       "label": "Call notes"
+      }
+     ],
+     "validations": []
+    }
+   ],
+   "statuses": [],
+   "card": {
+    "title": "Subscription renewal campaign",
+    "description": [
+     "An outbound calling campaign to subscribers whose plan is about to end, offering renewal."
+    ],
+    "facts": [],
+    "lists": [
+     {
+      "title": "Target segments",
+      "items": [
+       "Individual subscribers",
+       "Business subscribers"
+      ]
+     },
+     {
+      "title": "Contact channels",
+      "items": [
+       "Outbound call",
+       "Follow-up SMS"
+      ]
+     }
+    ]
+   }
+  }
+ }
+}

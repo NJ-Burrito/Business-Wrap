@@ -1,0 +1,21 @@
+{
+ "kind": "bw-profile",
+ "version": 1,
+ "$comment": "Fictional online shop. Every name here is invented.",
+ "id": "sample-eshop",
+ "entity": { "ar": "متجر الواحة للأدوات المنزلية", "en": "Oasis Home Goods" },
+ "locale": "en",
+ "terms": { "customer": { "ar": "المتسوّق", "en": "shopper" } },
+ "codes": { "order-to-delivery": "OTD" },
+ "codeFormat": "OHG-REQ-{code}-01",
+ "serial": {
+  "pattern": { "ar": "(OHG-السنة-الرقم)", "en": "(OHG-year-number)" },
+  "reset": { "ar": "يستمر الترقيم دون إعادة", "en": "numbering never restarts" },
+  "shownOn": { "ar": "في رسالة التأكيد وعلى الفاتورة", "en": "In the confirmation message and on the invoice" }
+ },
+ "control": {
+  "preparedBy": { "ar": "فريق المنتج", "en": "Product team" },
+  "status": { "ar": "مسودة للمراجعة", "en": "Draft for review" }
+ },
+ "captions": { "ship": { "ar": "تأكيد الشحن", "en": "Confirm shipment" } }
+}

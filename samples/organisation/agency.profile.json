@@ -1,0 +1,22 @@
+{
+ "kind": "bw-profile",
+ "version": 1,
+ "$comment": "Fictional public-service agency. Every name here is invented.",
+ "id": "sample-agency",
+ "entity": { "ar": "هيئة الخدمات النموذجية", "en": "the Model Services Authority" },
+ "locale": "ar",
+ "terms": {},
+ "codes": { "event-permit": "EVP" },
+ "codeFormat": "MSA-SRS-{code}-01",
+ "serial": {
+  "pattern": { "ar": "(رمز الخدمة-السنة-الرقم المتسلسل)", "en": "(service code-year-sequence)" },
+  "reset": { "ar": "يُعاد الترقيم من 1 مع بداية كل سنة", "en": "numbering restarts at 1 every year" },
+  "shownOn": { "ar": "يظهر الرقم على شاشة الطلبات وعلى المخرج", "en": "The number shows on the requests screen and on the output" }
+ },
+ "control": {
+  "preparedBy": { "ar": "فريق التحليل", "en": "Analysis team" },
+  "owner": { "ar": "هيئة الخدمات النموذجية", "en": "Model Services Authority" }
+ },
+ "versioning": { "format": "V{nn}" },
+ "registers": { "threshold": 30 }
+}

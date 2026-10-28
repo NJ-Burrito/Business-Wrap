@@ -1,0 +1,212 @@
+{
+ "kind": "bw-harvest",
+ "version": 1,
+ "name": "event-permit",
+ "harvestedAt": "2026-10-28T00:00:00Z",
+ "languages": {
+  "ar": {
+   "steps": [
+    {
+     "title": "بيانات الفعالية",
+     "fields": [
+      {
+       "key": "eventName",
+       "type": "text",
+       "required": true,
+       "label": "اسم الفعالية"
+      },
+      {
+       "key": "eventType",
+       "type": "select",
+       "required": true,
+       "label": "نوع الفعالية",
+       "options": [
+        "ثقافية",
+        "رياضية",
+        "تجارية",
+        "خيرية"
+       ]
+      },
+      {
+       "key": "city",
+       "type": "select",
+       "required": true,
+       "label": "المدينة",
+       "options": [
+        "مدينة 1",
+        "مدينة 2",
+        "مدينة 3",
+        "مدينة 4",
+        "مدينة 5",
+        "مدينة 6",
+        "مدينة 7",
+        "مدينة 8",
+        "مدينة 9",
+        "مدينة 10",
+        "مدينة 11",
+        "مدينة 12"
+       ]
+      },
+      {
+       "key": "date",
+       "type": "date",
+       "required": true,
+       "label": "تاريخ الفعالية"
+      },
+      {
+       "key": "attendance",
+       "type": "number",
+       "required": true,
+       "label": "العدد المتوقع للحضور"
+      },
+      {
+       "key": "pn_doc",
+       "type": "select",
+       "required": true,
+       "label": "اسم المرفق",
+       "options": [
+        "مخطط موقع الفعالية",
+        "خطة السلامة",
+        "موافقة مالك الموقع (المرفق غير إجباري)"
+       ]
+      },
+      {
+       "key": "file-0",
+       "type": "file",
+       "required": false,
+       "accept": "pdf.,jpg.,png.",
+       "label": ""
+      }
+     ],
+     "validations": []
+    }
+   ],
+   "statuses": [],
+   "card": {
+    "title": "طلب تصريح فعالية عامة",
+    "description": [
+     "تتيح هذه الخدمة لمقدمها الحصول على تصريح لإقامة فعالية عامة في موقع محدد وتاريخ محدد."
+    ],
+    "facts": [],
+    "lists": [
+     {
+      "title": "متلقي الخدمة",
+      "items": [
+       "الأفراد",
+       "المنشآت"
+      ]
+     },
+     {
+      "title": "قنوات تقديم الخدمة",
+      "items": [
+       "البوابة الإلكترونية",
+       "مركز خدمة الجمهور"
+      ]
+     }
+    ]
+   }
+  },
+  "en": {
+   "steps": [
+    {
+     "title": "Event details",
+     "fields": [
+      {
+       "key": "eventName",
+       "type": "text",
+       "required": true,
+       "label": "Event name"
+      },
+      {
+       "key": "eventType",
+       "type": "select",
+       "required": true,
+       "label": "Event type",
+       "options": [
+        "Cultural",
+        "Sports",
+        "Commercial",
+        "Charity"
+       ]
+      },
+      {
+       "key": "city",
+       "type": "select",
+       "required": true,
+       "label": "City",
+       "options": [
+        "City 1",
+        "City 2",
+        "City 3",
+        "City 4",
+        "City 5",
+        "City 6",
+        "City 7",
+        "City 8",
+        "City 9",
+        "City 10",
+        "City 11",
+        "City 12"
+       ]
+      },
+      {
+       "key": "date",
+       "type": "date",
+       "required": true,
+       "label": "Event date"
+      },
+      {
+       "key": "attendance",
+       "type": "number",
+       "required": true,
+       "label": "Expected attendance"
+      },
+      {
+       "key": "pn_doc",
+       "type": "select",
+       "required": true,
+       "label": "Attachment name",
+       "options": [
+        "Site plan",
+        "Safety plan",
+        "Site owner consent (Not required attachment)"
+       ]
+      },
+      {
+       "key": "file-0",
+       "type": "file",
+       "required": false,
+       "accept": "pdf.,jpg.,png.",
+       "label": ""
+      }
+     ],
+     "validations": []
+    }
+   ],
+   "statuses": [],
+   "card": {
+    "title": "Public event permit",
+    "description": [
+     "The service lets an applicant obtain a permit to hold a public event at a stated place and date."
+    ],
+    "facts": [],
+    "lists": [
+     {
+      "title": "Service recipients",
+      "items": [
+       "Individuals",
+       "Organisations"
+      ]
+     },
+     {
+      "title": "Channels",
+      "items": [
+       "Online portal",
+       "Service centre"
+      ]
+     }
+    ]
+   }
+  }
+ }
+}

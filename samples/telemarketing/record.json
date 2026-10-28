@@ -1,0 +1,178 @@
+{
+ "kind": "bw-service-record",
+ "version": 1,
+ "key": "renewal-campaign",
+ "source": {
+  "kind": "document",
+  "ref": "Campaign brief (sample)"
+ },
+ "facts": {
+  "assumptions": [
+   {
+    "ar": "يُتصل بالعميل بين التاسعة صباحاً والثامنة مساءً بتوقيته المحلي.",
+    "en": "Leads are called between 9:00 and 20:00 local time."
+   },
+   {
+    "ar": "لا يزيد عدد المحاولات على ثلاث لكل عميل.",
+    "en": "No more than three attempts per lead."
+   }
+  ],
+  "fees": [
+   {
+    "code": "RNW-12",
+    "amount": {
+     "ar": "10% خصم على التجديد السنوي",
+     "en": "10% off the yearly renewal"
+    },
+    "basis": {
+     "ar": "عرض الحملة",
+     "en": "Campaign offer"
+    },
+    "timing": {
+     "ar": "عند تأكيد البيع",
+     "en": "When the sale is confirmed"
+    }
+   }
+  ],
+  "statuses": [
+   {
+    "ar": "بانتظار الاتصال",
+    "en": "Waiting to be called"
+   },
+   {
+    "ar": "معاودة مجدولة",
+    "en": "Call-back scheduled"
+   }
+  ],
+  "integrations": {
+   "internal": [
+    {
+     "name": {
+      "ar": "نظام إدارة العملاء",
+      "en": "CRM"
+     },
+     "description": {
+      "ar": "سجل المشترك والخطة",
+      "en": "Subscriber record and plan"
+     },
+     "sent": {
+      "ar": "نتيجة المكالمة",
+      "en": "Call disposition"
+     },
+     "received": {
+      "ar": "بيانات المشترك",
+      "en": "Subscriber data"
+     },
+     "readiness": {
+      "ar": "جاهز",
+      "en": "Ready"
+     }
+    },
+    {
+     "name": {
+      "ar": "نظام الاتصال الآلي",
+      "en": "Dialler"
+     },
+     "description": {
+      "ar": "توزيع المكالمات على الوكلاء",
+      "en": "Distributes calls to agents"
+     },
+     "sent": {
+      "ar": "قائمة الأرقام",
+      "en": "Number list"
+     },
+     "received": {
+      "ar": "حالة المكالمة",
+      "en": "Call status"
+     },
+     "readiness": {
+      "ar": "جاهز",
+      "en": "Ready"
+     }
+    }
+   ],
+   "dataSources": [
+    {
+     "name": {
+      "ar": "قائمة عدم الاتصال",
+      "en": "Do-not-call list"
+     },
+     "description": {
+      "ar": "الأرقام الممنوع الاتصال بها",
+      "en": "Numbers that must not be called"
+     },
+     "received": {
+      "ar": "الرقم ممنوع أم لا",
+      "en": "Whether a number is blocked"
+     },
+     "readiness": {
+      "ar": "جاهز",
+      "en": "Ready"
+     }
+    }
+   ]
+  },
+  "kpis": [
+   {
+    "name": {
+     "ar": "نسبة التحويل",
+     "en": "Conversion rate"
+    },
+    "target": {
+     "ar": "18%",
+     "en": "18%"
+    },
+    "measure": {
+     "ar": "المبيعات المعتمدة ÷ المكالمات المكتملة",
+     "en": "Approved sales ÷ completed calls"
+    }
+   },
+   {
+    "name": {
+     "ar": "نتيجة مراجعة الجودة",
+     "en": "QA score"
+    },
+    "target": {
+     "ar": "90 من 100",
+     "en": "90 out of 100"
+    },
+    "measure": {
+     "ar": "عينة أسبوعية",
+     "en": "Weekly sample"
+    }
+   }
+  ],
+  "slas": [
+   {
+    "stage": {
+     "ar": "معاودة الاتصال",
+     "en": "Call back"
+    },
+    "target": {
+     "ar": "خلال 48 ساعة",
+     "en": "Within 48 hours"
+    }
+   }
+  ],
+  "outputs": [
+   {
+    "name": {
+     "ar": "سجل نتيجة المكالمة",
+     "en": "Call outcome record"
+    },
+    "when": {
+     "ar": "عند إغلاق المكالمة",
+     "en": "When the call closes"
+    },
+    "to": {
+     "ar": "نظام إدارة العملاء",
+     "en": "The CRM"
+    }
+   }
+  ],
+  "languages": [
+   "ar",
+   "en"
+  ]
+ }
+}

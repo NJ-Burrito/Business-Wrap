@@ -1,0 +1,88 @@
+{
+ "process": "event-permit",
+ "actors": [
+  "Applicant",
+  "Reviewer",
+  "Head of section",
+  "Department manager",
+  "Director general"
+ ],
+ "steps": [
+  {
+   "id": "pay",
+   "name": "Fee payment",
+   "actor": "Applicant",
+   "options": {
+    "pay": "rev",
+    "cancel": "cancelled"
+   }
+  },
+  {
+   "id": "rev",
+   "name": "Review",
+   "actor": "Reviewer",
+   "options": {
+    "approve": "head",
+    "need-edit": "fix",
+    "reject": "rejected"
+   }
+  },
+  {
+   "id": "fix",
+   "name": "Applicant edits the request",
+   "actor": "Applicant",
+   "options": {
+    "re-submit": "rev",
+    "cancel": "cancelled"
+   },
+   "timer": {
+    "to": "cancelled",
+    "after": "10 working days"
+   }
+  },
+  {
+   "id": "head",
+   "name": "Head of section",
+   "actor": "Head of section",
+   "options": {
+    "approve": "mgr",
+    "return-to-review": "rev",
+    "reject": "rejected"
+   }
+  },
+  {
+   "id": "mgr",
+   "name": "Department manager",
+   "actor": "Department manager",
+   "options": {
+    "approve": "gm",
+    "return-to-head": "head",
+    "reject": "rejected"
+   }
+  },
+  {
+   "id": "gm",
+   "name": "Director general",
+   "actor": "Director general",
+   "options": {
+    "approve": "approved",
+    "return-to-manager": "mgr",
+    "reject": "rejected"
+   }
+  }
+ ],
+ "ends": [
+  {
+   "id": "approved",
+   "name": "Approved"
+  },
+  {
+   "id": "rejected",
+   "name": "Rejected"
+  },
+  {
+   "id": "cancelled",
+   "name": "Cancelled"
+  }
+ ]
+}

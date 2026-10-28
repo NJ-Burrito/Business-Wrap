@@ -1,0 +1,252 @@
+{
+ "kind": "bw-harvest",
+ "version": 1,
+ "name": "order-to-delivery",
+ "harvestedAt": "2026-10-28T00:00:00Z",
+ "languages": {
+  "ar": {
+   "steps": [
+    {
+     "title": "إتمام الشراء",
+     "fields": [
+      {
+       "key": "fullName",
+       "type": "text",
+       "required": true,
+       "label": "الاسم الكامل"
+      },
+      {
+       "key": "email",
+       "type": "email",
+       "required": true,
+       "label": "البريد الإلكتروني"
+      },
+      {
+       "key": "phone",
+       "type": "tel",
+       "required": true,
+       "label": "رقم الهاتف"
+      },
+      {
+       "key": "country",
+       "type": "select",
+       "required": true,
+       "label": "بلد التوصيل",
+       "options": [
+        "بلد 1",
+        "بلد 2",
+        "بلد 3",
+        "بلد 4",
+        "بلد 5",
+        "بلد 6",
+        "بلد 7",
+        "بلد 8",
+        "بلد 9",
+        "بلد 10",
+        "بلد 11",
+        "بلد 12",
+        "بلد 13",
+        "بلد 14",
+        "بلد 15",
+        "بلد 16",
+        "بلد 17",
+        "بلد 18",
+        "بلد 19",
+        "بلد 20",
+        "بلد 21",
+        "بلد 22",
+        "بلد 23",
+        "بلد 24",
+        "بلد 25",
+        "بلد 26",
+        "بلد 27",
+        "بلد 28",
+        "بلد 29",
+        "بلد 30",
+        "بلد 31",
+        "بلد 32",
+        "بلد 33",
+        "بلد 34",
+        "بلد 35",
+        "بلد 36",
+        "بلد 37",
+        "بلد 38",
+        "بلد 39",
+        "بلد 40"
+       ]
+      },
+      {
+       "key": "address",
+       "type": "textarea",
+       "required": true,
+       "label": "عنوان التوصيل"
+      },
+      {
+       "key": "slot",
+       "type": "radio",
+       "required": true,
+       "label": "فترة التوصيل",
+       "options": [
+        "صباحية",
+        "مسائية"
+       ]
+      },
+      {
+       "key": "coupon",
+       "type": "text",
+       "required": false,
+       "label": "رمز الخصم"
+      }
+     ],
+     "validations": []
+    }
+   ],
+   "statuses": [],
+   "card": {
+    "title": "طلب شراء حتى التسليم",
+    "description": [
+     "يتيح المتجر للمتسوّق اختيار المنتجات وإتمام الشراء ومتابعة الطلب حتى التسليم أو الإرجاع."
+    ],
+    "facts": [],
+    "lists": [
+     {
+      "title": "شرائح العملاء",
+      "items": [
+       "أفراد",
+       "شركات صغيرة"
+      ]
+     },
+     {
+      "title": "قنوات البيع",
+      "items": [
+       "الموقع الإلكتروني",
+       "تطبيق الهاتف"
+      ]
+     }
+    ]
+   }
+  },
+  "en": {
+   "steps": [
+    {
+     "title": "Checkout",
+     "fields": [
+      {
+       "key": "fullName",
+       "type": "text",
+       "required": true,
+       "label": "Full name"
+      },
+      {
+       "key": "email",
+       "type": "email",
+       "required": true,
+       "label": "Email"
+      },
+      {
+       "key": "phone",
+       "type": "tel",
+       "required": true,
+       "label": "Phone number"
+      },
+      {
+       "key": "country",
+       "type": "select",
+       "required": true,
+       "label": "Delivery country",
+       "options": [
+        "Country 1",
+        "Country 2",
+        "Country 3",
+        "Country 4",
+        "Country 5",
+        "Country 6",
+        "Country 7",
+        "Country 8",
+        "Country 9",
+        "Country 10",
+        "Country 11",
+        "Country 12",
+        "Country 13",
+        "Country 14",
+        "Country 15",
+        "Country 16",
+        "Country 17",
+        "Country 18",
+        "Country 19",
+        "Country 20",
+        "Country 21",
+        "Country 22",
+        "Country 23",
+        "Country 24",
+        "Country 25",
+        "Country 26",
+        "Country 27",
+        "Country 28",
+        "Country 29",
+        "Country 30",
+        "Country 31",
+        "Country 32",
+        "Country 33",
+        "Country 34",
+        "Country 35",
+        "Country 36",
+        "Country 37",
+        "Country 38",
+        "Country 39",
+        "Country 40"
+       ]
+      },
+      {
+       "key": "address",
+       "type": "textarea",
+       "required": true,
+       "label": "Delivery address"
+      },
+      {
+       "key": "slot",
+       "type": "radio",
+       "required": true,
+       "label": "Delivery slot",
+       "options": [
+        "Morning",
+        "Evening"
+       ]
+      },
+      {
+       "key": "coupon",
+       "type": "text",
+       "required": false,
+       "label": "Discount code"
+      }
+     ],
+     "validations": []
+    }
+   ],
+   "statuses": [],
+   "card": {
+    "title": "Order to delivery",
+    "description": [
+     "The store lets a shopper choose products, check out and follow the order to delivery or return."
+    ],
+    "facts": [],
+    "lists": [
+     {
+      "title": "Customer segments",
+      "items": [
+       "Individuals",
+       "Small businesses"
+      ]
+     },
+     {
+      "title": "Sales channels",
+      "items": [
+       "Web store",
+       "Mobile app"
+      ]
+     }
+    ]
+   }
+  }
+ }
+}

@@ -1,0 +1,193 @@
+{
+ "kind": "bw-service-record",
+ "version": 1,
+ "key": "event-permit",
+ "source": {
+  "kind": "document",
+  "ref": "Service record (sample)"
+ },
+ "facts": {
+  "fees": [
+   {
+    "code": "EVP-01",
+    "amount": {
+     "ar": "10 دنانير",
+     "en": "10 dinars"
+    },
+    "basis": {
+     "ar": "رسم دراسة الطلب",
+     "en": "Application review fee"
+    },
+    "timing": {
+     "ar": "عند تقديم الطلب",
+     "en": "On submission"
+    }
+   },
+   {
+    "code": "EVP-02",
+    "amount": {
+     "ar": "25 ديناراً",
+     "en": "25 dinars"
+    },
+    "basis": {
+     "ar": "رسم إصدار التصريح",
+     "en": "Permit issue fee"
+    },
+    "timing": {
+     "ar": "بعد الموافقة",
+     "en": "After approval"
+    }
+   }
+  ],
+  "assumptions": [
+   {
+    "ar": "أن يكون موقع الفعالية مرخَّصاً لاستقبال الجمهور.",
+    "en": "The event site is licensed to receive the public."
+   },
+   {
+    "ar": "أن يُقدَّم الطلب قبل موعد الفعالية بعشرة أيام عمل على الأقل.",
+    "en": "The request is filed at least ten working days before the event."
+   }
+  ],
+  "adminReference": [
+   [
+    {
+     "ar": "الإدارة",
+     "en": "Department"
+    },
+    {
+     "ar": "إدارة الفعاليات",
+     "en": "Events department"
+    }
+   ],
+   [
+    {
+     "ar": "القسم",
+     "en": "Section"
+    },
+    {
+     "ar": "قسم التصاريح",
+     "en": "Permits section"
+    }
+   ],
+   [
+    {
+     "ar": "تصنيف الخدمة",
+     "en": "Service class"
+    },
+    {
+     "ar": "عمودية (خاصة بجهة واحدة)",
+     "en": "Vertical (one organisation)"
+    }
+   ]
+  ],
+  "outputs": [
+   {
+    "name": {
+     "ar": "تصريح إلكتروني بصيغة PDF",
+     "en": "Electronic permit (PDF)"
+    },
+    "validity": {
+     "ar": "حتى تاريخ الفعالية",
+     "en": "Until the event date"
+    }
+   }
+  ],
+  "legislation": [
+   {
+    "number": "7/2020",
+    "name": {
+     "ar": "نظام الفعاليات العامة (مثال)",
+     "en": "Public events regulation (example)"
+    },
+    "year": "2020"
+   }
+  ],
+  "integrations": {
+   "services": [
+    {
+     "name": {
+      "ar": "خدمة الدفع الإلكتروني",
+      "en": "Online payment service"
+     },
+     "sent": {
+      "ar": "المبلغ، رقم الطلب",
+      "en": "Amount, request number"
+     },
+     "received": {
+      "ar": "نتيجة الدفع",
+      "en": "Payment result"
+     }
+    }
+   ],
+   "partners": [
+    {
+     "name": {
+      "ar": "سجل الأحوال المدنية (مثال)",
+      "en": "Civil registry (example)"
+     },
+     "sent": {
+      "ar": "الرقم الشخصي",
+      "en": "Personal number"
+     },
+     "received": {
+      "ar": "بيانات مقدم الطلب الأساسية",
+      "en": "the applicant's basic details"
+     },
+     "readiness": {
+      "ar": "جاهز",
+      "en": "Ready"
+     }
+    }
+   ],
+   "internal": [],
+   "dataSources": [
+    {
+     "name": {
+      "ar": "جدول المواقع المرخصة",
+      "en": "Licensed sites table"
+     },
+     "description": {
+      "ar": "المواقع المرخَّصة للفعاليات",
+      "en": "Sites licensed for events"
+     },
+     "received": {
+      "ar": "اسم الموقع، السعة",
+      "en": "Site name, capacity"
+     },
+     "readiness": {
+      "ar": "جاهز",
+      "en": "Ready"
+     }
+    }
+   ]
+  },
+  "desks": {
+   "Review": {
+    "sections": [
+     {
+      "ar": "بيانات الفعالية",
+      "en": "Event details"
+     },
+     {
+      "ar": "المرفقات",
+      "en": "Attachments"
+     },
+     {
+      "ar": "سجل الإجراءات",
+      "en": "Action log"
+     }
+    ],
+    "autoAssign": true
+   }
+  },
+  "earlierIssue": {
+   "version": "V01",
+   "date": "2026-10-01"
+  },
+  "languages": [
+   "ar",
+   "en"
+  ]
+ }
+}

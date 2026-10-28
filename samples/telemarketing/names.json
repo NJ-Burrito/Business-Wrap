@@ -1,0 +1,82 @@
+{
+ "_name": {
+  "ar": "حملة تجديد الاشتراكات",
+  "en": "Subscription renewal campaign"
+ },
+ "Agent": {
+  "ar": "وكيل الاتصال",
+  "en": "Agent"
+ },
+ "QA supervisor": {
+  "ar": "مشرف الجودة",
+  "en": "QA supervisor"
+ },
+ "Call the lead": {
+  "ar": "الاتصال بالعميل",
+  "en": "Call the lead"
+ },
+ "Call back": {
+  "ar": "معاودة الاتصال",
+  "en": "Call back"
+ },
+ "Confirm the sale": {
+  "ar": "تأكيد البيع",
+  "en": "Confirm the sale"
+ },
+ "Quality review": {
+  "ar": "مراجعة الجودة",
+  "en": "Quality review"
+ },
+ "Renewed": {
+  "ar": "تم التجديد",
+  "en": "Renewed"
+ },
+ "Not renewed": {
+  "ar": "لم يُجدَّد",
+  "en": "Not renewed"
+ },
+ "Do not call": {
+  "ar": "عدم الاتصال",
+  "en": "Do not call"
+ },
+ "interested": {
+  "ar": "مهتم",
+  "en": "Interested"
+ },
+ "call-back": {
+  "ar": "معاودة لاحقاً",
+  "en": "Call back later"
+ },
+ "not-interested": {
+  "ar": "غير مهتم",
+  "en": "Not interested"
+ },
+ "do-not-call": {
+  "ar": "أضف إلى قائمة عدم الاتصال",
+  "en": "Add to do-not-call"
+ },
+ "call-again": {
+  "ar": "اتصال مجدد",
+  "en": "Call again"
+ },
+ "confirm": {
+  "ar": "تأكيد البيع",
+  "en": "Confirm sale"
+ },
+ "cancel": {
+  "ar": "إلغاء البيع",
+  "en": "Cancel sale"
+ },
+ "approve": {
+  "ar": "اعتماد",
+  "en": "Approve"
+ },
+ "return-to-agent": {
+  "ar": "إرجاع إلى الوكيل",
+  "en": "Return to agent"
+ },
+ "48 hours": {
+  "ar": "48 ساعة",
+  "en": "48 hours"
+ }
+}
