@@ -80,7 +80,7 @@
 
 /* the brand mark "Cover" (DESIGN c.3, brand/v3/logo/mark-animated.svg inlined with .bw-still so its own CSS stays quiet):
    sheet, spine, cap, two lines and The Rule build once when the editor opens; drawn and still otherwise.
-   Hover or focus on the tile replays the rule only. The mark is a logo: it is never mirrored for Arabic.
+   Idle and hover motion (A22, 0.13.0) below. The mark is a logo: it is never mirrored for Arabic.
    The lines carry pathLength="1": a dash of 1 is the whole line, an offset of 1 hides it (-1 draws it from its end). */
 .brand svg .sheet, .brand svg .spine, .brand svg .cap, .brand svg .ln, .brand svg .rule { transform-box: fill-box; animation: none; }
 .brand svg .spine { transform-origin: 50% 0; }
@@ -92,7 +92,39 @@
 .shell.first .brand svg .ln.l1 { animation: bwm-write var(--bw-dur-slow) var(--bw-ease-out) 520ms both; }
 .shell.first .brand svg .ln.l2 { animation: bwm-write-end var(--bw-dur-slow) var(--bw-ease-out) 600ms both; }
 .shell.first .brand svg .rule { animation: bwm-rule var(--bw-dur-story) var(--bw-ease-in-out) 760ms both; }
-.brand:hover svg .rule, .brand:focus-visible svg .rule { animation: bwm-rule var(--bw-dur-story) var(--bw-ease-in-out) both; }
+/* A22 (0.13.0) idle: the mark keeps breathing while nothing happens. The Rule redraws, the cap nods and the lines
+   rewrite on long, offset cycles (at rest most of each cycle, so it reads as alive, never busy). The first-open build
+   hands over to the same loops. */
+.brand svg .rule { animation: bwm-idle-rule 6.4s var(--bw-ease-in-out) 2.6s infinite both; }
+.brand svg .cap { animation: bwm-idle-cap 6.4s var(--bw-ease-spring) 3.4s infinite both; }
+.brand svg .ln.l2 { animation: bwm-idle-write 12.8s var(--bw-ease-out) 4.2s infinite both; }
+.brand svg .sheet { transform-origin: 50% 100%; animation: bwm-idle-sheet 6.4s var(--bw-ease-in-out) 3.2s infinite both; }
+.shell.first .brand svg .rule { animation: bwm-rule var(--bw-dur-story) var(--bw-ease-in-out) 760ms both, bwm-idle-rule 6.4s var(--bw-ease-in-out) 2.6s infinite; }
+.shell.first .brand svg .cap { animation: bwm-cap var(--bw-dur-fast) var(--bw-ease-spring) 440ms both, bwm-idle-cap 6.4s var(--bw-ease-spring) 3.4s infinite; }
+.shell.first .brand svg .ln.l2 { animation: bwm-write-end var(--bw-dur-slow) var(--bw-ease-out) 600ms both, bwm-idle-write 12.8s var(--bw-ease-out) 4.2s infinite; }
+.shell.first .brand svg .sheet { animation: bwm-sheet var(--bw-dur-base) var(--bw-ease-out) both, bwm-idle-sheet 6.4s var(--bw-ease-in-out) 3.2s infinite; }
+@keyframes bwm-idle-rule { 0%, 78%, 100% { transform: scaleX(1); } 84% { transform: scaleX(.2); } 92% { transform: scaleX(1.08); } }
+@keyframes bwm-idle-cap { 0%, 86%, 100% { transform: none; } 90% { transform: translateY(-3px); } 95% { transform: translateY(.5px); } }
+@keyframes bwm-idle-write { 0%, 88%, 100% { stroke-dashoffset: 0; } 91% { stroke-dashoffset: -1; } 97% { stroke-dashoffset: 0; } }
+@keyframes bwm-idle-sheet { 0%, 80%, 100% { transform: none; } 86% { transform: rotate(-2deg) translateY(-.5px); } 93% { transform: rotate(.6deg); } }
+
+/* A22 hover: one 900 ms sequence per hover (never looping): the spine redraws, the cap bounces in on a spring, both
+   lines rewrite, The Rule draws again and the sheet lifts; a press squishes the mark. Replaces the idle loops while
+   the pointer is on it. */
+.brand { cursor: default; }
+.brand svg { transition: transform var(--bw-dur-slow) var(--bw-ease-spring); }
+.brand:hover svg { transform: translateY(-1px) rotate(-3deg); }
+.brand:active svg { transform: scale(var(--bw-scale-press)) rotate(-3deg); transition-duration: var(--bw-dur-instant); }
+.shell .brand:hover svg .spine, .shell .brand:focus-visible svg .spine { animation: bwm-hov-spine var(--bw-dur-page) var(--bw-ease-in-out) both; }
+.shell .brand:hover svg .cap, .shell .brand:focus-visible svg .cap { animation: bwm-hov-cap var(--bw-dur-slow) var(--bw-ease-spring) 300ms both; }
+.shell .brand:hover svg .ln.l1, .shell .brand:focus-visible svg .ln.l1 { animation: bwm-write var(--bw-dur-slow) var(--bw-ease-out) 380ms both; }
+.shell .brand:hover svg .ln.l2, .shell .brand:focus-visible svg .ln.l2 { animation: bwm-write-end var(--bw-dur-slow) var(--bw-ease-out) 460ms both; }
+.shell .brand:hover svg .rule, .shell .brand:focus-visible svg .rule { animation: bwm-hov-rule var(--bw-dur-page) var(--bw-ease-spring) 380ms both; }
+.shell .brand:hover svg .sheet, .shell .brand:focus-visible svg .sheet { animation: bwm-hov-sheet var(--bw-dur-story) var(--bw-ease-spring) both; }
+@keyframes bwm-hov-spine { 0% { transform: scaleY(1); } 30% { transform: scaleY(0); } 100% { transform: scaleY(1); } }
+@keyframes bwm-hov-cap { 0% { opacity: 0; transform: translateY(-9px); } 60% { opacity: 1; transform: translateY(1.5px); } 100% { transform: none; } }
+@keyframes bwm-hov-rule { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes bwm-hov-sheet { 0%, 100% { transform: none; } 40% { transform: scale(1.04); } 70% { transform: scale(.99); } }
 @keyframes bwm-sheet { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
 @keyframes bwm-spine { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 @keyframes bwm-cap { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
@@ -101,8 +133,9 @@
 @keyframes bwm-rule { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
 /* reduced motion and calm mode: the mark and the rule are drawn, never moving */
-@media (prefers-reduced-motion: reduce) { .sec.now::after, .brand svg * { animation: none !important; } .bw-i .mv { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .sec.now::after, .brand svg * { animation: none !important; } .bw-i .mv { animation: none !important; } .brand svg { transition: none !important; transform: none !important; } }
 .shell[data-calm="1"] .sec.now::after, .shell[data-calm="1"] .brand svg *, .shell[data-calm="1"] .bw-i .mv { animation: none !important; }
+.shell[data-calm="1"] .brand svg { transition: none !important; transform: none !important; }
 
 /* pop-overs inside a panel move but never fade: their text is readable (and passes contrast) from the first frame */
 .drawer .fp-pop { animation-name: rise-solid; }

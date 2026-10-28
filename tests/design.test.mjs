@@ -365,6 +365,35 @@ try {
     await ctx.close();
   }
 
+  // ── A22 logo motion: idle loops + ≥ 3 hover animations on the mark's parts; none in calm mode or reduced motion ──
+  {
+    const anims = (page) => shadow(page, (r) => r.querySelector('.brand svg').getAnimations({ subtree: true }).map((a) => a.animationName || a.transitionProperty || a.constructor.name));
+    const shot22 = async (name, opts, calm) => {
+      const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 }, ...opts });
+      if (calm) await ctx.addInitScript(() => { try { localStorage.setItem('bw:calm', '1'); } catch {} });
+      const p = await ctx.newPage();
+      await p.goto(editorUrl);
+      await p.waitForFunction(() => window.BW?.ready);
+      await p.mouse.move(700, 600);
+      await p.waitForTimeout(300);
+      const idle = await anims(p);
+      await p.locator('.brand').hover();
+      await p.waitForTimeout(120);
+      const hov = await anims(p);
+      await ctx.close();
+      return { idle, hov };
+    };
+    const n = await shot22('normal', {});
+    const hovNames = [...new Set(n.hov.filter((x) => /^bwm-hov/.test(x)))];
+    const idleNames = [...new Set(n.idle.filter((x) => /^bwm-idle/.test(x)))];
+    check('A22: the mark moves while idle (≥ 3 idle loops)', idleNames.length >= 3, idleNames.join(','));
+    check('A22: hover plays ≥ 3 animations on the parts of the mark (spine, cap, lines, rule, sheet)', hovNames.length >= 3, hovNames.join(','));
+    const c = await shot22('calm', {}, true);
+    check('A22: calm mode → 0 animations on the mark (idle and hover)', c.idle.length === 0 && c.hov.length === 0, `${c.idle} | ${c.hov}`);
+    const rm = await shot22('reduced', { reducedMotion: 'reduce' });
+    check('A22: reduced motion → 0 animations on the mark (idle and hover)', rm.idle.length === 0 && rm.hov.length === 0, `${rm.idle} | ${rm.hov}`);
+  }
+
   // the Local Font Access API itself on a file:// page (real Chrome, permission granted as a user would)
   const ctxF = await browser.newContext();
   try { await ctxF.grantPermissions(['local-fonts']); } catch { /* older Chrome: no such permission */ }
