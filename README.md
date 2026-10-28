@@ -19,7 +19,19 @@
 
 🆓 Free and open source (MIT). Runs on your computer. Nothing is uploaded.
 
-**Jump to:** [✅ Before you start](#-before-you-start) · [🧩 Install](#-install) · [🚀 Quick start](#-quick-start) · [🔁 Updates](#-updates) · [🧰 What it does](#-what-it-does) · [🔤 Fonts](#-fonts) · [🤖 For AI agents](#-for-ai-agents)
+**Jump to:** [▶️ Quick start](#️-quick-start) · [✅ Before you start](#-before-you-start) · [🧩 Install](#-install) · [🚀 Commands](#-commands) · [🔁 Updates](#-updates) · [🧰 What it does](#-what-it-does) · [🔤 Fonts](#-fonts) · [🤖 For AI agents](#-for-ai-agents)
+
+## ▶️ Quick start
+
+📂 Open a terminal in the Business-Wrap folder: `cd Business-Wrap`
+
+📦 Install once: `npm ci`
+
+▶️ Start the local server: `npm run serve` (the first time it builds the sample editor)
+
+🌐 Open the address it prints, http://127.0.0.1:4317/, in Chrome or Edge.
+
+⚠️ Always open the editor **through the local server**, not by double-clicking the HTML file. Export, print, the printers list and updates need the server.
 
 ## ✅ Before you start
 
@@ -48,7 +60,7 @@
 claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.1 business-wrap-mcp
 ```
 
-💻 **From source:** `git clone https://github.com/NJ-Burrito/Business-Wrap`, then the [Quick start](#-quick-start).
+💻 **From source:** `git clone https://github.com/NJ-Burrito/Business-Wrap`, then the [Quick start](#️-quick-start).
 
 <details>
 <summary>📦 Other ways: release zip, MCP from a clone, tool list</summary>
@@ -59,12 +71,12 @@ claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.
 
 </details>
 
-## 🚀 Quick start
+## 🚀 Commands
 
 ```powershell
 npm ci                 # install
-npm run sample         # builds out/sample/event-permit.editor.html
-npm run serve          # http://127.0.0.1:4317/ : one-click PDF + DOCX
+npm run serve          # http://127.0.0.1:4317/ : builds the sample the first time; one-click PDF + DOCX
+npm run sample         # rebuild out/sample/event-permit.editor.html
 npm test               # every suite, one after another
 ```
 

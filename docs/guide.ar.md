@@ -6,7 +6,7 @@
 
 ✅ ثبّت Node 20 فأحدث وuv وChrome أو Edge. لا تثبيت بـ pip: uv يجلب حزم Python.
 
-🚀 `npm ci` ثم `npm run sample` ثم `npm run serve`.
+🚀 `npm ci` ثم `npm run serve` ثم افتح العنوان الذي يطبعه. واستخدم المحرر دائماً عبر ذلك الخادم.
 
 🔤 الخطوط تعمل من أول مرة (نسخة ثمانية الاحتياطية المضمّنة)، ونسختك أنت لها الأولوية.
 
@@ -28,14 +28,15 @@
 
 ## 2. البدء السريع (Windows، خطوة بخطوة)
 1. انسخ المستودع: `git clone https://github.com/NJ-Burrito/Business-Wrap` ثم `cd Business-Wrap`.
-2. ثبت حزم Node: `npm install`.
-3. الخطوط: اتبع `fonts/README.ar.md` (اضبط `BW_FONT_DIR`، وحول كل عائلة Serif إلى TrueType في المجلد `<family>/ttf/` تحت ذلك الجذر).
-4. فعل UTF-8 لـ Python في هذه الطرفية: `$env:PYTHONUTF8 = "1"` (PowerShell).
-5. ثبت خطاف الأمان المحلي: `git config core.hooksPath .githooks`.
-6. افحص التصميم: `python design/build.py` ← يطبع نتائج التباين ويكتب `design/ours/theme.json`.
-7. افتح المثال في المحرر (انظر `editor/README.md`)، وبدل بين العربية والإنجليزية بمفتاح الاتجاه، وأجر تعديلا واحفظ: يظهر `edits.json` بجانب الوثيقة.
-8. صدر PDF وDOCX من المحرر أو من سطر الأوامر في `engine/`، واقرأ كل سطر فحص يطبعه.
-9. قبل أي رفع: يجب أن ينتهي `python security/check.py` بعبارة `0 finding(s)`.
+2. ثبت حزم Node: `npm ci`.
+3. ▶️ شغّل المحرر: في مجلد Business-Wrap نفّذ `npm run serve`، ثم افتح العنوان الذي يطبعه (http://127.0.0.1:4317/) في Chrome أو Edge. في المرة الأولى يبني المثال. استخدم المحرر عبر هذا الخادم، لا بالنقر المزدوج على ملف HTML: التصدير والطباعة وقائمة الطابعات والتحديث تحتاج الخادم.
+4. الخطوط (اختياري): نسخة ثمانية الاحتياطية المضمّنة تعمل من أول مرة. ولاستخدام نسختك اتبع `fonts/README.ar.md`.
+5. فعل UTF-8 لـ Python في هذه الطرفية: `$env:PYTHONUTF8 = "1"` (PowerShell).
+6. ثبت خطاف الأمان المحلي: `git config core.hooksPath .githooks`.
+7. افحص التصميم: `python design/build.py` ← يطبع نتائج التباين ويكتب `design/ours/theme.json`.
+8. في المحرر بدل بين العربية والإنجليزية بمفتاح الاتجاه، وأجر تعديلا واحفظ: يظهر `edits.json` بجانب الوثيقة.
+9. صدر PDF وDOCX من المحرر أو من سطر الأوامر في `engine/`، واقرأ كل سطر فحص يطبعه.
+10. قبل أي رفع: يجب أن ينتهي `python security/check.py` بعبارة `0 finding(s)`.
 
 ## 3. حل المشكلات
 | العرض | السبب | الحل |

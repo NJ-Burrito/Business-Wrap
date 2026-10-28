@@ -198,6 +198,15 @@ try {
   const bad = spawnSync(process.execPath, [path.join(link, 'engine', 'serve.mjs'), path.join(OUT, 'missing.html')], { encoding: 'utf8' });
   check('serve.mjs prints an error and exits non-zero on a bad editor path', bad.status !== 0 && /usage|not found|no such/i.test(bad.stderr), `${bad.status} ${bad.stderr.trim().slice(0, 80)}`);
   unlinkLink();
+
+  // ── 8. `npm run serve` with no editor builds the sample when out/ lacks it, then serves it ──
+  const sampleEditor = path.join(OUT, 'no-sample-yet', 'event-permit.editor.html');
+  const sv2 = spawn(process.execPath, [path.join(REPO, 'engine', 'serve.mjs'), '--port', '0'], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, BW_SAMPLE_EDITOR: sampleEditor } });
+  const said2 = await new Promise((ok) => { let s = ''; const done = () => ok(s); sv2.stdout.on('data', (d) => { s += d; if (/not by double-clicking/.test(s)) done(); }); sv2.on('exit', done); setTimeout(done, 120000); });
+  const url2 = /http:\/\/127\.0\.0\.1:\d+\//.exec(said2)?.[0];
+  const page2 = url2 ? await fetch(url2).then((r) => r.status).catch(() => 0) : 0;
+  if (process.platform === 'win32') spawnSync('taskkill', ['/pid', String(sv2.pid), '/T', '/F'], { stdio: 'ignore' }); else sv2.kill();
+  check('npm run serve with no editor: builds the sample first, serves it, says to open it through the server', /building the sample/.test(said2) && fs.existsSync(sampleEditor) && page2 === 200 && /not by double-clicking/.test(said2), `${page2} ${said2.replace(/\s+/g, ' ').slice(0, 160)}`);
 } finally {
   await browser.close();
 }

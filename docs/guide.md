@@ -4,7 +4,7 @@
 
 ✅ Install Node 20+, uv and Chrome or Edge. No pip installs: uv brings the Python packages.
 
-🚀 `npm ci`, then `npm run sample`, then `npm run serve`.
+🚀 `npm ci`, then `npm run serve`, then open the address it prints. Always use the editor through that server.
 
 🔤 Fonts work out of the box (bundled Thmanyah fallback); your own copy wins.
 
@@ -26,14 +26,15 @@
 
 ## 2. Quickstart (Windows, step by step)
 1. Clone the repo: `git clone https://github.com/NJ-Burrito/Business-Wrap` then `cd Business-Wrap`.
-2. Install Node packages: `npm install`.
-3. Fonts: follow `fonts/README.md` (set `BW_FONT_DIR`, convert each Serif family to TrueType into `<family>/ttf/` under that root).
-4. Turn on UTF-8 for Python in this terminal: `$env:PYTHONUTF8 = "1"` (PowerShell).
-5. Install the local security hook: `git config core.hooksPath .githooks`.
-6. Check the design: `python design/build.py` → prints contrast results and writes `design/ours/theme.json`.
-7. Open the sample in the editor (see `editor/README.md`), switch AR ⇄ EN with the direction toggle, make an edit, save: `edits.json` appears beside the document.
-8. Export PDF + DOCX from the editor or the CLI in `engine/`; read every gate line it prints.
-9. Before any push: `python security/check.py` must end with `0 finding(s)`.
+2. Install Node packages: `npm ci`.
+3. ▶️ Start the editor: in the Business-Wrap folder run `npm run serve`, then open the address it prints (http://127.0.0.1:4317/) in Chrome or Edge. The first time it builds the sample. Use the editor through this server, not by double-clicking the HTML file: export, print, the printers list and updates need the server.
+4. Fonts (optional): the bundled Thmanyah fallback works out of the box. To use your own copy, follow `fonts/README.md`.
+5. Turn on UTF-8 for Python in this terminal: `$env:PYTHONUTF8 = "1"` (PowerShell).
+6. Install the local security hook: `git config core.hooksPath .githooks`.
+7. Check the design: `python design/build.py` → prints contrast results and writes `design/ours/theme.json`.
+8. In the editor, switch AR ⇄ EN with the direction toggle, make an edit, save: `edits.json` appears beside the document.
+9. Export PDF + DOCX from the editor or the CLI in `engine/`; read every gate line it prints.
+10. Before any push: `python security/check.py` must end with `0 finding(s)`.
 
 ## 3. Troubleshooting
 | Symptom | Cause | Fix |

@@ -1,6 +1,8 @@
 // Local server for one-click PDF + DOCX export from the editor.
 //
-//   node engine/serve.mjs <editor.html> [--port 4317] [--out <exports folder>]
+//   node engine/serve.mjs [<editor.html>] [--port 4317] [--out <exports folder>]
+//   npm run serve        no editor given: the sample editor (out/sample/event-permit.editor.html), built first
+//                        when it is missing (BW_SAMPLE_EDITOR overrides the path, for tests).
 //
 // Exports go to --out, or to an «exports» folder beside the editor file: never into this repository.
 //
@@ -15,7 +17,7 @@ import { exportPdf, exportDocx, pageThumbs, loadTheme, fontsFor, REPO, i18n, fil
 import { checkForUpdate, token, settings as updateSettings } from '../update/check.mjs';
 import { applyUpdate, STAGES } from '../update/apply.mjs';
 import { rewrapEditorHtml, aboutInfo } from './build-editor.mjs';
-import { fork } from 'node:child_process';
+import { fork, spawnSync } from 'node:child_process';
 import { crawl, harvestToDocument } from './harvest/crawl.mjs';
 import { learningRoute } from './learning/http.mjs';
 import { printApi } from './printers.mjs';
@@ -183,9 +185,18 @@ const real = (f) => { try { return fs.realpathSync.native(path.resolve(f)); } ca
 if (process.argv[1] && real(process.argv[1]) === real(fileURLToPath(import.meta.url))) {
   const args = process.argv.slice(2);
   const opt = (k) => { const i = args.indexOf(`--${k}`); return i < 0 ? undefined : args[i + 1]; };
-  const file = args.find((a, i) => !a.startsWith('--') && !['--port', '--out'].includes(args[i - 1]));
+  let file = args.find((a, i) => !a.startsWith('--') && !['--port', '--out'].includes(args[i - 1]));
   const port = opt('port') !== undefined ? Number(opt('port')) : 4317;
-  if (!file) { console.error('usage: node engine/serve.mjs <editor.html> [--port 4317] [--out <exports folder>]'); process.exit(2); }
+  if (!file) {
+    // `npm run serve` with no editor: serve the sample, building it first when out/ does not have it yet
+    file = path.resolve(process.env.BW_SAMPLE_EDITOR || path.join(REPO, 'out', 'sample', 'event-permit.editor.html'));
+    if (!fs.existsSync(file) && !process.env.BW_SERVE_CHILD) {
+      console.log('No editor built yet: building the sample first (npm run sample)…');
+      const b = spawnSync(process.execPath, [path.join(REPO, 'engine', 'build-editor.mjs'), path.join(REPO, 'samples', 'event-permit'), '--out', file, '--set', 'sample'], { stdio: 'inherit' });
+      if (b.status !== 0) { console.error('building the sample failed: run npm run sample and read its error'); process.exit(1); }
+    }
+    args.push(file);
+  }
   const editor = path.resolve(userCwd(), file);
   if (!fs.existsSync(editor)) { console.error(`editor file not found: ${editor}
 usage: node engine/serve.mjs <editor.html> [--port 4317] [--out <exports folder>]`); process.exit(2); }
@@ -201,6 +212,7 @@ usage: node engine/serve.mjs <editor.html> [--port 4317] [--out <exports folder>
         onUpdated: () => { server.close(() => process.exit(RESTART_CODE)); server.closeAllConnections?.(); setTimeout(() => process.exit(RESTART_CODE), 3000).unref(); },
       });
       console.log(`Business-Wrap editor on http://127.0.0.1:${server.address().port}/  (Ctrl+C to stop)`);
+      console.log('Open that address in Chrome or Edge. Use the editor through this server, not by double-clicking the HTML file: export, print, the printers list and updates need it.');
     } catch (e) {
       console.error(`serve failed: ${e.message}`);
       process.exit(1);

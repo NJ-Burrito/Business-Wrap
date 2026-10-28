@@ -18,6 +18,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 - 🔤 Thmanyah ships as a fallback, so PDFs print with the right fonts out of the box. / خطوط ثمانية مضمنة احتياطيًا، فتطبع ملفات PDF بالخط الصحيح مباشرة.
 - 📖 README pair rewritten for visitors. / إعادة كتابة ملفي README للزوار.
 - 🐍 Fresh machine needs only Node, uv and Chrome or Edge: no pip installs. / الجهاز الجديد يحتاج Node وuv وChrome أو Edge فقط، دون pip.
+- ▶️ `npm run serve` is the way in: it builds the sample the first time; open the editor through it. / `npm run serve` هو المدخل: يبني المثال في المرة الأولى، وافتح المحرر عبره.
 
 ### Added / أضيف
 - 🔤 **Bundled fallback fonts** in `fonts/nj-fonts/thmanyah/` (Serif Text, Serif Display: otf, ttf, woff2; Sans: otf, woff2). Used only when no other copy is found: `BW_FONT_DIR`, `.local/config.json` and the system font folder still win. These files are under the Thmanyah licence, not MIT. / خطوط احتياطية مضمنة في `fonts/nj-fonts/thmanyah/`، تُستخدم فقط إن لم توجد نسخة أخرى؛ ومجلد المستخدم وإعداداته وخطوط النظام لها الأولوية. هذه الملفات تحت رخصة ثمانية، لا MIT.
@@ -31,6 +32,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 - 🧩 `fonts/manifest.json` gains `${BW_ROOT}` (the repo or plugin root) and lists `fonts/nj-fonts` last. / ملف الخطوط يضيف `${BW_ROOT}` ويضع `fonts/nj-fonts` في آخر القائمة.
 
 ### Fixed / أصلح
+- ▶️ **`npm run serve` on a fresh clone**: it served `out/sample/...` that did not exist yet. With no editor given it now builds the sample first, then serves it, and prints that the editor must be used through the server (export, print, printers, updates). `npm run serve -- <editor.html>` serves your own file. The editor's "can't reach the server" message says how to start it (EN+AR). / `npm run serve` على نسخة جديدة يبني المثال أولاً ثم يقدّمه، ويذكّر بفتح المحرر عبر الخادم؛ ورسالة تعذّر الوصول إلى الخادم تشرح طريقة تشغيله.
 - 🔌 **Plugin MCP launch**: `business-wrap` is not on npm, so `npx -p business-wrap@0.11.0` failed on a fresh machine. The plugin and Smithery now run `npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.1 business-wrap-mcp`, which installs from the release tag with its dependencies. `update/version-sync.mjs` keeps the `#vX.Y.Z` ref in step with `package.json`. / إصلاح تشغيل خادم MCP في الإضافة: الحزمة ليست على npm، فصار التشغيل من وسم الإصدار على GitHub مع اعتمادياته، وأداة مزامنة الإصدار تتحقق من الوسم.
 
 ### Migration notes / ملاحظات الترحيل

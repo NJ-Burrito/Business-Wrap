@@ -21,7 +21,19 @@
 
 🆓 مجاني ومفتوح المصدر (رخصة MIT). يعمل على جهازك. لا يُرفع شيء.
 
-**انتقل إلى:** [✅ قبل أن تبدأ](#-قبل-أن-تبدأ) · [🧩 التثبيت](#-التثبيت) · [🚀 البدء السريع](#-البدء-السريع) · [🔁 التحديثات](#-التحديثات) · [🧰 ماذا يفعل](#-ماذا-يفعل) · [🔤 الخطوط](#-الخطوط) · [🤖 لوكلاء الذكاء الاصطناعي](#-لوكلاء-الذكاء-الاصطناعي)
+**انتقل إلى:** [▶️ البدء السريع](#️-البدء-السريع) · [✅ قبل أن تبدأ](#-قبل-أن-تبدأ) · [🧩 التثبيت](#-التثبيت) · [🚀 الأوامر](#-الأوامر) · [🔁 التحديثات](#-التحديثات) · [🧰 ماذا يفعل](#-ماذا-يفعل) · [🔤 الخطوط](#-الخطوط) · [🤖 لوكلاء الذكاء الاصطناعي](#-لوكلاء-الذكاء-الاصطناعي)
+
+## ▶️ البدء السريع
+
+📂 افتح طرفية في مجلد Business-Wrap: `cd Business-Wrap`
+
+📦 ثبّت مرة واحدة: `npm ci`
+
+▶️ شغّل الخادم المحلي: `npm run serve` (في المرة الأولى يبني محرر المثال)
+
+🌐 افتح العنوان الذي يطبعه، http://127.0.0.1:4317/، في Chrome أو Edge.
+
+⚠️ افتح المحرر دائماً **عبر الخادم المحلي**، لا بالنقر المزدوج على ملف HTML. التصدير والطباعة وقائمة الطابعات والتحديث تحتاج الخادم.
 
 ## ✅ قبل أن تبدأ
 
@@ -61,7 +73,7 @@ claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.
 
 </div>
 
-💻 **من المصدر:** `git clone https://github.com/NJ-Burrito/Business-Wrap` ثم [البدء السريع](#-البدء-السريع).
+💻 **من المصدر:** `git clone https://github.com/NJ-Burrito/Business-Wrap` ثم [البدء السريع](#️-البدء-السريع).
 
 <details>
 <summary>📦 طرق أخرى: ملف الإصدار المضغوط، وخادم MCP من نسخة محلية، وقائمة الأدوات</summary>
@@ -72,14 +84,14 @@ claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.
 
 </details>
 
-## 🚀 البدء السريع
+## 🚀 الأوامر
 
 <div dir="ltr">
 
 ```powershell
 npm ci                 # install
-npm run sample         # builds out/sample/event-permit.editor.html
-npm run serve          # http://127.0.0.1:4317/ : one-click PDF + DOCX
+npm run serve          # http://127.0.0.1:4317/ : builds the sample the first time; one-click PDF + DOCX
+npm run sample         # rebuild out/sample/event-permit.editor.html
 npm test               # every suite, one after another
 ```
 
