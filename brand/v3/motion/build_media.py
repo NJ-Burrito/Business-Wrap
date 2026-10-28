@@ -304,9 +304,8 @@ BANNER_ICONS = ["harvest", "editor", "bilingual", "pdf", "docx", "mcp-server"]
 
 
 def icon(name: str) -> str:
-    src = (ROOT / "brand" / "v2" / "icons" / f"{name}.svg").read_text(encoding="utf-8")
+    src = (V3 / "icons" / f"{name}.svg").read_text(encoding="utf-8")
     inner = re.sub(r"^.*?<title>.*?</title>", "", src, flags=re.S).rsplit("</svg>", 1)[0]
-    inner = inner.replace('fill="#C8F04A"', 'fill="var(--bw-accent)"')
     return ('<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" '
             f'stroke-linecap="round" stroke-linejoin="round" data-icon="{name}">{inner}</svg>')
 
@@ -329,6 +328,7 @@ def banner() -> None:
 #row{position:absolute;left:474px;top:378px;display:flex;gap:44px}
 .ic{width:60px;height:60px;color:var(--bw-on-glass);overflow:visible}
 .ic .hl{fill:var(--bw-on-band)}
+.ic .hl.rl{fill:none;stroke:var(--bw-on-band)}
 """
     body = f"""  <div id="pool"></div>
   <div id="markw">{mark("mark-dark.svg", 280)}</div>
