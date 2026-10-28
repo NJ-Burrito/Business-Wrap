@@ -1,4 +1,4 @@
-# Research summary (EN) — pair: README.ar.md
+# Research summary (EN) · pair: README.ar.md
 
 Retrieved 2026-10-27. Each topic file holds the claims, a grade and a URL.
 

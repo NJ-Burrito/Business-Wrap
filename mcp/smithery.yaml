@@ -6,7 +6,7 @@ startCommand:
     properties:
       fontDir:
         type: string
-        description: Folder holding the TrueType font cuts.
+        description: "Optional. Folder with your own TrueType font cuts (sets BW_FONT_DIR); the bundled Thmanyah fallback is used when no other copy is found."
     required: []
   commandFunction: |-
     (config) => ({
