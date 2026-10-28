@@ -107,7 +107,7 @@ def band_path(x1: float, x2: float, top: float, bot: float, rise: float = 2.0) -
             f"L{x1 - 3:.1f} {bot:.1f}Z")
 
 
-def lockup(face: Face, lang: str, mode: str) -> str:
+def lockup(face: Face, lang: str, mode: str, with_mark: bool = True) -> str:
     """mode: light (ink on paper), dark (paper ink on ledger dark), mono (currentColor)."""
     size, mark_h, gap = 46.0, 64.0, 18.0
     ink = {"light": INK, "dark": PAPER, "mono": "currentColor"}[mode]
@@ -143,6 +143,9 @@ def lockup(face: Face, lang: str, mode: str) -> str:
     mark = f'<g transform="translate({mark_x:.1f} 0)">{mark_body(ink, None if mode == "mono" else LIME, uid, mode == "mono")}' \
            f'{"" if mode != "mono" else f"<path d=\"{BAND}\" fill=\"currentColor\"/>"}</g>'
     title = "بزنس راب" if rtl else "Business-Wrap"
+    if not with_mark:  # the wordmark alone: drop the mark and the gap
+        shift = 0 if rtl else -(mark_h + gap - pad)
+        return svg(round(tw + pad * 2 + 6, 1), mark_h, f'<g transform="translate({shift:.1f} 0)">{band + word}</g>', title)
     return svg(round(W, 1), mark_h, mark + band + word, title)
 
 
@@ -211,6 +214,7 @@ def main():
     for lang in ("en", "ar"):
         for mode in ("light", "dark", "mono"):
             files[f"lockup-{lang}{'' if mode == 'light' else '-' + mode}.svg"] = lockup(face, lang, mode)
+            files[f"wordmark-{lang}{'' if mode == 'light' else '-' + mode}.svg"] = lockup(face, lang, mode, False)
     for n, s in files.items():
         (OUT / n).write_text(s, encoding="utf-8", newline="\n")
     fav = V2 / "favicon"

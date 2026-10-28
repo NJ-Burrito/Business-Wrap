@@ -1,5 +1,7 @@
-READY 2026-10-28 14:46: final files, paths relative to brand/v2/. Rules: BRAND.md. Tokens: tokens.json, tokens.css, fonts.css, contrast.md.
+READY 2026-10-28 14:49: final files, paths relative to brand/v2/. Rules: BRAND.md. Tokens: tokens.json, tokens.css, fonts.css, contrast.md.
 BRAND.md
+banner/github-banner-still.png
+banner/github-banner.gif
 banner/hero-site-1920.mp4
 banner/hero-site-poster.png
 banner/hero.gif
@@ -54,6 +56,12 @@ logo/mark-animated.svg
 logo/mark-dark.svg
 logo/mark-mono.svg
 logo/mark.svg
+logo/wordmark-ar-dark.svg
+logo/wordmark-ar-mono.svg
+logo/wordmark-ar.svg
+logo/wordmark-en-dark.svg
+logo/wordmark-en-mono.svg
+logo/wordmark-en.svg
 social/card.css
 social/card.html
 social/og.html
