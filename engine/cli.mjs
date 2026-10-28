@@ -98,7 +98,7 @@ export async function open({ inputs = [], port = 4317, browser = true, ui } = {}
     editor = path.join(EDITORS(), `${fileStem(first.service || first.control.documentId)}.editor.html`);
     buildEditor({ inputs: documents, out: editor, set: first.service, watermarkDir: null, ui });
   }
-  const h = await startHost({ editor, port, browser });
+  const h = await startHost({ editor, port, browser: browser && !process.env.BW_NO_BROWSER });
   const lib = documents.length ? await libraryImport(h.url, documents) : null;
   const docId = documents.length ? JSON.parse(fs.readFileSync(documents[0], 'utf8')).control.documentId : null;
   return { url: lib?.url || h.url, doc_id: lib?.doc_id || docId, editor, pid: h.pid, port: h.port, browser: !!h.browserPid, library: !!lib };

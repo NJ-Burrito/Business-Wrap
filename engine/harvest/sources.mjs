@@ -7,7 +7,8 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { spawnSync } from 'node:child_process';
 import { config } from '../config.mjs';
-import { harvestModel, writeDocuments } from './cli.mjs';
+import { harvestModel, writeDocuments, readModel } from './cli.mjs';
+import { gateHarvest } from '../heal/gates.mjs';
 import { parseModel, modelToDocument } from './model.mjs';
 import { unescapeXml } from './xml.mjs';
 
@@ -88,6 +89,7 @@ export async function harvestSources(sources, { out, name, roles, editor = true 
         const r = writeDocuments((locale, L) => modelToDocument(ir, { locale, L }), out, { editor, sources: { ir }, name });
         results.push({ source: src, kind: 'document', documents: r.documents, editor: r.editor, service: r.service });
       } else if (MODEL_EXT.test(src)) {
+        if (gateHarvest(await readModel(src, { name, roles })).verdict === 'FAIL') throw new Error('not a process model: no task or decision step');
         const r = await harvestModel(src, { out, name, roles, editor });
         results.push({ source: src, kind: 'model', documents: r.documents, editor: r.editor, service: r.service });
       } else skipped.push({ source: src, why: 'not a model (BPMN, draw.io, YAML, JSON) or a document (PDF, DOCX, HTML, TXT, MD)' });

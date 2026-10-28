@@ -92,3 +92,10 @@ MCP `harvest_merge {crawl, model, out_dir, name?, roles?}`; editor **New documen
 
 ## Gates
 `tests/harvest.test.mjs`: an invented Flowable-style BPMN, a draw.io file (plain and compressed), a YAML list, and a local bilingual site walked end to end with an OTP pause that resumes by itself; credentials checked absent from the harvest; robots respected; viewport-only screenshots; the wizard and the Process panel in the editor.
+
+## Your own files, the editor, healers (0.13.0)
+
+- **Sources you provide** (`business-wrap import <file|folder …>`, MCP `harvest_sources`): BPMN, draw.io, YAML/JSON step lists and monitoring graphs go through the model parser; PDF (poppler `pdftotext`), DOCX (its own XML), HTML, TXT and MD are read as text, the first plain line is the name and every numbered (`1.`) or bulleted (`-`, `•`) line is one step. A file with no step, or JSON that is not a process, is listed as skipped with the reason. No model, no network.
+- **Straight into the editor**: `business-wrap harvest <url|file>` opens the result (`--no-open` to stay in the terminal); the MCP harvest tools take `open: true` (default false for agents) and return `opened: {url, doc_id}`. `open_in_editor` / `close_editor` start and stop the local host; `close` ends only the hosts and Edge windows this install started.
+- **Healers** (`engine/heal/`): in a browser walk only locators (fallback role+name, then text, then label; none or several = a structural change = FAIL) and waits (extended once to a ceiling) heal. Every heal is one `HEALED` line in `.local/heal-log.jsonl` and the step reports HEALED, never PASS. Gates, hashes, signatures and a missing document code never heal.
+- **Per-stage gates** after each step: harvest (shape), evidence (every ledger row has a disposition), document (control, document code, chapters), render (pdffonts: Thmanyah only, no Type 3, no Cairo), export (files, editions), ledger (WP4 verify). `business-wrap gate <stage> <file>` runs one alone.
