@@ -20,12 +20,11 @@ const BASE = 'https://nj-burrito.github.io/Business-Wrap/';
 const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 const REPO = 'https://github.com/NJ-Burrito/Business-Wrap';
 
-// Brand files copied into site/assets: the first source that exists wins. brand/v3 is the brand; the
-// brand/v2 icon line and the mark-small favicon stand-in go when the v3 files are merged (integration step).
+// Brand files copied into site/assets from brand/v3 (the first source that exists wins).
 const ASSETS = {
   'assets/tokens.css': ['brand/v3/tokens-v3.css'],
-  'assets/icons.css': ['brand/v3/icons/icons.css', 'brand/v2/icons/icons.css'],
-  'assets/favicon.svg': ['brand/v3/favicon/favicon.svg', 'brand/v3/logo/mark-small.svg'],
+  'assets/icons.css': ['brand/v3/icons/icons.css'],
+  'assets/favicon.svg': ['brand/v3/favicon/favicon.svg'],
   'assets/favicon.ico': ['brand/v3/favicon/favicon.ico'],
   'assets/icon-192.png': ['brand/v3/favicon/icon-192.png'],
   'assets/icon-512.png': ['brand/v3/favicon/icon-512.png'],
@@ -37,12 +36,12 @@ const ASSETS = {
   'assets/fonts/thmanyah-sans-700.woff2': ['fonts/nj-fonts/thmanyah/thmanyahsans/woff2/thmanyahsans-Bold.woff2'],
   'assets/fonts/thmanyah-serif-display-700.woff2': ['fonts/nj-fonts/thmanyah/thmanyahserifdisplay/woff2/thmanyahserifdisplay-Bold.woff2'],
 };
-const ICON_DIRS = ['brand/v3/icons', 'brand/v2/icons'];
+const ICON_DIRS = ['brand/v3/icons'];
 const MARK = ['brand/v3/logo/mark.svg'];
-// Hero media (site/assets/media is the media package's folder): frozen names first, current files as stand-ins.
+// Hero media (site/assets/media).
 const MEDIA = {
   'hero-mp4': ['hero.mp4'],
-  'hero-poster': ['hero-poster.webp', 'hero-site-poster.png'],
+  'hero-poster': ['hero-poster.webp'],
 };
 
 const first = (list) => list.find((p) => fs.existsSync(path.join(ROOT, p)));

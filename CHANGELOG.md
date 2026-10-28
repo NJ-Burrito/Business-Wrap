@@ -8,6 +8,44 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.12.0] - 2026-10-28
+
+🎨 A new brand, an Arabic website, and an editor with no hard-coded colour. / 🎨 هوية جديدة، وموقع بالعربية، ومحرر بلا ألوان ثابتة في الكود.
+
+**In 10 seconds / في عشر ثوان**
+- 🎨 Brand v3 "Cover & Rule": navy and gold, light and dark from the same colour ramps. / الهوية الثالثة «الغلاف والمسطرة»: كحلي وذهبي، والوضعان الفاتح والداكن من سلالم الألوان نفسها.
+- 🌐 The website has an Arabic edition at `/ar/`. / للموقع نسخة عربية على `/ar/`.
+- 🖌️ The editor runs on brand tokens: 182 hard-coded colours down to 0. / المحرر يعمل على رموز الهوية: 182 لونا ثابتا صارت 0.
+- 🎞️ New hero, banner and logo animations, in English and Arabic. / رسوم متحركة جديدة للواجهة واللافتة والشعار، بالإنجليزية والعربية.
+- 🛡️ NOTICE, a security policy pair and issue forms. / ملف NOTICE، وسياسة أمان بلغتين، ونماذج للبلاغات.
+
+### Added / أضيف
+- 🎨 **Brand v3** in `brand/v3/`: tokens (`tokens-v3.css`, light and dark JSON, every contrast pair passes `palette/check.py`), the logo set (mark, EN and AR lockups and wordmarks outlined from Thmanyah Serif Display, an animated mark that stays still under reduced motion), favicons, social cards (`og.png`, `og-ar.png`), 22 redrawn icons, and a brand guide pair (`BRAND.md`, `BRAND.ar.md`). / الهوية الثالثة في `brand/v3/`: الرموز، ومجموعة الشعار، والأيقونات المفضلة، وصور المشاركة، و22 أيقونة معاد رسمها، ودليل الهوية بلغتين.
+- 🌐 **Arabic website** at `/ar/`, built from the same page sources as the English one, with its own canonical link, language links both ways and an Arabic social image; a 404 page. / موقع عربي على `/ar/` من مصادر الصفحات نفسها، مع رابط أساسي خاص وروابط اللغة في الاتجاهين وصورة مشاركة عربية؛ وصفحة 404.
+- 🎞️ **Motion**: one motion system for the site, the editor and the animations; `hero.gif` and `hero-ar.gif` (9 s loops), `hero.mp4`, `github-banner.gif` (6 s), a logo loop. Reduced motion stops every animation. / نظام حركة واحد للموقع والمحرر والرسوم المتحركة، وحلقات الواجهة واللافتة والشعار؛ وتقليل الحركة يوقف كل حركة.
+- ⚖️ **`NOTICE.md`** (the Thmanyah font terms, EN and AR) and **`SECURITY.md` / `SECURITY.ar.md`** (report privately; only the latest release gets fixes). / ملف NOTICE لشروط خطوط ثمانية، وسياسة الأمان بلغتين.
+- 📝 **Issue forms** (bug, feature; blank issues off) and a pull request template. / نماذج البلاغات (خلل، ميزة) وقالب طلب الدمج.
+- 📚 **Docs front page** (`docs/README.md` pair). The MCP README pair now lists all 12 tools. / صفحة أولى للوثائق، وصفحة MCP تذكر الأدوات الـ12 كلها.
+
+### Changed / تغير
+- 🖌️ **Editor chrome on brand v3 tokens**: no hard-coded colour left (a test guards it), new panel motion, calm mode and reduced motion leave nothing running. PDF and DOCX colours are unchanged: documents never read the brand tokens. / واجهة المحرر على رموز الهوية الثالثة، مع اختبار يمنع الألوان الثابتة؛ وألوان PDF وDOCX لم تتغير.
+- 🔤 **Site fonts self-hosted**: three Thmanyah woff2 files ship with the site. / خطوط الموقع مستضافة معه: ثلاثة ملفات woff2 من ثمانية.
+- 🔢 **The site takes its version from `package.json`**, and `update/version-sync.mjs` fails when a page or its structured data says another one. / الموقع يأخذ رقم الإصدار من `package.json`، وأداة مزامنة الإصدار تفشل إن ذكرت صفحة رقما آخر.
+- 📖 **README pair** rewritten for brand v3: new badges, sections on safety, questions and help. / إعادة كتابة ملفي README على الهوية الثالثة: شارات جديدة، وأقسام للأمان والأسئلة والمساعدة.
+- 🚀 **Release notes** open with an "In 10 seconds" list, and their MCP line is `npx -y -p business-wrap@latest business-wrap-mcp`. / ملاحظات الإصدار تبدأ بقائمة «في عشر ثوان»، وسطر MCP فيها يستخدم `business-wrap@latest`.
+- 🧪 **CONTRIBUTING pair**: a "Run the checks" section with the same commands CI runs. / ملفا المساهمة: قسم «شغل الفحوص» بأوامر CI نفسها.
+
+### Removed / حذف
+- 🗂️ Brand v1 and v2 files (`brand/logo`, `brand/png`, `brand/v2`, `brand/build.py`); history keeps them. The npm package ships `brand/v3` instead of `brand/logo`. / ملفات الهويتين الأولى والثانية، ويحفظها السجل؛ والحزمة تحمل `brand/v3` بدل `brand/logo`.
+- 🧹 Internal working files are no longer tracked (session handoff, build receipts, the distribution checklist). / ملفات العمل الداخلية لم تعد في المستودع.
+
+### Fixed / أصلح
+- 📋 **Site install commands**: the copy button no longer covers the command, and the MCP line is the same in the README, the site and the release notes. / أوامر التثبيت في الموقع: زر النسخ لا يغطي الأمر، وسطر MCP واحد في كل مكان.
+- 🔗 **Docs links**: every relative link in `docs/` resolves, and the MCP README pair uses the `@latest` install line. / كل الروابط النسبية في الوثائق تعمل.
+
+### Migration notes / ملاحظات الترحيل
+- No command or schema change. A tool that read `brand/logo/` or `brand/v2/` reads `brand/v3/logo/` and `brand/v3/tokens-v3.css` now; the class `.bw-highlight` still works. / لا تغيير في الأوامر أو المخططات. ما كان يقرأ `brand/logo/` أو `brand/v2/` يقرأ الآن `brand/v3/`، والصنف `.bw-highlight` ما زال يعمل.
+
 ## [0.11.1] - 2026-10-28
 
 🔓 Public repo, and a plugin that works on a fresh machine. / 🔓 مستودع عام، وإضافة تعمل على جهاز جديد.

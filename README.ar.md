@@ -2,7 +2,7 @@
 
 <h1 align="center">بزنس راب (Business-Wrap): مولد وثائق متطلبات ثنائية اللغة (عربي وإنجليزي)</h1>
 
-<p align="center"><img src="https://raw.githubusercontent.com/NJ-Burrito/Business-Wrap/main/site/assets/media/hero.gif" alt="بزنس راب: أدلة تدخل، ووثيقة متطلبات واحدة بالعربية والإنجليزية تخرج" width="720"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/NJ-Burrito/Business-Wrap/main/site/assets/media/hero-ar.gif" alt="بزنس راب: أدلة تدخل، ووثيقة متطلبات واحدة بالعربية والإنجليزية تخرج" width="720"></p>
 
 <h3 align="center">📄 أدلة تدخل، ووثيقة متطلبات واحدة بالعربية والإنجليزية تخرج.</h3>
 
@@ -87,7 +87,7 @@ claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp
 
 - ملف الإصدار: `business-wrap-<version>.zip` مع `.sha256` من https://github.com/NJ-Burrito/Business-Wrap/releases/latest. وفي ذلك المجلد: `npm ci`.
 - خادم MCP من نسخة محلية: `claude mcp add business-wrap -- node <path-to>/Business-Wrap/mcp/cli.mjs`
-- خادم MCP من وسم GitHub (دون npm): `claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.1 business-wrap-mcp`
+- خادم MCP من وسم GitHub (دون npm): `claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.12.0 business-wrap-mcp`
 - الأدوات: `build_editor` و`validate_edits` و`apply_edits` و`export_document` و`export_design_pack` و`check_fonts` و`harvest_model` و`harvest_crawl` و`harvest_merge` و`diagram_mermaid` و`check_update` و`apply_update`، إضافة إلى أدوات `learning_*`. التفاصيل في [mcp/README.ar.md](mcp/README.ar.md).
 
 </details>

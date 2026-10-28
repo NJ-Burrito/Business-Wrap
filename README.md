@@ -74,7 +74,7 @@ claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp
 
 - Release zip: `business-wrap-<version>.zip` + `.sha256` from https://github.com/NJ-Burrito/Business-Wrap/releases/latest. In that folder: `npm ci`.
 - MCP from a clone: `claude mcp add business-wrap -- node <path-to>/Business-Wrap/mcp/cli.mjs`
-- MCP from the GitHub tag (no npm): `claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.1 business-wrap-mcp`
+- MCP from the GitHub tag (no npm): `claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.12.0 business-wrap-mcp`
 - Tools: `build_editor`, `validate_edits`, `apply_edits`, `export_document`, `export_design_pack`, `check_fonts`, `harvest_model`, `harvest_crawl`, `harvest_merge`, `diagram_mermaid`, `check_update`, `apply_update`, plus the `learning_*` tools. See [mcp/README.md](mcp/README.md).
 
 </details>
