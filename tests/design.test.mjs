@@ -365,6 +365,96 @@ try {
     await ctx.close();
   }
 
+  // ── A22 logo motion: idle loops + ≥ 3 hover animations on the mark's parts; none in calm mode or reduced motion ──
+  {
+    const anims = (page) => shadow(page, (r) => r.querySelector('.brand svg').getAnimations({ subtree: true }).map((a) => a.animationName || a.transitionProperty || a.constructor.name));
+    const shot22 = async (name, opts, calm) => {
+      const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 }, ...opts });
+      if (calm) await ctx.addInitScript(() => { try { localStorage.setItem('bw:calm', '1'); } catch {} });
+      const p = await ctx.newPage();
+      await p.goto(editorUrl);
+      await p.waitForFunction(() => window.BW?.ready);
+      await p.mouse.move(700, 600);
+      await p.waitForTimeout(300);
+      const idle = await anims(p);
+      await p.locator('.brand').hover();
+      await p.waitForTimeout(120);
+      const hov = await anims(p);
+      await ctx.close();
+      return { idle, hov };
+    };
+    const n = await shot22('normal', {});
+    const hovNames = [...new Set(n.hov.filter((x) => /^bwm-hov/.test(x)))];
+    const idleNames = [...new Set(n.idle.filter((x) => /^bwm-idle/.test(x)))];
+    check('A22: the mark moves while idle (≥ 3 idle loops)', idleNames.length >= 3, idleNames.join(','));
+    check('A22: hover plays ≥ 3 animations on the parts of the mark (spine, cap, lines, rule, sheet)', hovNames.length >= 3, hovNames.join(','));
+    const c = await shot22('calm', {}, true);
+    check('A22: calm mode → 0 animations on the mark (idle and hover)', c.idle.length === 0 && c.hov.length === 0, `${c.idle} | ${c.hov}`);
+    const rm = await shot22('reduced', { reducedMotion: 'reduce' });
+    check('A22: reduced motion → 0 animations on the mark (idle and hover)', rm.idle.length === 0 && rm.hov.length === 0, `${rm.idle} | ${rm.hov}`);
+  }
+
+  // ── A28 import a colour palette: the example maps 6 roles and previews; a failing pair blocks Apply with the
+  // ratio shown until overridden with a reason; Apply is one change; undo restores the theme ──
+  for (const ui of ['ar', 'en']) {
+    const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 }, bypassCSP: true, acceptDownloads: true });
+    const { page, errors } = await open(ctx, ui);
+    await theme(page);
+    const guide = await shadow(page, (r) => [...r.querySelectorAll('.drawer .palguide li')].map((l) => l.textContent));
+    check(`${ui} A28: the guideline says what to provide (count, required roles, contrast, formats incl. ASE and image, example)`, guide.length >= 5 && guide.some((g) => /ASE/.test(g)) && guide.some((g) => /7:1/.test(g)) && !!(await shadow(page, (r) => r.querySelector('.drawer .palguide [data-palex]'))), guide.join(' | ').slice(0, 200));
+    {
+      await page.evaluate(() => { document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer .palguide').open = true; });
+      const [dl] = await Promise.all([page.waitForEvent('download'), page.locator('.drawer [data-palex]').click()]);
+      const got = JSON.parse(fs.readFileSync(await dl.path(), 'utf8'));
+      check(`${ui} A28: «download the example» gives palette/example-import.json`, JSON.stringify(got) === JSON.stringify(JSON.parse(fs.readFileSync(path.join(REPO, 'palette', 'example-import.json'), 'utf8'))));
+    }
+    const before = await design(page);
+    const pick = async (file) => { const [fc] = await Promise.all([page.waitForEvent('filechooser', { timeout: 8000 }), page.locator('.drawer [data-palimp]').click({ timeout: 8000 })]); await fc.setFiles(file); await page.waitForTimeout(300); };
+    await pick(path.join(REPO, 'palette', 'example-import.json'));
+    const roles = await shadow(page, (r) => [...r.querySelectorAll('.drawer [data-palrole]')].map((x) => x.value));
+    check(`${ui} A28: the example file maps 6 roles`, roles.length === 6 && new Set(roles.filter(Boolean)).size === 6, roles.join(','));
+    const prev = await page.evaluate(() => document.documentElement.style.getPropertyValue('--primary'));
+    check(`${ui} A28: the page previews the palette`, prev === '#0b4f4a', prev);
+    const okGate = await shadow(page, (r) => ({ fails: r.querySelectorAll('.drawer .pal-gate tr[data-ok="0"]').length, disabled: r.querySelector('.drawer [data-palapply]').disabled }));
+    check(`${ui} A28: every pair passes, Apply is enabled`, okGate.fails === 0 && !okGate.disabled, JSON.stringify(okGate));
+    const ops0 = await page.evaluate(() => { const e = window.BW.M[window.BW.S.svc][window.BW.S.ed]; return e.ops.length; });
+    await page.locator('.drawer [data-palapply]').click();
+    await page.waitForTimeout(300);
+    const after = await design(page);
+    const ops1 = await page.evaluate(() => window.BW.M[window.BW.S.svc][window.BW.S.ed].ops.length);
+    check(`${ui} A28: Apply writes the 6 roles in one change`, ops1 === ops0 + 1 && after.vars?.primary === '#0b4f4a' && after.vars?.signal === '#b3261e' && after.vars?.paper === '#ffffff', `${ops0}→${ops1} ${JSON.stringify(after.vars)}`);
+    check(`${ui} A28: the preview is cleared after Apply`, (await page.evaluate(() => document.documentElement.style.getPropertyValue('--primary'))) === '');
+    await page.evaluate(() => window.BW.undo());
+    await page.waitForTimeout(200);
+    check(`${ui} A28: undo restores the theme`, JSON.stringify(await design(page)) === JSON.stringify(before), JSON.stringify((await design(page)).vars));
+    // a failing palette: grey text on white is 4.48:1, below 7:1
+    const bad = path.join(OUT, 'bad-palette.txt');
+    fs.writeFileSync(bad, '#777777 ink\n#ffffff paper\n#0b4f4a primary\n#8a5a00 accent\n');
+    await page.evaluate(() => window.BW.openDrawer('theme'));
+    await pick(bad);
+    const g2 = await shadow(page, (r) => ({ fails: [...r.querySelectorAll('.drawer .pal-gate tr[data-ok="0"] .pal-ratio')].map((x) => x.textContent), disabled: r.querySelector('.drawer [data-palapply]').disabled }));
+    check(`${ui} A28 gate: a failing pair blocks Apply, the ratio is shown`, g2.disabled && g2.fails.some((f) => f.startsWith('4.48:1 / 7:1')), JSON.stringify(g2));
+    await page.locator('.drawer [data-palapply]').click({ force: true });
+    check(`${ui} A28 gate: pressing a blocked Apply changes nothing`, JSON.stringify(await design(page)) === JSON.stringify(before));
+    await page.locator('.drawer [data-palover]').first().check();
+    check(`${ui} A28 gate: an override with no reason still blocks`, await shadow(page, (r) => r.querySelector('.drawer [data-palapply]').disabled));
+    await page.locator('.drawer [data-palreason]').first().fill('Brand book colour, approved for headings only');
+    check(`${ui} A28 gate: a written reason unblocks Apply`, !(await shadow(page, (r) => r.querySelector('.drawer [data-palapply]').disabled)));
+    await page.locator('.drawer [data-palapply]').click();
+    await page.waitForTimeout(300);
+    const d3 = await design(page);
+    check(`${ui} A28 gate: the override is recorded with its ratio and reason`, d3.vars?.ink === '#777777' && d3.paletteOverrides?.[0]?.ratio === 4.48 && /Brand book/.test(d3.paletteOverrides[0].reason), JSON.stringify(d3.paletteOverrides));
+    if (ui === 'en') {
+      await page.evaluate(() => window.BW.openDrawer('theme'));
+      await pick(path.join(REPO, 'palette', 'example-import.json'));
+      await page.addScriptTag({ path: AXE });
+      const v = await page.evaluate(async () => (await window.axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'] })).violations.filter((x) => ['serious', 'critical'].includes(x.impact)).map((x) => `${x.id}@${x.nodes[0]?.target?.join(' ')} ${x.nodes[0]?.any?.[0]?.message || ''}`));
+      check('A28 a11y: axe 0 serious/critical with the palette mapping open', v.length === 0, v.join(' | '));
+    }
+    check(`${ui} A28: no page errors`, errors.length === 0, errors.slice(0, 3).join(' | '));
+    await ctx.close();
+  }
+
   // the Local Font Access API itself on a file:// page (real Chrome, permission granted as a user would)
   const ctxF = await browser.newContext();
   try { await ctxF.grantPermissions(['local-fonts']); } catch { /* older Chrome: no such permission */ }

@@ -39,7 +39,7 @@ const editsFile = path.join(OUT, 'edits.json');
 fs.writeFileSync(editsFile, JSON.stringify(edits));
 fs.writeFileSync(path.join(OUT, 'bad-edits.json'), JSON.stringify({ version: 1, ops: [{ op: 'explode', path: 'x' }] }));
 
-const transport = new StdioClientTransport({ command: process.execPath, args: [path.join(REPO, 'mcp', 'cli.mjs')], cwd: REPO, env: { ...process.env, BW_LEARNING_DIR: path.join(OUT, 'learning') }, stderr: 'pipe' });
+const transport = new StdioClientTransport({ command: process.execPath, args: [path.join(REPO, 'mcp', 'cli.mjs')], cwd: REPO, env: { ...process.env, BW_LEARNING_DIR: path.join(OUT, 'learning'), BW_STATE_DIR: path.join(OUT, 'state'), BW_NO_BROWSER: '1' }, stderr: 'pipe' });
 const client = new Client({ name: 'business-wrap-test', version: '1.0.0' });
 const text = (r) => r.content?.[0]?.text || '';
 const data = (r) => r.structuredContent ?? JSON.parse(text(r) || 'null');
@@ -47,7 +47,7 @@ try {
   await client.connect(transport);
   const { tools } = await client.listTools();
   const names = tools.map((t) => t.name).sort();
-  check('tools/list', JSON.stringify(names) === JSON.stringify(['apply_edits', 'apply_update', 'build_editor', 'check_fonts', 'check_update', 'diagram_mermaid', 'export_design_pack', 'export_document', 'harvest_crawl', 'harvest_merge', 'harvest_model', 'learning_conflicts', 'learning_distill', 'learning_export', 'learning_forget', 'learning_import', 'learning_promote', 'learning_retire', 'learning_rules', 'validate_edits']), names.join(','));
+  check('tools/list', JSON.stringify(names) === JSON.stringify(['apply_edits', 'apply_update', 'build_editor', 'check_fonts', 'check_update', 'close_editor', 'diagram_mermaid', 'export_design_pack', 'export_document', 'harvest_crawl', 'harvest_merge', 'harvest_model', 'harvest_sources', 'learning_conflicts', 'learning_distill', 'learning_export', 'learning_forget', 'learning_import', 'learning_promote', 'learning_retire', 'learning_rules', 'open_in_editor', 'validate_edits']), names.join(','));
   check('every tool has a description and an input schema', tools.every((t) => t.description && t.inputSchema?.type === 'object'));
 
   let r = await client.callTool({ name: 'validate_edits', arguments: { edits: editsFile } });
@@ -81,12 +81,32 @@ try {
   r = await client.callTool({ name: 'harvest_model', arguments: { model: path.join(REPO, 'tests', 'fixtures', 'harvest', 'steps.yaml'), out_dir: path.join(OUT, 'harvest') } });
   check('harvest_model: a step list becomes both editions + an editor', !r.isError && data(r)?.documents?.length === 2 && fs.existsSync(data(r).editor || '') && data(r).steps === 1, text(r).slice(0, 160));
 
+  // B2: harvest → editor. A BPMN model with open: true comes back with a URL whose page carries the new document
+  // (the library page once WP3's host is merged); the host stops on close_editor (the Edge tab is stubbed: BW_NO_BROWSER).
+  r = await client.callTool({ name: 'harvest_model', arguments: { model: path.join(REPO, 'tests', 'fixtures', 'harvest', 'permit.bpmn20.xml'), out_dir: path.join(OUT, 'bpmn'), open: true } });
+  {
+    const o = data(r)?.opened || {};
+    const docId = fs.existsSync(data(r)?.documents?.[0] || '') ? JSON.parse(fs.readFileSync(data(r).documents[0], 'utf8')).control.documentId : '?';
+    const page = o.url ? await fetch(o.url).then(async (x) => ({ code: x.status, body: await x.text() })).catch(() => ({ code: 0, body: '' })) : { code: 0, body: '' };
+    check('harvest_model open: true → a URL whose page lists the new document', !r.isError && page.code === 200 && page.body.includes(docId) && o.doc_id === docId, `${o.url} ${page.code} ${docId} ${text(r).slice(0, 160)}`);
+    fs.writeFileSync(path.join(OUT, 'steps.html'), '<h1>Library card</h1><ol><li>Fill in the card form</li><li>Collect the card</li></ol>');
+    const hs = await client.callTool({ name: 'harvest_sources', arguments: { sources: [path.join(OUT, 'steps.html'), path.join(REPO, 'tests', 'fixtures', 'harvest', 'steps.yaml'), path.join(OUT, 'edits.json')], out_dir: path.join(OUT, 'sources') } });
+    check('harvest_sources: an HTML page and a step list become documents; an unreadable file is listed as skipped', !hs.isError && data(hs)?.results?.length === 2 && data(hs).skipped.length === 1, text(hs).slice(0, 200));
+    const oe = await client.callTool({ name: 'open_in_editor', arguments: { documents: [SAMPLE] } });
+    check('open_in_editor: {url, doc_id} for the sample', !oe.isError && /^http:\/\/127\.0\.0\.1:\d+\//.test(data(oe)?.url || '') && data(oe).doc_id === 'BW-SRS-SAMPLE-001', text(oe).slice(0, 160));
+    const ce = await client.callTool({ name: 'close_editor', arguments: {} });
+    await new Promise((ok) => setTimeout(ok, 800));
+    const gone = o.url ? await fetch(o.url).then(() => false).catch(() => true) : false;
+    check('close_editor stops every host it started', !ce.isError && data(ce)?.stopped >= 2 && gone, text(ce).slice(0, 160));
+  }
+
   r = await client.callTool({ name: 'export_document', arguments: { document: AR, edits: editsFile, out_dir: path.join(OUT, 'export') } });
   const ex = data(r) || {};
   check('export_document: PDF + DOCX from the edited state', !r.isError && fs.existsSync(ex.pdf || '') && fs.existsSync(ex.docx || '') && ex.ops_applied === 2 && ex.locale === 'ar', text(r).slice(0, 200));
 } catch (e) {
   check('mcp run', false, e.stack?.split('\n').slice(0, 3).join(' / '));
 } finally {
+  await client.callTool({ name: 'close_editor', arguments: {} }).catch(() => {});
   await client.close().catch(() => {});
 }
 console.log(results.join('\n'));

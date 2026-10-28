@@ -91,9 +91,15 @@ async function robotsAllows(page, url, ua = '*') {
 }
 
 /** Press like a person: focus + Enter (or Space for checkables), a click only if that did nothing. */
-async function press(page, selector, { timeout = 10000 } = {}) {
-  const el = page.locator(selector).first();
-  await el.waitFor({ state: 'visible', timeout });
+// Healing (B4): the wait extends once to a ceiling (HEALED), and a step that names `alt: {role, name, text, label}`
+// may find its control by those when the selector no longer matches (HEALED); anything else fails.
+async function press(page, selector, { timeout = 10000, alt } = {}) {
+  let el = page.locator(selector).first();
+  try { await healWait((t) => el.waitFor({ state: 'visible', timeout: t }), { base: timeout, ceiling: timeout * 3, what: `press ${selector}` }); } catch (e) {
+    if (!alt) throw e;
+    el = (await healLocator(page, { ...alt })).locator.first();
+    await el.waitFor({ state: 'visible', timeout });
+  }
   const before = page.url() + (await page.content()).length;
   await el.focus();
   const tag = await el.evaluate((e) => `${e.tagName}:${e.type || ''}`);
@@ -437,8 +443,8 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
             const on = await box.evaluate((e) => (e.matches('input') ? e.checked : !!e.querySelector('input:checked') || e.getAttribute('aria-checked') === 'true' || e.classList.contains('p-highlight') || e.classList.contains('p-checkbox-checked')));
             if (!on) await press(page, step.check);
           }
-          if (step.press) await press(page, step.press);
-          if (step.waitFor) await page.locator(step.waitFor).first().waitFor({ timeout: step.timeoutMs ?? 30000 });
+          if (step.press) await press(page, step.press, { alt: step.alt });
+          if (step.waitFor) await healWait((t) => page.locator(step.waitFor).first().waitFor({ timeout: t }), { base: step.timeoutMs ?? 30000, ceiling: (step.timeoutMs ?? 30000) * 2, what: `waitFor ${step.waitFor}` });
           if (step.login) { loggedIn = false; await runLogin(); }
           if (step.ready) await ready(step.ready === true ? 'form' : step.ready);
           await wait();
@@ -570,3 +576,4 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
 
 export { harvestToDocument } from './docs.mjs';
 import { requiredByMessage } from './docs.mjs';
+import { healWait, healLocator } from '../heal/index.mjs';

@@ -2,12 +2,13 @@
 /* ── Design panel (editor/design-panel.js, value-control.js, fonts.js): grouped settings, slider + number + unit,
    colour swatch + hex, the searchable font list. Appended to ui.css inside the Shadow DOM. ── */
 .drawer .dgrp { border-top: 1px solid var(--panel-line); padding-block: 2px 8px; }
-.drawer .dgrp > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; border-radius: 8px; }
+.drawer .dgrp > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; border-radius: var(--bw-radius-md); padding-inline: 6px; margin-inline: -6px; transition: background-color var(--bw-dur-fast) var(--bw-ease-out); }
+.drawer .dgrp > summary:hover { background: var(--wash-2); }
 .drawer .dgrp > summary::-webkit-details-marker { display: none; }
-.drawer .dgrp > summary::after { content: ''; margin-inline-start: auto; width: 8px; height: 8px; border-inline-end: 2px solid var(--panel-soft); border-block-end: 2px solid var(--panel-soft); transform: rotate(45deg); transition: transform .2s var(--e-out); }
+.drawer .dgrp > summary::after { content: ''; margin-inline-start: auto; width: 8px; height: 8px; border-inline-end: 2px solid var(--panel-soft); border-block-end: 2px solid var(--panel-soft); transform: rotate(45deg); transition: transform var(--bw-dur-base) var(--bw-ease-out); }
 .drawer .dgrp:not([open]) > summary::after { transform: rotate(-45deg); }
 .shell[dir="rtl"] .drawer .dgrp:not([open]) > summary::after { transform: rotate(135deg); }
-.drawer .dgrp > summary h3 { font-size: 14px; color: var(--navy); margin: 12px 0 8px; }
+.drawer .dgrp > summary h3 { font: var(--bw-weight-bold) var(--bw-size-sm)/var(--bw-leading-snug) var(--bw-font-display); color: var(--navy); margin: 12px 0 8px; }
 .drawer .dgrp > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 0; }
 .drawer .vc *, .drawer .cc *, .drawer .fp * { box-sizing: border-box; }
 .drawer .dgrp > .hint { margin: -4px 0 8px; }
@@ -26,9 +27,10 @@
 .drawer select.vc-u { flex: 0 0 auto; max-width: 132px; padding: 6px 6px; }
 .drawer .vc-u.fixed { flex: 0 0 auto; min-width: 34px; text-align: center; padding: 6px 8px; border-radius: 10px; background: var(--wash-2); color: var(--panel-ink); border: 1px solid var(--panel-line); }
 .drawer [aria-invalid="true"] { border-color: var(--signal) !important; box-shadow: 0 0 0 2px color-mix(in srgb, var(--bw-signal) 18%, transparent); }
-.drawer .cc input[type="color"] { flex: 0 0 40px; width: 40px; height: 34px; padding: 2px; border: 1px solid var(--panel-line); border-radius: 9px; background: var(--panel); cursor: pointer; }
-.drawer .cc input.cc-hex { flex: 1 1 auto; min-width: 0; width: 100%; font-family: ui-monospace, Consolas, monospace; text-transform: lowercase; }
-.drawer .cc input.cc-hex:placeholder-shown { font-family: 'Thmanyah Sans', system-ui, sans-serif; text-transform: none; }
+.drawer .cc input[type="color"] { flex: 0 0 40px; width: 40px; height: 34px; padding: 2px; border: 1px solid var(--panel-line); border-radius: var(--bw-radius-md); background: var(--panel); cursor: pointer; transition: transform var(--bw-dur-fast) var(--bw-ease-spring); }
+.drawer .cc input[type="color"]:hover { transform: scale(1.06); }
+.drawer .cc input.cc-hex { flex: 1 1 auto; min-width: 0; width: 100%; font-family: var(--bw-font-ui); font-variant-numeric: tabular-nums; letter-spacing: .02em; text-transform: lowercase; direction: ltr; unicode-bidi: isolate; text-align: left; }
+.drawer .cc input.cc-hex:placeholder-shown { text-transform: none; letter-spacing: 0; }
 .drawer .cc select { width: 100%; }
 .drawer .cc > input[type="text"] { width: 100%; }
 
@@ -62,4 +64,21 @@
 .drawer .fp-up li { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .drawer .fp-up span { font-size: 15px; }
 .drawer .labs label { font-size: 12.5px; }
-@media (prefers-reduced-motion: reduce) { .drawer .fp-pop, .drawer .dgrp > summary::after { animation: none; transition: none; } }
+@media (prefers-reduced-motion: reduce) { .drawer .fp-pop, .drawer .dgrp > summary::after, .drawer .dgrp > summary, .drawer .cc input[type="color"] { animation: none; transition: none; } .drawer .cc input[type="color"]:hover { transform: none; } }
+.shell[data-calm="1"] .drawer .cc input[type="color"]:hover { transform: none; }
+
+/* A28 palette import: swatch list with a role each, the contrast gate as a table, overrides with a reason */
+.drawer .pal { margin: 4px 0 12px; }
+.drawer .palguide > summary { cursor: pointer; font-weight: 700; color: var(--panel-ink); padding-block: 6px; }
+.drawer .palguide ul { margin: 4px 0 8px; }
+.drawer .pal-list li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.drawer .pal-sw { flex: 0 0 28px; width: 28px; height: 28px; border-radius: var(--bw-radius-sm); box-shadow: 0 0 0 1px var(--panel-line); }
+.drawer .pal-hex { font-variant-numeric: tabular-nums; min-width: 64px; }
+.drawer .pal-list select { margin-inline-start: auto; max-width: 190px; }
+.drawer .pal-gate { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: var(--bw-size-xs); }
+.drawer .pal-gate td { padding: 4px 6px; border-block-end: 1px solid var(--panel-line); vertical-align: middle; }
+.drawer .pal-gate tr[data-ok="0"] td:first-child, .drawer .pal-gate tr[data-ok="0"] .pal-ratio { color: var(--signal); font-weight: 700; }
+.drawer .pal-gate input[type="text"] { width: 100%; margin-top: 4px; }
+.drawer [data-palapply][disabled] { opacity: .55; cursor: not-allowed; }
+/* the drawer is laid out RTL for both languages; the palette's own words take their direction from their text */
+.drawer .pal summary, .drawer .pal li, .drawer .pal p, .drawer .pal td, .drawer .pal .w { unicode-bidi: plaintext; }
