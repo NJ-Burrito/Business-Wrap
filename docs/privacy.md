@@ -7,5 +7,5 @@
 - No telemetry, analytics, crash reporting or account. No cloud storage.
 - Browser storage, if used for an unsaved draft, stays in that browser profile on your machine.
 - Your documents, edits, logos, fonts and custom designs live in gitignored folders or outside the repo; the security gate blocks them from commits.
-- The only network use is what you choose: cloning the private repo, installing packages, and CI on the private repo host running the gates on code (never on your documents).
+- The only network use is what you choose: cloning the repo, installing packages, the update check (at most one request a day to the public GitHub release list; switch it off in Settings or with `node update/cli.mjs --off`), and webhooks you set up yourself.
 - If you share an output, you decide who receives it; hand-over guidance: `docs/guide.md` § 5.

@@ -28,7 +28,7 @@ Imperative, scoped: `palette: add success-wash role`. No client names in message
 | Require linear history | on |
 | Block force pushes and deletions | on |
 | Restrict who can push | owner only |
-| Secret scanning + push protection (GitHub) | on, where the plan allows it for private repos |
+| Secret scanning + push protection (GitHub) | on |
 
 Apply with `gh api -X PUT repos/<owner>/<repo>/branches/main/protection` and a JSON body of the settings above, or in Settings → Branches.
 

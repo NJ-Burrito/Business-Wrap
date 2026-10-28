@@ -6,7 +6,7 @@ Instructions for AI coding agents (Codex, Cursor, Gemini CLI, Claude Code, any M
 1. At the start of any Business-Wrap task, run `npx business-wrap update --check --lang <user's language: ar|en>` (or the MCP tool `check_update`). It is cached and makes at most one network request a day.
 2. If it prints a notice, tell the user in ONE line: the new version and the three highlights it printed, in the user's language. Offer the command `npx business-wrap update --apply --yes` (Claude Code plugin: `/plugin update business-wrap`).
 3. Never update without the user's explicit consent. Never run `--apply` on your own.
-4. "Can't check" (offline, no access to the private repository) is not an error: say nothing and carry on.
+4. "Can't check" (offline, or GitHub did not answer) is not an error: say nothing and carry on.
 5. After an update, read `npx business-wrap update --notes`: its "Migration notes" tell you which commands, schemas or behaviours changed. Follow them before doing anything else.
 6. In the editor (0.11.0): when the person opens it through the local server (`npm run serve -- <editor.html>`, or `node engine/serve.mjs <editor.html>`), the editor itself checks at launch (at most once a day), shows a popup with the notes and updates on their click (Settings → Update has «Check now»). Prefer opening the editor this way so updates reach them; from `file://` the editor cannot check and Settings says how to update. You still never press Update for them.
 

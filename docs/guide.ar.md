@@ -15,7 +15,7 @@
 | gitleaks (اختياري) | 8.28 فأحدث | محرك ثان للقواعد نفسها |
 
 ## 2. البدء السريع (Windows، خطوة بخطوة)
-1. انسخ المستودع الخاص: `git clone <رابط المستودع>` ثم `cd Business-Wrap`.
+1. انسخ المستودع: `git clone https://github.com/NJ-Burrito/Business-Wrap` ثم `cd Business-Wrap`.
 2. ثبت حزم Node: `npm install`.
 3. الخطوط: اتبع `fonts/README.ar.md` (اضبط `BW_FONT_DIR`، وحول كل عائلة Serif إلى TrueType في المجلد `<family>/ttf/` تحت ذلك الجذر).
 4. فعل UTF-8 لـ Python في هذه الطرفية: `$env:PYTHONUTF8 = "1"` (PowerShell).

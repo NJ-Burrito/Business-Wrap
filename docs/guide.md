@@ -13,7 +13,7 @@
 | gitleaks (optional) | 8.28+ | second engine for the same rules |
 
 ## 2. Quickstart (Windows, step by step)
-1. Clone the private repo: `git clone <repo url>` then `cd Business-Wrap`.
+1. Clone the repo: `git clone https://github.com/NJ-Burrito/Business-Wrap` then `cd Business-Wrap`.
 2. Install Node packages: `npm install`.
 3. Fonts: follow `fonts/README.md` (set `BW_FONT_DIR`, convert each Serif family to TrueType into `<family>/ttf/` under that root).
 4. Turn on UTF-8 for Python in this terminal: `$env:PYTHONUTF8 = "1"` (PowerShell).

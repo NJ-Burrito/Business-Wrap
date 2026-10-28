@@ -1,14 +1,23 @@
-<h1 align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="brand/logo/lockup-en-dark.svg"><img src="brand/logo/lockup-en.svg" alt="Business Wrap" height="64"></picture></h1>
+<h1 align="center">Business-Wrap: bilingual requirements document generator (Arabic + English)</h1>
 
-<p align="center">EN · pair: <a href="README.ar.md">README.ar.md</a></p>
+<p align="center"><img src="site/assets/media/hero.gif" alt="Business-Wrap: evidence in, one Arabic and English requirements document out" width="720"></p>
 
+<p align="center">EN · العربية: <a href="README.ar.md">README.ar.md</a></p>
+
+[![release](https://img.shields.io/github/v/release/NJ-Burrito/Business-Wrap)](https://github.com/NJ-Burrito/Business-Wrap/releases/latest)
+[![licence: MIT](https://img.shields.io/badge/licence-MIT-0B6B50.svg)](LICENSE)
+[![site](https://img.shields.io/badge/site-nj--burrito.github.io%2FBusiness--Wrap-C8F04A.svg)](https://nj-burrito.github.io/Business-Wrap/)
 [![gates](https://github.com/NJ-Burrito/Business-Wrap/actions/workflows/gates.yml/badge.svg)](https://github.com/NJ-Burrito/Business-Wrap/actions/workflows/gates.yml)
-[![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-d97757.svg)](.claude-plugin/plugin.json)
-[![MCP server](https://img.shields.io/badge/MCP-server-6f42c1.svg)](mcp/README.md)
-[![Arabic and English](https://img.shields.io/badge/Arabic%20%2B%20English-first--class-0d9488.svg)](bible/02-document-standard.md)
-[![Licence: proprietary](https://img.shields.io/badge/licence-proprietary-lightgrey.svg)](LICENSE)
 
-**Business-Wrap turns evidence about an e-service (its process model, or a walk through the live service) into a bilingual requirements document: Arabic right-to-left and English left-to-right, edited in a local HTML editor that *is* the print layout, and exported to PDF, DOCX and an edits file. Every rule has a gate.**
+**Evidence in. One document, two languages.**
+
+- 🧭 Give it a process model (BPMN, draw.io, YAML) or a walk through the live service.
+- ✍️ Edit the requirements document on the page that prints: Arabic right to left, English left to right.
+- 📄 Export PDF and DOCX with the fonts embedded as real, selectable text.
+
+Free and open source (MIT). Runs on your computer.
+
+**Jump to:** [Install](#install-and-update) · [Updates](#updates) · [What it does](#what-it-does) · [Harvest](#start-a-document-harvest) · [The editor](#the-editor) · [For AI agents](#for-ai-agents)
 
 ![The editor: the toolbar, the sample service's cover, Arabic interface](docs/screens/editor-ar.png)
 
@@ -25,7 +34,7 @@
 | **Diagrams** | The workflow figure is editable on the page: shapes, arrows with bends, labels in place, alignment, auto layout, zoom, legend. Mermaid in and out. |
 | **Design** | A plain-language Design panel: colours (swatch + hex), sizes (slider + number + unit), template parts, labels, per-block style, advanced CSS. **Any font**: the project's, this computer's or an uploaded file. |
 | **Exports** | PDF and DOCX (fonts always embedded as real, selectable text), the edits JSON, a design pack, Save HTML (the editor with your edits). |
-| **Automation** | Webhooks on save and export; an MCP server with 12 tools; a Claude Code plugin; `npx business-wrap update` to stay current. |
+| **Automation** | Webhooks on save and export; an MCP server; a Claude Code plugin; `node update/cli.mjs` to stay current. |
 | **Safety** | A security gate keeps client content, credentials and local paths out of the repository; the crawler never files a real request unless you ask twice. |
 
 > Owner decision 2026-10-28: every chosen font is embedded as real text in PDF and DOCX; the font's licence is the user's responsibility.
@@ -48,26 +57,33 @@ Opened from disk (file://), «PDF + DOCX» downloads the edited document JSON an
 
 ## Install and update
 
-**Claude Code plugin** (skill + MCP server together; needs access to this repository):
+🧩 **Claude Code plugin** (the skill and the MCP server together):
 ```
 /plugin marketplace add NJ-Burrito/Business-Wrap
 /plugin install business-wrap@business-wrap
 ```
 Then say **"build the requirements document for …"** or **"open it in the editor"**.
 
-**MCP server only** (stdio, local; Node 20+, Chrome or Edge for the PDF, `uv` for the DOCX):
+🔌 **MCP server only** (stdio, local; Node 20+, Chrome or Edge for the PDF, `uv` for the DOCX):
+Get the code: `git clone https://github.com/NJ-Burrito/Business-Wrap`, or the release zip (`business-wrap-<version>.zip` + `.sha256`) from https://github.com/NJ-Burrito/Business-Wrap/releases/latest. Then, in that folder, `npm ci` and:
 ```
-claude mcp add business-wrap -- npx -y -p business-wrap@0.11.0 business-wrap-mcp
+claude mcp add business-wrap -- node <path-to>/Business-Wrap/mcp/cli.mjs
 ```
-Tools: `build_editor`, `validate_edits`, `apply_edits`, `export_document`, `export_design_pack`, `check_fonts`, `harvest_model`, `harvest_crawl`, `harvest_merge`, `diagram_mermaid`, `check_update`, `apply_update` — see `mcp/README.md`.
+Tools: `build_editor`, `validate_edits`, `apply_edits`, `export_document`, `export_design_pack`, `check_fonts`, `harvest_model`, `harvest_crawl`, `harvest_merge`, `diagram_mermaid`, `check_update`, `apply_update`, plus the `learning_*` tools; see `mcp/README.md`.
+
+💻 **From source:** `git clone https://github.com/NJ-Burrito/Business-Wrap`, then the [Quick start](#quick-start).
 
 ## Updates
 
-**In the editor** (0.11.0): open the editor through the local server, `npm run serve -- <editor.html>` (or `node engine/serve.mjs <editor.html>`). At launch it checks for a newer release, at most once a day and without blocking anything. When one is out, a popup shows the version and what is new, with **Update now**, **Later** and **Skip this version**. Update now downloads the release, checks its fingerprint, backs up, replaces the program files only, verifies the new version, restarts the server and reopens your document where you were. Your documents, edits and their history, design packs, fonts, logos, `out/` and `.local/` are never touched, and any failure puts the previous version back exactly. **Settings** (toolbar View section, or Ctrl+K) shows About, the update state with **Check now** and the auto-check switch, and your preferences. Opened from disk (`file://`), the page cannot check: Settings says how to update.
+✨ **In the editor** (0.11.0): open the editor through the local server, `npm run serve -- <editor.html>` (or `node engine/serve.mjs <editor.html>`). At launch it checks for a newer release, at most once a day and without blocking anything. When one is out, a popup shows the version and what is new, with **Update now**, **Later** and **Skip this version**. Update now downloads the release, checks its fingerprint, backs up, replaces the program files only, verifies the new version, restarts the server and reopens your document where you were. Your documents, edits and their history, design packs, fonts, logos, `out/` and `.local/` are never touched, and any failure puts the previous version back exactly. **Settings** (toolbar View section, or Ctrl+K) shows About, the update state with **Check now** and the auto-check switch, and your preferences. Opened from disk (`file://`), the page cannot check: Settings says how to update.
 
 ![Update popup](docs/screens/update-popup.en.png)
 
-**From a terminal or an agent:** `npx business-wrap update --check` tells you when a release is out (at most one request a day); `npx business-wrap update --apply --yes` installs it; `--notes` shows what changed and the migration notes. Nothing updates without your consent. The repository is private: the check uses your `gh auth` sign-in on this computer, and the page never holds a token. Details: `bible/07-updates.md`.
+🔁 **Every release** is a GitHub release: https://github.com/NJ-Burrito/Business-Wrap/releases
+
+🧩 **Claude Code plugin:** `/plugin marketplace update business-wrap`, then `/plugin update business-wrap`.
+
+**From a terminal or an agent:** `node update/cli.mjs --check` tells you when a release is out (at most one request a day); `node update/cli.mjs --apply --yes` installs it; `--notes` shows what changed and the migration notes. Nothing updates without your consent. The check reads the public GitHub release list; the page never calls GitHub itself. Details: `bible/07-updates.md`.
 
 ## Start a document (harvest)
 
@@ -114,7 +130,7 @@ Colours by role (swatch + hex code), sizes and spacing (slider + number + unit, 
 | Webhooks | Document → Webhooks: your URL is told on save and export (sent through `npm run serve`) |
 
 ## For AI agents
-Claude Code, Claude Desktop, Codex, Cursor, Gemini CLI or any MCP client: read `AGENTS.md` and `SKILL.md`. At the start of a Business-Wrap task run `npx business-wrap update --check` (or MCP `check_update`); tell the user about a newer release in one line and never update without consent.
+Claude Code, Claude Desktop, Codex, Cursor, Gemini CLI or any MCP client: read `AGENTS.md` and `SKILL.md`. At the start of a Business-Wrap task run `node update/cli.mjs --check` (or MCP `check_update`); tell the user about a newer release in one line and never update without consent.
 
 ### Export & Print
 - One Export menu and one Print entry in the toolbar, the same commands as the palette (one registry).
@@ -162,4 +178,7 @@ Browser support: Chrome and Edge, latest stable (Chromium 120+).
 | `security/` | the gate that keeps client content and secrets out |
 | `docs/` | guide, architecture, decisions, roadmap, privacy, glossary, screenshots |
 
-Private and proprietary: see `LICENSE`. Nothing is uploaded: see `docs/privacy.md`.
+MIT licence: see `LICENSE`. Fonts are not included; each font keeps its own licence. Nothing is uploaded: see `docs/privacy.md`.
+
+## More from NJ
+[Portfolio](https://nj-burrito.github.io/) · [NJ-Kit](https://nj-burrito.github.io/NJ-Kit/) · [QA-Wrap](https://nj-burrito.github.io/QA-Wrap/) · [Profile-Wrap](https://nj-burrito.github.io/Profile-Wrap/) · [Story-Wrap](https://nj-burrito.github.io/story-wrap/) · [GitHub](https://github.com/NJ-Burrito)

@@ -1,16 +1,25 @@
 <div dir="rtl">
 
-<h1 align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="brand/logo/lockup-ar-dark.svg"><img src="brand/logo/lockup-ar.svg" alt="بزنس راب" height="64"></picture></h1>
+<h1 align="center">بزنس راب (Business-Wrap): مولّد وثائق متطلبات ثنائية اللغة (عربي وإنجليزي)</h1>
 
-<p align="center">عربي · الملف المقابل: <a href="README.md">README.md</a></p>
+<p align="center"><img src="site/assets/media/hero.gif" alt="بزنس راب: أدلة تدخل، ووثيقة متطلبات واحدة بالعربية والإنجليزية تخرج" width="720"></p>
 
+<p align="center">عربي · English: <a href="README.md">README.md</a></p>
+
+[![release](https://img.shields.io/github/v/release/NJ-Burrito/Business-Wrap)](https://github.com/NJ-Burrito/Business-Wrap/releases/latest)
+[![licence: MIT](https://img.shields.io/badge/licence-MIT-0B6B50.svg)](LICENSE)
+[![site](https://img.shields.io/badge/site-nj--burrito.github.io%2FBusiness--Wrap-C8F04A.svg)](https://nj-burrito.github.io/Business-Wrap/?lang=ar)
 [![gates](https://github.com/NJ-Burrito/Business-Wrap/actions/workflows/gates.yml/badge.svg)](https://github.com/NJ-Burrito/Business-Wrap/actions/workflows/gates.yml)
-[![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-d97757.svg)](.claude-plugin/plugin.json)
-[![MCP server](https://img.shields.io/badge/MCP-server-6f42c1.svg)](mcp/README.md)
-[![Arabic and English](https://img.shields.io/badge/Arabic%20%2B%20English-first--class-0d9488.svg)](bible/02-document-standard.ar.md)
-[![Licence: proprietary](https://img.shields.io/badge/licence-proprietary-lightgrey.svg)](LICENSE)
 
-**يحوّل بزنس راب الأدلة عن خدمة إلكترونية (نموذج إجرائها، أو جولة في الخدمة الحية) إلى وثيقة متطلبات ثنائية اللغة: العربية من اليمين إلى اليسار والإنجليزية من اليسار إلى اليمين، تُحرَّر في محرر HTML محلي هو نفسه تخطيط الطباعة، وتُصدَّر إلى PDF وDOCX وملف تعديلات. وخلف كل قاعدة فحص.**
+**أدلة تدخل. وثيقة واحدة بلغتين.**
+
+- 🧭 أعطه نموذج الإجراء (BPMN أو draw.io أو YAML) أو جولة في الخدمة الحية.
+- ✍️ حرّر وثيقة المتطلبات على الصفحة نفسها التي تُطبع: العربية من اليمين إلى اليسار، والإنجليزية من اليسار إلى اليمين.
+- 📄 صدّر PDF وDOCX والخطوط مضمّنة نصاً حقيقياً قابلاً للتحديد.
+
+مجاني ومفتوح المصدر (رخصة MIT). يعمل على جهازك.
+
+**انتقل إلى:** [التثبيت](#التثبيت-والتحديث) · [التحديثات](#التحديثات) · [ماذا يفعل](#ماذا-يفعل) · [الحصاد](#ابدأ-وثيقة-الحصاد) · [المحرر](#المحرر) · [لوكلاء الذكاء الاصطناعي](#لوكلاء-الذكاء-الاصطناعي)
 
 ![المحرر: الشريط وغلاف الخدمة النموذجية، والواجهة بالعربية](docs/screens/editor-ar.png)
 
@@ -27,7 +36,7 @@
 | **المخططات** | مخطط سير العمل قابل للتعديل على الصفحة: أشكال وأسهم بانحناءات ونصوص تُعدَّل في مكانها ومحاذاة وترتيب تلقائي وتكبير ومفتاح. واستيراد Mermaid وتصديره. |
 | **التصميم** | لوحة تصميم بلغة واضحة: الألوان (مربع لون ورمز hex) والأحجام (منزلق ورقم ووحدة) وأجزاء القالب والعناوين المطبوعة وتنسيق الكتلة الواحدة وCSS متقدم. **أي خط**: خطوط المشروع، أو خطوط هذا الجهاز، أو ملف خط ترفعه. |
 | **التصدير** | PDF وDOCX (الخطوط مضمّنة دائماً نصاً حقيقياً قابلاً للتحديد)، وملف التعديلات JSON، وحزمة التصميم، وحفظ HTML (المحرر بتعديلاتك). |
-| **الأتمتة** | خطافات ويب عند الحفظ والتصدير، وخادم MCP بـ 12 أداة، وإضافة Claude Code، والأمر `npx business-wrap update` للبقاء على آخر إصدار. |
+| **الأتمتة** | خطافات ويب عند الحفظ والتصدير، وخادم MCP، وإضافة Claude Code، والأمر `node update/cli.mjs` للبقاء على آخر إصدار. |
 | **الأمان** | فحص أمني يُبقي محتوى العملاء وبيانات الدخول والمسارات المحلية خارج المستودع، والمسح لا يرسل طلباً حقيقياً إلا إذا طلبت ذلك مرتين. |
 
 > قرار المالك 2026-10-28: كل خط تختاره يُضمَّن نصاً حقيقياً في PDF وDOCX، وترخيص الخط مسؤولية المستخدم.
@@ -61,7 +70,7 @@ node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|e
 
 ## التثبيت والتحديث
 
-**إضافة Claude Code** (المهارة وخادم MCP معاً، وتحتاج صلاحية الوصول إلى هذا المستودع):
+🧩 **إضافة Claude Code** (المهارة وخادم MCP معاً):
 
 <div dir="ltr">
 
@@ -74,25 +83,33 @@ node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|e
 
 ثم قل: **«ابنِ وثيقة المتطلبات لـ …»** أو **«افتحها في المحرر»**.
 
-**خادم MCP وحده** (stdio محلي؛ Node 20+، وChrome أو Edge للـ PDF، و`uv` للـ DOCX):
+🔌 **خادم MCP وحده** (stdio محلي؛ Node 20+، وChrome أو Edge للـ PDF، و`uv` للـ DOCX):
+
+احصل على الشيفرة: `git clone https://github.com/NJ-Burrito/Business-Wrap`، أو ملف الإصدار المضغوط (`business-wrap-<version>.zip` مع `.sha256`) من https://github.com/NJ-Burrito/Business-Wrap/releases/latest. ثم في ذلك المجلد نفّذ `npm ci` ثم:
 
 <div dir="ltr">
 
 ```
-claude mcp add business-wrap -- npx -y -p business-wrap@0.11.0 business-wrap-mcp
+claude mcp add business-wrap -- node <path-to>/Business-Wrap/mcp/cli.mjs
 ```
 
 </div>
 
-الأدوات: `build_editor` و`validate_edits` و`apply_edits` و`export_document` و`export_design_pack` و`check_fonts` و`harvest_model` و`harvest_crawl` و`harvest_merge` و`diagram_mermaid` و`check_update` و`apply_update`، والتفاصيل في `mcp/README.ar.md`.
+💻 **من المصدر:** `git clone https://github.com/NJ-Burrito/Business-Wrap` ثم [البدء السريع](#البدء-السريع).
+
+الأدوات: `build_editor` و`validate_edits` و`apply_edits` و`export_document` و`export_design_pack` و`check_fonts` و`harvest_model` و`harvest_crawl` و`harvest_merge` و`diagram_mermaid` و`check_update` و`apply_update`، إضافة إلى أدوات `learning_*`، والتفاصيل في `mcp/README.ar.md`.
 
 ## التحديثات
 
-**من داخل المحرر** (0.11.0): افتح المحرر عبر الخادم المحلي بالأمر `npm run serve -- <editor.html>` (أو `node engine/serve.mjs <editor.html>`). عند الفتح يفحص وجود إصدار أحدث، مرة في اليوم على الأكثر ودون أن يعطّل شيئاً. وإن وُجد ظهرت نافذة فيها رقم الإصدار وما الجديد فيه، مع **حدّث الآن** و**لاحقاً** و**تخطَّ هذا الإصدار**. «حدّث الآن» ينزّل الإصدار ويتحقق من بصمته، ويأخذ نسخة احتياطية، ويستبدل ملفات البرنامج فقط، ويتحقق من الإصدار الجديد، ثم يعيد تشغيل الخادم ويفتح مستندك حيث كنت. مستنداتك وتعديلاتك وسجلّها وحزم التصميم والخطوط والشعارات و`out/` و`.local/` لا تُمسّ أبداً، وأي فشل يعيد الإصدار السابق كما كان تماماً. و**الإعدادات** (قسم «العرض» في الشريط، أو Ctrl+K) تعرض معلومات البرنامج، وحالة التحديث مع **تحقّق الآن** ومفتاح الفحص التلقائي، وتفضيلاتك. وإن فُتح المحرر من ملف على الجهاز (`file://`) فالصفحة لا تستطيع الفحص، وتشرح الإعدادات طريقة التحديث.
+✨ **من داخل المحرر** (0.11.0): افتح المحرر عبر الخادم المحلي بالأمر `npm run serve -- <editor.html>` (أو `node engine/serve.mjs <editor.html>`). عند الفتح يفحص وجود إصدار أحدث، مرة في اليوم على الأكثر ودون أن يعطّل شيئاً. وإن وُجد ظهرت نافذة فيها رقم الإصدار وما الجديد فيه، مع **حدّث الآن** و**لاحقاً** و**تخطَّ هذا الإصدار**. «حدّث الآن» ينزّل الإصدار ويتحقق من بصمته، ويأخذ نسخة احتياطية، ويستبدل ملفات البرنامج فقط، ويتحقق من الإصدار الجديد، ثم يعيد تشغيل الخادم ويفتح مستندك حيث كنت. مستنداتك وتعديلاتك وسجلّها وحزم التصميم والخطوط والشعارات و`out/` و`.local/` لا تُمسّ أبداً، وأي فشل يعيد الإصدار السابق كما كان تماماً. و**الإعدادات** (قسم «العرض» في الشريط، أو Ctrl+K) تعرض معلومات البرنامج، وحالة التحديث مع **تحقّق الآن** ومفتاح الفحص التلقائي، وتفضيلاتك. وإن فُتح المحرر من ملف على الجهاز (`file://`) فالصفحة لا تستطيع الفحص، وتشرح الإعدادات طريقة التحديث.
 
 ![نافذة التحديث](docs/screens/update-popup.ar.png)
 
-**من الطرفية أو عبر وكيل:** يخبرك `npx business-wrap update --check` بصدور إصدار جديد (طلب واحد في اليوم على الأكثر)، ويثبّته `npx business-wrap update --apply --yes`، ويعرض `--notes` ما تغيّر وملاحظات الترحيل. لا يُحدَّث شيء دون موافقتك. المستودع خاص: يستخدم الفحص تسجيل دخولك `gh auth` على هذا الجهاز، والصفحة لا تحمل أي رمز دخول. التفاصيل في `bible/07-updates.ar.md`.
+🔁 **كل إصدار** يُنشر إصداراً على GitHub: https://github.com/NJ-Burrito/Business-Wrap/releases
+
+🧩 **إضافة Claude Code:** `/plugin marketplace update business-wrap` ثم `/plugin update business-wrap`.
+
+**من الطرفية أو عبر وكيل:** يخبرك `node update/cli.mjs --check` بصدور إصدار جديد (طلب واحد في اليوم على الأكثر)، ويثبّته `node update/cli.mjs --apply --yes`، ويعرض `--notes` ما تغيّر وملاحظات الترحيل. لا يُحدَّث شيء دون موافقتك. يقرأ الفحص قائمة الإصدارات العامة على GitHub، والصفحة نفسها لا تتصل بـ GitHub. التفاصيل في `bible/07-updates.ar.md`.
 
 ## ابدأ وثيقة (الحصاد)
 
@@ -144,7 +161,7 @@ npm run harvest:merge -- <harvest.json> <process.json>       # the union of both
 | خطافات الويب | الوثيقة ← خطافات الويب: يُبلَّغ عنوانك عند الحفظ والتصدير (عبر `npm run serve`) |
 
 ## لوكلاء الذكاء الاصطناعي
-Claude Code وClaude Desktop وCodex وCursor وGemini CLI وأي عميل MCP: اقرأ `AGENTS.md` و`SKILL.md`. في بداية أي مهمة على بزنس راب شغّل `npx business-wrap update --check` (أو أداة MCP `check_update`)، وأخبر المستخدم بالإصدار الأحدث في سطر واحد، ولا تحدّث أبداً دون موافقته.
+Claude Code وClaude Desktop وCodex وCursor وGemini CLI وأي عميل MCP: اقرأ `AGENTS.md` و`SKILL.md`. في بداية أي مهمة على بزنس راب شغّل `node update/cli.mjs --check` (أو أداة MCP `check_update`)، وأخبر المستخدم بالإصدار الأحدث في سطر واحد، ولا تحدّث أبداً دون موافقته.
 
 ### التصدير والطباعة
 - قائمة تصدير واحدة ومدخل طباعة واحد في الشريط، وهي أوامر لوحة الأوامر نفسها (سجل أوامر واحد).
@@ -197,6 +214,9 @@ git config core.hooksPath .githooks
 | `security/` | الفحص الذي يُبقي محتوى العملاء والأسرار خارج المستودع |
 | `docs/` | الدليل والبنية والقرارات وخارطة الطريق والخصوصية والمسرد ولقطات الشاشة |
 
-خاص ومملوك: انظر `LICENSE`. لا يُرفع شيء: انظر `docs/privacy.ar.md`.
+رخصة MIT: انظر `LICENSE`. الخطوط غير مضمّنة، ولكل خط ترخيصه. لا يُرفع شيء: انظر `docs/privacy.ar.md`.
+
+## المزيد من NJ
+[الموقع الشخصي](https://nj-burrito.github.io/) · [NJ-Kit](https://nj-burrito.github.io/NJ-Kit/) · [QA-Wrap](https://nj-burrito.github.io/QA-Wrap/) · [Profile-Wrap](https://nj-burrito.github.io/Profile-Wrap/) · [Story-Wrap](https://nj-burrito.github.io/story-wrap/ar/) · [GitHub](https://github.com/NJ-Burrito)
 
 </div>
