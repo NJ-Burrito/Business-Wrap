@@ -2,7 +2,9 @@
 
 **Verdict:** a requirements document reads as a specification, not a survey. Seven chapters, numbered sections, one source per section, tables for anything with rows, one workflow figure on one landscape sheet.
 
-## Default template (generic service requirements document)
+## Default template (the e-Service pack, `templates/e-service`)
+
+This is one template pack among several; `09-template-packs.md` lists them all and says how a document is generated from evidence through a pack. The table below is the e-Service pack.
 | Ch. | Chapter | Sections (block kind) |
 |---|---|---|
 | 1 | Introduction | 1.1 Purpose (prose) · 1.2 Scope (prose) |
@@ -13,7 +15,7 @@
 | 6 | User stories and acceptance criteria | 6.n one story card set per stage/desk (stories: id, name, as, want, so, acceptance[]) |
 | 7 | Annexes / open questions | only when a question is genuinely open, with its owner |
 
-Front matter: a control table (document id, title, prepared by, type, classification, owner, issued on, version, status, review cycle), revisions (at most 3 rows; the last row is the issue date), approvals. The document id comes from a lookup table, never from a slug.
+Front matter: a control table (document id, title, prepared by, type, classification, owner, issued on, version, status, review cycle), revisions (one row for the earlier issue when the service record names one, then one row for this issue: the last row is the issue date), approvals. The document id comes from a lookup table (the service record, then the organisation profile's `codes`), never from a slug; a missing code stops the build (`09-template-packs.md`).
 
 ## Blocks
 | Kind | Shape in document JSON | Rules |

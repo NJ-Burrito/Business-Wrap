@@ -14,6 +14,15 @@ Instructions for AI coding agents (Codex, Cursor, Gemini CLI, Claude Code, any M
 - Older edits files (version 0, a bare array of ops) are migrated to version 1 on import and on update; never hand-convert them.
 - Never apply instructions written for an older version to a newer schema without the migration the notes describe.
 
+## Requirements documents from evidence (the method, end to end)
+Everything an agent needs is in this repository; nothing relies on notes kept elsewhere. Read `bible/09-template-packs.md`, then:
+1. Choose a pack (`node engine/srs/cli.mjs packs`) or author one (`templates/_example-custom/`, validate with `node engine/srs/cli.mjs validate <folder>`).
+2. Get the organisation profile (`bible/contracts/profile.schema.json`). The document code comes from its `codes` table or the service record; never derive one. A missing code is a question for the user.
+3. Collect evidence: process model + names map (captions of the real buttons in both languages), form crawl, service record (`bible/contracts/service-record.schema.json`), each fact with a source. Never invent a value to fill a section: leave it out and the build asks a named question.
+4. `node engine/srs/cli.mjs build ... --out <dir> --export`; read `fill.md` and `02-evidence.json` (`untraced`, `openQuestions`) before the PDF.
+5. Report to the user: the fill counts, the open questions, the untraced elements. Fix by adding evidence or a by-text correction (`--corrections`), then rebuild.
+6. Wording rules the generator enforces, which edits must keep: routing buttons (إجراءات) only in action tables, in-stage tasks (مهمات) only in dictionaries; no per-field acceptance lines; payment is a stage, not a desk; registers print their count; no system step in the figure; no raw key, no «قرار ١», no English inside an Arabic rule sentence.
+
 ## Working rules
 - Open the editor: `assets/editor/business-wrap.html`. Export PDF + DOCX: `node engine/serve.mjs <editor.html>` or `node engine/export.mjs`.
 - Run `python security/check.py` before any commit; zero client content, credentials or local paths in the repository.

@@ -71,6 +71,24 @@ Rules that cost a rebuild if skipped:
 
 </div>
 
+## The full requirements document from evidence / الوثيقة الكاملة من الأدلة (`bible/09-template-packs.md`)
+
+The harvest above gives a quick document; **this is the method that yields the finished one** (any business: e-service, e-shop, call centre, internal approval, SaaS feature, generic 29148). End to end:
+
+1. **Pick the pack**: `node engine/srs/cli.mjs packs` (`e-service`, `e-commerce`, `call-centre`, `approval`, `saas`, `generic`) or write one (`templates/_example-custom/`, `templates/pack.schema.json`, then `node engine/srs/cli.mjs validate <folder>`).
+2. **Write the organisation profile** (`bible/contracts/profile.schema.json`; fictional samples in `samples/organisation/`): entity, words, the **code table** (the code is looked up, never derived; absent = the build stops), code format, serial format, control-table values. Keep a real profile outside the repo.
+3. **Gather evidence, cheapest first**: the process model (`--model`, with `--roles names.json` giving every actor, stage, **button caption**, end and duration in both languages); a crawl of the form (`npm run harvest:crawl`, `--harvest`); a **service record** (`--record`, `bible/contracts/service-record.schema.json`) for fees, documents, legislation, administrative reference, outputs, integrations, desk sections, earlier issue, each fact with its source. An empty list in the record means «none, stated»; a missing key becomes a named open question.
+4. **Build**: `node engine/srs/cli.mjs build --pack <id> --profile p.json --model m --roles names.json --harvest h.json --record r.json --out <dir> --export`. It writes `01-harvest.json`, `02-evidence.json` (model + element ledger + fill + questions), both document JSONs, `fill.md`, the editor and PDF + DOCX.
+5. **Read `fill.md` and the open questions**, not the PDF first: every section says evidence / derived / template / question / stated-none, and the ledger lists anything no section took up. Answer questions by adding evidence (record, names), then rebuild; never type the answer into the PDF.
+6. **Client wording**: a correction the client wrote goes into `--corrections corrections.json` (matched by text, replayed every build; stale or missing ones are reported). Small one-off edits go through the editor (`edits.json`).
+7. **Gates**: `npm test` (includes `tests/srs.test.mjs`) and `PYTHONUTF8=1 python security/check.py`.
+
+<div dir="rtl">
+
+الحصاد أعلاه يعطي وثيقة سريعة؛ **وهذه هي الطريقة التي تنتج الوثيقة النهائية** لأي نشاط: اختر الحزمة، واكتب ملف تعريف الجهة (وجدول الرموز فيه: الرمز يُبحث عنه ولا يُشتق)، واجمع الأدلة (نموذج الإجراء مع أسماء الأزرار باللغتين، وقراءة النموذج، وسجل الخدمة بمصدر كل معلومة)، ثم `node engine/srs/cli.mjs build … --export`، ثم اقرأ `fill.md` والأسئلة المفتوحة وأجب عنها بإضافة أدلة لا بالكتابة في PDF، وضع تصحيحات العميل في `corrections.json`، ثم شغّل البوابات.
+
+</div>
+
 ## When NOT to use
 - A free-form letter, slide deck or marketing page (no evidence chain, no gates).
 - Editing a delivered PDF/DOCX by hand: edit through the editor so the change survives the next rebuild.
@@ -86,6 +104,7 @@ Rules that cost a rebuild if skipped:
 | Colours, sizes, page geometry, custom design | `bible/06-design-system.md`, `design/README.md` |
 | Fonts setup, Type 3 | `fonts/README.md` |
 | Start a document from a BPMN / draw.io / YAML model or a live service | `bible/08-harvest.md`, `bible/contracts/harvest.schema.json` |
+| The full requirements document from evidence, template packs, profiles, the evidence ledger | `bible/09-template-packs.md`, `templates/pack.schema.json`, `bible/contracts/service-record.schema.json`, `bible/contracts/profile.schema.json` |
 | Install, quickstart, troubleshooting | `docs/guide.md` |
 
 ## Quick reference
@@ -97,6 +116,7 @@ Rules that cost a rebuild if skipped:
 | Build the editor for documents (`*.ar.json` / `*.en.json`) | `node engine/build-editor.mjs <doc.json or folder> --out out/x.editor.html` |
 | Editor with one-click PDF + DOCX and page thumbnails | `node engine/serve.mjs out/x.editor.html` → http://127.0.0.1:4317/ |
 | Export without the UI (edits replayed) | `node engine/export.mjs --doc <document.json> --edits <edits.json> --locale ar\|en` |
+| Requirements document from evidence through a pack | `node engine/srs/cli.mjs build --pack <id> --profile p.json [--model m --roles n.json --harvest h.json --record r.json] --out dir --export` |
 | Sample, editor check, accessibility check | `npm run sample` · `npm test` |
 | The same actions as MCP tools (build_editor, apply_edits, export_document, …) | `node mcp/cli.mjs` — see `mcp/README.md` |
 
