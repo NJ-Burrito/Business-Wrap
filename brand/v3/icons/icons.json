@@ -1,0 +1,254 @@
+{
+  "brand": "v3",
+  "grid": 24,
+  "stroke": 1.75,
+  "caps": "round",
+  "colour": "currentColor",
+  "highlighter": "class hl: fill var(--bw-marker-icon); class hl rl (The Rule): stroke var(--bw-accent-rule)",
+  "moving part": "class mv",
+  "timing": "var(--bw-dur-page) var(--bw-ease-out), once",
+  "icons": [
+    {
+      "name": "harvest",
+      "file": "harvest.svg",
+      "label": {
+        "en": "Harvest",
+        "ar": "الحصاد"
+      },
+      "meaning": "start a document from evidence",
+      "animation": "drop",
+      "gold": "rule"
+    },
+    {
+      "name": "process-model",
+      "file": "process-model.svg",
+      "label": {
+        "en": "Process model",
+        "ar": "نموذج الإجراء"
+      },
+      "meaning": "BPMN, draw.io or YAML in",
+      "animation": "draw",
+      "gold": "fill"
+    },
+    {
+      "name": "e-service",
+      "file": "e-service.svg",
+      "label": {
+        "en": "Live e-service",
+        "ar": "الخدمة الحية"
+      },
+      "meaning": "the form, attachments and messages",
+      "animation": "blink",
+      "gold": "fill"
+    },
+    {
+      "name": "walk",
+      "file": "walk.svg",
+      "label": {
+        "en": "Walk the service",
+        "ar": "المرور على الخدمة"
+      },
+      "meaning": "a crawl that reads every step",
+      "animation": "slide",
+      "gold": "fill"
+    },
+    {
+      "name": "dry-run",
+      "file": "dry-run.svg",
+      "label": {
+        "en": "Stops before submit",
+        "ar": "يتوقف قبل الإرسال"
+      },
+      "meaning": "a crawl never files a request unless asked twice",
+      "animation": "pulse",
+      "gold": "fill"
+    },
+    {
+      "name": "merge",
+      "file": "merge.svg",
+      "label": {
+        "en": "Merge",
+        "ar": "الدمج"
+      },
+      "meaning": "the union of a crawl and a model",
+      "animation": "draw",
+      "gold": "fill"
+    },
+    {
+      "name": "editor",
+      "file": "editor.svg",
+      "label": {
+        "en": "Editor",
+        "ar": "المحرر"
+      },
+      "meaning": "the HTML editor that is the print layout",
+      "animation": "blink",
+      "gold": "fill"
+    },
+    {
+      "name": "print-layout",
+      "file": "print-layout.svg",
+      "label": {
+        "en": "Print layout",
+        "ar": "تخطيط الطباعة"
+      },
+      "meaning": "the page you edit is the page that prints",
+      "animation": "pulse",
+      "gold": "fill"
+    },
+    {
+      "name": "pdf",
+      "file": "pdf.svg",
+      "label": {
+        "en": "PDF",
+        "ar": "PDF"
+      },
+      "meaning": "real, selectable text with embedded fonts",
+      "animation": "lift",
+      "gold": "fill"
+    },
+    {
+      "name": "docx",
+      "file": "docx.svg",
+      "label": {
+        "en": "DOCX",
+        "ar": "DOCX"
+      },
+      "meaning": "a Word file with real text",
+      "animation": "lift",
+      "gold": "fill"
+    },
+    {
+      "name": "edits-file",
+      "file": "edits-file.svg",
+      "label": {
+        "en": "Edits file",
+        "ar": "ملف التعديلات"
+      },
+      "meaning": "every change recorded as JSON",
+      "animation": "slide",
+      "gold": "fill"
+    },
+    {
+      "name": "bilingual",
+      "file": "bilingual.svg",
+      "label": {
+        "en": "Arabic and English",
+        "ar": "العربية والإنجليزية"
+      },
+      "meaning": "both editions are first-class",
+      "animation": "swap",
+      "gold": "rule"
+    },
+    {
+      "name": "direction",
+      "file": "direction.svg",
+      "label": {
+        "en": "RTL and LTR",
+        "ar": "اتجاه الكتابة"
+      },
+      "meaning": "the words change direction, the layout never flips",
+      "animation": "slide",
+      "gold": "fill"
+    },
+    {
+      "name": "design-pack",
+      "file": "design-pack.svg",
+      "label": {
+        "en": "Design pack",
+        "ar": "حزمة التصميم"
+      },
+      "meaning": "colours, sizes, fonts and template parts",
+      "animation": "fan",
+      "gold": "fill"
+    },
+    {
+      "name": "diagram",
+      "file": "diagram.svg",
+      "label": {
+        "en": "Workflow diagram",
+        "ar": "مخطط سير العمل"
+      },
+      "meaning": "editable shapes and arrows, Mermaid in and out",
+      "animation": "draw",
+      "gold": "fill"
+    },
+    {
+      "name": "security-gate",
+      "file": "security-gate.svg",
+      "label": {
+        "en": "Security gate",
+        "ar": "فحص الأمان"
+      },
+      "meaning": "client content, credentials and paths stay out",
+      "animation": "draw",
+      "gold": "fill"
+    },
+    {
+      "name": "evidence",
+      "file": "evidence.svg",
+      "label": {
+        "en": "Evidence",
+        "ar": "الأدلة"
+      },
+      "meaning": "every chapter traces to its source",
+      "animation": "slide",
+      "gold": "rule"
+    },
+    {
+      "name": "mcp-server",
+      "file": "mcp-server.svg",
+      "label": {
+        "en": "MCP server",
+        "ar": "خادم MCP"
+      },
+      "meaning": "the tool's functions for agents",
+      "animation": "pulse",
+      "gold": "fill"
+    },
+    {
+      "name": "plugin",
+      "file": "plugin.svg",
+      "label": {
+        "en": "Claude Code plugin",
+        "ar": "إضافة Claude Code"
+      },
+      "meaning": "skill and MCP server together",
+      "animation": "snap",
+      "gold": "fill"
+    },
+    {
+      "name": "update",
+      "file": "update.svg",
+      "label": {
+        "en": "Update",
+        "ar": "التحديث"
+      },
+      "meaning": "one click, documents untouched",
+      "animation": "spin",
+      "gold": "fill"
+    },
+    {
+      "name": "export",
+      "file": "export.svg",
+      "label": {
+        "en": "Export",
+        "ar": "التصدير"
+      },
+      "meaning": "PDF, DOCX, edits, design pack, HTML",
+      "animation": "rise",
+      "gold": "fill"
+    },
+    {
+      "name": "explainer",
+      "file": "explainer.svg",
+      "label": {
+        "en": "Explainer card",
+        "ar": "البطاقة الشارحة"
+      },
+      "meaning": "rest on a tool: name, shortcut, one sentence, a small animation",
+      "animation": "pulse",
+      "gold": "rule"
+    }
+  ]
+}

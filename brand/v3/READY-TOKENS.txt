@@ -1,0 +1,8 @@
+READY 2026-10-28: brand v3 tokens are final (frozen interface I1). Paths relative to the repo root.
+brand/v3/tokens-v3.css            sha256 6af5d61dab9f722881707c05965a4edde5a2058a06995dee88676574756fdcbc (byte-identical to the frozen file)
+brand/v3/tokens-v3.json           light DTCG, gate: python palette/check.py brand/v3/tokens-v3.json (exit 0)
+brand/v3/dark/tokens-v3.dark.json dark DTCG, gate: python palette/check.py brand/v3/dark/tokens-v3.dark.json (exit 0)
+brand/v3/contrast-v3.md           every pair, light and dark
+brand/v3/swatches.html            written by palette/check.py
+brand/v3/dark/swatches.html       written by palette/check.py
+brand/v3/tools/build_tokens_v3.py generator: python brand/v3/tools/build_tokens_v3.py palette/tokens.json brand/v3
