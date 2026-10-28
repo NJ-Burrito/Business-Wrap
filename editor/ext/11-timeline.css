@@ -1,0 +1,8 @@
+/* A9 «تغييرات» timeline drawer */
+.drawer .tl { border-inline-start: 2px solid currentColor; padding-inline-start: 10px; }
+.drawer .tl-row.now > button { font-weight: 700; }
+.drawer .tl-row.future { opacity: .55; }
+.drawer .tl-mark { list-style: none; border-top: 1px dashed currentColor; margin: 6px 0; padding-top: 4px; font-size: .9em; opacity: .85; }
+.drawer .tl-row > button { all: unset; cursor: pointer; }
+.drawer .tl-row > button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.count { cursor: pointer; }
