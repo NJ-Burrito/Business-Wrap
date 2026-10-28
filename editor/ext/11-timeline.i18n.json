@@ -1,0 +1,4 @@
+{
+  "ar": { "timeline": "تغييرات", "tlBack": "رجوع", "tlFwd": "تقدّم", "tlCheckpoint": "نقطة حفظ", "tlHere": "ارجع إلى هنا", "tlCount": "التغييرات منذ آخر حفظ HTML: {n}", "tlEmpty": "لا تغييرات بعد.", "tlMark_checkpoint": "نقطة حفظ", "tlMark_save": "حفظ", "tlMark_saveHtml": "حفظ HTML", "tlMark_export": "تصدير PDF وDOCX", "tl_setText": "تعديل نص", "tl_insert": "إضافة", "tl_delete": "حذف", "tl_move": "نقل", "tl_replace": "استبدال" },
+  "en": { "timeline": "Changes", "tlBack": "Back", "tlFwd": "Forward", "tlCheckpoint": "Checkpoint", "tlHere": "Go back here", "tlCount": "Changes since the last Save HTML: {n}", "tlEmpty": "No changes yet.", "tlMark_checkpoint": "Checkpoint", "tlMark_save": "Saved", "tlMark_saveHtml": "Saved HTML", "tlMark_export": "Exported PDF and DOCX", "tl_setText": "Edit text", "tl_insert": "Add", "tl_delete": "Delete", "tl_move": "Move", "tl_replace": "Replace" }
+}
