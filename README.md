@@ -1,6 +1,6 @@
 <h1 align="center">Business-Wrap: bilingual requirements document generator (Arabic + English)</h1>
 
-<p align="center"><img src="docs/screens/editor-en.png" alt="Business-Wrap: the editor with the sample service's cover" width="720"></p>
+<p align="center"><img src="site/assets/media/hero.gif" alt="Business-Wrap: evidence in, one Arabic and English requirements document out" width="720"></p>
 
 <p align="center">EN · العربية: <a href="README.ar.md">README.ar.md</a></p>
 

@@ -2,7 +2,7 @@
 
 <h1 align="center">بزنس راب (Business-Wrap): مولّد وثائق متطلبات ثنائية اللغة (عربي وإنجليزي)</h1>
 
-<p align="center"><img src="docs/screens/editor-ar.png" alt="بزنس راب: المحرر وغلاف الخدمة النموذجية" width="720"></p>
+<p align="center"><img src="site/assets/media/hero.gif" alt="بزنس راب: أدلة تدخل، ووثيقة متطلبات واحدة بالعربية والإنجليزية تخرج" width="720"></p>
 
 <p align="center">عربي · English: <a href="README.md">README.md</a></p>
 
