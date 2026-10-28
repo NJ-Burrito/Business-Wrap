@@ -10,7 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { launchOptions, REPO } from '../export.mjs';
+import { launchOptions, REPO, loadPlaywright } from '../export.mjs';
 
 const SECRETS = path.join(REPO, '.local', 'harvest-secrets.json');
 export function resolveValue(v) {
@@ -398,7 +398,7 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
   if (cfg.submit === true && !filing) log('submit: true without the go-ahead (--yes-file-real-request or a typed YES): running as a dry run');
   const outDir = path.resolve(cfg.outDir || path.join(REPO, 'out', 'harvest', String(cfg.name || 'service').replace(/[^\w-]+/g, '-')));
   fs.mkdirSync(outDir, { recursive: true });
-  const { chromium } = await import(pathToFileURL(path.join(REPO, 'node_modules', 'playwright-core', 'index.mjs')).href);
+  const { chromium } = await loadPlaywright();
   const browser = shared || (await chromium.launch({ ...launchOptions(), headless: cfg.headed === false }));
   const raw = { kind: 'bw-harvest', version: 1, name: cfg.name || '', harvestedAt: new Date().toISOString(), languages: {} };
   const delay = Math.max(0, cfg.delayMs ?? 400);

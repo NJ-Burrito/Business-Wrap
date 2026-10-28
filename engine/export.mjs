@@ -115,9 +115,16 @@ export function printHtml(docIn, { locale, theme, embed = true }) {
 }
 
 let playwright;
+/** playwright-core from this install's own node_modules (a clone, the plugin folder), else by normal resolution
+ *  (an npm or npx install hoists dependencies beside the package, not inside it). */
+export async function loadPlaywright() {
+  if (playwright) return playwright;
+  const local = path.join(REPO, 'node_modules', 'playwright-core', 'index.mjs');
+  playwright = await import(fs.existsSync(local) ? pathToFileURL(local).href : 'playwright-core');
+  return playwright;
+}
 async function chromium() {
-  playwright ??= await import(pathToFileURL(path.join(REPO, 'node_modules', 'playwright-core', 'index.mjs')).href);
-  return playwright.chromium;
+  return (await loadPlaywright()).chromium;
 }
 
 /** Prints doc → pdfPath. Returns {pdf, pages}. A tagged, header/footer PDF like the source. */
