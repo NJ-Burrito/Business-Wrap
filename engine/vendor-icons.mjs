@@ -29,6 +29,10 @@ const MAP = {
   dgBendAdd: 'spline-pointer', dgBendDel: 'circle-minus', dgRouteAuto: 'route', dgZoomIn: 'zoom-in', dgZoomOut: 'zoom-out', dgZoomFit: 'scan', dgZoom100: 'ratio',
   secFile: 'folder', secInsert: 'square-plus', secEdit: 'pen-line', secDocument: 'file-text', secDesign: 'palette', secView: 'eye', secExport: 'file-down', more: 'ellipsis', secSel: 'spline',
   // page view modes (0.10.0)
+  // Export & Print centre, View menu (0.11.0)
+  'export.menu': 'file-output', 'export.pdf.ar': 'file-text', 'export.pdf.en': 'file-text', 'export.pdf.both': 'files', 'export.docx.ar': 'file-type', 'export.docx.en': 'file-type', 'export.docx.both': 'files',
+  'export.html': 'file-code-2', 'export.printHtml': 'code-xml', 'export.edits': 'braces', 'export.editsAll': 'braces', 'export.pack': 'palette', 'export.mermaid': 'git-fork', 'export.svg': 'file-image', 'export.png': 'image',
+  'print.refresh': 'refresh-cw', 'print.preview': 'eye', 'print.browser': 'app-window', zoomReset: 'percent', zoomFit: 'move-horizontal',
   'view.continuous': 'scroll-text', 'view.single': 'file', 'view.spread': 'book-open', 'view.left': 'chevron-left', 'view.right': 'chevron-right',
 };
 const out = {};
