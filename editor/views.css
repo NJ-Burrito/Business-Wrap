@@ -20,10 +20,10 @@
   #bw-pair .bw-view > main.bw-doc::before {
     content: ""; position: absolute; inset-block: 0; inset-inline-start: 0; z-index: -1; pointer-events: none;
     width: calc(var(--pages, 60) * (var(--pw) + var(--pg)));
-    background: repeating-linear-gradient(to right, var(--paper, #fafaf9) 0 var(--pw), transparent var(--pw) calc(var(--pw) + var(--pg)));
-    filter: drop-shadow(0 1px 1px rgba(0, 30, 61, .16)) drop-shadow(0 4px 6px rgba(0, 30, 61, .12));
+    background: repeating-linear-gradient(to right, var(--paper, #fafaf9) 0 var(--pw), transparent var(--pw) calc(var(--pw) + var(--pg))); /* doc-colour: the sheets are the document's paper */
+    filter: drop-shadow(0 1px 1px color-mix(in srgb, var(--bw-band, #001e3d) 16%, transparent)) drop-shadow(0 4px 6px color-mix(in srgb, var(--bw-band, #001e3d) 12%, transparent));
   }
-  #bw-pair .bw-view > main.bw-doc[dir="rtl"]::before { background: repeating-linear-gradient(to left, var(--paper, #fafaf9) 0 var(--pw), transparent var(--pw) calc(var(--pw) + var(--pg))); }
+  #bw-pair .bw-view > main.bw-doc[dir="rtl"]::before { background: repeating-linear-gradient(to left, var(--paper, #fafaf9) 0 var(--pw), transparent var(--pw) calc(var(--pw) + var(--pg))); } /* doc-colour */
 }
 html[data-bw-calm="1"] #bw-pair .bw-view > main.bw-doc { transition: none; }
 @media (prefers-reduced-motion: reduce) { #bw-pair .bw-view > main.bw-doc { transition: none; } }

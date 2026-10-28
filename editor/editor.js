@@ -1352,12 +1352,14 @@ function closeDrawer() {
   if (!d || d.hidden) return;
   if (isCalm()) { d.hidden = true; return; }
   d.classList.add('closing');
-  setTimeout(() => { d.hidden = true; d.classList.remove('closing'); }, 220);
+  // 240 ms = --bw-dur-base, the close animation; a drawer reopened before it finishes stays open (openDrawer cancels the hide)
+  closeDrawer.timer = setTimeout(() => { closeDrawer.timer = 0; if (d.classList.contains('closing')) { d.hidden = true; d.classList.remove('closing'); } }, 240);
 }
 function openDrawer(kind, soft = false) {
   const d = root.querySelector('.drawer');
   if (soft && d.contains(root.activeElement)) return;
   S.drawer = kind;
+  clearTimeout(closeDrawer.timer);
   d.hidden = false;
   d.classList.remove('closing');
   const head = (title) => `<header><h2>${esc(title)}</h2><button type="button" class="b" data-k="close" aria-label="${esc(t('close'))}"><span class="i">${ic('close')}</span><span class="w">${esc(t('close'))}</span></button></header>`;

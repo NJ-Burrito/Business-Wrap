@@ -16,17 +16,17 @@
 .seg[data-x] .cap:not([hidden]) { display: inline-flex; }
 @media (max-width: 1520px) { .island .seg[data-x] .cap { display: none; } }
 .seg[data-x]:hover .cap { color: var(--on-glass); }
-.seg[data-x]:hover { background: rgba(250,250,249,.13); }
+.seg[data-x]:hover { background: color-mix(in srgb, var(--on-glass) 13%, transparent); }
 .seg .thumb {
-  position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: -1; border-radius: 10px; background: var(--gold);
-  box-shadow: 0 1px 0 rgba(255,255,255,.35) inset, 0 6px 14px -6px rgba(0,0,0,.45);
+  position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: -1; border-radius: 10px; background: color-mix(in srgb, var(--on-glass) 18%, transparent);
+  box-shadow: inset 0 -2px 0 var(--gold); /* a pressed toggle: light wash + gold rule (the one gold fill is the primary action) */
   --e-crit: linear(0, .09 3%, .3 9%, .52 16%, .69 23%, .81 30%, .89 37%, .94 45%, .97 54%, .99 66%, 1);
   transition: transform .42s var(--e-crit), width .42s var(--e-crit), height .3s var(--e-out), opacity .2s var(--e-out), scale .12s var(--e-out);
   pointer-events: none;
 }
 .seg[data-x] button { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 34px; }
-.seg[data-x] button[aria-pressed="true"] { background: transparent; color: var(--deep); }
-.seg[data-x] button:not([aria-pressed="true"]):hover { color: #fff; }
+.seg[data-x] button[aria-pressed="true"] { background: transparent; color: var(--on-glass); box-shadow: none; }
+.seg[data-x] button:not([aria-pressed="true"]):hover { color: var(--on-glass); }
 .seg[data-x] button .i { width: 16px; height: 16px; }
 .seg[data-x]:active .thumb { scale: .96; }
 .pop .seg.pages { flex-basis: 100%; justify-content: flex-start; }
@@ -35,18 +35,18 @@
 /* ── A6: the page pill ── */
 .pager {
   position: fixed; z-index: 38; inset-block-end: 16px; left: 50%; translate: -50% 0; display: inline-flex; align-items: center; gap: 4px; padding: 5px;
-  background: var(--glass); color: var(--on-glass); border-radius: 999px; box-shadow: 0 16px 36px -16px rgba(0, 30, 61, .6);
-  backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%); animation: pop-in .4s var(--e-spring) both;
+  background: var(--glass); color: var(--on-glass); border-radius: 999px; box-shadow: var(--bw-shadow-3);
+  backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%); animation: pop-in var(--bw-dur-base) var(--bw-ease-out) both;
 }
 .pager .b { color: var(--on-glass); min-height: 34px; padding: 5px 12px; border-radius: 999px; }
-.pager .b:hover:not(:disabled) { background: rgba(250,250,249,.1); }
+.pager .b:hover:not(:disabled) { background: color-mix(in srgb, var(--on-glass) 10%, transparent); }
 .pager .pn { min-width: 9ch; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 13px; }
 @media (prefers-reduced-transparency: reduce) { .pager { background: var(--deep); backdrop-filter: none; } }
 
 /* ── A5: explainer card ── */
 .xpl {
   position: fixed; z-index: 70; width: 252px; padding: 10px 12px 12px; border-radius: 16px; pointer-events: none;
-  background: var(--panel); color: var(--panel-ink); box-shadow: 0 22px 50px -18px rgba(0, 30, 61, .55), 0 0 0 1px var(--panel-line);
+  background: var(--panel); color: var(--panel-ink); box-shadow: var(--bw-shadow-3), 0 0 0 1px var(--panel-line);
   font-size: 13px; line-height: 1.45;
 }
 .xpl.in { animation: xpl-in .32s var(--e-spring) both; }
@@ -57,28 +57,27 @@
 .xpl svg { display: block; width: 100%; height: auto; }
 .xpl .xt { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .xpl .xt b { font-weight: 800; color: var(--navy); }
-.shell[data-theme="dark"] .xpl .xt b { color: #9cc3ef; }
 .xpl p { margin: 4px 0 0; color: var(--panel-soft); }
 
-/* illustration parts */
-.xpl svg .sheet { fill: #fff; stroke: #c9d4e2; stroke-width: 1; }
-.xpl svg .ln { fill: #d5dde8; }
-.xpl svg .blk, .xpl svg .bx, .xpl svg .cell { fill: #cfe0f4; stroke: #003c7a; stroke-width: 1; }
-.xpl svg .cell { fill: #e7eef7; stroke: #b6c6da; }
-.xpl svg .hi, .xpl svg .hit, .xpl svg .type { fill: #f1d58f; stroke: #9c7e36; }
-.xpl svg .side { fill: #001e3d; }
-.xpl svg .pane .ln { fill: #6c87a8; }
-.xpl svg .tray { fill: #003c7a; opacity: .85; }
-.xpl svg .track { fill: #d5dde8; }
-.xpl svg .knob { fill: #be9a41; }
-.xpl svg .glyph { font: 800 30px 'Thmanyah Sans', system-ui, sans-serif; fill: #003c7a; }
-.xpl svg :is(.arc, .wire, .dirarrow, .guide, .cut, .tip, .turn) { fill: none; stroke: #be9a41; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+/* illustration parts: the explainer draws the editor in brand roles (they follow the light and dark theme) */
+.xpl svg .sheet { fill: var(--bw-surface); stroke: var(--bw-rule-strong); stroke-width: 1; }
+.xpl svg .ln { fill: var(--bw-rule-strong); }
+.xpl svg .blk, .xpl svg .bx, .xpl svg .cell { fill: var(--bw-primary-soft); stroke: var(--bw-primary); stroke-width: 1; }
+.xpl svg .cell { fill: var(--bw-primary-wash); stroke: var(--bw-rule-strong); }
+.xpl svg .hi, .xpl svg .hit, .xpl svg .type { fill: var(--bw-marker); stroke: var(--bw-accent-rule); }
+.xpl svg .side { fill: var(--bw-band); }
+.xpl svg .pane .ln { fill: var(--bw-sec-insert); }
+.xpl svg .tray { fill: var(--bw-primary); opacity: .85; }
+.xpl svg .track { fill: var(--bw-rule-strong); }
+.xpl svg .knob { fill: var(--bw-accent); }
+.xpl svg .glyph { font: 800 30px 'Thmanyah Sans', system-ui, sans-serif; fill: var(--bw-primary); }
+.xpl svg :is(.arc, .wire, .dirarrow, .guide, .cut, .tip, .turn) { fill: none; stroke: var(--bw-accent); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .xpl svg .guide, .xpl svg .cut { stroke-dasharray: 4 3; }
-.xpl svg .lens circle { fill: rgba(255,255,255,.4); stroke: #003c7a; stroke-width: 2.4; }
-.xpl svg .lens path, .xpl svg .drop path { fill: none; stroke: #003c7a; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
-.xpl svg .caret { fill: #003c7a; }
-.xpl svg .badge circle { fill: #be9a41; }
-.xpl svg .badge .ic { color: #001e3d; stroke: #001e3d; }
+.xpl svg .lens circle { fill: color-mix(in srgb, var(--bw-surface) 40%, transparent); stroke: var(--bw-primary); stroke-width: 2.4; }
+.xpl svg .lens path, .xpl svg .drop path { fill: none; stroke: var(--bw-primary); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.xpl svg .caret { fill: var(--bw-primary); }
+.xpl svg .badge circle { fill: var(--bw-accent); }
+.xpl svg .badge .ic { color: var(--bw-on-accent); stroke: var(--bw-on-accent); }
 .xpl svg * { transform-box: fill-box; transform-origin: center; }
 
 /* motion: each scene loops gently; still frames are meaningful on their own */
@@ -150,8 +149,8 @@
 .xpl svg .fnt { font-family: 'Thmanyah Serif Display', serif; }
 .xpl svg .slide { animation: x-slide 2.4s var(--e-move) infinite; }
 @keyframes x-slide { 0%, 15% { translate: 0 0; } 55%, 85% { translate: 52px 0; } 100% { translate: 0 0; } }
-.xpl svg .chip { animation: x-chip 3s steps(1) infinite; fill: #003c7a; }
-@keyframes x-chip { 0% { fill: #003c7a; } 33% { fill: #be9a41; } 66% { fill: #16644e; } }
+.xpl svg .chip { animation: x-chip 3s steps(1) infinite; fill: var(--bw-primary); }
+@keyframes x-chip { 0% { fill: var(--bw-primary); } 33% { fill: var(--bw-accent); } 66% { fill: var(--bw-success); } }
 
 /* reduced motion / calm mode: still frames (the end state each scene explains) */
 .shell[data-calm="1"] .xpl svg *, .shell[data-calm="1"] .xpl { animation: none !important; }

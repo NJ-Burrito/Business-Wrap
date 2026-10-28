@@ -510,18 +510,49 @@ try {
   const ctxM = await browser.newContext({ viewport: { width: 1366, height: 900 } });
   const pm = await ctxM.newPage();
   await pm.goto(editorUrl);
-  const reveal = await pm.evaluate(() => new Promise((res) => { const s = document.getElementById('bw-ui-host')?.shadowRoot?.querySelector('.brand svg path'); const a = s ? getComputedStyle(s).strokeDashoffset : 'none'; setTimeout(() => res([a, s ? getComputedStyle(s).strokeDashoffset : 'none', s ? getComputedStyle(s).animationName : 'none']), 1400); }));
+  const reveal = await pm.evaluate(() => new Promise((res) => { const s = document.getElementById('bw-ui-host')?.shadowRoot?.querySelector('.brand svg .ln') || document.getElementById('bw-ui-host')?.shadowRoot?.querySelector('.brand svg path'); const a = s ? getComputedStyle(s).strokeDashoffset : 'none'; setTimeout(() => res([a, s ? getComputedStyle(s).strokeDashoffset : 'none', s ? getComputedStyle(s).animationName : 'none']), 1400); }));
   const { brandMarks } = await import('../engine/build-editor.mjs');
-  if (brandMarks().stub) skip('brand mark draws itself on load', 'brand/logo/mark-animated.svg not present (brand branch not merged here)');
+  if (brandMarks().stub) skip('brand mark draws itself on load', 'brand/v3/logo/mark.svg not present (brand package not merged here)');
   else check('brand mark draws itself on load (animated SVG works inline)', reveal[2] !== 'none' && parseFloat(reveal[0]) > 0 && parseFloat(reveal[1]) === 0, JSON.stringify(reveal));
   await ctxM.close();
   const ctxR2 = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 1366, height: 900 } });
   const pr2 = await ctxR2.newPage();
   await pr2.goto(editorUrl);
   await pr2.waitForFunction(() => window.BW?.ready);
-  const rm2 = await pr2.evaluate(() => { const sh = document.getElementById('bw-ui-host').shadowRoot; return { island: getComputedStyle(sh.querySelector('.island')).animationName, mark: getComputedStyle(sh.querySelector('.brand svg path')).strokeDashoffset }; });
+  const rm2 = await pr2.evaluate(() => { const sh = document.getElementById('bw-ui-host').shadowRoot; return { island: getComputedStyle(sh.querySelector('.island')).animationName, mark: getComputedStyle(sh.querySelector('.brand svg .ln') || sh.querySelector('.brand svg path')).strokeDashoffset }; });
   check('reduced motion: the shell and the brand mark stay still', rm2.island === 'none' && parseFloat(rm2.mark) === 0, JSON.stringify(rm2));
   await ctxR2.close();
+  // brand v3: the inline mark carries the "Cover" parts the chrome animates (DESIGN c.3), and brandCss() scopes the tokens
+  if (brandMarks().stub) skip('brand mark: v3 part classes', 'brand/v3/logo/mark.svg not present');
+  else {
+    const parts = ['.sheet', '.spine', '.cap', '.ln.l1', '.ln.l2', '.rule'];
+    const missing = parts.filter((c) => !new RegExp(`class="${c.slice(1).replace('.', ' ')}"`).test(brandMarks().mark));
+    check('brand mark: v3 part classes (.sheet .spine .cap .ln.l1 .ln.l2 .rule)', missing.length === 0, missing.join(' '));
+  }
+  {
+    const { brandCss } = await import('../engine/build-editor.mjs');
+    const css = brandCss();
+    const light = /:host, \.shell \{[^}]*--bw-bg: #fafaf9/.test(css);
+    const dark = /\.shell\[data-theme="dark"\] \{[^}]*--bw-bg: #001e3d/.test(css);
+    check('brandCss(): v3 tokens scoped to the shadow root (--bw-bg, no :root, light on :host/.shell, dark on .shell[data-theme="dark"], no global focus rule)',
+      css.includes('--bw-bg') && !css.includes(':root') && light && dark && !/:where\(a, button/.test(css), JSON.stringify({ len: css.length, light, dark }));
+  }
+  // drawer reopened while it closes stays open (0.11.x fix kept: the pending hide is cancelled)
+  {
+    const ctxD = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+    const pd = await ctxD.newPage();
+    await pd.goto(editorUrl);
+    await pd.waitForFunction(() => window.BW?.ready);
+    await pd.evaluate(() => window.BW.runAction('outline'));
+    await pd.waitForTimeout(700);
+    await pd.evaluate(() => window.BW.runAction('outline'));
+    await pd.waitForTimeout(60);
+    await pd.evaluate(() => window.BW.runAction('outline'));
+    await pd.waitForTimeout(500);
+    const st = await pd.evaluate(() => { const d = document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer'); return { hidden: d.hidden, closing: d.classList.contains('closing'), drawer: window.BW.S.drawer }; });
+    check('drawer reopened during its close stays open', !st.hidden && !st.closing && st.drawer === 'outline', JSON.stringify(st));
+    await ctxD.close();
+  }
 
   // page thumbnails through the local server (pagination exists only when Chrome prints)
   const { serve } = await import('../engine/serve.mjs');
