@@ -3,17 +3,25 @@
 //   node engine/srs/cli.mjs build --pack <id|dir> --profile <profile.json> [--harvest harvest.json] [--model <model file>]
 //        [--roles roles.json] [--record record.json] [--corrections corrections.json] --out <dir>
 //        [--today YYYY-MM-DD] [--no-editor] [--export] [--allow-missing-code]
+//        [--walk walk.json] [--messages messages.txt] [--previous old.pdf|docx|txt] [--register cards.json]
+//        [--record-page page-dump.json] [--freeze]
 //   node engine/srs/cli.mjs packs                 list the packs
 //   node engine/srs/cli.mjs validate <id|dir>     check a pack (exit 1 on any error)
 //
 // Writes, in --out: 01-harvest.json (the inputs, joined), 02-evidence.json (model + ledger + fill + questions),
-// document.ar.json / document.en.json (03, the editor's input), fill.md, the editor, and with --export PDF + DOCX.
+// document.ar.json / document.en.json (03, the editor's input), fill.md, open-questions.md (always, even empty:
+// questions live beside the document, never inside it), the editor, and with --export PDF + DOCX. The healers
+// (engine/srs/heal) run on every build and every export; any FAIL makes the CLI exit 1 after writing the files.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildModel } from './model.mjs';
 import { compose, loadPack, listPacks, coreText } from './compose.mjs';
 import { evidenceOf } from './evidence.mjs';
+import { heal, failed, healTable } from './heal/index.mjs';
+import { deepMerge } from './compose.mjs';
+import { readPrevious } from '../harvest/previous.mjs';
+import { recordFromPage, mergeRecords, walkFromScreens } from '../harvest/record.mjs';
 import { validatePack, applyCorrections } from './packs.mjs';
 import { readModel } from '../harvest/cli.mjs';
 import { userCwd } from '../export.mjs';
@@ -22,7 +30,8 @@ const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
 const readRaw = (f) => readJson(fs.statSync(f).isDirectory() ? path.join(f, 'harvest.json') : f);
 
 /** The whole build in memory: inputs → model → both editions → evidence. No files written. */
-export async function buildDocuments({ pack: packId, profile = {}, harvest, model: modelFile, roles, record, corrections, today, allowMissingCode = false }) {
+const asJson = (v) => (typeof v === 'string' ? readJson(v) : v || null);
+export async function buildDocuments({ pack: packId, profile = {}, harvest, model: modelFile, roles, record, corrections, today, allowMissingCode = false, walk, messages, previous, register, recordPage, prior, frozen }) {
   const pack = typeof packId === 'object' ? packId : loadPack(packId);
   const errs = validatePack(pack);
   if (errs.length) throw new Error(`pack ${pack.id} is not valid:\n  ${errs.join('\n  ')}`);
@@ -30,9 +39,14 @@ export async function buildDocuments({ pack: packId, profile = {}, harvest, mode
   const raw = typeof harvest === 'string' ? readRaw(harvest) : harvest || null;
   const nameMap = typeof roles === 'string' ? readJson(roles) : roles || {};
   const ir = typeof modelFile === 'string' ? await readModel(modelFile, { roles: nameMap }) : modelFile || null;
-  const rec = typeof record === 'string' ? readJson(record) : record || null;
+  const rec = mergeRecords(asJson(record), recordPage ? recordFromPage(asJson(recordPage), { key: asJson(record)?.key || '' }) : null);
+  const w0 = asJson(walk);
+  const wk = Array.isArray(w0) ? walkFromScreens(w0) : w0;
+  const msgs = typeof messages === 'string' && fs.existsSync(messages) ? fs.readFileSync(messages, 'utf8') : messages || null;
+  const prev = typeof previous === 'string' ? readPrevious(previous) : previous || null;
+  const reg = asJson(register);
   const corr = typeof corrections === 'string' ? readJson(corrections) : corrections || [];
-  const m = buildModel({ ir, raw, record: rec, profile: prof, text: coreText(), names: nameMap });
+  const m = buildModel({ ir, raw, record: rec, profile: prof, text: coreText(), names: nameMap, walk: wk, messages: msgs, previous: prev, register: reg });
   if (!m.code && !allowMissingCode) throw new Error(`no document code for «${m.name.en || m.name.ar}» (key «${m.key}»): add it to the record (facts.code) or the profile (codes), or pass --allow-missing-code to print «—» with an open question`);
   const make = (extra) => ({ ar: compose(m, pack, prof, { locale: 'ar', today, extraQuestions: extra }), en: compose(m, pack, prof, { locale: 'en', today, extraQuestions: extra }) });
   let docs = make([]);
@@ -47,7 +61,14 @@ export async function buildDocuments({ pack: packId, profile = {}, harvest, mode
   const failed = [...correctionReport.ar, ...correctionReport.en].filter((r) => r.status === 'FAIL');
   if (failed.length) throw new Error(`corrections failed: ${failed.map((r) => r.id).join(', ')}`);
   ev.corrections = correctionReport;
-  return { pack, model: m, docs, evidence: ev, inputs: { harvest: raw, model: ir, record: rec } };
+  // the healers, on the built editions: repair from evidence, or a named question, or FAIL
+  const text = Object.fromEntries(['ar', 'en'].map((lc) => [lc, deepMerge(deepMerge(coreText()[lc], pack.text?.[lc]), prof.text?.[lc])]));
+  const h = heal({ docs, model: m, evidence: ev, pack, profile: prof, text, inputs: { raw, ir, record: rec }, prior: asJson(prior), frozen: asJson(frozen), corrections: corr });
+  ev.heal = h.results;
+  for (const x of h.questions) if (!ev.openQuestions.some((o) => o.id === x.id)) ev.openQuestions.push(x);
+  ev.harvestConflicts = m.harvestConflicts;
+  ev.notes = m.notes;
+  return { pack, model: m, docs, evidence: ev, inputs: { harvest: raw, model: ir, record: rec, walk: wk, previous: prev ? { ...prev, text: undefined } : null } };
 }
 
 export function fillTable(ev, { baseline } = {}) {
@@ -60,16 +81,29 @@ export function fillTable(ev, { baseline } = {}) {
   return lines.join('\n');
 }
 
+/** open-questions.md: every question of the build, beside the document (the document itself carries none). */
+export function openQuestionsMd(ev, title) {
+  const lines = [`# Open questions — ${title}`, '', ev.openQuestions.length ? `${ev.openQuestions.length} question(s). Answer them in the record or the profile and rebuild; this file is rewritten on every build.` : 'None: every section is filled from the evidence or stated as none. This file is rewritten on every build.', ''];
+  if (ev.openQuestions.length) lines.push('| ID | Section | السؤال | Question |', '|---|---|---|---|', ...ev.openQuestions.map((q) => `| ${q.id} | ${q.section || '—'} | ${String(q.ar || '').replace(/\|/g, '/')} | ${String(q.en || '').replace(/\|/g, '/')} |`));
+  return lines.join('\n') + '\n';
+}
+
 export async function buildToDir(opts) {
-  const r = await buildDocuments(opts);
   const out = path.resolve(opts.out);
+  const prev = (f) => (fs.existsSync(path.join(out, f)) ? readJson(path.join(out, f)) : null);
+  const priorDocs = prev('document.ar.json') && { ar: prev('document.ar.json'), en: prev('document.en.json') };
+  const frozen = opts.freeze ? null : prev('figure-frozen.json');
+  const r = await buildDocuments({ ...opts, prior: opts.prior ?? priorDocs, frozen: opts.frozen ?? frozen });
   fs.mkdirSync(out, { recursive: true });
   const w = (n, v) => fs.writeFileSync(path.join(out, n), typeof v === 'string' ? v : JSON.stringify(v, null, 1) + '\n');
   w('01-harvest.json', { kind: 'bw-inputs', version: 1, ...r.inputs });
   w('02-evidence.json', r.evidence);
   w('document.ar.json', r.docs.ar);
   w('document.en.json', r.docs.en);
-  w('fill.md', `# Fill — ${r.docs.en.control.title}\n\nPack: ${r.pack.id}\n\n${fillTable(r.evidence, opts)}\n`);
+  w('open-questions.md', openQuestionsMd(r.evidence, r.docs.en.control.title));
+  if (opts.freeze) { const fig = (d) => d.chapters.flatMap((c) => c.sections).flatMap((s) => s.blocks).find((b) => b.kind === 'diagram')?.model || null; w('figure-frozen.json', { ar: fig(r.docs.ar), en: fig(r.docs.en) }); }
+  const writeFill = () => w('fill.md', `# Fill — ${r.docs.en.control.title}\n\nPack: ${r.pack.id}\n\n${fillTable(r.evidence, opts)}\n\n## Healers\n\n${healTable(r.evidence.heal || [])}\n`);
+  writeFill();
   const files = { dir: out, documents: [path.join(out, 'document.ar.json'), path.join(out, 'document.en.json')] };
   if (opts.editor !== false) {
     const { buildEditor } = await import('../build-editor.mjs');
@@ -85,6 +119,12 @@ export async function buildToDir(opts) {
       const docx = exportDocx(r.docs[lc], { locale: lc, theme, docxPath: path.join(out, 'exports', `${stem}.docx`) });
       files.exports.push(pdf.pdf, docx.docx);
     }
+    // the export healers: page fill, fonts embedded, corrections as printed (poppler)
+    const { healPdf } = await import('./heal/pdf.mjs');
+    const pdfs = files.exports.filter((f) => f.endsWith('.pdf')).map((pdf) => ({ pdf, locale: /\.en\.pdf$/.test(pdf) ? 'en' : 'ar' }));
+    r.evidence.heal.push(...healPdf(pdfs, { corrections: typeof opts.corrections === 'string' ? readJson(opts.corrections) : opts.corrections || [], profile: typeof opts.profile === 'string' ? readJson(opts.profile) : opts.profile || {} }));
+    w('02-evidence.json', r.evidence);
+    writeFill();
   }
   return { ...r, files };
 }
@@ -97,11 +137,15 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     if (cmd === 'packs') { for (const id of listPacks()) { const pk = loadPack(id); console.log(`${id.padEnd(12)} ${pk.name.en} / ${pk.name.ar}`); } process.exit(0); }
     if (cmd === 'validate') { const pk = loadPack(rest[0] && fs.existsSync(rest[0]) ? path.resolve(rest[0]) : rest[0]); const e = validatePack(pk); console.log(e.length ? `FAIL ${pk.id}\n  ${e.join('\n  ')}` : `OK   ${pk.id}`); process.exit(e.length ? 1 : 0); }
     if (cmd !== 'build' || !flag('pack') || !flag('out')) { console.error('usage: node engine/srs/cli.mjs build --pack <id> --profile <p.json> [--harvest h.json] [--model m] [--roles r.json] [--record rec.json] [--corrections c.json] --out <dir> [--export] [--no-editor] [--allow-missing-code] [--today d]\n       node engine/srs/cli.mjs packs | validate <id|dir>'); process.exit(2); }
-    const r = await buildToDir({ pack: fs.existsSync(flag('pack')) ? path.resolve(flag('pack')) : flag('pack'), profile: p('profile') || {}, harvest: p('harvest'), model: p('model'), roles: p('roles'), record: p('record'), corrections: p('corrections'), out: p('out'), today: flag('today'), editor: !rest.includes('--no-editor'), export: rest.includes('--export'), allowMissingCode: rest.includes('--allow-missing-code'), baseline: flag('baseline'), theme: p('theme') });
+    const r = await buildToDir({ pack: fs.existsSync(flag('pack')) ? path.resolve(flag('pack')) : flag('pack'), profile: p('profile') || {}, harvest: p('harvest'), model: p('model'), roles: p('roles'), record: p('record'), corrections: p('corrections'), out: p('out'), today: flag('today'), editor: !rest.includes('--no-editor'), export: rest.includes('--export'), allowMissingCode: rest.includes('--allow-missing-code'), baseline: flag('baseline'), theme: p('theme'), walk: p('walk'), messages: p('messages'), previous: p('previous'), register: p('register'), recordPage: p('record-page'), freeze: rest.includes('--freeze') });
     console.log(`evidence   ${path.join(r.files.dir, '02-evidence.json')}`);
     console.log(`documents  ${r.files.documents.join('  ')}`);
     if (r.files.editor) console.log(`editor     ${r.files.editor}`);
     for (const f of r.files.exports || []) console.log(`export     ${f}`);
     console.log(`fill       ${Object.entries(r.evidence.counts).map(([k, v]) => `${k} ${v}`).join(' · ')} · questions ${r.evidence.openQuestions.length} · untraced ${r.evidence.untraced.length}`);
+    const hs = r.evidence.heal || [];
+    console.log(`heal       ${['PASS', 'REPAIRED', 'WARN', 'FLAG', 'FAIL', 'SKIP'].map((k) => `${k} ${hs.filter((x) => x.status === k).length}`).join(' · ')}`);
+    for (const x of failed(hs)) console.log(`FAIL       ${x.id} (${x.gap}): ${x.detail}`);
+    if (failed(hs).length) process.exit(1);
   } catch (e) { console.error(`srs build failed: ${e.message}`); process.exit(1); }
 }
