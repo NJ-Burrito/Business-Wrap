@@ -236,7 +236,7 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
 .sec.now { background: rgba(190,154,65,.16); border: 1px solid rgba(190,154,65,.55); border-radius: 12px; padding: 2px 8px; --cat: #f1d58f; }
 .sec.now.swap { animation: sel-in .32s var(--e-out) both; }
 @keyframes sel-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
-.island.has-sel .sec:not(.now) .w, .island.has-sel .sec:not(.now) .st { display: none; }
+.island.has-sel .sec:not(.now) .w { display: none; }
 .island.has-sel .sec:not(.now) .b { padding: 6px 7px; }
 .sec .pick select { padding: 5px 8px; max-width: 150px; }
 .more { position: relative; display: inline-flex; }
@@ -255,8 +255,28 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
   .island.has-sel .grp.doc .pick { display: none; }
   .island.has-sel .seg .cap, .island.has-sel .b.cmd .w, .island.has-sel .count .w { display: none; }
 }
-.island.has-sel .sec:not(.now) .sc { display: none; }
-.island.has-sel .sec:not(.now) { justify-content: center; padding: 0 3px; }
+.island.has-sel .sec:not(.now) { padding: 0 4px; }
+/* section titles always show (0.9.1): the bar folds tools, never names. A general section's extra tools sit inline
+   while there is room («More» hidden); when the bar would overflow (.sq1) they go into that section's «More». */
+.sec .more.tail { display: contents; }
+.sec .more.tail > .b { display: none; }
+.sec .more.tail > .menu { display: contents; }
+.sec.folded .more.tail { display: inline-flex; }
+.sec.folded .more.tail > .b { display: inline-flex; padding: 6px 5px; }
+.sec.folded .more.tail > .menu { display: flex; }
+.sec.folded .more.tail > .menu:not([data-open="1"]) { display: none; }
+.island.sq0 .sec:not(.now) .b .w { display: none; }
+.island.sq0 .sec:not(.now) .b { padding: 6px 7px; }
+.island.sq4 .sec.now .sb > .b .w, .island.sq4 .sec.now .more > .b .w { display: none; }
+.island.sq4 .sec.now .pick select { max-width: 96px; }
+.island.sq4 .seg.ui { display: none; }
+.island.sq1 .sec:not(.now) .b .w { display: none; }
+.island.sq1 .sec { padding: 0 4px; }
+.island.sq2 .sec.now .sb > .b:not(:first-child) .w { display: none; }
+.island.sq3 .grp.doc .pick, .island.sq3 .b.cmd .w, .island.sq3 .count .w { display: none; }
+.keep-tools { display: inline-flex; gap: 1px; padding-inline-start: 4px; margin-inline-start: 2px; border-inline-start: 1px solid var(--hair); }
+.b.ico { padding: 6px 6px; }
+.b.ico .w { display: none; }
 @media (max-width: 1700px) {
   .island.has-sel .seg.ui, .island.has-sel .status .count { display: none; }
   .island.has-sel .b.primary .w { display: none; }

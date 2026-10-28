@@ -104,6 +104,7 @@ function render(keepScroll = true) {
   if (keepScroll) window.scrollTo(0, y);
   restoreSel();
   refreshUi();
+  dgZoomAll();
   if (S.dg) dgPaint();
 }
 function mainOf(ed) {
@@ -934,12 +935,17 @@ const CMDS = [
   ['dgNote', 'diagram'], ['dgGroup', 'diagram'], ['dgText', 'diagram'], ['dgAuto', 'diagram'], ['dgReset', 'diagram'], ['dgFlow', 'diagram'], ['dgLegend', 'diagram'], ['dgMermaidIn', 'diagram'], ['dgMermaidOut', 'diagram'],
   ['dgLabel', 'shape'], ['dgSub', 'shape'], ['dgConnect', 'shape'], ['dgDup', 'shape'], ['dgDel', 'shape', 'Del'], ['dgFront', 'shape'], ['dgBack', 'shape'],
   ['dgAlignL', 'arrange'], ['dgAlignC', 'arrange'], ['dgAlignR', 'arrange'], ['dgAlignT', 'arrange'], ['dgAlignM', 'arrange'], ['dgAlignB', 'arrange'], ['dgDistH', 'arrange'], ['dgDistV', 'arrange'], ['dgWrap', 'arrange'],
-  ['dgEdgeLabel', 'arrow'], ['dgReverse', 'arrow'], ['dgFrom', 'arrow'], ['dgTo', 'arrow'],
+  ['dgEdgeLabel', 'arrow'], ['dgBendAdd', 'arrow'], ['dgBendDel', 'arrow'], ['dgRouteAuto', 'arrow'], ['dgReverse', 'arrow'], ['dgFrom', 'arrow'], ['dgTo', 'arrow'],
+  ['dgZoomIn', 'diagram', 'Ctrl+wheel'], ['dgZoomOut', 'diagram'], ['dgZoomFit', 'diagram'], ['dgZoom100', 'diagram'],
 ].map(([id, group, key]) => ({ id, group, key }));
 
 /** A labelled toolbar section: icon + short title, then its tools (the same categories as the palette). */
 function sec(cat, tools) {
-  return `<div class="sec" data-cat="${cat}" role="group" aria-label="${esc(t('sec' + cat[0].toUpperCase() + cat.slice(1)))}"><span class="sc" aria-hidden="true"><span class="i">${ic('sec' + cat[0].toUpperCase() + cat.slice(1))}</span><span class="st">${esc(t('sec' + cat[0].toUpperCase() + cat.slice(1)))}</span></span><div class="sb">${tools.join('')}</div></div>`;
+  const name = t('sec' + cat[0].toUpperCase() + cat.slice(1));
+  // the first tool always shows; the rest sit inline while the bar has room and fold into this section's «More» when it has not
+  const rest = tools.slice(1);
+  const tail = rest.length ? `<div class="more tail"><button type="button" class="b" data-a="more" aria-expanded="false" aria-haspopup="true" title="${esc(t('more'))}: ${esc(name)}" aria-label="${esc(t('more'))}: ${esc(name)}"><span class="i">${ic('more')}</span></button><div class="menu fm" role="group" aria-label="${esc(name)}">${rest.join('')}</div></div>` : '';
+  return `<div class="sec" data-cat="${cat}" role="group" aria-label="${esc(name)}"><span class="sc" aria-hidden="true"><span class="i">${ic('sec' + cat[0].toUpperCase() + cat.slice(1))}</span><span class="st">${esc(name)}</span></span><div class="sb">${tools[0] || ''}${tail}</div></div>`;
 }
 function btn(id, { label = t(id), tip = '', pressed, cls = '', extra = '' } = {}) {
   return `<button type="button" class="b ${cls}" data-a="${id}" title="${esc(tip || label)}"${pressed !== undefined ? ` aria-pressed="${pressed}"` : ''}${extra}><span class="i">${ic(id)}</span><span class="w">${esc(label)}</span></button>`;
@@ -1010,6 +1016,7 @@ function buildUi() {
   root.querySelector('[data-a="both"]').addEventListener('change', (e) => { S.both = e.target.checked; });
   root.querySelector('.scrim').addEventListener('click', (e) => { if (e.target.classList.contains('scrim')) closePalette(); });
   wirePalette();
+  fitBar();
   measureBar();
   if (S.drawer) openDrawer(S.drawer);
   placeCtx();
@@ -1022,6 +1029,22 @@ function measureBar() {
   const h = Math.round(bar.getBoundingClientRect().bottom + 12);
   if (h > barH) { barH = h; document.documentElement.style.setProperty('--bw-bar-h', `${h}px`); }
 }
+/** The bar never scrolls sideways when it can fold: first each section's extra tools go into its «More»,
+ *  then (still too wide) the words of the selection's tools; section titles always stay. */
+function fitBar() {
+  const bar = root.querySelector('.island');
+  if (!bar) return;
+  bar.classList.remove('sq0', 'sq1', 'sq2', 'sq3', 'sq4');
+  const secs = [...bar.querySelectorAll('.sec:not(.now)')].filter((x) => x.querySelector('.more.tail'));
+  secs.forEach((x) => x.classList.remove('folded'));
+  const over = () => bar.scrollWidth > bar.clientWidth;
+  // each step only while the bar still overflows: the general tools' words → one section at a time (last first)
+  // folds its extra tools into its «More» → the selection's words → the picker; section titles never go
+  if (over()) bar.classList.add('sq0');
+  for (const x of secs.reverse()) { if (!over()) break; x.classList.add('folded'); bar.classList.add('sq1'); }
+  for (const step of ['sq2', 'sq3', 'sq4']) { if (!over()) break; bar.classList.add(step); }
+}
+window.addEventListener('resize', () => fitBar());
 let lastCount = -1;
 function refreshUi() {
   const c = root.querySelector('.count');
@@ -1045,6 +1068,7 @@ function refreshUi() {
   if (S.drawer && !['find', 'theme', 'pages', 'webhooks', 'newdoc', 'process'].includes(S.drawer)) openDrawer(S.drawer, true);
   else if (S.drawer === 'style') openDrawer('style', true);
   buildCtx(b, tb);
+  fitBar();
   measureBar();
 }
 
@@ -1073,7 +1097,7 @@ function buildCtx(b, tb) {
   island?.classList.toggle('has-sel', !!m);
   if (!m) { ctx.hidden = true; ctx.dataset.key = ''; return; }
   const ov = S.selOv != null ? (cur().doc.overlays || [])[S.selOv] : null;
-  const key = JSON.stringify([m.label, m.groups, ov?.mode, S.ui]);
+  const key = JSON.stringify([m.label, m.groups, m.keep, ov?.mode, S.ui]);
   if (ctx.dataset.key !== key) {
     ctx.dataset.key = key;
     ctx.dataset.cat = m.cat;
@@ -1083,7 +1107,9 @@ function buildCtx(b, tb) {
     const all = m.groups.flat();
     const first = all.slice(0, 4);
     const more = all.slice(4);
-    ctx.innerHTML = `<span class="sc"><span class="i" aria-hidden="true">${ic('secSel')}</span><span class="st">${esc(m.label)}</span></span><div class="sb">${first.map((id) => ctxTool(id, ov)).join('')}${more.length ? `<div class="more"><button type="button" class="b" data-a="more" aria-expanded="false" aria-haspopup="true" title="${esc(t('more'))}"><span class="i">${ic('more')}</span><span class="w">${esc(t('more'))}</span></button><div class="menu" role="group" aria-label="${esc(t('more'))}" hidden>${more.map((id) => ctxTool(id, ov)).join('')}</div></div>` : ''}</div>`;
+    // kept tools (the diagram's zoom) stay in view as icons, after the first four
+    const kept = (m.keep || []).map((id) => btn(id, { cls: 'ico' })).join('');
+    ctx.innerHTML = `<span class="sc"><span class="i" aria-hidden="true">${ic('secSel')}</span><span class="st">${esc(m.label)}</span></span><div class="sb">${first.map((id) => ctxTool(id, ov)).join('')}${kept ? `<span class="keep-tools" role="group" aria-label="${esc(t('zoom'))}">${kept}</span>` : ''}${more.length ? `<div class="more"><button type="button" class="b" data-a="more" aria-expanded="false" aria-haspopup="true" title="${esc(t('more'))}"><span class="i">${ic('more')}</span><span class="w">${esc(t('more'))}</span></button><div class="menu" role="group" aria-label="${esc(t('more'))}" hidden>${more.map((id) => ctxTool(id, ov)).join('')}</div></div>` : ''}</div>`;
     if (!isCalm()) { ctx.classList.remove('swap'); void ctx.offsetWidth; ctx.classList.add('swap'); }
   }
   ctx.hidden = false;
@@ -1213,6 +1239,7 @@ async function onBar(e) {
   const b = e.target.closest('button[data-a]');
   if (!b || b.closest('.palette')) return;
   const a = b.dataset.a;
+  if (a === 'more' && b.nextElementSibling?.classList.contains('fm')) { const m = b.nextElementSibling; const open = m.dataset.open !== '1'; m.dataset.open = open ? '1' : ''; b.setAttribute('aria-expanded', String(open)); return; }
   if (a === 'more') { const menu = b.nextElementSibling; const open = menu.hidden; menu.hidden = !open; b.setAttribute('aria-expanded', String(open)); return; }
   if (b.closest('.menu')) { b.closest('.menu').hidden = true; }
   if (a === 'ed') { setLang(b.dataset.ed); return; }

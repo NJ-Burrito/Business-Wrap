@@ -32,6 +32,15 @@
   main.bw-doc figure[data-dg] [data-dg-node] { cursor: grab; }
   main.bw-doc figure[data-dg] [data-dg-edge] { cursor: pointer; }
   main.bw-doc figure[data-dg].dg-on .fig-art { outline: 2px solid var(--bw-gold); outline-offset: 2px; }
+  main.bw-doc figure[data-dg] .dg-picked path:not(.dg-hit) { stroke: #005fc2; }
+  main.bw-doc figure[data-dg] .dg-seg:hover, main.bw-doc figure[data-dg] .dg-bend:hover { fill: #cfe3fb; }
+  /* diagram zoom (Ctrl+wheel, the zoom tools): the frame keeps its fitted height and scrolls; screen only */
+  main.bw-doc figure[data-dg][data-zoom] > .fig-art { height: var(--dgh); overflow: auto; display: block; }
+  main.bw-doc figure[data-dg][data-zoom] > .fig-art svg { width: var(--dgz) !important; max-width: none !important; max-height: none !important; height: auto !important; margin: 0 !important; }
+  /* in-place label editing: the text box sits on the label, in the drawing's face and size */
+  .bw-dg-edit { position: absolute; z-index: 30; box-sizing: border-box; padding: 2px 6px; display: flex; align-items: center; justify-content: center; text-align: center;
+    white-space: pre-wrap; line-height: 1.3; color: #1b1813; background: rgba(255,255,255,.97); border-radius: 6px; outline: 2px solid #005fc2; outline-offset: 0;
+    box-shadow: 0 8px 22px -10px rgba(0,30,61,.5); unicode-bidi: plaintext; overflow-wrap: anywhere; }
   main.bw-doc [data-p]:hover { outline: 1px dashed var(--bw-hover); outline-offset: 1px; }
   main.bw-doc [data-p]:focus { outline: 2px solid var(--bw-sel); outline-offset: 1px; }
   main.bw-doc [data-p]:focus-visible { outline: 3px solid var(--bw-sel); }

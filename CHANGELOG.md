@@ -8,6 +8,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.9.1] - 2026-10-28
+
+The five gaps left in 0.9.0 against the owner's diagram and toolbar notes. / الفجوات الخمس المتبقية من 0.9.0.
+
+### Added / أضيف
+- **Bend arrows by hand**: a selected arrow shows a handle on each segment (drag it across; orthogonal stays orthogonal) and a dot on each corner (drag it; its neighbours follow; Delete removes the bend); «Add bend point», «Remove bend point», «Auto route». Stored as `via` on the edge (contract updated), one `replace` per gesture, so undo, the edits file, Save HTML, the PDF and the DOCX carry it; moving both ends of an arrow carries its bends. / ثني الأسهم يدوياً.
+- **Labels edited in place**: double-click (or Enter/F2 on a selection) opens a text box on the shape, arrow or free-text label itself, in the drawing's face; Enter or blur saves, Shift+Enter adds a line (printed as a line break), Esc cancels; the caret follows Arabic or Latin text. The label dialog is gone. / تحرير النص في مكانه.
+- **Diagram zoom**: zoom out · fit · zoom in stay in view in every diagram section, 100% in «More», Ctrl+wheel over the drawing; the frame keeps its height and scrolls; view state only (never an op, never printed). / تكبير المخطط وتصغيره.
+
+### Changed / تغيّر
+- **Legend is one row** for the house sample at A4 landscape, centred, as the reference: the key is measured at its set width and its spacing tightens before a second row opens (a narrow drawing with many kinds still wraps). The English key is shorter («Applicant pays», «Main path» …); the legend's line samples point the way the chain runs, as the reference. / المفتاح صف واحد.
+- Closer to the reference figure: a tighter corridor under the rework box and between the rows, so the drawing fills the frame's width; the figure title sits closer to its frame. / أقرب إلى الشكل المعتمد.
+- **Toolbar section titles always show** (1280–1920 px, Arabic and English): when the bar runs out of room the general tools drop their words, then each section in turn folds its extra tools into its own «More», then the selection's words go; the bar never scrolls sideways. / عناوين الأقسام تبقى ظاهرة.
+
+### Fixed / أصلح
+- Toolbar icons with circles (search, zoom) drew half-dashed once the bar folded: the logo's own `.fold` style leaked into the bar; the fold classes are renamed. A re-selected arrow no longer keeps the previous one's blue highlight. / أيقونات الشريط.
+
+### Tests / الاختبارات
+- `tests/diagram.test.mjs`: bend points (routed through, orthogonal, ports kept, PDF SVG, DOCX drawing, edits round-trip, auto layout clears), legend one row / wraps when narrow, line breaks; in the editor: segment drag stores `via`, add/remove bend, auto route, undo, Save HTML; in-place editing (opens on the shape, RTL-aware, Shift+Enter, Enter, Esc, arrow label, blur); zoom (tools in view, in, 100%, fit, Ctrl+wheel, no op); section titles visible at 1366 in four contexts, AR and EN. / اختبارات جديدة.
+
 ## [0.9.0] - 2026-10-28
 
 The workflow diagram is the house SRS figure again, and it is shapes and text you can edit; the toolbar follows what you select. / مخطط سير العمل بتصميم وثائق المتطلبات المعتمد، أشكالاً ونصوصاً قابلة للتحرير، وشريط أدوات يتبع ما تحدده.

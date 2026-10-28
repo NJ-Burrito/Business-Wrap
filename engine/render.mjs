@@ -355,7 +355,7 @@ section.chapter.wide + section.chapter > h2{margin-top:0}
 .fig.sheet.hug > .fig-art{flex:0 0 auto;display:block}
 .fig.sheet.hug > .fig-art svg{width:100%;height:auto;max-height:${PAGE_ART_MM - 24}mm;margin:0}
 figcaption{font-size:var(--t-table);color:var(--primary);margin:0 0 5px;font-weight:700}
-.fig.dg > figcaption{font-family:${display},${text},serif;font-size:var(--t-h3);margin:0 0 4mm}
+.fig.dg > figcaption{font-family:${display},${text},serif;font-size:var(--t-h3);margin:0 0 2.5mm}
 .fig.dg > .fig-art{padding:4mm}
 .fig-note{font-size:var(--t-table);color:var(--muted);margin:4px 0 0}
 @page{size:A4 portrait;margin:18mm 0 16mm;background:${paper}}

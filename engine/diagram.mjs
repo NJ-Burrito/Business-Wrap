@@ -58,7 +58,7 @@ export const DIAGRAM = (() => {
   /* legend wording; a model may rename any entry (model.legend[key]) */
   const KEY = {
     ar: { staff: 'مرحلة الموظف', applicant: 'مرحلة مقدم الطلب', rework: 'استكمال من مُقدّم الطلب', payment: 'دفع من مُقدّم الطلب', system: 'خطوة ينفذها النظام', stop: 'نهاية بالإلغاء أو الرفض', ok: 'نهاية بالاعتماد', note: 'ملاحظة', 'wire-main': 'المسار الأساسي للطلب', 'wire-return': 'إرجاع إلى مرحلة سابقة', 'wire-stop': 'مسار الرفض أو الإلغاء', action: 'إجراء', start: 'تقديم الطلب', newStage: 'مرحلة جديدة', newText: 'نص' },
-    en: { staff: 'Staff stage', applicant: 'Applicant step', rework: 'Completion by the applicant', payment: 'Payment by the applicant', system: 'System step', stop: 'Ends in cancellation or refusal', ok: 'Ends in approval', note: 'Note', 'wire-main': 'Main path of the request', 'wire-return': 'Return to an earlier stage', 'wire-stop': 'Refusal or cancellation path', action: 'Action', start: 'Submit request', newStage: 'New stage', newText: 'Text' },
+    en: { staff: 'Staff stage', applicant: 'Applicant step', rework: 'Applicant completes', payment: 'Applicant pays', system: 'System step', stop: 'Ends refused or cancelled', ok: 'Ends approved', note: 'Note', 'wire-main': 'Main path', 'wire-return': 'Back to an earlier stage', 'wire-stop': 'Refusal or cancellation', action: 'Action', start: 'Submit request', newStage: 'New stage', newText: 'Text' },
   };
   const words = (locale) => KEY[locale === 'ar' ? 'ar' : 'en'];
 
@@ -67,16 +67,22 @@ export const DIAGRAM = (() => {
   const G = { rx: 10, stroke: 1.3, strokeTerm: 1.9, strokeGate: 1.1, padX: 22, lineH: 21, subH: 22, minH: 52, minW: 132, maxW: 300, gap: 54, gate: 34, lane: 15, tip: 4, margin: 34 };
   const arabic = (s) => /[؀-ۿ]/.test(String(s || ''));
   const textW = (s, size) => { const t = String(s ?? '').trim(); return size * ((arabic(t) ? 0.42 : 0.5) * t.length + 1.2); };
+  const NL = String.fromCharCode(10); // a hand-made line break inside a label
   function wrap(text, width, size) {
     const out = [];
-    let line = '';
-    for (const w of String(text ?? '').split(/\s+/).filter(Boolean)) {
-      const next = line ? `${line} ${w}` : w;
-      if (textW(next, size) > width && line) { out.push(line); line = w; } else line = next;
+    // a hand-made line break (Shift+Enter in the editor) always starts a new line
+    for (const para of String(text ?? '').split(NL)) {
+      let line = '';
+      for (const w of para.split(/\s+/).filter(Boolean)) {
+        const next = line ? `${line} ${w}` : w;
+        if (textW(next, size) > width && line) { out.push(line); line = w; } else line = next;
+      }
+      if (line) out.push(line);
     }
-    if (line) out.push(line);
     return out.length ? out : [''];
   }
+  /** The widest hand-made line (a label without breaks is one line). */
+  const longW = (s, size) => Math.max(0, ...String(s ?? '').split(NL).map((l) => textW(l, size)));
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const r1 = (n) => Math.round(n * 10) / 10;
   const clone = (x) => JSON.parse(JSON.stringify(x));
@@ -91,10 +97,10 @@ export const DIAGRAM = (() => {
       return { w: hw * 2, h: hh * 2 };
     }
     if (n.kind === 'symbol') return { w: 36, h: 36 };
-    if (n.kind === 'text') return { w: Math.max(40, Math.ceil(textW(n.label, FS.text))), h: 28 };
+    if (n.kind === 'text') return { w: Math.max(40, Math.ceil(longW(n.label, FS.text))), h: Math.max(28, String(n.label ?? '').split(NL).length * 20 + 8) };
     if (n.kind === 'group') return { w: 320, h: 120 };
     const badge = STADIUM.has(n.kind) ? 26 : 0;
-    const want = Math.max(textW(n.label, FS.title), n.sub ? textW(n.sub, FS.sub) : 0) + G.padX * 2 + badge;
+    const want = Math.max(longW(n.label, FS.title), n.sub ? longW(n.sub, FS.sub) : 0) + G.padX * 2 + badge;
     const w = Math.min(G.maxW, Math.max(G.minW, Math.ceil(want)));
     const lines = wrap(n.label, w - G.padX * 2 - badge, FS.title);
     const h = Math.max(G.minH, lines.length * G.lineH + (n.sub ? G.subH : 0) + 20);
@@ -148,6 +154,7 @@ export const DIAGRAM = (() => {
   function layout(input, { force = false } = {}) {
     const model = clone(input);
     model.nodes = model.nodes.filter((n) => !(n.kind === 'group' && n.auto));
+    for (const e of model.edges || []) delete e.via; // a new layout routes every arrow afresh
     for (const n of model.nodes) {
       if (force || n.w == null || n.h == null) Object.assign(n, measure(n));
     }
@@ -159,7 +166,7 @@ export const DIAGRAM = (() => {
     const edgeBetween = (a, b) => model.edges.find((e) => e.from === a.id && e.to === b.id);
     const gapAfter = spine.map((n, i) => {
       const e = spine[i + 1] && edgeBetween(n, spine[i + 1]);
-      return Math.max(G.gap, e?.label ? textW(e.label, FS.edge) + 34 : 0);
+      return Math.max(G.gap, e?.label ? longW(e.label, FS.edge) + 34 : 0);
     });
     const total = spine.reduce((s, n, i) => s + n.w + (i < spine.length - 1 ? gapAfter[i] : 0), 0);
     const sats = model.nodes.filter((n) => n.kind === 'stop' || n.kind === 'rework');
@@ -201,17 +208,17 @@ export const DIAGRAM = (() => {
       if (above[ri].length) {
         const h = Math.max(...above[ri].map((n) => n.h));
         for (const n of above[ri]) n.y = y + (h - n.h) / 2;
-        y += h + 40 + lane * 2;
+        y += h + 28 + lane;
       }
       const h = Math.max(...r.map((n) => n.h));
       rowTop.push(y);
       for (const n of r) n.y = y + (h - n.h) / 2;
-      y += h + 34 + lane * downCount(ri);
+      y += h + 26 + lane * Math.max(2, downCount(ri) - 1);
       if (below[ri].length) {
         const bh = Math.max(...below[ri].map((n) => n.h));
         for (const n of below[ri]) n.y = y + (bh - n.h) / 2;
         const up = model.edges.filter((e) => rowOf.get(e.from) === ri + 1 && below[ri].some((s) => s.id === e.to)).length;
-        y += bh + 40 + lane * (up + 1);
+        y += bh + 32 + lane * (up + 1);
       } else if (ri < rows.length - 1) y += 26 + lane;
     });
     // horizontal: every row starts at the flow's start side, the chain wraps (as the reference)
@@ -388,6 +395,7 @@ export const DIAGRAM = (() => {
         const xi = f > 0 ? lanePick(vSegs, L - 24, -1, Math.min(y, by), Math.max(y, by)) : lanePick(vSegs, R + 24, 1, Math.min(y, by), Math.max(y, by));
         pts = [[ax, ay], [xo, ay], [xo, y], [xi, y], [xi, by], [bx, by]];
       }
+      if (Array.isArray(p.e.via) && p.e.via.length) pts = viaPath(p.a, p.b, p.e.via, p.sides[0], p.sides[1]);
       for (let i = 1; i < pts.length; i += 1) {
         const [x1, y1] = pts[i - 1];
         const [x2, y2] = pts[i];
@@ -397,6 +405,26 @@ export const DIAGRAM = (() => {
       p.pts = pts;
     }
     return plan;
+  }
+
+  /** Hand-set bend points between the two ports, kept orthogonal: where an end (or a point) moved off a
+   *  common line an elbow is added — out of a port along its face's normal, into the target along its own. */
+  function viaPath(a, b, via, sa, sb) {
+    const pts = [a, ...via.filter((q) => Array.isArray(q) && q.length === 2 && q.every(Number.isFinite)).map((q) => [+q[0], +q[1]]), b];
+    const out = [pts[0]];
+    for (let i = 1; i < pts.length; i += 1) {
+      const prev = out[out.length - 1];
+      const q = pts[i];
+      if (Math.abs(prev[0] - q[0]) >= 0.5 && Math.abs(prev[1] - q[1]) >= 0.5) {
+        const flat = (sd) => sd === 'l' || sd === 'r';
+        const across = i === 1 ? flat(sa) : i === pts.length - 1 ? !flat(sb) : true;
+        out.push(across ? [q[0], prev[1]] : [prev[0], q[1]]);
+      }
+      if (Math.abs(prev[0] - q[0]) >= 0.5 || Math.abs(prev[1] - q[1]) >= 0.5 || i === pts.length - 1) out.push(q);
+    }
+    // the arrowhead needs a last leg with a length: drop a zero-length tail point
+    while (out.length > 2 && Math.hypot(out.at(-1)[0] - out.at(-2)[0], out.at(-1)[1] - out.at(-2)[1]) < 0.5) out.splice(-2, 1);
+    return out;
   }
 
   /** Rounded orthogonal path; the last leg stops short so the open chevron lands on the outline. */
@@ -526,7 +554,7 @@ export const DIAGRAM = (() => {
     const hits = (r, list) => list.some((o) => r.x < o.r + 2 && r.x + r.w > o.l - 2 && r.y < o.b + 2 && r.y + r.h > o.t - 2);
     for (const p of plan) {
       const k = WIRE_KINDS.includes(p.e.kind) ? p.e.kind : 'main';
-      wires.push({ t: 'line', pts: shortPts(p.pts), d: pathD(p.pts), color: P.wire[k], lw: WIRE[k].w, dash: WIRE[k].dash, arrow: true, wire: k, id: p.e.id, from: p.e.from, to: p.e.to });
+      wires.push({ t: 'line', pts: shortPts(p.pts), d: pathD(p.pts), color: P.wire[k], lw: WIRE[k].w, dash: WIRE[k].dash, arrow: true, wire: k, id: p.e.id, from: p.e.from, to: p.e.to, route: p.pts.map(([x, y]) => [r1(x), r1(y)]) });
       if (!p.e.label) continue;
       const lw = textW(p.e.label, FS.edge);
       const lh = FS.edge * 1.5;
@@ -575,26 +603,34 @@ export const DIAGRAM = (() => {
       const chipH = 16;
       const pitch = 28;
       const width = maxX - minX - 2 * G.margin;
-      let line = 0;
+      // the key's own measure: textW() is generous on purpose for boxes; a one-line key wants the set width
+      // (Thmanyah measured: Arabic ≈ 0.8 of the estimate, Latin ≈ 0.9), so the house sample keeps one row
+      const keyW = (s) => textW(s, FS.key) * (arabic(s) ? 0.82 : 0.92);
+      const need = (gap) => items.reduce((sum, it) => sum + chipW + 7 + keyW(it.text) + gap, 0) - gap;
+      // one row whenever it fits: the gap between entries shrinks (22 → 10) before a second row is opened
+      let gap = 22;
+      while (gap > 10 && need(gap) > width) gap -= 2;
       let used0 = 0;
       const rows = [[]];
       for (const it of items) {
-        const iw = chipW + 8 + textW(it.text, FS.key) + 22;
-        if (used0 + iw > width && rows.at(-1).length) { rows.push([]); used0 = 0; line += 1; }
+        const iw = chipW + 7 + keyW(it.text) + gap;
+        if (used0 + iw - gap > width && rows.at(-1).length) { rows.push([]); used0 = 0; }
         rows.at(-1).push({ ...it, iw });
         used0 += iw;
       }
       const ky0 = maxY + 4;
       rows.forEach((row, li) => {
-        let pos = 0;
+        // a row is centred under the drawing (the reference's key runs across the sheet's middle)
+        let pos = Math.max(0, (width - row.reduce((sum, it) => sum + it.iw, 0) + gap) / 2);
         const ky = ky0 + li * pitch;
         for (const it of row) {
           // the key starts at the reading start: the right edge in Arabic
           const chipX = rtl ? maxX - G.margin - pos - chipW : minX + G.margin + pos;
-          const textX = rtl ? chipX - 8 : chipX + chipW + 8;
-          const tw = textW(it.text, FS.key);
+          const textX = rtl ? chipX - 7 : chipX + chipW + 7;
+          const tw = keyW(it.text);
           if (it.wire) {
-            legend.push({ t: 'line', pts: rtl ? [[chipX + chipW, ky + chipH / 2], [chipX + 2, ky + chipH / 2]] : [[chipX, ky + chipH / 2], [chipX + chipW - 2, ky + chipH / 2]], color: P.wire[it.wire], lw: WIRE[it.wire].w, dash: WIRE[it.wire].dash, arrow: true, wire: it.wire });
+            // the key's arrows point the way the chain runs (left to right in both editions, as the reference)
+            legend.push({ t: 'line', pts: [[chipX, ky + chipH / 2], [chipX + chipW - 2, ky + chipH / 2]], color: P.wire[it.wire], lw: WIRE[it.wire].w, dash: WIRE[it.wire].dash, arrow: true, wire: it.wire });
           } else {
             const sk = P.skins[it.k];
             const stadium = it.k === 'ok' || it.k === 'stop';
