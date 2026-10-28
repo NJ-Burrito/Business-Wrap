@@ -54,6 +54,8 @@ const recordPresent = {
     if (code && serial && !String(serial).includes(code)) out.push(`code «${code}» is not part of the filed serial «${serial}»`);
     if (code && ctx.profile?.codePattern && !new RegExp(ctx.profile.codePattern).test(code)) out.push(`code «${code}» does not match the profile's code pattern ${ctx.profile.codePattern}`);
     if (out.length) return { status: 'FAIL', detail: out.join('; ') };
+    // the document id's letter code (D16): looked up in the profile's docCodes; a service missing there uses its service code, said so
+    if (ctx.profile?.docCodes && ctx.docs.ar.$docCode && ctx.docs.ar.$docCode !== 'table') return { status: 'WARN', detail: `no letter code for «${ctx.model.key}» in the profile's docCodes: the document id uses the service code «${code || '—'}» (${ctx.docs.ar.control.documentId})` };
     return { status: asked.length ? 'WARN' : 'PASS', detail: asked.length ? `sections ${asked.map((g) => RECORD_GENS[g]).join(', ')} open (no back office named in the profile)` : 'record sections filled; code consistent' };
   },
 };
@@ -124,11 +126,12 @@ const flowFidelity = {
       if (terms < m.ends.length) out.push(`${lc}: ${m.ends.length} end(s), ${terms} terminator(s) drawn`);
       const autos = m.stages.filter((s) => s.autoAssign);
       const assign = fold(ctx.text?.[lc]?.units?.assign || '');
-      const routeShapes = (fig.model.nodes || []).filter((n) => fold(n.label ?? n.name ?? '') === assign).length;
-      if (autos.length && routeShapes < autos.length) out.push(`${lc}: ${autos.length} round-robin stage(s), ${routeShapes} assignment step(s) drawn`);
+      // figures carry human/actor steps only: no assignment step is drawn; the round-robin is a rule on its stage (D14)
+      const routeShapes = (fig.model.nodes || []).filter((n) => assign && fold(n.label ?? n.name ?? '') === assign).length;
+      if (routeShapes) out.push(`${lc}: ${routeShapes} assignment step(s) drawn as a shape (figures carry human/actor steps only)`);
       if (autos.length) {
         const fr = tableIn(secOfGen(ctx.docs[lc], 'requirements')[0])?.rows || [];
-        if (!fr.some((r) => fold(r[2]) === assign)) out.push(`${lc}: no chapter-3 requirement for the auto-assignment`);
+        for (const st of autos) { const n = fold(pick(st.name, lc)); if (!fr.some((r) => fold(r[2]) === n && fold(r[1]).includes(n))) out.push(`${lc}: no chapter-3 requirement for the auto-assignment of «${pick(st.name, lc)}»`);}
         const suffix = fold(ctx.text?.[lc]?.effect?.autoSuffix || '');
         const eff = storySecs(ctx.docs[lc]).flatMap((x) => x.s.blocks.filter((b) => b.kind === 'stories').flatMap((b) => b.items.flatMap((i) => i.actions?.rows?.map((r) => r[1]) || [])));
         if (suffix && !eff.some((e) => fold(e).includes(suffix))) out.push(`${lc}: the auto-assignment is in no story's action table`);
@@ -184,8 +187,24 @@ const noOqChapter = {
   run(ctx) {
     if (ctx.profile?.questionsInDocument === true) return { status: 'PASS', detail: 'the profile asks for the questions inside the document' };
     const qcols = (ctx.pack.columns?.questions?.ar || []).join('|');
-    const inDoc = LOCALES.filter((lc) => fillOf(ctx.docs[lc], 'questions').length || sections(ctx.docs[lc]).some((s) => s.blocks.some((b) => b.kind === 'table' && qcols && (b.columns || []).join('|') === qcols)));
-    return inDoc.length ? { status: 'FAIL', detail: `an open-questions chapter is printed in ${inDoc.join(', ')}` } : { status: 'PASS', detail: 'questions written beside the document (open-questions.md)' };
+    const chapter = (lc) => fillOf(ctx.docs[lc], 'questions').length || sections(ctx.docs[lc]).some((s) => s.blocks.some((b) => b.kind === 'table' && qcols && (b.columns || []).join('|') === qcols));
+    // the renderer prints doc.openQuestions as a chapter of its own; a question id in the body is a question printed (D01, D21)
+    const listed = (lc) => (ctx.docs[lc].openQuestions || []).length > 0;
+    const ID = /(^|[\s—–-])(Q\d+|OQ-[A-Z][\w-]*)(?=$|[\s.,،؛;)])/;
+    const ids = (lc) => strings(ctx.docs[lc].chapters).filter((x) => ID.test(x));
+    const bad = () => LOCALES.filter((lc) => chapter(lc) || listed(lc) || ids(lc).length);
+    const was = bad();
+    if (!was.length) return { status: 'PASS', detail: 'no questions chapter, list or id in either edition (questions in open-questions.md)' };
+    if (LOCALES.some(chapter)) return { status: 'FAIL', detail: `an open-questions chapter is printed in ${LOCALES.filter(chapter).join(', ')}` };
+    const what = was.map((lc) => `${lc}: ${listed(lc) ? `${ctx.docs[lc].openQuestions.length} listed` : ''}${ids(lc).length ? ` id «${ids(lc)[0].match(ID)[2]}» in the body` : ''}`.trim());
+    for (const lc of was) {
+      const d = ctx.docs[lc];
+      if (listed(lc) && !d.$questions) Object.defineProperty(d, '$questions', { value: d.openQuestions, enumerable: false });
+      d.openQuestions = [];
+      const walk = (o) => { for (const [k, v] of Object.entries(o)) { if (typeof v === 'string' && ID.test(v)) o[k] = v.replace(/\s*[—–-]\s*(Q\d+|OQ-[A-Z][\w-]*)\b/g, '').replace(/(^|\s)(Q\d+|OQ-[A-Z][\w-]*)\b/g, '$1').trim(); else if (v && typeof v === 'object' && !k.startsWith('$')) walk(v); } };
+      walk(d.chapters);
+    }
+    return bad().length ? { status: 'FAIL', detail: `questions still printed: ${bad().join(', ')}` } : { status: 'REPAIRED', detail: `questions taken out of the document (${what.join('; ')}); they stay in open-questions.md` };
   },
 };
 
@@ -245,8 +264,10 @@ const brShape = {
     const staff = ctx.model.stages.some((s) => s.kind === 'review' || s.kind === 'approval');
     if (R.backOfficeOnly && !staff && ar.length) out.push('rules printed for a process with no staff stage (must be «none»)');
     if (ctx.prior?.ar) {
-      const before = Object.fromEntries(rows(ctx.prior.ar).map((r) => [r[0], fold(r[1])]));
-      const moved = ar.filter((r) => before[r[0]] && before[r[0]] !== fold(r[1]));
+      // a renumbered table (rules.sequential) keeps its fixed codes in $codes: stability is checked on those (D15)
+      const fixed = (d) => { const t = tableIn(secOfGen(d, 'rules')[0]); return (t?.rows || []).map((r, i) => [t.$codes?.[i] || r[0], fold(r[1])]); };
+      const before = Object.fromEntries(fixed(ctx.prior.ar));
+      const moved = fixed(ctx.docs.ar).filter(([c, t]) => before[c] && before[c] !== t).map(([c]) => [c]);
       if (moved.length) out.push(`code changed rule between builds: ${moved.map((r) => r[0]).join(', ')}`);
     }
     const codes = ar.map((r) => r[0]);
@@ -452,10 +473,12 @@ const captionsVerbatim = {
   id: 'captions-verbatim', gap: 'C-captions',
   run(ctx) {
     const m = ctx.model;
-    const walked = m.walked || m.stages.some((s) => s.deskActions?.length);
+    // the verbatim check binds only a desk whose bar was seen (a walk, or a record desk marked observed) (D04)
+    const seenDesk = (s) => s.deskActions?.length && (s.deskObserved || (s.presentIn || []).includes('walk'));
+    const walked = m.walked || m.stages.some(seenDesk);
     const derived = (m.derivedCaptions?.ar || []);
     if (!walked) return { status: derived.length ? 'WARN' : 'PASS', detail: derived.length ? `${derived.length} derived caption(s), asked as a question (no walk to read them from)` : 'every caption from the evidence' };
-    const desks = m.stages.filter((s) => s.deskActions?.length);
+    const desks = m.stages.filter(seenDesk);
     const bad = desks.flatMap((s) => s.actions.filter((a) => a.key !== 'submit' && a.effect !== 'leave' && !s.deskActions.some((d) => fold(d.key) === fold(a.key) || fold(pick(d.label, 'ar')) === fold(pick(a.label, 'ar')))).map((a) => `${s.id}:${pick(a.label, 'ar')}`));
     return bad.length ? { status: 'FAIL', detail: `captions not on the walked desk's own bar: ${bad.join(', ')}` } : { status: 'PASS', detail: `${desks.length} walked desk(s), every caption verbatim` };
   },

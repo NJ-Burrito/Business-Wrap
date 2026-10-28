@@ -4,6 +4,11 @@ import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { popplerBin, pdfText } from '../../harvest/previous.mjs';
 import { fold, pick } from '../model.mjs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// the questions-chapter heading in every house language (engine/i18n.json «openQuestions»)
+const QLABELS = (() => { try { const j = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'i18n.json'), 'utf8')); const out = []; const walk = (o) => { for (const [k, v] of Object.entries(o || {})) { if (k === 'openQuestions' && typeof v === 'string') out.push(v); else if (v && typeof v === 'object') walk(v); } }; walk(j); return [...new Set(out)]; } catch { return ['الأسئلة المفتوحة', 'Open questions']; } })();
 
 /** Per page: size and the words' boxes, from `pdftotext -bbox`. */
 export function pageBoxes(pdf) {
@@ -47,17 +52,36 @@ export function fontAudit(pdf, { allow = [] } = {}) {
   return { rows: rows.length, type3: type3.length, fallback: fallback.map((l) => l.split(/\s+/)[0]) };
 }
 
-/** Each correction as printed: its expected text present, its stale text gone (folded, whitespace-free). */
+/**
+ * Each correction as printed: its expected text present, its stale text gone (folded, whitespace-free; poppler's
+ * bidi marks at line wraps are dropped by fold, D11). A punctuation-only correction (straight quotes → «») folds to
+ * nothing, so it is compared on the unfolded text, and needs an `expect` to say what must be seen (D12).
+ */
+const BIDI = /[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
 export function correctionsInPdf(pdf, corrections, locale) {
-  const txt = fold(pdfText(pdf)).replace(/\s+/g, '');
+  const raw = pdfText(pdf).normalize('NFC').replace(BIDI, '').replace(/\s+/g, '');
+  const txt = fold(raw).replace(/\s+/g, '');
   const has = (s) => txt.includes(fold(s).replace(/\s+/g, ''));
+  const hasRaw = (s) => raw.includes(String(s).normalize('NFC').replace(BIDI, '').replace(/\s+/g, ''));
   return (corrections || []).filter((c) => !c.locale || c.locale === locale).map((c) => {
-    const exp = pick(c.expect, locale) || pick(c.replace, locale);
-    const stale = pick(c.stale, locale) || pick(c.find, locale);
-    const landed = !exp || has(exp);
-    const gone = !stale || !has(stale) || (exp && fold(exp).includes(fold(stale)));
+    const find = pick(c.find, locale), repl = pick(c.replace, locale), expect = pick(c.expect, locale);
+    const punct = fold(find) === fold(repl);
+    if (punct && !expect) return { id: c.id, landed: false, gone: false, refused: 'punctuation-only correction without «expect»' };
+    const exp = expect || repl;
+    const stale = pick(c.stale, locale) || find;
+    const look = punct ? hasRaw : has;
+    const landed = !exp || look(exp);
+    const gone = !stale || !look(stale) || (exp && (punct ? exp.includes(stale) : fold(exp).includes(fold(stale))));
     return { id: c.id, landed, gone };
   });
+}
+
+/** The open-questions chapter heading or a question id in the printed text, where the profile keeps questions out (D01, D21). */
+export function questionsInPdf(pdf, { labels = [] } = {}) {
+  const t = pdfText(pdf).normalize('NFC').replace(BIDI, '');
+  const heads = labels.filter((l) => l && fold(t).includes(fold(l)));
+  const ids = [...new Set((t.match(/(?<![\w-])(Q\d+|OQ-[A-Z][\w-]*)(?![\w-])/g) || []))];
+  return { heads, ids };
 }
 
 export function healPdf(files, { corrections = [], profile = {} } = {}) {
@@ -73,11 +97,17 @@ export function healPdf(files, { corrections = [], profile = {} } = {}) {
       const a = fontAudit(pdf, { allow: profile.fontsAllow || [] });
       results.push({ id: 'font-coverage', gap: 'C-fonts', status: a.type3 || a.fallback.length ? 'FAIL' : 'PASS', detail: `${locale}: ${a.rows} font(s), Type 3 ${a.type3}${a.fallback.length ? `, fallback faces: ${[...new Set(a.fallback)].join(', ')}` : ''}` });
     } catch (e) { results.push({ id: 'font-coverage', gap: 'C-fonts', status: 'FAIL', detail: `${locale}: ${e.message}` }); }
+    if (profile.questionsInDocument !== true) {
+      try {
+        const q = questionsInPdf(pdf, { labels: QLABELS });
+        results.push({ id: 'no-questions-in-pdf', gap: 'B1-pdf', status: q.heads.length || q.ids.length ? 'FAIL' : 'PASS', detail: `${locale}: ${q.heads.length || q.ids.length ? `printed: ${[...q.heads.map((h) => `heading «${h}»`), ...q.ids.slice(0, 4).map((i) => `id ${i}`)].join(', ')}` : 'no questions heading, no question id in the printed text'}` });
+      } catch (e) { results.push({ id: 'no-questions-in-pdf', gap: 'B1-pdf', status: 'FAIL', detail: `${locale}: ${e.message}` }); }
+    }
     if (corrections.length) {
       try {
         const c = correctionsInPdf(pdf, corrections, locale);
         const bad = c.filter((x) => !x.landed || !x.gone);
-        results.push({ id: 'corrections-landed', gap: 'C-clientfixes', status: bad.length ? 'FAIL' : 'PASS', detail: `${locale}: ${c.length - bad.length} of ${c.length} correction(s) landed in the PDF${bad.length ? `; not landed: ${bad.map((x) => x.id).join(', ')}` : ''}` });
+        results.push({ id: 'corrections-landed', gap: 'C-clientfixes', status: bad.length ? 'FAIL' : 'PASS', detail: `${locale}: ${c.length - bad.length} of ${c.length} correction(s) landed in the PDF${bad.length ? `; not landed: ${bad.map((x) => x.id + (x.refused ? ` (${x.refused})` : '')).join(', ')}` : ''}` });
       } catch (e) { results.push({ id: 'corrections-landed', gap: 'C-clientfixes', status: 'FAIL', detail: `${locale}: ${e.message}` }); }
     }
   }

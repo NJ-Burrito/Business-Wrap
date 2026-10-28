@@ -37,7 +37,7 @@ const textOf = (pack, profile = {}) => Object.fromEntries(['ar', 'en'].map((lc) 
 const reheal = (r, id, alter = () => {}, extra = {}) => { const docs = clone(r.docs); const model = clone({ ...r.model, graph: undefined }); model.graph = r.model.graph; alter(docs, model); return heal({ docs, model, evidence: r.evidence, pack: r.pack, profile: extra.profile || {}, text: textOf(r.pack), inputs: { raw: r.inputs.harvest, ir: r.inputs.model, record: r.inputs.record }, ...extra }, { only: [id] }).results[0]; };
 
 /** A text-only PDF by hand (Helvetica), one entry per page: [{ y, size, text }] in PDF points from the top. */
-function makePdf(pages, file) {
+export function makePdf(pages, file) {
   const objs = [];
   const add = (s) => { objs.push(s); return objs.length; };
   const font = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
@@ -112,8 +112,12 @@ export async function run(check) {
     const ir = parseBpmn(fs.readFileSync(FX('round-robin.bpmn20.xml'), 'utf8'));
     const r = await buildDocuments({ pack: 'e-service', profile: { kind: 'bw-profile', version: 1, id: 't', entity: { ar: 'جهة مثال', en: 'Example body' }, codes: { licenceRenewal: 'LR' } }, model: ir, today: TODAY });
     const ff = H(r, 'flow-fidelity');
-    const lost = reheal(r, 'flow-fidelity', (d) => { const fig = secs(d.ar).flatMap((s) => s.blocks).find((b) => b.kind === 'diagram'); fig.model.nodes = fig.model.nodes.filter((n) => n.label !== 'التوزيع الآلي'); });
-    check('A6 round-robin detected, assignment step in figure + ch3 + ch6; flow-fidelity FAILs without it', ir.steps.find((s) => s.id === 'check')?.autoAssign === true && ff.status === 'PASS' && lost.status === 'FAIL', `${ff.status}: ${ff.detail} | dropped: ${lost.detail}`);
+    // Lead ruling (D14): figures carry human/actor steps only — no «التوزيع الآلي» shape; the round-robin is a ch3 requirement
+    // on the stage it feeds and the effect suffix in ch6; flow-fidelity FAILs when an assignment shape is drawn
+    const fig0 = secs(r.docs.ar).flatMap((s) => s.blocks).find((b) => b.kind === 'diagram');
+    const fr0 = tbl(ofGen(r.docs.ar, 'requirements')[0]).rows.find((x) => /آلياً/.test(x[1]));
+    const drawn = reheal(r, 'flow-fidelity', (d) => { const fig = secs(d.ar).flatMap((s) => s.blocks).find((b) => b.kind === 'diagram'); fig.model.nodes.push({ id: 'rr', kind: 'system', label: 'التوزيع الآلي' }); });
+    check('A6/D14 round-robin detected, no assignment shape on the figure, ch3 row on its stage + ch6; flow-fidelity FAILs when one is drawn', ir.steps.find((s) => s.id === 'check')?.autoAssign === true && ff.status === 'PASS' && !fig0.model.nodes.some((n) => n.label === 'التوزيع الآلي') && fr0 && fr0[2] !== 'التوزيع الآلي' && fr0[1].includes(fr0[2]) && drawn.status === 'FAIL', `${ff.status}: ${ff.detail} | drawn: ${drawn.detail} | ${fr0}`);
   }
   // A7: branches + documents with no per-branch read → OQ-DOC-BRANCH; a per-branch read unions documents with shownWhen
   {

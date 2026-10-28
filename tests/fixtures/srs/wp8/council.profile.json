@@ -1,0 +1,125 @@
+{
+ "kind": "bw-profile",
+ "version": 1,
+ "$comment": "Invented test profile (WP8). Every name here is fictional.",
+ "id": "example-council",
+ "entity": {
+  "ar": "مجلس الحدائق النموذجي",
+  "en": "the Model Gardens Council"
+ },
+ "locale": "ar",
+ "terms": {
+  "مركزي": "مركزية"
+ },
+ "codes": {
+  "gardenPermit": "41"
+ },
+ "docCodes": {
+  "gardenPermit": "GDN"
+ },
+ "codeFormat": "MGC-SRS-{code}-01",
+ "fileName": {
+  "ar": "{name} - وثيقة المتطلبات",
+  "en": "{name} - Requirements"
+ },
+ "footer": {
+  "ar": "سري · شركة مثال",
+  "en": "Confidential · EXAMPLE CO"
+ },
+ "attachments": {
+  "formats": "pdf, png",
+  "maxSize": {
+   "ar": "5 ميجابايت",
+   "en": "5 MB"
+  }
+ },
+ "rules": {
+  "sequential": true
+ },
+ "questionsInDocument": false,
+ "backOffice": true,
+ "text": {
+  "ar": {
+   "placeSentence": "{place}، تقدم إلكترونياً عبر {list}.",
+   "placeJoin": " ومن خلال "
+  },
+  "en": {
+   "placeSentence": "{place}; submitted through {list}.",
+   "placeJoin": " and "
+  }
+ },
+ "columns": {
+  "dictionary": {
+   "ar": [
+    "اسم الحقل",
+    "النوع",
+    "الإدخال",
+    "امكانية التعديل",
+    "جهة التكامل",
+    "القيمة الافتراضية",
+    "قيود الحقل"
+   ],
+   "en": [
+    "Field",
+    "Type",
+    "Entry",
+    "Editable",
+    "Integration",
+    "Default",
+    "Constraints"
+   ]
+  }
+ },
+ "integrationRules": [
+  {
+   "id": "water",
+   "of": "partners",
+   "when": {
+    "label": "مصدر المياه|Water source"
+   },
+   "row": {
+    "name": {
+     "ar": "سلطة المياه النموذجية",
+     "en": "Model Water Authority"
+    },
+    "sent": {
+     "ar": "رقم القطعة",
+     "en": "Plot number"
+    },
+    "received": {
+     "ar": "حالة مصدر المياه",
+     "en": "Water source status"
+    }
+   }
+  },
+  {
+   "id": "garden-types",
+   "of": "internal",
+   "perOption": {
+    "control": "^gardenType$"
+   },
+   "row": {
+    "name": {
+     "ar": "سجل {option}",
+     "en": "{option} register"
+    },
+    "received": {
+     "ar": "بيانات السجل",
+     "en": "Register data"
+    }
+   },
+   "cases": [
+    {
+     "match": "زهور|flower",
+     "sent": {
+      "ar": "رقم القطعة",
+      "en": "Plot number"
+     }
+    }
+   ]
+  }
+ ],
+ "versioning": {
+  "format": "V{nn}"
+ }
+}

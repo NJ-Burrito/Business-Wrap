@@ -1,0 +1,131 @@
+{
+ "route": "/gardens/permit",
+ "locale": "en",
+ "card": {
+  "title": "Community garden permit",
+  "panels": [
+   {
+    "legend": "Service description",
+    "text": "This service lets residents ask for a garden permit."
+   }
+  ]
+ },
+ "form": [
+  {
+   "kind": "field",
+   "tag": "input",
+   "type": "text",
+   "controlName": "plotNumber",
+   "label": "Plot number",
+   "panel": "Plot information",
+   "required": true
+  },
+  {
+   "kind": "field",
+   "tag": "input",
+   "type": "text",
+   "controlName": "plotNumber",
+   "label": "Plot number",
+   "panel": "Plot information",
+   "required": false,
+   "synthetic": true
+  },
+  {
+   "kind": "field",
+   "tag": "input",
+   "type": "text",
+   "controlName": "startOn",
+   "label": "Start date",
+   "panel": "Plot information",
+   "required": true
+  },
+  {
+   "kind": "field",
+   "tag": "input",
+   "type": "radio",
+   "controlName": "gardenType",
+   "label": "Vegetable garden",
+   "panel": "Garden type",
+   "required": true
+  },
+  {
+   "kind": "field",
+   "tag": "input",
+   "type": "radio",
+   "controlName": "gardenType",
+   "label": "Flower garden",
+   "panel": "Garden type",
+   "required": true
+  },
+  {
+   "kind": "field",
+   "tag": "taq-upload-file",
+   "type": "",
+   "controlName": "plotPhotos",
+   "label": "Attach plot photos",
+   "panel": "Request",
+   "required": true
+  },
+  {
+   "kind": "field",
+   "tag": "taq-select-option",
+   "type": "",
+   "controlName": null,
+   "label": "Attachment name",
+   "panel": "Attachments",
+   "required": true,
+   "options": [
+    "Plot plan (required attachment)"
+   ]
+  },
+  {
+   "kind": "field",
+   "tag": "input",
+   "type": "file",
+   "controlName": null,
+   "label": "Attachment name",
+   "panel": "Attachments",
+   "required": false
+  }
+ ],
+ "branches": {
+  "gardenType-0": [
+   {
+    "kind": "field",
+    "tag": "input",
+    "type": "text",
+    "controlName": "waterSource",
+    "label": "Water source",
+    "panel": "Garden type",
+    "required": true
+   },
+   {
+    "kind": "field",
+    "tag": "taq-select-option",
+    "type": "",
+    "controlName": null,
+    "label": "Attachment name",
+    "panel": "Attachments",
+    "required": true,
+    "options": [
+     "Plot plan (required attachment)",
+     "Water permit (required attachment)"
+    ]
+   }
+  ],
+  "gardenType-1": [
+   {
+    "kind": "field",
+    "tag": "taq-select-option",
+    "type": "",
+    "controlName": null,
+    "label": "Attachment name",
+    "panel": "Attachments",
+    "required": true,
+    "options": [
+     "Plot plan (required attachment)"
+    ]
+   }
+  ]
+ }
+}

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Invented test fixture (WP8): a fictional community-garden permit. No real organisation. -->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:flowable="http://flowable.org/bpmn" targetNamespace="http://example.org/gardens">
+  <process id="gardenPermit" name="Garden permit" isExecutable="true">
+    <laneSet id="lanes">
+      <lane id="laneApplicant" name="Applicant"><flowNodeRef>start</flowNodeRef><flowNodeRef>fix</flowNodeRef><flowNodeRef>pay</flowNodeRef></lane>
+      <lane id="laneClerk" name="Clerk"><flowNodeRef>screen</flowNodeRef></lane>
+      <lane id="laneHead" name="Head"><flowNodeRef>head</flowNodeRef></lane>
+      <lane id="laneBoard" name="Board"><flowNodeRef>board</flowNodeRef></lane>
+    </laneSet>
+    <startEvent id="start"/>
+    <userTask id="pay" name="Pending payment" flowable:formKey="gardenPermit-pay" flowable:assignee="${starter.getRequester(execution)}"/>
+    <exclusiveGateway id="gp"/>
+    <userTask id="screen" name="screening" flowable:formKey="gardenPermit-screen" flowable:assignee="${tasks.getAssigneeRoundRobin(execution,'Role_screening_gardenPermit')}"/>
+    <exclusiveGateway id="g1"/>
+    <userTask id="fix" name="Edit by applicant" flowable:formKey="gardenPermit-fix" flowable:assignee="${starter.getRequester(execution)}"/>
+    <boundaryEvent id="tfix" attachedToRef="fix" cancelActivity="true"><timerEventDefinition><timeDuration>${edit_duration}</timeDuration></timerEventDefinition></boundaryEvent>
+    <exclusiveGateway id="g2"/>
+    <userTask id="head" name="head-of-unit" flowable:formKey="gardenPermit-head"/>
+    <exclusiveGateway id="g3"/>
+    <serviceTask id="score" name="Score the plot" flowable:expression="${scorer.run(execution)}"/>
+    <exclusiveGateway id="gs" name="Score"/>
+    <userTask id="board" name="board-review" flowable:formKey="gardenPermit-board"/>
+    <exclusiveGateway id="g4"/>
+    <endEvent id="approved" name="approve"/>
+    <endEvent id="rejected" name="reject"/>
+    <endEvent id="cancelled" name="cancel"/>
+    <sequenceFlow id="f1" sourceRef="start" targetRef="pay"/>
+    <sequenceFlow id="f2" sourceRef="pay" targetRef="gp"/>
+    <sequenceFlow id="f2a" sourceRef="gp" targetRef="screen"><conditionExpression>${action=='pay'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f2b" sourceRef="gp" targetRef="cancelled"><conditionExpression>${action=='cancel'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f3" sourceRef="screen" targetRef="g1"/>
+    <sequenceFlow id="f4" sourceRef="g1" targetRef="head"><conditionExpression>${action=='approve-request'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f5" sourceRef="g1" targetRef="fix"><conditionExpression>${action=='need-edit'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f6" sourceRef="fix" targetRef="g2"/>
+    <sequenceFlow id="f7" sourceRef="g2" targetRef="screen"><conditionExpression>${action=='re-submit'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f8" sourceRef="tfix" targetRef="cancelled"/>
+    <sequenceFlow id="f9" sourceRef="head" targetRef="g3"/>
+    <sequenceFlow id="f10" sourceRef="g3" targetRef="score"><conditionExpression>${action=='approve' &amp;&amp; big=='yes'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f11" sourceRef="g3" targetRef="approved"><conditionExpression>${action=='approve'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f12" sourceRef="g3" targetRef="rejected"><conditionExpression>${action=='reject'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f13" sourceRef="score" targetRef="gs"/>
+    <sequenceFlow id="f14" sourceRef="gs" targetRef="board"><conditionExpression>${PLOT_SCORE=='LOW'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f15" sourceRef="gs" targetRef="approved"><conditionExpression>${PLOT_SCORE=='HIGH'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f16" sourceRef="board" targetRef="g4"/>
+    <sequenceFlow id="f17" sourceRef="g4" targetRef="approved"><conditionExpression>${action=='approve'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f18" sourceRef="g4" targetRef="rejected"><conditionExpression>${action=='reject'}</conditionExpression></sequenceFlow>
+  </process>
+</definitions>

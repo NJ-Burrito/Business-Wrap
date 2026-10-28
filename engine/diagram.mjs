@@ -661,15 +661,25 @@ export const DIAGRAM = (() => {
       const hs = segs.filter((s) => s.h).sort((a, b) => b.len - a.len);
       for (const s of hs) for (const at of [0.5, 0.3, 0.7, 0.15, 0.85]) for (const dy of [-(lh / 2 + 2), lh / 2 + 2]) cands.push({ x: s.x1 + (s.x2 - s.x1) * at, y: s.y + dy });
       for (const s of segs.filter((q) => !q.h)) for (const at of [0.5, 0.25, 0.75]) for (const side of [1, -1]) cands.push({ x: s.x + side * (lw / 2 + 6), y: s.y1 + (s.y2 - s.y1) * at });
+      // the same search the router runs: nearest seats first (both sides of every leg), then seats further out tied
+      // back to the wire by a leader line; a caption never lands on a shape while any seat is free (D13)
+      const far = [];
+      for (const ring of [2, 3, 4, 5]) {
+        for (const s of hs) for (const at of [0.5, 0.3, 0.7, 0.15, 0.85]) for (const sg of [-1, 1]) { const ax = s.x1 + (s.x2 - s.x1) * at; far.push({ x: ax, y: s.y + sg * (lh * (ring - 0.5) + 2), ax, ay: s.y }); }
+        for (const s of segs.filter((q) => !q.h)) for (const at of [0.5, 0.25, 0.75]) for (const sg of [1, -1]) { const ay = s.y1 + (s.y2 - s.y1) * at; far.push({ x: s.x + sg * (lw / 2 + 6 + (ring - 1) * 24), y: ay, ax: s.x, ay }); }
+      }
+      const rectOf = (c) => ({ x: c.x - lw / 2, y: c.y - lh / 2 + 3, w: lw, h: lh - 6 });
+      const leaderClear = (c) => { const l = { l: Math.min(c.x, c.ax) - 0.5, r: Math.max(c.x, c.ax) + 0.5, t: Math.min(c.y, c.ay) - 0.5, b: Math.max(c.y, c.ay) + 0.5 }; return !solids.some((o) => l.l < o.r && l.r > o.l && l.t < o.b && l.b > o.t); };
       let pick = null;
-      for (const strict of [true, false]) {
-        for (const c of cands) {
-          const r = { x: c.x - lw / 2, y: c.y - lh / 2 + 3, w: lw, h: lh - 6 };
-          if (!hits(r, solids) && !hits(r, placed) && (!strict || !hits(r, wireRects))) { pick = c; placed.push({ l: r.x, t: r.y, r: r.x + r.w, b: r.y + r.h }); break; }
+      for (const [list, strict] of [[cands, true], [cands, false], [far, true], [far, false]]) {
+        for (const c of list) {
+          const r = rectOf(c);
+          if (!hits(r, solids) && !hits(r, placed) && (!strict || !hits(r, wireRects)) && (c.ax == null || leaderClear(c))) { pick = c; placed.push({ l: r.x, t: r.y, r: r.x + r.w, b: r.y + r.h }); break; }
         }
         if (pick) break;
       }
       pick ||= cands[0] || { x: p.pts[0][0], y: p.pts[0][1] };
+      if (pick.ax != null) wires.push({ t: 'line', pts: [[pick.ax, pick.ay], pick.ay === pick.y ? [pick.x - Math.sign(pick.x - pick.ax) * (lw / 2), pick.y] : [pick.x, pick.y - Math.sign(pick.y - pick.ay) * (lh / 2 - 3)]], d: '', color: P.caption, lw: 0.6, dash: '2 2', arrow: false, leader: p.e.id });
       caps.push(textItem([p.e.label], pick.x, pick.y, FS.edge, P.caption, 400, { plate: P.paper, edge: p.e.id }));
     }
     // extent of the drawing, then the legend under it

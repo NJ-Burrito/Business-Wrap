@@ -18,8 +18,18 @@ export const pick = (v, locale) => (v == null ? '' : typeof v === 'string' ? v :
 const norm = (s) => String(s || '').toLowerCase().replace(/[_\s]+/g, '-').replace(/[^\p{L}\p{N}-]+/gu, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
 const isExpr = (s) => /\$\{|#\{/.test(String(s || ''));
 /** Arabic-insensitive comparison key: أإآ→ا, ة→ه, ى→ي, ئ→ي, ؤ→و, diacritics and tatweel stripped, spaces collapsed. */
-export const fold = (s) => String(s ?? '').normalize('NFC').replace(/[ً-ْٰـ]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/[ىئ]/g, 'ي').replace(/ؤ/g, 'و').replace(/[«»"'()\[\],،.:؛;-]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+export const fold = (s) => String(s ?? '').normalize('NFC').replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '').replace(/[ً-ْٰـ]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/[ىئ]/g, 'ي').replace(/ؤ/g, 'و').replace(/[«»"'()\[\],،.:؛;-]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+/** A label that is only a key («need-edit», «approve_request», or the key itself) is no caption. */
+export const keyish = (v, key = '') => !v || (key && String(v).trim() === key) || /^[a-z0-9]+([-_][a-z0-9]+)+$/.test(String(v).trim());
+/** Every string of a record/harvest at load: NFC, and the hamza-above mark after a yeh folded into «ئ» (D19). */
+export const normText = (o) => (typeof o === 'string' ? o.normalize('NFC').replace(/[\u064a\u0649]\u0654/g, '\u0626') : Array.isArray(o) ? o.map(normText) : o && typeof o === 'object' ? Object.fromEntries(Object.entries(o).map(([k, v]) => [k, normText(v)])) : o);
 const RAW_ID = /^(sid-[0-9a-f-]{8,}|[0-9a-f]{8}-[0-9a-f-]{20,})$/i;
+/** The first real name per edition among candidates ({ar, en} or a string); keys and raw ids are no names. */
+const nameOf = (...cands) => {
+  const out = {};
+  for (const lc of ['ar', 'en']) for (const c of cands) { const v = c == null ? '' : typeof c === 'string' ? c : c[lc]; if (v && String(v).trim() && !keyish(v) && !RAW_ID.test(v)) { out[lc] = String(v).trim(); break; } }
+  return out.ar || out.en ? bi(out) : null;
+};
 
 /* ── action captions: the system's own word first, a clean derived word second, never a raw key ── */
 const CAPTION_RULES = [
@@ -117,12 +127,19 @@ export function buildModel({ ir = null, raw = null, record = null, profile = {},
   const NOT_FIELD = /captcha|recaptcha|turnstile/i;
   const ATT = /(اسم|نوع)\s*المرفق|attachment\s*(name|type)|document\s*(name|type)/i;
   const base = steps('ar').length ? 'ar' : 'en';
+  const unpaired = [];
   steps(base).forEach((s, si) => {
     const fs = (s.fields || []).filter((f) => !NOT_FIELD.test(`${f.key} ${f.label}`));
     fs.forEach((f, i) => {
       const e = enByKey.get(f.key) || f;
       const a = base === 'ar' ? f : (steps('ar').flatMap((x) => x.fields || []).find((x) => x.key === f.key) || f);
-      if (f.type === 'file') return; // attachments are documents (below)
+      // attachments are documents: a file input beside an attachment-name list is that list's picker (below);
+      // an upload control on its own is one document, named by its label (D06)
+      if (f.type === 'file') {
+        if ([fs[i - 1], fs[i + 1]].some((x) => x?.type === 'select' && ATT.test(x.label || '')) || !(a.label || e.label)) return;
+        unpaired.push({ name: { ar: a.label || e.label, en: e.label || a.label }, required: !!(f.required || e.required), formats: String(f.accept || '').split(',').map((x) => x.replace(/^\.|\.$/g, '').trim()).filter(Boolean).join(', '), multiple: !!f.multiple, by: 'customer', source: crawlSrc(`step ${si + 1} upload «${f.key}»`) });
+        return;
+      }
       if (f.type === 'select' && ATT.test(f.label || '') && [fs[i - 1], fs[i + 1]].some((x) => x?.type === 'file')) {
         (a.options || []).forEach((o, k) => {
           const oe = (e.options || [])[k] ?? o;
@@ -138,10 +155,35 @@ export function buildModel({ ir = null, raw = null, record = null, profile = {},
     });
   });
   if (m.documents.length) m.sources.documents = m.documents[0].source;
-  if (Array.isArray(F.documents)) put('documents', F.documents.map((d) => ({ ...d, name: bi(d.name), source: src('documents') })));
+  // the record's list keeps its source, so a list stated empty prints «none», not a question (D09)
+  if (Array.isArray(F.documents)) put('documents', F.documents.map((d) => ({ ...d, name: bi(d.name), source: src('documents') })), src('documents'));
+  for (const u of unpaired) if (!m.documents.some((d) => fold(pick(d.name, 'ar')) === fold(u.name.ar) || fold(pick(d.name, 'en')) === fold(u.name.en))) m.documents.push(u);
+  if (m.documents.length && !m.sources.documents) m.sources.documents = m.documents[0].source;
   for (const fl of m.fields) {
     if (F.fieldIntegrations?.[fl.key]) fl.integration = bi(F.fieldIntegrations[fl.key]);
     if (F.fieldDefaults?.[fl.key]) fl.default = bi(F.fieldDefaults[fl.key]);
+  }
+
+  /* integrations the record is silent on: the profile's panel/control → row table, applied to this form (D20) */
+  for (const rule of profile?.integrationRules || []) {
+    const k = rule.of;
+    if (!m.integrations[k] || Array.isArray(F.integrations?.[k]) || !raw) continue;
+    const all = (lc) => steps(lc).flatMap((s) => (s.fields || []).map((f) => ({ ...f, panel: s.title || '' })));
+    const re = (x) => (x ? new RegExp(x, 'i') : null);
+    const W = rule.when || {};
+    const hit = (f) => (!W.panel || re(W.panel).test(f.panel)) && (!W.control || re(W.control).test(f.key || '')) && (!W.label || re(W.label).test(f.label || ''));
+    const s0 = { kind: 'crawl+rule', ref: `profile integrationRules «${rule.id || k}» on ${raw.name || 'harvest'}` };
+    const fillR = (v, o) => (v == null ? v : bi({ ar: pick(v, 'ar').replace('{option}', o.ar), en: pick(v, 'en').replace('{option}', o.en) }));
+    const rows = [];
+    if (rule.perOption) {
+      const fa = all(base).find((f) => re(rule.perOption.control).test(f.key || '')); const fe = fa && all('en').find((f) => f.key === fa.key);
+      (fa?.options || []).forEach((o, i) => {
+        const opt = { ar: base === 'ar' ? o : (fe?.options?.[i] ?? o), en: fe?.options?.[i] ?? o };
+        const cs = (rule.cases || []).find((c) => re(c.match).test(fold(opt.ar)) || re(c.match).test(opt.en));
+        rows.push(Object.fromEntries(['name', 'description', 'sent', 'received'].filter((c) => rule.row?.[c] || cs?.[c]).map((c) => [c, fillR(cs?.[c] || rule.row[c], opt)])));
+      });
+    } else if (all(base).some(hit) || (W.panel && steps(base).some((s) => re(W.panel).test(s.title || '')))) rows.push(Object.fromEntries(Object.entries(rule.row || {}).map(([c, v]) => [c, bi(v)])));
+    if (rows.length) { m.integrations[k].push(...rows); m.sources[`integrations.${k}`] ||= s0; }
   }
 
   /* the site walk (strongest source): desks seen, their action bars verbatim, the statuses shown */
@@ -174,13 +216,29 @@ export function buildModel({ ir = null, raw = null, record = null, profile = {},
       if (payNamed && !m.fees.length) { demoted.add(t.id); m.systemSteps.push({ id: t.id, name: names(t) || bi(t.name), demoted: 'payment-without-fee', source: { kind: 'model', ref: `${ir.key || ir.name}: task ${t.name || t.id}` } }); m.notes.push({ kind: 'payment-without-fee', id: t.id, text: 'payment-named task, no fee on record: described as a system step' }); continue; }
       const kind = payNamed ? 'payment' : (custActor.has(t.actor) || (!t.actor && (REWORK.test(key) || REWORK.test(pick(names(t), 'en'))))) ? 'rework' : 'review';
       const recDesk = F.desks?.[t.name] || F.desks?.[t.id];
-      const desk = walkDesk(t, names(t)) || recDesk || {};
-      m.stages.push({ id: t.id, key: t.name, kind, name: names(t) || bi(t.name), actions: [], actor: kind === 'review' ? (mine ? null : t.actor) : 'customer', sections: desk.sections || [], tasks: desk.tasks || [], fields: [], autoAssign: !!desk.autoAssign, deskActions: desk.actions || null, returned: desk.returned || null, displayCriteria: desk.displayCriteria || null, presentIn: ['model', ...(desk.__walk ? ['walk'] : []), ...(recDesk ? ['record'] : [])], source: { kind: 'model', ref: `${ir.key || ir.name}: task ${t.name || t.id}` }, rank: rank[t.id] });
+      const wd = walkDesk(t, names(t));
+      const desk = wd || recDesk || {};
+      // the stage's name per edition: the walk › the names file › the record's desk name › the model (D02)
+      const stName = nameOf(wd?.name, t.names, recDesk?.name, RAW_ID.test(t.name || '') ? null : t.name) || bi(t.name);
+      m.stages.push({ id: t.id, key: t.name, kind, name: stName, deskObserved: !!wd || recDesk?.observed === true, actions: [], actor: kind === 'review' ? (mine ? null : t.actor) : 'customer', sections: desk.sections || [], tasks: desk.tasks || [], fields: [], autoAssign: !!desk.autoAssign, deskActions: desk.actions || null, returned: desk.returned || null, displayCriteria: desk.displayCriteria || null, presentIn: ['model', ...(desk.__walk ? ['walk'] : []), ...(recDesk ? ['record'] : [])], source: { kind: 'model', ref: `${ir.key || ir.name}: task ${t.name || t.id}` }, rank: rank[t.id] });
     }
     for (const s of ir.steps.filter((x) => x.type === 'end')) m.ends.push({ id: s.id, name: names(s) || bi(s.name), outcome: (() => { const n = `${s.name} ${pick(names(s), 'en')}`; if (/\bnot\b|\bno\b|lost|fail|لم /i.test(n)) return STOP.test(n) ? 'rejected' : 'closed'; return outcomeOf(n) || (STOP.test(n) ? 'rejected' : POSITIVE.test(n) ? 'approved' : 'closed'); })(), source: { kind: 'model', ref: `${ir.key || ir.name}: end ${s.name || s.id}` } });
     for (const s of ir.steps.filter((x) => x.type === 'system')) m.systemSteps.push({ id: s.id, name: bi(s.name), source: { kind: 'model', ref: `${ir.key || ir.name}: system step ${s.name}` } });
-    for (const f of ir.flows.filter((x) => x.timer && byId[x.to]?.type !== 'timer')) m.timers.push({ id: `timer-${f.from}`, stage: f.from, duration: isExpr(f.label) ? null : bi(nameMap[f.label] || f.label || null), raw: f.label || '', to: f.to, source: { kind: 'model', ref: `${ir.key || ir.name}: timer on ${f.from}` } });
-    for (const s of ir.steps.filter((x) => x.type === 'timer')) m.timers.push({ id: s.id, stage: s.attachedTo, duration: isExpr(s.timer || s.name) ? null : bi(nameMap[s.timer || s.name] || s.timer || s.name), raw: s.timer || s.name, source: { kind: 'model', ref: `${ir.key || ir.name}: timer on ${s.attachedTo}` } });
+    // a timer's duration: its literal, or — for an expression (${edit_duration}) — the names file or the record's
+    // stated system variable of that name (facts.slas), with that source (D07)
+    const timerOf = (raw, base) => {
+      const r = String(raw || '');
+      if (!isExpr(r)) return { ...base, duration: r ? bi(nameMap[r] || r) : null, raw: r };
+      const v = (/\$\{\s*([\w.]+)\s*\}/.exec(r) || [])[1] || '';
+      if (nameMap[r] || (v && nameMap[v])) return { ...base, duration: bi(nameMap[r] || nameMap[v]), raw: r, variable: v, source: { ...base.source, ref: `${base.source.ref}; duration from the names file «${v}»` } };
+      const i = v ? m.slas.findIndex((x) => x.variable === v || `${pick(x.stage, 'en')} ${pick(x.stage, 'ar')}`.split(/[^\w]+/).includes(v)) : -1;
+      if (i < 0) return { ...base, duration: null, raw: r, variable: v };
+      // the reader's words, without the machine form beside them («30 يوماً (P30D)» → «30 يوماً»)
+      const t = bi(m.slas[i].target); const iso = (x) => String(x).replace(/\s*\(P[0-9YMWDTHS.]+\)\s*$/, '');
+      return { ...base, duration: { ar: iso(t.ar), en: iso(t.en) }, raw: r, variable: v, sla: i, source: m.sources.slas || base.source };
+    };
+    for (const f of ir.flows.filter((x) => x.timer && byId[x.to]?.type !== 'timer')) m.timers.push(timerOf(f.label, { id: `timer-${f.from}`, stage: f.from, to: f.to, source: { kind: 'model', ref: `${ir.key || ir.name}: timer on ${f.from}` } }));
+    for (const s of ir.steps.filter((x) => x.type === 'timer')) m.timers.push(timerOf(s.timer || s.name, { id: s.id, stage: s.attachedTo, source: { kind: 'model', ref: `${ir.key || ir.name}: timer on ${s.attachedTo}` } }));
     // actions: the routing out of each people's step (through decisions and system steps), captioned
     const stageOf = (id) => m.stages.find((s) => s.id === id);
     const endOf = (id) => m.ends.find((e) => e.id === id);
@@ -190,6 +248,8 @@ export function buildModel({ ir = null, raw = null, record = null, profile = {},
       const go = (id, flow) => { for (const f of ir.flows.filter((x) => x.from === id && !x.timer)) { const n = byId[f.to]; if (!n || seenT.has(f.to + (f.label || ''))) continue; seenT.add(f.to + (f.label || '')); const fl = flow || (f.label || f.condition ? f : null); if (visible(f.to)) out.push({ to: f.to, flow: fl }); else if (n.type !== 'timer') go(f.to, fl); } };
       go(from, null); return out;
     };
+    // a timer step leads where its own flow goes (through system steps)
+    for (const t of m.timers) if (!t.to && byId[t.id]) t.to = targets(t.id)[0]?.to || null;
     for (const st of m.stages.filter((s) => s.id !== 'submit')) {
       for (const { to, flow } of targets(st.id)) {
         const key = flow ? actionKey(flow) : '';
@@ -201,6 +261,19 @@ export function buildModel({ ir = null, raw = null, record = null, profile = {},
     // the submission goes where the start event leads (through payment, system steps)
     const first = targets(ir.steps.find((s) => s.type === 'start')?.id || '');
     for (const { to } of first) m.stages[0].actions.push({ key: 'submit', to, effect: 'submit', source: { kind: 'model', ref: `${ir.key || ir.name}: start` } });
+    // routing the system decides (a gateway on a variable other than the action): a business rule per branch,
+    // captioned from the names file; the system steps that compute the variable are traced to it (D08)
+    const COND = /^\s*[$#]\{\s*([A-Za-z_][\w.]*)\s*===?\s*['"]([^'"]+)['"]\s*\}\s*$/;
+    const before = (id, seenB = new Set()) => ir.flows.filter((f) => f.to === id && !f.timer).flatMap((f) => (seenB.has(f.from) ? [] : (seenB.add(f.from), byId[f.from]?.type === 'task' ? [f.from] : before(f.from, seenB))));
+    const feeders = (id, seenF = new Set()) => ir.flows.filter((f) => f.to === id).flatMap((f) => (seenF.has(f.from) || byId[f.from]?.type !== 'system' ? [] : (seenF.add(f.from), [f.from, ...feeders(f.from, seenF)])));
+    m.routing = [];
+    for (const f of ir.flows) {
+      const c = COND.exec(String(f.condition || ''));
+      if (!c || /^actions?$/i.test(c[1]) || byId[f.from]?.type !== 'decision') continue;
+      const tos = visible(f.to) ? [f.to] : targets(f.to).map((x) => x.to);
+      const cap = (k) => (nameMap[k] ? bi(nameMap[k]) : null);
+      for (const to of tos) if (!m.routing.some((r) => r.gate === f.from && r.value === c[2] && r.to === to)) m.routing.push({ gate: f.from, variable: c[1], value: c[2], to, after: before(f.from), via: feeders(f.from), variableName: cap(c[1]), valueName: cap(`${c[1]}=${c[2]}`) || cap(c[2]) || f.names || null, source: { kind: 'model', ref: `${ir.key || ir.name}: gateway ${byId[f.from]?.name || f.from} (${c[1]} = ${c[2]})` } });
+    }
     m.graph = g;
     m.demoted = [...demoted];
   }
@@ -258,6 +331,9 @@ export function buildModel({ ir = null, raw = null, record = null, profile = {},
     if (d) d.shownWhen = [...new Set([...(d.shownWhen || []), ...when])];
     else m.documents.push({ name: bi(bare(doc)), required: !/غير\s*(إجباري|اجباري)|optional/i.test(doc), formats: '', shownWhen: when, by: 'customer', source: crawlSrc('attachment list per branch') });
   }
+  // the organisation's upload limits (one picker for every form), where the evidence names none for a document
+  const lim = profile?.attachments;
+  if (lim) for (const d of m.documents) { if (!d.formats && lim.formats) { d.formats = lim.formats; d.limitsFrom = 'profile'; } if (!d.maxSize && lim.maxSize) { d.maxSize = bi(lim.maxSize); d.limitsFrom = 'profile'; } }
   return m;
 }
 
@@ -272,7 +348,9 @@ export function captionAll(m, { locale, T, profile = {}, nameOfStage }) {
   for (const st of m.stages) for (const a of st.actions) {
     const desk = (st.deskActions || []).find((d) => norm(d.key) === a.key);
     const fromProfile = profile.captions?.[a.key];
-    let label = pick(desk?.label, locale) || pick(a.flowNames, locale) || pick(fromProfile, locale);
+    // a label that is only the action's key («need-edit») is no caption: fall through (D03)
+    const real = (v) => { const x = pick(v, locale); return keyish(x, a.key) ? '' : x; };
+    let label = real(desk?.label) || real(a.flowNames) || real(fromProfile);
     if (!label) {
       const ck = a.key === 'submit' ? { kind: 'submit' } : a.key === 'cancel' && a.effect === 'leave' ? { kind: 'cancel' } : captionKind(a.key);
       const t0 = a.to && nameOfStage(a.to, true);

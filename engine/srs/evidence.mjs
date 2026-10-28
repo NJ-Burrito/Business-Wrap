@@ -38,7 +38,9 @@ export function ledgerOf(model, doc, pack) {
   for (const t of model.timers) row('timer', t.id, { ar: t.raw, en: t.raw }, t.source, 'document-only', GEN_OF.timer);
   for (const s of model.systemSteps) {
     const own = (pack?.systemTrace || []).find((t) => new RegExp(t.match, 'i').test(pick(s.name, 'en')));
-    const gens = own ? own.gens : NOTIFY.test(pick(s.name, 'en')) ? ['requirements'] : BILL.test(pick(s.name, 'en')) ? ['fees', 'requirements'] : [];
+    // a system step that computes a routing value is stated by that routing rule (D08)
+    const routes = !!model.routingPrinted?.ar && (model.routing || []).some((r) => (r.via || []).includes(s.id));
+    const gens = own ? own.gens : routes ? ['rules'] : NOTIFY.test(pick(s.name, 'en')) ? ['requirements'] : BILL.test(pick(s.name, 'en')) ? ['fees', 'requirements'] : [];
     rows.push({ kind: 'system', id: s.id, name: s.name, presentIn: ['model'], source: s.source, disposition: 'not-a-stage', sections: gens.length ? secs(gens) : [] });
   }
   model.fees.forEach((f, i) => row('fee', `fee-${i + 1}`, f.amount, model.sources.fees, 'document-only', GEN_OF.fee));
@@ -49,12 +51,15 @@ export function ledgerOf(model, doc, pack) {
   model.channels.forEach((c, i) => row('channel', `channel-${i + 1}`, c, model.sources.channels, 'document-only', GEN_OF.channel));
   model.notifications.forEach((n, i) => row('notification', `notify-${i + 1}`, n.event, model.sources.notifications, 'document-only', GEN_OF.notification));
   model.kpis.forEach((n, i) => row('kpi', `kpi-${i + 1}`, n.name, model.sources.kpis, 'document-only', GEN_OF.kpi));
-  model.slas.forEach((n, i) => row('sla', `sla-${i + 1}`, n.stage, model.sources.slas, 'document-only', GEN_OF.sla));
+  // a stated system variable a timer resolved is stated by that timer's rule and requirement (D07)
+  model.slas.forEach((n, i) => row('sla', `sla-${i + 1}`, n.stage, model.sources.slas, 'document-only', model.timers.some((t) => t.sla === i) ? [...GEN_OF.sla, ...GEN_OF.timer] : GEN_OF.sla));
   // a drawn element must be on the figure when the pack has one
   if (!has('workflow')) for (const r of rows) if (r.disposition === 'drawn') r.disposition = 'document-only';
   return rows;
 }
 
+// the build's questions: kept beside an edition that does not print them ($questions), else the printed list
+const qs = (d) => d.$questions || d.openQuestions || [];
 export function evidenceOf(model, docs, pack) {
   const ledger = ledgerOf(model, docs.ar, pack);
   const noDisposition = ledger.filter((r) => !r.disposition);
@@ -63,5 +68,5 @@ export function evidenceOf(model, docs, pack) {
   const fill = docs.ar.fill.map((f, i) => ({ ...f, titleEn: docs.en.fill[i]?.title }));
   const counts = fill.reduce((o, f) => ((o[f.fill] = (o[f.fill] || 0) + 1), o), {});
   const { graph, ...m } = model;
-  return { kind: 'bw-evidence', version: 1, pack: pack.id, model: m, ledger, untraced: untraced.map((r) => ({ kind: r.kind, id: r.id, name: r.name })), fill, counts, openQuestions: docs.ar.openQuestions.map((q, i) => ({ id: q.id, ar: q.question, en: docs.en.openQuestions[i]?.question, section: q.blocks })) };
+  return { kind: 'bw-evidence', version: 1, pack: pack.id, model: m, ledger, untraced: untraced.map((r) => ({ kind: r.kind, id: r.id, name: r.name })), fill, counts, openQuestions: qs(docs.ar).map((q, i) => ({ id: q.id, ar: q.question, en: qs(docs.en)[i]?.question, section: q.blocks })) };
 }
