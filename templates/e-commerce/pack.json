@@ -1,0 +1,661 @@
+{
+ "$comment": "Template pack «e-commerce». Data only: the generators are in engine/srs/compose.mjs; the schema is templates/pack.schema.json.",
+ "id": "e-commerce",
+ "version": "1.0",
+ "name": {
+  "ar": "متطلبات متجر إلكتروني",
+  "en": "E-commerce requirements"
+ },
+ "description": {
+  "ar": "متجر إلكتروني: الكتالوج، السلة، الدفع، التنفيذ، الإرجاع.",
+  "en": "An online shop: catalogue, cart, checkout, fulfilment, returns."
+ },
+ "titlePrefix": {
+  "ar": "وثيقة متطلبات المتجر الإلكتروني",
+  "en": "E-commerce Requirements Specification"
+ },
+ "codes": {
+  "fr": "FR",
+  "br": "BR",
+  "us": "US"
+ },
+ "outputStory": "whenStated",
+ "control": {
+  "documentType": {
+   "ar": "مواصفات المتطلبات",
+   "en": "Requirements specification"
+  },
+  "classification": {
+   "ar": "داخلي",
+   "en": "Internal"
+  },
+  "status": {
+   "ar": "مسودة للمراجعة",
+   "en": "Draft for review"
+  },
+  "reviewCycle": {
+   "ar": "عند أي تغيير جوهري على العملية",
+   "en": "On any material change to the process"
+  }
+ },
+ "versioning": {
+  "format": "V{nn}"
+ },
+ "glossary": {
+  "ar": {
+   "customerFunction": "مستخدم مسجَّل",
+   "outputUser": "مستخدم",
+   "codeLabel": "رمز العملية",
+   "serialLabel": "صيغة رقم الطلب",
+   "serialShownLabel": "موقع ظهور الرقم",
+   "channelsLead": "تتم العملية عبر: {list}.",
+   "channelsDefault": "القنوات الإلكترونية",
+   "multiple": "مرفق متعدد",
+   "feeTimingPayment": "عند إتمام الشراء",
+   "outputPreviewCaption": "المستند الناتج كما يصدر",
+   "outputNameLabel": "اسم الناتج",
+   "outputWhenLabel": "متى يصدر",
+   "outputToLabel": "من يستلمه",
+   "outputWhenDefault": "عند اكتمال العملية",
+   "outputToDefault": "صاحب الطلب",
+   "entity": "الجهة",
+   "outputUnit": "الناتج",
+   "outputWhenSigned": "عند اكتمال العملية",
+   "customer": "العميل",
+   "request": "الطلب",
+   "requests": "طلباته",
+   "customerChannel": "المتجر الإلكتروني",
+   "staffChannel": "لوحة إدارة المتجر",
+   "outputDefault": "تأكيد الطلب والفاتورة"
+  },
+  "en": {
+   "customerFunction": "A registered user",
+   "outputUser": "User",
+   "codeLabel": "Process code",
+   "serialLabel": "Order number format",
+   "serialShownLabel": "Where the number shows",
+   "channelsLead": "The process runs through: {list}.",
+   "channelsDefault": "the online channels",
+   "multiple": "Multiple attachment",
+   "feeTimingPayment": "At checkout",
+   "outputPreviewCaption": "The resulting document as issued",
+   "outputNameLabel": "Output",
+   "outputWhenLabel": "When it is issued",
+   "outputToLabel": "Who receives it",
+   "outputWhenDefault": "When the process completes",
+   "outputToDefault": "The requester",
+   "entity": "the organisation",
+   "outputUnit": "Output",
+   "outputWhenSigned": "When the process completes",
+   "customer": "customer",
+   "request": "order",
+   "requests": "orders",
+   "customerChannel": "Online store",
+   "staffChannel": "Store back office",
+   "outputDefault": "order confirmation and invoice"
+  }
+ },
+ "rules": {
+  "derived": true,
+  "standard": [
+   {
+    "text": {
+     "ar": "يُحتسب إجمالي الطلب من أسعار المنتجات والرسوم المطبقة وقت إتمام الشراء.",
+     "en": "The order total is computed from product prices and the charges in force at checkout."
+    }
+   },
+   {
+    "text": {
+     "ar": "لا يُجهَّز الطلب للشحن قبل تأكيد الدفع.",
+     "en": "An order is not prepared for shipping before the payment is confirmed."
+    },
+    "when": "payment"
+   },
+   {
+    "text": {
+     "ar": "لكل طلب رقم مرجعي بالصيغة {pattern}، {reset}.",
+     "en": "Every order has a reference number in the form {pattern}; {reset}."
+    },
+    "when": "serial"
+   },
+   {
+    "text": {
+     "ar": "يجب على النظام عرض سجل الإجراءات على {request} لجميع المستخدمين المعنيين.",
+     "en": "The system shows the {request}'s action log to every user concerned."
+    },
+    "when": "staff"
+   }
+  ]
+ },
+ "stageTasks": {
+  "ar": [
+   [
+    "ملاحظة داخلية",
+    "نص",
+    "اختياري",
+    "قابل للتعديل",
+    "لا يوجد",
+    "لا يوجد",
+    "لا تظهر للعميل"
+   ]
+  ],
+  "en": [
+   [
+    "Internal note",
+    "Text",
+    "Optional",
+    "Editable",
+    "None",
+    "None",
+    "Not shown to the customer"
+   ]
+  ]
+ },
+ "columns": {
+  "recipients": {
+   "ar": [
+    "الفئة"
+   ],
+   "en": [
+    "Segment"
+   ]
+  },
+  "fees": {
+   "ar": [
+    "الرمز",
+    "المبلغ",
+    "الأساس",
+    "التوقيت"
+   ],
+   "en": [
+    "Code",
+    "Amount",
+    "Basis",
+    "When"
+   ]
+  },
+  "documents": {
+   "ar": [
+    "المستند",
+    "الإلزامية",
+    "الصيغ المقبولة",
+    "الحجم الأقصى",
+    "يقدّمه",
+    "ملاحظات"
+   ],
+   "en": [
+    "Document",
+    "Required",
+    "Accepted formats",
+    "Maximum size",
+    "Provided by",
+    "Notes"
+   ]
+  },
+  "outputs": {
+   "ar": [
+    "الناتج",
+    "مدة الصلاحية"
+   ],
+   "en": [
+    "Output",
+    "Validity"
+   ]
+  },
+  "legislation": {
+   "ar": [
+    "الرقم",
+    "اسم التشريع",
+    "سنة الإصدار"
+   ],
+   "en": [
+    "Number",
+    "Legislation",
+    "Year"
+   ]
+  },
+  "roles": {
+   "ar": [
+    "الرمز",
+    "الدور",
+    "الوظيفة",
+    "وصف استخدام النظام",
+    "القناة"
+   ],
+   "en": [
+    "Code",
+    "Role",
+    "Function",
+    "How the role uses the system",
+    "Channel"
+   ]
+  },
+  "internal": {
+   "ar": [
+    "النظام",
+    "الوصف",
+    "المعلومات المرسلة",
+    "المعلومات المسترجعة",
+    "الجاهزية"
+   ],
+   "en": [
+    "System",
+    "Description",
+    "Data sent",
+    "Data retrieved",
+    "Readiness"
+   ]
+  },
+  "services": {
+   "ar": [
+    "الخدمة",
+    "المعلومات المرسلة",
+    "المعلومات المسترجعة"
+   ],
+   "en": [
+    "Service",
+    "Data sent",
+    "Data retrieved"
+   ]
+  },
+  "dataSources": {
+   "ar": [
+    "مصدر البيانات",
+    "الوصف",
+    "المعلومات التي يتم استرجاعها",
+    "الجاهزية"
+   ],
+   "en": [
+    "Data source",
+    "Description",
+    "Data retrieved",
+    "Readiness"
+   ]
+  },
+  "partners": {
+   "ar": [
+    "جهة التكامل",
+    "المعلومات المرسلة",
+    "المعلومات المسترجعة",
+    "الجاهزية"
+   ],
+   "en": [
+    "Integration partner",
+    "Data sent",
+    "Data retrieved",
+    "Readiness"
+   ]
+  },
+  "requirements": {
+   "ar": [
+    "الرمز",
+    "المتطلبات",
+    "الوحدة الوظيفية",
+    "النوع"
+   ],
+   "en": [
+    "Code",
+    "Requirement",
+    "Functional unit",
+    "Type"
+   ]
+  },
+  "rules": {
+   "ar": [
+    "الرمز",
+    "قاعدة العمل"
+   ],
+   "en": [
+    "Code",
+    "Business rule"
+   ]
+  },
+  "actions": {
+   "ar": [
+    "الإجراء",
+    "أثره على الطلب"
+   ],
+   "en": [
+    "Action",
+    "Effect on the request"
+   ]
+  },
+  "dictionary": {
+   "ar": [
+    "اسم الحقل",
+    "النوع",
+    "اجبارية الحقل",
+    "امكانية التعديل",
+    "جهة التكامل",
+    "القيمة الافتراضية",
+    "قيود الحقل"
+   ],
+   "en": [
+    "Field",
+    "Type",
+    "Required",
+    "Editable",
+    "Integration",
+    "Default",
+    "Constraints"
+   ]
+  },
+  "outputCard": {
+   "ar": [
+    "البند",
+    "القيمة"
+   ],
+   "en": [
+    "Item",
+    "Value"
+   ]
+  },
+  "questions": {
+   "ar": [
+    "الرقم",
+    "السؤال",
+    "المسؤول"
+   ],
+   "en": [
+    "No.",
+    "Question",
+    "Owner"
+   ]
+  },
+  "statuses": {
+   "ar": [
+    "الحالة"
+   ],
+   "en": [
+    "Status"
+   ]
+  },
+  "kpis": {
+   "ar": [
+    "المؤشر",
+    "المستهدف",
+    "طريقة القياس"
+   ],
+   "en": [
+    "Indicator",
+    "Target",
+    "How measured"
+   ]
+  },
+  "slas": {
+   "ar": [
+    "المرحلة",
+    "زمن الاستجابة المستهدف"
+   ],
+   "en": [
+    "Stage",
+    "Target time"
+   ]
+  },
+  "notifications": {
+   "ar": [
+    "الحدث",
+    "القناة",
+    "المستلم"
+   ],
+   "en": [
+    "Event",
+    "Channel",
+    "Recipient"
+   ]
+  },
+  "glossary": {
+   "ar": [
+    "المصطلح",
+    "التعريف"
+   ],
+   "en": [
+    "Term",
+    "Definition"
+   ]
+  }
+ },
+ "chapters": [
+  {
+   "title": {
+    "ar": "المقدمة",
+    "en": "Introduction"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "الغرض من الوثيقة",
+      "en": "Purpose"
+     },
+     "gen": "prose",
+     "paragraphs": {
+      "ar": [
+       "تحدد هذه الوثيقة متطلبات «{name}» لدى {entity}: ما يراه العميل من الكتالوج حتى الدفع، وما يجري على الطلب بعد ذلك حتى التسليم أو الإرجاع."
+      ],
+      "en": [
+       "This document states the requirements of «{name}» at {entity}: what the customer sees from the catalogue to checkout, and what happens to the order afterwards until delivery or return."
+      ]
+     }
+    },
+    {
+     "title": {
+      "ar": "النطاق",
+      "en": "Scope"
+     },
+     "gen": "prose",
+     "paragraphs": {
+      "ar": [
+       "يشمل النطاق قنوات البيع: {channels}، ومراحل تجهيز الطلب وشحنه وإرجاعه، والتكامل مع مزودي الدفع والشحن."
+      ],
+      "en": [
+       "The scope covers the sales channels ({channels}), the order's preparation, shipping and return stages, and the integrations with payment and shipping providers."
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "نظرة عامة على المتجر والطلب",
+    "en": "Store and order overview"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "الوصف",
+      "en": "Description"
+     },
+     "gen": "description"
+    },
+    {
+     "title": {
+      "ar": "شرائح العملاء",
+      "en": "Customer segments"
+     },
+     "gen": "recipients"
+    },
+    {
+     "title": {
+      "ar": "قنوات البيع",
+      "en": "Sales channels"
+     },
+     "gen": "channels"
+    },
+    {
+     "title": {
+      "ar": "الأسعار والرسوم",
+      "en": "Prices and charges"
+     },
+     "gen": "fees"
+    },
+    {
+     "title": {
+      "ar": "المستندات الصادرة",
+      "en": "Documents issued"
+     },
+     "gen": "outputs"
+    },
+    {
+     "title": {
+      "ar": "حالات الطلب",
+      "en": "Order statuses"
+     },
+     "gen": "statuses"
+    },
+    {
+     "title": {
+      "ar": "الأدوار",
+      "en": "Roles"
+     },
+     "gen": "roles"
+    },
+    {
+     "title": {
+      "ar": "الافتراضات والقيود",
+      "en": "Assumptions and constraints"
+     },
+     "gen": "assumptions"
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "التكاملات",
+    "en": "Integrations"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "مزودو الخدمات الخارجيون",
+      "en": "External providers"
+     },
+     "gen": "integrations",
+     "of": "partners",
+     "cols": [
+      "name",
+      "sent",
+      "received",
+      "readiness"
+     ]
+    },
+    {
+     "title": {
+      "ar": "الأنظمة الداخلية",
+      "en": "Internal systems"
+     },
+     "gen": "integrations",
+     "of": "internal"
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "المتطلبات الوظيفية",
+    "en": "Functional requirements"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "جدول المتطلبات",
+      "en": "Requirements table"
+     },
+     "gen": "requirements"
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "مسار الطلب",
+    "en": "Order workflow"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "مخطط سير الطلب",
+      "en": "Order workflow diagram"
+     },
+     "gen": "workflow",
+     "caption": {
+      "ar": "سير الطلب من السلة حتى التسليم أو الإرجاع",
+      "en": "The order from cart to delivery or return"
+     }
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "قواعد العمل",
+    "en": "Business rules"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "جدول قواعد العمل",
+      "en": "Business rules table"
+     },
+     "gen": "rules",
+     "whenEmpty": "none"
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "قصص المستخدمين ومعايير القبول",
+    "en": "User stories and acceptance criteria"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "بطاقات القصص",
+      "en": "Story cards"
+     },
+     "gen": "stories"
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "مستويات الخدمة والإشعارات",
+    "en": "Service levels and notifications"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "أزمنة الاستجابة",
+      "en": "Target times"
+     },
+     "gen": "slas"
+    },
+    {
+     "title": {
+      "ar": "مؤشرات الأداء",
+      "en": "Key indicators"
+     },
+     "gen": "kpis"
+    },
+    {
+     "title": {
+      "ar": "الإشعارات",
+      "en": "Notifications"
+     },
+     "gen": "notifications"
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "الملاحق: الأسئلة المفتوحة",
+    "en": "Annex: open questions"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "الأسئلة المفتوحة",
+      "en": "Open questions"
+     },
+     "gen": "questions"
+    }
+   ]
+  }
+ ]
+}

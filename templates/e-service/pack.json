@@ -1,0 +1,758 @@
+{
+ "$comment": "The house e-Service SRS: front matter, 7 chapters, 26 sections in the reference build (2 + 16 + 1 + 1 + 1 + one story section per people's stage + the output story). Every printed word below is a template word; every service fact comes from the evidence (crawl, model, service record) or becomes a named open question.",
+ "id": "e-service",
+ "version": "1.0",
+ "name": {
+  "ar": "وثيقة متطلبات الخدمة الإلكترونية",
+  "en": "e-Service requirements specification"
+ },
+ "description": {
+  "ar": "خدمة إلكترونية يقدّمها متلقي الخدمة عبر بوابة وتعالجها مراحل الموظفين حتى إصدار المخرج.",
+  "en": "An electronic service a recipient applies for online and staff stages process until the output is issued."
+ },
+ "titlePrefix": {
+  "ar": "وثيقة متطلبات الخدمة الإلكترونية",
+  "en": "e-Service Requirements Specification"
+ },
+ "codes": {
+  "fr": "FR",
+  "br": "BR",
+  "us": "US"
+ },
+ "outputStory": "always",
+ "outputFromApproval": true,
+ "control": {
+  "documentType": {
+   "ar": "مواصفات متطلبات الخدمة",
+   "en": "Service requirements specification"
+  },
+  "classification": {
+   "ar": "داخلي، خاضع للحوكمة",
+   "en": "Internal, governed"
+  },
+  "status": {
+   "ar": "معتمدة",
+   "en": "Approved"
+  },
+  "reviewCycle": {
+   "ar": "سنوية (12 شهرا) أو عند أي تغيير جوهري على الخدمة",
+   "en": "Yearly (12 months) or on any material change to the service"
+  }
+ },
+ "versioning": {
+  "format": "V{nn}"
+ },
+ "glossary": {
+  "ar": {
+   "customer": "متلقي الخدمة",
+   "customerFunction": "مستخدم مسجَّل على النظام يرغب بالحصول على الخدمة",
+   "request": "الطلب",
+   "requests": "طلباته",
+   "customerChannel": "بوابة متلقي الخدمة",
+   "staffChannel": "بوابة الموظفين، المكاتب الخلفية",
+   "outputDefault": "{name}",
+   "outputUser": "مستخدم",
+   "codeLabel": "رمز الخدمة",
+   "serialLabel": "صيغة الرقم التسلسلي للطلب",
+   "serialShownLabel": "موقع ظهور الرقم",
+   "channelsLead": "تُقدَّم الخدمة عبر: {list}.",
+   "channelsDefault": "البوابة الإلكترونية",
+   "multiple": "مرفق متعدد",
+   "feeTimingPayment": "عند تقديم الطلب وقبل توزيعه على الموظفين",
+   "outputPreviewCaption": "مخرج الخدمة كما يصدر",
+   "outputNameLabel": "اسم المخرج",
+   "outputWhenLabel": "متى يصدر",
+   "outputToLabel": "من يستلمه",
+   "outputWhenDefault": "عند اكتمال موافقات جميع المراحل",
+   "outputToDefault": "متلقي الخدمة، عبر شاشة الطلبات",
+   "entity": "الجهة",
+   "outputWhenSigned": "عند اكتمال موافقات جميع المراحل، بعد التوقيع الرقمي",
+   "outputUnit": "مخرج الخدمة"
+  },
+  "en": {
+   "customer": "service recipient",
+   "customerFunction": "A user registered on the system who wants the service",
+   "request": "request",
+   "requests": "requests",
+   "customerChannel": "Service recipient portal",
+   "staffChannel": "Staff portal, back office",
+   "outputDefault": "{name}",
+   "outputUser": "User",
+   "codeLabel": "Service code",
+   "serialLabel": "Request serial number format",
+   "serialShownLabel": "Where the number shows",
+   "channelsLead": "The service is delivered through: {list}.",
+   "channelsDefault": "the online portal",
+   "multiple": "Multiple attachment",
+   "feeTimingPayment": "On submission, before the request is assigned to staff",
+   "outputPreviewCaption": "The service output as issued",
+   "outputNameLabel": "Output name",
+   "outputWhenLabel": "When it is issued",
+   "outputToLabel": "Who receives it",
+   "outputWhenDefault": "When every stage has approved",
+   "outputToDefault": "The service recipient, on the requests screen",
+   "entity": "the organisation",
+   "outputWhenSigned": "When every stage has approved, after the digital signature",
+   "outputUnit": "Service output"
+  }
+ },
+ "text": {
+  "ar": {
+   "story": {
+    "output": {
+     "name": "مخرج الخدمة: {output}",
+     "want": "أن يقوم النظام بإنشاء مخرج «{output}» يحتوي على رمز QR عندما يتم قبول الطلب نهائياً"
+    }
+   }
+  },
+  "en": {
+   "story": {
+    "output": {
+     "name": "Service output: {output}",
+     "want": "the system to create the «{output}» output with a QR code when the request is finally approved"
+    }
+   }
+  }
+ },
+ "outputAcceptance": {
+  "ar": [
+   "يجب أن يحتوي كل مخرج على رمز QR فريد.",
+   "يجب أن يحتوي رمز QR على رابط يمكن مسحه لعرض نسخة إلكترونية من المخرج."
+  ],
+  "en": [
+   "Every output carries a unique QR code.",
+   "The QR code holds a link that, scanned, shows an electronic copy of the output."
+  ]
+ },
+ "stageTasks": {
+  "ar": [
+   [
+    "ملاحظات على الطلب",
+    "نص",
+    "اختياري",
+    "قابل للتعديل",
+    "لا يوجد",
+    "لا يوجد",
+    "تُدوَّن على الطلب وتظهر في سجل الإجراءات، ويمكن إخفاؤها عن {customer}"
+   ],
+   [
+    "ملاحظات المخرج",
+    "مربع نص",
+    "اختياري",
+    "قابل للتعديل",
+    "لا يوجد",
+    "لا يوجد",
+    "تظهر في المخرج"
+   ],
+   [
+    "اسم المرفق",
+    "نص",
+    "اختياري",
+    "قابل للتعديل",
+    "لا يوجد",
+    "لا يوجد",
+    "لا يوجد"
+   ]
+  ],
+  "en": [
+   [
+    "Notes on the request",
+    "Text",
+    "Optional",
+    "Editable",
+    "None",
+    "None",
+    "Written on the request, shown in the action log, can be hidden from the {customer}"
+   ],
+   [
+    "Output notes",
+    "Text area",
+    "Optional",
+    "Editable",
+    "None",
+    "None",
+    "Shown on the output"
+   ],
+   [
+    "Attachment name",
+    "Text",
+    "Optional",
+    "Editable",
+    "None",
+    "None",
+    "None"
+   ]
+  ]
+ },
+ "rules": {
+  "derived": true,
+  "standard": [
+   {
+    "text": {
+     "ar": "الحقول التي يتم عرضها يجب أن تكون متوافقة مع نوع المستخدم وصلاحياته المحددة في النظام.",
+     "en": "The fields shown match the user's type and the permissions set in the system."
+    }
+   },
+   {
+    "text": {
+     "ar": "يجب على النظام أن يوفر رابطاً منفصلاً للموظفين عن رابط المشتركين.",
+     "en": "The system gives staff a link separate from the subscribers' link."
+    },
+    "when": "staff"
+   },
+   {
+    "text": {
+     "ar": "في حال عدم توافق الربط مع شريك الخدمة، يتم تنبيه المستخدم لوجود خطأ في البيانات، وطلب التعديل أو إلغاء الطلب.",
+     "en": "When an integration with a service partner does not match, the user is told the data is wrong and asked to correct it or cancel the request."
+    },
+    "when": "partners"
+   },
+   {
+    "text": {
+     "ar": "يتم ترميز الخدمة برقم مميز.",
+     "en": "The service is coded with a unique number."
+    }
+   },
+   {
+    "text": {
+     "ar": "لكل طلب رقم متسلسل يتكون من {pattern}، {reset}، ويظهر الرقم المتسلسل على المخرج.",
+     "en": "Every request has a serial number made of {pattern}; {reset}; the serial number shows on the output."
+    },
+    "when": "serial"
+   },
+   {
+    "text": {
+     "ar": "يمكن للمستخدم إعادة توجيه الطلب حسب الصلاحيات المحددة.",
+     "en": "A user may re-route the request within the permissions set."
+    },
+    "when": "reroute"
+   },
+   {
+    "text": {
+     "ar": "يجب على النظام عرض سجل الإجراءات عند جميع المستخدمين المعنيين.",
+     "en": "The system shows the action log to every user concerned."
+    },
+    "when": "staff"
+   },
+   {
+    "text": {
+     "ar": "يجب على النظام بشكل تلقائي عرض معلومات الطلب والملاحظات الخاصة فيه بكل مرحلة.",
+     "en": "The system shows the request's information and notes automatically at every stage."
+    },
+    "when": "staff"
+   },
+   {
+    "text": {
+     "ar": "يجب على النظام ملء حقل رقم الهاتف مسبقاً برقم هاتف مقدم الطلب المسجل.",
+     "en": "The system pre-fills the phone field with the applicant's registered number."
+    },
+    "when": "phone"
+   },
+   {
+    "text": {
+     "ar": "يقتصر التقديم على هذه الخدمة على الفئات التالية: {list}.",
+     "en": "Only these categories may apply for this service: {list}."
+    },
+    "when": "recipients"
+   },
+   {
+    "text": {
+     "ar": "يجب أن تكون هذه الخدمة عامة ويستطيع الجميع التقديم عليها بلا استثناء.",
+     "en": "The service is open: anyone may apply, without exception."
+    },
+    "when": "!recipients"
+   }
+  ]
+ },
+ "columns": {
+  "recipients": {
+   "ar": [
+    "الفئة"
+   ],
+   "en": [
+    "Category"
+   ]
+  },
+  "fees": {
+   "ar": [
+    "كود الرسوم",
+    "قيمة الرسم",
+    "أساس وضوابط الاستيفاء",
+    "توقيت الاستيفاء"
+   ],
+   "en": [
+    "Fee code",
+    "Amount",
+    "Basis and collection rules",
+    "When collected"
+   ]
+  },
+  "documents": {
+   "ar": [
+    "اسم الوثيقة",
+    "اجبارية المرفق",
+    "الصيغ المقبولة",
+    "الحجم الأقصى",
+    "مقدَّمة من",
+    "ملاحظات"
+   ],
+   "en": [
+    "Document",
+    "Required",
+    "Accepted formats",
+    "Maximum size",
+    "Provided by",
+    "Notes"
+   ]
+  },
+  "outputs": {
+   "ar": [
+    "المخرج",
+    "مدة الصلاحية"
+   ],
+   "en": [
+    "Output",
+    "Validity"
+   ]
+  },
+  "legislation": {
+   "ar": [
+    "الرقم",
+    "اسم التشريع",
+    "سنة الإصدار"
+   ],
+   "en": [
+    "Number",
+    "Legislation",
+    "Year"
+   ]
+  },
+  "roles": {
+   "ar": [
+    "الرمز",
+    "الدور",
+    "الوظيفة",
+    "وصف استخدام النظام",
+    "البوابة /رابط الدخول"
+   ],
+   "en": [
+    "Code",
+    "Role",
+    "Function",
+    "How the role uses the system",
+    "Portal / sign-in link"
+   ]
+  },
+  "internal": {
+   "ar": [
+    "النظام",
+    "الوصف",
+    "المعلومات المرسلة",
+    "المعلومات المسترجعة",
+    "الجاهزية"
+   ],
+   "en": [
+    "System",
+    "Description",
+    "Data sent",
+    "Data retrieved",
+    "Readiness"
+   ]
+  },
+  "services": {
+   "ar": [
+    "الخدمة",
+    "المعلومات المرسلة",
+    "المعلومات المسترجعة"
+   ],
+   "en": [
+    "Service",
+    "Data sent",
+    "Data retrieved"
+   ]
+  },
+  "dataSources": {
+   "ar": [
+    "مصدر البيانات",
+    "الوصف",
+    "المعلومات التي يتم استرجاعها",
+    "الجاهزية"
+   ],
+   "en": [
+    "Data source",
+    "Description",
+    "Data retrieved",
+    "Readiness"
+   ]
+  },
+  "partners": {
+   "ar": [
+    "جهة التكامل",
+    "المعلومات المرسلة",
+    "المعلومات المسترجعة",
+    "الجاهزية"
+   ],
+   "en": [
+    "Integration partner",
+    "Data sent",
+    "Data retrieved",
+    "Readiness"
+   ]
+  },
+  "requirements": {
+   "ar": [
+    "الرمز",
+    "المتطلبات",
+    "الوحدة الوظيفية",
+    "النوع"
+   ],
+   "en": [
+    "Code",
+    "Requirement",
+    "Functional unit",
+    "Type"
+   ]
+  },
+  "rules": {
+   "ar": [
+    "الرمز",
+    "قاعدة العمل"
+   ],
+   "en": [
+    "Code",
+    "Business rule"
+   ]
+  },
+  "actions": {
+   "ar": [
+    "الإجراء",
+    "أثره على الطلب"
+   ],
+   "en": [
+    "Action",
+    "Effect on the request"
+   ]
+  },
+  "dictionary": {
+   "ar": [
+    "اسم الحقل",
+    "النوع",
+    "اجبارية الحقل",
+    "امكانية التعديل",
+    "جهة التكامل",
+    "القيمة الافتراضية",
+    "قيود الحقل"
+   ],
+   "en": [
+    "Field",
+    "Type",
+    "Required",
+    "Editable",
+    "Integration",
+    "Default",
+    "Constraints"
+   ]
+  },
+  "outputCard": {
+   "ar": [
+    "البند",
+    "القيمة"
+   ],
+   "en": [
+    "Item",
+    "Value"
+   ]
+  },
+  "questions": {
+   "ar": [
+    "الرقم",
+    "السؤال",
+    "المسؤول"
+   ],
+   "en": [
+    "No.",
+    "Question",
+    "Owner"
+   ]
+  }
+ },
+ "chapters": [
+  {
+   "title": {
+    "ar": "المقدمة",
+    "en": "Introduction"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "الغرض من الوثيقة",
+      "en": "Purpose of the document"
+     },
+     "gen": "prose",
+     "paragraphs": {
+      "ar": [
+       "تهدف هذه الوثيقة إلى تحديد متطلبات النظام لتطوير خدمة تُمكّن المستخدمين من تقديم خدمة «{name}»، وتوضيح تفاصيل إجراءات تقديم الطلب والموافقات اللازمة."
+      ],
+      "en": [
+       "This document states the system requirements for a service that lets users apply for «{name}», and sets out how the request is submitted and approved."
+      ]
+     }
+    },
+    {
+     "title": {
+      "ar": "نطاق الخدمة",
+      "en": "Service scope"
+     },
+     "gen": "prose",
+     "paragraphs": {
+      "ar": [
+       "تتيح هذه الخدمة لمتلقي الخدمة تقديم خدمة «{name}» حسب الأصول عبر {channels}، وتمكّن من الحصول على الموافقات اللازمة لإصدار مخرج «{output}».",
+       "وتعد هذه الخدمة إحدى خدمات {entity}، ومن خلالها يتفاعل النظام مع بيانات متلقي الخدمة، ثم تتم مراجعة الطلب إلكترونياً عبر بوابة الموظفين واتخاذ الموافقات اللازمة، ويرسل النظام إشعاراً لمتلقي الخدمة عند تغيّر حالة الطلب.",
+       "سيوفر النظام بوابتين رئيسيتين:",
+       "• بوابة متلقي الخدمة: لتقديم الطلب بعد تسجيل الدخول وتعبئة النموذج ودفع الرسوم المترتبة إن وجدت، ثم متابعة الطلبات من شاشة الطلبات.",
+       "• بوابة الموظفين – المكاتب الخلفية: تُمكّن موظفي {entity} من الدخول، كلٌّ حسب صلاحيته، لاستقبال الطلب والتحقق منه واتخاذ القرار بشأنه."
+      ],
+      "en": [
+       "The service lets a service recipient apply for «{name}» through {channels}, and obtain the approvals needed to issue the «{output}» output.",
+       "It is one of the services of {entity}. The system works with the recipient's data, staff review the request online through the staff portal and record their approvals, and the recipient is notified whenever the request status changes.",
+       "The system provides two portals:",
+       "• Service recipient portal: apply after signing in, fill in the form, pay any fee due, then follow the requests on the requests screen.",
+       "• Staff portal (back office): staff of {entity} sign in, each with their own permissions, to receive, check and decide on the request."
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "بطاقة الخدمة",
+    "en": "Service card"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "وصف الخدمة",
+      "en": "Service description"
+     },
+     "gen": "description"
+    },
+    {
+     "title": {
+      "ar": "معرف الخدمة وترميزها",
+      "en": "Service identifier and coding"
+     },
+     "gen": "identifier"
+    },
+    {
+     "title": {
+      "ar": "فئة متلقي الخدمة",
+      "en": "Service recipient category"
+     },
+     "gen": "recipients"
+    },
+    {
+     "title": {
+      "ar": "الافتراضات والقيود والشروط",
+      "en": "Assumptions, constraints and conditions"
+     },
+     "gen": "assumptions"
+    },
+    {
+     "title": {
+      "ar": "رسوم الخدمة",
+      "en": "Service fees"
+     },
+     "gen": "fees"
+    },
+    {
+     "title": {
+      "ar": "وثائق الخدمة",
+      "en": "Service documents"
+     },
+     "gen": "documents"
+    },
+    {
+     "title": {
+      "ar": "المرجعية الإدارية",
+      "en": "Administrative reference"
+     },
+     "gen": "adminRef"
+    },
+    {
+     "title": {
+      "ar": "مكان تقديم الخدمة",
+      "en": "Where the service is delivered"
+     },
+     "gen": "channels"
+    },
+    {
+     "title": {
+      "ar": "مخرجات الخدمة",
+      "en": "Service outputs"
+     },
+     "gen": "outputs"
+    },
+    {
+     "title": {
+      "ar": "التشريعات الناظمة",
+      "en": "Governing legislation"
+     },
+     "gen": "legislation"
+    },
+    {
+     "title": {
+      "ar": "المستخدمون والأدوار",
+      "en": "Users and roles"
+     },
+     "gen": "roles"
+    },
+    {
+     "title": {
+      "ar": "الربط الداخلي مع أنظمة الجهة",
+      "en": "Internal system integrations"
+     },
+     "gen": "integrations",
+     "of": "internal"
+    },
+    {
+     "title": {
+      "ar": "الربط مع خدمات النظام",
+      "en": "Integrations with platform services"
+     },
+     "gen": "integrations",
+     "of": "services",
+     "cols": [
+      "name",
+      "sent",
+      "received"
+     ]
+    },
+    {
+     "title": {
+      "ar": "مصادر البيانات الداخلية",
+      "en": "Internal data sources"
+     },
+     "gen": "integrations",
+     "of": "dataSources",
+     "cols": [
+      "name",
+      "description",
+      "received",
+      "readiness"
+     ]
+    },
+    {
+     "title": {
+      "ar": "الربط مع شركاء الخدمة",
+      "en": "Service partner integrations"
+     },
+     "gen": "integrations",
+     "of": "partners",
+     "cols": [
+      "name",
+      "sent",
+      "received",
+      "readiness"
+     ]
+    },
+    {
+     "title": {
+      "ar": "اللغات المدعومة",
+      "en": "Supported languages"
+     },
+     "gen": "languages"
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "متطلبات النظام الوظيفية",
+    "en": "Functional system requirements"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "جدول المتطلبات",
+      "en": "Requirements table"
+     },
+     "gen": "requirements"
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "مسار الخدمة وسير العمل",
+    "en": "Service path and workflow"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "مخطط سير العمل",
+      "en": "Workflow diagram"
+     },
+     "gen": "workflow",
+     "caption": {
+      "ar": "مخطط سير العمل: من تقديم الطلب حتى نتيجة الطلب",
+      "en": "Workflow: from submission to the result of the request"
+     }
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "قواعد العمل",
+    "en": "Business rules"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "جدول قواعد العمل",
+      "en": "Business rules table"
+     },
+     "gen": "rules",
+     "whenEmpty": "none"
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "قصص المستخدمين ومعايير القبول",
+    "en": "User stories and acceptance criteria"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "بطاقات القصص",
+      "en": "Story cards"
+     },
+     "gen": "stories"
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "الملاحق: الأسئلة المفتوحة",
+    "en": "Annex: open questions"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "الأسئلة المفتوحة",
+      "en": "Open questions"
+     },
+     "gen": "questions"
+    }
+   ]
+  }
+ ],
+ "signatureSteps": "sign|certificate",
+ "systemTrace": [
+  {
+   "match": "sign|certificate|draft|print",
+   "gens": [
+    "outputs",
+    "stories"
+   ]
+  }
+ ]
+}

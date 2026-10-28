@@ -1,0 +1,36 @@
+{
+ "$comment": "Worked example of a pack a user writes for themselves: copy this folder anywhere, edit, then `node engine/srs/cli.mjs validate <folder>` and `build --pack <folder>`. Folders starting with «_» are not listed as shipped packs. Every word is the pack's; every fact comes from the evidence.",
+ "id": "it-change-request",
+ "version": "1.0",
+ "name": { "ar": "طلب تغيير تقني", "en": "IT change request" },
+ "description": { "ar": "طلب تغيير على نظام تقني يمر بالتقييم والموافقة والتنفيذ.", "en": "A change to an IT system, assessed, approved and carried out." },
+ "titlePrefix": { "ar": "متطلبات طلب التغيير", "en": "Change request requirements" },
+ "glossary": {
+  "ar": { "customer": "مقدم طلب التغيير", "request": "طلب التغيير", "requests": "طلباته", "customerChannel": "مركز الخدمات التقنية", "staffChannel": "لوحة إدارة التغيير", "outputDefault": "سجل التغيير المنفَّذ" },
+  "en": { "customer": "change requester", "request": "change request", "requests": "change requests", "customerChannel": "IT service portal", "staffChannel": "Change management console", "outputDefault": "implemented change record" }
+ },
+ "rules": { "derived": true, "standard": [ { "text": { "ar": "لا يُنفَّذ أي تغيير خارج نافذة الصيانة المعتمدة.", "en": "No change is carried out outside the approved maintenance window." } } ] },
+ "columns": {
+  "roles": { "ar": ["الرمز", "الدور", "الوظيفة", "وصف استخدام النظام", "القناة"], "en": ["Code", "Role", "Function", "How the role uses the system", "Channel"] },
+  "requirements": { "ar": ["الرمز", "المتطلبات", "الوحدة الوظيفية", "النوع"], "en": ["Code", "Requirement", "Functional unit", "Type"] },
+  "rules": { "ar": ["الرمز", "قاعدة العمل"], "en": ["Code", "Business rule"] },
+  "actions": { "ar": ["الإجراء", "أثره على الطلب"], "en": ["Action", "Effect on the request"] },
+  "dictionary": { "ar": ["اسم الحقل", "النوع", "الإلزامية", "التعديل", "جهة التكامل", "القيمة الافتراضية", "القيود"], "en": ["Field", "Type", "Required", "Editable", "Integration", "Default", "Constraints"] },
+  "outputCard": { "ar": ["البند", "القيمة"], "en": ["Item", "Value"] },
+  "questions": { "ar": ["الرقم", "السؤال", "المسؤول"], "en": ["No.", "Question", "Owner"] }
+ },
+ "chapters": [
+  { "title": { "ar": "المقدمة", "en": "Introduction" }, "sections": [
+   { "title": { "ar": "الغرض", "en": "Purpose" }, "gen": "prose", "paragraphs": { "ar": ["تحدد هذه الوثيقة متطلبات «{name}» لدى {entity}."], "en": ["This document states the requirements of «{name}» at {entity}."] } },
+   { "title": { "ar": "الوصف", "en": "Description" }, "gen": "description" },
+   { "title": { "ar": "الأدوار", "en": "Roles" }, "gen": "roles" }
+  ] },
+  { "title": { "ar": "المتطلبات", "en": "Requirements" }, "sections": [
+   { "title": { "ar": "المتطلبات الوظيفية", "en": "Functional requirements" }, "gen": "requirements" },
+   { "title": { "ar": "سير العمل", "en": "Workflow" }, "gen": "workflow" },
+   { "title": { "ar": "قواعد العمل", "en": "Business rules" }, "gen": "rules", "whenEmpty": "none" }
+  ] },
+  { "title": { "ar": "القصص", "en": "Stories" }, "sections": [ { "title": { "ar": "بطاقات القصص", "en": "Story cards" }, "gen": "stories" } ] },
+  { "title": { "ar": "الأسئلة المفتوحة", "en": "Open questions" }, "sections": [ { "title": { "ar": "الأسئلة المفتوحة", "en": "Open questions" }, "gen": "questions" } ] }
+ ]
+}

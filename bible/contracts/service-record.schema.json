@@ -1,0 +1,49 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "business-wrap/service-record.schema.json",
+ "title": "Business-Wrap service record (evidence input)",
+ "description": "The facts a form crawl and a process model cannot show, each traceable to a source. Written by hand from a named document, or by a record harvester (the admin record page, the back-office desk walk, the output capture: those harvesters are a separate lane and write THIS shape; engine/srs reads it). Every text value is a string (both languages) or {ar, en}.",
+ "type": "object",
+ "required": ["kind", "version", "key", "source", "facts"],
+ "$defs": {
+  "text": { "oneOf": [{ "type": "string" }, { "type": "object", "properties": { "ar": { "type": "string" }, "en": { "type": "string" } } }] },
+  "source": { "type": "object", "required": ["kind", "ref"], "properties": { "kind": { "enum": ["record-page", "desk-walk", "output-capture", "document", "interview", "card", "profile"] }, "ref": { "type": "string" }, "at": { "type": "string" } } },
+  "integration": { "type": "object", "required": ["name"], "properties": { "name": { "$ref": "#/$defs/text" }, "description": { "$ref": "#/$defs/text" }, "sent": { "$ref": "#/$defs/text" }, "received": { "$ref": "#/$defs/text" }, "readiness": { "$ref": "#/$defs/text" }, "atSubmit": { "type": "boolean" } } }
+ },
+ "properties": {
+  "kind": { "const": "bw-service-record" },
+  "version": { "const": 1 },
+  "key": { "type": "string", "description": "the stable key the process is known by (never a name fragment)" },
+  "source": { "$ref": "#/$defs/source", "description": "the default source of every fact" },
+  "sources": { "type": "object", "additionalProperties": { "$ref": "#/$defs/source" }, "description": "per-fact sources, keyed like facts (integrations.partners …)" },
+  "facts": {
+   "type": "object",
+   "description": "An empty list means «stated: none» and prints «none»; a missing key means «not known» and becomes an open question.",
+   "properties": {
+    "code": { "type": "string" },
+    "name": { "$ref": "#/$defs/text" },
+    "description": { "$ref": "#/$defs/text" },
+    "place": { "$ref": "#/$defs/text" },
+    "recipients": { "type": "array", "items": { "$ref": "#/$defs/text" } },
+    "channels": { "type": "array", "items": { "$ref": "#/$defs/text" } },
+    "assumptions": { "type": "array", "items": { "$ref": "#/$defs/text" } },
+    "fees": { "type": "array", "items": { "type": "object", "properties": { "code": { "$ref": "#/$defs/text" }, "amount": { "$ref": "#/$defs/text" }, "basis": { "$ref": "#/$defs/text" }, "timing": { "$ref": "#/$defs/text" } } } },
+    "documents": { "type": "array", "items": { "type": "object", "required": ["name"], "properties": { "name": { "$ref": "#/$defs/text" }, "required": { "type": "boolean" }, "formats": { "type": "string" }, "maxSize": { "$ref": "#/$defs/text" }, "by": { "$ref": "#/$defs/text" }, "notes": { "$ref": "#/$defs/text" }, "multiple": { "type": "boolean" } } } },
+    "adminReference": { "type": "array", "items": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "$ref": "#/$defs/text" } } },
+    "outputs": { "type": "array", "items": { "type": "object", "required": ["name"], "properties": { "name": { "$ref": "#/$defs/text" }, "validity": { "$ref": "#/$defs/text" }, "when": { "$ref": "#/$defs/text" }, "to": { "$ref": "#/$defs/text" }, "preview": { "type": "string", "description": "data: URI of the captured output (viewport shot)" } } } },
+    "legislation": { "type": "array", "items": { "type": "object", "properties": { "number": { "$ref": "#/$defs/text" }, "name": { "$ref": "#/$defs/text" }, "year": { "$ref": "#/$defs/text" } } } },
+    "integrations": { "type": "object", "properties": { "internal": { "type": "array", "items": { "$ref": "#/$defs/integration" } }, "services": { "type": "array", "items": { "$ref": "#/$defs/integration" } }, "dataSources": { "type": "array", "items": { "$ref": "#/$defs/integration" } }, "partners": { "type": "array", "items": { "$ref": "#/$defs/integration" } } } },
+    "languages": { "type": "array", "items": { "type": "string" } },
+    "serial": { "type": "object", "properties": { "pattern": { "$ref": "#/$defs/text" }, "reset": { "$ref": "#/$defs/text" }, "shownOn": { "$ref": "#/$defs/text" } } },
+    "statuses": { "type": "array", "items": { "$ref": "#/$defs/text" } },
+    "notifications": { "type": "array", "items": { "type": "object", "properties": { "event": { "$ref": "#/$defs/text" }, "channel": { "$ref": "#/$defs/text" }, "to": { "$ref": "#/$defs/text" } } } },
+    "kpis": { "type": "array", "items": { "type": "object", "properties": { "name": { "$ref": "#/$defs/text" }, "target": { "$ref": "#/$defs/text" }, "measure": { "$ref": "#/$defs/text" } } } },
+    "slas": { "type": "array", "items": { "type": "object", "properties": { "stage": { "$ref": "#/$defs/text" }, "target": { "$ref": "#/$defs/text" } } } },
+    "desks": { "type": "object", "description": "the desk walk, keyed by the model's task name (or id): what each stage's screen shows and offers", "additionalProperties": { "type": "object", "properties": { "sections": { "type": "array", "items": { "$ref": "#/$defs/text" } }, "actions": { "type": "array", "items": { "type": "object", "required": ["key", "label"], "properties": { "key": { "type": "string" }, "label": { "$ref": "#/$defs/text" } } } }, "tasks": { "type": "array" }, "autoAssign": { "type": "boolean" } } } },
+    "fieldIntegrations": { "type": "object", "additionalProperties": { "$ref": "#/$defs/text" } },
+    "fieldDefaults": { "type": "object", "additionalProperties": { "$ref": "#/$defs/text" } },
+    "earlierIssue": { "type": "object", "properties": { "version": { "type": "string" }, "date": { "type": "string" }, "purpose": { "$ref": "#/$defs/text" } }, "description": "the issue on record before this one: the revisions table prints it as the first row" }
+   }
+  }
+ }
+}
