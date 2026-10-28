@@ -23,10 +23,11 @@ import http from 'node:http';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { buildEditor } from './build-editor.mjs';
-import { exportPdf, exportDocx, loadTheme, loadEdited, REPO, userCwd, fileStem } from './export.mjs';
+import { exportPdf, exportDocx, loadTheme, loadEdited, fontsFor, REPO, userCwd, fileStem } from './export.mjs';
+import { systemFonts } from './fonts.mjs';
 import { harvestModel, harvestCrawl } from './harvest/cli.mjs';
 import { harvestSources, MODEL_EXT, TEXT_EXT } from './harvest/sources.mjs';
-import { STATE_DIR, healPort, healStaleHosts, healWorkspace, readHealLog, alive } from './heal/index.mjs';
+import { STATE_DIR, healPort, healStaleHosts, healWorkspace, healFont, readHealLog, alive } from './heal/index.mjs';
 import { GATES } from './heal/gates.mjs';
 
 const pkg = () => JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8'));
@@ -194,12 +195,19 @@ export async function exportDoc({ document, locale, out, edits, docx = true }) {
   const pre = GATES.document(doc);
   if (pre.verdict === 'FAIL') return { locale: ed, gates: [pre] };
   const th = loadTheme();
+  // a chosen face that is not on this machine (and not uploaded into the document) falls back to Thmanyah: HEALED
+  const steps = [pre];
+  const chosen = Object.entries(doc.design?.fonts || {}).filter(([r, f]) => ['text', 'display'].includes(r) && f && !(doc.design.fontFaces || []).some((x) => x.family === f));
+  if (chosen.length) {
+    const have = new Set([...fontsFor(th).used.map((c) => c.family), ...systemFonts().map((f) => f.family)]);
+    for (const [role, fam] of chosen) { const h = healFont(fam, (x) => have.has(x)); if (h.healed) { doc.design.fonts[role] = h.family; steps.push({ stage: 'fonts', verdict: 'HEALED', problems: [], from: fam, to: h.family }); } }
+  }
   const dir = path.resolve(out || path.join(path.dirname(file), 'exports'));
   const stem = `${fileStem(doc.service || doc.control.documentId)}.${ed}`;
   const pdf = (await exportPdf(doc, { locale: ed, theme: th, pdfPath: path.join(dir, `${stem}.pdf`) })).pdf;
   const files = [pdf];
   if (docx) files.push(exportDocx(doc, { locale: ed, theme: th, docxPath: path.join(dir, `${stem}.docx`) }).docx);
-  return { locale: ed, pdf, docx: docx ? files[1] : undefined, gates: [pre, GATES.render(pdf), GATES.export(files, { editions: [ed] })] };
+  return { locale: ed, pdf, docx: docx ? files[1] : undefined, gates: [...steps, GATES.render(pdf, { allow: Object.values(doc.design?.fonts || {}) }), GATES.export(files, { editions: [ed] })] };
 }
 
 export async function gate({ stage, files }) {
