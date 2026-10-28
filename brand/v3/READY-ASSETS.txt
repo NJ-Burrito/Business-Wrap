@@ -1,5 +1,5 @@
-READY 2026-10-28: logo, favicons and social images are final (frozen interfaces I2, I3, I4). Paths relative to the repo root.
-Icons (I5): PENDING, this file is rewritten when they are final.
+READY 2026-10-28: all WP1 assets are final (frozen interfaces I2 logo, I3 favicons, I4 social, I5 icons). Paths relative to the repo root.
+Gate: uv run --no-project --with pillow python brand/v3/tools/check_brand.py (exit 0).
 brand/v3/favicon/apple-touch-icon.png
 brand/v3/favicon/favicon.ico
 brand/v3/favicon/favicon.svg
@@ -12,6 +12,31 @@ brand/v3/favicon/icon-48.png
 brand/v3/favicon/icon-512.png
 brand/v3/favicon/icon-64.png
 brand/v3/favicon/maskable-512.png
+brand/v3/icons/bilingual.svg
+brand/v3/icons/design-pack.svg
+brand/v3/icons/diagram.svg
+brand/v3/icons/direction.svg
+brand/v3/icons/docx.svg
+brand/v3/icons/dry-run.svg
+brand/v3/icons/e-service.svg
+brand/v3/icons/editor.svg
+brand/v3/icons/edits-file.svg
+brand/v3/icons/evidence.svg
+brand/v3/icons/explainer.svg
+brand/v3/icons/export.svg
+brand/v3/icons/harvest.svg
+brand/v3/icons/icons.css
+brand/v3/icons/icons.json
+brand/v3/icons/mcp-server.svg
+brand/v3/icons/merge.svg
+brand/v3/icons/pdf.svg
+brand/v3/icons/plugin.svg
+brand/v3/icons/print-layout.svg
+brand/v3/icons/process-model.svg
+brand/v3/icons/security-gate.svg
+brand/v3/icons/sprite.svg
+brand/v3/icons/update.svg
+brand/v3/icons/walk.svg
 brand/v3/logo/app-icon.svg
 brand/v3/logo/lockup-ar-dark.svg
 brand/v3/logo/lockup-ar-mono.svg

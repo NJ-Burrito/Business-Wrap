@@ -134,8 +134,8 @@ def main() -> int:
                 if f'id="bw-i-{n}"' not in sprite and f'id="{n}"' not in sprite:
                     fail(f"icons/sprite.svg: no symbol for {n}")
         if (icon_dir / "icons.json").exists():
-            keys = set(json.loads((icon_dir / "icons.json").read_text(encoding="utf-8")).get("icons", {}))
-            if keys and keys != set(ICONS):
+            keys = {i["name"] for i in json.loads((icon_dir / "icons.json").read_text(encoding="utf-8")).get("icons", [])}
+            if keys != set(ICONS):
                 fail(f"icons/icons.json: keys differ {sorted(keys ^ set(ICONS))}")
     print("brand v3: all checks pass" if not fails else f"brand v3: {len(fails)} FAIL")
     return 1 if fails else 0
