@@ -2,8 +2,11 @@
 // folders at build time and never copied into the repo.
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { config } from './config.mjs';
+import { sfntInfo, sfntFromBytes } from './fontinfo.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..');
@@ -66,6 +69,7 @@ export function fontFaceCss(cuts, { embed = false, families } = {}) {
       const src = embed
         ? `data:font/${c.format === 'truetype' ? 'ttf' : 'woff2'};base64,${fs.readFileSync(c.file).toString('base64')}`
         : pathToFileURL(c.file).href;
+      if (embed) return `@font-face{font-family:'${c.family}';font-style:normal;font-weight:${c.weight};font-display:block;src:url(data:font/ttf;base64,${normaliseFont(fs.readFileSync(c.file)).toString('base64')}) format('truetype');}`;
       return `@font-face{font-family:'${c.family}';font-style:normal;font-weight:${c.weight};font-display:block;src:url(${src}) format('${c.format}');}`;
     })
     .join('\n');
@@ -88,3 +92,78 @@ export function localFontCss(manifest = loadManifest()) {
   }
   return { css: rules.join('\n'), families: Object.keys(manifest.families).filter((f) => !banned.some((b) => f.toLowerCase().includes(b))) };
 }
+
+/* ── fonts installed on this machine (the editor's «خطوط جهازك»), for the PDF and the DOCX ── */
+let SYSTEM;
+/** Every face installed in the usual font folders: {file, format, outlines, fsType, embeddable, family, names, weight, italic}. */
+export function systemFonts(dirs) {
+  if (SYSTEM && !dirs) return SYSTEM;
+  const home = process.env.HOME || process.env.USERPROFILE || '';
+  const list = dirs || [
+    process.env.WINDIR && path.join(process.env.WINDIR, 'Fonts'),
+    process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Microsoft', 'Windows', 'Fonts'),
+    '/usr/share/fonts', '/usr/local/share/fonts', home && path.join(home, '.fonts'), home && path.join(home, '.local', 'share', 'fonts'),
+    '/Library/Fonts', '/System/Library/Fonts', home && path.join(home, 'Library', 'Fonts'),
+  ].filter(Boolean);
+  const out = [];
+  for (const d of list) for (const file of walk(d)) {
+    if (!/\.(ttf|otf|ttc)$/i.test(file)) continue;
+    let fd;
+    try {
+      fd = fs.openSync(file, 'r');
+      const read = (off, len) => { const b = Buffer.alloc(Math.max(0, len)); const n = fs.readSync(fd, b, 0, b.length, off); return new Uint8Array(b.buffer, b.byteOffset, n); };
+      const info = sfntInfo(read);
+      if (info) (info.faces || [info]).forEach((f, index) => out.push({ ...f, format: info.format, index, file, faces: undefined }));
+    } catch { /* unreadable file: not a candidate */ } finally { if (fd !== undefined) fs.closeSync(fd); }
+  }
+  if (!dirs) SYSTEM = out;
+  return out;
+}
+
+/** The upright faces of one installed family, nearest to Regular (400) and Bold (700). */
+export function systemFamily(family, dirs) {
+  const low = String(family || '').toLowerCase();
+  const hits = systemFonts(dirs).filter((f) => !f.italic && f.names.some((n) => n.toLowerCase() === low));
+  // TrueType outlines first at equal distance: Chrome prints CFF as Type 3, and Word embeds TrueType only
+  const near = (w) => hits.slice().sort((a, b) => Math.abs(a.weight - w) - Math.abs(b.weight - w) || (a.outlines !== 'truetype') - (b.outlines !== 'truetype'))[0];
+  const regular = near(400);
+  const bold = hits.find((f) => f.weight >= 600) ? near(700) : null;
+  return { regular, bold: bold && bold !== regular ? bold : null, found: hits.length > 0 };
+}
+
+/* ── every chosen font prints and embeds as real text (owner decision 2026-10-28) ──
+ * Chrome writes CFF outlines and licence-restricted faces as Type 3 drawings, Word embeds TrueType only.
+ * So each face is normalised before it reaches Chrome or the DOCX: OS/2 fsType = 0 and TrueType outlines.
+ * A TrueType file is patched here in memory; CFF, WOFF/WOFF2 and collection faces go through
+ * engine/font_normalise.py (the house otf-to-ttf path) in the gitignored out/ folder, removed at once.
+ * The licence of a chosen font is the user's responsibility. */
+const NORM = new Map();
+const OUT_TMP = path.join(REPO, 'out', 'font-norm');
+/** a TrueType copy of the font (Buffer) with fsType 0; index picks the face of a .ttc */
+export function normaliseFont(bytes, index = 0) {
+  const buf = Buffer.from(bytes);
+  const key = crypto.createHash('sha1').update(buf).digest('hex') + ':' + index;
+  if (NORM.has(key)) return NORM.get(key);
+  const info = sfntFromBytes(new Uint8Array(buf.buffer, buf.byteOffset, buf.length));
+  let out;
+  if (info?.format === 'ttf' && info.outlines === 'truetype') {
+    out = Buffer.from(buf);
+    const n = out.readUInt16BE(4);
+    for (let i = 0; i < n; i += 1) if (out.toString('latin1', 12 + i * 16, 16 + i * 16) === 'OS/2') out.writeUInt16BE(0, out.readUInt32BE(12 + i * 16 + 8) + 8);
+  } else {
+    fs.mkdirSync(OUT_TMP, { recursive: true });
+    const stem = path.join(OUT_TMP, `${process.pid}-${key.slice(0, 12)}`);
+    fs.writeFileSync(`${stem}.in`, buf);
+    try {
+      const r = spawnSync('uv', ['run', '--no-project', '--with', 'fonttools', '--with', 'brotli', 'python', path.join(HERE, 'font_normalise.py'), `${stem}.in`, `${stem}.ttf`, '--index', String(index)], { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } });
+      if (r.status !== 0) throw new Error(`font normalise failed: ${(r.stderr || r.stdout || String(r.error)).slice(-400)}`);
+      out = fs.readFileSync(`${stem}.ttf`);
+    } finally {
+      fs.rmSync(`${stem}.in`, { force: true });
+      fs.rmSync(`${stem}.ttf`, { force: true });
+    }
+  }
+  NORM.set(key, out);
+  return out;
+}
+export const ttfDataUri = (buf) => `data:font/ttf;base64,${buf.toString('base64')}`;

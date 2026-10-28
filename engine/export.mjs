@@ -11,9 +11,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { renderDocument, chromeTemplates, relaxTallGroups, relaxArgs, PAGE, designTheme, confidentialText } from './render.mjs';
+import { renderDocument, chromeTemplates, relaxTallGroups, relaxArgs, PAGE, designTheme, confidentialText, uploadedFontCss, faceWeights } from './render.mjs';
 import { applyOps, migrate } from './edits.mjs';
-import { loadManifest, resolveFonts, fontFaceCss } from './fonts.mjs';
+import { loadManifest, resolveFonts, fontFaceCss, systemFamily, normaliseFont, ttfDataUri } from './fonts.mjs';
 import { config } from './config.mjs';
 import { DIAGRAM } from './diagram.mjs';
 
@@ -53,12 +53,53 @@ export const fileStem = (s) => String(s || 'document').normalize('NFC').replace(
 /** Where the user started the command (npm runs scripts from the package folder; INIT_CWD keeps theirs). */
 export const userCwd = () => process.env.INIT_CWD || process.cwd();
 
+const familyName = (f) => String(f || '').replace(/[^\p{L}\p{N}\s._-]/gu, '').trim();
+const OUT_TMP = path.join(REPO, 'out', 'font-norm');
+
+/**
+ * The chosen fonts outside the house pair, ready to print and embed as real text (owner decision
+ * 2026-10-28): every face normalised to TrueType with fsType 0 (engine/fonts.mjs normaliseFont).
+ * Returns {doc: the document with its uploaded faces normalised, css: @font-face for the machine fonts,
+ * faces: [{family, weight, bytes}], missing: [family]}.
+ */
+export function chosenFonts(doc, theme) {
+  const th = designTheme(theme, doc);
+  const house = new Set(Object.keys(loadManifest().families));
+  const fams = [...new Set([familyName(th.fonts.text), familyName(th.fonts.display) || familyName(th.fonts.text)].filter(Boolean))].filter((f) => !house.has(f));
+  const faces = [];
+  const missing = [];
+  const out = JSON.parse(JSON.stringify(doc));
+  const uploaded = out.design?.fontFaces || [];
+  for (const f of uploaded) {
+    const m = /^data:font\/\w+;base64,(.+)$/.exec(String(f.src || ''));
+    if (!m) continue;
+    const bytes = normaliseFont(Buffer.from(m[1], 'base64'));
+    Object.assign(f, { src: ttfDataUri(bytes), format: 'ttf', outlines: 'truetype' });
+    if (fams.includes(familyName(f.family))) faces.push({ family: familyName(f.family), weight: +f.weight === 700 ? 700 : 400, bytes });
+  }
+  let css = '';
+  for (const fam of fams) {
+    if (uploaded.some((f) => familyName(f.family) === fam)) continue;
+    const sys = systemFamily(fam);
+    if (!sys.found) { missing.push(fam); continue; }
+    for (const [face, weight] of [[sys.regular, 400], [sys.bold, 700]]) {
+      if (!face) continue;
+      const bytes = normaliseFont(fs.readFileSync(face.file), face.index || 0);
+      faces.push({ family: fam, weight, bytes });
+      css += `@font-face{font-family:'${fam}';font-style:normal;font-weight:${faceWeights(weight, !!sys.bold)};font-display:block;src:url(${ttfDataUri(bytes)}) format('truetype');}\n`;
+    }
+  }
+  return { doc: out, css, faces, missing };
+}
+
 /** The print HTML — what the editor shows minus the editor layer. */
-export function printHtml(doc, { locale, theme, embed = true }) {
+export function printHtml(docIn, { locale, theme, embed = true }) {
+  const chosen = chosenFonts(docIn, theme);
+  const doc = chosen.doc;
   const { used } = fontsFor(designTheme(theme, doc));
-  const fontCss = fontFaceCss(used, { embed });
+  const fontCss = fontFaceCss(used, { embed }) + '\n' + chosen.css;
   const labels = i18n().doc[locale];
-  return { html: renderDocument(doc, { locale, labels, theme, fontCss, logos: theme.logos }), fontCss, labels, used };
+  return { html: renderDocument(doc, { locale, labels, theme, fontCss, logos: theme.logos }), fontCss, labels, used, chosen };
 }
 
 let playwright;
@@ -69,8 +110,10 @@ async function chromium() {
 
 /** Prints doc → pdfPath. Returns {pdf, pages}. A tagged, header/footer PDF like the source. */
 export async function exportPdf(doc, { locale, theme, pdfPath, browser: shared }) {
-  const { html, fontCss, labels, used } = printHtml(doc, { locale, theme, embed: true });
-  const tmp = path.join(os.tmpdir(), `bw-print-${process.pid}-${Date.now()}.html`);
+  const { html, fontCss, labels, used, chosen } = printHtml(doc, { locale, theme, embed: true });
+  // the print page carries the normalised font copies: it lives in the gitignored out/ and is removed after
+  fs.mkdirSync(OUT_TMP, { recursive: true });
+  const tmp = path.join(OUT_TMP, `bw-print-${process.pid}-${Date.now()}.html`);
   fs.writeFileSync(tmp, html, 'utf8');
   const browser = shared || (await (await chromium()).launch(launchOptions()));
   try {
@@ -79,7 +122,7 @@ export async function exportPdf(doc, { locale, theme, pdfPath, browser: shared }
     await page.goto(pathToFileURL(tmp).href, { waitUntil: 'load' });
     await page.evaluate(() => document.fonts.ready.then(() => true));
     await page.evaluate(relaxTallGroups, relaxArgs());
-    const chrome = chromeTemplates(doc, { theme, labels, locale, fontCss: fontFaceCss(used.filter((c) => [400, 700].includes(c.weight)), { embed: true }), logos: theme.logos });
+    const chrome = chromeTemplates(doc, { theme, labels, locale, fontCss: fontFaceCss(used.filter((c) => [400, 700].includes(c.weight)), { embed: true }) + chosen.css + uploadedFontCss(chosen.doc), logos: theme.logos });
     fs.mkdirSync(path.dirname(pdfPath), { recursive: true });
     await page.pdf({
       path: pdfPath,
@@ -95,12 +138,18 @@ export async function exportPdf(doc, { locale, theme, pdfPath, browser: shared }
     if (!shared) await browser.close();
     fs.rmSync(tmp, { force: true });
   }
-  const folioFace = used.find((c) => c.family === theme.fonts.display && c.weight === 700 && c.format === 'truetype') || used.find((c) => c.format === 'truetype');
+  const display = designTheme(theme, doc).fonts.display;
+  // a chosen heading font stamps the folios too, as its normalised TrueType copy (written to out/, removed after)
+  let folioTmp = '';
+  const pick = chosen.faces.find((f) => f.family === familyName(display) && f.weight === 700) || chosen.faces.find((f) => f.family === familyName(display));
+  if (pick) { fs.mkdirSync(OUT_TMP, { recursive: true }); folioTmp = path.join(OUT_TMP, `folio-${process.pid}-${Date.now()}.ttf`); fs.writeFileSync(folioTmp, pick.bytes); }
+  const folioFace = used.find((c) => c.family === display && c.weight === 700 && c.format === 'truetype') || (folioTmp && { file: folioTmp }) || used.find((c) => c.format === 'truetype');
   const anchor = confidentialText(doc, theme, labels, locale);
   const r = spawnSync('python', [path.join(HERE, 'pdf_post.py'), pdfPath, folioFace?.file || '', anchor, locale === 'ar' ? 'rtl' : 'ltr'], {
     encoding: 'utf8',
     env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
   });
+  if (folioTmp) fs.rmSync(folioTmp, { force: true });
   if (r.status !== 0) throw new Error(`pdf post-processing failed: ${r.stderr || r.stdout}`);
   return { pdf: pdfPath, post: r.stdout.trim() };
 }
@@ -145,23 +194,49 @@ export function withResolvedDiagrams(doc, theme, locale) {
   return copy;
 }
 
-/** DOCX through the copied builder. Writes the edited JSON beside it first. */
-/** DOCX replica. embedFonts (default true): the TrueType cuts travel inside the file (word/fonts/*.odttf). */
+/**
+ * The fonts a DOCX names and carries. House faces come from the font manifest; every other chosen font
+ * (a machine font or an uploaded one) travels as its normalised TrueType copy (fsType 0), so the DOCX
+ * always holds real text (owner decision 2026-10-28; the licence is the user's responsibility).
+ * notes: [{family, why: 'missing'}] for a machine font this computer does not have.
+ */
+export function docxFonts(doc, { theme, work, embed = true }) {
+  const th = designTheme(theme, doc);
+  const house = new Set(Object.keys(loadManifest().families));
+  const text = familyName(th.fonts.text);
+  const display = familyName(th.fonts.display) || text;
+  const fams = [...new Set([text, display].filter(Boolean))];
+  const cuts = fams.filter((f) => house.has(f)).flatMap((fam) => fontsFor(th).used.filter((c) => c.family === fam && c.format === 'truetype').map((c) => ({ family: c.family, weight: c.weight, file: c.file })));
+  const chosen = embed ? chosenFonts(doc, theme) : { faces: [], missing: [] };
+  chosen.faces.forEach((f, i) => {
+    const file = path.join(work, `font-${i}.ttf`);
+    fs.writeFileSync(file, f.bytes);
+    cuts.push({ family: f.family, weight: f.weight, file });
+  });
+  return { text, display, custom: fams.some((f) => !house.has(f)), cuts: embed ? cuts : [], notes: chosen.missing.map((family) => ({ family, why: 'missing' })) };
+}
+
+/** DOCX replica through the copied builder (the edited JSON is written beside it first).
+ * embedFonts (default true): the fonts that may travel go inside the file (word/fonts/*.odttf); fontNotes says which could not. */
 export function exportDocx(doc, { locale, theme, docxPath, embedFonts = true }) {
-  const cuts = embedFonts ? fontsFor(designTheme(theme, doc)).used.filter((c) => c.format === 'truetype').map((c) => ({ family: c.family, weight: c.weight, file: c.file })) : [];
-  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-docx-'));
+  fs.mkdirSync(OUT_TMP, { recursive: true });
+  const work = fs.mkdtempSync(path.join(OUT_TMP, 'bw-docx-'));
+  const plan = docxFonts(doc, { theme, work, embed: embedFonts });
+  const cuts = plan.cuts;
   const docJson = path.join(work, 'document.json');
   const themeJson = path.join(work, 'theme.json');
   fs.writeFileSync(docJson, JSON.stringify(withResolvedDiagrams(doc, designTheme(theme, doc), locale)), 'utf8');
   fs.writeFileSync(themeJson, JSON.stringify(designTheme(theme, doc)), 'utf8');
   fs.mkdirSync(path.dirname(docxPath), { recursive: true });
-  const r = spawnSync('uv', ['run', '--no-project', '--with', 'python-docx', '--with', 'lxml', 'python', path.join(HERE, 'docx', 'build_docx.py'), docJson, docxPath, '--workdir', work], {
+  // the house pair keeps the builder's own Thmanyah naming; any other choice names the families as chosen
+  const fontArgs = plan.custom ? ['--font', plan.text] : [];
+  const r = spawnSync('uv', ['run', '--no-project', '--with', 'python-docx', '--with', 'lxml', 'python', path.join(HERE, 'docx', 'build_docx.py'), docJson, docxPath, '--workdir', work, ...fontArgs], {
     encoding: 'utf8',
-    env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8', BW_CHROME: chromePath() || '', BW_LOCALE: locale, BW_THEME: themeJson, BW_EMBED_FONTS: cuts.length ? JSON.stringify(cuts) : '' },
+    env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8', BW_CHROME: chromePath() || '', BW_LOCALE: locale, BW_THEME: themeJson, BW_EMBED_FONTS: cuts.length ? JSON.stringify(cuts) : '', BW_DISPLAY_FONT: plan.custom ? plan.display : '' },
   });
   fs.rmSync(work, { recursive: true, force: true });
   if (r.status !== 0) throw new Error(`docx build failed: ${(r.stderr || r.stdout).slice(-2000)}`);
-  return { docx: docxPath, log: r.stdout.trim() };
+  return { docx: docxPath, log: r.stdout.trim(), fontNotes: plan.notes };
 }
 
 function args(argv) {

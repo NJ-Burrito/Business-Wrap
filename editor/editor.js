@@ -521,11 +521,6 @@ let lastCell = null;
 /* ── Design: every visual property, labels, template parts, per-instance style, advanced CSS ──
  * Document-level design is saved in the document (doc.design, doc.layout, doc.labels) through ops,
  * so undo/redo, the edits JSON, the PDF and the DOCX all carry it; the design pack export bundles it. */
-const DESIGN_COLOURS = ['primary', 'primary-deep', 'accent', 'accent-bright', 'accent-rule', 'ink', 'muted', 'rule', 'rule-strong', 'card', 'paper', 'signal', 'th-fill', 'th-ink', 'zebra'];
-const DESIGN_SIZES = ['title', 'h1', 'h2', 'h3', 'body', 'table', 'meta', 'micro'];
-const DESIGN_SPACING = [['line', '1.8'], ['page-side', '16mm'], ['rule-w', '1px'], ['th-rule-w', '1.2pt']];
-const STYLE_FIELDS = [['color', 'color'], ['background-color', 'color'], ['font-size', 'text'], ['font-weight', 'text'], ['line-height', 'text'], ['letter-spacing', 'text'], ['text-align', 'text'], ['padding', 'text'], ['margin', 'text'], ['border', 'text'], ['border-radius', 'text']];
-const hex = (v) => (/^#[0-9a-f]{6}$/i.test(String(v || '')) ? v : '#ffffff');
 function labelToPack(key, value, ed) {
   const parts = key.split('/');
   const pack = JSON.parse(JSON.stringify(S.theme.labels || {}));
@@ -545,34 +540,9 @@ const DESIGN = {
     else if (value === '' || value == null) delete next[key]; else next[key] = value;
     commit([{ op: 'replace', path: `/${root}`, value: next, old: d[root] }], { mirror: root !== 'labels' });
   },
-  panel() {
-    const d = cur().doc;
-    const th = designTheme(S.theme, d);
-    const L = labelsOf();
-    const hide = new Set(d.layout?.hide || []);
-    const front = [...(d.layout?.front || []), ...['control', 'revisions', 'toc'].filter((k) => !(d.layout?.front || []).includes(k))];
-    const labRows = Object.entries(L).flatMap(([k, v]) => (k === 'control' ? Object.entries(v).map(([ck, cv]) => [`control/${ck}`, cv]) : Array.isArray(v) ? v.map((x, i) => [`${k}/${i}`, x]) : typeof v === 'string' ? [[k, v]] : []));
-    const rej = sanitizeCss(d.design?.css).rejected;
-    return `<h3>${esc(t('dColours'))}</h3><div class="row3">${DESIGN_COLOURS.map((k) => `<label>${esc(k)}<input type="color" data-dv="${k}" value="${esc(hex(th.vars[k]))}"></label>`).join('')}</div>
-<h3>${esc(t('dSizes'))}</h3><div class="row3">${DESIGN_SIZES.map((k) => `<label>${esc(k)}<input type="text" data-ds="${k}" value="${esc(th.sizes?.[k] || '')}" spellcheck="false"></label>`).join('')}</div>
-<h3>${esc(t('dSpacing'))}</h3><div class="row3">${DESIGN_SPACING.map(([k, def]) => `<label>${esc(k)}<input type="text" data-dv="${k}" value="${esc(th.vars[k] || def)}" spellcheck="false"></label>`).join('')}</div>
-<h3>${esc(t('dParts'))}</h3><ul class="list">${['cover', ...front, 'questions'].map((k) => `<li><label class="chk"><input type="checkbox" data-dpart="${k}" ${hide.has(k) ? '' : 'checked'}> ${esc(t('part_' + k))}</label>${front.includes(k) ? ` <button type="button" data-dmove="${k}" data-d="-1" aria-label="${esc(t('moveUp'))}: ${esc(t('part_' + k))}">${ic('moveUp')}</button><button type="button" data-dmove="${k}" data-d="1" aria-label="${esc(t('moveDown'))}: ${esc(t('part_' + k))}">${ic('moveDown')}</button>` : ''}</li>`).join('')}</ul>
-<h3>${esc(t('dChapters'))}</h3><ul class="list">${d.chapters.map((ch, i) => `<li><label class="chk"><input type="checkbox" data-dch="${i}" ${ch.hidden ? '' : 'checked'}> ${esc(ch.number)} ${esc(ch.title)}</label> <button type="button" data-dchm="${i}" data-d="-1" aria-label="${esc(t('moveUp'))}: ${esc(ch.title)}">${ic('moveUp')}</button><button type="button" data-dchm="${i}" data-d="1" aria-label="${esc(t('moveDown'))}: ${esc(ch.title)}">${ic('moveDown')}</button><button type="button" data-dchd="${i}" aria-label="${esc(t('duplicate'))}: ${esc(ch.title)}">${ic('duplicate')}</button><button type="button" data-dchx="${i}" aria-label="${esc(t('delete'))}: ${esc(ch.title)}">${ic('delete')}</button></li>`).join('')}</ul>
-<div class="btns"><button type="button" class="b" data-k="addTable"><span class="i">${ic('rowAdd')}</span><span class="w">${esc(t('addTable'))}</span></button><button type="button" class="b" data-k="addSection"><span class="i">${ic('add')}</span><span class="w">${esc(t('addSection'))}</span></button></div>
-<h3>${esc(t('dLabels'))}</h3><p class="hint">${esc(t('dLabelsHint'))}</p><label class="chk"><input type="checkbox" data-k="laball" ${S.labelAll ? 'checked' : ''}> ${esc(t('labelAll'))}</label>
-<div class="labs">${labRows.map(([k, v]) => `<label>${esc(k)}<input type="text" data-lab="${esc(k)}" value="${esc(v)}" ${String(v).trim() || k === 'comma' ? '' : 'aria-invalid="true"'}></label>`).join('')}</div>
-<h3>${esc(t('dCss'))}</h3><p class="hint">${esc(t('dCssHint'))}</p><textarea data-dcss rows="6" spellcheck="false" dir="ltr" aria-label="${esc(t('dCss'))}">${esc(d.design?.css || '')}</textarea>${rej.length ? `<p class="warn" role="status">${esc(t('vCss', { x: rej.join(' · ') }))}</p>` : ''}
-<div class="btns"><button type="button" class="b" data-k="dcssApply"><span class="w">${esc(t('apply'))}</span></button></div>`;
-  },
-  inspector() {
-    const b = blockOf(S.sel?.b);
-    if (!b) return `<p class="hint">${esc(t('styleNone'))}</p>`;
-    const node = get(cur().doc, b.ptr) || {};
-    const st = node.style || {};
-    return `<p class="hint">${esc(t('styleHint'))} <code>${esc(b.ptr)}</code></p><div class="row3">${STYLE_FIELDS.map(([k, type]) => `<label>${esc(k)}<input type="${type}" data-st="${k}" value="${esc(type === 'color' ? hex(st[k]) : st[k] || '')}" spellcheck="false"></label>`).join('')}</div>
-<label class="chk"><input type="checkbox" data-k="sthide" ${node.hidden ? 'checked' : ''}> ${esc(t('hideBlock'))}</label>
-<div class="btns"><button type="button" class="b" data-k="stclear"><span class="w">${esc(t('styleClear'))}</span></button></div>`;
-  },
+  /** the Design drawer body and the per-element style: editor/design-panel.js */
+  panel() { return designPanel(); },
+  inspector() { return styleInspector(); },
   setStyle(prop, value) {
     const b = blockOf(S.sel?.b);
     if (!b) return;
@@ -603,8 +573,6 @@ const DESIGN = {
   change(el) {
     const f = el.dataset;
     if (f.st && el.type !== 'color') DESIGN.setStyle(f.st, el.value.trim());
-    if (f.dv && el.type !== 'color') DESIGN.set('design', f.dv, 'vars', el.value.trim());
-    if (f.ds) DESIGN.set('design', f.ds, 'sizes', el.value.trim());
     if (f.k === 'sthide') DESIGN.toggleHidden();
     if (f.k === 'laball') S.labelAll = el.checked;
     if (f.lab !== undefined) {
@@ -886,8 +854,12 @@ function validate() {
   main?.querySelectorAll('table').forEach((tb) => {
     if (tb.scrollWidth > tb.parentElement.clientWidth + 2) out.push(['warn', t('vOverflow', { x: tb.querySelector('th,td')?.textContent?.slice(0, 30) || '' })]);
   });
-  for (const f of [S.theme.fonts.text, S.theme.fonts.display])
-    if (!document.fonts.check(`16px '${f}'`) || !DATA.fontFamilies.includes(f)) out.push(['err', t('vFont', { x: f })]);
+  const fth = designTheme(S.theme, d).fonts;
+  for (const f of new Set([fth.text, fth.display])) {
+    const src = FONTS.sourceOf(f);
+    if (src === 'project' && !document.fonts.check(`16px '${f}'`)) out.push(['err', t('vFont', { x: f })]);
+    else if (src === 'local') out.push(['info', t('font.vMachine', { x: f })]);
+  }
   for (const k of emptyLabels(labelsOf())) out.push(['err', t('vLabel', { x: k })]);
   const rej = sanitizeCss(d.design?.css).rejected;
   if (rej.length) out.push(['warn', t('vCss', { x: rej.join(' · ') })]);
@@ -1374,18 +1346,9 @@ function openDrawer(kind, soft = false) {
 ${e.comments.length ? `<h3>${esc(t('comment'))}</h3><ul class="list">${e.comments.map((c, i) => `<li><button type="button" data-go="${esc(c.path)}">${esc(c.text)}</button> <button type="button" data-delc="${i}" aria-label="${esc(t('delete'))}">${ic('close')}</button></li>`).join('')}</ul><div class="btns"><button type="button" class="b" data-k="cexp"><span class="w">${esc(t('comment'))}</span></button></div>` : ''}`;
   } else if (kind === 'theme') {
     d.setAttribute('aria-label', t('theme'));
-    const fam = DATA.fontFamilies;
-    const sel = (key, val) => `<select data-font="${key}">${fam.map((f) => `<option ${f === val ? 'selected' : ''}>${esc(f)}</option>`).join('')}</select>`;
-    const ovs = cur().doc.overlays || [];
-    html = head(t('theme')) + `<h3>${esc(t('font'))}</h3><label>${esc(t('fontText'))} ${sel('text', S.theme.fonts.text)}</label><label>${esc(t('fontDisplay'))} ${sel('display', S.theme.fonts.display)}</label>
-<h3>${esc(t('logos'))}</h3><p class="hint">${esc(t('logosHint'))}</p><ul class="list">${ovs.map((o, i) => (o.kind === 'logo' ? `<li><img alt="" src="${esc(o.src)}" class="thumb"> ${esc(t('mode_' + o.mode))} <button type="button" data-ovgo="${i}">${esc(t('show'))}</button></li>` : '')).join('')}</ul>
-<div class="btns"><button type="button" class="b primary" data-k="logoAdd"><span class="i">${ic('logo')}</span><span class="w">${esc(t('logo'))}</span></button></div>
-<h3>${esc(t('imgWidth'))}</h3><input type="range" min="10" max="100" step="5" data-k="width" aria-label="${esc(t('imgWidth'))}" value="${(() => { const b = blockOf(S.sel?.b); return (b && get(cur().doc, b.ptr)?.width) || 100; })()}">
-<label class="chk"><input type="checkbox" data-k="embed" ${S.embedFonts ? 'checked' : ''}> ${esc(t('embedFonts'))}</label>
-<label class="chk"><input type="checkbox" data-k="docxFonts" ${S.docxFonts ? 'checked' : ''}> ${esc(t('docxFonts'))}</label>
-<div class="btns"><button type="button" class="b" data-k="texp"><span class="w">${esc(t('themeExport'))}</span></button><button type="button" class="b" data-k="timp"><span class="w">${esc(t('themeImport'))}</span></button></div>
-${DESIGN.panel()}
-<h3>${esc(t('shortcuts'))}</h3><p class="hint">${esc(t('shortcutsText'))}</p>`;
+    FONTS.open = null;
+    html = head(t('theme')) + DESIGN.panel();
+    setTimeout(() => FONTS.autoLocal(), 0);
   } else if (kind === 'style') {
     d.setAttribute('aria-label', t('styleThis'));
     html = head(t('styleThis')) + DESIGN.inspector();
@@ -1407,11 +1370,14 @@ ${DESIGN.panel()}
   d.innerHTML = html;
   d.onclick = onDrawer;
   d.oninput = (e) => {
-    if (e.target.dataset.k === 'width') A.width(e.target.value);
+    if (DP.input(e)) return;
     DESIGN.input(e.target);
   };
+  d.onkeydown = (e) => { DP.keydown(e); };
+  d.onbeforeinput = (e) => { DP.beforeinput(e); };
+  d.onpaste = (e) => { DP.paste(e); };
   d.onchange = (e) => {
-    if (e.target.dataset.font) { S.theme = { ...S.theme, fonts: { ...S.theme.fonts, [e.target.dataset.font]: e.target.value } }; touched(); render(); }
+    if (DP.change(e)) return;
     if (e.target.dataset.k === 'embed') S.embedFonts = e.target.checked;
     if (e.target.dataset.k === 'docxFonts') { S.docxFonts = e.target.checked; ls.set('bw:docx-fonts', S.docxFonts ? '1' : '0'); }
     if (e.target.dataset.hook) hooksChange(e.target);
@@ -1422,6 +1388,7 @@ ${DESIGN.panel()}
 }
 
 async function onDrawer(e) {
+  if (FONTS.click(e)) return;
   const x = e.target.closest('button');
   if (!x) return;
   const d = root.querySelector('.drawer');
@@ -1481,7 +1448,13 @@ async function onDrawer(e) {
   if (k === 'nd-merge') { await newFromMerge(); return; }
   if (k === 'nd-crawl') { await newFromCrawl(root.querySelector('.drawer [data-f="crawl"]').value); return; }
   if (await processClick(x)) return;
-  if (k === 'texp') { const th = designTheme(S.theme, cur().doc); const { css, ...rest } = th; download(`design-pack.json`, JSON.stringify({ kind: 'bw-design-pack', version: 1, ...rest, labels: S.theme.labels || {} }, null, 1)); }
+  if (k === 'texp') {
+    const th = designTheme(S.theme, cur().doc);
+    const { css, ...rest } = th;
+    const used = [th.fonts.text, th.fonts.display];
+    const fontFaces = (cur().doc.design?.fontFaces || []).filter((f) => used.includes(f.family));
+    download(`design-pack.json`, JSON.stringify({ kind: 'bw-design-pack', version: 1, ...rest, ...(fontFaces.length ? { fontFaces } : {}), labels: S.theme.labels || {} }, null, 1));
+  }
   if (DESIGN.click(x)) return;
   if (k === 'timp') {
     const f = await pickFile('.json,application/json');
@@ -1489,7 +1462,16 @@ async function onDrawer(e) {
     try {
       const p = JSON.parse(await readAs(f, 'text'));
       if (p.kind !== 'bw-design-pack') throw new Error();
-      const { kind, version, ...rest } = p;
+      const { kind, version, fontFaces, ...rest } = p;
+      // fonts: the pack's choice applies to this document; an uploaded font comes in only as a font data URI
+      const faces = (Array.isArray(fontFaces) ? fontFaces : []).filter((f) => f && typeof f.family === 'string' && /^data:font\/(ttf|otf|woff|woff2);base64,[A-Za-z0-9+/]+=*$/.test(String(f.src || ''))).map((f) => ({ family: f.family.replace(/[^\p{L}\p{N}\s._-]/gu, '').slice(0, 80), weight: +f.weight === 700 ? 700 : 400, src: f.src, format: String(f.format || ''), outlines: String(f.outlines || ''), embed: !!f.embed }));
+      if (rest.fonts || faces.length) {
+        const dd = cur().doc;
+        const next = JSON.parse(JSON.stringify(dd.design || {}));
+        if (rest.fonts) next.fonts = { ...(next.fonts || {}), ...Object.fromEntries(['text', 'display'].filter((r) => typeof rest.fonts[r] === 'string').map((r) => [r, rest.fonts[r]])) };
+        if (faces.length) next.fontFaces = [...(next.fontFaces || []).filter((x) => !faces.some((f) => f.family === x.family && f.weight === +x.weight)), ...faces];
+        commit([{ op: 'replace', path: '/design', value: next, old: dd.design }], { mirror: true });
+      }
       const safeLogos = Object.fromEntries(Object.entries(rest.logos || {}).map(([k2, v]) => [k2, /^data:image\/(png|jpeg|svg\+xml);/.test(v) ? v : '']));
       const safeVars = Object.fromEntries(Object.entries(rest.vars || {}).filter(([k2, v]) => /^[a-z0-9-]+$/.test(k2) && /^[#a-zA-Z0-9(),.\s%-]+$/.test(String(v))));
       S.theme = { ...S.theme, ...rest, vars: { ...S.theme.vars, ...safeVars }, logos: { ...S.theme.logos, ...safeLogos } };

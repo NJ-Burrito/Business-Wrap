@@ -193,7 +193,7 @@
               "additionalProperties": {
                 "type": "string"
               },
-              "description": "Theme variables by role: primary, accent, ink, muted, rule, card, paper, signal, th-fill, th-ink, zebra, line, page-side, rule-w, th-rule-w ..."
+              "description": "Theme variables by role: primary, accent, ink, muted, rule, card, paper, signal, th-fill, th-ink, zebra, line, page-side, rule-w, th-rule-w ... Lengths are a number and a unit in one string ('16mm', '1.2pt'); line is a bare multiple ('1.8')."
             },
             "sizes": {
               "type": "object",
@@ -203,12 +203,29 @@
             },
             "fonts": {
               "type": "object",
+              "description": "This document's font choice over the design pack's: a project font (Thmanyah, the default), a font installed on the computer, or a family from fontFaces.",
               "properties": {
                 "text": {
                   "type": "string"
                 },
                 "display": {
                   "type": "string"
+                }
+              }
+            },
+            "fontFaces": {
+              "type": "array",
+              "description": "Fonts uploaded into this document, printed through @font-face. A face travels inside the DOCX only when it is TrueType and its OS/2 fsType allows embedding (embed).",
+              "items": {
+                "type": "object",
+                "required": ["family", "src"],
+                "properties": {
+                  "family": { "type": "string" },
+                  "weight": { "enum": [400, 700] },
+                  "src": { "type": "string", "pattern": "^data:font/(ttf|otf|woff|woff2);base64,[A-Za-z0-9+/]+=*$" },
+                  "format": { "enum": ["ttf", "otf", "woff", "woff2"] },
+                  "outlines": { "type": "string" },
+                  "embed": { "type": "boolean" }
                 }
               }
             },
