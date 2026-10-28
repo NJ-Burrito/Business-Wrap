@@ -1,6 +1,6 @@
 {
   "name": "business-wrap",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "Bilingual (Arabic RTL / English LTR) requirements documents from evidence: an interactive HTML editor that is the print layout, PDF + DOCX export, design packs and security gates.",
   "private": true,
   "license": "UNLICENSED",
@@ -58,7 +58,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "test": "node engine/build-skill-html.mjs --check && node tests/editor.test.mjs && node tests/a11y.test.mjs && node mcp/test/server.test.mjs && node tests/skill-html.test.mjs && node tests/update.test.mjs && node tests/harvest.test.mjs && node tests/editable.test.mjs && node tests/field.test.mjs && node tests/diagram.test.mjs && node tests/design.test.mjs && node tests/ux.test.mjs",
+    "test": "node engine/build-skill-html.mjs --check && node tests/editor.test.mjs && node tests/a11y.test.mjs && node mcp/test/server.test.mjs && node tests/skill-html.test.mjs && node tests/update.test.mjs && node tests/harvest.test.mjs && node tests/editable.test.mjs && node tests/field.test.mjs && node tests/diagram.test.mjs && node tests/design.test.mjs && node tests/ux.test.mjs && node tests/updater.test.mjs && node tests/settings.test.mjs",
     "test:mcp": "node mcp/test/server.test.mjs",
     "mcp": "node mcp/cli.mjs",
     "sample": "node engine/build-editor.mjs samples/event-permit --out out/sample/event-permit.editor.html --set sample",

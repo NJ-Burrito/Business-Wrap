@@ -12,9 +12,15 @@ import { pathToFileURL } from 'node:url';
 import { isReleaseZipUrl } from './core.mjs';
 
 /** User-owned paths that an update never replaces or removes (relative to the install folder). */
-export const KEEP = ['.local', '.git', 'node_modules', 'out', 'design/custom', 'logos', 'fonts/custom', 'drafts'];
+export const KEEP = ['.local', '.git', 'node_modules', 'out', 'design/custom', 'logos', 'fonts/custom', 'drafts', 'exports', 'harvest', 'profiles'];
+/**
+ * The only folders where a file the new release no longer ships is deleted: program code. Anywhere else
+ * (the root, samples/, docs/ …) a file the release does not carry is the user's and stays byte-identical.
+ */
+export const CODE_ROOTS = ['engine', 'editor', 'mcp', 'update', 'hooks', 'bible', 'assets', 'tests', 'security', 'evals', '.claude-plugin', '.github', '.githooks'];
 
 const kept = (rel) => KEEP.some((k) => rel === k || rel.startsWith(`${k}/`));
+const codeFile = (rel) => CODE_ROOTS.some((k) => rel.startsWith(`${k}/`));
 const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
 
 function walk(dir, base = dir, out = []) {
@@ -27,49 +33,104 @@ function walk(dir, base = dir, out = []) {
   }
   return out;
 }
+/** Every file under `dir`, KEEP paths included (the backup holds the user's data too). */
+function walkAll(dir, base = dir, out = []) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) walkAll(p, base, out);
+    else out.push(path.relative(base, p).split(path.sep).join('/'));
+  }
+  return out;
+}
+const copyIn = (from, to, rel) => { const t = path.join(to, rel); fs.mkdirSync(path.dirname(t), { recursive: true }); fs.copyFileSync(path.join(from, rel), t); };
+
+/** The update's stages, in order (the editor shows them as steps). */
+export const STAGES = ['download', 'backup', 'replace', 'verify', 'done'];
 
 /**
- * Replace the product files of `dir` with those of `fresh`, keeping KEEP paths untouched.
- * One backup (`<dir>.backup-<from>`, older backups removed); restored on any failure.
+ * Replace the program files of `dir` with those of `fresh`: every release file is written; a file the
+ * release dropped is removed only inside CODE_ROOTS; KEEP paths are never written or removed.
+ * One backup (`<dir>.backup-<from>`, older backups removed) of everything but node_modules and .git, user
+ * data included. `verify(dir)` runs after the swap; any throw (swap or verify) restores the backup: the
+ * release's new files are removed and every backed-up file (program and data) is copied back.
+ * `failAt` ('replace' | 'verify') forces a failure there: tests only.
  */
-export function swapInstall(dir, fresh, from = 'previous') {
+export async function swapInstall(dir, fresh, from = 'previous', { stage = () => {}, verify = async () => {}, failAt = '' } = {}) {
   const backup = `${dir}.backup-${from}`;
   const parent = path.dirname(dir);
+  stage('backup');
   for (const n of fs.readdirSync(parent)) if (n.startsWith(`${path.basename(dir)}.backup-`)) fs.rmSync(path.join(parent, n), { recursive: true, force: true });
-  fs.cpSync(dir, backup, { recursive: true, filter: (src) => !/[\\/]node_modules([\\/]|$)/.test(src) });
+  fs.cpSync(dir, backup, { recursive: true, filter: (src) => !/^(node_modules|\.git)([\\/]|$)/.test(path.relative(dir, src)) });
+  const incoming = walk(fresh);
   try {
-    for (const rel of walk(dir)) fs.rmSync(path.join(dir, rel), { force: true });
-    for (const rel of walk(fresh)) {
-      const to = path.join(dir, rel);
-      fs.mkdirSync(path.dirname(to), { recursive: true });
-      fs.copyFileSync(path.join(fresh, rel), to);
+    stage('replace');
+    const ships = new Set(incoming);
+    for (const rel of walk(dir)) if (!ships.has(rel) && codeFile(rel)) fs.rmSync(path.join(dir, rel), { force: true });
+    const half = incoming[Math.floor(incoming.length / 2)];
+    for (const rel of incoming) {
+      if (failAt === 'replace' && rel === half) throw new Error('forced failure halfway through the replace (test)');
+      copyIn(fresh, dir, rel);
     }
+    stage('verify');
+    if (failAt === 'verify') throw new Error('forced failure in verify (test)');
+    await verify(dir);
     return { ok: true, backup };
   } catch (e) {
-    for (const rel of walk(backup)) { const to = path.join(dir, rel); fs.mkdirSync(path.dirname(to), { recursive: true }); fs.copyFileSync(path.join(backup, rel), to); }
-    return { ok: false, backup, error: String(e.message || e) };
+    const had = new Set(walkAll(backup));
+    for (const rel of incoming) if (!had.has(rel)) fs.rmSync(path.join(dir, rel), { force: true });
+    for (const rel of had) copyIn(backup, dir, rel);
+    return { ok: false, backup, error: String(e.message || e), rolledBack: true };
   }
 }
 
-/** Migrate the user's edits files kept across the update (v0 bare op arrays -> v1), with the NEW engine. */
-export async function migrateUserData(dir) {
+/**
+ * Migrate the user's edits files kept across the update (v0 bare op arrays -> v1), with the NEW engine.
+ * `backupDir`: each file is copied there (same relative path) before it is rewritten. Idempotent.
+ */
+export async function migrateUserData(dir, backupDir = '') {
   const { migrate } = await import(pathToFileURL(path.join(dir, 'engine', 'edits.mjs')).href);
   const done = [];
   const scan = (d) => {
     if (!fs.existsSync(d)) return;
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
-      if (e.isDirectory()) scan(p);
-      else if (/\.edits\.json$/i.test(e.name)) {
-        try {
-          const m = migrate(JSON.parse(fs.readFileSync(p, 'utf8')));
-          if (m.migratedFrom != null) { const { migratedFrom, ...v1 } = m; fs.writeFileSync(p, JSON.stringify(v1, null, 1) + '\n'); done.push(path.relative(dir, p)); }
-        } catch { /* newer than this engine or not an edits file: left as is */ }
-      }
+      if (e.isDirectory()) { scan(p); continue; }
+      if (!/\.edits\.json$/i.test(e.name)) continue;
+      let m;
+      try { m = migrate(JSON.parse(fs.readFileSync(p, 'utf8'))); } catch { continue; /* newer than this engine or not an edits file: left as is */ }
+      if (m.migratedFrom == null) continue;
+      const rel = path.relative(dir, p);
+      if (backupDir) { const b = path.join(backupDir, rel); if (!fs.existsSync(b)) { fs.mkdirSync(path.dirname(b), { recursive: true }); fs.copyFileSync(p, b); } }
+      const { migratedFrom, ...v1 } = m;
+      fs.writeFileSync(p, JSON.stringify(v1, null, 1) + '\n');
+      done.push(rel);
     }
   };
   for (const k of ['.local', 'drafts', 'out']) scan(path.join(dir, k));
   return done;
+}
+
+/** After the swap: the folder says the new version, and its engine and update code load (a broken release rolls back). */
+export function verifyInstall(dir, version) {
+  const v = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).version;
+  if (v !== version) throw new Error(`swap check failed: the folder says ${v}, expected ${version}`);
+  const code = ['engine/edits.mjs', 'update/core.mjs'].map((f) => `await import(${JSON.stringify(pathToFileURL(path.join(dir, f)).href)});`).join(' ');
+  const r = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', timeout: 30000, windowsHide: true });
+  if (r.status !== 0) throw new Error(`the new version does not load: ${String(r.stderr || '').trim().split('\n').pop() || r.status}`);
+}
+
+/** Unpack a zip: tar reads zips on Windows and macOS (bsdtar), GNU tar does not, so unzip there. No entry may land outside `to`. */
+export const TAR = (() => {
+  // Windows' own bsdtar (reads zips), not a GNU tar earlier on PATH (Git Bash), which takes C: for a remote host
+  const sys = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
+  return process.platform === 'win32' && fs.existsSync(sys) ? sys : 'tar';
+})();
+function unzip(zip, to) {
+  let x = spawnSync(TAR, ['-xf', zip, '-C', to], { windowsHide: true });
+  if (x.status !== 0) x = spawnSync('unzip', ['-q', '-o', zip, '-d', to], { windowsHide: true });
+  if (x.status !== 0) return false;
+  const root = fs.realpathSync(to) + path.sep;
+  return !walkAll(to).some((rel) => !fs.realpathSync(path.join(to, rel)).startsWith(root));
 }
 
 async function download(url, tok, accept) {
@@ -78,28 +139,42 @@ async function download(url, tok, accept) {
   return Buffer.from(await res.arrayBuffer());
 }
 
-/** Git checkout install: fast-forward the checkout; user files are gitignored, so they stay. */
-function gitUpdate(dir, version) {
+/** Git checkout install: fast-forward; user files are gitignored, so they stay. A failed verify resets to the old commit. */
+function gitUpdate(dir, version, stage, current) {
   const git = (...a) => spawnSync('git', ['-C', dir, ...a], { encoding: 'utf8', windowsHide: true });
   if (git('status', '--porcelain', '--untracked-files=no').stdout.trim()) return { ok: false, error: 'the install folder has local changes to tracked files; commit or stash them first' };
-  const f = git('fetch', '--tags', 'origin');
-  if (f.status !== 0) return { ok: false, error: 'git fetch failed' };
-  const p = git('pull', '--ff-only');
-  if (p.status !== 0) return { ok: false, error: 'the install folder cannot fast-forward; update it by hand' };
-  return { ok: true, mode: 'git', to: version };
+  stage('download');
+  if (git('fetch', '--tags', 'origin').status !== 0) return { ok: false, error: 'git fetch failed: nothing was changed' };
+  stage('backup');
+  const head = git('rev-parse', 'HEAD').stdout.trim();
+  stage('replace');
+  if (git('pull', '--ff-only').status !== 0) return { ok: false, error: 'the install folder cannot fast-forward; update it by hand' };
+  stage('verify');
+  try { verifyInstall(dir, version); } catch (e) {
+    git('reset', '--hard', head);
+    return { ok: false, error: `rolled back: ${e.message}`, rolledBack: true };
+  }
+  return { ok: true, mode: 'git', from: current, to: version, previous: head };
 }
 
-/** @param {{dir: string, release: {version, zip, zipApi, sha256}, repo: string, token?: string, current: string}} a */
-export async function applyUpdate({ dir, release, repo, token = '', current }) {
+/**
+ * @param {{dir: string, release: {version, zip, zipApi, sha256}, repo: string, token?: string, current: string,
+ *   onStage?: (stage: string) => void, failAt?: string}} a
+ */
+export async function applyUpdate({ dir, release, repo, token = '', current, onStage = () => {}, failAt = '' }) {
+  const stage = (s) => { try { onStage(s); } catch { /* a progress listener never stops the update */ } };
   if (fs.existsSync(path.join(dir, '.git'))) {
-    const r = gitUpdate(dir, release.version);
-    if (r.ok) r.migrated = await migrateUserData(dir);
+    const r = gitUpdate(dir, release.version, stage, current);
+    if (r.ok) { r.migrated = await migrateUserData(dir, `${dir}.backup-${current}-data`); stage('done'); }
     return r;
   }
   if (!isReleaseZipUrl(release.zip, repo)) return { ok: false, error: 'the release has no business-wrap zip from this repository' };
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-update-'));
   try {
-    const zipBuf = release.zipApi && token ? await download(release.zipApi, token, 'application/octet-stream') : await download(release.zip, token, 'application/octet-stream');
+    stage('download');
+    // BW_UPDATE_ZIP: a local zip in place of the download (tests, offline previews); the checksum is still required
+    const zipBuf = process.env.BW_UPDATE_ZIP ? fs.readFileSync(process.env.BW_UPDATE_ZIP)
+      : release.zipApi && token ? await download(release.zipApi, token, 'application/octet-stream') : await download(release.zip, token, 'application/octet-stream');
     let want = release.sha256;
     if (!want) want = String(await download(`${release.zip}.sha256`, token, 'text/plain')).trim().split(/\s+/)[0];
     if (!/^[0-9a-f]{64}$/i.test(want) || sha256(zipBuf) !== want.toLowerCase()) return { ok: false, error: 'checksum mismatch: nothing was changed' };
@@ -107,14 +182,15 @@ export async function applyUpdate({ dir, release, repo, token = '', current }) {
     fs.writeFileSync(zip, zipBuf);
     const fresh = path.join(work, 'new');
     fs.mkdirSync(fresh);
-    const x = spawnSync('tar', ['-xf', zip, '-C', fresh], { windowsHide: true });
-    if (x.status !== 0) return { ok: false, error: 'could not unpack the release' };
+    if (!unzip(zip, fresh)) return { ok: false, error: 'could not unpack the release: nothing was changed' };
     const inner = fs.readdirSync(fresh);
     const root = inner.length === 1 && fs.statSync(path.join(fresh, inner[0])).isDirectory() ? path.join(fresh, inner[0]) : fresh;
-    if (!fs.existsSync(path.join(root, 'package.json')) || JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version !== release.version) return { ok: false, error: 'the release zip does not hold that version' };
-    const s = swapInstall(dir, root, current);
-    if (!s.ok) return { ok: false, error: `rolled back: ${s.error}`, backup: s.backup };
-    return { ok: true, mode: 'zip', from: current, to: release.version, backup: s.backup, migrated: await migrateUserData(dir) };
+    if (!fs.existsSync(path.join(root, 'package.json')) || JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version !== release.version) return { ok: false, error: 'the release zip does not hold that version: nothing was changed' };
+    let migrated = [];
+    const s = await swapInstall(dir, root, current, { stage, failAt, verify: async (d) => { verifyInstall(d, release.version); migrated = await migrateUserData(d); } });
+    if (!s.ok) return { ok: false, error: `rolled back: ${s.error}`, backup: s.backup, rolledBack: true };
+    stage('done');
+    return { ok: true, mode: 'zip', from: current, to: release.version, backup: s.backup, migrated };
   } finally {
     fs.rmSync(work, { recursive: true, force: true });
   }

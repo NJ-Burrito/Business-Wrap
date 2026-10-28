@@ -1,0 +1,36 @@
+/* Settings page (0.11.0): editor/settings.js. Drawer cards in the house look; the boxes never move between
+   languages (the drawer keeps the shell's layout), only the words follow data-tdir. */
+.set .card h3 .i { color: var(--gold-deep); }
+.shell[data-theme="dark"] .set .card h3 .i { color: var(--gold); }
+.set-id { display: flex; align-items: center; gap: 12px; margin: 4px 0 10px; }
+.set-logo { inline-size: 44px; block-size: 44px; flex: none; display: grid; place-items: center; border-radius: 12px; background: var(--deep); padding: 6px; }
+.set-logo svg { inline-size: 100%; block-size: 100%; }
+.set-id p { margin: 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.set-name { font: 800 18px/1.2 'Thmanyah Sans', system-ui, sans-serif; color: var(--navy); }
+.shell[data-theme="dark"] .set-name { color: #9cc3ef; }
+.set-ver { font: 700 12px/1 ui-monospace, Consolas, monospace; padding: 4px 8px; border-radius: 999px; background: var(--wash); color: var(--panel-ink); }
+.set-dl { display: grid; grid-template-columns: minmax(96px, max-content) 1fr; gap: 6px 14px; margin: 0; }
+.set-dl dt { color: var(--panel-soft); font-weight: 600; }
+.set-dl dd { margin: 0; color: var(--panel-ink); overflow-wrap: anywhere; }
+.set-dl a { color: var(--navy); text-underline-offset: 3px; }
+.shell[data-theme="dark"] .set-dl a { color: #9cc3ef; }
+.set-dl a:focus-visible, .set-seg button:focus-visible { outline: 3px solid #005fc2; outline-offset: 2px; border-radius: 6px; }
+.set-new { display: inline-block; margin-inline-start: 6px; padding: 2px 8px; border-radius: 999px; background: var(--gold); color: #1b1813; font-size: 11.5px; font-weight: 700; }
+.set-status { min-block-size: 1.4em; margin: 10px 0 8px; color: var(--panel-ink); font-weight: 600; }
+.set-status[data-st="available"] { color: #5f4d21; }
+.shell[data-theme="dark"] .set-status[data-st="available"] { color: #e3c77f; }
+.set .btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }
+.set-file { margin: 10px 0; padding: 10px 12px; border-radius: 12px; background: var(--panel); box-shadow: 0 0 0 1px var(--panel-line); }
+.set-file p { margin: 4px 0; }
+.set-file code { display: block; margin-top: 4px; padding: 6px 8px; border-radius: 8px; background: var(--wash); color: var(--panel-ink); font: 12.5px/1.4 ui-monospace, Consolas, monospace; text-align: left; overflow-wrap: anywhere; }
+.set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0; flex-wrap: wrap; }
+.set-k { color: var(--panel-soft); font-weight: 600; }
+.shell[data-tdir="ltr"] .set :is(.set-k, dt, dd, b) { direction: ltr; }
+.shell[data-tdir="rtl"] .set :is(.set-k, dt, dd, b) { direction: rtl; }
+.set-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--wash); }
+.set-seg button { font: inherit; border: 0; border-radius: 9px; padding: 5px 12px; background: transparent; color: var(--panel-ink); cursor: pointer; transition: background .22s var(--e-out), color .22s var(--e-out), transform .22s var(--e-spring); }
+.set-seg button:hover { background: var(--wash-2); }
+.set-seg button:active { transform: scale(.96); }
+.set-seg button[aria-pressed="true"] { background: var(--navy); color: #fff; box-shadow: 0 0 0 1px var(--gold) inset; }
+.shell[data-calm="1"] .set-seg button { transition: none; }
+@media (prefers-reduced-motion: reduce) { .set-seg button { transition: none; } }

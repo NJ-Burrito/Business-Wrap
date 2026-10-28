@@ -19,6 +19,7 @@ const jsonInScript = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
 
 import { config } from './config.mjs';
 import { installedNotes } from '../update/check.mjs';
+import { STATE_SCHEMA } from './edits.mjs';
 
 /** Tool watermark folder: BW_WATERMARK_DIR / .local/config.json watermarkDir, else the repo's editor/brand/watermark. */
 export const DEFAULT_WATERMARK_DIR = config().watermarkDir || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'editor', 'brand', 'watermark');
@@ -64,15 +65,11 @@ export function appScript() {
   const strip = (s) => s.replace(/^export /gm, '').replace(/^import .*$/gm, '');
   // the harvest model code lives in its own scope (HV), so its helper names stay out of the editor's
   const hv = ['xml.mjs', 'yaml.mjs', 'model.mjs', 'docs.mjs'].map((f) => strip(read(path.join(HERE, 'harvest', f)))).join('\n');
-  return `(() => {\n'use strict';\n${strip(read(path.join(HERE, 'edits.mjs')))}\n${strip(read(path.join(HERE, 'diagram.mjs')))}\n${strip(read(path.join(HERE, 'render.mjs')))}\n${strip(read(path.join(HERE, 'fontinfo.mjs')))}\nconst HV = (() => {\n${hv}\nreturn { parseModel, modelToDocument, processFigure, humanGraph, harvestToDocument, mergeToDocument };\n})();\n${['value-control.js', 'fonts.js', 'design-panel.js', 'editor.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${read(path.join(REPO, 'editor', 'diagram-ui.js'))}\n${['shell-ux.js', 'views.js', 'explainers.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${read(path.join(REPO, 'editor', 'update.js'))}\n})();`;
+  return `(() => {\n'use strict';\n${strip(read(path.join(HERE, 'edits.mjs')))}\n${strip(read(path.join(HERE, 'diagram.mjs')))}\n${strip(read(path.join(HERE, 'render.mjs')))}\n${strip(read(path.join(HERE, 'fontinfo.mjs')))}\nconst HV = (() => {\n${hv}\nreturn { parseModel, modelToDocument, processFigure, humanGraph, harvestToDocument, mergeToDocument };\n})();\n${['value-control.js', 'fonts.js', 'design-panel.js', 'editor.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${read(path.join(REPO, 'editor', 'diagram-ui.js'))}\n${['shell-ux.js', 'views.js', 'explainers.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${['update.js', 'settings.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n})();`;
 }
 
 export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, localFonts = false, watermarkDir = DEFAULT_WATERMARK_DIR, ui = 'ar', ops = {} }) {
   const theme = loadTheme(themeFile);
-  const I = i18n();
-  // shell UX strings (0.10.0): ux.*, view.*, explain.* live in their own file and join the UI table here
-  const UX = JSON.parse(read(path.join(REPO, 'editor', 'ux-i18n.json')));
-  for (const l of ['ar', 'en']) Object.assign(I.ui[l], UX[l]);
   const services = new Map();
   for (const f of docFiles(inputs)) {
     const raw = read(f);
@@ -87,6 +84,29 @@ export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, l
   const local = localFonts ? localFontCss() : null;
   const { cuts, used } = local ? { cuts: [], used: local.families } : fontsFor(theme);
   const fontCss = local ? local.css : fontFaceCss(cuts, { embed: embedFonts });
+  const html = editorHtml({ services: [...services.values()], setId: set || [...services.keys()].join('+'), ui, theme, fontCss, fontFamilies: local ? local.families : [...new Set(cuts.map((c) => c.family))], wm: watermarkImages(watermarkDir) });
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, html, 'utf8');
+  return { out, services: [...services.keys()], watermark: watermarkImages(watermarkDir).length, fonts: used.length, bytes: Buffer.byteLength(html) };
+}
+
+/** What the Settings page's About section shows, also from file:// (no server). */
+export function aboutInfo() {
+  const pkg = JSON.parse(read(path.join(REPO, 'package.json')));
+  const cl = fs.existsSync(path.join(REPO, 'CHANGELOG.md')) ? read(path.join(REPO, 'CHANGELOG.md')) : '';
+  const date = /(\d{4}-\d{2}-\d{2})/.exec(cl.split('\n').find((l) => l.startsWith(`## [${pkg.version}]`)) || '')?.[1] || '';
+  return {
+    name: 'Business-Wrap', version: pkg.version, date, repo: pkg.homepage, license: 'Proprietary · UNLICENSED',
+    credits: ['Thmanyah (ثمانية)', 'Lucide icons (ISC)', 'Playwright', 'Model Context Protocol SDK'],
+  };
+}
+
+/** One editor HTML from services already in hand (documents + their stored edits, history and comments). */
+function editorHtml({ services, setId, ui = 'ar', theme, fontCss, fontFamilies, wm = [] }) {
+  const I = i18n();
+  // shell UX strings (0.10.0): ux.*, view.*, explain.* live in their own file and join the UI table here
+  const UX = JSON.parse(read(path.join(REPO, 'editor', 'ux-i18n.json')));
+  for (const l of ['ar', 'en']) Object.assign(I.ui[l], UX[l]);
   const app = appScript();
   const csp = [
     "default-src 'none'",
@@ -98,36 +118,55 @@ export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, l
     "base-uri 'none'",
     "form-action 'none'",
   ].join('; ');
-  const first = [...services.values()][0];
+  const first = services[0];
   const ed0 = first.editions.ar ? 'ar' : 'en';
   const doc0 = JSON.parse(first.editions[ed0].raw);
+  const notes = installedNotes();
   const data = {
-    version: 1,
     icons: JSON.parse(read(path.join(REPO, 'editor', 'icons.json'))).icons,
     brand: brandMarks(),
-    setId: set || [...services.keys()].join('+'),
+    setId,
     uiLang: ui,
-    services: [...services.values()],
+    services,
     theme,
     i18n: I,
     fontCss,
-    fontFamilies: local ? local.families : [...new Set(cuts.map((c) => c.family))],
-    uiCss: read(path.join(REPO, 'editor', 'ui.css')) + read(path.join(REPO, 'editor', 'design.css')) + read(path.join(REPO, 'editor', 'ux.css')),
+    fontFamilies,
+    uiCss: read(path.join(REPO, 'editor', 'ui.css')) + read(path.join(REPO, 'editor', 'design.css')) + read(path.join(REPO, 'editor', 'ux.css')) + read(path.join(REPO, 'editor', 'settings.css')),
     csp,
-    version: installedNotes().version,
-    whatsNew: (({ human, migration }) => ({ human, migration }))(installedNotes()),
+    version: notes.version,
+    stateSchema: STATE_SCHEMA,
+    about: aboutInfo(),
+    whatsNew: { human: notes.human, migration: notes.migration },
   };
-  const wm = watermarkImages(watermarkDir);
   const head = `<meta http-equiv="Content-Security-Policy" content="${csp}">
 <style id="bw-editor-css">${read(path.join(REPO, 'editor', 'editor.css'))}
 ${read(path.join(REPO, 'editor', 'views.css'))}</style>
 `;
   const body = `<script type="application/json" id="bw-data">${jsonInScript(data)}</script>
 ${wm.length ? `<script type="application/json" id="bw-watermark-data">${jsonInScript(wm)}</script>\n` : ''}<script id="bw-app">${app}</script>`;
-  const html = renderDocument(doc0, { locale: ed0, labels: I.doc[ed0], theme, fontCss, logos: theme.logos, extraHead: head, extraBody: body });
-  fs.mkdirSync(path.dirname(out), { recursive: true });
-  fs.writeFileSync(out, html, 'utf8');
-  return { out, services: [...services.keys()], watermark: wm.length, fonts: used.length, bytes: Buffer.byteLength(html) };
+  return renderDocument(doc0, { locale: ed0, labels: I.doc[ed0], theme, fontCss, logos: theme.logos, extraHead: head, extraBody: body });
+}
+
+/**
+ * An editor HTML built by an older Business-Wrap (a served editor or a Save-HTML file from 0.9.x, 0.10.0 …)
+ * re-wrapped in THIS version's editor: the documents, their edits, history, comments, snapshots, theme, fonts
+ * and set id are carried over unchanged (the editor migrates the stored fields on open). The file on disk is
+ * never rewritten. Same version, or not an editor → returned as is.
+ */
+export function rewrapEditorHtml(html) {
+  const m = /<script type="application\/json" id="bw-data">([\s\S]*?)<\/script>/.exec(html);
+  if (!m) return html;
+  let d;
+  try { d = JSON.parse(m[1]); } catch { return html; }
+  if (!Array.isArray(d.services) || !d.services.length || d.version === installedNotes().version) return html;
+  const base = loadTheme();
+  const theme = d.theme ? { ...base, ...d.theme, vars: { ...base.vars, ...(d.theme.vars || {}) } } : base;
+  let wm = [];
+  try { const w = /<script type="application\/json" id="bw-watermark-data">([\s\S]*?)<\/script>/.exec(html); if (w) wm = JSON.parse(w[1]); } catch { /* none */ }
+  let { fontCss, fontFamilies } = d;
+  if (typeof fontCss !== 'string') { const cuts = fontsFor(theme).cuts; fontCss = fontFaceCss(cuts, {}); fontFamilies = [...new Set(cuts.map((c) => c.family))]; }
+  return editorHtml({ services: d.services, setId: d.setId, ui: d.uiLang === 'en' ? 'en' : 'ar', theme, fontCss, fontFamilies: fontFamilies || [], wm });
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

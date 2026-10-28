@@ -31,6 +31,7 @@ function xplKey(el) {
   return '';
 }
 function xplTarget(node) {
+  if (ls.get('bw:explainers') === '0') return null; // Settings → Preferences: explainer cards off
   const el = node?.closest?.('button[data-a], select[data-a], select[data-dg], [data-x], .drawer [data-k], .drawer [data-f], .pop label.chk, .drawer :is([data-fpopen], [data-fplocal], [data-fpupload], [data-fprm], .vc-s, .vc-n, .vc-u, .cc-hex, input[type="color"], [data-dpart], [data-dmove], [data-lab])');
   if (!el || el.closest('.palette, .xpl')) return null;
   if (el.matches('.pop label.chk')) { el.dataset.x = el.dataset.x || 'both'; }

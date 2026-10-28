@@ -35,7 +35,7 @@ try {
     await page.goto(pathToFileURL(file).href);
     await page.waitForFunction(() => window.BW?.ready);
     await page.addScriptTag({ path: AXE });
-    const states = ['toolbar', 'check', 'history', 'theme', 'find', 'outline', 'webhooks', 'view', 'selection', 'palette'];
+    const states = ['toolbar', 'check', 'history', 'theme', 'find', 'outline', 'webhooks', 'settings', 'view', 'selection', 'palette'];
     for (const st of states) {
       if (st === 'selection') await page.locator('main.bw-doc [data-p="/chapters/1/sections/0/blocks/1/rows/0/1"]').click();
       else if (st === 'palette') await page.keyboard.press('Control+K');
