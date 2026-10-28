@@ -35,7 +35,7 @@ const MAP = {
   'print.refresh': 'refresh-cw', 'print.preview': 'eye', 'print.browser': 'app-window', zoomReset: 'percent', zoomFit: 'move-horizontal',
   'view.continuous': 'scroll-text', 'view.single': 'file', 'view.spread': 'book-open', 'view.left': 'chevron-left', 'view.right': 'chevron-right',
   // settings and updates (0.11.0)
-  settings: 'settings', updCheck: 'refresh-cw', update: 'download', about: 'info', prefs: 'sliders-horizontal', link: 'external-link', updDone: 'circle-check', updStep: 'circle', updFail: 'circle-x',
+  learning: 'brain', settings: 'settings', updCheck: 'refresh-cw', update: 'download', about: 'info', prefs: 'sliders-horizontal', link: 'external-link', updDone: 'circle-check', updStep: 'circle', updFail: 'circle-x',
 };
 const out = {};
 for (const [k, name] of Object.entries(MAP)) {

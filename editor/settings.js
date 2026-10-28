@@ -1,9 +1,10 @@
 /* Business-Wrap editor — the Settings page (0.11.0), concatenated after update.js.
- * A drawer («الإعدادات» / Settings), reached from the toolbar's View section and Ctrl+K, in three cards:
+ * A drawer («الإعدادات» / Settings), reached from the toolbar's View section and Ctrl+K, in four cards:
  * About (name, logo, version, release date, repository, licence, credits — embedded at build time, so it shows
  * from file:// too), Update (installed vs latest, last check, «تحقّق الآن», auto-check on launch) and Preferences
  * (language, word direction, page view, reduced motion, explainer cards), each written to the store it already had
- * (bw:ui, bw:dir, bw:pages, bw:calm, bw:explainers, bw:update-auto). The check itself is update.js (BW_UPDATE):
+ * (bw:ui, bw:dir, bw:pages, bw:calm, bw:explainers, bw:update-auto), and Local learning («التعلّم المحلي»,
+ * mounted by learning-hook.js through BW_LEARNING.mount(el)). The check itself is update.js (BW_UPDATE):
  * from file:// nothing is fetched, the card says why and how to update instead.
  * Declarations only (hoisted): openDrawer('settings') calls them. */
 
@@ -61,7 +62,9 @@ function settingsPanel() {
 <div class="set-row"><span class="set-k">${esc(t('set.view'))}</span>${setSeg('setView', viewModes().map((m) => [m, t('view.' + m), viewsMode() === m]), t('set.view'))}</div>
 <label class="chk"><input type="checkbox" data-set="calm" ${S.calm ? 'checked' : ''}> ${esc(t('set.calm'))}</label>
 <label class="chk"><input type="checkbox" data-set="explain" ${ls.get('bw:explainers') !== '0' ? 'checked' : ''}> ${esc(t('set.explain'))}</label>
-</section></div>`;
+</section>
+<section class="card set-lrn" aria-labelledby="set-h-lrn"><h3 id="set-h-lrn"><span class="i">${ic('learning')}</span>${esc(t('learning'))}</h3>
+<div class="set-lrn-body" data-lrn-mount></div></section></div>`;
 }
 /** Redraw the Update card in place (keeps the drawer, its scroll and the focus on the pressed button). */
 function setRefreshUpdate(focusKey) {

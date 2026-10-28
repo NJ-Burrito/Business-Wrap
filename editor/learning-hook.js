@@ -3,15 +3,14 @@
  * render. Every edit, note, export and undo becomes one redacted event: POSTed to the local server
  * (/api/learning/events → .local/learning/journal.jsonl) or, from file://, buffered in this
  * browser's IndexedDB until a server or an export takes it. Nothing here is written into the
- * document, Save HTML, the PDF, the DOCX, the design pack or a webhook. No toolbar button: Ctrl+K
- * «التعلّم المحلي» opens the panel; window.BW_LEARNING.mount(el) puts it in a Settings page.
+ * document, Save HTML, the PDF, the DOCX, the design pack or a webhook. Hidden: no toolbar button and no
+ * palette entry; the panel is the «التعلّم المحلي» section of Settings (settings.js → BW_LEARNING.mount(el)).
  */
 const LRN_STR = {
   ar: { learning: 'التعلّم المحلي', 'explain.learning': 'ما يتعلّمه المساعد من تعديلاتك وملاحظاتك وتصديراتك؛ يبقى على جهازك فقط.', lrnPrivacy: 'يبقى على جهازك فقط: لا يُرسل إلى أي مكان، ولا يدخل الوثيقة ولا ملفات التصدير.', lrnOn: 'التعلّم مفعّل', lrnEvents: 'أحداث', lrnLessons: 'دروس', lrnRules: 'قواعد', lrnBuffered: 'محفوظة في المتصفح بانتظار الخادم', lrnView: 'اعرض القواعد', lrnExport: 'صدّر', lrnImport: 'استورد', lrnForget: 'امسح كل ما تعلّمته', lrnForgetSure: 'سيُمسح كل ما تعلّمه المساعد على هذا الجهاز. متأكد؟', lrnForgetYes: 'نعم، امسح', lrnApplied: 'مطبّق من التعلّم', lrnUndoHint: 'Alt+نقرة للتراجع', lrnNoServer: 'القواعد تُعرض عبر الخادم المحلي (npm run serve) أو npm run learn -- rules.', lrnDone: 'تم' },
   en: { learning: 'Local learning', 'explain.learning': 'What the assistant learns from your edits, notes and exports; it stays on this machine only.', lrnPrivacy: 'Stays on this machine only: never sent anywhere, never written into the document or an export.', lrnOn: 'Learning on', lrnEvents: 'events', lrnLessons: 'lessons', lrnRules: 'rules', lrnBuffered: 'kept in this browser until the server is running', lrnView: 'View rules', lrnExport: 'Export', lrnImport: 'Import', lrnForget: 'Forget everything learned', lrnForgetSure: 'Everything the assistant learned on this machine will be wiped. Sure?', lrnForgetYes: 'Yes, wipe it', lrnApplied: 'Applied from learning', lrnUndoHint: 'Alt+click to undo', lrnNoServer: 'Rules show through the local server (npm run serve) or npm run learn -- rules.', lrnDone: 'Done' },
 };
 for (const l of ['ar', 'en']) Object.assign(I18N.ui[l], LRN_STR[l]);
-CMDS.push({ id: 'learning', group: 'document' });
 
 const LRN = (() => {
   const HTTP = location.protocol.startsWith('http');
@@ -173,6 +172,13 @@ const LRN = (() => {
   const _html = saveHtml;
   saveHtml = async function (...a) { exp('html'); return _html(...a); };
   window.addEventListener('beforeprint', () => exp('print'));
+  // the Export & Print centre (print-center.js): html / edits / editsAll go through saveHtml / runAction above
+  const _pc = pcAction;
+  pcAction = async function (a) {
+    const [, k, l] = a.split('.');
+    if (!['html', 'edits', 'editsAll'].includes(k) && !root.querySelector(`[data-a="${a}"][aria-disabled="true"]`)) exp(l ? `${k}.${l}` : k);
+    return _pc(a);
+  };
   const _run = runAction;
   runAction = async function (a) {
     if (a === 'learning') { openPanel(); return; }
@@ -220,10 +226,10 @@ const LRN = (() => {
     try { buffered = (await idbAll()).length; } catch { /* no storage */ }
     return { srv, buffered };
   }
-  async function panelHtml() {
+  async function panelHtml(heading = true) {
     const { srv, buffered } = await stats();
     const n = (k, v) => `<span><b>${v}</b> ${esc(t(k))}</span>`;
-    return `<section class="bw-learning" dir="${S.ui === 'ar' ? 'rtl' : 'ltr'}" lang="${S.ui}"><h2>${esc(t('learning'))}</h2>
+    return `<section class="bw-learning" dir="${S.ui === 'ar' ? 'rtl' : 'ltr'}" lang="${S.ui}">${heading ? `<h2>${esc(t('learning'))}</h2>` : ''}
 <p class="hint">${esc(t('lrnPrivacy'))}</p>
 <label><input type="checkbox" data-lrn="toggle" ${on() ? 'checked' : ''}> ${esc(t('lrnOn'))}</label>
 <p class="counts">${srv ? [n('lrnEvents', srv.events), n('lrnLessons', srv.lessons), n('lrnRules', srv.promoted)].join(' · ') : ''}${buffered ? ` <span>${buffered} ${esc(t('lrnBuffered'))}</span>` : ''}</p>
@@ -268,11 +274,13 @@ const LRN = (() => {
       el.querySelector('[role="alert"]')?.remove();
       show(t('lrnDone'));
     }
-    if (k !== 'rules' && k !== 'import' && k !== 'export' && k !== 'forget') { const keep = out.textContent; el.innerHTML = await panelHtml(); if (keep) { const o2 = el.querySelector('[data-lrn-out]'); o2.hidden = false; o2.textContent = keep; } }
+    if (k !== 'rules' && k !== 'import' && k !== 'export' && k !== 'forget') { const keep = out.textContent; el.innerHTML = await panelHtml(el.dataset.lrnHeading !== '0'); if (keep) { const o2 = el.querySelector('[data-lrn-out]'); o2.hidden = false; o2.textContent = keep; } }
   }
   /** Settings mounts the section here (the upd branch's page): BW_LEARNING.mount(container). */
-  async function mount(el) {
-    el.innerHTML = await panelHtml();
+  async function mount(el, { heading = true } = {}) {
+    if (!el) return el;
+    el.dataset.lrnHeading = heading ? '1' : '0';
+    el.innerHTML = await panelHtml(heading);
     if (!el.dataset.lrnWired) { el.addEventListener('click', (ev) => onPanel(el, ev)); el.addEventListener('change', (ev) => onPanel(el, ev)); el.dataset.lrnWired = '1'; }
     return el;
   }

@@ -189,19 +189,20 @@ try {
   const pdfText = fs.existsSync(pdf) ? fs.readFileSync(pdf, 'latin1') : '';
   const docXml = fs.existsSync(docx) ? unzip(docx) : '';
   check('nothing leaks into the PDF or the DOCX (no event id, no journal field, no note)', pdfText.length > 1000 && docXml.length > 1000 && !leak(pdfText) && !leak(docXml) && !docXml.includes('ملاحظة للتعلم'), `pdf=${pdfText.length} docx=${docXml.length}`);
-  // the panel: hidden (no toolbar button), reached by Ctrl+K, privacy notice, counts
-  const noBtn = await page.evaluate(() => !document.getElementById('bw-ui-host').shadowRoot.querySelector('button[data-a="learning"]'));
-  await page.keyboard.press('Control+K');
-  await page.locator('#cmdlist [data-cmd="learning"]').click();
-  const panel = await page.locator('.dialog .bw-learning').innerText();
-  check('panel: no toolbar button; Ctrl+K «التعلّم المحلي» opens it with the privacy notice and the counts', noBtn && panel.includes('يبقى على جهازك فقط') && /\d+\s*أحداث/.test(panel), panel.slice(0, 200));
-  await page.locator('.dialog [data-lrn="toggle"]').uncheck();
+  // the panel: hidden (no toolbar button, no palette entry), a «التعلّم المحلي» section of Settings, privacy notice, counts
+  const noBtn = await page.evaluate(() => { const r = document.getElementById('bw-ui-host').shadowRoot; window.BW.runAction('palette'); const inPal = !!r.querySelector('#cmdlist [data-cmd="learning"]'); r.querySelector('.scrim').hidden = true; return !r.querySelector('button[data-a="learning"]') && !inPal; });
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.BW.runAction('settings'));
+  await page.locator('[data-lrn-mount] .bw-learning').waitFor();
+  const panel = await page.locator('.set-lrn').innerText();
+  check('panel: no toolbar button or palette entry; Settings «التعلّم المحلي» shows the privacy notice and the counts', noBtn && panel.includes('التعلّم المحلي') && panel.includes('يبقى على جهازك فقط') && /\d+\s*أحداث/.test(panel), panel.slice(0, 200));
+  await page.locator('[data-lrn-mount] [data-lrn="toggle"]').uncheck();
   await page.waitForTimeout(400);
   const offSet = await (await fetch(base(srv) + 'api/learning/status')).json();
   const nOff = L.readEvents().length;
   await page.evaluate(async () => { window.BW.setText('/chapters/0/sections/0/blocks/0/paragraphs/0', 'لا يسجل'); await window.BW_LEARNING.flush(); });
   check('panel: off stops the capture (browser and server)', offSet.enabled === false && L.readEvents().length === nOff);
-  await page.locator('.dialog [data-lrn="toggle"]').check();
+  await page.locator('[data-lrn-mount] [data-lrn="toggle"]').check();
   await page.waitForTimeout(400);
   await ctx.close();
 

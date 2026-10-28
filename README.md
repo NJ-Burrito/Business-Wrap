@@ -116,8 +116,17 @@ Colours by role (swatch + hex code), sizes and spacing (slider + number + unit, 
 ## For AI agents
 Claude Code, Claude Desktop, Codex, Cursor, Gemini CLI or any MCP client: read `AGENTS.md` and `SKILL.md`. At the start of a Business-Wrap task run `npx business-wrap update --check` (or MCP `check_update`); tell the user about a newer release in one line and never update without consent.
 
+### Export & Print
+- One Export menu and one Print entry in the toolbar, the same commands as the palette (one registry).
+- PDF and DOCX per language or both, HTML, print HTML, edits, design pack, Mermaid / SVG / PNG of diagrams; page range and cover option; DOCX and print HTML need the local server.
+- Every export is captured by Local learning (redacted, on this machine only).
+
+### Template packs for any business
+- One neutral service model; six packs: e-service, e-commerce, call-centre, approval, SaaS, generic IEEE 29148, plus your own (`templates/_example-custom`).
+- An evidence stage and ledger: every requirement cites where it came from; organisation profiles set names and wording. See `bible/09-template-packs.md`.
+
 ### Local learning
-The editor quietly keeps a journal of your edits, notes and exports in `.local/learning/` on this machine only (never in a document, an export or a webhook; never sent anywhere). `npm run learn` turns repeated corrections into rules (`.local/learning/rules.md`, Arabic + English) that your AI agent reads before its next draft (MCP `learning_rules`). Ctrl+K → "Local learning" to switch it off, export, import or forget everything. See `bible/10-learning.md`.
+The editor quietly keeps a journal of your edits, notes and exports in `.local/learning/` on this machine only (never in a document, an export or a webhook; never sent anywhere). `npm run learn` turns repeated corrections into rules (`.local/learning/rules.md`, Arabic + English) that your AI agent reads before its next draft (MCP `learning_rules`). Settings → "Local learning" (hidden: no toolbar button, no palette entry) to switch it off, export, import or forget everything. See `bible/10-learning.md`.
 
 ## Security gate
 ```powershell

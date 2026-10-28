@@ -1413,6 +1413,7 @@ ${e.comments.length ? `<h3>${esc(t('comment'))}</h3><ul class="list">${e.comment
     html = head(t('conflictTitle')) + `<ul class="list">${S.conflicts.map((c, i) => `<li data-kind="${c.kind || 'text'}"><span class="path">${esc(c.ed)} ${esc(c.path)}${c.kind === 'structure' ? ` (${esc(t('structConflict'))})` : ''}</span><div class="diff"><div><b>${esc(t('mine'))}</b> ${esc(side(c, 'mine'))}</div><div><b>${esc(t('theirs'))}</b> ${esc(side(c, 'theirs'))}</div></div><div class="btns"><button type="button" data-mine="${i}">${esc(t('keepMine'))}</button><button type="button" data-theirs="${i}">${esc(t('keepTheirs'))}</button></div></li>`).join('')}</ul>`;
   }
   d.innerHTML = html;
+  if (kind === 'settings') window.BW_LEARNING?.mount(d.querySelector('[data-lrn-mount]'), { heading: false }); // learning-hook.js
   d.onclick = onDrawer;
   d.oninput = (e) => {
     if (DP.input(e)) return;

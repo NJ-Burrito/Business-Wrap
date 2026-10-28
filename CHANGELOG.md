@@ -13,6 +13,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 Update from inside the editor, and a Settings page. / التحديث من داخل المحرر، وصفحة الإعدادات.
 
 ### Added / أضيف
+- **Export & Print centre**: one Export menu (PDF/DOCX per language or both, HTML, print HTML, edits, design pack, diagram Mermaid/SVG/PNG), page range, cover option, printers list through the local server. / مركز التصدير والطباعة.
+- **Labels, one command registry, View menu**: the toolbar and Ctrl+K read the same registry (palette ⊆ toolbar, tested); View holds zoom reset/fit, both editions, page views and Settings. / سجل أوامر واحد وقائمة العرض.
+- **Local learning** (hidden): edits, notes and exports (including every Export-centre action) become redacted events in `.local/learning/`; `npm run learn` distils rules; MCP `learning_*` tools; reached only from Settings → «التعلّم المحلي»; updates never touch `.local/learning`. / التعلّم المحلي.
+- **Template packs for any business**: a neutral service model, six packs (e-service, e-commerce, call-centre, approval, SaaS, generic IEEE 29148) plus custom packs, an evidence stage with a ledger, organisation profiles (`bible/09-template-packs.md`). / حزم القوالب والنموذج المحايد ومرحلة الأدلة.
 - **Settings page** (toolbar View section, or Ctrl+K → Settings): About (name, logo, version, release date, repository, licence, credits), Update (installed and latest version, last check, Check now, check automatically at launch, on by default) and Preferences (interface language, word direction, page view, reduce motion, explainer cards). / صفحة الإعدادات: حول البرنامج، والتحديث، والتفضيلات.
 - **Update check at launch**: when the editor is opened through the local server (`npm run serve`), it asks the server whether a newer release exists, without blocking anything and at most once a day unless you press Check now; offline or on any error it stays silent and Settings shows why. / فحص التحديث عند الفتح، مرة في اليوم على الأكثر.
 - **Update popup**: a newer release shows its version and what is new (Added, Changed, Fixed), with Update now, Later and Skip this version. / نافذة التحديث مع ما الجديد.
