@@ -3,11 +3,15 @@
 <p align="center"><img src="site/assets/media/hero.gif" alt="Business-Wrap: evidence in, one Arabic and English requirements document out" width="720"></p>
 
 <p align="center">
-  <a href="https://github.com/NJ-Burrito/Business-Wrap/releases/latest"><img src="https://img.shields.io/github/v/release/NJ-Burrito/Business-Wrap?style=for-the-badge&label=release&color=0B6B50" alt="release"></a>
-  <a href="https://www.npmjs.com/package/business-wrap"><img src="https://img.shields.io/npm/v/business-wrap?style=for-the-badge&label=npm&color=0B6B50" alt="npm"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-0B6B50?style=for-the-badge" alt="licence: MIT"></a>
-  <a href="https://nj-burrito.github.io/Business-Wrap/"><img src="https://img.shields.io/badge/website-live-C8F04A?style=for-the-badge&labelColor=0B6B50" alt="website"></a>
-  <a href="https://github.com/NJ-Burrito/Business-Wrap/actions/workflows/gates.yml"><img src="https://img.shields.io/github/actions/workflow/status/NJ-Burrito/Business-Wrap/gates.yml?style=for-the-badge&label=gates" alt="gates"></a>
+  <a href="https://nj-burrito.github.io/Business-Wrap/"><img src="https://img.shields.io/badge/website-nj--burrito.github.io-C8F04A?labelColor=0F231E" alt="Website"></a>
+  <a href="https://github.com/NJ-Burrito/Business-Wrap/releases/latest"><img src="https://img.shields.io/github/v/release/NJ-Burrito/Business-Wrap?label=release&color=C8F04A&labelColor=0F231E" alt="Release"></a>
+  <a href="https://www.npmjs.com/package/business-wrap"><img src="https://img.shields.io/npm/v/business-wrap?label=npm&logo=npm&logoColor=white&color=C8F04A&labelColor=0F231E" alt="npm"></a>
+  <a href="https://github.com/NJ-Burrito/Business-Wrap/actions/workflows/gates.yml"><img src="https://github.com/NJ-Burrito/Business-Wrap/actions/workflows/gates.yml/badge.svg" alt="Gates"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-C8F04A?labelColor=0F231E" alt="License: MIT"></a>
+  <a href=".claude-plugin/marketplace.json"><img src="https://img.shields.io/badge/Claude%20Code-plugin-C8F04A?labelColor=0F231E" alt="Claude Code plugin"></a>
+  <a href="mcp/server.json"><img src="https://img.shields.io/badge/MCP-server-C8F04A?labelColor=0F231E" alt="MCP server"></a>
+  <a href="README.ar.md"><img src="https://img.shields.io/badge/Arabic%20%2B%20English-first--class-C8F04A?labelColor=0F231E" alt="Arabic and English"></a>
+  <a href="https://github.com/NJ-Burrito/Business-Wrap/stargazers"><img src="https://img.shields.io/github/stars/NJ-Burrito/Business-Wrap?style=social" alt="Stars"></a>
 </p>
 
 ## ⚡ In 10 seconds
