@@ -140,8 +140,8 @@ try {
   else results.push('SKIP  pdf: no Type 3 font  — Thmanyah TTF not installed on this machine (fonts/nj-fonts missing and none installed)');
   const docx = path.join(OUT, 'sample.ar.docx');
   exportDocx(docAr, { locale: 'ar', theme, docxPath: docx, embedFonts: false });
-  const py = 'import zipfile,sys;x=zipfile.ZipFile(sys.argv[1]).read("word/document.xml").decode();print(x.count("<wps:wsp>"),x.count("wpg:wgp"),x.count("<pic:pic"),int("رئيس القسم" in x))';
-  const [shapes, groups, pics, label] = (spawnSync(...py(['-c', py, docx], []), { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } }).stdout || '0 0 0 0').trim().split(/\s+/).map(Number);
+  const code = 'import zipfile,sys;x=zipfile.ZipFile(sys.argv[1]).read("word/document.xml").decode();print(x.count("<wps:wsp>"),x.count("wpg:wgp"),x.count("<pic:pic"),int("رئيس القسم" in x))';
+  const [shapes, groups, pics, label] = (spawnSync(...py(['-c', code, docx], []), { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } }).stdout || '0 0 0 0').trim().split(/\s+/).map(Number);
   check('docx: the diagram is one group of native shapes with its labels, not a picture', shapes > 80 && groups >= 2 && pics === 0 && label === 1, JSON.stringify({ shapes, groups, pics, label }));
 
   // ── the editor: contextual toolbar and in-place editing ──
