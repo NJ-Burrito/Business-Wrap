@@ -12,6 +12,7 @@
 import fs from 'node:fs';
 import { pick, fold } from '../model.mjs';
 import { DIAGRAM } from '../../diagram.mjs';
+import { maskRecord } from '../../harvest/output.mjs';
 
 const LOCALES = ['ar', 'en'];
 const sections = (d) => d.chapters.flatMap((c) => c.sections);
@@ -169,6 +170,9 @@ const outputImage = {
     }
     const unmasked = ctx.model.outputs.filter((o) => o.preview && o.masked !== true);
     if (unmasked.length) out.push(`${unmasked.length} output preview(s) not marked masked: never print an unmasked image`);
+    // `masked: true` is a claim: the capture's mask record must sit beside the image, with boxes and no leak
+    const unproven = ctx.model.outputs.filter((o) => o.preview && o.masked === true && !String(o.preview).startsWith('data:')).filter((o) => { const m = maskRecord(o.preview); return !m || !m.boxes?.length || m.leaks !== 0; });
+    if (unproven.length) out.push(`${unproven.length} output preview(s) marked masked with no mask record (<name>.mask.json from captureOutput)`);
     if (out.length) return { status: 'FAIL', detail: out.join('; ') };
     return qs.length ? { status: 'FLAG', detail: 'output story without a picture', questions: qs } : { status: 'PASS', detail: 'output story last; image iff story' };
   },

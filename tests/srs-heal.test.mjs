@@ -18,6 +18,8 @@ import { parseBpmn, humanGraph } from '../engine/harvest/model.mjs';
 import { DIAGRAM } from '../engine/diagram.mjs';
 import http from 'node:http';
 import { crawl } from '../engine/harvest/crawl.mjs';
+import { captureOutput } from '../engine/harvest/output.mjs';
+import { pathToFileURL } from 'node:url';
 
 const S = (...p) => path.join(REPO, 'samples', ...p);
 const FX = (...p) => path.join(REPO, 'tests', 'fixtures', 'srs', ...p);
@@ -141,6 +143,20 @@ export async function run(check) {
     const rec = readJson(EP.record); rec.facts.outputs[0].preview = path.join(tmp, 'missing-preview.png');
     const r = await buildDocuments({ ...EP, record: rec });
     check('A8 output-image: unmasked/missing preview FAILs; story without a picture FLAGs OQ-OUTPUT-PREVIEW', H(r, 'output-image').status === 'FAIL' && /not marked masked/.test(H(r, 'output-image').detail) && H(ep, 'output-image').status === 'FLAG' && ep.evidence.openQuestions.some((q) => q.id === 'OQ-OUTPUT-PREVIEW'), H(r, 'output-image').detail);
+  }
+  // A8 capture: the output page is masked in the DOM (named fields + every value-like leaf), shot viewport-only,
+  // and the mask record beside the PNG is what lets `masked: true` print; a bare `masked: true` FAILs
+  {
+    let cap = null; let err = '';
+    try { cap = await captureOutput({ url: pathToFileURL(FX('output-preview.html')).href, out: path.join(tmp, 'a8', 'permit.png'), mask: ['.holder'], target: '.permit' }); } catch (e) { err = e.message; }
+    const png = cap && fs.readFileSync(cap.preview);
+    const rec = cap && readJson(cap.maskFile);
+    const withRec = readJson(EP.record); Object.assign(withRec.facts.outputs[0], { preview: cap?.preview, masked: true });
+    const r = await buildDocuments({ ...EP, record: withRec });
+    const bare = path.join(tmp, 'a8', 'bare.png'); if (cap) fs.copyFileSync(cap.preview, bare);
+    const noRec = readJson(EP.record); Object.assign(noRec.facts.outputs[0], { preview: bare, masked: true });
+    const r2 = await buildDocuments({ ...EP, record: noRec });
+    check('A8 capture: 4 data cells masked (name by selector, number/e-mail/date by pattern), viewport 1366×900, record PASSes, bare masked:true FAILs', !!cap && png.readUInt32BE(16) === 1366 && png.readUInt32BE(20) === 900 && rec.boxes.length === 4 && rec.leaks === 0 && H(r, 'output-image').status === 'PASS' && H(r2, 'output-image').status === 'FAIL' && /no mask record/.test(H(r2, 'output-image').detail), err || `${rec?.boxes.length} boxes; ${H(r, 'output-image').status}: ${H(r, 'output-image').detail} / ${H(r2, 'output-image').detail}`);
   }
 
   /* ── B ── */
