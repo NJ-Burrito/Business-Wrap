@@ -75,8 +75,8 @@ id = "bw-font-binary"
 description = "A font binary (licence forbids redistribution)"
 path = '''(?i)\.(otf|ttf|ttc|woff2?|eot)$'''
 [[rules.allowlists]]
-description = "The owner's bundled Thmanyah fallback (owner decision, 2026-10-28); every other path still fails"
-paths = ['''^fonts/nj-fonts/thmanyah/thmanyah(sans|seriftext|serifdisplay)/(otf|ttf|woff2)/[A-Za-z0-9-]+\.(otf|ttf|woff2)$''']
+description = "The owner's bundled Thmanyah fallback (owner decision, 2026-10-28) and the three site web fonts (decision D2-A); every other path still fails"
+paths = ['''^fonts/nj-fonts/thmanyah/thmanyah(sans|seriftext|serifdisplay)/(otf|ttf|woff2)/[A-Za-z0-9-]+\.(otf|ttf|woff2)$''', '''^site/assets/fonts/thmanyah-(sans-400|sans-700|serif-display-700)\.woff2$''']
 
 [[rules]]
 id = "bw-secret-file"

@@ -1,53 +1,57 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr" data-title-en="Support · Business-Wrap" data-title-ar="الدعم · بزنس راب">
+<html>
 <head>
-{{head path="support.html" en="Support · Business-Wrap" desc="Get help with Business-Wrap: the guide, common fixes, GitHub issues and how to report a security problem."}}
+{{head path="support.html" en="Support · Business-Wrap" ar="الدعم · بزنس راب" desc="Get help with Business-Wrap: the guide, common fixes, GitHub issues and how to report a security problem." desc-ar="المساعدة في بزنس راب: الدليل، والحلول الشائعة، وبلاغات GitHub، وطريقة الإبلاغ عن مشكلة أمنية."}}
 </head>
 <body>
 {{header page="support"}}
 <main id="main" class="wrap">
-<article class="doc" data-l="en" lang="en" dir="ltr">
-  <h1>Support</h1>
+<article class="doc" data-l="en">
+  <header class="doc-cover"><h1>Support</h1><p class="updated">Last updated 2026-10-28</p></header>
   <p class="verdict">Start with the guide. Still stuck? Open a GitHub issue.</p>
-  <h2>Read first</h2>
-  <ul>
-    <li><a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/docs/guide.md">The guide</a>: requirements, quick start, troubleshooting, backup, hand-over.</li>
-    <li><a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/CHANGELOG.md">What changed</a> in each version, with migration notes.</li>
-    <li><a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/mcp/README.md">The MCP server</a>: every tool and its arguments.</li>
+  <nav class="toc" aria-labelledby="toc-h"><p id="toc-h" class="toc-h">On this page</p><ol><li><a href="#read">Read first</a></li><li><a href="#fixes">Common fixes</a></li><li><a href="#ask">Ask or report</a></li></ol></nav>
+  <h2 id="read"><span class="no">1</span>Read first</h2>
+  <ul class="links">
+    <li><a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/docs/guide.md">The guide</a><span>requirements, quick start, troubleshooting, backup, hand-over</span></li>
+    <li><a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/CHANGELOG.md">What changed</a><span>each version, with migration notes</span></li>
+    <li><a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/mcp/README.md">The MCP server</a><span>every tool and its arguments</span></li>
   </ul>
-  <h2>Common fixes</h2>
+  <h2 id="fixes"><span class="no">2</span>Common fixes</h2>
   <ul>
-    <li>Fonts right in the editor, wrong in the PDF: print from TrueType cuts (<code>fonts/README.md</code>).</li>
+    <li>Export or print does nothing: open the editor through <code>npm run serve</code>, not from the file on disk.</li>
+    <li>Fonts right in the editor, wrong in the PDF: print from TrueType cuts (see <a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/fonts/README.md">fonts/README.md</a>).</li>
     <li>Python crashes printing Arabic on Windows: set <code>PYTHONUTF8=1</code>.</li>
     <li>No update popup: open the editor through <code>npm run serve</code>. From <code>file://</code> it cannot check.</li>
   </ul>
-  <h2>Ask or report</h2>
+  <h2 id="ask"><span class="no">3</span>Ask or report</h2>
   <ul>
     <li><a href="https://github.com/NJ-Burrito/Business-Wrap/issues">GitHub issues</a> for bugs and questions. Include the version (<code>node update/cli.mjs --check</code>) and the gate line you saw.</li>
     <li>Never attach client documents, credentials or real personal data. Use the sample service to show the problem.</li>
-    <li>Security problem: use the contact on the <a href="https://nj-burrito.github.io/#contact">portfolio</a>. Please do not open a public issue for it.</li>
+    <li>Security problem: report it privately, as <a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/SECURITY.md">SECURITY.md</a> explains, or through the contact on the <a href="https://nj-burrito.github.io/#contact">portfolio</a>. Please do not open a public issue for it.</li>
   </ul>
 </article>
-<article class="doc" data-l="ar" lang="ar" dir="rtl">
-  <h1>الدعم</h1>
+<article class="doc" data-l="ar">
+  <header class="doc-cover"><h1>الدعم</h1><p class="updated">آخر تحديث <span dir="ltr">2026-10-28</span></p></header>
   <p class="verdict">ابدأ بالدليل. وإن بقيت المشكلة فافتح بلاغا على GitHub.</p>
-  <h2>اقرأ أولا</h2>
-  <ul>
-    <li><a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/docs/guide.ar.md">الدليل</a>: المتطلبات، والبدء السريع، وحل المشكلات، والنسخ الاحتياطي، والتسليم.</li>
-    <li><a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/CHANGELOG.md">ما الذي تغيّر</a> في كل إصدار، مع ملاحظات الترحيل.</li>
-    <li><a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/mcp/README.ar.md">خادم MCP</a>: كل أداة ووسائطها.</li>
+  <nav class="toc" aria-labelledby="toc-h"><p id="toc-h" class="toc-h">في هذه الصفحة</p><ol><li><a href="#read">اقرأ أولا</a></li><li><a href="#fixes">حلول شائعة</a></li><li><a href="#ask">اسأل أو أبلغ</a></li></ol></nav>
+  <h2 id="read"><span class="no">1</span>اقرأ أولا</h2>
+  <ul class="links">
+    <li><a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/docs/guide.ar.md">الدليل</a><span>المتطلبات، والبدء السريع، وحل المشكلات، والنسخ الاحتياطي، والتسليم</span></li>
+    <li><a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/CHANGELOG.md">ما الذي تغير</a><span>كل إصدار، مع ملاحظات الترحيل</span></li>
+    <li><a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/mcp/README.ar.md">خادم MCP</a><span>كل أداة ووسائطها</span></li>
   </ul>
-  <h2>حلول شائعة</h2>
+  <h2 id="fixes"><span class="no">2</span>حلول شائعة</h2>
   <ul>
-    <li>الخطوط صحيحة في المحرر وخاطئة في PDF: اطبع من نسخ TrueType (<code>fonts/README.md</code>).</li>
+    <li>التصدير أو الطباعة لا يفعل شيئا: افتح المحرر عبر <code>npm run serve</code>، لا من الملف على القرص.</li>
+    <li>الخطوط صحيحة في المحرر وخاطئة في PDF: اطبع من نسخ TrueType (انظر <a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/fonts/README.md">fonts/README.md</a>).</li>
     <li>توقف Python عند طباعة العربية على Windows: اضبط <code>PYTHONUTF8=1</code>.</li>
     <li>لا تظهر نافذة التحديث: افتح المحرر عبر <code>npm run serve</code>، فمن <code>file://</code> لا يستطيع الفحص.</li>
   </ul>
-  <h2>اسأل أو أبلغ</h2>
+  <h2 id="ask"><span class="no">3</span>اسأل أو أبلغ</h2>
   <ul>
     <li><a href="https://github.com/NJ-Burrito/Business-Wrap/issues">بلاغات GitHub</a> للأعطال والأسئلة. اذكر الإصدار (<code>node update/cli.mjs --check</code>) وسطر الفحص الذي ظهر لك.</li>
     <li>لا ترفق وثائق العملاء ولا بيانات الدخول ولا بيانات شخصية حقيقية. استخدم الخدمة النموذجية لتوضيح المشكلة.</li>
-    <li>مشكلة أمنية: استخدم وسيلة التواصل في <a href="https://nj-burrito.github.io/#contact">الموقع الشخصي</a>، ولا تفتح لها بلاغا عاما.</li>
+    <li>مشكلة أمنية: أبلغ عنها بشكل خاص كما يشرح <a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/SECURITY.ar.md">SECURITY.ar.md</a>، أو عبر وسيلة التواصل في <a href="https://nj-burrito.github.io/#contact">الموقع الشخصي</a>، ولا تفتح لها بلاغا عاما.</li>
   </ul>
 </article>
 </main>

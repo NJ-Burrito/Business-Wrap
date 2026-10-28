@@ -34,6 +34,17 @@ export function mismatches(tag) {
   want('mcp/server.json version', srv.version);
   for (const p of srv.packages || []) want(`mcp/server.json package ${p.identifier}`, p.version);
   for (const f of ['mcp/smithery.yaml', 'mcp/README.md', 'mcp/README.ar.md', 'README.md', 'README.ar.md']) for (const m of txt(f).matchAll(/business-wrap@(\d+\.\d+\.\d+)|Business-Wrap#v(\d+\.\d+\.\d+)/g)) want(f, m[1] || m[2]);
+  // The built site and its JSON-LD (tools/site/build.mjs fills {{version}} from package.json): a hand edit or a
+  // stale build fails here. Only version-shaped text next to a version word is read, so 127.0.0.1 never counts.
+  const siteRe = /"softwareVersion":"([^"]+)"|\bv(\d+\.\d+\.\d+)\b|الإصدار (\d+\.\d+\.\d+)|Business-Wrap (\d+\.\d+\.\d+)|بزنس راب (\d+\.\d+\.\d+)/g;
+  for (const f of ['site/index.html', 'site/ar/index.html', 'site/privacy.html', 'site/ar/privacy.html']) {
+    if (!fs.existsSync(path.join(ROOT, f))) { bad.push(`${f} is missing (run node tools/site/build.mjs)`); continue; }
+    let n = 0;
+    for (const m of txt(f).matchAll(siteRe)) { n++; want(f, m.slice(1).find(Boolean)); }
+    if (f.endsWith('index.html') && !/"softwareVersion":"/.test(txt(f))) bad.push(`${f} has no JSON-LD softwareVersion`);
+    if (!n) bad.push(`${f} names no version`);
+  }
+  if (!/"softwareVersion": "\{\{version\}\}"/.test(txt('tools/site/pages/index.ld.json'))) bad.push('tools/site/pages/index.ld.json softwareVersion is not {{version}}');
   if (!extractNotes(txt('CHANGELOG.md'), v)) bad.push(`CHANGELOG.md has no section for ${v}`);
   if (tag && tag.replace(/^v/, '') !== v) bad.push(`tag ${tag} does not match package.json ${v}`);
   return { version: v, bad };
@@ -43,5 +54,5 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const i = process.argv.indexOf('--tag');
   const { version, bad } = mismatches(i > 0 ? process.argv[i + 1] : '');
   if (bad.length) { for (const b of bad) console.error(`FAIL  version-sync: ${b}`); process.exit(1); }
-  console.log(`PASS  version-sync: ${version} in package.json, plugin, plugin MCP launch business-wrap@${version}, marketplace, MCP registry, Smithery, READMEs, CHANGELOG`);
+  console.log(`PASS  version-sync: ${version} in package.json, plugin, plugin MCP launch business-wrap@${version}, marketplace, MCP registry, Smithery, READMEs, site and JSON-LD, CHANGELOG`);
 }

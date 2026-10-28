@@ -1,18 +1,18 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr" data-title-en="Business-Wrap: bilingual requirements document generator, Arabic + English" data-title-ar="بزنس راب: مولّد وثائق متطلبات بالعربية والإنجليزية">
+<html>
 <head>
-{{head path="index.html" en="Business-Wrap: bilingual requirements document generator, Arabic + English" desc="Free, open-source requirements document generator. Turn a process model or a walk through a live e-service into an Arabic and English SRS, edit it on the page that prints, export PDF and DOCX."}}
+{{head path="index.html" en="Business-Wrap: bilingual requirements document generator, Arabic + English" ar="بزنس راب: مولد وثائق متطلبات بالعربية والإنجليزية" desc="Free, open-source requirements document generator. Turn a process model or a walk through a live e-service into an Arabic and English SRS, edit it on the page that prints, export PDF and DOCX." desc-ar="مولد وثائق متطلبات مجاني ومفتوح المصدر. حول نموذج إجراء أو جولة في خدمة إلكترونية حية إلى وثيقة متطلبات بالعربية والإنجليزية، وحررها على الصفحة التي تطبع، وصدر PDF وDOCX."}}
 </head>
 <body>
 {{header page="home"}}
 <main id="main">
 
-<section class="hero">
-  <div class="wrap hero-grid">
-    <div data-l="en" lang="en" dir="ltr">
-      <span class="eyebrow"><span class="dot"></span>Free and open source · MIT · v0.11.0</span>
-      <h1>Business-Wrap: the bilingual requirements document generator</h1>
-      <p class="hook">Evidence in. One document, <span class="sweep">two languages</span>.</p>
+<section class="hero" aria-labelledby="hero-h">
+  <div class="wrap hero-grid" data-l="en">
+    <div class="hero-copy">
+      <p class="chip">Free and open source · MIT · v{{version}}</p>
+      <h1 id="hero-h">Business-Wrap: the bilingual requirements document generator</h1>
+      <p class="hook">Evidence in. One document, <span class="rule">two languages</span>.</p>
       <ul class="three">
         <li>{{icon:evidence}}<span>Give it a process model or a walk through the live service.</span></li>
         <li>{{icon:bilingual}}<span>Edit on the page that prints. Arabic right to left, English left to right.</span></li>
@@ -24,14 +24,20 @@
       </div>
       <p class="note">Runs on your computer. Node 20+, Chrome or Edge. No account.</p>
     </div>
-    <div data-l="ar" lang="ar" dir="rtl">
-      <span class="eyebrow"><span class="dot"></span>مجاني ومفتوح المصدر · MIT · الإصدار 0.11.0</span>
-      <p class="h1" role="heading" aria-level="1">بزنس راب: مولّد وثائق المتطلبات ثنائي اللغة</p>
-      <p class="hook">أدلة تدخل. وثيقة واحدة <span class="sweep">بلغتين</span>.</p>
+    <div class="cover-stage" aria-hidden="true">
+      <div class="cover cover-back" lang="ar" dir="rtl"><div class="c-spine"><span class="c-cap"></span></div><div class="c-body"><span class="c-org">بزنس راب</span><span class="c-title">متطلبات الخدمة</span><span class="c-rule"></span><span class="c-meta">العربية · الإنجليزية</span></div></div>
+      <div class="cover cover-front" dir="ltr"><div class="c-spine"><span class="c-cap"></span><span class="c-code">BW · SRS</span></div><div class="c-body"><span class="c-org">Business-Wrap</span><span class="c-title">Service requirements</span><span class="c-rule"></span><span class="c-meta">Arabic · English</span><span class="c-meta">PDF · DOCX</span></div></div>
+    </div>
+  </div>
+  <div class="wrap hero-grid" data-l="ar">
+    <div class="hero-copy">
+      <p class="chip">مجاني ومفتوح المصدر · MIT · الإصدار {{version}}</p>
+      <h1 id="hero-h">بزنس راب: مولد وثائق المتطلبات ثنائي اللغة</h1>
+      <p class="hook">أدلة تدخل. وثيقة واحدة <span class="rule">بلغتين</span>.</p>
       <ul class="three">
         <li>{{icon:evidence}}<span>أعطه نموذج الإجراء أو جولة في الخدمة الحية.</span></li>
-        <li>{{icon:bilingual}}<span>حرّر على الصفحة نفسها التي تُطبع. العربية من اليمين، والإنجليزية من اليسار.</span></li>
-        <li>{{icon:export}}<span>صدّر PDF وDOCX، والخطوط مضمّنة نصا حقيقيا.</span></li>
+        <li>{{icon:bilingual}}<span>حرر على الصفحة نفسها التي تطبع. العربية من اليمين، والإنجليزية من اليسار.</span></li>
+        <li>{{icon:export}}<span>صدر PDF وDOCX، والخطوط مضمنة نصا حقيقيا.</span></li>
       </ul>
       <div class="actions">
         <a class="btn btn-primary" href="#install">{{ui:download}}التثبيت</a>
@@ -39,171 +45,183 @@
       </div>
       <p class="note">يعمل على جهازك. Node 20 أو أحدث، وChrome أو Edge. بلا حساب.</p>
     </div>
-    <figure class="hero-media" data-reveal>
-      <img src="assets/social-card.png" width="1280" height="640" alt="Business-Wrap: two pages on one spine, Arabic and English, one highlighter stroke across both" fetchpriority="high">
-      <figcaption class="stamp"><img src="assets/logo/mark-animated.svg" width="22" height="22" alt=""><span data-l="en">Evidence, highlighted and bound</span><span data-l="ar">الدليل، مُعلَّما ومُجلَّدا</span></figcaption>
+    <div class="cover-stage" aria-hidden="true">
+      <div class="cover cover-back" lang="en" dir="ltr"><div class="c-spine"><span class="c-cap"></span></div><div class="c-body"><span class="c-org">Business-Wrap</span><span class="c-title">Service requirements</span><span class="c-rule"></span><span class="c-meta">Arabic · English</span></div></div>
+      <div class="cover cover-front" dir="rtl"><div class="c-spine"><span class="c-cap"></span><span class="c-code" dir="ltr">BW · SRS</span></div><div class="c-body"><span class="c-org">بزنس راب</span><span class="c-title">متطلبات الخدمة</span><span class="c-rule"></span><span class="c-meta">العربية · الإنجليزية</span><span class="c-meta">PDF · DOCX</span></div></div>
+    </div>
+  </div>
+</section>
+
+<nav class="jump" aria-label="On this page" data-l="en">
+  <div class="wrap"><ul><li><a href="#how">How it works</a></li><li><a href="#features">Features</a></li><li><a href="#install">Install</a></li><li><a href="#updates">Updates</a></li><li><a href="#safe">Is it safe?</a></li><li><a href="#faq">FAQ</a></li></ul><span class="jump-ind" aria-hidden="true"></span></div>
+</nav>
+<nav class="jump" aria-label="في هذه الصفحة" data-l="ar">
+  <div class="wrap"><ul><li><a href="#how">كيف يعمل</a></li><li><a href="#features">المزايا</a></li><li><a href="#install">التثبيت</a></li><li><a href="#updates">التحديثات</a></li><li><a href="#safe">هل هو آمن؟</a></li><li><a href="#faq">أسئلة شائعة</a></li></ul><span class="jump-ind" aria-hidden="true"></span></div>
+</nav>
+
+<section class="section" id="how" aria-labelledby="how-h">
+  <div class="wrap">
+    <header class="sec-head" data-reveal data-l="en"><span class="sec-no">01</span><h2 id="how-h">Evidence, then the editor, then <span class="rule">PDF and DOCX</span></h2></header>
+    <header class="sec-head" data-reveal data-l="ar"><span class="sec-no">01</span><h2 id="how-h">الأدلة، ثم المحرر، ثم <span class="rule">PDF وDOCX</span></h2></header>
+    <ol class="flow" data-reveal-stagger data-l="en">
+      <li><span class="step">1.1</span><div class="icons">{{icon:process-model}}{{icon:walk}}</div><div><h3>Evidence</h3><p>A process model gives roles, workflow, rules and statuses. A walk through the live service gives the card, the form, attachments and messages. The merge keeps both.</p></div></li>
+      <li><span class="step">1.2</span><div class="icons">{{icon:editor}}{{icon:direction}}</div><div><h3>Editor</h3><p>One HTML file. The page you edit is the page that prints. Every change is recorded and can be undone.</p></div></li>
+      <li><span class="step">1.3</span><div class="icons">{{icon:pdf}}{{icon:docx}}</div><div><h3>PDF + DOCX</h3><p>Both editions, with the fonts embedded as real, selectable text. Plus the edits file and a design pack.</p></div></li>
+    </ol>
+    <ol class="flow" data-reveal-stagger data-l="ar">
+      <li><span class="step">1.1</span><div class="icons">{{icon:process-model}}{{icon:walk}}</div><div><h3>الأدلة</h3><p>نموذج الإجراء يعطي الأدوار وسير العمل والقواعد والحالات. والجولة في الخدمة الحية تعطي البطاقة والنموذج والمرفقات والرسائل. والدمج يحتفظ بالاثنين.</p></div></li>
+      <li><span class="step">1.2</span><div class="icons">{{icon:editor}}{{icon:direction}}</div><div><h3>المحرر</h3><p>ملف HTML واحد. الصفحة التي تحررها هي الصفحة التي تطبع. كل تغيير مسجل ويمكن التراجع عنه.</p></div></li>
+      <li><span class="step">1.3</span><div class="icons">{{icon:pdf}}{{icon:docx}}</div><div><h3>PDF وDOCX</h3><p>النسختان معا، والخطوط مضمنة نصا حقيقيا قابلا للتحديد. ومعهما ملف التعديلات وحزمة التصميم.</p></div></li>
+    </ol>
+    <figure class="how-media" data-reveal>
+      <video class="hero-video" src="{{media:hero-mp4}}" data-poster="{{media:hero-poster}}" width="1280" height="640" muted loop playsinline preload="none" aria-hidden="true"></video>
     </figure>
   </div>
 </section>
 
-<nav class="jump" aria-label="On this page">
+<section class="section" id="features" aria-labelledby="features-h">
   <div class="wrap">
-    <ul data-l="en" lang="en"><li><a href="#how">How it works</a></li><li><a href="#features">Features</a></li><li><a href="#install">Install</a></li><li><a href="#updates">Updates</a></li><li><a href="#faq">FAQ</a></li></ul>
-    <ul data-l="ar" lang="ar" dir="rtl"><li><a href="#how">كيف يعمل</a></li><li><a href="#features">المزايا</a></li><li><a href="#install">التثبيت</a></li><li><a href="#updates">التحديثات</a></li><li><a href="#faq">أسئلة شائعة</a></li></ul>
-  </div>
-</nav>
-
-<section class="section" id="how">
-  <div class="wrap">
-    <div data-l="en" lang="en" dir="ltr">
-      <div class="section-head" data-reveal><span class="kicker">How it works</span><h2>Evidence, then the editor, then <span class="sweep">PDF and DOCX</span></h2></div>
-      <ol class="flow" data-reveal-stagger>
-        <li><span class="num"></span><div class="icons">{{icon:process-model}}{{icon:walk}}</div><h3>Evidence</h3><p>A process model gives roles, workflow, rules and statuses. A walk through the live service gives the card, the form, attachments and messages. The merge keeps both.</p></li>
-        <li><span class="num"></span><div class="icons">{{icon:editor}}{{icon:direction}}</div><h3>Editor</h3><p>One HTML file. The page you edit is the page that prints. Every change is recorded and can be undone.</p></li>
-        <li><span class="num"></span><div class="icons">{{icon:pdf}}{{icon:docx}}</div><h3>PDF + DOCX</h3><p>Both editions, with the fonts embedded as real, selectable text. Plus the edits file and a design pack.</p></li>
-      </ol>
+    <header class="sec-head" data-reveal data-l="en"><span class="sec-no">02</span><h2 id="features-h">What you get</h2></header>
+    <header class="sec-head" data-reveal data-l="ar"><span class="sec-no">02</span><h2 id="features-h">ما تحصل عليه</h2></header>
+    <div class="stories" data-reveal-stagger data-l="en">
+      <article class="story"><span class="sid">F-01</span>{{icon:harvest}}<h3>Two ways in</h3><p>Start from BPMN, draw.io or YAML, or from a crawl of the live service.</p></article>
+      <article class="story"><span class="sid">F-02</span>{{icon:print-layout}}<h3>The page is the print</h3><p>Every printed word, table and label is editable where it sits.</p></article>
+      <article class="story"><span class="sid">F-03</span>{{icon:bilingual}}<h3>Both languages first-class</h3><p>Arabic and English editions side by side. The layout never flips.</p></article>
+      <article class="story"><span class="sid">F-04</span>{{icon:diagram}}<h3>Diagrams you can edit</h3><p>Shapes, arrows with bends, labels in place. Mermaid in and out.</p></article>
+      <article class="story"><span class="sid">F-05</span>{{icon:design-pack}}<h3>Any font, real text</h3><p>The project's fonts, this computer's, or an uploaded file, embedded in PDF and DOCX.</p></article>
+      <article class="story"><span class="sid">F-06</span>{{icon:explainer}}<h3>Tools that explain themselves</h3><p>Rest on a tool: a card names it, shows its shortcut and plays what it does.</p></article>
+      <article class="story"><span class="sid">F-07</span>{{icon:edits-file}}<h3>Six template packs</h3><p>E-service, e-commerce, call-centre, approval, SaaS and generic IEEE 29148, plus your own.</p></article>
+      <article class="story"><span class="sid">F-08</span>{{icon:dry-run}}<h3>The crawler stops before Send</h3><p>A crawl is a dry run. Filing a real request needs two explicit switches.</p></article>
+      <article class="story"><span class="sid">F-09</span>{{icon:security-gate}}<h3>A security gate on every commit</h3><p>Client content, credentials and local paths are kept out of the repository.</p></article>
+      <article class="story"><span class="sid">F-10</span>{{icon:mcp-server}}<h3>For your AI agent</h3><p>A Claude Code plugin and a local MCP server: build, edit, export, harvest.</p></article>
     </div>
-    <div data-l="ar" lang="ar" dir="rtl">
-      <div class="section-head" data-reveal><span class="kicker">كيف يعمل</span><h2>الأدلة، ثم المحرر، ثم <span class="sweep">PDF وDOCX</span></h2></div>
-      <ol class="flow" data-reveal-stagger>
-        <li><span class="num"></span><div class="icons">{{icon:process-model}}{{icon:walk}}</div><h3>الأدلة</h3><p>نموذج الإجراء يعطي الأدوار وسير العمل والقواعد والحالات. والجولة في الخدمة الحية تعطي البطاقة والنموذج والمرفقات والرسائل. والدمج يحتفظ بالاثنين.</p></li>
-        <li><span class="num"></span><div class="icons">{{icon:editor}}{{icon:direction}}</div><h3>المحرر</h3><p>ملف HTML واحد. الصفحة التي تحرّرها هي الصفحة التي تُطبع. كل تغيير مسجّل ويمكن التراجع عنه.</p></li>
-        <li><span class="num"></span><div class="icons">{{icon:pdf}}{{icon:docx}}</div><h3>PDF وDOCX</h3><p>النسختان معا، والخطوط مضمّنة نصا حقيقيا قابلا للتحديد. ومعهما ملف التعديلات وحزمة التصميم.</p></li>
-      </ol>
-    </div>
-  </div>
-</section>
-
-<section class="section" id="features">
-  <div class="wrap">
-    <div data-l="en" lang="en" dir="ltr">
-      <div class="section-head" data-reveal><span class="kicker">Features</span><h2>What you get</h2><p>One idea per card. Hover or focus a card to play its icon.</p></div>
-      <div class="grid">
-        <article class="card" tabindex="0">{{icon:harvest}}<h3>Two ways in</h3><p>Start from BPMN, draw.io or YAML, or from a crawl of the live service.</p></article>
-        <article class="card" tabindex="0">{{icon:print-layout}}<h3>The page is the print</h3><p>Every printed word, table and label is editable where it sits.</p></article>
-        <article class="card" tabindex="0">{{icon:bilingual}}<h3>Both languages first-class</h3><p>Arabic and English editions side by side. The layout never flips.</p></article>
-        <article class="card" tabindex="0">{{icon:diagram}}<h3>Diagrams you can edit</h3><p>Shapes, arrows with bends, labels in place. Mermaid in and out.</p></article>
-        <article class="card" tabindex="0">{{icon:design-pack}}<h3>Any font, real text</h3><p>The project's fonts, this computer's, or an uploaded file, embedded in PDF and DOCX.</p></article>
-        <article class="card" tabindex="0">{{icon:explainer}}<h3>Tools that explain themselves</h3><p>Rest on a tool: a card names it, shows its shortcut and plays what it does.</p></article>
-        <article class="card" tabindex="0">{{icon:edits-file}}<h3>Six template packs</h3><p>E-service, e-commerce, call-centre, approval, SaaS and generic IEEE 29148, plus your own.</p></article>
-        <article class="card" tabindex="0">{{icon:dry-run}}<h3>The crawler stops before Send</h3><p>A crawl is a dry run. Filing a real request needs two explicit switches.</p></article>
-        <article class="card" tabindex="0">{{icon:security-gate}}<h3>A gate on every rule</h3><p>Client content, credentials and local paths are kept out of the repository.</p></article>
-        <article class="card" tabindex="0">{{icon:mcp-server}}<h3>For your AI agent</h3><p>A Claude Code plugin and a local MCP server: build, edit, export, harvest.</p></article>
-      </div>
-    </div>
-    <div data-l="ar" lang="ar" dir="rtl">
-      <div class="section-head" data-reveal><span class="kicker">المزايا</span><h2>ما تحصل عليه</h2><p>فكرة واحدة في كل بطاقة. مرّر المؤشر على البطاقة أو انتقل إليها لتتحرك أيقونتها.</p></div>
-      <div class="grid">
-        <article class="card" tabindex="0">{{icon:harvest}}<h3>طريقان للدخول</h3><p>ابدأ من BPMN أو draw.io أو YAML، أو من جولة في الخدمة الحية.</p></article>
-        <article class="card" tabindex="0">{{icon:print-layout}}<h3>الصفحة هي المطبوعة</h3><p>كل كلمة مطبوعة وكل جدول وعنوان قابل للتعديل في مكانه.</p></article>
-        <article class="card" tabindex="0">{{icon:bilingual}}<h3>اللغتان بالمنزلة نفسها</h3><p>النسخة العربية والإنجليزية جنبا إلى جنب. والتخطيط لا ينقلب.</p></article>
-        <article class="card" tabindex="0">{{icon:diagram}}<h3>مخططات قابلة للتعديل</h3><p>أشكال وأسهم بانحناءات ونصوص في مكانها. واستيراد Mermaid وتصديره.</p></article>
-        <article class="card" tabindex="0">{{icon:design-pack}}<h3>أي خط، نصا حقيقيا</h3><p>خطوط المشروع أو خطوط جهازك أو ملف ترفعه، مضمّنة في PDF وDOCX.</p></article>
-        <article class="card" tabindex="0">{{icon:explainer}}<h3>أدوات تشرح نفسها</h3><p>توقّف على أداة: تظهر بطاقة باسمها واختصارها وحركة تبيّن عملها.</p></article>
-        <article class="card" tabindex="0">{{icon:edits-file}}<h3>ست حزم قوالب</h3><p>الخدمة الإلكترونية والتجارة الإلكترونية ومركز الاتصال والموافقات وSaaS وIEEE 29148 العامة، وحزمتك أنت.</p></article>
-        <article class="card" tabindex="0">{{icon:dry-run}}<h3>المسح يتوقف قبل الإرسال</h3><p>المسح تشغيل تجريبي. ولا يُقدَّم طلب حقيقي إلا بمفتاحين صريحين.</p></article>
-        <article class="card" tabindex="0">{{icon:security-gate}}<h3>فحص لكل قاعدة</h3><p>محتوى العملاء وبيانات الدخول والمسارات المحلية تبقى خارج المستودع.</p></article>
-        <article class="card" tabindex="0">{{icon:mcp-server}}<h3>لوكيل الذكاء الاصطناعي</h3><p>إضافة Claude Code وخادم MCP محلي: بناء وتحرير وتصدير وحصاد.</p></article>
-      </div>
+    <div class="stories" data-reveal-stagger data-l="ar">
+      <article class="story"><span class="sid">F-01</span>{{icon:harvest}}<h3>طريقان للدخول</h3><p>ابدأ من BPMN أو draw.io أو YAML، أو من جولة في الخدمة الحية.</p></article>
+      <article class="story"><span class="sid">F-02</span>{{icon:print-layout}}<h3>الصفحة هي المطبوعة</h3><p>كل كلمة مطبوعة وكل جدول وعنوان قابل للتعديل في مكانه.</p></article>
+      <article class="story"><span class="sid">F-03</span>{{icon:bilingual}}<h3>اللغتان بالمنزلة نفسها</h3><p>النسخة العربية والإنجليزية جنبا إلى جنب. والتخطيط لا ينقلب.</p></article>
+      <article class="story"><span class="sid">F-04</span>{{icon:diagram}}<h3>مخططات قابلة للتعديل</h3><p>أشكال وأسهم بانحناءات ونصوص في مكانها. واستيراد Mermaid وتصديره.</p></article>
+      <article class="story"><span class="sid">F-05</span>{{icon:design-pack}}<h3>أي خط، نصا حقيقيا</h3><p>خطوط المشروع أو خطوط جهازك أو ملف ترفعه، مضمنة في PDF وDOCX.</p></article>
+      <article class="story"><span class="sid">F-06</span>{{icon:explainer}}<h3>أدوات تشرح نفسها</h3><p>توقف على أداة: تظهر بطاقة باسمها واختصارها وحركة تبين عملها.</p></article>
+      <article class="story"><span class="sid">F-07</span>{{icon:edits-file}}<h3>ست حزم قوالب</h3><p>الخدمة الإلكترونية والتجارة الإلكترونية ومركز الاتصال والموافقات وSaaS وIEEE 29148 العامة، وحزمتك أنت.</p></article>
+      <article class="story"><span class="sid">F-08</span>{{icon:dry-run}}<h3>المسح يتوقف قبل الإرسال</h3><p>المسح تشغيل تجريبي. ولا يقدم طلب حقيقي إلا بمفتاحين صريحين.</p></article>
+      <article class="story"><span class="sid">F-09</span>{{icon:security-gate}}<h3>فحص أمني على كل إيداع</h3><p>محتوى العملاء وبيانات الدخول والمسارات المحلية تبقى خارج المستودع.</p></article>
+      <article class="story"><span class="sid">F-10</span>{{icon:mcp-server}}<h3>لوكيل الذكاء الاصطناعي</h3><p>إضافة Claude Code وخادم MCP محلي: بناء وتحرير وتصدير وحصاد.</p></article>
     </div>
   </div>
 </section>
 
-<section class="section" id="install">
+<section class="section" id="install" aria-labelledby="install-h">
   <div class="wrap">
-    <div data-l="en" lang="en" dir="ltr">
-      <div class="section-head" data-reveal><span class="kicker">Install</span><h2>Pick one way in</h2><p>All three run on your computer.</p></div>
-      <div class="install" data-reveal-stagger>
-        <div class="card">{{icon:plugin}}<span class="tag">Easiest</span><h3>Claude Code plugin</h3><p>The skill and the MCP server together.</p>
-          <div class="cmd"><pre><code>/plugin marketplace add NJ-Burrito/Business-Wrap
+    <header class="sec-head" data-reveal data-l="en"><span class="sec-no">03</span><h2 id="install-h">Pick one way in</h2><p>All three run on your computer.</p></header>
+    <header class="sec-head" data-reveal data-l="ar"><span class="sec-no">03</span><h2 id="install-h">اختر طريقة واحدة</h2><p>الطرق الثلاث تعمل على جهازك.</p></header>
+    <div class="install" data-reveal-stagger data-l="en">
+      <div class="way">{{icon:plugin}}<span class="tag">Easiest</span><h3>Claude Code plugin</h3><p>The skill and the MCP server together.</p>
+        <div class="cmd"><pre><code>/plugin marketplace add NJ-Burrito/Business-Wrap
 /plugin install business-wrap@business-wrap</code></pre>{{copy}}</div>
-          <p class="small">Then say "build the requirements document for …" or "open it in the editor".</p></div>
-        <div class="card">{{icon:mcp-server}}<span class="tag">Any MCP client</span><h3>MCP server</h3><p>Get the code (clone, or the release zip with its .sha256), run <code>npm ci</code>, then:</p>
-          <div class="cmd"><pre><code>claude mcp add business-wrap -- node &lt;path&gt;/Business-Wrap/mcp/cli.mjs</code></pre>{{copy}}</div>
-          <p class="small"><a href="https://github.com/NJ-Burrito/Business-Wrap/releases/latest">Latest release zip</a>. Needs Node 20+, Chrome or Edge for the PDF, uv for the DOCX.</p></div>
-        <div class="card">{{icon:editor}}<span class="tag">No agent</span><h3>From source</h3><p>Build the sample and open it in the editor.</p>
-          <div class="cmd"><pre><code>git clone https://github.com/NJ-Burrito/Business-Wrap
+        <p class="small">Then say "build the requirements document for …" or "open it in the editor".</p></div>
+      <div class="way">{{icon:mcp-server}}<span class="tag">Any MCP client</span><h3>MCP server</h3><p>One line, from npm. Needs Node 20+.</p>
+        <div class="cmd"><pre><code>claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp</code></pre>{{copy}}</div>
+        <p class="small">From a clone: run <code>npm ci</code>, then point your client at <code>node &lt;path&gt;/Business-Wrap/mcp/cli.mjs</code>.</p></div>
+      <div class="way">{{icon:editor}}<span class="tag">No agent</span><h3>From source</h3><p>Build the sample and open it in the editor.</p>
+        <div class="cmd"><pre><code>git clone https://github.com/NJ-Burrito/Business-Wrap
 cd Business-Wrap
 npm ci
 npm run sample
 npm run serve</code></pre>{{copy}}</div>
-          <p class="small">Opens on http://127.0.0.1:4317/ with one-click PDF + DOCX.</p></div>
-      </div>
+        <p class="small">Opens on <code>http://127.0.0.1:4317/</code> with one-click PDF + DOCX. Chrome or Edge for the PDF, uv for the DOCX.</p>
+        <a class="btn btn-ghost btn-sm" href="https://github.com/NJ-Burrito/Business-Wrap/releases/latest">{{ui:download}}Latest release zip</a></div>
     </div>
-    <div data-l="ar" lang="ar" dir="rtl">
-      <div class="section-head" data-reveal><span class="kicker">التثبيت</span><h2>اختر طريقة واحدة</h2><p>الطرق الثلاث تعمل على جهازك.</p></div>
-      <div class="install" data-reveal-stagger>
-        <div class="card">{{icon:plugin}}<span class="tag">الأسهل</span><h3>إضافة Claude Code</h3><p>المهارة وخادم MCP معا.</p>
-          <div class="cmd"><pre><code>/plugin marketplace add NJ-Burrito/Business-Wrap
+    <div class="install" data-reveal-stagger data-l="ar">
+      <div class="way">{{icon:plugin}}<span class="tag">الأسهل</span><h3>إضافة Claude Code</h3><p>المهارة وخادم MCP معا.</p>
+        <div class="cmd"><pre><code>/plugin marketplace add NJ-Burrito/Business-Wrap
 /plugin install business-wrap@business-wrap</code></pre>{{copy}}</div>
-          <p class="small">ثم قل: «ابنِ وثيقة متطلبات …» أو «افتحها في المحرر».</p></div>
-        <div class="card">{{icon:mcp-server}}<span class="tag">أي عميل MCP</span><h3>خادم MCP</h3><p>احصل على الشيفرة (نسخة من المستودع، أو ملف الإصدار المضغوط مع ملف .sha256)، ونفّذ <code>npm ci</code>، ثم:</p>
-          <div class="cmd"><pre><code>claude mcp add business-wrap -- node &lt;path&gt;/Business-Wrap/mcp/cli.mjs</code></pre>{{copy}}</div>
-          <p class="small"><a href="https://github.com/NJ-Burrito/Business-Wrap/releases/latest">ملف آخر إصدار</a>. يحتاج Node 20 أو أحدث، وChrome أو Edge لملفات PDF، وuv لملفات DOCX.</p></div>
-        <div class="card">{{icon:editor}}<span class="tag">بلا وكيل</span><h3>من المصدر</h3><p>ابنِ الوثيقة النموذجية وافتحها في المحرر.</p>
-          <div class="cmd"><pre><code>git clone https://github.com/NJ-Burrito/Business-Wrap
+        <p class="small">ثم قل: «ابن وثيقة متطلبات …» أو «افتحها في المحرر».</p></div>
+      <div class="way">{{icon:mcp-server}}<span class="tag">أي عميل MCP</span><h3>خادم MCP</h3><p>سطر واحد من npm. يحتاج Node 20 أو أحدث.</p>
+        <div class="cmd"><pre><code>claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp</code></pre>{{copy}}</div>
+        <p class="small">من نسخة المستودع: نفذ <code>npm ci</code>، ثم وجه العميل إلى <code>node &lt;path&gt;/Business-Wrap/mcp/cli.mjs</code>.</p></div>
+      <div class="way">{{icon:editor}}<span class="tag">بلا وكيل</span><h3>من المصدر</h3><p>ابن الوثيقة النموذجية وافتحها في المحرر.</p>
+        <div class="cmd"><pre><code>git clone https://github.com/NJ-Burrito/Business-Wrap
 cd Business-Wrap
 npm ci
 npm run sample
 npm run serve</code></pre>{{copy}}</div>
-          <p class="small">يفتح على http://127.0.0.1:4317/ مع تصدير PDF وDOCX بنقرة واحدة.</p></div>
-      </div>
+        <p class="small">يفتح على <code>http://127.0.0.1:4317/</code> مع تصدير PDF وDOCX بنقرة واحدة. Chrome أو Edge لملفات PDF، وuv لملفات DOCX.</p>
+        <a class="btn btn-ghost btn-sm" href="https://github.com/NJ-Burrito/Business-Wrap/releases/latest">{{ui:download}}ملف آخر إصدار</a></div>
     </div>
   </div>
 </section>
 
-<section class="section" id="updates">
+<section class="section" id="updates" aria-labelledby="updates-h">
   <div class="wrap">
-    <div data-l="en" lang="en" dir="ltr">
-      <div class="section-head" data-reveal><span class="kicker">Updates</span><h2>New versions reach you, <span class="sweep">with your consent</span></h2></div>
-      <div class="split">
-        <ul class="rows" data-reveal-stagger>
-          <li>{{icon:update}}<div><strong>In the editor</strong>Opened through <code>npm run serve</code>, it checks at launch, at most once a day. A popup shows what is new: Update now, Later, or Skip.</div></li>
-          <li>{{icon:export}}<div><strong>Your work is never touched</strong>Program files only. Documents, edits, fonts and logos stay. Any failure puts the previous version back.</div></li>
-          <li>{{icon:plugin}}<div><strong>Claude Code plugin</strong><code>/plugin marketplace update business-wrap</code>, then <code>/plugin update business-wrap</code>.</div></li>
-          <li>{{icon:mcp-server}}<div><strong>Terminal or agent</strong><code>node update/cli.mjs --check</code>, then <code>--apply --yes</code>. Every version is a <a href="https://github.com/NJ-Burrito/Business-Wrap/releases">GitHub release</a>.</div></li>
-        </ul>
-      </div>
+    <header class="sec-head" data-reveal data-l="en"><span class="sec-no">04</span><h2 id="updates-h">New versions reach you, <span class="rule">with your consent</span></h2><p>One release feed on GitHub, one check a day at most, nothing installed until you say so.</p></header>
+    <header class="sec-head" data-reveal data-l="ar"><span class="sec-no">04</span><h2 id="updates-h">الإصدارات الجديدة تصلك، <span class="rule">بموافقتك</span></h2><p>مصدر إصدارات واحد على GitHub، وفحص واحد في اليوم على الأكثر، ولا يثبت شيء حتى توافق.</p></header>
+    <div class="table-wrap" data-reveal data-l="en">
+      <table class="data">
+        <thead><tr><th scope="col">Who</th><th scope="col">How you hear</th><th scope="col">How you update</th></tr></thead>
+        <tbody>
+          <tr><th scope="row" data-label="Who">{{icon:editor}}The editor</th><td data-label="How you hear">Opened through <code>npm run serve</code>, it checks at launch, at most once a day, and shows a popup with what is new.</td><td data-label="How you update">Update now, Later, or Skip this version. It backs up first and puts the old version back on any failure.</td></tr>
+          <tr><th scope="row" data-label="Who">{{icon:update}}Terminal or zip</th><td data-label="How you hear"><code>npx business-wrap update --check</code> prints one line and three highlights.</td><td data-label="How you update"><code>--apply --yes</code> downloads the release zip, checks its SHA-256, keeps one backup and swaps program files only.</td></tr>
+          <tr><th scope="row" data-label="Who">{{icon:merge}}Git checkout</th><td data-label="How you hear">The same check.</td><td data-label="How you update">Fast-forwards to the release; refuses while tracked files have local changes.</td></tr>
+          <tr><th scope="row" data-label="Who">{{icon:plugin}}Claude Code plugin</th><td data-label="How you hear">The marketplace version, plus an optional start-of-session line (off by default).</td><td data-label="How you update"><code>/plugin marketplace update business-wrap</code>, then <code>/plugin update business-wrap</code>.</td></tr>
+          <tr><th scope="row" data-label="Who">{{icon:mcp-server}}Any MCP client</th><td data-label="How you hear"><code>update_available</code> on the first tool result of a session.</td><td data-label="How you update"><code>apply_update</code> refuses without <code>confirm: true</code>.</td></tr>
+        </tbody>
+      </table>
     </div>
-    <div data-l="ar" lang="ar" dir="rtl">
-      <div class="section-head" data-reveal><span class="kicker">التحديثات</span><h2>الإصدارات الجديدة تصلك، <span class="sweep">بموافقتك</span></h2></div>
-      <div class="split">
-        <ul class="rows" data-reveal-stagger>
-          <li>{{icon:update}}<div><strong>داخل المحرر</strong>عند فتحه عبر <code>npm run serve</code> يفحص عند البدء، مرة في اليوم على الأكثر. وتعرض نافذة ما الجديد: حدّث الآن، أو لاحقا، أو تخطَّ.</div></li>
-          <li>{{icon:export}}<div><strong>عملك لا يُمسّ</strong>ملفات البرنامج فقط. المستندات والتعديلات والخطوط والشعارات تبقى. وأي فشل يعيد الإصدار السابق.</div></li>
-          <li>{{icon:plugin}}<div><strong>إضافة Claude Code</strong><code>/plugin marketplace update business-wrap</code> ثم <code>/plugin update business-wrap</code>.</div></li>
-          <li>{{icon:mcp-server}}<div><strong>الطرفية أو الوكيل</strong><code>node update/cli.mjs --check</code> ثم <code>--apply --yes</code>. وكل إصدار منشور <a href="https://github.com/NJ-Burrito/Business-Wrap/releases">على GitHub</a>.</div></li>
-        </ul>
-      </div>
+    <div class="table-wrap" data-reveal data-l="ar">
+      <table class="data">
+        <thead><tr><th scope="col">من</th><th scope="col">كيف تعرف</th><th scope="col">كيف تحدث</th></tr></thead>
+        <tbody>
+          <tr><th scope="row" data-label="من">{{icon:editor}}المحرر</th><td data-label="كيف تعرف">عند فتحه عبر <code>npm run serve</code> يفحص عند البدء، مرة في اليوم على الأكثر، وتعرض نافذة ما الجديد.</td><td data-label="كيف تحدث">حدث الآن، أو لاحقا، أو تخط هذا الإصدار. ويأخذ نسخة احتياطية أولا، ويعيد الإصدار السابق عند أي فشل.</td></tr>
+          <tr><th scope="row" data-label="من">{{icon:update}}الطرفية أو الملف المضغوط</th><td data-label="كيف تعرف"><code>npx business-wrap update --check</code> يطبع سطرا واحدا وثلاث نقاط بارزة.</td><td data-label="كيف تحدث"><code>--apply --yes</code> ينزل ملف الإصدار، ويتحقق من SHA-256، ويحتفظ بنسخة احتياطية واحدة، ويستبدل ملفات البرنامج فقط.</td></tr>
+          <tr><th scope="row" data-label="من">{{icon:merge}}نسخة Git</th><td data-label="كيف تعرف">الفحص نفسه.</td><td data-label="كيف تحدث">يتقدم إلى الإصدار مباشرة، ويرفض ما دامت في الملفات المتتبعة تغييرات محلية.</td></tr>
+          <tr><th scope="row" data-label="من">{{icon:plugin}}إضافة Claude Code</th><td data-label="كيف تعرف">إصدار السوق، وسطر اختياري عند بدء الجلسة (متوقف افتراضيا).</td><td data-label="كيف تحدث"><code>/plugin marketplace update business-wrap</code> ثم <code>/plugin update business-wrap</code>.</td></tr>
+          <tr><th scope="row" data-label="من">{{icon:mcp-server}}أي عميل MCP</th><td data-label="كيف تعرف"><code>update_available</code> في أول نتيجة أداة في الجلسة.</td><td data-label="كيف تحدث"><code>apply_update</code> يرفض دون <code>confirm: true</code>.</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </section>
 
-<section class="section" id="faq">
+<section class="section" id="safe" aria-labelledby="safe-h">
   <div class="wrap">
-    <div data-l="en" lang="en" dir="ltr">
-      <div class="section-head" data-reveal><span class="kicker">FAQ</span><h2>Short answers</h2></div>
-      <div class="faq">
-        <details><summary>Is it free?{{ui:chevron}}</summary><div><p>Yes. MIT licence, no paid plan, no account.</p></div></details>
-        <details><summary>Does my document leave my computer?{{ui:chevron}}</summary><div><p>No. The editor, the PDF printer and the DOCX builder run locally.</p><p>The one automatic request is the update check: at most once a day, to the public GitHub release list. Webhooks send only to an address you set.</p></div></details>
-        <details><summary>Do I need Claude?{{ui:chevron}}</summary><div><p>No. The editor and the command line work on their own. The plugin and the MCP server are optional.</p></div></details>
-        <details><summary>What goes in, what comes out?{{ui:chevron}}</summary><div><p>In: a process model (BPMN, draw.io, YAML) or a crawl of a live service.</p><p>Out: PDF, DOCX, the edits JSON, a design pack, and the editor saved as HTML.</p></div></details>
-        <details><summary>Will the crawler file a real request?{{ui:chevron}}</summary><div><p>Not unless you ask twice: <code>submit: true</code> in the config and <code>--yes-file-real-request</code>. Otherwise it stops before Send, Submit, Confirm or Pay.</p></div></details>
-        <details><summary>Which fonts can I use?{{ui:chevron}}</summary><div><p>Thmanyah by default, any font on your computer, or a file you upload. The font's licence is your responsibility; font files are not included.</p></div></details>
-        <details><summary>What does it run on?{{ui:chevron}}</summary><div><p>Tested on Windows 11 with Node 24 and Chrome. It needs Node 20+, Chrome or Edge, and Python with uv for DOCX. macOS and Linux are untested.</p></div></details>
-      </div>
+    <header class="sec-head" data-reveal data-l="en"><span class="sec-no">05</span><h2 id="safe-h">Is it safe?</h2></header>
+    <header class="sec-head" data-reveal data-l="ar"><span class="sec-no">05</span><h2 id="safe-h">هل هو آمن؟</h2></header>
+    <ul class="safe" data-reveal-stagger data-l="en">
+      <li><span class="ok">{{ui:shield-check}}Local only</span><p>The editor, the PDF printer and the DOCX builder run on your computer. Nothing is uploaded.</p></li>
+      <li><span class="ok">{{ui:shield-check}}Once a day</span><p>The one automatic request is the update check, to the public GitHub release list, with no account. Switch it off in Settings or with <code>node update/cli.mjs --off</code>.</p></li>
+      <li><span class="ok">{{ui:shield-check}}Dry run</span><p>The crawler stops before Send, Submit, Confirm or Pay. Filing a real request needs <code>submit: true</code> and <code>--yes-file-real-request</code>.</p></li>
+      <li><span class="ok">{{ui:shield-check}}Every commit</span><p>A security gate keeps client content, credentials and local paths out of the repository.</p></li>
+    </ul>
+    <ul class="safe" data-reveal-stagger data-l="ar">
+      <li><span class="ok">{{ui:shield-check}}على جهازك فقط</span><p>المحرر وطابعة PDF ومنشئ DOCX تعمل على جهازك. لا يرفع أي شيء.</p></li>
+      <li><span class="ok">{{ui:shield-check}}مرة في اليوم</span><p>الطلب التلقائي الوحيد هو فحص التحديث، إلى قائمة الإصدارات العامة على GitHub، بلا حساب. أوقفه من الإعدادات أو بالأمر <code>node update/cli.mjs --off</code>.</p></li>
+      <li><span class="ok">{{ui:shield-check}}تشغيل تجريبي</span><p>المسح يتوقف قبل الإرسال أو التقديم أو التأكيد أو الدفع. وتقديم طلب حقيقي يحتاج <code>submit: true</code> و<code>--yes-file-real-request</code>.</p></li>
+      <li><span class="ok">{{ui:shield-check}}كل إيداع</span><p>فحص أمني يبقي محتوى العملاء وبيانات الدخول والمسارات المحلية خارج المستودع.</p></li>
+    </ul>
+  </div>
+</section>
+
+<section class="section" id="faq" aria-labelledby="faq-h">
+  <div class="wrap">
+    <header class="sec-head" data-reveal data-l="en"><span class="sec-no">06</span><h2 id="faq-h">Short answers</h2></header>
+    <header class="sec-head" data-reveal data-l="ar"><span class="sec-no">06</span><h2 id="faq-h">إجابات قصيرة</h2></header>
+    <div class="faq" data-l="en">
+      <details><summary>Is it free?{{ui:chevron}}</summary><div class="ans"><div><p>Yes. MIT licence, no paid plan, no account.</p></div></div></details>
+      <details><summary>Does my document leave my computer?{{ui:chevron}}</summary><div class="ans"><div><p>No. The editor, the PDF printer and the DOCX builder run locally.</p><p>The one automatic request is the update check: at most once a day, to the public GitHub release list. Webhooks send only to an address you set.</p></div></div></details>
+      <details><summary>Do I need Claude?{{ui:chevron}}</summary><div class="ans"><div><p>No. The editor and the command line work on their own. The plugin and the MCP server are optional.</p></div></div></details>
+      <details><summary>What goes in, what comes out?{{ui:chevron}}</summary><div class="ans"><div><p>In: a process model (BPMN, draw.io, YAML) or a crawl of a live service.</p><p>Out: PDF, DOCX, the edits JSON, a design pack, and the editor saved as HTML.</p></div></div></details>
+      <details><summary>Will the crawler file a real request?{{ui:chevron}}</summary><div class="ans"><div><p>Not unless you ask twice: <code>submit: true</code> in the config and <code>--yes-file-real-request</code>. Otherwise it stops before Send, Submit, Confirm or Pay.</p></div></div></details>
+      <details><summary>Which fonts can I use?{{ui:chevron}}</summary><div class="ans"><div><p>Thmanyah by default: your own copy wins, and a bundled fallback (under the Thmanyah licence, not MIT) makes the PDF right out of the box. Any font on your computer, or a file you upload, also works; its licence is your responsibility.</p></div></div></details>
+      <details><summary>What does it run on?{{ui:chevron}}</summary><div class="ans"><div><p>Tested on Windows 11 with Node 24 and Chrome. It needs Node 20+, Chrome or Edge, and Python with uv for DOCX. macOS and Linux are untested.</p></div></div></details>
     </div>
-    <div data-l="ar" lang="ar" dir="rtl">
-      <div class="section-head" data-reveal><span class="kicker">أسئلة شائعة</span><h2>إجابات قصيرة</h2></div>
-      <div class="faq">
-        <details><summary>هل هو مجاني؟{{ui:chevron}}</summary><div><p>نعم. رخصة MIT، بلا خطة مدفوعة وبلا حساب.</p></div></details>
-        <details><summary>هل تغادر وثيقتي جهازي؟{{ui:chevron}}</summary><div><p>لا. المحرر وطابعة PDF ومنشئ DOCX تعمل كلها على جهازك.</p><p>الطلب التلقائي الوحيد هو فحص التحديث: مرة في اليوم على الأكثر، إلى قائمة الإصدارات العامة على GitHub. وخطافات الويب ترسل فقط إلى عنوان تحدده أنت.</p></div></details>
-        <details><summary>هل أحتاج Claude؟{{ui:chevron}}</summary><div><p>لا. المحرر وسطر الأوامر يعملان وحدهما. والإضافة وخادم MCP اختياريان.</p></div></details>
-        <details><summary>ماذا يدخل وماذا يخرج؟{{ui:chevron}}</summary><div><p>يدخل: نموذج إجراء (BPMN أو draw.io أو YAML) أو مسح لخدمة حية.</p><p>يخرج: PDF وDOCX وملف التعديلات JSON وحزمة التصميم والمحرر محفوظا بصيغة HTML.</p></div></details>
-        <details><summary>هل يقدّم المسح طلبا حقيقيا؟{{ui:chevron}}</summary><div><p>لا، إلا إذا طلبت ذلك مرتين: <code>submit: true</code> في الإعدادات و<code>--yes-file-real-request</code>. وإلا توقف قبل الإرسال أو التقديم أو التأكيد أو الدفع.</p></div></details>
-        <details><summary>أي الخطوط أستخدم؟{{ui:chevron}}</summary><div><p>خط ثمانية افتراضيا، أو أي خط على جهازك، أو ملف ترفعه. ترخيص الخط مسؤوليتك، وملفات الخطوط غير مضمّنة.</p></div></details>
-        <details><summary>على أي نظام يعمل؟{{ui:chevron}}</summary><div><p>جُرّب على Windows 11 مع Node 24 وChrome. ويحتاج Node 20 أو أحدث، وChrome أو Edge، وPython مع uv لملفات DOCX. ولم يُجرَّب على macOS ولينكس.</p></div></details>
-      </div>
+    <div class="faq" data-l="ar">
+      <details><summary>هل هو مجاني؟{{ui:chevron}}</summary><div class="ans"><div><p>نعم. رخصة MIT، بلا خطة مدفوعة وبلا حساب.</p></div></div></details>
+      <details><summary>هل تغادر وثيقتي جهازي؟{{ui:chevron}}</summary><div class="ans"><div><p>لا. المحرر وطابعة PDF ومنشئ DOCX تعمل كلها على جهازك.</p><p>الطلب التلقائي الوحيد هو فحص التحديث: مرة في اليوم على الأكثر، إلى قائمة الإصدارات العامة على GitHub. وخطافات الويب ترسل فقط إلى عنوان تحدده أنت.</p></div></div></details>
+      <details><summary>هل أحتاج Claude؟{{ui:chevron}}</summary><div class="ans"><div><p>لا. المحرر وسطر الأوامر يعملان وحدهما. والإضافة وخادم MCP اختياريان.</p></div></div></details>
+      <details><summary>ماذا يدخل وماذا يخرج؟{{ui:chevron}}</summary><div class="ans"><div><p>يدخل: نموذج إجراء (BPMN أو draw.io أو YAML) أو مسح لخدمة حية.</p><p>يخرج: PDF وDOCX وملف التعديلات JSON وحزمة التصميم والمحرر محفوظا بصيغة HTML.</p></div></div></details>
+      <details><summary>هل يقدم المسح طلبا حقيقيا؟{{ui:chevron}}</summary><div class="ans"><div><p>لا، إلا إذا طلبت ذلك مرتين: <code>submit: true</code> في الإعدادات و<code>--yes-file-real-request</code>. وإلا توقف قبل الإرسال أو التقديم أو التأكيد أو الدفع.</p></div></div></details>
+      <details><summary>أي الخطوط أستخدم؟{{ui:chevron}}</summary><div class="ans"><div><p>ثمانية افتراضيا: نسختك أنت لها الأولوية، ونسخة احتياطية مضمنة (تحت رخصة ثمانية لا MIT) تطبع PDF صحيحا من أول مرة. ويعمل أيضا أي خط على جهازك أو ملف ترفعه، وترخيصه مسؤوليتك.</p></div></div></details>
+      <details><summary>على أي نظام يعمل؟{{ui:chevron}}</summary><div class="ans"><div><p>جرب على Windows 11 مع Node 24 وChrome. ويحتاج Node 20 أو أحدث، وChrome أو Edge، وPython مع uv لملفات DOCX. ولم يجرب على macOS ولينكس.</p></div></div></details>
     </div>
   </div>
 </section>
