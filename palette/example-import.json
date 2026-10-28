@@ -1,0 +1,12 @@
+{
+  "$description": "Example palette for the editor's «Import a colour palette» (Design → Colours). Six roles; every pair passes the contrast gate (ink and primary 7:1 on paper, muted and accent 4.5:1). Invented colours.",
+  "name": "Example: deep teal",
+  "colors": {
+    "primary": "#0b4f4a",
+    "accent": "#8a5a00",
+    "ink": "#1a1a1a",
+    "paper": "#ffffff",
+    "muted": "#55595e",
+    "signal": "#b3261e"
+  }
+}

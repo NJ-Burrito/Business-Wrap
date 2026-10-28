@@ -24,6 +24,18 @@ The editor embeds every chosen font (project, installed on the computer, or uplo
 ## Contrast rules
 Body text 7:1 on paper and card; secondary text, numbers, ids and tags 4.5:1; accent that carries words uses its 800 step; no information by colour alone. `palette/check.py` fails the build otherwise.
 
+## Importing a colour palette (0.13.0)
+
+Design → Colours → **Import a colour palette** takes a file, suggests a role for each colour (its name when it is a role name such as `primary` or `background`; otherwise the lightest is the background, the darkest the text, a saturated red the alert colour, the darkest saturated left the main colour, the most saturated left the accent, the greyest left the secondary text), previews it on the page and runs the contrast gate of `palette/check.py`, ported to the editor: text and chapter titles 7:1 on the background, secondary text and section numbers 4.5:1, white 7:1 on the main colour and 4.5:1 on the alert colour. A failing pair shows its ratio and blocks **Apply** until the colour is changed or that pair is overridden with a written reason (kept in `design.paletteOverrides` with the ratio and the date). Apply is one change to the design, so one undo restores the previous colours. `palette/check.py` stays the build gate for `palette/tokens.json`.
+
+**What do I provide?**
+
+- 6 to 10 colours, hex codes (`#1f6f5c`).
+- Required roles: main colour, accent, text, background. Recommended: a secondary text colour and one alert colour for warnings.
+- Dark text on a light background (7:1 text, 4.5:1 secondary).
+- Formats: lines of `#hex name`; JSON (`{ "colors": { "primary": "#…" } }` or DTCG tokens); CSS custom properties (`--primary: #…`); Adobe Swatch Exchange `.ase` (RGB entries); an image of swatches (large flat squares on one background, no gradient, shadow or text; at most 10 colours are read).
+- Example: `palette/example-import.json` (also downloadable from the panel).
+
 ## Print geometry (tokens in `typography/tokens.json`)
 A4 210 × 297 mm portrait; margins top 18, bottom 16, sides 16 mm; the cover is full-bleed (`page.cover-margin` 0) with a 20 mm spine on the start side; bleed 0 (office print, no trim). One landscape sheet for the workflow figure with margins 14 / 12 mm and a 140 mm art height. Full-width bands negate the side margin token so they always meet the trim.
 
