@@ -43,7 +43,7 @@ try {
   const ep = await buildDocuments(EP);
   const ar = ep.docs.ar, en = ep.docs.en;
   const ch = ar.chapters.map((c) => c.title);
-  check('e-service: chapters 1–6 as the reference, annex 7', JSON.stringify(ch) === JSON.stringify(['المقدمة', 'بطاقة الخدمة', 'متطلبات النظام الوظيفية', 'مسار الخدمة وسير العمل', 'قواعد العمل', 'قصص المستخدمين ومعايير القبول', 'الملاحق: الأسئلة المفتوحة']), ch.join(' | '));
+  check('e-service: chapters 1–6 as the reference, no open-questions annex (questions beside the document)', JSON.stringify(ch) === JSON.stringify(['المقدمة', 'بطاقة الخدمة', 'متطلبات النظام الوظيفية', 'مسار الخدمة وسير العمل', 'قواعد العمل', 'قصص المستخدمين ومعايير القبول']), ch.join(' | '));
   const c2 = ar.chapters[1].sections.map((s) => s.title);
   const REF2 = ['وصف الخدمة', 'معرف الخدمة وترميزها', 'فئة متلقي الخدمة', 'الافتراضات والقيود والشروط', 'رسوم الخدمة', 'وثائق الخدمة', 'المرجعية الإدارية', 'مكان تقديم الخدمة', 'مخرجات الخدمة', 'التشريعات الناظمة', 'المستخدمون والأدوار', 'الربط الداخلي مع أنظمة الجهة', 'الربط مع خدمات النظام', 'مصادر البيانات الداخلية', 'الربط مع شركاء الخدمة', 'اللغات المدعومة'];
   check('e-service: chapter 2 = the 16 card sections 2.1–2.16 in order', JSON.stringify(c2) === JSON.stringify(REF2));
@@ -77,7 +77,10 @@ try {
   check('FR codes gap-free FR-01…', fr.every((r, i) => r[0] === `FR-${String(i + 1).padStart(2, '0')}`), fr.length + ' rows');
   check('FR from payment, auto-assignment, partner, rework, timer', ['مرحلة الدفع', 'آلياً', 'يتكامل النظام مع «سجل الأحوال', 'بتعديل الطلب عند إرجاعه', 'خلال 10 أيام عمل'].every((k) => fr.some((r) => r[1].includes(k))));
   const br = tableOf(sec(ar, 'جدول قواعد العمل')).rows;
-  check('BR worded from real action labels', br.some((r) => r[1].includes('«إرجاع للتدقيق»')) && br.some((r) => r[1].includes('«رفض»')), br.length + ' rows');
+  // e-service: derived rule families are off (client ruling); a pack that derives them words them from the real labels
+  const gen = await buildDocuments({ ...EP, pack: 'generic' });
+  const gbr = gen.docs.ar.chapters.flatMap((c) => c.sections).filter((x) => gen.docs.ar.fill.find((f) => f.section === x.number)?.gen === 'rules').flatMap((x) => tableOf(x).rows);
+  check('BR worded from real action labels (a deriving pack)', gbr.some((r) => r[1].includes('«إرجاع للتدقيق»')) && gbr.some((r) => r[1].includes('«رفض»')), gbr.length + ' rows');
   check('BR standard rules switch on evidence (serial, recipients, re-routing)', br.some((r) => /رقم متسلسل/.test(r[1])) && br.some((r) => /الفئات التالية: الأفراد، المنشآت/.test(r[1])) && br.some((r) => /إعادة توجيه/.test(r[1])));
   // raw gateway text: an invented model whose flows carry English keys only and whose ends are raw keys
   const raw = { process: 'raw-keys', actors: ['Officer'], steps: [{ id: 'chk', name: 'Check', actor: 'Officer', options: { 'need-edit': 'fix', 'send-to-officer': 'chk2', cancel: 'cancel' } }, { id: 'fix', name: 'edit-by-applicant', options: { 're-submit': 'chk' } }, { id: 'chk2', name: 'Second check', actor: 'Officer', options: { approve: 'approve', 'return-to-check': 'chk' } }], ends: [{ id: 'approve', name: 'approve' }, { id: 'cancel', name: 'cancel' }] };
@@ -153,7 +156,11 @@ try {
   const w = await buildToDir({ ...CALL, out: path.join(tmp, 'call'), editor: false });
   check('build writes 01-harvest, 02-evidence, both documents, fill.md', ['01-harvest.json', '02-evidence.json', 'document.ar.json', 'document.en.json', 'fill.md'].every((f) => fs.existsSync(path.join(w.files.dir, f))));
 
-  /* 11. no client term in the repository (hashed denylist, tree) */
+  /* 11. the 0.13 gap checks and their healers (tests/srs-heal.test.mjs) */
+  const { run: gaps } = await import('./srs-heal.test.mjs');
+  await gaps(check);
+
+  /* 12. no client term in the repository (hashed denylist, tree) */
   const sec2 = spawnSync(...py([path.join(REPO, 'security', 'check.py'), '--tree-only'], []), { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } });
   check('security gate (tree): 0 findings', sec2.status === 0, (sec2.stdout || sec2.error?.message || '').trim().split('\n').at(-1));
 } catch (e) {

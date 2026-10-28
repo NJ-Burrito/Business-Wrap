@@ -17,6 +17,8 @@ export const bi = (v) => (v == null ? null : typeof v === 'string' || typeof v =
 export const pick = (v, locale) => (v == null ? '' : typeof v === 'string' ? v : v[locale] ?? v.en ?? v.ar ?? '');
 const norm = (s) => String(s || '').toLowerCase().replace(/[_\s]+/g, '-').replace(/[^\p{L}\p{N}-]+/gu, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
 const isExpr = (s) => /\$\{|#\{/.test(String(s || ''));
+/** Arabic-insensitive comparison key: أإآ→ا, ة→ه, ى→ي, ئ→ي, ؤ→و, diacritics and tatweel stripped, spaces collapsed. */
+export const fold = (s) => String(s ?? '').normalize('NFC').replace(/[ً-ْٰـ]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/[ىئ]/g, 'ي').replace(/ؤ/g, 'و').replace(/[«»"'()\[\],،.:؛;-]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
 const RAW_ID = /^(sid-[0-9a-f-]{8,}|[0-9a-f]{8}-[0-9a-f-]{20,})$/i;
 
 /* ── action captions: the system's own word first, a clean derived word second, never a raw key ── */
@@ -60,20 +62,28 @@ const REWORK = /edit-by|by-applicant|by-customer|rework|amend|resubmit|correct|�
 export const terms = (pack, profile, locale) => ({ ...(pack?.glossary?.[locale] || {}), ...Object.fromEntries(Object.entries(profile?.terms || {}).map(([k, v]) => [k, pick(v, locale)])), entity: pick(profile?.entity, locale) || pick(pack?.glossary?.[locale]?.entity, locale) });
 
 /* ── the model ─────────────────────────────────────────────────────────── */
-export function buildModel({ ir = null, raw = null, record = null, profile = {}, text, names: nameMap = {} } = {}) {
+export function buildModel({ ir = null, raw = null, record = null, profile = {}, text, names: nameMap = {}, walk = null, messages = null, previous = null, register = null } = {}) {
   const F = record?.facts || {};
   const src = (k) => record?.sources?.[k] || (record?.source ? { ...record.source } : null);
   const T = text; // core text (ar/en), for derived captions
   const m = {
     kind: 'bw-requirements', version: 1,
     key: record?.key || raw?.name || ir?.key || '',
-    name: bi(F.name) || (ir?.names ? bi(ir.names) : null) || bi(raw?.languages?.ar?.card?.title && { ar: raw.languages.ar.card.title, en: raw.languages.en?.card?.title || ir?.names?.en || raw.languages.ar.card.title }) || bi(ir?.name || raw?.name || 'Service'),
+    name: null,
     code: null, actors: [], stages: [], ends: [], systemSteps: [], timers: [], fields: [], documents: [], fees: [], outputs: [], recipients: [],
     channels: [], legislation: [], assumptions: [], adminReference: [], integrations: { internal: [], services: [], dataSources: [], partners: [] },
     languages: [], statuses: [], notifications: [], kpis: [], slas: [], description: null, place: null, serial: null, earlierIssue: F.earlierIssue || null,
-    sources: {}, questions: [], derivedCaptions: [],
+    sources: {}, questions: [], derivedCaptions: [], harvestConflicts: [], notes: [], preparedBy: null,
   };
   const put = (k, v, s) => { m[k] = v; if (s) m.sources[k] = s; };
+  // the title: the record's own name, then the customer-facing card title (the name the public sees),
+  // then the process model's name. A losing name that differs is kept as a harvest conflict, never printed.
+  const cardT = raw?.languages?.ar?.card?.title || raw?.languages?.en?.card?.title;
+  const cardName = cardT ? { ar: raw.languages.ar?.card?.title || cardT, en: raw.languages.en?.card?.title || ir?.names?.en || cardT } : null;
+  const irName = ir?.names ? bi(ir.names) : ir?.name ? bi(ir.name) : null;
+  const cands = [[F.name && bi(F.name), 'record'], [cardName && bi(cardName), 'crawl'], [irName, 'model']].filter(([v]) => v && (v.ar || v.en));
+  put('name', cands[0]?.[0] || bi(raw?.name || 'Service'), cands[0] ? { kind: cands[0][1], ref: cands[0][1] === 'crawl' ? 'card title' : 'name' } : null);
+  for (const [v, k] of cands.slice(1)) if (fold(v.ar) !== fold(m.name.ar)) m.harvestConflicts.push({ field: 'name', kept: { source: cands[0][1], value: m.name }, lost: { source: k, value: v } });
   // the document code is looked up (record, then the profile's table), never derived from the name
   const keys = [record?.key, raw?.name, ir?.key, pick(m.name, 'ar'), pick(m.name, 'en')].filter(Boolean);
   const code = F.code || record?.code || keys.map((k) => profile?.codes?.[k]).find(Boolean) || null;
@@ -134,6 +144,12 @@ export function buildModel({ ir = null, raw = null, record = null, profile = {},
     if (F.fieldDefaults?.[fl.key]) fl.default = bi(F.fieldDefaults[fl.key]);
   }
 
+  /* the site walk (strongest source): desks seen, their action bars verbatim, the statuses shown */
+  const walkDesks = (walk?.desks || []).map((d) => ({ ...d, __walk: true, __used: false }));
+  const same = (a, b) => !!a && !!b && fold(a) === fold(b);
+  const walkDesk = (t, nm) => { const d = walkDesks.find((x) => !x.__used && ([t.id, t.name].includes(x.key) || [pick(nm, 'ar'), pick(nm, 'en'), t.name].some((n) => same(n, pick(x.name, 'ar')) || same(n, pick(x.name, 'en'))))); if (d) d.__used = true; return d; };
+  if (walk && Array.isArray(walk.statuses) && !Array.isArray(F.statuses)) put('statuses', walk.statuses, { kind: 'walk', ref: walk.ref || 'site walk: statuses shown' });
+
   /* stages: the customer's submission, then the model's people's steps in walk order */
   m.actors.push({ id: 'customer', side: 'customer', name: null, source: { kind: 'pack', ref: 'glossary.customer' } });
   m.stages.push({ id: 'submit', kind: 'customer', name: null, actor: 'customer', actions: [], fields: m.fields.map((f) => f.key), sections: F.desks?.submit?.sections || [...new Map(m.fields.map((f) => [pick(f.section, 'ar'), f.section])).values()].filter((x) => pick(x, 'ar')), source: raw ? crawlSrc('form') : { kind: 'pack', ref: 'customer stage' } });
@@ -149,12 +165,17 @@ export function buildModel({ ir = null, raw = null, record = null, profile = {},
     for (const s of ir.steps) if (!seen.has(s.id)) order.push(s.id);
     const rank = Object.fromEntries(order.map((id, i) => [id, i]));
     const tasks = order.map((id) => byId[id]).filter((s) => s.type === 'task');
+    const demoted = new Set();
     for (const t of tasks) {
       const key = `${t.name || ''} ${t.id}`;
       const mine = !t.actor || custActor.has(t.actor);
-      const kind = PAY.test(key) || PAY.test(pick(names(t), 'en')) ? 'payment' : (custActor.has(t.actor) || (!t.actor && (REWORK.test(key) || REWORK.test(pick(names(t), 'en'))))) ? 'rework' : 'review';
-      const desk = F.desks?.[t.name] || F.desks?.[t.id] || {};
-      m.stages.push({ id: t.id, key: t.name, kind, name: names(t) || bi(t.name), actions: [], actor: kind === 'review' ? (mine ? null : t.actor) : 'customer', sections: desk.sections || [], tasks: desk.tasks || [], fields: [], autoAssign: !!desk.autoAssign, deskActions: desk.actions || null, source: { kind: 'model', ref: `${ir.key || ir.name}: task ${t.name || t.id}` }, rank: rank[t.id] });
+      const payNamed = PAY.test(key) || PAY.test(pick(names(t), 'en'));
+      // a payment stage needs a fee on record; a payment-named task without one is a system step, noted
+      if (payNamed && !m.fees.length) { demoted.add(t.id); m.systemSteps.push({ id: t.id, name: names(t) || bi(t.name), demoted: 'payment-without-fee', source: { kind: 'model', ref: `${ir.key || ir.name}: task ${t.name || t.id}` } }); m.notes.push({ kind: 'payment-without-fee', id: t.id, text: 'payment-named task, no fee on record: described as a system step' }); continue; }
+      const kind = payNamed ? 'payment' : (custActor.has(t.actor) || (!t.actor && (REWORK.test(key) || REWORK.test(pick(names(t), 'en'))))) ? 'rework' : 'review';
+      const recDesk = F.desks?.[t.name] || F.desks?.[t.id];
+      const desk = walkDesk(t, names(t)) || recDesk || {};
+      m.stages.push({ id: t.id, key: t.name, kind, name: names(t) || bi(t.name), actions: [], actor: kind === 'review' ? (mine ? null : t.actor) : 'customer', sections: desk.sections || [], tasks: desk.tasks || [], fields: [], autoAssign: !!desk.autoAssign, deskActions: desk.actions || null, returned: desk.returned || null, displayCriteria: desk.displayCriteria || null, presentIn: ['model', ...(desk.__walk ? ['walk'] : []), ...(recDesk ? ['record'] : [])], source: { kind: 'model', ref: `${ir.key || ir.name}: task ${t.name || t.id}` }, rank: rank[t.id] });
     }
     for (const s of ir.steps.filter((x) => x.type === 'end')) m.ends.push({ id: s.id, name: names(s) || bi(s.name), outcome: (() => { const n = `${s.name} ${pick(names(s), 'en')}`; if (/\bnot\b|\bno\b|lost|fail|لم /i.test(n)) return STOP.test(n) ? 'rejected' : 'closed'; return outcomeOf(n) || (STOP.test(n) ? 'rejected' : POSITIVE.test(n) ? 'approved' : 'closed'); })(), source: { kind: 'model', ref: `${ir.key || ir.name}: end ${s.name || s.id}` } });
     for (const s of ir.steps.filter((x) => x.type === 'system')) m.systemSteps.push({ id: s.id, name: bi(s.name), source: { kind: 'model', ref: `${ir.key || ir.name}: system step ${s.name}` } });
@@ -163,7 +184,7 @@ export function buildModel({ ir = null, raw = null, record = null, profile = {},
     // actions: the routing out of each people's step (through decisions and system steps), captioned
     const stageOf = (id) => m.stages.find((s) => s.id === id);
     const endOf = (id) => m.ends.find((e) => e.id === id);
-    const visible = (id) => { const n = byId[id]; return n && (n.type === 'task' || n.type === 'end'); };
+    const visible = (id) => { const n = byId[id]; return n && ((n.type === 'task' && !demoted.has(id)) || n.type === 'end'); };
     const targets = (from) => { // flows from a stage, followed through decisions/system steps to people or ends
       const out = []; const seenT = new Set();
       const go = (id, flow) => { for (const f of ir.flows.filter((x) => x.from === id && !x.timer)) { const n = byId[f.to]; if (!n || seenT.has(f.to + (f.label || ''))) continue; seenT.add(f.to + (f.label || '')); const fl = flow || (f.label || f.condition ? f : null); if (visible(f.to)) out.push({ to: f.to, flow: fl }); else if (n.type !== 'timer') go(f.to, fl); } };
@@ -181,15 +202,68 @@ export function buildModel({ ir = null, raw = null, record = null, profile = {},
     const first = targets(ir.steps.find((s) => s.type === 'start')?.id || '');
     for (const { to } of first) m.stages[0].actions.push({ key: 'submit', to, effect: 'submit', source: { kind: 'model', ref: `${ir.key || ir.name}: start` } });
     m.graph = g;
+    m.demoted = [...demoted];
   }
   m.stages[0].actions.push({ key: 'cancel', to: null, effect: 'leave', source: { kind: 'pack', ref: 'customer stage' } });
+  m.walked = !!walk;
+  m.stages[0].presentIn = [raw ? 'crawl' : 'pack'];
+  const sub = walkDesks.find((d) => d.key === 'submit');
+  if (sub) { sub.__used = true; m.stages[0].presentIn.push('walk'); if (sub.returned) m.stages[0].returned = sub.returned; if (sub.displayCriteria) m.stages[0].displayCriteria = sub.displayCriteria; }
+  m.walkOnly = walkDesks.filter((d) => !d.__used).map((d) => ({ key: d.key || pick(d.name, 'en'), name: bi(d.name || d.key), source: { kind: 'walk', ref: walk.ref || 'site walk' } }));
   // auto-assignment: the record's desk walk, or a model attribute when the parser kept one
   for (const st of m.stages) if (ir?.steps?.find((s) => s.id === st.id)?.autoAssign) st.autoAssign = true;
   // approval: a review stage whose action ends the process as approved
   for (const st of m.stages) if (st.kind === 'review' && st.actions.some((a) => a.effect === 'endOk')) st.kind = 'approval';
   // outputs: stated in the record; else the profile says whether this kind of process has one
   if (!m.outputs.length && F.output) put('outputs', [F.output], src('output'));
+  /* the message bundle: a line belongs to this service only when its key names one of this form's controls */
+  if (messages) {
+    const lines = Array.isArray(messages) ? messages : parseMessages(messages);
+    const keyOf = (k) => String(k).toLowerCase().replace(/[^a-z0-9]/g, '');
+    let n = 0;
+    for (const ln of lines) {
+      const k = keyOf(ln.key);
+      const f = m.fields.filter((x) => keyOf(x.key).length > 2 && k.includes(keyOf(x.key))).sort((a, b) => keyOf(b.key).length - keyOf(a.key).length)[0];
+      if (f) { (f.messages ||= []).push(ln.text); n += 1; }
+    }
+    m.messageReport = { attributed: n, leftOut: lines.length - n, total: lines.length };
+  }
+  /* the delivered earlier document: legislation/integrations/outputs where nothing else states them, lineage, preparer, counts */
+  if (previous) {
+    const ps = { kind: 'document', ref: previous.ref || 'previous document' };
+    m.previous = { counts: previous.counts || {}, ref: ps.ref };
+    if (!m.legislation.length && previous.legislation?.length) put('legislation', previous.legislation, ps);
+    for (const k of ['internal', 'services', 'dataSources', 'partners']) if (!m.integrations[k].length && previous.integrations?.[k]?.length) { m.integrations[k] = previous.integrations[k]; m.sources[`integrations.${k}`] = ps; }
+    if (!m.outputs.length && previous.outputs?.length) put('outputs', previous.outputs, ps);
+    if (previous.preparedBy) m.preparedBy = { value: bi(previous.preparedBy), source: ps };
+    if (previous.revisions?.length && !F.earlierIssue) m.earlierIssue = previous.revisions;
+  }
+  // the preparer of this service: the record first, then the earlier document, then the profile (compose)
+  if (F.preparedBy) m.preparedBy = { value: bi(F.preparedBy), source: src('preparedBy') };
+  // revisions lineage: one row or a list, oldest first
+  m.earlierIssue = m.earlierIssue ? [].concat(m.earlierIssue).filter((r) => r && r.date) : [];
+  /* the card register (directorate / section / division), keyed on the folded service name */
+  if (register) {
+    const entries = Array.isArray(register) ? register : Object.entries(register).map(([name, v]) => ({ name, ...v }));
+    const hit = entries.find((e) => [m.name.ar, m.name.en, m.key].some((n) => same(n, e.name)));
+    m.register = { entry: hit || null };
+    if (hit?.adminReference && !m.adminReference.length) put('adminReference', hit.adminReference, { kind: 'register', ref: `card register: ${hit.name}` });
+  }
+  /* the attachments each radio/select branch reveals (a crawl that read the picker per branch) */
+  const bare = (x) => String(x).replace(/\s*\([^)]*\)\s*$/, '').trim();
+  m.branchRead = steps(base).some((s) => s.docBranches);
+  m.hasBranches = m.fields.some((f) => f.type === 'radio' || f.shownWhen?.length);
+  for (const [doc, when] of steps(base).flatMap((s) => Object.entries(s.docBranches || {}))) {
+    const d = m.documents.find((x) => same(pick(x.name, 'ar'), bare(doc)) || same(pick(x.name, 'en'), bare(doc)));
+    if (d) d.shownWhen = [...new Set([...(d.shownWhen || []), ...when])];
+    else m.documents.push({ name: bi(bare(doc)), required: !/غير\s*(إجباري|اجباري)|optional/i.test(doc), formats: '', shownWhen: when, by: 'customer', source: crawlSrc('attachment list per branch') });
+  }
   return m;
+}
+
+/** A message bundle: `key=value` (or `key: value`) lines; comments (#, !) and blanks skipped. */
+export function parseMessages(text) {
+  return String(text).split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !/^[#!]/.test(l)).map((l) => { const m = /^([^=:\s]+)\s*[=:]\s*(.*)$/.exec(l); return m ? { key: m[1], text: m[2] } : null; }).filter(Boolean);
 }
 
 /** Caption every action in one edition: desk walk › model flow names › profile captions › derived from the key. */

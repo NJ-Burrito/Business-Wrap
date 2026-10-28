@@ -16,7 +16,7 @@ export const TEMPLATES = path.resolve(HERE, '..', '..', 'templates');
 const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
 export const coreText = () => readJson(path.join(TEMPLATES, '_core', 'text.json'));
 
-const deepMerge = (a, b) => { if (!b) return a; const o = { ...a }; for (const [k, v] of Object.entries(b)) o[k] = v && typeof v === 'object' && !Array.isArray(v) && typeof a?.[k] === 'object' ? deepMerge(a[k], v) : v; return o; };
+export const deepMerge = (a, b) => { if (!b) return a; const o = { ...a }; for (const [k, v] of Object.entries(b)) o[k] = v && typeof v === 'object' && !Array.isArray(v) && typeof a?.[k] === 'object' ? deepMerge(a[k], v) : v; return o; };
 const AR_DIGITS = '٠١٢٣٤٥٦٧٨٩';
 const pad = (n) => String(n).padStart(2, '0');
 const fill = (s, vars) => String(s ?? '').replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? vars[k] : m));
@@ -35,6 +35,7 @@ export function constraintsOf(f, { locale, T, threshold = 30 }) {
     else parts.push(fill(T.optionsInline, { list: opts.join(T.listSep) }));
   }
   if (f.constraints) parts.push(pick(f.constraints, locale));
+  if (f.messages?.length && T.messages) parts.push(fill(T.messages, { m: f.messages.map((x) => `«${pick(x, locale)}»`).join(T.listSep) }));
   return parts.join(locale === 'ar' ? '؛ ' : '; ') || T.none;
 }
 
@@ -54,11 +55,14 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
   const g = (k) => G[k] ?? k;
   const v0 = { ...G, request: g('request'), requests: g('requests'), customer: g('customer'), output: '' };
   const name = pick(model.name, locale);
-  const out = pick(model.outputs?.[0]?.name, locale) || g('outputDefault') || '';
-  const V = { ...v0, name, output: out, entity: g('entity') };
+  const out = pick(model.outputs?.[0]?.name, locale) || (pack.outputFromApproval ? g('outputDefault') : '') || '';
+  const V = { ...v0, name, output: out || g('outputDefault') || '', entity: g('entity') };
   // a pack whose processes always issue something on approval names the output after the service until the record says otherwise
   const signed = (model.systemSteps || []).some((x) => new RegExp(pack.signatureSteps || '$^', 'i').test(pick(x.name, 'en')));
   const approvedOutput = !model.outputs?.length && pack.outputFromApproval && model.ends.some((e) => e.outcome === 'approved');
+  // an output is printed (1.2's clause, FR, the output story) only where the evidence names one, or the pack issues on approval
+  const hasOutput = !!out && (model.outputs.length > 0 || approvedOutput || pack.outputStory === 'always') && pack.outputStory !== 'never';
+  V.outputClause = hasOutput && G.outputClause ? fill(G.outputClause, { ...V }) : '';
   const joinAr = (s) => (locale === 'ar' ? s.replace(/لـال/g, 'لل').replace(/([لب])ـ/g, '$1') : s);
   const tx = (s, extra = {}) => joinAr(fill(fill(s, { ...V, ...extra }), V));
   const questions = [];
@@ -69,18 +73,22 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
   // names a reader sees
   const actorName = (id) => (id === 'customer' ? g('customer') : pick(model.actors.find((a) => a.id === id)?.name, locale));
   const stageName = (st) => (st.id === 'submit' ? tx(T.story.customer.name) : pick(st.name, locale));
+  // «who?» answered with a person: the customer, a job-named actor as it is, a stage-named desk as «staff of stage X»
+  const asPerson = (st) => { if (!st) return T.actorSystem; if (st.actor === 'customer' || st.kind === 'rework' || st.kind === 'customer') return g('customer'); const a = st.actor && actorName(st.actor); return a && a !== stageName(st) ? (locale === 'ar' && /[A-Za-z]/.test(a) ? `«${a}»` : a) : fill(T.roleStage, { s: stageName(st) }); };
   const stageById = (id) => model.stages.find((s) => s.id === id);
   const endById = (id) => model.ends.find((e) => e.id === id);
   // the end's own name when the evidence gives one in this language; a raw key («cancel») reads as its outcome word
   const endName = (e) => { const nm = pick(e.name, locale); return !nm || (locale === 'ar' ? /[A-Za-z]/.test(nm) : /^[a-z_-]+$/.test(nm)) ? T.outcomes[e.outcome] || nm : nm; };
   const nameOfStage = (id, asRole) => { const st = stageById(id); if (st) return asRole && st.actor && st.actor !== 'customer' ? actorName(st.actor) : st.kind === 'rework' || st.kind === 'customer' ? (asRole ? g('customer') : stageName(st)) : stageName(st); const e = endById(id); return e ? endName(e) : ''; };
   const derivedCaps = captionAll(model, { locale, T, profile, nameOfStage });
+  model.derivedCaptions = { ...(Array.isArray(model.derivedCaptions) ? {} : model.derivedCaptions), [locale]: derivedCaps };
   if (derivedCaps.length && pack.askCaptions !== false) ask(fill(T.q.captions, { list: quoteList(derivedCaps, sep) }), '6');
   const actionLabel = (a) => pick(a.label, locale);
   const effectText = (st, a) => {
     const t = a.to ? nameOfStage(a.to) : '';
     const e = endById(a.to);
-    return tx(T.effect[a.effect] || T.effect.forward, { t, s: e ? endName(e) : '' });
+    const auto = ['forward', 'submit', 'resubmit', 'pay'].includes(a.effect) && stageById(a.to)?.autoAssign && T.effect.autoSuffix ? T.effect.autoSuffix : '';
+    return tx((T.effect[a.effect] || T.effect.forward) + auto, { t, s: e ? endName(e) : '' });
   };
   // the stages the document describes: people's steps (payment is a stage, not a desk: no card, no role)
   const people = model.stages.filter((s) => s.kind !== 'payment');
@@ -129,24 +137,35 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
       });
       return { blocks: [table(col('roles'), rows)], fill: staff.length ? 'derived' : 'template', source: { kind: 'model', ref: 'actors + stages' } };
     },
-    integrations: (s) => { const k = s.of; const L = model.integrations[k] || []; if (!L.length) return statedNone(`integrations.${k}`); const rows = L.map((x) => (s.cols || ['name', 'description', 'sent', 'received', 'readiness']).map((c) => pick(x[c], locale) || (c === 'readiness' ? T.unknown : T.none))); return { blocks: [table(col(s.columns || k), rows)], fill: 'evidence', source: srcOf(`integrations.${k}`) }; },
+    integrations: (s) => { const k = s.of; const L = model.integrations[k] || []; if (!L.length) return statedNone(`integrations.${k}`); const rows = L.map((x) => (s.cols || ['name', 'description', 'sent', 'received', 'readiness']).map((c) => pick(x[c], locale) || (c === 'readiness' ? pick(profile.integrations?.readinessDefault, locale) || T.unknown : T.none))); return { blocks: [table(col(s.columns || k), rows)], fill: 'evidence', source: srcOf(`integrations.${k}`) }; },
     languages: () => (model.languages.length ? { blocks: [prose(model.languages.map((l) => ({ ar: 'العربية', en: 'English' }[l] || l)).join(' / '))], fill: 'evidence', source: srcOf('languages') } : null),
     requirements: () => {
       const rows = [];
       const skip = new Set(pack.requirements?.skip || []);
-      const add = (key, unit, extra = {}) => { if (!skip.has(key)) rows.push([`${pack.codes?.fr || 'FR'}-${pad(rows.length + 1)}`, tx(T.fr[key], extra), tx(unit === 'output' ? g('outputUnit') || T.units.output : T.units[unit] || unit), T.actorSystem]); };
+      // the timeline rank of a unit: submit 10, assign 20, desks 30+i, other 60, follow-up 70, all staff 80, notices 85, output 90
+      const RANK = { submit: 10, payment: 10, assign: 20, staff: 80, rework: 70, track: 70, all: 80, notify: 85, output: 90 };
+      const CUSTOMER_FR = new Set(['attach', 'submitCancel', 'rework']);
+      const add = (key, unit, extra = {}, who = null, rank = null) => { if (!skip.has(key)) rows.push({ text: tx(T.fr[key], extra), unit: tx(unit === 'output' ? g('outputUnit') || T.units.output : T.units[unit] || unit), who: who || (CUSTOMER_FR.has(key) ? g('customer') : T.actorSystem), rank: rank ?? RANK[unit] ?? 60 }); };
       for (const k of pack.requirements?.customer || ['dynamicFields', 'validate', 'attach', 'submitCancel', 'confirm']) if (k !== 'attach' || model.documents.length) add(k, 'submit');
       for (const p of partners) add(p.received ? 'integration' : 'integrationNoData', 'submit', { p: pick(p.name, locale), data: pick(p.received, locale), sec: secTitle.partners || '' });
       if (payment) { add('toPayment', 'submit'); if (firstDesk) add('afterPayment', 'payment', { t: stageName(firstDesk) }); }
-      for (const st of staff.filter((x) => x.autoAssign)) add('autoAssign', 'assign', { t: stageName(st) });
+      for (const st of staff.filter((x) => x.autoAssign)) add('autoAssign', 'assign', { t: stageName(st) }, null, staff.indexOf(st) === 0 ? 20 : 30 + staff.indexOf(st));
+      // one requirement per desk's action bar, held by that desk's person
+      if (T.fr.deskActions) staff.forEach((st, i) => { if (st.actions.length) rows.push({ text: tx(T.fr.deskActions, { w: asPerson(st), s: stageName(st), list: quoteList(st.actions.map(actionLabel), sep) }), unit: stageName(st), who: asPerson(st), rank: 30 + i }); });
+      // one requirement per branch gate (a field the form shows only on a choice)
+      if (T.fr.branchGate) for (const f of model.fields.filter((x) => x.shownWhen?.length)) rows.push({ text: tx(T.fr.branchGate, { f: pick(f.label, locale), when: f.shownWhen.map((w) => `«${pick(w, locale)}»`).join(sep) }), unit: tx(T.units.submit), who: T.actorSystem, rank: 10 });
       if (people.some((s) => s.kind === 'rework')) add('rework', 'rework');
-      for (const t of model.timers) { const st = stageById(t.stage); if (st) add('timer', st.kind === 'payment' ? 'payment' : 'staff', { s: stageName(st), d: pick(t.duration, locale) || T.br.timerUnknown }); }
+      for (const t of model.timers) { const st = stageById(t.stage); if (st) add('timer', st.kind === 'payment' ? 'payment' : 'staff', { s: stageName(st), d: pick(t.duration, locale) || T.br.timerUnknown }, null, st.kind === 'payment' ? 10 : staff.includes(st) ? 30 + staff.indexOf(st) : 70); }
       add('track', 'track');
       if (staff.length) { add('notes', 'staff'); add('history', 'all'); }
       if (model.notifications.length || model.systemSteps.some((s) => /notif|inform|email|sms|إشعار|اشعار/i.test(pick(s.name, 'en')))) add('notify', 'notify');
-      if (out && (model.outputs.length || approvedOutput || pack.outputStory === 'always')) add('output', 'output');
-      for (const r of pack.requirements?.extra || []) rows.push([`${pack.codes?.fr || 'FR'}-${pad(rows.length + 1)}`, tx(pick(r.text, locale)), tx(pick(r.unit, locale)), T.actorSystem]);
-      return { blocks: [table(col('requirements'), rows)], fill: 'derived', source: { kind: 'model', ref: 'stages, actions, integrations, payment, timers' } };
+      if (hasOutput) add('output', 'output');
+      for (const r of pack.requirements?.extra || []) rows.push({ text: tx(pick(r.text, locale)), unit: tx(pick(r.unit, locale)), who: T.actorSystem, rank: r.rank ?? 60 });
+      // sorted by the timeline (stable), codes issued after the sort
+      const sorted = rows.map((r, i) => ({ ...r, i })).sort((a, b) => a.rank - b.rank || a.i - b.i);
+      const out2 = sorted.map((r, i) => [`${pack.codes?.fr || 'FR'}-${pad(i + 1)}`, r.text, r.unit, r.who]);
+      model.frRanks = { ...(model.frRanks || {}), [locale]: sorted.map((r) => r.rank) };
+      return { blocks: [table(col('requirements'), out2)], fill: 'derived', source: { kind: 'model', ref: 'stages, actions, integrations, payment, timers' } };
     },
     workflow: (s) => {
       if (!model.graph) return null;
@@ -156,26 +175,47 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
       const before = (id) => model.graph.edges.filter((x) => x.to === id).map((x) => x.from);
       const stagesBefore = (id, seen = new Set()) => before(id).flatMap((f) => (seen.has(f) ? [] : (seen.add(f), stageById(f) ? [stageById(f)] : stagesBefore(f, seen))));
       const edges = model.graph.edges.filter((e) => !e.timer).map((e) => { const sts = stageById(e.from) ? [stageById(e.from)] : stagesBefore(e.from); const a = sts.flatMap((st) => st.actions).find((x) => x.to === e.to); return { from: e.from, to: e.to, label: a && !stageById(e.to)?.kind?.match(/payment/) ? actionLabel(a) : '' }; });
+      // a stage the model assigns round-robin gets its assignment step drawn in front of it (route-<task id>)
+      for (const st of staff.filter((x) => x.autoAssign && nodes.some((n) => n.id === x.id))) {
+        const rid = `route-${st.id}`;
+        nodes.push({ id: rid, type: 'system', name: tx(T.units.assign) });
+        for (const e of edges.filter((x) => x.to === st.id)) e.to = rid;
+        edges.push({ from: rid, to: st.id, label: '' });
+      }
+      // a payment-named task without a fee on record is drawn as a system step (B7)
+      for (const n of nodes) if (n.type === 'task' && (model.demoted || []).includes(n.id)) { n.type = 'system'; n.name = pick(model.systemSteps.find((x) => x.id === n.id)?.name, locale) || n.name; }
       const applicantId = '__customer';
       for (const n of nodes) if (n.type === 'task' && stageById(n.id)?.actor === 'customer') n.actor = applicantId;
       const model2 = DIAGRAM.fromGraph({ nodes, edges }, { actors: [{ id: applicantId, name: 'customer' }, ...ir.actors], locale });
       return { blocks: [{ kind: 'diagram', caption: tx(pick(s.caption, locale) || '{name}'), model: model2 }], fill: 'derived', source: { kind: 'model', ref: 'people steps only (system steps folded)' } };
     },
     rules: () => {
+      const R = { ...(pack.rules || {}), ...(profile.rules || {}) };
+      // a pack whose rules govern the back office prints none for a process with no staff stage
+      if (R.backOfficeOnly && !staff.length) return null;
       const rows = [];
-      const code = (c) => c || `${pack.codes?.br || 'BR'}-${pad(rows.length + 1)}`;
+      const br = pack.codes?.br || 'BR';
+      const fam = {};
+      const famCode = (f) => `${br}-${f}-${pad((fam[f] = (fam[f] || 0) + 1))}`;
+      const code = (c) => c || `${br}-${pad(rows.length + 1)}`;
       const has = { reroute: staff.some((s) => s.actions.some((a) => a.effect === 'back')), recipients: model.recipients.length > 0, serial: !!model.serial, phone: model.fields.some((f) => f.type === 'tel' || /phone|mobile|هاتف/i.test(`${f.key} ${pick(f.label, 'en')}`)), staff: staff.length > 0, partners: partners.length > 0, payment: !!payment };
-      for (const r of pack.rules?.standard || []) {
+      for (const r of R.standard || []) {
         if (r.when && !r.when.split('&').every((w) => (w.startsWith('!') ? !has[w.slice(1)] : has[w]))) continue;
         let t = pick(r.text, locale);
         t = tx(t, { list: model.recipients.map((x) => pick(x, locale)).join(sep), pattern: pick(model.serial?.pattern, locale), reset: pick(model.serial?.reset, locale) });
         rows.push([code(r.code), t]);
       }
-      if (pack.rules?.derived !== false) {
-        for (const st of staff) for (const a of st.actions.filter((x) => x.effect !== 'forward')) rows.push([code(), tx(T.br.action, { a: actionLabel(a), s: stageName(st), e: effectText(st, a).replace(/^(\S)/, (c) => (locale === 'en' ? c.toLowerCase() : c)) })]);
-        for (const t of model.timers) { const st = stageById(t.stage); const te = t.to && (endById(t.to) || stageById(t.to)); if (st) rows.push([code(), te ? tx(T.br.timerTo, { s: stageName(st), d: pick(t.duration, locale) || T.br.timerUnknown, e: effectText(st, { to: t.to, effect: endById(t.to) ? (endById(t.to).outcome === 'approved' ? 'endOk' : 'endStop') : 'forward' }).replace(/^(\S)/, (c) => (locale === 'en' ? c.toLowerCase() : c)) }) : tx(T.br.timer, { s: stageName(st), d: pick(t.duration, locale) || T.br.timerUnknown })]); if (st && !t.duration) ask(fill(T.q.timer, { d: t.raw.replace(/^\$\{|\}$/g, '').replace(/_/g, ' '), s: stageName(st) }), '5'); }
+      if (R.derived !== false) {
+        // a derived rule carries its family in its code (REJECT, EDIT, RETURN, SLA …), so a struck family stays out by code
+        const familyOf = (a) => (a.effect === 'endStop' ? 'REJECT' : a.effect === 'rework' ? 'EDIT' : a.effect === 'back' ? 'RETURN' : a.effect === 'endOk' ? 'END' : 'ACT');
+        const famOn = !!R.families;
+        for (const st of staff) for (const a of st.actions.filter((x) => x.effect !== 'forward')) rows.push([famOn ? famCode(familyOf(a)) : code(), tx(T.br.action, { a: actionLabel(a), s: stageName(st), e: effectText(st, a).replace(/^(\S)/, (c) => (locale === 'en' ? c.toLowerCase() : c)) })]);
+        for (const t of model.timers) { const st = stageById(t.stage); const te = t.to && (endById(t.to) || stageById(t.to)); if (st) rows.push([famOn ? famCode('SLA') : code(), te ? tx(T.br.timerTo, { s: stageName(st), d: pick(t.duration, locale) || T.br.timerUnknown, e: effectText(st, { to: t.to, effect: endById(t.to) ? (endById(t.to).outcome === 'approved' ? 'endOk' : 'endStop') : 'forward' }).replace(/^(\S)/, (c) => (locale === 'en' ? c.toLowerCase() : c)) }) : tx(T.br.timer, { s: stageName(st), d: pick(t.duration, locale) || T.br.timerUnknown })]); if (st && !t.duration) ask(fill(T.q.timer, { d: t.raw.replace(/^\$\{|\}$/g, '').replace(/_/g, ' '), s: stageName(st) }), '5'); }
       }
-      return rows.length ? { blocks: [table(col('rules'), rows)], fill: 'derived', source: { kind: 'model+pack', ref: 'staff actions, timers, standard rules' } } : null;
+      const struck = new RegExp(`^${br}-(${(R.struckFamilies || []).join('|') || '$^'})\\b`);
+      const kept = rows.filter((r) => !struck.test(r[0]));
+      const capped = R.maxCount ? kept.slice(0, R.maxCount) : kept;
+      return capped.length ? { blocks: [table(col('rules'), capped)], fill: 'derived', source: { kind: 'model+pack', ref: 'staff actions, timers, standard rules' } } : null;
     },
     statuses: () => { const rows = [...new Set([...model.statuses.map((x) => pick(x, locale)), ...model.ends.map(endName)])].map((x) => [x]); return rows.length ? { blocks: [table(col('statuses'), rows)], fill: model.statuses.length ? 'evidence' : 'derived', source: srcOf('statuses') || { kind: 'model', ref: 'ends' } } : null; },
     glossary: () => { const rows = Object.entries(pack.glossaryTable?.[locale] || {}).map(([k, d]) => [tx(k), tx(d)]); return rows.length ? { blocks: [table(col('glossary'), rows)], fill: 'template' } : null; },
@@ -188,6 +228,16 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
   const dictRow = (f) => [pick(f.label, locale), T.fieldTypes[f.type] || f.type, f.required ? T.required : T.optional, f.editable === false ? T.readOnly : T.editable, pick(f.integration, locale) || T.none, pick(f.default, locale) || T.none, constraintsOf(f, { locale, T, threshold: profile.registers?.threshold || 30 })];
   const docRow = (d) => [pick(d.name, locale), T.fieldTypes.file, d.required ? T.required : T.optional, T.editable, T.none, T.none, d.formats ? fill(d.maxSize ? T.fileLimitsSize : T.fileLimits, { formats: d.formats, size: pick(d.maxSize, locale) }) : T.none];
   const stageTaskRows = () => (pack.stageTasks?.[locale] || []).map((r) => r.map((c) => tx(c)));
+
+  // the applicant's fields in on-screen order, a branch field spliced directly under its gate
+  const spliced = () => {
+    const out = []; const placed = new Set();
+    const gateOf = (f) => model.fields.find((g) => g !== f && f.shownWhen.some((w) => { const t = pick(w, 'ar') || pick(w, 'en'); const lab = String(t).split(/\s*=\s*/)[0]; return [pick(g.label, 'ar'), pick(g.label, 'en'), g.key].includes(lab) || (g.options?.ar || []).includes(t); }));
+    const put = (f) => { if (placed.has(f)) return; placed.add(f); out.push(f); for (const c of model.fields.filter((x) => x.shownWhen?.length && !placed.has(x) && gateOf(x) === f)) put(c); };
+    for (const f of model.fields) if (!f.shownWhen?.length || !gateOf(f)) put(f);
+    for (const f of model.fields) put(f);
+    return out;
+  };
 
   /* stories: one card per people's stage, then the output story when there is one */
   GEN.stories = (s, number) => {
@@ -229,13 +279,21 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
       const acts = st.actions.map((a) => [actionLabel(a), effectText(st, a)]);
       if (kind === 'customer' && payment) acts.splice(0, 1, [actionLabel(st.actions[0]), tx(T.effect.forward, { t: stageName(payment) })]);
       if (acts.length) item.actions = { columns: col('actions'), rows: acts };
+      const C4 = T.story4;
       // the dictionary: the stage's fields, its documents, and its tasks (مهمات: never action rows)
-      const rows = kind === 'customer' ? [...model.fields.map(dictRow), ...model.documents.map(docRow)] : kind === 'rework' ? [] : [...(st.fields || []).map((key) => dictRow(model.fields.find((f) => f.key === key))).filter(Boolean), ...stageTaskRows()];
+      const rows = kind === 'customer' ? [...spliced().map(dictRow), ...model.documents.map(docRow)] : kind === 'rework' ? [] : [...(st.fields || []).map((key) => dictRow(model.fields.find((f) => f.key === key))).filter(Boolean), ...stageTaskRows()];
       if (rows.length) item.dictionary = { columns: col('dictionary'), rows };
       const title = `${tx(P2.name, { s: sName })} (${portal(st)})`;
-      sections.push({ title, blocks: [{ kind: 'stories', number: '', ...(k === 1 ? { lead: T.storyLead } : {}), items: [item] }], fill: kind === 'customer' ? 'evidence' : 'derived', source: st.source, unresolved });
+      const blocks = [{ kind: 'stories', number: '', ...(k === 1 ? { lead: T.storyLead } : {}), items: [item] }];
+      if (C4 && pack.storyContract !== false) {
+        // البيانات المسترجعة: the desk/walk record; else the partners' returned data on the applicant's screen; else the panels, pointed back
+        const retrieved = pick(st.returned, locale) || (kind === 'customer' ? partners.filter((p) => p.received).map((p) => tx(C4.fromPartner, { p: pick(p.name, locale), data: pick(p.received, locale) })).join(' ') : st.sections?.length ? tx(C4.panels, { list: quoteList(st.sections.map((x) => pick(x, locale)), sep) }) : '') || T.none;
+        const display = pick(st.displayCriteria, locale) || T.none;
+        blocks.push(table([], [[C4.retrieved, retrieved], [C4.display, display], ...(item.dictionary ? [] : [[C4.fields, T.none]]), ...(item.actions ? [] : [[C4.actions, T.none]])]));
+      }
+      sections.push({ title, blocks, fill: kind === 'customer' ? 'evidence' : 'derived', source: st.source, unresolved, story: kind, stage: st.id });
     }
-    if (out && (model.outputs.length || approvedOutput || pack.outputStory === 'always') && pack.outputStory !== 'never') {
+    if (hasOutput) {
       k += 1;
       const o = model.outputs[0] || {};
       const P2 = T.story.output;
@@ -243,7 +301,7 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
       const blocks = [{ kind: 'stories', number: '', items: [item] }];
       if (o.preview) blocks.push({ kind: 'shots', caption: tx(g('outputPreviewCaption')), images: [o.preview], width: 70 });
       blocks.push(table(col('outputCard'), [[g('outputNameLabel'), pick(o.name, locale) || out], [g('outputWhenLabel'), pick(o.when, locale) || (signed ? g('outputWhenSigned') || g('outputWhenDefault') : g('outputWhenDefault'))], [g('outputToLabel'), pick(o.to, locale) || g('outputToDefault')]]));
-      sections.push({ title: `${tx(P2.name)} (${g('customerChannel')})`, blocks, fill: model.outputs.length ? 'evidence' : approvedOutput ? 'derived' : 'template', source: srcOf('outputs') || (approvedOutput ? { kind: 'model', ref: 'approved end' + (signed ? ' + signature steps' : '') } : null) });
+      sections.push({ story: 'output', title: `${tx(P2.name)} (${g('customerChannel')})`, blocks, fill: model.outputs.length ? 'evidence' : approvedOutput ? 'derived' : 'template', source: srcOf('outputs') || (approvedOutput ? { kind: 'model', ref: 'approved end' + (signed ? ' + signature steps' : '') } : null) });
     }
     return { sections };
   };
@@ -257,6 +315,7 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
       const num = `${ci + 1}.${sections.length + 1}`;
       const title = pick(s.title, locale);
       const gen = GEN[s.gen];
+      if (s.gen === 'questions' && profile.questionsInDocument !== true && pack.questionsInDocument !== true) continue;
       if (!gen) throw new Error(`pack ${pack.id}: section «${title}» names an unknown generator «${s.gen}»`);
       const r = gen(s, num);
       if (r?.sections) {
@@ -264,7 +323,7 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
           const n = `${ci + 1}.${sections.length + 1}`;
           for (const b of x.blocks) if (b.kind === 'stories') b.number = n;
           sections.push({ number: n, title: x.title, blocks: x.blocks });
-          fillLog.push({ section: n, title: x.title, gen: s.gen, fill: x.fill, source: x.source || null, questions: x.unresolved || [] });
+          fillLog.push({ section: n, title: x.title, gen: s.gen, fill: x.fill, source: x.source || null, questions: x.unresolved || [], ...(x.story ? { story: x.story, stage: x.stage || null } : {}) });
         });
         if (!r.sections.length) { const a = asked(num, title); sections.push({ number: num, title, blocks: a.blocks }); fillLog.push({ section: num, title, gen: s.gen, fill: a.fill, source: null }); }
         continue;
@@ -276,7 +335,7 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
       fillLog.push({ section: num, title, gen: s.gen, fill: res.fill, source: res.source || null });
     }
     return { number: String(ci + 1), title: pick(c.title, locale), sections };
-  });
+  }).filter((c) => c.sections.length).map((c, i) => (c.number === String(i + 1) ? c : { ...c, number: String(i + 1), sections: c.sections.map((x) => ({ ...x, number: x.number.replace(/^\d+/, String(i + 1)), blocks: x.blocks.map((b) => (b.kind === 'stories' ? { ...b, number: b.number.replace(/^\d+/, String(i + 1)) } : b)) })) }));
   for (const q of extraQuestions) ask(pick(q.question, locale), q.blocks || '');
   // the code: looked up, never derived
   if (!model.code) ask(fill(T.q.code, { name }), '0');
@@ -286,13 +345,16 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
   /* front matter */
   const C = { ...(pack.control || {}), ...(profile.control || {}) };
   const ver = (n) => fill(profile.versioning?.format || pack.versioning?.format || 'V{nn}', { nn: pad(n), n });
-  const revisions = [];
-  if (model.earlierIssue?.date) revisions.push([pick(model.earlierIssue.version, locale) || ver(1), model.earlierIssue.date, pick(model.earlierIssue.purpose, locale) || '', '—']);
-  revisions.push([ver(revisions.length + 1), today, '', '—']);
+  let revisions = [];
+  for (const r of [].concat(model.earlierIssue || []).filter((x) => x?.date)) revisions.push([pick(r.version, locale) || ver(revisions.length + 1), r.date, pick(r.purpose, locale) || '', pick(r.by, locale) || '—']);
+  const lastN = Number(/(\d+)\D*$/.exec(revisions.at(-1)?.[0] || '')?.[1] || revisions.length);
+  if (revisions.at(-1)?.[1] !== today) revisions.push([ver(lastN + 1), today, '', '—']);
+  const maxRows = profile.versioning?.maxRows || pack.versioning?.maxRows;
+  if (maxRows && revisions.length > maxRows) revisions = revisions.slice(-maxRows);
   const control = {
     documentId: model.code ? fill(profile.codeFormat || pack.codeFormat || '{code}', { code: model.code }) : '—',
     title: `${pick(pack.titlePrefix, locale) || T.titlePrefix}: ${name}`,
-    preparedBy: pick(C.preparedBy, locale), documentType: pick(C.documentType, locale), classification: pick(C.classification, locale),
+    preparedBy: pick(model.preparedBy?.value, locale) || pick(C.preparedBy, locale), documentType: pick(C.documentType, locale), classification: pick(C.classification, locale),
     owner: pick(C.owner, locale) || g('entity'), issuedOn: today, version: revisions.at(-1)[0], status: pick(C.status, locale), reviewCycle: pick(C.reviewCycle, locale),
   };
   return {

@@ -17,18 +17,22 @@ export function ledgerOf(model, doc, pack) {
   const secs = (gens) => [...new Set(doc.fill.filter((f) => gens.includes(f.gen) && f.fill !== 'question').map((f) => f.section))];
   const has = (gen) => doc.fill.some((f) => f.gen === gen && f.fill !== 'question');
   const rows = [];
-  const row = (kind, id, name, source, disposition, gens) => rows.push({ kind, id, name, presentIn: [source?.kind].filter(Boolean), source, disposition, sections: secs(gens) });
+  // presentIn is the union of every source that names the element (model, crawl, walk, record, document)
+  const row = (kind, id, name, source, disposition, gens, present) => rows.push({ kind, id, name, presentIn: [...new Set([...(present || []), source?.kind].filter(Boolean))], source, disposition, sections: secs(gens) });
   const drawn = new Set((model.graph?.nodes || []).map((n) => n.id));
   for (const f of model.fields) row('field', f.key, f.label, f.source, 'document-only', GEN_OF.field);
   for (const d of model.documents) row('document', pick(d.name, 'en'), d.name, d.source, 'document-only', GEN_OF.document);
   for (const s of model.stages) {
     const kind = s.kind === 'payment' ? 'payment' : 'stage';
-    row(kind, s.id, s.name || { ar: 'submit', en: 'submit' }, s.source, s.id === 'submit' ? 'document-only' : drawn.has(s.id) ? 'drawn' : 'drawn-unobserved', GEN_OF[kind]);
+    // drawn-unobserved = on the figure, but a site walk ran and never reached it; not drawn = document-only
+    const seen = (s.presentIn || []).includes('walk');
+    row(kind, s.id, s.name || { ar: 'submit', en: 'submit' }, s.source, s.id === 'submit' || !drawn.has(s.id) ? 'document-only' : model.walked && !seen ? 'drawn-unobserved' : 'drawn', GEN_OF[kind], s.presentIn);
     for (const a of s.actions) {
       const ret = a.effect === 'back' || a.effect === 'rework';
       row(ret ? 'return' : 'action', `${s.id}→${a.to || a.key}`, a.label, a.source, s.id === 'submit' ? 'document-only' : 'drawn', ret ? GEN_OF.return : a.effect === 'endStop' ? ['rules', 'stories', 'workflow'] : GEN_OF.action);
     }
   }
+  for (const w of model.walkOnly || []) row('stage', `walk:${w.key}`, w.name, w.source, 'document-only', [], ['walk']);
   for (const n of (model.graph?.nodes || []).filter((x) => x.type === 'decision')) row('decision', n.id, { ar: '', en: '' }, { kind: 'model', ref: n.id }, 'drawn', GEN_OF.decision);
   for (const e of model.ends) row('end', e.id, e.name, e.source, 'drawn', GEN_OF.end);
   for (const t of model.timers) row('timer', t.id, { ar: t.raw, en: t.raw }, t.source, 'document-only', GEN_OF.timer);

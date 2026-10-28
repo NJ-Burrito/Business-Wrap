@@ -72,7 +72,8 @@
    "endOk": "ينهي {request} بالموافقة؛ وتصبح حالته «{s}»",
    "endStop": "ينهي {request}؛ وتصبح حالته «{s}»",
    "submit": "يرسل {request} إلى مرحلة «{t}»",
-   "leave": "يترك تعبئة النموذج دون إرسال {request}"
+   "leave": "يترك تعبئة النموذج دون إرسال {request}",
+   "autoSuffix": "، ويوزّعه النظام آلياً على موظفي المرحلة"
   },
   "story": {
    "customer": {
@@ -141,7 +142,9 @@
    "history": "يجب على النظام عرض سجل الإجراءات على {request} لجميع المستخدمين المعنيين.",
    "notify": "يجب على النظام إرسال إشعار إلى {customer} عند تغيّر حالة {request}، يتضمن رقم {request} وحالته وتاريخه.",
    "output": "يجب على النظام إنشاء «{output}» بعد الموافقة النهائية وإتاحته لـ{customer} للعرض والتحميل.",
-   "timer": "يجب على النظام إنهاء {request} تلقائياً إذا لم تُنجَز مرحلة «{s}» خلال {d}."
+   "timer": "يجب على النظام إنهاء {request} تلقائياً إذا لم تُنجَز مرحلة «{s}» خلال {d}.",
+   "deskActions": "يجب على النظام تمكين {w} من اتخاذ الإجراءات التالية على الطلب: {list}.",
+   "branchGate": "يجب على النظام عرض حقل «{f}» عند اختيار {when} فقط."
   },
   "units": {
    "submit": "تقديم {request}",
@@ -211,6 +214,15 @@
    "entity": "الجهة",
    "outputUnit": "الناتج",
    "outputWhenSigned": "عند اكتمال العملية"
+  },
+  "messages": "رسالة التحقق: {m}",
+  "story4": {
+   "retrieved": "البيانات المسترجعة",
+   "display": "معايير العرض",
+   "fields": "حقول المرحلة",
+   "actions": "جدول الإجراءات",
+   "fromPartner": "تُسترجع من «{p}»: {data}.",
+   "panels": "تُعرض للاطلاع: {list}، كما أُدخلت عند تقديم الطلب."
   }
  },
  "en": {
@@ -285,7 +297,8 @@
    "endOk": "Ends the {request} as approved; its status becomes «{s}»",
    "endStop": "Ends the {request}; its status becomes «{s}»",
    "submit": "Sends the {request} to the «{t}» stage",
-   "leave": "Leaves the form without sending the {request}"
+   "leave": "Leaves the form without sending the {request}",
+   "autoSuffix": ", and the system assigns it automatically to the stage staff"
   },
   "story": {
    "customer": {
@@ -354,7 +367,9 @@
    "history": "The system shows the action log of the {request} to every user concerned.",
    "notify": "The system notifies the {customer} when the {request} status changes, with the {request} number, status and date.",
    "output": "The system creates the «{output}» after final approval and lets the {customer} view and download it.",
-   "timer": "The system ends the {request} automatically when the «{s}» stage is not completed within {d}."
+   "timer": "The system ends the {request} automatically when the «{s}» stage is not completed within {d}.",
+   "deskActions": "The system lets {w} take these actions on the request: {list}.",
+   "branchGate": "The system shows the «{f}» field only when {when} is chosen."
   },
   "units": {
    "submit": "Submitting the {request}",
@@ -424,6 +439,15 @@
    "entity": "the organisation",
    "outputUnit": "Output",
    "outputWhenSigned": "When the process completes"
+  },
+  "messages": "Validation message: {m}",
+  "story4": {
+   "retrieved": "Retrieved data",
+   "display": "Display criteria",
+   "fields": "Stage fields",
+   "actions": "Actions table",
+   "fromPartner": "Retrieved from «{p}»: {data}.",
+   "panels": "Shown for reference: {list}, as entered on submission."
   }
  }
 }
