@@ -109,8 +109,6 @@ Opened from disk (file://), «PDF + DOCX» downloads the edited document JSON an
 
 At launch the editor (served by `npm run serve -- <editor.html>` or `node engine/serve.mjs <editor.html>`) checks for a newer release, at most once a day and without blocking anything. Update now downloads the release, checks its fingerprint, backs up, replaces the program files only, verifies the new version, restarts the server and reopens your document where you were. Your documents, edits and their history, design packs, fonts, logos, `out/` and `.local/` are never touched. **Settings** (toolbar View section, or Ctrl+K) shows About, the update state with **Check now** and the auto-check switch, and your preferences. Opened from disk (`file://`), the page cannot check: Settings says how to update. Every release: https://github.com/NJ-Burrito/Business-Wrap/releases. Details: `bible/07-updates.md`.
 
-![Update popup](docs/screens/update-popup.en.png)
-
 </details>
 
 ## 🧰 What it does
@@ -167,22 +165,14 @@ Each gives the Arabic and English document JSON and an editor. In the editor: **
 <details>
 <summary>📝 The editor, diagrams, design and exports</summary>
 
-![A diagram shape selected: its tools stay first in the toolbar while the Design panel is open](docs/screens/sticky-tools.png)
-
 - **Sticky selection tools.** A block, a table cell, a logo, an image, a diagram shape or an arrow puts its own section first in the toolbar. It stays while you use menus, the Design panel, colour pickers or inline editors. A click on empty space, or Esc, returns the general tools.
 - **Sections that fold the same way in both languages.** Every word keeps the width of the longer of its Arabic and English forms, so «ع» and «E» show the same tools in the same places.
 - **«ع» / «E»** switch the interface language and the edition you edit; **RTL / LTR** switch the direction of the words.
 - **Commands** (`Ctrl+K`): every action, searchable. **Focus mode** (`F`) hides the tools; **Calm mode** turns motion off (also on when the system asks for reduced motion).
 
-![A hover explainer on «Find & replace»](docs/screens/explainer.png)
-
-![Book view: two pages side by side, in reading order](docs/screens/book-view.png)
-
 **Page views** (View → Pages): *Continuous* is the long sheet; *Single* shows one page at a time; *Book* opens on the cover alone, then pairs pages in the document's reading direction (Arabic: first page of a pair on the right).
 
 **Diagrams:** click a shape for shape tools, an arrow for arrow tools, the empty drawing for diagram tools. Drag to move, drag a corner to resize, drag an arrow's segment to bend it, double-click to edit a label, Ctrl + wheel to zoom. **Import / Export Mermaid** (`npm run diagram:mermaid`, MCP `diagram_mermaid`).
-
-![The Design panel: the font picker with the project's and this computer's fonts](docs/screens/design-fonts.png)
 
 **Design:** colours by role, sizes and spacing, template parts (show, hide, order), printed labels, one block's own style (**Style this**) and sanitised advanced CSS.
 
@@ -251,7 +241,7 @@ git config core.hooksPath .githooks
 | `design/`, `palette/`, `typography/` | design packs and DTCG tokens with their gates |
 | `fonts/` | the font manifest and the bundled Thmanyah fallback (`fonts/nj-fonts/`, its own licence) |
 | `security/` | the gate that keeps client content and secrets out |
-| `docs/` | guide, architecture, decisions, roadmap, privacy, glossary, screenshots |
+| `docs/` | guide, architecture, decisions, roadmap, privacy, glossary |
 
 </details>
 

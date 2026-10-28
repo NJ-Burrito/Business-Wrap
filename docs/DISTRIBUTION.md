@@ -2,7 +2,7 @@
 
 Business-Wrap is independent and not affiliated with Anthropic or any government service. No listing or package name
 contains "claude-" or "anthropic-". Privacy policy for every listing: https://nj-burrito.github.io/Business-Wrap/privacy.html
-(source `docs/privacy.md`). Screenshots: `docs/screens/*.png`. Social card: `brand/v2/social/social-card.png` (1280x640).
+(source `docs/privacy.md`). Listing images: `brand/v2/social/og.png` and `brand/v2/banner/github-banner-still.png`. Social card: `brand/v2/social/social-card.png` (1280x640).
 
 Who: **Lead** = the build session; **The maintainer** = needs his own login or click. Status values: `todo`, `ready`
 (files done, waiting for a step), `submitted`, `live`. Update the dated row after each step.
@@ -87,7 +87,7 @@ Optional fields the portal asks for: homepage `https://nj-burrito.github.io/Busi
 `https://nj-burrito.github.io/Business-Wrap/privacy.html`, support `https://nj-burrito.github.io/Business-Wrap/support.html`,
 terms `https://nj-burrito.github.io/Business-Wrap/terms.html`.
 **The maintainer:** open https://claude.ai/directory/manage , submit the repository, paste the Glama text, upload
-`docs/screens/editor-en.png` and `docs/screens/sticky-tools.png`.
+`brand/v2/social/og.png` and `brand/v2/banner/github-banner-still.png`.
 Self-hosted route, no review, works now: `/plugin marketplace add NJ-Burrito/Business-Wrap`, then
 `/plugin install business-wrap@business-wrap`.
 
