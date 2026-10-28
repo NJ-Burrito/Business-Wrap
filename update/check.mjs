@@ -4,7 +4,6 @@
 // optional Claude Code SessionStart hook. Never throws; "can't check" is a normal answer.
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { checkLatest, isNewer, parseNotes, extractNotes, parseVersion } from './core.mjs';
 
@@ -29,14 +28,17 @@ export function saveSettings(patch) {
   return s;
 }
 
-/** A read-only token for the private repo: BW_UPDATE_TOKEN, else .local/update-token, else `gh auth token`. Never printed, never stored by us. */
+/**
+ * Optional. The repo is public, so the check and the download need no token. A read-only token only lifts
+ * GitHub's anonymous rate limit (60 requests an hour per address): BW_UPDATE_TOKEN, else the gitignored
+ * .local/update-token. It is sent to api.github.com only, never printed, never stored by us. The `gh` login
+ * is no longer read: a broad personal token has no business in an anonymous check.
+ */
 export function token() {
-  if (process.env.BW_UPDATE_TOKEN) return process.env.BW_UPDATE_TOKEN.trim();
+  const env = String(process.env.BW_UPDATE_TOKEN || '').trim();
+  if (env && env !== 'none') return env;
+  if (env === 'none') return '';
   try { const t = fs.readFileSync(path.join(LOCAL, 'update-token'), 'utf8').trim(); if (t) return t; } catch { /* none */ }
-  try {
-    const r = spawnSync('gh', ['auth', 'token'], { encoding: 'utf8', timeout: 5000, windowsHide: true });
-    if (r.status === 0 && r.stdout.trim()) return r.stdout.trim();
-  } catch { /* gh missing */ }
   return '';
 }
 
@@ -66,7 +68,7 @@ export function splitNotes(text) {
  * @param {{force?: boolean, now?: number, current?: string}} o  `current`: the installed version to compare with (default: this folder's)
  * @returns {Promise<{status: 'available'|'current'|'unknown'|'off', current: string, latest?: string, url?: string,
  *   highlights?: string[], notes?: {human, migration}, migration?: string[], checkedAt?: number, cached?: boolean,
- *   reason?: 'offline'|'no-access'|'rate-limit'|'error'}>}  `reason` says why an answer is 'unknown'.
+ *   reason?: 'offline'|'no-release'|'no-access'|'rate-limit'|'error'}>}  `reason` says why an answer is 'unknown'.
  */
 export async function checkForUpdate({ force = false, now = Date.now(), current = currentVersion() } = {}) {
   if (!force && !settings().check) return { status: 'off', current };
@@ -76,8 +78,8 @@ export async function checkForUpdate({ force = false, now = Date.now(), current 
   let reason = '';
   if (force || !state.checkedAt || now - state.checkedAt >= DAY_MS || state.forVersion !== current) {
     const base = feedFetch();
-    // what went wrong, for the Settings page: the request threw (offline), or GitHub said no (private repo, no sign-in), or rate limit
-    const f = async (...a) => { try { const r = await base(...a); if (r.status === 404 || r.status === 401) reason = 'no-access'; else if (r.status === 403 || r.status === 429) reason = 'rate-limit'; else if (!r.ok && r.status !== 304) reason = 'error'; return r; } catch (e) { reason = 'offline'; throw e; } };
+    // what went wrong, for the Settings page: the request threw (offline), no release published yet (404), or rate limit
+    const f = async (...a) => { try { const r = await base(...a); if (r.status === 404) reason = 'no-release'; else if (r.status === 401) reason = 'no-access'; else if (r.status === 403 || r.status === 429) reason = 'rate-limit'; else if (!r.ok && r.status !== 304) reason = 'error'; return r; } catch (e) { reason = 'offline'; throw e; } };
     const prev = state.forVersion === current ? state : {};
     if (prev.backoffUntil > now) reason = 'rate-limit';
     next = await checkLatest({ repo: repoOf(), current, state: prev, token: token(), fetch: f, now });
@@ -99,8 +101,8 @@ export function oneLiner(r, lang = 'en') {
   const side = (h) => { const p = String(h).split(' / '); const s = (lang === 'ar' ? p[p.length - 1] : p[0]).trim(); return s.length > 140 ? `${s.slice(0, 137)}…` : s; };
   const bullets = (r.highlights || []).map((h) => `  • ${side(h)}`).join('\n');
   return lang === 'ar'
-    ? `يتوفر إصدار جديد من Business-Wrap: ‏${r.latest} (المثبت ${r.current}). للتحديث: npx business-wrap update --apply\n${bullets}`.trimEnd()
-    : `Business-Wrap ${r.latest} is available (installed ${r.current}). To update: npx business-wrap update --apply\n${bullets}`.trimEnd();
+    ? `يتوفر إصدار جديد من Business-Wrap: ‏${r.latest} (المثبت ${r.current}). للتحديث: npx business-wrap update --apply · في Claude Code: ‏/plugin marketplace update business-wrap\n${bullets}`.trimEnd()
+    : `Business-Wrap ${r.latest} is available (installed ${r.current}). To update: npx business-wrap update --apply · in Claude Code: /plugin marketplace update business-wrap\n${bullets}`.trimEnd();
 }
 
 /** What's new in the INSTALLED version (for the editor's what's-new panel and after an update). */

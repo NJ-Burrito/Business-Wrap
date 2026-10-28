@@ -9,7 +9,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { isReleaseZipUrl } from './core.mjs';
+import { isReleaseZipUrl, isAssetApiUrl, isAllowedRedirect } from './core.mjs';
 
 /** User-owned paths that an update never replaces or removes (relative to the install folder). */
 export const KEEP = ['.local', '.local/learning', '.git', 'node_modules', 'out', 'design/custom', 'logos', 'fonts/custom', 'drafts', 'exports', 'harvest', 'profiles'];
@@ -126,6 +126,9 @@ export const TAR = (() => {
   return process.platform === 'win32' && fs.existsSync(sys) ? sys : 'tar';
 })();
 function unzip(zip, to) {
+  let list = spawnSync(TAR, ['-tf', zip], { encoding: 'utf8', windowsHide: true, maxBuffer: 64 * 1024 * 1024 });
+  if (list.status !== 0) list = spawnSync('unzip', ['-Z1', zip], { encoding: 'utf8', windowsHide: true, maxBuffer: 64 * 1024 * 1024 });
+  if (list.status !== 0 || !safeEntries(String(list.stdout).split(/\r?\n/).filter(Boolean))) return false;
   let x = spawnSync(TAR, ['-xf', zip, '-C', to], { windowsHide: true });
   if (x.status !== 0) x = spawnSync('unzip', ['-q', '-o', zip, '-d', to], { windowsHide: true });
   if (x.status !== 0) return false;
@@ -133,10 +136,33 @@ function unzip(zip, to) {
   return !walkAll(to).some((rel) => !fs.realpathSync(path.join(to, rel)).startsWith(root));
 }
 
-async function download(url, tok, accept) {
-  const res = await fetch(url, { headers: { Accept: accept, 'User-Agent': 'business-wrap-update', ...(tok ? { Authorization: `Bearer ${tok}` } : {}) }, redirect: 'follow' });
-  if (!res.ok) throw new Error(`download failed (${res.status})`);
-  return Buffer.from(await res.arrayBuffer());
+/**
+ * GET with redirects followed by hand (at most 5), each hop checked (QA Wrap a6ea828): a hop may only go to this
+ * repo's release URL or GitHub's asset CDN (*.githubusercontent.com). The token, when there is one, rides on the
+ * first hop to api.github.com only and is never sent to a redirect target. `f` is fetch (tests pass a mock).
+ */
+export async function download(url, { repo, tok = '', accept = 'application/octet-stream', f = globalThis.fetch } = {}) {
+  let u = url;
+  for (let hop = 0; hop < 6; hop++) {
+    const auth = hop === 0 && tok && isAssetApiUrl(u, repo) ? { Authorization: `Bearer ${tok}` } : {};
+    const res = await f(u, { headers: { Accept: accept, 'User-Agent': 'business-wrap-update', ...auth }, redirect: 'manual' });
+    if ([301, 302, 303, 307, 308].includes(res.status)) {
+      let loc = String(res.headers?.get?.('location') || '');
+      try { res.body?.cancel?.(); } catch { /* none */ }
+      if (loc.startsWith('/')) loc = `https://github.com${loc}`;
+      if (!isAllowedRedirect(loc, repo)) throw new Error('the download was redirected away from this repository');
+      u = loc;
+      continue;
+    }
+    if (!res.ok) throw new Error(`download failed (${res.status})`);
+    return Buffer.from(await res.arrayBuffer());
+  }
+  throw new Error('download failed (too many redirects)');
+}
+
+/** Zip entries are listed and checked BEFORE anything is unpacked: no absolute path, drive letter, backslash or `..` segment. */
+export function safeEntries(names) {
+  return names.every((n) => n && !/^[\\/]/.test(n) && !/^[A-Za-z]:/.test(n) && !n.includes('\\') && !n.split('/').some((s) => s === '..'));
 }
 
 /** Git checkout install: fast-forward; user files are gitignored, so they stay. A failed verify resets to the old commit. */
@@ -161,7 +187,7 @@ function gitUpdate(dir, version, stage, current) {
  * @param {{dir: string, release: {version, zip, zipApi, sha256}, repo: string, token?: string, current: string,
  *   onStage?: (stage: string) => void, failAt?: string}} a
  */
-export async function applyUpdate({ dir, release, repo, token = '', current, onStage = () => {}, failAt = '' }) {
+export async function applyUpdate({ dir, release, repo, token = '', current, onStage = () => {}, failAt = '', fetch: fetchImpl = globalThis.fetch }) {
   const stage = (s) => { try { onStage(s); } catch { /* a progress listener never stops the update */ } };
   if (fs.existsSync(path.join(dir, '.git'))) {
     const r = gitUpdate(dir, release.version, stage, current);
@@ -173,10 +199,17 @@ export async function applyUpdate({ dir, release, repo, token = '', current, onS
   try {
     stage('download');
     // BW_UPDATE_ZIP: a local zip in place of the download (tests, offline previews); the checksum is still required
+    // the repo is public: the zip comes anonymously from its release URL; the API asset path is used only with a token
     const zipBuf = process.env.BW_UPDATE_ZIP ? fs.readFileSync(process.env.BW_UPDATE_ZIP)
-      : release.zipApi && token ? await download(release.zipApi, token, 'application/octet-stream') : await download(release.zip, token, 'application/octet-stream');
-    let want = release.sha256;
-    if (!want) want = String(await download(`${release.zip}.sha256`, token, 'text/plain')).trim().split(/\s+/)[0];
+      : token && isAssetApiUrl(release.zipApi, repo) ? await download(release.zipApi, { repo, tok: token, f: fetchImpl }) : await download(release.zip, { repo, f: fetchImpl });
+    // checksum is mandatory: GitHub's digest, else the .sha256 published beside the zip (its file name must be this zip)
+    let want = /^[0-9a-f]{64}$/i.test(String(release.sha256 || '')) ? release.sha256 : '';
+    if (!want) {
+      const line = String(await download(`${release.zip}.sha256`, { repo, accept: 'text/plain', f: fetchImpl })).trim().split(/\r?\n/)[0] || '';
+      const [h, name = ''] = line.split(/\s+\*?/);
+      if (name && name !== release.zip.split('/').pop()) return { ok: false, error: 'checksum file names another zip: nothing was changed' };
+      want = h;
+    }
     if (!/^[0-9a-f]{64}$/i.test(want) || sha256(zipBuf) !== want.toLowerCase()) return { ok: false, error: 'checksum mismatch: nothing was changed' };
     const zip = path.join(work, 'release.zip');
     fs.writeFileSync(zip, zipBuf);

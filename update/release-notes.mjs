@@ -12,4 +12,4 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const version = process.argv[2];
 const notes = version ? extractNotes(fs.readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8'), version) : null;
 if (!notes) { console.error(`release-notes: no CHANGELOG section for ${version || '(no version given)'}`); process.exit(1); }
-process.stdout.write(`${notes}\n\n---\nUpdate / التحديث: \`npx business-wrap update --apply --yes\` (keeps .local, design/custom, logos, fonts/custom, drafts) · Claude Code: \`/plugin update business-wrap\`\n`);
+process.stdout.write(`${notes}\n\n---\nUpdate / التحديث: \`npx business-wrap update --apply --yes\` (keeps .local, design/custom, logos, fonts/custom, drafts) · Claude Code: \`/plugin marketplace update business-wrap\` then \`/plugin update business-wrap\` · MCP: \`npx -y business-wrap@latest\`\n`);

@@ -3,9 +3,11 @@
 // (parseVersion / isNewer / validRepo / isReleaseZipUrl / pickRelease / checkLatest with ETag and
 // rate-limit backoff) and extension/ui/update-lib.js (parseNotes).
 //
-// One GET of GitHub's releases/latest for the repo in update/source.json. The repo is private, so a
-// read-only token rides as a Bearer header when one is available (gh auth, BW_UPDATE_TOKEN or the
-// gitignored .local/update-token). Every failure is silent: the answer is "can't check", never an error.
+// One anonymous GET of GitHub's public releases/latest for the repo in update/source.json (the repo is
+// public, MIT): no token, no sign-in. An optional read-only token (BW_UPDATE_TOKEN or the gitignored
+// .local/update-token) only lifts the anonymous rate limit; it is sent to api.github.com only, and a token
+// GitHub refuses (401) is dropped and the check repeated without it. Every failure is silent: the answer is
+// "can't check", never an error.
 
 const REPO_RE = /^\w[\w.-]*\/\w[\w.-]*$/;
 export const BACKOFF_MS = 60 * 60 * 1000;
@@ -31,10 +33,25 @@ export const validRepo = (repo) => REPO_RE.test(String(repo ?? '')) && repo !== 
 /** Only https://github.com/<repo>/releases/download/<tag>/<file>.zip, whole-string match, no `.`/`..` segment. */
 export function isReleaseZipUrl(url, repo) {
   const s = String(url ?? '');
-  if (!validRepo(repo)) return false;
+  if (!validRepo(repo) || !/^[\w.-]+\/[\w.-]+$/.test(repo)) return false;
   if (!/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/releases\/download\/[\w.+-]+\/[\w.+-]+\.zip$/.test(s)) return false;
   if (s.slice('https://'.length).split('/').some((seg) => seg === '.' || seg === '..')) return false;
   return s.startsWith(`https://github.com/${repo}/releases/download/`);
+}
+
+/** GitHub's API address of one release asset of this repo (the token path); nothing else. */
+export function isAssetApiUrl(url, repo) {
+  const s = String(url ?? '');
+  if (!validRepo(repo) || !/^[\w.-]+\/[\w.-]+$/.test(repo)) return false;
+  const m = /^https:\/\/api\.github\.com\/repos\/([\w.-]+\/[\w.-]+)\/releases\/assets\/\d+$/.exec(s);
+  return !!m && m[1] === repo;
+}
+
+/** Where a release download may be redirected: this repo's release URL, or GitHub's asset CDN (*.githubusercontent.com). */
+export function isAllowedRedirect(url, repo) {
+  const s = String(url ?? '');
+  if (isReleaseZipUrl(s, repo) || isReleaseZipUrl(s.replace(/\.sha256$/, ''), repo)) return true;
+  return /^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.githubusercontent\.com\/\S*$/.test(s) && !/[\\@]/.test(s.split('?')[0]);
 }
 
 /** The release JSON -> what the notice needs, or null for a draft, a pre-release or a tag that is not a clean version. */
@@ -48,7 +65,7 @@ export function pickRelease(j, repo) {
     version,
     url: /^https:\/\/github\.com\//.test(String(j.html_url)) ? String(j.html_url) : `https://github.com/${repo}/releases/latest`,
     zip: z ? String(z.browser_download_url) : '',
-    zipApi: /^https:\/\/api\.github\.com\/repos\//.test(String(z?.url)) ? String(z.url) : '',
+    zipApi: isAssetApiUrl(z?.url, repo) ? String(z.url) : '',
     sha256: /^sha256:[0-9a-f]{64}$/.test(String(z?.digest)) ? String(z.digest).slice(7) : '',
     notes: clean(j.body),
     publishedAt: String(j.published_at || ''),
@@ -57,7 +74,8 @@ export function pickRelease(j, repo) {
 
 /**
  * @returns {Promise<object|null>} the new state to keep ({etag, checkedAt, latest|null, backoffUntil?}),
- *   or null when nothing could be learned ("can't check": offline, 404 without a token, bad repo).
+ *   or null when nothing could be learned ("can't check": offline, no release yet, bad repo).
+ * `token` is optional (the repo is public); a token GitHub refuses (401) is dropped and the request repeated without it.
  */
 export async function checkLatest({ repo, current, state = {}, token = '', fetch: f = globalThis.fetch, now = Date.now() }) {
   if (!validRepo(repo) || !parseVersion(current) || typeof f !== 'function') return null;
@@ -67,7 +85,13 @@ export async function checkLatest({ repo, current, state = {}, token = '', fetch
   if (token) headers.Authorization = `Bearer ${token}`;
   try {
     const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined;
-    const res = await f(`https://api.github.com/repos/${repo}/releases/latest`, { method: 'GET', headers, cache: 'no-store', redirect: 'follow', signal });
+    const url = `https://api.github.com/repos/${repo}/releases/latest`;
+    let res = await f(url, { method: 'GET', headers, cache: 'no-store', redirect: 'follow', signal });
+    if (res.status === 401 && headers.Authorization) {
+      try { res.body?.cancel?.(); } catch { /* already consumed */ }
+      delete headers.Authorization;
+      res = await f(url, { method: 'GET', headers, cache: 'no-store', redirect: 'follow', signal });
+    }
     // a response whose body is never read keeps its socket open; release it so the process can exit cleanly
     const drop = () => { try { res.body?.cancel?.(); } catch { /* already consumed */ } };
     if (res.status === 304) { drop(); return { ...state, checkedAt: now }; }
