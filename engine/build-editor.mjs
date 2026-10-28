@@ -70,7 +70,7 @@ function editorScript() {
   const strip = (s) => s.replace(/^export /gm, '').replace(/^import .*$/gm, '');
   // the harvest model code lives in its own scope (HV), so its helper names stay out of the editor's
   const hv = ['xml.mjs', 'yaml.mjs', 'model.mjs', 'docs.mjs'].map((f) => strip(read(path.join(HERE, 'harvest', f)))).join('\n');
-  return `(() => {\n'use strict';\n${strip(read(path.join(HERE, 'edits.mjs')))}\n${strip(read(path.join(HERE, 'diagram.mjs')))}\n${strip(read(path.join(HERE, 'render.mjs')))}\n${strip(read(path.join(HERE, 'fontinfo.mjs')))}\nconst HV = (() => {\n${hv}\nreturn { parseModel, modelToDocument, processFigure, humanGraph, harvestToDocument, mergeToDocument };\n})();\n${['value-control.js', 'fonts.js', 'design-panel.js', 'editor.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${read(path.join(REPO, 'editor', 'diagram-ui.js'))}\n${['shell-ux.js', 'views.js', 'explainers.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${['update.js', 'settings.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n})();`;
+  return `(() => {\n'use strict';\n${strip(read(path.join(HERE, 'edits.mjs')))}\n${strip(read(path.join(HERE, 'diagram.mjs')))}\n${strip(read(path.join(HERE, 'render.mjs')))}\n${strip(read(path.join(HERE, 'fontinfo.mjs')))}\nconst HV = (() => {\n${hv}\nreturn { parseModel, modelToDocument, processFigure, humanGraph, harvestToDocument, mergeToDocument };\n})();\n${['value-control.js', 'fonts.js', 'design-panel.js', 'editor.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${read(path.join(REPO, 'editor', 'diagram-ui.js'))}\n${['shell-ux.js', 'views.js', 'explainers.js', 'print-center.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${['update.js', 'settings.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n})();`;
 }
 
 export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, localFonts = false, watermarkDir = DEFAULT_WATERMARK_DIR, ui = 'ar', ops = {} }) {
@@ -111,7 +111,8 @@ function editorHtml({ services, setId, ui = 'ar', theme, fontCss, fontFamilies, 
   const I = i18n();
   // shell UX strings (0.10.0): ux.*, view.*, explain.* live in their own file and join the UI table here
   const UX = JSON.parse(read(path.join(REPO, 'editor', 'ux-i18n.json')));
-  for (const l of ['ar', 'en']) Object.assign(I.ui[l], UX[l]);
+  const PC = JSON.parse(read(path.join(REPO, 'editor', 'print-i18n.json'))); // Export & Print centre, View menu (0.11.0)
+  for (const l of ['ar', 'en']) Object.assign(I.ui[l], UX[l], PC[l]);
   const app = appScript();
   const csp = [
     "default-src 'none'",
@@ -137,7 +138,7 @@ function editorHtml({ services, setId, ui = 'ar', theme, fontCss, fontFamilies, 
     i18n: I,
     fontCss,
     fontFamilies,
-    uiCss: read(path.join(REPO, 'editor', 'ui.css')) + read(path.join(REPO, 'editor', 'design.css')) + read(path.join(REPO, 'editor', 'ux.css')) + read(path.join(REPO, 'editor', 'settings.css')),
+    uiCss: read(path.join(REPO, 'editor', 'ui.css')) + read(path.join(REPO, 'editor', 'design.css')) + read(path.join(REPO, 'editor', 'ux.css')) + read(path.join(REPO, 'editor', 'settings.css')) + read(path.join(REPO, 'editor', 'print-center.css')),
     csp,
     version: notes.version,
     stateSchema: STATE_SCHEMA,

@@ -453,6 +453,14 @@ async function inlineFonts(css) {
   return css;
 }
 
+/** The design pack: this document's design, its chosen uploaded fonts and the edited labels. */
+function exportDesignPack() {
+  const th = designTheme(S.theme, cur().doc);
+  const { css, ...rest } = th;
+  const used = [th.fonts.text, th.fonts.display];
+  const fontFaces = (cur().doc.design?.fontFaces || []).filter((f) => used.includes(f.family));
+  download(`design-pack.json`, JSON.stringify({ kind: 'bw-design-pack', version: 1, ...rest, ...(fontFaces.length ? { fontFaces } : {}), labels: S.theme.labels || {} }, null, 1));
+}
 /* ── export PDF + DOCX ─────────────────────────────────────────────────── */
 async function exportPdfDocx() {
   const e = cur();
@@ -921,8 +929,8 @@ const CMDS = [
   ['undo', 'edit', 'Ctrl+Z'], ['redo', 'edit', 'Ctrl+Y'], ['find', 'edit', 'Ctrl+F'],
   ['newdoc', 'document'], ['process', 'document'], ['outline', 'document'], ['pages', 'document'], ['check', 'document'], ['history', 'document'], ['renumber', 'document'], ['webhooks', 'document'],
   ['theme', 'design'], ['styleThis', 'design'], ['hideBlock', 'design'],
-  ['side', 'view'], ['uiLang', 'view'], ['dir', 'view'], ['dark', 'view'], ['calm', 'view'], ['focus', 'view', 'F'], ['spell', 'view'], ['snap', 'view'], ['zoomOut', 'view'], ['zoomIn', 'view'], ['view.continuous', 'view'], ['view.single', 'view'], ['view.spread', 'view'], ['settings', 'view'],
-  ['exportPdf', 'export'], ['print', 'export', 'Ctrl+P'],
+  ['side', 'view'], ['both', 'view'], ['uiLang', 'view'], ['dir', 'view'], ['dark', 'view'], ['calm', 'view'], ['focus', 'view', 'F'], ['spell', 'view'], ['snap', 'view'], ['zoomOut', 'view'], ['zoomReset', 'view'], ['zoomIn', 'view'], ['zoomFit', 'view'], ['view.continuous', 'view'], ['view.single', 'view'], ['view.spread', 'view'], ['settings', 'view'],
+  ['print', 'export', 'Ctrl+P'], ['exportPdf', 'export'], ...pcExportIds().map((id) => [id, 'export']),
   ['duplicate', 'text', 'Ctrl+D'], ['delete', 'text', 'Del'], ['moveUp', 'text', 'Alt+↑'], ['moveDown', 'text', 'Alt+↓'], ['comment', 'text'], ['breakBefore', 'text'], ['keepNext', 'text'],
   ['rowAdd', 'table'], ['rowDel', 'table'], ['colAdd', 'table'], ['colDel', 'table'],
   ['dgStaff', 'diagram'], ['dgApplicant', 'diagram'], ['dgStart', 'diagram'], ['dgPayment', 'diagram'], ['dgRework', 'diagram'], ['dgSystem', 'diagram'], ['dgDecision', 'diagram'], ['dgOk', 'diagram'], ['dgStop', 'diagram'],
@@ -941,8 +949,14 @@ function sec(cat, tools) {
   const tail = rest.length ? `<div class="more tail"><button type="button" class="b" data-a="more" aria-expanded="false" aria-haspopup="true" title="${esc(t('more'))}: ${esc(name)}" aria-label="${esc(t('more'))}: ${esc(name)}"><span class="i">${ic('more')}</span></button><div class="menu fm" role="group" aria-label="${esc(name)}">${rest.join('')}</div></div>` : '';
   return `<div class="sec" data-cat="${cat}" role="group" aria-label="${esc(name)}"><span class="sc" aria-hidden="true"><span class="i">${ic('sec' + cat[0].toUpperCase() + cat.slice(1))}</span><span class="st" data-alt="${esc(tAlt('sec' + cat[0].toUpperCase() + cat.slice(1)))}">${esc(name)}</span></span><div class="sb">${tools[0] || ''}${tail}</div></div>`;
 }
+/** A registry command as a toolbar tool: its label, its tooltip (with the shortcut), the shortcut shown in menus. */
+const TIPS = { image: 'imageTip', logo: 'logoTip', exportPdf: 'exportPdfTip' };
+function tool(c) {
+  return btn(c.id, { cls: c.id === 'save' ? 'primary' : '', tip: TIPS[c.id] ? t(TIPS[c.id]) : c.key ? `${t(c.id)} (${c.key})` : '' });
+}
 function btn(id, { label = t(id), tip = '', pressed, cls = '', extra = '' } = {}) {
-  return `<button type="button" class="b ${cls}" data-a="${id}" title="${esc(tip || label)}"${pressed !== undefined ? ` aria-pressed="${pressed}"` : ''}${extra}><span class="i">${ic(id)}</span><span class="w"${label === t(id) ? ` data-alt="${esc(tAlt(id))}"` : ''}>${esc(label)}</span></button>`;
+  const key = CMDS.find((c) => c.id === id)?.key;
+  return `<button type="button" class="b ${cls}" data-a="${id}"${key ? ` data-key="${esc(key)}"` : ''} title="${esc(tip || label)}"${pressed !== undefined ? ` aria-pressed="${pressed}"` : ''}${extra}><span class="i">${ic(id)}</span><span class="w"${label === t(id) ? ` data-alt="${esc(tAlt(id))}"` : ''}>${esc(label)}</span></button>`;
 }
 const dirOf = (l) => (l === 'ar' ? 'rtl' : 'ltr');
 const langWord = (l) => (l === 'ar' ? 'ع' : 'E');
@@ -960,17 +974,13 @@ function buildUi() {
     <span class="brand" role="img" aria-label="${esc(t('appName'))}">${DATA.brand?.mark || ''}</span>
     <div class="grp doc">
       <label class="pick"><span class="vh">${esc(t('service'))}</span><select data-a="svc" aria-label="${esc(t('service'))}" data-alt="${esc(DATA.services.find((s) => s.id === S.svc)?.editions[other()]?.name || '')}">${svcOpts}</select></label>
-      <div class="seg lang" role="group" data-x="ed" aria-label="${esc(t('language'))}"><i class="thumb" aria-hidden="true"></i><span class="cap" aria-hidden="true"><span class="i">${ic('ed')}</span><span class="cw" data-alt="${esc(tAlt('language'))}">${esc(t('language'))}</span></span>
+      <div class="seg lang" role="group" data-x="ed" data-cmds="uiLang" aria-label="${esc(t('language'))}"><i class="thumb" aria-hidden="true"></i><span class="cap" aria-hidden="true"><span class="i">${ic('ed')}</span><span class="cw" data-alt="${esc(tAlt('language'))}">${esc(t('language'))}</span></span>
         ${['ar', 'en'].map((l) => `<button type="button" data-a="ed" data-ed="${l}" lang="${l}" aria-pressed="${l === S.ui}" aria-label="${langWord(l)}: ${esc(t(l === 'ar' ? 'langAr' : 'langEn'))}" title="${esc(t(l === 'ar' ? 'langAr' : 'langEn'))}"><span class="sw">${langWord(l)}</span></button>`).join('')}
       </div>
     </div>
     <div class="ctx sec now" role="group" hidden></div>
-    ${sec('file', [btn('save', { cls: 'primary' }), btn('saveHtml'), btn('import')])}
-    ${sec('insert', [btn('image', { tip: t('imageTip') }), btn('logo', { tip: t('logoTip') }), btn('addDiagram')])}
-    ${sec('edit', [btn('undo', { tip: `${t('undo')} (Ctrl+Z)` }), btn('redo', { tip: `${t('redo')} (Ctrl+Y)` }), btn('find', { tip: `${t('find')} (Ctrl+F)` })])}
-    ${sec('document', [btn('newdoc'), btn('process'), btn('pages')])}
-    ${sec('design', [btn('theme')])}
-    ${sec('export', [btn('exportPdf', { tip: t('exportPdfTip') })])}
+    ${['file', 'insert', 'edit', 'document', 'design'].map((cat) => sec(cat, CMDS.filter((c) => c.group === cat).map(tool))).join('')}
+    ${sec('export', [pcExportMenu(), tool(CMDS.find((c) => c.id === 'print')), tool(CMDS.find((c) => c.id === 'exportPdf'))])}
     <span class="spacer"></span>
     <div class="status" role="status" aria-live="polite">
       <span class="count" aria-label="${esc(t('changes', { n: liveOps(cur()).length }))}"><span class="n">${liveOps(cur()).length}</span><span class="w" data-alt="${esc(tAlt('changesWord'))}">${esc(t('changesWord'))}</span></span>
@@ -986,14 +996,7 @@ function buildUi() {
     ${btn('palette', { cls: 'cmd', label: t('palette'), tip: `${t('palette')} (Ctrl+K)`, extra: ' aria-keyshortcuts="Control+K"' })}
     <div class="progress" hidden aria-hidden="true"><i></i></div>
   </div>
-  <div class="pop" id="viewpop" role="group" aria-label="${esc(t('view'))}" ${S.view ? '' : 'hidden'}>
-    ${eds.length > 1 ? btn('side', { label: t('sideBySide'), pressed: S.side }) : ''}
-    <label class="chk"><input type="checkbox" data-a="both" ${S.both ? 'checked' : ''}> <span class="i">${ic('both')}</span>${esc(t('bothEditions'))}</label>
-    ${btn('dark', { pressed: S.dark })}${btn('calm', { pressed: S.calm })}${btn('focus', { pressed: S.focus })}
-    ${btn('spell', { pressed: S.spell[S.ed] })}${btn('snap', { pressed: S.snap })}
-    ${btn('zoomOut', { label: t('zoom') + ' −' })}${btn('zoomIn', { label: t('zoom') + ' +' })}
-    ${viewsSeg()}
-  </div>
+  ${viewPop()}
   <div class="drawer" role="dialog" aria-modal="false" hidden data-theme="${theme}"></div>
   <div class="dialog" role="dialog" aria-modal="true" hidden data-theme="${theme}"></div>
   <div class="scrim" hidden>
@@ -1010,13 +1013,13 @@ function buildUi() {
   if (!buildUi.done) { buildUi.done = true; setTimeout(() => document.documentElement.classList.add('bw-ready'), 900); }
   shell.addEventListener('click', onBar);
   root.querySelector('[data-a="svc"]').addEventListener('change', (e) => { S.svc = e.target.value; if (!M[S.svc][S.ed]) S.ed = Object.keys(M[S.svc])[0]; S.sel = null; buildUi(); render(false); });
-  root.querySelector('[data-a="both"]').addEventListener('change', (e) => { S.both = e.target.checked; });
   root.querySelector('.scrim').addEventListener('click', (e) => { if (e.target.classList.contains('scrim')) closePalette(); });
   wirePalette();
   fitBar();
   measureBar();
   if (S.drawer) openDrawer(S.drawer);
   placeCtx();
+  viewPopAfterBuild(); // views.js: the View menu in the top layer
   uxAfterBuild(); // shell-ux.js: the selection section survives a rebuild, segment thumbs, explainers
 }
 // The page never jumps under the reader: the reserved band only grows (wrap, font load), resets only for focus mode.
@@ -1039,7 +1042,17 @@ function fitBar() {
   const over = () => bar.scrollWidth > bar.clientWidth;
   // each step only while the bar still overflows: the general tools' words → one section at a time (last first)
   // folds its extra tools into its «More» → the selection's words → the picker; section titles never go
-  if (over()) bar.classList.add('sq0');
+  // the general tools' words go one section at a time (last first), so the words stay wherever they fit (0.11.0)
+  const gen = [...bar.querySelectorAll('.sec:not(.now)')];
+  gen.forEach((x) => x.classList.remove('nw'));
+  // one measure: each section's words (+ the padding they free); fold the fewest sections that cover the overflow
+  let need = bar.scrollWidth - bar.clientWidth;
+  if (need > 0) {
+    const saves = gen.map((x) => [...x.querySelectorAll(':scope > .sb > .b .w')].reduce((n, w) => n + (w.offsetWidth ? w.offsetWidth + 15 : 0), 0));
+    for (let i = gen.length - 1; i >= 0 && need > 0; i -= 1) { gen[i].classList.add('nw'); need -= saves[i]; }
+    while (over() && gen.some((x) => !x.classList.contains('nw'))) gen.findLast((x) => !x.classList.contains('nw')).classList.add('nw');
+  }
+  if (gen.length && gen.every((x) => x.classList.contains('nw'))) bar.classList.add('sq0');
   for (const x of secs.reverse()) { if (!over()) break; x.classList.add('folded'); bar.classList.add('sq1'); }
   for (const step of ['sq2', 'sq3', 'sq4']) { if (!over()) break; bar.classList.add(step); }
   restore();
@@ -1201,10 +1214,17 @@ function wirePalette() {
     runAction(li.dataset.cmd);
   });
 }
+/** The palette offers exactly what the toolbar offers now (one registry): the general sections and the selection's tools. */
+const GENERAL_GROUPS = ['file', 'insert', 'edit', 'document', 'design', 'view', 'export'];
+function paletteCmds() {
+  const m = ctxModel(blockOf(S.sel?.b), !!tableCtx());
+  const here = new Set([...(m?.groups || []).flat(), ...(m?.keep || [])]);
+  return CMDS.filter((c) => GENERAL_GROUPS.includes(c.group) || here.has(c.id));
+}
 function fillPalette() {
   const q = fold(root.querySelector('.palette input').value.trim());
   const list = root.querySelector('#cmdlist');
-  const hits = CMDS.filter((c) => !q || fold(`${t(c.id)} ${t('grp_' + c.group)} ${c.id}`).includes(q));
+  const hits = paletteCmds().filter((c) => !q || fold(`${t(c.id)} ${t('grp_' + c.group)} ${c.id}`).includes(q));
   let html = '';
   let g = '';
   hits.forEach((c, i) => {
@@ -1309,16 +1329,19 @@ async function runAction(a) {
     case 'exportEdits': download(`${S.svc}.edits-bundle.json`, JSON.stringify(bundle([S.svc]), null, 1)); emitHook('edits.exported', { scope: 'service' }); break;
     case 'exportAll': download(`all-services.edits-bundle.json`, JSON.stringify(bundle(Object.keys(M)), null, 1)); emitHook('edits.exported', { scope: 'all' }); break;
     case 'exportPdf': busy(true); try { await exportPdfDocx(); } finally { busy(false); } break;
-    case 'print': window.print(); break;
-    case 'zoomIn': S.zoom = Math.min(2, +(S.zoom + 0.1).toFixed(2)); render(); break;
-    case 'zoomOut': S.zoom = Math.max(0.4, +(S.zoom - 0.1).toFixed(2)); render(); break;
+    case 'print': pcOpenPrint(); break;
+    case 'both': S.both = !S.both; buildUi(); break;
+    case 'zoomReset': S.zoom = 1; render(); viewPct(); break;
+    case 'zoomFit': S.zoom = Math.max(0.4, Math.min(2, +((document.documentElement.clientWidth - 96) / (210 * 96 / 25.4)).toFixed(2))); render(); viewPct(); break;
+    case 'zoomIn': S.zoom = Math.min(2, +(S.zoom + 0.1).toFixed(2)); render(); viewPct(); break;
+    case 'zoomOut': S.zoom = Math.max(0.4, +(S.zoom - 0.1).toFixed(2)); render(); viewPct(); break;
     case 'spell': S.spell[S.ed] = !S.spell[S.ed]; buildUi(); render(); break;
     case 'view.continuous': viewsSet('continuous'); break;
     case 'view.single': viewsSet('single'); break;
     case 'view.spread': viewsSet('spread'); break;
     case 'view.prev': viewsGo(-1); break;
     case 'view.next': viewsGo(1); break;
-    default: await dgAction(a); break;
+    default: if (/^export\./.test(a)) await pcAction(a); else await dgAction(a); break;
   }
 }
 
@@ -1472,13 +1495,7 @@ async function onDrawer(e) {
   if (k === 'nd-merge') { await newFromMerge(); return; }
   if (k === 'nd-crawl') { await newFromCrawl(root.querySelector('.drawer [data-f="crawl"]').value); return; }
   if (await processClick(x)) return;
-  if (k === 'texp') {
-    const th = designTheme(S.theme, cur().doc);
-    const { css, ...rest } = th;
-    const used = [th.fonts.text, th.fonts.display];
-    const fontFaces = (cur().doc.design?.fontFaces || []).filter((f) => used.includes(f.family));
-    download(`design-pack.json`, JSON.stringify({ kind: 'bw-design-pack', version: 1, ...rest, ...(fontFaces.length ? { fontFaces } : {}), labels: S.theme.labels || {} }, null, 1));
-  }
+  if (k === 'texp') exportDesignPack();
   if (DESIGN.click(x)) return;
   if (k === 'timp') {
     const f = await pickFile('.json,application/json');
@@ -2155,6 +2172,7 @@ document.addEventListener('keydown', (e) => {
   if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); saveAll(); return; }
   if (mod && e.key.toLowerCase() === 'f') { e.preventDefault(); openDrawer('find'); return; }
   if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); openPalette(); return; }
+  if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'p') { e.preventDefault(); pcOpenPrint(); return; } // the Print panel (print-center.js)
   if (e.composedPath?.().some((x) => x === host)) { if (e.key === 'Escape') uxEscape(); return; }
   if (!inText && !mod && !e.altKey && e.key.toLowerCase() === 'f') { e.preventDefault(); runAction('focus'); return; }
   if (e.key === 'Escape' && S.focus) { runAction('focus'); return; }

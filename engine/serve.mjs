@@ -18,6 +18,7 @@ import { rewrapEditorHtml, aboutInfo } from './build-editor.mjs';
 import { fork } from 'node:child_process';
 import { crawl, harvestToDocument } from './harvest/crawl.mjs';
 import { learningRoute } from './learning/http.mjs';
+import { printApi } from './printers.mjs';
 
 const MAX_BODY = 60 * 1024 * 1024;
 const slug = fileStem;
@@ -56,10 +57,12 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
         if (!fontFiles.has(f)) return send(404, { error: 'not found' });
         return send(200, fs.readFileSync(f), f.endsWith('.ttf') ? 'font/ttf' : 'font/woff2');
       }
+      // the Export & Print centre (0.11.0): engine/printers.mjs answers /api/print/* and /api/export/*
+      if (await printApi(req, res, url, { send, OUT, maxBody: MAX_BODY })) return;
       if (req.method === 'GET' && url.pathname.startsWith('/files/')) {
         const f = path.resolve(OUT, '.' + decodeURIComponent(url.pathname.slice(6)));
         if (!f.startsWith(OUT + path.sep) || !fs.existsSync(f)) return send(404, { error: 'not found' });
-        const type = f.endsWith('.pdf') ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        const type = f.endsWith('.pdf') ? 'application/pdf' : f.endsWith('.html') ? 'text/html; charset=utf-8' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
         return send(200, fs.readFileSync(f), type);
       }
       if (url.pathname === '/api/version' || url.pathname.startsWith('/api/update')) {

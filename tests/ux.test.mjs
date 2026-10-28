@@ -17,6 +17,8 @@ const file = path.join(OUT, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, watermarkDir: path.join(REPO, 'editor', 'brand', 'watermark') });
 const URL = pathToFileURL(file).href;
 const UX = JSON.parse(fs.readFileSync(path.join(REPO, 'editor', 'ux-i18n.json'), 'utf8'));
+const PC = JSON.parse(fs.readFileSync(path.join(REPO, 'editor', 'print-i18n.json'), 'utf8')); // 0.11.0 strings join the same table
+for (const l of ['ar', 'en']) Object.assign(UX[l], PC[l]);
 const PNG = path.join(REPO, 'brand', 'png', 'mark-128.png');
 
 const results = [];
@@ -218,7 +220,7 @@ try {
     check(`A4 ${ui}: a click on empty space returns the general tools`, desk.ctx === '' && desk.selOv == null, JSON.stringify(desk));
     if (await page.evaluate(() => window.BW.S.drawer)) await page.locator('.drawer [data-k="close"]').click();
     await page.locator('main.bw-doc [data-p="/chapters/1/sections/0/blocks/1/rows/0/1"]').click();
-    await page.locator('.island [data-a="find"]').focus();
+    await page.locator('.island [data-a="save"]').focus();
     await page.keyboard.press('Escape'); // nothing open: the selection leaves
     const esc = await state(page);
     check(`A4 ${ui}: Esc in the toolbar (nothing open) returns the general tools`, esc.ctx === '', JSON.stringify(esc));
@@ -235,20 +237,21 @@ try {
       await page.locator('main.bw-doc [data-p="/chapters/1/sections/0/blocks/1/rows/0/1"]').click();
       (await sh(page, (r) => [...r.querySelectorAll('.ctx [data-a]')].map((el) => el.dataset.a))).forEach((k) => keys.add(k));
       const card = () => sh(page, (r) => { const c = r.querySelector('.xpl'); if (!c || c.hidden) return null; const anim = [...c.querySelectorAll('svg *')].flatMap((e) => e.getAnimations()).length; return { text: c.querySelector('p').textContent, name: c.querySelector('b').textContent, anim, lang: c.lang }; });
-      await page.locator('.island [data-a="find"]').hover();
+      await page.locator('.island [data-a="save"]').hover();
       await page.waitForTimeout(300);
       const early = await card();
       await page.waitForTimeout(600);
       const shown = await card();
-      check(`A5 ${ui}: hover ~700 ms shows the card (not at 300 ms) with its sentence and a running animation`, !early && shown && shown.text === UX[ui]['explain.find'] && shown.anim > 0 && shown.lang === ui, JSON.stringify({ early, shown }));
+      check(`A5 ${ui}: hover ~700 ms shows the card (not at 300 ms) with its sentence and a running animation`, !early && shown && shown.text === UX[ui]['explain.save'] && shown.anim > 0 && shown.lang === ui, JSON.stringify({ early, shown }));
       await page.keyboard.press('Escape');
       check(`A5 ${ui}: Esc hides the card`, !(await card()));
-      await page.locator('.island [data-a="undo"]').hover();
+      await page.mouse.move(700, 600); // leave first: hovering the same spot again sends no pointerover
+      await page.locator('.island [data-a="save"]').hover();
       await page.waitForTimeout(850);
       const second = await card();
       await page.mouse.move(700, 600);
       await page.waitForTimeout(150);
-      check(`A5 ${ui}: leaving hides the card`, second?.text === UX[ui]['explain.undo'] && !(await card()), JSON.stringify(second));
+      check(`A5 ${ui}: leaving hides the card`, second?.text === UX[ui]['explain.save'] && !(await card()), JSON.stringify(second));
       // keyboard focus shows it too
       await page.keyboard.press('Tab');
       await sh(page, (r) => r.querySelector('.island [data-a="save"]').focus());
@@ -278,7 +281,7 @@ try {
     const missing = [...keys].filter((k) => !UX.ar[`explain.${k}`] || !UX.en[`explain.${k}`]);
     check(`A5: every toolbar, view and selection tool has an explainer in Arabic and English (${keys.size} tools)`, !missing.length, missing.join(' '));
     const rm = await open({ ui: 'ar', reduced: true });
-    await rm.page.locator('.island [data-a="find"]').hover();
+    await rm.page.locator('.island [data-a="save"]').hover();
     await rm.page.waitForTimeout(900);
     const still = await sh(rm.page, (r) => { const c = r.querySelector('.xpl'); return c && !c.hidden ? [...c.querySelectorAll('svg *')].flatMap((e) => e.getAnimations()).length : -1; });
     check('A5: reduced motion → the card shows a still frame', still === 0, String(still));

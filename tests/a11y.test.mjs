@@ -40,7 +40,7 @@ try {
       if (st === 'selection') await page.locator('main.bw-doc [data-p="/chapters/1/sections/0/blocks/1/rows/0/1"]').click();
       else if (st === 'palette') await page.keyboard.press('Control+K');
       else if (st !== 'toolbar') {
-        const b = page.locator(`.island button[data-a="${st}"]`);
+        const b = page.locator(`.island button[data-a="${st}"]:visible`); // folded tools are reached through the palette
         if (await b.count()) await b.click();
         else { await page.keyboard.press('Control+K'); await page.locator(`#cmdlist [data-cmd="${st}"]`).click(); }
       }

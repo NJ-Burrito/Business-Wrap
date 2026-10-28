@@ -149,6 +149,7 @@ function xplScene(k) {
     spread: ['view.spread', 'view.mode', 'side'],
     flow: ['view.continuous'],
   };
+  if (/^(export|print)\./.test(k) || k === 'zoomReset' || k === 'zoomFit') return k.startsWith('zoom') ? 'zoom' : 'out';
   for (const [scene, ids] of Object.entries(by)) if (ids.includes(k)) return scene;
   return 'panel';
 }

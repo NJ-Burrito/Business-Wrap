@@ -24,6 +24,7 @@ function viewsSet(mode) {
   S.pages = mode;
   ls.set('bw:pages', mode);
   S.pageAt = first;
+  S.view = false; // a page mode is a choice: the View menu closes and shows the pages
   buildUi();
   render();
   if (mode === 'continuous') viewsReveal(first);
@@ -178,3 +179,51 @@ document.addEventListener('wheel', (e) => {
   viewsWheelAt = now;
 }, { passive: false });
 window.addEventListener('resize', () => { if (viewsActive()) { viewsFit(); viewsGo(0, true); } });
+
+/* ── the View menu (0.11.0): grouped, labelled, switches for toggles, segments for modes, in the top layer ───────── */
+/** One switch: icon + label + an on/off track; the state is aria-checked (never a gold-filled pill). */
+function viewSwitch(id, on, label = t(id)) {
+  return `<button type="button" class="b swt" role="switch" data-a="${id}" aria-checked="${!!on}"><span class="i">${ic(id)}</span><span class="w">${esc(label)}</span><span class="tg" aria-hidden="true"><i></i></span></button>`;
+}
+function viewPop() {
+  const grp = (k, body) => `<div class="vg" role="group" aria-labelledby="vg-${k}"><span class="vgh" id="vg-${k}">${esc(t('viewg.' + k))}</span><div class="vr">${body}</div></div>`;
+  const zb = (id, label) => `<button type="button" class="b" data-a="${id}" title="${esc(t(id))}" aria-label="${esc(t(id))}"><span class="i">${ic(id)}</span><span class="w">${esc(label)}</span></button>`;
+  const multi = Object.keys(M[S.svc]).length > 1;
+  return `<div class="pop vpop" id="viewpop" role="dialog" aria-label="${esc(t('view'))}" dir="${LAYOUT_DIR}" lang="${S.ui}" ${S.view ? '' : 'hidden'}>
+    ${grp('pages', viewsSeg())}
+    ${grp('zoom', `${zb('zoomOut', t('zoomOut'))}${zb('zoomReset', `${Math.round(S.zoom * 100)}%`)}${zb('zoomIn', t('zoomIn'))}${zb('zoomFit', t('zoomFit'))}`)}
+    ${grp('compare', `${multi ? viewSwitch('side', S.side, t('sideBySide')) : ''}${viewSwitch('both', S.both, t('bothEditions'))}`)}
+    ${grp('look', `${viewSwitch('dark', S.dark)}${viewSwitch('calm', S.calm)}`)}
+    ${grp('aids', `${viewSwitch('focus', S.focus)}${viewSwitch('spell', S.spell[S.ed])}${viewSwitch('snap', S.snap)}`)}
+  </div>`;
+}
+/** After buildUi(): an open View menu goes to the top layer, under its button, and the control just used keeps the focus. */
+function viewPopAfterBuild() {
+  const pop = root.querySelector('#viewpop');
+  const btn0 = root.querySelector('.island [data-a="view"]');
+  if (!pop || !S.view || !btn0) return;
+  if (pop.showPopover) { pop.popover = 'manual'; try { pop.showPopover(); } catch { /* open */ } }
+  uxMenuPlace(pop, btn0);
+  const f = S.viewFocus && pop.querySelector(`[data-a="${S.viewFocus}"]`);
+  (f || pop.querySelector('button'))?.focus({ preventScroll: true });
+}
+/** The zoom read-out follows every zoom step without a rebuild. */
+function viewPct() {
+  const w = root.querySelector('#viewpop [data-a="zoomReset"] .w');
+  if (w) w.textContent = `${Math.round(S.zoom * 100)}%`;
+}
+function viewPopClose() {
+  if (!S.view) return;
+  S.view = false;
+  const pop = root.querySelector('#viewpop');
+  if (pop?.matches?.(':popover-open')) pop.hidePopover();
+  if (pop) pop.hidden = true;
+  root.querySelector('.island [data-a="view"]')?.setAttribute('aria-expanded', 'false');
+}
+root.addEventListener('click', (e) => { const b = e.target.closest?.('#viewpop [data-a]'); if (b) S.viewFocus = b.dataset.a; }, true);
+window.addEventListener('pointerdown', (e) => {
+  if (!S.view) return;
+  const p = e.composedPath();
+  if (!p.some((x) => x.id === 'viewpop' || x.dataset?.a === 'view')) viewPopClose();
+}, true);
+window.addEventListener('resize', () => { const pop = root.querySelector('#viewpop'); if (S.view && pop) uxMenuPlace(pop, root.querySelector('.island [data-a="view"]')); });
