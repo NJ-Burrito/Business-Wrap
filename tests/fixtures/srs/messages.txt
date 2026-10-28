@@ -1,0 +1,4 @@
+# Invented test fixture: a fictional message bundle.
+event.eventName.required=اسم الفعالية مطلوب
+event.attendance.max=عدد الحضور يتجاوز الحد المسموح
+other.service.vatNumber.invalid=رقم ضريبي غير صحيح
