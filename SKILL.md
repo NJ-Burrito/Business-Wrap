@@ -11,6 +11,9 @@ Turns observed evidence into a governed, bilingual (AR RTL / EN LTR) requirement
 At the start of any Business-Wrap task run `node update/cli.mjs --check --lang <ar|en>` from this skill folder (or `npx business-wrap update --check`, or the MCP tool `check_update`). It is cached and makes at most one request a day; "can't check" means say nothing.
 If it prints a notice, tell the user in ONE line, in their language: the new version and the three highlights it printed, and offer `node update/cli.mjs --apply --yes` (Claude Code plugin: `/plugin update business-wrap`). Never update without their consent. After an update, read `node update/cli.mjs --notes`: follow its «Migration notes» (changed commands, schemas) before anything else. An edits file whose `version` is newer than the engine is refused: update first, never down-convert it. Full rules: `bible/07-updates.md`.
 
+## Local learning / التعلّم المحلي (mandatory, `bible/09-learning.md`)
+Before harvesting, authoring or generating, read the learned rules (MCP `learning_rules`, or `.local/learning/rules.md`) and apply them. After the user's edits and after an export, run `learning_distill` (`npm run learn`). Tell the user in ONE line which learned rules were applied. Conflicts (`learning_conflicts`) go to the user side by side; never resolve, promote, retire or forget on your own. The journal stays on this machine: never copy it into a document, a commit or a message.
+
 ## Open the editor / افتح المحرر
 The editor ships with this skill, ready to open: **`assets/editor/business-wrap.html`** (path relative to this SKILL.md; one self-contained file).
 
@@ -86,6 +89,7 @@ Rules that cost a rebuild if skipped:
 | Colours, sizes, page geometry, custom design | `bible/06-design-system.md`, `design/README.md` |
 | Fonts setup, Type 3 | `fonts/README.md` |
 | Start a document from a BPMN / draw.io / YAML model or a live service | `bible/08-harvest.md`, `bible/contracts/harvest.schema.json` |
+| What the tool learned from the user's edits; rules, conflicts, privacy | `bible/09-learning.md`, `npm run learn -- rules` |
 | Install, quickstart, troubleshooting | `docs/guide.md` |
 
 ## Quick reference

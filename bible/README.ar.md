@@ -15,6 +15,7 @@
 | 6 | `06-design-system.ar.md` | حزم التصميم، ووصول الرموز إلى المخرجات، والتباين، وأبعاد الطباعة |
 | 7 | `07-updates.ar.md` | فحص التحديث، وتنبيه الإنسان والوكيل، وتطبيق التحديث، والترحيل |
 | 8 | `08-harvest.ar.md` | بدء وثيقة من نموذج إجراء (BPMN وFlowable وdraw.io وYAML) أو بالمرور على خدمة فعلية |
+| 9 | `09-learning.ar.md` | التعلّم المحلي: ما يلتقطه المحرّر، وكيف تصير الدروس قواعد، وكيف يستخدمها المساعدون، والخصوصية |
 | — | `contracts/edits.schema.json` و`contracts/wrappers.schema.json` و`contracts/design-pack.schema.json` | العقود الآلية |
 
 ## قواعد ثابتة

@@ -110,6 +110,9 @@ Colours by role (swatch + hex code), sizes and spacing (slider + number + unit, 
 ## For AI agents
 Claude Code, Claude Desktop, Codex, Cursor, Gemini CLI or any MCP client: read `AGENTS.md` and `SKILL.md`. At the start of a Business-Wrap task run `npx business-wrap update --check` (or MCP `check_update`); tell the user about a newer release in one line and never update without consent.
 
+### Local learning
+The editor quietly keeps a journal of your edits, notes and exports in `.local/learning/` on this machine only (never in a document, an export or a webhook; never sent anywhere). `npm run learn` turns repeated corrections into rules (`.local/learning/rules.md`, Arabic + English) that your AI agent reads before its next draft (MCP `learning_rules`). Ctrl+K → "Local learning" to switch it off, export, import or forget everything. See `bible/09-learning.md`.
+
 ## Security gate
 ```powershell
 $env:PYTHONUTF8 = "1"

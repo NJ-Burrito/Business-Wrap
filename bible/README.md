@@ -13,6 +13,7 @@
 | 6 | `06-design-system.md` | Design packs, tokens to outputs, contrast, print geometry |
 | 7 | `07-updates.md` | Update check, notice to people and agents, applying an update, migrations |
 | 8 | `08-harvest.md` | Start a document from a process model (BPMN, Flowable, draw.io, YAML) or by crawling a live service |
+| 9 | `09-learning.md` | Local learning: what the editor captures, how lessons become rules, how agents use them, privacy |
 | — | `contracts/edits.schema.json`, `contracts/wrappers.schema.json`, `contracts/design-pack.schema.json` | Machine contracts |
 
 ## House rules (non-negotiable)

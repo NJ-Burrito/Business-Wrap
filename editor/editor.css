@@ -86,3 +86,6 @@ html[data-bw-calm="1"] *, html[data-bw-calm="1"] { animation: none !important; t
   * { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
   #bw-watermark img { transition: opacity .2s linear !important; transform: none !important; }
 }
+/* local learning (editor/learning-hook.js): a value the engine wrote from a learned rule; never printed */
+main.bw-doc .bw-learned { text-decoration: underline dotted color-mix(in srgb, var(--bw-sel) 70%, transparent); text-underline-offset: 3px; }
+@media print { main.bw-doc .bw-learned { text-decoration: none !important; } }

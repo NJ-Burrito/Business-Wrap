@@ -9,6 +9,12 @@ Instructions for AI coding agents (Codex, Cursor, Gemini CLI, Claude Code, any M
 4. "Can't check" (offline, no access to the private repository) is not an error: say nothing and carry on.
 5. After an update, read `npx business-wrap update --notes`: its "Migration notes" tell you which commands, schemas or behaviours changed. Follow them before doing anything else.
 
+## Local learning (mandatory)
+1. Before harvesting, authoring or generating: read the learned rules (MCP `learning_rules`, or `.local/learning/rules.md`) and apply them.
+2. After the user's edits and after an export: run `learning_distill` (or `npm run learn`).
+3. Tell the user in ONE line which learned rules were applied.
+4. Show conflicts (`learning_conflicts`) side by side and let the user decide; never resolve, promote, retire or forget on your own. The journal stays on this machine: never copy it into a document, a commit or a message. See `bible/09-learning.md`.
+
 ## Schema gate
 - Edits files follow `bible/contracts/edits.schema.json` (version 1). An edits file with a newer `version` is refused: tell the user to update Business-Wrap first; do not edit the file down to an older version.
 - Older edits files (version 0, a bare array of ops) are migrated to version 1 on import and on update; never hand-convert them.

@@ -15,6 +15,7 @@ import { exportPdf, exportDocx, pageThumbs, loadTheme, fontsFor, REPO, i18n, fil
 import { checkForUpdate, token, currentVersion } from '../update/check.mjs';
 import { applyUpdate } from '../update/apply.mjs';
 import { crawl, harvestToDocument } from './harvest/crawl.mjs';
+import { learningRoute } from './learning/http.mjs';
 
 const MAX_BODY = 60 * 1024 * 1024;
 const slug = fileStem;
@@ -60,6 +61,8 @@ export function serve(editorFile, port = 4317, { out } = {}) {
           return send(200, await applyUpdate({ dir: REPO, release: { version: u.latest, zip: u.zip, zipApi: u.zipApi, sha256: u.sha256 }, repo, token: token(), current: currentVersion() }));
         }
       }
+      // local learning (engine/learning): the journal stays in .local/learning on this machine
+      if (url.pathname.startsWith('/api/learning/')) return await learningRoute(req, url, send);
       if (req.method === 'POST' && url.pathname === '/api/harvest/crawl') {
         // the wizard's "walk the live service": a real (headed) browser on this machine; credentials only via $env:/$secret:
         if (req.headers.origin && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(req.headers.origin)) return send(403, { error: 'origin' });
@@ -85,6 +88,7 @@ export function serve(editorFile, port = 4317, { out } = {}) {
         const p = body.payload || {};
         // only the documented fields leave the machine (bible/contracts/webhook.schema.json): never fonts, never the watermark
         const payload = Object.fromEntries(['schema', 'version', 'event', 'service', 'edition', 'timestamp', 'summary', 'document'].filter((k) => k in p).map((k) => [k, p[k]]));
+        if (payload.document && typeof payload.document === 'object') { const { learned, ...doc } = payload.document; payload.document = doc; } // learning never leaves the machine
         try {
           const r = await fetch(target, { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'business-wrap-webhook/1' }, body: JSON.stringify(payload), signal: AbortSignal.timeout(8000), redirect: 'manual' });
           return send(200, { ok: r.status >= 200 && r.status < 300, status: r.status });

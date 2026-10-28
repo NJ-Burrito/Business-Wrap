@@ -12,7 +12,7 @@ import { pathToFileURL } from 'node:url';
 import { isReleaseZipUrl } from './core.mjs';
 
 /** User-owned paths that an update never replaces or removes (relative to the install folder). */
-export const KEEP = ['.local', '.git', 'node_modules', 'out', 'design/custom', 'logos', 'fonts/custom', 'drafts'];
+export const KEEP = ['.local', '.local/learning', '.git', 'node_modules', 'out', 'design/custom', 'logos', 'fonts/custom', 'drafts'];
 
 const kept = (rel) => KEEP.some((k) => rel === k || rel.startsWith(`${k}/`));
 const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');

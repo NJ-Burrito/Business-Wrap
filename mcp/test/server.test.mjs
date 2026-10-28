@@ -39,7 +39,7 @@ const editsFile = path.join(OUT, 'edits.json');
 fs.writeFileSync(editsFile, JSON.stringify(edits));
 fs.writeFileSync(path.join(OUT, 'bad-edits.json'), JSON.stringify({ version: 1, ops: [{ op: 'explode', path: 'x' }] }));
 
-const transport = new StdioClientTransport({ command: process.execPath, args: [path.join(REPO, 'mcp', 'cli.mjs')], cwd: REPO, env: { ...process.env }, stderr: 'pipe' });
+const transport = new StdioClientTransport({ command: process.execPath, args: [path.join(REPO, 'mcp', 'cli.mjs')], cwd: REPO, env: { ...process.env, BW_LEARNING_DIR: path.join(OUT, 'learning') }, stderr: 'pipe' });
 const client = new Client({ name: 'business-wrap-test', version: '1.0.0' });
 const text = (r) => r.content?.[0]?.text || '';
 const data = (r) => r.structuredContent ?? JSON.parse(text(r) || 'null');
@@ -47,7 +47,7 @@ try {
   await client.connect(transport);
   const { tools } = await client.listTools();
   const names = tools.map((t) => t.name).sort();
-  check('tools/list', JSON.stringify(names) === JSON.stringify(['apply_edits', 'apply_update', 'build_editor', 'check_fonts', 'check_update', 'diagram_mermaid', 'export_design_pack', 'export_document', 'harvest_crawl', 'harvest_merge', 'harvest_model', 'validate_edits']), names.join(','));
+  check('tools/list', JSON.stringify(names) === JSON.stringify(['apply_edits', 'apply_update', 'build_editor', 'check_fonts', 'check_update', 'diagram_mermaid', 'export_design_pack', 'export_document', 'harvest_crawl', 'harvest_merge', 'harvest_model', 'learning_conflicts', 'learning_distill', 'learning_export', 'learning_forget', 'learning_import', 'learning_promote', 'learning_retire', 'learning_rules', 'validate_edits']), names.join(','));
   check('every tool has a description and an input schema', tools.every((t) => t.description && t.inputSchema?.type === 'object'));
 
   let r = await client.callTool({ name: 'validate_edits', arguments: { edits: editsFile } });
