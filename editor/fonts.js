@@ -32,7 +32,7 @@ const FONTS = {
     const warn = FONTS.warning(fam);
     return `<div class="fp" data-fp="${role}">
 <span class="vc-l" id="fp-${role}-l">${esc(t('font.' + role))}</span><p class="hint" id="fp-${role}-h">${esc(t('font.' + role + 'Hint'))}</p>
-<button type="button" class="fp-btn" data-fpopen="${role}" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="fp-${role}-l fp-${role}-v" aria-describedby="fp-${role}-h"><span class="fp-v" id="fp-${role}-v" style="font-family:'${safeFamily(fam)}'">${esc(fam)}</span>${isDefault ? `<span class="fp-tag">${esc(t('font.default'))}</span>` : ''}<span class="fp-caret" aria-hidden="true">▾</span></button>
+<button type="button" class="fp-btn" data-fpopen="${role}" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="fp-${role}-l fp-${role}-v" aria-describedby="fp-${role}-h"><span class="fp-v" id="fp-${role}-v"${isDefault ? ` data-tag="${attr(t('font.default'))}"` : ''} style="font-family:'${safeFamily(fam)}'">${esc(fam)}</span><span class="fp-caret" aria-hidden="true">▾</span></button>
 <div class="fp-pop" hidden></div>
 <p class="fp-warn hint ${warn ? warn[0] : ''}" role="status">${warn ? `<span class="i">${ic(warn[0])}</span> ${esc(warn[1])}` : ''}</p></div>`;
   },

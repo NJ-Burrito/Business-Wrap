@@ -1221,9 +1221,8 @@ async function onBar(e) {
   const b = e.target.closest('button[data-a]');
   if (!b || b.closest('.palette')) return;
   const a = b.dataset.a;
-  if (a === 'more' && b.nextElementSibling?.classList.contains('fm')) { const m = b.nextElementSibling; const open = m.dataset.open !== '1'; m.dataset.open = open ? '1' : ''; b.setAttribute('aria-expanded', String(open)); return; }
-  if (a === 'more') { const menu = b.nextElementSibling; const open = menu.hidden; menu.hidden = !open; b.setAttribute('aria-expanded', String(open)); return; }
-  if (b.closest('.menu')) { b.closest('.menu').hidden = true; }
+  if (a === 'more') { uxMenuToggle(b); return; } // shell-ux.js: the menu opens in the top layer, anchored to its button
+  if (b.closest('.menu')) uxMenuClose(b.closest('.menu'));
   if (a === 'ed') { setLang(b.dataset.ed); return; }
   if (a === 'dir') { setDir(b.dataset.d); return; }
   await runAction(a);
@@ -1640,7 +1639,8 @@ function placeAt(clientX, clientY, kind, wMm) {
   const ar = anchorEl.getBoundingClientRect();
   const wrap = main.querySelector('.wrap').getBoundingClientRect();
   const padL = parseFloat(getComputedStyle(main.querySelector('.wrap')).paddingLeft) || 16 * k;
-  return { mode: 'anchor', anchor: ptr, x: (clientX - (wrap.left + padL)) / k, y: (clientY - ar.top) / k, _anchorEl: !!main.querySelector(`.bw-anchor[data-anchor="${CSS.escape(ptr)}"]`) };
+  const colLeft = viewsActive() ? best.getBoundingClientRect().left : wrap.left + padL;
+  return { mode: 'anchor', anchor: ptr, x: (clientX - colLeft) / k, y: (clientY - ar.top) / k, _anchorEl: !!main.querySelector(`.bw-anchor[data-anchor="${CSS.escape(ptr)}"]`) };
 }
 function snapMm(p, wMm) {
   if (!S.snap) return { p, guides: [] };
@@ -1666,9 +1666,13 @@ function startOvDrag(e, el, resize) {
   const o = ovList()[i];
   if (!o) return;
   e.preventDefault();
-  el.setPointerCapture(e.pointerId);
+  try { el.setPointerCapture(e.pointerId); } catch { /* a synthetic pointer: the window listeners below still track it */ }
+  el.focus({ preventScroll: true }); // pressing a logo focuses it, so the arrow keys nudge it at once
+  if (S.dg) { dgClear(); dgPaint(); } // a logo picked: the arrow keys and tools are the logo's, not a diagram's
   S.selOv = i; S.sel = null; paintSel(); refreshUi();
   const k = mmScale();
+  // the page may be zoomed (Zoom, a paged view): a translate inside it is scaled too, so move by screen px / zoom
+  const z = k / MM || 1;
   const r0 = el.getBoundingClientRect();
   const sx = e.clientX, sy = e.clientY;
   const main = mainOf(S.ed);
@@ -1681,16 +1685,18 @@ function startOvDrag(e, el, resize) {
       el.style.width = `${w}mm`;
       last = { w };
     } else {
-      el.style.transform = `translate(${dx}px, ${dy}px)`;
+      el.style.transform = `translate(${dx / z}px, ${dy / z}px)`;
       const target = placeAt(r0.left + dx, r0.top + dy, o.mode === 'every' ? 'every' : o.kind, o.w);
       const { p, guides } = snapMm(target, o.w);
       showGuides(main, guides.map((g) => [g[0], g[1]]), p.mode === 'anchor' ? 16 : 0);
       last = { p, dx, dy };
     }
   };
-  const up = () => {
-    el.removeEventListener('pointermove', move);
-    el.removeEventListener('pointerup', up);
+  const up = (ev) => {
+    if (ev?.pointerId != null && ev.pointerId !== e.pointerId) return;
+    window.removeEventListener('pointermove', move, true);
+    window.removeEventListener('pointerup', up, true);
+    window.removeEventListener('pointercancel', up, true);
     el.classList.remove('bw-dragging');
     main.querySelectorAll('.bw-guide').forEach((g) => g.remove());
     if (!last) { el.style.transform = ''; return; }
@@ -1716,8 +1722,10 @@ function startOvDrag(e, el, resize) {
       }
     }
   };
-  el.addEventListener('pointermove', move);
-  el.addEventListener('pointerup', up);
+  // window listeners: a drag survives a lost capture or the pointer leaving the logo; cancel ends it where it is
+  window.addEventListener('pointermove', move, true);
+  window.addEventListener('pointerup', up, true);
+  window.addEventListener('pointercancel', up, true);
 }
 function decorateOverlays(main) {
   main.querySelectorAll('.bw-ov').forEach((el) => {
@@ -1750,7 +1758,7 @@ document.addEventListener('keydown', (e) => {
 });
 document.addEventListener('focusin', (e) => {
   const el = e.target.closest?.('#bw-pair .bw-ov');
-  if (el) { S.selOv = +el.dataset.i; S.sel = null; paintSel(); refreshUi(); }
+  if (el) { if (S.dg) { dgClear(); dgPaint(); } S.selOv = +el.dataset.i; S.sel = null; paintSel(); refreshUi(); }
 });
 
 /* drag-drop and paste of image files: drop = free position at the point, paste = after the block */

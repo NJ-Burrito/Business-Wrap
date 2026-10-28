@@ -1,31 +1,31 @@
 # goals
-Business-Wrap 0.9.1 (branch `gaps`, worktree `Business-Wrap-wt-gaps`): close the five gaps 0.9.0 left against the owner's diagram/toolbar notes — bend arrows by hand, in-place label editing, a one-row legend as the reference, section titles always visible in the toolbar, diagram zoom — and re-match the reference figure.
+Business-Wrap 0.10.0 (branch `ux`, worktree `Business-Wrap-wt-ux`): the owner's field notes on the editor shell (A1–A7: layout never flips, AR/EN parity, whole-field toggles, sticky selection tools, hover explainers, page views, UX research) merged with worker B's Design panel and fonts (B1–B4: any font, plain wording, slider + number + unit, every font real text), plus faux bold, README pair, version 0.10.0.
 
 ## current state
-- Committed on `gaps`, not merged, not pushed, not tagged (the Lead merges/pushes/tags `v0.9.1`).
-- Every suite green run one by one (editor 111, a11y 26, mcp 12, skill-html, update 29, harvest 27, editable 29, field 59, diagram 67), version-sync 0.9.1, `security/check.py --all` 0 findings, skill-html current.
-- Visual compare + toolbar screenshots: `Desktop\Business-Wrap-field-test\compare-0.9.1\` (notes.md, compare-ar/en.png, 48 toolbar shots, toolbar-fit.txt, gates.log).
+- Committed on `ux` (merge of `design` included), not pushed, not tagged: the Lead pushes, watches CI and tags `v0.10.0` (task I2), and sets the GitHub description and topics (I3).
+- Every suite run one by one (see `out/gates.log`; copy in `Desktop\Business-Wrap-field-test\compare-0.10.0\ux\`), version-sync 0.10.0, skill-html current, `security/check.py --all` 0 findings.
+- Evidence: `Desktop\Business-Wrap-field-test\compare-0.10.0\ux\` (36 viewport shots AR/EN × 1366/1920 + gates.log), `Desktop\Business-Wrap-field-test\research-ux.md`, README screenshots in `docs/screens/`.
 
 ## files in flight
 - none open.
 
 ## changed
-- engine/diagram.mjs: edge `via` (hand-set bend points, `viaPath` keeps orthogonal, wire items carry `route`), layout clears `via`, line breaks in labels (`NL`, `longW`), legend measured at set width + gap shrink + centred one row, legend arrows point the chain's way, shorter EN key, tighter rework/row corridors.
-- editor/diagram-ui.js: bend handles + `dgBendDrag`, `dgBendAdd/Del`, `dgRouteAuto`, `dgCarryBends`; `dgInline` (in-place editor; replaces the label dialog); zoom (`dgZoomFig`, `dgZoomAll`, Ctrl+wheel); `zoomKeep()` tools kept in view.
-- editor/editor.js: `sec()` puts a section's extra tools in its own «More» (`.more.tail`), `fitBar()` squeeze steps sq0–sq4 (titles never hidden), `keep` tools in the selection section, CMDS for the new actions, `dgZoomAll()` after render.
-- editor/ui.css (fold rules; renamed away from `.fold`, which the logo's inline style uses), editor/editor.css (zoom, inline box, picked arrow), engine/i18n.json, engine/vendor-icons.mjs + editor/icons.json, engine/render.mjs (caption gap), bible 02/04 AR+EN, contracts/diagram.schema.json (`via`), CHANGELOG 0.9.1, version 0.9.1, assets/editor/business-wrap.html, tests/diagram.test.mjs (+33 checks).
+- New: `editor/shell-ux.js` (fixed RTL layout + `data-tdir`, AR/EN width parity `uxWidest`, segmented fields `uxSegClick`/`segThumbs`, sticky selection `uxIsEmptySpace`/`uxEscape`), `editor/explainers.js` (700 ms cards, scenes per kind of tool, Design-panel controls), `editor/views.js` + `editor/views.css` (continuous / single / book, screen-only columns, `viewsUnpage` before print), `editor/ux.css`, `editor/ux-i18n.json` (ux.*, view.*, explain.*; merged into the UI table by `engine/build-editor.mjs`), `tests/ux.test.mjs` (61 checks).
+- Faux bold: `engine/font_normalise.py --embolden` (synthetic Bold, outlines +1/26 em), `engine/fonts.mjs normaliseFont(…, {embolden})`, `engine/export.mjs chosenFonts` adds a Bold face for any chosen family without one; gate in `tests/design.test.mjs`.
+- `editor/editor.js` hooks (LAYOUT_DIR, tAlt, render → viewsApply, beforeprint → viewsUnpage, measureBar on the layout box), `editor/editor.css` (watermark bottom right), `engine/vendor-icons.mjs` + `editor/icons.json` (5 icons), `tests/editor.test.mjs` (never-flip layout), `package.json` (0.10.0, design + ux tests), manifests, CHANGELOG 0.10.0, bible 01/04/06 AR+EN, README.md + README.ar.md rewritten, `assets/editor/business-wrap.html` rebuilt.
 
 ## failed attempts
-- A `.fold` class on the toolbar inherited `stroke-dasharray` from the brand logo's inline `<style>` (half-drawn circle icons); renamed to `sq*` / `.tail` / `.folded`.
-- `pin:` in source tripped the secret scanner's PIN rule; renamed to `keep`.
+- Faux bold with `-webkit-text-stroke` or `text-shadow`: Chrome prints the stroke/shadow as Type 3 (and the stroke doubles the extracted text) — replaced by a real synthetic Bold face.
+- Toolbar parity first measured the other language with canvas metrics and then while the entry animation scaled the bar: both off by a pixel; now real renderings in each language's own lang/direction, in layout px.
+- `git merge` is refused for workers by the v4 hook; the Lead started the merge and the worker finished the merge commit.
 
 ## next step
-1. Lead: review, merge `gaps` into `main`, push, watch CI (CI has no Thmanyah: the new checks do not depend on the face, but the 1366 title check runs on the fallback UI font there), tag `v0.9.1`.
-2. Owner eye on compare-0.9.1 (run-once rule: not re-verified by a person here).
+1. Lead: review, push `ux`, watch CI (CI has no Thmanyah; the new suites do not read the face), tag `v0.10.0`, set the GitHub description and topics.
+2. Owner eye on `compare-0.10.0\ux\` and the README screenshots (run-once rule: not re-checked by a person here).
 
 <div dir="rtl">
 
 ## خلاصة بالعربية
-الفرع `gaps` يحمل الإصدار 0.9.1: ثني الأسهم يدوياً بمقابض على المقاطع والزوايا مع مسار تلقائي، وتحرير النص في مكانه على الشكل والسهم، ومفتاح في صف واحد كالشكل المعتمد، وعناوين أقسام الشريط ظاهرة دائماً مع «المزيد» لكل قسم، وتكبير المخطط وتصغيره. الخطوة التالية: يدمج القائد ويرفع ويضع الوسم.
+الفرع `ux` يحمل الإصدار 0.10.0: تخطيط لا ينقلب بين العربية والإنجليزية، وتطابق الأدوات في اللغتين، وحقول تُبدَّل بالنقر في أي مكان منها، وأدوات تحديد تبقى حتى النقر على مساحة فارغة أو Esc، وبطاقات شارحة متحركة، وعرض الصفحات (متصل، صفحة، كتاب)، مع لوحة التصميم وأي خط نصاً حقيقياً من الفرع `design`، والعريض المركّب للخطوط التي لا وجه عريض لها. الخطوة التالية: يرفع القائد ويضع الوسم.
 
 </div>

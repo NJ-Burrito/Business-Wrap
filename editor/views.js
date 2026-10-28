@@ -158,6 +158,7 @@ document.addEventListener('keydown', (e) => {
   if (!viewsActive() || e.ctrlKey || e.metaKey || e.altKey) return;
   const t0 = e.target;
   if (t0.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t0.tagName || '') || e.composedPath?.().some((x) => x === host)) return;
+  if (/^Arrow/.test(e.key) && (S.selOv != null || S.dg || t0.closest?.('.bw-ov'))) return; // the arrows nudge the selected logo or shape
   const rtl = mainOf(S.ed)?.dir === 'rtl';
   const step = { PageDown: 1, PageUp: -1, ArrowLeft: rtl ? 1 : -1, ArrowRight: rtl ? -1 : 1, Home: -999, End: 999 }[e.key];
   if (step) { e.preventDefault(); viewsGo(step); }

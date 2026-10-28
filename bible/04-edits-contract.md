@@ -100,3 +100,11 @@ Nothing selected (or Esc, or a click on the page) → the general sections: File
 ### Labels are edited in place (0.9.1)
 
 Double-click a shape, an arrow or free text (or select it and press Enter/F2): a text box opens on the label itself in the drawing's face and size; the caret follows the text (Arabic right to left, Latin left to right). Enter or a click elsewhere saves (one `replace`), Shift+Enter adds a line, Esc cancels. No dialog.
+
+### The shell, 0.10.0: layout never flips, sticky tools, explainers, page views
+
+- **The layout never flips.** The editor keeps the default (Arabic, right-to-left) arrangement in both languages: toolbar, panels, page and watermark stay where they are. «ع» / «E» changes the interface language and the edition; RTL / LTR changes only the direction of the words (the UI text and the document view). Every toolbar word reserves the width of the longer of its Arabic and English forms, so both languages fold the bar the same way and every tool keeps its place.
+- **Segmented fields.** «ع» / «E», RTL / LTR and View → Pages are segmented fields: a click anywhere on the field (an option, its caption or its padding) toggles it, and the thumb slides from where it is (critically damped; no motion under reduced motion or Calm mode).
+- **The selection's tools are a mode.** They stay while the person works in the toolbar, panels, menus, pickers, colour inputs and inline editors; only a click on empty space (the desk or the page background) or Esc returns the general tools. Esc peels one layer at a time: explainer → open menu → View popover → panel → selection.
+- **Explainers.** Resting on a tool (pointer or keyboard focus) for about 700 ms shows a card: the tool's name, its shortcut, one sentence (`explain.<id>` in `editor/ux-i18n.json`, Arabic and English) and a looping illustration. Moving to the next tool shows its card at once; leaving, pressing, scrolling or Esc hides it; reduced motion shows a still frame.
+- **Page views** (View → Pages, remembered per browser): Continuous; Single (one page at a time); Book (the cover alone, then pairs in the edition's reading direction). Pages are screen-only CSS columns of one A4 sheet each: editing works in every view, and print, the PDF, the DOCX and the edits file never see the view (the print pass measures the plain sheet). None of this is an op.

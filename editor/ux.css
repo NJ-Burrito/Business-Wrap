@@ -156,3 +156,8 @@
 /* reduced motion / calm mode: still frames (the end state each scene explains) */
 .shell[data-calm="1"] .xpl svg *, .shell[data-calm="1"] .xpl { animation: none !important; }
 @media (prefers-reduced-motion: reduce) { .xpl svg *, .xpl { animation: none !important; } }
+
+/* toolbar menus in the top layer: anchored by uxMenuPlace; the toolbar itself never scrolls */
+.island { overflow: clip visible; }
+.more .menu:popover-open { position: fixed; inset: auto; margin: 0; display: flex; color: var(--on-glass); overflow: auto; }
+.more .menu:popover-open { animation: pop-in .26s var(--e-out) both; }

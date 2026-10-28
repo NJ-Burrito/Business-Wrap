@@ -19,7 +19,7 @@ A pack (`contracts/design-pack.schema.json`) has `name`, `version` (semver), `to
 | `page.*` | `@page { size; margin }`, named pages for cover and the wide sheet | section page size, orientation, margins |
 
 ## Fonts chosen in the editor
-The editor embeds every chosen font (project, installed on the computer, or uploaded) as real text in the PDF and the DOCX: each face is normalised to TrueType outlines with OS/2 fsType 0 before printing and embedding, and the font's licence is the user's responsibility (owner decision, 2026-10-28).
+The editor embeds every chosen font (project, installed on the computer, or uploaded) as real text in the PDF and the DOCX: each face is normalised to TrueType outlines with OS/2 fsType 0 before printing and embedding, and the font's licence is the user's responsibility (owner decision, 2026-10-28). A family with no bold face gets a synthetic Bold at export (`engine/font_normalise.py --embolden`: every outline grows by 1/26 em, the advance by the same), so bold text stays bold and stays real text; Chrome's own faked bold would print as Type 3 drawings.
 
 ## Contrast rules
 Body text 7:1 on paper and card; secondary text, numbers, ids and tags 4.5:1; accent that carries words uses its 800 step; no information by colour alone. `palette/check.py` fails the build otherwise.

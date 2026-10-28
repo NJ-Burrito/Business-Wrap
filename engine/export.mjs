@@ -77,16 +77,27 @@ export function chosenFonts(doc, theme) {
     Object.assign(f, { src: ttfDataUri(bytes), format: 'ttf', outlines: 'truetype' });
     if (fams.includes(familyName(f.family))) faces.push({ family: familyName(f.family), weight: +f.weight === 700 ? 700 : 400, bytes });
   }
+  // faux bold (0.10.0): an uploaded family with no bold face gets a synthetic Bold, so bold text stays bold and real text
+  for (const fam of fams) {
+    const own = uploaded.filter((f) => familyName(f.family) === fam);
+    const reg = own.find((f) => +f.weight !== 700);
+    if (!reg || own.some((f) => +f.weight === 700)) continue;
+    const bytes = normaliseFont(Buffer.from(reg.src.split(',')[1], 'base64'), 0, { embolden: true });
+    uploaded.push({ family: reg.family, weight: 700, src: ttfDataUri(bytes), format: 'ttf', outlines: 'truetype', synthetic: true });
+    faces.push({ family: fam, weight: 700, bytes });
+  }
   let css = '';
   for (const fam of fams) {
     if (uploaded.some((f) => familyName(f.family) === fam)) continue;
     const sys = systemFamily(fam);
     if (!sys.found) { missing.push(fam); continue; }
-    for (const [face, weight] of [[sys.regular, 400], [sys.bold, 700]]) {
+    // no bold face: a synthetic Bold from the regular one (faux bold that stays real text, 0.10.0)
+    const bold = sys.bold || (sys.regular && { ...sys.regular, embolden: true });
+    for (const [face, weight] of [[sys.regular, 400], [bold, 700]]) {
       if (!face) continue;
-      const bytes = normaliseFont(fs.readFileSync(face.file), face.index || 0);
+      const bytes = normaliseFont(fs.readFileSync(face.file), face.index || 0, { embolden: !!face.embolden });
       faces.push({ family: fam, weight, bytes });
-      css += `@font-face{font-family:'${fam}';font-style:normal;font-weight:${faceWeights(weight, !!sys.bold)};font-display:block;src:url(${ttfDataUri(bytes)}) format('truetype');}\n`;
+      css += `@font-face{font-family:'${fam}';font-style:normal;font-weight:${faceWeights(weight, !!bold)};font-display:block;src:url(${ttfDataUri(bytes)}) format('truetype');}\n`;
     }
   }
   return { doc: out, css, faces, missing };

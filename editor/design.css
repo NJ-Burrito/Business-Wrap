@@ -39,6 +39,9 @@
 .drawer .fp-btn:hover { background: var(--wash-2); }
 .drawer .fp-btn[aria-expanded="true"] { border-color: var(--navy); box-shadow: 0 0 0 2px rgba(0, 60, 122, .16); }
 .drawer .fp-v { flex: 1 1 auto; min-width: 0; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the «default» tag is drawn by CSS on the value, so the button's visible words equal its name (axe label-content-name-mismatch) */
+.drawer .fp-v[data-tag]::after { content: attr(data-tag); display: inline-block; margin-inline-start: 8px; font: 700 11.5px/1.5 'Thmanyah Sans', system-ui, sans-serif; color: var(--navy); background: var(--wash); border-radius: 999px; padding: 1px 8px; vertical-align: middle; }
+.shell[data-theme="dark"] .drawer .fp-v[data-tag]::after { color: #cfe0f4; }
 .drawer .fp-tag { flex: 0 0 auto; font-size: 11.5px; font-weight: 700; color: var(--navy); background: var(--wash); border-radius: 999px; padding: 1px 8px; }
 .shell[data-theme="dark"] .drawer .fp-tag { color: #cfe0f4; }
 .drawer .fp-caret { flex: 0 0 auto; color: var(--panel-soft); }

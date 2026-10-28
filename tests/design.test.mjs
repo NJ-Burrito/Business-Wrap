@@ -127,7 +127,7 @@ try {
     await shot(page, '.drawer details[data-grp="fonts"]', `design-panel-${ui}.png`);
 
     // ── B1: the default and the project section ──
-    const btn = await shadow(page, (r) => ({ v: r.querySelector('[data-fpopen="text"] .fp-v').textContent, tag: !!r.querySelector('[data-fpopen="text"] .fp-tag') }));
+    const btn = await shadow(page, (r) => ({ v: r.querySelector('[data-fpopen="text"] .fp-v').textContent, tag: !!r.querySelector('[data-fpopen="text"] .fp-v[data-tag]') }));
     const def = loadTheme().fonts.text;
     check(`${ui} B1: Thmanyah stays the default (button shows it, marked default)`, btn.v === def && btn.tag, JSON.stringify(btn));
 
@@ -318,6 +318,11 @@ try {
       await exportPdf(rdoc, { locale: 'en', theme: loadTheme(), pdfPath: rpdf, browser });
       const rpf = spawnSync(tool('pdffonts'), [rpdf], { encoding: 'utf8' }).stdout || '';
       check('B1 gate: a font restricted by fsType prints as real text (pdffonts: TrueType, no Type 3)', /CID TrueType|TrueType/.test(rpf) && !/Type 3/.test(rpf), rpf.split('\n').slice(2, 5).join(' / '));
+      // faux bold (0.10.0): the probe has no bold face; bold text prints in a synthetic Bold that is still real text
+      const rtxt = spawnSync(tool('pdftotext'), ['-enc', 'UTF-8', rpdf, '-'], { encoding: 'utf8' }).stdout || '';
+      const boldWords = [rdoc.chapters[0].title, rdoc.chapters[1].title].filter(Boolean);
+      const rFaces = rpf.split('\n').filter((l) => /TrueType/.test(l)).length;
+      check('I1 faux bold: a font with no bold face prints its bold text in a synthetic Bold (2 TrueType faces, no Type 3), and the bold headings extract as text', rFaces >= 2 && !/Type 3/.test(rpf) && boldWords.every((w) => rtxt.includes(w)), `${rFaces} faces · ${boldWords.join(' | ')}`);
       const rd = exportDocx(rdoc, { locale: 'en', theme: loadTheme(), docxPath: path.join(OUT, 'restricted.en.docx') });
       const rft = unzip(rd.docx, 'word/fontTable.xml');
       check('B1 gate: the DOCX embeds a font restricted by fsType, with no "left out" note', /w:name="Restricted Probe">[^]*?embedRegular/.test(rft) && unzip(rd.docx, '?').includes('word/fonts/') && !rd.fontNotes.length, JSON.stringify(rd.fontNotes));

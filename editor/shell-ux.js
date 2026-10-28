@@ -92,12 +92,57 @@ function uxIsEmptySpace(el) {
 /** Esc inside the UI peels one layer at a time: explainer → open menu → view popover → panel → the selection's tools. */
 function uxEscape() {
   if (xplHide()) return;
-  const menus = [...root.querySelectorAll('.ctx .more .menu:not([hidden]), .menu.fm[data-open="1"]')];
-  if (menus.length) {
-    menus.forEach((m) => { if (m.classList.contains('fm')) m.dataset.open = ''; else m.hidden = true; m.previousElementSibling?.setAttribute('aria-expanded', 'false'); });
-    return;
-  }
+  const menus = uxMenusOpen();
+  if (menus.length) { menus.forEach((m) => uxMenuClose(m, true)); return; }
   if (S.view) { S.view = false; buildUi(); return; }
   if (S.drawer) { closeDrawer(); return; }
   if (S.sel || S.selOv != null || S.dg) { S.sel = null; S.selOv = null; dgClear(); paintSel(); refreshUi(); }
 }
+
+/* ── toolbar menus escape the toolbar (0.10.0) ─────────────────────────────
+ * A «More» menu opens in the top layer (popover API), anchored to its button, shifted or flipped to stay in the
+ * window, so it is never clipped by the toolbar and the toolbar never scrolls. Esc, an outside click and a click on
+ * one of its tools close it; an outside click never drops the selection's tools (A4). */
+function uxMenusOpen() { return [...root.querySelectorAll('.more .menu[data-open="1"]')]; }
+function uxMenuToggle(btn) {
+  const menu = btn.nextElementSibling;
+  if (!menu) return;
+  if (menu.dataset.open === '1') { uxMenuClose(menu); return; }
+  uxMenusOpen().forEach((m) => uxMenuClose(m));
+  menu.hidden = false;
+  menu.dataset.open = '1';
+  if (menu.showPopover) { menu.popover = 'manual'; try { menu.showPopover(); } catch { /* already open */ } }
+  btn.setAttribute('aria-expanded', 'true');
+  uxMenuPlace(menu, btn);
+  menu.querySelector('button, select')?.focus({ preventScroll: true });
+}
+function uxMenuPlace(menu, btn) {
+  const r = btn.getBoundingClientRect();
+  menu.style.maxHeight = '';
+  const w = menu.offsetWidth;
+  let h = menu.offsetHeight;
+  const vw = document.documentElement.clientWidth;
+  // the default layout is right-to-left: the menu's right edge meets its button's right edge, then stays in the window
+  const left = Math.min(vw - w - 8, Math.max(8, r.right - w));
+  let top = r.bottom + 6;
+  if (top + h > innerHeight - 8 && r.top - h - 6 >= 8) top = r.top - h - 6; // flip above when there is room
+  if (top + h > innerHeight - 8) { top = Math.max(8, top); menu.style.maxHeight = `${innerHeight - top - 8}px`; h = innerHeight - top - 8; }
+  Object.assign(menu.style, { left: `${Math.round(left)}px`, top: `${Math.round(top)}px` });
+}
+function uxMenuClose(menu, focusBack = false) {
+  if (!menu || menu.dataset.open !== '1') return;
+  menu.dataset.open = '';
+  if (menu.matches?.(':popover-open')) menu.hidePopover();
+  if (!menu.classList.contains('fm')) menu.hidden = true;
+  const btn = menu.previousElementSibling;
+  btn?.setAttribute('aria-expanded', 'false');
+  if (focusBack) btn?.focus();
+}
+// an outside click closes the menus (the selection stays: only the document's own click handler decides that)
+window.addEventListener('pointerdown', (e) => {
+  const open = uxMenusOpen();
+  if (!open.length) return;
+  const path = e.composedPath();
+  open.forEach((m) => { if (!path.includes(m) && !path.includes(m.previousElementSibling)) uxMenuClose(m); });
+}, true);
+window.addEventListener('resize', () => uxMenusOpen().forEach((m) => uxMenuPlace(m, m.previousElementSibling)));

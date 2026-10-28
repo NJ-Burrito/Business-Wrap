@@ -8,6 +8,39 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.10.0] - 2026-10-28
+
+The editor's shell, reworked from the owner's field notes, and any font as real text. / هيكل المحرر من ملاحظات المالك الميدانية، وأي خط نصاً حقيقياً.
+
+> Owner decision 2026-10-28: every chosen font is embedded as real text in PDF and DOCX; the font's licence is the user's responsibility.
+
+### Added / أضيف
+- **Hover explainers** (A5): rest on any tool, picker or Design-panel control for about 700 ms, or reach it with the keyboard, and a card shows its name, shortcut, one sentence and a looping illustration of what it does. Arabic and English (`editor/ux-i18n.json`, 145 tools and controls); the next tool's card shows at once; Esc, leaving, pressing or scrolling hides it; reduced motion shows a still frame. / بطاقات شارحة عند التوقف على أي أداة.
+- **Page views** (A6): View → Pages: Continuous, Single (one page at a time), Book (the cover alone, then two pages side by side in the edition's reading direction). Page Up/Down, the arrow keys, the wheel and a page pill turn pages; editing works in every view; remembered per browser; print, PDF, DOCX and the edits file never see it. / عرض الصفحات: متصل، صفحة، كتاب.
+- **Any font** (B1): the font picker lists the project's fonts, this computer's installed fonts (Local Font Access, asked once; A→Z, searchable, with a preview) and fonts you upload (TTF, OTF, WOFF); Thmanyah stays the default; the choice is saved in the document and reaches the PDF and the DOCX. / منتقي الخطوط: خطوط المشروع والجهاز والمرفوعة.
+- **Slider + number + unit** (B3) for every size and spacing: decimals allowed, letters refused, a unit picker (pt, px, mm, cm, %, em where they make sense) that converts the value so the size stays; colours as a swatch plus a hex code. / منزلق ورقم ووحدة.
+
+### Changed / تغيّر
+- **The layout never flips** (A1): «ع» / «E» changes the interface language and the edition, RTL / LTR changes only the direction of the words; the toolbar, panels, page and watermark keep the default right-to-left arrangement in both languages (the watermark stays bottom right). / التخطيط لا ينقلب.
+- **Arabic/English parity** (A2): every toolbar word reserves the width of the longer of its two languages, so «ع» and «E» fold the bar the same way and each tool keeps its icon, its label and its place. / تطابق العربية والإنجليزية.
+- **Whole-field toggles** (A3): click anywhere on the «ع» / «E», RTL / LTR or Pages field (not just the letters); a gold thumb slides from where it is to the new choice, critically damped; no motion under reduced motion or Calm mode. / النقر في أي مكان من الحقل.
+- **Sticky selection tools** (A4): the selection's tools stay while you work in menus, panels, pickers, colour inputs and inline editors; only a click on empty space or Esc brings the general tools back (Esc peels one layer at a time). / أدوات التحديد تبقى.
+- **Plain-language Design panel** (B2): every label rewritten in Arabic and English (no raw tokens such as `primary-deep`, `h1`, `rule-w`, `zebra`), grouped, with short hints. / لوحة تصميم بلغة واضحة.
+- **Every chosen font is real text** (B4, owner override): each face is normalised in memory before printing or embedding (TrueType outlines, OS/2 fsType 0); licence warnings and the "left out" export note are gone. A family with no bold face gets a **synthetic Bold** at export (`engine/font_normalise.py --embolden`), so bold text stays bold and stays real text instead of Chrome's faked bold (Type 3). / كل خط مختار نص حقيقي، والعريض المركّب.
+
+### Fixed / أصلح
+- **Logos and images lost their tools on click** (the 0.9.1 "hold" behaviour): a click on a free-placed logo selected it on press and then counted as an empty-space click; any toolbar rebuild (View, Dark …) also hid the selection's tools. / اختفاء أدوات الشعار عند النقر.
+- **Toolbar menus were clipped inside the toolbar** (owner test 2026-10-28): «More» menus were `position: fixed` inside the toolbar, whose blur makes it their containing block, so they opened inside it and needed scrolling. They now open in the top layer (popover API), anchored to their button and shifted or flipped to stay in the window; the toolbar never scrolls; Esc returns focus to the button; an outside click closes the menu and keeps the selection's tools. / قوائم الشريط كانت تُقصّ داخله.
+- **Moving logos and images** (owner test 2026-10-28): a click on a logo now focuses it, so the arrow keys nudge it at once (pressing it did not take focus, and a selected diagram kept the arrow keys); a drag is tracked on the window and ends cleanly on a cancelled pointer; the logo follows the pointer 1:1 when the page is zoomed or in Single / Book view (the move was scaled by the zoom); an anchored image dropped in a paged view lands in its page's column. Logos, free-placed images, diagram shapes and free text move by a real drag in Continuous, Single and Book view, Arabic and English; the position is saved, survives a reopen and prints where it was dropped. / نقل الشعارات والصور.
+- **Printing from a paged view gave a different page count**: the print pass measured the paged layout; it now measures the plain sheet (9 pages in every view for the sample). / عدد صفحات الطباعة من العرض المقسّم.
+- **The DOCX follows the chosen font**: a chosen heading family other than the house pair now reaches the Word file's headings and cover (it fell back to the house face). / ملف Word يتبع الخط المختار.
+- The page no longer jumps down after the toolbar's entry animation (the bar's height is measured on its layout box). / قفزة الصفحة بعد ظهور الشريط.
+
+### Tests / الاختبارات
+- `tests/ux.test.mjs` (new, 88 checks; menus and moves added after the owner test): boxes identical across «ع»/«E» × RTL/LTR at 1366 and 1920; same controls, icons, names and fold state in both languages; padding clicks toggle, thumb under the pressed option, spring curve, mid-flight slide, reduced motion; shape and logo tools stay through menus, pickers, the Design panel and the popover, desk click and Esc clear; explainer at ~700 ms not at 300 ms, Esc, leave, keyboard focus, every tool has AR+EN text, still frame under reduced motion; Book view cover alone and RTL/LTR pairing, Single page, remembered, editing, print CSS unaffected, same printed page count in every view; every toolbar menu fully visible in the top layer at 1366 and 1920 with its last item reachable and no toolbar scroll; logo, image, shape and free text follow a 120 px drag within 2 px in all three views, AR and EN, nudge, reopen, print position.
+- `tests/design.test.mjs` (new, B1–B4, plus the faux-bold gate): a font with no bold face prints a synthetic Bold, no Type 3 in pdffonts, the bold headings extract with pdftotext.
+- `tests/editor.test.mjs`: the shell stays right-to-left and the words follow; the watermark keeps its corner in both languages.
+
 ## [0.9.1] - 2026-10-28
 
 The five gaps left in 0.9.0 against the owner's diagram and toolbar notes. / الفجوات الخمس المتبقية من 0.9.0.

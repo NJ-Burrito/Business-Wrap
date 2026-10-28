@@ -255,6 +255,24 @@ try {
       await page.waitForTimeout(850);
       const kb = await card();
       check(`A5 ${ui}: keyboard focus shows the card`, kb?.text === UX[ui]['explain.save'], JSON.stringify(kb));
+      // the Design panel's own controls (font picker, machine fonts, slider / number / unit, colour swatch and hex)
+      await page.keyboard.press('Escape');
+      await page.evaluate(() => window.BW.runAction('theme'));
+      await settle(page, 500);
+      const panel = [['[data-fpopen]', 'font.pick'], ['.vc-s', 'vc.slider'], ['.vc-n', 'vc.number'], ['.cc-hex', 'design.hex'], ['input[type="color"]', 'design.swatch']];
+      const got = [];
+      for (const [sel, key] of panel) {
+        const el = page.locator(`.drawer ${sel}`).first();
+        if (!(await el.count())) { got.push(`${key}:absent`); continue; }
+        await el.scrollIntoViewIfNeeded();
+        await page.mouse.move(5, 5);
+        await page.waitForTimeout(500);
+        await el.hover();
+        await page.waitForTimeout(900);
+        const c = await card();
+        got.push(`${key}:${c?.text === UX[ui][`explain.${key}`] ? 'ok' : JSON.stringify(c)}`);
+      }
+      check(`A5 ${ui}: the Design panel's font picker, slider, number, hex and swatch explain themselves`, got.every((x) => x.endsWith(':ok')), got.join(' | '));
       await ctx.close();
     }
     const missing = [...keys].filter((k) => !UX.ar[`explain.${k}`] || !UX.en[`explain.${k}`]);
@@ -325,6 +343,140 @@ try {
     check(`A6 ${ui}: the editor prints the same number of pages in paged and continuous view`, pages(pdfPaged) === pages(pdfFlow) && pages(pdfFlow) > 3, `${pages(pdfPaged)} vs ${pages(pdfFlow)}`);
     check(`A6 ${ui}: no page errors`, !errors.length, errors.join(' | '));
     await ctx.close();
+  }
+  // ── toolbar menus escape the toolbar (owner bug 1, 0.10.0) ─────────────
+  for (const width of [1366, 1920]) {
+    for (const ui of ['ar', 'en']) {
+      const { ctx, page } = await open({ ui, width });
+      const fails = [];
+      const probeMenu = async (name) => {
+        const r = await sh(page, (root) => {
+          const m = root.querySelector('.more .menu[data-open="1"]');
+          if (!m) return { none: true };
+          const b = m.getBoundingClientRect();
+          const items = [...m.querySelectorAll('button, select')];
+          const last = items.at(-1).getBoundingClientRect();
+          const hit = root.elementFromPoint(last.x + last.width / 2, last.y + last.height / 2);
+          const bar = root.querySelector('.island');
+          return { inView: b.left >= 0 && b.top >= 0 && b.right <= innerWidth && b.bottom <= innerHeight, lastHit: items.at(-1).contains(hit), top: m.matches(':popover-open'), barScroll: /auto|scroll/.test(getComputedStyle(bar).overflowX) || bar.scrollWidth > bar.clientWidth };
+        });
+        if (r.none || !r.inView || !r.lastHit || !r.top || r.barScroll) fails.push(`${name}:${JSON.stringify(r)}`);
+      };
+      // the selection's «More» (a diagram shape), then every folded section's «More»
+      const fig = page.locator('main.bw-doc figure[data-dg]').first();
+      await fig.evaluate((e) => e.scrollIntoView({ block: 'center' }));
+      const nb = await fig.locator('[data-dg-node]').nth(1).boundingBox();
+      await page.mouse.click(nb.x + nb.width / 2, nb.y + nb.height / 2);
+      await settle(page, 250);
+      await page.locator('.ctx [data-a="more"]').click();
+      await page.waitForTimeout(300);
+      await probeMenu('selection');
+      const folded = await sh(page, (r) => [...r.querySelectorAll('.sec.folded .more.tail > [data-a="more"]')].map((b) => b.closest('.sec').dataset.cat));
+      for (const cat of folded) {
+        await page.locator(`.sec[data-cat="${cat}"] .more.tail > [data-a="more"]`).click();
+        await page.waitForTimeout(250);
+        await probeMenu(cat);
+      }
+      // an outside click on the toolbar closes the menu and keeps the shape's tools
+      await page.locator('.ctx [data-a="more"]').click();
+      await page.locator('.island .brand').click();
+      const after = await state(page);
+      const stillOpen = await sh(page, (r) => !!r.querySelector('.more .menu[data-open="1"]'));
+      // Esc closes and returns focus to the button
+      await page.locator('.ctx [data-a="more"]').click();
+      await page.keyboard.press('Escape');
+      const focus = await sh(page, (r) => [r.activeElement?.dataset?.a, !!r.querySelector('.more .menu[data-open="1"]')]);
+      check(`menus ${ui} ${width}: every toolbar menu opens fully visible in the top layer, last item reachable, no toolbar scroll (${folded.length + 1} menus)`, !fails.length, fails.join(' | '));
+      check(`menus ${ui} ${width}: outside click closes the menu and keeps the selection; Esc closes and returns focus`, !stillOpen && after.ctx === 'shape' && focus[0] === 'more' && !focus[1], JSON.stringify({ stillOpen, after, focus }));
+      await ctx.close();
+    }
+  }
+
+  // ── moving placed elements (owner bug 2, 0.10.0) ────────────────────────
+  const dragBy = async (page, loc, dx, dy) => {
+    const bb = await loc.boundingBox();
+    const x = bb.x + bb.width / 2;
+    const y = bb.y + bb.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    for (let i = 1; i <= 12; i += 1) { await page.mouse.move(x + (dx * i) / 12, y + (dy * i) / 12); await page.waitForTimeout(12); }
+    await page.mouse.up();
+    await page.waitForTimeout(350);
+  };
+  for (const view of ['continuous', 'single', 'spread']) {
+    for (const ui of ['ar', 'en']) {
+      const { ctx, page, errors } = await open({ ui, width: 1366, store: { 'bw:pages': view, 'bw:snap': '0' } });
+      if (ui === 'en') { await page.evaluate(() => window.BW.runAction('uiLang')); await page.evaluate(() => window.BW.runAction('uiLang')); await settle(page, 300); }
+      const res = [];
+      // a logo (Add logo) and a free-placed image, both on the cover
+      await page.keyboard.press('Control+K');
+      const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.locator('#cmdlist [data-cmd="logo"]').click()]);
+      await chooser.setFiles(PNG);
+      await page.waitForFunction(() => document.querySelector('main.bw-doc .bw-ov'));
+      await page.evaluate(() => { const e = window.BW.M[window.BW.S.svc][window.BW.S.ed]; const src = e.doc.overlays[0].src; window.BW.commit([{ op: 'insert', path: '/overlays/-', value: { id: 'img1', kind: 'image', src, mode: 'cover', x: 40, y: 150, w: 40 } }]); });
+      await settle(page, 300);
+      await page.evaluate(() => window.scrollTo(0, 0));
+      for (const [kind, i] of [['logo', 0], ['image', 1]]) {
+        const loc = page.locator(`main.bw-doc .bw-ov[data-i="${i}"]`);
+        if (view === 'continuous') { await loc.evaluate((e) => e.scrollIntoView({ block: 'center' })); await page.waitForTimeout(200); }
+        const a = await loc.boundingBox();
+        await dragBy(page, loc, 120, 120);
+        const b = await loc.boundingBox();
+        res.push([kind, Math.round(b.x - a.x), Math.round(b.y - a.y)]);
+      }
+      const ov = await page.evaluate(() => window.BW.M[window.BW.S.svc][window.BW.S.ed].doc.overlays.map((o) => [o.x, o.y]));
+      // a diagram shape and a free text in the drawing (paged views turn to the figure's page first)
+      for (let n = 0; n < 14; n += 1) {
+        const vis = await page.evaluate(() => { const f = document.querySelector('main.bw-doc figure[data-dg] svg'); const v = document.querySelector('#bw-pair .bw-view') || document.documentElement; const r = f.getBoundingClientRect(); const w = v === document.documentElement ? { left: 0, right: innerWidth } : v.getBoundingClientRect(); return r.left >= w.left - 1 && r.right <= w.right + 1; });
+        if (vis) break;
+        await page.keyboard.press('PageDown');
+        await page.waitForTimeout(700);
+      }
+      const fig = page.locator('main.bw-doc figure[data-dg]').first();
+      await fig.evaluate((e) => e.scrollIntoView({ block: 'center' }));
+      await page.waitForTimeout(400);
+      const fb = await fig.locator('svg').first().boundingBox();
+      await page.mouse.click(fb.x + 8, fb.y + 8); // the empty drawing: diagram tools
+      await page.evaluate(() => window.BW.runAction('dgText'));
+      await settle(page, 300);
+      const ids = await page.evaluate(() => { const f = document.querySelector('main.bw-doc figure[data-dg]'); let o = window.BW.M[window.BW.S.svc][window.BW.S.ed].doc; for (const k of f.dataset.dg.split('/').filter(Boolean)) o = o[k]; return [o.model.nodes.find((n) => n.kind !== 'text' && n.kind !== 'group')?.id, o.model.nodes.filter((n) => n.kind === 'text').at(-1)?.id]; });
+      for (const [kind, id] of [['shape', ids[0]], ['text', ids[1]]]) {
+        const loc = page.locator(`main.bw-doc figure[data-dg] [data-dg-node="${id}"]`).first();
+        if (!(await loc.count())) { res.push([kind, 'absent']); continue; }
+        await loc.scrollIntoViewIfNeeded().catch(() => {});
+        const a = await loc.boundingBox();
+        await dragBy(page, loc, 120, 40);
+        const b = await page.locator(`main.bw-doc figure[data-dg] [data-dg-node="${id}"]`).first().boundingBox();
+        res.push([kind, Math.round(b.x - a.x), Math.round(b.y - a.y)]);
+      }
+      const bad = res.filter(([k, x, y]) => x === 'absent' || Math.abs(x - 120) > 2 || Math.abs(y - (k === 'shape' || k === 'text' ? 40 : 120)) > 2);
+      check(`move ${view} ${ui}: logo, image, diagram shape and free text follow a real drag (±2 px)`, !bad.length, JSON.stringify(res));
+      // keyboard nudge
+      await page.evaluate(() => window.scrollTo(0, 0));
+      if (view !== 'continuous') { await page.keyboard.press('Home'); await page.waitForTimeout(700); }
+      { const lb = await page.locator('main.bw-doc .bw-ov[data-i="0"]').boundingBox(); await page.mouse.click(lb.x + lb.width / 2, lb.y + lb.height / 2); } // a click picks it; the arrows then nudge it
+      await page.keyboard.press('ArrowLeft');
+      const nudged = await page.evaluate(() => window.BW.M[window.BW.S.svc][window.BW.S.ed].doc.overlays[0].x);
+      // reopen: the positions persist
+      const edNow = await page.evaluate(() => window.BW.S.ed);
+      const keep = await page.evaluate(() => window.BW.M[window.BW.S.svc][window.BW.S.ed].doc.overlays.map((o) => [o.x, o.y]));
+      await page.evaluate(() => window.BW.flushDraft());
+      await page.reload();
+      await page.waitForFunction(() => window.BW?.ready);
+      await page.locator('.toasts .banner button[data-k="0"]').click().catch(() => {});
+      await settle(page, 300);
+      const back = await page.evaluate((ed) => (window.BW.M[window.BW.S.svc][ed].doc.overlays || []).map((o) => [o.x, o.y]), edNow);
+      check(`move ${view} ${ui}: arrow key nudges by 1 mm and the positions survive a reopen`, Math.abs(nudged - (ov[0][0] - 1)) < 0.05 && JSON.stringify(back) === JSON.stringify(keep), JSON.stringify({ ov, nudged, keep, back }));
+      if (view === 'continuous' && ui === 'ar') {
+        // the PDF lands it in the same place: in print, the logo's offset from the cover equals its saved x / y
+        await page.emulateMedia({ media: 'print' });
+        const pr = await page.evaluate(() => { const m = document.querySelector('main.bw-doc'); const c = m.querySelector('.cover').getBoundingClientRect(); const l = m.querySelector('.bw-ov[data-i="0"]').getBoundingClientRect(); const o = window.BW.M[window.BW.S.svc][window.BW.S.ed].doc.overlays[0]; const mm = 96 / 25.4; return { x: (l.left - c.left) / mm, y: (l.top - c.top) / mm, ox: o.x, oy: o.y }; });
+        await page.emulateMedia({ media: 'screen' });
+        check('move: in print the moved logo sits at its saved position (±0.5 mm)', Math.abs(pr.x - pr.ox) < 0.5 && Math.abs(pr.y - pr.oy) < 0.5, JSON.stringify(pr));
+      }
+      check(`move ${view} ${ui}: no page errors`, !errors.length, errors.join(' | '));
+      await ctx.close();
+    }
   }
 } catch (e) {
   check('ux run', false, e.stack?.split('\n').slice(0, 4).join(' / '));

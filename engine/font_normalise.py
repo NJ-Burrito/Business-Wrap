@@ -51,16 +51,83 @@ def to_truetype(font: TTFont, tolerance: float = 1.0) -> None:
     font.sfntVersion = '\x00\x01\x00\x00'
 
 
+def embolden(font: TTFont, ratio: float = 1 / 26) -> None:
+    """A synthetic Bold face, in place, for a family that has none (0.10.0 faux bold).
+
+    Chrome fakes bold by stroking glyphs, and a stroked glyph prints as a Type 3 drawing; an emboldened
+    TrueType face prints as real text. Every contour point moves outward along the bisector of its two
+    edges by half the stroke (FreeType's FT_Outline_EmboldenXY, simplified); the advance grows by the
+    stroke and the outline shifts right by half of it, so letters keep their spacing and Arabic joins meet.
+    """
+    import math
+    glyf = font['glyf']
+    hmtx = font['hmtx']
+    s = font['head'].unitsPerEm * ratio
+    half = s / 2
+    for name in font.getGlyphOrder():
+        g = glyf[name]
+        if g.isComposite() or g.numberOfContours <= 0:
+            if name in hmtx.metrics and g.numberOfContours != 0:
+                adv, lsb = hmtx.metrics[name]
+                hmtx.metrics[name] = (int(round(adv + s)), lsb)
+            continue
+        coords = g.coordinates
+        ends = g.endPtsOfContours
+        # orientation of the whole glyph: TrueType outer contours run clockwise (negative area)
+        area = 0.0
+        start = 0
+        for end in ends:
+            for i in range(start, end + 1):
+                x0, y0 = coords[i]
+                x1, y1 = coords[start if i == end else i + 1]
+                area += x0 * y1 - x1 * y0
+            start = end + 1
+        sign = -1 if area < 0 else 1
+        out = []
+        start = 0
+        for end in ends:
+            n = end - start + 1
+            for k in range(n):
+                px, py = coords[start + k]
+                ax, ay = coords[start + (k - 1) % n]
+                bx, by = coords[start + (k + 1) % n]
+                ix, iy = px - ax, py - ay
+                ox, oy = bx - px, by - py
+                li = math.hypot(ix, iy) or 1.0
+                lo = math.hypot(ox, oy) or 1.0
+                ix, iy, ox, oy = ix / li, iy / li, ox / lo, oy / lo
+                d = max(0.35, 1 + ix * ox + iy * oy)  # 1 + cos(turn); floored so sharp corners do not spike
+                nx, ny = (iy + oy) * sign, -(ix + ox) * sign
+                out.append((px + nx * half / d + half, py + ny * half / d))
+            start = end + 1
+        for i, (x, y) in enumerate(out):
+            coords[i] = (int(round(x)), int(round(y)))
+        g.recalcBounds(glyf)
+        adv, _ = hmtx.metrics[name]
+        hmtx.metrics[name] = (int(round(adv + s)), g.xMin)
+    if 'OS/2' in font:
+        font['OS/2'].usWeightClass = 700
+        font['OS/2'].fsSelection = (font['OS/2'].fsSelection | 0x20) & ~0x40  # BOLD on, REGULAR off
+    font['head'].macStyle |= 1
+    if 'name' in font:
+        for rec in font['name'].names:
+            if rec.nameID == 2:
+                rec.string = 'Bold'
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument('src')
     ap.add_argument('dst')
     ap.add_argument('--index', type=int, default=0, help='face number inside a .ttc collection')
+    ap.add_argument('--embolden', action='store_true', help='write a synthetic Bold face (the family has none)')
     a = ap.parse_args()
     font = TTFont(a.src, fontNumber=a.index, lazy=False)
     font.flavor = None  # WOFF/WOFF2 → plain sfnt
     if 'glyf' not in font:
         to_truetype(font)
+    if a.embolden:
+        embolden(font)
     if 'OS/2' in font:
         font['OS/2'].fsType = 0
     font.save(a.dst)
