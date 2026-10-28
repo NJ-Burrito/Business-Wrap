@@ -1,3 +1,4 @@
 tokens: READY (brand/v2/READY-TOKENS.txt)
 logo: READY (brand/v2/logo, favicon, social)
 icons: READY (brand/v2/icons); READY-ASSETS.txt written
+hero: READY (banner/hero.gif 17 fps, hero.mp4, hero-site-1920.mp4, hero-site-poster.png)

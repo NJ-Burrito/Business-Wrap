@@ -1,5 +1,10 @@
-READY 2026-10-28: logo and icons are final. Paths relative to brand/v2/.
-Rules: BRAND.md. Tokens: tokens.json, tokens.css, fonts.css, contrast.md.
+READY 2026-10-28 14:46: final files, paths relative to brand/v2/. Rules: BRAND.md. Tokens: tokens.json, tokens.css, fonts.css, contrast.md.
+BRAND.md
+banner/hero-site-1920.mp4
+banner/hero-site-poster.png
+banner/hero.gif
+banner/hero.mp4
+contrast.md
 favicon/apple-touch-icon.png
 favicon/favicon.ico
 favicon/favicon.svg
@@ -11,6 +16,7 @@ favicon/icon-32.png
 favicon/icon-48.png
 favicon/icon-512.png
 favicon/icon-64.png
+fonts.css
 icons/bilingual.svg
 icons/design-pack.svg
 icons/diagram.svg
@@ -24,7 +30,9 @@ icons/evidence.svg
 icons/explainer.svg
 icons/export.svg
 icons/harvest.svg
+icons/icons.css
 icons/icons.json
+icons/index.html
 icons/mcp-server.svg
 icons/merge.svg
 icons/pdf.svg
@@ -46,11 +54,11 @@ logo/mark-animated.svg
 logo/mark-dark.svg
 logo/mark-mono.svg
 logo/mark.svg
-social/og.png
-social/social-card.png
-social/social-card-2x.png
-icons/icons.css
-icons/index.html
+social/card.css
 social/card.html
 social/og.html
-social/card.css
+social/og.png
+social/social-card-2x.png
+social/social-card.png
+tokens.css
+tokens.json
