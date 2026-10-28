@@ -44,6 +44,25 @@ ok('during backoff: no request at all', (await checkLatest({ repo: R, current: C
 let sent = null;
 await checkLatest({ repo: R, current: CUR, token: 'tok', state: { etag: 'E' }, fetch: async (u, o) => { sent = o.headers; return res(304, {}); } });
 ok('token rides as Bearer; ETag as If-None-Match', sent?.Authorization === 'Bearer tok' && sent['If-None-Match'] === 'E');
+sent = 'unset';
+s = await checkLatest({ repo: R, current: CUR, fetch: async (u, o) => { sent = o.headers; return res(200, release(NEWER)); }, now: 1000 });
+ok('public repo, NO token: no Authorization header, newer release offered', sent && !('Authorization' in sent) && s?.latest?.version === NEWER);
+let calls = [];
+s = await checkLatest({ repo: R, current: CUR, token: 'stale', fetch: async (u, o) => { calls.push(o.headers.Authorization || ''); return calls.length === 1 ? res(401, {}) : res(200, release(NEWER)); }, now: 1000 });
+ok('a refused token (401) is dropped and the check repeated anonymously', calls.length === 2 && calls[1] === '' && s?.latest?.version === NEWER);
+s = await checkLatest({ repo: R, current: CUR, fetch: async () => res(200, release(NEWER, { prerelease: true })), now: 1000 });
+ok('pre-release on releases/latest: nothing offered', s && s.latest === null);
+s = await checkLatest({ repo: R, current: CUR, fetch: async () => res(429, {}, { 'retry-after': '7200' }), now: 1000 });
+ok('rate limit 429 with retry-after: backs off 2 h', s.backoffUntil === 1000 + 7200000);
+ok('bad digest: not trusted (sidecar .sha256 required instead)', pickRelease(release(NEWER, { assets: [{ ...release(NEWER).assets[0], digest: 'sha256:xyz' }] }), R).sha256 === '');
+const { download, safeEntries } = await import('../update/apply.mjs');
+let refusedRedirect = '';
+try { await download(`https://github.com/${R}/releases/download/v9.0.0/business-wrap-9.0.0.zip`, { repo: R, f: async () => res(302, {}, { location: 'https://evil.example/x.zip' }) }); } catch (e) { refusedRedirect = e.message; }
+ok('download: a redirect away from GitHub is refused', /redirected away/.test(refusedRedirect), refusedRedirect);
+let hops = [];
+const buf = await download(`https://api.github.com/repos/${R}/releases/assets/1`, { repo: R, tok: 't', f: async (u, o) => { hops.push(o.headers.Authorization || ''); return hops.length === 1 ? res(302, {}, { location: 'https://release-assets.githubusercontent.com/a?sig=1' }) : { ok: true, status: 200, headers: { get: () => null }, arrayBuffer: async () => new Uint8Array([1, 2]).buffer }; } });
+ok('download: token only on the api.github.com hop, CDN hop anonymous', hops[0] === 'Bearer t' && hops[1] === '' && buf.length === 2);
+ok('zip entries with .. or absolute paths refused before unpacking', !safeEntries(['a/../../x']) && !safeEntries(['/etc/x']) && !safeEntries(['C:/x']) && safeEntries(['business-wrap-1.0.0/package.json']));
 ok('CHANGELOG section for this version exists', !!extractNotes(fs.readFileSync(path.join(REPO, 'CHANGELOG.md'), 'utf8'), CUR));
 
 // CLI + hook with a mock feed (isolated state folder)

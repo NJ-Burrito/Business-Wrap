@@ -1,5 +1,5 @@
 # Pushing a tag v<major.minor.patch> publishes the GitHub release the update check reads (update/source.json).
-# Mirrors QA Wrap's .github/workflows/release.yml: the tag must match package.json (and every other version
+# Public repo, no token needed to read it. Actions pinned by commit SHA (QA Wrap a6ea828). Mirrors QA Wrap release.yml: the tag must match package.json (and every other version
 # field), the notes are cut from CHANGELOG.md by script (no model), one zip + its .sha256 are attached.
 name: release
 on:
@@ -17,11 +17,11 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ github.ref_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '24'
       - name: The tag matches every version field

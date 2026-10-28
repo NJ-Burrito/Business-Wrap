@@ -38,7 +38,7 @@ async function main() {
   }
   if (has('--apply')) {
     const r = await checkForUpdate({ force: true });
-    if (r.status !== 'available') { console.log(r.status === 'current' ? `Business-Wrap ${r.current} is the latest.` : 'Cannot check for updates now (offline, or no access to the private repository).'); return 0; }
+    if (r.status !== 'available') { console.log(r.status === 'current' ? `Business-Wrap ${r.current} is the latest.` : 'Cannot check for updates now (offline, no release published yet, or the GitHub rate limit).'); return 0; }
     if (!has('--yes')) {
       console.log(`${oneLiner(r, lang)}\nRun again with --yes to update. Kept: .local, design/custom, logos, fonts/custom, drafts, out.`);
       return 0;
