@@ -3,11 +3,11 @@
 .bw-modal-card { width: min(460px, 92vw); max-height: 86vh; overflow: auto; padding: 18px; border-radius: 20px; background: var(--panel); color: var(--panel-ink); box-shadow: var(--bw-shadow-3), 0 0 0 1px var(--panel-line); display: grid; gap: 10px; }
 .bw-modal-card h2 { margin: 0; font-size: 1.1rem; }
 .bw-modal-card label:not(.chk), .pf-form label:not(.chk), .pf-period label { display: grid; gap: 4px; }
-.bw-modal-card input[type="text"], .pf-form input[type="text"], .pf-period input { font: inherit; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--panel-line); background: var(--panel-soft); color: var(--panel-ink); }
+.bw-modal-card input[type="text"], .pf-form input[type="text"], .pf-period input { font: inherit; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--panel-line); background: var(--wash-2); color: var(--panel-ink); }
 .bw-modal-card .btns { display: flex; gap: 8px; justify-content: flex-end; }
 .pf-form { display: grid; gap: 10px; }
 .pf-pic { display: flex; align-items: center; gap: 8px; }
-.pf-av { inline-size: 48px; block-size: 48px; border-radius: 50%; background: var(--panel-soft); overflow: hidden; flex: none; box-shadow: 0 0 0 1px var(--panel-line); }
+.pf-av { inline-size: 48px; block-size: 48px; border-radius: 50%; background: var(--wash-2); overflow: hidden; flex: none; box-shadow: 0 0 0 1px var(--panel-line); }
 .pf-av img { inline-size: 100%; block-size: 100%; object-fit: cover; }
 .pf-period { display: flex; gap: 8px; flex-wrap: wrap; }
 .pf-people { border: 1px solid var(--panel-line); border-radius: 12px; padding: 6px 10px; }

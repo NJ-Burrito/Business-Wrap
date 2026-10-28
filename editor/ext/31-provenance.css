@@ -1,12 +1,12 @@
 /* A13 provenance drawer (31-provenance.js) */
-.pv-status { padding: 8px 10px; border-radius: 12px; background: var(--panel-soft); }
+.pv-status { padding: 8px 10px; border-radius: 12px; background: var(--wash-2); }
 .pv-status.err { box-shadow: inset 0 0 0 2px var(--bw-sec-design, #b3261e); }
 .pv-status ul { margin: 4px 0 0; padding-inline-start: 18px; }
 .pv-people { inline-size: 100%; border-collapse: collapse; font-size: .85em; }
 .pv-people th, .pv-people td { padding: 3px 4px; border-block-end: 1px solid var(--panel-line); text-align: start; }
 .pv-filter { display: flex; gap: 8px; flex-wrap: wrap; margin-block: 8px; }
 .pv-filter label { display: grid; gap: 2px; }
-.pv-filter select { font: inherit; border-radius: 8px; border: 1px solid var(--panel-line); background: var(--panel-soft); color: var(--panel-ink); padding: 3px 6px; }
+.pv-filter select { font: inherit; border-radius: 8px; border: 1px solid var(--panel-line); background: var(--wash-2); color: var(--panel-ink); padding: 3px 6px; }
 .pv-log { list-style: none; padding: 0; }
 .pv-e { border-block-end: 1px solid var(--panel-line); padding-block: 4px; }
 .pv-e.bad { box-shadow: inset 3px 0 0 var(--bw-sec-design, #b3261e); padding-inline-start: 6px; }
