@@ -2,9 +2,9 @@
 
 ## ⚡ In 10 seconds
 
-🔌 One command: `claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.1 business-wrap-mcp`
+🔌 One command: `claude mcp add business-wrap -- npx -y -p business-wrap@0.11.1 business-wrap-mcp`
 
-✅ Needs Node 20+, uv, git, and Chrome or Edge for the PDF.
+✅ Needs Node 20+, uv, and Chrome or Edge for the PDF.
 
 🔒 Local only: no network port, it reads and writes only the paths you give it.
 
@@ -25,7 +25,7 @@ A stdio MCP server over the Business-Wrap engine. Local only: it reads and write
 
 ## Run
 ```
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.1 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p business-wrap@0.11.1 business-wrap-mcp
 # or, from a clone after npm ci:
 node mcp/cli.mjs
 ```

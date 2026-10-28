@@ -40,7 +40,7 @@
 | 🟢 Node 20 or newer | `node --version` | runs everything |
 | 🐍 uv | `uv --version` | runs the Python steps (PDF finishing, DOCX) with their packages; no pip installs |
 | 🌐 Chrome or Edge | open it once | prints the PDF |
-| 🌱 git | `git --version` | the Claude Code plugin installs its MCP server from the release tag |
+| 🌱 git | `git --version` | cloning the repo and the plugin marketplace |
 
 📌 No uv? Install it: https://docs.astral.sh/uv/getting-started/installation/ (without it Business-Wrap falls back to plain `python` and tells you which packages it needs).
 
@@ -55,9 +55,9 @@
 ```
 💬 Then say **"build the requirements document for …"** or **"open it in the editor"**.
 
-🔌 **MCP server only** (any MCP client, stdio, local):
+🔌 **MCP server only** (any MCP client, stdio, local; from npm):
 ```
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.1 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp
 ```
 
 💻 **From source:** `git clone https://github.com/NJ-Burrito/Business-Wrap`, then the [Quick start](#️-quick-start).
@@ -67,6 +67,7 @@ claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.
 
 - Release zip: `business-wrap-<version>.zip` + `.sha256` from https://github.com/NJ-Burrito/Business-Wrap/releases/latest. In that folder: `npm ci`.
 - MCP from a clone: `claude mcp add business-wrap -- node <path-to>/Business-Wrap/mcp/cli.mjs`
+- MCP from the GitHub tag (no npm): `claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.1 business-wrap-mcp`
 - Tools: `build_editor`, `validate_edits`, `apply_edits`, `export_document`, `export_design_pack`, `check_fonts`, `harvest_model`, `harvest_crawl`, `harvest_merge`, `diagram_mermaid`, `check_update`, `apply_update`, plus the `learning_*` tools. See `mcp/README.md`.
 
 </details>

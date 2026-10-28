@@ -19,13 +19,14 @@ export function mismatches(tag) {
   const want = (where, got) => { if (got !== v) bad.push(`${where} says ${got}, package.json says ${v}`); };
   const plugin = j('.claude-plugin/plugin.json');
   want('.claude-plugin/plugin.json version', plugin.version);
-  // The plugin MCP server installs from the GitHub tag (business-wrap is not on npm): github:NJ-Burrito/Business-Wrap#vX.Y.Z
-  let gitRefs = 0;
+  // The plugin MCP server launches a pinned release: the npm package business-wrap@X.Y.Z, or the GitHub tag
+  // github:NJ-Burrito/Business-Wrap#vX.Y.Z. Exactly this version, never a range.
+  let launchRefs = 0;
   for (const [n, s] of Object.entries(plugin.mcpServers || {})) for (const a of s.args || []) {
-    const m = /^business-wrap@(.+)$/.exec(a); if (m) want(`plugin mcpServers.${n} package`, m[1]);
-    const g = /^github:NJ-Burrito\/Business-Wrap#v(.+)$/.exec(a); if (g) { gitRefs++; want(`plugin mcpServers.${n} git tag`, g[1]); }
+    const m = /^business-wrap@(.+)$/.exec(a); if (m) { launchRefs++; want(`plugin mcpServers.${n} npm package`, m[1]); }
+    const g = /^github:NJ-Burrito\/Business-Wrap#v(.+)$/.exec(a); if (g) { launchRefs++; want(`plugin mcpServers.${n} git tag`, g[1]); }
   }
-  if (!gitRefs) bad.push('plugin mcpServers has no github:NJ-Burrito/Business-Wrap#vX.Y.Z launch ref');
+  if (!launchRefs) bad.push('plugin mcpServers has no pinned launch ref (business-wrap@X.Y.Z or github:NJ-Burrito/Business-Wrap#vX.Y.Z)');
   const mk = j('.claude-plugin/marketplace.json');
   want('marketplace metadata.version', mk.metadata?.version);
   for (const p of mk.plugins || []) want(`marketplace plugin ${p.name}`, p.version);
@@ -42,5 +43,5 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const i = process.argv.indexOf('--tag');
   const { version, bad } = mismatches(i > 0 ? process.argv[i + 1] : '');
   if (bad.length) { for (const b of bad) console.error(`FAIL  version-sync: ${b}`); process.exit(1); }
-  console.log(`PASS  version-sync: ${version} in package.json, plugin, plugin MCP git tag #v${version}, marketplace, MCP registry, Smithery, READMEs, CHANGELOG`);
+  console.log(`PASS  version-sync: ${version} in package.json, plugin, plugin MCP launch business-wrap@${version}, marketplace, MCP registry, Smithery, READMEs, CHANGELOG`);
 }

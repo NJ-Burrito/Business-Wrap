@@ -4,9 +4,9 @@
 
 ## ⚡ في عشر ثوانٍ
 
-🔌 أمر واحد: `claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.1 business-wrap-mcp`
+🔌 أمر واحد: `claude mcp add business-wrap -- npx -y -p business-wrap@0.11.1 business-wrap-mcp`
 
-✅ يحتاج Node 20 فأحدث وuv وgit، وChrome أو Edge لملف PDF.
+✅ يحتاج Node 20 فأحدث وuv، وChrome أو Edge لملف PDF.
 
 🔒 محلي فقط: لا منفذ شبكة، ويقرأ ويكتب المسارات التي تعطيه إياها فقط.
 
@@ -27,7 +27,7 @@
 
 ## التشغيل
 ```
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.1 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p business-wrap@0.11.1 business-wrap-mcp
 # أو من نسخة محلية بعد npm ci:
 node mcp/cli.mjs
 ```

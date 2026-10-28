@@ -2,7 +2,6 @@
   "name": "business-wrap",
   "version": "0.11.1",
   "description": "Bilingual (Arabic RTL / English LTR) requirements documents from evidence: an interactive HTML editor that is the print layout, PDF + DOCX export, design packs and security gates.",
-  "private": true,
   "license": "MIT",
   "mcpName": "io.github.NJ-Burrito/business-wrap",
   "repository": {
@@ -41,6 +40,10 @@
     "mcp/server.json",
     "fonts/manifest.json",
     "fonts/nj-fonts",
+    "templates",
+    "design/ours/theme.json",
+    "palette",
+    "typography",
     "samples/event-permit/*.json",
     "bible/contracts",
     "SKILL.md",

@@ -30,7 +30,7 @@
       "args": [
         "-y",
         "-p",
-        "github:NJ-Burrito/Business-Wrap#v0.11.1",
+        "business-wrap@0.11.1",
         "business-wrap-mcp"
       ]
     }

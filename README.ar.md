@@ -42,7 +42,7 @@
 | 🟢 Node 20 أو أحدث | `node --version` | يشغّل كل شيء |
 | 🐍 uv | `uv --version` | يشغّل خطوات Python (إنهاء PDF وبناء DOCX) مع حزمها، دون تثبيت بـ pip |
 | 🌐 Chrome أو Edge | افتحه مرة | يطبع ملف PDF |
-| 🌱 git | `git --version` | إضافة Claude Code تثبّت خادم MCP من وسم الإصدار |
+| 🌱 git | `git --version` | نسخ المستودع وسوق الإضافات |
 
 📌 ليس لديك uv؟ ثبّته: https://docs.astral.sh/uv/getting-started/installation/ (ودونه يعود بزنس راب إلى `python` العادي ويخبرك بالحزم التي يحتاجها).
 
@@ -63,12 +63,12 @@
 
 💬 ثم قل: **«ابنِ وثيقة متطلبات …»** أو **«افتحها في المحرر»**.
 
-🔌 **خادم MCP وحده** (أي عميل MCP، stdio محلي):
+🔌 **خادم MCP وحده** (أي عميل MCP، stdio محلي؛ من npm):
 
 <div dir="ltr">
 
 ```
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.1 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp
 ```
 
 </div>
@@ -80,6 +80,7 @@ claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.
 
 - ملف الإصدار: `business-wrap-<version>.zip` مع `.sha256` من https://github.com/NJ-Burrito/Business-Wrap/releases/latest. وفي ذلك المجلد: `npm ci`.
 - خادم MCP من نسخة محلية: `claude mcp add business-wrap -- node <path-to>/Business-Wrap/mcp/cli.mjs`
+- خادم MCP من وسم GitHub (دون npm): `claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.1 business-wrap-mcp`
 - الأدوات: `build_editor` و`validate_edits` و`apply_edits` و`export_document` و`export_design_pack` و`check_fonts` و`harvest_model` و`harvest_crawl` و`harvest_merge` و`diagram_mermaid` و`check_update` و`apply_update`، إضافة إلى أدوات `learning_*`. التفاصيل في `mcp/README.ar.md`.
 
 </details>
