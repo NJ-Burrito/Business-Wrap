@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="bw-logo bw-logo-anim" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Business-Wrap"><title>Business-Wrap</title><style>.bw-logo-anim .sheet{fill:#fafaf9;stroke:#003c7a;stroke-width:2;transform-box:fill-box;transform-origin:50% 50%}
+.bw-logo-anim .spine{fill:#001e3d;transform-box:fill-box;transform-origin:50% 0}
+.bw-logo-anim .cap{fill:#be9a41;transform-box:fill-box}
+.bw-logo-anim .ln{stroke:#1b1813;stroke-width:3;stroke-linecap:round;fill:none;stroke-dasharray:1 1}
+.bw-logo-anim .rule{stroke:#9c7e36;stroke-width:3;stroke-linecap:round;fill:none;transform-box:fill-box;transform-origin:0 50%}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .bw-logo-anim .sheet,.bw-logo-anim:root .sheet{stroke:#fafaf9;stroke-width:2.5}:root:not([data-theme="light"]) .bw-logo-anim .rule,.bw-logo-anim:root .rule{stroke:#be9a41}}
+[data-theme="dark"] .bw-logo-anim .sheet{stroke:#fafaf9;stroke-width:2.5}[data-theme="dark"] .bw-logo-anim .rule{stroke:#be9a41}
+@keyframes bw-sheet{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+@keyframes bw-spine{from{transform:scaleY(0)}to{transform:none}}
+@keyframes bw-cap{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@keyframes bw-l1{0%{stroke-dashoffset:1;opacity:0}1%{opacity:1}to{stroke-dashoffset:0;opacity:1}}
+@keyframes bw-l2{0%{stroke-dashoffset:-1;opacity:0}1%{opacity:1}to{stroke-dashoffset:0;opacity:1}}
+@keyframes bw-rule{from{transform:scaleX(0)}to{transform:none}}
+.bw-logo-anim:not(.bw-still) .sheet{animation:bw-sheet 240ms cubic-bezier(.22,1,.36,1) 0ms backwards}
+.bw-logo-anim:not(.bw-still) .spine{animation:bw-spine 520ms cubic-bezier(.65,0,.35,1) 80ms backwards}
+.bw-logo-anim:not(.bw-still) .cap{animation:bw-cap 160ms cubic-bezier(.34,1.36,.64,1) 440ms backwards}
+.bw-logo-anim:not(.bw-still) .l1{animation:bw-l1 360ms cubic-bezier(.22,1,.36,1) 520ms backwards}
+.bw-logo-anim:not(.bw-still) .l2{animation:bw-l2 360ms cubic-bezier(.22,1,.36,1) 600ms backwards}
+.bw-logo-anim:not(.bw-still) .rule{animation:bw-rule 900ms cubic-bezier(.65,0,.35,1) 760ms backwards}
+.bw-reveal .bw-logo-anim .sheet,.bw-logo-anim.bw-reveal .sheet{animation-name:bw-sheet,x}
+.bw-reveal .bw-logo-anim .spine,.bw-logo-anim.bw-reveal .spine{animation-name:bw-spine,x}
+.bw-reveal .bw-logo-anim .cap,.bw-logo-anim.bw-reveal .cap{animation-name:bw-cap,x}
+.bw-reveal .bw-logo-anim .l1,.bw-logo-anim.bw-reveal .l1{animation-name:bw-l1,x}
+.bw-reveal .bw-logo-anim .l2,.bw-logo-anim.bw-reveal .l2{animation-name:bw-l2,x}
+.bw-reveal .bw-logo-anim .rule,.bw-logo-anim.bw-reveal .rule,a:hover>.bw-logo-anim .rule,a:focus-visible>.bw-logo-anim .rule{animation:bw-rule-again 900ms cubic-bezier(.65,0,.35,1) backwards}
+@keyframes bw-rule-again{from{transform:scaleX(0)}to{transform:none}}
+@media (prefers-reduced-motion:reduce){.bw-logo-anim *{animation:none!important}}</style><path class="sheet" d="M18 6H50Q54 6 54 10V54Q54 58 50 58H18Q14 58 14 54V10Q14 6 18 6Z"/><path class="spine" d="M18 6H26V58H18Q14 58 14 54V10Q14 6 18 6Z"/><path class="cap" d="M18 6H26V14H14V10Q14 6 18 6Z"/><path class="ln l1" pathLength="1" d="M31 22H48"/><path class="ln l2" pathLength="1" d="M38 30H48"/><path class="rule" d="M31 41H41"/></svg>

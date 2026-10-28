@@ -1,0 +1,26 @@
+/* Business-Wrap brand v3 social cards (DESIGN c.4). Rendered at 2x by brand/v3/tools/export_png.py, then downscaled.
+   Colours are the v3 tokens; fonts are the local Thmanyah files (git-ignored, see fonts/README.md). */
+@import url("../tokens-v3.css");
+@font-face { font-family: "Thmanyah Serif Display"; font-weight: 700; src: url("../../../fonts/nj-fonts/thmanyah/thmanyahserifdisplay/otf/thmanyahserifdisplay-Bold.otf"); }
+@font-face { font-family: "Thmanyah Sans"; font-weight: 500; src: url("../../../fonts/nj-fonts/thmanyah/thmanyahsans/otf/thmanyahsans-Medium.otf"); }
+html, body { margin: 0; }
+:root { color-scheme: light; }
+body { width: var(--w); height: var(--h); overflow: hidden; background: var(--bw-bg); color: var(--bw-ink); font-family: var(--bw-font-ui); }
+.card { position: relative; width: 100%; height: 100%; box-sizing: border-box; padding-block: 56px 52px; padding-inline: 168px 72px;
+  display: flex; flex-direction: column; justify-content: space-between; }
+.spine { position: absolute; inset-block: 0; inset-inline-start: 0; width: 96px; background: var(--bw-band); }
+.spine::before { content: ""; position: absolute; inset-inline: 0; inset-block-start: 0; height: 120px; background: var(--bw-accent); }
+/* the page edge beside the spine: one hairline, like the cover's binding */
+.spine::after { content: ""; position: absolute; inset-block: 0; inset-inline-end: -1px; width: 1px; background: var(--bw-rule-strong); }
+.lockup { display: block; height: 72px; width: auto; align-self: flex-start; }
+.hook { margin: 0; font-family: "Thmanyah Serif Display", serif; font-weight: 700; font-size: 64px; line-height: 1.12;
+  letter-spacing: var(--bw-tracking-display); text-wrap: balance; }
+.hook[lang="ar"] { letter-spacing: 0; line-height: 1.45; }
+/* Arabic: the rule sits under the dots and tails of the descenders */
+.hook[lang="ar"] .rule { padding-block-end: .3em; }
+.rule { background-image: linear-gradient(var(--bw-accent-rule), var(--bw-accent-rule)); background-repeat: no-repeat;
+  background-size: 100% 6px; background-position: 0 100%; padding-block-end: .1em; }
+.hooks { display: flex; flex-direction: column; gap: 28px; }
+.foot { margin: 0; font-family: "Thmanyah Sans", sans-serif; font-weight: 500; font-size: 28px; color: var(--bw-ink-muted); }
+.foot { word-spacing: .12em; }
+[dir="rtl"] .card { padding-inline: 168px 72px; }

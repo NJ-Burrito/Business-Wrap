@@ -1,0 +1,37 @@
+READY 2026-10-28: logo, favicons and social images are final (frozen interfaces I2, I3, I4). Paths relative to the repo root.
+Icons (I5): PENDING, this file is rewritten when they are final.
+brand/v3/favicon/apple-touch-icon.png
+brand/v3/favicon/favicon.ico
+brand/v3/favicon/favicon.svg
+brand/v3/favicon/icon-128.png
+brand/v3/favicon/icon-16.png
+brand/v3/favicon/icon-192.png
+brand/v3/favicon/icon-256.png
+brand/v3/favicon/icon-32.png
+brand/v3/favicon/icon-48.png
+brand/v3/favicon/icon-512.png
+brand/v3/favicon/icon-64.png
+brand/v3/favicon/maskable-512.png
+brand/v3/logo/app-icon.svg
+brand/v3/logo/lockup-ar-dark.svg
+brand/v3/logo/lockup-ar-mono.svg
+brand/v3/logo/lockup-ar.svg
+brand/v3/logo/lockup-en-dark.svg
+brand/v3/logo/lockup-en-mono.svg
+brand/v3/logo/lockup-en.svg
+brand/v3/logo/mark-animated.svg
+brand/v3/logo/mark-dark.svg
+brand/v3/logo/mark-mono.svg
+brand/v3/logo/mark-small-dark.svg
+brand/v3/logo/mark-small-mono.svg
+brand/v3/logo/mark-small.svg
+brand/v3/logo/mark.svg
+brand/v3/logo/wordmark-ar-dark.svg
+brand/v3/logo/wordmark-ar-mono.svg
+brand/v3/logo/wordmark-ar.svg
+brand/v3/logo/wordmark-en-dark.svg
+brand/v3/logo/wordmark-en-mono.svg
+brand/v3/logo/wordmark-en.svg
+brand/v3/social/og-ar.png
+brand/v3/social/og.png
+brand/v3/social/social-card.png
