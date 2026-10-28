@@ -132,7 +132,7 @@ figcaption { margin-top: 10px; color: var(--bw-ink-muted); font-size: var(--bw-s
 .small { font-size: var(--bw-size-xs); color: var(--bw-ink-muted); }
 
 /* updates */
-.split { display: grid; grid-template-columns: 1fr 1.1fr; gap: 40px; align-items: start; }
+.split { display: grid; grid-template-columns: 1fr; gap: 40px; align-items: start; }
 @media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
 .rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
 .rows li { display: flex; gap: 14px; align-items: flex-start; padding: 16px; background: var(--bw-surface); border: 1px solid var(--bw-line); border-radius: var(--bw-radius-md); }

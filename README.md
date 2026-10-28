@@ -19,8 +19,6 @@ Free and open source (MIT). Runs on your computer.
 
 **Jump to:** [Install](#install-and-update) · [Updates](#updates) · [What it does](#what-it-does) · [Harvest](#start-a-document-harvest) · [The editor](#the-editor) · [For AI agents](#for-ai-agents)
 
-![The editor: the toolbar, the sample service's cover, Arabic interface](docs/screens/editor-ar.png)
-
 ## What it does
 
 | Area | What you get |
@@ -77,8 +75,6 @@ Tools: `build_editor`, `validate_edits`, `apply_edits`, `export_document`, `expo
 
 ✨ **In the editor** (0.11.0): open the editor through the local server, `npm run serve -- <editor.html>` (or `node engine/serve.mjs <editor.html>`). At launch it checks for a newer release, at most once a day and without blocking anything. When one is out, a popup shows the version and what is new, with **Update now**, **Later** and **Skip this version**. Update now downloads the release, checks its fingerprint, backs up, replaces the program files only, verifies the new version, restarts the server and reopens your document where you were. Your documents, edits and their history, design packs, fonts, logos, `out/` and `.local/` are never touched, and any failure puts the previous version back exactly. **Settings** (toolbar View section, or Ctrl+K) shows About, the update state with **Check now** and the auto-check switch, and your preferences. Opened from disk (`file://`), the page cannot check: Settings says how to update.
 
-![Update popup](docs/screens/update-popup.en.png)
-
 🔁 **Every release** is a GitHub release: https://github.com/NJ-Burrito/Business-Wrap/releases
 
 🧩 **Claude Code plugin:** `/plugin marketplace update business-wrap`, then `/plugin update business-wrap`.
@@ -98,16 +94,10 @@ Each gives the Arabic and English document JSON and an editor. In the editor: **
 
 ## The editor
 
-![A diagram shape selected: its tools stay first in the toolbar while the Design panel is open](docs/screens/sticky-tools.png)
-
 - **Sticky selection tools.** A block, a table cell, a logo, an image, a diagram shape or an arrow puts its own section first in the toolbar. It stays while you use menus, the Design panel, colour pickers or inline editors. A click on empty space, or Esc, returns the general tools.
 - **Sections that fold the same way in both languages.** Every word keeps the width of the longer of its Arabic and English forms, so «ع» and «E» show the same tools in the same places.
 - **«ع» / «E»** switch the interface language and the edition you edit; **RTL / LTR** switch the direction of the words. Click anywhere on either field; the gold thumb slides to the new choice.
 - **Commands** (`Ctrl+K`): every action, searchable. **Focus mode** (`F`) hides the tools; **Calm mode** turns motion off (also on when the system asks for reduced motion).
-
-![A hover explainer on «Find & replace»](docs/screens/explainer.png)
-
-![Book view: two pages side by side, in reading order](docs/screens/book-view.png)
 
 **Page views** (View → Pages): *Continuous* is the long sheet; *Single* shows one page at a time; *Book* opens on the cover alone, then pairs pages in the document's reading direction (Arabic: first page of a pair on the right). Page Up / Page Down, the arrow keys, the wheel or the page pill turn pages, and you can type in any of them.
 
@@ -115,8 +105,6 @@ Each gives the Arabic and English document JSON and an editor. In the editor: **
 The workflow figure is a model, not a picture: click a shape for shape tools, an arrow for arrow tools, the empty drawing for diagram tools. Drag to move, drag a corner to resize, drag an arrow's segment to bend it, double-click to edit a label in place, Ctrl + wheel to zoom. **Import / Export Mermaid** (`npm run diagram:mermaid`, MCP `diagram_mermaid`). Every change is one recorded edit, so it reaches the PDF and DOCX.
 
 ### Design and fonts
-
-![The Design panel: the font picker with the project's and this computer's fonts](docs/screens/design-fonts.png)
 
 Colours by role (swatch + hex code), sizes and spacing (slider + number + unit, converted when the unit changes), template parts (show, hide, order), printed labels, one block's own style (**Style this**) and sanitised advanced CSS. **Fonts:** the project's Thmanyah families by default, any font installed on this computer (the browser asks once), or an uploaded font file. The chosen font always reaches the PDF and DOCX as real, selectable text, embedded.
 
@@ -176,7 +164,7 @@ Browser support: Chrome and Edge, latest stable (Chromium 120+).
 | `design/`, `palette/`, `typography/` | design packs and DTCG tokens with their gates |
 | `fonts/` | the font manifest only (font files are never committed) |
 | `security/` | the gate that keeps client content and secrets out |
-| `docs/` | guide, architecture, decisions, roadmap, privacy, glossary, screenshots |
+| `docs/` | guide, architecture, decisions, roadmap, privacy, glossary |
 
 MIT licence: see `LICENSE`. Fonts are not included; each font keeps its own licence. Nothing is uploaded: see `docs/privacy.md`.
 
