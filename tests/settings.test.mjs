@@ -37,6 +37,23 @@ const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}
 const p = parseVersion(CUR);
 const NEWER = `${p[0]}.${p[1] + 1}.0`;
 const sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
+
+/* ── A27 (0.13.0): every licence statement says MIT — no closed-licence wording outside fonts/ (Thmanyah keeps its own) ── */
+{
+  const bad = new RegExp(['UN' + 'LICENSED', 'Propri' + 'etary', 'All rights ' + 'reserved'].join('|'), 'i');
+  const skip = new Set(['node_modules', 'fonts', 'out', '.git', 'profiles', '.local']);
+  const hits = [];
+  const walk = (d) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      if (skip.has(e.name)) continue;
+      const f = path.join(d, e.name);
+      if (e.isDirectory()) walk(f);
+      else if (/\.(m?js|json|md|html?|css|py|ya?ml|toml|txt|svg)$/i.test(e.name) && fs.statSync(f).size < 20e6 && bad.test(fs.readFileSync(f, 'utf8'))) hits.push(path.relative(REPO, f));
+    }
+  };
+  walk(REPO);
+  check('A27: no closed-licence statement anywhere outside fonts/ (every licence line says MIT)', !hits.length, hits.join(', '));
+}
 const put = (base, rel, s) => { fs.mkdirSync(path.dirname(path.join(base, rel)), { recursive: true }); fs.writeFileSync(path.join(base, rel), s); };
 const files = spawnSync('git', ['-C', REPO, 'ls-files', '--cached', '--others', '--exclude-standard'], { encoding: 'utf8' }).stdout.split('\n').filter((f) => f && fs.existsSync(path.join(REPO, f)));
 const copyTree = (to) => { for (const f of files) put(to, f, fs.readFileSync(path.join(REPO, f))); };
@@ -185,12 +202,13 @@ try {
     await page.waitForFunction(() => document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer .set-status')?.dataset.st === 'current');
     const info = async () => sh(page, (r) => {
       const d = r.querySelector('.drawer');
+      d.querySelectorAll('details.pgrp').forEach((x) => { x.open = true; }); // 0.13 A7: groups start collapsed (except the first)
       const box = (el) => { const b = el.getBoundingClientRect(); return [b.x, b.y, b.width].map(Math.round).join(','); };
       return { text: d.innerText, cards: [...d.querySelectorAll('.card')].map(box), drawer: box(d), status: d.querySelector('.set-status').textContent };
     });
     const ar = await info();
     check('Settings opens from the toolbar\'s View section and from Ctrl+K', btnOnBar);
-    check('About: name, version, release date, repository, licence, credits', ar.text.includes('Business-Wrap') && ar.text.includes(CUR) && /\d{4}-\d{2}-\d{2}/.test(ar.text) && ar.text.includes('github.com/NJ-Burrito/Business-Wrap') && ar.text.includes('MIT') && ar.text.includes('Lucide'));
+    check('About: name, version, release date, repository, licence (MIT, A27), credits', ar.text.includes('Business-Wrap') && ar.text.includes(CUR) && /\d{4}-\d{2}-\d{2}/.test(ar.text) && ar.text.includes('github.com/NJ-Burrito/Business-Wrap') && ar.text.includes('MIT') && ar.text.includes('Lucide'));
     check('Update: current vs latest, last checked, «تحقّق الآن», the auto-check toggle', ar.text.includes('أحدث إصدار') && ar.text.includes('آخر فحص') && ar.text.includes('تحقّق الآن') && ar.status.includes('أحدث إصدار'), ar.status);
     await page.evaluate(() => window.scrollTo(0, 0));
     await shot(page, 'settings-ar');
@@ -220,7 +238,7 @@ try {
     const { ctx, page, reqs } = await open(pathToFileURL(editorFile).href, { store: { 'bw:update-last': '0' } });
     await page.waitForTimeout(2000);
     await openSettings(page, 'palette');
-    const fb = await sh(page, (r) => ({ file: r.querySelector('.drawer .set-file')?.innerText || '' }));
+    const fb = await sh(page, (r) => { r.querySelectorAll('.drawer details.pgrp').forEach((x) => { x.open = true; }); return { file: r.querySelector('.drawer .set-file')?.innerText || '' }; });
     await sh(page, (r) => r.querySelector('.drawer [data-k="updCheck"]').click());
     await page.waitForTimeout(300);
     const st = await sh(page, (r) => r.querySelector('.drawer .set-status').textContent);
@@ -258,8 +276,9 @@ try {
     await page.waitForFunction(() => document.getElementById('bw-update').dataset.open === 'progress');
     await page.waitForTimeout(120);
     const steps = await uh(page, (r) => [...r.querySelectorAll('.steps li')].map((li) => li.dataset.step));
-    await shot(page, `progress-${ui}`);
-    if (ui === 'ar') await axe(page, 'update progress');
+    await page.waitForTimeout(450); // the steps have faded in
+    if (ui === 'ar') await axe(page, 'update progress'); // before the screenshot: the reload follows the server within about a second
+    await shot(page, `progress-${ui}`).catch(() => {});
     const reloaded = await nav;
     await page.waitForFunction(() => window.BW?.ready, null, { timeout: 20000 });
     await page.waitForTimeout(800);

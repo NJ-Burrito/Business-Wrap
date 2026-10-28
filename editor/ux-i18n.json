@@ -215,7 +215,10 @@
   "upd.updated": "تم التحديث إلى {v}، ومستندك كما تركته.",
   "upd.plugin": "في Claude Code:",
   "upd.cli": "في الطرفية:",
-  "ext.refused": "هذا التعديل غير مسموح الآن."
+  "ext.refused": "هذا التعديل غير مسموح الآن.",
+  "ux.selSection": "قسم",
+  "set.explainAlways": "أظهر البطاقة في كل مرة (لا تتذكر ما عرضته)",
+  "ux.jump": "اذهب إليه"
  },
  "en": {
   "ux.dirRtl": "Words run right to left (the layout stays put; your choice is remembered)",
@@ -432,6 +435,9 @@
   "upd.updated": "Updated to {v}; your document is as you left it.",
   "upd.plugin": "In Claude Code:",
   "upd.cli": "In a terminal:",
-  "ext.refused": "This change is not allowed right now."
+  "ext.refused": "This change is not allowed right now.",
+  "ux.selSection": "Section",
+  "set.explainAlways": "Show the card every time (do not remember what was shown)",
+  "ux.jump": "Go to it"
  }
 }
