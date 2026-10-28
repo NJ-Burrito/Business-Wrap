@@ -1,0 +1,64 @@
+{
+ "process": "order-to-delivery",
+ "actors": [
+  "Warehouse",
+  "Dispatch",
+  "Customer care"
+ ],
+ "steps": [
+  {
+   "id": "pay",
+   "name": "Payment",
+   "actor": "Shopper",
+   "options": {
+    "pay": "prep",
+    "cancel": "cancelled"
+   },
+   "timer": {
+    "to": "cancelled",
+    "after": "30 minutes"
+   }
+  },
+  {
+   "id": "prep",
+   "name": "Prepare order",
+   "actor": "Warehouse",
+   "options": {
+    "send-to-dispatch": "dispatch",
+    "out-of-stock": "refunded"
+   }
+  },
+  {
+   "id": "dispatch",
+   "name": "Dispatch",
+   "actor": "Dispatch",
+   "options": {
+    "ship": "aftersales",
+    "return-to-warehouse": "prep"
+   }
+  },
+  {
+   "id": "aftersales",
+   "name": "Returns window",
+   "actor": "Customer care",
+   "options": {
+    "close": "delivered",
+    "refund": "refunded"
+   }
+  }
+ ],
+ "ends": [
+  {
+   "id": "delivered",
+   "name": "Delivered"
+  },
+  {
+   "id": "cancelled",
+   "name": "Cancelled"
+  },
+  {
+   "id": "refunded",
+   "name": "Refunded"
+  }
+ ]
+}

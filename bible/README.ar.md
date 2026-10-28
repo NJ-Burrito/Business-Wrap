@@ -15,8 +15,9 @@
 | 6 | `06-design-system.ar.md` | حزم التصميم، ووصول الرموز إلى المخرجات، والتباين، وأبعاد الطباعة |
 | 7 | `07-updates.ar.md` | فحص التحديث، وتنبيه الإنسان والوكيل، وتطبيق التحديث، والترحيل |
 | 8 | `08-harvest.ar.md` | بدء وثيقة من نموذج إجراء (BPMN وFlowable وdraw.io وYAML) أو بالمرور على خدمة فعلية |
-| 9 | `09-learning.ar.md` | التعلّم المحلي: ما يلتقطه المحرّر، وكيف تصير الدروس قواعد، وكيف يستخدمها المساعدون، والخصوصية |
-| — | `contracts/edits.schema.json` و`contracts/wrappers.schema.json` و`contracts/design-pack.schema.json` | العقود الآلية |
+| 9 | `09-template-packs.ar.md` | حزم القوالب، والنموذج المحايد، ومرحلة الأدلة وسجل العناصر، وملفات تعريف الجهات، وكيف تكتب حزمة |
+| 10 | `10-learning.ar.md` | التعلّم المحلي: ما يلتقطه المحرّر، وكيف تصير الدروس قواعد، وكيف يستخدمها المساعدون، والخصوصية |
+| — | `contracts/edits.schema.json` و`contracts/wrappers.schema.json` و`contracts/design-pack.schema.json` و`contracts/service-record.schema.json` و`contracts/profile.schema.json` و`../templates/pack.schema.json` | العقود الآلية |
 
 ## قواعد ثابتة
 1. **لا محتوى لأي عميل في هذا المستودع.** لا أسماء جهات ولا شعارات ولا أسماء خدمات ولا أسماء خوادم ولا بيانات دخول ولا أرقام هويات ولا عناوين بريد ولا أرقام هواتف ولا بيانات مجموعة من أنظمة. ويفرض `security/check.py` ذلك على الشجرة وعلى التاريخ كله.

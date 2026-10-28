@@ -1,0 +1,64 @@
+{
+ "process": "renewal-campaign",
+ "actors": [
+  "Agent",
+  "QA supervisor"
+ ],
+ "steps": [
+  {
+   "id": "call",
+   "name": "Call the lead",
+   "actor": "Agent",
+   "options": {
+    "interested": "sale",
+    "call-back": "callback",
+    "not-interested": "lost",
+    "do-not-call": "dnc"
+   }
+  },
+  {
+   "id": "callback",
+   "name": "Call back",
+   "actor": "Agent",
+   "options": {
+    "call-again": "call"
+   },
+   "timer": {
+    "to": "lost",
+    "after": "48 hours"
+   }
+  },
+  {
+   "id": "sale",
+   "name": "Confirm the sale",
+   "actor": "Agent",
+   "options": {
+    "confirm": "qa",
+    "cancel": "lost"
+   }
+  },
+  {
+   "id": "qa",
+   "name": "Quality review",
+   "actor": "QA supervisor",
+   "options": {
+    "approve": "won",
+    "return-to-agent": "sale"
+   }
+  }
+ ],
+ "ends": [
+  {
+   "id": "won",
+   "name": "Renewed"
+  },
+  {
+   "id": "lost",
+   "name": "Not renewed"
+  },
+  {
+   "id": "dnc",
+   "name": "Do not call"
+  }
+ ]
+}

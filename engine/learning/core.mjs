@@ -2,7 +2,7 @@
 // detection, the rules file, and applying promoted rules to a NEW document. No Node API and no
 // model call, so the editor carries redact + fieldKind (engine/build-editor.mjs, own scope LEARN).
 // The method (record verbatim with the source, flag REVERSAL / CONFLICT, promote only with counts
-// and no kill criterion, otherwise keep it scoped) follows bible/09-learning.md.
+// and no kill criterion, otherwise keep it scoped) follows bible/10-learning.md.
 import { get, textLeaves } from '../edits.mjs';
 
 export const LEARN_VERSION = 1;

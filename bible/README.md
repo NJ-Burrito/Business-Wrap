@@ -13,8 +13,9 @@
 | 6 | `06-design-system.md` | Design packs, tokens to outputs, contrast, print geometry |
 | 7 | `07-updates.md` | Update check, notice to people and agents, applying an update, migrations |
 | 8 | `08-harvest.md` | Start a document from a process model (BPMN, Flowable, draw.io, YAML) or by crawling a live service |
-| 9 | `09-learning.md` | Local learning: what the editor captures, how lessons become rules, how agents use them, privacy |
-| — | `contracts/edits.schema.json`, `contracts/wrappers.schema.json`, `contracts/design-pack.schema.json` | Machine contracts |
+| 9 | `09-template-packs.md` | Template packs, the neutral model, the evidence stage and ledger, profiles, and how to author a pack |
+| 10 | `10-learning.md` | Local learning: what the editor captures, how lessons become rules, how agents use them, privacy |
+| — | `contracts/edits.schema.json`, `contracts/wrappers.schema.json`, `contracts/design-pack.schema.json`, `contracts/service-record.schema.json`, `contracts/profile.schema.json`, `../templates/pack.schema.json` | Machine contracts |
 
 ## House rules (non-negotiable)
 1. **Zero client content in this repo.** No organisation names, logos, service names, hostnames, credentials, ID numbers, emails, phone numbers or harvested data. `security/check.py` enforces it on the tree and the whole history.

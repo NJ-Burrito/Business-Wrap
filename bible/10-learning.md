@@ -1,4 +1,4 @@
-# 09 — Local learning (EN) — pair: 09-learning.ar.md
+# 10 — Local learning (EN) — pair: 10-learning.ar.md
 
 **Verdict:** Business-Wrap quietly records how the person corrects what it generated, groups repeated corrections into lessons, and turns well-evidenced lessons into rules that the AI agent reads before its next harvest or draft. Everything stays in `.local/learning/` on this machine.
 

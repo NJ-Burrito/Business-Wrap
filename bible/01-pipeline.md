@@ -23,6 +23,8 @@ flowchart LR
 | 4 | HTML editor | the same template and CSS the PDF prints, plus editing controls; reads `03-document.json` + `edits.json` + `theme.json` | any of the above, or a theme change |
 | 5 | exports | PDF (Chrome print of the same HTML), DOCX (built from the edited document JSON, never from HTML or PDF), `edits.json`, theme pack | an edit or a theme change |
 
+Implemented by `engine/srs/cli.mjs build` through a template pack (`09-template-packs.md`): it writes `01-harvest.json`, `02-evidence.json` (with the element ledger), and checkpoint 3 as `document.ar.json` + `document.en.json`.
+
 ## Stage rules
 - **Stage 1 does not drive the live system.** It joins what harvest tools already produced and names what is missing, so the right harvest is run on purpose.
 - **Before printing a gap, look for the file under the name it would plausibly have** (route-length names, prefixes, another slug).

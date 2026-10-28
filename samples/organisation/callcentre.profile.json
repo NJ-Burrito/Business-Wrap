@@ -1,0 +1,16 @@
+{
+ "kind": "bw-profile",
+ "version": 1,
+ "$comment": "Fictional contact centre. Every name here is invented.",
+ "id": "sample-callcentre",
+ "entity": { "ar": "مركز النجمة للاتصال", "en": "Star Point Contact Centre" },
+ "locale": "en",
+ "terms": {},
+ "codes": { "renewal-campaign": "RNW" },
+ "codeFormat": "SPC-CMP-{code}-01",
+ "serial": {
+  "pattern": { "ar": "(رمز الحملة-الرقم)", "en": "(campaign code-number)" },
+  "reset": { "ar": "يُعاد الترقيم مع كل حملة", "en": "numbering restarts with every campaign" }
+ },
+ "control": { "preparedBy": { "ar": "فريق العمليات", "en": "Operations team" } }
+}

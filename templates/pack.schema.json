@@ -1,0 +1,51 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "business-wrap/template-pack.schema.json",
+ "title": "Business-Wrap template pack",
+ "description": "A requirements-document layout as data. engine/srs/compose.mjs lays the neutral requirements model onto it; engine/srs/packs.mjs validatePack() enforces the rules this schema cannot express (ar/en pairs of equal length, known generators, referenced columns). Validate with: node engine/srs/cli.mjs validate <dir>.",
+ "type": "object",
+ "required": ["id", "name", "glossary", "chapters", "columns"],
+ "$defs": {
+  "bi": { "type": "object", "required": ["ar", "en"], "properties": { "ar": { "type": "string", "minLength": 1 }, "en": { "type": "string", "minLength": 1 } } },
+  "biList": { "type": "object", "required": ["ar", "en"], "properties": { "ar": { "type": "array", "items": { "type": "string" } }, "en": { "type": "array", "items": { "type": "string" } } } },
+  "section": {
+   "type": "object",
+   "required": ["title", "gen"],
+   "properties": {
+    "title": { "$ref": "#/$defs/bi" },
+    "gen": { "enum": ["prose", "description", "identifier", "recipients", "assumptions", "fees", "documents", "adminRef", "channels", "outputs", "legislation", "roles", "integrations", "languages", "requirements", "workflow", "rules", "statuses", "glossary", "kpis", "slas", "notifications", "dataDictionary", "questions", "stories"], "description": "The generator that fills the section from the model. «stories» expands into one section per people's stage (plus the output story)." },
+    "of": { "enum": ["internal", "services", "dataSources", "partners"], "description": "integrations only: which list" },
+    "cols": { "type": "array", "items": { "enum": ["name", "description", "sent", "received", "readiness"] }, "description": "integrations only: the fields printed, in order" },
+    "columns": { "type": "string", "description": "integrations only: the columns key (default: the value of `of`)" },
+    "paragraphs": { "$ref": "#/$defs/biList", "description": "prose only: template paragraphs; {name} {entity} {customer} {request} {channels} {output} are filled in" },
+    "caption": { "$ref": "#/$defs/bi" },
+    "whenEmpty": { "enum": ["question", "none"], "description": "question (default): an empty section becomes a named open question; none: the template states «none» (only where absence is a valid answer)" }
+   }
+  }
+ },
+ "properties": {
+  "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+  "version": { "type": "string" },
+  "name": { "$ref": "#/$defs/bi" },
+  "description": { "$ref": "#/$defs/bi" },
+  "titlePrefix": { "$ref": "#/$defs/bi" },
+  "codes": { "type": "object", "properties": { "fr": { "type": "string" }, "br": { "type": "string" }, "us": { "type": "string" } } },
+  "codeFormat": { "type": "string", "description": "how the looked-up code prints, e.g. ORG-SRS-{code}-01 (a profile's codeFormat wins)" },
+  "outputStory": { "enum": ["always", "whenStated", "never"] },
+  "outputFromApproval": { "type": "boolean", "description": "an approved end implies an output named after the process (e-service style)" },
+  "signatureSteps": { "type": "string", "description": "regex over system-step names that mean the output is signed" },
+  "systemTrace": { "type": "array", "items": { "type": "object", "required": ["match", "gens"], "properties": { "match": { "type": "string" }, "gens": { "type": "array", "items": { "type": "string" } } } }, "description": "which sections take up system steps whose names match" },
+  "askCaptions": { "type": "boolean", "description": "default true: derived action captions are listed as one open question" },
+  "control": { "type": "object", "description": "default control-table values ({ar,en} each): documentType, classification, status, reviewCycle, preparedBy, owner" },
+  "versioning": { "type": "object", "properties": { "format": { "type": "string" } } },
+  "glossary": { "type": "object", "required": ["ar", "en"], "description": "the pack's words: customer, request, requests, customerChannel, staffChannel, outputDefault … (same keys in both languages)" },
+  "glossaryTable": { "type": "object", "description": "rows of the «glossary» generator: {ar: {term: definition}, en: {...}}" },
+  "text": { "type": "object", "description": "overrides of templates/_core/text.json, per language" },
+  "requirements": { "type": "object", "properties": { "customer": { "type": "array", "items": { "type": "string" } }, "skip": { "type": "array", "items": { "type": "string" } }, "extra": { "type": "array" } } },
+  "rules": { "type": "object", "properties": { "derived": { "type": "boolean" }, "standard": { "type": "array", "items": { "type": "object", "required": ["text"], "properties": { "code": { "type": "string" }, "text": { "$ref": "#/$defs/bi" }, "when": { "type": "string", "description": "conditions joined by &, ! negates: staff, partners, serial, reroute, phone, recipients, payment" } } } } } },
+  "stageTasks": { "type": "object", "description": "dictionary rows every staff stage carries (the in-stage tasks, never actions): {ar: [[7 cells]], en: [...]}" },
+  "outputAcceptance": { "$ref": "#/$defs/biList" },
+  "columns": { "type": "object", "additionalProperties": { "$ref": "#/$defs/biList" } },
+  "chapters": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["title", "sections"], "properties": { "title": { "$ref": "#/$defs/bi" }, "sections": { "type": "array", "items": { "$ref": "#/$defs/section" } } } } }
+ }
+}

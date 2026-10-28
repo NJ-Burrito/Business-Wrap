@@ -1,0 +1,78 @@
+{
+ "_name": {
+  "ar": "طلب شراء حتى التسليم",
+  "en": "Order to delivery"
+ },
+ "Warehouse": {
+  "ar": "المستودع",
+  "en": "Warehouse"
+ },
+ "Dispatch": {
+  "ar": "قسم الشحن",
+  "en": "Dispatch"
+ },
+ "Customer care": {
+  "ar": "خدمة العملاء",
+  "en": "Customer care"
+ },
+ "Payment": {
+  "ar": "الدفع",
+  "en": "Payment"
+ },
+ "Prepare order": {
+  "ar": "تجهيز الطلب",
+  "en": "Prepare order"
+ },
+ "Returns window": {
+  "ar": "فترة الإرجاع",
+  "en": "Returns window"
+ },
+ "Delivered": {
+  "ar": "تم التسليم",
+  "en": "Delivered"
+ },
+ "Cancelled": {
+  "ar": "ملغى",
+  "en": "Cancelled"
+ },
+ "Refunded": {
+  "ar": "مسترد",
+  "en": "Refunded"
+ },
+ "pay": {
+  "ar": "ادفع الآن",
+  "en": "Pay now"
+ },
+ "cancel": {
+  "ar": "إلغاء الطلب",
+  "en": "Cancel order"
+ },
+ "send-to-dispatch": {
+  "ar": "جاهز للشحن",
+  "en": "Ready to ship"
+ },
+ "out-of-stock": {
+  "ar": "غير متوفر",
+  "en": "Out of stock"
+ },
+ "ship": {
+  "ar": "تأكيد الشحن",
+  "en": "Confirm shipment"
+ },
+ "return-to-warehouse": {
+  "ar": "إرجاع إلى المستودع",
+  "en": "Return to warehouse"
+ },
+ "close": {
+  "ar": "إغلاق الطلب",
+  "en": "Close order"
+ },
+ "refund": {
+  "ar": "استرداد المبلغ",
+  "en": "Refund"
+ },
+ "30 minutes": {
+  "ar": "30 دقيقة",
+  "en": "30 minutes"
+ }
+}

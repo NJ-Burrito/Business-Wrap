@@ -1,0 +1,689 @@
+{
+ "$comment": "Template pack «call-centre». Data only: the generators are in engine/srs/compose.mjs; the schema is templates/pack.schema.json.",
+ "id": "call-centre",
+ "version": "1.0",
+ "name": {
+  "ar": "متطلبات مركز اتصال / تسويق هاتفي",
+  "en": "Call-centre / telemarketing requirements"
+ },
+ "description": {
+  "ar": "حملة اتصال: عميل محتمل، نص المكالمة، نتيجة المكالمة، معاودة الاتصال، البيع ومراجعة الجودة.",
+  "en": "A calling campaign: lead, call script, disposition, call-back, sale and QA."
+ },
+ "titlePrefix": {
+  "ar": "وثيقة متطلبات حملة الاتصال",
+  "en": "Calling Campaign Requirements Specification"
+ },
+ "codes": {
+  "fr": "FR",
+  "br": "BR",
+  "us": "US"
+ },
+ "outputStory": "never",
+ "control": {
+  "documentType": {
+   "ar": "مواصفات المتطلبات",
+   "en": "Requirements specification"
+  },
+  "classification": {
+   "ar": "داخلي",
+   "en": "Internal"
+  },
+  "status": {
+   "ar": "مسودة للمراجعة",
+   "en": "Draft for review"
+  },
+  "reviewCycle": {
+   "ar": "عند أي تغيير جوهري على العملية",
+   "en": "On any material change to the process"
+  }
+ },
+ "versioning": {
+  "format": "V{nn}"
+ },
+ "glossary": {
+  "ar": {
+   "customerFunction": "مستخدم مسجَّل",
+   "outputUser": "مستخدم",
+   "codeLabel": "رمز الحملة",
+   "serialLabel": "صيغة رقم السجل",
+   "serialShownLabel": "موقع ظهور الرقم",
+   "channelsLead": "تتم العملية عبر: {list}.",
+   "channelsDefault": "القنوات الإلكترونية",
+   "multiple": "مرفق متعدد",
+   "feeTimingPayment": "عند تأكيد البيع",
+   "outputPreviewCaption": "المستند الناتج كما يصدر",
+   "outputNameLabel": "اسم الناتج",
+   "outputWhenLabel": "متى يصدر",
+   "outputToLabel": "من يستلمه",
+   "outputWhenDefault": "عند اكتمال العملية",
+   "outputToDefault": "صاحب الطلب",
+   "entity": "الجهة",
+   "outputUnit": "الناتج",
+   "outputWhenSigned": "عند اكتمال العملية",
+   "customer": "العميل المحتمل",
+   "request": "سجل العميل",
+   "requests": "سجلاته",
+   "customerChannel": "الاتصال الهاتفي",
+   "staffChannel": "منصة مركز الاتصال",
+   "outputDefault": "سجل نتيجة المكالمة"
+  },
+  "en": {
+   "customerFunction": "A registered user",
+   "outputUser": "User",
+   "codeLabel": "Campaign code",
+   "serialLabel": "Record number format",
+   "serialShownLabel": "Where the number shows",
+   "channelsLead": "The process runs through: {list}.",
+   "channelsDefault": "the online channels",
+   "multiple": "Multiple attachment",
+   "feeTimingPayment": "When the sale is confirmed",
+   "outputPreviewCaption": "The resulting document as issued",
+   "outputNameLabel": "Output",
+   "outputWhenLabel": "When it is issued",
+   "outputToLabel": "Who receives it",
+   "outputWhenDefault": "When the process completes",
+   "outputToDefault": "The requester",
+   "entity": "the organisation",
+   "outputUnit": "Output",
+   "outputWhenSigned": "When the process completes",
+   "customer": "lead",
+   "request": "lead record",
+   "requests": "records",
+   "customerChannel": "Phone call",
+   "staffChannel": "Contact-centre console",
+   "outputDefault": "call outcome record"
+  }
+ },
+ "rules": {
+  "derived": true,
+  "standard": [
+   {
+    "text": {
+     "ar": "لا يُتصل بعميل محتمل مسجَّل في قائمة عدم الاتصال.",
+     "en": "A lead on the do-not-call list is never called."
+    }
+   },
+   {
+    "text": {
+     "ar": "تُسجَّل نتيجة كل مكالمة قبل إغلاق شاشة السجل.",
+     "en": "Every call's outcome is recorded before the record screen closes."
+    }
+   },
+   {
+    "text": {
+     "ar": "يجب على النظام عرض سجل الإجراءات على {request} لجميع المستخدمين المعنيين.",
+     "en": "The system shows the {request}'s action log to every user concerned."
+    },
+    "when": "staff"
+   }
+  ]
+ },
+ "stageTasks": {
+  "ar": [
+   [
+    "ملاحظة داخلية",
+    "نص",
+    "اختياري",
+    "قابل للتعديل",
+    "لا يوجد",
+    "لا يوجد",
+    "لا تظهر للعميل المحتمل"
+   ]
+  ],
+  "en": [
+   [
+    "Internal note",
+    "Text",
+    "Optional",
+    "Editable",
+    "None",
+    "None",
+    "Not shown to the lead"
+   ]
+  ]
+ },
+ "columns": {
+  "recipients": {
+   "ar": [
+    "الفئة"
+   ],
+   "en": [
+    "Segment"
+   ]
+  },
+  "fees": {
+   "ar": [
+    "الرمز",
+    "المبلغ",
+    "الأساس",
+    "التوقيت"
+   ],
+   "en": [
+    "Code",
+    "Amount",
+    "Basis",
+    "When"
+   ]
+  },
+  "documents": {
+   "ar": [
+    "المستند",
+    "الإلزامية",
+    "الصيغ المقبولة",
+    "الحجم الأقصى",
+    "يقدّمه",
+    "ملاحظات"
+   ],
+   "en": [
+    "Document",
+    "Required",
+    "Accepted formats",
+    "Maximum size",
+    "Provided by",
+    "Notes"
+   ]
+  },
+  "outputs": {
+   "ar": [
+    "الناتج",
+    "مدة الصلاحية"
+   ],
+   "en": [
+    "Output",
+    "Validity"
+   ]
+  },
+  "legislation": {
+   "ar": [
+    "الرقم",
+    "اسم التشريع",
+    "سنة الإصدار"
+   ],
+   "en": [
+    "Number",
+    "Legislation",
+    "Year"
+   ]
+  },
+  "roles": {
+   "ar": [
+    "الرمز",
+    "الدور",
+    "الوظيفة",
+    "وصف استخدام النظام",
+    "القناة"
+   ],
+   "en": [
+    "Code",
+    "Role",
+    "Function",
+    "How the role uses the system",
+    "Channel"
+   ]
+  },
+  "internal": {
+   "ar": [
+    "النظام",
+    "الوصف",
+    "المعلومات المرسلة",
+    "المعلومات المسترجعة",
+    "الجاهزية"
+   ],
+   "en": [
+    "System",
+    "Description",
+    "Data sent",
+    "Data retrieved",
+    "Readiness"
+   ]
+  },
+  "services": {
+   "ar": [
+    "الخدمة",
+    "المعلومات المرسلة",
+    "المعلومات المسترجعة"
+   ],
+   "en": [
+    "Service",
+    "Data sent",
+    "Data retrieved"
+   ]
+  },
+  "dataSources": {
+   "ar": [
+    "مصدر البيانات",
+    "الوصف",
+    "المعلومات التي يتم استرجاعها",
+    "الجاهزية"
+   ],
+   "en": [
+    "Data source",
+    "Description",
+    "Data retrieved",
+    "Readiness"
+   ]
+  },
+  "partners": {
+   "ar": [
+    "جهة التكامل",
+    "المعلومات المرسلة",
+    "المعلومات المسترجعة",
+    "الجاهزية"
+   ],
+   "en": [
+    "Integration partner",
+    "Data sent",
+    "Data retrieved",
+    "Readiness"
+   ]
+  },
+  "requirements": {
+   "ar": [
+    "الرمز",
+    "المتطلبات",
+    "الوحدة الوظيفية",
+    "النوع"
+   ],
+   "en": [
+    "Code",
+    "Requirement",
+    "Functional unit",
+    "Type"
+   ]
+  },
+  "rules": {
+   "ar": [
+    "الرمز",
+    "قاعدة العمل"
+   ],
+   "en": [
+    "Code",
+    "Business rule"
+   ]
+  },
+  "actions": {
+   "ar": [
+    "الإجراء",
+    "أثره على السجل"
+   ],
+   "en": [
+    "Action",
+    "Effect on the record"
+   ]
+  },
+  "dictionary": {
+   "ar": [
+    "اسم الحقل",
+    "النوع",
+    "اجبارية الحقل",
+    "امكانية التعديل",
+    "جهة التكامل",
+    "القيمة الافتراضية",
+    "قيود الحقل"
+   ],
+   "en": [
+    "Field",
+    "Type",
+    "Required",
+    "Editable",
+    "Integration",
+    "Default",
+    "Constraints"
+   ]
+  },
+  "outputCard": {
+   "ar": [
+    "البند",
+    "القيمة"
+   ],
+   "en": [
+    "Item",
+    "Value"
+   ]
+  },
+  "questions": {
+   "ar": [
+    "الرقم",
+    "السؤال",
+    "المسؤول"
+   ],
+   "en": [
+    "No.",
+    "Question",
+    "Owner"
+   ]
+  },
+  "statuses": {
+   "ar": [
+    "الحالة"
+   ],
+   "en": [
+    "Status"
+   ]
+  },
+  "kpis": {
+   "ar": [
+    "المؤشر",
+    "المستهدف",
+    "طريقة القياس"
+   ],
+   "en": [
+    "Indicator",
+    "Target",
+    "How measured"
+   ]
+  },
+  "slas": {
+   "ar": [
+    "المرحلة",
+    "زمن الاستجابة المستهدف"
+   ],
+   "en": [
+    "Stage",
+    "Target time"
+   ]
+  },
+  "notifications": {
+   "ar": [
+    "الحدث",
+    "القناة",
+    "المستلم"
+   ],
+   "en": [
+    "Event",
+    "Channel",
+    "Recipient"
+   ]
+  },
+  "glossary": {
+   "ar": [
+    "المصطلح",
+    "التعريف"
+   ],
+   "en": [
+    "Term",
+    "Definition"
+   ]
+  }
+ },
+ "chapters": [
+  {
+   "title": {
+    "ar": "المقدمة",
+    "en": "Introduction"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "الغرض من الوثيقة",
+      "en": "Purpose"
+     },
+     "gen": "prose",
+     "paragraphs": {
+      "ar": [
+       "تحدد هذه الوثيقة متطلبات حملة «{name}» لدى {entity}: من استلام العميل المحتمل حتى نتيجة المكالمة ومعاودة الاتصال والبيع ومراجعة الجودة."
+      ],
+      "en": [
+       "This document states the requirements of the «{name}» campaign at {entity}: from receiving a lead to the call outcome, call-backs, the sale and quality review."
+      ]
+     }
+    },
+    {
+     "title": {
+      "ar": "النطاق",
+      "en": "Scope"
+     },
+     "gen": "prose",
+     "paragraphs": {
+      "ar": [
+       "يشمل النطاق قنوات الاتصال: {channels}، وشاشات الوكلاء والمشرفين، والتكامل مع نظام إدارة العملاء ونظام الاتصال."
+      ],
+      "en": [
+       "The scope covers the contact channels ({channels}), the agent and supervisor screens, and the integrations with the CRM and the dialler."
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "نظرة عامة على الحملة",
+    "en": "Campaign overview"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "الوصف",
+      "en": "Description"
+     },
+     "gen": "description"
+    },
+    {
+     "title": {
+      "ar": "الشرائح المستهدفة",
+      "en": "Target segments"
+     },
+     "gen": "recipients"
+    },
+    {
+     "title": {
+      "ar": "قنوات الاتصال",
+      "en": "Contact channels"
+     },
+     "gen": "channels"
+    },
+    {
+     "title": {
+      "ar": "قواعد التواصل والقيود",
+      "en": "Contact rules and constraints"
+     },
+     "gen": "assumptions"
+    },
+    {
+     "title": {
+      "ar": "نتائج المكالمة",
+      "en": "Call dispositions"
+     },
+     "gen": "statuses"
+    },
+    {
+     "title": {
+      "ar": "العروض والأسعار",
+      "en": "Offers and prices"
+     },
+     "gen": "fees"
+    },
+    {
+     "title": {
+      "ar": "الأدوار",
+      "en": "Roles"
+     },
+     "gen": "roles"
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "التكاملات",
+    "en": "Integrations"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "الأنظمة الداخلية",
+      "en": "Internal systems"
+     },
+     "gen": "integrations",
+     "of": "internal"
+    },
+    {
+     "title": {
+      "ar": "مصادر البيانات",
+      "en": "Data sources"
+     },
+     "gen": "integrations",
+     "of": "dataSources",
+     "cols": [
+      "name",
+      "description",
+      "received",
+      "readiness"
+     ]
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "المتطلبات الوظيفية",
+    "en": "Functional requirements"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "جدول المتطلبات",
+      "en": "Requirements table"
+     },
+     "gen": "requirements"
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "مسار المكالمة",
+    "en": "Call flow"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "مخطط مسار المكالمة",
+      "en": "Call flow diagram"
+     },
+     "gen": "workflow",
+     "caption": {
+      "ar": "مسار السجل من الاستلام حتى النتيجة",
+      "en": "The record from intake to outcome"
+     }
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "قواعد العمل",
+    "en": "Business rules"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "جدول قواعد العمل",
+      "en": "Business rules table"
+     },
+     "gen": "rules",
+     "whenEmpty": "none"
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "قصص المستخدمين ومعايير القبول",
+    "en": "User stories and acceptance criteria"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "بطاقات القصص",
+      "en": "Story cards"
+     },
+     "gen": "stories"
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "الأداء والجودة",
+    "en": "Performance and quality"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "مؤشرات الأداء",
+      "en": "Key indicators"
+     },
+     "gen": "kpis"
+    },
+    {
+     "title": {
+      "ar": "أزمنة الاستجابة",
+      "en": "Target times"
+     },
+     "gen": "slas"
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "الملاحق: الأسئلة المفتوحة",
+    "en": "Annex: open questions"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "الأسئلة المفتوحة",
+      "en": "Open questions"
+     },
+     "gen": "questions"
+    }
+   ]
+  }
+ ],
+ "requirements": {
+  "customer": [
+   "dynamicFields",
+   "validate"
+  ],
+  "skip": [
+   "track",
+   "confirm",
+   "toPayment",
+   "rework",
+   "attach",
+   "output"
+  ]
+ },
+ "text": {
+  "ar": {
+   "story": {
+    "customer": {
+     "name": "استلام {request}",
+     "want": "استلام بيانات «{s}» وتجهيزها للاتصال",
+     "so": "يصبح {request} جاهزاً للاتصال"
+    }
+   },
+   "roleUsage": {
+    "customer": "يُتصل به ويُسجَّل رده"
+   },
+   "acc": {
+    "fillForm": "يعرض النظام بيانات {request} كما هي موضحة في قاموس البيانات أدناه.",
+    "mandatory": "لا يقبل النظام حفظ {request} قبل استكمال الحقول الإجبارية.",
+    "afterSubmit": "يعرض النظام رقم {request} وحالته بعد الحفظ."
+   }
+  },
+  "en": {
+   "story": {
+    "customer": {
+     "name": "Receive the {request}",
+     "want": "the «{s}» data received and made ready for calling",
+     "so": "the {request} is ready to call"
+    }
+   },
+   "roleUsage": {
+    "customer": "is called and their answer recorded"
+   },
+   "acc": {
+    "fillForm": "The system shows the {request} data as the data dictionary below states.",
+    "mandatory": "The system does not save the {request} before every required field is filled in.",
+    "afterSubmit": "The system shows the {request} number and status after saving."
+   }
+  }
+ }
+}

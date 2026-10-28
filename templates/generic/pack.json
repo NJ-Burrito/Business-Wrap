@@ -1,0 +1,612 @@
+{
+ "$comment": "Template pack «generic». Data only: the generators are in engine/srs/compose.mjs; the schema is templates/pack.schema.json.",
+ "id": "generic",
+ "version": "1.0",
+ "name": {
+  "ar": "مواصفات متطلبات عامة (وفق بنية ISO/IEC/IEEE 29148)",
+  "en": "Generic SRS (ISO/IEC/IEEE 29148 structure)"
+ },
+ "description": {
+  "ar": "بنية مواصفات متطلبات البرمجيات المعيارية لأي نظام.",
+  "en": "The standard software requirements specification layout, for any system."
+ },
+ "titlePrefix": {
+  "ar": "مواصفات متطلبات البرمجيات",
+  "en": "Software Requirements Specification"
+ },
+ "codes": {
+  "fr": "FR",
+  "br": "BR",
+  "us": "US"
+ },
+ "outputStory": "whenStated",
+ "control": {
+  "documentType": {
+   "ar": "مواصفات المتطلبات",
+   "en": "Requirements specification"
+  },
+  "classification": {
+   "ar": "داخلي",
+   "en": "Internal"
+  },
+  "status": {
+   "ar": "مسودة للمراجعة",
+   "en": "Draft for review"
+  },
+  "reviewCycle": {
+   "ar": "عند أي تغيير جوهري على العملية",
+   "en": "On any material change to the process"
+  }
+ },
+ "versioning": {
+  "format": "V{nn}"
+ },
+ "glossary": {
+  "ar": {
+   "customerFunction": "مستخدم مسجَّل",
+   "outputUser": "مستخدم",
+   "codeLabel": "رمز العملية",
+   "serialLabel": "صيغة الرقم المرجعي",
+   "serialShownLabel": "موقع ظهور الرقم",
+   "channelsLead": "تتم العملية عبر: {list}.",
+   "channelsDefault": "القنوات الإلكترونية",
+   "multiple": "مرفق متعدد",
+   "feeTimingPayment": "عند الدفع",
+   "outputPreviewCaption": "المستند الناتج كما يصدر",
+   "outputNameLabel": "اسم الناتج",
+   "outputWhenLabel": "متى يصدر",
+   "outputToLabel": "من يستلمه",
+   "outputWhenDefault": "عند اكتمال العملية",
+   "outputToDefault": "صاحب الطلب",
+   "entity": "الجهة",
+   "outputUnit": "الناتج",
+   "outputWhenSigned": "عند اكتمال العملية",
+   "customer": "المستخدم",
+   "request": "الطلب",
+   "requests": "طلباته",
+   "customerChannel": "واجهة المستخدم",
+   "staffChannel": "واجهة الإدارة",
+   "outputDefault": "ناتج العملية"
+  },
+  "en": {
+   "customerFunction": "A registered user",
+   "outputUser": "User",
+   "codeLabel": "Process code",
+   "serialLabel": "Reference number format",
+   "serialShownLabel": "Where the number shows",
+   "channelsLead": "The process runs through: {list}.",
+   "channelsDefault": "the online channels",
+   "multiple": "Multiple attachment",
+   "feeTimingPayment": "At payment",
+   "outputPreviewCaption": "The resulting document as issued",
+   "outputNameLabel": "Output",
+   "outputWhenLabel": "When it is issued",
+   "outputToLabel": "Who receives it",
+   "outputWhenDefault": "When the process completes",
+   "outputToDefault": "The requester",
+   "entity": "the organisation",
+   "outputUnit": "Output",
+   "outputWhenSigned": "When the process completes",
+   "customer": "user",
+   "request": "request",
+   "requests": "requests",
+   "customerChannel": "User interface",
+   "staffChannel": "Administration interface",
+   "outputDefault": "process output"
+  }
+ },
+ "rules": {
+  "derived": true,
+  "standard": [
+   {
+    "text": {
+     "ar": "الحقول التي يتم عرضها يجب أن تكون متوافقة مع نوع المستخدم وصلاحياته.",
+     "en": "The fields shown match the user's type and permissions."
+    }
+   }
+  ]
+ },
+ "stageTasks": {
+  "ar": [
+   [
+    "ملاحظة داخلية",
+    "نص",
+    "اختياري",
+    "قابل للتعديل",
+    "لا يوجد",
+    "لا يوجد",
+    "لا تظهر للمستخدم"
+   ]
+  ],
+  "en": [
+   [
+    "Internal note",
+    "Text",
+    "Optional",
+    "Editable",
+    "None",
+    "None",
+    "Not shown to the user"
+   ]
+  ]
+ },
+ "columns": {
+  "recipients": {
+   "ar": [
+    "الفئة"
+   ],
+   "en": [
+    "Segment"
+   ]
+  },
+  "fees": {
+   "ar": [
+    "الرمز",
+    "المبلغ",
+    "الأساس",
+    "التوقيت"
+   ],
+   "en": [
+    "Code",
+    "Amount",
+    "Basis",
+    "When"
+   ]
+  },
+  "documents": {
+   "ar": [
+    "المستند",
+    "الإلزامية",
+    "الصيغ المقبولة",
+    "الحجم الأقصى",
+    "يقدّمه",
+    "ملاحظات"
+   ],
+   "en": [
+    "Document",
+    "Required",
+    "Accepted formats",
+    "Maximum size",
+    "Provided by",
+    "Notes"
+   ]
+  },
+  "outputs": {
+   "ar": [
+    "الناتج",
+    "مدة الصلاحية"
+   ],
+   "en": [
+    "Output",
+    "Validity"
+   ]
+  },
+  "legislation": {
+   "ar": [
+    "الرقم",
+    "اسم التشريع",
+    "سنة الإصدار"
+   ],
+   "en": [
+    "Number",
+    "Legislation",
+    "Year"
+   ]
+  },
+  "roles": {
+   "ar": [
+    "الرمز",
+    "الدور",
+    "الوظيفة",
+    "وصف استخدام النظام",
+    "القناة"
+   ],
+   "en": [
+    "Code",
+    "Role",
+    "Function",
+    "How the role uses the system",
+    "Channel"
+   ]
+  },
+  "internal": {
+   "ar": [
+    "النظام",
+    "الوصف",
+    "المعلومات المرسلة",
+    "المعلومات المسترجعة",
+    "الجاهزية"
+   ],
+   "en": [
+    "System",
+    "Description",
+    "Data sent",
+    "Data retrieved",
+    "Readiness"
+   ]
+  },
+  "services": {
+   "ar": [
+    "الخدمة",
+    "المعلومات المرسلة",
+    "المعلومات المسترجعة"
+   ],
+   "en": [
+    "Service",
+    "Data sent",
+    "Data retrieved"
+   ]
+  },
+  "dataSources": {
+   "ar": [
+    "مصدر البيانات",
+    "الوصف",
+    "المعلومات التي يتم استرجاعها",
+    "الجاهزية"
+   ],
+   "en": [
+    "Data source",
+    "Description",
+    "Data retrieved",
+    "Readiness"
+   ]
+  },
+  "partners": {
+   "ar": [
+    "جهة التكامل",
+    "المعلومات المرسلة",
+    "المعلومات المسترجعة",
+    "الجاهزية"
+   ],
+   "en": [
+    "Integration partner",
+    "Data sent",
+    "Data retrieved",
+    "Readiness"
+   ]
+  },
+  "requirements": {
+   "ar": [
+    "الرمز",
+    "المتطلبات",
+    "الوحدة الوظيفية",
+    "النوع"
+   ],
+   "en": [
+    "Code",
+    "Requirement",
+    "Functional unit",
+    "Type"
+   ]
+  },
+  "rules": {
+   "ar": [
+    "الرمز",
+    "قاعدة العمل"
+   ],
+   "en": [
+    "Code",
+    "Business rule"
+   ]
+  },
+  "actions": {
+   "ar": [
+    "الإجراء",
+    "أثره على الطلب"
+   ],
+   "en": [
+    "Action",
+    "Effect on the request"
+   ]
+  },
+  "dictionary": {
+   "ar": [
+    "اسم الحقل",
+    "النوع",
+    "اجبارية الحقل",
+    "امكانية التعديل",
+    "جهة التكامل",
+    "القيمة الافتراضية",
+    "قيود الحقل"
+   ],
+   "en": [
+    "Field",
+    "Type",
+    "Required",
+    "Editable",
+    "Integration",
+    "Default",
+    "Constraints"
+   ]
+  },
+  "outputCard": {
+   "ar": [
+    "البند",
+    "القيمة"
+   ],
+   "en": [
+    "Item",
+    "Value"
+   ]
+  },
+  "questions": {
+   "ar": [
+    "الرقم",
+    "السؤال",
+    "المسؤول"
+   ],
+   "en": [
+    "No.",
+    "Question",
+    "Owner"
+   ]
+  },
+  "statuses": {
+   "ar": [
+    "الحالة"
+   ],
+   "en": [
+    "Status"
+   ]
+  },
+  "kpis": {
+   "ar": [
+    "المؤشر",
+    "المستهدف",
+    "طريقة القياس"
+   ],
+   "en": [
+    "Indicator",
+    "Target",
+    "How measured"
+   ]
+  },
+  "slas": {
+   "ar": [
+    "المرحلة",
+    "زمن الاستجابة المستهدف"
+   ],
+   "en": [
+    "Stage",
+    "Target time"
+   ]
+  },
+  "notifications": {
+   "ar": [
+    "الحدث",
+    "القناة",
+    "المستلم"
+   ],
+   "en": [
+    "Event",
+    "Channel",
+    "Recipient"
+   ]
+  },
+  "glossary": {
+   "ar": [
+    "المصطلح",
+    "التعريف"
+   ],
+   "en": [
+    "Term",
+    "Definition"
+   ]
+  }
+ },
+ "chapters": [
+  {
+   "title": {
+    "ar": "المقدمة",
+    "en": "Introduction"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "الغرض",
+      "en": "Purpose"
+     },
+     "gen": "prose",
+     "paragraphs": {
+      "ar": [
+       "تحدد هذه الوثيقة متطلبات «{name}» لدى {entity}."
+      ],
+      "en": [
+       "This document specifies the requirements of «{name}» at {entity}."
+      ]
+     }
+    },
+    {
+     "title": {
+      "ar": "النطاق",
+      "en": "Scope"
+     },
+     "gen": "prose",
+     "paragraphs": {
+      "ar": [
+       "يشمل النطاق ما يقدمه النظام لـ{customer} عبر {channels}، ومراحل المعالجة، والواجهات مع الأنظمة الأخرى."
+      ],
+      "en": [
+       "The scope covers what the system offers the {customer} through {channels}, the processing stages, and the interfaces with other systems."
+      ]
+     }
+    },
+    {
+     "title": {
+      "ar": "التعريفات والمصطلحات",
+      "en": "Definitions"
+     },
+     "gen": "glossary"
+    },
+    {
+     "title": {
+      "ar": "المراجع",
+      "en": "References"
+     },
+     "gen": "legislation"
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "الوصف العام",
+    "en": "Overall description"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "منظور النظام",
+      "en": "Product perspective"
+     },
+     "gen": "description"
+    },
+    {
+     "title": {
+      "ar": "فئات المستخدمين",
+      "en": "User classes"
+     },
+     "gen": "roles"
+    },
+    {
+     "title": {
+      "ar": "بيئة التشغيل والقنوات",
+      "en": "Operating environment and channels"
+     },
+     "gen": "channels"
+    },
+    {
+     "title": {
+      "ar": "القيود والافتراضات",
+      "en": "Constraints and assumptions"
+     },
+     "gen": "assumptions"
+    },
+    {
+     "title": {
+      "ar": "اللغات",
+      "en": "Languages"
+     },
+     "gen": "languages"
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "المتطلبات التفصيلية",
+    "en": "Specific requirements"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "الواجهات الخارجية",
+      "en": "External interfaces"
+     },
+     "gen": "integrations",
+     "of": "partners",
+     "cols": [
+      "name",
+      "sent",
+      "received",
+      "readiness"
+     ]
+    },
+    {
+     "title": {
+      "ar": "الواجهات الداخلية",
+      "en": "Internal interfaces"
+     },
+     "gen": "integrations",
+     "of": "internal"
+    },
+    {
+     "title": {
+      "ar": "المتطلبات الوظيفية",
+      "en": "Functional requirements"
+     },
+     "gen": "requirements"
+    },
+    {
+     "title": {
+      "ar": "قواعد العمل",
+      "en": "Business rules"
+     },
+     "gen": "rules",
+     "whenEmpty": "none"
+    },
+    {
+     "title": {
+      "ar": "متطلبات البيانات",
+      "en": "Data requirements"
+     },
+     "gen": "dataDictionary"
+    },
+    {
+     "title": {
+      "ar": "متطلبات الأداء",
+      "en": "Performance requirements"
+     },
+     "gen": "slas"
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "سير العمل",
+    "en": "Workflow"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "مخطط سير العمل",
+      "en": "Workflow diagram"
+     },
+     "gen": "workflow",
+     "caption": {
+      "ar": "سير العملية",
+      "en": "The process"
+     }
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "التحقق: قصص المستخدمين ومعايير القبول",
+    "en": "Verification: user stories and acceptance criteria"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "بطاقات القصص",
+      "en": "Story cards"
+     },
+     "gen": "stories"
+    }
+   ]
+  },
+  {
+   "title": {
+    "ar": "الملاحق: الأسئلة المفتوحة",
+    "en": "Annex: open questions"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "الأسئلة المفتوحة",
+      "en": "Open questions"
+     },
+     "gen": "questions"
+    }
+   ]
+  }
+ ],
+ "glossaryTable": {
+  "ar": {
+   "{request}": "وحدة العمل التي يقدمها {customer} وتعالجها مراحل النظام.",
+   "{customer}": "من يبدأ العملية ويتابعها."
+  },
+  "en": {
+   "{request}": "The unit of work the {customer} files and the system's stages process.",
+   "{customer}": "Whoever starts and follows the process."
+  }
+ }
+}

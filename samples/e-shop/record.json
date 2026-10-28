@@ -1,0 +1,213 @@
+{
+ "kind": "bw-service-record",
+ "version": 1,
+ "key": "order-to-delivery",
+ "source": {
+  "kind": "document",
+  "ref": "Store operations handbook (sample)"
+ },
+ "facts": {
+  "fees": [
+   {
+    "code": "SHIP-STD",
+    "amount": {
+     "ar": "3 دولارات",
+     "en": "USD 3"
+    },
+    "basis": {
+     "ar": "توصيل عادي",
+     "en": "Standard delivery"
+    },
+    "timing": {
+     "ar": "عند إتمام الشراء",
+     "en": "At checkout"
+    }
+   },
+   {
+    "code": "SHIP-EXP",
+    "amount": {
+     "ar": "8 دولارات",
+     "en": "USD 8"
+    },
+    "basis": {
+     "ar": "توصيل سريع",
+     "en": "Express delivery"
+    },
+    "timing": {
+     "ar": "عند إتمام الشراء",
+     "en": "At checkout"
+    }
+   }
+  ],
+  "outputs": [
+   {
+    "name": {
+     "ar": "تأكيد الطلب والفاتورة",
+     "en": "Order confirmation and invoice"
+    },
+    "validity": {
+     "ar": "لا يوجد",
+     "en": "None"
+    },
+    "when": {
+     "ar": "بعد تأكيد الدفع",
+     "en": "After the payment is confirmed"
+    },
+    "to": {
+     "ar": "المتسوّق، بالبريد الإلكتروني",
+     "en": "The shopper, by email"
+    }
+   }
+  ],
+  "statuses": [
+   {
+    "ar": "بانتظار الدفع",
+    "en": "Awaiting payment"
+   },
+   {
+    "ar": "قيد التجهيز",
+    "en": "Being prepared"
+   },
+   {
+    "ar": "تم الشحن",
+    "en": "Shipped"
+   }
+  ],
+  "assumptions": [
+   {
+    "ar": "الأسعار المعروضة تشمل الضريبة.",
+    "en": "Displayed prices include tax."
+   },
+   {
+    "ar": "يُتاح الإرجاع خلال 14 يوماً من التسليم.",
+    "en": "Returns are accepted within 14 days of delivery."
+   }
+  ],
+  "integrations": {
+   "partners": [
+    {
+     "name": {
+      "ar": "مزوّد الدفع الإلكتروني",
+      "en": "Payment gateway"
+     },
+     "sent": {
+      "ar": "المبلغ، رقم الطلب",
+      "en": "Amount, order number"
+     },
+     "received": {
+      "ar": "نتيجة الدفع",
+      "en": "the payment result"
+     },
+     "readiness": {
+      "ar": "جاهز",
+      "en": "Ready"
+     }
+    },
+    {
+     "name": {
+      "ar": "شركة التوصيل",
+      "en": "Courier service"
+     },
+     "sent": {
+      "ar": "عنوان التوصيل، الوزن",
+      "en": "Delivery address, weight"
+     },
+     "received": {
+      "ar": "رقم الشحنة وحالتها",
+      "en": "the shipment number and status"
+     },
+     "readiness": {
+      "ar": "جاهز",
+      "en": "Ready"
+     }
+    }
+   ],
+   "internal": [
+    {
+     "name": {
+      "ar": "نظام المخزون",
+      "en": "Inventory system"
+     },
+     "description": {
+      "ar": "كميات المنتجات في المستودع",
+      "en": "Product quantities in the warehouse"
+     },
+     "sent": {
+      "ar": "رمز المنتج، الكمية",
+      "en": "Product code, quantity"
+     },
+     "received": {
+      "ar": "الكمية المتاحة",
+      "en": "Available quantity"
+     },
+     "readiness": {
+      "ar": "جاهز",
+      "en": "Ready"
+     }
+    }
+   ]
+  },
+  "slas": [
+   {
+    "stage": {
+     "ar": "تجهيز الطلب",
+     "en": "Prepare order"
+    },
+    "target": {
+     "ar": "خلال 24 ساعة",
+     "en": "Within 24 hours"
+    }
+   }
+  ],
+  "kpis": [
+   {
+    "name": {
+     "ar": "نسبة الطلبات المسلّمة في الموعد",
+     "en": "On-time delivery rate"
+    },
+    "target": {
+     "ar": "95%",
+     "en": "95%"
+    },
+    "measure": {
+     "ar": "شهرياً من نظام الشحن",
+     "en": "Monthly, from the courier data"
+    }
+   }
+  ],
+  "notifications": [
+   {
+    "event": {
+     "ar": "تأكيد الطلب",
+     "en": "Order confirmed"
+    },
+    "channel": {
+     "ar": "بريد إلكتروني",
+     "en": "Email"
+    },
+    "to": {
+     "ar": "المتسوّق",
+     "en": "Shopper"
+    }
+   },
+   {
+    "event": {
+     "ar": "شحن الطلب",
+     "en": "Order shipped"
+    },
+    "channel": {
+     "ar": "رسالة نصية",
+     "en": "SMS"
+    },
+    "to": {
+     "ar": "المتسوّق",
+     "en": "Shopper"
+    }
+   }
+  ],
+  "languages": [
+   "ar",
+   "en"
+  ]
+ }
+}

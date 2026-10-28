@@ -1,0 +1,27 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "business-wrap/profile.schema.json",
+ "title": "Business-Wrap organisation profile",
+ "description": "Everything about the organisation that a document names and the code must never hard-code. Samples: samples/organisation/*.profile.json (fictional). A real profile lives with the user's documents (or .local/), never in this repository.",
+ "type": "object",
+ "required": ["kind", "version", "id", "entity"],
+ "$defs": { "text": { "oneOf": [{ "type": "string" }, { "type": "object", "properties": { "ar": { "type": "string" }, "en": { "type": "string" } } }] } },
+ "properties": {
+  "kind": { "const": "bw-profile" },
+  "version": { "const": 1 },
+  "id": { "type": "string" },
+  "entity": { "$ref": "#/$defs/text", "description": "the organisation's name as a sentence reads it" },
+  "locale": { "enum": ["ar", "en"] },
+  "terms": { "type": "object", "additionalProperties": { "$ref": "#/$defs/text" }, "description": "overrides of the pack glossary: customer, request, customerChannel, staffChannel …" },
+  "codes": { "type": "object", "additionalProperties": { "type": "string" }, "description": "the document-code table, keyed by the process key or name. The code is looked up here (or in the record), never derived; a missing code stops the build" },
+  "codeFormat": { "type": "string", "description": "e.g. ORG-SRS-{code}-01" },
+  "serial": { "type": "object", "properties": { "pattern": { "$ref": "#/$defs/text" }, "reset": { "$ref": "#/$defs/text" }, "shownOn": { "$ref": "#/$defs/text" } } },
+  "control": { "type": "object", "description": "control-table values ({ar,en}): preparedBy (a person or team), owner, classification, status, reviewCycle, documentType" },
+  "versioning": { "type": "object", "properties": { "format": { "type": "string", "description": "V{nn} → V01; {n} → 1" } } },
+  "captions": { "type": "object", "additionalProperties": { "$ref": "#/$defs/text" }, "description": "action captions by action key, when the system's own buttons are known" },
+  "customerActors": { "type": "array", "items": { "type": "string" }, "description": "model actor names that are the customer side" },
+  "registers": { "type": "object", "properties": { "threshold": { "type": "integer", "description": "an option list this long prints its count only (default 30)" } } },
+  "text": { "type": "object", "description": "per-language overrides of any core or pack wording" },
+  "logos": { "type": "object", "description": "logo files for the theme (see bible/06)" }
+ }
+}
