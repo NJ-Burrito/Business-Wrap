@@ -190,7 +190,7 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
       }
       // extension routes: a request that changes anything must come from this server's own page
       if (req.method !== 'GET' && req.method !== 'HEAD' && req.headers.origin && !LOCAL_ORIGIN.test(req.headers.origin)) return send(403, { error: 'origin' });
-      for (const r of await routes) if (await r(req, url, send, ctx)) return;
+      for (const r of await routes) if (await r(req, url, send, ctx, res)) return; // res: for a route that streams (session live connection)
       send(404, { error: 'not found' });
     } catch (e) {
       send(500, { error: String(e.message || e).slice(0, 400) });
