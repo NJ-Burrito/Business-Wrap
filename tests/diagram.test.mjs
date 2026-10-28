@@ -12,6 +12,7 @@ import { buildEditor } from '../engine/build-editor.mjs';
 import { exportPdf, exportDocx, loadTheme, launchOptions, fontsFor, REPO } from '../engine/export.mjs';
 import { applyOps } from '../engine/edits.mjs';
 import { config } from '../engine/config.mjs';
+import { py } from '../engine/py.mjs';
 
 const OUT = path.join(REPO, 'out', 'diagram-test');
 const SHOTS = path.join(REPO, 'out', 'diagram-compare');
@@ -84,7 +85,7 @@ for (const loc of ['ar', 'en']) {
   const docxXml = (doc, name) => {
     const out = path.join(OUT, name);
     exportDocx(doc, { locale: 'en', theme, docxPath: out, embedFonts: false });
-    return spawnSync('python', ['-c', 'import zipfile,sys;print(zipfile.ZipFile(sys.argv[1]).read("word/document.xml").decode())', out], { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' }, maxBuffer: 1 << 26 }).stdout || '';
+    return spawnSync(...py(['-c', 'import zipfile,sys;print(zipfile.ZipFile(sys.argv[1]).read("word/document.xml").decode())', out], []), { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' }, maxBuffer: 1 << 26 }).stdout || '';
   };
   const bentDoc = JSON.parse(JSON.stringify(docEn0));
   bentDoc.chapters[2].sections[0].blocks[0].model = bent;
@@ -140,7 +141,7 @@ try {
   const docx = path.join(OUT, 'sample.ar.docx');
   exportDocx(docAr, { locale: 'ar', theme, docxPath: docx, embedFonts: false });
   const py = 'import zipfile,sys;x=zipfile.ZipFile(sys.argv[1]).read("word/document.xml").decode();print(x.count("<wps:wsp>"),x.count("wpg:wgp"),x.count("<pic:pic"),int("رئيس القسم" in x))';
-  const [shapes, groups, pics, label] = (spawnSync('python', ['-c', py, docx], { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } }).stdout || '0 0 0 0').trim().split(/\s+/).map(Number);
+  const [shapes, groups, pics, label] = (spawnSync(...py(['-c', py, docx], []), { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } }).stdout || '0 0 0 0').trim().split(/\s+/).map(Number);
   check('docx: the diagram is one group of native shapes with its labels, not a picture', shapes > 80 && groups >= 2 && pics === 0 && label === 1, JSON.stringify({ shapes, groups, pics, label }));
 
   // ── the editor: contextual toolbar and in-place editing ──

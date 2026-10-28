@@ -2,8 +2,8 @@
    Its own module, mounted at one point (engine/build-editor.mjs appends it after editor.js, inside the same IIFE,
    so it reads DATA, S, M and ls). Mirrors QA Wrap's update card (extension/ui/update-card.js): remote notes reach
    the page through textContent only, never forced, a version can be skipped, off with one switch.
-   - Auto-check on launch: only when served by engine/serve.mjs (GET /api/update/check, which asks GitHub with
-     the user's gh auth or token: the page never holds a token and never calls GitHub). Non-blocking, at most once
+   - Auto-check on launch: only when served by engine/serve.mjs (GET /api/update/check, which asks the public
+     GitHub release list, no token needed: the page never holds a token and never calls GitHub). Non-blocking, at most once
      per 24 h (bw:update-last) unless «تحقّق الآن» is pressed; silent on any failure, the reason kept for Settings.
    - A newer release → a calm popup: version, release notes (Added / Changed / Fixed, AR+EN headings),
      «حدّث الآن» / «لاحقاً» / «تخطَّ هذا الإصدار» (bw:update-skip).

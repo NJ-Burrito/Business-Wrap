@@ -67,7 +67,7 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
       }
       if (url.pathname === '/api/version' || url.pathname.startsWith('/api/update')) {
         // the editor's Settings page and update popup (editor/update.js, editor/settings.js). The check runs here,
-        // with the user's gh auth or token: the page never holds a token and never calls GitHub itself.
+        // from the public release list, no token needed: the page never holds a token and never calls GitHub itself.
         if (req.headers.origin && !LOCAL_ORIGIN.test(req.headers.origin)) return send(403, { error: 'origin' });
         if (req.method === 'GET' && url.pathname === '/api/version') {
           return send(200, { ...aboutInfo(), version: versionOf(), served: true, mode: fs.existsSync(path.join(installDir, '.git')) ? 'git' : 'zip', checks: updateSettings().check, last, updating: !!(job && !job.finished) });

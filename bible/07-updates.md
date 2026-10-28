@@ -1,17 +1,17 @@
 # 07 · Updates for people and their agents (EN) — pair: 07-updates.ar.md
 
-**Verdict:** one release feed (GitHub releases of the private repo), one cached check (at most one request a day), one line to the user, and nothing installed without consent. The same principle as QA Wrap's updater, reaching the person in the editor and terminal and the agent through SKILL.md, AGENTS.md, MCP and an optional hook.
+**Verdict:** one release feed (GitHub releases of the public repo), one cached check (at most one request a day), one line to the user, and nothing installed without consent. The same principle as QA Wrap's updater, reaching the person in the editor and terminal and the agent through SKILL.md, AGENTS.md, MCP and an optional hook.
 
 ## The feed
 | Piece | What |
 |---|---|
 | `update/source.json` | the repo the check reads |
 | `update/core.mjs` | `parseVersion`, `isNewer` (numeric), `pickRelease` (no drafts, no pre-releases), `isReleaseZipUrl` (this repo's release downloads only), `checkLatest` (ETag, rate-limit backoff), `parseNotes`, `extractNotes` |
-| `update/check.mjs` | token (env `BW_UPDATE_TOKEN`, `.local/update-token`, or `gh auth token`), the once-a-day cache in `.local/update-state.json`, settings in `.local/update.json` (`check`, `hook`), the one-liner (AR/EN) |
+| `update/check.mjs` | optional token (env `BW_UPDATE_TOKEN` or `.local/update-token`; only lifts GitHub's anonymous rate limit), the once-a-day cache in `.local/update-state.json`, settings in `.local/update.json` (`check`, `hook`), the one-liner (AR/EN) |
 | `.github/workflows/release.yml` | a tag `vX.Y.Z` → version gate → notes cut from CHANGELOG → `business-wrap-X.Y.Z.zip` + `.sha256` → release |
 | `update/version-sync.mjs` | CI gate: package, plugin, marketplace, MCP registry, Smithery, READMEs and CHANGELOG say the same version |
 
-Private repo: without a token the check answers "can't check" quietly. A token is read, sent as a Bearer header, never printed, never stored by the tool.
+Public repo: the check and the download need no token and no sign-in. An optional read-only token only lifts the anonymous rate limit (60 requests an hour); it is sent to api.github.com only, never printed, never stored by the tool. The `gh` login is not read.
 
 ## Who sees what
 | Audience | Channel | Behaviour |
@@ -25,12 +25,12 @@ Private repo: without a token the check answers "can't check" quietly. A token i
 
 ## Applying an update
 - Git checkout: refuses on local changes to tracked files, then fetches and fast-forwards; user files are gitignored.
-- Zip install: downloads the release zip (token for the private repo), verifies SHA-256 (GitHub digest or the `.sha256` asset), keeps ONE backup `<folder>.backup-<old>`, swaps product files, rolls back on failure.
+- Zip install: downloads the release zip (no token needed), verifies SHA-256 (GitHub digest or the `.sha256` asset), keeps ONE backup `<folder>.backup-<old>`, swaps product files, rolls back on failure.
 - Never touched: `.local`, `design/custom`, `logos`, `fonts/custom`, `drafts`, `out`, `.git`, `node_modules`.
 - Then user data is migrated by the NEW engine (`*.edits.json` v0 → v1).
 
 ## In the editor (0.11.0)
-The page is a self-contained HTML, often opened from `file://`, and the repository is private: the page never holds a token and never calls GitHub. Everything goes through the local server, which uses the same check and apply as the CLI.
+The page is a self-contained HTML, often opened from `file://`: the page never holds a token and never calls GitHub. Everything goes through the local server, which uses the same check and apply as the CLI.
 
 | Endpoint (`engine/serve.mjs`, 127.0.0.1 only, other origins refused) | What |
 |---|---|
@@ -40,7 +40,7 @@ The page is a self-contained HTML, often opened from `file://`, and the reposito
 | `GET /api/update/progress` | the stage: download → backup → replace → verify → done, or the error and whether it rolled back |
 
 The update, step by step:
-1. **download**: the release zip (gh auth token for the private repo), SHA-256 checked; refused before anything changes on a mismatch.
+1. **download**: the release zip (no token needed), SHA-256 checked; refused before anything changes on a mismatch.
 2. **backup**: one full copy `<folder>.backup-<old>`, user data included (not `node_modules`, not `.git`).
 3. **replace**: every release file is written except into user folders; a file the release dropped is removed only inside the program folders (`CODE_ROOTS`: engine, editor, mcp, update, hooks, bible, assets, tests, security, evals, .claude-plugin, .github, .githooks). Anything else the release does not carry (a document saved at the root, `samples/<yours>`) stays byte-identical.
 4. **verify**: the folder says the new version and its engine loads; user edits files are migrated by the new engine.

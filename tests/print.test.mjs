@@ -15,6 +15,7 @@ import { buildEditor } from '../engine/build-editor.mjs';
 import { launchOptions, REPO } from '../engine/export.mjs';
 import { serve } from '../engine/serve.mjs';
 import { setRunner, parseWindows, parseLpstat, parseLpoptions, printCommand, checkOptions, listPrinters, printPdf } from '../engine/printers.mjs';
+import { py } from '../engine/py.mjs';
 
 const require = createRequire(import.meta.url);
 const AXE = require.resolve('axe-core/axe.min.js');
@@ -47,7 +48,7 @@ const calls = [];
 function mockWin(cmd, args, opt = {}) {
   calls.push({ cmd, args, env: opt.env || {} });
   if (cmd === 'powershell.exe' && !opt.env?.BW_JOB) return Promise.resolve({ status: 0, stdout: winOut, stderr: '' });
-  if (cmd === 'python') return Promise.resolve({ status: 0, stdout: JSON.stringify(['C:/t/p0001.png', 'C:/t/p0002.png']), stderr: '' });
+  if (cmd === 'python' || cmd === 'uv') return Promise.resolve({ status: 0, stdout: JSON.stringify(['C:/t/p0001.png', 'C:/t/p0002.png']), stderr: '' });
   if (cmd === 'powershell.exe') return Promise.resolve({ status: 0, stdout: '{"ok":true,"jobId":42}', stderr: '' });
   return Promise.resolve({ status: 1, stdout: '', stderr: 'unexpected ' + cmd });
 }
@@ -98,7 +99,7 @@ function mockLp(cmd, args, opt = {}) {
   calls.length = 0;
   const r = await printPdf(path.join(OUT, 'none.pdf'), { printer: 'Microsoft Print to PDF', copies: 1, range: '1-2' });
   const ps = calls.find((c) => c.cmd === 'powershell.exe' && c.env.BW_JOB);
-  check('print (Windows, mocked): pages rasterised for the range, job sent, job id read', r.ok && r.jobId === 42 && r.pages === 2 && calls[0].cmd === 'python' && calls[0].args.at(-1) === '[1,2]' && JSON.parse(ps.env.BW_JOB).images.length === 2, JSON.stringify(r));
+  check('print (Windows, mocked): pages rasterised for the range, job sent, job id read', r.ok && r.jobId === 42 && r.pages === 2 && ['python', 'uv'].includes(calls[0].cmd) && calls[0].args.at(-1) === '[1,2]' && JSON.parse(ps.env.BW_JOB).images.length === 2, JSON.stringify(r));
   check('print: no command is run through a shell', fs.readFileSync(path.join(REPO, 'engine', 'printers.mjs'), 'utf8').includes('shell: false') && !/import \{[^}]*\bexec/.test(fs.readFileSync(path.join(REPO, 'engine', 'printers.mjs'), 'utf8')));
   setRunner(mockLp, 'linux');
   calls.length = 0;
@@ -135,7 +136,7 @@ try {
   // engine exports: a real file of the expected type
   {
     const ex = async (b) => { const r = await post('/api/export/file', { doc, service: 'event-permit', locale: 'ar', ...b }); return { s: r.status, j: await r.json() }; };
-    const pages = (f) => Number(spawnSync('python', ['-c', 'import pymupdf,sys;print(len(pymupdf.open(sys.argv[1])))', f], { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } }).stdout.trim());
+    const pages = (f) => Number(spawnSync(...py(['-c', 'import pymupdf,sys;print(len(pymupdf.open(sys.argv[1])))', f], ['pymupdf']), { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } }).stdout.trim());
     const full = await ex({ format: 'pdf' });
     const fullN = full.s === 200 ? pages(full.j.file) : 0;
     check('export PDF: a %PDF file in the exports folder, served under /files/', full.s === 200 && fs.readFileSync(full.j.file).subarray(0, 5).toString() === '%PDF-' && /^\/files\//.test(full.j.url), JSON.stringify(full.j).slice(0, 200));

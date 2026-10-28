@@ -24,6 +24,7 @@ import { systemFonts } from '../engine/fonts.mjs';
 import { sfntFromBytes } from '../engine/fontinfo.mjs';
 import { uploadedFontCss } from '../engine/render.mjs';
 import { config } from '../engine/config.mjs';
+import { py } from '../engine/py.mjs';
 
 const require = createRequire(import.meta.url);
 const AXE = require.resolve('axe-core/axe.min.js');
@@ -54,7 +55,7 @@ function restricted(bytes) {
   for (let i = 0; i < n; i += 1) if (b.toString('latin1', 12 + i * 16, 16 + i * 16) === 'OS/2') b.writeUInt16BE(0x0002, b.readUInt32BE(12 + i * 16 + 8) + 8);
   return b;
 }
-const unzip = (file, part) => spawnSync('python', ['-c', 'import sys,zipfile;z=zipfile.ZipFile(sys.argv[1]);n=z.namelist();sys.stdout.write("\\n".join(n) if sys.argv[2]=="?" else z.read(sys.argv[2]).decode("utf-8"))', file, part], { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } }).stdout || '';
+const unzip = (file, part) => spawnSync(...py(['-c', 'import sys,zipfile;z=zipfile.ZipFile(sys.argv[1]);n=z.namelist();sys.stdout.write("\\n".join(n) if sys.argv[2]=="?" else z.read(sys.argv[2]).decode("utf-8"))', file, part], []), { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } }).stdout || '';
 
 const editorFile = path.join(OUT, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: editorFile, set: 'design-test', watermarkDir: null });

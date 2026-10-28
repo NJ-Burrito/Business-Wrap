@@ -14,6 +14,7 @@ import { applyOps, validateEdits, get } from '../engine/edits.mjs';
 import { sanitizeCss } from '../engine/render.mjs';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { harvestModel } from '../engine/harvest/cli.mjs';
+import { py } from '../engine/py.mjs';
 
 const OUT = path.join(REPO, 'out', 'editable-test');
 fs.rmSync(OUT, { recursive: true, force: true });
@@ -75,7 +76,7 @@ check('PDF: the per-instance colour is painted', hasFill(W.inst));
 
 const docx = path.join(OUT, 'edited.en.docx');
 exportDocx(doc, { locale: 'en', theme, docxPath: docx });
-const x = spawnSync('python', ['-c', 'import zipfile,sys;sys.stdout.write(zipfile.ZipFile(sys.argv[1]).read("word/document.xml").decode("utf-8"))', docx], { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } }).stdout;
+const x = spawnSync(...py(['-c', 'import zipfile,sys;sys.stdout.write(zipfile.ZipFile(sys.argv[1]).read("word/document.xml").decode("utf-8"))', docx], []), { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } }).stdout;
 const xt = flat(x.replace(/<[^>]+>/g, ''));
 for (const [k, w] of Object.entries({ 'table header label': W.header, 'cover code': W.code, title: W.title, subtitle: W.subtitle, 'field name': W.name, 'field value': W.value }))
   check(`DOCX has the edited ${k}`, xt.includes(flat(w)), w);

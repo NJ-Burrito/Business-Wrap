@@ -23,6 +23,7 @@ import { buildEditor } from '../engine/build-editor.mjs';
 import { exportPdf, exportDocx, launchOptions, loadTheme, fontsFor, REPO } from '../engine/export.mjs';
 import { applyOps, validateEdits } from '../engine/edits.mjs';
 import { config } from '../engine/config.mjs';
+import { py } from '../engine/py.mjs';
 
 const OUT = path.join(REPO, 'out', 'test');
 fs.rmSync(OUT, { recursive: true, force: true });
@@ -307,11 +308,11 @@ try {
     fontCheck(`${ed}: PDF fonts are Thmanyah`, /thmanyah/i.test(fonts));
     fontCheck(`${ed}: PDF has no Type 3`, !/Type 3/.test(fonts));
     fontCheck(`${ed}: PDF has no Cairo / Segoe / Arial fallback`, !/cairo|segoe|arial|times|tahoma/i.test(fonts));
-    const imgs = run('python', ['-c', 'import pymupdf,sys\nfor f in sys.argv[1:]:\n d=pymupdf.open(f); print(sum(len(p.get_images()) for p in d), d.page_count)', pdf, editorPdf]).out.trim().split(/\r?\n/).map((l) => l.trim());
+    const imgs = run(...py(['-c', 'import pymupdf,sys\nfor f in sys.argv[1:]:\n d=pymupdf.open(f); print(sum(len(p.get_images()) for p in d), d.page_count)', pdf, editorPdf], ['pymupdf'])).out.trim().split(/\r?\n/).map((l) => l.trim());
     check(`${ed}: watermark absent from export PDF and editor print (no images)`, imgs.every((l) => l.split(' ')[0] === '0'), imgs.join(' | '));
     check(`${ed}: editor print and export have the same page count`, imgs[0].split(' ')[1] === imgs[1].split(' ')[1], imgs.join(' | '));
     const docx = exportDocx(edited, { locale: ed, theme: loadTheme(), docxPath: path.join(OUT, `event-permit.${ed}.docx`) }).docx;
-    const docxXml = run('python', ['-c', 'import zipfile,sys;z=zipfile.ZipFile(sys.argv[1]);print(z.read("word/document.xml").decode())', docx]).out;
+    const docxXml = run(...py(['-c', 'import zipfile,sys;z=zipfile.ZipFile(sys.argv[1]);print(z.read("word/document.xml").decode())', docx], [])).out;
     check(`${ed}: DOCX carries the edited text`, docxXml.includes(ed === 'ar' ? 'للاختبار' : 'Edited text for the test'));
     check(`${ed}: DOCX has no watermark image`, !/<pic:pic/.test(docxXml) || !docxXml.includes('tool-mark'));
     check(`${ed}: no page errors`, errors.length === 0 && errors2.length === 0, [...errors, ...errors2].join(' | '));
@@ -350,7 +351,7 @@ try {
   await pb.emulateMedia({ media: 'print' });
   const bigPdf = path.join(OUT, 'big.editor-print.pdf');
   await pb.pdf({ path: bigPdf, preferCSSPageSize: true, printBackground: true });
-  const bigPages = run('python', ['-c', 'import pymupdf,sys;print(pymupdf.open(sys.argv[1]).page_count)', bigPdf]).out.trim();
+  const bigPages = run(...py(['-c', 'import pymupdf,sys;print(pymupdf.open(sys.argv[1]).page_count)', bigPdf], ['pymupdf'])).out.trim();
   const perf = `pages=${bigPages} load=${loadMs}ms duplicate+render=${timing.duplicate.toFixed(0)}ms undo+render=${timing.undo.toFixed(0)}ms keystroke=${timing.typing.toFixed(1)}ms`;
   fs.writeFileSync(path.join(OUT, 'perf.txt'), perf + '\n');
   const limit = process.env.CI ? 1000 : 300; // shared CI runners are several times slower than a laptop
@@ -390,7 +391,7 @@ try {
     await pa.emulateMedia({ media: 'print' });
     const ap = path.join(OUT, `avatar-print.${ui}.pdf`);
     await pa.pdf({ path: ap, preferCSSPageSize: true, printBackground: true });
-    const imgsA = run('python', ['-c', 'import pymupdf,sys;print(sum(len(p.get_images()) for p in pymupdf.open(sys.argv[1])))', ap]).out.trim();
+    const imgsA = run(...py(['-c', 'import pymupdf,sys;print(sum(len(p.get_images()) for p in pymupdf.open(sys.argv[1])))', ap], ['pymupdf'])).out.trim();
     check(`${ui}: avatar absent from the editor's print`, imgsA === '0', `images=${imgsA}`);
     await ctxA.close();
   }
@@ -490,12 +491,12 @@ try {
     const docU = applyOps(baseU, ef.ops);
     const pdfU = path.join(OUT, `overlay.${uiL}.pdf`);
     await exportPdf(docU, { locale: edU, theme: loadTheme(), pdfPath: pdfU, browser });
-    const rects = JSON.parse(run('python', ['-c', 'import pymupdf,sys,json\nd=pymupdf.open(sys.argv[1]);mm=72/25.4;out=[]\nfor i,p in enumerate(d):\n  for im in p.get_images(full=True):\n    for r in p.get_image_rects(im[0]): out.append([i+1,round(r.x0/mm,1),round(r.y0/mm,1),round(r.width/mm,1)])\nprint(json.dumps(out))', pdfU]).out || '[]');
+    const rects = JSON.parse(run(...py(['-c', 'import pymupdf,sys,json\nd=pymupdf.open(sys.argv[1]);mm=72/25.4;out=[]\nfor i,p in enumerate(d):\n  for im in p.get_images(full=True):\n    for r in p.get_image_rects(im[0]): out.append([i+1,round(r.x0/mm,1),round(r.y0/mm,1),round(r.width/mm,1)])\nprint(json.dumps(out))', pdfU], ['pymupdf'])).out || '[]');
     const onCover = rects.find((r) => r[0] === 1);
     check(`${uiL} UI: logo printed on the cover at its exact position`, !!onCover && Math.abs(onCover[1] - o1.x) < 1 && Math.abs(onCover[2] - o1.y) < 1 && Math.abs(onCover[3] - o1.w) < 1, JSON.stringify({ onCover, want: [o1.x, o1.y, o1.w] }));
     check(`${uiL} UI: inserted image printed in the PDF`, rects.some((r) => r[0] > 1), JSON.stringify(rects));
     const docxU = exportDocx(docU, { locale: edU, theme: loadTheme(), docxPath: path.join(OUT, `overlay.${uiL}.docx`) }).docx;
-    const xmlU = run('python', ['-c', 'import zipfile,sys;z=zipfile.ZipFile(sys.argv[1]);print(sum(z.read(n).decode("utf-8","ignore").count("<wp:anchor") for n in z.namelist() if n.endswith(".xml")), z.read("word/document.xml").decode().count("<pic:pic"))', docxU]).out.trim().split(/\s+/);
+    const xmlU = run(...py(['-c', 'import zipfile,sys;z=zipfile.ZipFile(sys.argv[1]);print(sum(z.read(n).decode("utf-8","ignore").count("<wp:anchor") for n in z.namelist() if n.endswith(".xml")), z.read("word/document.xml").decode().count("<pic:pic"))', docxU], [])).out.trim().split(/\s+/);
     check(`${uiL} UI: DOCX carries the logo as a positioned (anchored) picture and the image`, +xmlU[0] >= 1 && +xmlU[1] >= 1, xmlU.join(' '));
     // calm mode stops motion; reduced motion is honoured separately below
     await act(pu2, 'view');

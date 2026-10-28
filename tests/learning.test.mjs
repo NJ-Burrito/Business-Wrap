@@ -10,6 +10,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { py } from '../engine/py.mjs';
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-learn-'));
 process.env.BW_LEARNING_DIR = path.join(TMP, 'learning'); // before any learning module reads it
@@ -185,7 +186,7 @@ try {
   const exp = path.join(OUT, 'exports', 'event-permit', 'ar');
   const pdf = path.join(exp, 'event-permit.ar.pdf');
   const docx = path.join(exp, 'event-permit.ar.docx');
-  const unzip = (f) => spawnSync('python', ['-c', 'import sys,zipfile;z=zipfile.ZipFile(sys.argv[1]);sys.stdout.write("".join(z.read(n).decode("utf-8","replace") for n in z.namelist() if n.endswith(".xml")))', f], { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } }).stdout || '';
+  const unzip = (f) => spawnSync(...py(['-c', 'import sys,zipfile;z=zipfile.ZipFile(sys.argv[1]);sys.stdout.write("".join(z.read(n).decode("utf-8","replace") for n in z.namelist() if n.endswith(".xml")))', f], []), { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } }).stdout || '';
   const pdfText = fs.existsSync(pdf) ? fs.readFileSync(pdf, 'latin1') : '';
   const docXml = fs.existsSync(docx) ? unzip(docx) : '';
   check('nothing leaks into the PDF or the DOCX (no event id, no journal field, no note)', pdfText.length > 1000 && docXml.length > 1000 && !leak(pdfText) && !leak(docXml) && !docXml.includes('ملاحظة للتعلم'), `pdf=${pdfText.length} docx=${docXml.length}`);
@@ -253,9 +254,9 @@ try {
   fs.writeFileSync(path.join(g, '.gitignore'), '.local/\n');
   const git = (...a) => spawnSync('git', ['-C', g, ...a], { encoding: 'utf8' });
   git('init', '-q');
-  const clean = spawnSync('python', [path.join(g, 'security', 'check.py'), '--tree-only'], { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1', PATH: process.env.PATH } });
+  const clean = spawnSync(...py([path.join(g, 'security', 'check.py'), '--tree-only'], []), { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1', PATH: process.env.PATH } });
   git('add', '-f', '.local/learning/journal.jsonl');
-  const r = spawnSync('python', [path.join(g, 'security', 'check.py'), '--tree-only'], { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } });
+  const r = spawnSync(...py([path.join(g, 'security', 'check.py'), '--tree-only'], []), { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } });
   check('security: a tracked .local/learning journal fails the gate (bw-learning-journal); untracked passes', r.status === 1 && /bw-learning-journal\s+\.local\/learning\/journal\.jsonl/.test(r.stdout) && !/bw-learning-journal/.test(clean.stdout), (r.stdout + r.stderr).split('\n').filter((x) => /learning|finding/.test(x)).join(' / '));
 }
 

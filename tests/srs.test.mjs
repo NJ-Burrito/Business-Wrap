@@ -9,6 +9,7 @@ import { REPO, printHtml, loadTheme } from '../engine/export.mjs';
 import { buildDocuments, buildToDir } from '../engine/srs/cli.mjs';
 import { loadPack, listPacks, coreText, TEMPLATES } from '../engine/srs/compose.mjs';
 import { validatePack, applyCorrections } from '../engine/srs/packs.mjs';
+import { py } from '../engine/py.mjs';
 
 const results = [];
 let failed = 0;
@@ -153,7 +154,7 @@ try {
   check('build writes 01-harvest, 02-evidence, both documents, fill.md', ['01-harvest.json', '02-evidence.json', 'document.ar.json', 'document.en.json', 'fill.md'].every((f) => fs.existsSync(path.join(w.files.dir, f))));
 
   /* 11. no client term in the repository (hashed denylist, tree) */
-  const sec2 = spawnSync('python', [path.join(REPO, 'security', 'check.py'), '--tree-only'], { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } });
+  const sec2 = spawnSync(...py([path.join(REPO, 'security', 'check.py'), '--tree-only'], []), { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } });
   check('security gate (tree): 0 findings', sec2.status === 0, (sec2.stdout || sec2.error?.message || '').trim().split('\n').at(-1));
 } catch (e) {
   check('srs run', false, e.stack?.split('\n').slice(0, 3).join(' / '));

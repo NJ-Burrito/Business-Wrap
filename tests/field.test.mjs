@@ -15,6 +15,7 @@ import { isLanguageSwitch, wrongLanguage } from '../engine/harvest/crawl.mjs';
 import { parseModel } from '../engine/harvest/model.mjs';
 import { launchOptions, exportDocx, exportPdf, loadTheme, fontsFor, REPO, fileStem } from '../engine/export.mjs';
 import { buildSpa } from './fixtures/harvest/spa.mjs';
+import { py } from '../engine/py.mjs';
 
 const OUT = path.join(REPO, 'out', 'field-test');
 fs.rmSync(OUT, { recursive: true, force: true });
@@ -173,14 +174,14 @@ try {
   const { used } = fontsFor(loadTheme());
   if (used.some((c) => c.format === 'truetype')) {
     const docx = exportDocx(enM, { locale: 'en', theme: loadTheme(), docxPath: path.join(OUT, 'embed.en.docx') }).docx;
-    const parts = spawnSync('python', ['-c', 'import zipfile,sys;z=zipfile.ZipFile(sys.argv[1]);print("\\n".join(z.namelist()));print(z.read("word/fontTable.xml").decode("utf-8").count("w:embedRegular"))', docx], { encoding: 'utf8' }).stdout.trim().split(/\r?\n/);
+    const parts = spawnSync(...py(['-c', 'import zipfile,sys;z=zipfile.ZipFile(sys.argv[1]);print("\\n".join(z.namelist()));print(z.read("word/fontTable.xml").decode("utf-8").count("w:embedRegular"))', docx], []), { encoding: 'utf8' }).stdout.trim().split(/\r?\n/);
     check('DOCX: fonts embedded as word/fonts/*.odttf, linked from the font table', parts.filter((p) => /^word\/fonts\/.+\.odttf$/.test(p)).length >= 2 && +parts.at(-1) >= 2, parts.filter((p) => p.startsWith('word/fonts')).join(','));
     const plain = exportDocx(enM, { locale: 'en', theme: loadTheme(), docxPath: path.join(OUT, 'plain.en.docx'), embedFonts: false }).docx;
-    const n = spawnSync('python', ['-c', 'import zipfile,sys;print(sum(1 for n in zipfile.ZipFile(sys.argv[1]).namelist() if n.startswith("word/fonts/")))', plain], { encoding: 'utf8' }).stdout.trim();
+    const n = spawnSync(...py(['-c', 'import zipfile,sys;print(sum(1 for n in zipfile.ZipFile(sys.argv[1]).namelist() if n.startswith("word/fonts/")))', plain], []), { encoding: 'utf8' }).stdout.trim();
     check('DOCX: the toggle turns embedding off', n === '0', n);
   } else lines.push('SKIP  DOCX font embedding (no TrueType Thmanyah cuts on this machine)');
   // the embedding itself, on any TrueType font: the obfuscated part round-trips to the font bytes
-  const probe = spawnSync('python', [path.join(REPO, 'engine', 'docx', 'embed_fonts.py'), '--selftest'], { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } });
+  const probe = spawnSync(...py([path.join(REPO, 'engine', 'docx', 'embed_fonts.py'), '--selftest'], []), { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } });
   check('DOCX embedding: ODTTF obfuscation round-trips (selftest)', probe.status === 0 && /PASS/.test(probe.stdout), (probe.stdout + probe.stderr).trim().slice(-200));
 
   // ── 7. the server starts through a junction / symlink and fails loudly ──

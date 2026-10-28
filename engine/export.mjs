@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { py } from './py.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { renderDocument, chromeTemplates, relaxTallGroups, relaxArgs, PAGE, designTheme, confidentialText, uploadedFontCss, faceWeights } from './render.mjs';
 import { applyOps, migrate } from './edits.mjs';
@@ -156,7 +157,7 @@ export async function exportPdf(doc, { locale, theme, pdfPath, browser: shared }
   if (pick) { fs.mkdirSync(OUT_TMP, { recursive: true }); folioTmp = path.join(OUT_TMP, `folio-${process.pid}-${Date.now()}.ttf`); fs.writeFileSync(folioTmp, pick.bytes); }
   const folioFace = used.find((c) => c.family === display && c.weight === 700 && c.format === 'truetype') || (folioTmp && { file: folioTmp }) || used.find((c) => c.format === 'truetype');
   const anchor = confidentialText(doc, theme, labels, locale);
-  const r = spawnSync('python', [path.join(HERE, 'pdf_post.py'), pdfPath, folioFace?.file || '', anchor, locale === 'ar' ? 'rtl' : 'ltr'], {
+  const r = spawnSync(...py([path.join(HERE, 'pdf_post.py'), pdfPath, folioFace?.file || '', anchor, locale === 'ar' ? 'rtl' : 'ltr']), {
     encoding: 'utf8',
     env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
   });
@@ -174,7 +175,7 @@ export async function pageThumbs(doc, { locale, theme, dpi = 36 }) {
   const pdfPath = path.join(os.tmpdir(), `bw-thumbs-${process.pid}-${Date.now()}.pdf`);
   try {
     await exportPdf(doc, { locale, theme, pdfPath });
-    const py = [
+    const code = [
       'import pymupdf, sys, json, base64',
       'd = pymupdf.open(sys.argv[1]); out = []',
       'for i, p in enumerate(d):',
@@ -184,7 +185,7 @@ export async function pageThumbs(doc, { locale, theme, dpi = 36 }) {
       '    out.append({"n": i + 1, "png": "data:image/png;base64," + base64.b64encode(pix.tobytes("png")).decode(), "first": " | ".join(lines[:3]), "wide": p.rect.width > p.rect.height})',
       'sys.stdout.write(json.dumps(out))',
     ].join('\n');
-    const r = spawnSync('python', ['-c', py, pdfPath, String(dpi)], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, env: { ...process.env, PYTHONUTF8: '1' } });
+    const r = spawnSync(...py(['-c', code, pdfPath, String(dpi)]), { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, env: { ...process.env, PYTHONUTF8: '1' } });
     if (r.status !== 0) throw new Error(`thumbnails failed: ${r.stderr}`);
     return JSON.parse(r.stdout);
   } finally {

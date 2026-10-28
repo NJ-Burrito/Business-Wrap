@@ -10,6 +10,7 @@ import { spawnSync } from 'node:child_process';
 import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { launchOptions, REPO } from '../engine/export.mjs';
+import { py } from '../engine/py.mjs';
 
 const OUT = path.join(REPO, 'out', 'ux');
 fs.mkdirSync(OUT, { recursive: true });
@@ -342,7 +343,7 @@ try {
     await mode('continuous');
     await settle(page, 400);
     const pdfFlow = await page.pdf({ preferCSSPageSize: true, printBackground: true });
-    const pages = (b) => { const f = path.join(OUT, 'count.pdf'); fs.writeFileSync(f, b); return +spawnSync('python', ['-c', 'import pymupdf,sys;print(len(pymupdf.open(sys.argv[1])))', f], { encoding: 'utf8' }).stdout.trim(); };
+    const pages = (b) => { const f = path.join(OUT, 'count.pdf'); fs.writeFileSync(f, b); return +spawnSync(...py(['-c', 'import pymupdf,sys;print(len(pymupdf.open(sys.argv[1])))', f], ['pymupdf']), { encoding: 'utf8' }).stdout.trim(); };
     check(`A6 ${ui}: the editor prints the same number of pages in paged and continuous view`, pages(pdfPaged) === pages(pdfFlow) && pages(pdfFlow) > 3, `${pages(pdfPaged)} vs ${pages(pdfFlow)}`);
     check(`A6 ${ui}: no page errors`, !errors.length, errors.join(' | '));
     await ctx.close();

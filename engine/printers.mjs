@@ -22,6 +22,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { exportPdf, exportDocx, printHtml, loadTheme, fileStem } from './export.mjs';
 import { config } from './config.mjs';
+import { py } from './py.mjs';
 
 /** The command runner: (cmd, args, {env, input, timeout}) → Promise<{status, stdout, stderr}>. Tests swap it. */
 const defaultRun = (cmd, args, { env, timeout = 120000 } = {}) => new Promise((ok) => {
@@ -187,8 +188,8 @@ ConvertTo-Json -Compress @{ ok = $true; jobId = $id }`;
 
 /** PDF pages → PNG files (300 dpi, the selected range only). */
 async function rasterise(pdf, range, dir) {
-  const py = 'import pymupdf,sys,json\nd=pymupdf.open(sys.argv[1]);sel=json.loads(sys.argv[3]) or list(range(1,len(d)+1));out=[]\nfor n in sel:\n    if 1<=n<=len(d):\n        f=sys.argv[2]+"/p%04d.png"%n;d[n-1].get_pixmap(dpi=300).save(f);out.append(f)\nprint(json.dumps(out))';
-  const r = await RUN('python', ['-c', py, pdf, dir, JSON.stringify(range ? pagesOf(range) : [])], { env: { PYTHONUTF8: '1' } });
+  const code = 'import pymupdf,sys,json\nd=pymupdf.open(sys.argv[1]);sel=json.loads(sys.argv[3]) or list(range(1,len(d)+1));out=[]\nfor n in sel:\n    if 1<=n<=len(d):\n        f=sys.argv[2]+"/p%04d.png"%n;d[n-1].get_pixmap(dpi=300).save(f);out.append(f)\nprint(json.dumps(out))';
+  const r = await RUN(...py(['-c', code, pdf, dir, JSON.stringify(range ? pagesOf(range) : [])]), { env: { PYTHONUTF8: '1' } });
   if (r.status !== 0) throw new Error(`rasterise failed: ${r.stderr.slice(-300)}`);
   return JSON.parse(r.stdout.trim());
 }
@@ -215,8 +216,8 @@ export async function printPdf(file, opts, { output = '', docName } = {}) {
 
 /** Cuts a PDF to a page range in place (PyMuPDF select). */
 async function cutPdf(pdf, range) {
-  const py = 'import pymupdf,sys,json\nd=pymupdf.open(sys.argv[1]);sel=[n-1 for n in json.loads(sys.argv[2]) if 1<=n<=len(d)]\nif not sel: sys.exit("no such pages")\nd.select(sel);d.save(sys.argv[1]+".cut");d.close()';
-  const r = await defaultRun('python', ['-c', py, pdf, JSON.stringify(pagesOf(range))], { env: { PYTHONUTF8: '1' } });
+  const code = 'import pymupdf,sys,json\nd=pymupdf.open(sys.argv[1]);sel=[n-1 for n in json.loads(sys.argv[2]) if 1<=n<=len(d)]\nif not sel: sys.exit("no such pages")\nd.select(sel);d.save(sys.argv[1]+".cut");d.close()';
+  const r = await defaultRun(...py(['-c', code, pdf, JSON.stringify(pagesOf(range))]), { env: { PYTHONUTF8: '1' } });
   if (r.status !== 0) throw Object.assign(new Error(`page range: ${r.stderr.trim().slice(-200)}`), { code: 400 });
   fs.renameSync(pdf + '.cut', pdf);
 }
