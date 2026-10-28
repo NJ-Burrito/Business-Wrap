@@ -1,25 +1,44 @@
-# Contributing (EN) — pair: CONTRIBUTING.ar.md
+# Contributing (EN) · pair: CONTRIBUTING.ar.md
 
-**Verdict:** small branches, gates green, both languages updated together, nothing from a client.
+## ⚡ In 10 seconds
 
-## Before the first commit
+🌿 Small branches, one topic each.
+
+✅ Gates green before merge.
+
+🔀 Arabic and English change together.
+
+🔒 Nothing from a client, ever.
+
+**Jump to:** [🏁 Before the first commit](#-before-the-first-commit) · [📋 Every change](#-every-change) · [📝 Commit message](#-commit-message) · [🔰 Branch protection](#-branch-protection-on-main)
+
+## 🏁 Before the first commit
+
 1. `git config core.hooksPath .githooks` (pre-commit: tree gate; pre-push: full gate with history).
 2. `$env:PYTHONUTF8 = "1"`; Python packages via `uv`, never pip.
 
-## Every change
+## 📋 Every change
+
 | Rule | Why |
 |---|---|
 | One topic per branch; PR into `main` | review stays readable |
 | AR and EN files change in the same commit | the pair is the unit |
 | No hex, pt or mm typed into templates; use tokens | drift starts with one literal |
-| No client content, credentials, local paths or font binaries | `security/check.py` fails the build |
+| No client content, credentials, local paths or font binaries (only the bundled `fonts/nj-fonts/` is allowed) | `security/check.py` fails the build |
 | Contract change (`bible/contracts/*`) = version bump + CHANGELOG entry + bible update | the editor and exporters depend on it |
 | Deletions to the recycle bin, never `rm -rf` | recoverable |
 
-## Commit message
+## 📝 Commit message
+
 Imperative, scoped: `palette: add success-wash role`. No client names in messages (the gate scans them).
 
-## Branch protection on `main` (applied by the owner after the first push)
+## 🔰 Branch protection on `main`
+
+🔓 The repo is public, so GitHub branch protection and rulesets are available. The owner applies these settings:
+
+<details>
+<summary>📋 The settings</summary>
+
 | Setting | Value |
 |---|---|
 | Require a pull request before merging | on, 1 approval, dismiss stale approvals |
@@ -32,11 +51,10 @@ Imperative, scoped: `palette: add success-wash role`. No client names in message
 
 Apply with `gh api -X PUT repos/<owner>/<repo>/branches/main/protection` and a JSON body of the settings above, or in Settings → Branches.
 
-### On the free plan: hooks + CI are the protection
-Checked 2026-10-27: for a private repository on the free plan GitHub refuses both
-branch protection and repository rulesets (`gh api repos/<owner>/<repo>/rulesets`
-→ 403 "Upgrade to GitHub Pro or make this repository public"). Until the plan
-changes, the same guarantees come from:
+</details>
+
+### 🪝 Hooks + CI back it up
+The same guarantees also come from local hooks and CI (while the repo was private on the free plan, these were the only protection):
 
 | Guarantee | Substitute |
 |---|---|

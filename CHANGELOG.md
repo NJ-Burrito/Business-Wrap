@@ -17,13 +17,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 - 🔌 The Claude Code plugin's MCP server now starts on a fresh machine. / خادم MCP في الإضافة يعمل الآن على جهاز جديد.
 - 🔤 Thmanyah ships as a fallback, so PDFs print with the right fonts out of the box. / خطوط ثمانية مضمنة احتياطيًا، فتطبع ملفات PDF بالخط الصحيح مباشرة.
 - 📖 README pair rewritten for visitors. / إعادة كتابة ملفي README للزوار.
+- 🐍 Fresh machine needs only Node, uv and Chrome or Edge: no pip installs. / الجهاز الجديد يحتاج Node وuv وChrome أو Edge فقط، دون pip.
 
 ### Added / أضيف
 - 🔤 **Bundled fallback fonts** in `fonts/nj-fonts/thmanyah/` (Serif Text, Serif Display: otf, ttf, woff2; Sans: otf, woff2). Used only when no other copy is found: `BW_FONT_DIR`, `.local/config.json` and the system font folder still win. These files are under the Thmanyah licence, not MIT. / خطوط احتياطية مضمنة في `fonts/nj-fonts/thmanyah/`، تُستخدم فقط إن لم توجد نسخة أخرى؛ ومجلد المستخدم وإعداداته وخطوط النظام لها الأولوية. هذه الملفات تحت رخصة ثمانية، لا MIT.
 - ⚖️ **MIT licence** (`LICENSE`) and licence fields in the package, plugin and marketplace. / رخصة MIT وحقول الرخصة في الحزمة والإضافة والسوق.
 
 ### Changed / تغيّر
-- 📖 **README pair rewritten** for the public repo; private wording removed from the docs. / إعادة كتابة ملفي README للمستودع العام، وحذف الصياغات الخاصة من الوثائق.
+- 📖 **README pair rewritten** for the public repo: an answer in 10 seconds, prerequisites with check commands, jump links, long detail folded. The same pass on the CONTRIBUTING, fonts, MCP and guide pairs; private-repo wording removed from the docs. / إعادة كتابة ملفي README للمستودع العام: الجواب في عشر ثوانٍ، والمتطلبات مع أوامر التحقق، وروابط القفز، والتفاصيل الطويلة مطوية. والمعالجة نفسها لأزواج المساهمة والخطوط وMCP والدليل، وحذف صياغات المستودع الخاص من الوثائق.
+- 🐍 **Python steps run through uv** with the packages each step needs (`engine/py.mjs`: pymupdf for PDF finishing and thumbnails, python-docx and lxml for DOCX). Without uv, plain `python` runs and one message names the missing tool. / خطوات Python تعمل عبر uv مع حزم كل خطوة؛ ودون uv يعمل `python` العادي مع رسالة واحدة توضح الناقص.
+- 🔓 **Updater for the public repo**: no token, no sign-in, the `gh` login is no longer read; an optional read-only token only lifts GitHub's rate limit. Downloads are checked hop by hop; the update notice names `/plugin marketplace update`. `release.yml` actions pinned by SHA. / المحدّث للمستودع العام: دون رمز ولا تسجيل دخول، وتحقق من كل قفزة في التنزيل، والإشعار يذكر `/plugin marketplace update`.
 - 🔐 `security/check.py` and `security/gitleaks.toml` allow font binaries at exactly one path, `fonts/nj-fonts/thmanyah/<family>/<otf|ttf|woff2>/`; the rule still fails everywhere else, in the tree and in history. / بوابة الأمان تسمح بملفات الخط في مسار واحد فقط، وتبقى القاعدة سارية في كل مكان آخر.
 - 🧩 `fonts/manifest.json` gains `${BW_ROOT}` (the repo or plugin root) and lists `fonts/nj-fonts` last. / ملف الخطوط يضيف `${BW_ROOT}` ويضع `fonts/nj-fonts` في آخر القائمة.
 

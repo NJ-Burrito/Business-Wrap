@@ -20,5 +20,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Third-party fonts (Thmanyah and others) are not included and are not covered by
-this licence. Obtain them from their publisher under the publisher's own licence.
+Fonts are not covered by this licence. The folder fonts/nj-fonts/ holds the
+owner's licensed copy of the Thmanyah fonts, bundled as a fallback; those files
+remain under the Thmanyah licence, not MIT. Any other font keeps its publisher's
+own licence.

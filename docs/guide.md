@@ -1,4 +1,16 @@
-# Guide: install, quickstart, troubleshooting, backup, hand-over (EN) — pair: guide.ar.md
+# Guide: install, quickstart, troubleshooting, backup, hand-over (EN) · pair: guide.ar.md
+
+## ⚡ In 10 seconds
+
+✅ Install Node 20+, uv and Chrome or Edge. No pip installs: uv brings the Python packages.
+
+🚀 `npm ci`, then `npm run sample`, then `npm run serve`.
+
+🔤 Fonts work out of the box (bundled Thmanyah fallback); your own copy wins.
+
+💾 Keep three files per document: the document JSON, `edits.json`, `theme.json`.
+
+**Jump to:** [1. Requirements](#1-requirements-tested-versions-2026-10-27) · [2. Quickstart](#2-quickstart-windows-step-by-step) · [3. Troubleshooting](#3-troubleshooting) · [4. Backup](#4-backup-and-restore-edits-and-drafts) · [5. Hand-over](#5-handing-a-document-to-a-colleague)
 
 ## 1. Requirements (tested versions, 2026-10-27)
 | Tool | Version tested | Why |

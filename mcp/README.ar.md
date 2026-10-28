@@ -1,6 +1,16 @@
 <div dir="rtl">
 
-# خادم MCP لـ Business-Wrap (عربي) — الملف المقابل: README.md
+# خادم MCP لـ Business-Wrap (عربي) · الملف المقابل: README.md
+
+## ⚡ في عشر ثوانٍ
+
+🔌 أمر واحد: `claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.1 business-wrap-mcp`
+
+✅ يحتاج Node 20 فأحدث وuv وgit، وChrome أو Edge لملف PDF.
+
+🔒 محلي فقط: لا منفذ شبكة، ويقرأ ويكتب المسارات التي تعطيه إياها فقط.
+
+🔤 الخطوط تعمل من أول مرة (نسخة ثمانية الاحتياطية المضمّنة)، و`BW_FONT_DIR` له الأولوية.
 
 خادم MCP عبر stdio فوق محرك Business-Wrap. محلي فقط: يقرأ ويكتب المسارات التي تعطيه إياها ولا يفتح أي منفذ شبكة. ويجب أن تنتهي المخرجات بالامتداد المذكور.
 

@@ -32,7 +32,7 @@ export function mismatches(tag) {
   const srv = j('mcp/server.json');
   want('mcp/server.json version', srv.version);
   for (const p of srv.packages || []) want(`mcp/server.json package ${p.identifier}`, p.version);
-  for (const f of ['mcp/smithery.yaml', 'mcp/README.md', 'mcp/README.ar.md']) for (const m of txt(f).matchAll(/business-wrap@(\d+\.\d+\.\d+)|Business-Wrap#v(\d+\.\d+\.\d+)/g)) want(f, m[1] || m[2]);
+  for (const f of ['mcp/smithery.yaml', 'mcp/README.md', 'mcp/README.ar.md', 'README.md', 'README.ar.md']) for (const m of txt(f).matchAll(/business-wrap@(\d+\.\d+\.\d+)|Business-Wrap#v(\d+\.\d+\.\d+)/g)) want(f, m[1] || m[2]);
   if (!extractNotes(txt('CHANGELOG.md'), v)) bad.push(`CHANGELOG.md has no section for ${v}`);
   if (tag && tag.replace(/^v/, '') !== v) bad.push(`tag ${tag} does not match package.json ${v}`);
   return { version: v, bad };

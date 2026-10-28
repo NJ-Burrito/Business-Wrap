@@ -1,4 +1,14 @@
-# Business-Wrap MCP server (EN) — pair: README.ar.md
+# Business-Wrap MCP server (EN) · pair: README.ar.md
+
+## ⚡ In 10 seconds
+
+🔌 One command: `claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.11.1 business-wrap-mcp`
+
+✅ Needs Node 20+, uv, git, and Chrome or Edge for the PDF.
+
+🔒 Local only: no network port, it reads and writes only the paths you give it.
+
+🔤 Fonts work out of the box (bundled Thmanyah fallback); `BW_FONT_DIR` wins.
 
 A stdio MCP server over the Business-Wrap engine. Local only: it reads and writes the paths you give it and opens no network port. Outputs must end in the stated extension.
 
