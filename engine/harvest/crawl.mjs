@@ -363,12 +363,13 @@ async function fill(page, fields, cfg, outDir) {
 }
 
 /** Option by option, which hidden fields a choice reveals, and which attachment-list entries it adds (`doc:<entry>`). */
-const ATTACH_LIST = /(اسم|نوع)s*المرفق|attachments*(name|type)|documents*(name|type)/i;
+const ATTACH_LIST = /(اسم|نوع)\s*(ال)?مرفق|attachment\s*(name|type)|document\s*(name|type)/i;
 async function conditions(page, fields, scope) {
   const out = {};
   const visibleKeys = async () => new Set((await readFields(page, scope)).filter((x) => x.visible).map((x) => x.key));
   // the attachment picker re-read after every choice: §2.6 is the union of what each branch asks for
-  const docsNow = async () => new Set((await readFields(page, scope)).filter((x) => x.visible && x.type === 'select' && ATTACH_LIST.test(x.label || '')).flatMap((x) => x.options || []));
+  // (a PrimeNG picker lists its options only in the overlay: open it, read, close)
+  const docsNow = async () => new Set((await primeOptions(page, (await readFields(page, scope)).filter((x) => x.visible && x.type === 'select' && ATTACH_LIST.test(x.label || '')))).flatMap((x) => x.options || []));
   if (fields.some((x) => x.type === 'select' && ATTACH_LIST.test(x.label || ''))) out.__branchRead = true;
   // a language switcher is never cycled: choosing an option would switch the portal's language
   for (const f of fields.filter((x) => x.visible && (x.type === 'select' || x.type === 'radio') && !isLanguageSwitch(x.options))) {

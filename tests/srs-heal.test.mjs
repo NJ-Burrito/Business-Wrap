@@ -16,6 +16,8 @@ import { parsePrevious, popplerBin } from '../engine/harvest/previous.mjs';
 import { recordFromPage, walkFromScreens } from '../engine/harvest/record.mjs';
 import { parseBpmn, humanGraph } from '../engine/harvest/model.mjs';
 import { DIAGRAM } from '../engine/diagram.mjs';
+import http from 'node:http';
+import { crawl } from '../engine/harvest/crawl.mjs';
 
 const S = (...p) => path.join(REPO, 'samples', ...p);
 const FX = (...p) => path.join(REPO, 'tests', 'fixtures', 'srs', ...p);
@@ -120,6 +122,19 @@ export async function run(check) {
     const r2 = await buildDocuments({ ...EP, harvest: h2 });
     const cr = r2.model.documents.find((d) => d.name.ar === 'سجل تجاري');
     check('A7 docs-per-branch: FLAG without a branch read; with one, the branch document joins §2.6 with its condition', H(r, 'docs-per-branch').status === 'FLAG' && r.evidence.openQuestions.some((q) => q.id === 'OQ-DOC-BRANCH') && cr?.shownWhen?.[0] === 'صفة مقدم الطلب = منشأة' && H(r2, 'docs-per-branch').status === 'PASS', `${H(r, 'docs-per-branch').status} / ${H(r2, 'docs-per-branch').status}`);
+  }
+  // A7 live shape: the crawl walks a local page with a PrimeNG-style radio group and an «اسم المرفق» dropdown whose
+  // overlay list depends on the radio; each branch's own attachments come back with their condition (dry run)
+  {
+    const dir = FX('branch-site');
+    const srv = http.createServer((q, res) => { const f = path.join(dir, decodeURIComponent(q.url.split('?')[0])); if (!f.startsWith(dir) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); res.end(); return; } res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); res.end(fs.readFileSync(f)); });
+    await new Promise((ok) => srv.listen(0, '127.0.0.1', ok));
+    let db = null; let err = '';
+    try {
+      const cr = await crawl({ name: 'branch-site', headed: false, delayMs: 30, idleMs: 500, outDir: path.join(tmp, 'a7-crawl'), languages: [{ code: 'ar', startUrl: `http://127.0.0.1:${srv.address().port}/index.html` }], openForm: '#start', next: 'button[type=submit]' }, { log: () => {} });
+      db = cr.raw.languages.ar.steps[0]?.docBranches;
+    } catch (e) { err = e.message; } finally { srv.close(); }
+    check('A7 crawl on a live-shaped page: per-branch attachments read from the dropdown overlay, the common one left out', db?.['سجل تجاري']?.[0] === 'نوع مقدم الطلب = منشأة' && db?.['شهادة عدم محكومية']?.[0] === 'نوع مقدم الطلب = فرد' && Object.keys(db).length === 3 && !db['صورة الهوية'], err || JSON.stringify(db));
   }
   // A8: an unmasked output preview never prints; an output story with no picture raises OQ-OUTPUT-PREVIEW
   {
