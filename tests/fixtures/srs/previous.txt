@@ -7,3 +7,12 @@ Example licensing regulation No. 3 of 2019
 2.11 Users and roles
 FR-01 FR-02 FR-03 FR-04 FR-05 FR-06 FR-07 FR-08 FR-09 FR-10 FR-11 FR-12 FR-13 FR-14 FR-15 FR-16 FR-17 FR-18 FR-19 FR-20 FR-21 FR-22 FR-23 FR-24 FR-25 FR-26 FR-27 FR-28 FR-29 FR-30
 US-01 US-02 US-03
+2.7 Service outputs
+Name	Validity
+Example permit (PDF)	One year
+2.13 Service partner integrations
+Name | Data sent | Data received | Readiness
+Example land registry | Plot number | Plot owner | Ready
+2.14 Internal data sources
+None
+3.1 Requirements

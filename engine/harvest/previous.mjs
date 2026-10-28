@@ -2,7 +2,7 @@
 // then what the new document must not say less than (counts per area), the revisions lineage, the
 // preparer, and the legislation lines. A heuristic reader: what it cannot find it leaves out, never guesses.
 //
-//   readPrevious(file) → { kind: 'bw-previous', ref, counts, revisions, preparedBy, legislation, text }
+//   readPrevious(file) → { kind: 'bw-previous', ref, counts, revisions, preparedBy, legislation, integrations?, outputs?, text }
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -55,7 +55,42 @@ export function parsePrevious(text, ref = 'previous document') {
   const li = lines.findIndex((l) => /^(\d+\.\d+\s*)?(التشريعات|Governing legislation|Legislation)/i.test(l));
   const legislation = [];
   if (li >= 0) for (const l of lines.slice(li + 1)) { if (/^\d+\.\d+\s/.test(l)) break; if (l.length > 3) legislation.push({ name: l }); }
-  return { kind: 'bw-previous', version: 1, ref, counts, revisions, ...(prep ? { preparedBy: prep[1].trim() } : {}), legislation };
+  // integrations and outputs: the rows under each card heading (cells split on tabs, pipes or wide gaps)
+  const integrations = {};
+  for (const [k, re] of Object.entries(SECTIONS)) {
+    const rows = rowsUnder(lines, re);
+    if (rows) integrations[k] = rows.map((cells) => Object.fromEntries(COLS[k].map((c, i) => [c, cells[i]]).filter(([, v]) => v)));
+  }
+  const outputs = integrations.outputs;
+  delete integrations.outputs;
+  return { kind: 'bw-previous', version: 1, ref, counts, revisions, ...(prep ? { preparedBy: prep[1].trim() } : {}), legislation, ...(Object.keys(integrations).length ? { integrations } : {}), ...(outputs ? { outputs } : {}) };
+}
+
+/* the card's integration and output headings (e-service pack titles, both languages, and the common variants) */
+const SECTIONS = {
+  internal: /^(?:الربط|التكامل) الداخلي|^Internal (?:system )?integrations?/i,
+  services: /^(?:الربط|التكامل) مع خدمات|^Integrations? with platform services|^Platform services/i,
+  dataSources: /^مصادر البيانات|^(?:Internal )?data sources/i,
+  partners: /^(?:الربط|التكامل) مع (?:ال)?شركاء|^(?:Service )?partner integrations?/i,
+  outputs: /^(?:مخرجات الخدمة|المخرجات)$|^(?:Service )?outputs$/i,
+};
+const COLS = { internal: ['name', 'description', 'sent', 'received', 'readiness'], services: ['name', 'sent', 'received'], dataSources: ['name', 'description', 'received', 'readiness'], partners: ['name', 'sent', 'received', 'readiness'], outputs: ['name', 'validity'] };
+const HEADER = /^(?:اسم|الاسم|الجهة|المخرج|Name|System|Service|Partner|Output|Source)(?=\s|$)/i;
+const NONE = /^(?:لا يوجد|لا ينطبق|None|N\/A|Not applicable)\.?$/i;
+/** The rows under the first heading matching `re`, up to the next numbered heading or blank-run; null when absent. */
+function rowsUnder(lines, re) {
+  const at = lines.findIndex((l) => l.length < 70 && re.test(l.replace(/^\d+(?:\.\d+)*\s*/, '')));
+  if (at < 0) return null;
+  const rows = [];
+  for (const l of lines.slice(at + 1)) {
+    if (/^\d+(?:\.\d+)*\s+\S/.test(l)) break;
+    if (Object.values(SECTIONS).some((r) => r.test(l))) break;
+    if (NONE.test(l)) return [];
+    const cells = l.split(/\t|\s*\|\s*|\s{2,}/).map((c) => c.trim()).filter(Boolean);
+    if (!cells.length || (HEADER.test(cells[0]) && !rows.length)) continue;
+    rows.push(cells);
+  }
+  return rows;
 }
 
 export const readPrevious = (file) => ({ ...parsePrevious(textOfFile(file), path.basename(file)) });

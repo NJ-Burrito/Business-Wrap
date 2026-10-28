@@ -97,6 +97,11 @@ export async function run(check) {
     const rec = readJson(EP.record); delete rec.facts.legislation; delete rec.facts.earlierIssue;
     const r = await buildDocuments({ ...EP, record: rec, previous: FX('previous.txt') });
     check('A5 previous document: 30 FR / 3 US counted, revisions + preparer + legislation taken, reflect FAILs on fewer requirements', prev.counts.requirements === 30 && prev.counts.stories === 3 && r.docs.ar.revisions.length === 3 && r.docs.en.control.preparedBy === 'Example Analysis Unit' && r.model.sources.legislation?.kind === 'document' && H(r, 'reflect').status === 'FAIL' && /requirements/.test(H(r, 'reflect').detail), H(r, 'reflect').detail);
+    // integrations + outputs read from the old card when the record is silent; a header row and «None» are not rows
+    const rec2 = readJson(EP.record); delete rec2.facts.integrations; delete rec2.facts.outputs;
+    const r2 = await buildDocuments({ ...EP, record: rec2, previous: FX('previous.txt') });
+    const pt = r2.model.integrations.partners;
+    check('A5 previous document: partner integration + output read from the old card (header row skipped, «None» = no rows)', prev.integrations?.partners?.length === 1 && prev.integrations.dataSources?.length === 0 && prev.outputs?.[0]?.name === 'Example permit (PDF)' && pt.length === 1 && pt[0].received === 'Plot owner' && r2.model.sources['integrations.partners']?.kind === 'document' && r2.model.outputs[0]?.validity === 'One year', JSON.stringify({ i: prev.integrations, o: prev.outputs }));
   }
   // A6: round-robin assignee → autoAssign; drawn as an assignment step, in ch3 and in ch6; flow-fidelity FAILs when the step is dropped
   {
