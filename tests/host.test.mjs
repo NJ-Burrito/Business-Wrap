@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import net from 'node:net';
 import { spawnSync } from 'node:child_process';
 import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
@@ -18,6 +19,10 @@ process.env.BW_WORKSPACE = path.join(tmp, 'ws');
 process.env.BW_BROWSER_STUB = path.join(tmp, 'browser.log');
 fs.mkdirSync(process.env.BW_WORKSPACE);
 const H = await import('../engine/host.mjs');
+// free ports, not 4371/4391: a fixed port collides with a second copy of this suite (parallel agents/worktrees) and with a live host
+const freePort = () => new Promise((res) => { const s = net.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => res(p)); }); });
+const PORT_A = await freePort();
+const PORT_B = await freePort();
 
 let failed = 0;
 const out = [];
@@ -39,7 +44,7 @@ const tabPage = async (ctx, url) => {
 let h = null;
 try {
   // 1. start, three tabs with an edit each, close all three
-  h = await H.start({ editor, port: 4371, open: false });
+  h = await H.start({ editor, port: PORT_A, open: false });
   const v = await fetch(h.url + 'api/version');
   check('start → the detached server answers /api/version', v.status === 200 && H.status().running && H.status().pid === h.pid, String(v.status));
   let ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
@@ -58,7 +63,7 @@ try {
   check('3 flushed tab files, each with its last edit', files.length === 3 && [0, 1, 2].every((i) => texts.some((s) => s.includes(`تبويب ${i} آخر تعديل`))) && fs.existsSync(path.join(sessions, run1, 'run.json')), `${files.length} files; ${texts.map((s) => s.slice(0, 120)).join(' | ')}`);
 
   // 2. relaunch → the popup lists 3 → resume: one command line with the 3 URLs
-  h = await H.start({ editor, port: 4371, open: false });
+  h = await H.start({ editor, port: PORT_A, open: false });
   ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
   let p = await tabPage(ctx, h.url);
   await p.waitForFunction(() => document.documentElement.dataset.bwResume === 'asked', null, { timeout: 8000 }).catch(() => {});
@@ -91,7 +96,7 @@ try {
   check('a resumed run of 3 is still 3 tabs at the next shutdown (the asking tab is not an extra one)', n2 === 3, `${run2}: ${n2}`);
 
   // 3. relaunch → New work → the run is archived
-  h = await H.start({ editor, port: 4371, open: false });
+  h = await H.start({ editor, port: PORT_A, open: false });
   ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
   p = await tabPage(ctx, h.url);
   await p.waitForFunction(() => document.documentElement.dataset.bwResume === 'asked', null, { timeout: 8000 }).catch(() => {});
@@ -106,7 +111,7 @@ try {
 
   // 5. review 2 row 9: typing right before the close is kept (a saved document: its entry is far past a beacon's 64 KB),
   //    a tab closed earlier does not come back, and the profile survives a new port and an empty browser profile
-  h = await H.start({ editor, port: 4371, open: false });
+  h = await H.start({ editor, port: PORT_A, open: false });
   ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
   await ctx.addInitScript(() => { try { localStorage.setItem('bw:profile-prompt', '0'); } catch { /* storage */ } });
   p = await tabPage(ctx, h.url);
@@ -139,7 +144,7 @@ try {
   const left5 = run5 ? fs.readdirSync(path.join(sessions, run5)).filter((f) => f.endsWith('.json') && f !== 'run.json') : [];
   check('a tab the user closed earlier is not part of the run (only the tabs open at shutdown come back)', left5.length === 1 && !left5.includes(`${extraTab}.json`), left5.join(','));
   const prof = (() => { try { return JSON.parse(fs.readFileSync(path.join(tmp, '.local', 'profile.json'), 'utf8')); } catch { return null; } })();
-  h = await H.start({ editor, port: 4391, open: false }); // another port = another origin: an empty localStorage
+  h = await H.start({ editor, port: PORT_B, open: false }); // another port = another origin: an empty localStorage
   ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
   p = await tabPage(ctx, h.url);
   const seeded = await p.evaluate(() => ({ profile: localStorage.getItem('bw:profile'), actor: localStorage.getItem('bw:actor') }));
@@ -149,7 +154,7 @@ try {
   await gone(h.pid, 8000);
 
   // 4. stop() with no tabs; the sweep finds nothing of ours
-  h = await H.start({ editor, port: 4371, open: false });
+  h = await H.start({ editor, port: PORT_A, open: false });
   const st = await H.stop();
   const g4 = await gone(h.pid, 3000);
   check('stop() with no tabs stops the host', st.stopped && g4.gone && !H.status().running, JSON.stringify(st));
