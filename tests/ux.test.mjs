@@ -291,6 +291,8 @@ try {
     }
     const missing = [...keys].filter((k) => !UX.ar[`explain.${k}`] || !UX.en[`explain.${k}`]);
     check(`A5: every toolbar, view and selection tool has an explainer in Arabic and English (${keys.size} tools)`, !missing.length, missing.join(' '));
+    // 0.13.1 final pass #5: Save and Import say what they do since H3 (save in place; import opens the file as a document)
+    check('A5: Save / Import hover help describe the 0.13.1 behaviour (save in place, import opens as a document), AR + EN', /في مكانها/.test(UX.ar['explain.save']) && /in place/.test(UX.en['explain.save']) && /وثيقةً في «المستندات»/.test(UX.ar['explain.import']) && /as a document/.test(UX.en['explain.import']), JSON.stringify([UX.ar['explain.save'], UX.en['explain.import']]));
     const rm = await open({ ui: 'ar', reduced: true });
     await rm.page.locator('.island [data-a="save"]').hover();
     await rm.page.waitForTimeout(1200);
@@ -793,6 +795,32 @@ try {
     const still = (await pills(rm.page)).filter((x) => x.tr.split(',').some((d) => parseFloat(d) > 0));
     check('H2 panel buttons: reduced motion = no transition', !still.length, JSON.stringify(still.slice(0, 2)));
     await rm.ctx.close();
+  }
+  { // 0.13.1 final pass #4: every toolbar and panel button carries an icon (and every icon this pass added has its own move)
+    const { ctx, page, errors } = await open({ ui: 'ar', width: 1920, height: 1000 });
+    await page.evaluate(() => window.BW.runAction('save')); // a documents-list row (open, tab, copy, template, delete)
+    await settle(page, 1200);
+    const scan = () => sh(page, (R) => {
+      const words = window.BW.EXT.buttonIcons.words;
+      return [...R.querySelectorAll('.island button, .drawer button')].filter((b) => !b.closest('.dialog, .toasts') && !b.matches(words) && !b.querySelector('svg'))
+        .map((b) => `${b.closest('.drawer') ? 'panel' : 'toolbar'}:${Object.entries(b.dataset).map(([k, v]) => `${k}=${v}`).join(',')} «${b.textContent.trim().slice(0, 24)}»`);
+    });
+    const bare = new Set(await scan());
+    const added = new Set(); // the icons this pass put on panel buttons (42-button-icons.js), seen across the panels
+    for (const d of ['check', 'library', 'timeline', 'bulk', 'provenance', 'settings', 'style', 'theme', 'history', 'find', 'process', 'w2page', 'webhooks']) {
+      await page.evaluate((d) => window.BW.openDrawer(d), d);
+      await settle(page, 250);
+      for (const x of await scan()) bare.add(`${d} ${x}`);
+      for (const k of await sh(page, (R) => [...R.querySelectorAll('.bi-i .ic[data-ic]')].map((s) => s.dataset.ic))) added.add(k);
+    }
+    check('icons: no toolbar or panel button is words only (palette import, profile, compare, template, check jump, documents, changes …)', !bare.size, [...bare].join(' | '));
+    const still = await sh(page, (R, keys) => {
+      const css = [...R.querySelectorAll('style')].map((s) => s.textContent).join('\n');
+      return { n: keys.length, still: keys.filter((k) => !css.includes(`[data-ic="${k}"] >`)) };
+    }, [...added]);
+    check('icons: every icon added by the final pass has its own hover / focus / press move', still.n > 0 && !still.still.length, JSON.stringify(still));
+    check('icons: no page errors', !errors.length, errors.join(' | '));
+    await ctx.close();
   }
 } catch (e) {
   check('ux run', false, e.stack?.split('\n').slice(0, 4).join(' / '));
