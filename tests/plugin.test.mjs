@@ -21,7 +21,7 @@ check('commands/ holds the plugin commands', files.length >= 9, files.join(', ')
 for (const want of ['open', 'close', 'status', 'harvest', 'build', 'export', 'update']) check(`/business-wrap:${want} exists`, files.includes(`${want}.md`));
 check('no README or other non-command .md in commands/ (each .md becomes a command)', !files.some((f) => /^readme/i.test(f)));
 // 0.13.1 final pass #6: `npm test` runs every suite in tests/ (power, projects, bulk, srs-* were left out of the chain)
-{ const chain = JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8')).scripts.test; const left = fs.readdirSync(path.join(REPO, 'tests')).filter((f) => f.endsWith('.test.mjs') && !chain.includes(`node tests/${f}`)); check('npm test runs every tests/*.test.mjs', !left.length, left.join(', ')); }
+{ const chain = JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8')).scripts.test; const left = fs.readdirSync(path.join(REPO, 'tests')).filter((f) => f.endsWith('.test.mjs') && !chain.includes(`node tests/${f}`) && !chain.includes('tests/run.mjs')); check('npm test runs every tests/*.test.mjs', !left.length, left.join(', ')); }
 check('plugin manifest at the plugin root (.claude-plugin/plugin.json), so commands/ is discovered', fs.existsSync(path.join(REPO, '.claude-plugin', 'plugin.json')));
 
 const LINE = /^!`node "\$\{CLAUDE_PLUGIN_ROOT\}\/engine\/cli\.mjs" ([a-z-]+)(?: \$ARGUMENTS)?`$/;

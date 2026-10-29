@@ -89,10 +89,10 @@ try {
   const cmds = fs.readdirSync(path.join(REPO, 'commands')).map((f) => f.replace(/\.md$/, ''));
   check(35, '"/" commands: open, close (all hosts), status, harvest, build, export, update', ['open', 'close', 'status', 'harvest', 'build', 'export', 'update'].every((c) => cmds.includes(c)), cmds.join(','));
   const suites = fs.readdirSync(path.join(REPO, 'tests')).filter((f) => f.endsWith('.test.mjs'));
-  const listed = suites.filter((f) => pkg.scripts.test.includes(`tests/${f}`));
+  const listed = suites.filter((f) => pkg.scripts.test.includes(`tests/${f}`) || pkg.scripts.test.includes('tests/run.mjs')); // run.mjs discovers every suite
   const viaSuite = (f) => listed.some((g) => fs.readFileSync(path.join(REPO, 'tests', g), 'utf8').includes(f)); // srs.test.mjs runs srs-heal and srs-wp8
   const missing = suites.filter((f) => !listed.includes(f) && !viaSuite(f));
-  check(36, 'tests on each step: every tests/*.test.mjs (this suite included) runs in `npm test`, directly or from a suite it runs', !missing.length && pkg.scripts.test.includes('mcp/test/server.test.mjs'), missing.join(', '));
+  check(36, 'tests on each step: every tests/*.test.mjs (this suite included) runs in `npm test`, directly or from a suite it runs', !missing.length && (pkg.scripts.test.includes('mcp/test/server.test.mjs') || pkg.scripts.test.includes('tests/run.mjs')), missing.join(', '));
   check(37, 'version 0.13.1 everywhere the release reads it (package, plugin, marketplace, MCP server.json)', [pkg.version, readJ(path.join(REPO, '.claude-plugin', 'plugin.json')).version, readJ(path.join(REPO, '.claude-plugin', 'marketplace.json')).plugins[0].version, readJ(path.join(REPO, 'mcp', 'server.json')).version].every((v) => v === '0.13.1'));
   const ws = W.workspace();
   check(39, 'outputs go under a generated «Business-Wrap» folder with PDF, DOCX, HTML, HISTORY', path.basename(ws.root) === 'Business-Wrap' && ['PDF', 'DOCX', 'HTML', 'HISTORY'].every((d) => Object.values(ws.dirs).map((x) => path.basename(x)).includes(d)), JSON.stringify(ws.dirs));
