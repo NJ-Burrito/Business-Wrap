@@ -16,11 +16,51 @@ function w2leafEl(n) {
   const el = (n?.nodeType === 1 ? n : n?.parentElement)?.closest?.('#bw-pair main.bw-doc [data-p]');
   return el && !el.closest('.w2-strip') ? el : null;
 }
+/** Item 6: every text leaf a highlighted range touches (several paragraphs, a run of cells). Remembered, so a toolbar click that
+ *  moves the focus still acts on all of them; a caret or a range inside one leaf clears it (then W2F.at is the one target). */
+function w2multi(s) {
+  const main = s.anchorNode && (s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentElement)?.closest?.('#bw-pair main.bw-doc');
+  if (!main) return;
+  if (s.isCollapsed) { W2F.multi = null; return; }
+  const r = s.getRangeAt(0);
+  const hits = [...main.querySelectorAll('[data-p]')].filter((el) => !el.closest('.w2-strip') && r.intersectsNode(el) && !/^\/labels\//.test(el.dataset.p));
+  W2F.multi = hits.length > 1 ? hits.map((el) => ({ path: el.dataset.p, ed: main.dataset.locale })) : null;
+}
+/** The leaves a block tool acts on: the highlighted ones, else the caret's leaf. */
+W2F.targets = () => {
+  const ed0 = W2F.at?.ed;
+  const list = (W2F.multi || (W2F.at ? [{ path: W2F.at.path, ed: W2F.at.ed }] : [])).filter((x) => M[S.svc]?.[x.ed]);
+  return list.map((x) => ({ ...x, leaf: get(cur(x.ed).doc, x.path) })).filter((x) => typeof x.leaf === 'string' || isRich(x.leaf)).filter((x) => x.ed === (list[0]?.ed ?? ed0));
+};
+/** Item 6: where the caret (or the start of the highlighted range) is: its block and the offset inside it, in mm. */
+function w2caretSpot() {
+  const at = W2F.at;
+  if (!at) return null;
+  const main = mainOf(at.ed);
+  const leaf = main?.querySelector(`[data-p="${CSS.escape(at.path)}"]`);
+  const blk = leaf?.closest('[data-b]');
+  const m = /^(.*\/blocks\/\d+)/.exec(at.path);
+  if (!blk || !m) return m ? { ptr: m[1], x: 0, y: 0 } : null;
+  let rect = leaf.getBoundingClientRect();
+  const s = getSelection();
+  if (s.rangeCount && leaf.contains(s.anchorNode)) { const rr = s.getRangeAt(0).cloneRange(); rr.collapse(true); const q = rr.getClientRects()[0]; if (q) rect = q; }
+  const br = blk.getBoundingClientRect();
+  const k = (br.width / (blk.offsetWidth || br.width || 1)) * (96 / 25.4); // screen px per mm, zoom included
+  const clamp = (v) => Math.max(0, Math.min(150, +v.toFixed(1)));
+  return { ptr: m[1], x: clamp((rect.left - br.left) / k), y: clamp((rect.top - br.top) / k) };
+}
+
 /** The live selection, when it lies in one leaf, becomes the range to work on (also read right before a shortcut acts:
  *  Ctrl+A then Ctrl+B can come before the selectionchange event). */
 function w2sync() {
   const s = getSelection();
   if (!s.rangeCount) return false;
+  w2multi(s);
+  if (W2F.multi) { // a range over several leaves: the first one stands for it in the toolbar; block tools (lists) use all of them
+    const f = W2F.multi[0];
+    W2F.at = { path: f.path, ed: f.ed, start: 0, end: textOf(get(cur(f.ed).doc, f.path)).length };
+    return true;
+  }
   const el = w2leafEl(s.anchorNode);
   if (!el || !el.contains(s.focusNode)) return false; // a click in the toolbar keeps the last range
   const a = w2offset(el, s.anchorNode, s.anchorOffset);
@@ -75,10 +115,14 @@ const W2_FORMAT = {
     return w2put(styleLeaf(leaf, patch), leaf);
   },
   list(kind) {
-    const leaf = W2F.leaf();
-    if (leaf == null) return false;
-    const st = isRich(leaf) ? leaf.style || {} : {};
-    return w2put(styleLeaf(leaf, st.list === kind ? { list: null, level: null } : { list: kind, level: st.level || 0 }), leaf);
+    const tg = W2F.targets();
+    if (!tg.length) return false;
+    const styleOf = (x) => (isRich(x.leaf) ? x.leaf.style || {} : {});
+    const off = tg.every((x) => styleOf(x).list === kind); // all already in this list: the tool turns it off
+    const ops = tg.map((x) => ({ op: 'replace', path: x.path, value: styleLeaf(x.leaf, off ? { list: null, level: null } : { list: kind, level: styleOf(x).level || 0 }), old: x.leaf }));
+    W2F.keep = true;
+    commit(ops, { ed: tg[0].ed });
+    return true;
   },
   indent(d) {
     const leaf = W2F.leaf();
@@ -88,7 +132,7 @@ const W2_FORMAT = {
 };
 const W2_TOGGLES = { fmtBold: 'b', fmtItalic: 'i', fmtUnderline: 'u', fmtStrike: 's', fmtCode: 'code' };
 async function w2formatAction(id) {
-  if (W2F.leaf() == null) { toast(t('w2.pickText'), 'info'); return; }
+  if (W2F.leaf() == null && !W2F.multi) { toast(t('w2.pickText'), 'info'); return; }
   if (W2_TOGGLES[id]) return W2_FORMAT.mark(W2_TOGGLES[id]);
   const st = isRich(W2F.leaf()) ? W2F.leaf().style || {} : {};
   switch (id) {
@@ -128,6 +172,12 @@ bwExt({
       return true;
     },
     render: () => {
+      // a block tool over several leaves (lists) re-renders the page: the same range is put back, so the tool can be pressed again
+      if (W2F.multi && W2F.keep) {
+        const m = mainOf(W2F.multi[0].ed);
+        const els = W2F.multi.map((x) => m?.querySelector(`[data-p="${CSS.escape(x.path)}"]`)).filter(Boolean);
+        if (els.length > 1) { const r = document.createRange(); r.setStartBefore(els[0]); r.setEndAfter(els.at(-1)); getSelection().removeAllRanges(); getSelection().addRange(r); W2F.keep = false; w2showSection('format', true); return; }
+      }
       w2showSection('format', W2F.leaf() != null);
       // the range comes back after the re-render, so the next tool works on the same words
       const at = W2F.at;
