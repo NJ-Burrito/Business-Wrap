@@ -496,7 +496,8 @@ bwExt({
     commit: (ops, ed) => { LIB.onCommit(ops, ed); LIB.persistSoon(); },
     beforeExport: () => LIB.syncAll(),
     saveHtml: () => setTimeout(LIB.persistSoon, 0), // after the timeline's Save HTML mark
-    render: () => LIB.stamp(),
+    // one title everywhere (extras2 #2): the browser tab says the document's title too, not the «خدمة جديدة» it opened with
+    render: () => { LIB.stamp(); if (document.documentElement.dataset.bwPower !== 'off' && M[S.svc]) { const tt = LIB.titleOf(); if (tt && document.title !== tt) document.title = tt; } },
     pagehide: () => { LIB.persistNow(); },
   },
 });

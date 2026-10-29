@@ -156,6 +156,20 @@ try {
   // a font mark is Thmanyah only; a link must be http(s)/mailto
   const ok = await page.evaluate(() => { const F = window.BW.EXT.w2format; F.select({ path: '/chapters/0/sections/0/blocks/0/paragraphs/0', start: 0, end: 3 }); return F.mark('font', 'Thmanyah Sans'); });
   check('editor: font family mark (Thmanyah Sans) applied', ok && (await page.evaluate((p) => document.querySelector(`#bw-pair [data-p="${p}"] span[style*="Thmanyah Sans"]`) != null, P)));
+  { // 0.13.1 final pass #3 (extras2 #9): Ctrl+A in a bullet with mixed formatting, Ctrl+B, then a colour: every word, not the last
+    const li = await page.evaluate(() => { const B = window.BW; const el = document.querySelector(`#bw-pair main.bw-doc[data-locale="${B.S.ed}"] li[data-p][data-pfx]`); return el && { p: el.dataset.p, pfx: el.dataset.pfx.length, n: el.textContent.length }; });
+    const leafAt = (p) => page.evaluate((p) => { const B = window.BW; let o = B.M[B.S.svc][B.S.ed].doc; for (const k of p.split('/').slice(1)) o = o[k]; return o; }, p);
+    await page.evaluate((li) => { const F = window.BW.EXT.w2format; F.select({ path: li.p, start: li.pfx, end: li.pfx + 4 }); F.mark('i'); }, li); // mixed: one word italic
+    const sel = `#bw-pair main.bw-doc [data-p="${li.p}"]`;
+    await page.click(`${sel} i`);
+    await page.keyboard.press('Control+A');
+    await page.keyboard.press('Control+B'); // at once: before the selectionchange event
+    const kept = await page.evaluate(() => getSelection().toString().length);
+    await page.evaluate(() => window.BW.EXT.w2format.mark('color', '#c0392b'));
+    const v = await leafAt(li.p);
+    const full = (ty) => (v.marks || []).some(([a, b, t]) => t === ty && a <= li.pfx && b >= li.pfx + li.n);
+    check('editor: Ctrl+A on a mixed-format bullet, Ctrl+B then a colour cover the whole bullet (range kept after each op)', full('b') && full('color') && kept >= li.n - 1, JSON.stringify({ marks: v.marks, kept, li }));
+  }
   check('editor: no page errors', !errors.length, errors.join(' | '));
   if (process.env.BW_SHOTS) {
     await page.evaluate((p) => document.querySelector(`#bw-pair [data-p="${p}"]`).scrollIntoView({ block: 'center' }), P);

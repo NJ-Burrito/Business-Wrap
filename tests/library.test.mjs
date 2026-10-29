@@ -62,6 +62,10 @@ try {
   // 3. New document → Save → entry 2 (the blank placeholder SRS)
   const blankTitle = await page.evaluate(async () => { await window.BW.EXT.library.newDocument(); return window.BW.EXT.library.titleOf(); });
   const unsaved = (await lib()).length;
+  { // 0.13.1 final pass #3 (extras2 #2, one title store): the cover title drives «عنوان الوثيقة», the list title and the tab
+    const tt = await page.evaluate(async () => { const B = window.BW; B.setText('/control/coverTitle', 'عنوان واحد للوثيقة'); await new Promise((r) => setTimeout(r, 50)); B.render(); return { tab: document.title, list: B.EXT.library.titleOf(), ctl: B.M[B.S.svc][B.S.ed].doc.control.title }; });
+    check('one title: the cover title names «عنوان الوثيقة», the list title and the browser tab', tt.tab === 'عنوان واحد للوثيقة' && tt.list === tt.tab && /عنوان واحد للوثيقة$/.test(tt.ctl), JSON.stringify(tt));
+  }
   await page.evaluate(() => window.BW.runAction('save'));
   await saved(page, 2);
   L = await lib();

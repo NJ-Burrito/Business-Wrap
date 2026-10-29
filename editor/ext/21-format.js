@@ -16,16 +16,19 @@ function w2leafEl(n) {
   const el = (n?.nodeType === 1 ? n : n?.parentElement)?.closest?.('#bw-pair main.bw-doc [data-p]');
   return el && !el.closest('.w2-strip') ? el : null;
 }
-document.addEventListener('selectionchange', () => {
+/** The live selection, when it lies in one leaf, becomes the range to work on (also read right before a shortcut acts:
+ *  Ctrl+A then Ctrl+B can come before the selectionchange event). */
+function w2sync() {
   const s = getSelection();
-  if (!s.rangeCount) return;
+  if (!s.rangeCount) return false;
   const el = w2leafEl(s.anchorNode);
-  if (!el || !el.contains(s.focusNode)) return; // a click in the toolbar keeps the last range
+  if (!el || !el.contains(s.focusNode)) return false; // a click in the toolbar keeps the last range
   const a = w2offset(el, s.anchorNode, s.anchorOffset);
   const b = w2offset(el, s.focusNode, s.focusOffset);
   W2F.at = { path: el.dataset.p, ed: el.closest('main.bw-doc').dataset.locale, start: Math.min(a, b), end: Math.max(a, b) };
-  w2showSection('format', W2F.leaf() != null);
-});
+  return true;
+}
+document.addEventListener('selectionchange', () => { if (w2sync()) w2showSection('format', W2F.leaf() != null); });
 W2F.leaf = () => {
   if (!W2F.at || /^\/labels\//.test(W2F.at.path) || !M[S.svc][W2F.at.ed]) return null;
   const v = get(cur(W2F.at.ed).doc, W2F.at.path);
@@ -44,6 +47,7 @@ function w2range(leaf) {
 function w2put(next, old) {
   const { path, ed } = W2F.at;
   if (JSON.stringify(next) === JSON.stringify(old)) return false;
+  W2F.keep = true; // the re-render puts the same range back (and the focus, which the re-render drops), so the next tool works on it
   commit([{ op: 'replace', path, value: next, old }], { ed });
   return true;
 }
@@ -119,6 +123,7 @@ bwExt({
       const k = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && W2_KEYS[e.key.toLowerCase()];
       if (!k || !w2leafEl(e.target)) return false;
       e.preventDefault();
+      w2sync();
       w2formatAction(k);
       return true;
     },
@@ -127,7 +132,14 @@ bwExt({
       // the range comes back after the re-render, so the next tool works on the same words
       const at = W2F.at;
       const el = at && mainOf(at.ed)?.querySelector(`[data-p="${CSS.escape(at.path)}"]`);
-      if (!el || document.activeElement?.closest?.('#bw-pair') !== el) return;
+      const keep = W2F.keep;
+      W2F.keep = false;
+      if (!el) return;
+      const act = document.activeElement;
+      // a format tool's own re-render (extras2 #9: after Ctrl+A → Ctrl+B the focus fell to <body>, the range to a caret and the
+      // next tool coloured one word): the leaf gets the focus back when the page lost it; otherwise only a focused leaf
+      if (keep && (!act || act === document.body)) (el.closest('[contenteditable="true"], [contenteditable="plaintext-only"]') || el).focus({ preventScroll: true });
+      else if (!keep && act?.closest?.('#bw-pair') !== el) return;
       const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
       let n = 0, node, startN, startO, endN, endO;
       const pfx = (el.dataset.pfx || '').length;
