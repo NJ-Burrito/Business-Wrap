@@ -4,7 +4,7 @@
 button > .bi-i { inline-size: 16px; block-size: 16px; margin-inline-end: 4px; vertical-align: -3px; }
 button > .bi-i > .ic { inline-size: 16px; block-size: 16px; }
 .b > .bi-i { margin-inline-end: 0; }
-:is(button:hover:not(:disabled), button:focus-visible, button:active, button.ic-go, [role="option"]:hover) .ic:is([data-ic^="bi"], [data-ic^="view."]) > * { animation: var(--icm, none); }
+:is(button:hover:not(:disabled), button:focus-visible, button:active, button.ic-go, [role="option"]:hover) .ic:is([data-ic^="bi"], [data-ic^="view."], [data-ic="powerOff"]) > * { animation: var(--icm, none); }
 /* jump: the target ring pops */
 [data-ic="biJump"] > :last-child { --s: 1.3; --icm: icm-pop var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1; }
 /* new / import / open / tab / copy / template / delete */
@@ -43,3 +43,5 @@ button > .bi-i > .ic { inline-size: 16px; block-size: 16px; }
 [data-ic="view.single"] > * { --s: 1.15; --icm: icm-pop var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1; }
 [data-ic="view.spread"] > * { --icm: icm-grow-x var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
 [data-ic="biCopy"] > :nth-child(1) { --x: 1.5px; --y: 1.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+/* H2 power off had no move (the H1 projects and bulk icons move in 13-projects.css): the power stroke draws */
+[data-ic="powerOff"] > * { --icm: icm-draw var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }

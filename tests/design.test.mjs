@@ -419,7 +419,7 @@ try {
       }, keys);
       return { ctx, p, keys };
     };
-    const icm = (p, sel) => shadow(p, (r, s) => [...new Set([...r.querySelectorAll(s)].flatMap((svg) => svg.getAnimations({ subtree: true }).filter((a) => /^icm-/.test(a.animationName || '')).map(() => svg.dataset.ic)))], sel);
+    const icm = (p, sel) => shadow(p, (r, s) => [...new Set([...r.querySelectorAll(s)].flatMap((svg) => svg.getAnimations({ subtree: true }).filter((a) => /^(icm|pjm)-/.test(a.animationName || '')).map(() => svg.dataset.ic)))], sel);
     const n = await iconPage();
     const missing = [];
     for (const k of n.keys) {
@@ -430,12 +430,16 @@ try {
     check(`0.13 icons: every new icon has its own hover motion (${n.keys.length - missing.length}/${n.keys.length})`, n.keys.length >= 70 && missing.length === 0, missing.length ? `missing: ${missing.join(', ')}` : n.keys.join(','));
     // a real toolbar press: hover first (that motion ends), then click; only the pressed icon moves again
     await n.p.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.getElementById('icm-probe').remove());
+    // since the 0.13.1 bar fit (G2 / H2) every section shows only its first tool up to ~2500 px: widen so a 0.13 tool
+    // (Documents, Share, a table …) sits on the bar itself, then press it there
+    await n.p.setViewportSize({ width: 2600, height: 900 });
+    await n.p.waitForTimeout(500);
     const pick = await shadow(n.p, (r, ks) => [...r.querySelectorAll('.island .b[data-a]')].find((b) => b.checkVisibility() && ks.includes(b.querySelector('.ic')?.dataset.ic) && !b.disabled)?.dataset.a, n.keys);
     const btn = n.p.locator(`.island .b[data-a="${pick}"]`).first();
     await btn.hover(); await n.p.waitForTimeout(900);
     const before = await icm(n.p, '.ic[data-ic]');
     await btn.click();
-    const seen = await shadow(n.p, async (r) => { const s = new Set(); const t0 = performance.now(); while (performance.now() - t0 < 500) { r.querySelectorAll('.ic[data-ic]').forEach((svg) => { if (svg.getAnimations({ subtree: true }).some((a) => /^icm-/.test(a.animationName || ''))) s.add(svg.dataset.ic + '@' + (svg.closest('[data-a]')?.dataset.a || '')); }); await new Promise((f) => setTimeout(f, 30)); } return [...s]; });
+    const seen = await shadow(n.p, async (r) => { const s = new Set(); const t0 = performance.now(); while (performance.now() - t0 < 500) { r.querySelectorAll('.ic[data-ic]').forEach((svg) => { if (svg.getAnimations({ subtree: true }).some((a) => /^(icm|pjm)-/.test(a.animationName || ''))) s.add(svg.dataset.ic + '@' + (svg.closest('[data-a]')?.dataset.a || '')); }); await new Promise((f) => setTimeout(f, 30)); } return [...s]; });
     check(`0.13 icons: pressing «${pick}» replays its own motion and only its own (A4)`, !!pick && before.length === 0 && seen.length >= 1 && seen.every((x) => x.endsWith('@' + pick)), JSON.stringify({ before, seen }));
     await n.ctx.close();
     for (const [name, opts, calm] of [['calm mode', {}, true], ['reduced motion', { reducedMotion: 'reduce' }, false]]) {
