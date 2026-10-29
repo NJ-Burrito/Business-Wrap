@@ -1,7 +1,8 @@
 // A12: POST /api/report { from, to, people?, lang } → the performance report PDF from the HISTORY logs → { pdf, people, docs }
-import path from 'node:path';
+import fs from 'node:fs';
 import { dirsOf, body } from './history.mjs';
 import { readHistory, exportReport } from '../report.mjs';
+import { reportPath } from '../workspace.mjs';
 
 export default async (req, url, send, ctx) => {
   if (url.pathname !== '/api/report') return false;
@@ -19,7 +20,8 @@ export default async (req, url, send, ctx) => {
     const lang = b.lang === 'en' ? 'en' : 'ar';
     const dirs = await dirsOf(ctx);
     const logs = await readHistory(dirs.history);
-    const pdf = path.join(dirs.pdf, `performance-report_${d(b.from) || 'start'}_${d(b.to) || 'today'}.${lang}.pdf`);
+    fs.mkdirSync(dirs.pdf, { recursive: true });
+    const pdf = reportPath(dirs.pdf, lang); // the save-folder rule (A11): <title>-<date>-<AR|ENG>.pdf in PDF\
     const r = await exportReport(logs, { from: d(b.from), to: d(b.to), people: Array.isArray(b.people) && b.people.length ? b.people.map(String) : null, lang, pdfPath: pdf });
     send(200, { pdf: r.pdf, people: r.data.people.length, docs: r.data.docs.length });
   } catch (e) { send(500, { error: String(e.message || e) }); }

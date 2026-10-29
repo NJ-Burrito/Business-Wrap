@@ -67,16 +67,24 @@ const LIB = (() => {
       rebuild(e);
     }
     EXT.lock?.set(entry.id, entry.lock || null);
+    if (!pending[entry.id]) savedAt[entry.id] = entry.savedAt;
   }
   function show(id, ed) {
+    persistNow(); // a change still waiting for its autosave goes to its own document first
     S.svc = id;
     S.ed = ed && M[id][ed] ? ed : M[id][S.ed] ? S.ed : Object.keys(M[id])[0];
     S.sel = null;
     S.doc = isDoc(id) ? id : null;
     document.documentElement.dataset.bwDoc = S.doc || '';
+    address(id);
     buildUi();
     render(false);
     emit('open', S.svc, S.ed);
+  }
+  /** #doc=<id> in the address for a stored document (a reload reopens it), nothing for a template or an unsaved one. */
+  function address(id) {
+    const h = isDoc(id) && !pending[id] ? `#doc=${encodeURIComponent(id)}` : '';
+    if (location.hash !== h && (h || /[#&]doc=/.test(location.hash))) history.replaceState(history.state, '', location.pathname + location.search + h);
   }
   async function open(id, ed) {
     if (!M[id] || !isDoc(id)) { const e = await get(id); if (!e) { toast(t('libMissing'), 'warn'); return false; } mount(e); }
@@ -101,13 +109,43 @@ const LIB = (() => {
       toast(t('libCreated', { name: entry.title }), 'ok');
       return entry;
     }
-    if (!isDoc(id)) return null;
+    return isDoc(id) ? persist(id) : null;
+  }
+  /** The open document → its list entry (Save, and the autosave after every change): the list copy is always the latest. */
+  async function persist(id = S.svc) {
+    if (soonId === id) { clearTimeout(soonT); soonT = 0; soonId = null; }
+    if (!isDoc(id) || !M[id]) return null;
     const old = (await get(id)) || {};
+    if (old.deletedAt) return null; // a document in the Trash is not brought back by an autosave
     const entry = entryOf(id, { origin: old.origin || pending[id]?.origin || 'blank', createdAt: old.createdAt || pending[id]?.createdAt || new Date().toISOString(), service: old.service || id });
+    const fresh = !!pending[id];
     delete pending[id];
     await put(entry);
     mirror(entry);
+    savedAt[id] = entry.savedAt;
+    if (fresh && S.svc === id) address(id);
+    stamp();
+    document.documentElement.dataset.bwLibSaved = String(++seq);
     return entry;
+  }
+  let soonT = 0, soonId = null, seq = 0;
+  const savedAt = {};
+  const persistSoon = () => { if (!isDoc(S.svc)) { stamp(); return; } if (soonId && soonId !== S.svc) persistNow(); clearTimeout(soonT); soonId = S.svc; soonT = setTimeout(() => persist(soonId), 600); };
+  const persistNow = () => (soonId ? persist(soonId) : null);
+
+  /* «آخر حفظ» beside the change counter: the list copy (a document) or the draft (a template), and the last Save HTML */
+  const hhmm = (d) => { try { return d ? new Date(d).toLocaleTimeString(S.ui === 'ar' ? 'ar' : 'en', { hour: '2-digit', minute: '2-digit' }) : '—'; } catch { return '—'; } };
+  function stamp() {
+    const c = root.querySelector('.count');
+    if (!c) return;
+    let el = c.querySelector('.bw-stamp');
+    if (!el) { el = document.createElement('span'); el.className = 'bw-stamp'; el.setAttribute('role', 'status'); c.appendChild(el); }
+    const html = Object.values(M[S.svc] || {}).flatMap((e) => (e.marks || []).filter((m) => m.kind === 'saveHtml')).map((m) => m.at).sort().at(-1);
+    const doc = isDoc(S.svc) && !pending[S.svc];
+    const list = doc ? savedAt[S.svc] : S.savedAt;
+    el.textContent = t(doc ? 'libStamp' : 'libStampDraft', { list: hhmm(list), html: hhmm(html) });
+    el.dataset.list = list ? new Date(list).toISOString() : '';
+    el.dataset.html = html || '';
   }
   const titleFromRaw = (raw, id) => { const c = JSON.parse(raw).control || {}; return String(c.coverTitle || String(c.title || '').split(/\s*[:—]\s+/).slice(1).join(': ') || c.title || id); };
   const makeEntry = (editions, origin, service, theme = S.theme) => {
@@ -135,11 +173,13 @@ const LIB = (() => {
   async function importAny(file) {
     if (!file) return null;
     const name = file.name || '';
-    if (/\.html?$/i.test(name)) {
+    const html = /\.html?$/i.test(name);
+    let data = null;
+    if (html) {
       const m = /<script type="application\/json" id="bw-data">([\s\S]*?)<\/script>/.exec(await readAs(file, 'text'));
-      let data = null;
       try { data = m && JSON.parse(m[1]); } catch { /* not ours */ }
-      if (!data?.services?.length) { flash(t('badFile'), true); return null; }
+    }
+    if (data?.services?.length) { // a Save-HTML of this editor: its editions and edits as they are
       let last = null;
       for (const s of data.services) {
         const editions = {};
@@ -153,10 +193,11 @@ const LIB = (() => {
       toast(t('libImported', { name: last.title }), 'ok');
       return last;
     }
-    if (!/\.(pdf|docx)$/i.test(name)) { flash(t('badFile'), true); return null; }
+    // any other HTML, a DOCX or a PDF: the server reads its headings, tables and title (engine/import)
+    if (!html && !/\.(pdf|docx)$/i.test(name)) { flash(t('badFile'), true); return null; }
     if (!served) { toast(t('libNeedsServer'), 'warn'); return null; }
-    const data = (await readAs(file, 'url')).split(',')[1];
-    const r = await fetch('/api/import', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, data }) });
+    const b64 = (await readAs(file, 'url')).split(',')[1];
+    const r = await fetch('/api/import', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, data: b64 }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { flash(j.error || String(r.status), true); return null; }
     const entry = await fromDocs({ [j.locale]: JSON.stringify(j.doc, null, 1) }, 'import');
@@ -181,24 +222,91 @@ const LIB = (() => {
     delete copy.deletedAt;
     await put(copy);
     mirror(copy);
+    mount(copy);
+    show(copy.id);
     return copy;
+  }
+
+  /* «نسخ كقالب»: a document's design, header/footer items, logos, page setup and chapter/section titles, with empty bodies */
+  const isTpl = (e) => e?.kind === 'template';
+  function emptied(doc) {
+    const x = JSON.parse(JSON.stringify(doc));
+    for (const c of x.chapters || []) for (const s of c.sections || []) s.blocks = [{ kind: 'prose', paragraphs: [''] }];
+    Object.assign(x, { revisions: [], approvals: [], openQuestions: [] });
+    delete x.harvest; delete x.manual;
+    if (x.overlays) x.overlays = x.overlays.filter((o) => o.kind === 'logo');
+    if (x.control) Object.assign(x.control, { documentId: '', issuedOn: '' });
+    return x;
+  }
+  async function saveTemplate(id = S.svc) {
+    if (!M[id]) { const e = await get(id); if (!e) return null; mount(e); }
+    const now = new Date().toISOString();
+    const editions = {};
+    for (const [ed, e] of Object.entries(M[id])) editions[ed] = { raw: JSON.stringify(emptied(e.doc), null, 1) };
+    const tpl = { id: `tpl-${uuid()}`, kind: 'template', title: titleOf(id), from: id, createdAt: now, savedAt: now, theme: JSON.parse(JSON.stringify(S.theme)), editions };
+    await put(tpl);
+    toast(t('libTplSaved', { name: tpl.title }), 'ok');
+    return tpl;
+  }
+  async function fromTemplate(id) {
+    const tpl = await get(id);
+    if (!isTpl(tpl)) return null;
+    if (tpl.theme) S.theme = JSON.parse(JSON.stringify(tpl.theme));
+    return fromDocs(Object.fromEntries(Object.entries(tpl.editions).map(([ed, x]) => [ed, x.raw])), 'template', false);
+  }
+
+  /* per-document metrics (A12), read from the document's provenance log through BWLOG1 (read only) */
+  async function metricsOf(e) {
+    const doc = DATA.prov?.[e.id]?.doc || ls.get(`bw:prov-doc:${DATA.setId}:${e.id}`);
+    let entries = EXT.ledger?.log?.(e.id)?.entries;
+    if (!entries?.length && doc && typeof BWLOG1 !== 'undefined') {
+      try {
+        const mir = served ? await (await fetch(`/api/history?doc=${encodeURIComponent(doc)}`)).json() : typeof MIRROR !== 'undefined' ? await MIRROR.get(doc) : {};
+        if (mir?.log) entries = (await BWLOG1.unseal(mir.log, doc)).entries;
+      } catch { /* no log here */ }
+    }
+    const by = typeof BWLOG1 !== 'undefined' ? BWLOG1.metrics(entries || []) : {};
+    const ps = Object.values(by);
+    return {
+      edits: ps.reduce((a, p) => a + p.edits, 0),
+      minutes: Math.round(ps.reduce((a, p) => a + p.activeMs, 0) / 60000),
+      who: [...new Set(ps.map((p) => p.name).filter(Boolean))],
+      signer: (entries || []).filter((x) => x.kind === 'sign').at(-1)?.actor?.name || '',
+      locked: !!e.lock?.locked,
+    };
+  }
+  async function paintMetrics(d) {
+    for (const li of d.querySelectorAll('.lib-docs li[data-id]')) {
+      const e = await get(li.dataset.id);
+      if (!e) continue;
+      const m = await metricsOf(e);
+      const el = li.querySelector('.lib-m');
+      if (!el) continue;
+      Object.assign(el.dataset, { edits: m.edits, minutes: m.minutes, who: m.who.join('|'), signer: m.signer, locked: m.locked ? '1' : '0' });
+      el.textContent = [t('libMEdits', { n: m.edits }), t('libMMinutes', { n: m.minutes }), m.who.length ? t('libMWho', { who: m.who.join(S.ui === 'ar' ? '، ' : ', ') }) : '', m.signer ? t('libMSigner', { name: m.signer }) : '', m.locked ? t('libMLocked') : ''].filter(Boolean).join(' · ');
+    }
+    d.dataset.libMetrics = String(++seq);
   }
 
   /* drawer */
   const when = (iso) => { try { return new Date(iso).toLocaleString(S.ui === 'ar' ? 'ar' : 'en', { dateStyle: 'medium', timeStyle: 'short' }); } catch { return iso; } };
-  const row = (e, trash) => `<li data-id="${esc(e.id)}"${e.id === S.svc ? ' aria-current="true"' : ''}><b class="lib-t">${esc(e.title)}</b> <small>${esc(when(e.savedAt))}</small><div class="btns">${trash
+  const row = (e, trash) => `<li data-id="${esc(e.id)}"${e.id === S.svc ? ' aria-current="true"' : ''}><b class="lib-t">${esc(e.title)}</b> <small>${esc(when(e.savedAt))}</small>${trash ? '' : '<small class="lib-m"></small>'}<div class="btns">${trash
     ? `<button type="button" data-lib="restore">${esc(t('libUndelete'))}</button><button type="button" data-lib="purge">${esc(t('libPurge'))}</button>`
-    : `<button type="button" data-lib="open">${esc(t('libOpen'))}</button><button type="button" data-lib="tab">${esc(t('libTab'))}</button><button type="button" data-lib="dup">${esc(t('libDup'))}</button><button type="button" data-lib="del">${esc(t('delete'))}</button>`}</div></li>`;
+    : `<button type="button" data-lib="open">${esc(t('libOpen'))}</button><button type="button" data-lib="tab">${esc(t('libTab'))}</button><button type="button" data-lib="dup">${esc(t('libDup'))}</button><button type="button" data-lib="tpl">${esc(t('libTpl'))}</button><button type="button" data-lib="del">${esc(t('delete'))}</button>`}</div></li>`;
+  const tplRow = (e) => `<li data-id="${esc(e.id)}"><b class="lib-t">${esc(e.title)}</b> <small>${esc(when(e.savedAt))}</small><div class="btns"><button type="button" data-lib="fromtpl">${esc(t('libFromTpl'))}</button><button type="button" data-lib="purge">${esc(t('delete'))}</button></div></li>`;
   async function fill(d) {
     const box = d.querySelector('.lib');
     if (!box) return;
     const q = fold(String(d.querySelector('[data-lib-q]')?.value || '').normalize('NFKC'));
     const list = (await all() || []).sort((a, b) => String(b.savedAt).localeCompare(String(a.savedAt)));
-    const live = list.filter((e) => !e.deletedAt && (!q || fold(e.title.normalize('NFKC')).includes(q)));
-    const trash = list.filter((e) => e.deletedAt);
-    box.innerHTML = `<ol class="list lib-docs">${live.map((e) => row(e, false)).join('') || `<li class="hint">${esc(t('libEmpty'))}</li>`}</ol>${trash.length ? `<details class="lib-trash"><summary>${esc(t('libTrash'))} (${trash.length})</summary><ol class="list">${trash.map((e) => row(e, true)).join('')}</ol></details>` : ''}`;
+    const tpls = list.filter(isTpl);
+    const live = list.filter((e) => !isTpl(e) && !e.deletedAt && (!q || fold(e.title.normalize('NFKC')).includes(q)));
+    const trash = list.filter((e) => !isTpl(e) && e.deletedAt);
+    box.innerHTML = `<ol class="list lib-docs">${live.map((e) => row(e, false)).join('') || `<li class="hint">${esc(t('libEmpty'))}</li>`}</ol>${trash.length ? `<details class="lib-trash"><summary>${esc(t('libTrash'))} (${trash.length})</summary><ol class="list">${trash.map((e) => row(e, true)).join('')}</ol></details>` : ''}${tpls.length ? `<details class="lib-tpls" open><summary>${esc(t('libTpls'))} (${tpls.length})</summary><ol class="list">${tpls.map(tplRow).join('')}</ol></details>` : ''}`;
     d.dataset.libCount = String(live.length);
     d.dataset.libTrash = String(trash.length);
+    d.dataset.libTpls = String(tpls.length);
+    paintMetrics(d);
   }
   async function click(ev, d) {
     const b = ev.target.closest('[data-lib]');
@@ -206,9 +314,11 @@ const LIB = (() => {
     const k = b.dataset.lib, id = b.closest('[data-id]')?.dataset.id;
     if (k === 'new') await newDocument();
     else if (k === 'import') await importAny(await pickFile('.html,.htm,.pdf,.docx'));
-    else if (k === 'open') await open(id);
+    else if (k === 'open') { if (await open(id)) { closeDrawer(); return; } }
     else if (k === 'tab') window.open(`${location.pathname}#doc=${encodeURIComponent(id)}`, '_blank');
     else if (k === 'dup') await duplicate(id);
+    else if (k === 'tpl') await saveTemplate(id);
+    else if (k === 'fromtpl') { if (await fromTemplate(id)) { closeDrawer(); return; } }
     else if (k === 'del') await remove(id);
     else if (k === 'restore') await restore(id);
     else if (k === 'purge') await purge(id);
@@ -230,7 +340,16 @@ const LIB = (() => {
    *  autosaved draft holds edits of a library document, offer it back (editor.js offerRecovery only knows templates). */
   async function fromHash() {
     const m = /[#&]doc=([^&]+)/.exec(location.hash);
-    if (m) { await open(decodeURIComponent(m[1])); return; }
+    if (m) {
+      const id = decodeURIComponent(m[1]);
+      if (!(await open(id))) return;
+      // the autosaved draft is written within 0.4 s of a change, the list entry within 0.6 s: a reload in between keeps the
+      // newer draft (same base, the entry's ops plus more), applied quietly: no restore banner
+      const x = readDraft()?.svc?.[id] || {};
+      const newer = Object.fromEntries(Object.entries(x).filter(([ed, y]) => { const e = M[id]?.[ed]; return e && e.hash === y.hash && (y.ops || []).length > e.ops.length && e.ops.every((o, i) => y.ops[i]?.id === o.id); }));
+      if (Object.keys(newer).length) { loadDraft({ svc: { [id]: newer } }); render(false); persist(id); }
+      return;
+    }
     if (document.documentElement.dataset.bwResumed || new URLSearchParams(location.search).get('tab')) return;
     const d = readDraft();
     const ids = Object.entries(d?.svc || {}).filter(([id, x]) => isDoc(id) && Object.values(x).some((e) => e.ops?.length)).map(([id]) => id);
@@ -242,7 +361,7 @@ const LIB = (() => {
       [t('restoreNo'), () => {}],
     ]);
   }
-  return { all, get, put, open, adopt, save, newDocument, importAny, remove, restore, purge, duplicate, entryOf, titleOf, isDoc, fromHash, drawer, TEMPLATES };
+  return { all, get, put, open, adopt, save, persist, persistSoon, persistNow, stamp, saveTemplate, fromTemplate, metricsOf, newDocument, importAny, remove, restore, purge, duplicate, entryOf, titleOf, isDoc, fromHash, drawer, TEMPLATES };
 })();
 
 IC.library = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" /> </svg>';
@@ -256,5 +375,12 @@ bwExt({
     // Ctrl+O = «المستندات» (open a document); the toolbar tool sits in File
     keydown: (e) => { if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'o') { e.preventDefault(); openDrawer('library'); return true; } return false; },
     save: () => { LIB.save().then(() => { window.BW.libSaved = (window.BW.libSaved || 0) + 1; }); },
+    // the autosave writes the list entry too (a library document): what the list reopens is what was on screen
+    commit: () => LIB.persistSoon(),
+    saveHtml: () => setTimeout(LIB.persistSoon, 0), // after the timeline's Save HTML mark
+    render: () => LIB.stamp(),
+    pagehide: () => { LIB.persistNow(); },
   },
 });
+// «حُفظ تلقائياً» toast → the «آخر حفظ» stamp beside the change counter (extra 1): it says what was saved where and when
+{ const plain = flash; flash = function (msg, bad = false) { if (!bad && msg === t('autosaved')) { LIB.stamp(); return; } return plain(msg, bad); }; }

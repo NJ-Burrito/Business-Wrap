@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { REPO, fileStem } from './export.mjs';
+import { REPO } from './export.mjs';
 
 /** .local/ (gitignored); BW_LOCAL_DIR moves it (tests). */
 export const localDir = () => path.resolve(process.env.BW_LOCAL_DIR || path.join(REPO, '.local'));
@@ -55,9 +55,12 @@ export function ensure(ws = workspace()) {
 }
 
 const day = (d) => { const x = d instanceof Date ? d : new Date(d ?? Date.now()); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
-/** "<title>-<YYYY-MM-DD>-<AR|ENG>.<ext>": the title through fileStem (Arabic kept, path-hostile characters → -). */
+/** The title as a file name: Arabic and the spaces between words kept (as the pipeline outputs name theirs), path-hostile
+ *  characters with the spaces around them → -, at most 80 characters. */
+export const titleStem = (s) => String(s || '').normalize('NFC').replace(/\s*[\\/:*?"<>|\u0000-\u001f]+\s*/g, '-').replace(/\s+/g, ' ').replace(/-{2,}/g, '-').replace(/^[-.\s]+|[-.\s]+$/g, '').slice(0, 80).trim() || 'document';
+/** "<title>-<YYYY-MM-DD>-<AR|ENG>.<ext>": every file the editor saves (PDF, DOCX, HTML, share, report). */
 export function outName(title, date, locale, ext) {
-  return `${fileStem(title)}-${day(date)}-${locale === 'en' ? 'ENG' : 'AR'}.${String(ext).replace(/^\./, '')}`;
+  return `${titleStem(title)}-${day(date)}-${locale === 'en' ? 'ENG' : 'AR'}.${String(ext).replace(/^\./, '')}`;
 }
 
 /** dir/name, or name-2, name-3 … when it exists: never an overwrite. */
@@ -96,4 +99,20 @@ export async function readJson(req, max = 60 * 1024 * 1024) {
   for await (const c of req) { size += c.length; if (size > max) throw Object.assign(new Error('too large'), { code: 413 }); chunks.push(c); }
   const s = Buffer.concat(chunks).toString('utf8');
   try { return s ? JSON.parse(s) : {}; } catch { throw Object.assign(new Error('bad json'), { code: 400 }); }
+}
+
+/** The performance report's file in PDF\: "<تقرير الأداء|Performance report>-<date>-<AR|ENG>.pdf", -2 on a clash. */
+export const reportPath = (pdfDir, lang) => uniquePath(pdfDir, outName(lang === 'en' ? 'Performance report' : 'تقرير الأداء', new Date(), lang, 'pdf'));
+
+/** A shared Save-HTML's file in HTML\: named by the document inside it (bw-data), never by its id. */
+export function sharePath(htmlDir, html, fallback = 'document') {
+  const locale = /<html[^>]*\blang="en"/i.test(html) ? 'en' : 'ar';
+  let title = '';
+  try {
+    const data = JSON.parse(/<script type="application\/json" id="bw-data">([\s\S]*?)<\/script>/.exec(html)[1]);
+    const eds = data.services?.[0]?.editions || {};
+    const ed = eds[locale] || Object.values(eds)[0];
+    title = docTitle(JSON.parse(ed.raw), '');
+  } catch { /* not a Save-HTML: the fallback */ }
+  return uniquePath(htmlDir, outName(title || String(fallback).replace(/(\.editor)?\.html?$/i, ''), new Date(), locale, 'html'));
 }

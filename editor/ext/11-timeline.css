@@ -6,3 +6,6 @@
 .drawer .tl-row > button { all: unset; cursor: pointer; }
 .drawer .tl-row > button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .count { cursor: pointer; }
+.drawer .tl-cmp .tl-diff { margin: 6px 0; }
+.drawer .tl-cmp del { opacity: .7; }
+.drawer .tl-cmp ins { text-decoration: none; font-weight: 700; }

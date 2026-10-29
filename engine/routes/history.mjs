@@ -8,6 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { sharePath } from '../workspace.mjs';
 
 const MAX = 64 * 1024 * 1024;
 /** The workspace folders: ctx.workspace (tests, the server), else WP3's engine/workspace.mjs, else a stub under Documents. */
@@ -60,7 +61,7 @@ export default async (req, url, send, ctx) => {
       const name = String(b.name || '').replace(/[\/:*?"<>|\u0000-\u001f]+/g, '-').slice(0, 120);
       if (!/\.html$/i.test(name) || typeof b.html !== 'string') return send(400, { error: 'bad share' }), true;
       fs.mkdirSync(dirs.html, { recursive: true });
-      const p = path.join(dirs.html, name);
+      const p = sharePath(dirs.html, b.html, name); // named like every saved file: <title>-<date>-<AR|ENG>.html (A11)
       fs.writeFileSync(p, b.html, 'utf8');
       send(200, { path: p, dir: dirs.html });
       return true;
