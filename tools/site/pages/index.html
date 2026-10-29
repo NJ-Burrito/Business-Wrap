@@ -119,9 +119,9 @@
         <div class="cmd"><pre><code>/plugin marketplace add NJ-Burrito/Business-Wrap
 /plugin install business-wrap@business-wrap</code></pre>{{copy}}</div>
         <p class="small">Then say "build the requirements document for …" or "open it in the editor".</p></div>
-      <div class="way">{{icon:mcp-server}}<span class="tag">Any MCP client</span><h3>MCP server</h3><p>One line, from npm. Needs Node 20+.</p>
-        <div class="cmd"><pre><code>claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp</code></pre>{{copy}}</div>
-        <p class="small">From a clone: run <code>npm ci</code>, then point your client at <code>node &lt;path&gt;/Business-Wrap/mcp/cli.mjs</code>.</p></div>
+      <div class="way">{{icon:mcp-server}}<span class="tag">Any MCP client</span><h3>MCP server</h3><p>One line: 0.13.0 from the GitHub tag (npm still serves 0.12.0). Needs Node 20+.</p>
+        <div class="cmd"><pre><code>claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.13.0 business-wrap-mcp</code></pre>{{copy}}</div>
+        <p class="small">From a clone (no <code>npm ci</code> needed): point your client at <code>node &lt;path&gt;/Business-Wrap/mcp/cli.mjs</code>.</p></div>
       <div class="way">{{icon:editor}}<span class="tag">No agent</span><h3>From source</h3><p>Build the sample and open it in the editor.</p>
         <div class="cmd"><pre><code>git clone https://github.com/NJ-Burrito/Business-Wrap
 cd Business-Wrap
@@ -136,9 +136,9 @@ npm run serve</code></pre>{{copy}}</div>
         <div class="cmd"><pre><code>/plugin marketplace add NJ-Burrito/Business-Wrap
 /plugin install business-wrap@business-wrap</code></pre>{{copy}}</div>
         <p class="small">ثم قل: «ابن وثيقة متطلبات …» أو «افتحها في المحرر».</p></div>
-      <div class="way">{{icon:mcp-server}}<span class="tag">أي عميل MCP</span><h3>خادم MCP</h3><p>سطر واحد من npm. يحتاج Node 20 أو أحدث.</p>
-        <div class="cmd"><pre><code>claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp</code></pre>{{copy}}</div>
-        <p class="small">من نسخة المستودع: نفذ <code>npm ci</code>، ثم وجه العميل إلى <code>node &lt;path&gt;/Business-Wrap/mcp/cli.mjs</code>.</p></div>
+      <div class="way">{{icon:mcp-server}}<span class="tag">أي عميل MCP</span><h3>خادم MCP</h3><p>سطر واحد: الإصدار 0.13.0 من وسم GitHub، فسجل npm ما زال على 0.12.0. يحتاج Node 20 أو أحدث.</p>
+        <div class="cmd"><pre><code>claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.13.0 business-wrap-mcp</code></pre>{{copy}}</div>
+        <p class="small">من نسخة المستودع (بلا <code>npm ci</code>): وجه العميل إلى <code>node &lt;path&gt;/Business-Wrap/mcp/cli.mjs</code>.</p></div>
       <div class="way">{{icon:editor}}<span class="tag">بلا وكيل</span><h3>من المصدر</h3><p>ابن الوثيقة النموذجية وافتحها في المحرر.</p>
         <div class="cmd"><pre><code>git clone https://github.com/NJ-Burrito/Business-Wrap
 cd Business-Wrap
