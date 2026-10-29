@@ -19,6 +19,7 @@ import { serve } from '../engine/serve.mjs';
 import { config } from '../engine/config.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-profile-'));
+process.env.BW_LOCAL_DIR = path.join(tmp, '.local'); // the host's profile copy (H3) stays in the temp folder
 const results = [];
 let failed = 0;
 const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  profile: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
@@ -154,6 +155,23 @@ try {
   const faces = fonts.split('\n').slice(2).filter(Boolean);
   check('report PDF fonts: Thmanyah only, TrueType, no Type 3', faces.length > 0 && faces.every((l) => /thmanyah/i.test(l) && /TrueType/.test(l)) && !/Type 3/.test(fonts), fonts);
   await ctx3.close();
+  // H3: the profile reaches the host at once (.local + HISTORY) and comes back on a fresh origin, also after the .local
+  // copy is gone (an update into a new install folder): the first-launch card is not shown again
+  await new Promise((r) => setTimeout(r, 600));
+  const hostProf = (() => { try { return JSON.parse(fs.readFileSync(path.join(tmp, '.local', 'profile.json'), 'utf8')).profile; } catch { return ''; } })();
+  check('a served page hands its profile to the host at once: .local/profile.json and HISTORY\\profile.json.gz', /Rami/.test(hostProf) && fs.existsSync(path.join(dirs.history, 'profile.json.gz')), hostProf);
+  fs.rmSync(path.join(tmp, '.local', 'profile.json'), { force: true });
+  const ctx4 = await browser.newContext({ viewport: { width: 1500, height: 900 } });
+  await ctx4.addInitScript(() => localStorage.setItem('bw:profile-prompt', '1'));
+  const s4 = await ctx4.newPage();
+  await s4.goto(`http://127.0.0.1:${server.address().port}/`);
+  await s4.waitForFunction(() => window.BW?.ready);
+  await s4.waitForTimeout(800);
+  const back = await s4.evaluate(() => ({ card: !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.bw-modal'), name: JSON.parse(localStorage.getItem('bw:profile') || 'null')?.name }));
+  check('empty browser storage and no .local copy: the profile comes back from HISTORY, no first-launch card', !back.card && back.name === 'Rami', JSON.stringify(back));
+  const bad = await fetch(`http://127.0.0.1:${server.address().port}/api/profile`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ profile: 'not json' }) });
+  check('the host keeps only a real profile (POST /api/profile refuses anything else)', bad.status === 400);
+  await ctx4.close();
   check('no page errors', errors.length === 0, errors.join(' | '));
 } finally {
   await browser.close(); // first: an open page keeps a keep-alive connection that server.close() would wait on

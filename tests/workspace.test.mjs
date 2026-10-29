@@ -84,6 +84,26 @@ try {
   const strays = ['pdf', 'docx', 'html'].flatMap((k) => fs.readdirSync(ws.dirs[k]).filter((f) => !NAME.test(f)).map((f) => `${k}/${f}`));
   check('PDF\\ DOCX\\ HTML\\ hold only "<title>-<date>-<AR|ENG>" files (no manifest.json, no ids)', strays.length === 0, strays.join(', '));
 
+  // H3: «افتح موقع الملف» after a share opened Documents: Explorer got «"/select,<path>"» quoted by Node. Now the command
+  // is /select,"<path>" passed verbatim, only for a file inside HTML\
+  process.env.BW_REVEAL_STUB = path.join(tmp, 'reveal.log');
+  const op = await post('/api/share/open', { path: sh.j.path });
+  const rv = (() => { try { return JSON.parse(fs.readFileSync(process.env.BW_REVEAL_STUB, 'utf8').trim().split('\n').at(-1)); } catch { return null; } })();
+  const outside = await post('/api/share/open', { path: path.join(tmp, 'elsewhere.html') });
+  delete process.env.BW_REVEAL_STUB;
+  check('share «افتح موقع الملف»: Explorer gets /select,"<that file>" verbatim; a file outside HTML\\ is refused', op.s === 200 && (process.platform !== 'win32' || (rv?.cmd === 'explorer.exe' && rv.verbatim === true && rv.args[0] === `/select,"${sh.j.path}"`)) && outside.s === 404, JSON.stringify({ op, rv, outside: outside.s }));
+  // H3 Save in place: the first Save names the document's own file, every later Save overwrites that file (no -2 copy);
+  // a `file` outside HTML\ is never written
+  const mkSave = (word) => saveHtml.replace('<body>', `<body><p>${word}</p>`);
+  const s1 = await post('/api/library/html', { id: 'doc-5ave0001', title: 'وثيقة الحفظ', locale: 'ar', html: mkSave('one') });
+  const s2 = await post('/api/library/html', { id: 'doc-5ave0001', title: 'عنوان تغير', locale: 'ar', html: mkSave('two'), file: s1.j.file });
+  const s3 = await post('/api/library/html', { id: 'doc-5ave0001', title: 'وثيقة الحفظ', locale: 'ar', html: mkSave('three'), file: path.join(tmp, 'x.html') });
+  const mine = fs.readdirSync(ws.dirs.html).filter((f) => f.startsWith('وثيقة الحفظ-') || f.startsWith('عنوان تغير-'));
+  check('Save in place: HTML\\<title>-<d>-AR.html at the first Save, the same file overwritten after (no -2)', s1.s === 200 && path.basename(s1.j.file) === W.outName('وثيقة الحفظ', new Date(), 'ar', 'html') && s2.j.file === s1.j.file && s2.j.overwritten === true && fs.readFileSync(s1.j.file, 'utf8').includes('<p>two</p>'), JSON.stringify({ s1: s1.j, s2: s2.j }));
+  check('Save in place: a file outside HTML\\ is never written (a new name inside HTML\\ instead)', path.dirname(s3.j.file) === ws.dirs.html && !fs.existsSync(path.join(tmp, 'x.html')) && mine.length === 2, JSON.stringify({ s3: s3.j, mine }));
+  const notOurs = await post('/api/library/html', { id: 'doc-5ave0001', title: 'x', locale: 'ar', html: '<!doctype html><p>x</p>' });
+  check('Save in place refuses anything but a Save-HTML document', notOurs.s === 400);
+
   // review 2 row 10: the folder dialog never freezes the server, HISTORY is always hidden and never served (any case)
   {
     const slowParent = path.join(tmp, 'slow-parent');

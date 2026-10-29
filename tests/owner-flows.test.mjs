@@ -23,6 +23,7 @@ process.env.BW_LOCAL_DIR = path.join(tmp, '.local');
 process.env.BW_WORKSPACE = path.join(tmp, 'ws');
 process.env.BW_BROWSER_STUB = path.join(tmp, 'browser.log');
 process.env.BW_UPDATE_TOKEN = 'none';
+process.env.BW_REVEAL_STUB = path.join(tmp, 'reveal.log'); // «افتح موقع الملف» writes the Explorer command here (H3)
 fs.mkdirSync(process.env.BW_WORKSPACE);
 const { buildEditor } = await import('../engine/build-editor.mjs');
 const { launchOptions, REPO } = await import('../engine/export.mjs');
@@ -123,6 +124,11 @@ try {
   }
   const prof = await page.evaluate(() => JSON.parse(localStorage.getItem('bw:profile') || 'null'));
   check(16, 'first launch: a profile card (name, picture) stores the owner\'s name', card && prof?.name === 'Mark', JSON.stringify(prof));
+  // H3 (owner 2026-10-29: «the popup for the name and picture appears every time I launch»): kept on this machine the
+  // moment it is set, in the host's .local and in HISTORY, before any edit (it used to travel only with a tab's push)
+  await wait(800);
+  const keptProf = (() => { try { return JSON.parse(fs.readFileSync(path.join(process.env.BW_LOCAL_DIR, 'profile.json'), 'utf8')).profile; } catch { return ''; } })();
+  check(16, 'the profile is kept on this machine the moment it is set (host .local + HISTORY), before any edit', /Mark/.test(keptProf) && fs.existsSync(path.join(W.workspace().dirs.history, 'profile.json.gz')), keptProf.slice(0, 80));
 
   // L9 the toolbar is never rebuilt by a click
   const n9 = await R((r) => { const b = [...r.querySelectorAll('.island [data-a]')]; b.forEach((x) => { x.__ownerTag = 1; }); return b.length; });
@@ -192,14 +198,16 @@ try {
   await page.evaluate(() => window.BW.setText('/chapters/0/title', 'مقدمة عدّلها المالك'));
   await wait(300);
   const c0 = await counter();
-  await act('saveHtml');
   const htmlDir = path.join(process.env.BW_WORKSPACE, 'Business-Wrap', 'HTML');
+  const htmlPre = new Set(fs.existsSync(htmlDir) ? fs.readdirSync(htmlDir) : []); // H3: the Saves above wrote each document's own file
+  await act('saveHtml');
   const t0 = Date.now();
   let saved = [];
-  while (Date.now() - t0 < 10000 && !saved.length) { saved = fs.existsSync(htmlDir) ? fs.readdirSync(htmlDir).filter((f) => f.endsWith('.html')) : []; if (!saved.length) await wait(200); }
+  while (Date.now() - t0 < 10000 && !saved.length) { saved = fs.existsSync(htmlDir) ? fs.readdirSync(htmlDir).filter((f) => f.endsWith('.html') && !htmlPre.has(f)) : []; if (!saved.length) await wait(200); }
   const savedText = saved[0] ? fs.readFileSync(path.join(htmlDir, saved[0]), 'utf8') : '';
   const today = W.outName('x', new Date(), 'ar', 'html').slice(2, 12);
-  check(15, 'Save HTML lands in Business-Wrap\\HTML as «<title>-<date>-AR.html»', saved[0] === W.outName('خدمة المالك الأولى', new Date(), 'ar', 'html'), saved.join(','));
+  // Save HTML (an export) is a copy beside the document's own file: «-2» when the Save already wrote «<title>-<date>-AR.html»
+  check(15, 'Save HTML lands in Business-Wrap\\HTML as «<title>-<date>-AR.html» (a copy, beside the saved document\'s own file)', saved.length === 1 && /^خدمة المالك الأولى-\d{4}-\d\d-\d\d-AR(-\d+)?\.html$/.test(saved[0]), saved.join(','));
   const data = (() => { const m = /<script type="application\/json" id="bw-data">([^]*?)<\/script>/.exec(savedText); try { return m && JSON.parse(m[1]); } catch { return null; } })();
   check(20, 'a document opened from the list, edited and saved as HTML carries its provenance log (prov)', !!data?.prov?.[id1]?.log, data ? Object.keys(data.prov || {}).join(',') || 'no prov' : 'no file', true);
   check(13, 'the change counter restarts at Save HTML', c0 >= 1 && (await counter()) === 0, `${c0} → ${await counter()}`);
@@ -359,6 +367,7 @@ try {
   await page.locator('#bw-ui-host >> css=.bw-modal [data-sh="to"]').fill('Alaa').catch(() => {});
   await R((r) => r.querySelector('.bw-modal [data-mk="ok"]')?.click());
   await wait(1500);
+  await R((r) => r.querySelectorAll(".sh-done [data-mk=\"close\"]").forEach((b) => b.click())); // H3: the share result card
   const shareName = (fs.existsSync(htmlDir) ? fs.readdirSync(htmlDir) : []).filter((n) => !htmlBefore.has(n));
   check(15, 'share writes «<title>-<date>-AR.html» like a save (not doc-<id>.editor.html)', shareName.length >= 1 && shareName.every((n) => n.includes(today) && /-AR(-\d+)?\.html$/.test(n)), shareName.join(',') || 'no shared file', true);
 
@@ -381,8 +390,86 @@ try {
   await page.locator('#bw-ui-host >> css=.bw-modal [data-sh="to"]').fill('Alaa').catch(() => {});
   await R((r) => r.querySelector('.bw-modal [data-mk="ok"]')?.click());
   await wait(1500);
+  await R((r) => r.querySelectorAll(".sh-done [data-mk=\"close\"]").forEach((b) => b.click())); // H3: the share result card
   const share2 = fs.readdirSync(htmlDir).filter((n) => !hb2.has(n));
   check(7, 'the share file carries the edited title (not «خدمة جديدة»)', share2.length >= 1 && share2.every((n) => n.startsWith('خدمة مراجعة الإصدار-')), share2.join(',') || 'no shared file');
+  // H3 (owner 2026-10-29): Ctrl+S and the yellow Save save THE document: its own HTML file in HTML\ (one file,
+  // overwritten, history appended), the list entry, the counter back to 0 (A9); no download, no extra copy
+  {
+    const dls = [];
+    const onDl = (d) => dls.push(d.suggestedFilename());
+    page.on('download', onDl);
+    await page.evaluate(() => { document.documentElement.dataset.bwSavedFile = ''; }); // the earlier Saves' file
+    await page.evaluate(() => window.BW.EXT.library.newDocument());
+    await wait(300);
+    await clickDoc('[data-p="/control/coverTitle"]');
+    await page.keyboard.press('Control+A');
+    await page.keyboard.type('خدمة الحفظ في مكانها');
+    await page.mouse.click(1000, 450); await wait(300);
+    const hb = new Set(fs.readdirSync(htmlDir));
+    const savedFile = async () => { await page.waitForFunction(() => !!document.documentElement.dataset.bwSavedFile, null, { timeout: 20000 }).catch(() => {}); return page.evaluate(() => { const f = document.documentElement.dataset.bwSavedFile || ''; document.documentElement.dataset.bwSavedFile = ''; return f; }); };
+    await page.keyboard.press('Control+s');
+    const f1 = await savedFile();
+    const c1 = await counter();
+    await clickDoc('[data-p="/chapters/0/title"]');
+    await page.keyboard.press('End');
+    await page.keyboard.type(' مرة ثانية');
+    await page.mouse.click(1000, 450); await wait(300);
+    await page.locator('#bw-ui-host >> css=.island [data-a="save"]').click();
+    const f2 = await savedFile();
+    await wait(800); // the autosave after the Save HTML mark
+    const added = fs.readdirSync(htmlDir).filter((n) => !hb.has(n));
+    const txt = f2 && fs.existsSync(f2) ? fs.readFileSync(f2, 'utf8') : '';
+    const ent = await page.evaluate(async () => { const B = window.BW, e = await B.EXT.library.get(B.S.svc); return { id: e?.id, files: e?.htmlFiles, stamp: document.getElementById('bw-ui-host').shadowRoot.querySelector('.bw-stamp')?.dataset.html || '' }; });
+    page.off('download', onDl);
+    check(7, 'Ctrl+S and the yellow Save save the document itself: one «<title>-<date>-AR.html», overwritten in place, no download', !!f1 && f1 === f2 && added.length === 1 && path.basename(f1) === W.outName('خدمة الحفظ في مكانها', new Date(), 'ar', 'html') && txt.includes('مرة ثانية') && txt.includes('id="bw-data"') && !dls.length && ent.files?.ar === f1, JSON.stringify({ f1, f2, added, dls, ent }));
+    const cNow = await counter();
+    check(13, 'Save in place is the Save-HTML point: the change counter goes back to 0 and the HTML time is stamped', c1 === 0 && cNow === 0 && !!ent.stamp, JSON.stringify({ c1, cNow, stamp: ent.stamp }));
+  }
+  // H3: share from the File category: a clear popup (recipient, note, what travels), the file, a result card whose
+  // «افتح موقع الملف» opens Explorer on THAT file (it opened Documents), «انسخ المسار», close
+  let sharedFile = '';
+  {
+    await page.evaluate(() => { document.documentElement.dataset.bwShared = ''; });
+    await fire('shShare'); await wait(400);
+    const pop = await R((r) => { const m = r.querySelector('.bw-modal.sh-modal'); return m && { to: !!m.querySelector('[data-sh="to"]'), note: !!m.querySelector('[data-sh="note"]'), travels: [...m.querySelectorAll('[data-tr]')].map((x) => x.dataset.tr), font: getComputedStyle(m.querySelector('.bw-modal-card')).fontFamily }; });
+    await page.locator('#bw-ui-host >> css=.sh-modal [data-sh="to"]').fill('Alaa').catch(() => {});
+    await page.locator('#bw-ui-host >> css=.sh-modal [data-sh="note"]').fill('راجعي الفصل الأول').catch(() => {});
+    await R((r) => r.querySelector('.sh-modal [data-mk="ok"]')?.click());
+    await page.waitForFunction(() => !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.sh-done'), null, { timeout: 15000 }).catch(() => {});
+    sharedFile = await page.evaluate(() => document.documentElement.dataset.bwShared || '');
+    const card = await R((r) => { const m = r.querySelector('.sh-done'); return m && { open: !!m.querySelector('[data-sh="open"]'), copy: !!m.querySelector('[data-sh="copy"]'), close: !!m.querySelector('[data-mk="close"]') }; });
+    if (card?.open) await page.locator('#bw-ui-host >> css=.sh-done [data-sh="open"]').click();
+    await wait(600);
+    const rv = (() => { try { return JSON.parse(fs.readFileSync(process.env.BW_REVEAL_STUB, 'utf8').trim().split('\n').at(-1)); } catch { return null; } })();
+    const stays = await R((r) => !!r.querySelector('.sh-done'));
+    if (card?.close) await page.locator('#bw-ui-host >> css=.sh-done [data-mk="close"]').click();
+    check(19, 'share popup: recipient, note and what travels (edits, history, lock, signatures), in the house face', !!pop && pop.to && pop.note && ['edits', 'history', 'lock', 'signs'].every((k) => pop.travels.includes(k)) && !/Times|(^|,\s*)serif$/.test(pop.font), JSON.stringify(pop));
+    check(19, 'share result card: «افتح موقع الملف» opens Explorer with THAT file selected, «انسخ المسار», close', !!sharedFile && path.dirname(sharedFile) === htmlDir && !!card?.copy && stays && (process.platform === 'win32' ? rv?.cmd === 'explorer.exe' && rv.verbatim && rv.args[0] === `/select,"${sharedFile}"` : !!rv), JSON.stringify({ sharedFile, card, rv, stays }));
+  }
+  // H3: File › Import = the documents list's import: a shared HTML (its log kept), a DOCX, a PDF, a document JSON
+  {
+    const id0 = await page.evaluate(() => window.BW.S.svc);
+    const ex = await page.evaluate(async () => { const B = window.BW, id = B.S.svc; const r = await fetch('/api/export', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ service: id, locale: 'ar', doc: B.M[id].ar.doc, embedFonts: false }) }); return r.json(); });
+    let accept = '';
+    const viaFile = async (f) => {
+      const svc0 = await page.evaluate(() => window.BW.S.svc);
+      const fc = page.waitForEvent('filechooser', { timeout: 8000 }).catch(() => null);
+      await fire('import');
+      const ch = await fc;
+      if (!ch) return null;
+      accept ||= (await ch.element().getAttribute('accept')) || '';
+      await ch.setFiles(f);
+      await page.waitForFunction((s) => window.BW.S.svc !== s && /^doc-/.test(window.BW.S.svc), svc0, { timeout: 60000 }).catch(() => {});
+      await wait(600);
+      return page.evaluate(async () => { const B = window.BW, id = B.S.svc, e = await B.EXT.library.get(id); return { id, inList: !!e && !e.deletedAt, title: B.EXT.library.titleOf(id), share: (B.EXT.ledger?.log(id)?.entries || []).filter((x) => x.kind === 'share').map((x) => x.data) }; });
+    };
+    const a = sharedFile ? await viaFile(sharedFile) : null;
+    const rest = [];
+    for (const f of [ex.docx, ex.pdf, path.join(REPO, 'samples', 'blank', 'document.ar.json')]) rest.push(f ? await viaFile(f) : null);
+    check(7, 'File › Import opens a shared Business-Wrap HTML as a new document, its log with the recipient and note kept', !!a && a.id !== id0 && a.inList && a.title === 'خدمة الحفظ في مكانها' && a.share.some((x) => x.to === 'Alaa' && x.note === 'راجعي الفصل الأول'), JSON.stringify(a));
+    check(7, 'File › Import takes DOCX, PDF and JSON: each opens as its own new document in the list', ['.docx', '.pdf', '.json', '.html'].every((x) => accept.includes(x)) && rest.every((x) => x?.inList) && new Set(rest.map((x) => x?.id)).size === 3, JSON.stringify({ accept, rest }));
+  }
   // G3 (review 2 row 10, L15): HISTORY hidden and never served, whatever the case of the address
   const histAttr = process.platform === 'win32' ? spawnSync('attrib', [ws.dirs.history], { encoding: 'utf8' }).stdout.split(ws.dirs.history)[0] : ' H ';
   const histServed = (await Promise.all(['HISTORY', 'history'].map(async (d) => (await fetch(`${h.url}files/${d}/sessions`)).status))).every((c) => c === 404);
@@ -420,6 +507,22 @@ try {
   await ctx2.close();
   const t2 = Date.now();
   while (H.alive(h.pid) && Date.now() - t2 < 8000) await wait(100);
+  // H3: an update into a new install folder (an empty .local, browser storage on a new origin): the owner is still known
+  // from HISTORY, so the first-launch card does not come back
+  process.env.BW_LOCAL_DIR = path.join(tmp, '.local-v2');
+  h = await H.start({ editor, port: await freePort(), open: false });
+  const ctx3 = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+  await ctx3.addInitScript(() => { try { localStorage.setItem('bw:profile-prompt', '1'); } catch { /* storage */ } });
+  const p3 = await ctx3.newPage();
+  await p3.goto(h.url);
+  await p3.waitForFunction(() => window.BW?.ready, null, { timeout: 20000 }).catch(() => {});
+  await wait(1500);
+  const up = await p3.evaluate(() => ({ card: !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.pf-first'), name: window.BW.EXT.profile?.get()?.name || '' }));
+  check(16, 'after an update (new install folder, empty .local, new origin) the owner is still known: no first-launch card', !up.card && up.name === 'Mark', JSON.stringify(up));
+  await p3.close({ runBeforeUnload: true });
+  await ctx3.close();
+  const t3 = Date.now();
+  while (H.alive(h.pid) && Date.now() - t3 < 8000) await wait(100);
 } catch (e) {
   check(0, 'run', false, e.stack?.split('\n').slice(0, 4).join(' / '));
 } finally {
