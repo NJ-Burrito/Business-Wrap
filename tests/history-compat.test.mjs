@@ -9,6 +9,7 @@ import path from 'node:path';
 import { chromium } from 'playwright-core';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-hist-'));
+process.env.BW_WORKSPACE = path.join(tmp, 'ws'); // the run's own save folder: serve() must not write the real HISTORY under the fixtures' fixed doc ids
 process.env.BW_LOCAL_DIR = path.join(tmp, 'local'); // the run's own .local: no host profile, backups not in the repo
 const { rewrapEditorHtml } = await import('../engine/build-editor.mjs');
 const { launchOptions, REPO } = await import('../engine/export.mjs');
