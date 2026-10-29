@@ -72,7 +72,8 @@
    "endOk": "ينهي {request} بالموافقة؛ وتصبح حالته «{s}»",
    "endStop": "ينهي {request}؛ وتصبح حالته «{s}»",
    "submit": "يرسل {request} إلى مرحلة «{t}»",
-   "leave": "يترك تعبئة النموذج دون إرسال {request}"
+   "leave": "يترك تعبئة النموذج دون إرسال {request}",
+   "autoSuffix": "، ويوزّعه النظام آلياً على موظفي المرحلة"
   },
   "story": {
    "customer": {
@@ -141,7 +142,9 @@
    "history": "يجب على النظام عرض سجل الإجراءات على {request} لجميع المستخدمين المعنيين.",
    "notify": "يجب على النظام إرسال إشعار إلى {customer} عند تغيّر حالة {request}، يتضمن رقم {request} وحالته وتاريخه.",
    "output": "يجب على النظام إنشاء «{output}» بعد الموافقة النهائية وإتاحته لـ{customer} للعرض والتحميل.",
-   "timer": "يجب على النظام إنهاء {request} تلقائياً إذا لم تُنجَز مرحلة «{s}» خلال {d}."
+   "timer": "يجب على النظام إنهاء {request} تلقائياً إذا لم تُنجَز مرحلة «{s}» خلال {d}.",
+   "deskActions": "يجب على النظام تمكين {w} من اتخاذ الإجراءات التالية على الطلب: {list}.",
+   "branchGate": "يجب على النظام عرض حقل «{f}» عند اختيار {when} فقط."
   },
   "units": {
    "submit": "تقديم {request}",
@@ -162,7 +165,10 @@
    "timerTo": "إذا لم تُنجَز مرحلة «{s}» خلال {d}، {e}.",
    "recipients": "يقتصر التقديم على الفئات التالية: {list}.",
    "open": "يستطيع الجميع التقديم دون استثناء.",
-   "serial": "لكل {request} رقم متسلسل بالصيغة {pattern}، {reset}."
+   "serial": "لكل {request} رقم متسلسل بالصيغة {pattern}، {reset}.",
+   "autoAssign": "يوزّع النظام {request} عند وصوله إلى مرحلة «{s}» آلياً وبالتناوب على موظفي المرحلة.",
+   "routing": "عندما تكون قيمة «{v}» «{x}»، {e}.",
+   "routingAuto": "بعد مرحلة {s} يحدّد النظام آلياً مسار {request} إلى {list} وفق قيمة يحسبها النظام."
   },
   "roleUsage": {
    "customer": "تعبئة النموذج وإرفاق الوثائق، والإرسال، ومتابعة الحالة والتعديل عند الإرجاع",
@@ -176,7 +182,8 @@
    "sections": "ما أقسام الشاشة التي تعرضها مرحلة «{s}»؟",
    "captions": "أسماء الإجراءات التالية مشتقة من مفاتيح النموذج وليست منسوخة من أزرار النظام، يُرجى تأكيدها: {list}",
    "translate": "النص التالي متوفر بلغة واحدة فقط ويحتاج إلى ترجمة: {list}",
-   "untraced": "عناصر في الأدلة لم يقابلها أي بند في الوثيقة: {list}"
+   "untraced": "عناصر في الأدلة لم يقابلها أي بند في الوثيقة: {list}",
+   "routing": "يوجّه النموذج الطلب آلياً وفق قيمة «{v}» ({list}): ما معنى كل قيمة؟"
   },
   "fill": {
    "evidence": "من الأدلة",
@@ -211,6 +218,15 @@
    "entity": "الجهة",
    "outputUnit": "الناتج",
    "outputWhenSigned": "عند اكتمال العملية"
+  },
+  "messages": "رسالة التحقق: {m}",
+  "story4": {
+   "retrieved": "البيانات المسترجعة",
+   "display": "معايير العرض",
+   "fields": "حقول المرحلة",
+   "actions": "جدول الإجراءات",
+   "fromPartner": "تُسترجع من «{p}»: {data}.",
+   "panels": "تُعرض للاطلاع: {list}، كما أُدخلت عند تقديم الطلب."
   }
  },
  "en": {
@@ -285,7 +301,8 @@
    "endOk": "Ends the {request} as approved; its status becomes «{s}»",
    "endStop": "Ends the {request}; its status becomes «{s}»",
    "submit": "Sends the {request} to the «{t}» stage",
-   "leave": "Leaves the form without sending the {request}"
+   "leave": "Leaves the form without sending the {request}",
+   "autoSuffix": ", and the system assigns it automatically to the stage staff"
   },
   "story": {
    "customer": {
@@ -354,7 +371,9 @@
    "history": "The system shows the action log of the {request} to every user concerned.",
    "notify": "The system notifies the {customer} when the {request} status changes, with the {request} number, status and date.",
    "output": "The system creates the «{output}» after final approval and lets the {customer} view and download it.",
-   "timer": "The system ends the {request} automatically when the «{s}» stage is not completed within {d}."
+   "timer": "The system ends the {request} automatically when the «{s}» stage is not completed within {d}.",
+   "deskActions": "The system lets {w} take these actions on the request: {list}.",
+   "branchGate": "The system shows the «{f}» field only when {when} is chosen."
   },
   "units": {
    "submit": "Submitting the {request}",
@@ -375,7 +394,10 @@
    "timerTo": "When the «{s}» stage is not completed within {d}, the system {e}.",
    "recipients": "Only these categories may apply: {list}.",
    "open": "Anyone may apply, without exception.",
-   "serial": "Every {request} has a serial number in the form {pattern}; {reset}."
+   "serial": "Every {request} has a serial number in the form {pattern}; {reset}.",
+   "autoAssign": "When the {request} reaches the «{s}» stage, the system assigns it automatically, in turn, to that stage's staff.",
+   "routing": "When «{v}» is «{x}», {e}.",
+   "routingAuto": "After the {s} stage, the system routes the {request} automatically to {list} on a value it computes."
   },
   "roleUsage": {
    "customer": "fills in the form, attaches documents, sends, follows the status and makes changes when returned",
@@ -389,7 +411,8 @@
    "sections": "Which screen sections does the «{s}» stage show?",
    "captions": "These action names are derived from the model's keys, not copied from the system's buttons; please confirm them: {list}",
    "translate": "This text exists in one language only and needs a translation: {list}",
-   "untraced": "Evidence elements no section of the document took up: {list}"
+   "untraced": "Evidence elements no section of the document took up: {list}",
+   "routing": "The model routes the request on «{v}» ({list}): what does each value mean?"
   },
   "fill": {
    "evidence": "From evidence",
@@ -424,6 +447,15 @@
    "entity": "the organisation",
    "outputUnit": "Output",
    "outputWhenSigned": "When the process completes"
+  },
+  "messages": "Validation message: {m}",
+  "story4": {
+   "retrieved": "Retrieved data",
+   "display": "Display criteria",
+   "fields": "Stage fields",
+   "actions": "Actions table",
+   "fromPartner": "Retrieved from «{p}»: {data}.",
+   "panels": "Shown for reference: {list}, as entered on submission."
   }
  }
 }

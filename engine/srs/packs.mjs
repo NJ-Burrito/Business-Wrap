@@ -38,8 +38,9 @@ export function validatePack(p) {
 }
 
 /**
- * Corrections by text: [{ id, locale?, find, replace, expect? }]. Each is applied to every string of the
- * edition; one that finds nothing is reported stale, and one whose `expect` text is then absent fails.
+ * Corrections by text: [{ id, locale?, find, replace, expect?, stale? }]. Each is applied to every string of the
+ * edition; one that finds nothing is reported stale, one whose `expect` text is then absent fails, and one
+ * whose `stale` text (what must be gone) is still anywhere in the edition fails.
  */
 export function applyCorrections(doc, list, locale) {
   const report = [];
@@ -51,7 +52,9 @@ export function applyCorrections(doc, list, locale) {
     walk(doc);
     const expect = pick(c.expect, locale) || repl;
     const present = JSON.stringify(doc).includes(JSON.stringify(expect).slice(1, -1));
-    report.push({ id: c.id, hits, status: hits ? (present ? 'applied' : 'FAIL') : present ? 'already' : 'stale' });
+    const st = pick(c.stale, locale);
+    const lingers = !!st && JSON.stringify(doc).includes(JSON.stringify(st).slice(1, -1));
+    report.push({ id: c.id, hits, status: lingers ? 'FAIL' : hits ? (present ? 'applied' : 'FAIL') : present ? 'already' : 'stale', ...(lingers ? { lingers: st } : {}) });
   }
   return report;
 }

@@ -368,13 +368,19 @@ async function fill(page, fields, cfg, outDir) {
   }
 }
 
-/** Option by option, which hidden fields a choice reveals. */
+/** Option by option, which hidden fields a choice reveals, and which attachment-list entries it adds (`doc:<entry>`). */
+const ATTACH_LIST = /(اسم|نوع)\s*(ال)?مرفق|attachment\s*(name|type)|document\s*(name|type)/i;
 async function conditions(page, fields, scope) {
   const out = {};
   const visibleKeys = async () => new Set((await readFields(page, scope)).filter((x) => x.visible).map((x) => x.key));
+  // the attachment picker re-read after every choice: §2.6 is the union of what each branch asks for
+  // (a PrimeNG picker lists its options only in the overlay: open it, read, close)
+  const docsNow = async () => new Set((await primeOptions(page, (await readFields(page, scope)).filter((x) => x.visible && x.type === 'select' && ATTACH_LIST.test(x.label || '')))).flatMap((x) => x.options || []));
+  if (fields.some((x) => x.type === 'select' && ATTACH_LIST.test(x.label || ''))) out.__branchRead = true;
   // a language switcher is never cycled: choosing an option would switch the portal's language
   for (const f of fields.filter((x) => x.visible && (x.type === 'select' || x.type === 'radio') && !isLanguageSwitch(x.options))) {
     const base = await visibleKeys();
+    const baseDocs = out.__branchRead ? await docsNow() : new Set();
     const choose = [];
     if (f.type === 'radio') (f.selectors || [f.selector]).forEach((sel, i) => choose.push([f.options?.[i] || String(i + 1), async () => {
       const m = page.locator(sel).first();
@@ -393,6 +399,7 @@ async function conditions(page, fields, scope) {
       try { await act(); } catch { continue; }
       await page.waitForTimeout(120);
       for (const k of await visibleKeys()) if (!base.has(k)) (out[k] ||= []).push(`${f.label} = ${lab}`);
+      if (out.__branchRead) for (const o of await docsNow()) if (!baseDocs.has(o)) (out[`doc:${o}`] ||= []).push(`${f.label} = ${lab}`);
     }
     if (f.type === 'select' && !f.prime) await page.locator(f.selector).first().selectOption({ index: 0 }).catch(() => {});
   }
@@ -520,6 +527,7 @@ export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), 
           all.forEach((f, i) => { if (flagged[i]?.on || named.has(f.label)) f.required = true; if (flagged[i]?.message) f.message = flagged[i].message; });
         }
         const step = { title, url: page.url(), fields: all.map(({ selector, selectors, prime, ...f }) => ({ ...f, shownWhen: cond[f.key] })), validations: messages };
+        if (cond.__branchRead) step.docBranches = Object.fromEntries(Object.entries(cond).filter(([k]) => k.startsWith('doc:')).map(([k, v]) => [k.slice(4), v]));
         // the same form read twice (it did not advance): one step, the richer reading of each field
         const sig = (x) => x.fields.map((f) => `${f.key}:${f.type}`).join('|');
         const prev = L.steps.at(-1);

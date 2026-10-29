@@ -1,0 +1,43 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>تقديم الطلب</title>
+<!-- Invented test fixture: the live portal's shape (PrimeNG-style radio group and attachment-name dropdown whose
+     list depends on the radio choice, overlay appended to body, file input + «إضافة», final «إرسال»). No real organisation. -->
+<style>body{font:16px system-ui;margin:2rem}.field{margin:.6rem 0}.p-dropdown{display:inline-block;min-width:14rem;border:1px solid #888;padding:.3rem;cursor:pointer}
+.p-radiobutton-box{display:inline-block;width:14px;height:14px;border:1px solid #444;border-radius:50%;cursor:pointer}.p-radiobutton-box.on{background:#444}
+.p-hidden-accessible{position:absolute;opacity:0;width:1px;height:1px}.p-dropdown-panel{position:absolute;background:#fff;border:1px solid #888}.p-dropdown-panel li{padding:.2rem .6rem;cursor:pointer}</style></head>
+<body><main><form novalidate>
+<h2>بيانات الطلب</h2>
+<div class="field"><label for="ref">رقم المرجع</label><input id="ref" name="ref"></div>
+<div class="field"><label>نوع مقدم الطلب *</label>
+  <div class="field"><p-radiobutton name="applicantType" value="person"><div class="p-radiobutton"><input type="radio" name="applicantType" value="person" class="p-hidden-accessible"><div class="p-radiobutton-box"></div></div></p-radiobutton><label>فرد</label></div>
+  <div class="field"><p-radiobutton name="applicantType" value="company"><div class="p-radiobutton"><input type="radio" name="applicantType" value="company" class="p-hidden-accessible"><div class="p-radiobutton-box"></div></div></p-radiobutton><label>منشأة</label></div>
+</div>
+<h3>المرفقات</h3>
+<div class="field"><label>اسم المرفق</label><p-dropdown formcontrolname="attachmentName"><div class="p-dropdown" role="combobox" tabindex="0"><span class="p-dropdown-label">اختر</span></div></p-dropdown></div>
+<div class="field"><label for="file">الملف</label><input id="file" name="file" type="file" accept=".pdf"></div>
+<button type="button" id="add">إضافة</button>
+<button type="submit">إرسال</button>
+</form></main>
+<script>
+const LISTS = { '': ['صورة الهوية'], person: ['صورة الهوية', 'شهادة عدم محكومية'], company: ['صورة الهوية', 'سجل تجاري', 'تفويض المفوض بالتوقيع'] };
+let kind = '';
+document.querySelectorAll('p-radiobutton').forEach((r) => r.querySelector('.p-radiobutton-box').addEventListener('click', () => {
+  document.querySelectorAll('.p-radiobutton-box').forEach((b) => b.classList.remove('on'));
+  r.querySelector('.p-radiobutton-box').classList.add('on');
+  r.querySelector('input').checked = true;
+  kind = r.getAttribute('value');
+}));
+const dd = document.querySelector('.p-dropdown');
+const close = () => document.querySelectorAll('.p-dropdown-panel').forEach((p) => p.remove());
+dd.addEventListener('click', () => {
+  close();
+  const p = document.createElement('div');
+  p.className = 'p-dropdown-panel';
+  p.innerHTML = '<ul>' + LISTS[kind].map((o) => '<li class="p-dropdown-item" role="option">' + o + '</li>').join('') + '</ul>';
+  const b = dd.getBoundingClientRect();
+  p.style.top = (b.bottom + scrollY) + 'px'; p.style.left = (b.left + scrollX) + 'px';
+  p.querySelectorAll('li').forEach((li) => li.addEventListener('click', () => { dd.querySelector('.p-dropdown-label').textContent = li.textContent; close(); }));
+  document.body.appendChild(p);
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+document.querySelector('form').addEventListener('submit', (e) => e.preventDefault());
+</script></body></html>
