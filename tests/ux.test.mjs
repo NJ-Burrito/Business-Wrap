@@ -540,15 +540,15 @@ try {
   { // 0.13 A7
     const { ctx, page } = await open({ width: 1440, height: 900 });
     await page.evaluate(() => window.BW.runAction('settings')); await page.waitForTimeout(500);
-    const first = (a) => a.length >= 2 && a[0] === true && a.slice(1).every((x) => x === false);
+    const first = (a) => a.length >= 2 && a.every((x) => x === false); // F2 · 11: every group collapsed on open
     const g = await sh(page, (R) => [...R.querySelectorAll('.drawer details.pgrp')].map((d) => d.open));
-    check('0.13 A7: Settings opens with only the first group expanded (local learning collapsed too)', g.length >= 3 && first(g), JSON.stringify(g));
+    check('F2 11: Settings opens with every group collapsed (local learning too)', g.length >= 3 && first(g), JSON.stringify(g));
     // the Design and Process panels follow the same rule (the owner asked for all side panels)
     await page.evaluate(() => window.BW.openDrawer('theme')); await page.waitForTimeout(300);
     const gd = await sh(page, (R) => [...R.querySelectorAll('.drawer details.dgrp')].map((d) => d.open));
     await page.evaluate(() => window.BW.openDrawer('process')); await page.waitForTimeout(300);
     const gp = await sh(page, (R) => [...R.querySelectorAll('.drawer details.pgrp')].map((d) => d.open));
-    check('0.13 A7: the Design panel opens with only the first group expanded (the Process panel: harvest.test, with a model)', gd.length >= 6 && first(gd) && (gp.length < 2 || first(gp)), JSON.stringify({ gd, gp }));
+    check('F2 11: the Design panel opens with every group collapsed (the Process panel: harvest.test, with a model)', gd.length >= 6 && first(gd) && (gp.length < 2 || first(gp)), JSON.stringify({ gd, gp }));
     await page.evaluate(() => { window.BW.runAction('settings'); }); await page.waitForTimeout(400);
     await sh(page, (R) => { const d = R.querySelectorAll('.drawer details.pgrp')[2]; d.open = true; });
     await page.waitForTimeout(100);
@@ -638,6 +638,112 @@ try {
     const rows = await cnt('/controlTable/rows');
     check('0.13 A25: control table → table tools; Add row materialises it first (WP2 materialiseControl), then adds', ctools === 'table' && rows?.length === rows0 + 1, JSON.stringify({ ctools, rows0, rows: rows?.length }));
     check('0.13 A25: no page errors', !errors.length, errors.join(' | '));
+    await ctx.close();
+  }
+  // ── F2 (acceptance review 0.13.0): the owner flows that broke ─────────────────────────────────────────────
+  { // F2 · 24 + 18: insert an image after a paragraph, move that paragraph down twice: no error, the pair keeps one shape
+    const { ctx, page, errors } = await open({ width: 1366, height: 860 });
+    const P0 = '/chapters/0/sections/0/blocks/0';
+    await page.locator(`main.bw-doc[data-locale="ar"] [data-b="${P0}"]`).first().click();
+    const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.evaluate(() => { window.BW.runAction('image'); })]);
+    await fc.setFiles(PNG); await page.waitForTimeout(500);
+    const ins = await page.evaluate(() => { const B = window.BW; const a = B.M[B.S.svc].ar.doc, e = B.M[B.S.svc].en.doc; return { a: (a.overlays || []).length, e: (e.overlays || []).length, wrap: (a.overlays || []).at(-1)?.wrap, selOv: B.S.selOv }; });
+    const wrapTools = await sh(page, (R) => [...R.querySelectorAll('.island .sec[data-cat="wrap"] [data-a]')].map((x) => x.dataset.a));
+    check('F2 18: «إدراج صورة» goes the dropped image\'s way: an overlay in both editions, the seven wrap tools shown', ins.a === ins.e && ins.a >= 1 && ins.wrap === 'square' && wrapTools.filter((x) => /^wrap/.test(x)).length === 7, JSON.stringify({ ins, wrapTools }));
+    await page.evaluate((p) => { window.BW.S.sel = { b: p, p: null, ed: 'ar' }; window.BW.S.selOv = null; }, P0);
+    for (let k = 0; k < 2; k += 1) { await page.evaluate(() => window.BW.runAction('moveDown')); await page.waitForTimeout(200); }
+    await page.locator('main.bw-doc[data-locale="ar"] .wrap [data-p]').nth(3).click(); await page.waitForTimeout(150);
+    const after = await page.evaluate(() => { const B = window.BW; const sh = (d) => JSON.stringify(d.chapters.map((c) => c.sections.map((s) => s.blocks.map((b) => b?.kind ?? null)))); const a = sh(B.M[B.S.svc].ar.doc), e = sh(B.M[B.S.svc].en.doc); return { same: a === e, holes: /null/.test(a + e), parity: document.documentElement.dataset.bwParity || '' }; });
+    check('F2 24: image, then «لأسفل» twice: no page error, no hole, the AR/EN pair keeps one shape (parity ok)', !errors.length && after.same && !after.holes && after.parity !== 'drift', JSON.stringify({ errors, ...after }));
+    // the parity assertion: a structural op on one edition only is reported, never silent
+    const drift = await page.evaluate(() => { const B = window.BW; B.commit([{ op: 'insert', path: '/chapters/0/sections/0/blocks/0', value: { kind: 'prose', paragraphs: ['x'] } }], { mirror: false }); const d = document.documentElement.dataset.bwParity; B.undo(); return d; });
+    check('F2 24: a structural op left unmirrored on purpose trips the parity assertion', drift === 'drift', String(drift));
+    // a mirrored move from a slot the other edition does not have is refused for the mirror (no undefined block)
+    const hole = await page.evaluate(() => { const B = window.BW; const e = B.M[B.S.svc].en.doc; const n = e.chapters[0].sections[0].blocks.length; B.commit([{ op: 'insert', path: '/chapters/0/sections/0/blocks/0', value: { kind: 'prose', paragraphs: ['only ar'] } }], { mirror: false }); B.S.sel = { b: `/chapters/0/sections/0/blocks/${n}`, p: null, ed: 'ar' }; B.A.move(1); return e.chapters.flatMap((c) => c.sections.flatMap((s) => s.blocks.map((b) => b?.kind))).every(Boolean); });
+    check('F2 24: a mirrored move from a slot the other edition lacks never writes an undefined block', hole === true);
+    await ctx.close();
+  }
+  { // F2 · 28: «نطاق العنصر» on a header item, with no block selected: applies to the page, toast only when it did
+    const { ctx, page, errors } = await open({ width: 1366, height: 860 });
+    await page.evaluate(() => window.BW.EXT.w2chrome.add('header', { kind: 'text', value: 'ONLYHERE' }));
+    await page.waitForTimeout(200);
+    await page.locator('#bw-pair .w2-strip [data-ci^="header:"]', { hasText: 'ONLYHERE' }).first().click(); await page.waitForTimeout(150);
+    await page.evaluate(() => { window.BW.S.sel = null; });
+    await page.evaluate(() => window.BW.runAction('hdrScope')); await page.waitForTimeout(250);
+    const r = await page.evaluate(() => { const B = window.BW; const x = B.M[B.S.svc][B.S.ed].doc.chrome.header.items.find((i) => i.value === 'ONLYHERE'); return { scope: x.scope, anchor: !!x.anchor }; });
+    const toasts = await sh(page, (R) => [...R.querySelectorAll('.toasts .toast .m')].map((x) => x.textContent));
+    check('F2 28: «هذه الصفحة فقط» applies with no block selected (anchored), no «حدّد كتلة» toast', r.scope === 'only' && r.anchor && !toasts.some((x) => /حدّد كتلة|Select a block/.test(x)) && toasts.some((x) => /هذه الصفحة فقط|this page only/.test(x)), JSON.stringify({ r, toasts }));
+    check('F2 28: no page errors', !errors.length, errors.join(' | '));
+    await ctx.close();
+  }
+  { // F2 · 17 + extra 3 + extra 9: every check finding jumps; a section jump rings the BODY heading, never the TOC row
+    const { ctx, page, errors } = await open({ width: 1440, height: 900 });
+    await page.evaluate(() => {
+      const B = window.BW; const d = B.M[B.S.svc][B.S.ed].doc;
+      const find = (pred) => { for (let i = 0; i < d.chapters.length; i += 1) for (let j = 0; j < d.chapters[i].sections.length; j += 1) { const k = d.chapters[i].sections[j].blocks.findIndex(pred); if (k >= 0) return `/chapters/${i}/sections/${j}/blocks/${k}`; } return null; };
+      const tb = find((b) => b.kind === 'table' && b.rows.some((r) => String(r[0]) === 'BR-02'));
+      const rows = tb.split('/').slice(1).reduce((o, k) => o[k], d).rows;
+      B.setText(`${tb}/rows/${rows.findIndex((x) => x[0] === 'BR-02')}/0`, 'BR-01'); // a duplicate code (extra 9)
+      const st = find((b) => b.kind === 'stories');
+      B.commit([{ op: 'replace', path: `${st}/items/0/acceptance`, value: [], old: undefined }]); // a story without criteria
+      B.commit([{ op: 'replace', path: '/chapters/0/sections/1/blocks', value: [], old: undefined }]); // an empty section
+      B.render(); B.runAction('check');
+    });
+    await page.waitForTimeout(400);
+    const rows = await sh(page, (R) => [...R.querySelectorAll('.drawer .list > li')].map((li) => ({ t: li.textContent.trim().slice(0, 70), go: li.querySelector('.jump')?.dataset.go || '' })));
+    check('F2 17/extra 3: every check finding row has a jump (logo slots and labels included)', rows.length >= 3 && rows.every((x) => x.go), JSON.stringify(rows));
+    check('F2 extra 9: a duplicate BR code and a story without acceptance criteria are listed', rows.some((x) => /BR-01/.test(x.t) && /مكرر|Duplicate/.test(x.t)) && rows.some((x) => /معايير قبول|acceptance/.test(x.t)), JSON.stringify(rows.map((x) => x.t)));
+    await page.locator('.drawer .jump[data-go="/chapters/0/sections/1/title"]').first().click(); await page.waitForTimeout(300);
+    const ring = await page.evaluate(() => { const el = document.querySelector('main.bw-doc .bw-jump'); return el ? { toc: !!el.closest('table.toc, .toc'), p: el.dataset.p || el.closest('[data-p]')?.dataset.p } : null; });
+    check('F2 17: the jump rings the section heading in the body, not its TOC row', !!ring && !ring.toc && ring.p === '/chapters/0/sections/1/title', JSON.stringify(ring));
+    await page.evaluate(() => window.BW.openDrawer('check')); await page.waitForTimeout(300);
+    await page.locator('.drawer .jump[data-go="#logos"]').first().click(); await page.waitForTimeout(300);
+    const lg = await page.evaluate(() => !!document.querySelector('main.bw-doc .cover .bw-jump, main.bw-doc .cover.bw-jump'));
+    check('F2 extra 3: the logo-slot finding rings the cover\'s logo slots', lg);
+    check('F2 17: no page errors', !errors.length, errors.join(' | '));
+    await ctx.close();
+  }
+  { // F2 · extra 10: delete a block → «تراجع» for 5 s; the press restores the block and the change counter
+    const { ctx, page, errors } = await open({ width: 1366, height: 860 });
+    const before = await page.evaluate(() => { const B = window.BW; const e = B.M[B.S.svc][B.S.ed]; B.S.sel = { b: '/chapters/0/sections/0/blocks/0', p: null, ed: B.S.ed }; return { ops: e.ops.length, blk: JSON.stringify(e.doc.chapters[0].sections[0].blocks[0]) }; });
+    await page.evaluate(() => window.BW.runAction('delete')); await page.waitForTimeout(200);
+    const btn = await sh(page, (R) => R.querySelector('.toasts .toast.undo button')?.textContent || '');
+    await page.mouse.move(5, 500); await page.waitForTimeout(3500);
+    const still = await sh(page, (R) => !!R.querySelector('.toasts .toast.undo:not(.out) button'));
+    await sh(page, (R) => R.querySelector('.toasts .toast.undo button').click()); await page.waitForTimeout(200);
+    const back = await page.evaluate(() => { const B = window.BW; const e = B.M[B.S.svc][B.S.ed]; return { ops: e.ops.length, blk: JSON.stringify(e.doc.chapters[0].sections[0].blocks[0]) }; });
+    check('F2 extra 10: delete → «تراجع» toast still there after 3.5 s; the press restores the block and the counter', /تراجع|Undo/.test(btn) && still && back.ops === before.ops && back.blk === before.blk, JSON.stringify({ btn, still, before: before.ops, back: back.ops, same: back.blk === before.blk }));
+    const gone = await page.evaluate(async () => { const B = window.BW; B.S.sel = { b: '/chapters/0/sections/0/blocks/0', p: null, ed: B.S.ed }; B.runAction('delete'); await new Promise((r) => setTimeout(r, 5700)); return !document.getElementById('bw-ui-host').shadowRoot.querySelector('.toasts .toast.undo:not(.out)'); });
+    check('F2 extra 10: the undo toast leaves after 5 s', gone);
+    check('F2 extra 10: no page errors', !errors.length, errors.join(' | '));
+    await ctx.close();
+  }
+  { // F2 · 11 + 38: primary actions in the panel header, field-group shades, one chevron convention, banners follow the UI language
+    const { ctx, page, errors } = await open({ width: 1440, height: 900 });
+    await page.evaluate(() => window.BW.openDrawer('theme')); await page.waitForTimeout(300);
+    check('F2 11: a primary action of a collapsed group sits in the panel header (Design: logo)', await sh(page, (R) => !!R.querySelector('.drawer > header .hact [data-k="logoAdd"]')));
+    await sh(page, (R) => { R.querySelector('.drawer details[data-grp="sizes"]').open = true; });
+    const bg = await sh(page, (R) => { const v = [...R.querySelectorAll('.drawer details[data-grp="sizes"] > .vc')]; const pan = getComputedStyle(R.querySelector('.drawer')).backgroundColor; const solid = (c) => (/rgba\(.*,\s*0\)$/.test(c) ? pan : c); return [solid(getComputedStyle(v[0]).backgroundColor), solid(getComputedStyle(v[1]).backgroundColor), getComputedStyle(v[0].querySelector('.vc-l')).color]; });
+    const lum = (c) => { const v = c.match(/[\d.]+/g).slice(0, 3).map((x) => { x = +x / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+    const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+    check('F2 11: Design field rows alternate their shade, text contrast ≥ 4.5:1 on both', bg[0] !== bg[1] && ratio(bg[2], bg[0]) >= 4.5 && ratio(bg[2], bg[1]) >= 4.5, JSON.stringify(bg));
+    const chev = async (ui) => {
+      await page.evaluate((u) => { if (window.BW.S.ui !== u) window.BW.runAction('uiLang'); }, ui); await page.waitForTimeout(300);
+      await page.evaluate(() => window.BW.openDrawer('settings')); await page.waitForTimeout(300);
+      return sh(page, async (R) => { const d = R.querySelector('.drawer details.pgrp'); const tr = () => getComputedStyle(d.querySelector('summary'), '::before').transform; const wait = () => new Promise((r) => setTimeout(r, 450)); d.open = false; await wait(); const c = tr(); d.open = true; await wait(); const o = tr(); d.open = false; return { c, o }; });
+    };
+    const ang = (m) => { const [a, b] = m.slice(m.indexOf('(') + 1).split(',').map(Number); return Math.round((Math.atan2(b, a) * 180) / Math.PI); };
+    const ar = await chev('ar'); const en = await chev('en');
+    check('F2 38: chevrons: open points down in both; collapsed points ‹ in Arabic and › in English', ang(ar.o) === 45 && ang(en.o) === 45 && ang(ar.c) === 135 && ang(en.c) === -45, JSON.stringify({ ar, en }));
+    // a live banner follows the UI language switch (no Arabic banner in the English UI)
+    await page.evaluate((m) => { window.BW.toast(m, 'info', { persist: true, actions: [[m, () => {}]] }); }, UX.en['ux.jump']);
+    await page.evaluate(() => window.BW.runAction('uiLang')); await page.waitForTimeout(300); // en → ar
+    const words = await sh(page, (R) => [...R.querySelectorAll('.toasts .toast :is(.m, button)')].map((x) => x.textContent));
+    check('F2 38: a live banner is retranslated on a UI language switch', words.length >= 2 && words.every((w) => w !== UX.en['ux.jump']) && words.includes(UX.ar['ux.jump']), JSON.stringify(words));
+    // the relaunch prompt (12-session.js puts a dialog.bw-resume on the shadow root, outside .shell): the house face and buttons
+    const dlg = await sh(page, (R) => { const d = document.createElement('dialog'); d.className = 'bw-resume'; d.innerHTML = '<h2>x</h2><ol class="list"><li>a</li><li>b</li></ol><div class="btns"><button type="button" class="b primary">go</button></div>'; R.appendChild(d); d.showModal(); const cs = getComputedStyle(d); const b = getComputedStyle(d.querySelector('.b.primary')); const out = { font: cs.fontFamily, bg: cs.backgroundColor, btn: b.backgroundColor, row2: getComputedStyle(d.querySelectorAll('li')[1]).backgroundColor }; d.close(); d.remove(); return out; });
+    check('F2 38: the relaunch dialog takes the house face, surface, gold primary button and row shades', /Thmanyah/i.test(dlg.font) && dlg.bg !== 'rgba(0, 0, 0, 0)' && dlg.btn !== 'rgba(0, 0, 0, 0)' && dlg.row2 !== 'rgba(0, 0, 0, 0)', JSON.stringify(dlg));
+    check('F2 38: no page errors', !errors.length, errors.join(' | '));
     await ctx.close();
   }
 } catch (e) {

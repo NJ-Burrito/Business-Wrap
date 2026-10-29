@@ -147,13 +147,26 @@ window.addEventListener('pointerdown', (e) => {
 }, true);
 window.addEventListener('resize', () => uxMenusOpen().forEach((m) => uxMenuPlace(m, m.previousElementSibling)));
 
-/* ── 0.13 A7: side panels — each heading and what follows it is a group, collapsed except the first ─────────────
+/* ── 0.13 A7 (F2: all collapsed): side panels — each heading and what follows it is a group ─────────────
  * (any the person opened is remembered per panel and position in sessionStorage). Every panel, the Process panel
  * and Settings → local learning included; the Design panel keeps its own groups (design-panel.js), collapsed too. */
 // the Design panel's own groups: an open/close is remembered the moment it happens (a redraw may rebuild the drawer first)
 root.addEventListener('toggle', (e) => { const g = e.target; if (g.matches?.('details[data-grp]')) (S.grpOpen ||= {})[g.dataset.grp] = g.open; }, true);
 function uxDrawerGroups(d, kind) {
-  if (kind === 'theme') return;
+  if (kind !== 'theme') uxGroup(d, kind);
+  // F2 · 11: every group starts collapsed, so a primary action that needs nothing from its group moves up into the
+  // header (Design: «شعار»; New document: pick a process model, merge). Actions that read their group's own fields
+  // (the crawl's config, the update check + its status, the report's dates) stay beside them.
+  const head = d.querySelector(':scope > header');
+  const lead = [...d.querySelectorAll('details:is(.pgrp, .dgrp) .b.primary:is([data-k="logoAdd"], [data-k="nd-model"], [data-k="nd-merge"])')];
+  if (head && lead.length) {
+    const box = document.createElement('div');
+    box.className = 'hact';
+    box.append(...lead);
+    head.querySelector('[data-k="close"]')?.before(box);
+  }
+}
+function uxGroup(d, kind) {
   const heads = [...d.querySelectorAll('h3, h4')].filter((h) => !h.closest('details, header'));
   heads.forEach((h, i) => {
     const key = `bw:grp:${kind}:${i}`;
@@ -164,7 +177,7 @@ function uxDrawerGroups(d, kind) {
     det.append(sum);
     sum.append(h);
     for (let n = det.nextSibling; n && !(n.nodeType === 1 && (n.matches('h3, h4') || n.querySelector('h3, h4')));) { const nx = n.nextSibling; det.append(n); n = nx; }
-    let open = i === 0; // the first group open, every other collapsed (remembered once toggled)
+    let open = false; // F2 · 11 (owner, line 11): every group collapsed on open (remembered once toggled)
     try { const v = sessionStorage.getItem(key); if (v != null) open = v === '1'; } catch { /* storage blocked: defaults */ }
     det.open = open;
     det.addEventListener('toggle', () => { try { sessionStorage.setItem(key, det.open ? '1' : '0'); } catch { /* storage blocked */ } });
@@ -180,4 +193,13 @@ window.addEventListener('pointerdown', (e) => {
   if (path.includes(host)) return;
   if (path.some((x) => x.matches?.('dialog, [popover]'))) return;
   closeDrawer();
+}, true);
+
+/* F2 · extra 10: deleting a document from the documents list (10-library.js) offers «تراجع» for 5 s: it comes back
+ * out of the bin. Listened for here, so the library keeps its own code. */
+root.addEventListener('click', (e) => {
+  const b = e.target.closest?.('.drawer [data-lib="del"]');
+  const id = b?.closest('[data-id]')?.dataset.id;
+  if (!id || !EXT.library) return;
+  setTimeout(() => undoToast(t('ux.deletedDoc'), async () => { await EXT.library.restore(id); if (S.drawer === 'library') openDrawer('library'); }, { viaUndo: false }), 0);
 }, true);

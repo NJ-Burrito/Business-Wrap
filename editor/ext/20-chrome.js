@@ -52,7 +52,7 @@ const W2_CHROME = {
     this.ensure(pre);
     const n = (w2doc().chrome?.[part]?.items || chromeDefaults(S.ed)[part].items).length;
     w2commit([...pre, { op: 'insert', path: `/chrome/${part}/items/-`, value: { id: w2id(part[0]), align: 'start', scope: 'all', ...item } }]);
-    W2.sel = { part, i: n };
+    W2.sel = { part, i: n, pageB: S.sel?.b || w2pageBlock(null) }; // F2 · 28: "this page" = where it was added
     render();
     return n;
   },
@@ -70,6 +70,7 @@ const W2_CHROME = {
     if (!old) return;
     w2commit([...pre, { op: 'delete', path: `/chrome/${part}/items/${i}`, old }]);
     W2.sel = null;
+    undoToast(t('ux.deletedItem'), () => w2commit([{ op: 'insert', path: `/chrome/${part}/items/${i}`, value: old }]));
   },
   /** A6: every page / this page only / from this page on — anchored to the selected block (it gains an id). */
   scope(part, i, scope, blockPtr) {
@@ -80,7 +81,8 @@ const W2_CHROME = {
     const next = { ...old, scope };
     if (scope === 'all') delete next.anchor;
     else {
-      const b = blockOf(blockPtr || S.sel?.b);
+      // F2 · 28: the page the item was picked on (no block selection needed); a block pointer, when given, wins
+      const b = blockOf(blockPtr || W2.sel?.pageB || S.sel?.b || w2pageBlock(null));
       if (!b) { toast(t('w2.needBlock'), 'warn'); return false; }
       next.anchor = w2blockId(b.ptr, pre);
     }
@@ -103,8 +105,8 @@ async function w2chromeAction(id) {
   else if (op === 'Delete') W2_CHROME.remove(part, i);
   else if (op === 'Scope') {
     const now = W2_CHROME.items(part)[i]?.scope || 'all';
-    W2_CHROME.scope(part, i, { all: 'only', only: 'from', from: 'all' }[now]);
-    toast(t('w2.scope.' + ({ all: 'only', only: 'from', from: 'all' }[now])), 'info');
+    const next = { all: 'only', only: 'from', from: 'all' }[now];
+    if (W2_CHROME.scope(part, i, next)) toast(t('w2.scope.' + next), 'info'); // the toast says what happened, only when it did
   }
 }
 const W2_ITEM_OPS = ['Start', 'Center', 'End', 'Delete', 'Scope'];
@@ -190,11 +192,23 @@ bwExt({
     render: () => w2strip(),
   },
 });
+/** F2 · 28: the block that stands for "this page": the first block of the page frame the item sits on (paged view),
+ *  else the block selected last, else the first block in view. */
+function w2pageBlock(el) {
+  const main = mainOf(S.ed);
+  const blocks = [...(main?.querySelectorAll('.wrap [data-b]') || [])];
+  const f = el?.closest?.('.bw-run-f');
+  if (f && typeof viewsPageOf === 'function') { const k = +f.dataset.page; const b = blocks.find((x) => viewsPageOf(x) >= k); if (b) return b.dataset.b; }
+  if (W2.lastB && blockOf(W2.lastB)) return W2.lastB;
+  return (blocks.find((x) => x.getBoundingClientRect().bottom > 90) || blocks[0])?.dataset.b || null;
+}
+// the press on a band item clears the page selection: remember it first (capture runs before the editor's handler)
+document.addEventListener('pointerdown', () => { if (S.sel?.b) W2.lastB = S.sel.b; }, true);
 document.addEventListener('click', (e) => {
   const el = e.target.closest?.('#bw-pair :is(.w2-strip, .bw-runs) [data-ci]');
   if (!el) { if (e.target.closest?.('#bw-pair main.bw-doc')) W2.sel = null; return; }
   const [part, i] = el.dataset.ci.split(':');
-  W2.sel = { part, i: +i };
+  W2.sel = { part, i: +i, pageB: w2pageBlock(el) };
   document.querySelectorAll('.w2-ci-sel').forEach((x) => x.classList.remove('w2-ci-sel'));
   el.classList.add('w2-ci-sel');
   root.querySelector('.sec[data-cat="chrome"]')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });

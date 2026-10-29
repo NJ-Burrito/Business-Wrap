@@ -5,9 +5,7 @@
 .drawer .dgrp > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; border-radius: var(--bw-radius-md); padding-inline: 6px; margin-inline: -6px; transition: background-color var(--bw-dur-fast) var(--bw-ease-out); }
 .drawer .dgrp > summary:hover { background: var(--wash-2); }
 .drawer .dgrp > summary::-webkit-details-marker { display: none; }
-.drawer .dgrp > summary::after { content: ''; margin-inline-start: auto; width: 8px; height: 8px; border-inline-end: 2px solid var(--panel-soft); border-block-end: 2px solid var(--panel-soft); transform: rotate(45deg); transition: transform var(--bw-dur-base) var(--bw-ease-out); }
-.drawer .dgrp:not([open]) > summary::after { transform: rotate(-45deg); }
-.shell[dir="rtl"] .drawer .dgrp:not([open]) > summary::after { transform: rotate(135deg); }
+.drawer .dgrp > summary::after { content: ''; margin-inline-start: auto; width: 8px; height: 8px; border-right: 2px solid var(--panel-soft); border-bottom: 2px solid var(--panel-soft); transform: rotate(-45deg); transition: transform var(--bw-dur-base) var(--bw-ease-out); }
 .drawer .dgrp > summary h3 { font: var(--bw-weight-bold) var(--bw-size-sm)/var(--bw-leading-snug) var(--bw-font-display); color: var(--navy); margin: 12px 0 8px; }
 .drawer .dgrp > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 0; }
 .drawer .vc *, .drawer .cc *, .drawer .fp * { box-sizing: border-box; }
