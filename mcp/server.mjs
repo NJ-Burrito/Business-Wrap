@@ -230,7 +230,7 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
 
   server.registerTool('open_in_editor', {
     title: 'Open in the Business-Wrap editor',
-    description: 'Start the local host if it is not running, put the documents into the editor (library import when the host has one) and open an Edge tab on it. Give documents (JSON files or folders), or editor (a built .html), or doc_id (a document already in the library). Returns {url, doc_id}.',
+    description: 'Start the local host in the background (no console window) if it is not running, put the documents into the editor (library import when the host has one) and open an Edge tab on it. Give documents (JSON files or folders), or editor (a built .html), or doc_id (a document already in the library). Returns {url, doc_id}.',
     inputSchema: {
       documents: z.array(z.string()).optional().describe('Document JSON files or folders'),
       editor: z.string().optional().describe('A built editor .html'),
@@ -250,7 +250,7 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
 
   server.registerTool('close_editor', {
     title: 'Close the editor and its host',
-    description: 'Stop every local host and close every Edge window this Business-Wrap install started (nothing it did not start).',
+    description: 'Turn Business-Wrap off (same as `business-wrap stop --all` and the editor power button): every open tab saves first, then every local host, server and Edge window this install started stops. Never the host of another install.',
     inputSchema: {},
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   }, guard(async () => closeEditors()));

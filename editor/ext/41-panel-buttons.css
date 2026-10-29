@@ -1,0 +1,27 @@
+/* Side-panel buttons (owner request 2026-10-29): every button in every drawer (Settings, Design, Process, Documents,
+   Changes, Provenance …) is a bordered pill in the tokens of the «عرض الصفحات» segmented control (settings.css
+   .set-seg): the wash track, a line border, a wash-2 hover, a .96 press, the navy fill when pressed, the focus ring.
+   Before this the plain ones had the card's own colour and read as bare text. Destructive ones take the danger tone.
+   The segmented buttons themselves, the font picker and list rows keep their own looks. Calm / reduced motion: still. */
+.drawer :is(.b, .btns > button):not(.primary, .set-seg button) {
+  background: var(--panel); color: var(--panel-ink); border: 1px solid var(--bw-line-strong); border-radius: 999px;
+  padding-block: 6px; padding-inline: 14px; font-weight: 600; cursor: pointer;
+  transition: background-color var(--bw-dur-fast) var(--bw-ease-out), color var(--bw-dur-fast) var(--bw-ease-out),
+    border-color var(--bw-dur-fast) var(--bw-ease-out), box-shadow var(--bw-dur-fast) var(--bw-ease-out), transform .22s var(--e-spring);
+}
+.drawer :is(.b, .btns > button):not(.primary, .set-seg button):hover:not(:disabled) { background: var(--wash); color: var(--navy); border-color: var(--navy); }
+.drawer :is(.b, .btns > button):not(.set-seg button):active:not(:disabled) { transform: scale(.96); }
+.drawer :is(.b, .btns > button):not(.primary, .set-seg button)[aria-pressed="true"] { background: var(--navy); color: var(--on-primary) !important; border-color: var(--navy); box-shadow: 0 0 0 1px var(--gold) inset; }
+.drawer .b.primary { border: 1px solid var(--navy); border-radius: 999px; padding-block: 6px; padding-inline: 14px; transition: background-color var(--bw-dur-fast) var(--bw-ease-out), transform .22s var(--e-spring); }
+.drawer :is(.b, .btns > button):focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* destructive: forget what was learned, delete / purge a document */
+.drawer :is([data-lrn="forget"], [data-lrn="forget-yes"], [data-lib="del"], [data-lib="purge"], .b.danger) {
+  color: var(--signal) !important; border-color: var(--signal) !important; background: var(--panel) !important;
+}
+.drawer :is([data-lrn="forget"], [data-lrn="forget-yes"], [data-lib="del"], [data-lib="purge"], .b.danger):hover:not(:disabled) {
+  background: var(--bw-signal-wash) !important; color: var(--bw-on-signal-wash) !important;
+}
+
+.shell[data-calm="1"] .drawer :is(.b, .btns > button) { transition: none; transform: none !important; }
+@media (prefers-reduced-motion: reduce) { .drawer :is(.b, .btns > button) { transition: none; transform: none !important; } }
