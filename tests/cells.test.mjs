@@ -243,14 +243,23 @@ try {
 
   // 6 · formulas
   await page.locator(cell(0, 0)).click();
+  const nF = await ops();
   await page.keyboard.press('Control+A');
   await page.keyboard.type('=SUM(B1:B3)');
   await page.keyboard.press('Enter');
   b = await blk();
+  check('formula: typing + finishing a formula is ONE undo step', (await ops()) === nF + 1, `${nF} → ${await ops()}`);
   check('formula: =SUM(B1:B3) typed in a cell shows its result and stores the formula', txt(b.rows[0][0]) === '15' && b.rows[0][0].style.formula === '=SUM(B1:B3)', JSON.stringify(b.rows[0][0]));
   await page.locator(cell(0, 0)).click();
   check('formula: while editing, the cell shows the formula', (await page.locator(cell(0, 0)).innerText()) === '=SUM(B1:B3)');
   await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
+  await page.locator(cell(0, 0)).click(); await page.keyboard.press('Escape'); // leaves the cell, keeps it selected
+  const rtl = await page.evaluate(() => getComputedStyle(document.querySelector('#bw-pair main.bw-doc table')).direction === 'rtl');
+  await page.keyboard.press('Shift+ArrowDown'); await page.keyboard.press(rtl ? 'Shift+ArrowLeft' : 'Shift+ArrowRight');
+  const sk = (await selKeys()).split(' ');
+  check('select: Shift+Arrow extends the range from the anchor like Excel (A1 → 2×2 block)', sk.length >= 4 && sk.includes('0,0') && sk.includes('1,1'), sk.join(' '));
+  await page.keyboard.press('Shift+ArrowUp');
+  check('select: Shift+Arrow back shrinks it again', (await selKeys()).split(' ').length < sk.length, await selKeys());
   await page.locator(cell(1, 2)).click();
   await page.keyboard.press('Control+A');
   await page.keyboard.type('=A1*2+(B3-1)/2');

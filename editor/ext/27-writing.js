@@ -120,7 +120,7 @@ const W2_WRITE = {
       const n = get(d, p);
       if (n?.layout?.breakBefore) { const lay = { ...n.layout }; delete lay.breakBefore; ops.push({ op: 'replace', path: `${p}/layout`, value: lay, old: n.layout }); }
     }
-    if (!ops.length) { toast(t('w2w.pullNone'), 'info'); return false; }
+    if (!ops.length) return !!W2_WRITE.emptyPages(); // no break to drop: the gap is an empty page — clear what makes it
     commit(ops, { mirror: true });
     return true;
   },
@@ -141,11 +141,14 @@ const W2_WRITE = {
   emptyPages() {
     const d = w2doc();
     const ops = [];
-    const blank = (b) => (b.kind === 'prose' && (b.paragraphs || []).every(w2wBlank)) || (b.kind === 'subhead' && w2wBlank(b.text ?? b.title));
+    // blank prose / sub-heading, and a table with no visible text (content that is only height: empty rows, spacer cells)
+    const blank = (b) => (b.kind === 'prose' && (b.paragraphs || []).every(w2wBlank)) || (b.kind === 'subhead' && w2wBlank(b.text ?? b.title))
+      || (b.kind === 'table' && (b.rows || []).every((r) => r.every(w2wBlank)) && (b.columns || []).every(w2wBlank));
     d.chapters.forEach((c, ci) => c.sections.forEach((s, si) => {
       const sp = `/chapters/${ci}/sections/${si}`;
       const dead = (s.blocks || []).map((b, i) => (blank(b) ? i : -1)).filter((i) => i >= 0);
-      if (dead.length && (s.blocks || []).length === dead.length && s.layout?.breakBefore) { const lay = { ...s.layout }; delete lay.breakBefore; ops.push({ op: 'replace', path: `${sp}/layout`, value: lay, old: s.layout }); }
+      // a section left with no blocks at all (after a delete) still starts a page: its break goes too
+      if ((s.blocks || []).length === dead.length && s.layout?.breakBefore) { const lay = { ...s.layout }; delete lay.breakBefore; ops.push({ op: 'replace', path: `${sp}/layout`, value: lay, old: s.layout }); }
       for (const i of dead.reverse()) ops.push({ op: 'delete', path: `${sp}/blocks/${i}`, old: s.blocks[i] });
     }));
     if (!ops.length) { toast(t('w2w.noEmpty'), 'info'); return 0; }

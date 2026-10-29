@@ -24,7 +24,7 @@ function ceSet(cells, tbl) {
   cePaint();
   refreshUi();
 }
-function ceClearSel() { if (!CE.sel.size) return; CE.sel.clear(); cePaint(); refreshUi(); }
+function ceClearSel() { if (!CE.sel.size) return; CE.head = null; CE.sel.clear(); cePaint(); refreshUi(); }
 const ceRect = (cells) => ({ r0: Math.min(...cells.map((x) => x[0])), r1: Math.max(...cells.map((x) => x[0])), c0: Math.min(...cells.map((x) => x[1])), c1: Math.max(...cells.map((x) => x[1])) });
 const ceBlk = (ed, b) => get(cur(ed).doc, b);
 /** the cells a command acts on: the selected cells, else the cell being edited */
@@ -276,7 +276,12 @@ function ceFinish(td) {
   if (isFormula(txt)) edits.set(ceKey(r, c), leafFromInput(isRich(leaf) ? { ...leaf, text: '' } : '', txt));
   else if (formulaOf(leaf) && CE.dirty === td.dataset.p) edits.set(ceKey(r, c), leafFromInput(leaf, txt)); // the formula was retyped as a value
   CE.dirty = null;
+  // typing the formula and turning it into a formula are ONE undo step: the finishing ops join the typing group (ids stay unique)
+  const e = cur(tg.ed), last = e.ops.at(-1), g = last?.id.split('.')[0];
+  const join = last?.op === 'setText' && last.path === td.dataset.p;
+  const n0 = e.ops.length;
   cePut(tg, edits); // an empty map still recalculates the table's formulas
+  if (join) e.ops.slice(n0).forEach((op, k) => { op.id = `${g}.f${k}`; });
 }
 document.addEventListener('focusin', (e) => {
   const td = ceCellEl(e.target);
@@ -404,7 +409,7 @@ document.addEventListener('mousedown', (e) => {
     if (at >= 0) cells.splice(at, 1); else cells.push([rc.r, rc.c]);
     CE.keep = true; ceSet(cells, tbl); CE.keep = false;
   } else {
-    CE.anchor = { ...ceRC(td), rows: tbl.rows, ed: tbl.ed };
+    CE.anchor = { ...ceRC(td), rows: tbl.rows, ed: tbl.ed }; CE.head = null;
     CE.drag = { td, tbl };
     if (CE.sel.size) ceClearSel();
   }
@@ -504,6 +509,17 @@ function ceKey_(e) {
       CE.keep = false; el?.focus();
       return true;
     }
+    if (e.shiftKey && !e.ctrlKey && !e.altKey && /^Arrow(Left|Right|Up|Down)$/.test(e.key) && CE.anchor) { // extend the range from the anchor like Excel (the moving corner is CE.head)
+      e.preventDefault();
+      const tbl = { ed: CE.ed, rows: CE.rows, b: CE.b };
+      const blk = ceBlk(tbl.ed, tbl.b);
+      const rtl = ceTableEl().closest('main.bw-doc')?.dir === 'rtl' || getComputedStyle(ceTableEl()).direction === 'rtl';
+      const dx = { ArrowLeft: rtl ? 1 : -1, ArrowRight: rtl ? -1 : 1 }[e.key] || 0, dy = { ArrowUp: -1, ArrowDown: 1 }[e.key] || 0;
+      const h = CE.head || (() => { const cs = [...CE.sel].map((k) => k.split(',').map(Number)); const q = ceRect(cs); return { r: q.r1, c: q.c1 }; })();
+      CE.head = { r: Math.max(0, Math.min(blk.rows.length - 1, h.r + dy)), c: Math.max(0, Math.min((blk.rows[0]?.length || 1) - 1, h.c + dx)) };
+      CE.keep = true; ceSet(ceRange(tbl, CE.anchor, CE.head), tbl); CE.keep = false;
+      return true;
+    }
     if (e.key === 'Escape') { ceClearSel(); return false; }
     return false;
   }
@@ -511,7 +527,7 @@ function ceKey_(e) {
     if (e.key === 'Escape') { // leave the cell and keep it selected: Delete clears it, the tools act on it
       e.preventDefault();
       const tbl = ceTblOf(td), rc = ceRC(td);
-      CE.anchor = { ...rc, rows: tbl.rows, ed: tbl.ed };
+      CE.anchor = { ...rc, rows: tbl.rows, ed: tbl.ed }; CE.head = null;
       t0.blur();
       CE.keep = true; ceSet([[rc.r, rc.c]], tbl); CE.keep = false;
       return true;

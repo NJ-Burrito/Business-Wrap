@@ -94,25 +94,33 @@ function w2put(next, old) {
 const W2_FORMAT = {
   /** at = {path, start, end, ed?}: the range to work on (tests and the keyboard set it directly). */
   select(at) { W2F.at = { ed: S.ed, ...at }; return W2F.leaf() != null; },
-  mark(type, value) {
+  /** Several highlighted leaves (paragraphs, a run of cells): every one is worked on, whole; else the caret's leaf and its range. */
+  each() {
+    if (W2F.multi) return W2F.targets().map((x) => ({ ...x, range: [0, textOf(x.leaf).length] }));
     const leaf = W2F.leaf();
-    if (leaf == null) return false;
-    const [a, b] = w2range(leaf);
-    const on = value != null || !hasMark(leaf, a, b, type);
-    return w2put(markLeaf(leaf, a, b, type, value, on), leaf);
+    return leaf == null ? [] : [{ path: W2F.at.path, ed: W2F.at.ed, leaf, range: w2range(leaf) }];
+  },
+  put(tg, fn) {
+    const ops = tg.map((x) => ({ op: 'replace', path: x.path, value: fn(x), old: x.leaf })).filter((o) => JSON.stringify(o.value) !== JSON.stringify(o.old));
+    if (!ops.length) return false;
+    W2F.keep = true; // the re-render puts the same range back (and the focus, which the re-render drops), so the next tool works on it
+    commit(ops, { ed: tg[0].ed });
+    return true;
+  },
+  mark(type, value) {
+    const tg = W2_FORMAT.each();
+    if (!tg.length) return false;
+    const on = value != null || !tg.every((x) => hasMark(x.leaf, ...x.range, type));
+    return W2_FORMAT.put(tg, (x) => markLeaf(x.leaf, ...x.range, type, value, on));
   },
   clear() {
-    const leaf = W2F.leaf();
-    if (!isRich(leaf)) return false;
-    const [a, b] = w2range(leaf);
-    let next = leaf;
-    for (const ty of MARK_TYPES) next = markLeaf(next, a, b, ty, null, false);
-    return w2put(next, leaf);
+    const tg = W2_FORMAT.each().filter((x) => isRich(x.leaf));
+    if (!tg.length) return false;
+    return W2_FORMAT.put(tg, (x) => MARK_TYPES.reduce((n, ty) => markLeaf(n, ...x.range, ty, null, false), x.leaf));
   },
   style(patch) {
-    const leaf = W2F.leaf();
-    if (leaf == null) return false;
-    return w2put(styleLeaf(leaf, patch), leaf);
+    const tg = W2_FORMAT.each();
+    return tg.length ? W2_FORMAT.put(tg, (x) => styleLeaf(x.leaf, patch)) : false;
   },
   list(kind) {
     const tg = W2F.targets();

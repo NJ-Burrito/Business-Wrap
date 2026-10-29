@@ -117,6 +117,9 @@ try {
       // empty prose block + a section with only that: removed, break dropped
       B.commit([{ op: 'insert', path: '/chapters/1/sections/1/blocks/0', value: { kind: 'prose', paragraphs: ['', '  '] } }], { mirror: true });
       out.empties = W.emptyPages();
+      // a section left with no blocks that still starts a page, and a table of empty cells: both are empty pages
+      B.commit([{ op: 'insert', path: '/chapters/1/sections/1/blocks/0', value: { kind: 'table', columns: ['', ''], rows: [['', ''], ['', '']] } }, { op: 'replace', path: '/chapters/1/sections/1/layout', value: { breakBefore: true }, old: d().chapters[1].sections[1].layout }], { mirror: true });
+      out.emptyTable = W.emptyPages(); out.noTable = !d().chapters[1].sections[1].blocks.some((b) => b.kind === 'table' && !b.rows.flat().join('').trim());
       out.noBlank = !JSON.stringify(d().chapters[1].sections[1].blocks).includes('"paragraphs":["","  "]');
       // delete a section: gap closes, page size handed to the next block
       B.commit([{ op: 'replace', path: '/chapters/1/sections/0/blocks/0/layout', value: { page: { size: 'A5', orientation: 'portrait' } }, old: d().chapters[1].sections[0].blocks[0].layout }]);
@@ -127,6 +130,7 @@ try {
       return out;
     });
     check('page break: add, refuse a second, remove', r.add && r.has && !r.addTwice && r.del && r.gone, JSON.stringify(r));
+    check('remove empty pages also catches a table of empty cells (a page empty by height)', r.emptyTable >= 1 && r.noTable, JSON.stringify(r));
     check('pull next content up removes the next section\'s break', r.pull && r.pulled);
     check('remove empty pages deletes blank blocks', r.empties >= 1 && r.noBlank, JSON.stringify(r));
     check('delete section closes the gap and hands over the page size', r.delSec && r.n[1] === r.n[0] - 1 && r.handed === 'A5', JSON.stringify(r));
@@ -153,13 +157,22 @@ try {
     check('bullets apply to every paragraph in the highlighted range', lists.every((x) => x === 'bullet'), JSON.stringify(lists));
     await page.evaluate(() => window.BW.runAction('fmtBullets'));
     const d3 = await doc();
+    await page.evaluate(() => window.BW.runAction('fmtBold'));
+    const dB = await doc();
+    const bolds = ps.map((p) => p.split('/').slice(1).reduce((o, k) => o[k], dB)).map((l) => (l?.marks || []).some((m) => m[2] === 'b'));
+    check('Bold applies to every paragraph in the highlighted range, not only the first', bolds.length === 3 && bolds.every(Boolean), JSON.stringify(bolds));
+    await page.evaluate(() => window.BW.EXT.w2format.mark('color', '#c0392b'));
+    await page.evaluate(() => window.BW.EXT.w2format.style({ align: 'center' }));
+    const dFmt = await doc();
+    const at = (p) => p.split('/').slice(1).reduce((o, k) => o[k], dFmt);
+    check('colour and alignment reach every highlighted paragraph', ps.every((p) => (at(p).marks || []).some((m) => m[2] === 'color') && at(p).style?.align === 'center'), JSON.stringify(ps.map((p) => at(p).style)));
     check('the same tool again turns them all off', ps.map((p) => p.split('/').slice(1).reduce((o, k) => o[k], d3)).every((l) => !l?.style?.list));
     // text box at the caret: caret in the third paragraph, far down its block
     const ov0 = (await doc()).overlays?.length || 0;
     await page.evaluate((c) => {
       const m = document.querySelector('#bw-pair main.bw-doc[data-locale="en"]');
       const z = m.querySelector(`[data-p="${c}"]`); z.contentEditable = 'plaintext-only'; z.focus();
-      const r = document.createRange(); r.setStart(z.firstChild, 2); r.collapse(true); getSelection().removeAllRanges(); getSelection().addRange(r);
+      const r = document.createRange(); r.setStart(document.createTreeWalker(z, 4).nextNode(), 2); r.collapse(true); getSelection().removeAllRanges(); getSelection().addRange(r);
     }, ps[2]);
     await page.waitForTimeout(100);
     await page.evaluate(() => window.BW.EXT.w2objects ? window.BW.EXT.w2objects.textBox() : window.BW.runAction('textBox'));
