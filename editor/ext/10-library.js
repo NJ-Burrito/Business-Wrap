@@ -499,9 +499,6 @@ bwExt({
 /* H3: Ctrl+S and the yellow Save (editor.js saveAll) on the local server save the document in place (the 'save' event
  * above) and download nothing: the edits file they used to download is Export › edits. Off the server: as before. */
 { const plain = saveAll; saveAll = function () { if (!EXT.session?.info) return plain(); writeDraft(); S.dirty = false; emitHook('save'); emit('save'); }; }
-// the hover explainers of Save and Import say what they do now (editor/ux-i18n.json is outside this change's write-set)
-Object.assign(I18N.ui.ar, { 'explain.save': 'يحفظ الوثيقة نفسها: في قائمة المستندات وفي ملفها HTML داخل مجلد الحفظ (Ctrl+S).', 'explain.import': 'يفتح ملف HTML (ومنه ملفات المشاركة) أو DOCX أو PDF أو JSON كمستند جديد في القائمة.' });
-Object.assign(I18N.ui.en, { 'explain.save': 'Saves the document itself: in the documents list and in its own HTML file in the save folder (Ctrl+S).', 'explain.import': 'Opens an HTML (shares included), DOCX, PDF or JSON file as a new document in the list.' });
 /* H3: File › Import is the documents list's import (HTML incl. shares, DOCX, PDF, JSON); edits files still merge */
 { const plain = runAction; runAction = async function (a) { if (a === 'import') { await LIB.importAny(await pickFile(LIB.ACCEPT)); return; } return plain(a); }; window.BW.runAction = runAction; }
 // «حُفظ تلقائياً» toast → the «آخر حفظ» stamp beside the change counter (extra 1): it says what was saved where and when
