@@ -687,7 +687,7 @@ try {
   check(14, 'text typed right before closing the tab is in the saved run, whole («تعديل غير مكتمل للنهاية»)', typedRec.includes('تعديل غير مكتمل للنهاية'), typedRec ? typedRec.slice(typedRec.indexOf('تعديل غير') - 40, typedRec.indexOf('تعديل غير') + 40) : `no record ${lastRun.runId}/${lastTab}`);
   check(14, 'only the tabs open at shutdown are offered (the line-24 tab closed earlier is not)', lastRun.tabs?.length === 1 && lastRun.tabs[0].tab === lastTab, JSON.stringify(lastRun.tabs));
   const prof2 = await p2.evaluate(() => localStorage.getItem('bw:profile') || '');
-  check(16, 'the relaunched host (a new port: a new origin) still knows the owner: no «من أنت؟» again', /Mark/.test(prof2), prof2.slice(0, 120));
+  check(16, 'the relaunched host (a new port: a new origin) still knows the owner (renamed Mark → Sami in review2 #12): no «من أنت؟» again', /Mark|Sami/.test(prof2), prof2.slice(0, 120));
   check(38, 'the relaunch dialog uses the house font and styled buttons (not browser defaults)', !!resume && !/Times|(^|,\s*)serif$/.test(resume.font) && resume.bg !== 'rgba(0, 0, 0, 0)', JSON.stringify(resume), true);
   await p2.locator('#bw-ui-host >> css=dialog.bw-resume [data-s="new"]').click().catch(() => {});
   await p2.close({ runBeforeUnload: true });
@@ -705,7 +705,7 @@ try {
   await p3.waitForFunction(() => window.BW?.ready, null, { timeout: 20000 }).catch(() => {});
   await wait(1500);
   const up = await p3.evaluate(() => ({ card: !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.pf-first'), name: window.BW.EXT.profile?.get()?.name || '' }));
-  check(16, 'after an update (new install folder, empty .local, new origin) the owner is still known: no first-launch card', !up.card && up.name === 'Mark', JSON.stringify(up));
+  check(16, 'after an update (new install folder, empty .local, new origin) the owner is still known: no first-launch card', !up.card && /^(Mark|Sami)$/.test(up.name), JSON.stringify(up));
   await p3.close({ runBeforeUnload: true });
   await ctx3.close();
   const t3 = Date.now();

@@ -583,6 +583,7 @@ window.addEventListener('afterprint', () => {
 
 /* ── selection ─────────────────────────────────────────────────────────── */
 function selectEl(el) {
+  S.selAt = performance.now();
   S.selOv = null;
   if (S.dg && !el.closest?.('figure[data-dg]')) dgClear();
   const main = el.closest('main.bw-doc');
@@ -2534,6 +2535,7 @@ document.addEventListener('focusin', (e) => {
   S.typingGroup = null;
   selectEl(el);
 });
+document.addEventListener('mousedown', () => { S.pressAt = performance.now(); }, true);
 document.addEventListener('click', (e) => {
   const el = e.target.closest?.('#bw-pair main.bw-doc [data-b], #bw-pair main.bw-doc [data-p]');
   if (el) {
@@ -2543,6 +2545,7 @@ document.addEventListener('click', (e) => {
   } else if (uxIsEmptySpace(e.target)) {
     // a click on empty page or background: the general tools come back
     if (S.dg && performance.now() - (S.dgPickedAt || 0) < 600) return; // the press just picked a drawing; its click lands on the wrapper after a re-layout
+    if (S.sel && (S.selAt || 0) >= (S.pressAt || 0)) return; // the press itself selected this block and the page redrew under it (owner-flows L22): its click lands on the wrapper, it must not undo the selection
     if (S.sel || S.selOv != null || S.dg) { S.sel = null; S.selOv = null; dgClear(); paintSel(); refreshUi(); }
   }
 });
