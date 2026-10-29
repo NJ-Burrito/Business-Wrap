@@ -873,6 +873,8 @@ if __name__ == '__main__':
     workdir = args.workdir or args.out_docx.parent
     workdir.mkdir(parents=True, exist_ok=True)
     counters = build(args.doc_json, args.out_docx, args.logo, args.font, workdir, toc=args.toc)
-    manifest = args.out_docx.with_suffix('.manifest.json')
+    # the counters are machine data: with --workdir (engine/export.mjs, a temp folder) they stay there, never beside the
+    # .docx in the user's DOCX\ folder (0.13.0 review line 15); stdout carries them too
+    manifest = (args.workdir / args.out_docx.with_suffix('.manifest.json').name) if args.workdir else args.out_docx.with_suffix('.manifest.json')
     manifest.write_text(json.dumps(counters, ensure_ascii=False, indent=2), encoding='utf-8')
     print(json.dumps(counters, ensure_ascii=False))

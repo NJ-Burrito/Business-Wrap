@@ -70,6 +70,19 @@ try {
   const foreign = await fetch(base + '/api/workspace/parent', { method: 'POST', headers: { origin: 'https://evil.example', 'content-type': 'application/json' }, body: '{"parent":"C:\\\\x"}' });
   check('a foreign origin cannot change the save folder', foreign.status === 403);
   check('nothing was written beside the editor (no exports/ folder)', !fs.existsSync(path.join(tmp, 'exports')));
+
+  // 0.13.0 review line 15: every saved file obeys "<title>-<date>-<AR|ENG>.<ext>" (share and report included), the title's
+  // spaces kept (as the pipeline outputs), and no machine file (manifest.json …) outside HISTORY\
+  check('outName keeps the spaces between the title words', W.outName('تحديث بيانات منتج غذائي', new Date(2026, 9, 29), 'ar', 'pdf') === 'تحديث بيانات منتج غذائي-2026-10-29-AR.pdf');
+  const saveHtml = `<!doctype html><html lang="ar"><body><script type="application/json" id="bw-data">${JSON.stringify({ services: [{ id: 'doc-53a766e1-aaaa', editions: { ar: { raw: JSON.stringify(docs.ar) } } }] })}</script></body></html>`;
+  const sh = await post('/api/share', { name: 'doc-53a766e1-aaaa.editor.html', html: saveHtml });
+  check('share writes HTML\\<title>-<d>-AR.html (not doc-<id>.editor.html)', sh.s === 200 && path.dirname(sh.j.path) === ws.dirs.html && path.basename(sh.j.path) === W.outName(W.docTitle(docs.ar), new Date(), 'ar', 'html'), JSON.stringify(sh.j));
+  const rp = await post('/api/report', { lang: 'ar' });
+  const rpe = await post('/api/report', { lang: 'en' });
+  check('the performance report goes to PDF\\ as <title>-<d>-AR.pdf / -ENG.pdf', rp.s === 200 && path.dirname(rp.j.pdf) === ws.dirs.pdf && /-\d{4}-\d\d-\d\d-AR\.pdf$/.test(rp.j.pdf) && /-\d{4}-\d\d-\d\d-ENG\.pdf$/.test(rpe.j.pdf), JSON.stringify([rp, rpe]));
+  const NAME = /^.+-\d{4}-\d\d-\d\d-(AR|ENG)(-\d+)?\.(pdf|docx|html|print\.html)$/;
+  const strays = ['pdf', 'docx', 'html'].flatMap((k) => fs.readdirSync(ws.dirs[k]).filter((f) => !NAME.test(f)).map((f) => `${k}/${f}`));
+  check('PDF\\ DOCX\\ HTML\\ hold only "<title>-<date>-<AR|ENG>" files (no manifest.json, no ids)', strays.length === 0, strays.join(', '));
 } finally {
   server.close();
   server.closeAllConnections?.();

@@ -1,4 +1,4 @@
-// The document library's server half (A2): import a DOCX/PDF as a new document, the blank placeholder SRS,
+// The document library's server half (A2): import a DOCX/PDF/HTML as a new document, the blank placeholder SRS,
 // and the machine-only mirror of each saved library entry in <workspace>\HISTORY\library\ (gzip, not for hand use).
 import fs from 'node:fs';
 import os from 'node:os';
@@ -17,7 +17,7 @@ export default async (req, url, send, ctx) => {
     if (req.method === 'POST' && p === '/api/import') {
       const b = await readJson(req, 80 * 1024 * 1024);
       const ext = path.extname(String(b.name || '')).toLowerCase();
-      if (!['.pdf', '.docx'].includes(ext) || typeof b.data !== 'string') { send(400, { error: 'import: {name: *.pdf|*.docx, data: base64}' }); return true; }
+      if (!['.pdf', '.docx', '.html', '.htm'].includes(ext) || typeof b.data !== 'string') { send(400, { error: 'import: {name: *.pdf|*.docx|*.html, data: base64}' }); return true; }
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-import-'));
       const f = path.join(dir, `in${ext}`);
       try {

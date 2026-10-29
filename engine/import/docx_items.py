@@ -2,7 +2,8 @@
 
     uv run --no-project --with python-docx python engine/import/docx_items.py <file.docx>
 
-Items, in document order: {"h": level, "text": ...} for Heading/Title styles, {"p": text}, {"table": [[cell, ...], ...]}.
+Items, in document order: {"title": text} for the Title style, {"h": level, "text": ...} for Heading styles, {"p": text},
+{"table": [[cell, ...], ...]}. "meta": {"title": core properties title}.
 """
 import json
 import re
@@ -16,7 +17,7 @@ from docx.text.paragraph import Paragraph
 def level(p):
     name = (p.style.name or "") if p.style is not None else ""
     if name == "Title":
-        return 1
+        return -1
     m = re.match(r"(?:Heading|العنوان)\s*(\d)", name)
     return int(m.group(1)) if m else 0
 
@@ -32,12 +33,13 @@ def main(path):
             if not text:
                 continue
             lv = level(p)
-            items.append({"h": lv, "text": text} if lv else {"p": text})
+            items.append({"title": text} if lv < 0 else {"h": lv, "text": text} if lv else {"p": text})
         elif tag == "tbl":
             rows = [[c.text.strip() for c in r.cells] for r in Table(child, doc).rows]
             if rows:
                 items.append({"table": rows})
-    sys.stdout.write(json.dumps({"items": items}, ensure_ascii=False))
+    meta = {"title": (doc.core_properties.title or "").strip()}
+    sys.stdout.write(json.dumps({"items": items, "meta": meta}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
