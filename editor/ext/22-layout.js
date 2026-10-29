@@ -107,13 +107,26 @@ const W2_LAYOUT = {
 /** A18 on the canvas: the sheet is as wide as the paper set for it, as in the PDF and the DOCX. The whole document's paper
  *  sizes the page (and the page views' sheets, views.js); a section with its own paper (a page segment, engine/render.mjs
  *  pageModel) is drawn as its own sheet of that width, labelled with its size, in the continuous view. Screen only. */
+const W2P = { maxW: 0 }; // the widest sheet (mm) of the open document's editions
+/** A sheet wider than the window (A3 landscape is 420 mm) zooms the continuous page out to fit it, never a sideways
+ *  scroll (like Word's fit to page width); A4 at 1366 px is never touched. */
+function w2fit() {
+  const pair = document.getElementById('bw-pair');
+  const side = !!pair?.classList.contains('bw-side');
+  const avail = (document.documentElement.clientWidth - 48) / (side ? 2 : 1);
+  const px = W2P.maxW * (96 / 25.4) * (S.zoom || 1) * (side ? 0.62 : 1);
+  document.documentElement.style.setProperty('--w2-fit', String(px > avail ? +(avail / px).toFixed(4) : 1));
+}
+addEventListener('resize', w2fit);
 function w2pageCss() {
-  const rules = [];
+  const rules = ['#bw-pair:not([data-pages="single"]):not([data-pages="spread"]) main.bw-doc{zoom:calc(var(--bw-zoom, 1) * var(--w2-fit, 1))}', '#bw-pair.bw-side:not([data-pages="single"]):not([data-pages="spread"]) main.bw-doc{zoom:calc(var(--bw-zoom, 1) * .62 * var(--w2-fit, 1))}'];
+  W2P.maxW = 0;
   for (const ed of Object.keys(M[S.svc] || {})) {
     const d = cur(ed)?.doc;
     if (!d) continue;
     const segs = pageModel(d).segments;
     const base = segs[0].page;
+    W2P.maxW = Math.max(W2P.maxW, ...segs.map((x) => x.page.w));
     const m = `#bw-pair main.bw-doc[data-locale="${ed}"]`;
     if (d.layout?.page) rules.push(`${m}{width:${base.w}mm}`);
     for (const x of segs.slice(1)) {
@@ -124,7 +137,8 @@ function w2pageCss() {
         `${sel}::after{content:${JSON.stringify(name)};position:absolute;top:1mm;inset-inline-end:3mm;font-size:7.5pt;color:var(--muted)}`);
     }
   }
-  w2docCss('w2-page-css', rules.length ? `@media screen{${rules.join('')}}` : '');
+  w2docCss('w2-page-css', `@media screen{${rules.join('')}}`);
+  w2fit();
 }
 async function w2layoutAction(id) {
   if (id === 'pgSetup') { openDrawer('w2page'); return; }

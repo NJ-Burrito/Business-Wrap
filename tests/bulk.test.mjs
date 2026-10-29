@@ -56,6 +56,7 @@ const after = (p) => ({ ar: applyOps(eds.ar, p.ops.ar), en: applyOps(eds.en, p.o
 
 // ── 2. the editor ──
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-bulk-'));
+process.env.BW_LOCAL_DIR = path.join(tmp, '.local'); // the host's profile and state stay in this run's folder (never the install's .local or a caller's)
 const file = path.join(tmp, 'bulk.editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit'), path.join(REPO, 'samples', 'blank')], out: file, set: 'bulk-test', watermarkDir: null });
 const ws = { parent: tmp, root: path.join(tmp, 'Business-Wrap'), dirs: Object.fromEntries(['pdf', 'docx', 'html', 'history'].map((k) => [k, path.join(tmp, 'Business-Wrap', k.toUpperCase())])) };

@@ -14,6 +14,7 @@ import { serve } from '../engine/serve.mjs';
 import { cleanState } from '../engine/routes/projects.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-pj-'));
+process.env.BW_LOCAL_DIR = path.join(tmp, '.local'); // the host's profile and state stay in this run's folder (never the install's .local or a caller's)
 let failed = 0;
 const out = [];
 const check = (n, ok, d = '') => { out.push(`${ok ? 'PASS' : 'FAIL'}  projects: ${n}${d && !ok ? '  — ' + String(d).slice(0, 400) : ''}`); if (!ok) failed += 1; };

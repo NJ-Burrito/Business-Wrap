@@ -16,6 +16,7 @@ import { serve } from '../engine/serve.mjs';
 import { py } from '../engine/py.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-lib-'));
+process.env.BW_LOCAL_DIR = path.join(tmp, '.local'); // the host's profile and state stay in this run's folder (never the install's .local or a caller's)
 let failed = 0;
 const out = [];
 const check = (n, ok, d = '') => { out.push(`${ok ? 'PASS' : 'FAIL'}  library: ${n}${d && !ok ? '  — ' + d : ''}`); if (!ok) failed += 1; };

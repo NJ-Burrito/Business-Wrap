@@ -71,7 +71,7 @@ try {
     const main = document.querySelector('#bw-pair main.bw-doc[data-locale="en"]');
     const seg = main.querySelector('[style^="page:bw-seg-"]');
     const w = (el) => el.getBoundingClientRect().width;
-    return { main: w(main), seg: seg ? w(seg) : 0, label: seg ? getComputedStyle(seg, '::after').content : '' };
+    return { main: w(main), zoom: parseFloat(getComputedStyle(main).zoom) || 1, seg: seg ? w(seg) : 0, label: seg ? getComputedStyle(seg, '::after').content : '' };
   });
   const near = (a, b) => Math.abs(a - b) < 0.01;
   const g0 = await geo();
@@ -86,7 +86,14 @@ try {
   }
   await page.evaluate(() => window.BW.EXT.w2layout.page('A3', 'landscape', 'all'));
   const gAll = await geo();
-  check('canvas: the whole document set to A3 landscape draws the page 420 mm wide', near(gAll.main / g0.main, 420 / 210), JSON.stringify({ gAll, g0 }));
+  check('canvas: the whole document set to A3 landscape draws the page 420 mm wide (before the fit-to-window zoom)', near(gAll.main / gAll.zoom / (g0.main / g0.zoom), 420 / 210), JSON.stringify({ gAll, g0 }));
+  for (const w of [1366, 1920]) {
+    await page.setViewportSize({ width: w, height: 900 });
+    await page.waitForTimeout(250);
+    const o = await page.evaluate(() => ({ over: document.documentElement.scrollWidth - document.documentElement.clientWidth, main: document.querySelector('#bw-pair main.bw-doc[data-locale="en"]').getBoundingClientRect().width }));
+    check(`canvas: a 420 mm sheet at ${w} px fits the window (zoomed to fit, no sideways scroll)`, o.over <= 1 && o.main <= w, JSON.stringify(o));
+  }
+  await page.setViewportSize({ width: 1600, height: 900 });
   await page.evaluate(() => window.BW.runAction('view.single'));
   await page.waitForFunction(() => document.querySelector('#bw-pair .bw-view'));
   const gView = await page.evaluate(() => { const v = document.querySelector('#bw-pair .bw-view'); const r = v.getBoundingClientRect(); return { ratio: r.width / r.height }; });
