@@ -23,3 +23,6 @@ Add new block/cell/layout attributes inside the document JSON or as new keys on 
 ## Targeted suites (run singly; machine overloaded, full npm test NOT run)
 history-compat 13/13 PASS, updater 28/28 PASS, library 30/30 PASS (one earlier run failed on an 8 s import timeout under load, passes alone), history gate ok, skill-html current, security/check.py --tree-only clean for committed files.
 Not completed: ledger, timeline, workspace, host, provenance, cli (stopped on coordinator AMEND). editor.test "page thumbnails (served)" failed twice under load (65 s render), a11y/update/design need axe-core and @modelcontextprotocol/sdk absent from node_modules: environment, not this change; baseline not compared.
+
+## Recovery tool
+tools/recover-history.mjs (dry run default, --apply <ids>), tests/recover-history.test.mjs 6/6 PASS. Real dry run: recover-history-report.md (7 title-only pairs, confidence 0.3, all on documents with 0 edits; no exact state match; nothing applied).
