@@ -20,6 +20,7 @@ const jsonInScript = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
 import { config } from './config.mjs';
 import { installedNotes } from '../update/check.mjs';
 import { STATE_SCHEMA } from './edits.mjs';
+import { FORMAT, BUILT_KEYS, migrateData, historyProblems, FormatError } from './format.mjs';
 
 /** Tool watermark folder: BW_WATERMARK_DIR / .local/config.json watermarkDir, else the repo's editor/brand/watermark. */
 export const DEFAULT_WATERMARK_DIR = config().watermarkDir || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'editor', 'brand', 'watermark');
@@ -189,6 +190,7 @@ function editorHtml({ services, setId, ui = 'ar', theme, fontCss, fontFamilies, 
     csp,
     version: notes.version,
     stateSchema: STATE_SCHEMA,
+    format: FORMAT, // the saved-file format (engine/format.mjs): migrations key off this, never off the app version
     about: aboutInfo(),
     whatsNew: { human: notes.human, migration: notes.migration },
   };
@@ -207,12 +209,13 @@ ${wm.length ? `<script type="application/json" id="bw-watermark-data">${jsonInSc
  * and set id are carried over unchanged (the editor migrates the stored fields on open). The file on disk is
  * never rewritten. Same version, or not an editor → returned as is.
  */
-export function rewrapEditorHtml(html) {
+export function rewrapEditorHtml(html) { // throws FormatError (file untouched on disk) instead of ever returning a lossy page
   const m = /<script type="application\/json" id="bw-data">([\s\S]*?)<\/script>/.exec(html);
   if (!m) return html;
   let d;
   try { d = JSON.parse(m[1]); } catch { return html; }
-  if (!Array.isArray(d.services) || !d.services.length || d.version === installedNotes().version) return html;
+  if (!Array.isArray(d.services) || !d.services.length || (d.version === installedNotes().version && d.format === FORMAT)) return html;
+  d = migrateData(d).data; // the ordered chain; a newer file or a failing step throws FormatError, nothing is rebuilt
   const base = loadTheme();
   const theme = d.theme ? { ...base, ...d.theme, vars: { ...base.vars, ...(d.theme.vars || {}) } } : base;
   let wm = [];
@@ -222,11 +225,12 @@ export function rewrapEditorHtml(html) {
   // every key this build does not make itself travels as is: the provenance (bwlog mark, prov log, contributors, lock) and
   // anything a later extension adds; a file re-wrapped without them would read as «stripped» (0.13.1 final pass, item 1)
   const carry = Object.fromEntries(Object.entries(d).filter(([k]) => !BUILT_KEYS.has(k)));
-  const out = editorHtml({ services: d.services, setId: d.setId, ui: d.uiLang === 'en' ? 'en' : 'ar', theme, fontCss, fontFamilies: fontFamilies || [], wm, carry });
-  return carryTraces(html, out);
+  const out = carryTraces(html, editorHtml({ services: d.services, setId: d.setId, ui: d.uiLang === 'en' ? 'en' : 'ar', theme, fontCss, fontFamilies: fontFamilies || [], wm, carry }));
+  // the gate that makes a silent loss impossible: whatever the old file held of history must be in the new one, or no re-wrap
+  const lost = historyProblems(JSON.parse(m[1]), JSON.parse(/<script type="application\/json" id="bw-data">([\s\S]*?)<\/script>/.exec(out)[1]));
+  if (lost.length) throw new FormatError(`re-wrap would lose history: ${lost.slice(0, 5).join('; ')}`);
+  return out;
 }
-/** The bw-data keys editorHtml makes; any other key of an older file is the user's and is carried over. */
-const BUILT_KEYS = new Set(['icons', 'brand', 'setId', 'uiLang', 'services', 'theme', 'i18n', 'fontCss', 'fontFamilies', 'uiCss', 'csp', 'version', 'stateSchema', 'about', 'whatsNew']);
 /**
  * The 0.13 traces outside the data block (engine/ledger-v1.mjs traces(): <html data-bw-ledger>, <meta name="bw-ledger">,
  * a second hash source in the CSP script-src) copied from the old file's head into the re-wrapped one.

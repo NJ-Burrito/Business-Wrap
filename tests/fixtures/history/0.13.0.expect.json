@@ -1,0 +1,30 @@
+{
+ "version": "0.13.0",
+ "format": 0,
+ "bwlog": 1,
+ "services": {
+  "event-permit": {
+   "ar": {
+    "ops": 4,
+    "opIds": "gmvtf1vim0.0,gmvtf1vkl1.0,gmvtf1vmg2.0,gmvtf1w1w3.0",
+    "marks": 2,
+    "comments": 0,
+    "versions": 0
+   },
+   "en": {
+    "ops": 0,
+    "opIds": "",
+    "marks": 2,
+    "comments": 0,
+    "versions": 0
+   }
+  }
+ },
+ "logs": {
+  "event-permit": {
+   "entries": 8,
+   "kinds": "actor-key,open,op,op,op,saveHtml,op,saveHtml",
+   "head": "f18e5a05d39ceb8266dd05962f90cdf79a0f1040f8fe151e1fba0456a7c3b49f"
+  }
+ }
+}

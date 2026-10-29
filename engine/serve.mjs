@@ -23,6 +23,25 @@ import { learningRoute } from './learning/http.mjs';
 import { printApi } from './printers.mjs';
 import { workspace as liveWorkspace, ensure as ensureWorkspace, outName, uniquePath, docTitle, inHistory, localDir } from './workspace.mjs';
 
+
+/** Re-wraps an older file in this editor. If that cannot be done without losing history (a newer format, a failing
+ *  migration, the history check in rewrapEditorHtml) the file on disk stays as it is, a byte-for-byte copy goes to
+ *  <HISTORY|.local>/backups/, and an error page is returned instead of an editor that would look fine and be empty. */
+function openOrRefuse(text, file, ws) {
+  try { return { html: rewrapEditorHtml(text) }; } catch (e) {
+    let kept = '';
+    try {
+      const dir = path.join(ws ? ensureWorkspace(ws).dirs.history : localDir(), 'backups');
+      fs.mkdirSync(dir, { recursive: true });
+      kept = path.join(dir, `${new Date().toISOString().replace(/[:.]/g, '-')}-${path.basename(file)}`);
+      fs.copyFileSync(file, kept);
+    } catch { kept = ''; }
+    const esc = (x) => String(x).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+    const page = `<!doctype html><meta charset="utf-8"><title>Business-Wrap</title><body style="font:16px system-ui;max-width:42em;margin:3em auto"><h1>This file was not opened</h1><p>${esc(e.message)}</p><p>Your file is untouched${kept ? `; a copy is at <code>${esc(kept)}</code>` : ''}.</p>`;
+    return { refused: page };
+  }
+}
+
 const MAX_BODY = 60 * 1024 * 1024;
 const slug = fileStem;
 
@@ -60,7 +79,9 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
       if (req.method === 'GET' && url.pathname === '/') {
         // file:// fonts do not load into an http page: route them through /font/, manifest files only.
         // an editor (or a Save-HTML file) from an older version opens in this version's editor; the file itself is never rewritten
-        let html = rewrapEditorHtml(fs.readFileSync(editorFile, 'utf8')).replace(/file:\/\/\/[^)"'\s]+\.(ttf|woff2)/g, (m) => `/font/${encodeURIComponent(m)}`);
+        const opened = openOrRefuse(fs.readFileSync(editorFile, 'utf8'), editorFile, wsOf());
+        if (opened.refused) return send(500, opened.refused, 'text/html; charset=utf-8');
+        let html = opened.html.replace(/file:\/\/\/[^)"'\s]+\.(ttf|woff2)/g, (m) => `/font/${encodeURIComponent(m)}`);
         // the profile kept with the host (engine/routes/session.mjs): a data block, not a script (the page CSP stays as
         // built); editor/ext/12-session.js copies it into an empty localStorage before the profile card would ask
         if (wsOf()) {
