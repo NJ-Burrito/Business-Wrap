@@ -8,6 +8,47 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.13.2] - 2026-10-29
+
+📊 Real tables, Enter and line breaks that behave, user stories, page-gap tools, and a history that can no longer be lost silently. / 📊 جداول حقيقية، وزر Enter وفواصل أسطر تعمل كما يُتوقع، وقصص مستخدم، وأدوات لفراغات الصفحات، وسجل لا يضيع بصمت.
+
+**In 10 seconds / في عشر ثوان**
+- 📊 Table cells work like a spreadsheet: select, merge, split, paste from Excel, formulas, resize. / خلايا الجدول تعمل كجدول بيانات: تحديد ودمج وتقسيم ولصق من Excel وصيغ وتغيير حجم.
+- ↩️ Enter in a cell is a new line; Tab moves to the next cell; Enter commits a formula. / Enter داخل الخلية سطر جديد؛ وTab ينتقل إلى الخلية التالية؛ وEnter يثبّت الصيغة.
+- 📖 Insert a user story and add points to it. / إدراج قصة مستخدم وإضافة نقاط إليها.
+- 🧹 «Gaps and pages» tools remove empty space. / أدوات «الفراغات والصفحات» تزيل المساحات الفارغة.
+- 🛡️ An old file is migrated, or refused with a backup, and never opened with its history lost. / الملف القديم يُرحَّل أو يُرفض مع نسخة احتياطية، ولا يُفتح أبدًا وقد فقد سجله.
+
+### Added / أضيف
+- 📊 **Table cells**: insert and delete rows and columns (merges, widths, heights and formula references follow), merge and split cells, and a wrap toggle per cell. / خلايا الجدول: إدراج الصفوف والأعمدة وحذفها (وتتبعها الخلايا المدمجة والعروض والارتفاعات ومراجع الصيغ)، ودمج الخلايا وتقسيمها، ومفتاح التفاف لكل خلية.
+- 🔢 **Lists inside a cell**: bullets or numbers, Enter starts the next item; they print the same in the editor, PDF and DOCX. / القوائم داخل الخلية: نقطية أو رقمية، وEnter يبدأ البند التالي؛ وتظهر بالشكل نفسه في المحرر وPDF وDOCX.
+- 🖱️ **Selecting cells**: drag, Shift+click or Ctrl+click; the format bar (bold, colour, font, size, alignment, lists) acts on every selected cell. / تحديد الخلايا: بالسحب أو Shift+نقر أو Ctrl+نقر؛ وشريط التنسيق (غامق ولون وخط وحجم ومحاذاة وقوائم) يعمل على كل الخلايا المحددة.
+- 📋 **Copy, cut and paste** between cells and from Excel: an Excel block pasted into one cell spreads over the cells below and beside it; one value pasted over a selection fills it; a copy from the table keeps its format and shifts its formulas. / النسخ والقص واللصق بين الخلايا ومن Excel: كتلة Excel الملصوقة في خلية واحدة تتوزع على الخلايا أسفلها وبجانبها؛ وقيمة واحدة ملصوقة فوق تحديد تملؤه؛ والنسخ من الجدول يحفظ التنسيق ويزيح الصيغ.
+- 🧽 **Delete and Backspace clear** the selected cells; **Clear value** and **Clear format** are separate commands; Esc inside a cell selects that cell. / مفتاحا Delete وBackspace يمسحان الخلايا المحددة؛ و«مسح القيمة» و«مسح التنسيق» أمران منفصلان؛ وEsc داخل الخلية يحدد تلك الخلية.
+- ➗ **Formulas** in cells: SUM, AVERAGE, MIN, MAX and COUNT, the four operations and brackets, cell references and ranges; a bad formula, a cycle or a division by zero shows #ERR. The PDF and DOCX print the value. / الصيغ في الخلايا: SUM وAVERAGE وMIN وMAX وCOUNT والعمليات الأربع والأقواس، ومراجع الخلايا والنطاقات؛ والصيغة الخاطئة أو الدائرية أو القسمة على صفر تُظهر #ERR. ويطبع PDF وDOCX القيمة.
+- ↔️ **Resize** column widths and row heights by dragging, or by command; one size applies to every selected column or row. / تغيير الحجم: عروض الأعمدة وارتفاعات الصفوف بالسحب أو بالأمر؛ ويُطبَّق حجم واحد على كل الأعمدة أو الصفوف المحددة.
+- 📖 **Insert › User story**: a new story in the SRS card layout with the next US-NN number and the document's own columns. / إدراج › قصة مستخدم: قصة جديدة بتخطيط بطاقة وثيقة المتطلبات، مع رقم US-NN التالي وأعمدة الوثيقة نفسها.
+- ➕ **More points**: add an acceptance point after the selected one or at the end of the list, add another story in the same block, and press Enter inside a point to start the next. / مزيد من النقاط: إضافة نقطة قبول بعد النقطة المحددة أو في نهاية القائمة، وإضافة قصة أخرى في الكتلة نفسها، وEnter داخل النقطة يبدأ التالية.
+- 🧹 **«Gaps and pages» tools**: add or remove a page break, pull the next section up, delete a section (with an undo message; the page size passes on so no later page turns), and remove empty paragraphs and sections left blank. / أدوات «الفراغات والصفحات»: إضافة فاصل صفحة أو حذفه، وسحب القسم التالي إلى الأعلى، وحذف قسم (مع رسالة تراجع؛ ويمرَّر مقاس الصفحة فلا تنقلب صفحة لاحقة)، وإزالة الفقرات الفارغة والأقسام التي بقيت خالية.
+- 🛡️ **History safeguard**: every file now carries a format number. An older file is migrated step by step; a file from a newer Business-Wrap, or one whose history would be lost, is refused before anything changes, a copy is saved in `HISTORY\backups`, and the page explains why instead of opening empty. / حماية السجل: يحمل كل ملف الآن رقم صيغة. الملف الأقدم يُرحَّل خطوة خطوة؛ والملف الأحدث من إصدار آخر، أو الذي سيضيع سجله، يُرفض قبل أي تغيير، وتُحفظ نسخة في `HISTORY\backups`، وتشرح الصفحة السبب بدل أن تُفتح فارغة.
+- 🧪 **A history fixture per release and a release gate**: each version keeps a real file made by its own build, and a release is stopped if a version has no fixture or an old one no longer opens with its whole history (`npm run gate:history`). / ملف اختبار للسجل لكل إصدار وبوابة إصدار: يحتفظ كل إصدار بملف حقيقي صنعه إصداره نفسه، ويُمنع الإصدار إذا غاب الملف أو لم يعد ملف قديم يُفتح بسجله كاملًا (`npm run gate:history`).
+- 🔧 **Recover-history tool** `tools/recover-history.mjs`: matches a file that lost its log to the logs kept in `HISTORY\`; it only reports by default, and applies only the ones you approve, after a backup. / أداة استرجاع السجل `tools/recover-history.mjs`: تطابق الملف الذي فقد سجله مع السجلات المحفوظة في `HISTORY\`؛ وتكتفي بالتقرير افتراضيًا، ولا تطبّق إلا ما توافق عليه، بعد نسخة احتياطية.
+- ⚡ **Faster tests**: `npm test` runs the suites in parallel and prints only what failed, with each suite's time; `npm run test:changed` runs only the suites touched by your change. / اختبارات أسرع: `npm test` يشغّل المجموعات بالتوازي ويطبع ما فشل فقط مع زمن كل مجموعة؛ و`npm run test:changed` يشغّل المجموعات التي مسّها تغييرك فقط.
+
+### Changed / تغير
+- ↩️ **Enter and Shift+Enter**: Enter in a paragraph or an acceptance point splits it at the caret into a new paragraph (the other language's edition keeps its shape); Enter in a table cell or a list item, and Shift+Enter anywhere, is a line break that prints as a line break in the editor, PDF and DOCX. A formula typed in a cell is committed by Enter; Tab moves between cells. Titles still commit on Enter. / Enter وShift+Enter: Enter داخل فقرة أو نقطة قبول يقسمها عند المؤشر إلى فقرة جديدة (وتحافظ نسخة اللغة الأخرى على شكلها)؛ وEnter داخل خلية جدول أو بند قائمة، وShift+Enter في أي مكان، يضيف فاصل سطر يُطبع فاصل سطر في المحرر وPDF وDOCX. والصيغة المكتوبة في خلية يثبّتها Enter؛ وTab ينتقل بين الخلايا. وتبقى العناوين تُثبَّت بـ Enter.
+- 🎯 **Lists and text boxes follow the selection**: a bullet, number or shape list applies to every paragraph or cell the highlighted range touches and switches off together; a new text box is placed at the caret, not at the top of the page. / القوائم ومربع النص تتبع التحديد: القائمة النقطية أو الرقمية أو المشكلة تُطبَّق على كل فقرة أو خلية يمسّها النص المظلَّل وتُلغى معًا؛ ويوضع مربع النص الجديد عند المؤشر لا في أعلى الصفحة.
+
+### Fixed / أصلح
+- 🔔 **The share dialog and its message fit the screen**: the message wraps (a long path breaks anywhere, buttons stay whole), the dialog scrolls inside, and both stay within the window down to a 1024 × 640 screen. / نافذة المشاركة ورسالتها تناسبان الشاشة: الرسالة تلتف (والمسار الطويل ينكسر في أي موضع، وتبقى الأزرار كاملة)، والنافذة تتمرر من الداخل، وتبقى الاثنتان داخل الإطار حتى شاشة 1024 × 640.
+- 🔏 **A file re-opened by a newer version no longer loses its history**: the log, its mark, contributors and lock are carried over on every re-wrap, and a future edition attribute survives Save HTML. / الملف الذي يعيد فتحه إصدار أحدث لم يعد يفقد سجله: يُنقل السجل وعلامته والمساهمون والقفل عند كل إعادة تغليف، وتبقى سمات النسخ المستقبلية بعد «حفظ HTML».
+- 🖼️ A click that follows a press on a drawing no longer clears its selection when the page redraws; the 16 new icons have the same hover and press motion as the others. / النقر الذي يلي الضغط على رسم لم يعد يلغي تحديده عند إعادة رسم الصفحة؛ وللأيقونات الست عشرة الجديدة حركة المرور والضغط نفسها كغيرها.
+- 🧪 The host test uses free ports, so two test runs at once no longer collide. / اختبار الخادم يستخدم منافذ حرة، فلا يتعارض تشغيلان معًا.
+
+### Migration notes / ملاحظات الترحيل
+- Files made by 0.13.0 and 0.13.1 open as they are and are stamped with format 1; nothing to do. Merges, widths, heights and formulas are stored beside the table. / ملفات 0.13.0 و0.13.1 تُفتح كما هي ويوضع عليها رقم الصيغة 1؛ ولا شيء يلزم. وتُخزَّن الخلايا المدمجة والعروض والارتفاعات والصيغ بجانب الجدول.
+- Enter in a table cell is now a new line. Commit with Tab, or click outside the cell. / Enter في خلية الجدول صار يبدأ سطرًا جديدًا. ثبّت القيمة بـ Tab أو بالنقر خارج الخلية.
+
 ## [0.13.1] - 2026-10-29
 
 🧰 Projects and bulk edits, a background host with a power-off button, Save in place, and the second review's fixes. / 🧰 مشاريع وتعديل جماعي، وخادم في الخلفية بزر إيقاف، وحفظ في المكان، وإصلاحات المراجعة الثانية.
