@@ -170,9 +170,19 @@ def apply_render_table_rules(columns, rows):
     out_rows = [[L['none'] if _is_blank(r[i] if i < len(r) else '') else r[i] for i in range(width) if keep[i]] for r in rows]
     return (out_cols, out_rows)
 
-def add_table(document, columns, rows, font, roles=None):
-    if columns:
+def add_table(document, columns, rows, font, roles=None, spec=None):
+    spec = spec or {}
+    merges = [m for m in (spec.get('merges') or []) if isinstance(m, dict)]
+    width = max([len(columns)] + [len(r) for r in rows] + [0])
+    cw = spec.get('colWidths') if isinstance(spec.get('colWidths'), list) and len(spec.get('colWidths')) == width else None
+    fixed = bool(merges or cw)
+    if columns and not fixed:
         columns, rows = apply_render_table_rules(columns, rows)
+    elif cw:
+        keepc = [i for i in range(width) if float(cw[i] or 0) > 0]
+        columns = [columns[i] for i in keepc if i < len(columns)]
+        rows = [[(r[i] if i < len(r) else '') for i in keepc] for r in rows]
+        cw = [cw[i] for i in keepc]
     roles = roles if roles is not None else _THEME_ROLES
     ncols = len(columns) if columns else len(rows[0]) if rows else 1
     header = [columns] if columns else []
@@ -188,8 +198,12 @@ def add_table(document, columns, rows, font, roles=None):
     tblW.set(qn('w:w'), str(int(TEXT_WIDTH.twips)))
     tblW.set(qn('w:type'), 'dxa')
     col_w = Emu(int(TEXT_WIDTH) // max(ncols, 1))
-    for column in table.columns:
-        column.width = col_w
+    tot = sum(float(w) for w in cw) if cw else 0
+    col_ws = [Emu(int(int(TEXT_WIDTH) * float(w) / tot)) for w in cw] if tot else [col_w] * ncols
+    for column, w in zip(table.columns, col_ws):
+        column.width = w
+    covered = {(m['r'] + len(header), c) for m in merges for r in range(m['r'], m['r'] + int(m['rs'])) for c in range(m['c'], m['c'] + int(m['cs'])) if (r, c) != (m['r'], m['c'])}
+    heights = spec.get('rowHeights') or []
     for r, row in enumerate(all_rows):
         tr = table.rows[r]._tr
         trPr = tr.get_or_add_trPr()
@@ -202,10 +216,23 @@ def add_table(document, columns, rows, font, roles=None):
         for c in range(ncols):
             cell_text = row[c] if c < len(row) else ''
             cell = table.cell(r, c)
-            cell.width = col_w
+            cell.width = col_ws[c]
             cell.paragraphs[0].text = ''
-            MD.add_leaf(cell.paragraphs[0], cell_text if MD.is_rich(cell_text) else str(cell_text), font, add_script_runs, bold=bool(header) and r == 0)
+            if (r, c) in covered:
+                continue
+            if fixed and not (header and r == 0) and not MD.text_of(cell_text).strip():
+                cell_text = L['none']
+            MD.fill_cell(document, cell, cell_text if MD.is_rich(cell_text) else str(cell_text), font, add_script_runs, bold=bool(header) and r == 0)
             MD.cell_valign(cell, cell_text)
+    for r, h in enumerate(heights):
+        if isinstance(h, (int, float)) and 4 <= h <= 400 and r + len(header) < len(table.rows):
+            trPr = table.rows[r + len(header)]._tr.get_or_add_trPr()
+            hh = OxmlElement('w:trHeight'); hh.set(qn('w:val'), str(int(h * 56.7))); hh.set(qn('w:hRule'), 'atLeast'); trPr.append(hh)
+    for m in merges:
+        r0, c0 = m['r'] + len(header), m['c']
+        r1, c1 = r0 + int(m['rs']) - 1, c0 + int(m['cs']) - 1
+        if r1 < len(table.rows) and c1 < ncols and (r1, c1) != (r0, c0):
+            table.cell(r0, c0).merge(table.cell(r1, c1))
     if roles is not None:
         theme_mod.style_table_theme(table, roles, has_header=bool(header))
     return table
@@ -797,7 +824,7 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                     MD.add_leaf(p, block.get('text', ''), F['subhead'], add_script_runs, bold=False)
                     counters['subhead_block'] += 1
                 elif kind == 'table':
-                    add_table(document, block.get('columns', []), block.get('rows', []), font)
+                    add_table(document, block.get('columns', []), block.get('rows', []), font, spec=block)
                     counters['table_block'] += 1
                 elif kind == 'figure':
                     svg_src = block.get('svg', '')
