@@ -154,14 +154,18 @@ const LIB = (() => {
     }
     return isDoc(id) ? persist(id) : null;
   }
+  /* One Save HTML at a time: a capture swaps the page's `download` across awaits, so a Save HTML pressed while a Save
+   * in place is still capturing would land in that capture (lost). Every capture and File › Save HTML queue here. */
+  let htmlQ = Promise.resolve();
+  const queued = (f) => { const r = htmlQ.then(f); htmlQ = r.catch(() => {}); return r; };
   /** The Save-HTML text of the open document, captured instead of downloaded. */
-  async function captureHtml() {
+  const captureHtml = () => queued(async () => {
     let cap = null;
     const dl0 = download;
     download = (name, text) => { cap = { name, text }; };
     try { await saveHtml(!!S.embedFonts); } finally { download = dl0; }
     return cap;
-  }
+  });
   /** H3 Save in place (Ctrl+S, the yellow Save): the document itself, not a copy. The list entry is saved, then the
    *  document's own HTML file in the save folder's HTML\ is overwritten (same name every time; the first Save of a new
    *  document asks for the folder once and names it «<title>-<date>-<AR|ENG>.html»). The Save-HTML capture is the A9
@@ -473,7 +477,7 @@ const LIB = (() => {
       [t('restoreNo'), () => {}],
     ]);
   }
-  return { all, get, put, open, adopt, save, saveInPlace, captureHtml, ACCEPT, persist, persistSoon, persistNow, stamp, saveTemplate, fromTemplate, metricsOf, newDocument, importAny, remove, restore, purge, duplicate, entryOf, titleOf, syncTitle, syncAll, onCommit, isDoc, fromHash, drawer, TEMPLATES };
+  return { all, get, put, open, adopt, save, saveInPlace, captureHtml, queued, ACCEPT, persist, persistSoon, persistNow, stamp, saveTemplate, fromTemplate, metricsOf, newDocument, importAny, remove, restore, purge, duplicate, entryOf, titleOf, syncTitle, syncAll, onCommit, isDoc, fromHash, drawer, TEMPLATES };
 })();
 
 IC.library = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" /> </svg>';
@@ -499,7 +503,8 @@ bwExt({
 /* H3: Ctrl+S and the yellow Save (editor.js saveAll) on the local server save the document in place (the 'save' event
  * above) and download nothing: the edits file they used to download is Export › edits. Off the server: as before. */
 { const plain = saveAll; saveAll = function () { if (!EXT.session?.info) return plain(); writeDraft(); S.dirty = false; emitHook('save'); emit('save'); }; }
-/* H3: File › Import is the documents list's import (HTML incl. shares, DOCX, PDF, JSON); edits files still merge */
-{ const plain = runAction; runAction = async function (a) { if (a === 'import') { await LIB.importAny(await pickFile(LIB.ACCEPT)); return; } return plain(a); }; window.BW.runAction = runAction; }
+/* H3: File › Import is the documents list's import (HTML incl. shares, DOCX, PDF, JSON); edits files still merge;
+ * File › Save HTML waits for a Save in place still capturing (LIB.queued) */
+{ const plain = runAction; runAction = async function (a) { if (a === 'import') { await LIB.importAny(await pickFile(LIB.ACCEPT)); return; } if (a === 'saveHtml') return LIB.queued(() => plain(a)); return plain(a); }; window.BW.runAction = runAction; }
 // «حُفظ تلقائياً» toast → the «آخر حفظ» stamp beside the change counter (extra 1): it says what was saved where and when
 { const plain = flash; flash = function (msg, bad = false) { if (!bad && msg === t('autosaved')) { LIB.stamp(); return; } return plain(msg, bad); }; }

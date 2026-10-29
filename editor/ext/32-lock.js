@@ -45,6 +45,7 @@ async function lkToggle() {
 
 /** The Save-HTML text, captured instead of downloaded. */
 async function lkCaptureHtml() {
+  if (EXT.library) return EXT.library.captureHtml(); // queued with Save in place and Save HTML (H3)
   let cap = null;
   const dl0 = download;
   download = (name, text) => { cap = { name, text }; };
