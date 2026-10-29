@@ -6,7 +6,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { ensure, readJson } from '../workspace.mjs';
+import zlib from 'node:zlib';
+import { ensure, readJson, localDir } from '../workspace.mjs';
 import { launchBrowser, closeBrowsers, noteHost, hostState } from '../host.mjs';
 
 export const IDLE_MS = Number(process.env.BW_IDLE_MS || 4000);
@@ -17,15 +18,35 @@ const stamp = (d) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate(
 const day = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
 function state(ctx) {
-  return (ctx.session ||= { runId: `${stamp(new Date())}-${crypto.randomBytes(3).toString('hex')}`, startedAt: new Date().toISOString(), live: new Map(), timer: null, ended: false });
+  return (ctx.session ||= { runId: `${stamp(new Date())}-${crypto.randomBytes(3).toString('hex')}`, startedAt: new Date().toISOString(), live: new Map(), timer: null, ended: false, inflight: 0, closing: new Map() });
 }
 const root = (ctx) => path.join(ensure(ctx.workspace).dirs.history, 'sessions');
 const runDir = (ctx, id) => path.join(root(ctx), id);
 const tabsOf = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith('.json') && f !== 'run.json') : []).map((f) => { try { return JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch { return null; } }).filter(Boolean);
 
+/** The profile (name, picture, actor id) kept with the host: .local/profile.json. A tab on another origin (a new port)
+ *  or another browser profile has an empty localStorage; serve.mjs hands this to the page, so «من أنت؟» is not asked again. */
+export const profileFile = () => path.join(localDir(), 'profile.json');
+function keepProfile(p) {
+  if (!p || typeof p !== 'object' || typeof p.profile !== 'string' || p.profile.length > 2e6) return;
+  const rec = { profile: p.profile, actor: typeof p.actor === 'string' ? p.actor.slice(0, 80) : '' };
+  fs.mkdirSync(localDir(), { recursive: true });
+  fs.writeFileSync(profileFile(), JSON.stringify(rec));
+}
+/** A tab whose page closed while other tabs stay open was closed by the user: its record leaves the run (kept in
+ *  closed\, never deleted), so a resume brings back only the tabs that were open at shutdown. */
+function dropTab(ctx, tab) {
+  const dir = runDir(ctx, state(ctx).runId);
+  const f = path.join(dir, `${tab}.json`);
+  if (!fs.existsSync(f)) return;
+  fs.mkdirSync(path.join(dir, 'closed'), { recursive: true });
+  fs.renameSync(f, path.join(dir, 'closed', `${tab}.json`));
+}
 function finish(ctx) {
   const s = state(ctx);
   if (s.ended) return;
+  // the last tab's pagehide flush may still be on its way in: wait for it (3 s ceiling), never exit before it lands
+  if (s.inflight > 0 && (s.waited = (s.waited || 0) + 1) <= 30) { setTimeout(() => finish(ctx), 100); return; }
   s.ended = true;
   const dir = runDir(ctx, s.runId);
   const tabs = tabsOf(dir).map((x) => ({ tab: x.tab, title: x.title }));
@@ -41,12 +62,42 @@ function archive(ctx, id) {
   fs.renameSync(from, to);
   return true;
 }
+/** ops[0..from) kept, then the delta: the page's pagehide flush sends only the edits since its last push (a beacon
+ *  carries at most 64 KB, a whole document does not fit). */
+const spliceOps = (old = [], d) => {
+  const from = Math.max(0, Math.min(old.length, Number(d.from) || 0));
+  if (from && d.prev != null && old[from - 1]?.id !== d.prev) return old; // the list was rewritten since that push: keep the push
+  return [...old.slice(0, from), ...(Array.isArray(d.ops) ? d.ops : [])];
+};
 function writeTab(ctx, b) {
   if (!TAB.test(String(b.tab))) throw Object.assign(new Error('tab'), { code: 400 });
   const dir = runDir(ctx, state(ctx).runId);
   fs.mkdirSync(dir, { recursive: true });
-  const rec = { tab: b.tab, title: String(b.title || '').slice(0, 200), svc: b.svc, ed: b.ed, at: new Date().toISOString(), entry: b.entry || null, snap: b.snap || null };
-  fs.writeFileSync(path.join(dir, `${b.tab}.json`), JSON.stringify(rec));
+  const f = path.join(dir, `${b.tab}.json`);
+  if (b.profile) keepProfile(b.profile);
+  let rec;
+  if (b.delta) {
+    try { rec = JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return; } // nothing pushed yet: the delta has no base
+    for (const [ed, d] of Object.entries(b.delta)) {
+      if (rec.entry?.editions?.[ed] && rec.entry.id === b.svc) rec.entry.editions[ed].ops = spliceOps(rec.entry.editions[ed].ops, d);
+      else if (rec.snap?.svc?.[b.svc]?.[ed]) rec.snap.svc[b.svc][ed].ops = spliceOps(rec.snap.svc[b.svc][ed].ops, d);
+    }
+    Object.assign(rec, { title: String(b.title || rec.title || '').slice(0, 200), at: new Date().toISOString() });
+  } else {
+    let entry = b.entry || null;
+    // a pagehide flush past 64 KB comes without the editions' base text (raw): it is taken back from this tab's last
+    // record of the same document, else from the library mirror the Save wrote (HISTORY\library\<id>.json.gz)
+    if (entry?.editions && Object.values(entry.editions).some((x) => x && x.raw == null)) {
+      let base = null;
+      try { const old = JSON.parse(fs.readFileSync(f, 'utf8')); if (old.entry?.id === entry.id) base = old.entry; } catch { /* none */ }
+      if (!base && /^doc-[A-Za-z0-9-]{4,64}$/.test(String(entry.id))) {
+        try { base = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(ensure(ctx.workspace).dirs.history, 'library', `${entry.id}.json.gz`))).toString('utf8')); } catch { /* none */ }
+      }
+      for (const [ed, x] of Object.entries(entry.editions)) if (x && x.raw == null) { if (base?.editions?.[ed]?.raw == null) return; x.raw = base.editions[ed].raw; }
+    }
+    rec = { tab: b.tab, title: String(b.title || '').slice(0, 200), svc: b.svc, ed: b.ed, at: new Date().toISOString(), entry, snap: b.snap || null };
+  }
+  fs.writeFileSync(f, JSON.stringify(rec));
 }
 
 export default async (req, url, send, ctx, res) => {
@@ -62,16 +113,25 @@ export default async (req, url, send, ctx, res) => {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
       res.write(`event: hello\ndata: ${JSON.stringify({ runId: s.runId })}\n\n`);
       clearTimeout(s.timer);
+      clearTimeout(s.closing.get(tab)); s.closing.delete(tab); // a reload reconnects: the tab stays
       s.live.set(res, tab);
       noteHost({ tabs: new Set(s.live.values()).size });
       req.on('close', () => {
         s.live.delete(res);
         noteHost({ tabs: new Set(s.live.values()).size });
-        if (!s.live.size) { clearTimeout(s.timer); s.timer = setTimeout(() => { if (!s.live.size) finish(ctx); }, IDLE_MS); }
+        if (!s.live.size) {
+          // the last page gone: every tab that closed in the last IDLE_MS went with it (a window closed, Edge quit) and stays
+          for (const t of s.closing.values()) clearTimeout(t);
+          s.closing.clear();
+          clearTimeout(s.timer); s.timer = setTimeout(() => { if (!s.live.size) finish(ctx); }, IDLE_MS);
+        } else if (![...s.live.values()].includes(tab)) {
+          clearTimeout(s.closing.get(tab));
+          s.closing.set(tab, setTimeout(() => { s.closing.delete(tab); if (s.live.size && ![...s.live.values()].includes(tab)) dropTab(ctx, tab); }, IDLE_MS));
+        }
       });
       return true;
     }
-    if (req.method === 'POST' && (p === '/api/session/state' || p === '/api/session/flush')) { writeTab(ctx, await readJson(req)); send(200, { ok: true }); return true; }
+    if (req.method === 'POST' && (p === '/api/session/state' || p === '/api/session/flush')) { s.inflight += 1; try { writeTab(ctx, await readJson(req)); } finally { s.inflight -= 1; } send(200, { ok: true }); return true; }
     if (req.method === 'GET' && p === '/api/session/tab') {
       const tab = url.searchParams.get('tab');
       const f = path.join(runDir(ctx, s.runId), `${tab}.json`);
@@ -89,7 +149,7 @@ export default async (req, url, send, ctx, res) => {
       return true;
     }
     if (req.method === 'POST' && (p === '/api/session/resume' || p === '/api/session/new')) {
-      const { runId } = await readJson(req);
+      const { runId, tab: asker } = await readJson(req);
       if (!RUN.test(String(runId)) || runId === s.runId || !fs.existsSync(runDir(ctx, runId))) { send(400, { error: 'runId' }); return true; }
       if (p === '/api/session/new') { send(200, { ok: archive(ctx, runId) }); return true; }
       // resume: the tabs move into this run, the old run is archived, the server opens every tab at once
@@ -98,10 +158,14 @@ export default async (req, url, send, ctx, res) => {
       fs.mkdirSync(dir, { recursive: true });
       for (const x of tabs) fs.writeFileSync(path.join(dir, `${x.tab}.json`), JSON.stringify(x));
       archive(ctx, runId);
+      // the tab that asked is not a tab of the run: it becomes the first resumed tab (the page navigates itself there),
+      // so a resume never adds a tab, and its own fresh record leaves this run
+      if (TAB.test(String(asker)) && !tabs.some((x) => x.tab === asker)) fs.rmSync(path.join(dir, `${asker}.json`), { force: true });
       const origin = `http://${req.headers.host || `127.0.0.1:${ctx.server?.address()?.port}`}`;
       const urls = tabs.map((x) => `${origin}/?session=${s.runId}&tab=${encodeURIComponent(x.tab)}`);
-      const r = launchBrowser(urls);
-      send(200, { ok: true, n: urls.length, chunks: r.chunks });
+      const here = TAB.test(String(asker)) ? urls.shift() : null;
+      const r = urls.length ? launchBrowser(urls) : { chunks: 0 };
+      send(200, { ok: true, n: urls.length + (here ? 1 : 0), here, chunks: r.chunks });
       return true;
     }
     if (req.method === 'POST' && p === '/api/host/stop') {

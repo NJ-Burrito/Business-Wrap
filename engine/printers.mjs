@@ -23,7 +23,7 @@ import { spawn } from 'node:child_process';
 import { exportPdf, exportDocx, printHtml, loadTheme, fileStem } from './export.mjs';
 import { config } from './config.mjs';
 import { py } from './py.mjs';
-import { ensure as ensureWorkspace, outName, uniquePath, docTitle } from './workspace.mjs';
+import { ensure as ensureWorkspace, outName, uniquePath, docTitle, inHistory } from './workspace.mjs';
 
 /** The command runner: (cmd, args, {env, input, timeout}) → Promise<{status, stdout, stderr}>. Tests swap it. */
 const defaultRun = (cmd, args, { env, timeout = 120000 } = {}) => new Promise((ok) => {
@@ -282,7 +282,7 @@ export async function printApi(req, res, url, { send, OUT, maxBody, ws = () => n
       else if (format === 'docx') exportDocx(doc, { locale, theme, docxPath: file, embedFonts: body.embedFonts !== false });
       else fs.writeFileSync(file, printHtml(doc, { locale, theme }).html, 'utf8');
       const base = filesRoot();
-      const served = file.startsWith(base + path.sep) && !file.startsWith(path.join(base, 'HISTORY') + path.sep);
+      const served = file.startsWith(base + path.sep) && !inHistory(base, file);
       send(200, { ok: true, file, bytes: fs.statSync(file).size, url: served ? `/files/${path.relative(base, file).split(path.sep).map(encodeURIComponent).join('/')}` : null });
       return true;
     }

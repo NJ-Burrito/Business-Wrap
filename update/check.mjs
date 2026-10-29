@@ -94,15 +94,32 @@ export async function checkForUpdate({ force = false, now = Date.now(), current 
   return { status: 'available', current, latest: l.version, url: l.url, zip: l.zip, zipApi: l.zipApi, sha256: l.sha256, publishedAt: l.publishedAt, highlights, notes: { human, migration }, migration, checkedAt: next.checkedAt, cached };
 }
 
+/** The update command for this install: its own update/cli.mjs (never `npx business-wrap`, which resolves npm). */
+export const updateCommand = () => `node "${path.join(ROOT, 'update', 'cli.mjs')}" update --apply --yes`;
+/** True when this copy runs from npm's npx cache: a temporary copy, not the user's install (BW_ASSUME_NPX: tests). */
+export const fromNpx = (root = ROOT) => process.env.BW_ASSUME_NPX === '1' || /[\\/]_npx[\\/]/.test(root);
+/** The Business-Wrap install the user stands in: the nearest folder up from `cwd` whose package.json is business-wrap. */
+export function localInstall(cwd = process.cwd()) {
+  for (let d = path.resolve(cwd); ; d = path.dirname(d)) {
+    try {
+      const p = JSON.parse(fs.readFileSync(path.join(d, 'package.json'), 'utf8'));
+      if (p.name === 'business-wrap' && fs.existsSync(path.join(d, 'update', 'cli.mjs'))) return { dir: d, version: p.version };
+    } catch { /* not here */ }
+    if (path.dirname(d) === d) return null;
+  }
+}
+
 /** The one line an agent or a terminal shows. AR or EN. Empty string when there is nothing to say. */
 export function oneLiner(r, lang = 'en') {
   if (r.status !== 'available') return '';
   // CHANGELOG lines are "English / العربية": keep the side in the user's language, cut to one short line
   const side = (h) => { const p = String(h).split(' / '); const s = (lang === 'ar' ? p[p.length - 1] : p[0]).trim(); return s.length > 140 ? `${s.slice(0, 137)}…` : s; };
   const bullets = (r.highlights || []).map((h) => `  • ${side(h)}`).join('\n');
+  // the command runs THIS install's updater: `npx business-wrap` would fetch the npm package (it can lag behind GitHub)
+  const cmd = updateCommand();
   return lang === 'ar'
-    ? `يتوفر إصدار جديد من Business-Wrap: ‏${r.latest} (المثبت ${r.current}). للتحديث: npx business-wrap update --apply · في Claude Code: ‏/plugin marketplace update business-wrap\n${bullets}`.trimEnd()
-    : `Business-Wrap ${r.latest} is available (installed ${r.current}). To update: npx business-wrap update --apply · in Claude Code: /plugin marketplace update business-wrap\n${bullets}`.trimEnd();
+    ? `يتوفر إصدار جديد من Business-Wrap: ‏${r.latest} (المثبت ${r.current}). للتحديث: ${cmd} · في Claude Code: ‏/plugin marketplace update business-wrap\n${bullets}`.trimEnd()
+    : `Business-Wrap ${r.latest} is available (installed ${r.current}). To update: ${cmd} · in Claude Code: /plugin marketplace update business-wrap\n${bullets}`.trimEnd();
 }
 
 /** What's new in the INSTALLED version (for the editor's what's-new panel and after an update). */

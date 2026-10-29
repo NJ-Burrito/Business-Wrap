@@ -24,10 +24,10 @@ export function reportData(logs, { from, to, people = null } = {}) {
     const own = log.entries.filter((e) => !seen.has(e.hash));
     for (const e of own) seen.add(e.hash);
     const m = BWLOG1.metrics(own, { from: lo, to: hi });
-    // review2 #11: the title as the document says it last (open, save, Save-HTML and export entries carry `docTitle`, read
-    // live from the cover title); a log from before falls back to its last open's «عنوان الوثيقة», service-name part
+    // the title as the document says it now: a live `docTitle` (G1) wins, else the last cover/title edit (G3), else the open title
     const live = [...log.entries].reverse().find((e) => e.data?.docTitle)?.data.docTitle;
-    const full = String([...log.entries].reverse().find((e) => e.kind === 'open' && e.data?.title)?.data.title || log.doc);
+    const lastSet = (re) => { const v = [...log.entries].reverse().find((e) => e.kind === 'op' && re.test(e.data?.op?.path || ''))?.data.op.value; return typeof v === 'string' ? v : v?.text; };
+    const full = String(lastSet(/^\/control\/coverTitle$/) || lastSet(/^\/control\/title$/) || [...log.entries].reverse().find((e) => e.kind === 'open' && e.data?.title)?.data.title || log.doc);
     const title = live ? String(live) : full.split(/\s*[:—]\s+/).slice(1).join(': ') || full; // the service name, not the document kind
     const lastLock = [...log.entries].reverse().find((e) => e.kind === 'lock' || e.kind === 'unlock');
     const status = lastLock?.kind === 'lock' ? 'locked' : log.entries.some((e) => e.kind === 'sign') ? 'signed' : 'progress';

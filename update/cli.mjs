@@ -10,7 +10,8 @@
 // Exit 0 always for --check/--hook (an unknown answer is not an error); 1 when --apply fails.
 import fs from 'node:fs';
 import path from 'node:path';
-import { checkForUpdate, oneLiner, settings, saveSettings, installedNotes, token, ROOT, currentVersion } from './check.mjs';
+import { spawnSync } from 'node:child_process';
+import { checkForUpdate, oneLiner, settings, saveSettings, installedNotes, token, ROOT, currentVersion, fromNpx, localInstall, updateCommand, isNewer } from './check.mjs';
 import { applyUpdate } from './apply.mjs';
 
 const argv = process.argv.slice(2).filter((a) => a !== 'update');
@@ -19,6 +20,16 @@ const val = (f, d) => { const i = argv.indexOf(f); return i >= 0 && argv[i + 1] 
 const lang = val('--lang', /^ar/i.test(process.env.LANG || process.env.LC_ALL || '') ? 'ar' : 'en');
 
 async function main() {
+  if (fromNpx()) {
+    // `npx business-wrap update` runs npm's copy from a temporary cache (npm can lag behind GitHub: 0.12.0 under a 0.13
+    // install). Inside an install, hand over to that install's own updater; elsewhere never apply into the cache.
+    const here = localInstall();
+    if (here && path.resolve(here.dir) !== path.resolve(ROOT)) {
+      console.error(`Business-Wrap: using the install in ${here.dir} (${here.version}), not the npx copy (${currentVersion()}).`);
+      return spawnSync(process.execPath, [path.join(here.dir, 'update', 'cli.mjs'), 'update', ...argv], { stdio: 'inherit', env: { ...process.env, BW_ASSUME_NPX: '' } }).status ?? 1;
+    }
+    if (has('--apply')) { console.log(`This is a temporary npx copy (${currentVersion()}), not your install: nothing is updated here. In your install run: node update/cli.mjs update --apply --yes · in Claude Code: /plugin marketplace update business-wrap`); return 0; }
+  }
   if (has('--enable-hook') || has('--disable-hook') || has('--off') || has('--on')) {
     const s = saveSettings({ ...(has('--enable-hook') ? { hook: true } : {}), ...(has('--disable-hook') ? { hook: false } : {}), ...(has('--off') ? { check: false } : {}), ...(has('--on') ? { check: true } : {}) });
     console.log(JSON.stringify(s));
@@ -40,8 +51,9 @@ async function main() {
   if (has('--apply')) {
     const r = await checkForUpdate({ force: true });
     if (r.status !== 'available') { console.log(r.status === 'current' ? `Business-Wrap ${r.current} is the latest.` : 'Cannot check for updates now (offline, no release published yet, or the GitHub rate limit).'); return 0; }
+    if (!isNewer(r.latest, currentVersion())) { console.log(`Business-Wrap ${currentVersion()} is the latest (never a downgrade).`); return 0; }
     if (!has('--yes')) {
-      console.log(`${oneLiner(r, lang)}\nRun again with --yes to update. Kept: .local, design/custom, logos, fonts/custom, drafts, out.`);
+      console.log(`${oneLiner(r, lang)}\nRun again with --yes to update (${updateCommand()}). Kept: .local, design/custom, logos, fonts/custom, drafts, out.`);
       return 0;
     }
     const res = await applyUpdate({ dir: ROOT, release: { version: r.latest, zip: r.zip, zipApi: r.zipApi, sha256: r.sha256 }, repo: JSON.parse(fs.readFileSync(path.join(ROOT, 'update', 'source.json'), 'utf8')).repo, token: token(), current: currentVersion() });
