@@ -91,6 +91,12 @@ async function pvLoad(svc, snap = null) {
   if (ent?.prov?.log) carried = { doc: ent.prov.doc || doc, log: ent.prov.log }; // an imported file's log (10-library keeps it)
   try {
     if (carried) { Object.assign(L, await BWLOG1.unseal(carried.log, carried.doc)); L.doc = doc; L.src = live ? 'entry' : 'html'; if (carried.doc !== doc) L.from = carried.doc; }
+    // an older Save-HTML (its log ends at its own «saveHtml») of a document this machine has carried on since: the mirror's
+    // log is the same chain, longer. Continue from it, so the opener's entries are not a fork of what HISTORY already holds
+    if (carried && !live && !L.from && mir.log && L.entries.at(-1)?.kind === 'saveHtml') {
+      const M2 = await BWLOG1.unseal(mir.log, doc), n = L.entries.length;
+      if (M2.entries?.length > n && M2.entries[n - 1].hash === L.entries[n - 1].hash) { Object.assign(L, M2); L.doc = doc; L.src = 'html'; L.extended = true; }
+    }
     else if (mir.log && (live || !edited)) { Object.assign(L, await BWLOG1.unseal(mir.log, doc)); L.doc = doc; L.src = 'mirror'; }
     else if (live && edited) {
       // the chain up to an entry that vouches for exactly this state is this document's history too
@@ -110,7 +116,7 @@ async function pvLoad(svc, snap = null) {
   const traced = live ? ent && BWLOG1.traces({ bwlog: ent.bwlog, services: [{ id: svc, editions: ent.editions }] }, svc).length : BWLOG1.traces(DATA, svc, pvHead()).length;
   if (edited && !L.entries.length && !mir.log && (live ? ent && !traced : !traced)) { L.src = 'legacy'; L.verdict = { ok: true, issues: [], legacy: true }; L.pins = {}; return (PV.logs[svc] = L); }
   // a log continued from this machine's mirror is newer than any file state: only its chain and head are checked
-  L.verdict = await BWLOG1.verify(L, { mirror: L.from ? null : L.mirror, editions: L.src === 'mirror' ? undefined : eds, saved: L.src === 'html' || L.src === 'entry' });
+  L.verdict = await BWLOG1.verify(L, { mirror: L.from ? null : L.mirror, editions: L.src === 'mirror' ? undefined : eds, saved: !L.extended && (L.src === 'html' || L.src === 'entry') });
   L.pins = L.verdict.pins;
   return (PV.logs[svc] = L);
 }
