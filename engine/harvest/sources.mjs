@@ -11,6 +11,7 @@ import { harvestModel, writeDocuments, readModel } from './cli.mjs';
 import { gateHarvest } from '../heal/gates.mjs';
 import { parseModel, modelToDocument } from './model.mjs';
 import { unescapeXml } from './xml.mjs';
+import { i18n, userCwd } from '../export.mjs';
 
 export const MODEL_EXT = /\.(bpmn|bpmn20\.xml|xml|drawio|ya?ml|json)$/i;
 export const TEXT_EXT = /\.(pdf|docx|html?|txt|md)$/i;
@@ -78,19 +79,30 @@ const expand = (srcs) => srcs.flatMap((s) => (fs.statSync(s).isDirectory() ? fs.
  * Every source → one document pair (+ editor). Returns { results: [{source, kind, documents, editor, service}], skipped }.
  * A file that is neither a model nor a readable document is listed in `skipped` with the reason.
  */
-export async function harvestSources(sources, { out, name, roles, editor = true } = {}) {
+export async function harvestSources(sources, { out = path.join(userCwd(), 'bw-harvest'), name, roles, editor = true } = {}) {
   const results = [];
   const skipped = [];
+  // several sources of one call that land on the same service folder (one `name` for all) never overwrite each other:
+  // the first keeps <service>\, the next ones get <service>-2\, -3\ … in source order (a re-run writes the same folders)
+  const used = new Map();
+  const H = i18n().harvest;
+  const into = (ir) => {
+    const dir = path.resolve(out, modelToDocument(ir, { locale: 'en', L: H.en }).service);
+    const n = (used.get(dir) || 0) + 1;
+    used.set(dir, n);
+    return n === 1 ? undefined : `${dir}-${n}`;
+  };
   for (const src of expand(sources.map((s) => path.resolve(s)))) {
     try {
       if (TEXT_EXT.test(src) && !/\.(xml|json|ya?ml)$/i.test(src)) {
         const ir = await parseModel(linesToProcess(textLines(src), { name }), { roles });
         ir.source = path.extname(src).slice(1).toLowerCase();
-        const r = writeDocuments((locale, L) => modelToDocument(ir, { locale, L }), out, { editor, sources: { ir }, name });
+        const r = writeDocuments((locale, L) => modelToDocument(ir, { locale, L }), out, { editor, sources: { ir }, name, into: into(ir) });
         results.push({ source: src, kind: 'document', documents: r.documents, editor: r.editor, service: r.service });
       } else if (MODEL_EXT.test(src)) {
-        if (gateHarvest(await readModel(src, { name, roles })).verdict === 'FAIL') throw new Error('not a process model: no task or decision step');
-        const r = await harvestModel(src, { out, name, roles, editor });
+        const ir0 = await readModel(src, { name, roles });
+        if (gateHarvest(ir0).verdict === 'FAIL') throw new Error('not a process model: no task or decision step');
+        const r = await harvestModel(src, { out, name, roles, editor, into: into(ir0) });
         results.push({ source: src, kind: 'model', documents: r.documents, editor: r.editor, service: r.service });
       } else skipped.push({ source: src, why: 'not a model (BPMN, draw.io, YAML, JSON) or a document (PDF, DOCX, HTML, TXT, MD)' });
     } catch (e) { skipped.push({ source: src, why: e.message }); }

@@ -62,9 +62,9 @@
 ```
 💬 Then say **"build the requirements document for …"** or **"open it in the editor"**.
 
-🔌 **MCP server only** (any MCP client, stdio, local; 0.13.0 from the GitHub tag; npm still serves 0.12.0):
+🔌 **MCP server only** (any MCP client, stdio, local; 0.13.1 from the GitHub tag; npm still serves 0.12.0):
 ```
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.13.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.13.1 business-wrap-mcp
 ```
 
 💻 **From source:** `git clone https://github.com/NJ-Burrito/Business-Wrap`, then the [Quick start](#️-quick-start).
@@ -230,7 +230,7 @@ Each gives the Arabic and English document JSON and an editor. In the editor: **
 - **Save folder:** `<folder>\Business-Wrap\{PDF,DOCX,HTML,HISTORY}`, files named `<title>-<date>-<AR|ENG>`, asked once on the first Save or export.
 - **Background host:** closing the last tab saves every tab and stops the server; the next launch offers to resume everything or start new work.
 - **Header and Footer** toolbar sections: text, fields, logos, page numbers; each item for every page, this page only, or from this page on; edited on each page in the page views.
-- **Page setup:** A3, A4, A5, Letter, Legal; portrait or landscape for the whole document or one section; page breaks at a chosen section.
+- **Page setup:** A3, A4, A5, Letter, Legal; portrait or landscape for the whole document or one section, shown on the editor canvas as it will print (0.13.1); page breaks at a chosen section.
 - **Objects:** tables, sections and chapters anywhere; copy and paste a whole block; free text boxes; images with Word's seven wrap modes.
 - **Format bar:** colour, size, font, alignment, lists to six levels, quote, link, code; Ctrl+B / I / U.
 - **Everything editable:** TOC entries, the document-control table, revisions; they get the table tools.
@@ -301,7 +301,7 @@ git config core.hooksPath .githooks
 
 🌾 **The crawler is a dry run:** it stops before Send, Submit, Confirm or Pay unless you ask twice.
 
-🔏 **Tamper-evident history (0.13.0), and its honest limit:** every edit, save, export, sign, lock and unlock is an entry in a hash-chained, signed log (`bwlog` v1, a frozen format) that travels inside the shared HTML, with a mirror in your save folder's `HISTORY`. A removed or edited entry, or an edit that was never logged, is detected and shown. The log is encrypted only against casual reading: Business-Wrap is MIT and open source, so the key is in the code. Someone with the source can rebuild a whole chain with new keys; that is caught only where a mirror or a pinned key from the real author exists (another machine, the `HISTORY` store, an earlier shared copy). There is no trusted timestamp. Removing both the log and the `bwlog` mark by hand makes a file look "made before 0.13"; the local `HISTORY` mirror still knows the document and flags it «stripped» on this machine. Lock blocks accidental edits; it is not access control ([bible/11-trust-ledger.md](bible/11-trust-ledger.md)).
+🔏 **Tamper-evident history (0.13.0), and its honest limit:** every edit, save, export, sign, lock and unlock is an entry in a hash-chained, signed log (`bwlog` v1, a frozen format) that travels inside the shared HTML, with a mirror in your save folder's `HISTORY`. A removed or edited entry, or an edit that was never logged, is detected and shown. The log is encrypted only against casual reading: Business-Wrap is MIT and open source, so the key is in the code. Someone with the source can rebuild a whole chain with new keys; that is caught only where a mirror or a pinned key from the real author exists (another machine, the `HISTORY` store, an earlier shared copy). There is no trusted timestamp. Removing the log and the `bwlog` mark is not enough to pass a file off as "made before 0.13": since 0.13.1 a Save-HTML also carries independent traces (the timeline marks in each edition, a `bw-ledger` meta tag with the document id and state hash, an attribute on `<html>`, a second hash in the CSP, the file's own version), and any one of them with no valid log reads «stripped». Someone who finds and removes every trace by hand can still make a file look pre-0.13; where the local `HISTORY` mirror knows the document, it still flags it «stripped» on this machine. Lock blocks accidental edits; it is not access control ([bible/11-trust-ledger.md](bible/11-trust-ledger.md)).
 
 🛡️ **A security gate** (`security/check.py`, plus gitleaks in CI) keeps client content, credentials and local paths out of the repo. Found a problem? [SECURITY.md](SECURITY.md).
 

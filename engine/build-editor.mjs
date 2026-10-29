@@ -112,7 +112,7 @@ function editorScript(extDir) {
   const strip = (s) => s.replace(/^export /gm, '').replace(/^import .*$/gm, '');
   // the harvest model code lives in its own scope (HV), so its helper names stay out of the editor's
   const hv = ['xml.mjs', 'yaml.mjs', 'model.mjs', 'docs.mjs'].map((f) => strip(read(path.join(HERE, 'harvest', f)))).join('\n');
-  return `(() => {\n'use strict';\n${strip(read(path.join(HERE, 'edits.mjs')))}\n${strip(read(path.join(HERE, 'diagram.mjs')))}\n${strip(read(path.join(HERE, 'render.mjs')))}\n${strip(read(path.join(HERE, 'fontinfo.mjs')))}\n${strip(read(path.join(HERE, 'ledger-v1.mjs')))}\nconst HV = (() => {\n${hv}\nreturn { parseModel, modelToDocument, processFigure, humanGraph, harvestToDocument, mergeToDocument };\n})();\n${['value-control.js', 'fonts.js', 'design-panel.js', 'editor.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${read(path.join(REPO, 'editor', 'diagram-ui.js'))}\n${['shell-ux.js', 'views.js', 'explainers.js', 'print-center.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${['update.js', 'settings.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${extFiles(extDir, '.js').map(read).join('\n')}\nboot();\n})();`;
+  return `(() => {\n'use strict';\n${strip(read(path.join(HERE, 'edits.mjs')))}\n${strip(read(path.join(HERE, 'diagram.mjs')))}\n${strip(read(path.join(HERE, 'render.mjs')))}\n${strip(read(path.join(HERE, 'fontinfo.mjs')))}\n${strip(read(path.join(HERE, 'ledger-v1.mjs')))}\n${strip(read(path.join(HERE, 'bulk.mjs')))}\nconst HV = (() => {\n${hv}\nreturn { parseModel, modelToDocument, processFigure, humanGraph, harvestToDocument, mergeToDocument };\n})();\n${['value-control.js', 'fonts.js', 'design-panel.js', 'editor.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${read(path.join(REPO, 'editor', 'diagram-ui.js'))}\n${['shell-ux.js', 'views.js', 'explainers.js', 'print-center.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${['update.js', 'settings.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${extFiles(extDir, '.js').map(read).join('\n')}\nboot();\n})();`;
 }
 
 export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, localFonts = false, watermarkDir = DEFAULT_WATERMARK_DIR, ui = 'ar', ops = {}, extDir = EXT_DIR }) {
@@ -149,7 +149,7 @@ export function aboutInfo() {
 }
 
 /** One editor HTML from services already in hand (documents + their stored edits, history and comments). */
-function editorHtml({ services, setId, ui = 'ar', theme, fontCss, fontFamilies, wm = [], extDir = EXT_DIR }) {
+function editorHtml({ services, setId, ui = 'ar', theme, fontCss, fontFamilies, wm = [], extDir = EXT_DIR, carry = {} }) {
   const I = i18n();
   // shell UX strings (0.10.0): ux.*, view.*, explain.* live in their own file and join the UI table here
   const UX = JSON.parse(read(path.join(REPO, 'editor', 'ux-i18n.json')));
@@ -174,6 +174,7 @@ function editorHtml({ services, setId, ui = 'ar', theme, fontCss, fontFamilies, 
   const doc0 = JSON.parse(first.editions[ed0].raw);
   const notes = installedNotes();
   const data = {
+    ...carry, // a re-wrapped file's own keys (provenance: bwlog, prov, contrib, lock …); every key below is this build's
     icons: JSON.parse(read(path.join(REPO, 'editor', 'icons.json'))).icons,
     brand: brandMarks(),
     setId,
@@ -217,7 +218,31 @@ export function rewrapEditorHtml(html) {
   try { const w = /<script type="application\/json" id="bw-watermark-data">([\s\S]*?)<\/script>/.exec(html); if (w) wm = JSON.parse(w[1]); } catch { /* none */ }
   let { fontCss, fontFamilies } = d;
   if (typeof fontCss !== 'string') { const cuts = fontsFor(theme).cuts; fontCss = fontFaceCss(cuts, {}); fontFamilies = [...new Set(cuts.map((c) => c.family))]; }
-  return editorHtml({ services: d.services, setId: d.setId, ui: d.uiLang === 'en' ? 'en' : 'ar', theme, fontCss, fontFamilies: fontFamilies || [], wm });
+  // every key this build does not make itself travels as is: the provenance (bwlog mark, prov log, contributors, lock) and
+  // anything a later extension adds; a file re-wrapped without them would read as «stripped» (0.13.1 final pass, item 1)
+  const carry = Object.fromEntries(Object.entries(d).filter(([k]) => !BUILT_KEYS.has(k)));
+  const out = editorHtml({ services: d.services, setId: d.setId, ui: d.uiLang === 'en' ? 'en' : 'ar', theme, fontCss, fontFamilies: fontFamilies || [], wm, carry });
+  return carryTraces(html, out);
+}
+/** The bw-data keys editorHtml makes; any other key of an older file is the user's and is carried over. */
+const BUILT_KEYS = new Set(['icons', 'brand', 'setId', 'uiLang', 'services', 'theme', 'i18n', 'fontCss', 'fontFamilies', 'uiCss', 'csp', 'version', 'stateSchema', 'about', 'whatsNew']);
+/**
+ * The 0.13 traces outside the data block (engine/ledger-v1.mjs traces(): <html data-bw-ledger>, <meta name="bw-ledger">,
+ * a second hash source in the CSP script-src) copied from the old file's head into the re-wrapped one.
+ */
+function carryTraces(old, out) {
+  const head = old.split(/<\/head>/i)[0];
+  const root = /<html[^>]*\sdata-bw-ledger="([^"]*)"/i.exec(head)?.[1];
+  const meta = /<meta[^>]*name="bw-ledger"[^>]*>/i.exec(head)?.[0];
+  const oldApp = /<script id="bw-app">([\s\S]*?)<\/script>/.exec(old)?.[1];
+  const appHash = oldApp != null ? `'sha256-${crypto.createHash('sha256').update(oldApp).digest('base64')}'` : '';
+  const csp = /<meta[^>]*http-equiv="Content-Security-Policy"[^>]*content="([^"]*)"/i.exec(head)?.[1] || '';
+  const extra = (/script-src([^;]*)/.exec(csp)?.[1].match(/'sha256-[^']+'/g) || []).filter((h) => h !== appHash);
+  const outHead = out.split(/<\/head>/i)[0];
+  if (root != null && !/<html[^>]*\sdata-bw-ledger=/i.test(outHead)) out = out.replace(/<html /i, `<html data-bw-ledger="${root}" `);
+  if (meta && !/<meta[^>]*name="bw-ledger"/i.test(outHead)) out = out.replace(/<meta charset="utf-8">/i, `$&\n${meta}`);
+  if (extra.length) out = out.replace(/(<meta http-equiv="Content-Security-Policy" content="[^"]*?script-src )/, `$1${extra.join(' ')} `);
+  return out;
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

@@ -163,6 +163,9 @@ try {
   /* 11b. WP8: the 21 defects and the reference-diff rows of the six real builds (tests/srs-wp8.test.mjs) */
   const { run: wp8 } = await import('./srs-wp8.test.mjs');
   await wp8(check);
+  /* 11c. SRS2: one role row per role, Arabic names gate, notification channel, domain lookups, model jargon (tests/srs-srs2.test.mjs) */
+  const { run: srs2 } = await import('./srs-srs2.test.mjs');
+  await srs2(check);
 
   /* 12. no client term in the repository (hashed denylist, tree) */
   const sec2 = spawnSync(...py([path.join(REPO, 'security', 'check.py'), '--tree-only'], []), { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } });

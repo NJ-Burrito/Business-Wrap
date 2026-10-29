@@ -236,8 +236,16 @@
      "ar": "لكل طلب رقم متسلسل يتكون من {pattern}، {reset}، ويظهر الرقم المتسلسل على المخرج.",
      "en": "Every request has a serial number made of {pattern}; {reset}; the serial number shows on the output."
     },
-    "when": "serial",
+    "when": "serial&output",
     "code": "BR-05"
+   },
+   {
+    "text": {
+     "ar": "لكل طلب رقم متسلسل يتكون من {pattern}، {reset}.",
+     "en": "Every request has a serial number made of {pattern}; {reset}."
+    },
+    "when": "serial&!output",
+    "code": "BR-05N"
    },
    {
     "text": {

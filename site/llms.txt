@@ -15,7 +15,7 @@
 ## Short answers
 
 - Free? Yes. MIT licence, no paid plan, no account.
-- Install? Claude Code: `/plugin marketplace add NJ-Burrito/Business-Wrap`, then `/plugin install business-wrap@business-wrap`. MCP: `claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp` (from a clone: `npm ci`, then `node <path>/Business-Wrap/mcp/cli.mjs`).
+- Install? Claude Code: `/plugin marketplace add NJ-Burrito/Business-Wrap`, then `/plugin install business-wrap@business-wrap`. MCP: `claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.13.1 business-wrap-mcp` for 0.13.1 from the GitHub tag (npm still serves 0.12.0); from a clone: `node <path>/Business-Wrap/mcp/cli.mjs` (no `npm ci` needed).
 - Data? Stays on the computer. The one automatic request is the update check, at most once a day, to the public GitHub release list.
 - Inputs? A process model (BPMN, draw.io, YAML) or a crawl of a live service; the crawler stops before any final action unless asked twice.
 - Outputs? PDF, DOCX, an edits JSON file, a design pack, the editor saved as HTML.

@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { extractNotes } from './core.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const MCP = 'npx -y -p business-wrap@latest business-wrap-mcp';
+const MCP = 'npx -y -p github:NJ-Burrito/Business-Wrap#v<version> business-wrap-mcp';
 const HEAD = '### ⚡ In 10 seconds / في عشر ثوان';
 
 // Moves the "**In 10 seconds / …**" bullet list to the top under one heading; without one, lifts the first
@@ -32,7 +32,7 @@ export function leadWithTenSeconds(notes) {
   return bullets.length ? `${HEAD}\n${bullets.join('\n')}\n\n${notes}` : notes;
 }
 
-const footer = '\n\n---\nUpdate / التحديث: `npx business-wrap update --apply --yes` (keeps .local, design/custom, logos, fonts/custom, drafts)'
+const footer = '\n\n---\nUpdate / التحديث: `node update/cli.mjs update --apply --yes` in your install (keeps .local, design/custom, logos, fonts/custom, drafts)'
   + ' · Claude Code: `/plugin marketplace update business-wrap` then `/plugin update business-wrap`'
   + ` · MCP: \`${MCP}\`\n`;
 
@@ -40,5 +40,5 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const version = process.argv[2];
   const notes = version ? extractNotes(fs.readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8'), version) : null;
   if (!notes) { console.error(`release-notes: no CHANGELOG section for ${version || '(no version given)'}`); process.exit(1); }
-  process.stdout.write(`${leadWithTenSeconds(notes)}${footer}`);
+  process.stdout.write(`${leadWithTenSeconds(notes)}${footer.replace('<version>', version)}`);
 }

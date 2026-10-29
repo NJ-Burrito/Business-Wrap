@@ -68,6 +68,25 @@ const W2_OBJECTS = {
     commit([...pre, { op: 'replace', path: `/overlays/${i}`, value: { ...o, mode: 'anchor', anchor, wrap: mode, x: o.mode === 'anchor' ? o.x : 0, y: o.mode === 'anchor' ? o.y : 0 }, old: o }]);
     return true;
   },
+  /** review2 · 14: the way back from «مع النص». A one-picture shots block (what inline made) becomes an overlay again,
+   *  anchored to the block before it (else after it), in the picked mode; one commit, undoable. */
+  unInline(ptr, mode) {
+    const b = blockOf(ptr);
+    const d = w2doc();
+    const blk = b && get(d, b.ptr);
+    if (blk?.kind !== 'shots' || blk.images?.length !== 1 || mode === 'inline' || !WRAPS.includes(mode)) return false;
+    const n = get(d, b.arr).length;
+    const near = b.i > 0 ? `${b.arr}/${b.i - 1}` : b.i + 1 < n ? `${b.arr}/${b.i + 1}` : null;
+    if (!near) return false;
+    const pre = w2ovEnsure();
+    const anchor = w2blockId(near, pre);
+    const o = { id: w2id('im'), kind: 'image', src: blk.images[0], caption: blk.caption || '', mode: 'anchor', anchor, x: 0, y: 0, w: Math.round(((blk.width || 50) / 100) * 178), wrap: mode };
+    commit([...pre, { op: 'delete', path: b.ptr, old: blk }, { op: 'insert', path: '/overlays/-', value: o }]);
+    S.sel = null;
+    S.selOv = w2doc().overlays.length - 1;
+    paintSel(); refreshUi();
+    return true;
+  },
   copy(ptr = S.sel?.b) {
     const b = blockOf(ptr);
     if (!b) return false;
@@ -87,6 +106,10 @@ const W2_OBJECTS = {
     return true;
   },
 };
+/** The selected block is a picture in line (a one-image shots block): it keeps the wrap section, so it can go back out. */
+const w2inlinePic = () => { const b = blockOf(S.sel?.b); const blk = b && get(w2doc(), b.ptr); return blk?.kind === 'shots' && blk.images?.length === 1; };
+/** The wrap section applies: a picked picture or text box (not a logo), or a picture in line. */
+const w2wrapOn = () => (S.selOv != null && !!(w2doc().overlays || [])[S.selOv] && (w2doc().overlays || [])[S.selOv].kind !== 'logo') || w2inlinePic();
 const PM_anchor = (d, a) => pageModel(d).ids.get(String(a)) || a;
 const W2_WRAP_IDS = WRAPS.map((w) => 'wrap' + w[0].toUpperCase() + w.slice(1));
 async function w2objectAction(id) {
@@ -104,6 +127,7 @@ async function w2objectAction(id) {
   if (id === 'pasteBlock') return W2_OBJECTS.paste();
   const k = W2_WRAP_IDS.indexOf(id);
   if (k >= 0) {
+    if (S.selOv == null && w2inlinePic()) { W2_OBJECTS.unInline(S.sel.b, WRAPS[k]); return; }
     if (S.selOv == null) { toast(t('w2.pickImage'), 'info'); return; }
     W2_OBJECTS.wrap(S.selOv, WRAPS[k]);
   }
@@ -130,7 +154,7 @@ bwExt({
       return done;
     },
     render: () => {
-      w2showSection('wrap', S.selOv != null && (w2doc().overlays || [])[S.selOv]?.kind !== 'logo');
+      w2showSection('wrap', w2wrapOn());
       document.querySelectorAll('#bw-pair .bw-ovf').forEach((el) => { el.tabIndex = 0; if (+el.dataset.i === S.selOv) el.classList.add('bw-ov-sel'); });
     },
     boot: () => {
@@ -142,8 +166,29 @@ bwExt({
 // an in-flow image (square / tight / through / top and bottom) is picked by a click, as the free ones are
 document.addEventListener('click', (e) => {
   const el = e.target.closest?.('#bw-pair .bw-ovf');
-  if (!el || e.target.closest('[data-p]')) return;
+  if (!el || e.target.closest('[data-p]')) { if (e.target.closest?.('#bw-pair')) queueMicrotask(() => w2showSection('wrap', w2wrapOn())); return; }
   S.selOv = +el.dataset.i; S.sel = null; paintSel(); refreshUi();
   w2showSection('wrap', true);
 });
-document.addEventListener('focusin', () => w2showSection('wrap', S.selOv != null));
+document.addEventListener('focusin', () => w2showSection('wrap', w2wrapOn()));
+// review2 · 14: a picture behind the text sits under the words, so a plain click lands on the text. Alt+click (as Word's
+// «تحديد الكائنات») or a click where no words are picks it; Tab reaches it too (every overlay is focusable).
+document.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0 || e.target.closest?.('#bw-pair .bw-ov') || !e.target.closest?.('#bw-pair')) return;
+  if (!e.altKey && e.target.closest('[data-p]')) return;
+  const el = document.elementsFromPoint(e.clientX, e.clientY).find((x) => x.matches?.('#bw-pair .bw-ov.bw-behind'));
+  if (!el) return;
+  e.preventDefault(); e.stopPropagation();
+  w2behindClick = true; // the click that follows is this pick's, not a press on the words above it
+  el.focus(); // the editor's focusin picks it (S.selOv), as a click on a free image does
+}, true);
+let w2behindClick = false;
+document.addEventListener('click', (e) => { if (w2behindClick) { w2behindClick = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+// review2 · extra 10: a double-click on a text box puts the caret in its words
+document.addEventListener('dblclick', (e) => {
+  const box = e.target.closest?.('#bw-pair .bw-ov.bw-tb');
+  const body = box?.querySelector('.bw-tb-body[data-p]');
+  if (!body || e.target.closest('.bw-ov-handle, .bw-ov-move')) return;
+  if (!body.hasAttribute('tabindex')) body.tabIndex = -1;
+  body.focus(); // the editor's focusin makes it editable and puts the caret at the end
+});

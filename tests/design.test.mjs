@@ -397,6 +397,62 @@ try {
     check('A22: reduced motion → 0 animations on the mark (idle and hover)', rm.idle.length === 0 && rm.hov.length === 0, `${rm.idle} | ${rm.hov}`);
   }
 
+  // ── 0.13 icon motion (owner request 2026-10-29): every icon added in 0.13.0 (BW.IC keys not in editor/icons.json; a
+  //    reused brand v3 glyph keeps its own 0.12 motion) plays its own icm-* motion on hover and on its own press; a press animates only the pressed
+  //    icon (A4); calm mode and reduced motion → 0 ──
+  {
+    const base = Object.keys(JSON.parse(fs.readFileSync(path.join(REPO, 'editor', 'icons.json'), 'utf8')).icons);
+    const iconPage = async (opts = {}, calm = false) => {
+      const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 }, ...opts });
+      if (calm) await ctx.addInitScript(() => { try { localStorage.setItem('bw:calm', '1'); } catch {} });
+      const p = await ctx.newPage();
+      await p.goto(editorUrl);
+      await p.waitForFunction(() => window.BW?.ready);
+      const keys = await p.evaluate((b) => Object.keys(window.BW.IC).filter((k) => !b.includes(k) && !/bw-i/.test(window.BW.IC[k])), base); // a brand v3 glyph (secFront = pages) keeps its 0.12 motion
+      // one probe button per icon, drawn by the editor's own ic(), in a grid on top of the page
+      await shadow(p, (r, ks) => {
+        const g = document.createElement('div');
+        g.id = 'icm-probe';
+        g.style.cssText = 'position:fixed;inset:0;z-index:999;display:grid;grid-template-columns:repeat(14,60px);gap:4px;padding:120px 20px;background:var(--panel)';
+        g.innerHTML = ks.map((k) => `<button type="button" class="b" data-probe="${k}"><span class="i">${window.BW.ic(k)}</span></button>`).join('');
+        r.querySelector('.shell').append(g);
+      }, keys);
+      return { ctx, p, keys };
+    };
+    const icm = (p, sel) => shadow(p, (r, s) => [...new Set([...r.querySelectorAll(s)].flatMap((svg) => svg.getAnimations({ subtree: true }).filter((a) => /^(icm|pjm)-/.test(a.animationName || '')).map(() => svg.dataset.ic)))], sel);
+    const n = await iconPage();
+    const missing = [];
+    for (const k of n.keys) {
+      await n.p.locator(`#icm-probe [data-probe="${k}"]`).hover();
+      await n.p.waitForTimeout(40);
+      if (!(await icm(n.p, `#icm-probe [data-probe="${k}"] .ic`)).length) missing.push(k);
+    }
+    check(`0.13 icons: every new icon has its own hover motion (${n.keys.length - missing.length}/${n.keys.length})`, n.keys.length >= 70 && missing.length === 0, missing.length ? `missing: ${missing.join(', ')}` : n.keys.join(','));
+    // a real toolbar press: hover first (that motion ends), then click; only the pressed icon moves again
+    await n.p.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.getElementById('icm-probe').remove());
+    // since the 0.13.1 bar fit (G2 / H2) every section shows only its first tool up to ~2500 px: widen so a 0.13 tool
+    // (Documents, Share, a table …) sits on the bar itself, then press it there
+    await n.p.setViewportSize({ width: 2600, height: 900 });
+    await n.p.waitForTimeout(500);
+    const pick = await shadow(n.p, (r, ks) => [...r.querySelectorAll('.island .b[data-a]')].find((b) => b.checkVisibility() && ks.includes(b.querySelector('.ic')?.dataset.ic) && !b.disabled)?.dataset.a, n.keys);
+    const btn = n.p.locator(`.island .b[data-a="${pick}"]`).first();
+    await btn.hover(); await n.p.waitForTimeout(900);
+    const before = await icm(n.p, '.ic[data-ic]');
+    await btn.click();
+    const seen = await shadow(n.p, async (r) => { const s = new Set(); const t0 = performance.now(); while (performance.now() - t0 < 500) { r.querySelectorAll('.ic[data-ic]').forEach((svg) => { if (svg.getAnimations({ subtree: true }).some((a) => /^(icm|pjm)-/.test(a.animationName || ''))) s.add(svg.dataset.ic + '@' + (svg.closest('[data-a]')?.dataset.a || '')); }); await new Promise((f) => setTimeout(f, 30)); } return [...s]; });
+    check(`0.13 icons: pressing «${pick}» replays its own motion and only its own (A4)`, !!pick && before.length === 0 && seen.length >= 1 && seen.every((x) => x.endsWith('@' + pick)), JSON.stringify({ before, seen }));
+    await n.ctx.close();
+    for (const [name, opts, calm] of [['calm mode', {}, true], ['reduced motion', { reducedMotion: 'reduce' }, false]]) {
+      const c = await iconPage(opts, calm);
+      await shadow(c.p, (r) => r.querySelectorAll('#icm-probe .b').forEach((b) => b.classList.add('ic-go')));
+      await c.p.locator(`#icm-probe [data-probe="${c.keys[0]}"]`).hover();
+      await c.p.waitForTimeout(60);
+      const a = await icm(c.p, '#icm-probe .ic');
+      check(`0.13 icons: ${name} → 0 icon animations (${c.keys.length} pressed + hovered)`, a.length === 0, a.join(','));
+      await c.ctx.close();
+    }
+  }
+
   // ── A28 import a colour palette: the example maps 6 roles and previews; a failing pair blocks Apply with the
   // ratio shown until overridden with a reason; Apply is one change; undo restores the theme ──
   for (const ui of ['ar', 'en']) {

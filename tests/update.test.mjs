@@ -132,6 +132,33 @@ let refused = '';
 try { migrate({ version: 2, ops: [] }); } catch (e) { refused = e.message; }
 ok('schema gate: a newer edits version is refused', /newer than this editor/.test(refused), refused);
 
+// 0.13.1: never a downgrade, and an npx copy (npm can lag behind GitHub: 0.12.0 under 0.13) never updates anything
+{
+  const { applyUpdate } = await import('../update/apply.mjs');
+  const { oneLiner } = await import('../update/check.mjs');
+  const low = path.join(tmp, 'low-install');
+  fs.mkdirSync(low, { recursive: true });
+  fs.writeFileSync(path.join(low, 'package.json'), JSON.stringify({ name: 'business-wrap', version: CUR }));
+  const rel = { version: '0.12.0', zip: `https://github.com/${R}/releases/download/v0.12.0/business-wrap-0.12.0.zip` };
+  const d1 = await applyUpdate({ dir: low, release: rel, repo: R, current: CUR });
+  const d2 = await applyUpdate({ dir: low, release: { ...rel, version: CUR }, repo: R });
+  ok('apply: an older (npm 0.12.0) or equal release is refused, nothing touched', !d1.ok && /no downgrade/.test(d1.error) && !d2.ok && /no downgrade/.test(d2.error) && fs.readdirSync(low).length === 1, JSON.stringify([d1, d2]));
+  const line = oneLiner({ status: 'available', latest: NEWER, current: CUR, highlights: [] });
+  ok('the update notice names this install\'s own updater, never `npx business-wrap update` (npm)', !/npx business-wrap update/.test(line) && line.includes(path.join(REPO, 'update', 'cli.mjs')), line);
+  // the user stands in an install: the npx copy hands over to it
+  const inst = path.join(tmp, 'user-install');
+  fs.mkdirSync(path.join(inst, 'update'), { recursive: true });
+  fs.writeFileSync(path.join(inst, 'package.json'), JSON.stringify({ name: 'business-wrap', version: '9.9.9' }));
+  fs.writeFileSync(path.join(inst, 'update', 'cli.mjs'), "console.log('DELEGATED ' + process.argv.slice(2).join(' '));");
+  const npx = (cwd, args) => spawnSync(process.execPath, [path.join(REPO, 'update', 'cli.mjs'), 'update', ...args], { cwd, encoding: 'utf8', env: { ...process.env, BW_ASSUME_NPX: '1', BW_UPDATE_FEED: '', BW_LOCAL_DIR: path.join(tmp, 'npx-local') } });
+  const dl = npx(inst, ['--apply', '--yes']);
+  ok('npx copy inside an install: runs that install\'s updater instead', /DELEGATED update --apply --yes/.test(dl.stdout), dl.stdout + dl.stderr);
+  const away = path.join(tmp, 'no-install');
+  fs.mkdirSync(away, { recursive: true });
+  const na = npx(away, ['--apply', '--yes']);
+  ok('npx copy outside any install: --apply updates nothing (a temporary copy) and says where to run it', na.status === 0 && /temporary npx copy/.test(na.stdout), na.stdout + na.stderr);
+}
+
 // version sync + AGENTS.md lint
 r = spawnSync(process.execPath, [path.join(REPO, 'update', 'version-sync.mjs')], { encoding: 'utf8' });
 ok('version sync across package, plugin, marketplace, MCP, Smithery, READMEs, CHANGELOG', r.status === 0, r.stdout.trim() || r.stderr.trim());

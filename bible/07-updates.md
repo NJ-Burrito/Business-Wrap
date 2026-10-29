@@ -17,7 +17,7 @@ Public repo: the check and the download need no token and no sign-in. An optiona
 | Audience | Channel | Behaviour |
 |---|---|---|
 | Person, editor | `editor/update.js` + `editor/settings.js` (mounted in `engine/build-editor.mjs`) | served by `engine/serve.mjs`: auto-check at launch (at most once per 24 h, switch in Settings, on by default), a popup with the notes and Update now / Later / Skip this version, one-click update with progress steps, then the editor reopens where the user was; Settings (About, Update, Preferences); "What's new" once after an update; from `file://` no request at all, Settings explains how to update; never printed or saved into Save-HTML |
-| Person, terminal | `npx business-wrap update --check` | one line + three highlights; `--apply --yes`; `--notes`; `--off` / `--on` |
+| Person, terminal | `node update/cli.mjs update --check` in the install (the one-liner prints this install's own command) | one line + three highlights; `--apply --yes`; `--notes`; `--off` / `--on`. `npx business-wrap` resolves the **npm** package, which can lag behind GitHub (0.12.0 under 0.13): run from an npx cache, the CLI hands over to the install it stands in, else refuses `--apply` (a temporary copy) |
 | Agent with the skill | SKILL.md "First: check for an update" | check at task start, one line to the user, offer the command, never auto-update |
 | Codex, Cursor, Gemini CLI | `AGENTS.md` | the same instruction |
 | Any MCP client | MCP server | `update_available` in the initialize instructions and on the first tool result of a session; `check_update`; `apply_update` refuses without `confirm: true` |
@@ -28,6 +28,7 @@ Public repo: the check and the download need no token and no sign-in. An optiona
 - Zip install: downloads the release zip (no token needed), verifies SHA-256 (GitHub digest or the `.sha256` asset), keeps ONE backup `<folder>.backup-<old>`, swaps product files, rolls back on failure.
 - Never touched: `.local`, `design/custom`, `logos`, `fonts/custom`, `drafts`, `out`, `.git`, `node_modules`.
 - Then user data is migrated by the NEW engine (`*.edits.json` v0 → v1).
+- **Never a downgrade** (0.13.1): the source is GitHub's releases for the repo in `update/source.json` (never npm), and `applyUpdate` refuses a release that is not strictly newer than the installed version, whoever offered it. Gate: `tests/update.test.mjs`.
 
 ## In the editor (0.11.0)
 The page is a self-contained HTML, often opened from `file://`: the page never holds a token and never calls GitHub. Everything goes through the local server, which uses the same check and apply as the CLI.
@@ -50,7 +51,7 @@ Any failure in replace or verify restores the backup exactly: the release's new 
 
 Never touched: documents, `*.edits.json`, the browser stores (draft, history, preferences, uploaded fonts), design packs, uploaded fonts, logos, `out/`, `exports/`, `harvest/`, `drafts/`, `.local/`.
 
-**Old work.** When the server serves an editor or a Save-HTML file built by an older version, it re-wraps it in the current editor (`rewrapEditorHtml`): documents, edits, history, comments, snapshots, theme, fonts and set id are carried over, and the file on disk is never rewritten. The stored draft has a schema (`STATE_SCHEMA`, 2 since 0.11.0); `migrateState` moves it forward, idempotently, after copying the original byte for byte to `bw:draft-backup:<set>:v<old>`. A schema newer than the editor is never loaded or changed.
+**Old work.** When the server serves an editor or a Save-HTML file built by an older version, it re-wraps it in the current editor (`rewrapEditorHtml`): documents, edits, history, comments, snapshots, theme, fonts and set id are carried over, and so is the provenance (0.13.1): the `bwlog` mark, the sealed log, contributors, the lock, any other key of the data block, and the head traces (`<html data-bw-ledger>`, `<meta name="bw-ledger">`, the second CSP hash), so a served 0.13.0 file opens with its history intact, never «stripped». The file on disk is never rewritten. The stored draft has a schema (`STATE_SCHEMA`, 2 since 0.11.0); `migrateState` moves it forward, idempotently, after copying the original byte for byte to `bw:draft-backup:<set>:v<old>`. A schema newer than the editor is never loaded or changed.
 
 Tests: `tests/updater.test.mjs` (endpoints, apply, rollback, migration, re-wrap) and `tests/settings.test.mjs` (popup, skip, throttle, toggle, file://, progress and reload, old Save-HTML files, axe).
 

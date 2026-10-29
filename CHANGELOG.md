@@ -8,6 +8,44 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.13.1] - 2026-10-29
+
+🧰 Projects and bulk edits, a background host with a power-off button, Save in place, and the second review's fixes. / 🧰 مشاريع وتعديل جماعي، وخادم في الخلفية بزر إيقاف، وحفظ في المكان، وإصلاحات المراجعة الثانية.
+
+**In 10 seconds / في عشر ثوان**
+- 🗂️ Projects in «المستندات», and one bulk edit across a project or chosen documents. / مشاريع في «المستندات»، وتعديل جماعي واحد على مشروع أو وثائق تختارها.
+- 💾 Ctrl+S saves the document itself, in place: its own HTML file, no download. / Ctrl+S يحفظ الوثيقة نفسها في مكانها: ملف HTML الخاص بها، بلا تنزيل.
+- ⏻ The host runs with no window; a power-off button stops every Business-Wrap host. / الخادم يعمل بلا نافذة؛ وزر إيقاف يوقف كل خوادم Business-Wrap.
+- 🔏 Exports are logged, a renamed person stays one person, a stripped log is never "made before 0.13". / التصدير يُسجَّل، والشخص الذي غيّر اسمه يبقى شخصًا واحدًا، والسجل المنزوع لا يُعدّ «أُنشئ قبل 0.13».
+
+### Added / أضيف
+- 🗂️ **Projects** «المشاريع» in the documents list: group documents per project, many projects at once, rename, delete to the project trash and restore; kept in the browser and in `HISTORY\projects.json`. / المشاريع في قائمة «المستندات»: تجميع الوثائق لكل مشروع، ومشاريع كثيرة معًا، وإعادة تسمية، وحذف إلى سلة المشاريع واسترجاع؛ تُحفظ في المتصفح وفي `HISTORY\projects.json`.
+- ✏️ **Bulk edit** «تعديل جماعي»: add, delete or edit a field or a section across a whole project or hand-picked documents, with a preview before anything is applied. / التعديل الجماعي: إضافة حقل أو قسم أو حذفه أو تعديله في مشروع كامل أو وثائق تختارها، مع معاينة قبل التطبيق.
+- ⏻ **Power off** in the toolbar, with a confirm popup, and `business-wrap stop --all`: every Business-Wrap host and service stops (Claude's own MCP server is left to Claude). / زر الإيقاف في الشريط مع نافذة تأكيد، و`business-wrap stop --all`: يتوقف كل خادم وخدمة لـ Business-Wrap (ويُترك خادم MCP الخاص بـ Claude له).
+- 📤 **Share** opens a popup (recipient, note, what travels) and a result card; «افتح موقع الملف» selects the saved HTML in Explorer. / المشاركة تفتح نافذة (المستلم والملاحظة وما ينتقل) وبطاقة نتيجة؛ و«افتح موقع الملف» يحدد ملف HTML المحفوظ في المستكشف.
+- 🎨 **Icons** on every panel button that had only words (palette import, profile picture, report, compare, checkpoint, template, check-panel jump, the documents list, page setup, find), each with its own hover, focus and press motion; every 0.13 icon animates like the 0.12 ones. / أيقونات على كل زر في اللوحات كان كلمات فقط (استيراد اللوحة، صورة الملف الشخصي، التقرير، المقارنة، نقطة الحفظ، القالب، الانتقال من لوحة الفحص، قائمة المستندات، إعداد الصفحة، البحث)، ولكل منها حركتها عند المرور والتركيز والضغط؛ وكل أيقونات 0.13 تتحرك كأيقونات 0.12.
+
+### Changed / تغير
+- 💾 **Save in place**: Ctrl+S and the yellow Save write the document's own `<title>-<date>-<AR|ENG>.html` in `HTML\` (overwritten, history appended) and its list entry, and reset the change counter; one Save HTML at a time. / الحفظ في المكان: Ctrl+S وزر الحفظ الأصفر يكتبان ملف الوثيقة `<العنوان>-<التاريخ>-<AR|ENG>.html` في `HTML\` (يُستبدل ويُلحق به السجل) وسطرها في القائمة، ويعيدان عدّاد التغييرات إلى صفر؛ وحفظ HTML واحد في كل مرة.
+- 📥 **File › Import** is the documents list's import: an HTML (a share too), DOCX, PDF or JSON opens as a document; an edits file still merges. / «ملف › استيراد» هو استيراد قائمة المستندات: ملف HTML (والمشارَك أيضًا) أو DOCX أو PDF أو JSON يُفتح وثيقةً؛ وملف التعديلات ما زال يُدمج.
+- 🖥️ **Background host**: launched from Claude it shows no console window; the profile (name, picture) is kept with the host, across relaunch and update. / الخادم في الخلفية: يعمل من Claude دون نافذة طرفية؛ والملف الشخصي (الاسم والصورة) يُحفظ مع الخادم عبر إعادة التشغيل والتحديث.
+- 🔤 **One title**: the cover title drives «عنوان الوثيقة», the list, share and saved file names, the report, the PDF title and the browser tab. / عنوان واحد: عنوان الغلاف يقود «عنوان الوثيقة» والقائمة وأسماء ملفات المشاركة والحفظ والتقرير وعنوان PDF وتبويب المتصفح.
+- 📐 **Page setup on the canvas**: the editor shows landscape and A3, A5, Letter or Legal pages as set, for the whole document or one section, as the PDF and DOCX print them. / إعداد الصفحة على اللوحة: يعرض المحرر الصفحات الأفقية وA3 وA5 وLetter وLegal كما ضُبطت، للوثيقة كلها أو لقسم، كما يطبعها PDF وDOCX.
+- 🧭 **Side panels**: buttons with borders, hover, motion and colours like the «عرض الصفحات» control; the header strip sits beside an open panel. / اللوحات الجانبية: أزرار بحدود وتأثير مرور وحركة وألوان كمفتاح «عرض الصفحات»؛ وشريط الترويسة يقف بجانب اللوحة المفتوحة.
+- 🔄 **Updates** come from the GitHub release, never npm, and never move to an older version; install 0.13.1 from the GitHub tag. / التحديثات من إصدار GitHub لا من npm، ولا تنتقل أبدًا إلى إصدار أقدم؛ وثبّت 0.13.1 من وسم GitHub.
+
+### Fixed / أصلح
+- 🔏 **A served 0.13.0 file keeps its history**: re-wrapping an older editor file carried only the documents and dropped the log, the `bwlog` mark, contributors, the lock and the head traces, so it opened «stripped». / ملف 0.13.0 المقدَّم يحتفظ بسجله: إعادة تغليف ملف المحرر الأقدم كانت تنقل الوثائق وحدها وتُسقط السجل وعلامة `bwlog` والمساهمين والقفل وآثار الرأس، فيُفتح «منزوعًا».
+- 🔏 **Trust ledger** (review 2): every PDF, DOCX and print export is logged, so the report counts them; a renamed profile is one person with its other names listed; removing the log and the mark shows «stripped», never «made before 0.13». / سجل الثقة (المراجعة الثانية): كل تصدير PDF وDOCX وطباعة يُسجَّل فيعدّه التقرير؛ والملف الشخصي المعاد تسميته شخص واحد مع أسمائه الأخرى؛ وإزالة السجل والعلامة تُظهر «منزوع» لا «أُنشئ قبل 0.13».
+- ✒️ **Ctrl+A on a bullet** with mixed formatting, then bold or a colour, formats the whole bullet (it coloured only the last word). / Ctrl+A على بند منقّط بتنسيق مختلط ثم الغامق أو اللون ينسّق البند كله (كان يلوّن الكلمة الأخيرة فقط).
+- 🔔 Toasts with buttons expire and never stack; the RTL/LTR choice is kept per edition; the toolbar folds groups into «…» at laptop widths instead of dropping them; small edit dialogs keep what was typed and use a colour swatch, a font list and a size stepper; text boxes get a move grip and stay inside the page; every wrap mode switches back. / الرسائل ذات الأزرار تنتهي ولا تتكدس؛ واتجاه RTL/LTR يُحفظ لكل نسخة؛ والشريط يطوي المجموعات في «…» على شاشات الحاسوب المحمول بدل إسقاطها؛ ونوافذ التعديل الصغيرة تحفظ ما كُتب وتستخدم منتقي ألوان وقائمة خطوط ومحدد حجم؛ ومربعات النص لها مقبض نقل وتبقى داخل الصفحة؛ وكل نمط التفاف يعود.
+- 🗂️ The save-folder dialog no longer freezes the server and opens in front; `HISTORY\` is always hidden and never served; closing a tab keeps the last typed text and closed tabs stay closed; several harvest sources under one name no longer overwrite each other. / نافذة اختيار مجلد الحفظ لا تجمّد الخادم وتُفتح في المقدمة؛ و`HISTORY\` مخفي دائمًا ولا يُقدَّم؛ وإغلاق التبويب يحفظ آخر نص مكتوب والتبويبات المغلقة تبقى مغلقة؛ ومصادر الحصاد المتعددة تحت اسم واحد لم يعد بعضها يستبدل بعضًا.
+- 🧾 **SRS pipeline**: seven defects found while adjudicating six real builds, fixed at the root. / مسار وثيقة المتطلبات: سبعة عيوب وُجدت عند فحص ست وثائق حقيقية، أُصلحت من جذرها.
+- 🧪 `npm test` runs every suite in `tests/` (power, projects, bulk and the SRS suites were left out), and a check keeps it so; Save and Import hover help describe the new behaviour. / `npm test` يشغّل كل مجموعة في `tests/` (كانت مجموعات الإيقاف والمشاريع والتعديل الجماعي ووثائق المتطلبات خارجه)، وفحص يُبقيه كذلك؛ وشرح «حفظ» و«استيراد» عند المرور يصف السلوك الجديد.
+
+### Migration notes / ملاحظات الترحيل
+- Nothing to do: 0.13.0 files, logs (`bwlog` v1, unchanged) and settings open as they are. Ctrl+S on the local server no longer downloads an edits file; Export › edits still does. / لا شيء يلزم: ملفات 0.13.0 وسجلاتها (`bwlog` الإصدار 1، دون تغيير) وإعداداتها تُفتح كما هي. وCtrl+S على الخادم المحلي لم يعد ينزّل ملف تعديلات؛ و«تصدير › التعديلات» ما زال يفعل.
+
 ## [0.13.0] - 2026-10-29
 
 🗂️ A document library, a change timeline, header and footer sections, Word-style objects and a tamper-evident history. / 🗂️ مكتبة وثائق، وخط زمني للتغييرات، وقسما الترويسة والتذييل، وعناصر كما في Word، وسجل كاشف للعبث.

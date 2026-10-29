@@ -30,6 +30,17 @@ function w2addSections(cats) {
   bwExt({ sections: cats.map((cat) => ({ cat })) });
   for (const cat of cats) GENERAL_GROUPS.splice(GENERAL_GROUPS.indexOf(cat), 1); // steps aside in selections: not a palette group
 }
+/** review2 · 34: header / footer fold to icon + «…» while a selection's section is in the bar (not the band of a picked
+ *  item). Called by fitBar before it measures, so the bar never wraps for a moment and pushes the page down. */
+function w2selFold(bar) {
+  const sel = !!bar?.classList.contains('has-sel');
+  let moved = false;
+  for (const part of ['header', 'footer']) {
+    const el = bar?.querySelector(`.sec[data-cat="${part}"]`);
+    if (el && el.classList.contains('sel-fold') !== (sel && W2.sel?.part !== part)) { el.classList.toggle('sel-fold'); moved = true; }
+  }
+  return moved;
+}
 /** Shows a section only while its condition holds (sections are built by buildUi; this survives a rebuild). */
 function w2showSection(cat, on) {
   // a contextual section (format, wrap, front matter) exists only while it applies: the bar keeps its room at 1366 px
@@ -172,17 +183,32 @@ bwExt({
   on: {
     boot: () => {
       setTimeout(w2strip);
-      // the two sections step aside while a selection's own section is in the bar (1366 px has no room for both)
-      // and come back with the general tools; a picked header/footer item brings back its own band's section
-      new MutationObserver(() => {
-        const sel = root.querySelector('.island')?.classList.contains('has-sel');
-        w2showSection('header', !sel || W2.sel?.part === 'header');
-        w2showSection('footer', !sel || W2.sel?.part === 'footer');
-      }).observe(root, { subtree: true, attributes: true, attributeFilter: ['class'] });
+      // review2 · 34: the two sections never leave the bar. While a selection's own section is in it they fold to
+      // their title and «…» (every tool in that menu); a picked header/footer item keeps its own band's section open
+      // (fitBar folds them itself before it measures, through w2selFold; this catches a picked band item)
+      new MutationObserver(() => { if (w2selFold(root.querySelector('.island'))) fitBar(); }).observe(root, { subtree: true, attributes: true, attributeFilter: ['class'] });
+      // a side panel slides over the page's start: when the window has room, the page steps aside so the strip (and the
+      // page) is never hidden under it (owner 2026-10-29: a footer name lost its first letters behind Settings)
+      const room = () => {
+        const de = document.documentElement, d = root.querySelector('.drawer:not([hidden]):not(.closing)');
+        const r = d && { left: d.offsetLeft, width: d.offsetWidth, right: d.offsetLeft + d.offsetWidth }; // layout box: the entry slide is not counted
+        const page = document.querySelector('#bw-pair main.bw-doc')?.getBoundingClientRect().width || 0;
+        let l = 0, rr = 0;
+        if (r?.width) { const left = r.left + r.width / 2 < innerWidth / 2, w = Math.ceil(left ? r.right : innerWidth - r.left) + 12; if (innerWidth - w >= page + 16) { if (left) l = w; else rr = w; } }
+        de.style.setProperty('--bw-room-l', `${l}px`);
+        de.style.setProperty('--bw-room-r', `${rr}px`);
+      };
+      new MutationObserver((ms) => { if (ms.some((m) => m.target.classList?.contains('drawer'))) room(); }).observe(root, { subtree: true, attributes: true, attributeFilter: ['hidden', 'class'] }); // the panel only: no layout read per render
+      addEventListener('resize', room);
+      room();
       w2docCss('w2-doc-css', `@media print{.w2-strip{display:none!important}}
 .w2-strip{font-size:9pt;color:var(--muted);background:var(--paper,#fff);border:1px dashed var(--rule-strong);border-radius:2mm;max-width:210mm;margin:4mm auto;padding:1.5mm 3mm;display:grid;gap:1mm}
 .w2-strip .bw-band{display:flex;justify-content:space-between;align-items:center;min-height:6mm}
-.w2-band-h,.w2-band-f{display:grid;grid-template-columns:auto 1fr;gap:3mm;align-items:center}
+.w2-band-h,.w2-band-f{display:grid;grid-template-columns:auto minmax(0,1fr);gap:3mm;align-items:center}
+.w2-strip .bw-band{flex-wrap:wrap;column-gap:3mm}
+.w2-strip .bw-band>*{min-width:0;overflow-wrap:anywhere}
+@media screen{#bw-pair{padding-left:var(--bw-room-l,0px);padding-right:var(--bw-room-r,0px);transition:padding .3s cubic-bezier(.16,1,.3,1)}}
+@media screen and (prefers-reduced-motion:reduce){#bw-pair{transition:none}}
 .w2-tag{font-size:8pt;color:var(--accent);font-weight:700}
 .w2-strip [data-ci]{cursor:pointer;border-radius:1mm;padding:0 1mm}
 .w2-strip [data-ci]:hover{outline:1px solid var(--rule-strong)}

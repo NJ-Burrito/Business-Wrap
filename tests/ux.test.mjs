@@ -291,6 +291,8 @@ try {
     }
     const missing = [...keys].filter((k) => !UX.ar[`explain.${k}`] || !UX.en[`explain.${k}`]);
     check(`A5: every toolbar, view and selection tool has an explainer in Arabic and English (${keys.size} tools)`, !missing.length, missing.join(' '));
+    // 0.13.1 final pass #5: Save and Import say what they do since H3 (save in place; import opens the file as a document)
+    check('A5: Save / Import hover help describe the 0.13.1 behaviour (save in place, import opens as a document), AR + EN', /في مكانها/.test(UX.ar['explain.save']) && /in place/.test(UX.en['explain.save']) && /وثيقةً في «المستندات»/.test(UX.ar['explain.import']) && /as a document/.test(UX.en['explain.import']), JSON.stringify([UX.ar['explain.save'], UX.en['explain.import']]));
     const rm = await open({ ui: 'ar', reduced: true });
     await rm.page.locator('.island [data-a="save"]').hover();
     await rm.page.waitForTimeout(1200);
@@ -747,6 +749,77 @@ try {
     const dk = await sh(page, (R) => { const d = document.createElement('dialog'); d.className = 'bw-resume'; d.dataset.theme = 'dark'; d.innerHTML = '<h2>x</h2><p>y</p><div class="btns"><button type="button" class="b primary">go</button><button type="button" class="b">no</button></div>'; R.appendChild(d); d.showModal(); const cs = getComputedStyle(d); const p = getComputedStyle(d.querySelector('.b.primary')); const b = getComputedStyle(d.querySelector('.b:not(.primary)')); const out = { bg: cs.backgroundColor, ink: cs.color, pbg: p.backgroundColor, pink: p.color, bink: b.color }; d.close(); d.remove(); return out; });
     check('F5 4: the relaunch dialog in dark mode: a dark surface, text and buttons ≥ 4.5:1', lum(dk.bg) < 0.2 && ratio(dk.ink, dk.bg) >= 4.5 && ratio(dk.pink, dk.pbg) >= 4.5 && ratio(dk.bink, dk.bg) >= 4.5, JSON.stringify(dk));
     check('F2 38: no page errors', !errors.length, errors.join(' | '));
+    await ctx.close();
+  }
+  // ── H2 (0.13.1, owner 2026-10-29): side-panel buttons are bordered pills with hover, press and focus; danger tone;
+  //    contrast ≥ 4.5:1 light + dark; calm / reduced motion = still. The header/footer strip is never under a panel.
+  {
+    const lum = (c) => { const v = c.match(/[\d.]+/g).slice(0, 3).map((x) => { x = +x / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+    const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+    const pills = (page) => sh(page, (R) => [...R.querySelectorAll('.drawer :is(.b, .btns > button)')].filter((b) => b.offsetWidth && !b.classList.contains('primary')).map((b) => {
+      const cs = getComputedStyle(b);
+      return { k: b.dataset.lrn || b.dataset.lib || b.textContent.trim().slice(0, 18), bw: parseFloat(cs.borderTopWidth), bc: cs.borderTopColor, r: parseFloat(cs.borderTopLeftRadius), bg: cs.backgroundColor, ink: cs.color, card: getComputedStyle(b.closest('.card') || b.closest('.drawer')).backgroundColor, tr: cs.transitionDuration };
+    }));
+    const openSettings = async (page) => { await page.evaluate(() => window.BW.openDrawer('settings')); await settle(page, 500); await sh(page, (R) => R.querySelectorAll('.drawer details').forEach((d) => { d.open = true; })); await settle(page, 300); };
+    for (const dark of [false, true]) {
+      const { ctx, page, errors } = await open({ ui: 'ar', width: 1500 });
+      if (dark) { await page.evaluate(() => window.BW.runAction('dark')); await settle(page, 300); }
+      await openSettings(page);
+      const ps = await pills(page);
+      const bad = ps.filter((x) => !(x.bw >= 1 && x.r >= 12 && x.bc !== x.bg && ratio(x.ink, x.bg) >= 4.5));
+      check(`H2 panel buttons (${dark ? 'dark' : 'light'}): ${ps.length} Settings buttons are bordered pills, text ≥ 4.5:1`, ps.length >= 5 && !bad.length, JSON.stringify(bad.slice(0, 3)));
+      const forget = ps.find((x) => x.k === 'forget');
+      const sig = await sh(page, (R) => getComputedStyle(R.querySelector('.shell')).getPropertyValue('--bw-signal').trim());
+      check(`H2 panel buttons (${dark ? 'dark' : 'light'}): «امسح كل ما تعلّمته» in the danger tone, ≥ 4.5:1`, !!forget && forget.ink === forget.bc && ratio(forget.ink, forget.bg) >= 4.5, JSON.stringify({ forget, sig }));
+      if (!dark) {
+        const target = await sh(page, (R) => { const b = R.querySelector('.drawer [data-lrn="rules"]'); b.scrollIntoView({ block: 'center' }); return getComputedStyle(b).backgroundColor; });
+        await page.locator('.drawer [data-lrn="rules"]').hover();
+        await settle(page, 350);
+        const hov = await sh(page, (R) => { const cs = getComputedStyle(R.querySelector('.drawer [data-lrn="rules"]')); return { bg: cs.backgroundColor, ink: cs.color }; });
+        check('H2 panel buttons: hover changes the fill (the segmented control\'s wash) and keeps ≥ 4.5:1', hov.bg !== target && ratio(hov.ink, hov.bg) >= 4.5, JSON.stringify({ target, hov }));
+        check('H2 panel buttons: they move (transition) when motion is allowed', ps.every((x) => x.tr.split(',').some((d) => parseFloat(d) > 0)), JSON.stringify(ps.map((x) => x.tr).slice(0, 2)));
+        // the header/footer strip never sits under the open panel, and no strip item overflows its box
+        const strip = await page.evaluate(() => { const s = document.querySelector('#bw-pair .w2-strip'); if (!s) return null; const r = s.getBoundingClientRect(); return { l: r.left, r: r.right, over: [...s.querySelectorAll('.bw-band > *')].filter((x) => x.scrollWidth > x.clientWidth + 1 || x.getBoundingClientRect().left < r.left - 1 || x.getBoundingClientRect().right > r.right + 1).length }; });
+        const dr = await sh(page, (R) => { const r = R.querySelector('.drawer').getBoundingClientRect(); return { l: r.left, r: r.right }; });
+        check('H2 header strip: with Settings open at 1500 px the strip (and the page) is beside the panel, nothing clipped', !!strip && (strip.l >= dr.r || strip.r <= dr.l) && strip.over === 0, JSON.stringify({ strip, dr }));
+        await page.evaluate(() => window.BW.closeDrawer?.() ?? window.BW.runAction('settings'));
+        await settle(page, 700);
+        const back = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--bw-room-l').trim());
+        check('H2 header strip: the page returns to the middle when the panel closes', back === '0px', back);
+      }
+      check(`H2 panel buttons (${dark ? 'dark' : 'light'}): no page errors`, !errors.length, errors.join(' | '));
+      await ctx.close();
+    }
+    const rm = await open({ ui: 'ar', width: 1500, reduced: true });
+    await openSettings(rm.page);
+    const still = (await pills(rm.page)).filter((x) => x.tr.split(',').some((d) => parseFloat(d) > 0));
+    check('H2 panel buttons: reduced motion = no transition', !still.length, JSON.stringify(still.slice(0, 2)));
+    await rm.ctx.close();
+  }
+  { // 0.13.1 final pass #4: every toolbar and panel button carries an icon (and every icon this pass added has its own move)
+    const { ctx, page, errors } = await open({ ui: 'ar', width: 1920, height: 1000 });
+    await page.evaluate(() => window.BW.runAction('save')); // a documents-list row (open, tab, copy, template, delete)
+    await settle(page, 1200);
+    const scan = () => sh(page, (R) => {
+      const words = window.BW.EXT.buttonIcons.words;
+      return [...R.querySelectorAll('.island button, .drawer button')].filter((b) => !b.closest('.dialog, .toasts') && !b.matches(words) && !b.querySelector('svg'))
+        .map((b) => `${b.closest('.drawer') ? 'panel' : 'toolbar'}:${Object.entries(b.dataset).map(([k, v]) => `${k}=${v}`).join(',')} «${b.textContent.trim().slice(0, 24)}»`);
+    });
+    const bare = new Set(await scan());
+    const added = new Set(); // the icons this pass put on panel buttons (42-button-icons.js), seen across the panels
+    for (const d of ['check', 'library', 'timeline', 'bulk', 'provenance', 'settings', 'style', 'theme', 'history', 'find', 'process', 'w2page', 'webhooks']) {
+      await page.evaluate((d) => window.BW.openDrawer(d), d);
+      await settle(page, 250);
+      for (const x of await scan()) bare.add(`${d} ${x}`);
+      for (const k of await sh(page, (R) => [...R.querySelectorAll('.bi-i .ic[data-ic]')].map((s) => s.dataset.ic))) added.add(k);
+    }
+    check('icons: no toolbar or panel button is words only (palette import, profile, compare, template, check jump, documents, changes …)', !bare.size, [...bare].join(' | '));
+    const still = await sh(page, (R, keys) => {
+      const css = [...R.querySelectorAll('style')].map((s) => s.textContent).join('\n');
+      return { n: keys.length, still: keys.filter((k) => !css.includes(`[data-ic="${k}"] >`)) };
+    }, [...added]);
+    check('icons: every icon added by the final pass has its own hover / focus / press move', still.n > 0 && !still.still.length, JSON.stringify(still));
+    check('icons: no page errors', !errors.length, errors.join(' | '));
     await ctx.close();
   }
 } catch (e) {

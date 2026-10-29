@@ -9,7 +9,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { isReleaseZipUrl, isAssetApiUrl, isAllowedRedirect } from './core.mjs';
+import { isReleaseZipUrl, isAssetApiUrl, isAllowedRedirect, isNewer } from './core.mjs';
 
 /** User-owned paths that an update never replaces or removes (relative to the install folder). */
 export const KEEP = ['.local', '.local/learning', '.git', 'node_modules', 'out', 'design/custom', 'logos', 'fonts/custom', 'drafts', 'exports', 'harvest', 'profiles'];
@@ -189,6 +189,10 @@ function gitUpdate(dir, version, stage, current) {
  */
 export async function applyUpdate({ dir, release, repo, token = '', current, onStage = () => {}, failAt = '', fetch: fetchImpl = globalThis.fetch }) {
   const stage = (s) => { try { onStage(s); } catch { /* a progress listener never stops the update */ } };
+  // never a downgrade (0.13.1): a release that is not strictly newer than the installed version is refused, whatever
+  // offered it (an old npm copy, a stale cache, a feed that lags behind the GitHub tags)
+  const installed = current || (() => { try { return JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).version; } catch { return ''; } })();
+  if (installed && !isNewer(release?.version, installed)) return { ok: false, error: `not newer: ${release?.version} is not above the installed ${installed} (no downgrade)` };
   if (fs.existsSync(path.join(dir, '.git'))) {
     const r = gitUpdate(dir, release.version, stage, current);
     if (r.ok) { r.migrated = await migrateUserData(dir, `${dir}.backup-${current}-data`); stage('done'); }

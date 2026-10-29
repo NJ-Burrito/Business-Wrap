@@ -21,7 +21,7 @@ import { fork, spawnSync } from 'node:child_process';
 import { crawl, harvestToDocument } from './harvest/crawl.mjs';
 import { learningRoute } from './learning/http.mjs';
 import { printApi } from './printers.mjs';
-import { workspace as liveWorkspace, ensure as ensureWorkspace, outName, uniquePath, docTitle } from './workspace.mjs';
+import { workspace as liveWorkspace, ensure as ensureWorkspace, outName, uniquePath, docTitle, inHistory, localDir } from './workspace.mjs';
 
 const MAX_BODY = 60 * 1024 * 1024;
 const slug = fileStem;
@@ -60,7 +60,14 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
       if (req.method === 'GET' && url.pathname === '/') {
         // file:// fonts do not load into an http page: route them through /font/, manifest files only.
         // an editor (or a Save-HTML file) from an older version opens in this version's editor; the file itself is never rewritten
-        const html = rewrapEditorHtml(fs.readFileSync(editorFile, 'utf8')).replace(/file:\/\/\/[^)"'\s]+\.(ttf|woff2)/g, (m) => `/font/${encodeURIComponent(m)}`);
+        let html = rewrapEditorHtml(fs.readFileSync(editorFile, 'utf8')).replace(/file:\/\/\/[^)"'\s]+\.(ttf|woff2)/g, (m) => `/font/${encodeURIComponent(m)}`);
+        // the profile kept with the host (engine/routes/session.mjs): a data block, not a script (the page CSP stays as
+        // built); editor/ext/12-session.js copies it into an empty localStorage before the profile card would ask
+        if (wsOf()) {
+          let prof = '';
+          try { prof = fs.readFileSync(path.join(localDir(), 'profile.json'), 'utf8'); JSON.parse(prof); } catch { prof = ''; }
+          if (prof) html = html.replace(/<\/head>/i, () => `<script type="application/json" id="bw-host-profile">${prof.replace(/</g, '\\u003c')}</script></head>`);
+        }
         return send(200, html, 'text/html; charset=utf-8');
       }
       if (req.method === 'GET' && url.pathname.startsWith('/font/')) {
@@ -73,7 +80,7 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
       if (req.method === 'GET' && url.pathname.startsWith('/files/')) {
         const base = filesRoot();
         const f = path.resolve(base, '.' + decodeURIComponent(url.pathname.slice(6)));
-        if (!f.startsWith(base + path.sep) || f.startsWith(path.join(base, 'HISTORY') + path.sep) || !fs.existsSync(f)) return send(404, { error: 'not found' });
+        if (!f.startsWith(base + path.sep) || inHistory(base, f) || !fs.existsSync(f)) return send(404, { error: 'not found' });
         const type = f.endsWith('.pdf') ? 'application/pdf' : f.endsWith('.html') ? 'text/html; charset=utf-8' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
         return send(200, fs.readFileSync(f), type);
       }
@@ -222,8 +229,14 @@ if (process.argv[1] && real(process.argv[1]) === real(fileURLToPath(import.meta.
 usage: node engine/serve.mjs <editor.html> [--port 4317] [--out <exports folder>]`); process.exit(2); }
   if (!process.env.BW_SERVE_CHILD) {
     // the supervisor: runs the server as a child and starts it again (on the new code) after an in-editor update
-    const start = () => fork(fileURLToPath(import.meta.url), args, { cwd: process.cwd(), env: { ...process.env, BW_SERVE_CHILD: '1' }, stdio: 'inherit' })
-      .on('exit', (code) => { if (code === RESTART_CODE) { console.log('Business-Wrap updated: restarting the server on the new version…'); start(); } else process.exitCode = code ?? 0; });
+    // started in the background by engine/host.mjs (no console of its own): the server gets no window either. An inherited
+    // stdio handle makes Windows give the child a console of its own (a visible window), so it pipes into this log instead.
+    const hidden = !!process.env.BW_HOST_TOKEN;
+    const start = () => {
+      const c = fork(fileURLToPath(import.meta.url), args, { cwd: process.cwd(), env: { ...process.env, BW_SERVE_CHILD: '1' }, stdio: hidden ? ['ignore', 'pipe', 'pipe', 'ipc'] : 'inherit', windowsHide: true });
+      if (hidden) { c.stdout.pipe(process.stdout); c.stderr.pipe(process.stderr); }
+      c.on('exit', (code) => { if (code === RESTART_CODE) { console.log('Business-Wrap updated: restarting the server on the new version…'); start(); } else process.exitCode = code ?? 0; });
+    };
     start();
   } else {
     try {

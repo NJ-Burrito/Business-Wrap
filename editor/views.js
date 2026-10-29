@@ -1,7 +1,7 @@
 /* Business-Wrap editor — page view modes (0.10.0), concatenated after shell-ux.js.
  * continuous: the long sheet (as before) · single: one page at a time · spread: two pages side by side like an open book,
  * the cover alone first, then pairs, in the document's reading direction (RTL: first page of a pair on the right).
- * Screen only: the pages are CSS columns of one A4 page each (editor/views.css, inside @media screen), so editing,
+ * Screen only: the pages are CSS columns of one page each (the document's paper, A18) (editor/views.css, inside @media screen), so editing,
  * selection and every tool keep working; print, the PDF and the DOCX never see any of it.
  * Declarations only (hoisted) above the listeners at the end. */
 function viewModes() { return ['continuous', 'single', 'spread']; }
@@ -36,7 +36,11 @@ function viewsFirstPage() {
 }
 
 /* geometry: one slot = one page + the gap (12 mm, as in views.css), in CSS px before the view's zoom */
-function viewsGeo() { const mm = 96 / 25.4; return { W: 210 * mm, H: 297 * mm, GAP: 12 * mm, SLOT: 222 * mm }; }
+function viewsGeo() {
+  const mm = 96 / 25.4;
+  const p = pageSpec(cur()?.doc?.layout?.page); // A18: the document's own paper (A4 portrait unless set)
+  return { W: p.w * mm, H: p.h * mm, GAP: 12 * mm, SLOT: (p.w + 12) * mm };
+}
 
 /** After every render(): wrap the edition in the paged window, count its pages, fit it, show the current page. */
 function viewsApply() {
@@ -54,6 +58,7 @@ function viewsApply() {
     box.appendChild(main);
   }
   box.dir = main.dir; // the book opens in the document's reading direction
+  { const p = pageSpec(cur()?.doc?.layout?.page); box.style.setProperty('--pw', `${p.w}mm`); box.style.setProperty('--ph', `${p.h}mm`); } // A18: the sheets as set
   viewsFit();
   S.pageN = viewsCount(main);
   main.style.setProperty('--pages', String(S.pageN));

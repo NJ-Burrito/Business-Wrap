@@ -19,6 +19,7 @@ import { serve } from '../engine/serve.mjs';
 import { config } from '../engine/config.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-profile-'));
+process.env.BW_LOCAL_DIR = path.join(tmp, '.local'); // the host's profile copy (H3) stays in the temp folder
 const results = [];
 let failed = 0;
 const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  profile: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
@@ -123,6 +124,18 @@ try {
   check('report across documents: 4 edits (a typed op once, a copied entry once), 2 exports, 2 documents (the opened template is not work)', pn.edits === 4 && pn.exports === 2 && pn.docs === 2 && dm.docs.length === 2, JSON.stringify({ edits: pn.edits, exports: pn.exports, docs: pn.docs, list: dm.docs }));
   const st = reportHtml(dm, { lang: 'ar' });
   check('report story matches the numbers (edits, exports, busiest document)', /أجرى 4 تعديلًا/.test(st) && /صدّر 2 مرة/.test(st) && /أكثر الوثائق نشاطًا «طلب ترخيص فعالية عامة في الساحات» بـ 3 تعديلًا/.test(st), st.match(/خلال[^<]*/)?.[0]);
+  { // review2 #11/#12: the report reads the title the document has now (docTitle on save/export), and one profile key
+    // renamed mid-period stays one person, shown with the other name it used
+    const live = { doc: 'doc-live', entries: [] };
+    await L.append(live, { kind: 'open', actor: nd, keys: kN, at: at(120), data: { title: 'وثيقة متطلبات: خدمة جديدة', docTitle: 'خدمة جديدة' } });
+    await L.append(live, { kind: 'op', actor: nd, keys: kN, at: at(130), data: { ed: 'ar', op: { op: 'setText', path: '/control/coverTitle', value: 'خدمة مراجعة الإصدار', old: '', id: 'n5.0' } } });
+    await L.append(live, { kind: 'x-rename', actor: { ...nd, name: 'Rami Q' }, keys: kN, at: at(135), data: { from: 'Rami', to: 'Rami Q' } });
+    await L.append(live, { kind: 'export', actor: { ...nd, name: 'Rami Q' }, keys: kN, at: at(140), data: { fmt: 'docx', locale: 'ar', docTitle: 'خدمة مراجعة الإصدار' } });
+    const dl = reportData([live], { from: '2026-10-01', to: '2026-10-31' });
+    const htmlL = reportHtml(dl, { lang: 'en' });
+    check('review2 #11: the report titles a document by its live cover title and counts its export', dl.docs[0]?.title === 'خدمة مراجعة الإصدار' && dl.people[0]?.exports === 1, JSON.stringify(dl.docs));
+    check('review2 #12: a renamed profile is one person in the report, «also:» its earlier name', dl.people.length === 1 && dl.people[0].name === 'Rami Q' && /Rami Q \(also: Rami\)/.test(htmlL), JSON.stringify(dl.people.map((p) => [p.name, p.names])));
+  }
   // chart labels stay inside their chart (they printed as one letter under RTL)
   const rp = await browser.newPage();
   await rp.setContent(st);
@@ -154,6 +167,23 @@ try {
   const faces = fonts.split('\n').slice(2).filter(Boolean);
   check('report PDF fonts: Thmanyah only, TrueType, no Type 3', faces.length > 0 && faces.every((l) => /thmanyah/i.test(l) && /TrueType/.test(l)) && !/Type 3/.test(fonts), fonts);
   await ctx3.close();
+  // H3: the profile reaches the host at once (.local + HISTORY) and comes back on a fresh origin, also after the .local
+  // copy is gone (an update into a new install folder): the first-launch card is not shown again
+  await new Promise((r) => setTimeout(r, 600));
+  const hostProf = (() => { try { return JSON.parse(fs.readFileSync(path.join(tmp, '.local', 'profile.json'), 'utf8')).profile; } catch { return ''; } })();
+  check('a served page hands its profile to the host at once: .local/profile.json and HISTORY\\profile.json.gz', /Rami/.test(hostProf) && fs.existsSync(path.join(dirs.history, 'profile.json.gz')), hostProf);
+  fs.rmSync(path.join(tmp, '.local', 'profile.json'), { force: true });
+  const ctx4 = await browser.newContext({ viewport: { width: 1500, height: 900 } });
+  await ctx4.addInitScript(() => localStorage.setItem('bw:profile-prompt', '1'));
+  const s4 = await ctx4.newPage();
+  await s4.goto(`http://127.0.0.1:${server.address().port}/`);
+  await s4.waitForFunction(() => window.BW?.ready);
+  await s4.waitForTimeout(800);
+  const back = await s4.evaluate(() => ({ card: !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.bw-modal'), name: JSON.parse(localStorage.getItem('bw:profile') || 'null')?.name }));
+  check('empty browser storage and no .local copy: the profile comes back from HISTORY, no first-launch card', !back.card && back.name === 'Rami', JSON.stringify(back));
+  const bad = await fetch(`http://127.0.0.1:${server.address().port}/api/profile`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ profile: 'not json' }) });
+  check('the host keeps only a real profile (POST /api/profile refuses anything else)', bad.status === 400);
+  await ctx4.close();
   check('no page errors', errors.length === 0, errors.join(' | '));
 } finally {
   await browser.close(); // first: an open page keeps a keep-alive connection that server.close() would wait on

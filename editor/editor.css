@@ -20,8 +20,11 @@
   main.bw-doc .bw-ov:hover, main.bw-doc .bw-ov:focus-visible { outline-color: var(--bw-sel); }
   main.bw-doc .bw-ov.bw-ov-sel { outline: 2px solid var(--bw-gold); }
   main.bw-doc .bw-ov.bw-dragging { cursor: grabbing; z-index: 5; box-shadow: var(--bw-shadow-3, 0 18px 40px -12px rgba(0,30,61,.45)); transition: none; }
-  main.bw-doc .bw-ov-handle { position: absolute; inset-inline-end: -7px; bottom: -7px; width: 14px; height: 14px; border-radius: 5px; background: var(--bw-gold); border: 2px solid var(--bw-surface, #ffffff); cursor: nwse-resize; opacity: 0; transform: scale(.6); transition: opacity .2s, transform .35s cubic-bezier(.34,1.56,.64,1); }
+  main.bw-doc .bw-ov-handle { position: absolute; right: -7px; bottom: -7px; width: 14px; height: 14px; border-radius: 5px; background: var(--bw-gold); border: 2px solid var(--bw-surface, #ffffff); cursor: nwse-resize; opacity: 0; transform: scale(.6); transition: opacity .2s, transform .35s cubic-bezier(.34,1.56,.64,1); }
   main.bw-doc .bw-ov:hover .bw-ov-handle, main.bw-doc .bw-ov.bw-ov-sel .bw-ov-handle { opacity: 1; transform: none; }
+  /* review2 · extra 10: a text box's body is for typing, so it carries a move grip on its top edge */
+  main.bw-doc .bw-ov-move { position: absolute; inset-inline: 30%; top: -9px; height: 10px; border-radius: 5px; background: var(--bw-gold); cursor: move; opacity: 0; transition: opacity .2s; }
+  main.bw-doc .bw-ov:hover .bw-ov-move, main.bw-doc .bw-ov.bw-ov-sel .bw-ov-move { opacity: 1; }
   main.bw-doc .bw-guide.x { position: absolute; top: 0; bottom: 0; left: var(--at); border-left: 1px dashed var(--bw-gold); z-index: 6; pointer-events: none; }
   html.bw-drop #bw-pair main.bw-doc { outline: 3px dashed var(--bw-gold); outline-offset: 6px; }
   #bw-pair.bw-side { display: flex; gap: 16px; justify-content: center; align-items: flex-start; overflow-x: auto; }

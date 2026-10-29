@@ -15,7 +15,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { localDir } from './workspace.mjs';
+import { localDir, workspace, ensure } from './workspace.mjs';
 
 const SERVE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'serve.mjs');
 export const hostFile = () => path.join(localDir(), 'host.json');
@@ -50,7 +50,9 @@ export async function start({ editor, port = 4317, open = true } = {}) {
   if (!editor || !fs.existsSync(editor)) throw new Error(`host.start: editor file not found: ${editor}`);
   const p = await freePort(port);
   const token = crypto.randomBytes(16).toString('hex');
-  const child = spawn(process.execPath, [SERVE, path.resolve(editor), '--port', String(p)], { detached: true, stdio: 'ignore', windowsHide: true, env: { ...process.env, BW_HOST_TOKEN: token } });
+  const log = fs.openSync(path.join(ensure(workspace()).dirs.history, 'host.log'), 'a'); // no console window: its output goes here
+  const child = spawn(process.execPath, [SERVE, path.resolve(editor), '--port', String(p)], { detached: true, stdio: ['ignore', log, log], windowsHide: true, env: { ...process.env, BW_HOST_TOKEN: token } });
+  fs.closeSync(log);
   child.unref();
   write({ pid: child.pid, port: p, startedAt: new Date().toISOString(), token, editor: path.resolve(editor), browserPids: [], tabs: 0 });
   const url = `http://127.0.0.1:${p}/`;
@@ -109,6 +111,17 @@ export function launchBrowser(urls, { chunk = 30 } = {}) {
   }
   noteHost({ browserPids: pids });
   return { chunks: chunks.length, pids };
+}
+
+/** The file manager with `file` selected (H3). Windows: Explorer parses its own command line and does not accept a
+ *  quoted «"/select,<path>"», which is what Node writes for a path with spaces: it fell back to Documents. So the line
+ *  is passed verbatim as /select,"<path>". BW_REVEAL_STUB=<file> writes the command as one JSON line instead (tests). */
+export function reveal(file) {
+  const p = path.resolve(file);
+  const [cmd, args, verbatim] = process.platform === 'win32' ? ['explorer.exe', [`/select,"${p}"`], true] : process.platform === 'darwin' ? ['open', ['-R', p], false] : ['xdg-open', [path.dirname(p)], false];
+  if (process.env.BW_REVEAL_STUB) { fs.appendFileSync(process.env.BW_REVEAL_STUB, JSON.stringify({ cmd, args, verbatim }) + '\n'); return { cmd, args }; }
+  spawn(cmd, args, { detached: true, stdio: 'ignore', windowsVerbatimArguments: verbatim }).unref();
+  return { cmd, args };
 }
 
 /** Browsers on this host's own profile (their command line names it), plus pids it launched: closed, tree and all. */

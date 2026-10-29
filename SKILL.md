@@ -22,7 +22,8 @@ The editor ships with this skill, ready to open: **`assets/editor/business-wrap.
 | Start a new document | open the file in Chrome or Edge (Windows: `start "" "<skill dir>/assets/editor/business-wrap.html"`); it opens on a blank AR + EN document |
 | See the sample | pick «event-permit» in the service list |
 | Open your own document JSON | Import (or Ctrl+K → Import) and choose the `*.ar.json` / `*.en.json`; it opens as its own service |
-| One-click PDF + DOCX, page thumbnails, webhooks, in-editor updates | from a clone: `npm install`, then `node engine/serve.mjs assets/editor/business-wrap.html` → http://127.0.0.1:4317/ (the preferred way to open it: the editor checks for updates there and updates on one click; opened from disk, PDF + DOCX downloads the edited JSON and shows the export command) |
+| One-click PDF + DOCX, page thumbnails, webhooks, in-editor updates | from a clone: `npm install`, then `node engine/cli.mjs open [doc.json \| folder \| editor.html]` (or `/business-wrap:open`, MCP `open_in_editor`). It starts the local host **in the background with no window**, returns at once with the address and opens Edge on it; its output goes to `HISTORY\host.log` in the save folder. **When a person asks you to launch the editor, use only this:** never run `node engine/serve.mjs` in a terminal, never `start powershell` / `Start-Process`, never a background shell job: each of those leaves a console window open. Opened from disk instead, PDF + DOCX downloads the edited JSON and shows the export command |
+| Turn everything off | the toolbar's power button (asks first, saves every open tab, then stops the host, every Business-Wrap process this install started and its Edge windows), or `node engine/cli.mjs stop --all` (`/business-wrap:close`, MCP `close_editor`). Another install's host is never touched |
 | Settings, About, update now | toolbar View section → Settings (gear), or Ctrl+K → Settings |
 | A dedicated editor for your documents | `node engine/build-editor.mjs <doc.json or folder> --out out/<name>.editor.html` (reads your configured font folder) |
 | Rebuild the shipped file after changing `editor/` or `engine/` | `npm run skill-html` (`npm test` fails while it is stale) |
@@ -31,7 +32,7 @@ Fonts: the shipped file names the Thmanyah fonts installed in the OS (`local()`)
 
 <div dir="rtl">
 
-المحرر جزء من المهارة وجاهز للفتح: **`assets/editor/business-wrap.html`**. افتحه في Chrome أو Edge فيبدأ على وثيقة فارغة بالعربية والإنجليزية؛ والمثال في قائمة الخدمات؛ ولفتح ملف JSON لوثيقتك استخدم «استيراد». للتصدير إلى PDF وDOCX بنقرة، والصور المصغرة للصفحات، وخطافات الويب: شغل `node engine/serve.mjs assets/editor/business-wrap.html` من نسخة المستودع بعد `npm install`، وهي الطريقة المفضلة لفتحه لأن المحرر يفحص التحديثات عندها ويحدّث نفسه بنقرة مع بقاء المستندات والتعديلات وسجلها. والإعدادات ومعلومات البرنامج والتحديث من قسم «العرض» في الشريط أو Ctrl+K ← الإعدادات. ولبناء محرر خاص بوثائقك: `node engine/build-editor.mjs`. وبعد تغيير `editor/` أو `engine/` أعد بناء الملف بالأمر `npm run skill-html`.
+المحرر جزء من المهارة وجاهز للفتح: **`assets/editor/business-wrap.html`**. افتحه في Chrome أو Edge فيبدأ على وثيقة فارغة بالعربية والإنجليزية؛ والمثال في قائمة الخدمات؛ ولفتح ملف JSON لوثيقتك استخدم «استيراد». للتصدير إلى PDF وDOCX بنقرة، والصور المصغرة للصفحات، وخطافات الويب: شغّل `node engine/cli.mjs open` من نسخة المستودع بعد `npm install` (أو `/business-wrap:open` أو أداة MCP `open_in_editor`)، فيعمل الخادم المحلي في الخلفية دون أي نافذة، ويعود الأمر فوراً بالعنوان ويفتح Edge عليه، وتُكتب مخرجاته في `HISTORY\host.log`. وحين يطلب منك المستخدم فتح المحرر فهذه الطريقة وحدها: لا `node engine/serve.mjs` في طرفية، ولا `start powershell` ولا `Start-Process`، لأنها تترك نافذة طرفية مفتوحة. ولإيقاف كل شيء: زر الإيقاف في الشريط (يسأل أولاً ويحفظ كل التبويبات، ثم يوقف الخادم وكل عملية شغّلها هذا التثبيت ونوافذ Edge الخاصة به)، أو `node engine/cli.mjs stop --all`. والإعدادات ومعلومات البرنامج والتحديث من قسم «العرض» في الشريط أو Ctrl+K ← الإعدادات. ولبناء محرر خاص بوثائقك: `node engine/build-editor.mjs`. وبعد تغيير `editor/` أو `engine/` أعد بناء الملف بالأمر `npm run skill-html`.
 
 </div>
 
@@ -119,7 +120,8 @@ The harvest above gives a quick document; **this is the method that yields the f
 | Build a theme from a design pack | `python design/build.py [design/custom/<name>/pack.json]` |
 | Security gate (tree + history) | `python security/check.py` |
 | Build the editor for documents (`*.ar.json` / `*.en.json`) | `node engine/build-editor.mjs <doc.json or folder> --out out/x.editor.html` |
-| Editor with one-click PDF + DOCX and page thumbnails | `node engine/serve.mjs out/x.editor.html` → http://127.0.0.1:4317/ |
+| Editor with one-click PDF + DOCX and page thumbnails | `node engine/cli.mjs open out/x.editor.html` (background host, no window; prints the address) |
+| Turn off every host, server and Edge window of this install | `node engine/cli.mjs stop --all` |
 | Export without the UI (edits replayed) | `node engine/export.mjs --doc <document.json> --edits <edits.json> --locale ar\|en` |
 | Requirements document from evidence through a pack | `node engine/srs/cli.mjs build --pack <id> --profile p.json [--model m --roles n.json --harvest h.json --record r.json] --out dir --export` |
 | Sample, editor check, accessibility check | `npm run sample` · `npm test` |

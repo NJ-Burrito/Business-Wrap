@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { REPO } from '../export.mjs';
-import { ensure, readJson } from '../workspace.mjs';
+import { ensure, readJson, outName, uniquePath } from '../workspace.mjs';
 import { importFile } from '../import/import.mjs';
 
 const ID = /^doc-[A-Za-z0-9-]{4,64}$/;
@@ -29,6 +29,20 @@ export default async (req, url, send, ctx) => {
     if (req.method === 'GET' && p === '/api/library/blank') {
       const dir = path.join(REPO, 'samples', 'blank');
       send(200, Object.fromEntries(['ar', 'en'].map((l) => [l, fs.readFileSync(path.join(dir, `document.${l}.json`), 'utf8')])));
+      return true;
+    }
+    if (req.method === 'POST' && p === '/api/library/html') {
+      // H3 Save in place: the document's own file in HTML\, overwritten on every Save (`file`, when it names a file
+      // inside HTML\); the first Save names it «<title>-<date>-<AR|ENG>.html» (-2 on a clash with another document)
+      const b = await readJson(req);
+      if (!ID.test(String(b.id)) || typeof b.html !== 'string' || !/^\s*<!doctype html>/i.test(b.html) || !b.html.includes('id="bw-data"')) { send(400, { error: 'html: {id, html: a Save-HTML document}' }); return true; }
+      if (!ctx.workspace) { send(409, { error: 'no save folder: this server was started with --out' }); return true; }
+      const dir = ensure(ctx.workspace).dirs.html;
+      const own = typeof b.file === 'string' && b.file ? path.resolve(b.file) : '';
+      const keep = own && path.dirname(own).toLowerCase() === path.resolve(dir).toLowerCase() && /\.html$/i.test(own);
+      const file = keep ? own : uniquePath(dir, outName(b.title || 'document', new Date(), b.locale, 'html'));
+      fs.writeFileSync(file, b.html, 'utf8');
+      send(200, { ok: true, file, overwritten: !!keep });
       return true;
     }
     if (p === '/api/library/mirror') {

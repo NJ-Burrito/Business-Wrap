@@ -1,0 +1,47 @@
+/* 0.13.1 final pass #4: the icons 42-button-icons.js gives the panel buttons that had only words. Same house style and
+   timings as 40-icon-motion.css (its keyframes): one move, once, on hover, keyboard focus and press. Calm mode and
+   reduced motion: nothing moves (the rules at the end of 40-icon-motion.css cover these icons too). */
+button > .bi-i { inline-size: 16px; block-size: 16px; margin-inline-end: 4px; vertical-align: -3px; }
+button > .bi-i > .ic { inline-size: 16px; block-size: 16px; }
+.b > .bi-i { margin-inline-end: 0; }
+:is(button:hover:not(:disabled), button:focus-visible, button:active, button.ic-go, [role="option"]:hover) .ic:is([data-ic^="bi"], [data-ic^="view."], [data-ic="powerOff"]) > * { animation: var(--icm, none); }
+/* jump: the target ring pops */
+[data-ic="biJump"] > :last-child { --s: 1.3; --icm: icm-pop var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1; }
+/* new / import / open / tab / copy / template / delete */
+[data-ic="biNew"] > :nth-child(n+3) { --s: 1.3; --icm: icm-pop var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1; }
+[data-ic="biImport"] > :nth-child(n+3) { --x: -3px; --icm: icm-from var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="biOpen"] > * { transform-origin: 50% 100%; --icm: icm-lift var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="biTab"] > * { --y: -1.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="biDup"] > :nth-child(-n+2) { --s: 1.25; --icm: icm-pop var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1; }
+[data-ic="biTpl"] > :nth-child(n+2) { --icm: icm-from var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1 backwards; --y: -2px; }
+[data-ic="biDel"] > * { --icm: icm-shake var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+/* back / forward / checkpoint / compare / log */
+[data-ic="biBack"] > * { --x: -2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="biFwd"] > * { --x: 2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="biCheckpoint"] > * { transform-origin: 0 100%; --r: -10deg; --icm: icm-tilt var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1; }
+[data-ic="biCompare"] > * { --r: 180deg; --icm: icm-spin var(--bw-dur-page) var(--bw-ease-in-out) var(--d, 0s) 1; }
+[data-ic="biLog"] > :nth-child(3) { transform-origin: 0 100%; --r: -360deg; --icm: icm-spin var(--bw-dur-page) var(--bw-ease-in-out) var(--d, 0s) 1; }
+[data-ic="biLog"] > :nth-child(-n+2) { --x: -1.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+/* learning / export / forget / picture / report */
+[data-ic="biRules"] > * { --icm: icm-draw var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="biExport"] > :nth-child(n+2) { --y: -3px; --icm: icm-from var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="biForget"] > * { --icm: icm-shake var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="biPicture"] > * { --s: 1.15; --icm: icm-pop var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1; }
+[data-ic="biReport"] > :nth-child(n+2) { transform-origin: 50% 100%; --icm: icm-grow-y var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
+[data-ic="biReport"] > :nth-child(3) { --d: var(--bw-stagger); }
+[data-ic="biReport"] > :nth-child(4) { --d: calc(var(--bw-stagger) * 2); }
+/* palette / apply / snapshot / next / replace all / page setup */
+[data-ic="biPalette"] > * { transform-origin: 30% 80%; --r: 14deg; --icm: icm-tilt var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1; }
+[data-ic="biApply"] > * { --icm: icm-draw var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="biSnap"] > * { --y: -2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1; }
+[data-ic="biNext"] > * { --y: 2.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="biReplaceAll"] > * { --s: 1.12; --icm: icm-pop var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1; }
+[data-ic="biAllPages"] > * { --x: 1.5px; --y: -1.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="biSection"] > :nth-child(n+3) { --icm: icm-grow-x var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+/* Settings › view (the toolbar's page-view icons): the sheet slides (continuous), lifts (single), opens (book) */
+[data-ic="view.continuous"] > * { --y: 2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="view.single"] > * { --s: 1.15; --icm: icm-pop var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1; }
+[data-ic="view.spread"] > * { --icm: icm-grow-x var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="biCopy"] > :nth-child(1) { --x: 1.5px; --y: 1.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+/* H2 power off had no move (the H1 projects and bulk icons move in 13-projects.css): the power stroke draws */
+[data-ic="powerOff"] > * { --icm: icm-draw var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }

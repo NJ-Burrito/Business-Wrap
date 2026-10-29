@@ -23,6 +23,7 @@ process.env.BW_LOCAL_DIR = path.join(tmp, '.local');
 process.env.BW_WORKSPACE = path.join(tmp, 'ws');
 process.env.BW_BROWSER_STUB = path.join(tmp, 'browser.log');
 process.env.BW_UPDATE_TOKEN = 'none';
+process.env.BW_REVEAL_STUB = path.join(tmp, 'reveal.log'); // «افتح موقع الملف» writes the Explorer command here (H3)
 fs.mkdirSync(process.env.BW_WORKSPACE);
 const { buildEditor } = await import('../engine/build-editor.mjs');
 const { launchOptions, REPO } = await import('../engine/export.mjs');
@@ -64,7 +65,7 @@ try {
   const status = spawnSync(process.execPath, [path.join(REPO, 'engine', 'cli.mjs'), 'status', '--json'], { encoding: 'utf8', env: { ...process.env, BW_STATE_DIR: path.join(tmp, 'state') } });
   let st = {}; try { st = JSON.parse(status.stdout); } catch { /* printed below */ }
   check(3, 'the healer is installed and reported by `business-wrap status`', status.status === 0 && fs.existsSync(path.join(REPO, 'engine', 'heal')) && JSON.stringify(st).includes('heal'), status.stderr || status.stdout.slice(0, 200));
-  check(5, 'this checkout is 0.13.0 with its CHANGELOG entry (the version worked on)', pkg.version === '0.13.0' && /0\.13\.0/.test(fs.readFileSync(path.join(REPO, 'CHANGELOG.md'), 'utf8')));
+  check(5, 'this checkout is 0.13.1 with its CHANGELOG entry (the version worked on)', pkg.version === '0.13.1' && /0\.13\.1/.test(fs.readFileSync(path.join(REPO, 'CHANGELOG.md'), 'utf8')));
   check(31, 'licence: MIT in LICENSE, package.json and plugin.json', /MIT License/.test(fs.readFileSync(path.join(REPO, 'LICENSE'), 'utf8')) && pkg.license === 'MIT' && readJ(path.join(REPO, '.claude-plugin', 'plugin.json')).license === 'MIT');
   check(33, 'script, not AI: the CLI covers open/close/status/new/build/harvest/import/export/report/update and says ai false', ['open', 'close', 'status', 'new', 'build', 'harvest', 'import', 'export', 'report', 'update'].every((v) => VERBS.includes(v)) && st.ai === false, JSON.stringify({ VERBS, ai: st.ai }));
   const tools = await new Promise((resolve) => {
@@ -92,7 +93,7 @@ try {
   const viaSuite = (f) => listed.some((g) => fs.readFileSync(path.join(REPO, 'tests', g), 'utf8').includes(f)); // srs.test.mjs runs srs-heal and srs-wp8
   const missing = suites.filter((f) => !listed.includes(f) && !viaSuite(f));
   check(36, 'tests on each step: every tests/*.test.mjs (this suite included) runs in `npm test`, directly or from a suite it runs', !missing.length && pkg.scripts.test.includes('mcp/test/server.test.mjs'), missing.join(', '));
-  check(37, 'version 0.13.0 everywhere the release reads it (package, plugin, marketplace, MCP server.json)', [pkg.version, readJ(path.join(REPO, '.claude-plugin', 'plugin.json')).version, readJ(path.join(REPO, '.claude-plugin', 'marketplace.json')).plugins[0].version, readJ(path.join(REPO, 'mcp', 'server.json')).version].every((v) => v === '0.13.0'));
+  check(37, 'version 0.13.1 everywhere the release reads it (package, plugin, marketplace, MCP server.json)', [pkg.version, readJ(path.join(REPO, '.claude-plugin', 'plugin.json')).version, readJ(path.join(REPO, '.claude-plugin', 'marketplace.json')).plugins[0].version, readJ(path.join(REPO, 'mcp', 'server.json')).version].every((v) => v === '0.13.1'));
   const ws = W.workspace();
   check(39, 'outputs go under a generated «Business-Wrap» folder with PDF, DOCX, HTML, HISTORY', path.basename(ws.root) === 'Business-Wrap' && ['PDF', 'DOCX', 'HTML', 'HISTORY'].every((d) => Object.values(ws.dirs).map((x) => path.basename(x)).includes(d)), JSON.stringify(ws.dirs));
   check(41, 'extras are written down (CHANGELOG «Extras»)', /extras/i.test(fs.readFileSync(path.join(REPO, 'CHANGELOG.md'), 'utf8')));
@@ -123,6 +124,11 @@ try {
   }
   const prof = await page.evaluate(() => JSON.parse(localStorage.getItem('bw:profile') || 'null'));
   check(16, 'first launch: a profile card (name, picture) stores the owner\'s name', card && prof?.name === 'Mark', JSON.stringify(prof));
+  // H3 (owner 2026-10-29: «the popup for the name and picture appears every time I launch»): kept on this machine the
+  // moment it is set, in the host's .local and in HISTORY, before any edit (it used to travel only with a tab's push)
+  await wait(800);
+  const keptProf = (() => { try { return JSON.parse(fs.readFileSync(path.join(process.env.BW_LOCAL_DIR, 'profile.json'), 'utf8')).profile; } catch { return ''; } })();
+  check(16, 'the profile is kept on this machine the moment it is set (host .local + HISTORY), before any edit', /Mark/.test(keptProf) && fs.existsSync(path.join(W.workspace().dirs.history, 'profile.json.gz')), keptProf.slice(0, 80));
 
   // L9 the toolbar is never rebuilt by a click
   const n9 = await R((r) => { const b = [...r.querySelectorAll('.island [data-a]')]; b.forEach((x) => { x.__ownerTag = 1; }); return b.length; });
@@ -192,14 +198,16 @@ try {
   await page.evaluate(() => window.BW.setText('/chapters/0/title', 'مقدمة عدّلها المالك'));
   await wait(300);
   const c0 = await counter();
-  await act('saveHtml');
   const htmlDir = path.join(process.env.BW_WORKSPACE, 'Business-Wrap', 'HTML');
+  const htmlPre = new Set(fs.existsSync(htmlDir) ? fs.readdirSync(htmlDir) : []); // H3: the Saves above wrote each document's own file
+  await act('saveHtml');
   const t0 = Date.now();
   let saved = [];
-  while (Date.now() - t0 < 10000 && !saved.length) { saved = fs.existsSync(htmlDir) ? fs.readdirSync(htmlDir).filter((f) => f.endsWith('.html')) : []; if (!saved.length) await wait(200); }
+  while (Date.now() - t0 < 10000 && !saved.length) { saved = fs.existsSync(htmlDir) ? fs.readdirSync(htmlDir).filter((f) => f.endsWith('.html') && !htmlPre.has(f)) : []; if (!saved.length) await wait(200); }
   const savedText = saved[0] ? fs.readFileSync(path.join(htmlDir, saved[0]), 'utf8') : '';
   const today = W.outName('x', new Date(), 'ar', 'html').slice(2, 12);
-  check(15, 'Save HTML lands in Business-Wrap\\HTML as «<title>-<date>-AR.html»', saved[0] === W.outName('خدمة المالك الأولى', new Date(), 'ar', 'html'), saved.join(','));
+  // Save HTML (an export) is a copy beside the document's own file: «-2» when the Save already wrote «<title>-<date>-AR.html»
+  check(15, 'Save HTML lands in Business-Wrap\\HTML as «<title>-<date>-AR.html» (a copy, beside the saved document\'s own file)', saved.length === 1 && /^خدمة المالك الأولى-\d{4}-\d\d-\d\d-AR(-\d+)?\.html$/.test(saved[0]), saved.join(','));
   const data = (() => { const m = /<script type="application\/json" id="bw-data">([^]*?)<\/script>/.exec(savedText); try { return m && JSON.parse(m[1]); } catch { return null; } })();
   check(20, 'a document opened from the list, edited and saved as HTML carries its provenance log (prov)', !!data?.prov?.[id1]?.log, data ? Object.keys(data.prov || {}).join(',') || 'no prov' : 'no file', true);
   check(13, 'the change counter restarts at Save HTML', c0 >= 1 && (await counter()) === 0, `${c0} → ${await counter()}`);
@@ -208,6 +216,40 @@ try {
   await page.evaluate(() => window.BW.openDrawer('provenance')); await wait(800);
   const pv = await R((r) => { const d = r.querySelector('.drawer'); return { tab: !!d.querySelector('[data-pv="tab-prov"], .pv-tabs'), text: d.textContent.trim().slice(0, 400) }; });
   check(16, 'the «المصدر» tab lists the edits of a document opened from the list (not «…»)', pv.tab && /Mark/.test(pv.text), pv.text.slice(0, 200), true);
+  await page.mouse.click(1000, 450); await wait(300);
+
+  // review2 #17: strip the log AND the bwlog mark by hand (the review's T4) → still «stripped», on a machine with no HISTORY
+  {
+    const { prov: _p, bwlog: _b, ...bare } = data || {};
+    const f = path.join(tmp, 't4.editor.html');
+    fs.writeFileSync(f, savedText.replace(/(<script type="application\/json" id="bw-data">)[\s\S]*?(<\/script>)/, (_, a, b) => a + JSON.stringify(bare).replace(/</g, '\\u003c') + b));
+    const v = spawnSync(process.execPath, [path.join(REPO, 'engine', 'cli.mjs'), 'verify-history', f, '--history', path.join(tmp, 'no-history'), '--json'], { encoding: 'utf8' });
+    check(20, 'review2 #17: log + bwlog mark removed by hand → verify-history says «stripped», never «made before 0.13»', v.status === 1 && /stripped/.test(v.stdout) && !/made before 0\.13/.test(v.stdout), v.stdout.slice(0, 300));
+  }
+
+  // review2 #11: an export is written to the log; the performance report counts it and reads the title as the document says it now
+  await page.evaluate(() => window.BW.setText('/control/coverTitle', 'خدمة مراجعة الإصدار'));
+  await page.evaluate(() => window.BW.runAction('export.docx.ar'));
+  await page.evaluate(() => window.BW.EXT.ledger.ready());
+  const exLog = await page.evaluate(() => window.BW.EXT.ledger.log().entries.filter((e) => e.kind === 'export').map((e) => e.data));
+  const { readHistory, reportData } = await import('../engine/report.mjs');
+  const rep = reportData(await readHistory(path.join(process.env.BW_WORKSPACE, 'Business-Wrap', 'HISTORY')), {});
+  const repDoc = rep.docs.find((x) => x.doc === id1);
+  check(16, 'review2 #11: a DOCX export is logged (fmt, edition, live title) and the report counts exports (DOCX + the HTML save) under the live cover title', exLog.some((x) => x.fmt === 'docx' && x.locale === 'ar' && x.docTitle === 'خدمة مراجعة الإصدار') && rep.people.reduce((s, p) => s + p.exports, 0) >= 2 && repDoc?.title === 'خدمة مراجعة الإصدار', JSON.stringify({ exLog, exports: rep.people.map((p) => p.exports), docs: rep.docs.map((x) => x.title) }));
+
+  // review2 #12: the profile key is the person: a rename in Settings is logged, later edits stay on the same row, named both ways
+  await page.evaluate(() => window.BW.openDrawer('settings')); await wait(300);
+  await R((r) => { const d = r.querySelector('.drawer .set-x-profile [data-pf="name"]')?.closest('details'); if (d) d.open = true; });
+  const nameIn = page.locator('#bw-ui-host >> css=.set-x-profile [data-pf="name"]');
+  await nameIn.fill('Sami'); await nameIn.dispatchEvent('change');
+  await page.evaluate(() => window.BW.setText('/chapters/0/title', 'مقدمة بعد تغيير الاسم'));
+  await page.evaluate(() => window.BW.EXT.ledger.ready());
+  const rn = await page.evaluate(() => { const E = window.BW.EXT.ledger.log().entries; const r = E.find((e) => e.kind === 'x-rename'); const last = E.filter((e) => e.kind === 'op').at(-1); return { r: r && { ...r.data, id: r.actor.id }, last: last && { id: last.actor.id, name: last.actor.name } }; });
+  await page.mouse.click(1000, 450); await wait(300);
+  await page.evaluate(() => window.BW.openDrawer('provenance')); await wait(800);
+  const pv12 = await R((r) => { const d = r.querySelector('.drawer'); const op = d.querySelector('.pv-e[data-kind="op"]'); return { rows: d.querySelectorAll('.pv-people tbody tr').length, aka: d.querySelector('.pv-aka')?.textContent || '', sum: op?.querySelector(':scope > details > summary')?.textContent || '', raw: op?.querySelector('.pv-raw')?.textContent || '', diff: op?.querySelector('.diff')?.textContent || '' }; });
+  check(16, 'review2 #12: a rename is a logged event (Mark → Sami, same profile key); the next edit is that key under its new name', rn.r?.from === 'Mark' && rn.r?.to === 'Sami' && rn.last?.id === rn.r?.id && rn.last?.name === 'Sami', JSON.stringify(rn));
+  check(16, 'review2 #12: one contributor row for the key, «also: Mark»; an edit reads as a sentence + before/after text, the JSON pointer only in the detail', pv12.rows === 1 && /Mark/.test(pv12.aka) && !/\/chapters\//.test(pv12.sum) && /\/chapters\//.test(pv12.raw) && /مقدمة بعد تغيير الاسم/.test(pv12.diff), JSON.stringify(pv12));
   await page.mouse.click(1000, 450); await wait(300);
 
   // L13 timeline back and forward
@@ -255,6 +297,24 @@ try {
   await clickDoc('[data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]');
   await act('insTextBox'); await wait(200);
   check(26, '«مربع نص» puts a text box on the page', ((await doc()).overlays?.length || 0) === ov0 + 1 && (await doc()).overlays.at(-1).kind === 'text', JSON.stringify((await doc()).overlays?.at(-1)));
+  {
+    // review2 · extra 10: the text box has a move grip, its resize handle sits bottom-right, a double-click edits it,
+    // and a drag far past the margin lands inside the text column
+    const tbI = (await doc()).overlays.length - 1;
+    const tb = page.locator(`#bw-pair main.bw-doc[data-locale="ar"] .bw-ov[data-i="${tbI}"]`).first();
+    await tb.scrollIntoViewIfNeeded();
+    const geo = await tb.evaluate((el) => { const r = el.getBoundingClientRect(); const h = el.querySelector('.bw-ov-handle')?.getBoundingClientRect(); const g = el.querySelector('.bw-ov-move')?.getBoundingClientRect(); return { r: [r.left, r.right], h: h && [h.left, h.right], g: g && [g.left + g.width / 2, g.top + g.height / 2] }; });
+    check(26, 'text box: a move grip on top, the resize handle on its right edge', !!geo.g && !!geo.h && Math.abs(geo.h[1] - geo.r[1]) <= 10, JSON.stringify(geo));
+    if (geo.g) { await page.mouse.move(geo.g[0], geo.g[1]); await page.mouse.down(); await page.mouse.move(geo.g[0] - 900, geo.g[1], { steps: 6 }); await page.mouse.move(geo.g[0] + 1400, geo.g[1], { steps: 8 }); await page.mouse.up(); await wait(200); }
+    const ov = (await doc()).overlays[tbI];
+    const colW = await page.evaluate(() => { const m = document.querySelector('#bw-pair main.bw-doc[data-locale="ar"]'); const w = m.querySelector('.wrap'); const cs = getComputedStyle(w); const mm = (m.querySelector('.cover') || m).getBoundingClientRect().width / 210; return (w.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) / mm; });
+    check(26, 'text box: dragged past the page edge it stays inside the text column', ov.mode !== 'anchor' || (ov.x >= 0 && ov.x + ov.w <= colW + 1), JSON.stringify({ x: ov.x, w: ov.w, mode: ov.mode, colW: Math.round(colW) }));
+    await page.locator(`#bw-pair main.bw-doc[data-locale="ar"] .bw-ov[data-i="${tbI}"] .bw-tb-body`).first().dblclick();
+    await wait(150);
+    const editing = await page.evaluate(() => { const a = document.activeElement; return !!a?.matches?.('.bw-tb-body') && a.isContentEditable; });
+    check(26, 'text box: a double-click puts the caret in its words', editing);
+    await page.keyboard.press('Escape');
+  }
   await page.keyboard.press('Escape');
   const blocks = async () => (await doc()).chapters[0].sections[1]?.blocks.length ?? (await doc()).chapters[0].sections[0].blocks.length;
   await clickDoc('[data-b^="/chapters/0/sections/1/blocks/0"]');
@@ -285,6 +345,29 @@ try {
   // L30 a field's format actions
   await clickDoc('[data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]');
   check(30, 'a selected field shows colour, spacing, alignment, vertical position, font, size, quote, link, code, bold, italic, bullets, shapes, numbers, levels', await R((r) => ['fmtColor', 'fmtLine', 'fmtAlignStart', 'fmtAlignCenter', 'fmtAlignEnd', 'fmtTop', 'fmtMiddle', 'fmtBottom', 'fmtFont', 'fmtSize', 'fmtQuote', 'fmtLink', 'fmtCode', 'fmtBold', 'fmtItalic', 'fmtBullets', 'fmtShapes', 'fmtNumbers', 'fmtIndent', 'fmtOutdent'].every((a) => r.querySelector(`[data-a="${a}"]`))));
+
+  {
+    // review2 · extra 9: a small dialog keeps what was typed on an outside click and when another tool asks;
+    // colour, font and size are a swatch, a list and a stepper
+    const dlg = () => R((r) => { const d = r.querySelector('.dialog'); const f = d.querySelector('textarea, input, select'); return { open: !d.hidden, val: f?.value, type: f ? (f.tagName === 'INPUT' ? f.type : f.tagName.toLowerCase()) : null }; });
+    await fire('hdrText'); await wait(200);
+    await page.keyboard.type('KEEPME');
+    await page.mouse.click(700, 600); await wait(200);
+    const afterOut = await dlg();
+    await fire('ftrText'); await wait(200);
+    const afterOther = await dlg();
+    await R((r) => r.querySelector('.dialog [data-k="no"]').click()); await wait(100);
+    check(30, 'a typed dialog survives an outside click and another tool asking (Save/Close end it)', afterOut.open && afterOut.val === 'KEEPME' && afterOther.open && afterOther.val === 'KEEPME', JSON.stringify({ afterOut, afterOther }));
+    const kinds = {};
+    for (const [a, want] of [['fmtColor', 'color'], ['fmtFont', 'select'], ['fmtSize', 'number']]) {
+      await clickDoc('[data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]');
+      await fire(a); await wait(200);
+      kinds[a] = (await dlg()).type;
+      await R((r) => r.querySelector('.dialog [data-k="no"]')?.click()); await wait(100);
+      kinds[a + 'Ok'] = kinds[a] === want;
+    }
+    check(30, 'colour / font / size dialogs: native swatch, list and stepper', kinds.fmtColorOk && kinds.fmtFontOk && kinds.fmtSizeOk, JSON.stringify(kinds));
+  }
 
   // L28 a header item on "this page only"
   await clickDoc('[data-b^="/chapters/2/sections/0/blocks/0"]');
@@ -329,6 +412,67 @@ try {
   await page.setViewportSize({ width: 1366, height: 900 });
   check(38, 'design: no horizontal overflow at 1366 and 1920 px', over.every((x) => x <= 1), JSON.stringify(over));
 
+  // review2 · 1: toasts with buttons are short-lived too, a click dismisses them, focus from code does not pin them,
+  // one queue (≤ 2 at once); a tamper warning is a banner that stays and is never doubled
+  {
+    await page.mouse.move(1000, 450);
+    const T = await page.evaluate(async () => {
+      const r = document.getElementById('bw-ui-host').shadowRoot;
+      r.querySelectorAll('.toast').forEach((x) => x.remove());
+      const sh = window.BW.toast('owner share done', 'ok', { persist: true, actions: [['open', () => {}], ['copy', () => {}]] });
+      sh.querySelector('button').focus(); // what the share code did: it pinned the toast for 6+ minutes
+      window.BW.toast('owner tamper', 'warn', { persist: true, actions: [['show', () => {}]] });
+      window.BW.toast('owner tamper', 'warn', { persist: true, actions: [['show', () => {}]] });
+      ['q1', 'q2', 'q3', 'q4'].forEach((m) => window.BW.toast(m, 'info'));
+      const stack = [...r.querySelectorAll('.toast:not(.banner):not(.out)')].length;
+      const ban = () => [...r.querySelectorAll('.toast.banner')].filter((x) => x.textContent.includes('owner tamper'));
+      const tamper0 = ban().length;
+      await new Promise((res) => setTimeout(res, 6600));
+      return { stack, tamper0, shareGone: !sh.isConnected || sh.classList.contains('out'), tamper: ban().length };
+    });
+    const a1 = await page.evaluate(() => !!window.BW.toast('owner undo-like', 'info', { actions: [['undo', () => {}]] }));
+    await page.locator('#bw-ui-host >> css=.toast .m', { hasText: 'owner undo-like' }).click();
+    await wait(350);
+    const clickGone = await R((r) => { const t = [...r.querySelectorAll('.toast')].find((x) => x.textContent.includes('owner undo-like')); return !t || t.classList.contains('out'); });
+    await R((r) => r.querySelectorAll('.toast.banner [data-k]').forEach((b) => b.click()));
+    check(6, 'toasts with buttons: gone within 6 s even when code focused them, a click dismisses, at most two at once', T.shareGone && a1 && clickGone && T.stack <= 2, JSON.stringify({ ...T, clickGone }));
+    check(6, 'a tamper warning is one banner that stays until answered', T.tamper0 === 1 && T.tamper === 1, JSON.stringify(T));
+  }
+  // review2 · 34: RTL/LTR per edition; the direction field (and View, Settings, header, footer) stays in the bar at 1024–1920
+  {
+    const mainDir = (l) => page.evaluate((l) => document.querySelector(`#bw-pair main.bw-doc[data-locale="${l}"]`)?.dir, l);
+    const dirBtn = (d) => R((r, d) => r.querySelector(`.island [data-a="dir"][data-d="${d}"]`).click(), d);
+    if ((await page.evaluate(() => window.BW.S.ed)) !== 'en') await act('uiLang');
+    const onEn = await page.evaluate(() => window.BW.S.ed);
+    await dirBtn('ltr'); await wait(150);
+    await act('uiLang'); await wait(150);
+    const arDir = { ed: await page.evaluate(() => window.BW.S.ed), dir: await mainDir('ar'), pressed: await R((r) => r.querySelector('.island [data-a="dir"][aria-pressed="true"]')?.dataset.d) };
+    await dirBtn('ltr'); await wait(150);
+    await act('uiLang'); await wait(150);
+    const enDir = await mainDir('en');
+    await act('uiLang'); await wait(150);
+    await dirBtn('rtl'); await wait(150);
+    const arBack = await mainDir('ar');
+    check(34, 'direction per edition: LTR in English leaves Arabic RTL; LTR in Arabic leaves English as chosen', onEn === 'en' && arDir.ed === 'ar' && arDir.dir === 'rtl' && arDir.pressed === 'rtl' && enDir === 'ltr' && arBack === 'rtl', JSON.stringify({ onEn, arDir, enDir, arBack }));
+    const seen = [];
+    const inBar = () => R((r) => {
+      const ok = (sel) => { const e = r.querySelector(sel); if (!e || !e.checkVisibility()) return false; const q = e.getBoundingClientRect(); const at = r.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2); return q.left >= 0 && q.right <= innerWidth && !!at && (at === e || e.contains(at)); };
+      return { rtl: ok('.island [data-a="dir"][data-d="rtl"]'), ltr: ok('.island [data-a="dir"][data-d="ltr"]'), view: ok('.island [data-a="view"]'), settings: ok('.island [data-a="settings"]'), hdr: !!r.querySelector('.island .sec[data-cat="header"]'), ftr: !!r.querySelector('.island .sec[data-cat="footer"]') };
+    });
+    for (const sel of ['none', 'text', 'table']) {
+      if (sel === 'text') await clickDoc('[data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]');
+      if (sel === 'table') await clickDoc('table[data-rows] td[data-p]');
+      for (const w of [1024, 1100, 1280, 1290, 1366, 1440, 1920]) {
+        await page.setViewportSize({ width: w, height: 900 }); await wait(320);
+        const v = await inBar();
+        if (!Object.values(v).every(Boolean)) seen.push({ sel, w, ...v });
+      }
+    }
+    await page.setViewportSize({ width: 1366, height: 900 }); await wait(300);
+    check(34, 'RTL/LTR, View and Settings visible, header and footer kept, at 1024–1920 px with nothing, text or a table selected', !seen.length, JSON.stringify(seen));
+    await page.mouse.click(1000, 450); await wait(200);
+  }
+
   // L18 image through «إدراج صورة» offers the Word wrap options; L24 image + move down ×2: no exception
   const p24 = await ctx.newPage();
   p24.setDefaultTimeout(15000);
@@ -348,6 +492,38 @@ try {
   for (let i = 0; i < 2; i++) { await p24.evaluate(() => window.BW.runAction('moveDown')).catch((e) => err24.push(e.message)); await p24.waitForTimeout(150); }
   await para.click().catch(() => {});
   check(24, 'insert an image, then «لأسفل» twice on the paragraph: no exception, the editor still works', !err24.length, err24.join(' | '), true);
+  {
+    // review2 · 14: every wrap mode reaches every other one, the way the owner picks the picture: a click on it,
+    // Alt+click for one behind the text, a click on the in-line figure
+    const WR = ['inline', 'square', 'tight', 'through', 'topBottom', 'behind', 'front'];
+    const cap = (m) => 'wrap' + m[0].toUpperCase() + m.slice(1);
+    const modeNow = () => p24.evaluate(() => { const d = window.BW.M[window.BW.S.svc][window.BW.S.ed].doc; const o = (d.overlays || []).filter((x) => x.kind === 'image').at(-1); if (o) return o.wrap || 'free'; for (const c of d.chapters) for (const s of c.sections) for (const b of s.blocks) if (b.kind === 'shots' && b.images?.length === 1 && /^data:image/.test(b.images[0])) return 'inline'; return null; });
+    const pick = async () => {
+      const m = await modeNow();
+      const sel = m === 'inline' ? 'figure.shots[data-b]' : ':is(.bw-ov, .bw-ovf)[data-kind="image"]';
+      const el = p24.locator(`#bw-pair main.bw-doc[data-locale="ar"] ${sel}`).last();
+      await el.scrollIntoViewIfNeeded();
+      const b = await el.boundingBox();
+      if (m === 'behind') { await p24.keyboard.down('Alt'); await p24.mouse.click(b.x + b.width / 2, b.y + b.height / 2); await p24.keyboard.up('Alt'); }
+      else await p24.mouse.click(b.x + b.width / 2, b.y + Math.min(b.height / 2, 20));
+      await p24.waitForTimeout(120);
+      return p24.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('.island .sec[data-cat="wrap"] [data-a^="wrap"]').length);
+    };
+    const bad = [];
+    for (const from of WR) {
+      for (const to of WR) {
+        if (from === to) continue;
+        if ((await modeNow()) !== from) { await pick(); await p24.evaluate((a) => window.BW.runAction(a), cap(from)); await p24.waitForTimeout(80); }
+        if ((await modeNow()) !== from) { bad.push(`${from}: not reached (${await modeNow()})`); break; }
+        const tools = await pick();
+        await p24.evaluate((a) => window.BW.runAction(a), cap(to)).catch((e) => bad.push(e.message));
+        await p24.waitForTimeout(80);
+        const got = await modeNow();
+        if (got !== to) bad.push(`${from}→${to}: ${got} (wrap tools ${tools})`);
+      }
+    }
+    check(18, 'every wrap mode switches to every other one (back from «مع النص» and «خلف النص» included)', !bad.length && !err24.length, bad.slice(0, 8).join(' | ') + err24.join(' | '));
+  }
   await p24.close({ runBeforeUnload: true });
 
   check(23, 'the owner\'s whole run (every flow above but the line-24 one): no page error', !errors.length, errors.join(' | '));
@@ -359,12 +535,142 @@ try {
   await page.locator('#bw-ui-host >> css=.bw-modal [data-sh="to"]').fill('Alaa').catch(() => {});
   await R((r) => r.querySelector('.bw-modal [data-mk="ok"]')?.click());
   await wait(1500);
+  await R((r) => r.querySelectorAll(".sh-done [data-mk=\"close\"]").forEach((b) => b.click())); // H3: the share result card
   const shareName = (fs.existsSync(htmlDir) ? fs.readdirSync(htmlDir) : []).filter((n) => !htmlBefore.has(n));
-  check(15, 'share writes «<title>-<date>-AR.html» like a save (not doc-<id>.editor.html)', shareName.length >= 1 && shareName.every((n) => n.includes(today) && /-AR\.html$/.test(n)), shareName.join(',') || 'no shared file', true);
+  check(15, 'share writes «<title>-<date>-AR.html» like a save (not doc-<id>.editor.html)', shareName.length >= 1 && shareName.every((n) => n.includes(today) && /-AR(-\d+)?\.html$/.test(n)), shareName.join(',') || 'no shared file', true);
+
+  // G3 (review 2 row 2, L7): the cover title the owner types drives the list, the document title, the share file and
+  // every saved file name live; the EN file follows the same «<title>-<date>-ENG» rule (no «خدمة جديدة» / "New service")
+  await page.evaluate(() => window.BW.EXT.library.newDocument());
+  await wait(300);
+  await clickDoc('[data-p="/control/coverTitle"]');
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('خدمة مراجعة الإصدار');
+  await page.mouse.click(1000, 450); await wait(300);
+  await act('save');
+  await page.waitForFunction(() => /^doc-/.test(window.BW.S.svc), null, { timeout: 8000 }).catch(() => {});
+  const t7 = await page.evaluate(async () => { const B = window.BW, id = B.S.svc, e = await B.EXT.library.get(id); return { list: e?.title, ar: B.M[id].ar.doc.control.title, en: B.M[id].en?.doc.control.title, enName: B.EXT.library.titleOf(id, 'en') }; });
+  check(7, 'the cover title typed by the owner names the list entry and «عنوان الوثيقة», and the EN edition follows', t7.list === 'خدمة مراجعة الإصدار' && /: خدمة مراجعة الإصدار$/.test(t7.ar) && /خدمة مراجعة الإصدار$/.test(t7.en || '') && t7.enName === 'خدمة مراجعة الإصدار', JSON.stringify(t7));
+  const exEn = await page.evaluate(async () => { const B = window.BW, id = B.S.svc; const r = await fetch('/api/export', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ service: id, locale: 'en', doc: B.M[id].en.doc, embedFonts: false }) }); return (await r.json()).pdf || ''; });
+  check(15, 'the EN export is named «<title>-<date>-ENG.pdf» with the same title (not "New service")', path.basename(exEn) === W.outName('خدمة مراجعة الإصدار', new Date(), 'en', 'pdf'), path.basename(exEn));
+  const hb2 = new Set(fs.readdirSync(htmlDir));
+  await fire('shShare'); await wait(300);
+  await page.locator('#bw-ui-host >> css=.bw-modal [data-sh="to"]').fill('Alaa').catch(() => {});
+  await R((r) => r.querySelector('.bw-modal [data-mk="ok"]')?.click());
+  await wait(1500);
+  await R((r) => r.querySelectorAll(".sh-done [data-mk=\"close\"]").forEach((b) => b.click())); // H3: the share result card
+  const share2 = fs.readdirSync(htmlDir).filter((n) => !hb2.has(n));
+  check(7, 'the share file carries the edited title (not «خدمة جديدة»)', share2.length >= 1 && share2.every((n) => n.startsWith('خدمة مراجعة الإصدار-')), share2.join(',') || 'no shared file');
+  // H3 (owner 2026-10-29): Ctrl+S and the yellow Save save THE document: its own HTML file in HTML\ (one file,
+  // overwritten, history appended), the list entry, the counter back to 0 (A9); no download, no extra copy
+  {
+    const dls = [];
+    const onDl = (d) => dls.push(d.suggestedFilename());
+    page.on('download', onDl);
+    await page.evaluate(() => { document.documentElement.dataset.bwSavedFile = ''; }); // the earlier Saves' file
+    await page.evaluate(() => window.BW.EXT.library.newDocument());
+    await wait(300);
+    await clickDoc('[data-p="/control/coverTitle"]');
+    await page.keyboard.press('Control+A');
+    await page.keyboard.type('خدمة الحفظ في مكانها');
+    await page.mouse.click(1000, 450); await wait(300);
+    const hb = new Set(fs.readdirSync(htmlDir));
+    const savedFile = async () => { await page.waitForFunction(() => !!document.documentElement.dataset.bwSavedFile, null, { timeout: 20000 }).catch(() => {}); return page.evaluate(() => { const f = document.documentElement.dataset.bwSavedFile || ''; document.documentElement.dataset.bwSavedFile = ''; return f; }); };
+    await page.keyboard.press('Control+s');
+    const f1 = await savedFile();
+    const c1 = await counter();
+    await clickDoc('[data-p="/chapters/0/title"]');
+    await page.keyboard.press('End');
+    await page.keyboard.type(' مرة ثانية');
+    await page.mouse.click(1000, 450); await wait(300);
+    await page.locator('#bw-ui-host >> css=.island [data-a="save"]').click();
+    const f2 = await savedFile();
+    await wait(800); // the autosave after the Save HTML mark
+    const added = fs.readdirSync(htmlDir).filter((n) => !hb.has(n));
+    const txt = f2 && fs.existsSync(f2) ? fs.readFileSync(f2, 'utf8') : '';
+    const ent = await page.evaluate(async () => { const B = window.BW, e = await B.EXT.library.get(B.S.svc); return { id: e?.id, files: e?.htmlFiles, stamp: document.getElementById('bw-ui-host').shadowRoot.querySelector('.bw-stamp')?.dataset.html || '' }; });
+    page.off('download', onDl);
+    check(7, 'Ctrl+S and the yellow Save save the document itself: one «<title>-<date>-AR.html», overwritten in place, no download', !!f1 && f1 === f2 && added.length === 1 && path.basename(f1) === W.outName('خدمة الحفظ في مكانها', new Date(), 'ar', 'html') && txt.includes('مرة ثانية') && txt.includes('id="bw-data"') && !dls.length && ent.files?.ar === f1, JSON.stringify({ f1, f2, added, dls, ent }));
+    const cNow = await counter();
+    check(13, 'Save in place is the Save-HTML point: the change counter goes back to 0 and the HTML time is stamped', c1 === 0 && cNow === 0 && !!ent.stamp, JSON.stringify({ c1, cNow, stamp: ent.stamp }));
+  }
+  // H3: share from the File category: a clear popup (recipient, note, what travels), the file, a result card whose
+  // «افتح موقع الملف» opens Explorer on THAT file (it opened Documents), «انسخ المسار», close
+  let sharedFile = '';
+  {
+    await page.evaluate(() => { document.documentElement.dataset.bwShared = ''; });
+    await fire('shShare'); await wait(400);
+    const pop = await R((r) => { const m = r.querySelector('.bw-modal.sh-modal'); return m && { to: !!m.querySelector('[data-sh="to"]'), note: !!m.querySelector('[data-sh="note"]'), travels: [...m.querySelectorAll('[data-tr]')].map((x) => x.dataset.tr), font: getComputedStyle(m.querySelector('.bw-modal-card')).fontFamily }; });
+    await page.locator('#bw-ui-host >> css=.sh-modal [data-sh="to"]').fill('Alaa').catch(() => {});
+    await page.locator('#bw-ui-host >> css=.sh-modal [data-sh="note"]').fill('راجعي الفصل الأول').catch(() => {});
+    await R((r) => r.querySelector('.sh-modal [data-mk="ok"]')?.click());
+    await page.waitForFunction(() => !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.sh-done'), null, { timeout: 15000 }).catch(() => {});
+    sharedFile = await page.evaluate(() => document.documentElement.dataset.bwShared || '');
+    const card = await R((r) => { const m = r.querySelector('.sh-done'); return m && { open: !!m.querySelector('[data-sh="open"]'), copy: !!m.querySelector('[data-sh="copy"]'), close: !!m.querySelector('[data-mk="close"]') }; });
+    if (card?.open) await page.locator('#bw-ui-host >> css=.sh-done [data-sh="open"]').click();
+    await wait(600);
+    const rv = (() => { try { return JSON.parse(fs.readFileSync(process.env.BW_REVEAL_STUB, 'utf8').trim().split('\n').at(-1)); } catch { return null; } })();
+    const stays = await R((r) => !!r.querySelector('.sh-done'));
+    if (card?.close) await page.locator('#bw-ui-host >> css=.sh-done [data-mk="close"]').click();
+    check(19, 'share popup: recipient, note and what travels (edits, history, lock, signatures), in the house face', !!pop && pop.to && pop.note && ['edits', 'history', 'lock', 'signs'].every((k) => pop.travels.includes(k)) && !/Times|(^|,\s*)serif$/.test(pop.font), JSON.stringify(pop));
+    check(19, 'share result card: «افتح موقع الملف» opens Explorer with THAT file selected, «انسخ المسار», close', !!sharedFile && path.dirname(sharedFile) === htmlDir && !!card?.copy && stays && (process.platform === 'win32' ? rv?.cmd === 'explorer.exe' && rv.verbatim && rv.args[0] === `/select,"${sharedFile}"` : !!rv), JSON.stringify({ sharedFile, card, rv, stays }));
+  }
+  // H3: File › Import = the documents list's import: a shared HTML (its log kept), a DOCX, a PDF, a document JSON
+  {
+    const id0 = await page.evaluate(() => window.BW.S.svc);
+    const ex = await page.evaluate(async () => { const B = window.BW, id = B.S.svc; const r = await fetch('/api/export', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ service: id, locale: 'ar', doc: B.M[id].ar.doc, embedFonts: false }) }); return r.json(); });
+    let accept = '';
+    const viaFile = async (f) => {
+      const svc0 = await page.evaluate(() => window.BW.S.svc);
+      const fc = page.waitForEvent('filechooser', { timeout: 8000 }).catch(() => null);
+      await fire('import');
+      const ch = await fc;
+      if (!ch) return null;
+      accept ||= (await ch.element().getAttribute('accept')) || '';
+      await ch.setFiles(f);
+      await page.waitForFunction((s) => window.BW.S.svc !== s && /^doc-/.test(window.BW.S.svc), svc0, { timeout: 60000 }).catch(() => {});
+      await wait(600);
+      return page.evaluate(async () => { const B = window.BW, id = B.S.svc, e = await B.EXT.library.get(id); return { id, inList: !!e && !e.deletedAt, title: B.EXT.library.titleOf(id), share: (B.EXT.ledger?.log(id)?.entries || []).filter((x) => x.kind === 'share').map((x) => x.data) }; });
+    };
+    const a = sharedFile ? await viaFile(sharedFile) : null;
+    const rest = [];
+    for (const f of [ex.docx, ex.pdf, path.join(REPO, 'samples', 'blank', 'document.ar.json')]) rest.push(f ? await viaFile(f) : null);
+    check(7, 'File › Import opens a shared Business-Wrap HTML as a new document, its log with the recipient and note kept', !!a && a.id !== id0 && a.inList && a.title === 'خدمة الحفظ في مكانها' && a.share.some((x) => x.to === 'Alaa' && x.note === 'راجعي الفصل الأول'), JSON.stringify(a));
+    check(7, 'File › Import takes DOCX, PDF and JSON: each opens as its own new document in the list', ['.docx', '.pdf', '.json', '.html'].every((x) => accept.includes(x)) && rest.every((x) => x?.inList) && new Set(rest.map((x) => x?.id)).size === 3, JSON.stringify({ accept, rest }));
+  }
+  // G3 (review 2 row 10, L15): HISTORY hidden and never served, whatever the case of the address
+  const histAttr = process.platform === 'win32' ? spawnSync('attrib', [ws.dirs.history], { encoding: 'utf8' }).stdout.split(ws.dirs.history)[0] : ' H ';
+  const histServed = (await Promise.all(['HISTORY', 'history'].map(async (d) => (await fetch(`${h.url}files/${d}/sessions`)).status))).every((c) => c === 404);
+  check(15, 'HISTORY carries the hidden attribute and is never served (any case)', /(^|\s)H(\s|$)/.test(histAttr) && histServed, JSON.stringify({ histAttr, histServed }));
+
+  // H1 (owner 2026-10-29): documents grouped by project, bulk edit on a project or hand-picked documents. In the owner's
+  // page: the «تعديل جماعي» tool and the projects bar of «المستندات» with icons; the whole flows run in tests/projects.test.mjs
+  // and tests/bulk.test.mjs (spawned below, so `npm test` runs them through this suite)
+  const h1ui = await R((r) => ({ tool: !!r.querySelector('[data-a="bulkEdit"] .ic[data-ic="bulkEdit"]') }));
+  await act('library');
+  await wait(300);
+  const h1bar = await R((r) => ({ bar: !!r.querySelector('.drawer .pj-bar [data-pj="new"] .ic[data-ic="pjNew"]'), filter: !!r.querySelector('.drawer .pj-bar [data-pj-filter]') }));
+  check('H1', 'projects: «المستندات» carries the project bar (filter + «مشروع جديد» with its icon); the toolbar has «تعديل جماعي»', h1ui.tool && h1bar.bar && h1bar.filter, JSON.stringify({ h1ui, h1bar }));
+  await act('bulkEdit');
+  await wait(300);
+  const h1bk = await R((r) => ({ preview: !!r.querySelector('.drawer [data-bk="preview"]'), apply: r.querySelector('.drawer [data-bk="apply"]')?.disabled, ops: r.querySelectorAll('.drawer [data-bk-f="op"] option').length }));
+  check('H1', 'bulk edit: the panel opens with 7 operations, Preview, and Apply off until a preview', h1bk.preview && h1bk.apply === true && h1bk.ops === 7, JSON.stringify(h1bk));
+  await page.keyboard.press('Escape');
+  for (const suite of ['projects.test.mjs', 'bulk.test.mjs']) {
+    const r = spawnSync(process.execPath, [path.join(REPO, 'tests', suite)], { encoding: 'utf8', timeout: 5 * 60e3 });
+    const tail = (r.stdout || '').trim().split('\n').filter((l) => /^(FAIL|ALL PASS|FAILED)/.test(l)).join(' / ');
+    check('H1', `owner flows of tests/${suite}: ${suite.startsWith('projects') ? 'make «Project A», put 3 documents in it, groups survive a reload and reach a fresh browser' : 'bulk add a field to a project of 3, delete a section from 2 hand-picked, preview counts, logs per document, locked one skipped, undo per document'}`, r.status === 0, tail || r.stderr?.slice(0, 300));
+  }
 
   // L14 closing the last tab saves and stops the host; a relaunch offers resume or new work
+  // G3 (review 2 row 9): text typed just before the close is saved whole; tabs closed earlier (line 24's) do not come
+  // back; the resumed origin keeps the owner's profile
   const pid = h.pid;
-  for (const p of ctx.pages()) await p.close({ runBeforeUnload: true });
+  const lastTab = await page.evaluate(() => document.documentElement.dataset.bwSession);
+  await clickDoc('[data-p="/chapters/0/title"]');
+  await page.keyboard.press('End');
+  await page.keyboard.type(' تعديل غير مكتمل للنهاية');
+  for (const p of ctx.pages()) await p.close({ runBeforeUnload: true }); // at once, no wait after the last key
   await ctx.close();
   const t14 = Date.now();
   while (H.alive(pid) && Date.now() - t14 < 8000) await wait(100);
@@ -376,12 +682,34 @@ try {
   await p2.waitForFunction(() => window.BW?.ready && document.documentElement.dataset.bwResume, null, { timeout: 15000 }).catch(() => {});
   const resume = await p2.evaluate(() => { const d = document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-resume'); if (!d) return null; const b = d.querySelector('[data-s="resume"]'); const cs = b && getComputedStyle(b); return { resume: !!b, fresh: !!d.querySelector('[data-s="new"]'), font: getComputedStyle(d).fontFamily, bg: cs?.backgroundColor, border: cs?.borderStyle }; });
   check(14, 'closing the last tab stops the host; a relaunch offers «استأنف كل شيء» and «عمل جديد»', stopped && resume?.resume && resume?.fresh, JSON.stringify({ stopped, resume }));
+  const lastRun = await (await fetch(`${h.url}api/session/last`)).json();
+  const typedRec = (() => { try { return fs.readFileSync(path.join(ws.dirs.history, 'sessions', lastRun.runId, `${lastTab}.json`), 'utf8'); } catch { return ''; } })();
+  check(14, 'text typed right before closing the tab is in the saved run, whole («تعديل غير مكتمل للنهاية»)', typedRec.includes('تعديل غير مكتمل للنهاية'), typedRec ? typedRec.slice(typedRec.indexOf('تعديل غير') - 40, typedRec.indexOf('تعديل غير') + 40) : `no record ${lastRun.runId}/${lastTab}`);
+  check(14, 'only the tabs open at shutdown are offered (the line-24 tab closed earlier is not)', lastRun.tabs?.length === 1 && lastRun.tabs[0].tab === lastTab, JSON.stringify(lastRun.tabs));
+  const prof2 = await p2.evaluate(() => localStorage.getItem('bw:profile') || '');
+  check(16, 'the relaunched host (a new port: a new origin) still knows the owner: no «من أنت؟» again', /Mark/.test(prof2), prof2.slice(0, 120));
   check(38, 'the relaunch dialog uses the house font and styled buttons (not browser defaults)', !!resume && !/Times|(^|,\s*)serif$/.test(resume.font) && resume.bg !== 'rgba(0, 0, 0, 0)', JSON.stringify(resume), true);
   await p2.locator('#bw-ui-host >> css=dialog.bw-resume [data-s="new"]').click().catch(() => {});
   await p2.close({ runBeforeUnload: true });
   await ctx2.close();
   const t2 = Date.now();
   while (H.alive(h.pid) && Date.now() - t2 < 8000) await wait(100);
+  // H3: an update into a new install folder (an empty .local, browser storage on a new origin): the owner is still known
+  // from HISTORY, so the first-launch card does not come back
+  process.env.BW_LOCAL_DIR = path.join(tmp, '.local-v2');
+  h = await H.start({ editor, port: await freePort(), open: false });
+  const ctx3 = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+  await ctx3.addInitScript(() => { try { localStorage.setItem('bw:profile-prompt', '1'); } catch { /* storage */ } });
+  const p3 = await ctx3.newPage();
+  await p3.goto(h.url);
+  await p3.waitForFunction(() => window.BW?.ready, null, { timeout: 20000 }).catch(() => {});
+  await wait(1500);
+  const up = await p3.evaluate(() => ({ card: !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.pf-first'), name: window.BW.EXT.profile?.get()?.name || '' }));
+  check(16, 'after an update (new install folder, empty .local, new origin) the owner is still known: no first-launch card', !up.card && up.name === 'Mark', JSON.stringify(up));
+  await p3.close({ runBeforeUnload: true });
+  await ctx3.close();
+  const t3 = Date.now();
+  while (H.alive(h.pid) && Date.now() - t3 < 8000) await wait(100);
 } catch (e) {
   check(0, 'run', false, e.stack?.split('\n').slice(0, 4).join(' / '));
 } finally {

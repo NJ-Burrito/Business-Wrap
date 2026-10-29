@@ -28,14 +28,14 @@ async function lkToggle() {
   const me = PF.actor().name;
   if (!lkOn(svc)) {
     await EXT.ledger?.settle();
-    LK[svc] = { locked: true, by: me, at: new Date().toISOString() };
+    LK[svc] = { locked: true, by: me, id: PF.id(), at: new Date().toISOString() }; // id: the profile key (review2 #12)
     await EXT.ledger?.append('lock', { by: me }, svc);
     flash(t('lkLocked'));
   } else {
     const k = await bwModal({ title: t('lkUnlockTitle'), html: `<p class="lk-warn">${esc(t('lkUnlockWarn'))}</p>`, buttons: [['cancel', t('pvCancel')], ['ok', t('lkUnlock'), true]] });
     if (k !== 'ok') return;
     const was = LK[svc];
-    LK[svc] = { locked: false, by: me, at: new Date().toISOString() };
+    LK[svc] = { locked: false, by: me, id: PF.id(), at: new Date().toISOString() };
     await EXT.ledger?.append('unlock', { by: me, lockedBy: was.by || '', lockedAt: was.at || '' }, svc);
     flash(t('lkUnlocked'));
   }
@@ -45,31 +45,70 @@ async function lkToggle() {
 
 /** The Save-HTML text, captured instead of downloaded. */
 async function lkCaptureHtml() {
+  if (EXT.library) return EXT.library.captureHtml(); // queued with Save in place and Save HTML (H3)
   let cap = null;
   const dl0 = download;
   download = (name, text) => { cap = { name, text }; };
   try { await saveHtml(!!S.embedFonts); } finally { download = dl0; }
   return cap;
 }
+/** What a share carries (H3): the edits, the history (provenance log), the lock and the signatures. */
+function lkTravels(svc = S.svc) {
+  const log = EXT.ledger?.log(svc)?.entries || [];
+  return { edits: Object.values(M[svc] || {}).reduce((n, e) => n + e.ops.length, 0), history: log.length, lock: LK[svc]?.locked ? LK[svc] : null, signs: log.filter((e) => e.kind === 'sign').length };
+}
+const lkDay = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+/** Share with a coworker (H3): one popup (recipient, note, what travels, the file name), the file written into the
+ *  save folder's HTML\ as «<title>-<date>-<AR|ENG>.html» with the full log, then a result card: «افتح موقع الملف»
+ *  (Explorer with that file selected), «انسخ المسار», close. Off the server: a download, as before. */
 async function lkShare() {
-  let to = '';
-  const k = await bwModal({ title: t('shShare'), html: `<p class="hint">${esc(t('shHint'))}</p><label>${esc(t('shTo'))}<input data-sh="to" type="text" maxlength="80"></label>`, buttons: [['cancel', t('pvCancel')], ['ok', t('shShare'), true]], mount: (m) => m.querySelector('[data-sh="to"]').addEventListener('input', (e) => { to = e.target.value.trim(); }) });
+  const svc = S.svc;
+  const tr = lkTravels(svc);
+  const title = EXT.library ? EXT.library.titleOf(svc) : cur().doc.control.title;
+  const file = `${title}-${lkDay()}-${S.ed === 'en' ? 'ENG' : 'AR'}.html`;
+  const li = (k, v) => `<li data-tr="${k}">${esc(v)}</li>`;
+  let form;
+  const k = await bwModal({
+    cls: 'sh-modal',
+    title: t('shTitle'),
+    html: `<p class="hint">${esc(t('shHint'))}</p><label>${esc(t('shTo'))}<input data-sh="to" type="text" maxlength="80" autocomplete="off"></label><label>${esc(t('shNote'))}<textarea data-sh="note" rows="3" maxlength="500"></textarea></label>
+<div class="sh-travels"><b>${esc(t('shTravels'))}</b><ul>${li('edits', t('shTEdits', { n: tr.edits }))}${li('history', t('shTHistory', { n: tr.history }))}${li('lock', tr.lock ? t('shTLocked', { name: tr.lock.by || t('pfNoName') }) : t('shTUnlocked'))}${li('signs', t('shTSigns', { n: tr.signs }))}</ul></div>
+<p class="hint sh-file">${esc(t('shFileName', { name: '' }))}<bdi dir="ltr">${esc(file)}</bdi></p>`,
+    buttons: [['cancel', t('pvCancel')], ['ok', t('shShare'), true]],
+    mount: (m) => { form = m; },
+  });
   if (k !== 'ok') return;
-  await EXT.ledger?.append('share', { to });
+  const to = form.querySelector('[data-sh="to"]').value.trim().slice(0, 80), note = form.querySelector('[data-sh="note"]').value.trim().slice(0, 500);
+  await EXT.ledger?.append('share', { to, ...(note ? { note } : {}) }, svc); // the recipient and the note travel in the log
   const cap = await lkCaptureHtml();
   if (!cap) return;
   if (!location.protocol.startsWith('http')) { download(cap.name, cap.text, 'text/html'); flash(t('shDownloaded', { name: cap.name })); return; }
+  let j;
   try {
     const r = await fetch('/api/share', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: cap.name, html: cap.text }) });
-    const j = await r.json();
+    j = await r.json();
     if (!r.ok) throw new Error(j.error || r.status);
-    S.lastShare = j.path;
-    toast(t('shDone', { path: j.path }), 'ok', { persist: true, actions: [
-      [t('shOpen'), () => fetch('/api/share/open', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path: j.path }) })],
-      [t('shCopy'), () => navigator.clipboard?.writeText(j.path).then(() => flash(t('shCopied')), () => flash(j.path))],
-      [t('shMail'), () => { location.href = `mailto:?subject=${encodeURIComponent(cur().doc.control.title)}&body=${encodeURIComponent(t('shMailBody', { name: cap.name }))}`; }],
-    ] });
-  } catch (err) { flash(String(err.message || err), true); }
+  } catch (err) { toast(t('shFailed', { why: String(err.message || err) }), 'err'); return; }
+  S.lastShare = j.path;
+  document.documentElement.dataset.bwShared = j.path;
+  await bwModal({
+    cls: 'sh-modal sh-done',
+    title: t('shDoneTitle'),
+    html: `<p>${esc(to ? t('shDoneTo', { to }) : t('shDoneLead'))}</p><p><code class="sh-path" dir="ltr">${esc(j.path)}</code></p><div class="btns sh-acts"><button type="button" class="b primary" data-sh="open"><span class="w">${esc(t('shOpen'))}</span></button><button type="button" class="b" data-sh="copy"><span class="w">${esc(t('shCopy'))}</span></button></div><p class="hint sh-out" role="status"></p>`,
+    buttons: [['close', t('close')]],
+    mount: (m) => m.addEventListener('click', async (e) => {
+      const a = e.target.closest('[data-sh]')?.dataset.sh;
+      const out = m.querySelector('.sh-out');
+      if (a === 'open') {
+        const r = await fetch('/api/share/open', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path: j.path }) }).catch(() => null);
+        out.textContent = r?.ok ? t('shOpened') : t('shOpenFailed');
+      } else if (a === 'copy') {
+        const ok = await navigator.clipboard?.writeText(j.path).then(() => true, () => false);
+        if (!ok) getSelection()?.selectAllChildren(m.querySelector('.sh-path')); // no clipboard: the path is selected for Ctrl+C
+        out.textContent = t(ok ? 'shCopied' : 'shCopyHand');
+      }
+    }),
+  });
 }
 
 // typing into a locked document does nothing (the guard would refuse it anyway; this keeps the DOM unchanged too)

@@ -1,0 +1,36 @@
+/* H1 projects in the documents drawer */
+.drawer .pj-bar { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin: 4px 0 10px; }
+.drawer .pj-bar .pj-f { display: grid; gap: 2px; flex: 1 1 160px; font-size: .9em; }
+.drawer .pj-g { list-style: none; margin: 0 0 6px; padding: 0; }
+.drawer .pj-g > details > summary { cursor: pointer; padding: 6px 2px; font-size: 1.02em; }
+.drawer .pj-g .pj-c { font-variant-numeric: tabular-nums; opacity: .75; }
+.drawer .pj-g .pj-docs { margin-inline-start: 10px; }
+.drawer .pj-acts { margin: 0 0 6px; }
+.drawer .pj-b { gap: 6px; }
+.drawer .pj-b .i { display: inline-flex; }
+.drawer .pj-mv select { max-width: 11em; }
+.drawer .pj-trash { margin-top: 12px; }
+.drawer .pj-trash summary { cursor: pointer; }
+.pj-ask { display: grid; gap: 4px; margin: 8px 0; }
+.pj-ask input { width: 100%; box-sizing: border-box; }
+/* icon motion, house style as editor/ext/40-icon-motion.css: one move, once, on hover, keyboard focus and press; calm
+   mode and reduced motion stop it (ui.css) */
+:where(.ic[data-ic^="pj"], .ic[data-ic="bulkEdit"], .ic[data-ic="bkPreview"]) > * { transform-box: fill-box; transform-origin: 50% 50%; }
+:is(.b:hover:not(:disabled), .b:focus-visible, .b:active:not(:disabled), .b.ic-go, [role="option"]:hover) .ic:is([data-ic="pjNew"], [data-ic="pjRename"], [data-ic="pjDelete"], [data-ic="bulkEdit"], [data-ic="bkPreview"]) > * { animation: var(--pjm, none); }
+@keyframes pjm-from { from { translate: var(--x, 0) var(--y, 0); opacity: 0; } 45% { opacity: 1; } to { translate: 0 0; opacity: 1; } }
+@keyframes pjm-pop { 0%, 100% { scale: 1; } 40% { scale: var(--s, 1.2); } 70% { scale: .96; } }
+@keyframes pjm-tilt { 0%, 100% { rotate: 0deg; } 40% { rotate: var(--r, 12deg); } 70% { rotate: calc(var(--r, 12deg) * -.3); } }
+@keyframes pjm-shake { 0%, 100% { translate: 0 0; } 20% { translate: -1.5px 0; } 40% { translate: 1.5px 0; } 60% { translate: -1px 0; } 80% { translate: .5px 0; } }
+@keyframes pjm-blink { 0%, 100% { scale: 1 1; } 45% { scale: 1 .1; } }
+/* new project: the plus pops out of the folder */
+[data-ic="pjNew"] > :is(:nth-child(2), :nth-child(3)) { --s: 1.35; --pjm: pjm-pop var(--bw-dur-page) var(--bw-ease-spring) 0s 1; }
+/* rename: the pen writes */
+[data-ic="pjRename"] > :nth-child(2) { transform-origin: 0 100%; --r: -14deg; --pjm: pjm-tilt var(--bw-dur-page) var(--bw-ease-out) 0s 1; }
+/* delete: the cross shakes */
+[data-ic="pjDelete"] > :is(:nth-child(2), :nth-child(3)) { --pjm: pjm-shake var(--bw-dur-page) var(--bw-ease-out) 0s 1; }
+/* bulk edit: the layers drop into place one after another */
+[data-ic="bulkEdit"] > * { --y: -3px; --pjm: pjm-from var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
+[data-ic="bulkEdit"] > :nth-child(2) { --d: 60ms; }
+[data-ic="bulkEdit"] > :nth-child(3) { --d: 120ms; }
+/* preview: the eye blinks */
+[data-ic="bkPreview"] > :nth-child(2) { --pjm: pjm-blink var(--bw-dur-page) var(--bw-ease-out) 0s 1; }

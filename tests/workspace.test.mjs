@@ -83,6 +83,63 @@ try {
   const NAME = /^.+-\d{4}-\d\d-\d\d-(AR|ENG)(-\d+)?\.(pdf|docx|html|print\.html)$/;
   const strays = ['pdf', 'docx', 'html'].flatMap((k) => fs.readdirSync(ws.dirs[k]).filter((f) => !NAME.test(f)).map((f) => `${k}/${f}`));
   check('PDF\\ DOCX\\ HTML\\ hold only "<title>-<date>-<AR|ENG>" files (no manifest.json, no ids)', strays.length === 0, strays.join(', '));
+
+  // H3: «افتح موقع الملف» after a share opened Documents: Explorer got «"/select,<path>"» quoted by Node. Now the command
+  // is /select,"<path>" passed verbatim, only for a file inside HTML\
+  process.env.BW_REVEAL_STUB = path.join(tmp, 'reveal.log');
+  const op = await post('/api/share/open', { path: sh.j.path });
+  const rv = (() => { try { return JSON.parse(fs.readFileSync(process.env.BW_REVEAL_STUB, 'utf8').trim().split('\n').at(-1)); } catch { return null; } })();
+  const outside = await post('/api/share/open', { path: path.join(tmp, 'elsewhere.html') });
+  delete process.env.BW_REVEAL_STUB;
+  check('share «افتح موقع الملف»: Explorer gets /select,"<that file>" verbatim; a file outside HTML\\ is refused', op.s === 200 && (process.platform !== 'win32' || (rv?.cmd === 'explorer.exe' && rv.verbatim === true && rv.args[0] === `/select,"${sh.j.path}"`)) && outside.s === 404, JSON.stringify({ op, rv, outside: outside.s }));
+  // H3 Save in place: the first Save names the document's own file, every later Save overwrites that file (no -2 copy);
+  // a `file` outside HTML\ is never written
+  const mkSave = (word) => saveHtml.replace('<body>', `<body><p>${word}</p>`);
+  const s1 = await post('/api/library/html', { id: 'doc-5ave0001', title: 'وثيقة الحفظ', locale: 'ar', html: mkSave('one') });
+  const s2 = await post('/api/library/html', { id: 'doc-5ave0001', title: 'عنوان تغير', locale: 'ar', html: mkSave('two'), file: s1.j.file });
+  const s3 = await post('/api/library/html', { id: 'doc-5ave0001', title: 'وثيقة الحفظ', locale: 'ar', html: mkSave('three'), file: path.join(tmp, 'x.html') });
+  const mine = fs.readdirSync(ws.dirs.html).filter((f) => f.startsWith('وثيقة الحفظ-') || f.startsWith('عنوان تغير-'));
+  check('Save in place: HTML\\<title>-<d>-AR.html at the first Save, the same file overwritten after (no -2)', s1.s === 200 && path.basename(s1.j.file) === W.outName('وثيقة الحفظ', new Date(), 'ar', 'html') && s2.j.file === s1.j.file && s2.j.overwritten === true && fs.readFileSync(s1.j.file, 'utf8').includes('<p>two</p>'), JSON.stringify({ s1: s1.j, s2: s2.j }));
+  check('Save in place: a file outside HTML\\ is never written (a new name inside HTML\\ instead)', path.dirname(s3.j.file) === ws.dirs.html && !fs.existsSync(path.join(tmp, 'x.html')) && mine.length === 2, JSON.stringify({ s3: s3.j, mine }));
+  const notOurs = await post('/api/library/html', { id: 'doc-5ave0001', title: 'x', locale: 'ar', html: '<!doctype html><p>x</p>' });
+  check('Save in place refuses anything but a Save-HTML document', notOurs.s === 400);
+
+  // review 2 row 10: the folder dialog never freezes the server, HISTORY is always hidden and never served (any case)
+  {
+    const slowParent = path.join(tmp, 'slow-parent');
+    fs.mkdirSync(slowParent);
+    delete process.env.BW_PICK_STUB;
+    process.env.BW_PICK_CMD = JSON.stringify([process.execPath, '-e', `setTimeout(() => console.log(${JSON.stringify(slowParent)}), 1500)`]);
+    const t0 = Date.now();
+    const pick = post('/api/workspace/pick', {});
+    await new Promise((r) => setTimeout(r, 200));
+    const v = await fetch(base + '/api/version');
+    const tv = Date.now() - t0;
+    const pr = await pick;
+    delete process.env.BW_PICK_CMD;
+    check('the folder dialog runs off the event loop: /api/version answers while it is open', v.status === 200 && tv < 1200 && pr.j.ok && pr.j.parent === slowParent, JSON.stringify({ tv, pick: pr.j }));
+    check('the Windows dialog script brings its owner window to the front (TopMost + SetForegroundWindow + Activate)', /TopMost = \$true/.test(W.PICK_PS) && /SetForegroundWindow/.test(W.PICK_PS) && /Activate\(\)/.test(W.PICK_PS) && /ShowDialog\(\$f\)/.test(W.PICK_PS));
+    W.setParent(parent);
+    const pre = path.join(tmp, 'pre-parent', 'Business-Wrap', 'HISTORY');
+    fs.mkdirSync(pre, { recursive: true }); // a HISTORY made before (no hidden attribute)
+    W.ensure(W.setParent(path.join(tmp, 'pre-parent')));
+    const attr = process.platform === 'win32' ? (await import('node:child_process')).spawnSync('attrib', [pre], { encoding: 'utf8' }).stdout : 'H';
+    W.setParent(parent);
+    check('an existing HISTORY without the hidden attribute gets it (attrib +h)', /(^|\s)H(\s|$)/.test(attr.split(pre)[0]), attr.trim());
+    fs.writeFileSync(path.join(ws.dirs.history, 'probe.txt'), 'x');
+    const cases = await Promise.all(['/files/HISTORY/probe.txt', '/files/history/probe.txt', '/files/History/probe.txt', '/files/./HISTORY/probe.txt', '/files/PDF/../HISTORY/probe.txt'].map(async (u) => (await fetch(base + u)).status));
+    check('HISTORY is never served, whatever the case or path', cases.every((c) => c === 404), cases.join(','));
+  }
+  // review 2 row 2: the share file is named by the title as edited (the ops), an untitled EN edition borrows the AR name
+  {
+    const bl = (l) => fs.readFileSync(path.join(REPO, 'samples', 'blank', `document.${l}.json`), 'utf8');
+    const op = { op: 'setText', path: '/control/coverTitle', value: 'خدمة مراجعة الإصدار', id: 'g1.0' };
+    const data = { services: [{ id: 'doc-x', editions: { ar: { raw: bl('ar'), ops: [op] }, en: { raw: bl('en'), ops: [] } } }] };
+    const mk = (lang) => `<!doctype html><html lang="${lang}"><body><script type="application/json" id="bw-data">${JSON.stringify(data)}</script></body></html>`;
+    const sa = path.basename(W.sharePath(ws.dirs.html, mk('ar'), 'doc-x.editor.html'));
+    const se = path.basename(W.sharePath(ws.dirs.html, mk('en'), 'doc-x.editor.html'));
+    check('share: named by the edited cover title, AR and EN by the same rule (no «خدمة جديدة» / "New service")', sa === W.outName('خدمة مراجعة الإصدار', new Date(), 'ar', 'html') && se === W.outName('خدمة مراجعة الإصدار', new Date(), 'en', 'html'), `${sa} | ${se}`);
+  }
 } finally {
   server.close();
   server.closeAllConnections?.();

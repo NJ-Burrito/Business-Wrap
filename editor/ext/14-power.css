@@ -1,0 +1,27 @@
+/* Power off (editor/ext/14-power.js): the toolbar button's own move (house style of the 0.13 icon motion: one move,
+   once, on hover, keyboard focus and its own press; v3 timings), the confirm dialog's danger button and the «stopped»
+   page. Calm mode and reduced motion: nothing moves. */
+.b[data-a="powerOff"] .ic > * { transform-box: fill-box; transform-origin: 50% 50%; }
+.b[data-a="powerOff"]:is(:hover:not(:disabled), :focus-visible) .ic > :nth-child(1),
+.b[data-a="powerOff"]:active .ic > :nth-child(1) { animation: pw-stem var(--bw-dur-page) var(--bw-ease-spring) 1; }
+.b[data-a="powerOff"]:is(:hover:not(:disabled), :focus-visible) .ic > :nth-child(2),
+.b[data-a="powerOff"]:active .ic > :nth-child(2) { animation: pw-ring var(--bw-dur-page) var(--bw-ease-in-out) 1; }
+.b[data-a="powerOff"]:hover:not(:disabled) .ic { transform: none; } /* the parts move, not the whole glyph (ui.css lifts it) */
+@keyframes pw-stem { 0%, 100% { translate: 0 0; } 40% { translate: 0 2.5px; } 70% { translate: 0 -1px; } }
+@keyframes pw-ring { 0%, 100% { rotate: 0deg; scale: 1; } 45% { rotate: 24deg; scale: .9; } }
+
+.dialog.pw-dlg h2 { margin: 0 0 8px; font: 800 17px/1.3 'Thmanyah Sans', system-ui, sans-serif; color: var(--navy); }
+.dialog.pw-dlg p { margin: 0 0 12px; line-height: 1.6; }
+.dialog .b.danger { background: var(--bw-signal); color: var(--bw-on-signal) !important; box-shadow: 0 0 0 1px var(--bw-signal); }
+.dialog .b.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--bw-signal) 86%, var(--bw-ink)); }
+
+.pw-off { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 24px; background: var(--paper); color: var(--panel-ink); animation: pw-in var(--bw-dur-page) var(--bw-ease-out) both; }
+.pw-card { max-inline-size: 520px; text-align: center; }
+.pw-card h2 { margin: 12px 0 8px; font: 800 24px/1.25 'Thmanyah Sans', system-ui, sans-serif; color: var(--navy); }
+.pw-card p { margin: 0; font-size: 16px; line-height: 1.7; color: var(--panel-ink); }
+.pw-mark { display: inline-grid; place-items: center; inline-size: 64px; block-size: 64px; border-radius: 50%; background: var(--wash); color: var(--navy); }
+.pw-mark .ic { inline-size: 32px; block-size: 32px; }
+@keyframes pw-in { from { opacity: 0; } to { opacity: 1; } }
+
+.shell[data-calm="1"] :is(.b[data-a="powerOff"] .ic > *, .pw-off) { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { :is(.b[data-a="powerOff"] .ic > *, .pw-off) { animation: none !important; } }
