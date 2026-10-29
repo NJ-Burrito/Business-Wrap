@@ -3,7 +3,8 @@
 // The editor, the MCP tools and the Claude Code /business-wrap:* commands are thin layers over these functions.
 //
 //   business-wrap open [doc.json|folder|editor.html ...] [--port 4317] [--no-browser]   start the host + the editor
-//   business-wrap close                                    stop every host and Edge window this install started
+//   business-wrap stop --all                               stop every host, server and Edge window this install started (tabs saved first)
+//   business-wrap close                                    the same as stop --all
 //   business-wrap status                                   version, running hosts, heal count
 //   business-wrap new [--title "…"] [--out dir] [--no-open]  a blank document pair + its editor
 //   business-wrap build <doc.json|folder ...> --out <editor.html> [--ui ar|en]
@@ -44,7 +45,7 @@ async function hostModule() {
 const record = (fn) => { const f = HOSTS(); const { hosts } = healStaleHosts(f); const next = fn(hosts); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, JSON.stringify({ hosts: next }, null, 1)); return next; };
 const answers = (url) => new Promise((ok) => { const r = http.get(url, (res) => { res.resume(); ok(res.statusCode === 200); }); r.on('error', () => ok(false)); r.setTimeout(1500, () => { r.destroy(); ok(false); }); });
 async function waitUp(url, ms = 15000) { for (const t0 = Date.now(); Date.now() - t0 < ms;) { if (await answers(url)) return true; await new Promise((r) => setTimeout(r, 200)); } return false; }
-const killTree = (pid) => { if (!alive(pid)) return false; if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore' }); else { try { process.kill(-pid); } catch { try { process.kill(pid); } catch { /* gone */ } } } return true; };
+const killTree = (pid) => { if (!alive(pid)) return false; if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true }); else { try { process.kill(-pid); } catch { try { process.kill(pid); } catch { /* gone */ } } } return true; };
 export function edgePath() {
   return [process.env.BW_EDGE, 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Microsoft/Edge/Application/msedge.exe', '/usr/bin/microsoft-edge'].find((p) => p && fs.existsSync(p));
 }
@@ -52,7 +53,7 @@ export function edgePath() {
 function openEdge(url) {
   const exe = edgePath();
   if (!exe) return null;
-  const c = spawn(exe, [`--user-data-dir=${path.join(STATE_DIR(), 'edge-profile')}`, '--no-first-run', '--new-window', url], { detached: true, stdio: 'ignore' });
+  const c = spawn(exe, [`--user-data-dir=${path.join(STATE_DIR(), 'edge-profile')}`, '--no-first-run', '--new-window', url], { detached: true, stdio: 'ignore', windowsHide: true });
   c.unref();
   return c.pid;
 }
@@ -104,16 +105,33 @@ export async function open({ inputs = [], port = 4317, browser = true, ui } = {}
   return { url: lib?.url || h.url, doc_id: lib?.doc_id || docId, editor, pid: h.pid, port: h.port, browser: !!h.browserPid, library: !!lib };
 }
 
-export async function close() {
+/** A serve.mjs of THIS install (its path on the command line): another install's host never matches (other folder). */
+const norm = (x) => String(x || '').toLowerCase().replace(/\//g, '\\');
+export const ownsServe = (cmd, repo = REPO) => norm(cmd).includes(norm(path.join(repo, 'engine', 'serve.mjs')));
+function ownServers() {
+  const ps = process.platform === 'win32'
+    ? spawnSync('powershell.exe', ['-NoProfile', '-Command', "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | ForEach-Object { \"$($_.ProcessId)`t$($_.CommandLine)\" }"], { encoding: 'utf8', windowsHide: true })
+    : spawnSync('ps', ['-eo', 'pid=,args='], { encoding: 'utf8' });
+  return String(ps.stdout || '').split(/\r?\n/).map((l) => /^\s*(\d+)\s+(.*)$/.exec(l)).filter((m) => m && ownsServe(m[2])).map((m) => Number(m[1]));
+}
+
+/** close = stop --all (owner request 2026-10-29): the background host (every tab flushed first), the hosts this CLI
+ *  started, any other serve.mjs of this install still running, and Edge on this install's profile. `keep`: pids left
+ *  alone (the power route keeps its own server and supervisor, then exits by itself). */
+export async function close({ keep = [] } = {}) {
   const real = await hostModule();
-  let realStop = { stopped: false, pids: [] };
-  if (real) { try { realStop = await real.stop(); } catch { /* stub */ } }
-  const f = HOSTS();
-  const hosts = fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')).hosts || [] : [];
   const pids = [];
-  for (const h of hosts) for (const pid of [h.browserPid, h.pid]) if (pid && killTree(pid)) pids.push(pid);
+  let stopped = 0; // hosts and servers: the background host, each record this CLI kept, each stray server
+  const h = real?.hostState?.();
+  if (real && !(h && keep.includes(h.pid))) { try { const r = await real.stop(); if (r.pids?.length) stopped++; pids.push(...(r.pids || [])); } catch { /* none */ } }
+  const f = HOSTS();
+  const hosts = (fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')).hosts || [] : []).filter((x) => !keep.includes(x.pid));
+  for (const x of hosts) for (const pid of [x.browserPid, x.pid]) if (pid && killTree(pid)) pids.push(pid);
+  stopped += hosts.length;
   if (fs.existsSync(f)) fs.writeFileSync(f, JSON.stringify({ hosts: [] }, null, 1));
-  return { stopped: hosts.length + (realStop.stopped ? 1 : 0), pids: [...pids, ...(realStop.pids || [])] };
+  for (const pid of ownServers()) if (!keep.includes(pid) && killTree(pid)) { pids.push(pid); stopped++; }
+  try { pids.push(...(real?.closeBrowsers?.([]) || [])); } catch { /* none */ }
+  return { stopped, pids: [...new Set(pids)] };
 }
 
 export async function status() {
@@ -247,7 +265,7 @@ export function update(args) {
 }
 
 /** Every verb this CLI answers (the plugin commands may only call these). */
-export const VERBS = ['open', 'close', 'status', 'new', 'build', 'harvest', 'import', 'export', 'gate', 'heal-log', 'verify-history', 'library', 'report', 'update', 'help'];
+export const VERBS = ['open', 'close', 'stop', 'status', 'new', 'build', 'harvest', 'import', 'export', 'gate', 'heal-log', 'verify-history', 'library', 'report', 'update', 'help'];
 
 const USAGE = fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').filter((l) => l.startsWith('//   business-wrap')).map((l) => l.slice(5)).join('\n');
 export async function run(argv) {
@@ -259,7 +277,7 @@ export async function run(argv) {
   const browser = !flags.has('--no-browser');
   switch (verb) {
     case 'open': return open({ inputs: pos, port: val('port') ? Number(val('port')) : 4317, browser, ui: val('ui') });
-    case 'close': return close();
+    case 'close': case 'stop': return close();
     case 'status': return status();
     case 'new': return newDoc({ title: val('title') || pos[0], out: val('out'), browser, openIt: !flags.has('--no-open') });
     case 'build': return build({ inputs: pos, out: val('out'), ui: val('ui') });

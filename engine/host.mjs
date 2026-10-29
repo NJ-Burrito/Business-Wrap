@@ -15,7 +15,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { localDir } from './workspace.mjs';
+import { localDir, workspace, ensure } from './workspace.mjs';
 
 const SERVE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'serve.mjs');
 export const hostFile = () => path.join(localDir(), 'host.json');
@@ -50,7 +50,9 @@ export async function start({ editor, port = 4317, open = true } = {}) {
   if (!editor || !fs.existsSync(editor)) throw new Error(`host.start: editor file not found: ${editor}`);
   const p = await freePort(port);
   const token = crypto.randomBytes(16).toString('hex');
-  const child = spawn(process.execPath, [SERVE, path.resolve(editor), '--port', String(p)], { detached: true, stdio: 'ignore', windowsHide: true, env: { ...process.env, BW_HOST_TOKEN: token } });
+  const log = fs.openSync(path.join(ensure(workspace()).dirs.history, 'host.log'), 'a'); // no console window: its output goes here
+  const child = spawn(process.execPath, [SERVE, path.resolve(editor), '--port', String(p)], { detached: true, stdio: ['ignore', log, log], windowsHide: true, env: { ...process.env, BW_HOST_TOKEN: token } });
+  fs.closeSync(log);
   child.unref();
   write({ pid: child.pid, port: p, startedAt: new Date().toISOString(), token, editor: path.resolve(editor), browserPids: [], tabs: 0 });
   const url = `http://127.0.0.1:${p}/`;

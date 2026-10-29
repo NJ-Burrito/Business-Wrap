@@ -222,8 +222,14 @@ if (process.argv[1] && real(process.argv[1]) === real(fileURLToPath(import.meta.
 usage: node engine/serve.mjs <editor.html> [--port 4317] [--out <exports folder>]`); process.exit(2); }
   if (!process.env.BW_SERVE_CHILD) {
     // the supervisor: runs the server as a child and starts it again (on the new code) after an in-editor update
-    const start = () => fork(fileURLToPath(import.meta.url), args, { cwd: process.cwd(), env: { ...process.env, BW_SERVE_CHILD: '1' }, stdio: 'inherit' })
-      .on('exit', (code) => { if (code === RESTART_CODE) { console.log('Business-Wrap updated: restarting the server on the new version…'); start(); } else process.exitCode = code ?? 0; });
+    // started in the background by engine/host.mjs (no console of its own): the server gets no window either. An inherited
+    // stdio handle makes Windows give the child a console of its own (a visible window), so it pipes into this log instead.
+    const hidden = !!process.env.BW_HOST_TOKEN;
+    const start = () => {
+      const c = fork(fileURLToPath(import.meta.url), args, { cwd: process.cwd(), env: { ...process.env, BW_SERVE_CHILD: '1' }, stdio: hidden ? ['ignore', 'pipe', 'pipe', 'ipc'] : 'inherit', windowsHide: true });
+      if (hidden) { c.stdout.pipe(process.stdout); c.stderr.pipe(process.stderr); }
+      c.on('exit', (code) => { if (code === RESTART_CODE) { console.log('Business-Wrap updated: restarting the server on the new version…'); start(); } else process.exitCode = code ?? 0; });
+    };
     start();
   } else {
     try {
