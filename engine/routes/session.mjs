@@ -27,11 +27,22 @@ const tabsOf = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => 
 /** The profile (name, picture, actor id) kept with the host: .local/profile.json. A tab on another origin (a new port)
  *  or another browser profile has an empty localStorage; serve.mjs hands this to the page, so «من أنت؟» is not asked again. */
 export const profileFile = () => path.join(localDir(), 'profile.json');
-function keepProfile(p) {
-  if (!p || typeof p !== 'object' || typeof p.profile !== 'string' || p.profile.length > 2e6) return;
-  const rec = { profile: p.profile, actor: typeof p.actor === 'string' ? p.actor.slice(0, 80) : '' };
+/** H3: a second copy in the save folder's HISTORY\profile.json.gz (machine state, like the library mirror): an update into a new install folder (a new, empty
+ *  .local) or a lost browser storage still finds the owner, so the first-launch card is never asked twice. */
+const historyProfile = (ctx) => (ctx?.workspace ? path.join(ctx.workspace.dirs.history, 'profile.json.gz') : null);
+function keepProfile(p, ctx) {
+  if (!p || typeof p !== 'object' || typeof p.profile !== 'string' || !p.profile || p.profile.length > 2e6) return false;
+  try { JSON.parse(p.profile); } catch { return false; }
+  const rec = JSON.stringify({ profile: p.profile, actor: typeof p.actor === 'string' ? p.actor.slice(0, 80) : '', at: new Date().toISOString() });
   fs.mkdirSync(localDir(), { recursive: true });
-  fs.writeFileSync(profileFile(), JSON.stringify(rec));
+  fs.writeFileSync(profileFile(), rec);
+  if (historyProfile(ctx)) { ensure(ctx.workspace); fs.writeFileSync(historyProfile(ctx), zlib.gzipSync(rec)); }
+  return true;
+}
+/** The kept profile: .local first, then HISTORY (null when neither has one). */
+function readProfile(ctx) {
+  for (const f of [profileFile(), historyProfile(ctx)].filter(Boolean)) { try { const b = fs.readFileSync(f); const r = JSON.parse((f.endsWith('.gz') ? zlib.gunzipSync(b) : b).toString('utf8')); if (r?.profile) return r; } catch { /* next */ } }
+  return null;
 }
 /** A tab whose page closed while other tabs stay open was closed by the user: its record leaves the run (kept in
  *  closed\, never deleted), so a resume brings back only the tabs that were open at shutdown. */
@@ -74,7 +85,7 @@ function writeTab(ctx, b) {
   const dir = runDir(ctx, state(ctx).runId);
   fs.mkdirSync(dir, { recursive: true });
   const f = path.join(dir, `${b.tab}.json`);
-  if (b.profile) keepProfile(b.profile);
+  if (b.profile) keepProfile(b.profile, ctx);
   let rec;
   if (b.delta) {
     try { rec = JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return; } // nothing pushed yet: the delta has no base
@@ -102,6 +113,14 @@ function writeTab(ctx, b) {
 
 export default async (req, url, send, ctx, res) => {
   const p = url.pathname;
+  if (p === '/api/profile') {
+    // H3: the profile (name, picture, actor id) kept on this machine the moment it is set (not only with a tab's push)
+    try {
+      if (req.method === 'GET') { send(200, readProfile(ctx) || { profile: null }); return true; }
+      if (req.method === 'POST') { const ok = keepProfile(await readJson(req, 4e6), ctx); send(ok ? 200 : 400, { ok }); return true; }
+    } catch (e) { send(e.code === 413 ? 413 : 400, { error: String(e.message || e).slice(0, 200) }); return true; }
+    return false;
+  }
   if (!p.startsWith('/api/session/') && p !== '/api/host/stop') return false;
   if (!ctx.workspace) return false; // no save folder (a --out server): no sessions
   const s = state(ctx);

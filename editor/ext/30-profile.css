@@ -19,4 +19,5 @@
 .bw-modal-card .b.primary { background: var(--navy); color: var(--on-primary) !important; }
 .lk-banner .b { color: var(--on-glass); }
 /* the card and the lock banner sit beside .shell (a toolbar rebuild must not drop them): the same tokens as .shell */
-.bw-modal, .lk-banner { --navy: var(--bw-primary); --deep: var(--bw-band); --wash: var(--bw-primary-soft); --wash-2: var(--bw-surface-2); --on-primary: var(--bw-on-primary); --on-glass: var(--bw-on-glass); --panel: var(--bw-surface); --panel-ink: var(--bw-ink); --panel-soft: var(--bw-ink-muted); --panel-line: var(--bw-line); font-family: inherit; }
+.bw-modal, .lk-banner { --navy: var(--bw-primary); --deep: var(--bw-band); --wash: var(--bw-primary-soft); --wash-2: var(--bw-surface-2); --on-primary: var(--bw-on-primary); --on-glass: var(--bw-on-glass); --panel: var(--bw-surface); --panel-ink: var(--bw-ink); --panel-soft: var(--bw-ink-muted); --panel-line: var(--bw-line); font-family: var(--bw-font-ui); } /* H3: the house face (inherit gave the browser's serif) */
+.bw-modal button, .bw-modal input, .bw-modal textarea { font: inherit; }

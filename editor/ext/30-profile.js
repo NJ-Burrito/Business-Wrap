@@ -6,8 +6,20 @@ const PF_KEY = 'bw:profile';
 const PF_PICTURE_IN_SHARED_HTML = false;
 const PF = {
   get() { try { return JSON.parse(ls.get(PF_KEY) || 'null'); } catch { return null; } },
-  set(p) { ls.set(PF_KEY, JSON.stringify({ ...(PF.get() || {}), ...p })); },
-  id() { let id = ls.get('bw:actor'); if (!id) { id = crypto.randomUUID(); ls.set('bw:actor', id); } return id; },
+  set(p) { ls.set(PF_KEY, JSON.stringify({ ...(PF.get() || {}), ...p })); PF.keep(); },
+  id() { let id = ls.get('bw:actor'); if (!id) { id = crypto.randomUUID(); ls.set('bw:actor', id); PF.keep(); } return id; },
+  /** H3: the host keeps a copy at once (.local/profile.json + HISTORY\profile.json.gz): a relaunch on another port, a lost
+   *  browser storage or an update into a new folder finds the owner there (GET /api/profile) instead of asking again. */
+  keep() { if (location.protocol.startsWith('http') && ls.get(PF_KEY)) fetch('/api/profile', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ profile: ls.get(PF_KEY), actor: ls.get('bw:actor') || '' }) }).catch(() => {}); },
+  /** The host's copy into an empty browser storage; true when there was one. */
+  async restore() {
+    if (!location.protocol.startsWith('http')) return false;
+    const hp = await fetch('/api/profile').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (!hp?.profile || PF.get()) return !!PF.get();
+    ls.set(PF_KEY, hp.profile);
+    if (hp.actor && !ls.get('bw:actor')) ls.set('bw:actor', hp.actor);
+    return true;
+  },
   actor() { return { id: PF.id(), name: PF.get()?.name || '' }; },
   recording() { return PF.get()?.activity !== false; },
 };
@@ -64,7 +76,8 @@ function pfWire(el, live = false) {
   });
 }
 async function pfFirstLaunch() {
-  if (PF.get()) return;
+  if (PF.get()) { PF.keep(); return; } // a profile made before 0.13.1 (browser storage only) reaches the host copies too
+  if (await PF.restore()) return; // only when no profile exists anywhere is the owner asked
   // ponytail: under browser automation the card waits for an explicit opt-in (bw:profile-prompt = 1), so the suites that
   // drive the toolbar and drag on the page are not covered by it; a person (navigator.webdriver false) always sees it
   if (navigator.webdriver && ls.get('bw:profile-prompt') !== '1') return;

@@ -3,3 +3,9 @@
 .lk-banner .i { color: var(--bw-sec-file, #c88a00); }
 [data-a][disabled] { opacity: .45; cursor: not-allowed; }
 .lk-warn { line-height: 1.6; }
+/* H3 share popup + result card (32-lock.js lkShare) */
+.bw-modal-card textarea { font: inherit; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--panel-line); background: var(--wash-2); color: var(--panel-ink); resize: vertical; }
+.sh-travels ul { margin: 4px 0 0; padding-inline-start: 18px; display: grid; gap: 2px; }
+.sh-file, .sh-path { overflow-wrap: anywhere; }
+.sh-path { display: block; padding: 6px 8px; border-radius: 10px; background: var(--wash-2); font-size: .85em; user-select: all; }
+.bw-modal-card .sh-acts { justify-content: flex-start; }

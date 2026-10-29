@@ -113,6 +113,17 @@ export function launchBrowser(urls, { chunk = 30 } = {}) {
   return { chunks: chunks.length, pids };
 }
 
+/** The file manager with `file` selected (H3). Windows: Explorer parses its own command line and does not accept a
+ *  quoted «"/select,<path>"», which is what Node writes for a path with spaces: it fell back to Documents. So the line
+ *  is passed verbatim as /select,"<path>". BW_REVEAL_STUB=<file> writes the command as one JSON line instead (tests). */
+export function reveal(file) {
+  const p = path.resolve(file);
+  const [cmd, args, verbatim] = process.platform === 'win32' ? ['explorer.exe', [`/select,"${p}"`], true] : process.platform === 'darwin' ? ['open', ['-R', p], false] : ['xdg-open', [path.dirname(p)], false];
+  if (process.env.BW_REVEAL_STUB) { fs.appendFileSync(process.env.BW_REVEAL_STUB, JSON.stringify({ cmd, args, verbatim }) + '\n'); return { cmd, args }; }
+  spawn(cmd, args, { detached: true, stdio: 'ignore', windowsVerbatimArguments: verbatim }).unref();
+  return { cmd, args };
+}
+
 /** Browsers on this host's own profile (their command line names it), plus pids it launched: closed, tree and all. */
 export function closeBrowsers(known = [], { scan = true } = {}) {
   const found = [];

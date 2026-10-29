@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { reveal } from '../host.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { sharePath } from '../workspace.mjs';
 
@@ -69,8 +69,7 @@ export default async (req, url, send, ctx) => {
     if (url.pathname === '/api/share/open' && req.method === 'POST') {
       const p = path.resolve(String((await body(req)).path || ''));
       if (!p.startsWith(path.resolve(dirs.html) + path.sep) || !fs.existsSync(p)) return send(404, { error: 'not found' }), true;
-      const [cmd, args] = process.platform === 'win32' ? ['explorer.exe', [`/select,${p}`]] : process.platform === 'darwin' ? ['open', ['-R', p]] : ['xdg-open', [path.dirname(p)]];
-      spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref();
+      reveal(p); // engine/host.mjs: Explorer with THIS file selected (a quoted /select fell back to Documents)
       send(200, { ok: true });
       return true;
     }
