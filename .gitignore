@@ -40,3 +40,8 @@ bw-learning*.json
 handoff.md
 docs/receipt-*.md
 docs/DISTRIBUTION.md
+
+# lane receipts and proposals (kept outside the repo)
+RECEIPT-*.md
+PROPOSAL-*.md
+recover-history-report.md
