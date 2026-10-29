@@ -11,11 +11,13 @@ const ceCellEl = (n) => n?.closest?.('#bw-pair main.bw-doc table[data-b][data-ro
 const ceTblOf = (td) => { const tb = td.closest('table'); return { ed: td.closest('main.bw-doc').dataset.locale, rows: tb.dataset.rows, b: tb.dataset.b, el: tb }; };
 const ceTableEl = () => mainOf(CE.ed)?.querySelector(`table[data-rows="${CSS.escape(CE.rows || '')}"]`);
 function cePaint() {
-  document.querySelectorAll('.bw-csel').forEach((x) => x.classList.remove('bw-csel'));
+  document.querySelectorAll('.bw-csel,.bw-fillh').forEach((x) => x.classList.remove('bw-csel', 'bw-fillh'));
   document.documentElement.classList.toggle('bw-cellmode', CE.sel.size > 0);
   if (!CE.sel.size) return;
   const tb = ceTableEl();
   CE.sel.forEach((k) => { const [r, c] = k.split(','); tb?.querySelector(`td[data-r="${r}"][data-c="${c}"]`)?.classList.add('bw-csel'); });
+  const cells = [...CE.sel].map((k) => k.split(',').map(Number)), rc = ceRect(cells);
+  tb?.querySelector(`td[data-r="${rc.r1}"][data-c="${rc.c1}"]`)?.classList.add('bw-fillh'); // the fill handle sits on the block's last cell
   w2showSection('format', true); // the format tools act on the selected cells
 }
 function ceSet(cells, tbl) {
@@ -61,6 +63,30 @@ function ceMember(blk, ptr, key, value) { return { op: blk[key] === undefined ? 
 
 /* ── the cell tools ─────────────────────────────────────────────────────── */
 const CE_ACT = {
+  /** Excel's fill handle: the selected block is tiled out to (r, c), formulas shift their relative refs ($-anchored parts stay) */
+  fillTo(r, c) {
+    const tg = ceTarget();
+    if (!tg || !tg.sel) return false;
+    const { r0, r1, c0, c1 } = ceRect(tg.cells);
+    const blk = ceBlk(tg.ed, tg.b);
+    const h = r1 - r0 + 1, w = c1 - c0 + 1;
+    const dr = r > r1 ? r - r1 : r < r0 ? r - r0 : 0, dc = c > c1 ? c - c1 : c < c0 ? c - c0 : 0;
+    if (!dr && !dc) return false;
+    const rows = Math.abs(dr) >= Math.abs(dc) && dr ? [dr > 0 ? r1 + 1 : r + 0, dr > 0 ? r : r0 - 1] : [r0, r1];
+    const cols = !(Math.abs(dr) >= Math.abs(dc) && dr) ? [dc > 0 ? c1 + 1 : c, dc > 0 ? c : c0 - 1] : [c0, c1];
+    const cov = coveredOf(blk.merges || []);
+    const edits = new Map();
+    for (let rr = rows[0]; rr <= rows[1]; rr += 1) for (let cc = cols[0]; cc <= cols[1]; cc += 1) {
+      if (rr < 0 || cc < 0 || rr >= blk.rows.length || cc >= blk.rows[0].length || cov.has(ceKey(rr, cc))) continue;
+      const sr = r0 + (((rr - r0) % h) + h) % h, sc = c0 + (((cc - c0) % w) + w) % w;
+      const src = blk.rows[sr][sc], f = formulaOf(src);
+      edits.set(ceKey(rr, cc), f ? { ...src, style: { ...src.style, formula: shiftFormula(f, rr - sr, cc - sc) } } : src);
+    }
+    if (!edits.size) return false;
+    const ok = cePut(tg, edits);
+    ceSet([...Array(rows[1] - rows[0] + 1)].flatMap((_, i) => [...Array(cols[1] - cols[0] + 1)].map((__, j) => [rows[0] + i, cols[0] + j])).concat(tg.cells), { ed: tg.ed, rows: tg.rows, b: tg.b });
+    return ok;
+  },
   clearValue() {
     const tg = ceTarget();
     if (!tg) return false;
@@ -389,6 +415,15 @@ document.addEventListener('mousedown', (e) => {
   const td = ceCellEl(e.target);
   if (!td) { if (CE.sel.size && !e.target.closest?.('#bw-ui-host')) ceClearSel(); return; }
   const tbl = ceTblOf(td);
+  if (td.classList.contains('bw-fillh') && CE.sel.size) { // the corner handle: drag to fill
+    const rc = td.getBoundingClientRect();
+    if (e.clientX >= rc.right - 8 && e.clientX <= rc.right + 2 && e.clientY >= rc.bottom - 8 && e.clientY <= rc.bottom + 2) {
+      e.preventDefault(); document.activeElement?.blur?.();
+      CE.fill = { tbl };
+      document.documentElement.classList.add('bw-csel-drag');
+      return;
+    }
+  }
   if (CE.rz?.hover) { // a border: start resizing
     e.preventDefault();
     ceResizeStart(e, td, tbl);
@@ -415,6 +450,11 @@ document.addEventListener('mousedown', (e) => {
   }
 }, true);
 document.addEventListener('mousemove', (e) => {
+  if (CE.fill) { // the target cell is shown by the cursor only; the fill itself lands on mouse-up
+    const td = ceCellEl(e.target);
+    if (td) CE.fill.to = ceRC(td);
+    return;
+  }
   if (CE.rz?.active) { ceResizeMove(e); return; }
   if (CE.drag && (e.buttons & 1)) {
     const td = ceCellEl(e.target);
@@ -448,6 +488,7 @@ document.addEventListener('mousemove', (e) => {
   document.documentElement.classList.toggle('bw-rz-row', hv?.kind === 'row');
 });
 document.addEventListener('mouseup', () => {
+  if (CE.fill) { const to = CE.fill.to; CE.fill = null; if (to) CE_ACT.fillTo(to.r, to.c); }
   if (CE.rz?.active) ceResizeEnd();
   CE.drag = null;
   document.documentElement.classList.remove('bw-csel-drag');
@@ -569,6 +610,6 @@ bwExt({
     keydown: ceKey_,
     render: cePaint,
     open: () => { CE.sel.clear(); cePaint(); },
-    boot: () => w2docCss('ce-css', 'html.bw-ed td.bw-csel{outline:2px solid var(--accent,#c8a96a);outline-offset:-2px;background-image:linear-gradient(rgba(200,169,106,.22),rgba(200,169,106,.22))}html.bw-csel-drag{user-select:none}html.bw-rz-col #bw-pair td{cursor:col-resize}html.bw-rz-row #bw-pair td{cursor:row-resize}html.bw-ed td.bw-nl{white-space:pre-line}html.bw-ed td.bw-cell-list li{white-space:pre-wrap}'),
+    boot: () => w2docCss('ce-css', 'html.bw-ed td.bw-csel{outline:2px solid var(--accent,#c8a96a);outline-offset:-2px;background-image:linear-gradient(rgba(200,169,106,.22),rgba(200,169,106,.22))}td.bw-fillh{position:relative}html.bw-ed td.bw-fillh::after{content:"";position:absolute;right:-1px;bottom:-1px;width:7px;height:7px;background:var(--accent,#c8a96a);border:1px solid #fff;cursor:crosshair}html.bw-csel-drag{user-select:none}html.bw-rz-col #bw-pair td{cursor:col-resize}html.bw-rz-row #bw-pair td{cursor:row-resize}html.bw-ed td.bw-nl{white-space:pre-line}html.bw-ed td.bw-cell-list li{white-space:pre-wrap}'),
   },
 });

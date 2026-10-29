@@ -138,6 +138,7 @@ try {
 
   // ── 6. list over a highlighted range; text box at the caret
   {
+    const textOf0 = (p, d) => { const l = p.split('/').slice(1).reduce((o, k) => o[k], d); return typeof l === 'string' ? l : l?.text ?? ''; };
     await page.reload();
     await page.waitForFunction(() => window.BW?.ready);
     await page.evaluate(() => { const B = window.BW; if (B.S.ed !== 'en' && B.M[B.S.svc].en) { B.S.ed = 'en'; B.render(); } });
@@ -161,6 +162,9 @@ try {
     const dB = await doc();
     const bolds = ps.map((p) => p.split('/').slice(1).reduce((o, k) => o[k], dB)).map((l) => (l?.marks || []).some((m) => m[2] === 'b'));
     check('Bold applies to every paragraph in the highlighted range, not only the first', bolds.length === 3 && bolds.every(Boolean), JSON.stringify(bolds));
+    const bm = ps.map((p) => (p.split('/').slice(1).reduce((o, k) => o[k], dB).marks || []).find((x) => x[2] === 'b'));
+    const len0 = String(textOf0(ps[0], dB)).length;
+    check('Bold over several paragraphs covers only the highlighted part: first from char 1, middle whole, last up to char 3', bm[0]?.[0] === 1 && bm[0]?.[1] === len0 && bm[1]?.[0] === 0 && bm[2]?.[0] === 0 && bm[2]?.[1] === 3, JSON.stringify(bm));
     await page.evaluate(() => window.BW.EXT.w2format.mark('color', '#c0392b'));
     await page.evaluate(() => window.BW.EXT.w2format.style({ align: 'center' }));
     const dFmt = await doc();
