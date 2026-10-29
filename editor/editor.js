@@ -167,25 +167,48 @@ function guard(what, info) {
 }
 
 /* ── ops ───────────────────────────────────────────────────────────────── */
-function commit(ops, { ed = S.ed, rerender = true, group = newGroup(), mirror = false } = {}) {
+/** A structural op (the body's chapters, sections, blocks, paragraphs, rows, or the overlays) changes the pair's shape:
+ *  it goes to both editions unless the caller says otherwise (mirror: false), so the editions never drift (F2 · 24). */
+const STRUCT_OPS = new Set(['insert', 'delete', 'move', 'duplicate']);
+const isStructural = (op) => STRUCT_OPS.has(op.op) && /^\/(chapters|overlays)(\/|$)/.test(op.from || op.path);
+/** What a source pointer holds, enough to tell that the other edition holds the same thing there (kind, id). */
+const sigAt = (doc, op) => {
+  const p = op.op === 'move' ? op.from : op.op === 'insert' ? null : op.path;
+  if (!p) return null;
+  const v = get(doc, p);
+  return v === undefined ? 'none' : v && typeof v === 'object' && !Array.isArray(v) ? `o:${v.kind || ''}` : Array.isArray(v) ? 'a' : 'v';
+};
+const pairShape = () => (hasOther() ? JSON.stringify(shape(cur('ar').doc)) === JSON.stringify(shape(cur('en').doc)) : true);
+function commit(ops, { ed = S.ed, rerender = true, group = newGroup(), mirror = 'auto' } = {}) {
   guard('commit', { ops, ed });
   const e = cur(ed);
+  const paired = ops.some(isStructural) && hasOther() && pairShape(); // only a structural op can change the pair's shape
+  const sigs = [];
   ops.forEach((op, k) => {
     op.id = `${group}.${k}`;
     op.at = new Date().toISOString();
+    sigs.push(sigAt(e.doc, op));
     applyOp(e.doc, op); // throws before anything is recorded if a pointer is wrong
     e.ops.push(op);
   });
   e.redo = [];
+  if (mirror === 'auto') mirror = ops.some(isStructural);
   if (mirror && S.both && hasOther()) {
     const o = cur(other(ed));
     const copy = ops.map((op) => ({ ...JSON.parse(JSON.stringify(op)) }));
     try {
       const test = JSON.parse(JSON.stringify(o.doc));
-      copy.forEach((op) => applyOp(test, op));
+      // the other edition must hold the same kind of thing at every source pointer: a move from a hole is refused
+      copy.forEach((op, k) => { if (sigs[k] && sigAt(test, op) !== sigs[k]) throw new Error(`pair differs at ${op.from || op.path}`); applyOp(test, op); });
       copy.forEach((op, k) => { op.id = `${group}.m${k}`; applyOp(o.doc, op); o.ops.push(op); });
       o.redo = [];
     } catch { /* other edition does not have this shape — the check panel reports the pair */ }
+  }
+  // structural parity: a pair that matched before this commit still matches after it, or it is reported, never silent
+  if (paired) {
+    const ok = pairShape();
+    document.documentElement.dataset.bwParity = ok ? 'ok' : 'drift';
+    if (!ok) console.warn('business-wrap: the AR/EN pair drifted apart at', ops.map((x) => x.from || x.path).join(', '));
   }
   touched();
   if (rerender) render();
@@ -754,8 +777,10 @@ const A = {
   delete() {
     const b = blockOf(S.sel?.b);
     if (!b) return;
-    commit([{ op: 'delete', path: b.ptr, old: get(cur().doc, b.ptr) }], { mirror: true });
+    const old = get(cur().doc, b.ptr);
+    commit([{ op: 'delete', path: b.ptr, old }], { mirror: true });
     S.sel = null; paintSel();
+    undoToast(t('ux.deletedBlock'), () => commit([{ op: 'insert', path: b.ptr, value: old }]));
   },
   /** A21: a block moves within its section, and at the first/last block into the previous/next section;
    *  a selected section heading moves the section within its chapter. R4: the selection follows the move. */
@@ -865,14 +890,8 @@ const A = {
     const url = img.src;
     const b = blockOf(S.sel?.b);
     const blk = b && get(cur().doc, b.ptr);
-    if (blk?.kind === 'shots') commit([{ op: 'replace', path: `${b.ptr}/images`, value: [url], old: blk.images }]);
-    else {
-      const arr = b ? b.arr : '/chapters/0/sections/0/blocks';
-      const at = b ? b.i + 1 : 0;
-      commit([{ op: 'insert', path: `${arr}/${at}`, value: { kind: 'shots', caption: I18N.doc[S.ed].figure, images: [url], width: 80 } }]);
-      S.sel = { ...(S.sel || {}), b: `${arr}/${at}`, ed: S.ed };
-      paintSel();
-    }
+    if (blk?.kind === 'shots') { commit([{ op: 'replace', path: `${b.ptr}/images`, value: [url], old: blk.images }]); return; }
+    await OVL.add('image', img, imageAt(b)); // F2 · 18: one insert path with the dropped image, so the same seven wraps
   },
   width(v) {
     const b = blockOf(S.sel?.b);
@@ -1023,9 +1042,9 @@ function validate() {
     const a = shape(cur('ar').doc);
     const b = shape(cur('en').doc);
     const n = Math.max(a.length, b.length);
-    for (let i = 0; i < n; i += 1) if (a[i] !== b[i]) out.push(['err', t('vPair', { x: `${i + 1}` })]);
+    for (let i = 0; i < n; i += 1) if (a[i] !== b[i]) out.push(['err', t('vPair', { x: `${i + 1}` }), `/chapters/${Math.min(i, d.chapters.length - 1)}/title`]);
     const st = cur().stale.size;
-    if (st) out.push(['warn', t('vStale', { n: st })]);
+    if (st) out.push(['warn', t('vStale', { n: st }), [...cur().stale][0]]);
   }
   const main = mainOf(S.ed);
   main?.querySelectorAll('table').forEach((tb) => {
@@ -1034,17 +1053,42 @@ function validate() {
   const fth = designTheme(S.theme, d).fonts;
   for (const f of new Set([fth.text, fth.display])) {
     const src = FONTS.sourceOf(f);
-    if (src === 'project' && !document.fonts.check(`16px '${f}'`)) out.push(['err', t('vFont', { x: f })]);
-    else if (src === 'local') out.push(['info', t('font.vMachine', { x: f })]);
+    if (src === 'project' && !document.fonts.check(`16px '${f}'`)) out.push(['err', t('vFont', { x: f }), '#design:fonts']);
+    else if (src === 'local') out.push(['info', t('font.vMachine', { x: f }), '#design:fonts']);
   }
+  // a label that does not print in the body is edited in the Design panel's labels group: the jump goes there
   for (const k of emptyLabels(labelsOf())) out.push(['err', t('vLabel', { x: k }), `/labels/${k}`]);
   const rej = sanitizeCss(d.design?.css).rejected;
-  if (rej.length) out.push(['warn', t('vCss', { x: rej.join(' · ') })]);
+  if (rej.length) out.push(['warn', t('vCss', { x: rej.join(' · ') }), '#design:css']);
+  out.push(...reqIdCheck(d));
   // logos are placed freely (overlays) or sit in the design pack's slots: count both, flag only when there are none
   const placed = (d.overlays || []).filter((o) => o.kind === 'logo').length;
   const slotted = ['start', 'center', 'end', 'header'].filter((k) => S.theme.logos?.[k]).length;
-  if (placed + slotted) out.push(['ok', t('vLogosPlaced', { n: placed + slotted })]);
-  else out.push(['info', t('vLogos', { n: 4 })]);
+  if (placed + slotted) out.push(['ok', t('vLogosPlaced', { n: placed + slotted }), '#logos']);
+  else out.push(['info', t('vLogos', { n: 4 }), '#logos']);
+  return out;
+}
+/** F2 · extra 9: FR- and BR- codes are unique and run 1, 2, 3 … in document order; a user story has acceptance criteria. */
+function reqIdCheck(d) {
+  const out = [];
+  const seen = { FR: new Map(), BR: new Map() };
+  const want = { FR: 1, BR: 1 };
+  for (const { path, value } of textLeaves(d)) {
+    const m = /^\s*(FR|BR)-0*(\d{1,4})\s*$/.exec(textOf(value));
+    if (!m) continue;
+    const [, pre, num] = m;
+    const code = `${pre}-${num.padStart(2, '0')}`;
+    if (seen[pre].has(+num)) { out.push(['err', t('vReqDup', { x: code }), path]); continue; }
+    seen[pre].set(+num, path);
+    if (+num !== want[pre]) out.push(['warn', t('vReqSeq', { x: code, y: `${pre}-${String(want[pre]).padStart(2, '0')}` }), path]);
+    want[pre] = +num + 1;
+  }
+  for (const b of blocksInOrder(d)) {
+    if (b.block?.kind !== 'stories') continue;
+    (b.block.items || []).forEach((it, i) => {
+      if (!(it.acceptance || []).some((a) => textOf(a).trim())) out.push(['warn', t('vNoAc', { x: it.id || it.name || `${i + 1}` }), `${b.ptr}/items/${i}/name`]);
+    });
+  }
   return out;
 }
 
@@ -1299,6 +1343,8 @@ function refreshUi() {
 /* the selection section: the tools of what is selected, first in the docked toolbar; nothing selected → the general sections only */
 function ctxModel(b, tb) {
   const ov = S.selOv != null ? (cur().doc.overlays || [])[S.selOv] : null;
+  // a text box is not a picture: no «استبدال» (replace image), its own name (F2 · 38)
+  if (ov?.kind === 'text') return { cat: 'image', label: t('insTextBox'), groups: [['ovDelete']] };
   if (ov) return { cat: ov.kind === 'logo' ? 'logo' : 'image', label: t(ov.kind === 'logo' ? 'selLogo' : 'selImage'), groups: [['replace', 'caption', ...(ov.kind === 'logo' ? ['every'] : []), 'ovDelete']] };
   const dg = dgContext();
   if (dg) return dg;
@@ -1356,7 +1402,17 @@ window.addEventListener('scroll', () => { if (!ctxRaf) ctxRaf = requestAnimation
 /** A1: info/ok live 2.5 s, warn/err 4 s; a click anywhere on it dismisses (an action button still runs its action);
  *  hover or keyboard focus pauses the timer (WCAG 2.2.1); at most 3 stacked; the same message again refreshes the one shown. */
 const TOAST_MS = { info: 2500, ok: 2500, warn: 4000, err: 4000 };
-function toast(msg, kind = 'info', { actions = [], persist = false, cls = '' } = {}) {
+/** F2 · extra 10: a destructive action says so for 5 s with «تراجع». The press undoes it (the change counter goes back
+ *  too) while it is still the newest change of its edition; after later edits, back() restores just that thing. */
+function undoToast(msg, back, { viaUndo = true } = {}) {
+  const svc = S.svc, ed = S.ed;
+  const g = viaUndo ? M[svc]?.[ed]?.ops.at(-1)?.id.split('.')[0] : null;
+  return toast(msg, 'info', { cls: 'undo', ms: 5000, actions: [[t('ux.undoDel'), () => {
+    if (g && svc === S.svc && M[svc]?.[ed]?.ops.at(-1)?.id.split('.')[0] === g) undo(ed);
+    else back?.();
+  }]] });
+}
+function toast(msg, kind = 'info', { actions = [], persist = false, cls = '', ms = 0 } = {}) {
   const box = root.querySelector('.toasts');
   if (!box) return null;
   const same = !actions.length && !persist && [...box.children].find((x) => x.dataset.msg === `${kind}|${msg}` && !x.classList.contains('out'));
@@ -1375,7 +1431,7 @@ function toast(msg, kind = 'info', { actions = [], persist = false, cls = '' } =
   if (!persist) {
     let timer = 0;
     let held = 0;
-    el.bwArm = () => { clearTimeout(timer); if (!held) timer = setTimeout(() => dismiss(el), TOAST_MS[kind] || 2500); };
+    el.bwArm = () => { clearTimeout(timer); if (!held) timer = setTimeout(() => dismiss(el), ms || TOAST_MS[kind] || 2500); };
     const hold = (on) => { held += on ? 1 : -1; if (held < 0) held = 0; if (held) clearTimeout(timer); else el.bwArm(); };
     el.addEventListener('pointerenter', () => hold(true));
     el.addEventListener('pointerleave', () => hold(false));
@@ -1397,6 +1453,17 @@ function flash(msg, bad = false) {
   const f = root.querySelector('.flash');
   if (f) f.textContent = msg;
   toast(msg, bad ? 'err' : 'ok');
+}
+/** F2 · 38: a live toast or banner (the restore-draft prompt …) follows a UI language switch: each fixed string is
+ *  looked up by its words in the old language and replaced by the same key's words in the new one. */
+function retranslateToasts(from, to) {
+  if (from === to) return;
+  const back = new Map(Object.entries(I18N.ui[from] || {}).filter(([, v]) => typeof v === 'string').map(([k, v]) => [v, k]));
+  root.querySelectorAll('.toasts .toast :is(.m, button)').forEach((x) => {
+    const k = back.get(x.textContent);
+    if (k && typeof I18N.ui[to]?.[k] === 'string') x.textContent = I18N.ui[to][k];
+  });
+  root.querySelectorAll('.toasts .toast').forEach((x) => { x.lang = to; });
 }
 function banner(msg, actions) {
   const el = toast(msg, 'info', { actions, persist: true, cls: 'banner' });
@@ -1507,9 +1574,11 @@ async function onBar(e) {
 function setLang(l) {
   const edChange = !!M[S.svc][l] && l !== S.ed;
   if (l === S.ui && !edChange) return;
+  const was = S.ui;
   S.ui = l;
   ls.set('bw:ui', S.ui);
   if (edChange) { S.ed = l; S.sel = null; S.selOv = null; }
+  retranslateToasts(was, l);
   buildUi();
   render(!edChange);
   window.BW_WM?.relabel();
@@ -1711,7 +1780,19 @@ async function onDrawer(e) {
     return;
   }
   if (x.dataset.go) {
-    const el = mainOf(S.ed)?.querySelector(`[data-p="${CSS.escape(x.dataset.go)}"],[data-b="${CSS.escape(x.dataset.go)}"]`);
+    const go = x.dataset.go;
+    // F2 · 17: the element in the BODY (a TOC row or the header strip carries the same pointer: never those);
+    // a finding with no element on the page opens the Design group it is fixed in, or rings the cover's logo slots
+    const el = go === '#logos' ? (mainOf(S.ed)?.querySelector('.cover .lockup') || mainOf(S.ed)?.querySelector('.cover'))
+      : [...(mainOf(S.ed)?.querySelectorAll(`[data-p="${CSS.escape(go)}"],[data-b="${CSS.escape(go)}"]`) || [])].find((n) => !n.closest('table.toc, .toc, .w2-strip'));
+    const grp = /^#design:(\w+)$/.exec(go)?.[1] || (!el && go.startsWith('/labels/') ? 'labels' : null);
+    if (grp) {
+      (S.grpOpen ||= {})[grp] = true;
+      openDrawer('theme');
+      const g = root.querySelector(`.drawer details[data-grp="${grp}"]`);
+      if (g) { g.open = true; g.scrollIntoView({ block: 'start' }); g.classList.remove('bw-jump'); void g.offsetWidth; g.classList.add('bw-jump'); setTimeout(() => g.classList.remove('bw-jump'), 1200); }
+      return;
+    }
     if (el) {
       el.scrollIntoView({ block: 'center', behavior: reduced() || x.dataset.ring ? 'auto' : 'smooth' });
       el.focus?.({ preventScroll: true });
@@ -1872,15 +1953,16 @@ const OVL = {
     const w = kind === 'logo' ? 36 : 70;
     const o = { id: `ov${Date.now().toString(36)}`, kind, src: img.src, mode: 'cover', x: kind === 'logo' ? 140 : 40, y: kind === 'logo' ? 16 : 120, w };
     if (at) Object.assign(o, at);
-    else if (kind !== 'logo' && S.sel?.b) {
-      const b = blockOf(S.sel.b);
-      if (b) Object.assign(o, { mode: 'anchor', anchor: b.ptr, x: 30, y: 0 });
-    }
-    commit(ovOps([{ op: 'insert', path: '/overlays/-', value: o }]), { mirror: true });
+    else if (kind !== 'logo' && S.sel?.b) Object.assign(o, imageAt(blockOf(S.sel.b)));
+    // an anchored image follows its block (an id, kept by move and duplicate), not the slot the block sat in
+    const pre = [];
+    if (o.mode === 'anchor' && String(o.anchor).startsWith('/')) o.anchor = w2blockId(o.anchor, pre) || o.anchor;
+    commit(ovOps([...pre, { op: 'insert', path: '/overlays/-', value: o }]), { mirror: true });
     S.selOv = ovList().length - 1;
     S.sel = null;
     paintSel();
     refreshUi();
+    if (kind !== 'logo' && typeof w2showSection === 'function') w2showSection('wrap', true); // 23-objects: Word's seven wraps
     toast(t(kind === 'logo' ? 'logoAdded' : 'imageAdded'), 'ok');
   },
   async replace() {
@@ -1906,9 +1988,11 @@ const OVL = {
   remove() {
     const i = S.selOv;
     if (i == null) return;
-    commit([{ op: 'delete', path: ovPtr(i), old: ovList()[i] }], { mirror: true });
+    const old = ovList()[i];
+    commit([{ op: 'delete', path: ovPtr(i), old }], { mirror: true });
     S.selOv = null;
     refreshUi();
+    undoToast(t('ux.deletedItem'), () => commit([{ op: 'insert', path: ovPtr(Math.min(i, ovList().length)), value: old }]));
   },
 };
 
@@ -2033,7 +2117,7 @@ function decorateOverlays(main) {
   main.querySelectorAll('.bw-ov').forEach((el) => {
     el.tabIndex = 0;
     el.setAttribute('role', 'button');
-    el.setAttribute('aria-label', t(el.dataset.kind === 'logo' ? 'logoItem' : 'imageItem'));
+    el.setAttribute('aria-label', t(el.dataset.kind === 'logo' ? 'logoItem' : el.dataset.kind === 'text' ? 'insTextBox' : 'imageItem'));
     if (+el.dataset.i === S.selOv) el.classList.add('bw-ov-sel');
     if (!el.querySelector('.bw-ov-handle')) {
       const h = document.createElement('span');
@@ -2080,12 +2164,13 @@ document.addEventListener('drop', async (e) => {
 async function pasteImage(f) {
   let img;
   try { img = await reencode(f); } catch { flash(t('badFile'), true); return true; }
-  const b = blockOf(S.sel?.b);
-  const arr = b ? b.arr : '/chapters/0/sections/0/blocks';
-  const at = b ? b.i + 1 : 0;
-  commit([{ op: 'insert', path: `${arr}/${at}`, value: { kind: 'shots', caption: I18N.doc[S.ed].figure, images: [img.src], width: 80 } }]);
-  toast(t('imageAdded'), 'ok');
+  await OVL.add('image', img, imageAt(blockOf(S.sel?.b)));
   return true;
+}
+/** Where an inserted or pasted image goes: beside the selected block (else the first one), text wrapped square. */
+function imageAt(b) {
+  const ptr = b?.ptr || blocksInOrder(cur().doc)[0]?.ptr;
+  return ptr ? { mode: 'anchor', anchor: ptr, x: 0, y: 0, wrap: 'square' } : undefined;
 }
 
 /* ── webhooks: off by default, no default URLs, sent only through the local server ── */
@@ -2580,5 +2665,5 @@ function boot() {
 for (const [svc, eds] of Object.entries(M)) for (const [ed, e] of Object.entries(eds)) for (const c of e.doc.harvestConflicts || []) if (svc === S.svc) S.conflicts.push({ ed, path: c.path, mine: c.manual, theirs: c.harvested, kind: 'text' });
 if (S.conflicts.length) toast(t('reharvestConflicts', { n: S.conflicts.length }), 'warn', { actions: [[t('show'), () => openDrawer('conflicts')]], persist: true });
 { const n = (cur().doc.process?.actors || []).filter((a) => a.unresolved).length; if (n) toast(t('rolesUnresolved', { n }), 'warn', { actions: [[t('show'), () => openDrawer('process')]], persist: true }); }
-window.BW = { flushDraft, S, M, commit, runAction, toast, DIAGRAM, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll, EXT, emit, bwExt, openDrawer };
+window.BW = { undoToast, flushDraft, S, M, commit, runAction, toast, DIAGRAM, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll, EXT, emit, bwExt, openDrawer };
 // boot(): called by engine/build-editor.mjs after editor/ext/*.js (the seam)

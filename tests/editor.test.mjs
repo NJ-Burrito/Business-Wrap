@@ -487,9 +487,10 @@ try {
     await pu2.locator('main.bw-doc [data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]').click();
     const [chI] = await Promise.all([pu2.waitForEvent('filechooser'), act(pu2, 'image')]);
     await chI.setFiles(pngFile);
-    await pu2.waitForFunction(() => window.BW.M['event-permit'][window.BW.S.ed].doc.chapters[0].sections[0].blocks.some((b) => b.kind === 'shots'), null, { timeout: 5000 }).catch(() => {});
-    const kinds = await pu2.evaluate(() => window.BW.M['event-permit'][window.BW.S.ed].doc.chapters[0].sections[0].blocks.map((b) => b.kind));
-    check(`${uiL} UI: image inserted after the selected block`, kinds.includes('shots'), JSON.stringify(kinds));
+    // F2 · 18: the Image button goes the dropped image's way: an image beside the selected block, Word's wraps on it
+    await pu2.waitForFunction(() => (window.BW.M['event-permit'][window.BW.S.ed].doc.overlays || []).some((o) => o.kind === 'image'), null, { timeout: 5000 }).catch(() => {});
+    const img = await pu2.evaluate(() => { const d = window.BW.M['event-permit'][window.BW.S.ed].doc; const o = (d.overlays || []).find((x) => x.kind === 'image'); return o && { mode: o.mode, wrap: o.wrap, anchorId: d.chapters[0].sections[0].blocks[0].id === o.anchor }; });
+    check(`${uiL} UI: image inserted beside the selected block (anchored to it, text wrapped square)`, !!img && img.mode === 'anchor' && img.wrap === 'square' && img.anchorId, JSON.stringify(img));
     // PDF + DOCX carry the logo at its position and the image
     const editsU = await download(pu2, () => act(pu2, 'save'));
     const ef = JSON.parse(fs.readFileSync(editsU, 'utf8'));

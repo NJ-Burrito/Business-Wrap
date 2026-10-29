@@ -29,7 +29,7 @@ function designPanel() {
   const emPt = dpEmPt(th);
   // keep each group open or closed across redraws
   root.querySelectorAll('.drawer details[data-grp]').forEach((x) => { (S.grpOpen ||= {})[x.dataset.grp] = x.open; });
-  // A7: as every side panel: the first group open, the rest collapsed (what the person toggles is remembered)
+  // A7 / F2 · 11: as every side panel: every group collapsed (what the person toggles is remembered)
   const grp = (id, body, open = false) => `<details class="dgrp" data-grp="${id}" ${(S.grpOpen?.[id] ?? open) ? 'open' : ''}><summary><h3>${esc(t('design.grp.' + id))}</h3></summary><p class="hint">${esc(t('design.grp.' + id + 'Hint'))}</p>${body}</details>`;
   const L = labelsOf();
   const hide = new Set(d.layout?.hide || []);
@@ -64,7 +64,7 @@ ${valueControl({ id: 'img:width', kind: 'pct', label: t('design.imgWidth'), hint
 <p class="hint">${esc(t('design.packHint'))}</p><div class="btns"><button type="button" class="b" data-k="texp"><span class="w">${esc(t('themeExport'))}</span></button><button type="button" class="b" data-k="timp"><span class="w">${esc(t('themeImport'))}</span></button></div>`;
   const css = `<textarea data-dcss rows="6" spellcheck="false" dir="ltr" aria-label="${attr(t('design.grp.css'))}">${esc(d.design?.css || '')}</textarea>${rej.length ? `<p class="warn" role="status">${esc(t('vCss', { x: rej.join(' · ') }))}</p>` : ''}
 <div class="btns"><button type="button" class="b" data-k="dcssApply"><span class="w">${esc(t('apply'))}</span></button></div>`;
-  return grp('fonts', fonts, true) + grp('colours', colours) + grp('sizes', sizes) + grp('spacing', spacing) + grp('parts', parts) + grp('logos', logos)
+  return grp('fonts', fonts) + grp('colours', colours) + grp('sizes', sizes) + grp('spacing', spacing) + grp('parts', parts) + grp('logos', logos)
     + grp('labels', labels) + grp('output', output) + grp('css', css)
     + `<h3>${esc(t('shortcuts'))}</h3><p class="hint">${esc(t('shortcutsText'))}</p>`;
 }
