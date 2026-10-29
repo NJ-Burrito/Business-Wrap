@@ -1,26 +1,69 @@
 /* A10 session + A11 save folder, the page half (0.13.0). Only on the local server with a save folder
  * (GET /api/session/info answers): each tab has a tabId (sessionStorage, or ?tab= when the server reopened it),
- * holds a live connection (EventSource), pushes its state 1.5 s after a change and flushes it with sendBeacon on
- * pagehide, so closing the last tab saves every tab and the host stops. A fresh tab asks for the last run: a modal
+ * holds a live connection (EventSource), pushes its state 0.4 s after a change and, on pagehide or when the tab is
+ * hidden, beacons the edits made since that push (a delta: a beacon carries at most 64 KB, a document does not), so
+ * closing the tab right after typing loses nothing and closing the last tab saves every tab before the host stops.
+ * The profile travels with the host (.local/profile.json, served back in #bw-host-profile): a resumed tab on another
+ * origin or browser profile keeps the user and is not asked «من أنت؟» again. A fresh tab asks for the last run: a modal
  * offers (1) resume everything (the server opens all tabs) or (2) new work. Save HTML goes into the save folder's
  * HTML\ instead of the downloads; the first Save or export asks for the parent folder once; Settings «مجلد الحفظ».
  */
+// the host's copy of the profile, into an empty localStorage before any boot handler (30-profile asks at boot)
+if (!ls.get('bw:profile')) {
+  try {
+    const hp = JSON.parse(document.getElementById('bw-host-profile')?.textContent || 'null');
+    if (hp?.profile) { ls.set('bw:profile', hp.profile); if (hp.actor && !ls.get('bw:actor')) ls.set('bw:actor', hp.actor); }
+  } catch { /* no host profile */ }
+}
 const SESS = (() => {
   const P = new URLSearchParams(location.search);
-  let info = null, tab = null, es = null, timer = 0;
+  let info = null, tab = null, es = null, timer = 0, sent = null, profSent = '';
   const json = (u, b) => fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) }).then((r) => r.json().catch(() => ({})));
   const newId = () => `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  const titleNow = () => (EXT.library ? EXT.library.titleOf() : cur().doc.control?.title || S.svc);
+  // per edition: how many ops the last push carried, and its last op as sent (typing grows that op in place)
+  const lens = () => Object.fromEntries(Object.entries(M[S.svc] || {}).map(([ed, e]) => [ed, { n: e.ops.length, last: JSON.stringify(e.ops.at(-1) ?? null) }]));
+  function profile() {
+    const p = { profile: ls.get('bw:profile') || '', actor: ls.get('bw:actor') || '' };
+    const k = JSON.stringify(p);
+    if (!p.profile || k === profSent) return null;
+    profSent = k;
+    return p;
+  }
   function payload() {
     const lib = EXT.library;
-    return { tab, title: lib ? lib.titleOf() : cur().doc.control?.title || S.svc, svc: S.svc, ed: S.ed, entry: lib?.isDoc(S.svc) ? lib.entryOf(S.svc) : null, snap: snapshotState() };
+    return { tab, title: titleNow(), svc: S.svc, ed: S.ed, entry: lib?.isDoc(S.svc) ? lib.entryOf(S.svc) : null, snap: snapshotState(), profile: profile() };
   }
-  const push = () => { clearTimeout(timer); timer = 0; if (info) json('/api/session/state', payload()).catch(() => {}); };
-  const soon = () => { if (!info) return; clearTimeout(timer); timer = setTimeout(push, 1500); };
+  const push = () => {
+    clearTimeout(timer); timer = 0;
+    if (!info) return;
+    const mark = { svc: S.svc, lens: lens() };
+    json('/api/session/state', payload()).then((r) => { if (r.ok) sent = mark; }).catch(() => {});
+  };
+  const soon = () => { if (!info) return; clearTimeout(timer); timer = setTimeout(push, 400); };
+  const beacon = (body) => navigator.sendBeacon?.('/api/session/flush', new Blob([body], { type: 'application/json' })) || (fetch('/api/session/flush', { method: 'POST', headers: { 'content-type': 'application/json' }, body, keepalive: true }).catch(() => {}), body.length < 63000);
+  /** The edits since the last push (the last op again: typing grows it in place), sent so it survives the page. */
   function flush() {
     if (!info) return;
     clearTimeout(timer);
-    const body = JSON.stringify(payload());
-    if (!navigator.sendBeacon?.('/api/session/flush', new Blob([body], { type: 'application/json' }))) fetch('/api/session/flush', { method: 'POST', body, keepalive: true }).catch(() => {});
+    if (!sent || sent.svc !== S.svc) {
+      // no push of this document yet (a Save switched to it a moment ago): the whole state, without the base text when
+      // that is what makes it too big for a beacon (the server takes it back from the library mirror)
+      const pl = payload();
+      let body = JSON.stringify(pl);
+      if (body.length > 60000 && pl.entry) { for (const x of Object.values(pl.entry.editions)) delete x.raw; body = JSON.stringify(pl); }
+      beacon(body); // ponytail: edits alone past 64 KB (a pasted book) are lost here; the 0.4 s push before it is the net
+      return;
+    }
+    const delta = {};
+    for (const [ed, e] of Object.entries(M[S.svc] || {})) {
+      const was = sent.lens[ed] || { n: 0, last: 'null' };
+      const n = Math.min(was.n, e.ops.length);
+      const from = n && n === was.n && JSON.stringify(e.ops[n - 1]) !== was.last ? n - 1 : n; // the last pushed op again only when it grew
+      delta[ed] = { from, prev: from ? e.ops[from - 1]?.id ?? null : null, ops: e.ops.slice(from) };
+    }
+    const mark = { svc: S.svc, lens: lens() };
+    if (beacon(JSON.stringify({ tab, svc: S.svc, ed: S.ed, title: titleNow(), delta }))) sent = mark;
   }
   async function apply(rec) {
     if (rec.entry && EXT.library) await EXT.library.adopt(rec.entry);
@@ -44,8 +87,13 @@ const SESS = (() => {
       const k = ev.target.closest('[data-s]')?.dataset.s;
       if (!k) return;
       dlg.querySelectorAll('button').forEach((b) => { b.disabled = true; });
-      const r = await json(`/api/session/${k}`, { runId: last.runId });
-      if (k === 'resume') { dlg.querySelector('.out').textContent = r.ok ? t('sessOpened', { n: r.n }) : String(r.error || ''); document.documentElement.dataset.bwResume = r.ok ? 'resumed' : 'failed'; }
+      const r = await json(`/api/session/${k}`, { runId: last.runId, tab });
+      if (k === 'resume') {
+        dlg.querySelector('.out').textContent = r.ok ? t('sessOpened', { n: r.n }) : String(r.error || '');
+        document.documentElement.dataset.bwResume = r.ok ? 'resumed' : 'failed';
+        // this tab becomes the run's first tab (never an extra one): it opens there itself
+        if (r.ok && r.here) { info = null; es?.close(); setTimeout(() => location.replace(r.here), 600); }
+      }
       else { document.documentElement.dataset.bwResume = 'new'; await EXT.library?.newDocument(); }
       setTimeout(() => { dlg.close(); dlg.remove(); }, k === 'resume' ? 1200 : 0);
     });
@@ -110,3 +158,4 @@ bwExt({
     pagehide: () => SESS.flush(),
   },
 });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') SESS.flush(); });
