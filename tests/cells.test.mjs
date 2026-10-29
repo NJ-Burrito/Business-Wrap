@@ -268,8 +268,8 @@ try {
   check('formula: =SUM( (syntax error) shows #ERR', txt((await blk()).rows[2][0]) === '#ERR');
   await page.locator(cell(0, 1)).click();
   await page.keyboard.press('Control+A');
-  await page.keyboard.type('10');
-  await page.keyboard.press('Enter');
+  await page.keyboard.type('10'); // a plain value: Enter would be a line break (lane B), Tab leaves the cell and commits
+  await page.keyboard.press('Tab');
   b = await blk();
   check('formula: changing B1 recalculates every formula that reads it (A1 = 10+5+8, C2 follows)', txt(b.rows[0][0]) === '23' && txt(b.rows[1][2]) === '49.5', JSON.stringify([b.rows[0][0], b.rows[1][2]]));
   // save / reload: the stored document keeps the formula
