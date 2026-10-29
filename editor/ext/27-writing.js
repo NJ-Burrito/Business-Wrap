@@ -171,7 +171,7 @@ bwExt({
   expose: { w2write: W2_WRITE },
   on: {
     // a typed line break shows in the page at once (the print path has <br>; the editor's leaf keeps its newline until its next render)
-    boot: () => w2docCss('w2w-css', 'html.bw-ed #bw-pair :is(span, td, th, p, li, h1, h2, h3, h4, caption, bdi)[data-p] { white-space: pre-line; }'),
+    boot: () => w2docCss('w2w-css', 'html.bw-ed #bw-pair :is(span, td, th, p, li, h1, h2, h3, h4, caption, bdi)[data-p] { white-space: pre-line !important; }'),
     keydown: (e) => {
       if (e.key !== 'Enter' || e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return false;
       const el = w2leafEl(e.target);
