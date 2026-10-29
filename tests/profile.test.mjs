@@ -123,6 +123,18 @@ try {
   check('report across documents: 4 edits (a typed op once, a copied entry once), 2 exports, 2 documents (the opened template is not work)', pn.edits === 4 && pn.exports === 2 && pn.docs === 2 && dm.docs.length === 2, JSON.stringify({ edits: pn.edits, exports: pn.exports, docs: pn.docs, list: dm.docs }));
   const st = reportHtml(dm, { lang: 'ar' });
   check('report story matches the numbers (edits, exports, busiest document)', /أجرى 4 تعديلًا/.test(st) && /صدّر 2 مرة/.test(st) && /أكثر الوثائق نشاطًا «طلب ترخيص فعالية عامة في الساحات» بـ 3 تعديلًا/.test(st), st.match(/خلال[^<]*/)?.[0]);
+  { // review2 #11/#12: the report reads the title the document has now (docTitle on save/export), and one profile key
+    // renamed mid-period stays one person, shown with the other name it used
+    const live = { doc: 'doc-live', entries: [] };
+    await L.append(live, { kind: 'open', actor: nd, keys: kN, at: at(120), data: { title: 'وثيقة متطلبات: خدمة جديدة', docTitle: 'خدمة جديدة' } });
+    await L.append(live, { kind: 'op', actor: nd, keys: kN, at: at(130), data: { ed: 'ar', op: { op: 'setText', path: '/control/coverTitle', value: 'خدمة مراجعة الإصدار', old: '', id: 'n5.0' } } });
+    await L.append(live, { kind: 'x-rename', actor: { ...nd, name: 'Rami Q' }, keys: kN, at: at(135), data: { from: 'Rami', to: 'Rami Q' } });
+    await L.append(live, { kind: 'export', actor: { ...nd, name: 'Rami Q' }, keys: kN, at: at(140), data: { fmt: 'docx', locale: 'ar', docTitle: 'خدمة مراجعة الإصدار' } });
+    const dl = reportData([live], { from: '2026-10-01', to: '2026-10-31' });
+    const htmlL = reportHtml(dl, { lang: 'en' });
+    check('review2 #11: the report titles a document by its live cover title and counts its export', dl.docs[0]?.title === 'خدمة مراجعة الإصدار' && dl.people[0]?.exports === 1, JSON.stringify(dl.docs));
+    check('review2 #12: a renamed profile is one person in the report, «also:» its earlier name', dl.people.length === 1 && dl.people[0].name === 'Rami Q' && /Rami Q \(also: Rami\)/.test(htmlL), JSON.stringify(dl.people.map((p) => [p.name, p.names])));
+  }
   // chart labels stay inside their chart (they printed as one letter under RTL)
   const rp = await browser.newPage();
   await rp.setContent(st);

@@ -24,16 +24,20 @@ export function reportData(logs, { from, to, people = null } = {}) {
     const own = log.entries.filter((e) => !seen.has(e.hash));
     for (const e of own) seen.add(e.hash);
     const m = BWLOG1.metrics(own, { from: lo, to: hi });
+    // review2 #11: the title as the document says it last (open, save, Save-HTML and export entries carry `docTitle`, read
+    // live from the cover title); a log from before falls back to its last open's «عنوان الوثيقة», service-name part
+    const live = [...log.entries].reverse().find((e) => e.data?.docTitle)?.data.docTitle;
     const full = String([...log.entries].reverse().find((e) => e.kind === 'open' && e.data?.title)?.data.title || log.doc);
-    const title = full.split(/\s*[:—]\s+/).slice(1).join(': ') || full; // the service name, not the document kind
+    const title = live ? String(live) : full.split(/\s*[:—]\s+/).slice(1).join(': ') || full; // the service name, not the document kind
     const lastLock = [...log.entries].reverse().find((e) => e.kind === 'lock' || e.kind === 'unlock');
     const status = lastLock?.kind === 'lock' ? 'locked' : log.entries.some((e) => e.kind === 'sign') ? 'signed' : 'progress';
     let docEdits = 0, worked = false;
     for (const p of Object.values(m)) {
       if (people && !people.includes(p.id)) continue;
       if (!(p.edits + p.saves + p.exports + p.signs + p.locks)) continue; // only opening a document (a template at launch) is not work on it
-      const x = (P[p.id] ||= { id: p.id, name: p.name, docs: new Set(), edits: 0, activeMs: 0, sessions: 0, saves: 0, exports: 0, signs: 0, added: 0, removed: 0, weeks: {} });
+      const x = (P[p.id] ||= { id: p.id, name: p.name, names: [], docs: new Set(), edits: 0, activeMs: 0, sessions: 0, saves: 0, exports: 0, signs: 0, added: 0, removed: 0, weeks: {} });
       if (p.name) x.name = p.name;
+      for (const nm of p.names || []) if (!x.names.includes(nm)) x.names.push(nm); // one profile key, every name it used (review2 #12)
       x.docs.add(log.doc);
       for (const k of ['edits', 'activeMs', 'sessions', 'saves', 'exports', 'signs', 'added', 'removed']) x[k] += p[k];
       docEdits += p.edits;
@@ -51,8 +55,8 @@ export function reportData(logs, { from, to, people = null } = {}) {
 }
 
 const T = {
-  ar: { title: 'تقرير الأداء', period: 'الفترة', people: 'الأشخاص', docs: 'الوثائق', hours: 'ساعات العمل', edits: 'التعديلات', sessions: 'الجلسات', saves: 'الحفظ', exports: 'التصدير', signs: 'التواقيع', words: 'الكلمات (+/−)', perWeek: 'ساعات العمل في كل أسبوع', perDoc: 'التعديلات في كل وثيقة', status: 'حالة الوثائق', locked: 'مقفلة', signed: 'موقّعة', progress: 'قيد العمل', name: 'الاسم', summary: 'الخلاصة', none: 'لا يوجد نشاط مسجّل في هذه الفترة.', source: 'المصدر: سجلات المصدر (bwlog v1) لهذه الوثائق؛ الوقت الفعلي يُحسب من فجوات النشاط التي لا تزيد عن خمس دقائق.' },
-  en: { title: 'Performance report', period: 'Period', people: 'People', docs: 'Documents', hours: 'Active hours', edits: 'Edits', sessions: 'Sessions', saves: 'Saves', exports: 'Exports', signs: 'Signatures', words: 'Words (+/−)', perWeek: 'Active hours per week', perDoc: 'Edits per document', status: 'Document status', locked: 'Locked', signed: 'Signed', progress: 'In progress', name: 'Name', summary: 'Summary', none: 'No recorded activity in this period.', source: 'Source: the provenance logs (bwlog v1) of these documents; active time counts gaps of five minutes or less between actions.' },
+  ar: { title: 'تقرير الأداء', period: 'الفترة', people: 'الأشخاص', docs: 'الوثائق', hours: 'ساعات العمل', edits: 'التعديلات', sessions: 'الجلسات', saves: 'الحفظ', exports: 'التصدير', signs: 'التواقيع', words: 'الكلمات (+/−)', perWeek: 'ساعات العمل في كل أسبوع', perDoc: 'التعديلات في كل وثيقة', status: 'حالة الوثائق', locked: 'مقفلة', signed: 'موقّعة', progress: 'قيد العمل', name: 'الاسم', aka: 'وباسم:', summary: 'الخلاصة', none: 'لا يوجد نشاط مسجّل في هذه الفترة.', source: 'المصدر: سجلات المصدر (bwlog v1) لهذه الوثائق؛ الوقت الفعلي يُحسب من فجوات النشاط التي لا تزيد عن خمس دقائق.' },
+  en: { title: 'Performance report', period: 'Period', people: 'People', docs: 'Documents', hours: 'Active hours', edits: 'Edits', sessions: 'Sessions', saves: 'Saves', exports: 'Exports', signs: 'Signatures', words: 'Words (+/−)', perWeek: 'Active hours per week', perDoc: 'Edits per document', status: 'Document status', locked: 'Locked', signed: 'Signed', progress: 'In progress', name: 'Name', aka: 'also:', summary: 'Summary', none: 'No recorded activity in this period.', source: 'Source: the provenance logs (bwlog v1) of these documents; active time counts gaps of five minutes or less between actions.' },
 };
 const iso = (s) => `⁦${s}⁩`; // a date stays left-to-right inside Arabic text
 const hrs = (ms) => (ms / 36e5).toFixed(1);
@@ -93,7 +97,8 @@ export function reportHtml(d, { lang = 'ar', fontCss = '' } = {}) {
   const week = d.weeks.map((w) => ({ k: rtl ? iso(w) : w, v: d.people.reduce((s, p) => s + (p.weeks[w] || 0), 0) / 36e5 })).map((r) => ({ ...r, label: r.v.toFixed(1) }));
   const perDoc = d.docs.map((x) => ({ k: x.title, v: x.edits }));
   const st = ['progress', 'signed', 'locked'].map((s, i) => ({ k: L[s], v: d.docs.filter((x) => x.status === s).length, c: ['#1f4e79', '#2e7d32', '#8d5b00'][i] }));
-  const rows = d.people.map((p) => `<tr><td>${esc(p.name || '—')}</td><td>${p.docs}</td><td>${hrs(p.activeMs)}</td><td>${p.edits}</td><td>${p.sessions}</td><td>${p.saves}</td><td>${p.exports}</td><td>${p.signs}</td><td>+${p.added} / −${p.removed}</td></tr>`).join('');
+  const aka = (p) => { const o = (p.names || []).filter((n) => n !== p.name); return o.length ? ` (${L.aka} ${o.join(rtl ? '، ' : ', ')})` : ''; };
+  const rows = d.people.map((p) => `<tr><td>${esc((p.name || '—') + aka(p))}</td><td>${p.docs}</td><td>${hrs(p.activeMs)}</td><td>${p.edits}</td><td>${p.sessions}</td><td>${p.saves}</td><td>${p.exports}</td><td>${p.signs}</td><td>+${p.added} / −${p.removed}</td></tr>`).join('');
   return `<!doctype html><html lang="${lang}" dir="${rtl ? 'rtl' : 'ltr'}"><head><meta charset="utf-8"><title>${esc(L.title)}</title><style>${fontCss}
 @page { size: A4; margin: 16mm 15mm; }
 body { font-family: 'Thmanyah Serif Text', serif; color: #1b1b1b; font-size: 10.5pt; line-height: 1.6; margin: 0; }

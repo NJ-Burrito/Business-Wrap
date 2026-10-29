@@ -42,6 +42,9 @@ async function saveHtmlOf(page, name) {
 }
 const setTitle = (page, v) => page.evaluate((v) => { const e = window.BW.M[window.BW.S.svc][window.BW.S.ed]; return window.BW.commit([{ op: 'setText', path: '/control/title', value: v, old: e.doc.control.title }]); }, v);
 const dataOf = (html) => JSON.parse(/<script type="application\/json" id="bw-data">([\s\S]*?)<\/script>/.exec(html)[1]);
+// a real pre-0.13 file: no log, no mark, no timeline marks, no head traces, an old version (review2 #17: every trace gone)
+const preV013 = (d) => { const { prov, contrib, bwlog, ...x } = JSON.parse(JSON.stringify(d)); x.version = '0.12.0'; for (const s of x.services) for (const e of Object.values(s.editions)) { delete e.marks; delete e.epochIds; } return x; };
+const bareHead = (html) => html.replace(/ data-bw-ledger="[^"]*"/, '').replace(/\n?<meta name="bw-ledger"[^>]*>/, '').replace(/(script-src )'sha256-[^']*' (?='sha256-)/, '$1');
 const withData = (html, d) => html.replace(/(<script type="application\/json" id="bw-data">)[\s\S]*?(<\/script>)/, (_, a, b) => a + JSON.stringify(d).replace(/</g, '\\u003c') + b);
 
 const browser = await chromium.launch(launchOptions());
@@ -119,7 +122,7 @@ try {
   const v2 = await verdict(a2);
   check('Mark opens Alaa\'s copy: chain verifies, extends his mirror', v2.ok, JSON.stringify(v2));
   await a2.evaluate(() => window.BW.openDrawer('provenance'));
-  const dr = await sh(a2, (r) => ({ text: r.querySelector('.drawer').textContent, n: r.querySelectorAll('.drawer .pv-e').length, details: r.querySelectorAll('.drawer .pv-e details').length, rows: r.querySelectorAll('.drawer .pv-people tbody tr').length }));
+  const dr = await sh(a2, (r) => ({ text: r.querySelector('.drawer').textContent, n: r.querySelectorAll('.drawer .pv-e').length, details: r.querySelectorAll('.drawer .pv-e > details').length, rows: r.querySelectorAll('.drawer .pv-people tbody tr').length }));
   check('Provenance tab: every entry, expandable, both contributors', dr.n >= 13 && dr.details === dr.n && dr.rows === 2 && dr.text.includes('Alaa') && dr.text.includes('Mark'), JSON.stringify({ ...dr, text: dr.text.slice(0, 80) }));
   await a2.evaluate(() => window.BW.openDrawer('history'));
   await a2.waitForFunction(() => !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer .pv-tabs [data-pv="tab-prov"]'));
@@ -221,9 +224,9 @@ try {
   // F5 · 2: a Save-HTML made before 0.13 (edited, never a Business-Wrap log, no `bwlog` mark) is neutral, not «stripped»
   // (a state no open log vouches for: otherwise the fork path rightly attaches that log)
   const reword = (d, v) => { const x = JSON.parse(JSON.stringify(d)); Object.values(x.services[0].editions)[0].ops.at(-1).value = v; return x; };
-  const { prov: _p0, contrib: _c0, bwlog: _b0, ...legacyD } = reword(dL, 'made in 0.12');
+  const legacyD = preV013(reword(dL, 'made in 0.12'));
   check('F5 2: every 0.13 Save-HTML carries the bwlog mark', dL.bwlog === 1, String(dL.bwlog));
-  const leg = await viaFile(withData(htmlL, legacyD), 'legacy.editor.html');
+  const leg = await viaFile(withData(bareHead(htmlL), legacyD), 'legacy.editor.html');
   await ready(lp);
   const lv = await verdict(lp);
   await lp.evaluate(() => window.BW.openDrawer('provenance'));
@@ -255,6 +258,11 @@ try {
   const { prov: _p, contrib: _c, ...bare } = dL;
   r = await openedOn(ctxC, 'c-bare.html', withData(htmlL, bare));
   check('clean machine: an edited file with no log and no mark is «stripped», never intact', r.reasons.includes('stripped'), JSON.stringify(r));
+  const { prov: _p4, bwlog: _b4, ...t4e } = dL;
+  r = await openedOn(ctxC, 'c-t4.html', withData(htmlL, t4e));
+  check('review2 #17 (editor, no HISTORY): log + bwlog mark removed by hand → «stripped», never «made before 0.13»', r.reasons.includes('stripped') && !r.v.legacy, JSON.stringify(r));
+  r = await openedOn(ctxC, 'c-t4-head.html', withData(htmlL, preV013(dL)));
+  check('review2 #17 (editor): the data block fully stripped, the head traces left → «stripped»', r.reasons.includes('stripped') && !r.v.legacy, JSON.stringify(r));
   const trL = await L.unseal(dL.prov[libId].log, dL.prov[libId].doc); trL.entries.length -= 1;
   r = await openedOn(ctxC, 'c-trunc.html', withData(htmlL, { ...dL, prov: { [libId]: { ...dL.prov[libId], log: await L.seal(trL) } } }));
   check('clean machine: a tail cut from the log is flagged (no mirror needed)', r.reasons.includes('truncated'), JSON.stringify(r));
@@ -262,7 +270,19 @@ try {
 
   // verify-history (CLI) is as strict as the editor: content-only edit, raw text edit, tail cut, stripped log
   const cli = (f) => { const x = spawnSync(process.execPath, [path.join(REPO, 'engine', 'cli.mjs'), 'verify-history', f, '--history', path.join(tmp, 'no-history'), '--json'], { encoding: 'utf8' }); let j = null; try { j = JSON.parse(x.stdout); } catch { /* */ } return { code: x.status, problems: j?.gates?.[0]?.problems || [], out: x.stdout + x.stderr }; };
-  const put = (name, d) => { const f = path.join(tmp, name); fs.writeFileSync(f, withData(htmlL, d)); return f; };
+  const putH = (name, d, html) => { const f = path.join(tmp, name); fs.writeFileSync(f, withData(html, d)); return f; };
+  const put = (name, d) => putH(name, d, htmlL);
+  { // review2 #17: the 0.13 traces live in independent places; stripping the log and the mark (the review's T4) is not enough
+    check('review2 #17: a 0.13 Save-HTML carries every trace (mark, timeline marks, head meta, <html> attribute, CSP hash, version)', L.traces(dL, libId, htmlL, { version: true }).join() === 'mark,timeline,meta,root,csp,version' && L.traceDoc(htmlL) === dL.prov[libId].doc, L.traces(dL, libId, htmlL, { version: true }).join());
+    const { prov: _x, bwlog: _y, ...t4 } = dL;
+    const c4 = cli(put('v-t4.html', t4));
+    check('review2 #17: log + bwlog mark removed (T4) → verify-history «stripped», never «made before 0.13»', c4.code === 1 && c4.problems.some((p) => /stripped/.test(p)) && !c4.problems.some((p) => /made before/.test(p)), c4.out.slice(0, 300));
+    const t5 = preV013(dL); t5.version = dL.version;
+    const c5 = cli(putH('v-t5.html', t5, bareHead(htmlL)));
+    check('review2 #17: everything stripped but the file’s own version → still «stripped»', c5.code === 1 && c5.problems.some((p) => /stripped/.test(p)), c5.out.slice(0, 300));
+    const c6 = cli(putH('v-t6.html', preV013(dL), htmlL));
+    check('review2 #17: data block fully stripped, head traces left → still «stripped»', c6.code === 1 && c6.problems.some((p) => /stripped/.test(p)), c6.out.slice(0, 300));
+  }
   let c = cli(fileL);
   check('verify-history: an honest Save-HTML passes', c.code === 0, c.out.slice(0, 200));
   { // F5 · 3: the ledger gate is the same full verify (content-only edit caught); F5 · 2: a pre-0.13 file is named so, not «stripped»
@@ -271,12 +291,12 @@ try {
     const g = await gateLedger(put('g-content.html', cF), { history: path.join(tmp, 'no-history') });
     const g0 = await gateLedger(fileL, { history: path.join(tmp, 'no-history') });
     check('F5 3: gate ledger runs the full verify: an honest file PASSes, a content-only edit FAILs (unlogged)', g0.verdict === 'PASS' && g.verdict === 'FAIL' && g.problems.some((x) => /unlogged/.test(x)), JSON.stringify({ g0: g0.problems, g: g.problems }));
-    const { prov: _a, contrib: _b, bwlog: _d, ...legacyD } = dL;
-    const cl = cli(put('v-legacy.html', legacyD));
+    const legacyD = preV013(dL);
+    const cl = cli(putH('v-legacy.html', legacyD, bareHead(htmlL)));
     check('F5 2: verify-history on a pre-0.13 file says «made before 0.13», not stripped', cl.code === 1 && cl.problems.some((x) => /made before 0\.13/.test(x)) && !cl.problems.some((x) => /stripped/.test(x)), cl.out.slice(0, 200));
     const kh = path.join(tmp, 'knows-history'); fs.mkdirSync(kh, { recursive: true });
     fs.writeFileSync(path.join(kh, `${String(legacyD.services[0].id).replace(/:/g, '_')}.heads.json`), JSON.stringify({ doc: legacyD.services[0].id, head: { seq: 1, hash: 'x' }, hashes: [], pins: {} }));
-    const gk = await gateLedger(put('v-legacy-known.html', legacyD), { history: kh });
+    const gk = await gateLedger(putH('v-legacy-known.html', legacyD, bareHead(htmlL)), { history: kh });
     check('honest limit: log + mark removed, but HISTORY knows the document id → «stripped»', gk.verdict === 'FAIL' && gk.problems.some((x) => /stripped/.test(x)) && !gk.problems.some((x) => /made before 0\.13/.test(x)), JSON.stringify(gk.problems));
   }
   const cOps = JSON.parse(JSON.stringify(dL)); const edL = Object.keys(cOps.services[0].editions)[0];

@@ -15,3 +15,6 @@
 .pv-e dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; margin: 6px 0; font-size: .85em; }
 .pv-e dd { margin: 0; overflow-wrap: anywhere; }
 .pv-e pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8em; }
+.pv-aka { color: var(--panel-soft); }
+.pv-raw { margin-block-start: 4px; font-size: .85em; }
+.pv-raw code { overflow-wrap: anywhere; }

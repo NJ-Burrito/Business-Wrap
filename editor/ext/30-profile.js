@@ -54,7 +54,12 @@ function pfWire(el, live = false) {
     } else if (k === 'nopic') { el.dataset.pic = ''; el.querySelector('.pf-av').innerHTML = ''; if (live) PF.set({ picture: '' }); }
   });
   if (live) el.addEventListener('change', (e) => {
-    if (e.target.dataset.pf === 'name') { PF.set({ name: e.target.value.trim().slice(0, 80) }); flash(t('pfSaved')); }
+    if (e.target.dataset.pf === 'name') {
+      const was = PF.get()?.name || '';
+      PF.set({ name: e.target.value.trim().slice(0, 80) });
+      flash(t('pfSaved'));
+      if (was && was !== PF.get().name) EXT.ledger?.renamed(); // review2 #12: same profile key, a new name: the rename is logged
+    }
     if (e.target.dataset.pf === 'activity') PF.set({ activity: e.target.checked });
   });
 }
@@ -106,6 +111,7 @@ async function pfReportMount(el) {
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || r.status);
       out.textContent = t('pfReportDone', { x: j.pdf });
+      EXT.ledger?.append('export', { fmt: 'report', file: String(j.pdf).split(/[\\/]/).pop() }); // review2 #11: a report is an export too
     } catch (err) { out.textContent = String(err.message || err); }
   });
 }
