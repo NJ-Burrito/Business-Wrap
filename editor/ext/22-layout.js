@@ -183,7 +183,7 @@ html.bw-ed section.bw-brk::before{content:attr(data-w2brk);position:absolute;top
     render: () => { document.querySelectorAll('#bw-pair section.bw-brk').forEach((x) => { x.dataset.w2brk = t('w2.pageBreak'); }); w2pageCss(); },
   },
 });
-document.addEventListener('click', (e) => {
+const w2pickCell = (e) => {
   const cell = e.target.closest?.('#bw-pair [data-part] td[data-r], #bw-pair [data-part] th[data-r]');
   if (!cell) return;
   const part = cell.closest('[data-part]').dataset.part;
@@ -191,7 +191,11 @@ document.addEventListener('click', (e) => {
   if (!table) return;
   W2L.cell = { table, r: +cell.dataset.r, c: +cell.dataset.c, sec: cell.closest('tr')?.dataset.sec || null };
   w2showSection('front', true);
-});
+};
+document.addEventListener('click', w2pickCell);
+// a press can re-lay the page out so its click lands on the wrapper: focus on the cell is the pick too
+document.addEventListener('focusin', w2pickCell);
 document.addEventListener('click', (e) => {
+  if (document.activeElement?.closest?.('#bw-pair [data-part] td[data-r], #bw-pair [data-part] th[data-r]')) return; // the focused cell stays the target
   if (e.target.closest?.('#bw-pair main.bw-doc') && !e.target.closest('#bw-pair [data-part] td[data-r], #bw-pair [data-part] th[data-r]')) { W2L.cell = null; w2showSection('front', false); }
 }, true);
