@@ -89,19 +89,19 @@ async function w2formatAction(id) {
   const st = isRich(W2F.leaf()) ? W2F.leaf().style || {} : {};
   switch (id) {
     case 'fmtLink': { const v = await ask(t('w2.linkPrompt'), 'https://'); if (/^(https?:\/\/|mailto:)\S+$/i.test(v)) W2_FORMAT.mark('link', v); else if (v) toast(t('w2.badLink'), 'warn'); return; }
-    case 'fmtColor': { const v = await ask(t('w2.colorPrompt'), S.theme.vars?.primary || '#000000'); if (/^#[0-9a-f]{6}$/i.test(v)) W2_FORMAT.mark('color', v); else if (v) toast(t('w2.badColor'), 'warn'); return; }
-    case 'fmtFont': { const i = (FONT_FAMILIES.indexOf(st.font) + 1) % FONT_FAMILIES.length; const v = await ask(t('w2.fontPrompt'), FONT_FAMILIES[i]); if (FONT_FAMILIES.includes(v)) W2_FORMAT.mark('font', v); else if (v) toast(t('w2.badFont'), 'warn'); return; }
-    case 'fmtSize': { const v = +(await ask(t('w2.sizePrompt'), '12')); if (v >= 5 && v <= 72) W2_FORMAT.mark('size', v); return; }
+    case 'fmtColor': { const v = await ask(t('w2.colorPrompt'), st.color || S.theme.vars?.primary || '#000000', { type: 'color' }); if (/^#[0-9a-f]{6}$/i.test(v)) W2_FORMAT.mark('color', v); else if (v) toast(t('w2.badColor'), 'warn'); return; }
+    case 'fmtFont': { const v = await ask(t('w2.fontPrompt'), FONT_FAMILIES.includes(st.font) ? st.font : FONT_FAMILIES[0], { type: 'select', options: FONT_FAMILIES }); if (FONT_FAMILIES.includes(v)) W2_FORMAT.mark('font', v); else if (v) toast(t('w2.badFont'), 'warn'); return; }
+    case 'fmtSize': { const v = +(await ask(t('w2.sizePrompt'), String(st.size || 12), { type: 'number', min: 5, max: 72, step: 1 })); if (v >= 5 && v <= 72) W2_FORMAT.mark('size', v); return; }
     case 'fmtClear': return W2_FORMAT.clear();
     case 'fmtAlignStart': case 'fmtAlignCenter': case 'fmtAlignEnd': case 'fmtJustify':
       return W2_FORMAT.style({ align: { fmtAlignStart: 'start', fmtAlignCenter: 'center', fmtAlignEnd: 'end', fmtJustify: 'justify' }[id] });
     case 'fmtTop': case 'fmtMiddle': case 'fmtBottom': return W2_FORMAT.style({ valign: id.slice(3).toLowerCase() });
-    case 'fmtLine': { const v = +(await ask(t('w2.linePrompt'), String(st.lineHeight || 1.8))); if (v >= 0.8 && v <= 4) W2_FORMAT.style({ lineHeight: v }); return; }
-    case 'fmtBefore': case 'fmtAfter': { const k = id === 'fmtBefore' ? 'spaceBefore' : 'spaceAfter'; const v = await ask(t('w2.spacePrompt'), String(st[k] ?? 0)); if (v !== '' && +v >= 0 && +v <= 60) W2_FORMAT.style({ [k]: +v }); return; }
+    case 'fmtLine': { const v = +(await ask(t('w2.linePrompt'), String(st.lineHeight || 1.8), { type: 'number', min: 0.8, max: 4, step: 0.1 })); if (v >= 0.8 && v <= 4) W2_FORMAT.style({ lineHeight: v }); return; }
+    case 'fmtBefore': case 'fmtAfter': { const k = id === 'fmtBefore' ? 'spaceBefore' : 'spaceAfter'; const v = await ask(t('w2.spacePrompt'), String(st[k] ?? 0), { type: 'number', min: 0, max: 60, step: 1 }); if (v !== '' && +v >= 0 && +v <= 60) W2_FORMAT.style({ [k]: +v }); return; }
     case 'fmtQuote': return W2_FORMAT.style({ quote: st.quote ? null : true });
     case 'fmtBullets': return W2_FORMAT.list('bullet');
     case 'fmtNumbers': return W2_FORMAT.list('number');
-    case 'fmtShapes': { const v = await ask(t('w2.shapePrompt'), '◦'); if (v && '•◦▪–✓➤'.includes(v)) W2_FORMAT.list('shape:' + v); return; }
+    case 'fmtShapes': { const v = await ask(t('w2.shapePrompt'), '◦', { type: 'select', options: [...'•◦▪–✓➤'] }); if (v && '•◦▪–✓➤'.includes(v)) W2_FORMAT.list('shape:' + v); return; }
     case 'fmtIndent': return W2_FORMAT.indent(1);
     case 'fmtOutdent': return W2_FORMAT.indent(-1);
     default:

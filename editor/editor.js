@@ -19,7 +19,8 @@ const ls = {
 
 const S = {
   ui: ls.get('bw:ui') || DATA.uiLang || 'ar',
-  dir: ls.get('bw:dir') || null,
+  // review2 · 34: the RTL/LTR choice is per edition (bw:dir:ar / bw:dir:en); none = the edition's own direction
+  dirs: { ar: ls.get('bw:dir:ar') || null, en: ls.get('bw:dir:en') || null },
   docxFonts: ls.get('bw:docx-fonts') !== '0', // DOCX carries the fonts unless turned off // layout direction override; null = follows the language
   dark: ls.get('bw:dark') === '1',
   svc: DATA.services[0].id,
@@ -35,6 +36,8 @@ const S = {
   dirty: false,
   savedAt: null,
 };
+/** S.dir = the direction chosen for the edition in view (null = its own). */
+Object.defineProperty(S, 'dir', { get: () => S.dirs[S.ed] || null, set: (d) => { S.dirs[S.ed] = d || null; }, enumerable: false });
 let gseq = 0;
 const newGroup = () => `g${Date.now().toString(36)}${(gseq++).toString(36)}`;
 
@@ -98,7 +101,7 @@ function render(keepScroll = true) {
   }
   pair.className = S.side && eds.length > 1 ? 'bw-side' : '';
   pair.innerHTML = html;
-  if (S.dir) pair.querySelectorAll('main.bw-doc').forEach((m) => { m.dir = S.dir; }); // view only; exports keep the edition's direction
+  pair.querySelectorAll('main.bw-doc').forEach((m) => { const d = S.dirs[m.dataset.locale]; if (d) m.dir = d; }); // view only, per edition; exports keep the edition's direction
   document.documentElement.lang = S.ed;
   document.documentElement.dir = LAYOUT_DIR; // the layout never flips (0.10.0): only the words' direction follows S.dir / the language
   document.documentElement.style.setProperty('--bw-zoom', String(S.zoom));
@@ -1144,9 +1147,11 @@ const CMDS = [
 function sec(cat, tools) {
   const name = t('sec' + cat[0].toUpperCase() + cat.slice(1));
   // the first tool always shows; the rest sit inline while the bar has room and fold into this section's «More» when it has not
-  const rest = tools.slice(1);
+  // the header and footer sections keep every tool in their tail: folded, they are a title and «…» (review2 · 34)
+  const all = cat === 'header' || cat === 'footer';
+  const rest = all ? tools : tools.slice(1);
   const tail = rest.length ? `<div class="more tail"><button type="button" class="b" data-a="more" aria-expanded="false" aria-haspopup="true" title="${esc(t('more'))}: ${esc(name)}" aria-label="${esc(t('more'))}: ${esc(name)}"><span class="i">${ic('more')}</span></button><div class="menu fm" role="group" aria-label="${esc(name)}">${rest.join('')}</div></div>` : '';
-  return `<div class="sec" data-cat="${cat}" role="group" aria-label="${esc(name)}"><span class="sc" aria-hidden="true"><span class="i">${ic('sec' + cat[0].toUpperCase() + cat.slice(1))}</span><span class="st" data-alt="${esc(tAlt('sec' + cat[0].toUpperCase() + cat.slice(1)))}">${esc(name)}</span></span><div class="sb">${tools[0] || ''}${tail}</div></div>`;
+  return `<div class="sec" data-cat="${cat}" role="group" aria-label="${esc(name)}"><span class="sc" aria-hidden="true"><span class="i">${ic('sec' + cat[0].toUpperCase() + cat.slice(1))}</span><span class="st" data-alt="${esc(tAlt('sec' + cat[0].toUpperCase() + cat.slice(1)))}">${esc(name)}</span></span><div class="sb">${all ? '' : tools[0] || ''}${tail}</div></div>`;
 }
 /** A registry command as a toolbar tool: its label, its tooltip (with the shortcut), the shortcut shown in menus. */
 const TIPS = { image: 'imageTip', logo: 'logoTip', exportPdf: 'exportPdfTip' };
@@ -1239,7 +1244,7 @@ const UI_OWN = '.ctx, .drawer, .dialog, .toasts, #cmdlist';
 const UI_OWN_ATTR = new Set(['data-theme', 'lang', 'dir']);
 const UI_RUNTIME = '.xpl, .pager';
 const UI_KEEP_ATTR = new Set(['style', 'data-tt', 'aria-describedby', 'popover', 'data-open', 'disabled']);
-const UI_RUNTIME_CLS = /^(has-sel|sq\d|nw|folded|done|swap|tick|in|closing)$/;
+const UI_RUNTIME_CLS = /^(has-sel|sq\d|nw|folded|sel-fold|done|swap|tick|in|closing)$/;
 function uiMorph(a, b) {
   if (a.nodeType !== b.nodeType || a.nodeName !== b.nodeName) { a.replaceWith(b); return; }
   if (a.nodeType !== 1) { if (a.nodeValue !== b.nodeValue) a.nodeValue = b.nodeValue; return; }
@@ -1291,7 +1296,8 @@ function measureBar() {
 function fitBar() {
   const bar = root.querySelector('.island');
   if (!bar) return;
-  bar.classList.remove('sq0', 'sq1', 'sq2', 'sq3', 'sq4');
+  bar.classList.remove('sq0', 'sq1', 'sq2', 'sq3', 'sq4', 'sq5', 'sq6');
+  if (typeof w2selFold === 'function') w2selFold(bar); // 20-chrome: header / footer fold with a selection
   const secs = [...bar.querySelectorAll('.sec:not(.now)')].filter((x) => x.querySelector('.more.tail'));
   secs.forEach((x) => x.classList.remove('folded'));
   const restore = uxWidest(bar); // shell-ux.js: AR/EN parity
@@ -1310,10 +1316,11 @@ function fitBar() {
   }
   if (gen.length && gen.every((x) => x.classList.contains('nw'))) bar.classList.add('sq0');
   for (const x of secs.reverse()) { if (!over()) break; x.classList.add('folded'); bar.classList.add('sq1'); }
-  for (const step of ['sq2', 'sq3', 'sq4']) { if (!over()) break; bar.classList.add(step); }
+  for (const step of ['sq2', 'sq3', 'sq4', 'sq5', 'sq6']) { if (!over()) break; bar.classList.add(step); }
   restore();
 }
-window.addEventListener('resize', () => fitBar());
+window.addEventListener('resize', () => { fitBar(); setTimeout(fitBar, 200); }); // and once the resize has settled (a window drag lands mid-layout)
+document.fonts?.addEventListener?.('loadingdone', () => fitBar()); // the first fit can run before the UI face is in: refit once it lands
 let lastCount = -1;
 const opCount = () => EXT.status?.count() ?? liveOps(cur()).length;
 function refreshUi() {
@@ -1402,8 +1409,13 @@ window.addEventListener('scroll', () => { if (!ctxRaf) ctxRaf = requestAnimation
 
 /* toasts, banner, progress */
 /** A1: info/ok live 2.5 s, warn/err 4 s; a click anywhere on it dismisses (an action button still runs its action);
- *  hover or keyboard focus pauses the timer (WCAG 2.2.1); at most 3 stacked; the same message again refreshes the one shown. */
+ *  hover or keyboard focus pauses the timer (WCAG 2.2.1); the same message again refreshes the one shown.
+ *  review2 · 1: a toast with buttons (share, undo …) lives 6 s too, so `persist` only holds a warning or an error,
+ *  and that one is a banner (a tamper warning is never lost); one queue, at most TOAST_MAX toasts besides the banners;
+ *  focus the code moves onto a toast does not pin it, only a hover or the keyboard's own focus does. */
 const TOAST_MS = { info: 2500, ok: 2500, warn: 4000, err: 4000 };
+const TOAST_ACT_MS = 6000;
+const TOAST_MAX = 2;
 /** F2 · extra 10: a destructive action says so for 5 s with «تراجع». The press undoes it (the change counter goes back
  *  too) while it is still the newest change of its edition; after later edits, back() restores just that thing. */
 function undoToast(msg, back, { viaUndo = true } = {}) {
@@ -1417,8 +1429,12 @@ function undoToast(msg, back, { viaUndo = true } = {}) {
 function toast(msg, kind = 'info', { actions = [], persist = false, cls = '', ms = 0 } = {}) {
   const box = root.querySelector('.toasts');
   if (!box) return null;
-  const same = !actions.length && !persist && [...box.children].find((x) => x.dataset.msg === `${kind}|${msg}` && !x.classList.contains('out'));
-  if (same) { same.bwArm?.(); return same; }
+  const isBanner = /banner/.test(cls) || (persist && (kind === 'warn' || kind === 'err'));
+  if (isBanner && !/banner/.test(cls)) cls = `${cls} banner`.trim();
+  persist = isBanner;
+  const same = [...box.children].find((x) => x.dataset.msg === `${kind}|${msg}` && !x.classList.contains('out'));
+  if (same && (persist || !actions.length)) { same.bwArm?.(); return same; }
+  same?.remove(); // an action toast again (a second delete …): the newest one's buttons win
   const el = document.createElement('div');
   el.className = `toast ${kind} ${cls}`;
   el.dataset.msg = `${kind}|${msg}`;
@@ -1433,16 +1449,18 @@ function toast(msg, kind = 'info', { actions = [], persist = false, cls = '', ms
   if (!persist) {
     let timer = 0;
     let held = 0;
-    el.bwArm = () => { clearTimeout(timer); if (!held) timer = setTimeout(() => dismiss(el), ms || TOAST_MS[kind] || 2500); };
+    el.bwArm = () => { clearTimeout(timer); if (!held) timer = setTimeout(() => dismiss(el), Math.min(TOAST_ACT_MS, ms || (actions.length ? TOAST_ACT_MS : TOAST_MS[kind] || 2500))); };
     const hold = (on) => { held += on ? 1 : -1; if (held < 0) held = 0; if (held) clearTimeout(timer); else el.bwArm(); };
     el.addEventListener('pointerenter', () => hold(true));
     el.addEventListener('pointerleave', () => hold(false));
-    el.addEventListener('focusin', () => hold(true));
-    el.addEventListener('focusout', () => hold(false));
+    // only the keyboard's own focus holds it (a focus() from code would pin it for ever)
+    el.addEventListener('focusin', (e) => { if (e.target.matches?.(':focus-visible')) { el.bwKey = 1; hold(true); } });
+    el.addEventListener('focusout', () => { if (el.bwKey) { el.bwKey = 0; hold(false); } });
     el.bwArm();
   }
   box.appendChild(el);
-  while (box.children.length > 3) ([...box.children].find((x) => !x.classList.contains('banner')) || box.firstElementChild).remove();
+  const live = () => [...box.children].filter((x) => !x.classList.contains('banner') && !x.classList.contains('out'));
+  while (live().length > TOAST_MAX) live()[0].remove();
   return el;
 }
 function dismiss(el) {
@@ -1492,23 +1510,50 @@ function icPress(b) {
   clearTimeout(b.icGo); b.icGo = setTimeout(() => b.classList.remove('ic-go'), 900);
 }
 
-function ask(label, value = '') {
+/** A small edit dialog. review2 · extra 9: what was typed is never thrown away without a choice — a click outside, or
+ *  another tool asking, leaves a changed dialog open (it nudges); only «حفظ» / «إغلاق» / Esc end it.
+ *  type: 'text' (a textarea), 'color' (the native swatch), 'number' (a stepper, min/max/step), 'select' (options). */
+function ask(label, value = '', { type = 'text', options = [], min, max, step } = {}) {
   const d = root.querySelector('.dialog');
+  if (!d.hidden && d.bwDirty?.()) { dlgNudge(d); return Promise.resolve(''); }
+  d.bwCancel?.();
   d.hidden = false;
   d.setAttribute('aria-label', label);
-  d.innerHTML = `<label>${esc(label)}<textarea rows="3">${esc(value)}</textarea></label><div class="btns"><button type="button" class="b primary" data-k="ok"><span class="w">${esc(t('save'))}</span></button><button type="button" class="b" data-k="no"><span class="w">${esc(t('close'))}</span></button></div>`;
-  const ta = d.querySelector('textarea');
-  ta.focus();
+  const num = (k, v) => (v != null ? ` ${k}="${esc(String(v))}"` : '');
+  const field = type === 'color' ? `<input type="color" value="${esc(/^#[0-9a-f]{6}$/i.test(value) ? value : '#000000')}" />`
+    : type === 'number' ? `<input type="number" inputmode="decimal" value="${esc(String(value))}"${num('min', min)}${num('max', max)}${num('step', step)} />`
+      : type === 'select' ? `<select>${options.map((o) => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}"${v === value ? ' selected' : ''}>${esc(l)}</option>`; }).join('')}</select>`
+        : `<textarea rows="3">${esc(value)}</textarea>`;
+  d.innerHTML = `<label>${esc(label)}${field}</label><p class="dlg-hint" hidden>${esc(t('ux.dlgKeep'))}</p><div class="btns"><button type="button" class="b primary" data-k="ok"><span class="w">${esc(t('save'))}</span></button><button type="button" class="b" data-k="no"><span class="w">${esc(t('close'))}</span></button></div>`;
+  const f = d.querySelector('textarea, input, select');
+  const initial = f.value;
+  d.bwDirty = () => f.value !== initial;
+  f.focus();
   return new Promise((res) => {
+    const done = (v) => { d.hidden = true; d.bwDirty = null; d.bwCancel = null; res(v); };
+    d.bwCancel = () => done('');
     d.onclick = (e) => {
       const k = e.target.closest('button')?.dataset.k;
-      if (!k) return;
-      d.hidden = true;
-      res(k === 'ok' ? ta.value.trim() : '');
+      if (k) done(k === 'ok' ? f.value.trim() : '');
     };
-    d.onkeydown = (e) => { if (e.key === 'Escape') { d.hidden = true; res(''); } };
+    d.onkeydown = (e) => {
+      if (e.key === 'Escape') done('');
+      else if (e.key === 'Enter' && f.tagName !== 'TEXTAREA') { e.preventDefault(); done(f.value.trim()); }
+    };
   });
 }
+function dlgNudge(d) {
+  const h = d.querySelector('.dlg-hint');
+  if (h) h.hidden = false;
+  d.classList.remove('nudge'); void d.offsetWidth; d.classList.add('nudge');
+  d.querySelector('textarea, input, select')?.focus({ preventScroll: true });
+}
+// a press outside a changed dialog keeps it (and says so); an untouched one stays open as before
+window.addEventListener('pointerdown', (e) => {
+  const d = root.querySelector('.dialog');
+  if (!d || d.hidden || !d.bwDirty?.() || e.composedPath().includes(d)) return;
+  dlgNudge(d);
+}, true);
 
 /* command palette (Ctrl+K): type to filter, arrows to move, Enter to run, Esc to close */
 let palIdx = 0;
@@ -1596,10 +1641,10 @@ function setLang(l) {
   render(!edChange);
   window.BW_WM?.relabel();
 }
-// Layout direction RTL / LTR: independent of the language; once chosen it is remembered.
+// Layout direction RTL / LTR: independent of the language; remembered per edition (AR keeps RTL when EN goes LTR).
 function setDir(d) {
   S.dir = d;
-  ls.set('bw:dir', d);
+  ls.set(`bw:dir:${S.ed}`, d);
   buildUi();
   render();
 }
@@ -2040,6 +2085,13 @@ function placeAt(clientX, clientY, kind, wMm) {
   const colLeft = viewsActive() ? best.getBoundingClientRect().left : wrap.left + padL;
   return { mode: 'anchor', anchor: ptr, x: (clientX - colLeft) / k, y: (clientY - ar.top) / k, _anchorEl: !!main.querySelector(`.bw-anchor[data-anchor="${CSS.escape(ptr)}"]`) };
 }
+/** The text column's width in mm (the printable width an anchored object may use), 0 if unknown. */
+function colMm(main) {
+  const w = main?.querySelector('.wrap');
+  if (!w) return 0;
+  const cs = getComputedStyle(w);
+  return (w.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0)) / mmScale();
+}
 function snapMm(p, wMm) {
   if (!S.snap) return { p, guides: [] };
   const guides = [];
@@ -2080,7 +2132,9 @@ function startOvDrag(e, el, resize) {
   const move = (ev) => {
     const dx = ev.clientX - sx, dy = ev.clientY - sy;
     if (resize) {
-      const w = Math.max(6, Math.min(200, o.w + (getComputedStyle(el).direction === 'rtl' && false ? -dx : dx) / k));
+      // review2 · extra 10: the handle sits bottom-right in both directions (the box grows rightwards from its left edge);
+      // a text box keeps room for its words (20 mm), a picture 6 mm
+      const w = Math.max(o.kind === 'text' ? 20 : 6, Math.min(200, o.w + dx / k));
       el.style.width = `${w}mm`;
       last = { w };
     } else {
@@ -2101,6 +2155,10 @@ function startOvDrag(e, el, resize) {
     if (!last) { el.style.transform = ''; return; }
     if (resize) { commit([{ op: 'replace', path: `${ovPtr(i)}/w`, value: +last.w.toFixed(1), old: o.w }]); return; }
     const p = last.p;
+    // review2 · extra 10: an anchored object stays inside the text column (it never lands past the page margin)
+    const colW = p.mode === 'anchor' ? colMm(main) : 0;
+    const clampX = (x) => (colW ? Math.max(0, Math.min(colW - o.w, x)) : x);
+    p.x = clampX(p.x);
     const next = { ...o, mode: p.mode, x: +p.x.toFixed(1), y: +p.y.toFixed(1) };
     if (p.mode === 'anchor') next.anchor = p.anchor; else delete next.anchor;
     const group = newGroup();
@@ -2113,7 +2171,7 @@ function startOvDrag(e, el, resize) {
         const ddy = (r0.top + last.dy - br.top) / mmScale();
         const ddx = (r0.left + last.dx - br.left) / mmScale();
         if (Math.abs(ddy) > 0.3 || Math.abs(ddx) > 0.3) {
-          const fixed = { ...next, x: +(next.x + ddx).toFixed(1), y: +(next.y + ddy).toFixed(1) };
+          const fixed = { ...next, x: +clampX(next.x + ddx).toFixed(1), y: +(next.y + ddy).toFixed(1) };
           applyOp(cur().doc, { op: 'replace', path: ovPtr(i), value: fixed });
           cur().ops.at(-1).value = fixed;
           render();
@@ -2137,6 +2195,13 @@ function decorateOverlays(main) {
       h.className = 'bw-ov-handle';
       h.setAttribute('aria-hidden', 'true');
       el.appendChild(h);
+    }
+    if (el.dataset.kind === 'text' && !el.querySelector('.bw-ov-move')) {
+      const g = document.createElement('span');
+      g.className = 'bw-ov-move';
+      g.title = t('ux.moveBox');
+      g.setAttribute('aria-hidden', 'true');
+      el.prepend(g);
     }
   });
 }

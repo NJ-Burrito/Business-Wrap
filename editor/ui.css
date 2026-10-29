@@ -172,6 +172,11 @@ ins { background: var(--bw-success-wash); color: var(--bw-on-success-wash); text
 .dialog { position: fixed; z-index: 45; inset-block-start: 24vh; inset-inline-start: 50%; transform: translateX(-50%); width: min(440px, 92vw); padding: 18px; border-radius: 20px; background: var(--panel); color: var(--panel-ink); box-shadow: var(--bw-shadow-3), 0 0 0 1px var(--panel-line); animation: dialog-in var(--bw-dur-base) var(--bw-ease-out) both; }
 .shell[dir="rtl"] .dialog { transform: translateX(50%); }
 .dialog label { display: flex; flex-direction: column; gap: 8px; }
+.dialog input[type="number"], .dialog select { font: inherit; color: var(--panel-ink); background: var(--panel); border: 1px solid var(--panel-line); border-radius: 10px; padding: 8px 10px; }
+.dialog input[type="color"] { inline-size: 100%; block-size: 44px; padding: 2px; border: 1px solid var(--panel-line); border-radius: 10px; background: var(--panel); cursor: pointer; }
+.dialog .dlg-hint { margin: 8px 0 0; font-size: 12.5px; color: var(--panel-soft); }
+.dialog.nudge { animation: dialog-nudge .36s var(--bw-ease-out) both; }
+@keyframes dialog-nudge { 0%, 100% { translate: 0; } 25% { translate: -6px 0; } 75% { translate: 6px 0; } }
 .dialog .b { color: var(--panel-ink); background: var(--wash-2); }
 .dialog .b.primary { background: var(--navy); color: var(--on-primary) !important; }
 @keyframes dialog-in { from { opacity: 0; scale: var(--bw-scale-press); } to { opacity: 1; scale: 1; } }
@@ -199,6 +204,9 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
 .shell[dir="rtl"] .toasts { transform: translateX(50%); }
 .toast { pointer-events: auto; display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 16px; background: var(--deep); color: var(--on-glass); box-shadow: var(--bw-shadow-3); max-width: min(560px, 92vw); animation: toast-in var(--bw-dur-slow) var(--bw-ease-out) both; }
 .toast:not(.banner) { cursor: pointer; }
+/* a banner (restore draft, tamper warning …) waits for its choice: it reads as a standing notice, not a passing toast */
+.toast.banner { order: -1; border-radius: 12px; border-inline-start: 4px solid var(--gold); padding-block: 12px; }
+.toast.banner.warn, .toast.banner.err { border-inline-start-color: var(--bw-sec-design); }
 .toast.out { animation: toast-out var(--bw-dur-base) var(--bw-ease-in) both; }
 /* status icons on the navy toast: the light ramp steps that read on the band (always beside a word) */
 .toast.ok .i { color: var(--bw-sec-edit); } .toast.err .i { color: var(--bw-sec-design); } .toast.warn .i { color: var(--bw-sec-file); } .toast.info .i { color: var(--bw-sec-insert); }
@@ -265,24 +273,29 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
 .sec .more.tail { display: contents; }
 .sec .more.tail > .b { display: none; }
 .sec .more.tail > .menu { display: contents; }
-.sec.folded .more.tail { display: inline-flex; }
-.sec.folded .more.tail > .b { display: inline-flex; padding: 6px 5px; }
-.sec.folded .more.tail > .menu { display: flex; }
-.sec.folded .more.tail > .menu:not([data-open="1"]) { display: none; }
+.sec:is(.folded, .sel-fold) .more.tail { display: inline-flex; }
+.sec:is(.folded, .sel-fold) .more.tail > .b { display: inline-flex; padding: 6px 5px; }
+.sec:is(.folded, .sel-fold) .more.tail > .menu { display: flex; }
+.sec:is(.folded, .sel-fold) .more.tail > .menu:not([data-open="1"]) { display: none; }
 .island.sq0 .sec:not(.now) .b .w { display: none; }
 .island.sq0 .sec:not(.now) .b { padding: 6px 7px; }
 .island.sq4 .sec.now .sb > .b .w, .island.sq4 .sec.now .more > .b .w { display: none; }
 .island.sq4 .sec.now .pick select { max-width: 96px; }
-.island.sq4 .seg.ui { display: none; }
 .island.sq1 .sec:not(.now) .b .w { display: none; }
 .island.sq1 .sec { padding: 0 4px; }
 .island.sq2 .sec.now .sb > .b:not(:first-child) .w { display: none; }
 .island.sq3 .grp.doc .pick, .island.sq3 .b.cmd .w, .island.sq3 .count .w { display: none; }
+/* the RTL/LTR field never leaves the bar (review2 · 34): the bar tightens, then wraps to a second row instead */
+.island.sq5 { gap: 3px; padding-inline: 6px; } .island.sq5 .sec { padding: 0 2px; } .island.sq5 .grp { padding-inline-end: 3px; }
+.island.sq5 .sec .b, .island.sq5 .sec:is(.folded, .sel-fold) .more.tail > .b { padding: 6px 4px; } .island.sq5 .seg button { padding: 6px 5px; min-width: 30px; } .island.sq5 .b { min-width: 32px; }
+.island.sq5 .sec.now .pick select { max-width: 72px; } .island.sq5 .brand { width: 34px; height: 34px; padding: 3px; align-self: center; } .island.sq5 .brand svg { width: 26px; height: 26px; }
+.island.sq5 .sec .sc .st { font-size: 10.5px; min-width: 0 !important; } /* parity gives way here, before a second row */
+.island.sq6 { flex-wrap: wrap; row-gap: 4px; }
 .keep-tools { display: inline-flex; gap: 1px; padding-inline-start: 4px; margin-inline-start: 2px; border-inline-start: 1px solid var(--hair); }
 .b.ico { padding: 6px 6px; }
 .b.ico .w { display: none; }
 @media (max-width: 1700px) {
-  .island.has-sel .seg.ui, .island.has-sel .status .count { display: none; }
+  .island.has-sel .status .count { display: none; }
   .island.has-sel .b.primary .w { display: none; }
 }
 .sec.now .pick select { max-width: 112px; }

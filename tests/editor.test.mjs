@@ -442,12 +442,12 @@ try {
       const flip = natural === 'rtl' ? 'ltr' : 'rtl';
       const sh = () => pu.evaluateHandle(() => document.getElementById('bw-ui-host').shadowRoot);
       await (await sh()).evaluate((r, d) => r.querySelector(`[data-a="dir"][data-d="${d}"]`).click(), flip);
-      const st = await pu.evaluate(() => ({ ui: window.BW.S.ui, ed: window.BW.S.ed, shell: document.getElementById('bw-ui-host').shadowRoot.querySelector('.shell').dataset.tdir, doc: document.querySelector('main.bw-doc').dir, saved: localStorage.getItem('bw:dir') }));
+      const st = await pu.evaluate(() => ({ ui: window.BW.S.ui, ed: window.BW.S.ed, shell: document.getElementById('bw-ui-host').shadowRoot.querySelector('.shell').dataset.tdir, doc: document.querySelector('main.bw-doc').dir, saved: localStorage.getItem(`bw:dir:${window.BW.S.ed}`) }));
       await pu.reload();
       await pu.waitForFunction(() => window.BW?.ready);
       // wait on the outcome (the remembered direction applied), then report what the reopened page holds
       await pu.waitForFunction((d) => document.querySelector('main.bw-doc')?.dir === d, flip, { timeout: 5000 }).catch(() => {});
-      const after = await pu.evaluate(() => ({ kept: document.querySelector('main.bw-doc').dir, S: window.BW.S.dir, ls: localStorage.getItem('bw:dir') }));
+      const after = await pu.evaluate(() => ({ kept: document.querySelector('main.bw-doc').dir, S: window.BW.S.dir, ls: localStorage.getItem(`bw:dir:${window.BW.S.ed}`) }));
       const kept = after.kept;
       check(`${uiL} UI: direction toggles independently of the language and is remembered`, st.ui === uiL && st.shell === flip && st.doc === flip && st.saved === flip && kept === flip, JSON.stringify({ ...st, ...after }));
       await (await sh()).evaluate((r, d) => r.querySelector(`[data-a="dir"][data-d="${d}"]`).click(), natural);
