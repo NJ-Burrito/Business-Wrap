@@ -291,6 +291,7 @@ document.addEventListener('pointerdown', (e) => {
   const svg = fig.querySelector('svg');
   if (!svg || !svg.contains(e.target)) return;
   const ptr = fig.dataset.dg;
+  S.dgPickedAt = performance.now(); // the click that follows may land on the page wrapper if this press re-laid the page out: not an empty-space click
   const ed = fig.closest('main.bw-doc').dataset.locale;
   const bendEl = e.target.closest('[data-dg-bend], [data-dg-seg]');
   if (bendEl && S.dg?.edge && S.dg.b === ptr) { dgBendDrag(e, svg, ptr, ed, bendEl); return; }

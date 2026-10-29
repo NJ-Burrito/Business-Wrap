@@ -2542,6 +2542,7 @@ document.addEventListener('click', (e) => {
     selectEl(e.target);
   } else if (uxIsEmptySpace(e.target)) {
     // a click on empty page or background: the general tools come back
+    if (S.dg && performance.now() - (S.dgPickedAt || 0) < 600) return; // the press just picked a drawing; its click lands on the wrapper after a re-layout
     if (S.sel || S.selOv != null || S.dg) { S.sel = null; S.selOv = null; dgClear(); paintSel(); refreshUi(); }
   }
 });
