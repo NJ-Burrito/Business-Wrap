@@ -156,8 +156,8 @@ export const BWLOG1 = (() => {
     const lastVal = {}; // op id → the words it held at its previous entry (typing re-logs the same op)
     for (const e of entries) {
       if (e.at < from || e.at > to || e.kind === 'actor-key') continue;
-      const p = (by[e.actor.id] ||= { id: e.actor.id, name: e.actor.name, kid: e.actor.kid, edits: 0, kinds: {}, added: 0, removed: 0, sessions: 0, saves: 0, exports: 0, signs: 0, locks: 0, activeMs: 0, first: e.at, last: e.at, ts: [] });
-      if (e.actor.name) p.name = e.actor.name;
+      const p = (by[e.actor.id] ||= { id: e.actor.id, name: e.actor.name, names: [], kid: e.actor.kid, edits: 0, kinds: {}, added: 0, removed: 0, sessions: 0, saves: 0, exports: 0, signs: 0, locks: 0, activeMs: 0, first: e.at, last: e.at, ts: [] });
+      if (e.actor.name) { p.name = e.actor.name; if (!p.names.includes(e.actor.name)) p.names.push(e.actor.name); } // one profile key, every name it used
       p.last = e.at;
       if (e.kind === 'op' && e.data?.op) {
         // a typed op is re-logged after each pause under the same id: it counts once
@@ -171,7 +171,7 @@ export const BWLOG1 = (() => {
       }
       if (e.kind === 'open') p.sessions += 1;
       if (e.kind === 'save' || e.kind === 'saveHtml') p.saves += 1;
-      if (e.kind === 'export') p.exports += 1;
+      if (e.kind === 'export' || e.kind === 'saveHtml') p.exports += 1; // a file written: PDF, DOCX, print HTML, report; an HTML save or share
       if (e.kind === 'sign') p.signs += 1;
       if (e.kind === 'lock' || e.kind === 'unlock') p.locks += 1;
       p.ts.push(Date.parse(e.at));
@@ -185,5 +185,28 @@ export const BWLOG1 = (() => {
     return by;
   }
 
-  return { APP_KEY_V1, KDF_INFO, KINDS, use, canonical, entryHash, stateOf, docHash, kidOf, newKeys, seal, unseal, append, verify, mirrorOf, metrics, hex, b64 };
+  /* ── 0.13 traces (review2 #17): logic only, no format change. Besides its log and `bwlog` mark, a 0.13+ Save-HTML carries
+   * independent traces: the timeline's marks/epochIds in every edition, a <meta name="bw-ledger"> (document id + state
+   * hash), a `data-bw-ledger` attribute on <html>, and a second hash source in the CSP script-src. Any one of them with no
+   * valid log means «stripped», never «made before 0.13». `html` = the file text (or the page's outerHTML) up to </head>. */
+  const TRACE_META = 'bw-ledger';
+  function traces(data, svcId, html = '', { version = false } = {}) {
+    const t = [];
+    if (data?.bwlog) t.push('mark');
+    const s = (data?.services || []).find((x) => x.id === svcId) || (svcId == null ? data?.services?.[0] : null);
+    if (Object.values(s?.editions || {}).some((e) => (e.marks || []).length || (e.epochIds || []).length)) t.push('timeline');
+    const head = String(html).split(/<\/head>/i)[0];
+    if (new RegExp(`<meta[^>]*name=["']${TRACE_META}["']`, 'i').test(head)) t.push('meta');
+    if (/<html[^>]*\sdata-bw-ledger=/i.test(head)) t.push('root');
+    const csp = /<meta[^>]*http-equiv="Content-Security-Policy"[^>]*content="([^"]*)"/i.exec(head)?.[1] || '';
+    if (((/script-src([^;]*)/.exec(csp)?.[1] || '').match(/'sha256-/g) || []).length > 1) t.push('csp');
+    // the file's own version: only where the file is read as written (a served editor is re-wrapped with the installed one)
+    const v = /^(\d+)\.(\d+)/.exec(String(data?.version || ''));
+    if (version && v && (+v[1] > 0 || +v[2] >= 13)) t.push('version');
+    return t;
+  }
+  /** The document id a <meta name="bw-ledger"> names (to ask HISTORY about it when the log is gone). */
+  const traceDoc = (html = '') => /<meta[^>]*name=["']bw-ledger["'][^>]*content=["'][^"']*doc=([\w.:-]+)/i.exec(String(html).split(/<\/head>/i)[0])?.[1] || '';
+
+  return { TRACE_META, traces, traceDoc, APP_KEY_V1, KDF_INFO, KINDS, use, canonical, entryHash, stateOf, docHash, kidOf, newKeys, seal, unseal, append, verify, mirrorOf, metrics, hex, b64 };
 })();

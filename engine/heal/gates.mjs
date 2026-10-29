@@ -80,7 +80,7 @@ export function gateExport(files, { editions } = {}) {
  * ledger: the trust ledger's full verify, the same check the editor runs on open (31-provenance pvLoad) and the one
  * `business-wrap verify-history` runs. Never healed. Chain, hashes, signatures; for a Save-HTML also the document state
  * against the log's last docHash (hash taken from each edition's own text), a log whose last entry is not its «saveHtml»
- * (tail cut), an edited service with no log (stripped; or, with no `bwlog` mark, made before 0.13), and this machine's
+ * (tail cut), an edited service with no log (stripped; or, with no 0.13 trace at all — BWLOG1.traces — made before 0.13), and this machine's
  * HISTORY head when it knows the document. A .bwlog is checked against its <doc>.heads.json.
  */
 export async function gateLedger(file, { history } = {}) {
@@ -113,15 +113,18 @@ export async function gateLedger(file, { history } = {}) {
       const x = prov[s.id];
       if (!x?.log) {
         if (!Object.values(editions).some((e) => e.ops.length)) continue;
-        // no mark looks «made before 0.13», unless this machine's HISTORY knows the document id (log + mark removed by hand)
-        if (data.bwlog || (hist && headsOf(s.id))) problems.push(`${s.id}: stripped (edited, no history)`); else legacy = true;
+        // review2 #17: any 0.13 trace (the mark, the timeline's marks, the head meta, the <html> attribute, the CSP hash, the
+        // file's own version) or this machine's HISTORY knowing the document = «stripped»; only a file with none is «made before 0.13»
+        const tr = BWLOG1.traces(data, s.id, text, { version: true });
+        const known = hist && (headsOf(s.id) || (BWLOG1.traceDoc(text) && headsOf(BWLOG1.traceDoc(text))));
+        if (tr.length || known) problems.push(`${s.id}: stripped (edited, no history; 0.13 traces: ${[...tr, ...(known ? ['HISTORY'] : [])].join(', ')})`); else legacy = true;
         continue;
       }
       const L = await BWLOG1.unseal(x.log, x.doc);
       for (const i of (await BWLOG1.verify(L, { editions, saved: true, mirror: hist ? headsOf(x.doc) : null })).issues) problems.push(`${L.doc} entry ${i.seq}: ${i.reason}`);
     }
     // nothing to vouch for is never a PASS; a file made before 0.13 says so instead of «stripped»
-    if (!Object.keys(prov).length && !problems.length) problems.push(legacy || !data.bwlog ? 'no history (made before 0.13)' : 'the file carries no history');
+    if (!Object.keys(prov).length && !problems.length) problems.push(legacy || !BWLOG1.traces(data, null, text, { version: true }).length ? 'no history (made before 0.13)' : 'the file carries no history');
   } catch (e) { problems.push(`unreadable: ${String(e.message || e).slice(0, 120)}`); }
   return res('ledger', problems);
 }

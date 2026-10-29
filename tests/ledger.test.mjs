@@ -146,6 +146,26 @@ try {
   check('Node decrypts and verifies a browser-written log', (await L.verify(fb)).ok && fb.entries.length === 3);
 } finally { await browser.close(); }
 
+{ // review2 #17: the 0.13 traces, read the same way by the editor, the gate and the CLI (logic only: the v1 format is unchanged)
+  const html = `<!doctype html>\n<html lang="ar" data-bw-ledger="doc-1" dir="rtl"><head><meta charset="utf-8">\n<meta name="bw-ledger" content="bwlog/v1 doc=doc-1 state=sha256:ab">\n<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-T' 'sha256-APP'; style-src 'unsafe-inline'"></head><body></body></html>`;
+  const data = { version: '0.13.1', bwlog: 1, services: [{ id: 's', editions: { ar: { ops: [{}], marks: [{ kind: 'saveHtml' }] } } }] };
+  check('traces: all six found in a 0.13 Save-HTML', L.traces(data, 's', html, { version: true }).join() === 'mark,timeline,meta,root,csp,version');
+  check('traces: the version is ignored unless the file is read as written', !L.traces(data, 's', html).includes('version'));
+  check('traces: a pre-0.13 file (one CSP hash, no mark, 0.12) has none', L.traces({ version: '0.12.3', services: [{ id: 's', editions: { ar: { ops: [{}] } } }] }, 's', `<html lang="ar"><head><meta http-equiv="Content-Security-Policy" content="script-src 'sha256-APP'"></head>`, { version: true }).length === 0);
+  check('traceDoc: the document id the head meta names', L.traceDoc(html) === 'doc-1' && L.traceDoc('<head></head>') === '');
+}
+{ // review2 #11/#12: metrics count every written file (export + Save-HTML) and keep every name one profile key used
+  const k = await L.newKeys();
+  const log = { doc: 'm', entries: [] };
+  const a = { id: 'key-1', name: 'Mark' };
+  await L.append(log, { kind: 'export', actor: a, keys: k, data: { fmt: 'pdf' } });
+  await L.append(log, { kind: 'saveHtml', actor: a, keys: k });
+  await L.append(log, { kind: 'x-rename', actor: { ...a, name: 'Sami' }, keys: k, data: { from: 'Mark', to: 'Sami' } });
+  await L.append(log, { kind: 'sign', actor: { ...a, name: 'Sami' }, keys: k });
+  const m = L.metrics(log.entries)['key-1'];
+  check('metrics: exports = PDF/DOCX/report exports + HTML saves; one key keeps every name, latest first shown', m.exports === 2 && m.signs === 1 && m.name === 'Sami' && m.names.join() === 'Mark,Sami' && (await L.verify(log)).ok, JSON.stringify(m));
+}
+
 console.log(results.join('\n'));
 console.log(`${failed ? 'FAIL' : 'PASS'}  ledger: ${results.length - failed}/${results.length}`);
 process.exit(failed ? 1 : 0);

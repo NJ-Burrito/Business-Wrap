@@ -210,6 +210,40 @@ try {
   check(16, 'the «المصدر» tab lists the edits of a document opened from the list (not «…»)', pv.tab && /Mark/.test(pv.text), pv.text.slice(0, 200), true);
   await page.mouse.click(1000, 450); await wait(300);
 
+  // review2 #17: strip the log AND the bwlog mark by hand (the review's T4) → still «stripped», on a machine with no HISTORY
+  {
+    const { prov: _p, bwlog: _b, ...bare } = data || {};
+    const f = path.join(tmp, 't4.editor.html');
+    fs.writeFileSync(f, savedText.replace(/(<script type="application\/json" id="bw-data">)[\s\S]*?(<\/script>)/, (_, a, b) => a + JSON.stringify(bare).replace(/</g, '\\u003c') + b));
+    const v = spawnSync(process.execPath, [path.join(REPO, 'engine', 'cli.mjs'), 'verify-history', f, '--history', path.join(tmp, 'no-history'), '--json'], { encoding: 'utf8' });
+    check(20, 'review2 #17: log + bwlog mark removed by hand → verify-history says «stripped», never «made before 0.13»', v.status === 1 && /stripped/.test(v.stdout) && !/made before 0\.13/.test(v.stdout), v.stdout.slice(0, 300));
+  }
+
+  // review2 #11: an export is written to the log; the performance report counts it and reads the title as the document says it now
+  await page.evaluate(() => window.BW.setText('/control/coverTitle', 'خدمة مراجعة الإصدار'));
+  await page.evaluate(() => window.BW.runAction('export.docx.ar'));
+  await page.evaluate(() => window.BW.EXT.ledger.ready());
+  const exLog = await page.evaluate(() => window.BW.EXT.ledger.log().entries.filter((e) => e.kind === 'export').map((e) => e.data));
+  const { readHistory, reportData } = await import('../engine/report.mjs');
+  const rep = reportData(await readHistory(path.join(process.env.BW_WORKSPACE, 'Business-Wrap', 'HISTORY')), {});
+  const repDoc = rep.docs.find((x) => x.doc === id1);
+  check(16, 'review2 #11: a DOCX export is logged (fmt, edition, live title) and the report counts exports (DOCX + the HTML save) under the live cover title', exLog.some((x) => x.fmt === 'docx' && x.locale === 'ar' && x.docTitle === 'خدمة مراجعة الإصدار') && rep.people.reduce((s, p) => s + p.exports, 0) >= 2 && repDoc?.title === 'خدمة مراجعة الإصدار', JSON.stringify({ exLog, exports: rep.people.map((p) => p.exports), docs: rep.docs.map((x) => x.title) }));
+
+  // review2 #12: the profile key is the person: a rename in Settings is logged, later edits stay on the same row, named both ways
+  await page.evaluate(() => window.BW.openDrawer('settings')); await wait(300);
+  await R((r) => { const d = r.querySelector('.drawer .set-x-profile [data-pf="name"]')?.closest('details'); if (d) d.open = true; });
+  const nameIn = page.locator('#bw-ui-host >> css=.set-x-profile [data-pf="name"]');
+  await nameIn.fill('Sami'); await nameIn.dispatchEvent('change');
+  await page.evaluate(() => window.BW.setText('/chapters/0/title', 'مقدمة بعد تغيير الاسم'));
+  await page.evaluate(() => window.BW.EXT.ledger.ready());
+  const rn = await page.evaluate(() => { const E = window.BW.EXT.ledger.log().entries; const r = E.find((e) => e.kind === 'x-rename'); const last = E.filter((e) => e.kind === 'op').at(-1); return { r: r && { ...r.data, id: r.actor.id }, last: last && { id: last.actor.id, name: last.actor.name } }; });
+  await page.mouse.click(1000, 450); await wait(300);
+  await page.evaluate(() => window.BW.openDrawer('provenance')); await wait(800);
+  const pv12 = await R((r) => { const d = r.querySelector('.drawer'); const op = d.querySelector('.pv-e[data-kind="op"]'); return { rows: d.querySelectorAll('.pv-people tbody tr').length, aka: d.querySelector('.pv-aka')?.textContent || '', sum: op?.querySelector(':scope > details > summary')?.textContent || '', raw: op?.querySelector('.pv-raw')?.textContent || '', diff: op?.querySelector('.diff')?.textContent || '' }; });
+  check(16, 'review2 #12: a rename is a logged event (Mark → Sami, same profile key); the next edit is that key under its new name', rn.r?.from === 'Mark' && rn.r?.to === 'Sami' && rn.last?.id === rn.r?.id && rn.last?.name === 'Sami', JSON.stringify(rn));
+  check(16, 'review2 #12: one contributor row for the key, «also: Mark»; an edit reads as a sentence + before/after text, the JSON pointer only in the detail', pv12.rows === 1 && /Mark/.test(pv12.aka) && !/\/chapters\//.test(pv12.sum) && /\/chapters\//.test(pv12.raw) && /مقدمة بعد تغيير الاسم/.test(pv12.diff), JSON.stringify(pv12));
+  await page.mouse.click(1000, 450); await wait(300);
+
   // L13 timeline back and forward
   await page.evaluate(() => { window.BW.setText('/chapters/1/title', 'بطاقة 1'); window.BW.setText('/chapters/2/title', 'قصص 1'); });
   const before = await opsN();

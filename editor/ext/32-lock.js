@@ -28,14 +28,14 @@ async function lkToggle() {
   const me = PF.actor().name;
   if (!lkOn(svc)) {
     await EXT.ledger?.settle();
-    LK[svc] = { locked: true, by: me, at: new Date().toISOString() };
+    LK[svc] = { locked: true, by: me, id: PF.id(), at: new Date().toISOString() }; // id: the profile key (review2 #12)
     await EXT.ledger?.append('lock', { by: me }, svc);
     flash(t('lkLocked'));
   } else {
     const k = await bwModal({ title: t('lkUnlockTitle'), html: `<p class="lk-warn">${esc(t('lkUnlockWarn'))}</p>`, buttons: [['cancel', t('pvCancel')], ['ok', t('lkUnlock'), true]] });
     if (k !== 'ok') return;
     const was = LK[svc];
-    LK[svc] = { locked: false, by: me, at: new Date().toISOString() };
+    LK[svc] = { locked: false, by: me, id: PF.id(), at: new Date().toISOString() };
     await EXT.ledger?.append('unlock', { by: me, lockedBy: was.by || '', lockedAt: was.at || '' }, svc);
     flash(t('lkUnlocked'));
   }

@@ -53,7 +53,23 @@
   "pvr_unreadable": "سجل المصدر تالف أو غير مقروء",
   "explain.pvOpen": "يفتح سجل المصدر: من غيّر ماذا ومتى، في سلسلة موقّعة يُكشف فيها أي حذف أو تعديل.",
   "explain.pvSign": "يوقّع الحالة الحالية للوثيقة باسمك في سجل المصدر.",
-  "pvWaitLog": "لحظة: سجل المصدر لهذه الوثيقة يُحمَّل، ولا يُقبل تعديل قبل أن يبدأ التسجيل"
+  "pvWaitLog": "لحظة: سجل المصدر لهذه الوثيقة يُحمَّل، ولا يُقبل تعديل قبل أن يبدأ التسجيل",
+  "pvk_x-rename": "تغيير الاسم",
+  "pvAka": "(وباسم: {names})",
+  "pvAkaNote": "الشخص يُعرَف بمفتاح ملفه الشخصي لا باسمه؛ هذه أسماء استعملها الملف نفسه، وكل تغيير اسم مسجَّل في السجل",
+  "pvRaw": "التفاصيل التقنية",
+  "pvs_setText": "عدّل نصًا في {where}",
+  "pvs_replace": "غيّر قيمة في {where}",
+  "pvs_insert": "أضاف عنصرًا في {where}",
+  "pvs_delete": "حذف عنصرًا من {where}",
+  "pvs_move": "نقل عنصرًا في {where}",
+  "pvs_duplicate": "كرّر عنصرًا في {where}",
+  "pvs_other": "عدّل {where}",
+  "pvs_rename": "غيّر اسم الملف الشخصي من «{from}» إلى «{to}»",
+  "pvw_control": "بيانات الغلاف والتحكم",
+  "pvw_chrome": "الترويسة أو التذييل",
+  "pvw_overlay": "عنصر عائم على الصفحة",
+  "pvw_doc": "الوثيقة"
  },
  "en": {
   "pvTitle": "Provenance",
@@ -109,6 +125,22 @@
   "pvr_unreadable": "The provenance log is damaged or unreadable",
   "explain.pvOpen": "Opens Provenance: who changed what and when, in a signed chain that shows any removed or edited entry.",
   "explain.pvSign": "Signs the document as it is now, in your name, in the provenance log.",
-  "pvWaitLog": "One moment: this document's provenance log is loading, and no edit is accepted before it records"
+  "pvWaitLog": "One moment: this document's provenance log is loading, and no edit is accepted before it records",
+  "pvk_x-rename": "Rename",
+  "pvAka": "(also: {names})",
+  "pvAkaNote": "A person is known by their profile key, not their name; these are names the same profile used, and every rename is in the log",
+  "pvRaw": "Technical detail",
+  "pvs_setText": "Edited text in {where}",
+  "pvs_replace": "Changed a value in {where}",
+  "pvs_insert": "Added an item in {where}",
+  "pvs_delete": "Removed an item from {where}",
+  "pvs_move": "Moved an item in {where}",
+  "pvs_duplicate": "Duplicated an item in {where}",
+  "pvs_other": "Changed {where}",
+  "pvs_rename": "Renamed the profile from “{from}” to “{to}”",
+  "pvw_control": "the cover and control data",
+  "pvw_chrome": "the header or footer",
+  "pvw_overlay": "a floating item on the page",
+  "pvw_doc": "the document"
  }
 }
