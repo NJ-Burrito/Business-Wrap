@@ -40,13 +40,55 @@ const LIB = (() => {
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
     return `sha256:${[...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
   }
-  /** The service title: control.coverTitle, else the service-name part of control.title. */
-  function titleOf(svc = S.svc) {
-    const e = M[svc]?.[S.ed] || Object.values(M[svc] || {})[0];
-    const c = e?.doc?.control || {};
-    const tt = String(c.title || '');
-    return String(c.coverTitle || tt.split(/\s*[:—]\s+/).slice(1).join(': ') || tt || svc).trim();
+  /* One title (review 2 row 2): the cover title («عنوان الغلاف», /control/coverTitle) and the document title
+   * («عنوان الوثيقة», /control/title = "<kind>: <service name>") say the same service name. Editing the cover
+   * updates «عنوان الوثيقة», and an edition still on the placeholder («خدمة جديدة» / "New service") takes the new name too,
+   * so the list, the share file, the report, the PDF Title, an import and every saved file name follow it. */
+  const PLACEHOLDER = new Set(['خدمة جديدة', 'New service']);
+  const KIND = /^(.*?)\s*[:—]\s+/;
+  const nameOf = (c = {}) => String(c.coverTitle || String(c.title || '').split(/\s*[:—]\s+/).slice(1).join(': ') || c.title || '').trim();
+  /** The service title: control.coverTitle, else the service-name part of control.title; an edition still on the
+   *  placeholder borrows the other edition's name (the EN file is named like the AR one until it gets its own). */
+  function titleOf(svc = S.svc, ed = S.ed) {
+    const eds = M[svc] || {};
+    const own = nameOf((eds[ed] || Object.values(eds)[0])?.doc?.control);
+    if (own && !PLACEHOLDER.has(own)) return own;
+    return Object.values(eds).map((e) => nameOf(e.doc?.control)).find((x) => x && !PLACEHOLDER.has(x)) || own || svc;
   }
+  let syncing = false;
+  function setName(ed, name, svc = S.svc) {
+    const c = M[svc]?.[ed]?.doc?.control || {};
+    const kind = KIND.exec(String(c.title || ''))?.[1];
+    const title = kind ? `${kind}: ${name}` : name;
+    if (c.coverTitle != null && c.coverTitle !== name) setText('/control/coverTitle', name, ed);
+    if (c.title !== title) setText('/control/title', title, ed);
+  }
+  /** After an edit of the cover or the document title in `ed`: the other field and the placeholder editions follow. */
+  function syncTitle(ed = S.ed, from = '/control/coverTitle', svc = S.svc) {
+    const c = M[svc]?.[ed]?.doc?.control;
+    if (syncing || !c || EXT.lock?.of?.(svc)?.locked) return;
+    const name = String(from === '/control/title' ? String(c.title || '').split(/\s*[:—]\s+/).slice(1).join(': ') || c.title || '' : c.coverTitle || '').trim();
+    if (!name) return;
+    syncing = true;
+    try {
+      if (from === '/control/coverTitle') setName(ed, name, svc); // the cover drives «عنوان الوثيقة»; a hand edit of that row stays as typed
+      for (const [o, e] of Object.entries(M[svc])) if (o !== ed && PLACEHOLDER.has(nameOf(e.doc?.control))) setName(o, name, svc);
+    } catch { /* a refused edit (a lock) leaves the titles as they are */ } finally { syncing = false; }
+  }
+  /** A commit that touched a title: synced now, or (while the owner is still typing in it) when the field loses focus. */
+  function onCommit(ops, ed) {
+    if (syncing) return;
+    const op = (ops || []).find((o) => /^\/control\/(coverTitle|title)$/.test(o?.path || ''));
+    if (!op) return;
+    const a = document.activeElement;
+    if (a?.isContentEditable && a.dataset?.p === op.path) return; // focusout below
+    queueMicrotask(() => syncTitle(ed, op.path));
+  }
+  document.addEventListener('focusout', (ev) => {
+    const el = ev.target.closest?.('#bw-pair [data-p="/control/coverTitle"], #bw-pair [data-p="/control/title"]');
+    if (el) syncTitle(el.closest('main.bw-doc')?.dataset.locale || S.ed, el.dataset.p);
+  });
+  const syncAll = () => { for (const ed of Object.keys(M[S.svc] || {})) { const c = M[S.svc][ed].doc?.control; if (c && !PLACEHOLDER.has(nameOf(c))) { syncTitle(ed, c.coverTitle != null ? '/control/coverTitle' : '/control/title'); break; } } };
   const snapEd = (e) => ({ name: e.name, raw: e.raw, hash: e.hash, ops: e.ops, status: e.status, stale: [...e.stale], comments: e.comments, versions: e.versions, marks: e.marks || [], epochIds: e.epochIds || [] });
   /** The open service as a library entry (not stored). */
   function entryOf(id = S.svc, extra = {}) {
@@ -191,6 +233,9 @@ const LIB = (() => {
         mirror(last);
         mount(last);
       }
+      last.title = titleOf(last.id); // the title as edited (the ops), not the base the file started from
+      await put(last);
+      mirror(last);
       show(last.id);
       toast(t('libImported', { name: last.title }), 'ok');
       return last;
@@ -315,7 +360,7 @@ const LIB = (() => {
     const b = ev.target.closest('[data-lib]');
     if (!b) return;
     const k = b.dataset.lib, id = b.closest('[data-id]')?.dataset.id;
-    if (k === 'new') await newDocument();
+    if (k === 'new') { if (await newDocument()) { closeDrawer(); toast(t('libNewMade'), 'ok'); return; } }
     else if (k === 'import') await importAny(await pickFile('.html,.htm,.pdf,.docx'));
     else if (k === 'open') { if (await open(id)) { closeDrawer(); return; } }
     else if (k === 'tab') window.open(`${location.pathname}#doc=${encodeURIComponent(id)}`, '_blank');
@@ -364,7 +409,7 @@ const LIB = (() => {
       [t('restoreNo'), () => {}],
     ]);
   }
-  return { all, get, put, open, adopt, save, persist, persistSoon, persistNow, stamp, saveTemplate, fromTemplate, metricsOf, newDocument, importAny, remove, restore, purge, duplicate, entryOf, titleOf, isDoc, fromHash, drawer, TEMPLATES };
+  return { all, get, put, open, adopt, save, persist, persistSoon, persistNow, stamp, saveTemplate, fromTemplate, metricsOf, newDocument, importAny, remove, restore, purge, duplicate, entryOf, titleOf, syncTitle, syncAll, onCommit, isDoc, fromHash, drawer, TEMPLATES };
 })();
 
 IC.library = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" /> </svg>';
@@ -377,9 +422,10 @@ bwExt({
     boot: () => { LIB.fromHash(); },
     // Ctrl+O = «المستندات» (open a document); the toolbar tool sits in File
     keydown: (e) => { if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'o') { e.preventDefault(); openDrawer('library'); return true; } return false; },
-    save: () => { LIB.save().then(() => { window.BW.libSaved = (window.BW.libSaved || 0) + 1; }); },
+    save: () => { LIB.syncAll(); LIB.save().then(() => { window.BW.libSaved = (window.BW.libSaved || 0) + 1; }); },
     // the autosave writes the list entry too (a library document): what the list reopens is what was on screen
-    commit: () => LIB.persistSoon(),
+    commit: (ops, ed) => { LIB.onCommit(ops, ed); LIB.persistSoon(); },
+    beforeExport: () => LIB.syncAll(),
     saveHtml: () => setTimeout(LIB.persistSoon, 0), // after the timeline's Save HTML mark
     render: () => LIB.stamp(),
     pagehide: () => { LIB.persistNow(); },

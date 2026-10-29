@@ -24,7 +24,9 @@ export function reportData(logs, { from, to, people = null } = {}) {
     const own = log.entries.filter((e) => !seen.has(e.hash));
     for (const e of own) seen.add(e.hash);
     const m = BWLOG1.metrics(own, { from: lo, to: hi });
-    const full = String([...log.entries].reverse().find((e) => e.kind === 'open' && e.data?.title)?.data.title || log.doc);
+    // the title as it is now: the last edit of the cover or document title, else the one the document opened with
+    const lastSet = (re) => { const v = [...log.entries].reverse().find((e) => e.kind === 'op' && re.test(e.data?.op?.path || ''))?.data.op.value; return typeof v === 'string' ? v : v?.text; };
+    const full = String(lastSet(/^\/control\/coverTitle$/) || lastSet(/^\/control\/title$/) || [...log.entries].reverse().find((e) => e.kind === 'open' && e.data?.title)?.data.title || log.doc);
     const title = full.split(/\s*[:—]\s+/).slice(1).join(': ') || full; // the service name, not the document kind
     const lastLock = [...log.entries].reverse().find((e) => e.kind === 'lock' || e.kind === 'unlock');
     const status = lastLock?.kind === 'lock' ? 'locked' : log.entries.some((e) => e.kind === 'sign') ? 'signed' : 'progress';
