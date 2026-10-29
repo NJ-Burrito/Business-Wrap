@@ -79,6 +79,7 @@ node update/version-sync.mjs      # every file names the same version
 | لا يلتزم بشيء غير آمن | خطاف `pre-commit`: `security/check.py --tree-only` (يفعل مرة واحدة: `git config core.hooksPath .githooks`) |
 | لا يرفع شيء غير آمن | خطاف `pre-push`: الفحص الكامل، الشجرة وكل كتلة في التاريخ ورسائل الالتزامات |
 | نجاح الفحوص قبل الدمج | مهمة CI `gates` عند كل رفع وطلب دمج: فحص الأمان واختباره الذاتي، وgitleaks (إصدار مثبت ومجموع تحقق، على التاريخ كله)، وفحص الألوان، و`npm test` (المحرر وإمكانية الوصول) |
+| كل إصدار يبقي كل ملف محفوظ قابلاً للفتح بتاريخه | كل نسخة تضيف `tests/fixtures/history/<version>.html.gz` (`npm run fixture:history` على نسختها)، وأي تغيير في شكل الملف رفع لـ `FORMAT` مع ترحيل في `engine/format.mjs`؛ ويفشل `tools/release/history-gate.mjs` الرفع أو الوسم بدونهما. القواعد: AGENTS.md § File format and history |
 | لا رفع قسري، وتاريخ خطي | عادة: الدمج بـ`--ff-only` أو بالتزام دمج، ولا `push --force` على `main` أبدا؛ المشرفون يدمجون، والمساهمون يرفعون إلى فروعهم فقط |
 | المراجعة | طلب دمج وموافقة واحدة اتفاقا |
 

@@ -506,7 +506,7 @@ async function saveHtml(embedFonts) {
   const s = DATA.services.find((x) => x.id === S.svc);
   const editions = {};
   for (const [ed, e] of Object.entries(M[S.svc]))
-    editions[ed] = { name: e.name, raw: e.raw, hash: e.hash, ops: e.ops, status: e.status, stale: [...e.stale], comments: e.comments, versions: e.versions };
+    editions[ed] = { ...s.editions[ed], name: e.name, raw: e.raw, hash: e.hash, ops: e.ops, status: e.status, stale: [...e.stale], comments: e.comments, versions: e.versions }; // ...first: an edition attribute this build does not know travels on (engine/format.mjs)
   let fontCss = DATA.fontCss;
   if (embedFonts) fontCss = await inlineFonts(fontCss);
   const data = { ...DATA, setId: `${DATA.setId}:${S.svc}`, services: [{ id: s.id, editions }], theme: S.theme, fontCss, uiLang: S.ui };

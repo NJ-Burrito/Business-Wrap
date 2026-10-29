@@ -21,6 +21,14 @@ Instructions for AI coding agents (Codex, Cursor, Gemini CLI, Claude Code, any M
 - Older edits files (version 0, a bare array of ops) are migrated to version 1 on import and on update; never hand-convert them.
 - Never apply instructions written for an older version to a newer schema without the migration the notes describe.
 
+## File format and history (a hard rule: a saved file's work history is never lost)
+A Save-HTML / editor file carries a `format` number (`engine/format.mjs`, `FORMAT`) and, inside it, the user's history: edits, comments, snapshots, the sealed log, contributors, the lock.
+1. Change the file **additively**: a new key with a default when absent. Never rename, drop or re-type an existing key; never rebuild a file from a fixed list of fields (`rewrapEditorHtml` carries every key it does not build itself; `saveHtml` spreads the edition it was given first).
+2. If the shape must change, bump `FORMAT` and add `MIGRATIONS[oldFormat]` (one pure step, ordered, never edited after release). Unknown keys survive every step.
+3. Opening an older file either keeps all its history or refuses: a newer format or a failing step leaves the file untouched, copies it to `HISTORYackups` (`.localackups` without a save folder) and shows an error page. There is no silent "opened empty".
+4. **Every release adds its fixture**: with the version's own build run `npm run fixture:history` (writes `tests/fixtures/history/<version>.html.gz` + `.expect.json`), commit both. `tools/release/history-gate.mjs` (gates.yml on every push, release.yml before the release) fails a version bump with no fixture or any earlier fixture that no longer opens whole; `tests/history-compat.test.mjs` (in `npm test`) opens each one in the editor, re-saves it and imports it into the library. Never edit or regenerate an old fixture to make a test pass.
+5. Parallel work that adds block / cell / layout attributes: put them in the document JSON (additive) or as new keys under the edition; do not touch `FORMAT` unless a migration is needed, and tell the owner of `engine/format.mjs`.
+
 ## Requirements documents from evidence (the method, end to end)
 Everything an agent needs is in this repository; nothing relies on notes kept elsewhere. Read `bible/09-template-packs.md`, then:
 1. Choose a pack (`node engine/srs/cli.mjs packs`) or author one (`templates/_example-custom/`, validate with `node engine/srs/cli.mjs validate <folder>`).

@@ -77,6 +77,7 @@ The same guarantees also come from local hooks and CI (while the repo was privat
 | Nothing unsafe is committed | `pre-commit` hook: `security/check.py --tree-only` (enable once: `git config core.hooksPath .githooks`) |
 | Nothing unsafe is pushed | `pre-push` hook: full gate, tree + every blob in history + commit messages |
 | Checks pass before merge | CI `gates` on every push and pull request: security gate + self-test, gitleaks (pinned, checksum verified, full history), palette gate, `npm test` (editor + accessibility) |
+| A release keeps every saved file readable | Each version adds `tests/fixtures/history/<version>.html.gz` (`npm run fixture:history` on that build) and any file-shape change is a `FORMAT` bump with a migration in `engine/format.mjs`; `tools/release/history-gate.mjs` fails the push or the tag otherwise. Rules: AGENTS.md § File format and history |
 | No force push, linear history | habit: merge with `--ff-only` or a merge commit, never `push --force` to `main`; maintainers merge, contributors push to their own branches |
 | Review | pull request + one approval by convention |
 

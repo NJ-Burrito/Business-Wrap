@@ -26,6 +26,10 @@ jobs:
           node-version: '24'
       - name: The tag matches every version field
         run: node update/version-sync.mjs --tag "$TAG"
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: History gate (a fixture for this version; every earlier saved file still opens whole)
+        run: node tools/release/history-gate.mjs "$TAG"
       - name: Release notes from CHANGELOG.md
         run: node update/release-notes.mjs "$TAG" > "$RUNNER_TEMP/notes.md"
       - name: Zip the tagged tree as business-wrap-<version>.zip, with its SHA-256
