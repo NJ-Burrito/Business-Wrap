@@ -116,7 +116,6 @@ try {
   await p.evaluate(() => window.BW.setText('/chapters/1/title', 'ب'.repeat(40000))); // a document past a beacon's 64 KB
   await p.evaluate(() => window.BW.runAction('save'));
   await p.waitForFunction(() => /^doc-/.test(window.BW.S.svc), null, { timeout: 8000 }).catch(() => {});
-  const docId = await p.evaluate(() => window.BW.S.svc);
   const extra = await tabPage(ctx, h.url); // a second tab, closed by the user while the first stays open
   const extraTab = await extra.evaluate(() => document.documentElement.dataset.bwSession);
   await new Promise((r) => setTimeout(r, 700));
@@ -128,6 +127,7 @@ try {
   await p.keyboard.press('End');
   await p.keyboard.type(' نهاية-كاملة-XYZ');
   const myTab = await p.evaluate(() => document.documentElement.dataset.bwSession);
+  const docId = await p.evaluate(() => window.BW.S.svc); // the document typed into (the «عمل جديد» blank may come first)
   const inPage = await p.evaluate(() => { const e = window.BW.M[window.BW.S.svc].ar; return `${window.BW.S.svc} n=${e.ops.length} last=${String(e.ops.at(-1)?.value).slice(0, 40)}`; });
   await p.close({ runBeforeUnload: true }); // at once: no wait after the last key
   await ctx.close();
