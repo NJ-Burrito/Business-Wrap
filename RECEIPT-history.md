@@ -19,3 +19,7 @@ Not automated. If a file lost its log, the log may still exist in the machine's 
 
 ## For lanes A/B
 Add new block/cell/layout attributes inside the document JSON or as new keys on the edition; do not rebuild objects from fixed field lists. Bumping FORMAT is only for shape changes and goes through engine/format.mjs.
+
+## Targeted suites (run singly; machine overloaded, full npm test NOT run)
+history-compat 13/13 PASS, updater 28/28 PASS, library 30/30 PASS (one earlier run failed on an 8 s import timeout under load, passes alone), history gate ok, skill-html current, security/check.py --tree-only clean for committed files.
+Not completed: ledger, timeline, workspace, host, provenance, cli (stopped on coordinator AMEND). editor.test "page thumbnails (served)" failed twice under load (65 s render), a11y/update/design need axe-core and @modelcontextprotocol/sdk absent from node_modules: environment, not this change; baseline not compared.
