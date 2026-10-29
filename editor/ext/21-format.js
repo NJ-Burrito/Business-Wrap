@@ -12,6 +12,14 @@ function w2offset(el, node, off) {
   try { r.setEnd(node, off); } catch { return 0; }
   return (el.dataset.pfx || '').length + r.toString().length;
 }
+/** The text node and offset of character `off` (as w2offset counts it) inside a leaf element; null when the leaf has no text there. */
+function w2point(el, off) {
+  let n = (el.dataset.pfx || '').length;
+  const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  let node;
+  while ((node = walk.nextNode())) { if (off - n <= node.data.length) return [node, Math.max(0, off - n)]; n += node.data.length; }
+  return null;
+}
 function w2leafEl(n) {
   const el = (n?.nodeType === 1 ? n : n?.parentElement)?.closest?.('#bw-pair main.bw-doc [data-p]');
   return el && !el.closest('.w2-strip') ? el : null;
@@ -24,7 +32,8 @@ function w2multi(s) {
   if (s.isCollapsed) { W2F.multi = null; return; }
   const r = s.getRangeAt(0);
   const hits = [...main.querySelectorAll('[data-p]')].filter((el) => !el.closest('.w2-strip') && r.intersectsNode(el) && !/^\/labels\//.test(el.dataset.p));
-  W2F.multi = hits.length > 1 ? hits.map((el) => ({ path: el.dataset.p, ed: main.dataset.locale })) : null;
+  // the first and the last paragraph take only the highlighted part; the ones between are whole (null = whole)
+  W2F.multi = hits.length > 1 ? hits.map((el) => ({ path: el.dataset.p, ed: main.dataset.locale, from: el.contains(r.startContainer) ? w2offset(el, r.startContainer, r.startOffset) : null, to: el.contains(r.endContainer) ? w2offset(el, r.endContainer, r.endOffset) : null })) : null;
 }
 /** The leaves a block tool acts on: the highlighted ones, else the caret's leaf. */
 W2F.targets = () => {
@@ -96,7 +105,7 @@ const W2_FORMAT = {
   select(at) { W2F.at = { ed: S.ed, ...at }; return W2F.leaf() != null; },
   /** Several highlighted leaves (paragraphs, a run of cells): every one is worked on, whole; else the caret's leaf and its range. */
   each() {
-    if (W2F.multi) return W2F.targets().map((x) => ({ ...x, range: [0, textOf(x.leaf).length] }));
+    if (W2F.multi) return W2F.targets().map((x) => ({ ...x, range: [x.from ?? 0, x.to ?? textOf(x.leaf).length] })).filter((x) => x.range[0] < x.range[1] || !textOf(x.leaf));
     const leaf = W2F.leaf();
     return leaf == null ? [] : [{ path: W2F.at.path, ed: W2F.at.ed, leaf, range: w2range(leaf) }];
   },
@@ -184,7 +193,11 @@ bwExt({
       if (W2F.multi && W2F.keep) {
         const m = mainOf(W2F.multi[0].ed);
         const els = W2F.multi.map((x) => m?.querySelector(`[data-p="${CSS.escape(x.path)}"]`)).filter(Boolean);
-        if (els.length > 1) { const r = document.createRange(); r.setStartBefore(els[0]); r.setEndAfter(els.at(-1)); getSelection().removeAllRanges(); getSelection().addRange(r); W2F.keep = false; w2showSection('format', true); return; }
+        if (els.length > 1) {
+          const r = document.createRange(), m0 = W2F.multi[0], m1 = W2F.multi.at(-1);
+          const a = m0.from != null && w2point(els[0], m0.from), z = m1.to != null && w2point(els.at(-1), m1.to); // the highlighted part itself, not the whole paragraphs
+          if (a) r.setStart(...a); else r.setStartBefore(els[0]);
+          if (z) r.setEnd(...z); else r.setEndAfter(els.at(-1)); getSelection().removeAllRanges(); getSelection().addRange(r); W2F.keep = false; w2showSection('format', true); return; }
       }
       w2showSection('format', W2F.leaf() != null);
       // the range comes back after the re-render, so the next tool works on the same words

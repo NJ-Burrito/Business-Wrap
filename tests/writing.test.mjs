@@ -121,6 +121,9 @@ try {
       B.commit([{ op: 'insert', path: '/chapters/1/sections/1/blocks/0', value: { kind: 'table', columns: ['', ''], rows: [['', ''], ['', '']] } }, { op: 'replace', path: '/chapters/1/sections/1/layout', value: { breakBefore: true }, old: d().chapters[1].sections[1].layout }], { mirror: true });
       out.emptyTable = W.emptyPages(); out.noTable = !d().chapters[1].sections[1].blocks.some((b) => b.kind === 'table' && !b.rows.flat().join('').trim());
       out.noBlank = !JSON.stringify(d().chapters[1].sections[1].blocks).includes('"paragraphs":["","  "]');
+      // a prose block with words and blank paragraphs (spacing only) after them: the blanks are what pushes a page, they go; the words stay
+      B.commit([{ op: 'insert', path: '/chapters/1/sections/1/blocks/0', value: { kind: 'prose', paragraphs: ['Keep me', { text: '', marks: [], style: { spaceBefore: 40 } }, '  '] } }], { mirror: false });
+      out.spacing = W.emptyPages(); const kp = d().chapters[1].sections[1].blocks[0].paragraphs; out.kept = JSON.stringify(kp);
       // delete a section: gap closes, page size handed to the next block
       B.commit([{ op: 'replace', path: '/chapters/1/sections/0/blocks/0/layout', value: { page: { size: 'A5', orientation: 'portrait' } }, old: d().chapters[1].sections[0].blocks[0].layout }]);
       const n0 = d().chapters[1].sections.length;
@@ -132,12 +135,14 @@ try {
     check('page break: add, refuse a second, remove', r.add && r.has && !r.addTwice && r.del && r.gone, JSON.stringify(r));
     check('remove empty pages also catches a table of empty cells (a page empty by height)', r.emptyTable >= 1 && r.noTable, JSON.stringify(r));
     check('pull next content up removes the next section\'s break', r.pull && r.pulled);
+    check('remove empty pages drops blank spacing paragraphs after words and keeps the words', r.spacing >= 2 && r.kept === '["Keep me"]', JSON.stringify(r));
     check('remove empty pages deletes blank blocks', r.empties >= 1 && r.noBlank, JSON.stringify(r));
     check('delete section closes the gap and hands over the page size', r.delSec && r.n[1] === r.n[0] - 1 && r.handed === 'A5', JSON.stringify(r));
   }
 
   // ── 6. list over a highlighted range; text box at the caret
   {
+    const textOf0 = (p, d) => { const l = p.split('/').slice(1).reduce((o, k) => o[k], d); return typeof l === 'string' ? l : l?.text ?? ''; };
     await page.reload();
     await page.waitForFunction(() => window.BW?.ready);
     await page.evaluate(() => { const B = window.BW; if (B.S.ed !== 'en' && B.M[B.S.svc].en) { B.S.ed = 'en'; B.render(); } });
@@ -161,6 +166,9 @@ try {
     const dB = await doc();
     const bolds = ps.map((p) => p.split('/').slice(1).reduce((o, k) => o[k], dB)).map((l) => (l?.marks || []).some((m) => m[2] === 'b'));
     check('Bold applies to every paragraph in the highlighted range, not only the first', bolds.length === 3 && bolds.every(Boolean), JSON.stringify(bolds));
+    const bm = ps.map((p) => (p.split('/').slice(1).reduce((o, k) => o[k], dB).marks || []).find((x) => x[2] === 'b'));
+    const len0 = String(textOf0(ps[0], dB)).length;
+    check('Bold over several paragraphs covers only the highlighted part: first from char 1, middle whole, last up to char 3', bm[0]?.[0] === 1 && bm[0]?.[1] === len0 && bm[1]?.[0] === 0 && bm[2]?.[0] === 0 && bm[2]?.[1] === 3, JSON.stringify(bm));
     await page.evaluate(() => window.BW.EXT.w2format.mark('color', '#c0392b'));
     await page.evaluate(() => window.BW.EXT.w2format.style({ align: 'center' }));
     const dFmt = await doc();

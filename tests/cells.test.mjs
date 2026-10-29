@@ -325,6 +325,18 @@ try {
   check('resize: dragging a selected row border sets one height on every selected row', rh[1] > 8 && rh[1] === rh[2] && rh[0] == null && (await box(1, 0)).height > hBefore + 20, JSON.stringify(rh));
   await page.evaluate(() => window.BW.EXT.cells.act.colWidth(40));
   check('column width command: one width for the selected columns', (await blk()).colWidths.slice(0, 1).every((x) => x === 40));
+  // 6b · fill handle: dragging the corner of a selected formula copies it down, relative refs shift, $-anchored refs stay
+  await page.evaluate(([p]) => { const B = window.BW; const o = B.M[B.S.svc][B.S.ed]; const ops = [{ op: 'replace', path: `${p}/rows`, value: [['1', '2', '3', { text: '#ERR', marks: [], style: { formula: '=A1+$B$1' } }], ['4', '5', '6', ''], ['7', '8', '9', ''], ['10', '11', '12', '']], old: null }]; B.commit(ops, { mirror: false }); }, [P]);
+  await page.evaluate(([p]) => { const B = window.BW; const e = B.M[B.S.svc][B.S.ed]; let t = e.doc; for (const k of p.split('/').slice(1)) t = t[k]; if (t.merges?.length) B.commit([{ op: 'replace', path: `${p}/merges`, value: [], old: t.merges }], { mirror: false }); }, [P]);
+  await page.evaluate((q) => { const x = document.querySelector(q).closest('table'); window.BW.EXT.cells.select([[0, 3]], { ed: x.closest('main.bw-doc').dataset.locale, rows: x.dataset.rows, b: x.dataset.b, el: x }); }, cell(0, 3));
+  const hb = await box(0, 3);
+  await page.mouse.move(hb.x + hb.width - 3, hb.y + hb.height - 3); await page.mouse.down();
+  const [fx, fy] = await centre(2, 3);
+  await page.mouse.move(fx, fy, { steps: 6 }); await page.mouse.up();
+  const fb = await blk();
+  check('fill handle: dragging D1 down to D3 shifts =A1+$B$1 to =A2+$B$1 / =A3+$B$1 (anchored $B$1 stays) and calculates them', fb.rows[1][3]?.style?.formula === '=A2+$B$1' && fb.rows[2][3]?.style?.formula === '=A3+$B$1' && txt(fb.rows[1][3]) === '6' && txt(fb.rows[2][3]) === '9', JSON.stringify([fb.rows[1][3], fb.rows[2][3]]));
+  await page.keyboard.press('Escape');
+
   check('no page errors in the whole run', !errors.length, errors.join(' | '));
 } finally {
   await browser.close();
