@@ -113,7 +113,8 @@ export async function gateLedger(file, { history } = {}) {
       const x = prov[s.id];
       if (!x?.log) {
         if (!Object.values(editions).some((e) => e.ops.length)) continue;
-        if (data.bwlog) problems.push(`${s.id}: stripped (edited, no history)`); else legacy = true;
+        // no mark looks «made before 0.13», unless this machine's HISTORY knows the document id (log + mark removed by hand)
+        if (data.bwlog || (hist && headsOf(s.id))) problems.push(`${s.id}: stripped (edited, no history)`); else legacy = true;
         continue;
       }
       const L = await BWLOG1.unseal(x.log, x.doc);

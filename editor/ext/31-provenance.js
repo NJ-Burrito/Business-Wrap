@@ -89,8 +89,9 @@ async function pvLoad(svc, snap = null) {
     }
   } catch { L.verdict = { ok: false, issues: [{ seq: 0, reason: 'unreadable' }] }; L.entries = []; return (PV.logs[svc] = L); }
   // an edited document that never had a Business-Wrap log: made before 0.13 (no `bwlog` mark, which every 0.13+ Save-HTML
-  // and library entry carries). Neutral, logged from this open on. A document with the mark and no log stays «stripped».
-  if (edited && !L.entries.length && (live ? ent && !ent.bwlog : !DATA.bwlog)) { L.src = 'legacy'; L.verdict = { ok: true, issues: [], legacy: true }; L.pins = {}; return (PV.logs[svc] = L); }
+  // and library entry carries). Neutral, logged from this open on. A document with the mark and no log stays «stripped»;
+  // so does one whose id this machine's HISTORY knows (log and mark both removed by hand).
+  if (edited && !L.entries.length && !mir.log && (live ? ent && !ent.bwlog : !DATA.bwlog)) { L.src = 'legacy'; L.verdict = { ok: true, issues: [], legacy: true }; L.pins = {}; return (PV.logs[svc] = L); }
   // a log continued from this machine's mirror is newer than any file state: only its chain and head are checked
   L.verdict = await BWLOG1.verify(L, { mirror: L.from ? null : L.mirror, editions: L.src === 'mirror' ? undefined : eds, saved: L.src === 'html' || L.src === 'entry' });
   L.pins = L.verdict.pins;

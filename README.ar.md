@@ -70,12 +70,12 @@
 
 💬 ثم قل: **«ابن وثيقة متطلبات …»** أو **«افتحها في المحرر»**.
 
-🔌 **خادم MCP وحده** (أي عميل MCP، stdio محلي؛ من npm):
+🔌 **خادم MCP وحده** (أي عميل MCP، stdio محلي؛ الإصدار 0.13.0 من وسم GitHub، فسجل npm ما زال على 0.12.0):
 
 <div dir="ltr">
 
 ```
-claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.13.0 business-wrap-mcp
 ```
 
 </div>
@@ -87,7 +87,6 @@ claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp
 
 - ملف الإصدار: `business-wrap-<version>.zip` مع `.sha256` من https://github.com/NJ-Burrito/Business-Wrap/releases/latest. وفي ذلك المجلد: `npm ci`.
 - خادم MCP من نسخة محلية: `claude mcp add business-wrap -- node <path-to>/Business-Wrap/mcp/cli.mjs` (دون `npm ci`)
-- خادم MCP من وسم GitHub (دون npm): `claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.13.0 business-wrap-mcp`
 - الأدوات (15): `build_editor` و`validate_edits` و`apply_edits` و`export_document` و`export_design_pack` و`check_fonts` و`harvest_model` و`harvest_crawl` و`harvest_merge` و`harvest_sources` و`open_in_editor` و`close_editor` و`diagram_mermaid` و`check_update` و`apply_update`، إضافة إلى أدوات `learning_*`. وأداة الحصاد التي تُعطى `open: true` تفتح نتيجتها في المحرر. التفاصيل في [mcp/README.ar.md](mcp/README.ar.md).
 
 </details>
@@ -333,7 +332,7 @@ git config core.hooksPath .githooks
 
 🌾 **المسح تجربة جافة:** يتوقف قبل الإرسال أو التقديم أو التأكيد أو الدفع، إلا إذا طلبت ذلك مرتين.
 
-🔏 **سجل كاشف للعبث (0.13.0)، وحدّه بصدق:** كل تعديل وحفظ وتصدير وتوقيع وقفل وفتح قيدٌ في سجل متسلسل بالتجزئة وموقّع (`bwlog` الإصدار 1، صيغة مجمّدة) ينتقل داخل ملف HTML المُشارَك، وله نسخة مرآة في `HISTORY` داخل مجلد الحفظ. يُكشف ويُعرض أي قيد محذوف أو معدَّل، أو أي تعديل لم يُسجَّل. التشفير يحمي من القراءة العابرة فقط: Business-Wrap مفتوح المصدر برخصة MIT، فالمفتاح في الشيفرة. ومن يملك الشيفرة يستطيع أن يعيد بناء سلسلة كاملة بمفاتيح جديدة، ولا يُكشف ذلك إلا حيث توجد نسخة مرآة أو مفتاح مثبَّت من المؤلف الحقيقي (جهاز آخر، أو مخزن `HISTORY`، أو نسخة مُشارَكة سابقة). لا يوجد ختم زمني موثوق. والقفل يمنع التعديل غير المقصود، وليس تحكمًا في الوصول ([bible/11-trust-ledger.ar.md](bible/11-trust-ledger.ar.md)).
+🔏 **سجل كاشف للعبث (0.13.0)، وحدّه بصدق:** كل تعديل وحفظ وتصدير وتوقيع وقفل وفتح قيدٌ في سجل متسلسل بالتجزئة وموقّع (`bwlog` الإصدار 1، صيغة مجمّدة) ينتقل داخل ملف HTML المُشارَك، وله نسخة مرآة في `HISTORY` داخل مجلد الحفظ. يُكشف ويُعرض أي قيد محذوف أو معدَّل، أو أي تعديل لم يُسجَّل. التشفير يحمي من القراءة العابرة فقط: Business-Wrap مفتوح المصدر برخصة MIT، فالمفتاح في الشيفرة. ومن يملك الشيفرة يستطيع أن يعيد بناء سلسلة كاملة بمفاتيح جديدة، ولا يُكشف ذلك إلا حيث توجد نسخة مرآة أو مفتاح مثبَّت من المؤلف الحقيقي (جهاز آخر، أو مخزن `HISTORY`، أو نسخة مُشارَكة سابقة). لا يوجد ختم زمني موثوق. وإزالة السجل وعلامة `bwlog` كليهما يدويًا تجعل الملف يبدو «أُنشئ قبل 0.13»؛ لكن نسخة `HISTORY` المرآة المحلية ما زالت تعرف الوثيقة فتُظهرها «محذوفة السجل» على هذا الجهاز. والقفل يمنع التعديل غير المقصود، وليس تحكمًا في الوصول ([bible/11-trust-ledger.ar.md](bible/11-trust-ledger.ar.md)).
 
 🛡️ **فحص أمني** (`security/check.py`، مع gitleaks في CI) يبقي محتوى العملاء وبيانات الدخول والمسارات المحلية خارج المستودع. وجدت مشكلة؟ [SECURITY.ar.md](SECURITY.ar.md).
 

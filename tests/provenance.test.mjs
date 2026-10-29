@@ -153,6 +153,10 @@ try {
   const { prov, ...stripped } = dB;
   r = await opened('t-stripped.html', withData(htmlB, stripped));
   check('tamper: a stripped log is flagged', r.reasons.includes('stripped'), JSON.stringify(r));
+  // honest limit: log AND bwlog mark removed by hand looks «made before 0.13», but this machine's HISTORY knows the document
+  const { prov: _ps, bwlog: _bs, ...bare0 } = dB;
+  r = await opened('t-stripped-nomark.html', withData(htmlB, bare0));
+  check('tamper: log + mark removed, document id in HISTORY → «stripped», never «made before 0.13»', r.reasons.includes('stripped') && !r.v.legacy, JSON.stringify(r));
   const trunc = JSON.parse(JSON.stringify(logB)); trunc.entries.length = 6;
   r = await opened('t-truncated.html', withData(htmlB, { ...dB, prov: { [svc]: { doc, log: await L.seal(trunc) } } }));
   check('tamper: a truncated log is flagged against this machine\'s mirror', r.reasons.includes('truncated'), JSON.stringify(r));
@@ -270,6 +274,10 @@ try {
     const { prov: _a, contrib: _b, bwlog: _d, ...legacyD } = dL;
     const cl = cli(put('v-legacy.html', legacyD));
     check('F5 2: verify-history on a pre-0.13 file says «made before 0.13», not stripped', cl.code === 1 && cl.problems.some((x) => /made before 0\.13/.test(x)) && !cl.problems.some((x) => /stripped/.test(x)), cl.out.slice(0, 200));
+    const kh = path.join(tmp, 'knows-history'); fs.mkdirSync(kh, { recursive: true });
+    fs.writeFileSync(path.join(kh, `${String(legacyD.services[0].id).replace(/:/g, '_')}.heads.json`), JSON.stringify({ doc: legacyD.services[0].id, head: { seq: 1, hash: 'x' }, hashes: [], pins: {} }));
+    const gk = await gateLedger(put('v-legacy-known.html', legacyD), { history: kh });
+    check('honest limit: log + mark removed, but HISTORY knows the document id → «stripped»', gk.verdict === 'FAIL' && gk.problems.some((x) => /stripped/.test(x)) && !gk.problems.some((x) => /made before 0\.13/.test(x)), JSON.stringify(gk.problems));
   }
   const cOps = JSON.parse(JSON.stringify(dL)); const edL = Object.keys(cOps.services[0].editions)[0];
   cOps.services[0].editions[edL].ops.at(-1).value = 'forged in the data block';
