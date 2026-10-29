@@ -360,11 +360,43 @@ try {
   await R((r) => r.querySelector('.bw-modal [data-mk="ok"]')?.click());
   await wait(1500);
   const shareName = (fs.existsSync(htmlDir) ? fs.readdirSync(htmlDir) : []).filter((n) => !htmlBefore.has(n));
-  check(15, 'share writes «<title>-<date>-AR.html» like a save (not doc-<id>.editor.html)', shareName.length >= 1 && shareName.every((n) => n.includes(today) && /-AR\.html$/.test(n)), shareName.join(',') || 'no shared file', true);
+  check(15, 'share writes «<title>-<date>-AR.html» like a save (not doc-<id>.editor.html)', shareName.length >= 1 && shareName.every((n) => n.includes(today) && /-AR(-\d+)?\.html$/.test(n)), shareName.join(',') || 'no shared file', true);
+
+  // G3 (review 2 row 2, L7): the cover title the owner types drives the list, the document title, the share file and
+  // every saved file name live; the EN file follows the same «<title>-<date>-ENG» rule (no «خدمة جديدة» / "New service")
+  await page.evaluate(() => window.BW.EXT.library.newDocument());
+  await wait(300);
+  await clickDoc('[data-p="/control/coverTitle"]');
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('خدمة مراجعة الإصدار');
+  await page.mouse.click(1000, 450); await wait(300);
+  await act('save');
+  await page.waitForFunction(() => /^doc-/.test(window.BW.S.svc), null, { timeout: 8000 }).catch(() => {});
+  const t7 = await page.evaluate(async () => { const B = window.BW, id = B.S.svc, e = await B.EXT.library.get(id); return { list: e?.title, ar: B.M[id].ar.doc.control.title, en: B.M[id].en?.doc.control.title, enName: B.EXT.library.titleOf(id, 'en') }; });
+  check(7, 'the cover title typed by the owner names the list entry and «عنوان الوثيقة», and the EN edition follows', t7.list === 'خدمة مراجعة الإصدار' && /: خدمة مراجعة الإصدار$/.test(t7.ar) && /خدمة مراجعة الإصدار$/.test(t7.en || '') && t7.enName === 'خدمة مراجعة الإصدار', JSON.stringify(t7));
+  const exEn = await page.evaluate(async () => { const B = window.BW, id = B.S.svc; const r = await fetch('/api/export', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ service: id, locale: 'en', doc: B.M[id].en.doc, embedFonts: false }) }); return (await r.json()).pdf || ''; });
+  check(15, 'the EN export is named «<title>-<date>-ENG.pdf» with the same title (not "New service")', path.basename(exEn) === W.outName('خدمة مراجعة الإصدار', new Date(), 'en', 'pdf'), path.basename(exEn));
+  const hb2 = new Set(fs.readdirSync(htmlDir));
+  await fire('shShare'); await wait(300);
+  await page.locator('#bw-ui-host >> css=.bw-modal [data-sh="to"]').fill('Alaa').catch(() => {});
+  await R((r) => r.querySelector('.bw-modal [data-mk="ok"]')?.click());
+  await wait(1500);
+  const share2 = fs.readdirSync(htmlDir).filter((n) => !hb2.has(n));
+  check(7, 'the share file carries the edited title (not «خدمة جديدة»)', share2.length >= 1 && share2.every((n) => n.startsWith('خدمة مراجعة الإصدار-')), share2.join(',') || 'no shared file');
+  // G3 (review 2 row 10, L15): HISTORY hidden and never served, whatever the case of the address
+  const histAttr = process.platform === 'win32' ? spawnSync('attrib', [ws.dirs.history], { encoding: 'utf8' }).stdout.split(ws.dirs.history)[0] : ' H ';
+  const histServed = (await Promise.all(['HISTORY', 'history'].map(async (d) => (await fetch(`${h.url}files/${d}/sessions`)).status))).every((c) => c === 404);
+  check(15, 'HISTORY carries the hidden attribute and is never served (any case)', /(^|\s)H(\s|$)/.test(histAttr) && histServed, JSON.stringify({ histAttr, histServed }));
 
   // L14 closing the last tab saves and stops the host; a relaunch offers resume or new work
+  // G3 (review 2 row 9): text typed just before the close is saved whole; tabs closed earlier (line 24's) do not come
+  // back; the resumed origin keeps the owner's profile
   const pid = h.pid;
-  for (const p of ctx.pages()) await p.close({ runBeforeUnload: true });
+  const lastTab = await page.evaluate(() => document.documentElement.dataset.bwSession);
+  await clickDoc('[data-p="/chapters/0/title"]');
+  await page.keyboard.press('End');
+  await page.keyboard.type(' تعديل غير مكتمل للنهاية');
+  for (const p of ctx.pages()) await p.close({ runBeforeUnload: true }); // at once, no wait after the last key
   await ctx.close();
   const t14 = Date.now();
   while (H.alive(pid) && Date.now() - t14 < 8000) await wait(100);
@@ -376,6 +408,12 @@ try {
   await p2.waitForFunction(() => window.BW?.ready && document.documentElement.dataset.bwResume, null, { timeout: 15000 }).catch(() => {});
   const resume = await p2.evaluate(() => { const d = document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-resume'); if (!d) return null; const b = d.querySelector('[data-s="resume"]'); const cs = b && getComputedStyle(b); return { resume: !!b, fresh: !!d.querySelector('[data-s="new"]'), font: getComputedStyle(d).fontFamily, bg: cs?.backgroundColor, border: cs?.borderStyle }; });
   check(14, 'closing the last tab stops the host; a relaunch offers «استأنف كل شيء» and «عمل جديد»', stopped && resume?.resume && resume?.fresh, JSON.stringify({ stopped, resume }));
+  const lastRun = await (await fetch(`${h.url}api/session/last`)).json();
+  const typedRec = (() => { try { return fs.readFileSync(path.join(ws.dirs.history, 'sessions', lastRun.runId, `${lastTab}.json`), 'utf8'); } catch { return ''; } })();
+  check(14, 'text typed right before closing the tab is in the saved run, whole («تعديل غير مكتمل للنهاية»)', typedRec.includes('تعديل غير مكتمل للنهاية'), typedRec ? typedRec.slice(typedRec.indexOf('تعديل غير') - 40, typedRec.indexOf('تعديل غير') + 40) : `no record ${lastRun.runId}/${lastTab}`);
+  check(14, 'only the tabs open at shutdown are offered (the line-24 tab closed earlier is not)', lastRun.tabs?.length === 1 && lastRun.tabs[0].tab === lastTab, JSON.stringify(lastRun.tabs));
+  const prof2 = await p2.evaluate(() => localStorage.getItem('bw:profile') || '');
+  check(16, 'the relaunched host (a new port: a new origin) still knows the owner: no «من أنت؟» again', /Mark/.test(prof2), prof2.slice(0, 120));
   check(38, 'the relaunch dialog uses the house font and styled buttons (not browser defaults)', !!resume && !/Times|(^|,\s*)serif$/.test(resume.font) && resume.bg !== 'rgba(0, 0, 0, 0)', JSON.stringify(resume), true);
   await p2.locator('#bw-ui-host >> css=dialog.bw-resume [data-s="new"]').click().catch(() => {});
   await p2.close({ runBeforeUnload: true });

@@ -17,7 +17,7 @@ Public repo: the check and the download need no token and no sign-in. An optiona
 | Audience | Channel | Behaviour |
 |---|---|---|
 | Person, editor | `editor/update.js` + `editor/settings.js` (mounted in `engine/build-editor.mjs`) | served by `engine/serve.mjs`: auto-check at launch (at most once per 24 h, switch in Settings, on by default), a popup with the notes and Update now / Later / Skip this version, one-click update with progress steps, then the editor reopens where the user was; Settings (About, Update, Preferences); "What's new" once after an update; from `file://` no request at all, Settings explains how to update; never printed or saved into Save-HTML |
-| Person, terminal | `npx business-wrap update --check` | one line + three highlights; `--apply --yes`; `--notes`; `--off` / `--on` |
+| Person, terminal | `node update/cli.mjs update --check` in the install (the one-liner prints this install's own command) | one line + three highlights; `--apply --yes`; `--notes`; `--off` / `--on`. `npx business-wrap` resolves the **npm** package, which can lag behind GitHub (0.12.0 under 0.13): run from an npx cache, the CLI hands over to the install it stands in, else refuses `--apply` (a temporary copy) |
 | Agent with the skill | SKILL.md "First: check for an update" | check at task start, one line to the user, offer the command, never auto-update |
 | Codex, Cursor, Gemini CLI | `AGENTS.md` | the same instruction |
 | Any MCP client | MCP server | `update_available` in the initialize instructions and on the first tool result of a session; `check_update`; `apply_update` refuses without `confirm: true` |
@@ -28,6 +28,7 @@ Public repo: the check and the download need no token and no sign-in. An optiona
 - Zip install: downloads the release zip (no token needed), verifies SHA-256 (GitHub digest or the `.sha256` asset), keeps ONE backup `<folder>.backup-<old>`, swaps product files, rolls back on failure.
 - Never touched: `.local`, `design/custom`, `logos`, `fonts/custom`, `drafts`, `out`, `.git`, `node_modules`.
 - Then user data is migrated by the NEW engine (`*.edits.json` v0 → v1).
+- **Never a downgrade** (0.13.1): the source is GitHub's releases for the repo in `update/source.json` (never npm), and `applyUpdate` refuses a release that is not strictly newer than the installed version, whoever offered it. Gate: `tests/update.test.mjs`.
 
 ## In the editor (0.11.0)
 The page is a self-contained HTML, often opened from `file://`: the page never holds a token and never calls GitHub. Everything goes through the local server, which uses the same check and apply as the CLI.
