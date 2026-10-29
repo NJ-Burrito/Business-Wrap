@@ -4,10 +4,10 @@
 
 ## ⚡ في عشر ثوان
 
-🔌 أمر واحد (الإصدار 0.13.1 من وسم GitHub، فسجل npm ما زال على 0.12.0؛ أو إضافة Claude Code، أو نسخة محلية أدناه):
+🔌 أمر واحد (الإصدار 0.13.2 من وسم GitHub، فسجل npm ما زال على 0.12.0؛ أو إضافة Claude Code، أو نسخة محلية أدناه):
 
 ```bash
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.13.1 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.13.2 business-wrap-mcp
 ```
 
 ✅ يحتاج Node 20 فأحدث وuv، وChrome أو Edge لملف PDF.
@@ -43,7 +43,7 @@ claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.13.
 ## ▶️ التشغيل
 
 ```bash
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.13.1 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.13.2 business-wrap-mcp
 # أو من نسخة محلية (دون npm ci: حزمة MCP مضمّنة في mcp/vendor/sdk.mjs):
 node mcp/cli.mjs
 ```
