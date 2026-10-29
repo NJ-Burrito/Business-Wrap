@@ -178,6 +178,25 @@
 [data-ic="shShare"] > :nth-child(1) { --d: calc(var(--bw-stagger) * 3); }
 [data-ic="shShare"] > :nth-child(3) { --d: calc(var(--bw-stagger) * 4); }
 
+/* 0.13.2 icons (cells, writing, page gaps): one whole-icon move each, same trigger as above */
+:is(.b:hover:not(:disabled), .b:focus-visible, .b.ic-go, [role="option"]:hover, .sc:hover) .ic:is([data-ic="cellMerge"], [data-ic="cellSplit"], [data-ic="cellWrap"], [data-ic="cellFill"], [data-ic="cellColW"], [data-ic="cellRowH"], [data-ic="cellClearValue"], [data-ic="cellClearFormat"], [data-ic="addStory"], [data-ic="storyPoint"], [data-ic="storyCard"], [data-ic="pgBreakAdd"], [data-ic="pgBreakDel"], [data-ic="pgPullUp"], [data-ic="secDel"], [data-ic="pgEmpty"]) > * { animation: var(--icm, none); }
+[data-ic="cellMerge"] > * { --s: 1.15; --r: 10deg; --icm: icm-recede var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="cellSplit"] > * { --s: 1.15; --r: 10deg; --icm: icm-pop var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="cellWrap"] > * { --s: 1.15; --r: 10deg; --icm: icm-tilt var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="cellFill"] > * { --s: 1.15; --r: 10deg; --icm: icm-pop var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="cellColW"] > * { --s: 1.15; --r: 10deg; --icm: icm-grow-x var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="cellRowH"] > * { --s: 1.15; --r: 10deg; --icm: icm-grow-y var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="cellClearValue"] > * { --s: 1.15; --r: 10deg; --icm: icm-blink var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="cellClearFormat"] > * { --s: 1.15; --r: 10deg; --icm: icm-spin var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="addStory"] > * { --s: 1.15; --r: 10deg; --icm: icm-pop var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="storyPoint"] > * { --s: 1.15; --r: 10deg; --icm: icm-pop var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="storyCard"] > * { --s: 1.15; --r: 10deg; --icm: icm-lift var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="pgBreakAdd"] > * { --s: 1.15; --r: 10deg; --icm: icm-pop var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="pgBreakDel"] > * { --s: 1.15; --r: 10deg; --icm: icm-recede var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="pgPullUp"] > * { --s: 1.15; --r: 10deg; --icm: icm-lift var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="secDel"] > * { --s: 1.15; --r: 10deg; --icm: icm-lift var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="pgEmpty"] > * { --s: 1.15; --r: 10deg; --icm: icm-blink var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+
 /* calm mode and reduced motion: drawn, never moving */
 @media (prefers-reduced-motion: reduce) { .ic[data-ic] > * { animation: none !important; } }
 .shell[data-calm="1"] .ic[data-ic] > * { animation: none !important; }
