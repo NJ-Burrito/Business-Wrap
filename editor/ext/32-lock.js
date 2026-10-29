@@ -17,7 +17,10 @@ function lkPaint() {
   if (!on) { b?.remove(); return; }
   if (!b) { b = document.createElement('div'); b.className = 'lk-banner'; b.setAttribute('role', 'status'); root.appendChild(b); }
   const l = LK[S.svc];
-  b.innerHTML = `<span class="i">${ic('warn')}</span><span class="m">${esc(t('lkBanner', { name: l.by || t('pfNoName'), time: new Date(l.at).toLocaleString(S.ui === 'ar' ? 'ar-JO' : 'en-GB') }))}</span><button type="button" class="b" data-lk="unlock"><span class="w">${esc(t('lkUnlock'))}</span></button>`;
+  // the approval travels in the log: the last signature names its signer beside the lock
+  const sg = [...(EXT.ledger?.log(S.svc)?.entries || [])].reverse().find((e) => e.kind === 'sign');
+  const signed = sg ? ` · ${t('lkSignedBy', { name: sg.data?.name || sg.actor.name || t('pfNoName') })}` : '';
+  b.innerHTML = `<span class="i">${ic('warn')}</span><span class="m">${esc(t('lkBanner', { name: l.by || t('pfNoName'), time: new Date(l.at).toLocaleString(S.ui === 'ar' ? 'ar-JO' : 'en-GB') }) + signed)}</span><button type="button" class="b" data-lk="unlock"><span class="w">${esc(t('lkUnlock'))}</span></button>`;
   b.querySelector('[data-lk="unlock"]').onclick = () => runAction('lkToggle');
 }
 async function lkToggle() {
@@ -81,8 +84,9 @@ bwExt({
   expose: { lock: { of: (svc) => LK[svc] || null, set: (svc, v) => { if (v) LK[svc] = v; else delete LK[svc]; if (svc === S.svc) lkPaint(); } } },
   guards: [(what) => (lkOn() ? t('lkRefused') : true)],
   on: {
-    boot: lkPaint,
-    open: lkPaint,
+    // painted at once, and again when the document's log is attached (the signer comes from it)
+    boot: () => { lkPaint(); EXT.ledger?.ready().then(lkPaint); },
+    open: () => { lkPaint(); EXT.ledger?.ready().then(lkPaint); },
     render: lkPaint,
     saveHtml: (data) => { data.lock = LK[S.svc] ? { [S.svc]: LK[S.svc] } : {}; },
     keydown: (e) => {

@@ -94,6 +94,7 @@ export const BWLOG1 = (() => {
   /**
    * Checks a log. opts.mirror = { head: {seq, hash}, hashes: [hash by seq], pins: {actorId: kid} } from this machine;
    * opts.editions = the document state the file carries (per edition {hash, ops}).
+   * opts.saved = the log came out of a Save-HTML file: its last entry must be that «saveHtml» (else the tail was cut).
    * Returns { ok, issues: [{seq, reason}], pins, keys } — reasons: seq, link, hash, sig, nokey, tofu, truncated, fork, unlogged, stripped.
    */
   async function verify(log, opts = {}) {
@@ -131,6 +132,8 @@ export const BWLOG1 = (() => {
       if (!E.length) { if (withOps || head) issues.push({ seq: 0, reason: 'stripped' }); }
       else if (lastDh !== (await docHash(opts.editions))) issues.push({ seq: E.length - 1, reason: 'unlogged' });
     }
+    // a Save-HTML seals the log right after its own «saveHtml» entry: any other last entry means the tail was cut
+    if (opts.saved && E.length && E.at(-1).kind !== 'saveHtml' && !issues.some((i) => i.reason === 'truncated')) issues.push({ seq: E.length - 1, reason: 'truncated' });
     return { ok: !issues.length, issues, pins, kids: Object.keys(keys) };
   }
 
@@ -157,7 +160,8 @@ export const BWLOG1 = (() => {
       if (e.actor.name) p.name = e.actor.name;
       p.last = e.at;
       if (e.kind === 'op' && e.data?.op) {
-        if (!e.data.typed) { p.edits += 1; p.kinds[e.data.op.op] = (p.kinds[e.data.op.op] || 0) + 1; }
+        // a typed op is re-logged after each pause under the same id: it counts once
+        if (!e.data.typed || !(e.data.op.id in lastVal)) { p.edits += 1; p.kinds[e.data.op.op] = (p.kinds[e.data.op.op] || 0) + 1; }
         if (e.data.op.op === 'setText') {
           const id = e.data.op.id;
           const d = words(e.data.op.value) - (id in lastVal ? lastVal[id] : words(e.data.op.old));

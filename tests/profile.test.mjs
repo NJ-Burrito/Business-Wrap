@@ -99,6 +99,37 @@ try {
   check('report model: people, edits, active hours, documents', d.people.length === 2 && d.people.find((x) => x.name === 'Mark').edits === 10 && d.docs.length === 1 && d.docs[0].status === 'signed', JSON.stringify(d.people.map((x) => [x.name, x.edits, x.activeMs])));
   check('report print HTML: 3 SVG charts and a template story naming the person', (html.match(/<svg /g) || []).length === 3 && /During 2026-10-01 – 2026-10-31, Mark worked on 1 document/.test(html));
 
+  // review 0.13.0 line 16: many documents. A template opened at launch (no work), a document saved from it (its log
+  // starts with a copy of the template's), typed edits (one op re-logged after each pause) and exports
+  const nd = { id: 'actor-rami', name: 'Rami' };
+  const kN = await L.newKeys();
+  const at = (s) => new Date(t0 + s * 1e3).toISOString();
+  const tpl = { doc: 'tpl', entries: [] };
+  await L.append(tpl, { kind: 'open', actor: nd, keys: kN, at: at(0), data: { title: 'وثيقة متطلبات: خدمة جديدة' } });
+  const tplWork = { doc: 'tpl2', entries: [] };
+  await L.append(tplWork, { kind: 'open', actor: nd, keys: kN, at: at(10), data: { title: 'وثيقة متطلبات: طلب ترخيص فعالية عامة في الساحات' } });
+  await L.append(tplWork, { kind: 'op', actor: nd, keys: kN, at: at(20), data: { ed: 'ar', op: { op: 'setText', path: '/p', value: 'one', old: '', id: 'n1.0' } } });
+  const forked = { doc: 'doc-forked', entries: JSON.parse(JSON.stringify(tplWork.entries)) };
+  await L.append(forked, { kind: 'open', actor: nd, keys: kN, at: at(30), data: { title: 'وثيقة متطلبات: طلب ترخيص فعالية عامة في الساحات' } });
+  for (const [s, v] of [[40, 'a b'], [50, 'a b c'], [60, 'a b c d']]) await L.append(forked, { kind: 'op', actor: nd, keys: kN, at: at(s), data: { ed: 'ar', typed: true, op: { op: 'setText', path: '/q', value: v, old: 'a', id: 'n2.0' } } });
+  await L.append(forked, { kind: 'op', actor: nd, keys: kN, at: at(70), data: { ed: 'ar', op: { op: 'setText', path: '/r', value: 'x', old: '', id: 'n3.0' } } });
+  await L.append(forked, { kind: 'export', actor: nd, keys: kN, at: at(80), data: { pdf: true, docx: true } });
+  const other = { doc: 'doc-other', entries: [] };
+  await L.append(other, { kind: 'open', actor: nd, keys: kN, at: at(90), data: { title: 'وثيقة متطلبات: خدمة ثانية' } });
+  await L.append(other, { kind: 'op', actor: nd, keys: kN, at: at(100), data: { ed: 'ar', op: { op: 'setText', path: '/p', value: 'z', old: '', id: 'n4.0' } } });
+  await L.append(other, { kind: 'export', actor: nd, keys: kN, at: at(110), data: { pdf: true } });
+  const dm = reportData([tpl, tplWork, forked, other], { from: '2026-10-01', to: '2026-10-31', people: ['actor-rami'] });
+  const pn = dm.people[0] || {};
+  check('report across documents: 4 edits (a typed op once, a copied entry once), 2 exports, 2 documents (the opened template is not work)', pn.edits === 4 && pn.exports === 2 && pn.docs === 2 && dm.docs.length === 2, JSON.stringify({ edits: pn.edits, exports: pn.exports, docs: pn.docs, list: dm.docs }));
+  const st = reportHtml(dm, { lang: 'ar' });
+  check('report story matches the numbers (edits, exports, busiest document)', /أجرى 4 تعديلًا/.test(st) && /صدّر 2 مرة/.test(st) && /أكثر الوثائق نشاطًا «طلب ترخيص فعالية عامة في الساحات» بـ 3 تعديلًا/.test(st), st.match(/خلال[^<]*/)?.[0]);
+  // chart labels stay inside their chart (they printed as one letter under RTL)
+  const rp = await browser.newPage();
+  await rp.setContent(st);
+  const out = await rp.evaluate(() => [...document.querySelectorAll('svg.chart')].flatMap((s) => { const w = s.viewBox.baseVal.width; return [...s.querySelectorAll('text')].map((x) => { const b = x.getBBox(); return { t: x.textContent, l: b.x, r: b.x + b.width, w }; }); }).filter((b) => b.l < -0.5 || b.r > b.w + 0.5));
+  await rp.close();
+  check('report charts (RTL): every label inside its chart, none cut to one letter', out.length === 0, JSON.stringify(out.slice(0, 3)));
+
   const dirs = { pdf: path.join(tmp, 'ws', 'PDF'), docx: path.join(tmp, 'ws', 'DOCX'), html: path.join(tmp, 'ws', 'HTML'), history: path.join(tmp, 'ws', 'HISTORY') };
   fs.mkdirSync(dirs.history, { recursive: true });
   fs.writeFileSync(path.join(dirs.history, 'doc-report-1.bwlog'), await L.seal(hist));

@@ -25,6 +25,8 @@ const step = (s) => process.env.PV_DEBUG && console.error('step', s);
 const check = (name, ok, detail = '') => { step(name); results.push(`${ok ? 'PASS' : 'FAIL'}  provenance: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
 const file = path.join(tmp, 'prov.editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, set: 'prov-test', watermarkDir: null });
+const fileLib = path.join(tmp, 'lib.editor.html'); // a template and the blank document: the documents-list paths
+buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit'), path.join(REPO, 'samples', 'blank')], out: fileLib, set: 'prov-lib', watermarkDir: null });
 
 const profile = (name) => `localStorage.setItem('bw:profile', JSON.stringify({ name: ${JSON.stringify(name)}, activity: true }));`;
 const sh = (page, fn, arg) => page.evaluate(([f, a]) => new Function('r', 'a', `return (${f})(r, a)`)(document.getElementById('bw-ui-host').shadowRoot, a), [String(fn), arg]);
@@ -82,6 +84,12 @@ try {
   check('Alaa: the chain verifies', (await verdict(b)).ok, JSON.stringify(await verdict(b)));
   const banner = await sh(b, (r) => r.querySelector('.lk-banner')?.textContent || '');
   check('Alaa: the shared file stays locked, the banner names Mark', banner.includes('Mark'), banner);
+  // extras #7: the approval travels too: the banner names the signer, from the log
+  await b.waitForFunction(() => /signed by Mark|وقّعها Mark/.test(document.getElementById('bw-ui-host').shadowRoot.querySelector('.lk-banner')?.textContent || ''), null, { timeout: 5000 }).catch(() => {});
+  const banner2 = await sh(b, (r) => r.querySelector('.lk-banner')?.textContent || '');
+  check('Alaa: the lock banner names the signer (signed by Mark)', /signed by Mark|وقّعها Mark/.test(banner2), banner2);
+  const bx = await sh(b, (r) => { const q = r.querySelector('.lk-banner').getBoundingClientRect(); return { l: q.left, r: q.right, w: innerWidth }; });
+  check('Alaa: the lock banner lies inside the viewport', bx.l >= 0 && bx.r <= bx.w, JSON.stringify(bx));
   const before = await b.evaluate(() => window.BW.M[window.BW.S.svc][window.BW.S.ed].ops.length);
   const refused = await b.evaluate(() => { try { window.BW.setText('/control/title', 'nope'); return 'changed'; } catch (e) { return e.refused ? 'refused' : e.message; } });
   const after = await b.evaluate(() => window.BW.M[window.BW.S.svc][window.BW.S.ed].ops.length);
@@ -100,6 +108,9 @@ try {
   const eB = await entries(b);
   const names = eB.map((e) => `${e.actor.name}:${e.kind}`);
   check('Alaa\'s log continues Mark\'s: Mark\'s entries, then Alaa open/unlock/op/Save-HTML', names.slice(0, 8).every((n) => n.startsWith('Mark:')) && ['Alaa:open', 'Alaa:unlock', 'Alaa:op', 'Alaa:saveHtml'].every((n) => names.includes(n)), names.join(' '));
+  await b.evaluate(() => window.BW.openDrawer('provenance'));
+  const unl = await sh(b, (r) => [...r.querySelectorAll('.drawer .pv-e[data-kind="unlock"] summary')].map((s) => s.textContent).join(' | '));
+  check('extras #7: the recipient\'s unlock shows in her Provenance tab with her name', /Alaa/.test(unl), unl);
 
   // Mark opens Alaa's file: everything visible, with names; drawer lists both
   const a2 = await ctxA.newPage(); watch(a2);
@@ -145,6 +156,91 @@ try {
   const trunc = JSON.parse(JSON.stringify(logB)); trunc.entries.length = 6;
   r = await opened('t-truncated.html', withData(htmlB, { ...dB, prov: { [svc]: { doc, log: await L.seal(trunc) } } }));
   check('tamper: a truncated log is flagged against this machine\'s mirror', r.reasons.includes('truncated'), JSON.stringify(r));
+
+  // review 0.13.0 line 20, the owner flow: a document from the documents list is logged on every open path, its
+  // Save-HTML carries the log, a clean machine verifies it, and an edited file with no log is never «intact»
+  const lp = await ctxA.newPage(); watch(lp);
+  await lp.goto(pathToFileURL(fileLib).href);
+  await ready(lp);
+  await setTitle(lp, 'Library one');
+  await lp.evaluate(() => window.BW.runAction('save')); // a template's first Save → a new library document
+  await lp.waitForFunction(() => /^doc-/.test(window.BW.S.svc));
+  const libId = await lp.evaluate(() => window.BW.S.svc);
+  await ready(lp);
+  check('Save of a template: the new library document carries the history that made it', (await verdict(lp)).ok && (await entries(lp)).some((e) => e.kind === 'op' && e.data.op.value === 'Library one'), JSON.stringify(await verdict(lp)));
+  await setTitle(lp, 'Library two');
+  await lp.evaluate(() => window.BW.runAction('save'));
+  await lp.waitForFunction(async (id) => Object.values((await window.BW.EXT.library.get(id))?.editions || {}).some((e) => e.ops.length >= 2), libId, { timeout: 8000 });
+  await ready(lp);
+  await lp.reload();
+  await ready(lp);
+  // reopened from the list: an edit sent before its log is read waits behind it and is logged, never dropped
+  const race = await lp.evaluate(async (id) => { await window.BW.EXT.library.open(id); const early = !window.BW.EXT.ledger.attached(); try { window.BW.setText('/control/title', 'too soon'); return early ? 'early' : 'late'; } catch (e) { return e.refused ? 'refused' : e.message; } }, libId);
+  await ready(lp);
+  check('an edit made while the opened document\'s log is still loading is logged', race === 'early' && (await entries(lp)).some((e) => e.kind === 'op' && e.data.op.value === 'too soon'), race);
+  const refusedNoOpen = await lp.evaluate(() => { const s0 = window.BW.S.svc; window.BW.M['doc-never-opened'] = window.BW.M[s0]; window.BW.S.svc = 'doc-never-opened'; try { window.BW.setText('/control/title', 'x'); return 'accepted'; } catch (e) { return e.refused ? 'refused' : e.message; } finally { window.BW.S.svc = s0; delete window.BW.M['doc-never-opened']; } });
+  check('guard: a document whose log was never attached (no open event) refuses edits', refusedNoOpen === 'refused', refusedNoOpen);
+  await setTitle(lp, 'Library three');
+  await ready(lp);
+  const eLib = await entries(lp);
+  const opsLib = await lp.evaluate(() => Object.values(window.BW.M[window.BW.S.svc]).flatMap((e) => e.ops.map((o) => o.id)));
+  const loggedLib = new Set(eLib.filter((e) => e.kind === 'op').map((e) => e.data.op.id));
+  check('library document reopened from the list: logged (opens + every op of both sessions), chain intact', (await verdict(lp)).ok && eLib.filter((e) => e.kind === 'open').length >= 2 && opsLib.length === 4 && opsLib.every((id) => loggedLib.has(id)), JSON.stringify({ v: await verdict(lp), kinds: eLib.map((e) => e.kind), opsLib }));
+  const fileL = await saveHtmlOf(lp, 'library.editor.html');
+  const htmlL = fs.readFileSync(fileL, 'utf8');
+  const dL = dataOf(htmlL);
+  check('library document Save-HTML carries its log', dL.services[0].id === libId && !!dL.prov?.[libId]?.log, Object.keys(dL.prov || {}).join(','));
+  // other open paths: duplicate, new document, an imported file whose entry carries its log
+  const dup = await lp.evaluate(async (id) => { const c = await window.BW.EXT.library.duplicate(id); await window.BW.EXT.library.open(c.id); return c.id; }, libId);
+  await ready(lp);
+  check('duplicate: the copy opens with the chain that vouches for its state', (await verdict(lp)).ok && (await entries(lp)).some((e) => e.kind === 'op') && (await lp.evaluate(() => window.BW.S.svc)) === dup, JSON.stringify(await verdict(lp)));
+  await lp.evaluate(() => window.BW.EXT.library.newDocument());
+  await ready(lp);
+  await setTitle(lp, 'Blank one');
+  await ready(lp);
+  check('new document: logged from its first open', (await verdict(lp)).ok && (await entries(lp)).some((e) => e.kind === 'op' && e.data.op.value === 'Blank one'), JSON.stringify((await entries(lp)).map((e) => e.kind)));
+  const impId = await lp.evaluate(async ([d, id]) => { const s = d.services[0]; const e = { id: `doc-imp-${Date.now()}`, title: 'imported', service: s.id, origin: 'import', createdAt: new Date().toISOString(), savedAt: new Date().toISOString(), editions: Object.fromEntries(Object.entries(s.editions).map(([ed, x]) => [ed, { ...x, stale: x.stale || [], marks: [], epochIds: [] }])), prov: d.prov[id] }; await window.BW.EXT.library.put(e); await window.BW.EXT.library.open(e.id); return e.id; }, [dL, libId]);
+  await ready(lp);
+  check('import: an entry that carries the file\'s log opens with it', (await verdict(lp)).ok && (await entries(lp)).filter((e) => e.kind === 'op').length >= 3 && (await lp.evaluate(() => window.BW.S.svc)) === impId, JSON.stringify(await verdict(lp)));
+  await lp.close();
+  // a clean machine (Rami): the library document's file verifies; the same file with its log and mark removed does not
+  const ctxC = await browser.newContext({ acceptDownloads: true, viewport: { width: 1500, height: 900 } });
+  await ctxC.addInitScript(profile('Rami'));
+  async function openedOn(ctx, name, html) {
+    const f = path.join(tmp, name); fs.writeFileSync(f, html);
+    const p = await ctx.newPage(); watch(p);
+    await p.goto(pathToFileURL(f).href);
+    await ready(p);
+    const v = await verdict(p);
+    await p.close();
+    return { v, reasons: v.issues.map((i) => i.reason) };
+  }
+  r = await openedOn(ctxC, 'c-library.html', htmlL);
+  check('clean machine: the library document\'s file opens with an intact chain', r.v.ok, JSON.stringify(r));
+  const { prov: _p, contrib: _c, ...bare } = dL;
+  r = await openedOn(ctxC, 'c-bare.html', withData(htmlL, bare));
+  check('clean machine: an edited file with no log and no mark is «stripped», never intact', r.reasons.includes('stripped'), JSON.stringify(r));
+  const trL = await L.unseal(dL.prov[libId].log, dL.prov[libId].doc); trL.entries.length -= 1;
+  r = await openedOn(ctxC, 'c-trunc.html', withData(htmlL, { ...dL, prov: { [libId]: { ...dL.prov[libId], log: await L.seal(trL) } } }));
+  check('clean machine: a tail cut from the log is flagged (no mirror needed)', r.reasons.includes('truncated'), JSON.stringify(r));
+  await ctxC.close();
+
+  // verify-history (CLI) is as strict as the editor: content-only edit, raw text edit, tail cut, stripped log
+  const cli = (f) => { const x = spawnSync(process.execPath, [path.join(REPO, 'engine', 'cli.mjs'), 'verify-history', f, '--history', path.join(tmp, 'no-history'), '--json'], { encoding: 'utf8' }); let j = null; try { j = JSON.parse(x.stdout); } catch { /* */ } return { code: x.status, problems: j?.gates?.[0]?.problems || [], out: x.stdout + x.stderr }; };
+  const put = (name, d) => { const f = path.join(tmp, name); fs.writeFileSync(f, withData(htmlL, d)); return f; };
+  let c = cli(fileL);
+  check('verify-history: an honest Save-HTML passes', c.code === 0, c.out.slice(0, 200));
+  const cOps = JSON.parse(JSON.stringify(dL)); const edL = Object.keys(cOps.services[0].editions)[0];
+  cOps.services[0].editions[edL].ops.at(-1).value = 'forged in the data block';
+  c = cli(put('v-content.html', cOps));
+  check('verify-history: a content-only tamper (an op changed, log untouched) fails', c.code === 1 && c.problems.some((p) => /unlogged/.test(p)), c.out.slice(0, 200));
+  const cRaw = JSON.parse(JSON.stringify(dL)); const rawDoc = JSON.parse(cRaw.services[0].editions[edL].raw); rawDoc.control.title = 'forged base'; cRaw.services[0].editions[edL].raw = JSON.stringify(rawDoc);
+  c = cli(put('v-raw.html', cRaw));
+  check('verify-history: the base text changed with its old hash kept fails', c.code === 1 && c.problems.some((p) => /unlogged/.test(p)), c.out.slice(0, 200));
+  c = cli(put('v-trunc.html', { ...dL, prov: { [libId]: { ...dL.prov[libId], log: await L.seal(trL) } } }));
+  check('verify-history: tail truncation fails', c.code === 1 && c.problems.some((p) => /truncated|unlogged/.test(p)), c.out.slice(0, 200));
+  c = cli(put('v-bare.html', bare));
+  check('verify-history: an edited file with its log removed fails', c.code === 1 && c.problems.some((p) => /stripped/.test(p)), c.out.slice(0, 200));
 
   // exports carry no provenance and no contributor fingerprint
   const docNow = await a2.evaluate(() => window.BW.M[window.BW.S.svc][window.BW.S.ed].doc);

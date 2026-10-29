@@ -50,7 +50,8 @@
   "pvr_stripped": "سجل المصدر محذوف",
   "pvr_unreadable": "سجل المصدر تالف أو غير مقروء",
   "explain.pvOpen": "يفتح سجل المصدر: من غيّر ماذا ومتى، في سلسلة موقّعة يُكشف فيها أي حذف أو تعديل.",
-  "explain.pvSign": "يوقّع الحالة الحالية للوثيقة باسمك في سجل المصدر."
+  "explain.pvSign": "يوقّع الحالة الحالية للوثيقة باسمك في سجل المصدر.",
+  "pvWaitLog": "لحظة: سجل المصدر لهذه الوثيقة يُحمَّل، ولا يُقبل تعديل قبل أن يبدأ التسجيل"
  },
  "en": {
   "pvTitle": "Provenance",
@@ -103,6 +104,7 @@
   "pvr_stripped": "The provenance log was removed",
   "pvr_unreadable": "The provenance log is damaged or unreadable",
   "explain.pvOpen": "Opens Provenance: who changed what and when, in a signed chain that shows any removed or edited entry.",
-  "explain.pvSign": "Signs the document as it is now, in your name, in the provenance log."
+  "explain.pvSign": "Signs the document as it is now, in your name, in the provenance log.",
+  "pvWaitLog": "One moment: this document's provenance log is loading, and no edit is accepted before it records"
  }
 }

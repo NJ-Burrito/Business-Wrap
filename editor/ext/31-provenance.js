@@ -3,7 +3,7 @@
  * unlock, signed with this install's non-extractable ECDSA key. The encrypted log travels inside every Save-HTML
  * (bw-data → prov) and is mirrored in HISTORY (served: the workspace; file://: IndexedDB bw-history). Checked on open. */
 const PV_ON = typeof BWLOG1 !== 'undefined'; // engine/ledger-v1.mjs is concatenated before the extensions (build-editor)
-const PV = { logs: {}, keys: null, q: Promise.resolve(), ready: null, readyRes: null, opened: new Set(), openLogged: new Set(), typing: {}, mirrorTimer: {} };
+const PV = { logs: {}, keys: null, q: Promise.resolve(), ready: null, readyRes: null, opened: new Set(), openLogged: new Set(), typing: {} };
 PV.ready = new Promise((res) => { PV.readyRes = res; }); // resolved by boot once the logs are loaded
 const pvHttp = () => location.protocol.startsWith('http');
 
@@ -43,27 +43,60 @@ const MIRROR = {
     } catch { /* storage blocked */ }
   },
 };
-const pvDocId = (svc) => DATA.prov?.[svc]?.doc || (() => { const k = `bw:prov-doc:${DATA.setId}:${svc}`; let d = ls.get(k); if (!d) { d = crypto.randomUUID(); ls.set(k, d); } return d; })();
-const pvFileEditions = (svc) => Object.fromEntries(Object.entries(DATA.services.find((s) => s.id === svc)?.editions || {}).map(([ed, e]) => [ed, { hash: e.hash, ops: e.ops || [] }]));
+const pvIsDoc = (svc) => /^doc-/.test(String(svc || '')); // a library document (10-library): its id is stable everywhere
+const pvDocId = (svc) => DATA.prov?.[svc]?.doc || (pvIsDoc(svc) ? svc : null) || (() => { const k = `bw:prov-doc:${DATA.setId}:${svc}`; let d = ls.get(k); if (!d) { d = crypto.randomUUID(); ls.set(k, d); } return d; })();
+/** The document state to check a log against, per edition {hash, ops}; the hash is taken from the text itself, so a
+ *  hand-edited `raw` with its old `hash` kept is a change too. `snap` = the session's state taken at
+ *  the open event (pvSnap: a library document), else the state the file was opened with. */
+const pvSnap = (svc) => Object.fromEntries(Object.entries(M[svc] || {}).map(([ed, e]) => [ed, { raw: e.raw, hash: e.hash, ops: [...(e.ops || [])] }]));
+async function pvEditions(svc, snap) {
+  const src = snap || DATA.services.find((s) => s.id === svc)?.editions || {};
+  const out = {};
+  for (const [ed, e] of Object.entries(src)) out[ed] = { hash: typeof e.raw === 'string' ? await pvDigest(e.raw) : e.hash, ops: e.ops || [] };
+  return out;
+}
+const pvLastDh = (L) => [...L.entries].reverse().find((e) => e.docHash)?.docHash;
 
-async function pvLoad(svc) {
+/**
+ * Attaches the log of one document. `snap` absent = a service of the file at boot; given = a document opened later through
+ * the `open` event (library, new, import, duplicate, resumed tab). Sources, in order:
+ *  file: the log the file carries; else, when the file carries no edits, this machine's mirror (a template's log).
+ *  snap: this machine's mirror; else the log its library entry carries (`entry.prov`, an imported or copied file);
+ *        else the log of an open document whose head vouches for exactly this state (Save of a template, a copy).
+ * An edited document with none of these is «stripped»: it is never shown as intact.
+ */
+async function pvLoad(svc, snap = null) {
+  const live = !!snap;
   const doc = pvDocId(svc);
   const mir = await MIRROR.get(doc);
   const L = { doc, entries: [], verdict: { ok: true, issues: [] }, src: 'new', mirror: mir.mirror || null };
-  const inFile = DATA.prov?.[svc]?.log;
+  const eds = await pvEditions(svc, snap);
+  const edited = Object.values(eds).some((e) => e.ops.length);
+  let carried = live ? null : DATA.prov?.[svc] ? { doc, log: DATA.prov[svc].log } : null;
+  const ent = live && !mir.log ? await Promise.resolve(EXT.library?.get?.(svc)).catch(() => null) : null;
+  if (ent?.prov?.log) carried = { doc: ent.prov.doc || doc, log: ent.prov.log }; // an imported file's log (10-library keeps it)
   try {
-    if (inFile) { Object.assign(L, await BWLOG1.unseal(inFile, doc)); L.src = 'html'; }
-    else if (mir.log) { Object.assign(L, await BWLOG1.unseal(mir.log, doc)); L.src = 'mirror'; }
+    if (carried) { Object.assign(L, await BWLOG1.unseal(carried.log, carried.doc)); L.doc = doc; L.src = live ? 'entry' : 'html'; if (carried.doc !== doc) L.from = carried.doc; }
+    else if (mir.log && (live || !edited)) { Object.assign(L, await BWLOG1.unseal(mir.log, doc)); L.doc = doc; L.src = 'mirror'; }
+    else if (live && edited) {
+      // the chain up to an entry that vouches for exactly this state is this document's history too
+      const dh = await pvDigest(BWLOG1.canonical(BWLOG1.stateOf(eds)));
+      const pool = Object.values(PV.logs).filter((x) => x.doc !== doc && x.verdict.ok);
+      if (ent?.from && !pool.some((x) => x.doc === ent.from)) { const m2 = await MIRROR.get(ent.from); if (m2.log) pool.push({ doc: ent.from, ...(await BWLOG1.unseal(m2.log, ent.from)) }); } // a copy names its source (10-library)
+      let best = null;
+      for (const x of pool) { const k = x.entries.findLastIndex((e) => e.docHash === dh); if (k >= 0 && (!best || k > best.k)) best = { x, k }; }
+      if (best) { L.entries = JSON.parse(JSON.stringify(best.x.entries.slice(0, best.k + 1))); L.src = 'fork'; L.from = best.x.doc; }
+    }
   } catch { L.verdict = { ok: false, issues: [{ seq: 0, reason: 'unreadable' }] }; L.entries = []; return (PV.logs[svc] = L); }
-  // the file's own state is checked against its log; a log continued from this machine's mirror has no file state to check
-  // a file from before 0.13 (no log, no contributor mark, unknown here) is not "stripped": it never had a log
-  const known = inFile || DATA.contrib || L.mirror?.head;
-  L.verdict = await BWLOG1.verify(L, { mirror: L.mirror, editions: L.src === 'mirror' || !known ? undefined : pvFileEditions(svc) });
+  // a log continued from this machine's mirror is newer than any file state: only its chain and head are checked
+  L.verdict = await BWLOG1.verify(L, { mirror: L.from ? null : L.mirror, editions: L.src === 'mirror' ? undefined : eds, saved: L.src === 'html' || L.src === 'entry' });
   L.pins = L.verdict.pins;
   return (PV.logs[svc] = L);
 }
+const pvWarn = (L) => { if (pvBad(L)) toast(t('pvTampered'), 'warn', { persist: true, actions: [[t('pvShow'), () => openDrawer('provenance')]] }); };
 
 const pvState = (svc) => BWLOG1.canonical(BWLOG1.stateOf(M[svc]));
+const pvBad = (L) => !!L && !L.verdict.ok;
 const pvDigest = async (s) => `sha256:${BWLOG1.hex(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))))}`;
 /** Queues one entry; the document state is taken now, hashed in the queue. Returns the queue (await it to be sure it is written). */
 function pvAppend(kind, data = {}, svc = S.svc) {
@@ -75,14 +108,11 @@ function pvAppend(kind, data = {}, svc = S.svc) {
     if (!L || !PV.keys) return;
     await BWLOG1.append(L, { kind, data, at, actor: PF.actor(), keys: PV.keys, docHash: state ? await pvDigest(state) : '' });
     if (kind === 'open') PV.openLogged.add(svc);
-    pvMirrorSoon(svc);
+    await pvMirror(svc); // written before the queue moves on: a tab closed right after an edit keeps it
   }).catch((e) => console.error('bwlog', e));
   return PV.q;
 }
-function pvMirrorSoon(svc) {
-  clearTimeout(PV.mirrorTimer[svc]);
-  PV.mirrorTimer[svc] = setTimeout(() => pvMirror(svc), 400);
-}
+// ponytail: re-seals the whole log on every entry; batch it if logs reach many thousands of entries
 async function pvMirror(svc) {
   const L = PV.logs[svc];
   if (!L) return;
@@ -110,7 +140,7 @@ function pvCatchUp(svc = S.svc) {
     const seen = new Set(L.entries.filter((e) => e.data?.op?.id).map((e) => e.data.op.id));
     const ops = Object.entries(M[svc]).flatMap(([ed, e]) => e.ops.filter((o) => !seen.has(o.id)).map((o) => ({ ed, op: o })));
     await BWLOG1.append(L, { kind: 'merge', data: { ops: JSON.parse(JSON.stringify(ops)) }, actor: PF.actor(), keys: PV.keys, docHash: now });
-    pvMirrorSoon(svc);
+    await pvMirror(svc); // written before the queue moves on: a tab closed right after an edit keeps it
   }).catch((e) => console.error('bwlog', e));
   return PV.q;
 }
@@ -119,6 +149,7 @@ async function pvSettle(svc = S.svc) { pvFlushTyping(); pvPings(svc); await pvCa
 /* Save HTML: the log is completed (saveHtml entry included) and sealed before the editor writes the file */
 const pvSaveHtml0 = saveHtml;
 if (PV_ON) saveHtml = async function pvSaveHtml(embedFonts) {
+  await PV.ready; await PV.q; // the document's log is attached (the open event) before it is sealed into the file
   await pvSettle();
   await pvAppend('saveHtml', {});
   const L = PV.logs[S.svc];
@@ -133,7 +164,6 @@ function pvContributors(L) {
   if (by[PF.id()] && !by[PF.id()].name) by[PF.id()].name = PF.actor().name; // named after the first entries (the first-launch card)
   return Object.values(by);
 }
-const pvBad = (L) => !!L && !L.verdict.ok;
 const pvTime = (iso) => { const d = new Date(iso); return { local: d.toLocaleString(S.ui === 'ar' ? 'ar-JO' : 'en-GB'), utc: d.toISOString().replace('T', ' ').slice(0, 19) + ' UTC' }; };
 const pvShort = (v) => { const s = typeof v === 'string' ? v : JSON.stringify(v); return s === undefined ? '' : s.length > 400 ? s.slice(0, 400) + '…' : s; };
 function pvEntryHtml(e, issueAt, names = {}) {
@@ -186,6 +216,25 @@ async function pvSign() {
   if (S.drawer === 'provenance') openDrawer('provenance');
 }
 
+/** The open of one document: its log attached (once), then «open» logged. */
+function pvOpen(svc) {
+  if (PV.opened.has(svc)) return;
+  PV.opened.add(svc);
+  // every open path (boot, the documents list, new, import, duplicate, a resumed tab) attaches the log here, then logs
+  // «open». The state is taken now: an edit made before the log is read waits behind it in the queue and is logged
+  const snap = M[svc] ? pvSnap(svc) : null, state = M[svc] ? pvState(svc) : '';
+  PV.q = PV.q.then(async () => {
+    await PV.ready;
+    if (!PV.logs[svc] && PV.keys && snap) { await pvLoad(svc, snap); pvWarn(PV.logs[svc]); }
+    const L = PV.logs[svc];
+    if (!L || !PV.keys) return;
+    const ed = S.svc === svc ? S.ed : Object.keys(M[svc] || {})[0];
+    await BWLOG1.append(L, { kind: 'open', data: { title: cur(ed, svc)?.doc?.control?.title || svc, src: L.src, ...(L.from ? { from: L.from } : {}), verdict: L.verdict.issues.map((i) => `${i.seq}:${i.reason}`) }, actor: PF.actor(), keys: PV.keys, docHash: state ? await pvDigest(state) : '' });
+    PV.openLogged.add(svc);
+    await pvMirror(svc); // written before the queue moves on: a tab closed right after an edit keeps it
+    if (S.drawer === 'provenance' && S.svc === svc) openDrawer('provenance');
+  }).catch((e) => console.error('bwlog', e));
+}
 if (PV_ON) IC.pvOpen = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /> <path d="m9 12 2 2 4-4" /> </svg>';
 if (PV_ON) IC.pvSign = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M12 20h9" /> <path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z" /> </svg>';
 if (PV_ON) bwExt({
@@ -198,23 +247,23 @@ if (PV_ON) bwExt({
     ledger: {
       authorOf: (opId) => { for (const L of Object.values(PV.logs)) { const e = L.entries.find((x) => x.data?.op?.id === opId); if (e) return e.actor.name; } return ''; },
       log: (svc = S.svc) => PV.logs[svc],
+      attached: (svc = S.svc) => !!PV.logs[svc],
       append: pvAppend, settle: pvSettle, ready: () => PV.ready.then(() => PV.q),
     },
   },
+  // no edit escapes the log: a document whose log is neither attached nor on its way (no open event) refuses changes;
+  // an edit made while it is loading is queued behind it (pvAppend waits for the queue), never dropped
+  guards: [() => (!PV.broken && (PV.logs[S.svc] || PV.opened.has(S.svc)) ? true : t('pvWaitLog'))],
   on: {
     boot: () => {
       new MutationObserver(pvTabWire).observe(root, { childList: true, subtree: true }); // the tab in the Changes drawer
       (async () => {
         PV.keys = await pvKeys();
         await Promise.all(DATA.services.map((s) => pvLoad(s.id)));
-        for (const L of Object.values(PV.logs)) if (pvBad(L)) toast(t('pvTampered'), 'warn', { persist: true, actions: [[t('pvShow'), () => openDrawer('provenance')]] });
-      })().catch((e) => console.error('bwlog', e)).finally(() => PV.readyRes());
+        Object.values(PV.logs).forEach(pvWarn);
+      })().catch((e) => { PV.broken = true; console.error('bwlog', e); }).finally(() => PV.readyRes());
     },
-    open: (svc) => {
-      if (PV.opened.has(svc)) return;
-      PV.opened.add(svc);
-      PV.ready.then(() => { const L = PV.logs[svc]; pvAppend('open', { title: cur(S.ed, svc)?.doc?.control?.title || svc, src: L?.src, verdict: L?.verdict.issues.map((i) => `${i.seq}:${i.reason}`) || [] }, svc); });
-    },
+    open: (svc) => pvOpen(svc),
     commit: (ops, ed, kind) => {
       const svc = S.svc;
       if (kind === 'type') { const key = `${svc}|${ed}|${ops[0].id}`; clearTimeout(PV.typing[key]?.timer); PV.typing[key] = { svc, ed, op: ops[0], timer: setTimeout(pvFlushTyping, 1200) }; return; }
@@ -222,7 +271,9 @@ if (PV_ON) bwExt({
       if (kind === 'undo' || kind === 'redo') { pvAppend('op', { ed, [kind]: ops.map((o) => o.id) }, svc); return; }
       for (const op of ops) pvAppend('op', { ed, op: JSON.parse(JSON.stringify(op)) }, svc);
     },
-    render: () => { setTimeout(() => { if (!Object.keys(PV.typing).length) pvCatchUp(); }, 0); },
+    // a path that switches the document without the open event (editor.js: load a JSON document, the New wizard)
+    // still gets its log: the first render of a document nobody opened opens it
+    render: () => { if (M[S.svc] && !PV.opened.has(S.svc)) pvOpen(S.svc); setTimeout(() => { if (!Object.keys(PV.typing).length) pvCatchUp(); }, 0); },
     save: () => { pvSettle(); pvAppend('save', {}); },
     export: (info) => { pvAppend('export', { pdf: !!info?.pdf, docx: !!info?.docx }); },
     saveHtml: (data) => {

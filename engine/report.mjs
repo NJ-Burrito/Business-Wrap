@@ -17,25 +17,33 @@ export function reportData(logs, { from, to, people = null } = {}) {
   const hi = to ? `${to}T23:59:59.999Z` : '￿';
   const P = {};
   const docs = [];
-  for (const log of logs) {
-    const m = BWLOG1.metrics(log.entries, { from: lo, to: hi });
-    const title = [...log.entries].reverse().find((e) => e.kind === 'open' && e.data?.title)?.data.title || log.doc;
+  // a document saved from a template, or copied, starts with a copy of that log: each entry counts once, for the
+  // longest log that holds it (the one that went on)
+  const seen = new Set();
+  for (const log of [...logs].sort((a, b) => b.entries.length - a.entries.length)) {
+    const own = log.entries.filter((e) => !seen.has(e.hash));
+    for (const e of own) seen.add(e.hash);
+    const m = BWLOG1.metrics(own, { from: lo, to: hi });
+    const full = String([...log.entries].reverse().find((e) => e.kind === 'open' && e.data?.title)?.data.title || log.doc);
+    const title = full.split(/\s*[:—]\s+/).slice(1).join(': ') || full; // the service name, not the document kind
     const lastLock = [...log.entries].reverse().find((e) => e.kind === 'lock' || e.kind === 'unlock');
     const status = lastLock?.kind === 'lock' ? 'locked' : log.entries.some((e) => e.kind === 'sign') ? 'signed' : 'progress';
-    let docEdits = 0;
+    let docEdits = 0, worked = false;
     for (const p of Object.values(m)) {
       if (people && !people.includes(p.id)) continue;
+      if (!(p.edits + p.saves + p.exports + p.signs + p.locks)) continue; // only opening a document (a template at launch) is not work on it
       const x = (P[p.id] ||= { id: p.id, name: p.name, docs: new Set(), edits: 0, activeMs: 0, sessions: 0, saves: 0, exports: 0, signs: 0, added: 0, removed: 0, weeks: {} });
       if (p.name) x.name = p.name;
       x.docs.add(log.doc);
       for (const k of ['edits', 'activeMs', 'sessions', 'saves', 'exports', 'signs', 'added', 'removed']) x[k] += p[k];
       docEdits += p.edits;
+      worked = true;
       // active time per week: this person's entries in this log, bucketed by the week of their day
-      const own = log.entries.filter((e) => e.actor.id === p.id && e.at >= lo && e.at <= hi);
-      const share = own.length ? p.activeMs / own.length : 0;
-      for (const e of own) x.weeks[weekOf(e.at)] = (x.weeks[weekOf(e.at)] || 0) + share;
+      const mine = own.filter((e) => e.actor.id === p.id && e.at >= lo && e.at <= hi);
+      const share = mine.length ? p.activeMs / mine.length : 0;
+      for (const e of mine) x.weeks[weekOf(e.at)] = (x.weeks[weekOf(e.at)] || 0) + share;
     }
-    if (Object.keys(m).length) docs.push({ doc: log.doc, title, edits: docEdits, status });
+    if (worked) docs.push({ doc: log.doc, title, edits: docEdits, status });
   }
   const list = Object.values(P).map((p) => ({ ...p, docs: p.docs.size })).sort((a, b) => b.activeMs - a.activeMs);
   const weeks = [...new Set(list.flatMap((p) => Object.keys(p.weeks)))].sort();
@@ -55,30 +63,34 @@ export function story(d, lang) {
   const per = (ar ? iso : String)(`${d.from || '…'} – ${d.to || '…'}`);
   if (!d.people.length) return [T[lang].none];
   const out = d.people.map((p) => (ar
-    ? `خلال ${per} عمل ${p.name || 'شخص بلا اسم'} على ${p.docs} ${p.docs === 1 ? 'وثيقة' : 'وثائق'} لمدة ${hrs(p.activeMs)} ساعة، وأجرى ${p.edits} تعديلًا في ${p.sessions} ${p.sessions === 1 ? 'جلسة' : 'جلسات'}، وأضاف ${p.added} كلمة وحذف ${p.removed}${p.signs ? `، ووقّع ${p.signs} مرة` : ''}.`
-    : `During ${per}, ${p.name || 'an unnamed person'} worked on ${p.docs} document${p.docs === 1 ? '' : 's'} for ${hrs(p.activeMs)} hours, made ${p.edits} edit${p.edits === 1 ? '' : 's'} over ${p.sessions} session${p.sessions === 1 ? '' : 's'}, added ${p.added} words and removed ${p.removed}${p.signs ? `, and signed ${p.signs} time${p.signs === 1 ? '' : 's'}` : ''}.`));
+    ? `خلال ${per} عمل ${p.name || 'شخص بلا اسم'} على ${p.docs} ${p.docs === 1 ? 'وثيقة' : 'وثائق'} لمدة ${hrs(p.activeMs)} ساعة، وأجرى ${p.edits} تعديلًا في ${p.sessions} ${p.sessions === 1 ? 'جلسة' : 'جلسات'}، وأضاف ${p.added} كلمة وحذف ${p.removed}${p.saves ? `، وحفظ ${p.saves} مرة` : ''}${p.exports ? `، وصدّر ${p.exports} مرة` : ''}${p.signs ? `، ووقّع ${p.signs} مرة` : ''}.`
+    : `During ${per}, ${p.name || 'an unnamed person'} worked on ${p.docs} document${p.docs === 1 ? '' : 's'} for ${hrs(p.activeMs)} hours, made ${p.edits} edit${p.edits === 1 ? '' : 's'} over ${p.sessions} session${p.sessions === 1 ? '' : 's'}, added ${p.added} words and removed ${p.removed}${p.saves ? `, saved ${p.saves} time${p.saves === 1 ? '' : 's'}` : ''}${p.exports ? `, exported ${p.exports} time${p.exports === 1 ? '' : 's'}` : ''}${p.signs ? `, and signed ${p.signs} time${p.signs === 1 ? '' : 's'}` : ''}.`));
   const top = d.docs.slice().sort((a, b) => b.edits - a.edits)[0];
-  if (top) out.push(ar ? `أكثر الوثائق نشاطًا «${top.title}» بـ ${top.edits} تعديلًا.` : `The busiest document was “${top.title}” with ${top.edits} edits.`);
+  if (top?.edits) out.push(ar ? `أكثر الوثائق نشاطًا «${top.title}» بـ ${top.edits} تعديلًا.` : `The busiest document was “${top.title}” with ${top.edits} edits.`);
   return out;
 }
 
-/** A horizontal bar chart as inline SVG (no script, prints as vector). */
+/** A chart label for the fixed 210-unit column: at most n characters, an ellipsis where it was cut. */
+export const clip = (s, n = 30) => { const a = [...String(s)]; return a.length > n ? `${a.slice(0, n - 1).join('').trim()}…` : a.join(''); };
+/** A horizontal bar chart as inline SVG (no script, prints as vector). The svg states its own direction: under RTL,
+ *  text-anchor «start» is the right edge, so a label grows leftwards inside its column (with «end» it grew out of the
+ *  viewBox and printed as one letter). */
 function bars(rows, { unit = '', rtl }) {
   const W = 640, row = 26, H = Math.max(1, rows.length) * row + 8, max = Math.max(1, ...rows.map((r) => r.v));
   const lab = 210, plot = W - lab - 60;
   const g = rows.map((r, i) => {
     const w = Math.max(2, (r.v / max) * plot), y = 4 + i * row;
     const x = rtl ? W - lab - w : lab;
-    return `<text x="${rtl ? W - 6 : 6}" y="${y + 17}" text-anchor="${rtl ? 'end' : 'start'}">${esc(String(r.k).slice(0, 34))}</text><rect x="${x}" y="${y + 4}" width="${w.toFixed(1)}" height="16" rx="3" fill="${r.c || '#1f4e79'}"/><text x="${rtl ? x - 6 : x + w + 6}" y="${y + 17}" text-anchor="${rtl ? 'end' : 'start'}">${esc(r.label ?? r.v)}${unit}</text>`;
+    return `<text x="${rtl ? W - 6 : 6}" y="${y + 17}" text-anchor="start">${esc(clip(r.k))}</text><rect x="${x}" y="${y + 4}" width="${w.toFixed(1)}" height="16" rx="3" fill="${r.c || '#1f4e79'}"/><text x="${rtl ? x - 6 : x + w + 6}" y="${y + 17}" text-anchor="start">${esc(r.label ?? r.v)}${unit}</text>`;
   }).join('');
-  return `<svg class="chart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" xmlns="http://www.w3.org/2000/svg">${g}</svg>`;
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" direction="${rtl ? 'rtl' : 'ltr'}" style="direction:${rtl ? 'rtl' : 'ltr'}" xmlns="http://www.w3.org/2000/svg">${g}</svg>`;
 }
 
 export function reportHtml(d, { lang = 'ar', fontCss = '' } = {}) {
   const L = T[lang], rtl = lang === 'ar';
   const tot = (k) => d.people.reduce((s, p) => s + p[k], 0);
-  const tiles = [[L.people, d.people.length], [L.docs, d.docs.length], [L.hours, hrs(tot('activeMs'))], [L.edits, tot('edits')], [L.signs, tot('signs')]];
-  const week = d.weeks.map((w) => ({ k: w, v: d.people.reduce((s, p) => s + (p.weeks[w] || 0), 0) / 36e5 })).map((r) => ({ ...r, label: r.v.toFixed(1) }));
+  const tiles = [[L.people, d.people.length], [L.docs, d.docs.length], [L.hours, hrs(tot('activeMs'))], [L.edits, tot('edits')], [L.exports, tot('exports')], [L.signs, tot('signs')]];
+  const week = d.weeks.map((w) => ({ k: rtl ? iso(w) : w, v: d.people.reduce((s, p) => s + (p.weeks[w] || 0), 0) / 36e5 })).map((r) => ({ ...r, label: r.v.toFixed(1) }));
   const perDoc = d.docs.map((x) => ({ k: x.title, v: x.edits }));
   const st = ['progress', 'signed', 'locked'].map((s, i) => ({ k: L[s], v: d.docs.filter((x) => x.status === s).length, c: ['#1f4e79', '#2e7d32', '#8d5b00'][i] }));
   const rows = d.people.map((p) => `<tr><td>${esc(p.name || '—')}</td><td>${p.docs}</td><td>${hrs(p.activeMs)}</td><td>${p.edits}</td><td>${p.sessions}</td><td>${p.saves}</td><td>${p.exports}</td><td>${p.signs}</td><td>+${p.added} / −${p.removed}</td></tr>`).join('');
