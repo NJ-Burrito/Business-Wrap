@@ -3,7 +3,7 @@
  * About (name, logo, version, release date, repository, licence, credits — embedded at build time, so it shows
  * from file:// too), Update (installed vs latest, last check, «تحقّق الآن», auto-check on launch) and Preferences
  * (language, word direction, page view, reduced motion, explainer cards), each written to the store it already had
- * (bw:ui, bw:dir, bw:pages, bw:calm, bw:explainers, bw:update-auto), and Local learning («التعلّم المحلي»,
+ * (bw:ui, bw:dir:<ed>, bw:pages, bw:calm, bw:explainers, bw:update-auto), and Local learning («التعلّم المحلي»,
  * mounted by learning-hook.js through BW_LEARNING.mount(el)). The check itself is update.js (BW_UPDATE):
  * from file:// nothing is fetched, the card says why and how to update instead.
  * Declarations only (hoisted): openDrawer('settings') calls them. */

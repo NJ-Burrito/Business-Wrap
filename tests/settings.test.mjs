@@ -228,7 +228,7 @@ try {
     check('Preferences write the existing stores (page view, reduced motion, explainer cards)', prefs.pages === 'single' && prefs.mode === 'single' && prefs.calm === '1' && prefs.xpl === '0', JSON.stringify(prefs));
     await sh(page, (r) => r.querySelector('.drawer [data-k="setDir"][data-v="ltr"]').click());
     await page.waitForTimeout(300);
-    check('Preferences → direction LTR: words only, the shell stays right-to-left', (await page.evaluate(() => localStorage.getItem('bw:dir'))) === 'ltr' && (await sh(page, (r) => r.querySelector('.shell').dir)) === 'rtl');
+    check('Preferences → direction LTR: words only, the shell stays right-to-left', (await page.evaluate(() => localStorage.getItem(`bw:dir:${window.BW.S.ed}`))) === 'ltr' && (await sh(page, (r) => r.querySelector('.shell').dir)) === 'rtl');
     check('no page errors in Settings', !errors.length, errors.join(' | '));
     await ctx.close();
   }

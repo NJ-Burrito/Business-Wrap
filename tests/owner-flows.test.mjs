@@ -255,6 +255,24 @@ try {
   await clickDoc('[data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]');
   await act('insTextBox'); await wait(200);
   check(26, '«مربع نص» puts a text box on the page', ((await doc()).overlays?.length || 0) === ov0 + 1 && (await doc()).overlays.at(-1).kind === 'text', JSON.stringify((await doc()).overlays?.at(-1)));
+  {
+    // review2 · extra 10: the text box has a move grip, its resize handle sits bottom-right, a double-click edits it,
+    // and a drag far past the margin lands inside the text column
+    const tbI = (await doc()).overlays.length - 1;
+    const tb = page.locator(`#bw-pair main.bw-doc[data-locale="ar"] .bw-ov[data-i="${tbI}"]`).first();
+    await tb.scrollIntoViewIfNeeded();
+    const geo = await tb.evaluate((el) => { const r = el.getBoundingClientRect(); const h = el.querySelector('.bw-ov-handle')?.getBoundingClientRect(); const g = el.querySelector('.bw-ov-move')?.getBoundingClientRect(); return { r: [r.left, r.right], h: h && [h.left, h.right], g: g && [g.left + g.width / 2, g.top + g.height / 2] }; });
+    check(26, 'text box: a move grip on top, the resize handle on its right edge', !!geo.g && !!geo.h && Math.abs(geo.h[1] - geo.r[1]) <= 10, JSON.stringify(geo));
+    if (geo.g) { await page.mouse.move(geo.g[0], geo.g[1]); await page.mouse.down(); await page.mouse.move(geo.g[0] - 900, geo.g[1], { steps: 6 }); await page.mouse.move(geo.g[0] + 1400, geo.g[1], { steps: 8 }); await page.mouse.up(); await wait(200); }
+    const ov = (await doc()).overlays[tbI];
+    const colW = await page.evaluate(() => { const m = document.querySelector('#bw-pair main.bw-doc[data-locale="ar"]'); const w = m.querySelector('.wrap'); const cs = getComputedStyle(w); const mm = (m.querySelector('.cover') || m).getBoundingClientRect().width / 210; return (w.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) / mm; });
+    check(26, 'text box: dragged past the page edge it stays inside the text column', ov.mode !== 'anchor' || (ov.x >= 0 && ov.x + ov.w <= colW + 1), JSON.stringify({ x: ov.x, w: ov.w, mode: ov.mode, colW: Math.round(colW) }));
+    await page.locator(`#bw-pair main.bw-doc[data-locale="ar"] .bw-ov[data-i="${tbI}"] .bw-tb-body`).first().dblclick();
+    await wait(150);
+    const editing = await page.evaluate(() => { const a = document.activeElement; return !!a?.matches?.('.bw-tb-body') && a.isContentEditable; });
+    check(26, 'text box: a double-click puts the caret in its words', editing);
+    await page.keyboard.press('Escape');
+  }
   await page.keyboard.press('Escape');
   const blocks = async () => (await doc()).chapters[0].sections[1]?.blocks.length ?? (await doc()).chapters[0].sections[0].blocks.length;
   await clickDoc('[data-b^="/chapters/0/sections/1/blocks/0"]');
@@ -285,6 +303,29 @@ try {
   // L30 a field's format actions
   await clickDoc('[data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]');
   check(30, 'a selected field shows colour, spacing, alignment, vertical position, font, size, quote, link, code, bold, italic, bullets, shapes, numbers, levels', await R((r) => ['fmtColor', 'fmtLine', 'fmtAlignStart', 'fmtAlignCenter', 'fmtAlignEnd', 'fmtTop', 'fmtMiddle', 'fmtBottom', 'fmtFont', 'fmtSize', 'fmtQuote', 'fmtLink', 'fmtCode', 'fmtBold', 'fmtItalic', 'fmtBullets', 'fmtShapes', 'fmtNumbers', 'fmtIndent', 'fmtOutdent'].every((a) => r.querySelector(`[data-a="${a}"]`))));
+
+  {
+    // review2 · extra 9: a small dialog keeps what was typed on an outside click and when another tool asks;
+    // colour, font and size are a swatch, a list and a stepper
+    const dlg = () => R((r) => { const d = r.querySelector('.dialog'); const f = d.querySelector('textarea, input, select'); return { open: !d.hidden, val: f?.value, type: f ? (f.tagName === 'INPUT' ? f.type : f.tagName.toLowerCase()) : null }; });
+    await fire('hdrText'); await wait(200);
+    await page.keyboard.type('KEEPME');
+    await page.mouse.click(700, 600); await wait(200);
+    const afterOut = await dlg();
+    await fire('ftrText'); await wait(200);
+    const afterOther = await dlg();
+    await R((r) => r.querySelector('.dialog [data-k="no"]').click()); await wait(100);
+    check(30, 'a typed dialog survives an outside click and another tool asking (Save/Close end it)', afterOut.open && afterOut.val === 'KEEPME' && afterOther.open && afterOther.val === 'KEEPME', JSON.stringify({ afterOut, afterOther }));
+    const kinds = {};
+    for (const [a, want] of [['fmtColor', 'color'], ['fmtFont', 'select'], ['fmtSize', 'number']]) {
+      await clickDoc('[data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]');
+      await fire(a); await wait(200);
+      kinds[a] = (await dlg()).type;
+      await R((r) => r.querySelector('.dialog [data-k="no"]')?.click()); await wait(100);
+      kinds[a + 'Ok'] = kinds[a] === want;
+    }
+    check(30, 'colour / font / size dialogs: native swatch, list and stepper', kinds.fmtColorOk && kinds.fmtFontOk && kinds.fmtSizeOk, JSON.stringify(kinds));
+  }
 
   // L28 a header item on "this page only"
   await clickDoc('[data-b^="/chapters/2/sections/0/blocks/0"]');
@@ -329,6 +370,67 @@ try {
   await page.setViewportSize({ width: 1366, height: 900 });
   check(38, 'design: no horizontal overflow at 1366 and 1920 px', over.every((x) => x <= 1), JSON.stringify(over));
 
+  // review2 · 1: toasts with buttons are short-lived too, a click dismisses them, focus from code does not pin them,
+  // one queue (≤ 2 at once); a tamper warning is a banner that stays and is never doubled
+  {
+    await page.mouse.move(1000, 450);
+    const T = await page.evaluate(async () => {
+      const r = document.getElementById('bw-ui-host').shadowRoot;
+      r.querySelectorAll('.toast').forEach((x) => x.remove());
+      const sh = window.BW.toast('owner share done', 'ok', { persist: true, actions: [['open', () => {}], ['copy', () => {}]] });
+      sh.querySelector('button').focus(); // what the share code did: it pinned the toast for 6+ minutes
+      window.BW.toast('owner tamper', 'warn', { persist: true, actions: [['show', () => {}]] });
+      window.BW.toast('owner tamper', 'warn', { persist: true, actions: [['show', () => {}]] });
+      ['q1', 'q2', 'q3', 'q4'].forEach((m) => window.BW.toast(m, 'info'));
+      const stack = [...r.querySelectorAll('.toast:not(.banner):not(.out)')].length;
+      const ban = () => [...r.querySelectorAll('.toast.banner')].filter((x) => x.textContent.includes('owner tamper'));
+      const tamper0 = ban().length;
+      await new Promise((res) => setTimeout(res, 6600));
+      return { stack, tamper0, shareGone: !sh.isConnected || sh.classList.contains('out'), tamper: ban().length };
+    });
+    const a1 = await page.evaluate(() => !!window.BW.toast('owner undo-like', 'info', { actions: [['undo', () => {}]] }));
+    await page.locator('#bw-ui-host >> css=.toast .m', { hasText: 'owner undo-like' }).click();
+    await wait(350);
+    const clickGone = await R((r) => { const t = [...r.querySelectorAll('.toast')].find((x) => x.textContent.includes('owner undo-like')); return !t || t.classList.contains('out'); });
+    await R((r) => r.querySelectorAll('.toast.banner [data-k]').forEach((b) => b.click()));
+    check(6, 'toasts with buttons: gone within 6 s even when code focused them, a click dismisses, at most two at once', T.shareGone && a1 && clickGone && T.stack <= 2, JSON.stringify({ ...T, clickGone }));
+    check(6, 'a tamper warning is one banner that stays until answered', T.tamper0 === 1 && T.tamper === 1, JSON.stringify(T));
+  }
+  // review2 · 34: RTL/LTR per edition; the direction field (and View, Settings, header, footer) stays in the bar at 1024–1920
+  {
+    const mainDir = (l) => page.evaluate((l) => document.querySelector(`#bw-pair main.bw-doc[data-locale="${l}"]`)?.dir, l);
+    const dirBtn = (d) => R((r, d) => r.querySelector(`.island [data-a="dir"][data-d="${d}"]`).click(), d);
+    if ((await page.evaluate(() => window.BW.S.ed)) !== 'en') await act('uiLang');
+    const onEn = await page.evaluate(() => window.BW.S.ed);
+    await dirBtn('ltr'); await wait(150);
+    await act('uiLang'); await wait(150);
+    const arDir = { ed: await page.evaluate(() => window.BW.S.ed), dir: await mainDir('ar'), pressed: await R((r) => r.querySelector('.island [data-a="dir"][aria-pressed="true"]')?.dataset.d) };
+    await dirBtn('ltr'); await wait(150);
+    await act('uiLang'); await wait(150);
+    const enDir = await mainDir('en');
+    await act('uiLang'); await wait(150);
+    await dirBtn('rtl'); await wait(150);
+    const arBack = await mainDir('ar');
+    check(34, 'direction per edition: LTR in English leaves Arabic RTL; LTR in Arabic leaves English as chosen', onEn === 'en' && arDir.ed === 'ar' && arDir.dir === 'rtl' && arDir.pressed === 'rtl' && enDir === 'ltr' && arBack === 'rtl', JSON.stringify({ onEn, arDir, enDir, arBack }));
+    const seen = [];
+    const inBar = () => R((r) => {
+      const ok = (sel) => { const e = r.querySelector(sel); if (!e || !e.checkVisibility()) return false; const q = e.getBoundingClientRect(); const at = r.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2); return q.left >= 0 && q.right <= innerWidth && !!at && (at === e || e.contains(at)); };
+      return { rtl: ok('.island [data-a="dir"][data-d="rtl"]'), ltr: ok('.island [data-a="dir"][data-d="ltr"]'), view: ok('.island [data-a="view"]'), settings: ok('.island [data-a="settings"]'), hdr: !!r.querySelector('.island .sec[data-cat="header"]'), ftr: !!r.querySelector('.island .sec[data-cat="footer"]') };
+    });
+    for (const sel of ['none', 'text', 'table']) {
+      if (sel === 'text') await clickDoc('[data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]');
+      if (sel === 'table') await clickDoc('table[data-rows] td[data-p]');
+      for (const w of [1024, 1100, 1280, 1290, 1366, 1440, 1920]) {
+        await page.setViewportSize({ width: w, height: 900 }); await wait(320);
+        const v = await inBar();
+        if (!Object.values(v).every(Boolean)) seen.push({ sel, w, ...v });
+      }
+    }
+    await page.setViewportSize({ width: 1366, height: 900 }); await wait(300);
+    check(34, 'RTL/LTR, View and Settings visible, header and footer kept, at 1024–1920 px with nothing, text or a table selected', !seen.length, JSON.stringify(seen));
+    await page.mouse.click(1000, 450); await wait(200);
+  }
+
   // L18 image through «إدراج صورة» offers the Word wrap options; L24 image + move down ×2: no exception
   const p24 = await ctx.newPage();
   p24.setDefaultTimeout(15000);
@@ -348,6 +450,38 @@ try {
   for (let i = 0; i < 2; i++) { await p24.evaluate(() => window.BW.runAction('moveDown')).catch((e) => err24.push(e.message)); await p24.waitForTimeout(150); }
   await para.click().catch(() => {});
   check(24, 'insert an image, then «لأسفل» twice on the paragraph: no exception, the editor still works', !err24.length, err24.join(' | '), true);
+  {
+    // review2 · 14: every wrap mode reaches every other one, the way the owner picks the picture: a click on it,
+    // Alt+click for one behind the text, a click on the in-line figure
+    const WR = ['inline', 'square', 'tight', 'through', 'topBottom', 'behind', 'front'];
+    const cap = (m) => 'wrap' + m[0].toUpperCase() + m.slice(1);
+    const modeNow = () => p24.evaluate(() => { const d = window.BW.M[window.BW.S.svc][window.BW.S.ed].doc; const o = (d.overlays || []).filter((x) => x.kind === 'image').at(-1); if (o) return o.wrap || 'free'; for (const c of d.chapters) for (const s of c.sections) for (const b of s.blocks) if (b.kind === 'shots' && b.images?.length === 1 && /^data:image/.test(b.images[0])) return 'inline'; return null; });
+    const pick = async () => {
+      const m = await modeNow();
+      const sel = m === 'inline' ? 'figure.shots[data-b]' : ':is(.bw-ov, .bw-ovf)[data-kind="image"]';
+      const el = p24.locator(`#bw-pair main.bw-doc[data-locale="ar"] ${sel}`).last();
+      await el.scrollIntoViewIfNeeded();
+      const b = await el.boundingBox();
+      if (m === 'behind') { await p24.keyboard.down('Alt'); await p24.mouse.click(b.x + b.width / 2, b.y + b.height / 2); await p24.keyboard.up('Alt'); }
+      else await p24.mouse.click(b.x + b.width / 2, b.y + Math.min(b.height / 2, 20));
+      await p24.waitForTimeout(120);
+      return p24.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('.island .sec[data-cat="wrap"] [data-a^="wrap"]').length);
+    };
+    const bad = [];
+    for (const from of WR) {
+      for (const to of WR) {
+        if (from === to) continue;
+        if ((await modeNow()) !== from) { await pick(); await p24.evaluate((a) => window.BW.runAction(a), cap(from)); await p24.waitForTimeout(80); }
+        if ((await modeNow()) !== from) { bad.push(`${from}: not reached (${await modeNow()})`); break; }
+        const tools = await pick();
+        await p24.evaluate((a) => window.BW.runAction(a), cap(to)).catch((e) => bad.push(e.message));
+        await p24.waitForTimeout(80);
+        const got = await modeNow();
+        if (got !== to) bad.push(`${from}→${to}: ${got} (wrap tools ${tools})`);
+      }
+    }
+    check(18, 'every wrap mode switches to every other one (back from «مع النص» and «خلف النص» included)', !bad.length && !err24.length, bad.slice(0, 8).join(' | ') + err24.join(' | '));
+  }
   await p24.close({ runBeforeUnload: true });
 
   check(23, 'the owner\'s whole run (every flow above but the line-24 one): no page error', !errors.length, errors.join(' | '));

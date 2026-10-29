@@ -30,6 +30,17 @@ function w2addSections(cats) {
   bwExt({ sections: cats.map((cat) => ({ cat })) });
   for (const cat of cats) GENERAL_GROUPS.splice(GENERAL_GROUPS.indexOf(cat), 1); // steps aside in selections: not a palette group
 }
+/** review2 · 34: header / footer fold to icon + «…» while a selection's section is in the bar (not the band of a picked
+ *  item). Called by fitBar before it measures, so the bar never wraps for a moment and pushes the page down. */
+function w2selFold(bar) {
+  const sel = !!bar?.classList.contains('has-sel');
+  let moved = false;
+  for (const part of ['header', 'footer']) {
+    const el = bar?.querySelector(`.sec[data-cat="${part}"]`);
+    if (el && el.classList.contains('sel-fold') !== (sel && W2.sel?.part !== part)) { el.classList.toggle('sel-fold'); moved = true; }
+  }
+  return moved;
+}
 /** Shows a section only while its condition holds (sections are built by buildUi; this survives a rebuild). */
 function w2showSection(cat, on) {
   // a contextual section (format, wrap, front matter) exists only while it applies: the bar keeps its room at 1366 px
@@ -172,13 +183,10 @@ bwExt({
   on: {
     boot: () => {
       setTimeout(w2strip);
-      // the two sections step aside while a selection's own section is in the bar (1366 px has no room for both)
-      // and come back with the general tools; a picked header/footer item brings back its own band's section
-      new MutationObserver(() => {
-        const sel = root.querySelector('.island')?.classList.contains('has-sel');
-        w2showSection('header', !sel || W2.sel?.part === 'header');
-        w2showSection('footer', !sel || W2.sel?.part === 'footer');
-      }).observe(root, { subtree: true, attributes: true, attributeFilter: ['class'] });
+      // review2 · 34: the two sections never leave the bar. While a selection's own section is in it they fold to
+      // their title and «…» (every tool in that menu); a picked header/footer item keeps its own band's section open
+      // (fitBar folds them itself before it measures, through w2selFold; this catches a picked band item)
+      new MutationObserver(() => { if (w2selFold(root.querySelector('.island'))) fitBar(); }).observe(root, { subtree: true, attributes: true, attributeFilter: ['class'] });
       w2docCss('w2-doc-css', `@media print{.w2-strip{display:none!important}}
 .w2-strip{font-size:9pt;color:var(--muted);background:var(--paper,#fff);border:1px dashed var(--rule-strong);border-radius:2mm;max-width:210mm;margin:4mm auto;padding:1.5mm 3mm;display:grid;gap:1mm}
 .w2-strip .bw-band{display:flex;justify-content:space-between;align-items:center;min-height:6mm}

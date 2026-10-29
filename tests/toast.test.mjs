@@ -62,7 +62,7 @@ try {
 
   // the same message twice is one toast; at most three stacked
   const n = await page.evaluate(() => { const R = document.getElementById('bw-ui-host').shadowRoot; R.querySelectorAll('.toast').forEach((x) => x.remove()); window.BW.toast('autosaved', 'ok'); window.BW.toast('autosaved', 'ok'); const one = R.querySelectorAll('.toast').length; ['a', 'b', 'c', 'd'].forEach((x) => window.BW.toast(x, 'info')); return [one, R.querySelectorAll('.toast').length]; });
-  check('the same message twice = one toast; at most three stacked', n[0] === 1 && n[1] === 3, JSON.stringify(n));
+  check('the same message twice = one toast; at most two stacked (review2 · 1: one queue)', n[0] === 1 && n[1] === 2, JSON.stringify(n));
 
   // bottom centre, both directions
   const offs = [];
