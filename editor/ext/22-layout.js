@@ -104,6 +104,28 @@ const W2_LAYOUT = {
   },
 };
 
+/** A18 on the canvas: the sheet is as wide as the paper set for it, as in the PDF and the DOCX. The whole document's paper
+ *  sizes the page (and the page views' sheets, views.js); a section with its own paper (a page segment, engine/render.mjs
+ *  pageModel) is drawn as its own sheet of that width, labelled with its size, in the continuous view. Screen only. */
+function w2pageCss() {
+  const rules = [];
+  for (const ed of Object.keys(M[S.svc] || {})) {
+    const d = cur(ed)?.doc;
+    if (!d) continue;
+    const segs = pageModel(d).segments;
+    const base = segs[0].page;
+    const m = `#bw-pair main.bw-doc[data-locale="${ed}"]`;
+    if (d.layout?.page) rules.push(`${m}{width:${base.w}mm}`);
+    for (const x of segs.slice(1)) {
+      if (x.page.w === base.w && x.page.h === base.h) continue;
+      const sel = `#bw-pair:not([data-pages="single"]):not([data-pages="spread"]) main.bw-doc[data-locale="${ed}"] [style="page:bw-seg-${x.n}"]`;
+      const name = `${x.page.size === 'custom' ? `${x.page.w}×${x.page.h} mm` : x.page.size} · ${t(x.page.orientation === 'landscape' ? 'w2.landscape' : 'w2.portrait')}`;
+      rules.push(`${sel}{box-sizing:border-box;width:${x.page.w}mm;margin-inline:calc((100% - ${x.page.w}mm) / 2);padding-inline:var(--page-side,16mm);padding-block:6mm 4mm;background:var(--paper,#fff);box-shadow:0 0 0 1px var(--rule-strong),0 12px 30px -18px rgba(0,30,61,.45);position:relative}`,
+        `${sel}::after{content:${JSON.stringify(name)};position:absolute;top:1mm;inset-inline-end:3mm;font-size:7.5pt;color:var(--muted)}`);
+    }
+  }
+  w2docCss('w2-page-css', rules.length ? `@media screen{${rules.join('')}}` : '');
+}
 async function w2layoutAction(id) {
   if (id === 'pgSetup') { openDrawer('w2page'); return; }
   if (id === 'pgBreak') { W2_LAYOUT.breakBefore(); return; }
@@ -144,7 +166,7 @@ bwExt({
     boot: () => w2docCss('w2-layout-css', `@media screen{html.bw-ed section.bw-brk{border-top:2px dashed var(--accent-rule);padding-top:3mm;position:relative}
 html.bw-ed section.bw-brk::before{content:attr(data-w2brk);position:absolute;top:-3.2mm;inset-inline-start:0;font-size:8pt;color:var(--accent);background:var(--paper,#fff);padding:0 2mm}}
 @media print{html.bw-ed section.bw-brk::before{display:none}}`),
-    render: () => document.querySelectorAll('#bw-pair section.bw-brk').forEach((x) => { x.dataset.w2brk = t('w2.pageBreak'); }),
+    render: () => { document.querySelectorAll('#bw-pair section.bw-brk').forEach((x) => { x.dataset.w2brk = t('w2.pageBreak'); }); w2pageCss(); },
   },
 });
 document.addEventListener('click', (e) => {

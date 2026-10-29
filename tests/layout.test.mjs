@@ -66,8 +66,33 @@ try {
   await page.evaluate(() => window.BW.EXT.w2layout.page('A4', 'landscape', 'section', '/chapters/1/sections/0/blocks/0'));
   ch2Doc = await docNow();
   check('editor: "this section only" landscape is one undo group', (await opsN()) > n0 && ch2Doc.chapters[1].sections[0].blocks[0].layout.page.orientation === 'landscape');
+  // 0.13.1 final pass #2 (A18 on the canvas): the sheet on screen is as wide as the paper set, per section and for all
+  const geo = () => page.evaluate(() => {
+    const main = document.querySelector('#bw-pair main.bw-doc[data-locale="en"]');
+    const seg = main.querySelector('[style^="page:bw-seg-"]');
+    const w = (el) => el.getBoundingClientRect().width;
+    return { main: w(main), seg: seg ? w(seg) : 0, label: seg ? getComputedStyle(seg, '::after').content : '' };
+  });
+  const near = (a, b) => Math.abs(a - b) < 0.01;
+  const g0 = await geo();
+  check('canvas: a section set to A4 landscape is drawn as a 297 mm sheet on a 210 mm page, labelled', near(g0.seg / g0.main, 297 / 210) && /A4/.test(g0.label), JSON.stringify(g0));
   await page.evaluate(() => window.BW.undo());
   check('editor: undo removes the page setting', !(await docNow()).chapters[1].sections[0].blocks[0].layout?.page);
+  for (const [size, orient, w] of [['A3', 'portrait', 297], ['A5', 'portrait', 148], ['Letter', 'portrait', 215.9], ['Legal', 'landscape', 355.6]]) {
+    await page.evaluate(([s, o]) => window.BW.EXT.w2layout.page(s, o, 'section', '/chapters/1/sections/0/blocks/0'), [size, orient]);
+    const g = await geo();
+    check(`canvas: a section set to ${size} ${orient} is drawn ${w} mm wide`, near(g.seg / g.main, w / 210) && g.label.includes(size), JSON.stringify(g));
+    await page.evaluate(() => window.BW.undo());
+  }
+  await page.evaluate(() => window.BW.EXT.w2layout.page('A3', 'landscape', 'all'));
+  const gAll = await geo();
+  check('canvas: the whole document set to A3 landscape draws the page 420 mm wide', near(gAll.main / g0.main, 420 / 210), JSON.stringify({ gAll, g0 }));
+  await page.evaluate(() => window.BW.runAction('view.single'));
+  await page.waitForFunction(() => document.querySelector('#bw-pair .bw-view'));
+  const gView = await page.evaluate(() => { const v = document.querySelector('#bw-pair .bw-view'); const r = v.getBoundingClientRect(); return { ratio: r.width / r.height }; });
+  check('canvas: the single-page view shows A3 landscape sheets (420 × 297)', near(gView.ratio, 420 / 297), JSON.stringify(gView));
+  await page.evaluate(() => window.BW.runAction('view.continuous'));
+  await page.evaluate(() => window.BW.undo());
   // the page setup drawer: whole document
   await page.evaluate(() => window.BW.runAction('pgSetup'));
   await sh((r) => { const d = r.querySelector('.drawer'); d.querySelector('[data-w2="size"]').value = 'Letter'; d.querySelector('[data-w2a="all"]').click(); });
