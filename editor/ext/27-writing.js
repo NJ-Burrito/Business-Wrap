@@ -185,7 +185,7 @@ bwExt({
         if (!s.isCollapsed) s.deleteFromDocument();
         return W2_WRITE.splitAt(el.dataset.p, w2offset(el, s.anchorNode, s.anchorOffset), ed) || true;
       }
-      if (el.closest('td, th, li')) return lineBreak();
+      if (el.closest('td, th, li')) return /^\s*=/.test(el.textContent) && !el.closest('li') ? false : lineBreak(); // a formula typed in a cell (lane A) still commits on Enter
       return false; // titles and other one-line leaves: Enter still commits and leaves
     },
     render: () => {
