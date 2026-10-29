@@ -73,8 +73,9 @@ export function brandCss() {
   const f = path.join(REPO, 'brand', 'v3', 'tokens-v3.css');
   if (!fs.existsSync(f)) return '';
   return read(f)
-    .replace(/:root:not\(/g, '.shell:not(')
-    .replace(/:root\[/g, '.shell[')
+    // a dialog on the shadow root (12-session's relaunch prompt) sits outside .shell: it takes the theme tokens too
+    .replace(/:root:not\(/g, ':is(.shell, dialog):not(')
+    .replace(/:root\[/g, ':is(.shell, dialog)[')
     .replace(/:root(?=\s*\{)/g, ':host, .shell')
     .replace(/:where\(a, button, input, select, textarea, \[tabindex\]\):focus-visible \{[^}]*\}/, '') + '\n';
 }

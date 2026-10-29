@@ -541,8 +541,8 @@ try {
     const { brandCss } = await import('../engine/build-editor.mjs');
     const css = brandCss();
     const light = /:host, \.shell \{[^}]*--bw-bg: #fafaf9/.test(css);
-    const dark = /\.shell\[data-theme="dark"\] \{[^}]*--bw-bg: #001e3d/.test(css);
-    check('brandCss(): v3 tokens scoped to the shadow root (--bw-bg, no :root, light on :host/.shell, dark on .shell[data-theme="dark"], no global focus rule)',
+    const dark = /:is\(\.shell, dialog\)\[data-theme="dark"\] \{[^}]*--bw-bg: #001e3d/.test(css);
+    check('brandCss(): v3 tokens scoped to the shadow root (--bw-bg, no :root, light on :host/.shell, dark on .shell/dialog[data-theme="dark"], no global focus rule)',
       css.includes('--bw-bg') && !css.includes(':root') && light && dark && !/:where\(a, button/.test(css), JSON.stringify({ len: css.length, light, dark }));
   }
   // drawer reopened while it closes stays open (0.11.x fix kept: the pending hide is cancelled)

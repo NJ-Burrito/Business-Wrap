@@ -1,5 +1,6 @@
 /* A13 provenance drawer (31-provenance.js) */
 .pv-status { padding: 8px 10px; border-radius: 12px; background: var(--wash-2); }
+.pv-status.pv-legacy { color: var(--panel-ink); }
 .pv-status.err { box-shadow: inset 0 0 0 2px var(--bw-sec-design, #b3261e); }
 .pv-status ul { margin: 4px 0 0; padding-inline-start: 18px; }
 .pv-people { inline-size: 100%; border-collapse: collapse; font-size: .85em; }

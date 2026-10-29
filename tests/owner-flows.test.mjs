@@ -31,7 +31,7 @@ const W = await import('../engine/workspace.mjs');
 const { VERBS } = await import('../engine/cli.mjs');
 
 // the review's open items, fixed by F1/F2/F3 in parallel (review-0.13.0.md line numbers = original-prompt.md lines)
-const XF = new Set([7, 11, 15, 16, 17, 18, 20, 24, 28, 38]);
+const XF = new Set([]); // F5: every review line is green under BW_STRICT=1 (was 7, 11, 15, 16, 17, 18, 20, 24, 28, 38)
 const STRICT = process.env.BW_STRICT === '1';
 const HEADED = process.env.BW_HEADED === '1';
 const out = [];
@@ -376,7 +376,7 @@ try {
   await p2.waitForFunction(() => window.BW?.ready && document.documentElement.dataset.bwResume, null, { timeout: 15000 }).catch(() => {});
   const resume = await p2.evaluate(() => { const d = document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-resume'); if (!d) return null; const b = d.querySelector('[data-s="resume"]'); const cs = b && getComputedStyle(b); return { resume: !!b, fresh: !!d.querySelector('[data-s="new"]'), font: getComputedStyle(d).fontFamily, bg: cs?.backgroundColor, border: cs?.borderStyle }; });
   check(14, 'closing the last tab stops the host; a relaunch offers «استأنف كل شيء» and «عمل جديد»', stopped && resume?.resume && resume?.fresh, JSON.stringify({ stopped, resume }));
-  check(38, 'the relaunch dialog uses the house font and styled buttons (not browser defaults)', !!resume && !/Times|serif$/.test(resume.font) && resume.bg !== 'rgba(0, 0, 0, 0)', JSON.stringify(resume), true);
+  check(38, 'the relaunch dialog uses the house font and styled buttons (not browser defaults)', !!resume && !/Times|(^|,\s*)serif$/.test(resume.font) && resume.bg !== 'rgba(0, 0, 0, 0)', JSON.stringify(resume), true);
   await p2.locator('#bw-ui-host >> css=dialog.bw-resume [data-s="new"]').click().catch(() => {});
   await p2.close({ runBeforeUnload: true });
   await ctx2.close();

@@ -442,6 +442,7 @@ async function addDocument(raw, doc, name) {
   S.svc = id; S.ed = ed; S.sel = null;
   buildUi();
   render(false);
+  emit('open', S.svc, S.ed);
   flash(t('docLoaded', { name: svc.editions[ed].name }));
 }
 /** Import an edits file / bundle / colleague's Save-HTML and merge with conflicts. */
@@ -2294,6 +2295,7 @@ async function addService(docs) {
   buildUi();
   render(false);
   window.scrollTo(0, 0);
+  emit('open', S.svc, S.ed);
   toast(t('newdocDone'), 'ok');
   return id;
 }

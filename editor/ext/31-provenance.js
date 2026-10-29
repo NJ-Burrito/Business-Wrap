@@ -88,6 +88,9 @@ async function pvLoad(svc, snap = null) {
       if (best) { L.entries = JSON.parse(JSON.stringify(best.x.entries.slice(0, best.k + 1))); L.src = 'fork'; L.from = best.x.doc; }
     }
   } catch { L.verdict = { ok: false, issues: [{ seq: 0, reason: 'unreadable' }] }; L.entries = []; return (PV.logs[svc] = L); }
+  // an edited document that never had a Business-Wrap log: made before 0.13 (no `bwlog` mark, which every 0.13+ Save-HTML
+  // and library entry carries). Neutral, logged from this open on. A document with the mark and no log stays «stripped».
+  if (edited && !L.entries.length && (live ? ent && !ent.bwlog : !DATA.bwlog)) { L.src = 'legacy'; L.verdict = { ok: true, issues: [], legacy: true }; L.pins = {}; return (PV.logs[svc] = L); }
   // a log continued from this machine's mirror is newer than any file state: only its chain and head are checked
   L.verdict = await BWLOG1.verify(L, { mirror: L.from ? null : L.mirror, editions: L.src === 'mirror' ? undefined : eds, saved: L.src === 'html' || L.src === 'entry' });
   L.pins = L.verdict.pins;
@@ -181,7 +184,9 @@ function pvDrawer() {
   const people = pvContributors(L);
   const met = BWLOG1.metrics(L.entries);
   const kinds = [...new Set(L.entries.map((e) => e.kind))];
-  const status = L.verdict.ok ? `<p class="ok pv-status"><span class="i">${ic('ok')}</span> ${esc(t('pvChainOk', { n: L.entries.length }))}</p>`
+  const legacy = L.verdict.ok && (L.verdict.legacy || L.entries.some((e) => e.kind === 'open' && e.data?.src === 'legacy'));
+  const status = legacy ? `<p class="pv-status pv-legacy" data-legacy="1"><span class="i">${ic('info')}</span> <b>${esc(t('pvLegacy'))}</b> · ${esc(t('pvLegacyNote', { n: L.entries.length }))}</p>`
+    : L.verdict.ok ? `<p class="ok pv-status"><span class="i">${ic('ok')}</span> ${esc(t('pvChainOk', { n: L.entries.length }))}</p>`
     : `<div class="err pv-status" role="alert"><p><span class="i">${ic('err')}</span> <b>${esc(t('pvTampered'))}</b></p><ul>${L.verdict.issues.map((i) => `<li>#${i.seq} · ${esc(t('pvr_' + i.reason))}</li>`).join('')}</ul></div>`;
   const mins = (ms) => Math.round(ms / 6e4);
   return {
@@ -277,6 +282,7 @@ if (PV_ON) bwExt({
     save: () => { pvSettle(); pvAppend('save', {}); },
     export: (info) => { pvAppend('export', { pdf: !!info?.pdf, docx: !!info?.docx }); },
     saveHtml: (data) => {
+      data.bwlog = 1; // the 0.13+ mark: a file with it and no log was stripped, a file without it was made before 0.13
       if (!PV.sealed || PV.sealed.svc !== S.svc) return;
       data.prov = { [S.svc]: { doc: PV.sealed.doc, log: PV.sealed.log } }; // the contributor mark lives in the editor HTML only, never in PDF/DOCX
       data.contrib = PV.sealed.contrib;

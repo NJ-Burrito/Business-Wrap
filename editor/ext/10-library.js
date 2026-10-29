@@ -54,7 +54,7 @@ const LIB = (() => {
     const editions = {};
     for (const [ed, e] of Object.entries(M[id])) editions[ed] = snapEd(e);
     // A16: the lock state travels with the entry (32-lock exposes EXT.lock), so a locked document opens locked
-    return { id, title: titleOf(id), service: id, origin: 'template', createdAt: now, savedAt: now, editions, theme: S.theme, lock: EXT.lock?.of(id) || null, ...extra };
+    return { id, title: titleOf(id), service: id, origin: 'template', createdAt: now, savedAt: now, editions, theme: S.theme, lock: EXT.lock?.of(id) || null, bwlog: 1, ...extra };
   }
   /** An entry into the session (DATA.services + M), replacing what was there. */
   function mount(entry) {
@@ -117,7 +117,7 @@ const LIB = (() => {
     if (!isDoc(id) || !M[id]) return null;
     const old = (await get(id)) || {};
     if (old.deletedAt) return null; // a document in the Trash is not brought back by an autosave
-    const entry = entryOf(id, { origin: old.origin || pending[id]?.origin || 'blank', createdAt: old.createdAt || pending[id]?.createdAt || new Date().toISOString(), service: old.service || id });
+    const entry = entryOf(id, { origin: old.origin || pending[id]?.origin || 'blank', createdAt: old.createdAt || pending[id]?.createdAt || new Date().toISOString(), service: old.service || id, ...(old.prov ? { prov: old.prov } : {}), ...(old.from ? { from: old.from } : {}) });
     const fresh = !!pending[id];
     delete pending[id];
     await put(entry);
@@ -150,7 +150,7 @@ const LIB = (() => {
   const titleFromRaw = (raw, id) => { const c = JSON.parse(raw).control || {}; return String(c.coverTitle || String(c.title || '').split(/\s*[:—]\s+/).slice(1).join(': ') || c.title || id); };
   const makeEntry = (editions, origin, service, theme = S.theme) => {
     const now = new Date().toISOString(), id = `doc-${uuid()}`;
-    return { id, title: titleFromRaw(Object.values(editions)[0].raw, id), service, origin, createdAt: now, savedAt: now, editions, theme };
+    return { id, title: titleFromRaw(Object.values(editions)[0].raw, id), service, origin, createdAt: now, savedAt: now, editions, theme, bwlog: 1 };
   };
   /** A document JSON as a new entry (import, new document): `store` false = unsaved until the first Save. */
   async function fromDocs(docs, origin, store = true) {
@@ -185,6 +185,8 @@ const LIB = (() => {
         const editions = {};
         for (const [ed, x] of Object.entries(s.editions)) editions[ed] = { name: x.name, raw: x.raw, hash: x.hash, ops: x.ops || [], status: x.status || {}, stale: x.stale || [], comments: x.comments || [], versions: x.versions || [], marks: x.marks || [], epochIds: x.epochIds || [] };
         last = makeEntry(editions, 'import', s.id, data.theme || S.theme);
+        if (!data.bwlog) delete last.bwlog; // a Save-HTML made before 0.13: no Business-Wrap log ever (31-provenance: «made before 0.13»)
+        if (data.prov?.[s.id]?.log) last.prov = { doc: data.prov[s.id].doc, log: data.prov[s.id].log }; // the file's log travels on (31-provenance reads entry.prov)
         await put(last);
         mirror(last);
         mount(last);
@@ -218,8 +220,9 @@ const LIB = (() => {
     const e = await get(id);
     if (!e) return null;
     const now = new Date().toISOString();
-    const copy = { ...JSON.parse(JSON.stringify(e)), id: `doc-${uuid()}`, origin: 'copy', createdAt: now, savedAt: now };
+    const copy = { ...JSON.parse(JSON.stringify(e)), id: `doc-${uuid()}`, origin: 'copy', createdAt: now, savedAt: now, from: id };
     delete copy.deletedAt;
+    delete copy.prov; // the copy forks the source's live log (31-provenance follows copy.from), not the source's import-time log
     await put(copy);
     mirror(copy);
     mount(copy);

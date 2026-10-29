@@ -172,7 +172,7 @@ try {
   await lp.evaluate(() => window.BW.runAction('save'));
   await lp.waitForFunction(async (id) => Object.values((await window.BW.EXT.library.get(id))?.editions || {}).some((e) => e.ops.length >= 2), libId, { timeout: 8000 });
   await ready(lp);
-  await lp.reload();
+  await lp.goto(pathToFileURL(fileLib).href); // not reload(): the address now holds #doc=<id>, which reopens it at boot
   await ready(lp);
   // reopened from the list: an edit sent before its log is read waits behind it and is logged, never dropped
   const race = await lp.evaluate(async (id) => { await window.BW.EXT.library.open(id); const early = !window.BW.EXT.ledger.attached(); try { window.BW.setText('/control/title', 'too soon'); return early ? 'early' : 'late'; } catch (e) { return e.refused ? 'refused' : e.message; } }, libId);
@@ -202,6 +202,37 @@ try {
   const impId = await lp.evaluate(async ([d, id]) => { const s = d.services[0]; const e = { id: `doc-imp-${Date.now()}`, title: 'imported', service: s.id, origin: 'import', createdAt: new Date().toISOString(), savedAt: new Date().toISOString(), editions: Object.fromEntries(Object.entries(s.editions).map(([ed, x]) => [ed, { ...x, stale: x.stale || [], marks: [], epochIds: [] }])), prov: d.prov[id] }; await window.BW.EXT.library.put(e); await window.BW.EXT.library.open(e.id); return e.id; }, [dL, libId]);
   await ready(lp);
   check('import: an entry that carries the file\'s log opens with it', (await verdict(lp)).ok && (await entries(lp)).filter((e) => e.kind === 'op').length >= 3 && (await lp.evaluate(() => window.BW.S.svc)) === impId, JSON.stringify(await verdict(lp)));
+  // F5 · 1: the documents list's own import keeps the file's log (entry.prov) and a duplicate names its source (copy.from)
+  const viaFile = (html, name) => lp.evaluate(async ([h, n]) => { const e = await window.BW.EXT.library.importAny(new File([h], n, { type: 'text/html' })); return e && { id: e.id, prov: !!e.prov?.log, bwlog: e.bwlog || 0 }; }, [html, name]);
+  const imp2 = await viaFile(htmlL, 'library.editor.html');
+  await ready(lp);
+  check('F5 1: «استيراد» of a Save-HTML keeps its log as entry.prov and opens with it (src entry, chain intact)', imp2?.prov && (await verdict(lp)).ok && (await lp.evaluate(() => window.BW.EXT.ledger.log().src)) === 'entry' && (await entries(lp)).filter((e) => e.kind === 'op').length >= 4, JSON.stringify({ imp2, v: await verdict(lp) }));
+  const dup2 = await lp.evaluate(async (id) => { const c = await window.BW.EXT.library.duplicate(id); return { from: c.from, prov: !!c.prov }; }, imp2?.id);
+  await ready(lp);
+  check('F5 1: a duplicate carries copy.from = its source id and forks the source\'s live log', dup2.from === imp2?.id && !dup2.prov && (await verdict(lp)).ok && (await lp.evaluate(() => window.BW.EXT.ledger.log().src)) === 'fork', JSON.stringify({ dup2, v: await verdict(lp) }));
+  // F5 · 1: editor.js addDocument (a JSON document) fires the `open` event
+  const openSeen = await lp.evaluate(async () => { const seen = []; window.BW.bwExt({ on: { open: (svc) => seen.push(svc) } }); const sid = window.BW.S.svc; const doc = JSON.parse(Object.values(window.BW.M[sid])[0].raw); doc.service = 'json-doc-f5'; await window.BW.importFile(new File([JSON.stringify(doc)], 'json-doc-f5.ar.json', { type: 'application/json' })); return seen; });
+  await ready(lp);
+  check('F5 1: opening a JSON document (addDocument) fires `open`', openSeen.includes("json-doc-f5"), JSON.stringify(openSeen));
+  // F5 · 2: a Save-HTML made before 0.13 (edited, never a Business-Wrap log, no `bwlog` mark) is neutral, not «stripped»
+  // (a state no open log vouches for: otherwise the fork path rightly attaches that log)
+  const reword = (d, v) => { const x = JSON.parse(JSON.stringify(d)); Object.values(x.services[0].editions)[0].ops.at(-1).value = v; return x; };
+  const { prov: _p0, contrib: _c0, bwlog: _b0, ...legacyD } = reword(dL, 'made in 0.12');
+  check('F5 2: every 0.13 Save-HTML carries the bwlog mark', dL.bwlog === 1, String(dL.bwlog));
+  const leg = await viaFile(withData(htmlL, legacyD), 'legacy.editor.html');
+  await ready(lp);
+  const lv = await verdict(lp);
+  await lp.evaluate(() => window.BW.openDrawer('provenance'));
+  await lp.waitForTimeout(300);
+  const legUi = await sh(lp, (r) => { const el = r.querySelector('.drawer .pv-status'); return el && { legacy: el.dataset.legacy === '1', err: el.classList.contains('err'), text: el.textContent }; });
+  check('F5 2: a pre-0.13 document shows «بلا سجل (أُنشئت قبل 0.13)», neutral, never «stripped»', !leg?.bwlog && lv.ok && lv.legacy && legUi?.legacy && !legUi.err && /0\.13/.test(legUi.text), JSON.stringify({ leg, lv, legUi }));
+  await setTitle(lp, 'Legacy edited');
+  await ready(lp);
+  check('F5 2: a pre-0.13 document\'s edits from now on are logged', (await entries(lp)).some((e) => e.kind === 'op' && e.data.op.value === 'Legacy edited') && (await entries(lp)).some((e) => e.kind === 'open' && e.data.src === 'legacy'), JSON.stringify((await entries(lp)).map((e) => e.kind)));
+  const { prov: _p1, ...strippedD } = reword(dL, 'log removed by hand');
+  await viaFile(withData(htmlL, strippedD), 'stripped.editor.html');
+  await ready(lp);
+  check('F5 2: a 0.13 document whose log was removed (bwlog mark kept) stays «stripped»', (await verdict(lp)).issues.some((i) => i.reason === 'stripped'), JSON.stringify(await verdict(lp)));
   await lp.close();
   // a clean machine (Rami): the library document's file verifies; the same file with its log and mark removed does not
   const ctxC = await browser.newContext({ acceptDownloads: true, viewport: { width: 1500, height: 900 } });
@@ -230,6 +261,16 @@ try {
   const put = (name, d) => { const f = path.join(tmp, name); fs.writeFileSync(f, withData(htmlL, d)); return f; };
   let c = cli(fileL);
   check('verify-history: an honest Save-HTML passes', c.code === 0, c.out.slice(0, 200));
+  { // F5 · 3: the ledger gate is the same full verify (content-only edit caught); F5 · 2: a pre-0.13 file is named so, not «stripped»
+    const { gateLedger } = await import('../engine/heal/gates.mjs');
+    const cF = JSON.parse(JSON.stringify(dL)); const edF = Object.keys(cF.services[0].editions)[0]; cF.services[0].editions[edF].ops.at(-1).value = 'forged for the gate';
+    const g = await gateLedger(put('g-content.html', cF), { history: path.join(tmp, 'no-history') });
+    const g0 = await gateLedger(fileL, { history: path.join(tmp, 'no-history') });
+    check('F5 3: gate ledger runs the full verify: an honest file PASSes, a content-only edit FAILs (unlogged)', g0.verdict === 'PASS' && g.verdict === 'FAIL' && g.problems.some((x) => /unlogged/.test(x)), JSON.stringify({ g0: g0.problems, g: g.problems }));
+    const { prov: _a, contrib: _b, bwlog: _d, ...legacyD } = dL;
+    const cl = cli(put('v-legacy.html', legacyD));
+    check('F5 2: verify-history on a pre-0.13 file says «made before 0.13», not stripped', cl.code === 1 && cl.problems.some((x) => /made before 0\.13/.test(x)) && !cl.problems.some((x) => /stripped/.test(x)), cl.out.slice(0, 200));
+  }
   const cOps = JSON.parse(JSON.stringify(dL)); const edL = Object.keys(cOps.services[0].editions)[0];
   cOps.services[0].editions[edL].ops.at(-1).value = 'forged in the data block';
   c = cli(put('v-content.html', cOps));

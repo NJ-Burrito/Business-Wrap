@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.NJ-Burrito/business-wrap",
   "title": "Business-Wrap",
-  "description": "Build the bilingual requirements-document editor, apply edits files, export PDF + DOCX and design packs. Local only.",
+  "description": "Build the bilingual requirements-document editor, apply edits files, export PDF + DOCX and design packs. Local only: run node mcp/cli.mjs from a clone or the installed plugin (no npm package).",
   "version": "0.13.0",
   "websiteUrl": "https://nj-burrito.github.io/Business-Wrap/",
   "repository": {
@@ -10,28 +10,19 @@
     "source": "github",
     "subfolder": "mcp"
   },
-  "packages": [
-    {
-      "registryType": "npm",
-      "registryBaseUrl": "https://registry.npmjs.org",
-      "identifier": "business-wrap",
-      "version": "0.13.0",
-      "runtimeHint": "npx",
-      "transport": {
-        "type": "stdio"
-      },
-      "environmentVariables": [
-        {
-          "name": "BW_FONT_DIR",
-          "description": "Folder holding the TrueType font cuts (searched recursively).",
-          "isRequired": false
-        },
-        {
-          "name": "BW_CHROME",
-          "description": "Chrome or Edge executable used to print the PDF.",
-          "isRequired": false
-        }
-      ]
+  "_meta": {
+    "io.modelcontextprotocol.registry/publisher-provided": {
+      "launch": {
+        "transport": "stdio",
+        "command": "node",
+        "args": ["mcp/cli.mjs"],
+        "cwd": "A clone of the repository (git clone https://github.com/NJ-Burrito/Business-Wrap), or the Claude Code plugin folder, where the plugin runs node ${CLAUDE_PLUGIN_ROOT}/mcp/cli.mjs.",
+        "requires": "Node.js 20 or newer; npm install in the clone for playwright-core.",
+        "environmentVariables": [
+          { "name": "BW_FONT_DIR", "description": "Folder holding the TrueType font cuts (searched recursively).", "isRequired": false },
+          { "name": "BW_CHROME", "description": "Chrome or Edge executable used to print the PDF.", "isRequired": false }
+        ]
+      }
     }
-  ]
+  }
 }

@@ -53,6 +53,12 @@ const srv = plugin.mcpServers?.['business-wrap'] || {};
 const argv = [srv.command, ...(srv.args || [])].join(' ');
 check('plugin MCP: starts with node from ${CLAUDE_PLUGIN_ROOT}, not npx or a registry package', srv.command === 'node' && (srv.args || []).length === 1 && srv.args[0] === '${CLAUDE_PLUGIN_ROOT}/mcp/cli.mjs', argv);
 check('plugin MCP: no npm package spec anywhere in the plugin manifest', !/npx|business-wrap@|registry/.test(JSON.stringify(plugin)));
+{ // F5 · 5: the registry metadata describes the local launch (node mcp/cli.mjs), not an npm package that is not published
+  const sj = JSON.parse(fs.readFileSync(path.join(REPO, 'mcp', 'server.json'), 'utf8'));
+  const launch = sj._meta?.['io.modelcontextprotocol.registry/publisher-provided']?.launch || {};
+  const sm = fs.readFileSync(path.join(REPO, 'mcp', 'smithery.yaml'), 'utf8');
+  check('F5 5: server.json and smithery.yaml launch node mcp/cli.mjs locally, no npm/npx package', !sj.packages && launch.command === 'node' && launch.args?.[0] === 'mcp/cli.mjs' && /command: "node"/.test(sm) && /args: \["mcp\/cli\.mjs"\]/.test(sm) && !/npx|business-wrap@/.test(sm + JSON.stringify(sj)), JSON.stringify(launch));
+}
 check('plugin version is 0.13.0 (plugin.json, package.json, server.json)', [plugin.version, JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8')).version, JSON.parse(fs.readFileSync(path.join(REPO, 'mcp', 'server.json'), 'utf8')).version].every((v) => v === '0.13.0'));
 
 // the vendored bundle is exactly a fresh build from the locked packages (security/gitleaks.toml allowlists it by path)

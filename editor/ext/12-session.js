@@ -36,6 +36,7 @@ const SESS = (() => {
   function modal(last) {
     const dlg = document.createElement('dialog');
     dlg.className = 'bw-resume';
+    dlg.dataset.theme = S.dark ? 'dark' : 'light'; // the shell's theme tokens (build-editor brandCss) follow it here
     dlg.setAttribute('aria-labelledby', 'bw-resume-h');
     dlg.innerHTML = `<h2 id="bw-resume-h">${esc(t('sessTitle'))}</h2><p>${esc(t('sessLead', { n: last.tabs.length }))}</p><ol class="list">${last.tabs.slice(0, 12).map((x) => `<li>${esc(x.title || x.tab)}</li>`).join('')}${last.tabs.length > 12 ? `<li>… +${last.tabs.length - 12}</li>` : ''}</ol><div class="btns"><button type="button" class="b primary" data-s="resume"><span class="w">${esc(t('sessResume', { n: last.tabs.length }))}</span></button><button type="button" class="b" data-s="new"><span class="w">${esc(t('sessNew'))}</span></button></div><p class="hint out" role="status"></p>`;
     root.appendChild(dlg);

@@ -46,6 +46,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 - ⌨️ **Shortcuts** work with the focus in the toolbar (Alt+↑ after a toolbar Move, Ctrl+Z, Ctrl+D, Delete). / الاختصارات تعمل والتركيز في شريط الأدوات.
 - ✅ **Check panel**: each problem has a button that jumps to and rings its place. / لوحة الفحص: لكل مشكلة زر يقفز إلى موضعها ويحدده.
 - 🧩 **Extensions boot after they load**: the first view already shows every extension's tools; the draft-recovery question and the first-open motion are no longer lost to a second build. / الإضافات تُشغَّل بعد تحميلها: يظهر كل شيء من أول عرض، ولا يضيع سؤال استعادة المسودة ولا حركة الفتح الأولى.
+- 🧪 **Acceptance review (2026-10-29), every FAIL and PARTIAL line**: / مراجعة القبول (2026-10-29)، كل بند «فشل» أو «جزئي»:
+  - ↕️ Insert an image, then move a paragraph down twice: no crash; every structural change reaches both editions or is refused. / إدراج صورة ثم نقل فقرة للأسفل مرتين: لا انهيار؛ وكل تغيير بنيوي يصل إلى النسختين أو يُرفض.
+  - 🖼️ «إدراج صورة» and paste give the image Word's seven wrap modes, like a dropped file. / «إدراج صورة» واللصق يعطيان الصورة أنماط الالتفاف السبعة، كالملف المسحوب.
+  - 🗃️ Every side-panel group starts collapsed, rows alternate their shade, one chevron convention. / كل مجموعة في اللوحات الجانبية تبدأ مطويّة، والصفوف متناوبة التظليل، واتجاه واحد للأسهم.
+  - 🧾 A header or footer item «هذه الصفحة فقط» applies to the page it was picked on; the toast shows only on success. / عنصر الترويسة أو التذييل «هذه الصفحة فقط» يُطبَّق على الصفحة التي اختير منها؛ والرسالة تظهر عند النجاح فقط.
+  - ✅ «اذهب إليه» rings the place in the body, never the contents row, on every finding. / «اذهب إليه» يحدد الموضع في المتن لا سطر جدول المحتويات، في كل ملاحظة.
+  - 🗂️ The list copy is always the latest; Open here sets `#doc=<id>` and closes the drawer; a reload reopens the document. / نسخة القائمة هي الأحدث دائمًا؛ و«افتح هنا» يضع `#doc=<id>` ويغلق اللوحة؛ وإعادة التحميل تعيد فتح الوثيقة.
+  - 📁 Share, the work report and imports use `<title>-<date>-<AR|ENG>` with the spaces kept; no `.manifest.json` in `DOCX\`. / المشاركة وتقرير العمل والاستيراد تستخدم `<العنوان>-<التاريخ>-<AR|ENG>` مع إبقاء المسافات؛ ولا ملف `.manifest.json` في `DOCX\`.
+  - 🔏 Every open path is logged: the documents list, New, import (the file's log kept as `entry.prov`), duplicate (`copy.from` names the source), a JSON document and the New wizard. / كل طريق فتح يُسجَّل: قائمة المستندات، وجديد، والاستيراد (يُحفظ سجل الملف في `entry.prov`)، والنسخ (`copy.from` يسمّي المصدر)، ووثيقة JSON، ومعالج الوثيقة الجديدة.
+  - 🧷 `verify-history` and the `ledger` gate run one full check (state, tail, stripped, `HISTORY` head): a content-only edit and a cut tail fail. / `verify-history` وفحص `ledger` يشغّلان فحصًا كاملًا واحدًا (الحالة، والذيل، والحذف، ورأس `HISTORY`): التعديل في المحتوى وحده وقطع الذيل يفشلان.
+  - 🕰️ A document made before 0.13 shows «بلا سجل (أُنشئت قبل 0.13)» in a neutral style and is logged from then on; a 0.13 document whose log was removed stays «stripped». / الوثيقة المنشأة قبل 0.13 تُظهر «بلا سجل (أُنشئت قبل 0.13)» بلون محايد وتُسجَّل من ذلك الحين؛ ووثيقة 0.13 التي حُذف سجلها تبقى «محذوفة السجل».
+  - 📊 The work report counts every edit and export once and keeps its chart labels whole. / تقرير العمل يعدّ كل تعديل وتصدير مرة واحدة ويُبقي تسميات الرسم كاملة.
+  - 🌙 The relaunch dialog takes the house design and the dark theme (text at 4.5:1 or more). / نافذة الاستئناف تأخذ تصميم البيت والسمة الداكنة (نص بتباين 4.5:1 أو أكثر).
+  - 🔌 The plugin, `mcp/server.json` and `mcp/smithery.yaml` start the MCP server locally with `node mcp/cli.mjs`; no npm package is needed. / الإضافة و`mcp/server.json` و`mcp/smithery.yaml` تشغّل خادم MCP محليًا بالأمر `node mcp/cli.mjs`؛ دون حاجة إلى حزمة npm.
 
 ### Extras / إضافات
 - 🧪 **The build parses the editor script**: two merged files declaring the same name now fail the build with the name, not the browser with a blank page. / البناء يفحص نص المحرر: اسمان متطابقان من ملفين مدموجين يُفشلان البناء باسم المشكلة بدل صفحة فارغة في المتصفح.
@@ -53,6 +67,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 - 🧷 **`verify-history`** checks a `.bwlog` file or a shared HTML file; **`report`** writes the work report from the command line. / الأمر `verify-history` يفحص ملف `.bwlog` أو ملف HTML مُشارَكًا، والأمر `report` يكتب تقرير العمل من سطر الأوامر.
 - ♿ **Update progress** reads at full contrast while it waits (axe). / تقدم التحديث يُقرأ بتباين كامل أثناء الانتظار.
 - 🔌 **Every test picks a free port**, so a running editor never breaks `npm test`. / كل اختبار يختار منفذًا حرًا، فلا يكسر محرر عامل تشغيل `npm test`.
+- 🕒 **«آخر حفظ»** beside the change counter (list copy and last HTML) replaces the «حُفظ تلقائياً» toast. / ختم «آخر حفظ» بجانب عداد التغييرات (نسخة القائمة وآخر HTML) بدل رسالة «حُفظ تلقائياً».
+- 📥 **Import keeps structure**: PDF, DOCX and HTML headings become chapters and sections, tables become tables, the title comes from the document. / الاستيراد يحفظ البنية: عناوين PDF وDOCX وHTML تصير فصولًا وأقسامًا، والجداول جداول، والعنوان من الوثيقة نفسها.
+- 📈 **Per-document metrics** in the documents list: edits, active minutes, contributors, last signer, locked. / مقاييس لكل وثيقة في قائمة المستندات: التعديلات، والدقائق النشطة، والمساهمون، وآخر موقّع، والقفل.
+- 🔀 **«مقارنة بآخر حفظ HTML»** in «تغييرات», with a restore for each change. / «مقارنة بآخر حفظ HTML» في «تغييرات»، مع استرجاع كل تغيير وحده.
+- 🔐 **The lock banner names the signer** when a shared file opens. / شريط القفل يسمّي الموقّع عند فتح الملف المُشارَك.
+- 📄 **«نسخ كقالب»**: a document's design, header and footer items and chapters, with empty bodies, for the next service. / «نسخ كقالب»: تصميم الوثيقة وعناصر الترويسة والتذييل والفصول بمتون فارغة، للخدمة التالية.
+- 🔢 **Requirement IDs**: FR- and BR- codes unique and in sequence; a story with no acceptance criteria warns. / معرّفات المتطلبات: رموز FR- وBR- فريدة ومتتابعة؛ والقصة بلا معايير قبول تُنبّه.
+- ↩️ **«تراجع» for 5 s** after deleting a block, an object, a header item or a document. / «تراجع» لمدة 5 ثوانٍ بعد حذف كتلة أو عنصر أو عنصر ترويسة أو وثيقة.
+- 🧭 **`tests/owner-flows.test.mjs`**: one check per line of the owner's request, in `npm test`. / ملف `tests/owner-flows.test.mjs`: فحص لكل بند من طلب المالك، ضمن `npm test`.
 
 ### Migration notes / ملاحظات الترحيل
 - Documents without the new fields render and export byte-identical to 0.12.0. A tool that read `/api/export/file` output from `exports/<service>/<locale>/` finds it in the save folder when the server runs without `--out`; with `--out` nothing moved. An editor extension now loads **before** boot: listen to `boot` instead of assuming the editor is drawn at load. / الوثائق التي لا تستخدم الحقول الجديدة تُعرض وتُصدَّر مطابقة لـ 0.12.0 بايتًا ببايت. ومخرجات `/api/export/file` تذهب إلى مجلد الحفظ حين يعمل الخادم دون `--out`، ومع `--out` لم يتغير شيء. وإضافة المحرر تُحمَّل الآن **قبل** التشغيل: استمع إلى الحدث `boot` بدل افتراض أن المحرر مرسوم عند التحميل.
