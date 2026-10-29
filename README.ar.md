@@ -57,7 +57,7 @@
 
 ## 🧩 التثبيت
 
-🧩 **إضافة Claude Code** (المهارة وخادم MCP معا):
+🧩 **إضافة Claude Code** (المهارة وخادم MCP وأوامر `/business-wrap:` معا؛ تعمل من ملفات الإضافة نفسها عبر Node، دون npm install ودون سجل npm):
 
 <div dir="ltr">
 
@@ -86,7 +86,7 @@ claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp
 <summary>📦 طرق أخرى: ملف الإصدار المضغوط، وخادم MCP من نسخة محلية، وقائمة الأدوات</summary>
 
 - ملف الإصدار: `business-wrap-<version>.zip` مع `.sha256` من https://github.com/NJ-Burrito/Business-Wrap/releases/latest. وفي ذلك المجلد: `npm ci`.
-- خادم MCP من نسخة محلية: `claude mcp add business-wrap -- node <path-to>/Business-Wrap/mcp/cli.mjs`
+- خادم MCP من نسخة محلية: `claude mcp add business-wrap -- node <path-to>/Business-Wrap/mcp/cli.mjs` (دون `npm ci`)
 - خادم MCP من وسم GitHub (دون npm): `claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.13.0 business-wrap-mcp`
 - الأدوات (15): `build_editor` و`validate_edits` و`apply_edits` و`export_document` و`export_design_pack` و`check_fonts` و`harvest_model` و`harvest_crawl` و`harvest_merge` و`harvest_sources` و`open_in_editor` و`close_editor` و`diagram_mermaid` و`check_update` و`apply_update`، إضافة إلى أدوات `learning_*`. وأداة الحصاد التي تُعطى `open: true` تفتح نتيجتها في المحرر. التفاصيل في [mcp/README.ar.md](mcp/README.ar.md).
 

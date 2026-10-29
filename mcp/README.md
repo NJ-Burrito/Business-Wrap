@@ -42,7 +42,7 @@ A stdio MCP server over the Business-Wrap engine, with 15 tools (plus the local-
 
 ```bash
 claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp
-# or, from a clone after npm ci:
+# or, from a clone (no npm ci needed: the MCP SDK is bundled in mcp/vendor/sdk.mjs):
 node mcp/cli.mjs
 ```
 

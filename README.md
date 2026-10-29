@@ -55,7 +55,7 @@
 
 ## 🧩 Install
 
-🧩 **Claude Code plugin** (the skill and the MCP server together):
+🧩 **Claude Code plugin** (the skill, the MCP server and the `/business-wrap:` commands together; they run from the plugin's own files with Node, no npm install and no registry):
 ```
 /plugin marketplace add NJ-Burrito/Business-Wrap
 /plugin install business-wrap@business-wrap
@@ -73,7 +73,7 @@ claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp
 <summary>📦 Other ways: release zip, MCP from a clone, tool list</summary>
 
 - Release zip: `business-wrap-<version>.zip` + `.sha256` from https://github.com/NJ-Burrito/Business-Wrap/releases/latest. In that folder: `npm ci`.
-- MCP from a clone: `claude mcp add business-wrap -- node <path-to>/Business-Wrap/mcp/cli.mjs`
+- MCP from a clone: `claude mcp add business-wrap -- node <path-to>/Business-Wrap/mcp/cli.mjs` (no `npm ci` needed)
 - MCP from the GitHub tag (no npm): `claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.13.0 business-wrap-mcp`
 - Tools (15): `build_editor`, `validate_edits`, `apply_edits`, `export_document`, `export_design_pack`, `check_fonts`, `harvest_model`, `harvest_crawl`, `harvest_merge`, `harvest_sources`, `open_in_editor`, `close_editor`, `diagram_mermaid`, `check_update`, `apply_update`, plus the `learning_*` tools. A harvest tool given `open: true` opens its result in the editor. See [mcp/README.md](mcp/README.md).
 

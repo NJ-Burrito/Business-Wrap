@@ -44,7 +44,7 @@ claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp
 
 ```bash
 claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp
-# أو من نسخة محلية بعد npm ci:
+# أو من نسخة محلية (دون npm ci: حزمة MCP مضمّنة في mcp/vendor/sdk.mjs):
 node mcp/cli.mjs
 ```
 
