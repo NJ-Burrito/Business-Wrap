@@ -29,7 +29,8 @@ export function constraintsOf(f, { locale, T, threshold = 30 }) {
   const opts = f.options?.[locale] || [];
   const parts = [];
   if (f.shownWhen?.length) parts.push(fill(T.shownWhen, { when: f.shownWhen.map((w) => `«${pick(w, locale)}»`).join(T.listSep) }));
-  if (opts.length) {
+  if (f.dynamic && T.dynamicList) parts.push(T.dynamicList);
+  else if (opts.length) {
     const label = pick(f.label, locale);
     if (opts.length > INLINE_MAX || (REGISTER.test(`${label} ${f.key}`) && opts.length > 3) || opts.length >= threshold) parts.push(fill(T.registerCount, { n: opts.length }));
     else parts.push(fill(T.optionsInline, { list: opts.join(T.listSep) }));
@@ -143,10 +144,16 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
     legislation: () => factRows('legislation', col('legislation'), (l) => [pick(l.number, locale), pick(l.name, locale), pick(l.year, locale)]),
     roles: () => {
       const rows = [[`R-01`, g('customer'), g('customerFunction'), tx(T.roleUsage.customer), g('customerChannel')]];
-      staff.forEach((st, i) => {
+      // one row per role, not per stage: a role that holds several stages (the same desk visited again later in
+      // the model) is one row carrying the union of its captions, as in every delivered client §2.11 (SRS2)
+      const byRole = new Map();
+      for (const st of staff) {
         const role = st.actor ? actorName(st.actor) : stageName(st);
-        rows.push([`R-${pad(i + 2)}`, role, st.actor ? role : fill(T.roleStage, { s: stageName(st) }), tx(T.roleUsage.staff, { list: capsOf(st).join(sep) || T.none }), g('staffChannel')]);
-      });
+        if (!byRole.has(role)) byRole.set(role, { fn: st.actor ? role : fill(T.roleStage, { s: stageName(st) }), caps: [] });
+        const e = byRole.get(role);
+        for (const c of capsOf(st)) if (!e.caps.includes(c)) e.caps.push(c);
+      }
+      [...byRole].forEach(([role, e], i) => rows.push([`R-${pad(i + 2)}`, role, e.fn, tx(T.roleUsage.staff, { list: e.caps.join(sep) || T.none }), g('staffChannel')]));
       return { blocks: [table(col('roles'), rows)], fill: staff.length ? 'derived' : 'template', source: { kind: 'model', ref: 'actors + stages' } };
     },
     integrations: (s) => { const k = s.of; const L = model.integrations[k] || []; if (!L.length) return statedNone(`integrations.${k}`); const rows = L.map((x) => (s.cols || ['name', 'description', 'sent', 'received', 'readiness']).map((c) => pick(x[c], locale) || (c === 'readiness' ? pick(profile.integrations?.readinessDefault, locale) || T.unknown : T.none))); return { blocks: [table(col(s.columns || k), rows)], fill: 'evidence', source: srcOf(`integrations.${k}`) }; },
@@ -160,7 +167,19 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
       const add = (key, unit, extra = {}, who = null, rank = null) => { if (!skip.has(key)) rows.push({ text: tx(T.fr[key], extra), unit: tx(unit === 'output' ? g('outputUnit') || T.units.output : T.units[unit] || unit), who: who || (CUSTOMER_FR.has(key) ? g('customer') : T.actorSystem), rank: rank ?? RANK[unit] ?? 60 }); };
       for (const k of pack.requirements?.customer || ['dynamicFields', 'validate', 'attach', 'submitCancel', 'confirm']) if (k !== 'attach' || model.documents.length) add(k, 'submit');
       for (const p of partners) add(p.received ? 'integration' : 'integrationNoData', 'submit', { p: pick(p.name, locale), data: pick(p.received, locale), sec: secTitle.partners || '' });
-      if (payment) { add('toPayment', 'submit'); if (firstDesk) add('afterPayment', 'payment', { t: stageName(firstDesk) }); }
+      // payment sits where the model puts it: after the submit, or after a desk (SRS2: four of six client services pay after
+      // a desk approves); the stage after it is the model's next human stage, not the first desk
+      const hop = (id, dir) => { const out = []; const seen = new Set([id]); const q = model.graph.edges.filter((e) => (dir > 0 ? e.from : e.to) === id).map((e) => (dir > 0 ? e.to : e.from)); while (q.length) { const x = q.shift(); if (seen.has(x)) continue; seen.add(x); const st = stageById(x); if (st) { if (!out.includes(st)) out.push(st); } else q.push(...model.graph.edges.filter((e) => (dir > 0 ? e.from : e.to) === x).map((e) => (dir > 0 ? e.to : e.from))); } return out; };
+      for (const pay of model.graph ? model.stages.filter((s) => s.kind === 'payment') : payment ? [payment] : []) {
+        const before = model.graph ? hop(pay.id, -1).filter((s) => s.kind !== 'payment') : [];
+        const after = model.graph ? hop(pay.id, 1).filter((s) => s.kind !== 'payment' && s.actor !== 'customer') : firstDesk ? [firstDesk] : [];
+        const desks = before.filter((s) => s.actor !== 'customer');
+        const OR = locale === 'ar' ? '» أو «' : '» or «';
+        const at = desks.length ? 30 + Math.max(...desks.map((d) => staff.indexOf(d))) + 0.5 : null;
+        if (desks.length && T.fr.toPaymentAfter) add('toPaymentAfter', 'payment', { s: desks.map(stageName).join(OR) }, null, at);
+        else add('toPayment', 'submit');
+        if (after.length) add('afterPayment', 'payment', { t: after.map(stageName).join(OR) }, null, at == null ? null : at + 0.1);
+      }
       // the round-robin is a requirement of the human step it feeds, not a step of its own (Lead ruling, D14)
       for (const st of staff.filter((x) => x.autoAssign)) add('autoAssign', stageName(st), { t: stageName(st) }, null, staff.indexOf(st) === 0 ? 20 : 30 + staff.indexOf(st));
       // one requirement per desk's action bar, held by that desk's person
@@ -171,7 +190,7 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
       for (const t of model.timers) { const st = stageById(t.stage); if (st) add('timer', st.kind === 'payment' ? 'payment' : 'staff', { s: stageName(st), d: pick(t.duration, locale) || T.br.timerUnknown }, null, st.kind === 'payment' ? 10 : staff.includes(st) ? 30 + staff.indexOf(st) : 70); }
       add('track', 'track');
       if (staff.length) { add('notes', 'staff'); add('history', 'all'); }
-      if (model.notifications.length || model.systemSteps.some((s) => /notif|inform|email|sms|إشعار|اشعار/i.test(pick(s.name, 'en')))) add('notify', 'notify');
+      if (model.notifications.length || model.systemSteps.some((s) => /notif|inform|email|sms|إشعار|اشعار/i.test(pick(s.name, 'en')))) { const via = pick(profile.notify?.via, locale); if (via && T.fr.notifyVia) { if (!skip.has('notify')) rows.push({ text: tx(T.fr.notifyVia, { via }), unit: tx(T.units.notify), who: T.actorSystem, rank: RANK.notify }); } else add('notify', 'notify'); }
       if (hasOutput) add('output', 'output');
       for (const r of pack.requirements?.extra || []) rows.push({ text: tx(pick(r.text, locale)), unit: tx(pick(r.unit, locale)), who: T.actorSystem, rank: r.rank ?? 60 });
       // sorted by the timeline (stable), codes issued after the sort
@@ -207,7 +226,7 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
       const fam = {};
       const famCode = (f) => `${br}-${f}-${pad((fam[f] = (fam[f] || 0) + 1))}`;
       const code = (c) => c || `${br}-${pad(rows.length + 1)}`;
-      const has = { reroute: staff.some((s) => s.actions.some((a) => a.effect === 'back')), recipients: model.recipients.length > 0, serial: !!model.serial, phone: model.fields.some((f) => f.type === 'tel' || /phone|mobile|هاتف/i.test(`${f.key} ${pick(f.label, 'en')}`)), staff: staff.length > 0, partners: partners.length > 0, payment: !!payment };
+      const has = { reroute: staff.some((s) => s.actions.some((a) => a.effect === 'back')), recipients: model.recipients.length > 0, serial: !!model.serial, output: hasOutput, phone: model.fields.some((f) => f.type === 'tel' || /phone|mobile|هاتف/i.test(`${f.key} ${pick(f.label, 'en')}`)), staff: staff.length > 0, partners: partners.length > 0, payment: !!payment };
       for (const r of R.standard || []) {
         if (r.when && !r.when.split('&').every((w) => (w.startsWith('!') ? !has[w.slice(1)] : has[w]))) continue;
         let t = pick(r.text, locale);

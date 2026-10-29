@@ -151,7 +151,7 @@ export function buildModel({ ir = null, raw = null, record = null, profile = {},
         });
         return;
       }
-      m.fields.push({ key: f.key, label: { ar: a.label || e.label, en: e.label || a.label }, type: f.type, required: !!(f.required || e.required), editable: true, options: { ar: a.options || [], en: e.options || a.options || [] }, shownWhen: f.shownWhen || null, stage: 'submit', section: { ar: s.title || '', en: (steps('en')[si] || {}).title || s.title || '' }, source: crawlSrc(`step ${si + 1} «${f.key}»`) });
+      m.fields.push({ key: f.key, label: { ar: a.label || e.label, en: e.label || a.label }, type: f.type, required: !!(f.required || e.required), editable: true, options: { ar: a.options || [], en: e.options || a.options || [] }, shownWhen: f.shownWhen || null, dynamic: !!(f.dynamic || e.dynamic), stage: 'submit', section: { ar: s.title || '', en: (steps('en')[si] || {}).title || s.title || '' }, source: crawlSrc(`step ${si + 1} «${f.key}»`) });
     });
   });
   if (m.documents.length) m.sources.documents = m.documents[0].source;

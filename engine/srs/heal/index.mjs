@@ -404,6 +404,13 @@ const lintText = {
     if (qism) out.push(`«قسم» in a story (say «شاشة»): «${qism.slice(0, 50)}»`);
     const unbalanced = all.find((x) => (x.match(/«/g) || []).length !== (x.match(/»/g) || []).length);
     if (unbalanced) out.push(`unbalanced «»: «${unbalanced.slice(0, 50)}»`);
+    // a stage the evidence named only in English prints its English name in the Arabic edition (SRS2: «Head of section»);
+    // bound by the profile (`arabicNames: true`), since invented fixtures name their stages in English on purpose
+    const latin = [...new Set(ctx.model.stages.filter((x) => x.kind !== 'start' && x.kind !== 'end').map((x) => pick(x.name, 'ar')).filter((n) => n && /[A-Za-z]/.test(n) && !/[؀-ۿ]/.test(n)))];
+    if (ctx.profile?.arabicNames && latin.length) out.push(`stage named in English in the Arabic edition (add it to the names file): ${latin.map((n) => `«${n}»`).join('، ')}`);
+    // a model identifier (a task key «مهمة print», a request variable TENDER_FEE) is not the reader's word
+    const jargon = ctx.profile?.arabicNames && all.find((x) => /مهمة\s+[A-Za-z]|\b[A-Z]{3,}_[A-Z_]{2,}\b/.test(x));
+    if (jargon) out.push(`model identifier in the Arabic edition: «${jargon.slice(0, 60)}»`);
     const en = strings({ c: ctx.docs.en.chapters }).find((x) => /\?\?|::/.test(x));
     if (en) out.push(`en: «${en.slice(0, 50)}»`);
     if (out.length) return { status: 'FAIL', detail: out.join('; ') };

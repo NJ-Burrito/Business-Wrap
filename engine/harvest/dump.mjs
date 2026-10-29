@@ -18,6 +18,10 @@ import fs from 'node:fs';
 const ATT = /اسم المرفق|attachment/i;
 const DATE = /تاريخ|\bdate\b/i;
 const DESC = /وصف الخدمة|description/i;
+// a domain lookup component (the account's registered products, the open tenders …) lists records of the system, not an
+// enumeration: its options are whatever the harvest account held that day, never printed (SRS2). Generic lists stay.
+// ponytail: named by the tag pattern taq-<thing>-select|list; add a tag here when a new generic list appears.
+const DYNAMIC = (tag) => /^taq-[a-z-]+-(select|list)$/.test(tag || '') && !/^taq-(select-option|generic-lookup|countries-list)$/.test(tag);
 
 const ftype = (x) => {
   const t = x.type || '', tag = x.tag || '';
@@ -50,6 +54,7 @@ function collapse(ar, en, prefix) {
     const fe = { key: k, type: t, label: e.label || lab, required: !!a.required, _panel: e.panel };
     if (a.accept) fa.accept = fe.accept = a.accept;
     if (a.options?.length) { fa.options = a.options; fe.options = e.options?.length ? e.options : a.options; }
+    if (DYNAMIC(a.component || a.tag)) fa.dynamic = fe.dynamic = true;
     out.push([fa, fe]); seen.add(lab);
   });
   return out;
