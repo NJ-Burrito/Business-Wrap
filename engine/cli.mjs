@@ -12,7 +12,7 @@
 //   business-wrap export <doc.json> [ar|en] [--out dir] [--edits f] [--no-docx]
 //   business-wrap gate <harvest|evidence|document|render|export|ledger> <file ...>
 //   business-wrap heal-log                                 the HEALED lines
-//   business-wrap verify-history <file>                    the trust ledger check (WP4)
+//   business-wrap verify-history <file> [--history dir]    the trust ledger check, as strict as the editor's
 //   business-wrap library [list]                           documents in the save folder
 //   business-wrap report <from> <to>                       the work report (WP4)
 //   business-wrap update [--check|--apply --yes|--notes]   the updater (update/cli.mjs)
@@ -216,11 +216,47 @@ export async function gate({ stage, files }) {
   return { gates: stage === 'export' ? [g(files.map((f) => path.resolve(f)))] : await Promise.all(files.map(async (f) => ({ ...(await g(path.resolve(f))), file: f }))) };
 }
 
-export async function verifyHistory({ file }) {
+/**
+ * The same check the editor runs on open (31-provenance pvLoad), with no browser: chain, hashes, signatures; for a
+ * Save-HTML also the document state against the log's last docHash (hash taken from each edition's own text), a log
+ * whose last entry is not its «saveHtml» (tail cut), an edited service with no log (stripped), and this machine's
+ * HISTORY head when it knows the document. A .bwlog is checked against its <doc>.heads.json.
+ */
+export async function verifyHistory({ file, history }) {
   if (!file) throw Object.assign(new Error('verify-history <file>'), { code: 2 });
-  const r = await GATES.ledger(path.resolve(file));
-  if (r.verdict === 'SKIP') throw new Pending(r.why);
-  return { gates: [r] };
+  const { BWLOG1 } = await import('./ledger-v1.mjs');
+  const f = path.resolve(file);
+  const problems = [];
+  const fail = (p) => ({ gates: [{ stage: 'ledger', verdict: p.length ? 'FAIL' : 'PASS', problems: p, file }] });
+  let hist = history;
+  if (hist === undefined) { try { hist = (await import('./workspace.mjs')).workspace().dirs.history; } catch { hist = null; } }
+  const headsOf = (doc) => { try { return JSON.parse(fs.readFileSync(path.join(hist, `${String(doc).replace(/:/g, '_')}.heads.json`), 'utf8')); } catch { return null; } };
+  const sha = async (s) => `sha256:${BWLOG1.hex(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))))}`;
+  try {
+    const text = fs.readFileSync(f, 'utf8');
+    if (/\.bwlog$/i.test(f)) {
+      const hf = f.replace(/\.bwlog$/i, '.heads.json');
+      if (!fs.existsSync(hf)) return fail([`no document id: ${path.basename(hf)} is not beside the log`]);
+      const heads = JSON.parse(fs.readFileSync(hf, 'utf8'));
+      const L = await BWLOG1.unseal(text, heads.doc);
+      for (const i of (await BWLOG1.verify(L, { mirror: heads })).issues) problems.push(`${L.doc} entry ${i.seq}: ${i.reason}`);
+      return fail(problems);
+    }
+    const m = /<script type="application\/json" id="bw-data">([\s\S]*?)<\/script>/.exec(text);
+    if (!m) return fail(['not a bwlog file or a Save-HTML editor file']);
+    const data = JSON.parse(m[1]);
+    const prov = data.prov || {};
+    for (const s of data.services || []) {
+      const editions = {};
+      for (const [ed, e] of Object.entries(s.editions || {})) editions[ed] = { hash: typeof e.raw === 'string' ? await sha(e.raw) : e.hash, ops: e.ops || [] };
+      const x = prov[s.id];
+      if (!x?.log) { if (Object.values(editions).some((e) => e.ops.length)) problems.push(`${s.id}: stripped (edited, no history)`); continue; }
+      const L = await BWLOG1.unseal(x.log, x.doc);
+      for (const i of (await BWLOG1.verify(L, { editions, saved: true, mirror: hist ? headsOf(x.doc) : null })).issues) problems.push(`${L.doc} entry ${i.seq}: ${i.reason}`);
+    }
+    if (!Object.keys(prov).length && !problems.length) problems.push('the file carries no history');
+  } catch (e) { problems.push(`unreadable: ${String(e.message || e).slice(0, 120)}`); }
+  return fail(problems);
 }
 
 export async function library() {
@@ -255,7 +291,7 @@ export async function run(argv) {
   const [verb, ...rest] = argv;
   const flags = new Set(rest.filter((a) => a.startsWith('--')));
   const val = (k) => { const i = rest.indexOf(`--${k}`); return i >= 0 ? rest[i + 1] : undefined; };
-  const VALUED = new Set(['--out', '--port', '--name', '--roles', '--edits', '--title', '--ui']);
+  const VALUED = new Set(['--out', '--port', '--name', '--roles', '--edits', '--title', '--ui', '--history']);
   const pos = rest.filter((a, i) => !a.startsWith('--') && !VALUED.has(rest[i - 1]));
   const browser = !flags.has('--no-browser');
   switch (verb) {
@@ -269,7 +305,7 @@ export async function run(argv) {
     case 'export': return exportDoc({ document: pos[0], locale: pos.find((p) => /^(ar|en)$/.test(p)), out: val('out'), edits: val('edits'), docx: !flags.has('--no-docx') });
     case 'gate': return gate({ stage: pos[0], files: pos.slice(1) });
     case 'heal-log': return { healed: readHealLog() };
-    case 'verify-history': return verifyHistory({ file: pos[0] });
+    case 'verify-history': return verifyHistory({ file: pos[0], history: val('history') });
     case 'library': return library();
     case 'report': return report({ from: pos[0], to: pos[1] });
     case 'update': return update(rest);

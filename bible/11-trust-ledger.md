@@ -42,17 +42,22 @@ Keys: one per install, WebCrypto ECDSA P-256, non-extractable in IndexedDB `bw-k
 | verify each `sig` with the logged key of `actor.kid` | `sig`, `nokey` | an entry forged or re-hashed without the key |
 | TOFU pin per actor id (mirror) | `tofu` | a chain re-signed with fresh keys under the same id |
 | the file's chain must reach this machine's head | `truncated`, `fork` | a cut log, an older copy, a rewritten history |
-| last `docHash` = the file's base + ops | `unlogged` | an edit in the data block that is not in the log |
-| a file with ops (or a known document) and no log | `stripped` | a removed log |
+| last `docHash` = the file's base + ops (the base hash recomputed from its text) | `unlogged` | an edit in the data block, or in the base text, that is not in the log |
+| a Save-HTML's log ends with its own `saveHtml` entry | `truncated` | a cut tail, on any machine (no mirror needed) |
+| a file or document with ops and no log | `stripped` | a removed log, a document that was never logged |
+
+**Every open path attaches the log** (0.13.1, review line 20): the `open` event (boot, the documents list, New, import, duplicate, a resumed tab; a render of a document nobody opened counts as its open). A library document's log id is its `doc-` id. Sources, in order: the file's own log; this machine's mirror; the log its library entry carries (`entry.prov`, from an imported file); the prefix of an open document's chain whose `docHash` equals this state (Save of a template, a copy). An edit made while the log loads waits in the queue and is logged; a document whose log is never on its way refuses edits. Each entry is mirrored before the queue moves on.
+
+`business-wrap verify-history <file> [--history dir]` runs the same checks without a browser (chain, state, tail, stripped, this machine's HISTORY head) and exits 1 on any finding.
 
 ## Lock, share, signatures
-- Lock: every change is refused (the seam's guards: commit, setText, undo, redo, drag), editing tools are greyed, typing does nothing; a banner names who locked it and when. The state travels in the HTML. Unlock: one warning dialog, no password; logged `unlock` with the name. A guard against accidental edits, not access control.
+- Lock: every change is refused (the seam's guards: commit, setText, undo, redo, drag), editing tools are greyed, typing does nothing; a banner names who locked it and when, and the last signer from the log (extras #7). The state travels in the HTML. Unlock: one warning dialog, no password; logged `unlock` with the name. A guard against accidental edits, not access control.
 - Share: logs `share` (optional recipient), writes the Save-HTML to `<workspace>/HTML/`, offers show-the-file, copy-the-path and an e-mail draft (a browser cannot attach). On `file://` it downloads.
 - «وقّع / Sign»: an approval signature over the current `docHash`, recorded in the log. Not a legal e-signature.
 
 ## Metrics and the report (A12)
-- From the log only: edits by kind, words added/removed, sessions (`open`), saves, exports, signatures, active time = the sum of gaps of ≤ 5 min between one person's entries and activity pings (one per 30-s bucket with input or pointer activity while the tab is visible). The off switch stops the pings; edits and their times stay — they are the provenance itself.
-- Settings → Performance report → `POST /api/report {from, to, people, lang}` → PDF in `<workspace>/PDF/`: cover, KPI tiles, three SVG charts (active hours per week, edits per document, document status), a per-person table and a story written by templates (no AI). Thmanyah only, TrueType, no Type 3.
+- From the log only: edits by kind (a typed op re-logged after each pause counts once), words added/removed, sessions (`open`), saves, exports, signatures, active time = the sum of gaps of ≤ 5 min between one person's entries and activity pings (one per 30-s bucket with input or pointer activity while the tab is visible). The off switch stops the pings; edits and their times stay — they are the provenance itself.
+- Settings → Performance report → `POST /api/report {from, to, people, lang}` → PDF in `<workspace>/PDF/`: cover, KPI tiles, three SVG charts (active hours per week, edits per document, document status), a per-person table and a story written by templates (no AI). Thmanyah only, TrueType, no Type 3. Across documents each entry counts once (a document saved from a template starts with a copy of that log); a document only opened (a template at launch) is not counted as work. Chart labels sit in a fixed 210-unit column, cut with an ellipsis; the SVG states its direction, so RTL labels grow leftwards.
 - Privacy: the picture stays on this machine (`PF_PICTURE_IN_SHARED_HTML = false`); the name travels in shared provenance.
 
 ## Frozen-format rule
