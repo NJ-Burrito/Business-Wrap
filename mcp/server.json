@@ -3,7 +3,7 @@
   "name": "io.github.NJ-Burrito/business-wrap",
   "title": "Business-Wrap",
   "description": "Build the bilingual requirements-document editor, apply edits files, export PDF + DOCX and design packs. Local only: run node mcp/cli.mjs from a clone or the installed plugin (no npm package).",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "websiteUrl": "https://nj-burrito.github.io/Business-Wrap/",
   "repository": {
     "url": "https://github.com/NJ-Burrito/Business-Wrap",
