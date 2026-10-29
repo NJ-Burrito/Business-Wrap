@@ -2549,7 +2549,7 @@ document.addEventListener('input', (e) => {
   const el = e.target.closest?.('#bw-pair [data-p]');
   if (!el) return;
   const ed = el.closest('main.bw-doc').dataset.locale;
-  const text = (el.dataset.pfx || '') + el.innerText.replace(/\n+/g, ' ').trim();
+  const text = (el.dataset.pfx || '') + el.innerText.replace(/\n{2,}/g, '\n').trim(); // a typed line break stays (Enter in a cell, Shift+Enter)
   setText(el.dataset.p, text, ed);
 });
 document.addEventListener('focusout', (e) => {

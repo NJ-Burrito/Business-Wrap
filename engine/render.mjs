@@ -137,6 +137,11 @@ export function polish(text, locale = 'ar') {
 }
 
 export function makeBidi(locale) {
+  // a typed line break ("\n": Enter in a cell, Shift+Enter) prints as <br>: the editor, the PDF and the DOCX alike
+  const f = makeBidi0(locale);
+  return (text) => f(text).replace(/\n/g, '<br>');
+}
+function makeBidi0(locale) {
   if (locale !== 'ar') return (text) => esc(polish(text, locale));
   const run =
     /[([{]?[A-Za-z0-9][A-Za-z0-9\s.,;:!?+\-_/\\()[\]{}|&%'"@#]*[A-Za-z0-9\])}]|[([{]?[A-Za-z0-9][)\]}]?/g;

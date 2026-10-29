@@ -38,8 +38,11 @@ const W2_OBJECTS = {
   },
   /** A23: a text box anchored to the selected block (it gains an id), in front of the text by default. */
   textBox(text, opts = {}) {
-    const where = blockOf(S.sel?.b) || blockOf(blocksInOrder(w2doc())[0]?.ptr);
+    // item 6: at the caret (or the start of the highlighted words); else the selected block; else the first one
+    const spot = w2caretSpot();
+    const where = (spot && blockOf(spot.ptr)) || blockOf(S.sel?.b) || blockOf(blocksInOrder(w2doc())[0]?.ptr);
     if (!where) return null;
+    if (spot && where.ptr === spot.ptr) opts = { x: spot.x, y: spot.y, ...opts };
     const pre = w2ovEnsure();
     const anchor = w2blockId(where.ptr, pre);
     const o = { id: w2id('tb'), kind: 'text', text: text || t('w2.textBox'), mode: 'anchor', anchor, x: 0, y: 0, w: 60, h: 20, wrap: 'front', ...opts };
