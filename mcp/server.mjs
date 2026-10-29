@@ -4,8 +4,7 @@
 // Local only: reads and writes the paths it is given, opens no network port.
 import fs from 'node:fs';
 import path from 'node:path';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
+import { McpServer, z } from './vendor/sdk.mjs';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { exportPdf, exportDocx, loadTheme, fontsFor, REPO } from '../engine/export.mjs';
 import { applyOps, migrate, validateEdits } from '../engine/edits.mjs';
@@ -15,6 +14,8 @@ import { harvestModel, harvestCrawl, harvestMerge } from '../engine/harvest/cli.
 import { DIAGRAM } from '../engine/diagram.mjs';
 import { modelIn } from '../engine/diagram-cli.mjs';
 import { registerLearningTools } from '../engine/learning/mcp-tools.mjs';
+import { open as openEditor, close as closeEditors, library } from '../engine/cli.mjs';
+import { harvestSources } from '../engine/harvest/sources.mjs';
 
 const pkg = JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8'));
 const readJson = (p) => JSON.parse(fs.readFileSync(path.resolve(p), 'utf8'));
@@ -38,6 +39,9 @@ function loadDocument(file, editsFile) {
 }
 // update_available rides once per session on the first tool result, so any MCP client's model sees it.
 let decorate = (d) => d;
+const OPEN = z.boolean().optional().describe('Also open the result in the Business-Wrap editor (starts the local host, opens an Edge tab); default false');
+/** open: true puts the documents into the editor through the host; the answer gains opened: {url, doc_id} */
+const opened = async (r, open) => (open && r.documents?.length ? { ...r, opened: await openEditor({ inputs: r.documents }) } : r);
 const guard = (fn) => async (args) => {
   try { return ok(decorate(await fn(args))); } catch (e) { return fail(String(e?.message || e)); }
 };
@@ -168,11 +172,12 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
       out_dir: z.string().describe('Folder for the documents and the editor'),
       name: z.string().optional().describe('Service name (wins over the name in the model)'),
       roles: z.string().optional().describe('Path of a roles mapping JSON: readable names (string or {ar, en}) for expression assignees and raw keys'),
+      open: OPEN,
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-  }, guard(async ({ model, out_dir, name, roles }) => {
+  }, guard(async ({ model, out_dir, name, roles, open }) => {
     const r = await harvestModel(path.resolve(model), { out: path.resolve(out_dir), name, roles: roles && path.resolve(roles) });
-    return { documents: r.documents, editor: r.editor, actors: r.ir.actors.length, unresolved_roles: r.ir.actors.filter((a) => a.unresolved).map((a) => a.raw), steps: r.ir.steps.filter((s) => s.type === 'task').length, learned_rules_applied: r.learned };
+    return opened({ documents: r.documents, editor: r.editor, actors: r.ir.actors.length, unresolved_roles: r.ir.actors.filter((a) => a.unresolved).map((a) => a.raw), steps: r.ir.steps.filter((s) => s.type === 'task').length, learned_rules_applied: r.learned }, open);
   }));
 
   server.registerTool('harvest_merge', {
@@ -184,11 +189,12 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
       out_dir: z.string().describe('Folder for the documents and the editor'),
       name: z.string().optional().describe('Service name for both editions'),
       roles: z.string().optional().describe('Path of a roles mapping JSON'),
+      open: OPEN,
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-  }, guard(async ({ crawl, model, out_dir, name, roles }) => {
+  }, guard(async ({ crawl, model, out_dir, name, roles, open }) => {
     const r = await harvestMerge(path.resolve(crawl), path.resolve(model), { out: path.resolve(out_dir), name, roles: roles && path.resolve(roles) });
-    return { documents: r.documents, editor: r.editor, conflicts: r.conflicts, learned_rules_applied: r.learned };
+    return opened({ documents: r.documents, editor: r.editor, conflicts: r.conflicts, learned_rules_applied: r.learned }, open);
   }));
 
   server.registerTool('harvest_crawl', {
@@ -197,13 +203,57 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     inputSchema: {
       config: z.string().describe('Path of the crawl config JSON (see bible/contracts/harvest.schema.json#/$defs/crawlConfig)'),
       out_dir: z.string().describe('Folder for the raw harvest, screenshots, documents and the editor'),
+      open: OPEN,
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
-  }, guard(async ({ config, out_dir }) => {
+  }, guard(async ({ config, out_dir, open }) => {
     // never files a request from an agent: a dry run that stops before Send / Submit / Pay
     const r = await harvestCrawl(path.resolve(config), { out: path.resolve(out_dir), log: () => {}, ask: async () => false });
-    return { documents: r.documents, editor: r.editor, raw: path.join(r.rawDir, 'harvest.json'), languages: Object.keys(r.raw.languages), steps: Object.values(r.raw.languages)[0]?.steps.length ?? 0, learned_rules_applied: r.learned };
+    return opened({ documents: r.documents, editor: r.editor, raw: path.join(r.rawDir, 'harvest.json'), languages: Object.keys(r.raw.languages), steps: Object.values(r.raw.languages)[0]?.steps.length ?? 0, learned_rules_applied: r.learned }, open);
   }));
+
+  server.registerTool('harvest_sources', {
+    title: 'Harvest from your own files',
+    description: 'Turn files or folders the user provides into the Arabic and English document JSON + the editor: process models (BPMN, draw.io, YAML/JSON step lists, monitoring graph) through the model parser, and documents (PDF, DOCX, HTML, TXT, MD) whose numbered or bulleted lines become the steps. No model, no network. Files it cannot read are listed in skipped with the reason.',
+    inputSchema: {
+      sources: z.array(z.string()).min(1).describe('Files or folders'),
+      out_dir: z.string().describe('Folder for the documents and the editors'),
+      name: z.string().optional().describe('Service name for every document'),
+      roles: z.string().optional().describe('Path of a roles mapping JSON'),
+      open: OPEN,
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  }, guard(async ({ sources, out_dir, name, roles, open }) => {
+    const { results, skipped } = await harvestSources(sources, { out: path.resolve(out_dir), name, roles: roles && path.resolve(roles) });
+    return opened({ results, skipped, documents: results[0]?.documents || [] }, open);
+  }));
+
+  server.registerTool('open_in_editor', {
+    title: 'Open in the Business-Wrap editor',
+    description: 'Start the local host if it is not running, put the documents into the editor (library import when the host has one) and open an Edge tab on it. Give documents (JSON files or folders), or editor (a built .html), or doc_id (a document already in the library). Returns {url, doc_id}.',
+    inputSchema: {
+      documents: z.array(z.string()).optional().describe('Document JSON files or folders'),
+      editor: z.string().optional().describe('A built editor .html'),
+      doc_id: z.string().optional().describe('A document code already in the library'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  }, guard(async ({ documents, editor, doc_id }) => {
+    if (documents?.length) return openEditor({ inputs: documents });
+    if (editor) return openEditor({ inputs: [editor] });
+    if (doc_id) {
+      const hit = (await library()).documents.find((d) => d.name.includes(doc_id) || fs.readFileSync(d.file, 'utf8').includes(doc_id));
+      if (!hit) throw new Error(`no document ${doc_id} in the library`);
+      return { ...(await openEditor({ inputs: [hit.file] })), doc_id };
+    }
+    throw new Error('give documents, editor or doc_id');
+  }));
+
+  server.registerTool('close_editor', {
+    title: 'Close the editor and its host',
+    description: 'Stop every local host and close every Edge window this Business-Wrap install started (nothing it did not start).',
+    inputSchema: {},
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  }, guard(async () => closeEditors()));
 
   server.registerTool('check_fonts', {
     title: 'Check the fonts',

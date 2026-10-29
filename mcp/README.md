@@ -2,10 +2,10 @@
 
 ## ⚡ In 10 seconds
 
-🔌 One command:
+🔌 One command (0.13.0 from the GitHub tag; npm still serves 0.12.0; or the Claude Code plugin, or a clone below):
 
 ```bash
-claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.13.0 business-wrap-mcp
 ```
 
 ✅ Needs Node 20+, uv, and Chrome or Edge for the PDF.
@@ -18,7 +18,7 @@ claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp
 
 ## 🧰 Tools
 
-A stdio MCP server over the Business-Wrap engine, with 12 tools. Outputs must end in the stated extension.
+A stdio MCP server over the Business-Wrap engine, with 15 tools (plus the local-learning tools). Outputs must end in the stated extension.
 
 | Tool | Arguments | Does |
 |---|---|---|
@@ -28,9 +28,12 @@ A stdio MCP server over the Business-Wrap engine, with 12 tools. Outputs must en
 | `export_document` | document, edits?, locale?, out_dir, theme?, docx? | PDF (headless Chrome, the editor markup) + DOCX |
 | `export_design_pack` | out .json, theme? | the theme as a `bw-design-pack` the editor imports |
 | `diagram_mermaid` | mermaid?, model_file?, locale? | Mermaid flowchart → diagram model in the house workflow style, or a diagram back to Mermaid |
-| `harvest_model` | model, out_dir, name? | a BPMN / draw.io / step-list file → both document editions + the editor |
+| `harvest_model` | model, out_dir, name?, roles?, open? | a BPMN / draw.io / step-list file → both document editions + the editor; `open: true` also opens it in the editor |
 | `harvest_merge` | crawl, model, out_dir, name?, roles? | a crawl harvest and a process model joined into one document, both editions |
-| `harvest_crawl` | config, out_dir | walk a live service (headed Chrome, OTP pause) → both editions + the editor |
+| `harvest_crawl` | config, out_dir, open? | walk a live service (headed Chrome, OTP pause, never submits) → both editions + the editor |
+| `harvest_sources` | sources[], out_dir, name?, roles?, open? | your own files or folders: BPMN, draw.io, YAML/JSON steps, PDF, DOCX, HTML, TXT, MD → documents; unreadable files listed as skipped |
+| `open_in_editor` | documents[]? \| editor? \| doc_id? | starts the local host if needed and opens an Edge tab on the editor; returns `{url, doc_id}` |
+| `close_editor` | (none) | stops every host and Edge window this install started |
 | `check_fonts` | theme? | which faces resolve and whether any would print as Type 3 |
 | `check_update` | force? | whether a newer release exists (at most one request a day) |
 | `apply_update` | confirm | installs the newer release, keeping your settings and files; refuses without `confirm: true` |
@@ -38,8 +41,8 @@ A stdio MCP server over the Business-Wrap engine, with 12 tools. Outputs must en
 ## ▶️ Run
 
 ```bash
-claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp
-# or, from a clone after npm ci:
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.13.0 business-wrap-mcp
+# or, from a clone (no npm ci needed: the MCP SDK is bundled in mcp/vendor/sdk.mjs):
 node mcp/cli.mjs
 ```
 

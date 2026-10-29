@@ -214,7 +214,20 @@
   "upd.close": "إغلاق",
   "upd.updated": "تم التحديث إلى {v}، ومستندك كما تركته.",
   "upd.plugin": "في Claude Code:",
-  "upd.cli": "في الطرفية:"
+  "upd.cli": "في الطرفية:",
+  "ext.refused": "هذا التعديل غير مسموح الآن.",
+  "ux.selSection": "قسم",
+  "set.explainAlways": "أظهر البطاقة في كل مرة (لا تتذكر ما عرضته)",
+  "ux.jump": "اذهب إليه",
+  "ux.undoDel": "تراجع",
+  "ux.deletedBlock": "حُذفت الكتلة",
+  "ux.deletedItem": "حُذف العنصر",
+  "ux.deletedDoc": "نُقلت الوثيقة إلى المحذوفات",
+  "vReqDup": "رمز متطلب مكرر: {x}",
+  "vReqSeq": "رمز متطلب خارج التسلسل: {x} (المتوقع {y})",
+  "vNoAc": "قصة مستخدم بلا معايير قبول: {x}",
+  "explain.library": "يفتح «المستندات»: كل ما حفظته في هذا المتصفح والقوالب. افتح هنا أو في تبويب جديد، أنشئ مستنداً جديداً، استورد PDF أو DOCX أو HTML، أو احذف.",
+  "explain.timeline": "يفتح «تغييرات»: خط زمني بكل تعديل منذ آخر حفظ HTML، مع رجوع وتقدّم ونقاط حفظ."
  },
  "en": {
   "ux.dirRtl": "Words run right to left (the layout stays put; your choice is remembered)",
@@ -430,6 +443,19 @@
   "upd.close": "Close",
   "upd.updated": "Updated to {v}; your document is as you left it.",
   "upd.plugin": "In Claude Code:",
-  "upd.cli": "In a terminal:"
+  "upd.cli": "In a terminal:",
+  "ext.refused": "This change is not allowed right now.",
+  "ux.selSection": "Section",
+  "set.explainAlways": "Show the card every time (do not remember what was shown)",
+  "ux.jump": "Go to it",
+  "ux.undoDel": "Undo",
+  "ux.deletedBlock": "Block deleted",
+  "ux.deletedItem": "Item deleted",
+  "ux.deletedDoc": "Document moved to the bin",
+  "vReqDup": "Duplicate requirement code: {x}",
+  "vReqSeq": "Requirement code out of sequence: {x} (expected {y})",
+  "vNoAc": "User story without acceptance criteria: {x}",
+  "explain.library": "Opens Documents: everything you saved in this browser, and the templates. Open here or in a new tab, start a new document, import PDF, DOCX or HTML, or delete.",
+  "explain.timeline": "Opens Changes: a timeline of every edit since the last Save HTML, with back, forward and checkpoints."
  }
 }

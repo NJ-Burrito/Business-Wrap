@@ -1,0 +1,22 @@
+{
+ "event-permit.ar": {
+  "html": "056d30a1a84df70baf465e0a85129f10f0b747211a4edf81ec0276b862ccd2b9",
+  "header": "5dd48bc6a5a2688625b697e881d5218e9f4ef802de3399ba9b98cd995c8f0293",
+  "footer": "f9fbc36b6bf6ada02c2ed40d7497c8ac630c69a84fff262c731cff0419735f1a"
+ },
+ "event-permit.en": {
+  "html": "026720925642a9ddec1ae8b51b32a6057e4fae890026d8401f56695d7cefd1be",
+  "header": "5dd48bc6a5a2688625b697e881d5218e9f4ef802de3399ba9b98cd995c8f0293",
+  "footer": "7c56fd2e575bf526b6739adf6b94317e2192648e4711fd482606fdd7aee8ca7a"
+ },
+ "blank.ar": {
+  "html": "713cfb6ee88613cd0ae708d903f55bcf9660a4ac1647b46b74b06ee2ad8249fe",
+  "header": "12ee8fb3aed68c22fc188bdbbec77a671179bbfa66cdcf445710764709b39ed8",
+  "footer": "f9fbc36b6bf6ada02c2ed40d7497c8ac630c69a84fff262c731cff0419735f1a"
+ },
+ "blank.en": {
+  "html": "0f22bb97bde0038f484f5c1fc8f3724a55b5aed063a2ac547b387fa23e7f1d4b",
+  "header": "12ee8fb3aed68c22fc188bdbbec77a671179bbfa66cdcf445710764709b39ed8",
+  "footer": "7c56fd2e575bf526b6739adf6b94317e2192648e4711fd482606fdd7aee8ca7a"
+ }
+}

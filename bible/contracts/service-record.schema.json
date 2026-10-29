@@ -2,12 +2,13 @@
  "$schema": "https://json-schema.org/draft/2020-12/schema",
  "$id": "business-wrap/service-record.schema.json",
  "title": "Business-Wrap service record (evidence input)",
- "description": "The facts a form crawl and a process model cannot show, each traceable to a source. Written by hand from a named document, or by a record harvester (the admin record page, the back-office desk walk, the output capture: those harvesters are a separate lane and write THIS shape; engine/srs reads it). Every text value is a string (both languages) or {ar, en}.",
+ "description": "The facts a form crawl and a process model cannot show, each traceable to a source. Written by hand from a named document, or by an importer: engine/harvest/record.mjs recordFromPage() turns a dump of the back-office request-type page into THIS shape (source.kind record-page; build --record-page), walkFromScreens() turns a recorded desk walk into a bw-walk (build --walk), engine/harvest/previous.mjs reads an earlier document (build --previous). engine/srs reads it. Every text value is a string (both languages) or {ar, en}.",
  "type": "object",
  "required": ["kind", "version", "key", "source", "facts"],
  "$defs": {
   "text": { "oneOf": [{ "type": "string" }, { "type": "object", "properties": { "ar": { "type": "string" }, "en": { "type": "string" } } }] },
-  "source": { "type": "object", "required": ["kind", "ref"], "properties": { "kind": { "enum": ["record-page", "desk-walk", "output-capture", "document", "interview", "card", "profile"] }, "ref": { "type": "string" }, "at": { "type": "string" } } },
+  "source": { "type": "object", "required": ["kind", "ref"], "properties": { "kind": { "enum": ["record-page", "desk-walk", "walk", "output-capture", "document", "interview", "card", "profile", "register"] }, "ref": { "type": "string" }, "at": { "type": "string" } } },
+  "issue": { "type": "object", "properties": { "version": { "type": "string" }, "date": { "type": "string" }, "purpose": { "$ref": "#/$defs/text" }, "by": { "$ref": "#/$defs/text" } } },
   "integration": { "type": "object", "required": ["name"], "properties": { "name": { "$ref": "#/$defs/text" }, "description": { "$ref": "#/$defs/text" }, "sent": { "$ref": "#/$defs/text" }, "received": { "$ref": "#/$defs/text" }, "readiness": { "$ref": "#/$defs/text" }, "atSubmit": { "type": "boolean" } } }
  },
  "properties": {
@@ -30,7 +31,7 @@
     "fees": { "type": "array", "items": { "type": "object", "properties": { "code": { "$ref": "#/$defs/text" }, "amount": { "$ref": "#/$defs/text" }, "basis": { "$ref": "#/$defs/text" }, "timing": { "$ref": "#/$defs/text" } } } },
     "documents": { "type": "array", "items": { "type": "object", "required": ["name"], "properties": { "name": { "$ref": "#/$defs/text" }, "required": { "type": "boolean" }, "formats": { "type": "string" }, "maxSize": { "$ref": "#/$defs/text" }, "by": { "$ref": "#/$defs/text" }, "notes": { "$ref": "#/$defs/text" }, "multiple": { "type": "boolean" } } } },
     "adminReference": { "type": "array", "items": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "$ref": "#/$defs/text" } } },
-    "outputs": { "type": "array", "items": { "type": "object", "required": ["name"], "properties": { "name": { "$ref": "#/$defs/text" }, "validity": { "$ref": "#/$defs/text" }, "when": { "$ref": "#/$defs/text" }, "to": { "$ref": "#/$defs/text" }, "preview": { "type": "string", "description": "data: URI of the captured output (viewport shot)" } } } },
+    "outputs": { "type": "array", "items": { "type": "object", "required": ["name"], "properties": { "name": { "$ref": "#/$defs/text" }, "validity": { "$ref": "#/$defs/text" }, "when": { "$ref": "#/$defs/text" }, "to": { "$ref": "#/$defs/text" }, "preview": { "type": "string", "description": "data: URI or file of the captured output (viewport shot)" }, "masked": { "type": "boolean", "description": "the preview's data is masked; an unmasked preview is never printed (healer output-image)" } } } },
     "legislation": { "type": "array", "items": { "type": "object", "properties": { "number": { "$ref": "#/$defs/text" }, "name": { "$ref": "#/$defs/text" }, "year": { "$ref": "#/$defs/text" } } } },
     "integrations": { "type": "object", "properties": { "internal": { "type": "array", "items": { "$ref": "#/$defs/integration" } }, "services": { "type": "array", "items": { "$ref": "#/$defs/integration" } }, "dataSources": { "type": "array", "items": { "$ref": "#/$defs/integration" } }, "partners": { "type": "array", "items": { "$ref": "#/$defs/integration" } } } },
     "languages": { "type": "array", "items": { "type": "string" } },
@@ -38,11 +39,15 @@
     "statuses": { "type": "array", "items": { "$ref": "#/$defs/text" } },
     "notifications": { "type": "array", "items": { "type": "object", "properties": { "event": { "$ref": "#/$defs/text" }, "channel": { "$ref": "#/$defs/text" }, "to": { "$ref": "#/$defs/text" } } } },
     "kpis": { "type": "array", "items": { "type": "object", "properties": { "name": { "$ref": "#/$defs/text" }, "target": { "$ref": "#/$defs/text" }, "measure": { "$ref": "#/$defs/text" } } } },
-    "slas": { "type": "array", "items": { "type": "object", "properties": { "stage": { "$ref": "#/$defs/text" }, "target": { "$ref": "#/$defs/text" } } } },
-    "desks": { "type": "object", "description": "the desk walk, keyed by the model's task name (or id): what each stage's screen shows and offers", "additionalProperties": { "type": "object", "properties": { "sections": { "type": "array", "items": { "$ref": "#/$defs/text" } }, "actions": { "type": "array", "items": { "type": "object", "required": ["key", "label"], "properties": { "key": { "type": "string" }, "label": { "$ref": "#/$defs/text" } } } }, "tasks": { "type": "array" }, "autoAssign": { "type": "boolean" } } } },
+    "slas": { "type": "array", "description": "stated durations (e.g. the system variables page). A model timer written as an expression (${edit_duration}) takes the target of the row whose variable, or whose stage text names that variable", "items": { "type": "object", "properties": { "stage": { "$ref": "#/$defs/text" }, "target": { "$ref": "#/$defs/text" }, "variable": { "type": "string" } } } },
+    "desks": { "type": "object", "description": "the desk walk, keyed by the model's task name (or id): what each stage's screen shows and offers", "additionalProperties": { "type": "object", "properties": { "sections": { "type": "array", "items": { "$ref": "#/$defs/text" } }, "actions": { "type": "array", "items": { "type": "object", "required": ["key", "label"], "properties": { "key": { "type": "string" }, "label": { "$ref": "#/$defs/text" } } } }, "tasks": { "type": "array" }, "autoAssign": { "type": "boolean" }, "name": { "$ref": "#/$defs/text", "description": "the desk's own name on the back office (the stage name when no walk or names file gives one)" }, "observed": { "type": "boolean", "description": "true when the action bar was seen on a filed request; only then do its captions bind as verbatim" }, "returned": { "$ref": "#/$defs/text", "description": "the retrieved data the screen shows (story contract)" }, "displayCriteria": { "$ref": "#/$defs/text", "description": "when the request shows at this stage (story contract)" } } } },
     "fieldIntegrations": { "type": "object", "additionalProperties": { "$ref": "#/$defs/text" } },
     "fieldDefaults": { "type": "object", "additionalProperties": { "$ref": "#/$defs/text" } },
-    "earlierIssue": { "type": "object", "properties": { "version": { "type": "string" }, "date": { "type": "string" }, "purpose": { "$ref": "#/$defs/text" } }, "description": "the issue on record before this one: the revisions table prints it as the first row" }
+    "earlierIssue": { "oneOf": [{ "$ref": "#/$defs/issue" }, { "type": "array", "items": { "$ref": "#/$defs/issue" } }], "description": "the issues on record before this one, oldest first (the lineage): the revisions table prints them, then this issue, capped at versioning.maxRows; last row = issue date = cover version" },
+    "preparedBy": { "$ref": "#/$defs/text", "description": "who prepared THIS service's document (wins over the earlier document and the profile)" },
+    "filedSerial": { "type": "string", "description": "the serial of a request actually filed: the service code must be part of it (healer record-present)" },
+    "feeCodes": { "type": "array", "items": { "type": "string" }, "description": "fee codes as the back office lists them (record page)" },
+    "validity": { "$ref": "#/$defs/text", "description": "output validity as the back office states it (record page)" }
    }
   }
  }

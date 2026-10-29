@@ -21,6 +21,8 @@ const slug = (s) => String(s || 'process').toLowerCase().normalize('NFKD').repla
 /* ── BPMN 2.0 ─────────────────────────────────────────────────────────── */
 const HUMAN = new Set(['userTask', 'manualTask', 'task']);
 const SYSTEM = new Set(['serviceTask', 'scriptTask', 'sendTask', 'receiveTask', 'businessRuleTask', 'callActivity']);
+// round-robin auto-assignment is stated on the task, not as a node: assignee="${…getAssigneeRoundRobin(…)}"
+export const ROUND_ROBIN = /round-?robin/i;
 const GATEWAY = new Set(['exclusiveGateway', 'inclusiveGateway', 'parallelGateway', 'eventBasedGateway', 'complexGateway']);
 
 export function parseBpmn(xml) {
@@ -69,7 +71,7 @@ export function parseBpmn(xml) {
             required: attr(f, 'required') === 'true',
             options: kids(f, 'value').map((v) => clean(attr(v, 'name')) || attr(v, 'id')).filter(Boolean),
           }));
-          ir.steps.push({ id, type: 'task', name: name || '', actor: who ? actorOf(who) : undefined, fields: fields.length ? fields : undefined, formKey: attr(el, 'formKey') || undefined });
+          ir.steps.push({ id, type: 'task', name: name || '', actor: who ? actorOf(who) : undefined, fields: fields.length ? fields : undefined, formKey: attr(el, 'formKey') || undefined, ...(ROUND_ROBIN.test(attr(el, 'assignee') || '') ? { autoAssign: true } : {}) });
         } else if (SYSTEM.has(t)) ir.steps.push({ id, type: 'system', name: name || '' });
         else if (GATEWAY.has(t)) ir.steps.push({ id, type: 'decision', name: name || '', actor: laneOf[id] ? actorOf(laneOf[id]) : undefined, gateway: t });
         else if (t === 'startEvent') {
@@ -157,6 +159,7 @@ export function parseSteps(text) {
     const id = String(s.id || `s${k + 1}`);
     if (s.decision !== undefined) ir.steps.push({ id, type: 'decision', name: String(s.decision || ''), actor: actorOf(s.actor) });
     else ir.steps.push({ id, type: s.system ? 'system' : 'task', name: String(s.name || s.task || id), actor: s.system ? undefined : actorOf(s.actor || 'User'), fields: s.fields?.map((f) => (typeof f === 'string' ? { name: f, label: f, type: 'string', required: false } : { name: String(f.name), label: String(f.label || f.name), type: String(f.type || 'string'), required: !!f.required, options: f.options })) });
+    if (s.decision === undefined && !s.system && (s.autoAssign || ROUND_ROBIN.test(String(s.assignee || '')))) ir.steps.at(-1).autoAssign = true;
     if (k === 0) ir.flows.push({ from: '__start', to: id });
   });
   for (const e of spec.ends || []) ir.steps.push({ id: String(e.id), type: 'end', name: String(e.name || e.id) });
@@ -193,7 +196,7 @@ export function parseGraph(json) {
     const who = (Array.isArray(n.groups) ? n.groups.join(',') : n.groups || '') || n.assignee || n.users || '';
     if (kind === 'start' || kind === 'startEvent') ir.steps.push({ id: n.id, type: 'start', name: '' });
     else if (kind === 'end' || kind === 'endEvent') ir.steps.push({ id: n.id, type: 'end', name: name === 'end' ? '' : name });
-    else if (G_HUMAN.has(kind)) ir.steps.push({ id: n.id, type: 'task', name, actor: who ? actorOf(who) : undefined });
+    else if (G_HUMAN.has(kind)) ir.steps.push({ id: n.id, type: 'task', name, actor: who ? actorOf(who) : undefined, ...(ROUND_ROBIN.test(String(n.assignee || who)) ? { autoAssign: true } : {}) });
     else if (G_SYSTEM.has(kind)) ir.steps.push({ id: n.id, type: 'system', name });
     else if (G_GATE.has(kind)) ir.steps.push({ id: n.id, type: 'decision', name, gateway: kind });
     else if (n.timer || kind === 'boundary' || kind === 'boundaryEvent' || kind === 'timer') ir.steps.push({ id: n.id, type: n.timer ? 'timer' : 'pass', name: n.timer ? String(n.timer) : name, timer: n.timer ? String(n.timer) : undefined, attachedTo: n.attachedTo || undefined });

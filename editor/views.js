@@ -57,7 +57,41 @@ function viewsApply() {
   viewsFit();
   S.pageN = viewsCount(main);
   main.style.setProperty('--pages', String(S.pageN));
+  viewsRuns(main);
   viewsGo(0, true);
+}
+/** A5/A6 on screen: every page frame after the cover carries its own header and footer, editable in place (the
+ *  bands of <template class="bw-run"> from engine/render.mjs, per page segment; without doc.chrome, today's band from
+ *  chromeDefaults). Page numbers are filled per frame. The layer is screen-only and never part of the print markup. */
+function viewsRuns(main) {
+  main.querySelector(':scope > .bw-runs')?.remove();
+  const n = S.pageN || 0;
+  const d = cur().doc;
+  if (!n || !d) return;
+  const show = d.chrome ? d : { ...d, chrome: chromeDefaults(S.ed) };
+  const o = { locale: S.ed, theme: S.theme, labels: I18N.doc[S.ed], L: labelsOf(S.ed), logos: S.theme.logos };
+  const segs = pageModel(show).segments;
+  const band = (seg, part) => main.querySelector(`template.bw-run[data-seg="${seg}"][data-part="${part === 'header' ? 'head' : 'foot'}"]`)?.innerHTML ?? runBand(show, o, part, segs.find((x) => x.n === seg) || segs[0]);
+  // the page each segment starts on (its marker's column)
+  const starts = [...main.querySelectorAll('a.bw-seg[data-seg]')].map((a) => [viewsPageOf(a), +a.dataset.seg]).sort((x, y) => x[0] - y[0]);
+  const segOf = (k) => starts.reduce((s, [p, n2]) => (p <= k ? n2 : s), segs[0]?.n ?? 0);
+  const first = main.querySelector('.cover') ? 1 : 0;
+  const lay = document.createElement('div');
+  lay.className = 'bw-runs';
+  lay.setAttribute('contenteditable', 'false');
+  let html = '';
+  for (let k = first; k < n; k += 1) {
+    const seg = segOf(k);
+    html += `<div class="bw-run-f" data-page="${k}" data-seg="${seg}" style="--k:${k}"><div class="bw-run-h">${band(seg, 'header')}</div><div class="bw-run-b">${band(seg, 'footer')}</div></div>`;
+  }
+  lay.innerHTML = html;
+  lay.querySelectorAll('.bw-run-f').forEach((f) => {
+    const k = +f.dataset.page;
+    f.querySelectorAll('[data-bw-page]').forEach((x) => { x.textContent = /\//.test(x.textContent) ? `${k + 1} / ${n}` : String(k + 1); });
+  });
+  // the bands edit through 20-chrome's handler (they are not the document's markup): data-p → data-w2p
+  lay.querySelectorAll('[data-p]').forEach((x) => { if (d.chrome) { x.dataset.w2p = x.dataset.p; x.tabIndex = 0; x.contentEditable = 'plaintext-only'; } x.removeAttribute('data-p'); });
+  main.appendChild(lay);
 }
 /** Pages = columns: the content's far edge in the reading direction, in slots. */
 function viewsCount(main) {
@@ -65,6 +99,7 @@ function viewsCount(main) {
   const r = main.getBoundingClientRect();
   let far = 0;
   for (const el of main.children) {
+    if (el.classList.contains('bw-runs')) continue; // the header/footer layer is placed on the pages, it is not content
     for (const q of el.getClientRects()) far = Math.max(far, main.dir === 'rtl' ? r.right - q.left : q.right - r.left);
   }
   return Math.max(1, Math.round(far / z / viewsGeo().SLOT + 0.25));

@@ -1,0 +1,131 @@
+{
+ "route": "/gardens/permit",
+ "locale": "ar",
+ "card": {
+  "title": "تصريح حديقة مجتمعية",
+  "panels": [
+   {
+    "legend": "وصف الخدمة",
+    "text": "تتيح هذه الخدمة طلب تصريح حديقة."
+   }
+  ]
+ },
+ "form": [
+  {
+   "kind": "field",
+   "tag": "input",
+   "type": "text",
+   "controlName": "plotNumber",
+   "label": "رقم القطعة",
+   "panel": "معلومات القطعة",
+   "required": true
+  },
+  {
+   "kind": "field",
+   "tag": "input",
+   "type": "text",
+   "controlName": "plotNumber",
+   "label": "رقم القطعة",
+   "panel": "معلومات القطعة",
+   "required": false,
+   "synthetic": true
+  },
+  {
+   "kind": "field",
+   "tag": "input",
+   "type": "text",
+   "controlName": "startOn",
+   "label": "تاريخ البدء",
+   "panel": "معلومات القطعة",
+   "required": true
+  },
+  {
+   "kind": "field",
+   "tag": "input",
+   "type": "radio",
+   "controlName": "gardenType",
+   "label": "حديقة خضار",
+   "panel": "نوع الحديقة",
+   "required": true
+  },
+  {
+   "kind": "field",
+   "tag": "input",
+   "type": "radio",
+   "controlName": "gardenType",
+   "label": "حديقة زهور",
+   "panel": "نوع الحديقة",
+   "required": true
+  },
+  {
+   "kind": "field",
+   "tag": "taq-upload-file",
+   "type": "",
+   "controlName": "plotPhotos",
+   "label": "إرفاق صور القطعة",
+   "panel": "الطلب",
+   "required": true
+  },
+  {
+   "kind": "field",
+   "tag": "taq-select-option",
+   "type": "",
+   "controlName": null,
+   "label": "اسم المرفق",
+   "panel": "المرفقات",
+   "required": true,
+   "options": [
+    "مخطط القطعة (مرفق اجباري)"
+   ]
+  },
+  {
+   "kind": "field",
+   "tag": "input",
+   "type": "file",
+   "controlName": null,
+   "label": "اسم المرفق",
+   "panel": "المرفقات",
+   "required": false
+  }
+ ],
+ "branches": {
+  "gardenType-0": [
+   {
+    "kind": "field",
+    "tag": "input",
+    "type": "text",
+    "controlName": "waterSource",
+    "label": "مصدر المياه",
+    "panel": "نوع الحديقة",
+    "required": true
+   },
+   {
+    "kind": "field",
+    "tag": "taq-select-option",
+    "type": "",
+    "controlName": null,
+    "label": "اسم المرفق",
+    "panel": "المرفقات",
+    "required": true,
+    "options": [
+     "مخطط القطعة (مرفق اجباري)",
+     "تصريح المياه (مرفق اجباري)"
+    ]
+   }
+  ],
+  "gardenType-1": [
+   {
+    "kind": "field",
+    "tag": "taq-select-option",
+    "type": "",
+    "controlName": null,
+    "label": "اسم المرفق",
+    "panel": "المرفقات",
+    "required": true,
+    "options": [
+     "مخطط القطعة (مرفق اجباري)"
+    ]
+   }
+  ]
+ }
+}

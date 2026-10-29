@@ -1,0 +1,129 @@
+{
+ "kind": "bw-service-record",
+ "version": 1,
+ "$comment": "Invented test fixture (WP8): a fictional garden permit. No real organisation.",
+ "key": "gardenPermit",
+ "source": {
+  "kind": "record-page",
+  "ref": "example back office: request type page (fictional)"
+ },
+ "facts": {
+  "code": "41",
+  "name": {
+   "ar": "تصريح حديقة مجتمعية",
+   "en": "Community garden permit"
+  },
+  "description": {
+   "ar": "يعتمد رئيس الوحدة تصريح الحديقة.",
+   "en": "The head of unit approves the garden permit."
+  },
+  "place": {
+   "ar": "مركزي",
+   "en": "Central"
+  },
+  "channels": [
+   {
+    "ar": "بوابة الخدمات",
+    "en": "Services portal"
+   },
+   {
+    "ar": "مركز خدمة الجمهور",
+    "en": "Public service centre"
+   }
+  ],
+  "fees": [
+   {
+    "code": {
+     "ar": "F1",
+     "en": "F1"
+    },
+    "amount": {
+     "ar": "5 دنانير",
+     "en": "5 dinars"
+    }
+   }
+  ],
+  "slas": [
+   {
+    "stage": {
+     "ar": "مهلة edit_duration (إلغاء تلقائي)",
+     "en": "edit_duration (auto-cancel)"
+    },
+    "target": {
+     "ar": "30 يوماً (P30D)",
+     "en": "30 days (P30D)"
+    }
+   }
+  ],
+  "desks": {
+   "screen": {
+    "name": {
+     "ar": "الفرز",
+     "en": ""
+    },
+    "observed": false,
+    "actions": [
+     {
+      "key": "need-edit",
+      "label": {
+       "en": "need-edit"
+      }
+     },
+     {
+      "key": "approve-request",
+      "label": {
+       "en": "approve-request"
+      }
+     }
+    ]
+   },
+   "head": {
+    "name": {
+     "ar": "رئيس الوحدة",
+     "en": "head-of-unit"
+    },
+    "observed": false
+   },
+   "pay": {
+    "name": {
+     "ar": "الدفع",
+     "en": "Payment"
+    },
+    "observed": false,
+    "actions": [
+     {
+      "key": "pay",
+      "label": {
+       "ar": "دفع",
+       "en": "Pay"
+      }
+     }
+    ]
+   }
+  },
+  "adminReference": [
+   [
+    {
+     "ar": "المديرية",
+     "en": "Directorate"
+    },
+    {
+     "ar": "مديرية الحدائق",
+     "en": "Gardens directorate"
+    }
+   ]
+  ],
+  "outputs": [
+   {
+    "name": {
+     "ar": "تصريح حديقة مجتمعية",
+     "en": "Community garden permit"
+    },
+    "validity": {
+     "ar": "سنة واحدة",
+     "en": "One year"
+    }
+   }
+  ]
+ }
+}

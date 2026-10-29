@@ -1,0 +1,22 @@
+/* A12 profile modal + Settings cards (30-profile.js); bwModal is shared by 31/32 */
+.bw-modal { position: fixed; inset: 0; z-index: 55; display: grid; place-items: center; background: color-mix(in srgb, var(--bw-band, #000) 28%, transparent); }
+.bw-modal-card { width: min(460px, 92vw); max-height: 86vh; overflow: auto; padding: 18px; border-radius: 20px; background: var(--panel); color: var(--panel-ink); box-shadow: var(--bw-shadow-3), 0 0 0 1px var(--panel-line); display: grid; gap: 10px; }
+.bw-modal-card h2 { margin: 0; font-size: 1.1rem; }
+.bw-modal-card label:not(.chk), .pf-form label:not(.chk), .pf-period label { display: grid; gap: 4px; }
+.bw-modal-card input[type="text"], .pf-form input[type="text"], .pf-period input { font: inherit; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--panel-line); background: var(--wash-2); color: var(--panel-ink); }
+.bw-modal-card .btns { display: flex; gap: 8px; justify-content: flex-end; }
+.pf-form { display: grid; gap: 10px; }
+.pf-pic { display: flex; align-items: center; gap: 8px; }
+.pf-av { inline-size: 48px; block-size: 48px; border-radius: 50%; background: var(--wash-2); overflow: hidden; flex: none; box-shadow: 0 0 0 1px var(--panel-line); }
+.pf-av img { inline-size: 100%; block-size: 100%; object-fit: cover; }
+.pf-period { display: flex; gap: 8px; flex-wrap: wrap; }
+.pf-people { border: 1px solid var(--panel-line); border-radius: 12px; padding: 6px 10px; }
+.pf-limit { line-height: 1.6; }
+.bw-modal.pf-first { inset: auto; bottom: 132px; right: 16px; /* above the tool's mark (bottom-right); the drawer opens on the left */ display: block; background: none; pointer-events: none; }
+.bw-modal.pf-first .bw-modal-card { pointer-events: auto; width: min(380px, 92vw); }
+.bw-modal-card .b { color: var(--panel-ink); background: var(--wash-2); }
+.bw-modal-card .b:hover:not(:disabled) { background: var(--wash); }
+.bw-modal-card .b.primary { background: var(--navy); color: var(--on-primary) !important; }
+.lk-banner .b { color: var(--on-glass); }
+/* the card and the lock banner sit beside .shell (a toolbar rebuild must not drop them): the same tokens as .shell */
+.bw-modal, .lk-banner { --navy: var(--bw-primary); --deep: var(--bw-band); --wash: var(--bw-primary-soft); --wash-2: var(--bw-surface-2); --on-primary: var(--bw-on-primary); --on-glass: var(--bw-on-glass); --panel: var(--bw-surface); --panel-ink: var(--bw-ink); --panel-soft: var(--bw-ink-muted); --panel-line: var(--bw-line); font-family: inherit; }

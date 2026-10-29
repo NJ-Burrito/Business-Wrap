@@ -137,6 +137,10 @@ try {
   const added = await p.evaluate(() => ({ n: Object.keys(window.BW.M).length, svc: window.BW.S.svc, ch: window.BW.M[window.BW.S.svc].ar.doc.chapters.length, opts: document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('select[data-a="svc"] option').length }));
   check('wizard: a model file becomes a new service, both editions, in the selector', added.n === before + 1 && added.ch === 7 && added.opts === added.n, JSON.stringify(added));
   await p.evaluate(() => window.BW.runAction('process')); // folded into the Document section's «More» at this width
+  await p.waitForTimeout(300);
+  const pg = await p.evaluate(() => [...document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('.drawer details.pgrp')].map((d) => d.open));
+  check('F2 11: the Process panel opens with every group collapsed', pg.length >= 2 && pg.every((x) => !x), JSON.stringify(pg));
+  await p.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('.drawer details.pgrp').forEach((d) => { d.open = true; })); // A7: collapsed groups
   await p.locator('.drawer [data-k="pr-step"]').click();
   const steps0 = await p.evaluate(() => window.BW.M[window.BW.S.svc][window.BW.S.ed].doc.process.steps.length);
   await p.locator('.drawer [data-k="pr-regen"]').click();
@@ -144,6 +148,25 @@ try {
   check('process panel: add a step, rebuild the sections in both editions', steps0 >= 7 && regen[0] === regen[1] && regen[0] >= 4, JSON.stringify({ steps0, regen }));
   check('wizard + process panel: no page errors', !errs.length, errs.join(' | '));
   await ctx.close();
+
+  // ── C. user-provided sources (0.13.0 B2): a PDF printed here and an HTML page → steps, no model, no network ──
+  {
+    const { harvestSources, linesToProcess, htmlLines } = await import('../engine/harvest/sources.mjs');
+    const pg = await browser.newPage();
+    await pg.setContent('<h1>Fishing permit</h1><p>1. Fill in the permit form</p><p>2. Pay the permit fee</p><p>3. Download the permit</p>');
+    const pdf = path.join(OUT, 'src', 'fishing.pdf');
+    fs.mkdirSync(path.dirname(pdf), { recursive: true });
+    await pg.pdf({ path: pdf });
+    await pg.close();
+    const r = await harvestSources([pdf], { out: path.join(OUT, 'src-out'), editor: false });
+    const en = r.results[0] ? read(r.results[0].documents[1]) : null;
+    if (r.skipped[0] && /pdftotext/.test(r.skipped[0].why)) results.push(`SKIP  sources: PDF  — ${r.skipped[0].why}`);
+    else check('sources: the numbered lines of a PDF become the steps (poppler text)', !!en && /Pay the permit fee/.test(JSON.stringify(en)) && en.control.title.includes('Fishing permit'), JSON.stringify(r.skipped));
+    check('sources: HTML list items are steps, the h1 is the name', JSON.parse(linesToProcess(htmlLines('<title>T</title><h1>Boat hire</h1><ul><li>Pick a boat</li><li>Pay</li></ul>'))).steps.length === 2);
+    let e;
+    try { linesToProcess(['Just prose with no steps']); } catch (x) { e = x; }
+    check('sources: a document with no numbered or bulleted step is refused with the reason', /no numbered or bulleted step/.test(e?.message || ''));
+  }
 } catch (e) {
   check('harvest run', false, e.stack?.split('\n').slice(0, 3).join(' / '));
 } finally {

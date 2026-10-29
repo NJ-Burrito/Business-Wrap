@@ -8,6 +8,79 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.13.0] - 2026-10-29
+
+🗂️ A document library, a change timeline, header and footer sections, Word-style objects and a tamper-evident history. / 🗂️ مكتبة وثائق، وخط زمني للتغييرات، وقسما الترويسة والتذييل، وعناصر كما في Word، وسجل كاشف للعبث.
+
+**In 10 seconds / في عشر ثوان**
+- 🗂️ «المستندات»: every Save is its own document; open, duplicate, delete, restore, import PDF, DOCX or HTML. / «المستندات»: كل حفظ وثيقة مستقلة؛ فتح ونسخ وحذف واسترجاع، واستيراد PDF أو DOCX أو HTML.
+- 🕘 «تغييرات»: a timeline with back, forward and checkpoints. / «تغييرات»: خط زمني مع رجوع وتقدّم ونقاط حفظ.
+- 🧾 Header and Footer: two toolbar sections, items per page, edited on every page. / الترويسة والتذييل: قسمان في شريط الأدوات، وعناصر لكل صفحة، وتحرير على كل صفحة.
+- 🔏 A signed, hash-chained history that shows any removed or edited entry. / سجل موقّع ومتسلسل بالتجزئة يكشف أي قيد محذوف أو معدَّل.
+- ⌨️ A `business-wrap` CLI and "/" commands that work offline, with no AI. / واجهة `business-wrap` السطرية وأوامر «/» تعمل دون شبكة ودون ذكاء اصطناعي.
+
+### Added / أضيف
+- 🗂️ **Document library** «المستندات» (Ctrl+O, and a File tool): Save creates a new entry from a template and updates a library document; open here or in a new tab, duplicate, trash and restore, import PDF, DOCX or a Save-HTML file; the lock state travels with the entry. / مكتبة الوثائق «المستندات» (Ctrl+O، وأداة في «ملف»): الحفظ ينشئ مدخلًا جديدًا من القالب ويحدّث وثيقة المكتبة؛ فتح هنا أو في تبويب جديد، ونسخ، وسلة محذوفات واسترجاع، واستيراد PDF أو DOCX أو ملف HTML محفوظ؛ وحالة القفل تنتقل مع المدخل.
+- 🕘 **Changes timeline** «تغييرات» (Ctrl+Shift+H, the counter, and a Document tool): step back and forward, checkpoints, the author of each change; the counter restarts at Save HTML only. / الخط الزمني «تغييرات» (Ctrl+Shift+H، والعداد، وأداة في «الوثيقة»): رجوع وتقدّم، ونقاط حفظ، ومؤلف كل تغيير؛ والعداد يبدأ من جديد عند حفظ HTML فقط.
+- 📁 **Save folder** `<folder>\Business-Wrap\{PDF,DOCX,HTML,HISTORY}` with `<title>-<date>-<AR|ENG>` names (a clash gets -2, never an overwrite), asked once on the first Save **or export**; the Export & Print centre writes there too. / مجلد الحفظ `<المجلد>\Business-Wrap\{PDF,DOCX,HTML,HISTORY}` بأسماء `<العنوان>-<التاريخ>-<AR|ENG>` (والتكرار يأخذ -2، دون استبدال أبدًا)، ويُسأل عنه مرة عند أول حفظ **أو تصدير**؛ ومركز التصدير والطباعة يكتب فيه أيضًا.
+- 🖥️ **Background host**: closing the last tab saves every tab and stops the server completely; the next launch offers to resume everything or start new work. / خادم في الخلفية: إغلاق آخر تبويب يحفظ كل التبويبات ويوقف الخادم تمامًا؛ والتشغيل التالي يعرض استئناف كل شيء أو بدء عمل جديد.
+- 🧾 **Header «الترويسة» and Footer «التذييل»**, two toolbar sections: text, fields, logos, page numbers, alignment; each item for every page, this page only, or from this page on; in the page views each page carries its own header and footer, edited in place. / قسما الترويسة والتذييل في شريط الأدوات: نص وحقول وشعارات وأرقام صفحات ومحاذاة؛ ولكل عنصر نطاق؛ وفي عروض الصفحات تحمل كل صفحة ترويستها وتذييلها، وتُحرَّر في مكانها.
+- 📐 **Page setup**: A3, A4, A5, Letter, Legal; portrait or landscape for the whole document or one section; a page break at a chosen section, in PDF and DOCX. / إعداد الصفحة: A3 وA4 وA5 وLetter وLegal؛ عمودي أو أفقي للوثيقة أو لقسم؛ وفاصل صفحة عند قسم تختاره، في PDF وDOCX.
+- 🧱 **Objects**: tables, sections and chapters anywhere; copy and paste a whole block; free text boxes; images with Word's seven wrap modes (inline, square, tight, through, top and bottom, behind, in front). / العناصر: جداول وأقسام وفصول في أي مكان؛ نسخ كتلة ولصقها؛ مربعات نص حرة؛ وصور بأنماط الالتفاف السبعة كما في Word.
+- ✒️ **Format bar** for a selection: colour, size, font, alignment, vertical alignment, quote, link, code, bold, italic, underline, bullets and numbers to six levels. / شريط تنسيق للتحديد: اللون والحجم والخط والمحاذاة الأفقية والعمودية والاقتباس والرابط والشيفرة والغامق والمائل والتسطير والقوائم حتى ستة مستويات.
+- 🔏 **Trust**: a profile, provenance per change (who, what, exact diff, when), sign, share, lock and unlock (no password, a warning), a tamper-evident hash-chained signed history (`bwlog` v1, frozen) mirrored in `HISTORY`, and a work report as PDF; toolbar tools for Provenance, Sign, Lock and Share. / الثقة: ملف شخصي، ومصدر كل تغيير، وتوقيع، ومشاركة، وقفل وفتح (بلا كلمة مرور، مع تنبيه)، وسجل كاشف للعبث متسلسل وموقّع (`bwlog` الإصدار 1، مجمّد) له نسخة مرآة في `HISTORY`، وتقرير عمل PDF؛ وأدوات في الشريط للمصدر والتوقيع والقفل والمشاركة.
+- ⌨️ **Tooling**: the `business-wrap` CLI (every verb offline, no AI), Claude Code "/" commands, MCP `harvest_sources`, `open_in_editor`, `close_editor`, healers for locators and waits only (marked HEALED, never PASS) and per-stage gates. / الأدوات: الواجهة السطرية `business-wrap` (كل أمر دون شبكة ودون ذكاء اصطناعي)، وأوامر «/» في Claude Code، وأدوات MCP الجديدة، ومعالجة ذاتية للمحددات والانتظار فقط (تُوسم HEALED لا PASS)، وفحوص لكل مرحلة.
+- 🎨 **Design**: import a colour palette (hex lines, JSON, CSS variables, ASE, a swatch image) behind the contrast gate; logo motion with a stronger hover. / التصميم: استيراد لوحة ألوان خلف فحص التباين؛ وحركة للشعار مع تأثير أقوى عند المرور.
+
+### Changed / تغير
+- 🧭 **Toolbar**: mounted once and patched in place, so only the clicked control animates; hover explainers wait about 900 ms and do not repeat for a tool already seen or used. / شريط الأدوات يُبنى مرة ويُحدَّث في مكانه، فلا يتحرك إلا ما نُقر؛ وبطاقات الشرح تنتظر نحو 900 مللي ثانية ولا تتكرر لأداة رأيتها أو استخدمتها.
+- 🗃️ **Side panels**: every panel (Design, Process and local learning included) opens with its first group expanded and the rest collapsed, rows shaded alternately; a click outside closes it. / اللوحات الجانبية: كل لوحة (التصميم والإجراء والتعلم المحلي معها) تفتح بمجموعتها الأولى ظاهرة والباقي مطويًّا، بصفوف متناوبة التظليل؛ والنقر خارجها يغلقها.
+- 🔔 **Toasts** at the bottom: about 2.5 s, a click dismisses them. / الرسائل في الأسفل: نحو ثانيتين ونصف، والنقر يغلقها.
+- ↕️ **Move up / down** crosses into the next or previous section, moves a paragraph, a row or a whole section, and the selection follows. / النقل للأعلى والأسفل يعبر إلى القسم المجاور، وينقل فقرة أو صفًّا أو قسمًا كاملًا، والتحديد يتبعه.
+- ✏️ **Everything editable**: TOC entries (delete hides the entry, the section stays), the document-control table and revisions get the table tools. / كل شيء قابل للتعديل: مدخلات جدول المحتويات (الحذف يخفي المدخل ويبقى القسم)، وجدول ضبط الوثيقة والمراجعات لها أدوات الجدول.
+- 🔤 **Thmanyah only** in the editor chrome: the last monospace fallbacks (version badge, commands, update details) now use Thmanyah Sans. / خطوط ثمانية وحدها في واجهة المحرر: آخر الخطوط الاحتياطية أحادية المسافة صارت Thmanyah Sans.
+- ⚖️ **Licence MIT everywhere it is stated**, the About card included, which also states the history's honest limit. / رخصة MIT في كل موضع تُذكر فيه، ومنها بطاقة «حول» التي تذكر أيضًا حد السجل بصدق.
+
+### Fixed / أصلح
+- 🔁 **Redo** no longer freezes the tab with local learning on. / الإعادة لم تعد تجمّد التبويب مع التعلم المحلي.
+- ⌨️ **Shortcuts** work with the focus in the toolbar (Alt+↑ after a toolbar Move, Ctrl+Z, Ctrl+D, Delete). / الاختصارات تعمل والتركيز في شريط الأدوات.
+- ✅ **Check panel**: each problem has a button that jumps to and rings its place. / لوحة الفحص: لكل مشكلة زر يقفز إلى موضعها ويحدده.
+- 🧩 **Extensions boot after they load**: the first view already shows every extension's tools; the draft-recovery question and the first-open motion are no longer lost to a second build. / الإضافات تُشغَّل بعد تحميلها: يظهر كل شيء من أول عرض، ولا يضيع سؤال استعادة المسودة ولا حركة الفتح الأولى.
+- 🧪 **Acceptance review (2026-10-29), every FAIL and PARTIAL line**: / مراجعة القبول (2026-10-29)، كل بند «فشل» أو «جزئي»:
+  - ↕️ Insert an image, then move a paragraph down twice: no crash; every structural change reaches both editions or is refused. / إدراج صورة ثم نقل فقرة للأسفل مرتين: لا انهيار؛ وكل تغيير بنيوي يصل إلى النسختين أو يُرفض.
+  - 🖼️ «إدراج صورة» and paste give the image Word's seven wrap modes, like a dropped file. / «إدراج صورة» واللصق يعطيان الصورة أنماط الالتفاف السبعة، كالملف المسحوب.
+  - 🗃️ Every side-panel group starts collapsed, rows alternate their shade, one chevron convention. / كل مجموعة في اللوحات الجانبية تبدأ مطويّة، والصفوف متناوبة التظليل، واتجاه واحد للأسهم.
+  - 🧾 A header or footer item «هذه الصفحة فقط» applies to the page it was picked on; the toast shows only on success. / عنصر الترويسة أو التذييل «هذه الصفحة فقط» يُطبَّق على الصفحة التي اختير منها؛ والرسالة تظهر عند النجاح فقط.
+  - ✅ «اذهب إليه» rings the place in the body, never the contents row, on every finding. / «اذهب إليه» يحدد الموضع في المتن لا سطر جدول المحتويات، في كل ملاحظة.
+  - 🗂️ The list copy is always the latest; Open here sets `#doc=<id>` and closes the drawer; a reload reopens the document. / نسخة القائمة هي الأحدث دائمًا؛ و«افتح هنا» يضع `#doc=<id>` ويغلق اللوحة؛ وإعادة التحميل تعيد فتح الوثيقة.
+  - 📁 Share, the work report and imports use `<title>-<date>-<AR|ENG>` with the spaces kept; no `.manifest.json` in `DOCX\`. / المشاركة وتقرير العمل والاستيراد تستخدم `<العنوان>-<التاريخ>-<AR|ENG>` مع إبقاء المسافات؛ ولا ملف `.manifest.json` في `DOCX\`.
+  - 🔏 Every open path is logged: the documents list, New, import (the file's log kept as `entry.prov`), duplicate (`copy.from` names the source), a JSON document and the New wizard. / كل طريق فتح يُسجَّل: قائمة المستندات، وجديد، والاستيراد (يُحفظ سجل الملف في `entry.prov`)، والنسخ (`copy.from` يسمّي المصدر)، ووثيقة JSON، ومعالج الوثيقة الجديدة.
+  - 🧷 `verify-history` and the `ledger` gate run one full check (state, tail, stripped, `HISTORY` head): a content-only edit and a cut tail fail. / `verify-history` وفحص `ledger` يشغّلان فحصًا كاملًا واحدًا (الحالة، والذيل، والحذف، ورأس `HISTORY`): التعديل في المحتوى وحده وقطع الذيل يفشلان.
+  - 🕰️ A document made before 0.13 shows «بلا سجل (أُنشئت قبل 0.13)» in a neutral style and is logged from then on; a 0.13 document whose log was removed stays «stripped». / الوثيقة المنشأة قبل 0.13 تُظهر «بلا سجل (أُنشئت قبل 0.13)» بلون محايد وتُسجَّل من ذلك الحين؛ ووثيقة 0.13 التي حُذف سجلها تبقى «محذوفة السجل».
+  - 📊 The work report counts every edit and export once and keeps its chart labels whole. / تقرير العمل يعدّ كل تعديل وتصدير مرة واحدة ويُبقي تسميات الرسم كاملة.
+  - 🌙 The relaunch dialog takes the house design and the dark theme (text at 4.5:1 or more). / نافذة الاستئناف تأخذ تصميم البيت والسمة الداكنة (نص بتباين 4.5:1 أو أكثر).
+  - 🔌 The plugin, `mcp/server.json` and `mcp/smithery.yaml` start the MCP server locally with `node mcp/cli.mjs`; no npm package is needed. / الإضافة و`mcp/server.json` و`mcp/smithery.yaml` تشغّل خادم MCP محليًا بالأمر `node mcp/cli.mjs`؛ دون حاجة إلى حزمة npm.
+
+### Extras / إضافات
+- 🧪 **The build parses the editor script**: two merged files declaring the same name now fail the build with the name, not the browser with a blank page. / البناء يفحص نص المحرر: اسمان متطابقان من ملفين مدموجين يُفشلان البناء باسم المشكلة بدل صفحة فارغة في المتصفح.
+- 🔍 **`tests/audit.probe.mjs`** (`npm run audit`): the feature audit drives every toolbar feature in headed Edge and prints works / partial / broken with a works rate. / أداة تدقيق الميزات تشغّل كل ميزة في Edge وتطبع ما يعمل وما يعمل جزئيًا وما لا يعمل مع نسبة النجاح.
+- 🧷 **`verify-history`** checks a `.bwlog` file or a shared HTML file; **`report`** writes the work report from the command line. / الأمر `verify-history` يفحص ملف `.bwlog` أو ملف HTML مُشارَكًا، والأمر `report` يكتب تقرير العمل من سطر الأوامر.
+- ♿ **Update progress** reads at full contrast while it waits (axe). / تقدم التحديث يُقرأ بتباين كامل أثناء الانتظار.
+- 🔌 **Every test picks a free port**, so a running editor never breaks `npm test`. / كل اختبار يختار منفذًا حرًا، فلا يكسر محرر عامل تشغيل `npm test`.
+- 🕒 **«آخر حفظ»** beside the change counter (list copy and last HTML) replaces the «حُفظ تلقائياً» toast. / ختم «آخر حفظ» بجانب عداد التغييرات (نسخة القائمة وآخر HTML) بدل رسالة «حُفظ تلقائياً».
+- 📥 **Import keeps structure**: PDF, DOCX and HTML headings become chapters and sections, tables become tables, the title comes from the document. / الاستيراد يحفظ البنية: عناوين PDF وDOCX وHTML تصير فصولًا وأقسامًا، والجداول جداول، والعنوان من الوثيقة نفسها.
+- 📈 **Per-document metrics** in the documents list: edits, active minutes, contributors, last signer, locked. / مقاييس لكل وثيقة في قائمة المستندات: التعديلات، والدقائق النشطة، والمساهمون، وآخر موقّع، والقفل.
+- 🔀 **«مقارنة بآخر حفظ HTML»** in «تغييرات», with a restore for each change. / «مقارنة بآخر حفظ HTML» في «تغييرات»، مع استرجاع كل تغيير وحده.
+- 🔐 **The lock banner names the signer** when a shared file opens. / شريط القفل يسمّي الموقّع عند فتح الملف المُشارَك.
+- 📄 **«نسخ كقالب»**: a document's design, header and footer items and chapters, with empty bodies, for the next service. / «نسخ كقالب»: تصميم الوثيقة وعناصر الترويسة والتذييل والفصول بمتون فارغة، للخدمة التالية.
+- 🔢 **Requirement IDs**: FR- and BR- codes unique and in sequence; a story with no acceptance criteria warns. / معرّفات المتطلبات: رموز FR- وBR- فريدة ومتتابعة؛ والقصة بلا معايير قبول تُنبّه.
+- ↩️ **«تراجع» for 5 s** after deleting a block, an object, a header item or a document. / «تراجع» لمدة 5 ثوانٍ بعد حذف كتلة أو عنصر أو عنصر ترويسة أو وثيقة.
+- 🧭 **`tests/owner-flows.test.mjs`**: one check per line of the owner's request, in `npm test`. / ملف `tests/owner-flows.test.mjs`: فحص لكل بند من طلب المالك، ضمن `npm test`.
+
+### Migration notes / ملاحظات الترحيل
+- Documents without the new fields render and export byte-identical to 0.12.0. A tool that read `/api/export/file` output from `exports/<service>/<locale>/` finds it in the save folder when the server runs without `--out`; with `--out` nothing moved. An editor extension now loads **before** boot: listen to `boot` instead of assuming the editor is drawn at load. / الوثائق التي لا تستخدم الحقول الجديدة تُعرض وتُصدَّر مطابقة لـ 0.12.0 بايتًا ببايت. ومخرجات `/api/export/file` تذهب إلى مجلد الحفظ حين يعمل الخادم دون `--out`، ومع `--out` لم يتغير شيء. وإضافة المحرر تُحمَّل الآن **قبل** التشغيل: استمع إلى الحدث `boot` بدل افتراض أن المحرر مرسوم عند التحميل.
+- The tamper-evident history is obfuscated, not secret: the key is in the MIT source. See the README's "Is it safe?" and `bible/11-trust-ledger.md`. / السجل الكاشف للعبث مموَّه لا سري: المفتاح في الشيفرة المفتوحة. انظر «هل هو آمن؟» في README و`bible/11-trust-ledger.ar.md`.
+
 ## [0.12.0] - 2026-10-28
 
 🎨 A new brand, an Arabic website, and an editor with no hard-coded colour. / 🎨 هوية جديدة، وموقع بالعربية، ومحرر بلا ألوان ثابتة في الكود.

@@ -75,7 +75,7 @@ dialog.pc-dlg::backdrop { background: color-mix(in srgb, var(--bw-band, #001e3d)
 .pc-dlg .pc-f input, .pc-dlg .pc-f select { color: var(--panel-ink); background: var(--panel); border-color: var(--panel-line); width: 10em; }
 .pc-dlg .pc-note { color: var(--panel-soft); }
 .pc-err { margin: 6px 0 0; color: var(--signal); font-size: 13px; }
-.pc-code code { display: inline-block; padding: 6px 10px; border-radius: 8px; background: var(--wash-2); font: 600 14px/1.3 ui-monospace, Consolas, monospace; }
+.pc-code code { display: inline-block; padding: 6px 10px; border-radius: 8px; background: var(--wash-2); font: 600 14px/1.3 var(--bw-font-ui); }
 .pc-prog { display: flex; align-items: center; gap: 10px; font-size: 13px; }
 .pc-prog progress { width: 160px; }
 .pc-prev { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }

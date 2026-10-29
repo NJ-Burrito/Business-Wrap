@@ -51,6 +51,29 @@
     }
   },
   "$defs": {
+    "richLeaf": {
+      "description": "A text leaf with formatting (0.13.0, A26): marks [start, end, type, value?] over text; link = http/https/mailto, color = #rrggbb, font = a Thmanyah family, size = pt. Wherever a string leaf is allowed a rich leaf is too; engine/edits.mjs textOf() reads either.",
+      "type": "object",
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string" },
+        "marks": { "type": "array", "items": { "type": "array", "minItems": 3, "maxItems": 4, "prefixItems": [{ "type": "integer", "minimum": 0 }, { "type": "integer", "minimum": 0 }, { "enum": ["b", "i", "u", "s", "code", "link", "color", "font", "size"] }] } },
+        "style": {
+          "type": "object",
+          "properties": {
+            "align": { "enum": ["start", "center", "end", "justify"] },
+            "valign": { "enum": ["top", "middle", "bottom"] },
+            "lineHeight": { "type": "number", "minimum": 0.8, "maximum": 4 },
+            "spaceBefore": { "type": "number", "minimum": 0, "maximum": 60 },
+            "spaceAfter": { "type": "number", "minimum": 0, "maximum": 60 },
+            "quote": { "type": "boolean" },
+            "list": { "type": "string", "pattern": "^(bullet|number|shape:.)$" },
+            "level": { "type": "integer", "minimum": 0, "maximum": 8 },
+            "numFormat": { "enum": ["decimal", "lower-alpha", "upper-alpha", "lower-roman", "upper-roman", "arabic-indic"] }
+          }
+        }
+      }
+    },
     "pointer": {
       "type": "string",
       "pattern": "^(/([^~/]|~[01])*)*$"
@@ -94,13 +117,14 @@
               "type": "string"
             },
             "old": {
-              "type": "string"
+              "oneOf": [{ "type": "string" }, { "$ref": "#/$defs/richLeaf" }],
+              "description": "previous leaf: a string, or a rich leaf (0.13.0) whose marks the new words keep"
             }
           },
           "required": [
             "value"
           ],
-          "description": "Replace a string leaf (paragraph, cell, title, caption). old = previous text, for conflict check and undo."
+          "description": "Replace the words of a text leaf (paragraph, cell, title, caption). On a rich leaf ({text, marks, style}, 0.13.0) the marks are kept, rebased by common prefix/suffix. old = previous leaf, for conflict check and undo."
         },
         {
           "properties": {

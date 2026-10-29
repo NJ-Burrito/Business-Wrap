@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Invented test fixture: a fictional licence renewal in Flowable's BPMN dialect. No real organisation. -->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:flowable="http://flowable.org/bpmn" targetNamespace="http://example.org/licences">
+  <process id="licenceRenewal" name="Licence renewal" isExecutable="true">
+    <laneSet id="lanes">
+      <lane id="laneApplicant" name="Applicant"><flowNodeRef>start</flowNodeRef><flowNodeRef>apply</flowNodeRef></lane>
+      <lane id="laneClerk" name="Clerk"><flowNodeRef>check</flowNodeRef></lane>
+      <lane id="laneHead" name="Head of unit"><flowNodeRef>decide</flowNodeRef></lane>
+    </laneSet>
+    <startEvent id="start"/>
+    <userTask id="apply" name="Apply" flowable:formKey="licenceRenewal-apply"/>
+    <userTask id="check" name="Check" flowable:formKey="otherProcess-check" flowable:assignee="${taskAssigner.getAssigneeRoundRobin(execution, 'clerks')}"/>
+    <exclusiveGateway id="g1"/>
+    <userTask id="decide" name="Decide" flowable:formKey="licenceRenewal-decide"/>
+    <exclusiveGateway id="g2"/>
+    <endEvent id="approved" name="Approved"/>
+    <endEvent id="rejected" name="Rejected"/>
+    <sequenceFlow id="f1" sourceRef="start" targetRef="apply"/>
+    <sequenceFlow id="f2" sourceRef="apply" targetRef="check"/>
+    <sequenceFlow id="f3" sourceRef="check" targetRef="g1"/>
+    <sequenceFlow id="f4" sourceRef="g1" targetRef="decide"><conditionExpression>${acrion=='send-to-head'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f5" sourceRef="g1" targetRef="rejected"><conditionExpression>${action=='reject'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f6" sourceRef="decide" targetRef="g2"/>
+    <sequenceFlow id="f7" sourceRef="g2" targetRef="approved"><conditionExpression>${action=='approve'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f8" sourceRef="g2" targetRef="check"><conditionExpression>${action=='return-to-check'}</conditionExpression></sequenceFlow>
+  </process>
+</definitions>

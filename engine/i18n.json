@@ -54,7 +54,9 @@
         "التوقيع"
       ],
       "tocPlaceholder": "اضغط تحديث لعرض جدول المحتويات",
-      "figureNo": "الشكل"
+      "figureNo": "الشكل",
+      "newSection": "قسم جديد",
+      "newChapter": "فصل جديد"
     },
     "en": {
       "none": "None",
@@ -109,7 +111,9 @@
         "Signature"
       ],
       "tocPlaceholder": "Press update to show the table of contents",
-      "figureNo": "Figure"
+      "figureNo": "Figure",
+      "newSection": "New section",
+      "newChapter": "New chapter"
     }
   },
   "ui": {

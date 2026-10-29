@@ -1,6 +1,6 @@
 {
   "name": "business-wrap",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "Bilingual (Arabic RTL / English LTR) requirements documents from evidence: an interactive HTML editor that is the print layout, PDF + DOCX export, design packs and security gates.",
   "author": {
     "name": "NJ-Burrito",
@@ -26,12 +26,9 @@
   ],
   "mcpServers": {
     "business-wrap": {
-      "command": "npx",
+      "command": "node",
       "args": [
-        "-y",
-        "-p",
-        "business-wrap@0.12.0",
-        "business-wrap-mcp"
+        "${CLAUDE_PLUGIN_ROOT}/mcp/cli.mjs"
       ]
     }
   }

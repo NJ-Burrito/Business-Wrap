@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // business-wrap-mcp: the Business-Wrap MCP server over stdio.
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { StdioServerTransport } from './vendor/sdk.mjs';
 import { createServer } from './server.mjs';
 
 import { checkForUpdate } from '../update/check.mjs';

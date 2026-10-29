@@ -3,7 +3,7 @@
 // model call, so the editor carries redact + fieldKind (engine/build-editor.mjs, own scope LEARN).
 // The method (record verbatim with the source, flag REVERSAL / CONFLICT, promote only with counts
 // and no kill criterion, otherwise keep it scoped) follows bible/10-learning.md.
-import { get, textLeaves } from '../edits.mjs';
+import { get, textLeaves, withText } from '../edits.mjs';
 
 export const LEARN_VERSION = 1;
 export const AUTO_PROMOTE_HITS = 3;
@@ -269,7 +269,7 @@ export function applyRules(doc, rules) {
       for (const { path, value } of textLeaves(out)) {
         if (isManual(path) || path.startsWith('/control/documentId')) continue;
         const next = value.replace(re, (_, pre) => pre + r.pattern.to);
-        if (next !== value) { set(path, next); applied.push({ path, rule: r.id, from: r.pattern.from, to: r.pattern.to }); }
+        if (next !== value) { set(path, withText(get(out, path), next)); applied.push({ path, rule: r.id, from: r.pattern.from, to: r.pattern.to }); }
       }
     } else if (r.type === 'design') {
       if (get(out, r.pattern.path) !== undefined) continue;

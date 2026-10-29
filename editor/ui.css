@@ -4,7 +4,8 @@
    Motion answers actions; calm mode and reduced motion make every change instant. */
 :host { all: initial; }
 [hidden] { display: none !important; }
-.shell {
+/* a dialog opened on the shadow root (the relaunch prompt of 12-session.js) is outside .shell: the same roles (F2 · 38) */
+.shell, dialog {
   --navy: var(--bw-primary); --deep: var(--bw-band); --gold: var(--bw-accent); --gold-deep: var(--bw-accent-strong); --paper: var(--bw-bg); --ink: var(--bw-ink);
   --wash: var(--bw-primary-soft); --wash-2: var(--bw-surface-2); --muted: var(--bw-ink-muted); --ok: var(--bw-success); --signal: var(--bw-signal);
   --on-primary: var(--bw-on-primary); --on-gold: var(--bw-on-accent); --focus: var(--bw-focus);
@@ -197,6 +198,7 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
 .toasts { position: fixed; z-index: 60; inset-block-end: 22px; inset-inline-start: 50%; transform: translateX(-50%); display: grid; gap: 8px; justify-items: center; pointer-events: none; }
 .shell[dir="rtl"] .toasts { transform: translateX(50%); }
 .toast { pointer-events: auto; display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 16px; background: var(--deep); color: var(--on-glass); box-shadow: var(--bw-shadow-3); max-width: min(560px, 92vw); animation: toast-in var(--bw-dur-slow) var(--bw-ease-out) both; }
+.toast:not(.banner) { cursor: pointer; }
 .toast.out { animation: toast-out var(--bw-dur-base) var(--bw-ease-in) both; }
 /* status icons on the navy toast: the light ramp steps that read on the band (always beside a word) */
 .toast.ok .i { color: var(--bw-sec-edit); } .toast.err .i { color: var(--bw-sec-design); } .toast.warn .i { color: var(--bw-sec-file); } .toast.info .i { color: var(--bw-sec-insert); }
@@ -219,7 +221,7 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
 .drawer .card { margin: 10px 0 14px; padding: 12px 14px; border-radius: 16px; background: var(--wash-2); box-shadow: 0 0 0 1px var(--panel-line); animation: rise .4s var(--e-out) both; }
 .drawer .card + .card { animation-delay: .06s; }
 .drawer .card h3 { display: flex; align-items: center; gap: 8px; margin-top: 0; color: var(--navy); font-size: 15px; }
-.drawer textarea[data-f="crawl"] { font: 12.5px/1.45 ui-monospace, Consolas, monospace; color: var(--panel-ink); background: var(--panel); border: 1px solid var(--panel-line); border-radius: 10px; padding: 8px; width: 100%; }
+.drawer textarea[data-f="crawl"] { font: 12.5px/1.45 var(--bw-font-ui); color: var(--panel-ink); background: var(--panel); border: 1px solid var(--panel-line); border-radius: 10px; padding: 8px; width: 100%; }
 .drawer .proc-fig { border-radius: 12px; overflow: auto; background: #fff; box-shadow: 0 0 0 1px var(--panel-line); max-height: 260px; } /* doc-colour: the process figure prints on paper */
 .drawer .proc-fig svg { display: block; width: 100%; height: auto; min-width: 560px; }
 .drawer .row3 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
@@ -284,3 +286,38 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
   .island.has-sel .b.primary .w { display: none; }
 }
 .sec.now .pick select { max-width: 112px; }
+
+/* 0.13 A7: side-panel groups and alternating rows */
+.drawer details.pgrp { margin: 4px 0; }
+.drawer details.pgrp > summary { cursor: pointer; display: flex; align-items: center; gap: 6px; border-radius: 8px; padding: 2px 4px; }
+.drawer details.pgrp > summary > :is(h3, h4) { margin: 10px 0 6px; }
+.drawer details.pgrp > summary::before { content: ""; inline-size: 7px; block-size: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .2s var(--e-out); color: var(--panel-soft); flex: none; }
+/* F2 · 38: one chevron convention in every panel, by the UI's reading direction (the shell itself is always rtl):
+   physical right + bottom borders; collapsed points forward (› in English, ‹ in Arabic), open points down */
+.shell[data-tdir="rtl"] .drawer details.pgrp > summary::before, .shell[data-tdir="rtl"] .drawer .dgrp:not([open]) > summary::after { transform: rotate(135deg); }
+.shell .drawer details.pgrp[open] > summary::before, .shell .drawer .dgrp[open] > summary::after { transform: rotate(45deg); }
+.drawer details.pgrp > summary::-webkit-details-marker { display: none; }
+.drawer .list > li { padding-inline: 8px; background: var(--panel); }
+.drawer .list > li:nth-child(even), .drawer .set-row:nth-of-type(even) { background: var(--wash-2); }
+/* F2 · 11: a shade between the fields of every group too (Design, Settings, Process), not only between list rows */
+.drawer :is(.vc, .cc, .fp, .set-row, label.chk) { padding-inline: 8px; border-radius: 8px; }
+.drawer :is(details.pgrp, .dgrp, .set, section.card) > :nth-child(even of :is(.vc, .cc, .fp, .set-row, label.chk)) { background: var(--wash-2); }
+.drawer header:has(.hact) { flex-wrap: wrap; }
+.drawer header .hact { order: 3; flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 6px; }
+.drawer .jump { font: inherit; font-size: 12px; color: var(--panel-ink); background: var(--wash); border: 1px solid var(--panel-line); border-radius: 8px; padding: 2px 8px; margin-inline-start: 6px; cursor: pointer; }
+.shell[data-calm="1"] .drawer details.pgrp > summary::before { transition: none; }
+/* F2 · 17: a check finding fixed in a Design group rings that group (as a body jump rings the element) */
+.drawer .bw-jump { outline: 3px solid var(--gold); outline-offset: 2px; border-radius: 8px; }
+
+/* F2 · 38: the relaunch prompt in the house design: the UI face, the panel surface, rows and the house buttons */
+dialog.bw-resume[open] { font: 500 14px/1.45 var(--bw-font-ui); color: var(--panel-ink); background: var(--panel); border: 1px solid var(--panel-line); border-radius: var(--r-island, 16px); box-shadow: var(--bw-shadow-2); padding: 22px 24px; }
+dialog.bw-resume[open] h2 { font: 800 18px/1.25 var(--bw-font-display, var(--bw-font-ui)); color: var(--navy); margin: 0 0 8px; }
+dialog.bw-resume[open] .list { list-style: none; padding: 0; margin: 12px 0; border: 1px solid var(--panel-line); border-radius: 10px; overflow: auto; }
+dialog.bw-resume[open] .list > li { padding: 6px 10px; }
+dialog.bw-resume[open] .list > li:nth-child(even) { background: var(--wash-2); }
+dialog.bw-resume[open] .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+dialog.bw-resume[open] .b { border: 1px solid var(--panel-line); color: var(--panel-ink); background: var(--wash-2); padding: 8px 14px; border-radius: var(--r-btn, 10px); font: inherit; font-weight: 700; cursor: pointer; }
+dialog.bw-resume[open] .b.primary { background: var(--gold); color: var(--on-gold); border-color: transparent; }
+dialog.bw-resume::backdrop { background: color-mix(in srgb, var(--bw-band, #0b1f3a) 45%, transparent); backdrop-filter: blur(2px); }
+/* F2 · 38: themed scrollbars on the glass menus and the panels: no white strip beside a menu */
+.island, .pop, .ctx, .menu, [popover], .drawer, dialog, .drawer .list { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, currentColor 35%, transparent) transparent; }

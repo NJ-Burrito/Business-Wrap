@@ -257,6 +257,8 @@ try {
     const packFile = path.join(OUT, `pack.${ed}.json`);
     fs.writeFileSync(packFile, JSON.stringify(pack));
     await act(fresh, 'theme');
+    // A7: the Design panel's groups after the first start collapsed; the pack tools are in «output»
+    await fresh.evaluate(() => { document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer details[data-grp="output"]').open = true; });
     const [chP] = await Promise.all([fresh.waitForEvent('filechooser'), fresh.locator('.drawer button[data-k="timp"]').click()]);
     await chP.setFiles(packFile);
     await fresh.waitForFunction(() => window.BW.S.theme.vars.primary === '#7a1f5c', null, { timeout: 5000 }).catch(() => {});
@@ -342,9 +344,14 @@ try {
     const B = window.BW;
     const t = (f) => { const s = performance.now(); f(); return performance.now() - s; };
     const p = '/chapters/1/sections/0/blocks/1';
+    // one warm-up pair (cold JIT, first style recalc), then the median of 3: a single sample under load was the flake
+    B.commit([{ op: 'duplicate', path: p }]); B.undo();
+    const med = (a) => a.sort((x, y) => x - y)[1];
+    const dup = [], und = [];
+    for (let k = 0; k < 3; k += 1) { dup.push(t(() => B.commit([{ op: 'duplicate', path: p }]))); und.push(t(() => B.undo())); }
     return {
-      duplicate: t(() => B.commit([{ op: 'duplicate', path: p }])),
-      undo: t(() => B.undo()),
+      duplicate: med(dup),
+      undo: med(und),
       typing: t(() => B.setText('/chapters/0/sections/0/blocks/0/paragraphs/0', 'x')),
     };
   });
@@ -480,9 +487,10 @@ try {
     await pu2.locator('main.bw-doc [data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]').click();
     const [chI] = await Promise.all([pu2.waitForEvent('filechooser'), act(pu2, 'image')]);
     await chI.setFiles(pngFile);
-    await pu2.waitForFunction(() => window.BW.M['event-permit'][window.BW.S.ed].doc.chapters[0].sections[0].blocks.some((b) => b.kind === 'shots'), null, { timeout: 5000 }).catch(() => {});
-    const kinds = await pu2.evaluate(() => window.BW.M['event-permit'][window.BW.S.ed].doc.chapters[0].sections[0].blocks.map((b) => b.kind));
-    check(`${uiL} UI: image inserted after the selected block`, kinds.includes('shots'), JSON.stringify(kinds));
+    // F2 · 18: the Image button goes the dropped image's way: an image beside the selected block, Word's wraps on it
+    await pu2.waitForFunction(() => (window.BW.M['event-permit'][window.BW.S.ed].doc.overlays || []).some((o) => o.kind === 'image'), null, { timeout: 5000 }).catch(() => {});
+    const img = await pu2.evaluate(() => { const d = window.BW.M['event-permit'][window.BW.S.ed].doc; const o = (d.overlays || []).find((x) => x.kind === 'image'); return o && { mode: o.mode, wrap: o.wrap, anchorId: d.chapters[0].sections[0].blocks[0].id === o.anchor }; });
+    check(`${uiL} UI: image inserted beside the selected block (anchored to it, text wrapped square)`, !!img && img.mode === 'anchor' && img.wrap === 'square' && img.anchorId, JSON.stringify(img));
     // PDF + DOCX carry the logo at its position and the image
     const editsU = await download(pu2, () => act(pu2, 'save'));
     const ef = JSON.parse(fs.readFileSync(editsU, 'utf8'));
@@ -533,8 +541,8 @@ try {
     const { brandCss } = await import('../engine/build-editor.mjs');
     const css = brandCss();
     const light = /:host, \.shell \{[^}]*--bw-bg: #fafaf9/.test(css);
-    const dark = /\.shell\[data-theme="dark"\] \{[^}]*--bw-bg: #001e3d/.test(css);
-    check('brandCss(): v3 tokens scoped to the shadow root (--bw-bg, no :root, light on :host/.shell, dark on .shell[data-theme="dark"], no global focus rule)',
+    const dark = /:is\(\.shell, dialog\)\[data-theme="dark"\] \{[^}]*--bw-bg: #001e3d/.test(css);
+    check('brandCss(): v3 tokens scoped to the shadow root (--bw-bg, no :root, light on :host/.shell, dark on .shell/dialog[data-theme="dark"], no global focus rule)',
       css.includes('--bw-bg') && !css.includes(':root') && light && dark && !/:where\(a, button/.test(css), JSON.stringify({ len: css.length, light, dark }));
   }
   // drawer reopened while it closes stays open (0.11.x fix kept: the pending hide is cancelled)
@@ -558,11 +566,12 @@ try {
   const { serve } = await import('../engine/serve.mjs');
   const served = path.join(OUT, 'served.editor.html');
   buildEditor({ inputs: [SAMPLE], out: served, set: 'served', watermarkDir: null });
-  const srv = await serve(served, 4399);
+  const srv = await serve(served, 0); // a free port: never a clash with a host already running
+  const SRV = `http://127.0.0.1:${srv.address().port}`;
   try {
     const ctxT = await browser.newContext({ viewport: { width: 1366, height: 900 } });
     const pt = await ctxT.newPage();
-    await pt.goto('http://127.0.0.1:4399/');
+    await pt.goto(`${SRV}/`);
     await pt.waitForFunction(() => window.BW?.ready);
     await act(pt, 'pages');
     await pt.locator('.drawer .thumbs img').nth(8).waitFor({ timeout: 60000 }).catch(() => {});
@@ -578,15 +587,15 @@ try {
     // webhooks: off by default; a test-send reaches a local mock through the server; never fonts or the watermark
     const received = [];
     const mock = http.createServer((rq, rs) => { let b = ''; rq.on('data', (c) => { b += c; }); rq.on('end', () => { received.push(JSON.parse(b || '{}')); rs.writeHead(204); rs.end(); }); });
-    await new Promise((ok) => mock.listen(4398, '127.0.0.1', ok));
+    await new Promise((ok) => mock.listen(0, '127.0.0.1', ok));
     try {
       const ctxW = await browser.newContext({ viewport: { width: 1366, height: 900 } });
       const pw = await ctxW.newPage();
-      await pw.goto('http://127.0.0.1:4399/');
+      await pw.goto(`${SRV}/`);
       await pw.waitForFunction(() => window.BW?.ready);
       await act(pw, 'webhooks');
       const offByDefault = await pw.locator('.drawer [data-hook="enabled"]').isChecked();
-      await pw.locator('.drawer [data-hook="url"]').fill('http://127.0.0.1:4398/hook');
+      await pw.locator('.drawer [data-hook="url"]').fill(`http://127.0.0.1:${mock.address().port}/hook`);
       await pw.locator('.drawer [data-hk="add"]').click();
       await pw.locator('.drawer [data-hook="enabled"]').check();
       await pw.locator('.drawer [data-hk="test"]').click();

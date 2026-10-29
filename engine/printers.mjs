@@ -23,6 +23,7 @@ import { spawn } from 'node:child_process';
 import { exportPdf, exportDocx, printHtml, loadTheme, fileStem } from './export.mjs';
 import { config } from './config.mjs';
 import { py } from './py.mjs';
+import { ensure as ensureWorkspace, outName, uniquePath, docTitle } from './workspace.mjs';
 
 /** The command runner: (cmd, args, {env, input, timeout}) → Promise<{status, stdout, stderr}>. Tests swap it. */
 const defaultRun = (cmd, args, { env, timeout = 120000 } = {}) => new Promise((ok) => {
@@ -238,7 +239,7 @@ async function readJson(req, max) {
 }
 
 /** /api/print/* and /api/export/*. Returns true when it answered. */
-export async function printApi(req, res, url, { send, OUT, maxBody }) {
+export async function printApi(req, res, url, { send, OUT, maxBody, ws = () => null, filesRoot = () => OUT }) {
   if (!/^\/api\/(print|export)\//.test(url.pathname)) return false;
   if (req.headers.origin && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(req.headers.origin)) { send(403, { error: 'origin' }); return true; }
   try {
@@ -265,20 +266,24 @@ export async function printApi(req, res, url, { send, OUT, maxBody }) {
       if (!['pdf', 'docx', 'printHtml'].includes(format)) { send(400, { error: 'format: pdf, docx or printHtml' }); return true; }
       const range = String(body.range || '').replace(/\s+/g, '');
       if (range && !RANGE.test(range)) { send(400, { error: 'page range: like 1-3,5' }); return true; }
-      // a chosen folder (absolute, on this machine) or the exports folder
+      // a chosen folder (absolute, on this machine); else the save folder (A11: PDF\ DOCX\ HTML\, "<title>-<date>-<AR|ENG>",
+      // a clash gets -2, -3, never an overwrite); else, with --out, the exports folder as before
+      const ext = { pdf: 'pdf', docx: 'docx', printHtml: 'print.html' }[format];
+      const w = !body.folder && ws();
       let dir = path.join(OUT, fileStem(body.service), locale);
       if (body.folder) {
         if (typeof body.folder !== 'string' || !path.isAbsolute(body.folder) || /[\u0000-\u001f]/.test(body.folder)) { send(400, { error: 'folder: an absolute path' }); return true; }
         dir = path.resolve(body.folder);
-      }
+      } else if (w) { ensureWorkspace(w); dir = { pdf: w.dirs.pdf, docx: w.dirs.docx, printHtml: w.dirs.html }[format]; }
       fs.mkdirSync(dir, { recursive: true });
       const doc = docFor(body);
-      let file;
-      if (format === 'pdf') { file = path.join(dir, `${stem}.pdf`); await exportPdf(doc, { locale, theme, pdfPath: file }); if (range) await cutPdf(file, range); }
-      else if (format === 'docx') { file = path.join(dir, `${stem}.docx`); exportDocx(doc, { locale, theme, docxPath: file, embedFonts: body.embedFonts !== false }); }
-      else { file = path.join(dir, `${stem}.print.html`); fs.writeFileSync(file, printHtml(doc, { locale, theme }).html, 'utf8'); }
-      const inOut = file.startsWith(OUT + path.sep);
-      send(200, { ok: true, file, bytes: fs.statSync(file).size, url: inOut ? `/files/${path.relative(OUT, file).split(path.sep).map(encodeURIComponent).join('/')}` : null });
+      const file = w ? uniquePath(dir, outName(docTitle(doc, body.service), new Date(), locale, ext)) : path.join(dir, `${stem}.${ext}`);
+      if (format === 'pdf') { await exportPdf(doc, { locale, theme, pdfPath: file }); if (range) await cutPdf(file, range); }
+      else if (format === 'docx') exportDocx(doc, { locale, theme, docxPath: file, embedFonts: body.embedFonts !== false });
+      else fs.writeFileSync(file, printHtml(doc, { locale, theme }).html, 'utf8');
+      const base = filesRoot();
+      const served = file.startsWith(base + path.sep) && !file.startsWith(path.join(base, 'HISTORY') + path.sep);
+      send(200, { ok: true, file, bytes: fs.statSync(file).size, url: served ? `/files/${path.relative(base, file).split(path.sep).map(encodeURIComponent).join('/')}` : null });
       return true;
     }
     send(404, { error: 'not found' });

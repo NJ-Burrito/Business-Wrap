@@ -1,0 +1,13 @@
+/* A2 document library drawer */
+.drawer .lib-q { display: block; margin: 8px 0; }
+.drawer .lib-q input { width: 100%; box-sizing: border-box; }
+.drawer .lib-docs li[aria-current="true"] .lib-t { text-decoration: underline; text-underline-offset: 3px; }
+.drawer .lib-docs small, .drawer .lib-trash small { opacity: .7; }
+.drawer .lib-trash { margin-top: 12px; }
+.drawer .lib-trash summary { cursor: pointer; }
+.drawer .lib-m { display: block; opacity: .75; font-size: .85em; }
+.drawer .lib-tpls { margin-top: 12px; }
+.drawer .lib-tpls summary { cursor: pointer; }
+.count { position: relative; }
+.count .bw-stamp { position: absolute; top: calc(100% + 18px); left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 600; white-space: nowrap; background: var(--glass); color: var(--on-glass); padding: 3px 10px; border-radius: 999px; box-shadow: 0 2px 8px rgb(0 0 0 / .15); pointer-events: none; }
+@media (max-width: 900px) { .count .bw-stamp { display: none; } }

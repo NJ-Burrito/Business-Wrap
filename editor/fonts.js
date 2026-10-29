@@ -202,6 +202,7 @@ const FONTS = {
 
   /* events, routed from the drawer's own handlers; each returns true when it handled the event */
   click(e) {
+    if (PAL.click(e)) return true; // the palette import (design-panel.js) shares the Design drawer's click route
     const opt = e.target.closest?.('.fp-o');
     if (opt) { FONTS.choose(opt.closest('.fp').dataset.fp, opt.dataset.fam); return true; }
     const b = e.target.closest?.('button');

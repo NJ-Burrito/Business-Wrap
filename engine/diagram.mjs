@@ -396,6 +396,9 @@ export const DIAGRAM = (() => {
         pts = [[ax, ay], [xo, ay], [xo, y], [xi, y], [xi, by], [bx, by]];
       }
       if (Array.isArray(p.e.via) && p.e.via.length) pts = viaPath(p.a, p.b, p.e.via, p.sides[0], p.sides[1]);
+      // the corridor shapes above assume the legs they draw are clear; one that runs through a shape
+      // that is not its own end is rerouted round every shape on the sheet (a hand-set path is kept)
+      else if (crosses(pts, p, solids)) pts = detour(p, solids, hSegs, vSegs) || pts;
       for (let i = 1; i < pts.length; i += 1) {
         const [x1, y1] = pts[i - 1];
         const [x2, y2] = pts[i];
@@ -405,6 +408,95 @@ export const DIAGRAM = (() => {
       p.pts = pts;
     }
     return plan;
+  }
+
+  /** Does a wire leg run through a shape other than its own two ends? (the flow-collisions rule) */
+  function crosses(pts, p, solids) {
+    const list = (solids || p.solids || []).filter((o) => o.n !== p.S.n && o.n !== p.T.n);
+    return pts.slice(1).some((q, i) => {
+      const [x1, y1] = pts[i];
+      const [x2, y2] = q;
+      return list.some((o) => (Math.abs(x1 - x2) < 0.5
+        ? x1 > o.l + 2 && x1 < o.r - 2 && Math.max(y1, y2) > o.t + 2 && Math.min(y1, y2) < o.b - 2
+        : y1 > o.t + 2 && y1 < o.b - 2 && Math.max(x1, x2) > o.l + 2 && Math.min(x1, x2) < o.r - 2));
+    });
+  }
+
+  /** An orthogonal path round every shape: out of the source port along its face's normal, through a grid
+   *  laid on the shapes' padded edges (plus a spare lane each side), into the target port along its normal.
+   *  Cheapest by length + bends, and a leg laid over another wire's lane costs extra. */
+  function detour(p, solids, hSegs, vSegs) {
+    const PAD = 12;
+    const STUB = PAD + 6;
+    const BEND = 70;
+    const off = (B, side, [x, y]) => (side === 't' ? [x, B.t - STUB] : side === 'b' ? [x, B.b + STUB] : side === 'l' ? [B.l - STUB, y] : [B.r + STUB, y]);
+    const s0 = off(p.S, p.sides[0], p.a);
+    const t0 = off(p.T, p.sides[1], p.b);
+    const obs = solids.map((o) => ({ l: o.l - PAD, r: o.r + PAD, t: o.t - PAD, b: o.b + PAD }));
+    const L = Math.min(...obs.map((o) => o.l), s0[0], t0[0]) - 2 * G.lane;
+    const R = Math.max(...obs.map((o) => o.r), s0[0], t0[0]) + 2 * G.lane;
+    const T = Math.min(...obs.map((o) => o.t), s0[1], t0[1]) - 2 * G.lane;
+    const B = Math.max(...obs.map((o) => o.b), s0[1], t0[1]) + 2 * G.lane;
+    const axis = (base) => {
+      const v = [...new Set(base.map((k) => Math.round(k * 2) / 2))].sort((a, b) => a - b);
+      const mids = v.slice(1).map((k, i) => (k + v[i]) / 2).filter((m, i) => v[i + 1] - v[i] > 2 * G.lane);
+      return [...new Set([...v, ...mids])].sort((a, b) => a - b);
+    };
+    const xs = axis([L, R, s0[0], t0[0], ...obs.flatMap((o) => [o.l, o.l - G.lane, o.r, o.r + G.lane])]);
+    const ys = axis([T, B, s0[1], t0[1], ...obs.flatMap((o) => [o.t, o.t - G.lane, o.b, o.b + G.lane])]);
+    const inside = (x, y) => obs.some((o) => x > o.l && x < o.r && y > o.t && y < o.b);
+    const at = (v, arr) => arr.findIndex((k) => Math.abs(k - v) < 0.6);
+    const si = at(s0[0], xs); const sj = at(s0[1], ys);
+    const ti = at(t0[0], xs); const tj = at(t0[1], ys);
+    const nx = xs.length;
+    const key = (i, j, d) => (j * nx + i) * 2 + d; // d: 0 horizontal, 1 vertical
+    const blocked = (i, j) => !((i === si && j === sj) || (i === ti && j === tj)) && inside(xs[i], ys[j]);
+    const busy = (segs, a, lo, hi) => segs.some((s) => Math.abs(s.at - a) < G.lane * 0.6 && Math.min(hi, s.hi) > Math.max(lo, s.lo));
+    const flat = (sd) => sd === 'l' || sd === 'r';
+    const d0 = flat(p.sides[0]) ? 0 : 1;
+    const dEnd = flat(p.sides[1]) ? 0 : 1;
+    // Dijkstra on a binary heap of [cost, i, j, d]
+    const heap = [];
+    const push = (x) => { heap.push(x); let k = heap.length - 1; while (k) { const u = (k - 1) >> 1; if (heap[u][0] <= x[0]) break; heap[k] = heap[u]; k = u; } heap[k] = x; };
+    const pop = () => { const top = heap[0]; const last = heap.pop(); if (heap.length) { let k = 0; for (;;) { let c = 2 * k + 1; if (c >= heap.length) break; if (c + 1 < heap.length && heap[c + 1][0] < heap[c][0]) c += 1; if (heap[c][0] >= last[0]) break; heap[k] = heap[c]; k = c; } heap[k] = last; } return top; };
+    const dist = new Map();
+    const prev = new Map();
+    const k0 = key(si, sj, d0);
+    dist.set(k0, 0);
+    push([0, si, sj, d0]);
+    let goal = null;
+    while (heap.length) {
+      const [c, i, j, d] = pop();
+      const k = key(i, j, d);
+      if (c > dist.get(k)) continue;
+      if (i === ti && j === tj) { const fin = c + (d === dEnd ? 0 : BEND); if (!goal || fin < goal.c) goal = { c: fin, k }; continue; }
+      if (goal && c >= goal.c) break;
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const a = i + di; const b = j + dj;
+        if (a < 0 || b < 0 || a >= nx || b >= ys.length || blocked(a, b)) continue;
+        const nd = dj ? 1 : 0;
+        const mx = (xs[i] + xs[a]) / 2; const my = (ys[j] + ys[b]) / 2;
+        if (inside(mx, my)) continue;
+        const len = Math.abs(xs[a] - xs[i]) + Math.abs(ys[b] - ys[j]);
+        const lap = nd ? busy(vSegs, xs[i], Math.min(ys[j], ys[b]), Math.max(ys[j], ys[b])) : busy(hSegs, ys[j], Math.min(xs[i], xs[a]), Math.max(xs[i], xs[a]));
+        const nc = c + len + (nd === d ? 0 : BEND) + (lap ? len * 3 : 0);
+        const nk = key(a, b, nd);
+        if (nc < (dist.get(nk) ?? Infinity)) { dist.set(nk, nc); prev.set(nk, k); push([nc, a, b, nd]); }
+      }
+    }
+    if (!goal) return null;
+    const cells = [];
+    for (let k = goal.k; k != null; k = prev.get(k)) { const c = Math.floor(k / 2); cells.unshift([xs[c % nx], ys[Math.floor(c / nx)]]); }
+    const raw = [p.a, s0, ...cells.slice(1, -1), t0, p.b];
+    const pts = [];
+    for (const q of raw) {
+      const last = pts.at(-1);
+      if (last && Math.abs(last[0] - q[0]) < 0.5 && Math.abs(last[1] - q[1]) < 0.5) continue;
+      const pre = pts.at(-2);
+      if (pre && ((Math.abs(pre[0] - last[0]) < 0.5 && Math.abs(last[0] - q[0]) < 0.5) || (Math.abs(pre[1] - last[1]) < 0.5 && Math.abs(last[1] - q[1]) < 0.5))) pts[pts.length - 1] = q;
+      else pts.push(q);
+    }
+    return pts;
   }
 
   /** Hand-set bend points between the two ports, kept orthogonal: where an end (or a point) moved off a
@@ -569,15 +661,25 @@ export const DIAGRAM = (() => {
       const hs = segs.filter((s) => s.h).sort((a, b) => b.len - a.len);
       for (const s of hs) for (const at of [0.5, 0.3, 0.7, 0.15, 0.85]) for (const dy of [-(lh / 2 + 2), lh / 2 + 2]) cands.push({ x: s.x1 + (s.x2 - s.x1) * at, y: s.y + dy });
       for (const s of segs.filter((q) => !q.h)) for (const at of [0.5, 0.25, 0.75]) for (const side of [1, -1]) cands.push({ x: s.x + side * (lw / 2 + 6), y: s.y1 + (s.y2 - s.y1) * at });
+      // the same search the router runs: nearest seats first (both sides of every leg), then seats further out tied
+      // back to the wire by a leader line; a caption never lands on a shape while any seat is free (D13)
+      const far = [];
+      for (const ring of [2, 3, 4, 5]) {
+        for (const s of hs) for (const at of [0.5, 0.3, 0.7, 0.15, 0.85]) for (const sg of [-1, 1]) { const ax = s.x1 + (s.x2 - s.x1) * at; far.push({ x: ax, y: s.y + sg * (lh * (ring - 0.5) + 2), ax, ay: s.y }); }
+        for (const s of segs.filter((q) => !q.h)) for (const at of [0.5, 0.25, 0.75]) for (const sg of [1, -1]) { const ay = s.y1 + (s.y2 - s.y1) * at; far.push({ x: s.x + sg * (lw / 2 + 6 + (ring - 1) * 24), y: ay, ax: s.x, ay }); }
+      }
+      const rectOf = (c) => ({ x: c.x - lw / 2, y: c.y - lh / 2 + 3, w: lw, h: lh - 6 });
+      const leaderClear = (c) => { const l = { l: Math.min(c.x, c.ax) - 0.5, r: Math.max(c.x, c.ax) + 0.5, t: Math.min(c.y, c.ay) - 0.5, b: Math.max(c.y, c.ay) + 0.5 }; return !solids.some((o) => l.l < o.r && l.r > o.l && l.t < o.b && l.b > o.t); };
       let pick = null;
-      for (const strict of [true, false]) {
-        for (const c of cands) {
-          const r = { x: c.x - lw / 2, y: c.y - lh / 2 + 3, w: lw, h: lh - 6 };
-          if (!hits(r, solids) && !hits(r, placed) && (!strict || !hits(r, wireRects))) { pick = c; placed.push({ l: r.x, t: r.y, r: r.x + r.w, b: r.y + r.h }); break; }
+      for (const [list, strict] of [[cands, true], [cands, false], [far, true], [far, false]]) {
+        for (const c of list) {
+          const r = rectOf(c);
+          if (!hits(r, solids) && !hits(r, placed) && (!strict || !hits(r, wireRects)) && (c.ax == null || leaderClear(c))) { pick = c; placed.push({ l: r.x, t: r.y, r: r.x + r.w, b: r.y + r.h }); break; }
         }
         if (pick) break;
       }
       pick ||= cands[0] || { x: p.pts[0][0], y: p.pts[0][1] };
+      if (pick.ax != null) wires.push({ t: 'line', pts: [[pick.ax, pick.ay], pick.ay === pick.y ? [pick.x - Math.sign(pick.x - pick.ax) * (lw / 2), pick.y] : [pick.x, pick.y - Math.sign(pick.y - pick.ay) * (lh / 2 - 3)]], d: '', color: P.caption, lw: 0.6, dash: '2 2', arrow: false, leader: p.e.id });
       caps.push(textItem([p.e.label], pick.x, pick.y, FS.edge, P.caption, 400, { plate: P.paper, edge: p.e.id }));
     }
     // extent of the drawing, then the legend under it

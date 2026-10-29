@@ -150,7 +150,8 @@ const LRN = (() => {
   redo = function (ed = S.ed) {
     const grp = cur(ed).redo.at(-1) || [];
     const r = _redo(ed);
-    for (const op of grp) for (const ev of byRef.get(op.id) || []) { const { id, at, ...rest } = ev; record({ ...rest, redo: true }, ed); }
+    // a copy of the op's original events: record() appends to byRef, iterating the live array never ends (R1)
+    for (const op of grp) for (const ev of (byRef.get(op.id) || []).filter((x) => !x.redo)) { const { id, at, ...rest } = ev; record({ ...rest, redo: true }, ed); }
     return r;
   };
 

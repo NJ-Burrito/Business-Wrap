@@ -83,16 +83,16 @@ button:hover{background:var(--wash)}button:active{transform:scale(.97)}
 button.primary{background:var(--navy);border-color:var(--navy);color:var(--on-navy);font-weight:700}button.primary:hover{background:var(--navy-hover)}
 button.ghost{border-color:transparent;text-decoration:underline;text-underline-offset:3px}
 button:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
-.cmd{margin:10px 0 0;font-size:12.5px;color:var(--soft)}.cmd code{font:12px/1.4 ui-monospace,Consolas,monospace;direction:ltr;unicode-bidi:isolate;padding:1px 6px;border-radius:6px;background:var(--wash);color:inherit}
+.cmd{margin:10px 0 0;font-size:12.5px;color:var(--soft)}.cmd code{font-size:12px;line-height:1.4;font-family:inherit;font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate;padding:1px 6px;border-radius:6px;background:var(--wash);color:inherit}
 .steps{list-style:none;margin:4px 0;padding:0;display:grid;gap:8px}
-.steps li{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:12px;background:var(--wash);opacity:.62;transition:opacity .3s var(--e-out),background .3s var(--e-out)}
+.steps li{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:12px;background:var(--wash);transition:background .3s var(--e-out)} /* a waiting step reads at full contrast; its empty dot says it waits */
 .steps li .dot{inline-size:18px;block-size:18px;flex:none;border-radius:50%;border:2px solid var(--soft);box-sizing:border-box;display:grid;place-items:center;font-size:11px;font-weight:800}
 .steps li[data-s="active"]{opacity:1;background:transparent;box-shadow:0 0 0 2px var(--navy) inset}
 .steps li[data-s="active"] .dot{border-color:var(--navy);border-block-start-color:transparent;animation:spin 900ms linear infinite}
 .steps li[data-s="done"]{opacity:1}.steps li[data-s="done"] .dot{background:var(--ok);border-color:var(--ok);color:var(--paper);animation:pop 360ms var(--e-spring)}
 .steps li[data-s="failed"]{opacity:1;box-shadow:0 0 0 1px var(--bad) inset}.steps li[data-s="failed"] .dot{background:var(--bad);border-color:var(--bad);color:var(--paper)}
 .msg{margin:10px 0 0;min-block-size:1.4em;font-weight:600}.msg[data-k="err"]{color:var(--bad)}
-.detail{margin:4px 0 0;font:12px/1.4 ui-monospace,Consolas,monospace;color:var(--soft);overflow-wrap:anywhere}
+.detail{margin:4px 0 0;font:12px/1.4 'Thmanyah Sans',system-ui,sans-serif;color:var(--soft);overflow-wrap:anywhere}
 @keyframes spin{to{transform:rotate(1turn)}}@keyframes pop{0%{transform:scale(.6)}100%{transform:scale(1)}}
 :host([data-calm="1"]) *{transition:none!important;animation:none!important}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -251,10 +251,13 @@ button:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
   }
 
   // 1. after an update: one card, «updated to …» and what is new; otherwise what's new the first time this build opens
-  const seen = ls.get('bw:seen-version');
-  if (resumeAfterUpdate.done) show(t('upd.updated', { v: V }), NEW.human);
-  else if (V && seen && seen !== V && NEW.human.length) show(`${t('upd.whatsNew')} · ${V}`, NEW.human);
-  if (V) ls.set('bw:seen-version', V);
+  // (on boot: the editor boots after every file has loaded, and boot is what reopens the document after an update)
+  bwExt({ on: { boot: () => {
+    const seen = ls.get('bw:seen-version');
+    if (resumeAfterUpdate.done) show(t('upd.updated', { v: V }), NEW.human);
+    else if (V && seen && seen !== V && NEW.human.length) show(`${t('upd.whatsNew')} · ${V}`, NEW.human);
+    if (V) ls.set('bw:seen-version', V);
+  } } });
   // 2. auto-check on launch: served only, switched on, at most once per 24 h (or when this build changed); never blocks the editor
   const st = updState();
   const last = Number(ls.get('bw:update-last')) || 0;

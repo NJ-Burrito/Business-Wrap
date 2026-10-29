@@ -1,6 +1,8 @@
 // "Everything editable": fixed labels, title, subtitle, cover code, field names and values, design
 // (header fill), a per-instance style, sanitised advanced CSS, template parts, the edits-JSON round trip,
 // undo, empty-label validation, and the manual flag that survives a re-harvest with a conflict.
+// 0.13: Move up/down by what is selected (block across sections, paragraph, row, section), the selection follows
+// the move, Alt+↑ / Ctrl+Z work with the focus in the toolbar, and redo never freezes with learning on.
 //
 //   node tests/editable.test.mjs
 import fs from 'node:fs';
@@ -140,7 +142,113 @@ try {
   check('editor: the re-harvest conflict is shown on open', shown >= 1, String(shown));
   await c3.close();
   check('no page errors', errs.length === 0, errs.join(' | '));
-} finally {
+  // ── 0.13 WP1 (A21, R1, R3, R4): moves by what is selected, the selection follows, shortcuts from the toolbar, redo ──
+  const ep = buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: path.join(OUT, 'moves.editor.html'), set: 'moves', watermarkDir: null }).out;
+  const sh = (page, fn, arg) => page.evaluate(([f, a]) => new Function('r', 'a', `return (${f})(r, a)`)(document.getElementById('bw-ui-host').shadowRoot, a), [fn.toString(), arg]);
+  const open = async () => {
+    const c = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const pg = await c.newPage();
+    const er = [];
+    pg.on('pageerror', (e) => er.push(e.message));
+    await pg.goto(pathToFileURL(ep).href);
+    await pg.waitForFunction(() => window.BW?.ready);
+    await pg.waitForTimeout(600);
+    return { ctx: c, page: pg, errors: er };
+  };
+    { // 0.13 A21
+      const { ctx, page, errors } = await open();
+      const sec = await page.evaluate(() => { const d = window.BW.M[window.BW.S.svc][window.BW.S.ed].doc; for (const [i, ch] of d.chapters.entries()) for (const [j, s] of ch.sections.entries()) if (s.blocks.length === 2 && s.blocks[0].kind === 'prose' && s.blocks[1].kind !== 'prose' && d.chapters.flatMap((c) => c.sections).length > 1) return `/chapters/${i}/sections/${j}`; return null; });
+      const p0 = `${sec}/blocks/0/paragraphs/0`;
+      const el = page.locator(`main.bw-doc [data-p="${p0}"]`); await el.scrollIntoViewIfNeeded(); await el.click(); await page.waitForTimeout(200);
+      const kinds = () => page.evaluate((s) => `${s}/blocks`.split('/').slice(1).reduce((o, k) => o[k], window.BW.M[window.BW.S.svc][window.BW.S.ed].doc).map((b) => b.kind), sec);
+      const k0 = await kinds();
+      await page.locator('.ctx [data-a="moveDown"]').click(); await page.waitForTimeout(300);
+      const k1 = await kinds(); const s1 = await page.evaluate(() => ({ ...window.BW.S.sel }));
+      check('0.13 editor: A21/R4: Move down swaps kinds; selection b and p follow', k1[0] === k0[1] && k1[1] === k0[0] && s1.b === `${sec}/blocks/1` && s1.p === `${sec}/blocks/1/paragraphs/0`, JSON.stringify({ k0, k1, s1 }));
+      const focusHost = await page.evaluate(() => document.activeElement?.id);
+      await page.keyboard.press('Alt+ArrowUp'); await page.waitForTimeout(300);
+      const k2 = await kinds();
+      check('0.13 editor: A21/R3: Alt+↑ with focus in the toolbar moves it back', focusHost === 'bw-ui-host' && k2.join() === k0.join(), JSON.stringify({ focusHost, k2 }));
+      await page.keyboard.press('Control+z'); await page.waitForTimeout(200);
+      check('0.13 editor: R3: Ctrl+Z with focus in the toolbar undoes', (await kinds()).join() === k1.join());
+      const D = () => page.evaluate(() => JSON.parse(JSON.stringify(window.BW.M[window.BW.S.svc][window.BW.S.ed].doc)));
+      const at = (d, p) => p.split('/').slice(1).reduce((o, k) => o?.[k], d);
+      const click = async (p) => { const l = page.locator(`main.bw-doc [data-p="${p}"]`).first(); await l.scrollIntoViewIfNeeded(); await l.click(); await page.waitForTimeout(150); };
+      const undoAll = async (n) => { for (let i = 0; i < n; i++) await page.evaluate(() => window.BW.undo()); };
+      let d = await D();
+      // cross-section: the last block of a section, Move down → block 0 of the next section
+      const flat = d.chapters.flatMap((ch, i) => ch.sections.map((s, j) => [i, j, s]));
+      const k = flat.findIndex(([, , s], n) => n + 1 < flat.length && s.blocks.at(-1)?.kind === 'prose');
+      const [ci, sj, ss] = flat[k]; const [ni, nj] = flat[k + 1];
+      const lastP = `/chapters/${ci}/sections/${sj}/blocks/${ss.blocks.length - 1}/paragraphs/0`;
+      const moved = at(d, lastP);
+      await click(lastP);
+      await page.evaluate(() => window.BW.runAction('moveDown')); await page.waitForTimeout(200);
+      d = await D();
+      const sel2 = await page.evaluate(() => window.BW.S.sel);
+      check('0.13 editor: A21: last block, Move down → block 0 of the next section; selection follows', at(d, `/chapters/${ni}/sections/${nj}/blocks/0/paragraphs/0`) === moved && sel2.b === `/chapters/${ni}/sections/${nj}/blocks/0`, JSON.stringify({ sel2, lastP }));
+      await undoAll(1); d = await D();
+      check('0.13 editor: A21: undo restores the cross-section move', at(d, lastP) === moved);
+      // paragraph move inside a prose block
+      let pp = null;
+      d.chapters.forEach((ch, i) => ch.sections.forEach((s, j) => s.blocks.forEach((b, x) => { if (!pp && b.kind === 'prose' && b.paragraphs.length >= 2) pp = `/chapters/${i}/sections/${j}/blocks/${x}/paragraphs`; })));
+      if (pp) {
+        const a0 = at(d, `${pp}/0`), a1 = at(d, `${pp}/1`);
+        await click(`${pp}/0`); await page.keyboard.press('Alt+ArrowDown'); await page.waitForTimeout(200); d = await D();
+        check('0.13 editor: A21: Alt+↓ on a paragraph moves the paragraph within its block', at(d, `${pp}/0`) === a1 && at(d, `${pp}/1`) === a0);
+        await undoAll(1); d = await D();
+        check('0.13 editor: A21: undo restores the paragraph move', at(d, `${pp}/0`) === a0);
+      } else check('0.13 editor: A21: sample has a multi-paragraph block', false);
+      // row move
+      let rp = null;
+      d.chapters.forEach((ch, i) => ch.sections.forEach((s, j) => s.blocks.forEach((b, x) => { if (!rp && b.kind === 'table' && b.rows.length >= 2) rp = `/chapters/${i}/sections/${j}/blocks/${x}/rows`; })));
+      const r0 = JSON.stringify(at(d, `${rp}/0`));
+      await click(`${rp}/0/0`); await page.keyboard.press('Alt+ArrowDown'); await page.waitForTimeout(200); d = await D();
+      const rsel = await page.evaluate(() => window.BW.S.sel?.p);
+      check('0.13 editor: A21: Alt+↓ in a table cell moves the row; the selection follows it', JSON.stringify(at(d, `${rp}/1`)) === r0 && rsel === `${rp}/1/0`, JSON.stringify({ rp, rsel }));
+      await undoAll(1); d = await D();
+      check('0.13 editor: A21: undo restores the row move', JSON.stringify(at(d, `${rp}/0`)) === r0);
+      { // a structural edit is mirrored into the other edition: undo and redo take the mirror with them (the pair never drifts)
+        const kinds = () => page.evaluate(() => Object.values(window.BW.M[window.BW.S.svc]).map((e) => JSON.stringify(e.doc.chapters.map((c) => c.sections.map((s) => s.blocks.map((b) => b.kind))))));
+        const k0 = await kinds();
+        await click(`${rp}/0/0`); await page.evaluate(() => window.BW.runAction('moveDown')); await page.waitForTimeout(150);
+        const k1 = await kinds();
+        await page.evaluate(() => window.BW.undo()); const k2 = await kinds();
+        await page.evaluate(() => window.BW.redo()); const k3 = await kinds();
+        await page.evaluate(() => window.BW.undo());
+        check('0.13 editor: undo / redo of a mirrored block move act on both editions', k1[0] === k1.at(-1) && k1[0] !== k0[0] && k2[0] === k0[0] && k2.at(-1) === k0.at(-1) && k3[0] === k1[0] && k3.at(-1) === k1.at(-1), JSON.stringify({ k0: k0.length, same1: k1[0] === k1.at(-1), back: k2.at(-1) === k0.at(-1), again: k3.at(-1) === k1.at(-1) }));
+      }
+      // section move within its chapter
+      const chi = d.chapters.findIndex((ch) => ch.sections.length >= 2);
+      const t0s = d.chapters[chi].sections[0].title;
+      // the heading in the body, not its TOC entry (A25: a TOC title cell edits the same pointer)
+      { const h = page.locator(`main.bw-doc [data-p="/chapters/${chi}/sections/0/title"]:not([data-sec] *)`).first(); await h.scrollIntoViewIfNeeded(); await h.click(); await page.waitForTimeout(150); }
+      const sctx = await sh(page, (R) => { const c = R.querySelector('.ctx'); return c.hidden ? '' : [...c.querySelectorAll('[data-a]')].map((x) => x.dataset.a).join(','); });
+      await page.evaluate(() => window.BW.runAction('moveDown')); await page.waitForTimeout(200); d = await D();
+      check('0.13 editor: A21: a selected section heading shows Move and moves the section', /moveDown/.test(sctx) && d.chapters[chi].sections[1].title === t0s, JSON.stringify({ sctx }));
+      await undoAll(1); d = await D();
+      check('0.13 editor: A21: undo restores the section move', d.chapters[chi].sections[0].title === t0s);
+      check('0.13 editor: A21: no page errors', !errors.length, errors.join(' | '));
+      await ctx.close();
+    }
+    { // 0.13 R1
+      const { ctx, page, errors } = await open();
+      const timed = (fn) => Promise.race([page.evaluate(fn), new Promise((r) => setTimeout(() => r(-1), 5000))]);
+      const p0 = '/chapters/1/sections/0/blocks/0/paragraphs/0';
+      await page.locator(`main.bw-doc [data-p]`).first().evaluate(() => {});
+      const learnOn = await page.evaluate(() => !!window.BW_LEARNING);
+      const res = {};
+      for (const a of ['addPara', 'addDiagram']) {
+        const l = page.locator('main.bw-doc [data-p$="/paragraphs/0"]').first(); await l.scrollIntoViewIfNeeded(); await l.click(); await page.waitForTimeout(150);
+        await page.evaluate((a) => window.BW.runAction(a), a); await page.waitForTimeout(400);
+        await page.evaluate(() => window.BW.undo());
+        res[a] = await timed(() => { const t0 = performance.now(); window.BW.redo(); return performance.now() - t0; });
+        if (res[a] < 0) break; // frozen (R1): stop here, the check below fails
+      }
+      check('0.13 editor: R1: redo of addPara and addDiagram completes in < 1 s with learning on', learnOn && Object.values(res).every((v) => v >= 0 && v < 1000), JSON.stringify({ learnOn, res }));
+      await ctx.close();
+    }
+  } finally {
   await browser.close();
 }
 console.log(lines.join('\n'));
