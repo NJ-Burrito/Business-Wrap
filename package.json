@@ -35,6 +35,7 @@
     "editor",
     "mcp/cli.mjs",
     "mcp/server.mjs",
+    "mcp/vendor/sdk.mjs",
     "mcp/README.md",
     "mcp/README.ar.md",
     "mcp/server.json",
@@ -68,7 +69,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "test": "node engine/build-skill-html.mjs --check && node tests/editor.test.mjs && node tests/a11y.test.mjs && node mcp/test/server.test.mjs && node tests/skill-html.test.mjs && node tests/update.test.mjs && node tests/harvest.test.mjs && node tests/editable.test.mjs && node tests/field.test.mjs && node tests/diagram.test.mjs && node tests/design.test.mjs && node tests/ux.test.mjs && node tests/updater.test.mjs && node tests/settings.test.mjs && node tests/learning.test.mjs && node tests/print.test.mjs && node tests/srs.test.mjs && node tests/chrome.test.mjs && node tests/cli.test.mjs && node tests/ext.test.mjs && node tests/format.test.mjs && node tests/heal.test.mjs && node tests/host.test.mjs && node tests/layout.test.mjs && node tests/ledger.test.mjs && node tests/library.test.mjs && node tests/objects.test.mjs && node tests/plugin.test.mjs && node tests/profile.test.mjs && node tests/provenance.test.mjs && node tests/timeline.test.mjs && node tests/toast.test.mjs && node tests/workspace.test.mjs",
+    "test": "node engine/build-skill-html.mjs --check && node tests/editor.test.mjs && node tests/a11y.test.mjs && node mcp/test/server.test.mjs && node tests/skill-html.test.mjs && node tests/update.test.mjs && node tests/harvest.test.mjs && node tests/editable.test.mjs && node tests/field.test.mjs && node tests/diagram.test.mjs && node tests/design.test.mjs && node tests/ux.test.mjs && node tests/updater.test.mjs && node tests/settings.test.mjs && node tests/learning.test.mjs && node tests/print.test.mjs && node tests/srs.test.mjs && node tests/chrome.test.mjs && node tests/cli.test.mjs && node tests/ext.test.mjs && node tests/format.test.mjs && node tests/heal.test.mjs && node tests/host.test.mjs && node tests/layout.test.mjs && node tests/ledger.test.mjs && node tests/library.test.mjs && node tests/objects.test.mjs && node tests/plugin.test.mjs && node tests/owner-flows.test.mjs && node tests/profile.test.mjs && node tests/provenance.test.mjs && node tests/timeline.test.mjs && node tests/toast.test.mjs && node tests/workspace.test.mjs",
     "test:mcp": "node mcp/test/server.test.mjs",
     "mcp": "node mcp/cli.mjs",
     "sample": "node engine/build-editor.mjs samples/event-permit --out out/sample/event-permit.editor.html --set sample",
@@ -86,15 +87,17 @@
     "host": "node engine/cli.mjs open",
     "host:close": "node engine/cli.mjs close",
     "audit": "node tests/audit.probe.mjs",
-    "test:docx-fidelity": "uv run --no-project --with pywin32 --with pymupdf python tests/docx_fidelity.py"
+    "test:docx-fidelity": "uv run --no-project --with pywin32 --with pymupdf python tests/docx_fidelity.py",
+    "vendor:mcp": "esbuild mcp/vendor/entry.mjs --bundle --platform=node --format=esm --minify --legal-comments=eof --outfile=mcp/vendor/sdk.mjs \"--banner:js=/* Bundled by npm run vendor:mcp from @modelcontextprotocol/sdk, zod, ajv, ajv-formats, fast-deep-equal, json-schema-traverse (MIT), zod-to-json-schema (ISC), fast-uri (BSD-3-Clause). Do not edit. */ import{createRequire as __bwCR}from'node:module';const require=__bwCR(import.meta.url);\""
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.32.2",
-    "playwright-core": "^1.62.1",
-    "zod": "^4.6.7"
+    "playwright-core": "^1.62.1"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "axe-core": "^4.14.0",
-    "lucide-static": "^1.62.0"
+    "esbuild": "^0.25.10",
+    "lucide-static": "^1.62.0",
+    "zod": "^4.6.7"
   }
 }

@@ -4,8 +4,7 @@
 // Local only: reads and writes the paths it is given, opens no network port.
 import fs from 'node:fs';
 import path from 'node:path';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
+import { McpServer, z } from './vendor/sdk.mjs';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { exportPdf, exportDocx, loadTheme, fontsFor, REPO } from '../engine/export.mjs';
 import { applyOps, migrate, validateEdits } from '../engine/edits.mjs';

@@ -100,3 +100,7 @@ description = "gitleaks default generic-api-key reads the file name contrast-v3.
 targetRules = ["generic-api-key"]
 regexTarget = "secret"
 regexes = ['''^contrast-v3\.md$''']
+
+[[allowlists]]
+description = "The vendored MCP SDK bundle (npm run vendor:mcp): minified third-party code from @modelcontextprotocol/sdk, zod, ajv; its numbers and OAuth field names match the ID and password rules. tests/plugin.test.mjs fails unless the file is byte-identical to a fresh build from the locked packages, so nothing else can hide in it"
+paths = ['''^mcp/vendor/sdk\.mjs$''']

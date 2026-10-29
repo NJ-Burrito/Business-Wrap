@@ -19,12 +19,13 @@ export function mismatches(tag) {
   const want = (where, got) => { if (got !== v) bad.push(`${where} says ${got}, package.json says ${v}`); };
   const plugin = j('.claude-plugin/plugin.json');
   want('.claude-plugin/plugin.json version', plugin.version);
-  // The plugin MCP server launches a pinned release: the npm package business-wrap@X.Y.Z, or the GitHub tag
-  // github:NJ-Burrito/Business-Wrap#vX.Y.Z. Exactly this version, never a range.
+  // The plugin MCP server launches a pinned release: its own files (${CLAUDE_PLUGIN_ROOT}/mcp/cli.mjs, so the plugin's
+  // version is the server's), the npm package business-wrap@X.Y.Z, or the GitHub tag github:NJ-Burrito/Business-Wrap#vX.Y.Z.
   let launchRefs = 0;
   for (const [n, s] of Object.entries(plugin.mcpServers || {})) for (const a of s.args || []) {
     const m = /^business-wrap@(.+)$/.exec(a); if (m) { launchRefs++; want(`plugin mcpServers.${n} npm package`, m[1]); }
     const g = /^github:NJ-Burrito\/Business-Wrap#v(.+)$/.exec(a); if (g) { launchRefs++; want(`plugin mcpServers.${n} git tag`, g[1]); }
+    if (a === '${CLAUDE_PLUGIN_ROOT}/mcp/cli.mjs') launchRefs++; // the plugin's own copy: its version is plugin.json's
   }
   if (!launchRefs) bad.push('plugin mcpServers has no pinned launch ref (business-wrap@X.Y.Z or github:NJ-Burrito/Business-Wrap#vX.Y.Z)');
   const mk = j('.claude-plugin/marketplace.json');
