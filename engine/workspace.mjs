@@ -8,7 +8,8 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import { applyOps } from './edits.mjs';
 import { REPO } from './export.mjs';
 
 /** .local/ (gitignored); BW_LOCAL_DIR moves it (tests). */
@@ -46,12 +47,22 @@ export function setParent(p) {
   return workspace();
 }
 
-/** Create the four folders (first use); HISTORY gets the hidden attribute on Windows. */
+/** Create the four folders; HISTORY carries the hidden attribute on Windows whenever it lacks it (a folder made or
+ *  copied before 0.13.1 too): `attrib +h` once per folder per process, idempotent. */
+const hidden = new Set();
 export function ensure(ws = workspace()) {
-  const fresh = !fs.existsSync(ws.dirs.history);
   for (const d of Object.values(ws.dirs)) fs.mkdirSync(d, { recursive: true });
-  if (fresh && process.platform === 'win32') spawnSync('attrib', ['+h', ws.dirs.history], { windowsHide: true });
+  if (process.platform === 'win32' && !hidden.has(ws.dirs.history)) {
+    spawnSync('attrib', ['+h', ws.dirs.history], { windowsHide: true, stdio: 'ignore' });
+    hidden.add(ws.dirs.history);
+  }
   return ws;
+}
+/** True when `file` lies inside <base>\HISTORY (case-insensitive on Windows): machine state, never served. */
+export function inHistory(base, file) {
+  const r = path.relative(path.resolve(base), path.resolve(file));
+  const first = r.split(/[\\/]/)[0];
+  return !!r && !r.startsWith('..') && (process.platform === 'win32' ? first.toLowerCase() === 'history' : first === 'HISTORY');
 }
 
 const day = (d) => { const x = d instanceof Date ? d : new Date(d ?? Date.now()); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
@@ -71,18 +82,37 @@ export function uniquePath(dir, name) {
   return f;
 }
 
-/** The OS folder dialog (Windows FolderBrowserDialog through PowerShell; macOS osascript; Linux zenity). BW_PICK_STUB answers for tests. */
-export async function pickParent() {
-  let out = '';
-  if (process.env.BW_PICK_STUB !== undefined) out = process.env.BW_PICK_STUB;
-  else if (process.platform === 'win32') {
-    const ps = 'Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description = "Business-Wrap"; $d.ShowNewFolderButton = $true; $f = New-Object System.Windows.Forms.Form -Property @{TopMost = $true}; if ($d.ShowDialog($f) -eq "OK") { [Console]::OutputEncoding = [Text.Encoding]::UTF8; $d.SelectedPath }';
-    out = spawnSync('powershell.exe', ['-NoProfile', '-STA', '-Command', ps], { encoding: 'utf8', windowsHide: false }).stdout || '';
-  } else if (process.platform === 'darwin') out = spawnSync('osascript', ['-e', 'POSIX path of (choose folder)'], { encoding: 'utf8' }).stdout || '';
-  else out = spawnSync('zenity', ['--file-selection', '--directory'], { encoding: 'utf8' }).stdout || '';
-  out = out.trim();
-  if (!out) return null;
-  return setParent(out).parent;
+/** The dialog's command per platform. Windows: FolderBrowserDialog owned by a 1-px TopMost form that is shown and
+ *  brought to the front (an Alt tap lifts the foreground lock a background process has), so it opens in front. */
+export const PICK_PS = [
+  'Add-Type -AssemblyName System.Windows.Forms',
+  "Add-Type -Namespace BW -Name Win -MemberDefinition '[DllImport(\"user32.dll\")] public static extern bool SetForegroundWindow(System.IntPtr h); [DllImport(\"user32.dll\")] public static extern void keybd_event(byte k, byte s, uint f, System.UIntPtr e);'",
+  '$f = New-Object System.Windows.Forms.Form -Property @{TopMost = $true; ShowInTaskbar = $false; FormBorderStyle = "None"; Opacity = 0; StartPosition = "CenterScreen"; Width = 1; Height = 1}',
+  '$f.Show(); [BW.Win]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero); [BW.Win]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero); [void][BW.Win]::SetForegroundWindow($f.Handle); $f.Activate()',
+  '$d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description = "Business-Wrap"; $d.ShowNewFolderButton = $true',
+  'if ($d.ShowDialog($f) -eq "OK") { [Console]::OutputEncoding = [Text.Encoding]::UTF8; $d.SelectedPath }',
+  '$f.Close()',
+].join('; ');
+function pickCmd() {
+  if (process.env.BW_PICK_CMD) return JSON.parse(process.env.BW_PICK_CMD); // [exe, ...args]: tests
+  if (process.platform === 'win32') return ['powershell.exe', '-NoProfile', '-STA', '-Command', PICK_PS];
+  if (process.platform === 'darwin') return ['osascript', '-e', 'POSIX path of (choose folder)'];
+  return ['zenity', '--file-selection', '--directory'];
+}
+let picking = null;
+/** The OS folder dialog (Windows FolderBrowserDialog through PowerShell; macOS osascript; Linux zenity), run with an
+ *  async spawn so the server keeps answering while it is open; one dialog at a time (a second call joins the first).
+ *  BW_PICK_STUB answers at once, BW_PICK_CMD replaces the command (tests). → the chosen parent, or null. */
+export function pickParent() {
+  if (process.env.BW_PICK_STUB !== undefined) { const s = process.env.BW_PICK_STUB.trim(); return Promise.resolve(s ? setParent(s).parent : null); }
+  return (picking ||= new Promise((ok) => {
+    const [exe, ...args] = pickCmd();
+    let out = '';
+    const cp = spawn(exe, args, { windowsHide: false, stdio: ['ignore', 'pipe', 'ignore'] });
+    cp.stdout.setEncoding('utf8').on('data', (d) => { out += d; });
+    cp.on('error', () => ok(''));
+    cp.on('close', () => ok(out));
+  }).then((out) => { picking = null; const s = String(out).trim(); return s ? setParent(s).parent : null; }, () => { picking = null; return null; }));
 }
 
 /** The document's title for file names: control.coverTitle, else the service-name part of control.title. */
@@ -90,6 +120,14 @@ export function docTitle(doc, fallback = 'document') {
   const c = doc?.control || {};
   const t = String(c.title || '');
   return String(c.coverTitle || t.split(/\s*[:—]\s+/).slice(1).join(': ') || t || fallback).trim() || fallback;
+}
+/** The blank document's placeholder names: a title still equal to one of them is "not named yet". */
+export const PLACEHOLDER_TITLES = new Set(['خدمة جديدة', 'New service']);
+/** docTitle of an edition, falling back to another edition's title while this one is still the placeholder. */
+export function pairedTitle(doc, others = [], fallback = 'document') {
+  const own = docTitle(doc, fallback);
+  if (!PLACEHOLDER_TITLES.has(own)) return own;
+  return others.map((d) => docTitle(d, '')).find((x) => x && !PLACEHOLDER_TITLES.has(x)) || own;
 }
 
 /** A JSON request body, refused (413) over `max` bytes. Shared by engine/routes/{workspace,library,session}.mjs. */
@@ -111,8 +149,10 @@ export function sharePath(htmlDir, html, fallback = 'document') {
   try {
     const data = JSON.parse(/<script type="application\/json" id="bw-data">([\s\S]*?)<\/script>/.exec(html)[1]);
     const eds = data.services?.[0]?.editions || {};
-    const ed = eds[locale] || Object.values(eds)[0];
-    title = docTitle(JSON.parse(ed.raw), '');
+    // the document as it is on screen: the base plus its edits (a renamed cover lives in the ops, not in raw)
+    const docs = Object.fromEntries(Object.entries(eds).map(([k, x]) => [k, applyOps(JSON.parse(x.raw), x.ops || [])]));
+    const own = docs[locale] || Object.values(docs)[0];
+    title = pairedTitle(own, Object.values(docs).filter((d) => d !== own), '');
   } catch { /* not a Save-HTML: the fallback */ }
   return uniquePath(htmlDir, outName(title || String(fallback).replace(/(\.editor)?\.html?$/i, ''), new Date(), locale, 'html'));
 }

@@ -83,6 +83,43 @@ try {
   const NAME = /^.+-\d{4}-\d\d-\d\d-(AR|ENG)(-\d+)?\.(pdf|docx|html|print\.html)$/;
   const strays = ['pdf', 'docx', 'html'].flatMap((k) => fs.readdirSync(ws.dirs[k]).filter((f) => !NAME.test(f)).map((f) => `${k}/${f}`));
   check('PDF\\ DOCX\\ HTML\\ hold only "<title>-<date>-<AR|ENG>" files (no manifest.json, no ids)', strays.length === 0, strays.join(', '));
+
+  // review 2 row 10: the folder dialog never freezes the server, HISTORY is always hidden and never served (any case)
+  {
+    const slowParent = path.join(tmp, 'slow-parent');
+    fs.mkdirSync(slowParent);
+    delete process.env.BW_PICK_STUB;
+    process.env.BW_PICK_CMD = JSON.stringify([process.execPath, '-e', `setTimeout(() => console.log(${JSON.stringify(slowParent)}), 1500)`]);
+    const t0 = Date.now();
+    const pick = post('/api/workspace/pick', {});
+    await new Promise((r) => setTimeout(r, 200));
+    const v = await fetch(base + '/api/version');
+    const tv = Date.now() - t0;
+    const pr = await pick;
+    delete process.env.BW_PICK_CMD;
+    check('the folder dialog runs off the event loop: /api/version answers while it is open', v.status === 200 && tv < 1200 && pr.j.ok && pr.j.parent === slowParent, JSON.stringify({ tv, pick: pr.j }));
+    check('the Windows dialog script brings its owner window to the front (TopMost + SetForegroundWindow + Activate)', /TopMost = \$true/.test(W.PICK_PS) && /SetForegroundWindow/.test(W.PICK_PS) && /Activate\(\)/.test(W.PICK_PS) && /ShowDialog\(\$f\)/.test(W.PICK_PS));
+    W.setParent(parent);
+    const pre = path.join(tmp, 'pre-parent', 'Business-Wrap', 'HISTORY');
+    fs.mkdirSync(pre, { recursive: true }); // a HISTORY made before (no hidden attribute)
+    W.ensure(W.setParent(path.join(tmp, 'pre-parent')));
+    const attr = process.platform === 'win32' ? (await import('node:child_process')).spawnSync('attrib', [pre], { encoding: 'utf8' }).stdout : 'H';
+    W.setParent(parent);
+    check('an existing HISTORY without the hidden attribute gets it (attrib +h)', /(^|\s)H(\s|$)/.test(attr.split(pre)[0]), attr.trim());
+    fs.writeFileSync(path.join(ws.dirs.history, 'probe.txt'), 'x');
+    const cases = await Promise.all(['/files/HISTORY/probe.txt', '/files/history/probe.txt', '/files/History/probe.txt', '/files/./HISTORY/probe.txt', '/files/PDF/../HISTORY/probe.txt'].map(async (u) => (await fetch(base + u)).status));
+    check('HISTORY is never served, whatever the case or path', cases.every((c) => c === 404), cases.join(','));
+  }
+  // review 2 row 2: the share file is named by the title as edited (the ops), an untitled EN edition borrows the AR name
+  {
+    const bl = (l) => fs.readFileSync(path.join(REPO, 'samples', 'blank', `document.${l}.json`), 'utf8');
+    const op = { op: 'setText', path: '/control/coverTitle', value: 'خدمة مراجعة الإصدار', id: 'g1.0' };
+    const data = { services: [{ id: 'doc-x', editions: { ar: { raw: bl('ar'), ops: [op] }, en: { raw: bl('en'), ops: [] } } }] };
+    const mk = (lang) => `<!doctype html><html lang="${lang}"><body><script type="application/json" id="bw-data">${JSON.stringify(data)}</script></body></html>`;
+    const sa = path.basename(W.sharePath(ws.dirs.html, mk('ar'), 'doc-x.editor.html'));
+    const se = path.basename(W.sharePath(ws.dirs.html, mk('en'), 'doc-x.editor.html'));
+    check('share: named by the edited cover title, AR and EN by the same rule (no «خدمة جديدة» / "New service")', sa === W.outName('خدمة مراجعة الإصدار', new Date(), 'ar', 'html') && se === W.outName('خدمة مراجعة الإصدار', new Date(), 'en', 'html'), `${sa} | ${se}`);
+  }
 } finally {
   server.close();
   server.closeAllConnections?.();
