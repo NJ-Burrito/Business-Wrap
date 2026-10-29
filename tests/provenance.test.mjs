@@ -266,6 +266,25 @@ try {
   const trL = await L.unseal(dL.prov[libId].log, dL.prov[libId].doc); trL.entries.length -= 1;
   r = await openedOn(ctxC, 'c-trunc.html', withData(htmlL, { ...dL, prov: { [libId]: { ...dL.prov[libId], log: await L.seal(trL) } } }));
   check('clean machine: a tail cut from the log is flagged (no mirror needed)', r.reasons.includes('truncated'), JSON.stringify(r));
+  { // 0.13.1 final pass #1: a Save-HTML of an older 0.13 version served by this one is re-wrapped with every provenance field
+    const olderD = { ...JSON.parse(JSON.stringify(dL)), version: '0.13.0', lock: dL.lock ?? {}, projectsLink: { p: 'kept' } };
+    const fOld = path.join(tmp, 'older-0.13.0.editor.html'); fs.writeFileSync(fOld, withData(htmlL, olderD));
+    const srvOld = await serve(fOld, 0, {});
+    try {
+      const htmlS = await (await fetch(`http://127.0.0.1:${srvOld.address().port}/`)).text();
+      const dS = dataOf(htmlS);
+      const keep = ['bwlog', 'prov', 'contrib', 'lock', 'projectsLink'].filter((k) => JSON.stringify(dS[k]) !== JSON.stringify(olderD[k]));
+      const tr = L.traces(dS, libId, htmlS).join();
+      check('re-wrap: an older 0.13 Save-HTML served by this version keeps log, bwlog mark, contributors, lock, unknown keys and the head traces', dS.version !== '0.13.0' && !keep.length && tr === 'mark,timeline,meta,root,csp', JSON.stringify({ v: dS.version, keep, tr }));
+      const p = await ctxC.newPage(); watch(p);
+      await p.goto(`http://127.0.0.1:${srvOld.address().port}/`);
+      await ready(p);
+      const v = await verdict(p);
+      const src = await p.evaluate(() => window.BW.EXT.ledger.log().src);
+      check('re-wrap: the served older file opens with its full history intact (src html, not «stripped», not «made before 0.13»)', v.ok && !v.legacy && src === 'html' && (await entries(p)).filter((e) => e.kind === 'op').length >= 1, JSON.stringify({ v, src }));
+      await p.close();
+    } finally { srvOld.closeAllConnections?.(); await new Promise((ok) => srvOld.close(ok)); }
+  }
   await ctxC.close();
 
   // verify-history (CLI) is as strict as the editor: content-only edit, raw text edit, tail cut, stripped log
