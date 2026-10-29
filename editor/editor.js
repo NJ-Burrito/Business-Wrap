@@ -1103,7 +1103,8 @@ host.id = 'bw-ui-host';
 document.body.prepend(host);
 const root = host.attachShadow({ mode: 'open' });
 const IC = DATA.icons || {};
-const ic = (k) => IC[k] || '';
+// data-ic names the icon, so its own motion (editor/ext/40-icon-motion.css) finds it wherever it is drawn
+const ic = (k) => (IC[k] ? IC[k].replace('<svg', `<svg data-ic="${k}"`) : '');
 const RMQ = matchMedia('(prefers-reduced-motion: reduce)');
 S.calm = ls.get('bw:calm') === '1';
 S.focus = false;
@@ -1481,6 +1482,16 @@ function pop(id) {
   setTimeout(() => b.classList.remove('done'), 900);
 }
 
+/** A4: a press replays the pressed button's own icon motion (.ic-go), never another button's. */
+function icPress(b) {
+  const s = b.querySelector('.ic[data-ic]');
+  if (!s || isCalm()) return;
+  const parts = [...s.children];
+  parts.forEach((x) => { x.style.animation = 'none'; }); void s.getBoundingClientRect(); parts.forEach((x) => { x.style.animation = ''; });
+  b.classList.add('ic-go');
+  clearTimeout(b.icGo); b.icGo = setTimeout(() => b.classList.remove('ic-go'), 900);
+}
+
 function ask(label, value = '') {
   const d = root.querySelector('.dialog');
   d.hidden = false;
@@ -1565,6 +1576,7 @@ async function onBar(e) {
   const b = e.target.closest('button[data-a]');
   if (!b || b.closest('.palette')) return;
   const a = b.dataset.a;
+  icPress(b);
   if (a === 'more') { uxMenuToggle(b); return; } // shell-ux.js: the menu opens in the top layer, anchored to its button
   if (b.closest('.menu')) uxMenuClose(b.closest('.menu'));
   if (a === 'ed') { setLang(b.dataset.ed); return; }
@@ -2667,5 +2679,5 @@ function boot() {
 for (const [svc, eds] of Object.entries(M)) for (const [ed, e] of Object.entries(eds)) for (const c of e.doc.harvestConflicts || []) if (svc === S.svc) S.conflicts.push({ ed, path: c.path, mine: c.manual, theirs: c.harvested, kind: 'text' });
 if (S.conflicts.length) toast(t('reharvestConflicts', { n: S.conflicts.length }), 'warn', { actions: [[t('show'), () => openDrawer('conflicts')]], persist: true });
 { const n = (cur().doc.process?.actors || []).filter((a) => a.unresolved).length; if (n) toast(t('rolesUnresolved', { n }), 'warn', { actions: [[t('show'), () => openDrawer('process')]], persist: true }); }
-window.BW = { undoToast, flushDraft, S, M, commit, runAction, toast, DIAGRAM, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll, EXT, emit, bwExt, openDrawer };
+window.BW = { ic, IC, undoToast, flushDraft, S, M, commit, runAction, toast, DIAGRAM, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll, EXT, emit, bwExt, openDrawer };
 // boot(): called by engine/build-editor.mjs after editor/ext/*.js (the seam)

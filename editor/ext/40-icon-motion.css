@@ -1,0 +1,183 @@
+/* Icon motion for the 0.13.0 icons (owner request 2026-10-29).
+   Same house style as the 0.12 brand icons (brand/v3/icons/icons.css): one move, once, on hover of its button, on
+   keyboard focus, on a palette row's hover, on a section title's hover, and again on its own press (.ic-go, set by
+   icPress in editor.js on the pressed button only, A4). Timings are the v3 tokens. Each part says what it plays in
+   --icm; the trigger rule below plays it. Calm mode and reduced motion: nothing moves (also ui.css). */
+:where(.ic[data-ic]:not(.bw-i)) > * { transform-box: fill-box; transform-origin: 50% 50%; }
+:is(.b:hover:not(:disabled), .b:focus-visible, .b.ic-go, [role="option"]:hover, .sc:hover) .ic:is(
+  [data-ic="library"], [data-ic="timeline"], [data-ic="secChrome"], [data-ic="secHeader"], [data-ic="secFooter"], [data-ic="secFormat"], [data-ic="secWrap"],
+  [data-ic="hdrText"], [data-ic="ftrText"], [data-ic="hdrField"], [data-ic="ftrField"], [data-ic="hdrLogo"], [data-ic="hdrConf"],
+  [data-ic="chStart"], [data-ic="hdrStart"], [data-ic="ftrStart"], [data-ic="chCenter"], [data-ic="hdrCenter"], [data-ic="ftrCenter"],
+  [data-ic="chEnd"], [data-ic="hdrEnd"], [data-ic="ftrEnd"], [data-ic="chDelete"], [data-ic="hdrDelete"], [data-ic="ftrDelete"],
+  [data-ic="chScope"], [data-ic="hdrScope"], [data-ic="ftrScope"],
+  [data-ic="fmtBold"], [data-ic="fmtItalic"], [data-ic="fmtUnderline"], [data-ic="fmtStrike"], [data-ic="fmtCode"], [data-ic="fmtLink"],
+  [data-ic="fmtColor"], [data-ic="fmtFont"], [data-ic="fmtSize"], [data-ic="fmtClear"], [data-ic="fmtAlignStart"], [data-ic="fmtAlignCenter"],
+  [data-ic="fmtAlignEnd"], [data-ic="fmtJustify"], [data-ic="fmtTop"], [data-ic="fmtMiddle"], [data-ic="fmtBottom"], [data-ic="fmtLine"],
+  [data-ic="fmtBefore"], [data-ic="fmtAfter"], [data-ic="fmtQuote"], [data-ic="fmtBullets"], [data-ic="fmtNumbers"], [data-ic="fmtShapes"],
+  [data-ic="fmtIndent"], [data-ic="fmtOutdent"], [data-ic="pgSetup"], [data-ic="pgBreak"], [data-ic="tocHide"], [data-ic="tocAdd"],
+  [data-ic="fmRowAdd"], [data-ic="fmRowDel"], [data-ic="fmColAdd"], [data-ic="fmColDel"], [data-ic="insTable"], [data-ic="insSection"],
+  [data-ic="insChapter"], [data-ic="insTextBox"], [data-ic="copyBlock"], [data-ic="pasteBlock"], [data-ic="wrapInline"], [data-ic="wrapSquare"],
+  [data-ic="wrapTight"], [data-ic="wrapThrough"], [data-ic="wrapTopBottom"], [data-ic="wrapBehind"], [data-ic="wrapFront"],
+  [data-ic="pvOpen"], [data-ic="pvSign"], [data-ic="lkToggle"], [data-ic="shShare"]) > * { animation: var(--icm, none); }
+
+/* the moves (parts set --x/--y/--r/--s/--o) */
+@keyframes icm-nudge { 0%, 100% { translate: 0 0; } 45% { translate: var(--x, 0) var(--y, 0); } }
+@keyframes icm-from { from { translate: var(--x, 0) var(--y, 0); opacity: 0; } 45% { opacity: 1; } to { translate: 0 0; opacity: 1; } }
+@keyframes icm-draw { from { stroke-dasharray: 0 48; } to { stroke-dasharray: 48 0; } }
+@keyframes icm-pop { 0%, 100% { scale: 1; } 40% { scale: var(--s, 1.2); } 70% { scale: .96; } }
+@keyframes icm-grow-x { from { scale: 0 1; } to { scale: 1 1; } }
+@keyframes icm-grow-y { from { scale: 1 0; } to { scale: 1 1; } }
+@keyframes icm-tilt { 0%, 100% { rotate: 0deg; } 40% { rotate: var(--r, 12deg); } 70% { rotate: calc(var(--r, 12deg) * -.3); } }
+@keyframes icm-spin { from { rotate: 0deg; } to { rotate: var(--r, 360deg); } }
+@keyframes icm-skew { 0%, 100% { transform: none; } 45% { transform: skewX(-14deg); } }
+@keyframes icm-bold { 45% { stroke-width: 3.4px; scale: 1.08; } }
+@keyframes icm-blink { 0%, 100% { opacity: 1; } 25%, 60% { opacity: .15; } }
+@keyframes icm-shake { 0%, 100% { translate: 0 0; } 20% { translate: -1.5px 0; } 40% { translate: 1.5px 0; } 60% { translate: -1px 0; } 80% { translate: .5px 0; } }
+@keyframes icm-recede { 0%, 100% { scale: 1; opacity: 1; } 45% { scale: var(--s, .8); opacity: .45; } }
+@keyframes icm-lift { 0%, 100% { translate: 0 0; rotate: 0deg; } 45% { translate: 0 -2px; rotate: -4deg; } }
+
+/* Documents «المستندات»: the folder lifts open */
+[data-ic="library"] > * { transform-origin: 50% 100%; --icm: icm-lift var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+/* Changes «التغييرات»: the clock's hands rewind, the arrow nudges back */
+[data-ic="timeline"] > :nth-child(3) { transform-origin: 0 71%; --r: -360deg; --icm: icm-spin var(--bw-dur-page) var(--bw-ease-in-out) var(--d, 0s) 1; }
+[data-ic="timeline"] > :nth-child(2) { --x: -1.5px; --y: -1px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+/* «الترويسة»: the band drops into the top of the page; the old chrome icon draws its rule */
+[data-ic="secHeader"] > :nth-child(2) { --y: -4px; --icm: icm-from var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
+[data-ic="secChrome"] > :nth-child(2) { --icm: icm-grow-x var(--bw-dur-page) var(--bw-ease-in-out) var(--d, 0s) 1 backwards; }
+/* «التذييل»: the band rises into the foot of the page */
+[data-ic="secFooter"] > :nth-child(2) { --y: 4px; --icm: icm-from var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
+/* format section: the T's bar drops on; font: the stem stretches */
+[data-ic="secFormat"] > :nth-child(2) { --y: -3px; --icm: icm-from var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
+[data-ic="fmtFont"] > :nth-child(1) { transform-origin: 50% 100%; --icm: icm-grow-y var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
+[data-ic="fmtFont"] > :nth-child(3) { --icm: icm-grow-x var(--bw-dur-slow) var(--bw-ease-out) var(--d, 0s) 1 backwards; --d: 160ms; }
+/* wrap: the section draws the flow; square slides the turn; tight squeezes it; through runs the line across */
+[data-ic="secWrap"] > :nth-child(2) { --icm: icm-draw var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="wrapSquare"] > :nth-child(1) { --x: -2.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="wrapTight"] > :nth-child(2) { transform-origin: 0 50%; --icm: icm-recede var(--bw-dur-page) var(--bw-ease-in-out) var(--d, 0s) 1; --s: .78; }
+[data-ic="wrapThrough"] > :nth-child(4) { --x: 3px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-in-out) var(--d, 0s) 1; }
+[data-ic="wrapInline"] > * { --y: -3px; --icm: icm-from var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
+[data-ic="wrapInline"] > :nth-child(2) { --d: var(--bw-stagger); }
+[data-ic="wrapInline"] > :nth-child(3) { --d: calc(var(--bw-stagger) * 2); }
+[data-ic="wrapTopBottom"] > :nth-child(1) { --y: -1.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="wrapTopBottom"] > :nth-child(3) { --y: 1.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="wrapBehind"] > :nth-child(2) { --s: .78; --icm: icm-recede var(--bw-dur-page) var(--bw-ease-in-out) var(--d, 0s) 1; }
+[data-ic="wrapFront"] > :nth-child(1) { --s: 1.14; --icm: icm-pop var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1; }
+/* text item: the caret blinks (header) or steps along (footer) */
+[data-ic="hdrText"] > :nth-child(5) { --icm: icm-blink var(--bw-dur-page) steps(1, end) var(--d, 0s) 1; }
+[data-ic="ftrText"] > :nth-child(5) { --x: 2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+/* field item: the braces open (header) or close in (footer) */
+[data-ic="hdrField"] > :nth-child(1) { --x: -2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="hdrField"] > :nth-child(2) { --x: 2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="ftrField"] > :nth-child(1) { --x: 1.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="ftrField"] > :nth-child(2) { --x: -1.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+/* logo item: the stamp presses down */
+[data-ic="hdrLogo"] > :is(:nth-child(1), :nth-child(2)) { --y: 2px; --icm: icm-nudge var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1; }
+/* confidential: the shield pulses */
+[data-ic="hdrConf"] > * { --s: 1.14; --icm: icm-pop var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+/* alignment (band items and paragraphs): the short lines snap to their side, to the middle, or stretch to both */
+[data-ic="chStart"], [data-ic="hdrStart"], [data-ic="ftrStart"], [data-ic="fmtAlignStart"] { --x: 4px; }
+[data-ic="chEnd"], [data-ic="hdrEnd"], [data-ic="ftrEnd"], [data-ic="fmtAlignEnd"] { --x: -4px; }
+:is([data-ic="chStart"], [data-ic="hdrStart"], [data-ic="ftrStart"], [data-ic="fmtAlignStart"], [data-ic="chEnd"], [data-ic="hdrEnd"], [data-ic="ftrEnd"], [data-ic="fmtAlignEnd"]) > :is(:nth-child(2), :nth-child(3)) { --icm: icm-from var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
+:is([data-ic="chStart"], [data-ic="hdrStart"], [data-ic="ftrStart"], [data-ic="fmtAlignStart"], [data-ic="chEnd"], [data-ic="hdrEnd"], [data-ic="ftrEnd"], [data-ic="fmtAlignEnd"]) > :nth-child(3) { --d: var(--bw-stagger); }
+:is([data-ic="chCenter"], [data-ic="hdrCenter"], [data-ic="ftrCenter"], [data-ic="fmtAlignCenter"]) > :is(:nth-child(2), :nth-child(3)) { --icm: icm-grow-x var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
+[data-ic="fmtJustify"] > * { --icm: icm-grow-x var(--bw-dur-slow) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="fmtJustify"] > :nth-child(2) { --d: var(--bw-stagger); }
+[data-ic="fmtJustify"] > :nth-child(3) { --d: calc(var(--bw-stagger) * 2); }
+/* remove item: the bin's lid lifts */
+:is([data-ic="chDelete"], [data-ic="hdrDelete"], [data-ic="ftrDelete"]) > :is(:nth-child(4), :nth-child(5)) { transform-origin: 0 100%; --y: -2px; --r: -10deg; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1, icm-tilt var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+/* which pages: the layers part and settle */
+:is([data-ic="chScope"], [data-ic="hdrScope"], [data-ic="ftrScope"]) > :nth-child(1) { --y: -2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+:is([data-ic="chScope"], [data-ic="hdrScope"], [data-ic="ftrScope"]) > :nth-child(2) { --y: 1.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; --d: 60ms; }
+/* bold thickens; italic leans; underline draws its rule; strike draws its line; code opens its brackets */
+[data-ic="fmtBold"] > * { --icm: icm-bold var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="fmtItalic"] > * { --icm: icm-skew var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="fmtUnderline"] > :nth-child(2) { transform-origin: 0 50%; --icm: icm-draw var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="fmtUnderline"] > :nth-child(1) { --y: -1.5px; --icm: icm-nudge var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1; }
+[data-ic="fmtStrike"] > :nth-child(3) { --icm: icm-draw var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="fmtCode"] > :nth-child(1) { --x: 2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="fmtCode"] > :nth-child(2) { --x: -2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+/* link: the two halves part and snap back together */
+[data-ic="fmtLink"] > :nth-child(1) { --x: -1.5px; --y: 1.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1; }
+[data-ic="fmtLink"] > :nth-child(2) { --x: 1.5px; --y: -1.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1; }
+/* colour: the paint dots pop in turn */
+[data-ic="fmtColor"] > :not(:nth-child(1)) { --s: 1.6; --icm: icm-pop var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1; }
+[data-ic="fmtColor"] > :nth-child(3) { --d: var(--bw-stagger); }
+[data-ic="fmtColor"] > :nth-child(4) { --d: calc(var(--bw-stagger) * 2); }
+[data-ic="fmtColor"] > :nth-child(5) { --d: calc(var(--bw-stagger) * 3); }
+/* size: the big A grows */
+[data-ic="fmtSize"] > :is(:nth-child(1), :nth-child(2)) { transform-origin: 50% 100%; --s: 1.18; --icm: icm-pop var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1; }
+/* clear formatting: the cross turns */
+[data-ic="fmtClear"] > :is(:nth-child(4), :nth-child(5)) { transform-origin: 50% 50%; --r: 90deg; --icm: icm-spin var(--bw-dur-slow) var(--bw-ease-out) var(--d, 0s) 1; }
+/* vertical align: the blocks rise to the top, meet in the middle, drop to the bottom */
+[data-ic="fmtTop"] > :is(:nth-child(1), :nth-child(2)) { --y: 3px; --icm: icm-from var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
+[data-ic="fmtBottom"] > :is(:nth-child(1), :nth-child(2)) { --y: -3px; --icm: icm-from var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
+[data-ic="fmtMiddle"] > :is(:nth-child(1), :nth-child(2)) { --icm: icm-grow-y var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
+/* line spacing: the arrows push apart */
+[data-ic="fmtLine"] > :is(:nth-child(1), :nth-child(7)) { --y: 2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="fmtLine"] > :is(:nth-child(2), :nth-child(8)) { --y: -2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+/* space before / after: the arrow travels up to / down to its line */
+[data-ic="fmtBefore"] > :is(:nth-child(2), :nth-child(3)) { --y: 3px; --icm: icm-from var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="fmtAfter"] > :is(:nth-child(1), :nth-child(2)) { --y: -3px; --icm: icm-from var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+/* quote: the marks drop in, one then the other */
+[data-ic="fmtQuote"] > * { --y: -3px; --icm: icm-from var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
+[data-ic="fmtQuote"] > :nth-child(1) { --d: calc(var(--bw-stagger) * 2); }
+/* bullets pop, numbered lines write in, checklist ticks draw */
+[data-ic="fmtBullets"] > :nth-child(-n+3) { --s: 1.8; --icm: icm-pop var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1; }
+[data-ic="fmtBullets"] > :nth-child(2) { --d: var(--bw-stagger); }
+[data-ic="fmtBullets"] > :nth-child(3) { --d: calc(var(--bw-stagger) * 2); }
+[data-ic="fmtNumbers"] > :nth-child(-n+3) { transform-origin: 0 50%; --icm: icm-grow-x var(--bw-dur-slow) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="fmtNumbers"] > :nth-child(2) { --d: var(--bw-stagger); }
+[data-ic="fmtNumbers"] > :nth-child(3) { --d: calc(var(--bw-stagger) * 2); }
+[data-ic="fmtShapes"] > :is(:nth-child(4), :nth-child(5)) { --icm: icm-draw var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="fmtShapes"] > :nth-child(4) { --d: calc(var(--bw-stagger) * 2); }
+/* indent / outdent: the chevron pushes the lines */
+[data-ic="fmtIndent"] > :nth-child(4) { --x: 3px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="fmtIndent"] > :nth-child(-n+3) { --x: 1px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; --d: 60ms; }
+[data-ic="fmtOutdent"] > :nth-child(4) { --x: -3px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="fmtOutdent"] > :nth-child(-n+3) { --x: -1px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; --d: 60ms; }
+/* page setup: the ruler's ticks measure in turn */
+[data-ic="pgSetup"] > :nth-child(n+2) { --icm: icm-grow-y var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
+[data-ic="pgSetup"] > :nth-child(3) { --d: var(--bw-stagger); }
+[data-ic="pgSetup"] > :nth-child(4) { --d: calc(var(--bw-stagger) * 2); }
+[data-ic="pgSetup"] > :nth-child(5) { --d: calc(var(--bw-stagger) * 3); }
+/* page break: the scissors snip */
+[data-ic="pgBreak"] > :nth-child(1) { --r: -12deg; --icm: icm-tilt var(--bw-dur-slow) var(--bw-ease-in-out) var(--d, 0s) 1; }
+[data-ic="pgBreak"] > :nth-child(3) { --r: 12deg; --icm: icm-tilt var(--bw-dur-slow) var(--bw-ease-in-out) var(--d, 0s) 1; }
+[data-ic="pgBreak"] > :nth-child(n+6) { --x: -2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+/* contents: hide folds the lines away; add turns its plus */
+[data-ic="tocHide"] > :nth-child(-n+3) { transform-origin: 0 50%; --s: .3; --icm: icm-recede var(--bw-dur-page) var(--bw-ease-in-out) var(--d, 0s) 1; }
+[data-ic="tocAdd"] > :is(:nth-child(4), :nth-child(5)) { --r: 90deg; --icm: icm-spin var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1; }
+/* front-matter table rows / columns */
+[data-ic="fmRowAdd"] > :is(:nth-child(4), :nth-child(5)) { --s: 1.4; --icm: icm-pop var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1; }
+[data-ic="fmRowAdd"] > :nth-child(-n+3) { --y: -2px; --icm: icm-from var(--bw-dur-slow) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="fmRowDel"] > :nth-child(4) { --icm: icm-shake var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="fmColAdd"] > :nth-child(2) { --y: -3px; --icm: icm-from var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
+[data-ic="fmColDel"] > :is(:nth-child(2), :nth-child(3)) { --s: .2; --icm: icm-recede var(--bw-dur-page) var(--bw-ease-in-out) var(--d, 0s) 1; }
+/* insert table: the grid draws; section / chapter: the number drops or rises in */
+[data-ic="insTable"] > :not(:nth-child(2)) { --icm: icm-draw var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="insTable"] > :nth-child(3) { --d: var(--bw-stagger); }
+[data-ic="insTable"] > :nth-child(4) { --d: calc(var(--bw-stagger) * 2); }
+[data-ic="insSection"] > :nth-child(4) { --y: -3px; --icm: icm-from var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
+[data-ic="insChapter"] > :nth-child(4) { --y: 3px; --icm: icm-from var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
+/* text box: the lines type in */
+[data-ic="insTextBox"] > :nth-child(n+11):nth-child(-n+13) { transform-origin: 0 50%; --icm: icm-grow-x var(--bw-dur-slow) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="insTextBox"] > :nth-child(13) { --d: var(--bw-stagger); }
+[data-ic="insTextBox"] > :nth-child(12) { --d: calc(var(--bw-stagger) * 2); }
+/* copy pulls the block out to the clipboard, paste pushes it in */
+[data-ic="copyBlock"] > :is(:nth-child(4), :nth-child(5)) { --x: -2.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="pasteBlock"] > :is(:nth-child(1), :nth-child(3)) { --x: 2.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+/* provenance «المصدر»: the shield's tick draws; sign: the pen writes its line */
+[data-ic="pvOpen"] > :nth-child(2) { --icm: icm-draw var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="pvSign"] > :nth-child(1) { transform-origin: 0 50%; --icm: icm-grow-x var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="pvSign"] > :nth-child(2) { --x: 2px; --y: 1px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+/* lock / unlock: the shackle lifts */
+[data-ic="lkToggle"] > :nth-child(2) { --y: -2.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1; }
+/* share: the links draw out to the nodes, which pop */
+[data-ic="shShare"] > :nth-child(n+4) { --icm: icm-draw var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="shShare"] > :nth-child(-n+3) { --s: 1.25; --icm: icm-pop var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1; }
+[data-ic="shShare"] > :nth-child(1) { --d: calc(var(--bw-stagger) * 3); }
+[data-ic="shShare"] > :nth-child(3) { --d: calc(var(--bw-stagger) * 4); }
+
+/* calm mode and reduced motion: drawn, never moving */
+@media (prefers-reduced-motion: reduce) { .ic[data-ic] > * { animation: none !important; } }
+.shell[data-calm="1"] .ic[data-ic] > * { animation: none !important; }
