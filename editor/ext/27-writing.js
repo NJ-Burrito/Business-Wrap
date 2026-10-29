@@ -150,6 +150,16 @@ const W2_WRITE = {
       // a section left with no blocks at all (after a delete) still starts a page: its break goes too
       if ((s.blocks || []).length === dead.length && s.layout?.breakBefore) { const lay = { ...s.layout }; delete lay.breakBefore; ops.push({ op: 'replace', path: `${sp}/layout`, value: lay, old: s.layout }); }
       for (const i of dead.reverse()) ops.push({ op: 'delete', path: `${sp}/blocks/${i}`, old: s.blocks[i] });
+      // a page empty only by spacing: blank paragraphs left inside a prose block that has words (they spill onto a page of their own).
+      // Gone only where the other edition's paragraph is blank too (or absent), so a mirrored delete never takes real words.
+      (s.blocks || []).forEach((b, i) => {
+        if (b.kind !== 'prose' || dead.includes(i)) return;
+        const mirrored = S.both && hasOther(), other = mirrored ? get(cur(S.ed === 'ar' ? 'en' : 'ar').doc, `${sp}/blocks/${i}`) : null;
+        const ps = b.paragraphs || [];
+        for (let j = ps.length - 1; j >= 0; j -= 1) {
+          if (w2wBlank(ps[j]) && (!mirrored || (other?.kind === 'prose' && w2wBlank(other.paragraphs?.[j])))) ops.push({ op: 'delete', path: `${sp}/blocks/${i}/paragraphs/${j}`, old: ps[j] });
+        }
+      });
     }));
     if (!ops.length) { toast(t('w2w.noEmpty'), 'info'); return 0; }
     commit(ops, { mirror: true });
