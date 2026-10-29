@@ -166,6 +166,15 @@ try {
     let e;
     try { linesToProcess(['Just prose with no steps']); } catch (x) { e = x; }
     check('sources: a document with no numbered or bulleted step is refused with the reason', /no numbered or bulleted step/.test(e?.message || ''));
+    // review 2 extra 8: several sources under one name never overwrite each other (the first keeps the folder)
+    const sd = path.join(OUT, 'src-many');
+    fs.mkdirSync(sd, { recursive: true });
+    fs.writeFileSync(path.join(sd, 'a.md'), '# Permit\n1. Apply online\n2. Pay the fee\n');
+    fs.writeFileSync(path.join(sd, 'b.txt'), 'Permit\n- Upload the licence\n- Wait for approval\n');
+    const m1 = await harvestSources([path.join(sd, 'a.md'), path.join(sd, 'b.txt')], { out: path.join(OUT, 'src-many-out'), name: 'One permit', editor: false });
+    const dirs = m1.results.map((x) => path.dirname(x.documents[0]));
+    const texts = m1.results.map((x) => JSON.stringify(read(x.documents[1])));
+    check('sources: two sources under one name land in two folders, the first output kept', m1.results.length === 2 && dirs[0] !== dirs[1] && /Apply online/.test(fs.readFileSync(path.join(dirs[0], 'document.en.json'), 'utf8')) && /Upload the licence/.test(texts[1]), JSON.stringify({ dirs, skipped: m1.skipped }));
   }
 } catch (e) {
   check('harvest run', false, e.stack?.split('\n').slice(0, 3).join(' / '));
