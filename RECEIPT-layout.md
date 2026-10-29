@@ -22,3 +22,8 @@ Governance: nj-governance-v4 · delegations: 0 · no push, no merge.
 - Enter in rich/list leaves outside paragraphs/acceptance is a line break, not a new item.
 - "Pull up" / "empty pages" work on layout flags and blank blocks only; a visually empty page caused by content height is not detected.
 - Lane A overlap: only if it also edits `21-format.js` list(); cell behaviour untouched.
+
+## Targeted suites (run singly, machine loaded)
+- writing 24/24 PASS · format 34/34 · objects 35/35 · toast 7/7 · chrome 25/25 · layout 46/46 · editable 43/43 · ext: no failures.
+- ux: after adding explainers/icons/section the A5-explainer, menu and icon checks pass; 143-144/146 with 2-3 DIFFERENT failures per run, all drag / card-timing (A5 "leaving hides the card", "move single/spread ar" diagram-node drags), unrelated to these files, flaky under load.
+- editor.test: only "60-page responsive <300ms" (300/315 ms, load noise). a11y.test: axe-core module missing in this checkout (pre-existing). field.test result not captured. Full `npm test` NOT run (per coordinator).
