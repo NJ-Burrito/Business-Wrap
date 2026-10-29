@@ -74,8 +74,8 @@ claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp
 
 - Release zip: `business-wrap-<version>.zip` + `.sha256` from https://github.com/NJ-Burrito/Business-Wrap/releases/latest. In that folder: `npm ci`.
 - MCP from a clone: `claude mcp add business-wrap -- node <path-to>/Business-Wrap/mcp/cli.mjs`
-- MCP from the GitHub tag (no npm): `claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.12.0 business-wrap-mcp`
-- Tools: `build_editor`, `validate_edits`, `apply_edits`, `export_document`, `export_design_pack`, `check_fonts`, `harvest_model`, `harvest_crawl`, `harvest_merge`, `diagram_mermaid`, `check_update`, `apply_update`, plus the `learning_*` tools. See [mcp/README.md](mcp/README.md).
+- MCP from the GitHub tag (no npm): `claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.13.0 business-wrap-mcp`
+- Tools (15): `build_editor`, `validate_edits`, `apply_edits`, `export_document`, `export_design_pack`, `check_fonts`, `harvest_model`, `harvest_crawl`, `harvest_merge`, `harvest_sources`, `open_in_editor`, `close_editor`, `diagram_mermaid`, `check_update`, `apply_update`, plus the `learning_*` tools. A harvest tool given `open: true` opens its result in the editor. See [mcp/README.md](mcp/README.md).
 
 </details>
 
@@ -96,6 +96,30 @@ node engine/build-editor.mjs <doc.json | folder>... --out out/my.editor.html [--
 node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|en] [--out dir]
 ```
 Opened from disk (file://), «PDF + DOCX» downloads the edited document JSON and shows the `export.mjs` command; through `npm run serve` it exports in one click. The ready-made editor is `assets/editor/business-wrap.html`.
+
+</details>
+
+<details>
+<summary>⌨️ "/" commands in Claude Code (0.13.0)</summary>
+
+
+Installed as a plugin, Business-Wrap adds these commands; type `/` in Claude Code to see them. Each runs `engine/cli.mjs` (the same `business-wrap <verb>` you can run yourself, with no AI and no network) and says in one line what it did.
+
+| Command | What it does |
+|---|---|
+| `/business-wrap:open [doc.json\|folder\|editor.html]` | Start the local host and open the editor in Edge (a blank document when no file is given) |
+| `/business-wrap:close` | Stop every host and close every Edge window this install started |
+| `/business-wrap:status` | Version, running hosts, how many steps were healed |
+| `/business-wrap:new ["Title"]` | A new blank document pair (Arabic + English), opened in the editor |
+| `/business-wrap:harvest <url\|crawl.json\|model\|PDF/DOCX/HTML\|folder>` | Harvest a live site (never submits), a process model or a document, then open it |
+| `/business-wrap:import <file\|folder ...>` | Your own sources (BPMN, draw.io, YAML, PDF, DOCX, HTML) into documents |
+| `/business-wrap:build <doc.json\|folder> --out <editor.html>` | Build the editor file |
+| `/business-wrap:export <doc.json> [ar\|en]` | PDF + DOCX, then the render and export gates |
+| `/business-wrap:verify-history <file>` | Check the tamper-evident history |
+| `/business-wrap:report <from> <to>` | Work report for a date range |
+| `/business-wrap:update [--check\|--notes\|--apply --yes]` | Check, read what is new, or install (only after you agree) |
+
+Without Claude Code the same verbs run as `npm run cli -- <verb>` (for example `npm run cli -- open samples/event-permit`, `npm run host:close`). Every verb works offline, with no AI.
 
 </details>
 
@@ -199,6 +223,24 @@ Each gives the Arabic and English document JSON and an editor. In the editor: **
 
 </details>
 
+<details>
+<summary>🆕 New in 0.13.0</summary>
+
+- **Documents** («المستندات», Ctrl+O): every Save is a document of its own (a template is never overwritten); open here or in a new tab, duplicate, delete and restore, import PDF, DOCX or HTML.
+- **Changes** («تغييرات», Ctrl+Shift+H): a timeline of every edit with back, forward and checkpoints; the counter starts again at each Save HTML.
+- **Save folder:** `<folder>\Business-Wrap\{PDF,DOCX,HTML,HISTORY}`, files named `<title>-<date>-<AR|ENG>`, asked once on the first Save or export.
+- **Background host:** closing the last tab saves every tab and stops the server; the next launch offers to resume everything or start new work.
+- **Header and Footer** toolbar sections: text, fields, logos, page numbers; each item for every page, this page only, or from this page on; edited on each page in the page views.
+- **Page setup:** A3, A4, A5, Letter, Legal; portrait or landscape for the whole document or one section; page breaks at a chosen section.
+- **Objects:** tables, sections and chapters anywhere; copy and paste a whole block; free text boxes; images with Word's seven wrap modes.
+- **Format bar:** colour, size, font, alignment, lists to six levels, quote, link, code; Ctrl+B / I / U.
+- **Everything editable:** TOC entries, the document-control table, revisions; they get the table tools.
+- **Trust:** profile, provenance per change, sign, share, lock and unlock, a tamper-evident history, a work report as PDF.
+- **Tooling:** the `business-wrap` CLI (offline, no AI), "/" commands, MCP harvest → editor, healers and per-stage gates.
+- **Design:** import a colour palette (with the contrast gate), logo motion, calmer side panels (groups collapsed), short click-to-dismiss toasts.
+
+</details>
+
 ## 🔤 Fonts
 
 🎯 Documents use the Thmanyah families. **Cairo is banned**, also as a fallback.
@@ -259,6 +301,8 @@ git config core.hooksPath .githooks
 🔁 **One automatic request:** the update check, at most once a day, to the public GitHub release list. Webhooks send only to an address you set.
 
 🌾 **The crawler is a dry run:** it stops before Send, Submit, Confirm or Pay unless you ask twice.
+
+🔏 **Tamper-evident history (0.13.0), and its honest limit:** every edit, save, export, sign, lock and unlock is an entry in a hash-chained, signed log (`bwlog` v1, a frozen format) that travels inside the shared HTML, with a mirror in your save folder's `HISTORY`. A removed or edited entry, or an edit that was never logged, is detected and shown. The log is encrypted only against casual reading: Business-Wrap is MIT and open source, so the key is in the code. Someone with the source can rebuild a whole chain with new keys; that is caught only where a mirror or a pinned key from the real author exists (another machine, the `HISTORY` store, an earlier shared copy). There is no trusted timestamp. Lock blocks accidental edits; it is not access control ([bible/11-trust-ledger.md](bible/11-trust-ledger.md)).
 
 🛡️ **A security gate** (`security/check.py`, plus gitleaks in CI) keeps client content, credentials and local paths out of the repo. Found a problem? [SECURITY.md](SECURITY.md).
 

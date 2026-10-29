@@ -87,8 +87,8 @@ claude mcp add business-wrap -- npx -y -p business-wrap@latest business-wrap-mcp
 
 - ملف الإصدار: `business-wrap-<version>.zip` مع `.sha256` من https://github.com/NJ-Burrito/Business-Wrap/releases/latest. وفي ذلك المجلد: `npm ci`.
 - خادم MCP من نسخة محلية: `claude mcp add business-wrap -- node <path-to>/Business-Wrap/mcp/cli.mjs`
-- خادم MCP من وسم GitHub (دون npm): `claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.12.0 business-wrap-mcp`
-- الأدوات: `build_editor` و`validate_edits` و`apply_edits` و`export_document` و`export_design_pack` و`check_fonts` و`harvest_model` و`harvest_crawl` و`harvest_merge` و`diagram_mermaid` و`check_update` و`apply_update`، إضافة إلى أدوات `learning_*`. التفاصيل في [mcp/README.ar.md](mcp/README.ar.md).
+- خادم MCP من وسم GitHub (دون npm): `claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.13.0 business-wrap-mcp`
+- الأدوات (15): `build_editor` و`validate_edits` و`apply_edits` و`export_document` و`export_design_pack` و`check_fonts` و`harvest_model` و`harvest_crawl` و`harvest_merge` و`harvest_sources` و`open_in_editor` و`close_editor` و`diagram_mermaid` و`check_update` و`apply_update`، إضافة إلى أدوات `learning_*`. وأداة الحصاد التي تُعطى `open: true` تفتح نتيجتها في المحرر. التفاصيل في [mcp/README.ar.md](mcp/README.ar.md).
 
 </details>
 
@@ -118,6 +118,29 @@ node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|e
 </div>
 
 عند فتح المحرر من الجهاز (file://) ينزل زر «PDF + DOCX» ملف الوثيقة المعدلة ويعرض أمر `export.mjs`، ومن خلال `npm run serve` يصدر بنقرة واحدة. المحرر الجاهز هو `assets/editor/business-wrap.html`.
+
+</details>
+
+<details>
+<summary>⌨️ أوامر «/» في Claude Code (0.13.0)</summary>
+
+عند تثبيت Business-Wrap إضافةً في Claude Code تظهر هذه الأوامر؛ اكتب `/` لتراها. كل أمر يشغّل `engine/cli.mjs` (الأمر نفسه `business-wrap <verb>` الذي تستطيع تشغيله بنفسك، بلا ذكاء اصطناعي وبلا شبكة) ويقول في سطر واحد ما فعله.
+
+| الأمر | ماذا يفعل |
+|---|---|
+| `/business-wrap:open [doc.json\|folder\|editor.html]` | يشغّل الخادم المحلي ويفتح المحرر في Edge (وثيقة فارغة إن لم يُعطَ ملف) |
+| `/business-wrap:close` | يوقف كل خادم ويغلق كل نافذة Edge فتحها هذا التثبيت |
+| `/business-wrap:status` | الإصدار، والخوادم العاملة، وعدد الخطوات التي عولجت ذاتيًا |
+| `/business-wrap:new ["Title"]` | زوج وثيقة فارغ جديد (عربي وإنجليزي) يُفتح في المحرر |
+| `/business-wrap:harvest <url\|crawl.json\|model\|PDF/DOCX/HTML\|folder>` | يحصد خدمة حية (دون إرسال أبدًا) أو نموذج إجراء أو وثيقة، ثم يفتحها |
+| `/business-wrap:import <file\|folder ...>` | مصادرك (BPMN وdraw.io وYAML وPDF وDOCX وHTML) إلى وثائق |
+| `/business-wrap:build <doc.json\|folder> --out <editor.html>` | يبني ملف المحرر |
+| `/business-wrap:export <doc.json> [ar\|en]` | PDF وDOCX، ثم فحوص العرض والتصدير |
+| `/business-wrap:verify-history <file>` | يفحص السجل الكاشف للعبث |
+| `/business-wrap:report <from> <to>` | تقرير العمل لفترة |
+| `/business-wrap:update [--check\|--notes\|--apply --yes]` | يفحص، أو يعرض الجديد، أو يثبّت (بعد موافقتك فقط) |
+
+ودون Claude Code تعمل الأوامر نفسها بـ `npm run cli -- <verb>` (مثلًا `npm run cli -- open samples/event-permit` و`npm run host:close`). كل أمر يعمل دون شبكة ودون ذكاء اصطناعي.
 
 </details>
 
@@ -226,6 +249,24 @@ npm run harvest:merge -- <harvest.json> <process.json>       # the union of both
 
 </details>
 
+<details>
+<summary>🆕 الجديد في 0.13.0</summary>
+
+- **المستندات** (Ctrl+O): كل حفظ وثيقة مستقلة (لا يُستبدل القالب أبدًا)؛ افتح هنا أو في تبويب جديد، وانسخ واحذف واسترجع، واستورد PDF أو DOCX أو HTML.
+- **تغييرات** (Ctrl+Shift+H): خط زمني بكل تعديل مع رجوع وتقدّم ونقاط حفظ؛ والعداد يبدأ من جديد عند كل حفظ HTML.
+- **مجلد الحفظ:** `<المجلد>\Business-Wrap\{PDF,DOCX,HTML,HISTORY}`، والملفات باسم `<العنوان>-<التاريخ>-<AR|ENG>`، ويُسأل عنه مرة واحدة عند أول حفظ أو تصدير.
+- **خادم في الخلفية:** إغلاق آخر تبويب يحفظ كل التبويبات ويوقف الخادم؛ والتشغيل التالي يعرض استئناف كل شيء أو بدء عمل جديد.
+- قسما **الترويسة** و**التذييل** في شريط الأدوات: نص وحقول وشعارات وأرقام صفحات؛ ولكل عنصر نطاق: كل الصفحات، أو هذه الصفحة فقط، أو من هذه الصفحة فصاعدًا؛ ويُحرَّر على كل صفحة في عروض الصفحات.
+- **إعداد الصفحة:** A3 وA4 وA5 وLetter وLegal؛ عمودي أو أفقي للوثيقة كلها أو لقسم واحد؛ وفاصل صفحة عند قسم تختاره.
+- **العناصر:** جداول وأقسام وفصول في أي مكان؛ نسخ كتلة كاملة ولصقها؛ مربعات نص حرة؛ صور بأنماط التفاف النص السبعة كما في Word.
+- **شريط التنسيق:** اللون والحجم والخط والمحاذاة والقوائم حتى ستة مستويات والاقتباس والرابط والشيفرة؛ وCtrl+B / I / U.
+- **كل شيء قابل للتعديل:** مدخلات جدول المحتويات، وجدول ضبط الوثيقة، والمراجعات؛ ولها أدوات الجدول.
+- **الثقة:** الملف الشخصي، ومصدر كل تغيير، والتوقيع، والمشاركة، والقفل والفتح، وسجل كاشف للعبث، وتقرير عمل بصيغة PDF.
+- **الأدوات:** واجهة `business-wrap` السطرية (دون شبكة ودون ذكاء اصطناعي)، وأوامر «/»، والحصاد عبر MCP إلى المحرر، والمعالجة الذاتية وفحوص كل مرحلة.
+- **التصميم:** استيراد لوحة ألوان (مع فحص التباين)، وحركة الشعار، ولوحات جانبية أهدأ (مجموعاتها مطوية)، ورسائل قصيرة تُغلق بالنقر.
+
+</details>
+
 ## 🔤 الخطوط
 
 🎯 الوثائق تستخدم عائلات ثمانية. **خط Cairo ممنوع**، ولا يستخدم حتى بديلا احتياطيا.
@@ -291,6 +332,8 @@ git config core.hooksPath .githooks
 🔁 **طلب تلقائي واحد:** فحص التحديث، مرة في اليوم على الأكثر، إلى قائمة الإصدارات العامة على GitHub. وخطافات الويب ترسل فقط إلى عنوان تحدده أنت.
 
 🌾 **المسح تجربة جافة:** يتوقف قبل الإرسال أو التقديم أو التأكيد أو الدفع، إلا إذا طلبت ذلك مرتين.
+
+🔏 **سجل كاشف للعبث (0.13.0)، وحدّه بصدق:** كل تعديل وحفظ وتصدير وتوقيع وقفل وفتح قيدٌ في سجل متسلسل بالتجزئة وموقّع (`bwlog` الإصدار 1، صيغة مجمّدة) ينتقل داخل ملف HTML المُشارَك، وله نسخة مرآة في `HISTORY` داخل مجلد الحفظ. يُكشف ويُعرض أي قيد محذوف أو معدَّل، أو أي تعديل لم يُسجَّل. التشفير يحمي من القراءة العابرة فقط: Business-Wrap مفتوح المصدر برخصة MIT، فالمفتاح في الشيفرة. ومن يملك الشيفرة يستطيع أن يعيد بناء سلسلة كاملة بمفاتيح جديدة، ولا يُكشف ذلك إلا حيث توجد نسخة مرآة أو مفتاح مثبَّت من المؤلف الحقيقي (جهاز آخر، أو مخزن `HISTORY`، أو نسخة مُشارَكة سابقة). لا يوجد ختم زمني موثوق. والقفل يمنع التعديل غير المقصود، وليس تحكمًا في الوصول ([bible/11-trust-ledger.ar.md](bible/11-trust-ledger.ar.md)).
 
 🛡️ **فحص أمني** (`security/check.py`، مع gitleaks في CI) يبقي محتوى العملاء وبيانات الدخول والمسارات المحلية خارج المستودع. وجدت مشكلة؟ [SECURITY.ar.md](SECURITY.ar.md).
 

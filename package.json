@@ -1,6 +1,6 @@
 {
   "name": "business-wrap",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "Bilingual (Arabic RTL / English LTR) requirements documents from evidence: an interactive HTML editor that is the print layout, PDF + DOCX export, design packs and security gates.",
   "license": "MIT",
   "mcpName": "io.github.NJ-Burrito/business-wrap",
@@ -60,13 +60,15 @@
     "update",
     "CHANGELOG.md",
     "AGENTS.md",
-    "hooks"
+    "hooks",
+    "commands",
+    ".claude-plugin"
   ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "test": "node engine/build-skill-html.mjs --check && node tests/editor.test.mjs && node tests/a11y.test.mjs && node mcp/test/server.test.mjs && node tests/skill-html.test.mjs && node tests/update.test.mjs && node tests/harvest.test.mjs && node tests/editable.test.mjs && node tests/field.test.mjs && node tests/diagram.test.mjs && node tests/design.test.mjs && node tests/ux.test.mjs && node tests/updater.test.mjs && node tests/settings.test.mjs && node tests/learning.test.mjs && node tests/print.test.mjs && node tests/srs.test.mjs",
+    "test": "node engine/build-skill-html.mjs --check && node tests/editor.test.mjs && node tests/a11y.test.mjs && node mcp/test/server.test.mjs && node tests/skill-html.test.mjs && node tests/update.test.mjs && node tests/harvest.test.mjs && node tests/editable.test.mjs && node tests/field.test.mjs && node tests/diagram.test.mjs && node tests/design.test.mjs && node tests/ux.test.mjs && node tests/updater.test.mjs && node tests/settings.test.mjs && node tests/learning.test.mjs && node tests/print.test.mjs && node tests/srs.test.mjs && node tests/chrome.test.mjs && node tests/cli.test.mjs && node tests/ext.test.mjs && node tests/format.test.mjs && node tests/heal.test.mjs && node tests/host.test.mjs && node tests/layout.test.mjs && node tests/ledger.test.mjs && node tests/library.test.mjs && node tests/objects.test.mjs && node tests/plugin.test.mjs && node tests/profile.test.mjs && node tests/provenance.test.mjs && node tests/timeline.test.mjs && node tests/toast.test.mjs && node tests/workspace.test.mjs",
     "test:mcp": "node mcp/test/server.test.mjs",
     "mcp": "node mcp/cli.mjs",
     "sample": "node engine/build-editor.mjs samples/event-permit --out out/sample/event-permit.editor.html --set sample",
@@ -79,7 +81,12 @@
     "harvest:merge": "node engine/harvest/cli.mjs merge",
     "diagram:mermaid": "node engine/diagram-cli.mjs",
     "learn": "node engine/learning/cli.mjs",
-    "test:learning": "node tests/learning.test.mjs"
+    "test:learning": "node tests/learning.test.mjs",
+    "cli": "node engine/cli.mjs",
+    "host": "node engine/cli.mjs open",
+    "host:close": "node engine/cli.mjs close",
+    "audit": "node tests/audit.probe.mjs",
+    "test:docx-fidelity": "uv run --no-project --with pywin32 --with pymupdf python tests/docx_fidelity.py"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",

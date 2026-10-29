@@ -44,3 +44,7 @@
 | L25 | **Done = gates pass and the document is delivered**; count "rebuilt N, delivered M". |
 | L26 | **Every gate FAIL gets a recorded cause** before the next build. |
 | L27 | **When two standing rules conflict, show both side by side and ask once**; never pick silently. |
+| L28 | **Parallel work merges into one script: parse it at build time.** Two packages each declared `PT`; every file was fine alone and the merged editor never booted. `build-editor` now parses the app script and fails with the name (0.13.0). |
+| L29 | **Boot after everything has loaded.** The editor booted before its extensions, so their tools needed a second build that lost the recovery question and the first-open motion; each package patched around it. Calling `boot()` after the last extension removed the patches and the cause together. A late `bwExt` call patches the bar in place. |
+| L30 | **A test that waits on a moment that ends in a navigation is a race** (axe on a live update progress view that reloads the page). Hold the state (route the progress endpoint) and test that. |
+| L31 | **A substring test on random ids matches inside base64.** Look for an id as a JSON value (`"id"`), never as bare text. |
