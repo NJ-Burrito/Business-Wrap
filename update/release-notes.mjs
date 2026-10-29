@@ -32,7 +32,7 @@ export function leadWithTenSeconds(notes) {
   return bullets.length ? `${HEAD}\n${bullets.join('\n')}\n\n${notes}` : notes;
 }
 
-const footer = '\n\n---\nUpdate / التحديث: `npx business-wrap update --apply --yes` (keeps .local, design/custom, logos, fonts/custom, drafts)'
+const footer = '\n\n---\nUpdate / التحديث: `node update/cli.mjs update --apply --yes` in your install (keeps .local, design/custom, logos, fonts/custom, drafts)'
   + ' · Claude Code: `/plugin marketplace update business-wrap` then `/plugin update business-wrap`'
   + ` · MCP: \`${MCP}\`\n`;
 
