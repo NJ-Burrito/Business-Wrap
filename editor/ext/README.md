@@ -14,7 +14,7 @@ Since 0.13.0 new editor features live here, one file set per feature, so they ne
 
 The two-digit prefix sets the order (WP3 `10–19`, WP4 `30–39`, WP2 `20–29`). No files here = the editor is built exactly as without the seam. Tests can point `buildEditor({ extDir })` at another folder.
 
-An extension's code runs in the editor's own scope: `S`, `M`, `t`, `esc`, `ic`, `toast`, `commit`, `setText`, `openDrawer`, `buildUi`, `render`, `cur`, `CMDS` are all in reach. It runs **after** the editor has booted; the seam redraws the bar once (before the first paint) when an extension added a section or a status counter, then fires `boot` and `open`.
+An extension's code runs in the editor's own scope: `S`, `M`, `t`, `esc`, `ic`, `toast`, `commit`, `setText`, `openDrawer`, `buildUi`, `render`, `cur`, `CMDS` are all in reach. It runs **before** the editor boots: `engine/build-editor.mjs` calls `boot()` after the last extension, so the first mount already draws every extension's commands, sections and status counter (no second build; the recovery banner and the first-open motion stay), then fires `boot` and `open`. A `bwExt` call made later (after boot) with commands, sections or a status counter patches the bar in place.
 
 ## `bwExt(def)`
 
@@ -37,6 +37,7 @@ bwExt({
     render: () => {},                      // after each document render
     save: () => {},                        // Save (Ctrl+S)
     saveHtml: (data) => {},                // Save HTML: add own keys to the embedded data (e.g. data.prov, data.lock)
+    beforeExport: async () => {},          // awaited before a server export (PDF/DOCX/print): e.g. ask for the save folder
     export: (info) => {},                  // server export done: { pdf, docx }
     pagehide: () => {},
     keydown: (e) => false,                 // runs first in the document key handler; return true = handled, the editor does nothing more

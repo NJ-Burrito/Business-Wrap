@@ -96,10 +96,11 @@ try {
   check('Settings card drawn and mounted once', t.card === 1 && (await sh((r) => !!r.querySelector('.drawer .set-x-dummy .dummy-card'))));
 
   const before = await page.evaluate(() => window.BW.M[window.BW.S.svc][window.BW.S.ed].ops.length);
+  const r0 = (await T()).render; // the first render is now seen too: boot runs after the extensions (the seam)
   await page.evaluate(() => window.BW.commit([{ op: 'setText', path: '/control/title', value: 'Ext test', old: window.BW.M[window.BW.S.svc][window.BW.S.ed].doc.control.title }]));
   t = await T();
   check('commit listener fires once, with ops, edition and kind', t.commit.length === 1 && t.commit[0][0] === 1 && t.commit[0][2] === 'commit', JSON.stringify(t.commit));
-  check('render listener fires once per render', t.render === 1, String(t.render));
+  check('render listener fires once per render (the first one included)', r0 >= 1 && t.render === r0 + 1, `${r0} → ${t.render}`);
   await page.evaluate(() => window.BW.undo());
   t = await T();
   check('undo reports to the commit listener', t.commit.length === 2 && t.commit[1][2] === 'undo', JSON.stringify(t.commit));

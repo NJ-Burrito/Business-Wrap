@@ -62,7 +62,7 @@ export function outName(title, date, locale, ext) {
 
 /** dir/name, or name-2, name-3 … when it exists: never an overwrite. */
 export function uniquePath(dir, name) {
-  const ext = path.extname(name), stem = name.slice(0, name.length - ext.length);
+  const ext = /(\.print)?\.[^.]+$/.exec(name)?.[0] || '', stem = name.slice(0, name.length - ext.length); // "x.print.html" → x-2.print.html
   let f = path.join(dir, name);
   for (let n = 2; fs.existsSync(f); n++) f = path.join(dir, `${stem}-${n}${ext}`);
   return f;

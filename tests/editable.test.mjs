@@ -208,10 +208,21 @@ try {
       check('0.13 editor: A21: Alt+↓ in a table cell moves the row; the selection follows it', JSON.stringify(at(d, `${rp}/1`)) === r0 && rsel === `${rp}/1/0`, JSON.stringify({ rp, rsel }));
       await undoAll(1); d = await D();
       check('0.13 editor: A21: undo restores the row move', JSON.stringify(at(d, `${rp}/0`)) === r0);
+      { // a structural edit is mirrored into the other edition: undo and redo take the mirror with them (the pair never drifts)
+        const kinds = () => page.evaluate(() => Object.values(window.BW.M[window.BW.S.svc]).map((e) => JSON.stringify(e.doc.chapters.map((c) => c.sections.map((s) => s.blocks.map((b) => b.kind))))));
+        const k0 = await kinds();
+        await click(`${rp}/0/0`); await page.evaluate(() => window.BW.runAction('moveDown')); await page.waitForTimeout(150);
+        const k1 = await kinds();
+        await page.evaluate(() => window.BW.undo()); const k2 = await kinds();
+        await page.evaluate(() => window.BW.redo()); const k3 = await kinds();
+        await page.evaluate(() => window.BW.undo());
+        check('0.13 editor: undo / redo of a mirrored block move act on both editions', k1[0] === k1.at(-1) && k1[0] !== k0[0] && k2[0] === k0[0] && k2.at(-1) === k0.at(-1) && k3[0] === k1[0] && k3.at(-1) === k1.at(-1), JSON.stringify({ k0: k0.length, same1: k1[0] === k1.at(-1), back: k2.at(-1) === k0.at(-1), again: k3.at(-1) === k1.at(-1) }));
+      }
       // section move within its chapter
       const chi = d.chapters.findIndex((ch) => ch.sections.length >= 2);
       const t0s = d.chapters[chi].sections[0].title;
-      await click(`/chapters/${chi}/sections/0/title`);
+      // the heading in the body, not its TOC entry (A25: a TOC title cell edits the same pointer)
+      { const h = page.locator(`main.bw-doc [data-p="/chapters/${chi}/sections/0/title"]:not([data-sec] *)`).first(); await h.scrollIntoViewIfNeeded(); await h.click(); await page.waitForTimeout(150); }
       const sctx = await sh(page, (R) => { const c = R.querySelector('.ctx'); return c.hidden ? '' : [...c.querySelectorAll('[data-a]')].map((x) => x.dataset.a).join(','); });
       await page.evaluate(() => window.BW.runAction('moveDown')); await page.waitForTimeout(200); d = await D();
       check('0.13 editor: A21: a selected section heading shows Move and moves the section', /moveDown/.test(sctx) && d.chapters[chi].sections[1].title === t0s, JSON.stringify({ sctx }));

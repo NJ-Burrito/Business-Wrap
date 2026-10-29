@@ -61,8 +61,9 @@ try {
 
   // ── host, library, workspace, fonts ──
   const busy = net.createServer();
-  await new Promise((ok) => busy.listen(4399, '127.0.0.1', ok));
-  await healed('host port busy → next free port', () => H.healPort(4399), (v) => v.port > 4399);
+  await new Promise((ok) => busy.listen(0, '127.0.0.1', ok)); // any free port, then held busy: never a clash with a running host
+  const BUSY = busy.address().port;
+  await healed('host port busy → next free port', () => H.healPort(BUSY), (v) => v.port > BUSY);
   busy.close();
   const rec = path.join(OUT, 'hosts.json');
   fs.writeFileSync(rec, JSON.stringify({ hosts: [{ pid: 999999, port: 1 }, { pid: process.pid, port: 2 }] }));
@@ -98,6 +99,8 @@ try {
   check('gate export: files present + both editions asked → the missing edition FAILs', G.gateExport([f], { editions: ['ar'] }).verdict === 'PASS' && G.gateExport([f], { editions: ['ar', 'en'] }).verdict === 'FAIL');
   const lg = await G.gateLedger(f);
   check('gate ledger: WP4\'s verify, or SKIP when it is not in this build (never PASS by default)', lg.verdict === 'SKIP' || lg.verdict === 'FAIL', lg.verdict);
+  { fs.copyFileSync(path.join(REPO, 'tests', 'fixtures', 'bwlog-v1', 'golden.bwlog'), path.join(OUT, 'golden.bwlog')); fs.writeFileSync(path.join(OUT, 'golden.heads.json'), JSON.stringify({ doc: 'doc-golden-1' }));
+    const g = await G.gateLedger(path.join(OUT, 'golden.bwlog')); check('gate ledger: the golden bwlog v1 file PASSes', g.verdict === 'PASS', JSON.stringify(g.problems)); }
   check('every HEALED line names its stage and healer', H.readHealLog().every((l) => l.verdict === 'HEALED' && l.stage && l.name && l.at));
 } catch (e) {
   check('heal run', false, e.stack?.split('\n').slice(0, 3).join(' / '));

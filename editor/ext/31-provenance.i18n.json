@@ -48,7 +48,9 @@
   "pvr_fork": "السجل يختلف عمّا رآه هذا الجهاز (تفرّع)",
   "pvr_unlogged": "تعديل غير مسجَّل في الوثيقة",
   "pvr_stripped": "سجل المصدر محذوف",
-  "pvr_unreadable": "سجل المصدر تالف أو غير مقروء"
+  "pvr_unreadable": "سجل المصدر تالف أو غير مقروء",
+  "explain.pvOpen": "يفتح سجل المصدر: من غيّر ماذا ومتى، في سلسلة موقّعة يُكشف فيها أي حذف أو تعديل.",
+  "explain.pvSign": "يوقّع الحالة الحالية للوثيقة باسمك في سجل المصدر."
  },
  "en": {
   "pvTitle": "Provenance",
@@ -99,6 +101,8 @@
   "pvr_fork": "Differs from what this machine has seen (fork)",
   "pvr_unlogged": "An edit in the document that is not in the log",
   "pvr_stripped": "The provenance log was removed",
-  "pvr_unreadable": "The provenance log is damaged or unreadable"
+  "pvr_unreadable": "The provenance log is damaged or unreadable",
+  "explain.pvOpen": "Opens Provenance: who changed what and when, in a signed chain that shows any removed or edited entry.",
+  "explain.pvSign": "Signs the document as it is now, in your name, in the provenance log."
  }
 }

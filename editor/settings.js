@@ -53,7 +53,7 @@ function settingsPanel() {
 <dt>${esc(t('set.repo'))}</dt><dd>${A.repo ? `<a href="${esc(A.repo)}" target="_blank" rel="noopener noreferrer" dir="ltr">${esc(repoText)}</a>` : '—'}</dd>
 <dt>${esc(t('set.license'))}</dt><dd>${esc(A.license || '—')}</dd>
 <dt>${esc(t('set.credits'))}</dt><dd>${esc((A.credits || []).join(' · '))}</dd>
-</dl></section>
+</dl>${t('pfTrustLimit') !== 'pfTrustLimit' ? `<p class="hint set-limit">${esc(t('pfTrustLimit'))}</p>` : ''}</section>
 <section class="card set-upd" aria-labelledby="set-h-upd"><h3 id="set-h-upd"><span class="i">${ic('update')}</span>${esc(t('set.update'))}</h3>
 <div class="set-upd-body">${setUpdateInner()}</div></section>
 <section class="card set-prefs" aria-labelledby="set-h-prefs"><h3 id="set-h-prefs"><span class="i">${ic('prefs')}</span>${esc(t('set.prefs'))}</h3>
@@ -64,7 +64,7 @@ function settingsPanel() {
 <label class="chk"><input type="checkbox" data-set="explain" ${ls.get('bw:explainers') !== '0' ? 'checked' : ''}> ${esc(t('set.explain'))}</label>
 <label class="chk"><input type="checkbox" data-set="explainAlways" ${ls.get('bw:explainers') === 'always' ? 'checked' : ''}${ls.get('bw:explainers') === '0' ? ' disabled' : ''}> ${esc(t('set.explainAlways'))}</label>
 </section>
-<section class="card set-lrn" aria-labelledby="set-h-lrn" data-grp-open><h3 id="set-h-lrn"><span class="i">${ic('learning')}</span>${esc(t('learning'))}</h3>
+<section class="card set-lrn" aria-labelledby="set-h-lrn"><h3 id="set-h-lrn"><span class="i">${ic('learning')}</span>${esc(t('learning'))}</h3>
 <div class="set-lrn-body" data-lrn-mount></div></section>${EXT.settings.map((c) => `<section class="card set-x-${esc(c.id)}" aria-labelledby="set-h-${esc(c.id)}"><h3 id="set-h-${esc(c.id)}"><span class="i">${ic(c.icon || 'prefs')}</span>${esc(t(c.title))}</h3>${c.html()}</section>`).join('')}</div>`; // + extension cards
 }
 /** Redraw the Update card in place (keeps the drawer, its scroll and the focus on the pressed button). */

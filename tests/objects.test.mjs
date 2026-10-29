@@ -77,6 +77,16 @@ for (const mode of MODES) {
   else check(`${mode}: DOCX anchor has ${WRAP_XML[mode]}${mode === 'behind' ? ' + behindDoc="1"' : ''}`, new RegExp(`<${WRAP_XML[mode]}[ />]`).test(xml) && (mode !== 'behind' || /behindDoc="1"/.test(xml)) && (mode !== 'front' || /behindDoc="0"[^>]*>(?:(?!<\/wp:anchor>)[\s\S])*<wp:wrapNone/.test(xml)));
 }
 
+// ── A15: «through» is not «tight»: different text flow on the page and in Word ──
+{
+  const html = (m) => printHtml(withWrap(m), { locale: 'en', theme: loadTheme() }).html.match(/<div class="bw-ovf[^>]*data-wrap="(?:tight|through)"[^>]*>/)?.[0] || '';
+  const [ti, th] = [html('tight'), html('through')];
+  check('through ≠ tight on the page: tight hugs the outline 2 mm off, through has no gap and lets text into see-through parts', /shape-margin:2mm/.test(ti) && /shape-image-threshold:\.3/.test(ti) && /shape-margin:0mm/.test(th) && /shape-image-threshold:\.9/.test(th), `${ti.slice(0, 80)} | ${th.slice(0, 80)}`);
+  const dist = (m) => { const f = path.join(tmp, `dist-${m}.docx`); exportDocx(withWrap(m), { locale: 'en', theme: loadTheme(), docxPath: f }); return /<wp:anchor[^>]*distL="(\d+)"/.exec(docxParts(f, /^word\/document\.xml$/)['word/document.xml'])?.[1]; };
+  const [dt, dh] = [dist('tight'), dist('through')];
+  check('through ≠ tight in the DOCX: tight keeps a side gap, through has none', dt === '114300' && dh === '0', `${dt} / ${dh}`);
+}
+
 // ── editor: wrap switching, text box, tables, copy / paste ───────────────
 const fileA = path.join(tmp, 'a.html');
 const fileB = path.join(tmp, 'b.html');

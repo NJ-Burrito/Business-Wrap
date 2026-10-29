@@ -29,7 +29,8 @@ function designPanel() {
   const emPt = dpEmPt(th);
   // keep each group open or closed across redraws
   root.querySelectorAll('.drawer details[data-grp]').forEach((x) => { (S.grpOpen ||= {})[x.dataset.grp] = x.open; });
-  const grp = (id, body, open = true) => `<details class="dgrp" data-grp="${id}" ${(S.grpOpen?.[id] ?? open) ? 'open' : ''}><summary><h3>${esc(t('design.grp.' + id))}</h3></summary><p class="hint">${esc(t('design.grp.' + id + 'Hint'))}</p>${body}</details>`;
+  // A7: as every side panel: the first group open, the rest collapsed (what the person toggles is remembered)
+  const grp = (id, body, open = false) => `<details class="dgrp" data-grp="${id}" ${(S.grpOpen?.[id] ?? open) ? 'open' : ''}><summary><h3>${esc(t('design.grp.' + id))}</h3></summary><p class="hint">${esc(t('design.grp.' + id + 'Hint'))}</p>${body}</details>`;
   const L = labelsOf();
   const hide = new Set(d.layout?.hide || []);
   const front = [...(d.layout?.front || []), ...['control', 'revisions', 'toc'].filter((k) => !(d.layout?.front || []).includes(k))];
@@ -63,8 +64,8 @@ ${valueControl({ id: 'img:width', kind: 'pct', label: t('design.imgWidth'), hint
 <p class="hint">${esc(t('design.packHint'))}</p><div class="btns"><button type="button" class="b" data-k="texp"><span class="w">${esc(t('themeExport'))}</span></button><button type="button" class="b" data-k="timp"><span class="w">${esc(t('themeImport'))}</span></button></div>`;
   const css = `<textarea data-dcss rows="6" spellcheck="false" dir="ltr" aria-label="${attr(t('design.grp.css'))}">${esc(d.design?.css || '')}</textarea>${rej.length ? `<p class="warn" role="status">${esc(t('vCss', { x: rej.join(' · ') }))}</p>` : ''}
 <div class="btns"><button type="button" class="b" data-k="dcssApply"><span class="w">${esc(t('apply'))}</span></button></div>`;
-  return grp('fonts', fonts) + grp('colours', colours) + grp('sizes', sizes) + grp('spacing', spacing) + grp('parts', parts) + grp('logos', logos)
-    + grp('labels', labels, false) + grp('output', output) + grp('css', css, false)
+  return grp('fonts', fonts, true) + grp('colours', colours) + grp('sizes', sizes) + grp('spacing', spacing) + grp('parts', parts) + grp('logos', logos)
+    + grp('labels', labels) + grp('output', output) + grp('css', css)
     + `<h3>${esc(t('shortcuts'))}</h3><p class="hint">${esc(t('shortcutsText'))}</p>`;
 }
 
@@ -168,8 +169,8 @@ const PAL_TXT = {
 };
 /** the same file as palette/example-import.json (tests/design.test.mjs keeps the two equal) */
 const PAL_EXAMPLE = {"$description": "Example palette for the editor's «Import a colour palette» (Design → Colours). Six roles; every pair passes the contrast gate (ink and primary 7:1 on paper, muted and accent 4.5:1). Invented colours.", "name": "Example: deep teal", "colors": {"primary": "#0b4f4a", "accent": "#8a5a00", "ink": "#1a1a1a", "paper": "#ffffff", "muted": "#55595e", "signal": "#b3261e"}};
-const PT = () => PAL_TXT[S.ui] || PAL_TXT.en;
-const pt = (k, x) => String(PT()[k] ?? PAL_TXT.en[k]).replace('{x}', x ?? '');
+const PAL_T = () => PAL_TXT[S.ui] || PAL_TXT.en;
+const pt = (k, x) => String(PAL_T()[k] ?? PAL_TXT.en[k]).replace('{x}', x ?? '');
 const palLum = (h) => { const c = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
 /** contrast ratio, rounded to 2 places as palette/check.py does */
 const palRatio = (a, b) => { const [x, y] = [palLum(a), palLum(b)].sort((m, n) => n - m); return Math.round(((x + 0.05) / (y + 0.05)) * 100) / 100; };
@@ -268,7 +269,7 @@ ${missing.length ? `<p class="warn" role="status">${esc(pt('missing', missing.ma
 const palRedraw = () => { const m = root.querySelector('.drawer .palmap'); if (m) m.innerHTML = palHtml(); palPreview(!!S.pal); };
 /** the import button, the guideline and the mapping area, at the top of the Colours group */
 const palPanel = () => `<div class="pal"><div class="btns"><button type="button" class="b" data-palimp><span class="i">${ic('themeImport') || ''}</span><span class="w">${esc(pt('btn'))}</span></button></div>
-<details class="palguide"><summary>${esc(pt('guide'))}</summary><ul class="list">${PT().g.map((l) => `<li>${esc(l)}</li>`).join('')}</ul><div class="btns"><button type="button" class="b" data-palex><span class="w">${esc(pt('example'))}</span></button></div></details>
+<details class="palguide"><summary>${esc(pt('guide'))}</summary><ul class="list">${PAL_T().g.map((l) => `<li>${esc(l)}</li>`).join('')}</ul><div class="btns"><button type="button" class="b" data-palex><span class="w">${esc(pt('example'))}</span></button></div></details>
 <div class="palmap" aria-live="polite">${palHtml()}</div></div>`;
 const PAL = {
   async import(file) {

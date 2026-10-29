@@ -104,6 +104,7 @@ bwExt({
     boot: () => { SESS.boot(); },
     commit: () => SESS.soon(),
     save: () => { SESS.ensureFolder(); SESS.soon(); },
+    beforeExport: () => SESS.ensureFolder(), // the first export asks for the save folder too (once; then it is remembered)
     export: () => SESS.push(),
     pagehide: () => SESS.flush(),
   },

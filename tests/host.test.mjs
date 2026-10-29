@@ -32,7 +32,6 @@ buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: editor,
 const browser = await chromium.launch(launchOptions());
 const tabPage = async (ctx, url) => {
   const p = await ctx.newPage();
-  await p.addInitScript(() => { try { localStorage.setItem('bw:learning', '0'); } catch { /* storage */ } });
   await p.goto(url);
   await p.waitForFunction(() => window.BW?.ready && document.documentElement.dataset.bwSession, null, { timeout: 15000 });
   return p;

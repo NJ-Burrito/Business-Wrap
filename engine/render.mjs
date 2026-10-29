@@ -657,7 +657,11 @@ export function renderParts(doc, o) {
     const left = x + w / 2 <= measureMm / 2;
     const side = o.wrap === 'topBottom' ? `display:block;clear:both;margin-left:${x.toFixed(2)}mm`
       : left ? `float:left;margin-left:${x.toFixed(2)}mm;margin-right:3mm` : `float:right;margin-right:${Math.max(0, measureMm - x - w).toFixed(2)}mm;margin-left:3mm`;
-    const shape = o.kind !== 'text' && (o.wrap === 'tight' || o.wrap === 'through') ? `;shape-outside:url(${o.src});shape-image-threshold:.3;shape-margin:${o.wrap === 'through' ? 0 : 2}mm` : o.wrap === 'topBottom' ? '' : ';shape-outside:margin-box';
+    // tight: the text hugs the picture's outline, 2 mm off it; through: no gap, and the text also runs into the picture's
+    // see-through parts (a pixel under 90 % opaque lets it in), as Word's «خلال / Through» does inside an open shape
+    const shape = o.kind !== 'text' && o.wrap === 'tight' ? `;shape-outside:url(${o.src});shape-image-threshold:.3;shape-margin:2mm`
+      : o.kind !== 'text' && o.wrap === 'through' ? `;shape-outside:url(${o.src});shape-image-threshold:.9;shape-margin:0mm`
+        : o.wrap === 'topBottom' ? '' : ';shape-outside:margin-box';
     return `<div class="bw-ovf${o.kind === 'text' ? ' bw-tb' : ''}" data-ov="${attr(o.id || String(o.i))}" data-i="${o.i}" data-kind="${ovKind(o)}" data-wrap="${attr(o.wrap)}" style="${side};margin-top:${y.toFixed(2)}mm;width:${w.toFixed(2)}mm${shape}${tbStyle(o)}">${ovInner(o)}</div>`;
   };
   const inFlow = (o) => ['square', 'tight', 'through', 'topBottom'].includes(o.wrap);

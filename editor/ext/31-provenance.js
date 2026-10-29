@@ -3,7 +3,7 @@
  * unlock, signed with this install's non-extractable ECDSA key. The encrypted log travels inside every Save-HTML
  * (bw-data → prov) and is mirrored in HISTORY (served: the workspace; file://: IndexedDB bw-history). Checked on open. */
 const PV_ON = typeof BWLOG1 !== 'undefined'; // engine/ledger-v1.mjs is concatenated before the extensions (build-editor)
-const PV = { logs: {}, keys: null, q: Promise.resolve(), ready: null, readyRes: null, opened: new Set(), typing: {}, mirrorTimer: {} };
+const PV = { logs: {}, keys: null, q: Promise.resolve(), ready: null, readyRes: null, opened: new Set(), openLogged: new Set(), typing: {}, mirrorTimer: {} };
 PV.ready = new Promise((res) => { PV.readyRes = res; }); // resolved by boot once the logs are loaded
 const pvHttp = () => location.protocol.startsWith('http');
 
@@ -74,6 +74,7 @@ function pvAppend(kind, data = {}, svc = S.svc) {
     const L = PV.logs[svc];
     if (!L || !PV.keys) return;
     await BWLOG1.append(L, { kind, data, at, actor: PF.actor(), keys: PV.keys, docHash: state ? await pvDigest(state) : '' });
+    if (kind === 'open') PV.openLogged.add(svc);
     pvMirrorSoon(svc);
   }).catch((e) => console.error('bwlog', e));
   return PV.q;
@@ -101,7 +102,8 @@ function pvCatchUp(svc = S.svc) {
   PV.q = PV.q.then(async () => {
     await PV.ready;
     const L = PV.logs[svc];
-    if (!L || !state) return;
+    // not before this session's «open» entry: the boot render comes first, and the open is the baseline, not a merge
+    if (!L || !state || !PV.openLogged.has(svc)) return;
     const now = await pvDigest(state);
     const last = [...L.entries].reverse().find((e) => e.docHash)?.docHash;
     if (last === now) return;
@@ -184,11 +186,12 @@ async function pvSign() {
   if (S.drawer === 'provenance') openDrawer('provenance');
 }
 
+if (PV_ON) IC.pvOpen = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /> <path d="m9 12 2 2 4-4" /> </svg>';
+if (PV_ON) IC.pvSign = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M12 20h9" /> <path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z" /> </svg>';
 if (PV_ON) bwExt({
-  // no toolbar tool (yet): commands that join CMDS after boot are not drawn until the next rebuild, and a section makes the
-  // seam rebuild after boot, which drops the draft-recovery banner (seam issue, reported for WP1). The drawer is reached
-  // from its tab in «التغييرات / Changes» (history), the Settings trust card and the tamper banner; Sign, Lock and Share
-  // are buttons inside it.
+  // toolbar tools in «الوثيقة» (the seam draws them on the first mount); also reached from the Changes tab, the Settings
+  // trust card and the tamper banner
+  cmds: [{ id: 'pvOpen', group: 'document', edit: false }, { id: 'pvSign', group: 'document', edit: false }],
   actions: { pvOpen: () => openDrawer('provenance'), pvSign },
   drawers: { provenance: pvDrawer },
   expose: {

@@ -25,8 +25,6 @@ try {
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  // learning off: at the WP1 seam commit a redo with learning on loops forever (design.md R1, fixed in WP1); the timeline's ▶ is a plain redo
-  await page.addInitScript(() => { try { localStorage.setItem('bw:learning', '0'); } catch { /* file:// storage */ } });
   await page.clock.install();
   await page.goto(pathToFileURL(file).href);
   await page.waitForFunction(() => window.BW?.ready && window.BW.EXT.timeline);

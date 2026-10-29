@@ -73,6 +73,7 @@ async function pcAction(a) {
   if (kind === 'mermaid' || kind === 'svg' || kind === 'png') { await pcDiagram(kind); return; }
   if (kind === 'pdf' && !pcServer()) { pcBrowserPdf(l); return; }
   const format = kind === 'printHtml' ? 'printHtml' : kind;
+  if (!o.folder) await beforeExport(); // the first export asks for the save folder (A11), unless a folder is chosen here
   busy(true);
   try {
     for (const ed of pcEds(l || S.ed)) {

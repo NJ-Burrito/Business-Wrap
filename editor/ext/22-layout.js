@@ -120,7 +120,8 @@ async function w2layoutAction(id) {
 bwExt({
   // page setup and breaks join Document; the front-matter tools are a section of their own while a front-matter cell is picked
   cmds: ['pgSetup', 'pgBreak', 'tocHide', 'tocAdd', 'fmRowAdd', 'fmRowDel', 'fmColAdd', 'fmColDel'].map((id) => ({ id, group: id.startsWith('pg') ? 'document' : 'front', edit: id !== 'pgSetup' })),
-  actions: Object.fromEntries(['pgSetup', 'pgBreak', 'tocHide', 'tocAdd', 'fmRowAdd', 'fmRowDel', 'fmColAdd', 'fmColDel'].map((id) => [id, w2layoutAction])),
+  // materialiseControl: WP1's table toolbar (editor.js tableCtx) asks it before the first structural op on the control table
+  actions: { ...Object.fromEntries(['pgSetup', 'pgBreak', 'tocHide', 'tocAdd', 'fmRowAdd', 'fmRowDel', 'fmColAdd', 'fmColDel'].map((id) => [id, w2layoutAction])), materialiseControl: () => W2_LAYOUT.materialiseControl() },
   drawers: {
     w2page: () => {
       const now = w2doc().layout?.page || {};

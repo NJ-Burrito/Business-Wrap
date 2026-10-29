@@ -53,7 +53,8 @@ const LIB = (() => {
     const now = new Date().toISOString();
     const editions = {};
     for (const [ed, e] of Object.entries(M[id])) editions[ed] = snapEd(e);
-    return { id, title: titleOf(id), service: id, origin: 'template', createdAt: now, savedAt: now, editions, theme: S.theme, ...extra };
+    // A16: the lock state travels with the entry (32-lock exposes EXT.lock), so a locked document opens locked
+    return { id, title: titleOf(id), service: id, origin: 'template', createdAt: now, savedAt: now, editions, theme: S.theme, lock: EXT.lock?.of(id) || null, ...extra };
   }
   /** An entry into the session (DATA.services + M), replacing what was there. */
   function mount(entry) {
@@ -65,6 +66,7 @@ const LIB = (() => {
       const e = M[entry.id][ed] = { base: JSON.parse(x.raw), raw: x.raw, hash: x.hash, name: entry.title, ops: x.ops || [], redo: [], status: x.status || {}, stale: new Set(x.stale || []), comments: x.comments || [], versions: x.versions || [], marks: x.marks || [], epochIds: x.epochIds || [], doc: null };
       rebuild(e);
     }
+    EXT.lock?.set(entry.id, entry.lock || null);
   }
   function show(id, ed) {
     S.svc = id;
@@ -243,13 +245,15 @@ const LIB = (() => {
   return { all, get, put, open, adopt, save, newDocument, importAny, remove, restore, purge, duplicate, entryOf, titleOf, isDoc, fromHash, drawer, TEMPLATES };
 })();
 
+IC.library = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" /> </svg>';
 bwExt({
+  cmds: [{ id: 'library', group: 'file', key: 'Ctrl+O', edit: false }],
+  actions: { library: () => openDrawer('library') },
   drawers: { library: LIB.drawer },
   expose: { library: LIB },
   on: {
     boot: () => { LIB.fromHash(); },
-    // Ctrl+O = «المستندات» (open a document). No toolbar tool yet: the built-in sections list fixed tools, and a
-    // new section needs an explainer in editor/ux-i18n.json and room in the bar (WP1); the drawer is complete.
+    // Ctrl+O = «المستندات» (open a document); the toolbar tool sits in File
     keydown: (e) => { if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'o') { e.preventDefault(); openDrawer('library'); return true; } return false; },
     save: () => { LIB.save().then(() => { window.BW.libSaved = (window.BW.libSaved || 0) + 1; }); },
   },

@@ -108,13 +108,14 @@ const TL = (() => {
 // the toolbar's change counter («n تغييرات») opens the timeline on a click; from the keyboard: Ctrl+Shift+H
 // (the counter keeps its own accessible name, set by editor.js; making it a button would rename it)
 root.addEventListener('click', (ev) => { if (ev.target.closest?.('.count')) openDrawer('timeline'); });
+IC.timeline = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /> <path d="M3 3v5h5" /> <path d="M12 7v5l4 2" /> </svg>';
 bwExt({
+  cmds: [{ id: 'timeline', group: 'document', key: 'Ctrl+Shift+H', edit: false }],
+  actions: { timeline: () => openDrawer('timeline') },
   drawers: { timeline: TL.drawer },
   expose: { timeline: TL },
+  status: { count: () => TL.count() },
   on: {
-    // the counter is registered at boot, not at load: a status counter at load makes the seam redraw the whole bar
-    // once more (editor.js boot), which drops the recovery banner it has just shown
-    boot: () => { bwExt({ status: { count: () => TL.count() } }); refreshUi(); },
     keydown: (e) => { if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'h') { e.preventDefault(); openDrawer('timeline'); return true; } return false; },
     commit: (ops, ed, kind) => TL.onCommit(ops, ed, kind),
     save: () => TL.mark('save'),

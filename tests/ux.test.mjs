@@ -20,6 +20,11 @@ const file = path.join(OUT, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, watermarkDir: path.join(REPO, 'editor', 'brand', 'watermark') });
 const URL = pathToFileURL(file).href;
 const UX = JSON.parse(fs.readFileSync(path.join(REPO, 'editor', 'ux-i18n.json'), 'utf8'));
+// the extensions' explainers (editor/ext/*.i18n.json) are merged into the same table by the build
+for (const f of fs.readdirSync(path.join(REPO, 'editor', 'ext')).filter((x) => x.endsWith('.i18n.json')).sort()) {
+  const j = JSON.parse(fs.readFileSync(path.join(REPO, 'editor', 'ext', f), 'utf8'));
+  for (const l of ['ar', 'en']) Object.assign(UX[l], j[l] || {});
+}
 const PC = JSON.parse(fs.readFileSync(path.join(REPO, 'editor', 'print-i18n.json'), 'utf8')); // 0.11.0 strings join the same table
 for (const l of ['ar', 'en']) Object.assign(UX[l], PC[l]);
 const PNG = path.join(REPO, 'brand', 'v3', 'favicon', 'icon-128.png');
@@ -265,6 +270,9 @@ try {
       await page.keyboard.press('Escape');
       await page.evaluate(() => window.BW.runAction('theme'));
       await settle(page, 500);
+      // A7: groups after the first start collapsed; open the ones these controls live in
+      await page.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('.drawer details.dgrp').forEach((d) => { d.open = true; }));
+      await settle(page, 200);
       const panel = [['[data-fpopen]', 'font.pick'], ['.vc-s', 'vc.slider'], ['.vc-n', 'vc.number'], ['.cc-hex', 'design.hex'], ['input[type="color"]', 'design.swatch']];
       const got = [];
       for (const [sel, key] of panel) {
@@ -495,11 +503,11 @@ try {
     });
     check('0.13 R2: island same node through toggles', Object.values(r.out).every(Boolean), JSON.stringify(r));
     check('0.13 R2: language words follow in place', r.ui === 'en' && r.lang === 'en' && /Save/i.test(r.save), JSON.stringify(r));
-    // animations after a real RTL->LTR click
+    // animations after a real RTL->LTR click (the logo's own idle loops, A22, run by design and are not counted)
     await page.evaluate(() => window.BW.runAction('uiLang')); await page.waitForTimeout(600);
     const btn = page.locator('.island [data-a="dir"][data-d="ltr"]');
     await btn.click();
-    const anims = await sh(page, async (R) => { const seen = new Set(); const t0 = performance.now(); while (performance.now() - t0 < 600) { R.getAnimations().forEach((a) => { const el = a.effect?.target; if (el) seen.add((el.className?.baseVal ?? el.className) + '@' + (el.closest('[data-x]')?.dataset.x || el.dataset?.a || el.tagName)); }); await new Promise((r) => setTimeout(r, 40)); } return [...seen]; });
+    const anims = await sh(page, async (R) => { const seen = new Set(); const t0 = performance.now(); while (performance.now() - t0 < 600) { R.getAnimations().forEach((a) => { const el = a.effect?.target; if (el && !el.closest?.('.brand')) seen.add((el.className?.baseVal ?? el.className) + '@' + (el.closest('[data-x]')?.dataset.x || el.dataset?.a || el.tagName)); }); await new Promise((r) => setTimeout(r, 40)); } return [...seen]; });
     check('0.13 A4: after RTL→LTR only the direction thumb animates', anims.length >= 1 && anims.filter((x) => !/^toast/.test(x)).every((x) => /thumb@dir/.test(x)), JSON.stringify(anims));
     const xpl = await sh(page, (R) => { const c = R.querySelector('.xpl'); return !!c && !c.hidden; });
     check('0.13 A4: no explainer after the press', !xpl);
@@ -532,8 +540,16 @@ try {
   { // 0.13 A7
     const { ctx, page } = await open({ width: 1440, height: 900 });
     await page.evaluate(() => window.BW.runAction('settings')); await page.waitForTimeout(500);
-    const g = await sh(page, (R) => [...R.querySelectorAll('.drawer details.pgrp')].map((d, i) => d.open === (i === 0 || !!d.closest('[data-grp-open]'))));
-    check('0.13 A7: Settings opens with only the first group (and the live learning panel) expanded', g.length >= 3 && g.every(Boolean), JSON.stringify(g));
+    const first = (a) => a.length >= 2 && a[0] === true && a.slice(1).every((x) => x === false);
+    const g = await sh(page, (R) => [...R.querySelectorAll('.drawer details.pgrp')].map((d) => d.open));
+    check('0.13 A7: Settings opens with only the first group expanded (local learning collapsed too)', g.length >= 3 && first(g), JSON.stringify(g));
+    // the Design and Process panels follow the same rule (the owner asked for all side panels)
+    await page.evaluate(() => window.BW.openDrawer('theme')); await page.waitForTimeout(300);
+    const gd = await sh(page, (R) => [...R.querySelectorAll('.drawer details.dgrp')].map((d) => d.open));
+    await page.evaluate(() => window.BW.openDrawer('process')); await page.waitForTimeout(300);
+    const gp = await sh(page, (R) => [...R.querySelectorAll('.drawer details.pgrp')].map((d) => d.open));
+    check('0.13 A7: the Design panel opens with only the first group expanded (the Process panel: harvest.test, with a model)', gd.length >= 6 && first(gd) && (gp.length < 2 || first(gp)), JSON.stringify({ gd, gp }));
+    await page.evaluate(() => { window.BW.runAction('settings'); }); await page.waitForTimeout(400);
     await sh(page, (R) => { const d = R.querySelectorAll('.drawer details.pgrp')[2]; d.open = true; });
     await page.waitForTimeout(100);
     await page.evaluate(() => { window.BW.runAction('settings'); }); await page.waitForTimeout(400); await page.evaluate(() => { window.BW.runAction('settings'); }); await page.waitForTimeout(400);
@@ -592,18 +608,12 @@ try {
   }
   { // 0.13 TOC
     const { ctx, page, errors } = await open({ width: 1440, height: 900 });
-    // WP2's pointers (design.md A25), put on the rendered TOC and control table by hand until render.mjs emits them
+    // the TOC and control-table pointers come from engine/render.mjs (WP2, design.md A25): no stand-ins
     const fixture = () => page.evaluate(() => {
       const d = window.BW.M[window.BW.S.svc][window.BW.S.ed].doc;
       const main = document.querySelector(`main.bw-doc[data-locale="${window.BW.S.ed}"]`);
-      const toc = main.querySelector('table.toc');
-      toc.dataset.rows = '/toc';
-      const secs = d.chapters.flatMap((ch, i) => ch.sections.length > 1 ? ch.sections.map((s, j) => [i, j, s]) : []);
-      let hit = null;
-      toc.querySelectorAll('tr').forEach((tr) => { const td = tr.children[1]; const m = secs.find(([, , s]) => td?.textContent.trim() === String(s.title).trim()); if (m) { tr.dataset.sec = `/chapters/${m[0]}/sections/${m[1]}`; td.dataset.p = `${tr.dataset.sec}/title`; td.tabIndex = 0; hit ||= tr.dataset.sec; } });
-      const ctl = main.querySelector('[data-part="control"] table');
-      if (ctl) ctl.dataset.rows = '/controlTable/rows';
-      return hit;
+      const multi = new Set(d.chapters.flatMap((ch, i) => (ch.sections.length > 1 ? ch.sections.map((s, j) => `/chapters/${i}/sections/${j}`) : [])));
+      return [...main.querySelectorAll('table.toc[data-rows="/toc"] tr[data-sec]')].map((tr) => tr.dataset.sec).find((x) => multi.has(x)) || null;
     });
     const sec = await fixture();
     const cnt = (p) => page.evaluate((p) => p.split('/').slice(1).reduce((o, k) => o?.[k], window.BW.M[window.BW.S.svc][window.BW.S.ed].doc), p);
@@ -621,13 +631,12 @@ try {
     const still = !!(await page.locator(`main.bw-doc [data-p="${sec}/title"]`).count());
     check('0.13 A25: TOC Delete hides the entry (tocHidden), the section stays in the body', hid === true && still && (await cnt(`${ch}/sections`)).length === n1, JSON.stringify({ hid, still }));
     // control table: virtual rows, materialised by its owner (WP2's materialiseControl) before the first structural op
-    await page.evaluate(() => window.BW.bwExt({ actions: { materialiseControl: () => { window.BW.commit([{ op: 'replace', path: '/controlTable', value: { columns: 2, rows: [['a', 'b'], ['c', 'd']], bind: {} } }], { rerender: false }); } } }));
-    await fixture();
+    const rows0 = await page.evaluate(() => document.querySelectorAll(`main.bw-doc[data-locale="${window.BW.S.ed}"] table.control[data-rows="/controlTable/rows"] tr`).length);
     const cc = page.locator('main.bw-doc [data-part="control"] td[data-p]').first(); await cc.scrollIntoViewIfNeeded(); await cc.click(); await page.waitForTimeout(200);
     const ctools = await sh(page, (R) => { const c = R.querySelector('.ctx'); return c.hidden ? '' : c.dataset.cat; });
     await page.evaluate(() => window.BW.runAction('rowAdd')); await page.waitForTimeout(200);
     const rows = await cnt('/controlTable/rows');
-    check('0.13 A25: control table → table tools; Add row materialises it first, then adds', ctools === 'table' && rows?.length === 3, JSON.stringify({ ctools, rows }));
+    check('0.13 A25: control table → table tools; Add row materialises it first (WP2 materialiseControl), then adds', ctools === 'table' && rows?.length === rows0 + 1, JSON.stringify({ ctools, rows0, rows: rows?.length }));
     check('0.13 A25: no page errors', !errors.length, errors.join(' | '));
     await ctx.close();
   }

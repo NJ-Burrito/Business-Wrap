@@ -142,6 +142,12 @@ try {
   check('served: a PDF import keeps every Arabic word pdftotext reads (-enc UTF-8)', r.status === 200 && j.locale === 'ar' && docWords === want && want > 20, JSON.stringify({ status: r.status, docWords, want, err: j.error }));
   const bad = await fetch(base + '/api/import', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'x.exe', data: '' }) });
   check('served: import refuses anything but .pdf / .docx', bad.status === 400);
+  // the Export & Print centre's one-format export lands in the save folder too: HTML\ (print), "<title>-<date>-AR", -2 on a clash
+  const ef = async () => (await fetch(base + '/api/export/file', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ service: 'blank', locale: 'ar', doc: blankAr, format: 'printHtml' }) })).json();
+  const e1 = await ef();
+  const e2 = await ef();
+  const nm = /-\d{4}-\d\d-\d\d-AR\.print\.html$/;
+  check('served: print-centre export → save folder HTML\\, "<title>-<date>-AR" name, a second export gets -2 (never an overwrite)', e1.file?.startsWith(ws.dirs.html + path.sep) && nm.test(e1.file) && e2.file === e1.file.replace(/\.print\.html$/, '-2.print.html') && !!e1.url, JSON.stringify({ e1: e1.file, e2: e2.file, url: e1.url }));
   await ctx.close();
 } finally {
   await browser.close();

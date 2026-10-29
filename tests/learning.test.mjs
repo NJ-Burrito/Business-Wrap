@@ -180,7 +180,8 @@ try {
   const formats = J.filter((e) => e.kind === 'export').map((e) => e.format);
   check('capture: exports with format and the accepted state', ['html', 'exportEdits', 'pdf+docx'].every((f) => formats.includes(f)) && by((e) => e.format === 'pdf+docx').accepted.length >= 5, formats.join(','));
   const ids = J.map((e) => e.id);
-  const leak = (s) => ids.some((id) => s.includes(id)) || /"origin":"(generated|manual|harvested|learned)"/.test(s) || /"kind":"(edit|note|revert)"/.test(s); // the app code names its IndexedDB store; no event data may follow it
+  const leak = (s) => ids.some((id) => s.includes(`"${id}"`)) || // as a JSON value: a short id like t28 also occurs inside base64 (fonts, the sealed history)
+    /"origin":"(generated|manual|harvested|learned)"/.test(s) || /"kind":"(edit|note|revert)"/.test(s); // the app code names its IndexedDB store; no event data may follow it
   check('nothing leaks into Save HTML (no event, no journal field)', !leak(html) && html.includes('id="bw-data"'));
   check('nothing leaks into the design pack', !leak(pack) && pack.includes('bw-design-pack'));
   const exp = path.join(OUT, 'exports', 'event-permit', 'ar');
@@ -194,6 +195,8 @@ try {
   const noBtn = await page.evaluate(() => { const r = document.getElementById('bw-ui-host').shadowRoot; window.BW.runAction('palette'); const inPal = !!r.querySelector('#cmdlist [data-cmd="learning"]'); r.querySelector('.scrim').hidden = true; return !r.querySelector('button[data-a="learning"]') && !inPal; });
   await page.keyboard.press('Escape');
   await page.evaluate(() => window.BW.runAction('settings'));
+  // 0.13 A7: «التعلّم المحلي» is a collapsed group like every other one but the first: open it
+  await page.evaluate(() => { const g = document.getElementById('bw-ui-host').shadowRoot.querySelector('[data-lrn-mount]')?.closest('details'); if (g) g.open = true; });
   await page.locator('[data-lrn-mount] .bw-learning').waitFor();
   const panel = await page.locator('.set-lrn').innerText();
   check('panel: no toolbar button or palette entry; Settings «التعلّم المحلي» shows the privacy notice and the counts', noBtn && panel.includes('التعلّم المحلي') && panel.includes('يبقى على جهازك فقط') && /\d+\s*أحداث/.test(panel), panel.slice(0, 200));

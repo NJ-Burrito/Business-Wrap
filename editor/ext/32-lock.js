@@ -37,6 +37,7 @@ async function lkToggle() {
     flash(t('lkUnlocked'));
   }
   lkPaint();
+  if (EXT.library?.isDoc(svc)) await EXT.library.save(); // the library entry carries the lock state (A16 ↔ A2)
 }
 
 /** The Save-HTML text, captured instead of downloaded. */
@@ -72,8 +73,12 @@ async function lkShare() {
 document.addEventListener('beforeinput', (e) => { if (lkOn() && e.target.closest?.('#bw-pair')) { e.preventDefault(); } }, true);
 document.addEventListener('dblclick', () => { if (lkOn()) setTimeout(lkPaint, 0); }, true);
 
+IC.lkToggle = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <rect width="18" height="11" x="3" y="11" rx="2" ry="2" /> <path d="M7 11V7a5 5 0 0 1 10 0v4" /> </svg>';
+IC.shShare = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <circle cx="18" cy="5" r="3" /> <circle cx="6" cy="12" r="3" /> <circle cx="18" cy="19" r="3" /> <line x1="8.59" x2="15.42" y1="13.51" y2="17.49" /> <line x1="15.41" x2="8.59" y1="6.51" y2="10.49" /> </svg>';
 bwExt({
+  cmds: [{ id: 'lkToggle', group: 'document', edit: false }, { id: 'shShare', group: 'file', edit: false }],
   actions: { lkToggle, shShare: lkShare },
+  expose: { lock: { of: (svc) => LK[svc] || null, set: (svc, v) => { if (v) LK[svc] = v; else delete LK[svc]; if (svc === S.svc) lkPaint(); } } },
   guards: [(what) => (lkOn() ? t('lkRefused') : true)],
   on: {
     boot: lkPaint,

@@ -24,17 +24,11 @@ function w2docCss(id, css) {
   if (!el) { el = document.createElement('style'); el.id = id; document.head.appendChild(el); }
   el.textContent = css;
 }
-/** Toolbar sections added at boot by one ordinary rebuild, keeping what boot() has just shown: the recovery banner and
- * toasts are carried over, and the first-open motion plays on the rebuilt bar (the seam's own rebuild lost both). */
+/** Toolbar sections of the extensions, registered at load: boot() runs after every extension (engine/build-editor.mjs),
+ * so the first mount draws them; nothing is rebuilt afterwards. */
 function w2addSections(cats) {
   bwExt({ sections: cats.map((cat) => ({ cat })) });
   for (const cat of cats) GENERAL_GROUPS.splice(GENERAL_GROUPS.indexOf(cat), 1); // steps aside in selections: not a palette group
-  const kept = [...root.querySelectorAll('.toasts > *')];
-  if (root.querySelector('.shell.first')) buildUi.done = false;
-  buildUi();
-  const box = root.querySelector('.toasts');
-  kept.forEach((el) => box?.appendChild(el));
-  kept.find((el) => el.classList.contains('banner'))?.querySelector('button')?.focus();
 }
 /** Shows a section only while its condition holds (sections are built by buildUi; this survives a rebuild). */
 function w2showSection(cat, on) {
@@ -98,12 +92,12 @@ const W2_CHROME = {
 async function w2chromeAction(id) {
   const op = id.replace(/^(hdr|ftr|ch)/, '');
   // hdr*/ftr* add to their band; ch* work on the item picked on screen, whichever band it is in
-  const part = id.startsWith('hdr') ? 'header' : id.startsWith('ftr') ? 'footer' : W2.sel?.part;
+  const part = id === 'hdrConf' ? 'footer' : id.startsWith('hdr') ? 'header' : id.startsWith('ftr') ? 'footer' : W2.sel?.part;
   if (op === 'Text') { const v = await ask(t('w2.textPrompt')); if (v) W2_CHROME.add(part, { kind: 'text', value: v }); return; }
   if (op === 'Field') { openDrawer(part === 'header' ? 'w2hdrField' : 'w2ftrField'); return; }
   if (op === 'Logo') { const img = await pickImage(); if (img) W2_CHROME.add(part, { kind: 'logo', value: 'header', src: img.src }); return; }
   if (op === 'Conf') { const v = await ask(t('w2.confPrompt'), labelsOf().confidential || ''); if (v) setText('/labels/confidential', v); render(); return; }
-  if (!W2.sel) { toast(t('w2.pickItem'), 'info'); return; }
+  if (!W2.sel || W2.sel.part !== part) { toast(t('w2.pickItem'), 'info'); return; } // the item tools of a band act on an item of that band
   const i = W2.sel.i;
   if (op === 'Start' || op === 'Center' || op === 'End') W2_CHROME.set(part, i, 'align', op.toLowerCase());
   else if (op === 'Delete') W2_CHROME.remove(part, i);
@@ -113,7 +107,13 @@ async function w2chromeAction(id) {
     toast(t('w2.scope.' + ({ all: 'only', only: 'from', from: 'all' }[now])), 'info');
   }
 }
-const W2_CH_IDS = ['hdrText', 'hdrField', 'hdrLogo', 'ftrText', 'ftrField', 'chStart', 'chCenter', 'chEnd', 'chDelete', 'chScope', 'hdrConf'];
+const W2_ITEM_OPS = ['Start', 'Center', 'End', 'Delete', 'Scope'];
+// A5: two sections, as asked: «الترويسة» (header) and «التذييل» (footer); each carries its own item tools.
+// The ch* ids stay as actions (scripts, older palettes): they work on the picked item, whichever band it is in.
+const W2_HDR_IDS = ['hdrText', 'hdrField', 'hdrLogo', ...W2_ITEM_OPS.map((o) => 'hdr' + o)];
+const W2_FTR_IDS = ['ftrText', 'ftrField', 'hdrConf', ...W2_ITEM_OPS.map((o) => 'ftr' + o)];
+const W2_CH_IDS = [...W2_HDR_IDS, ...W2_FTR_IDS, ...W2_ITEM_OPS.map((o) => 'ch' + o)];
+for (const o of W2_ITEM_OPS) { IC['hdr' + o] = IC['ftr' + o] = IC['ch' + o]; }
 const W2_FIELDS = [...CHROME_FIELDS.map((f) => ['field', f]), ['page', 'n'], ['page', 'n/N']];
 function w2fieldDrawer(part) {
   return () => ({
@@ -154,23 +154,28 @@ function w2strip() {
   }
 }
 
+IC.secHeader = IC.secChrome;
+IC.secFooter = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <rect width="18" height="18" x="3" y="3" rx="2" /> <path d="M3 15h18" /> </svg>';
+w2addSections(['header', 'footer']);
 bwExt({
   cmds: [
-    ...W2_CH_IDS.map((id) => ({ id, group: 'chrome', edit: true })),
-    { id: 'every', group: 'chrome', edit: true },
+    ...W2_HDR_IDS.slice(0, 3).map((id) => ({ id, group: 'header', edit: true })),
+    { id: 'every', group: 'header', edit: true },
+    ...W2_HDR_IDS.slice(3).map((id) => ({ id, group: 'header', edit: true })),
+    ...W2_FTR_IDS.map((id) => ({ id, group: 'footer', edit: true })),
   ],
   actions: Object.fromEntries(W2_CH_IDS.map((id) => [id, w2chromeAction])),
   drawers: { w2hdrField: w2fieldDrawer('header'), w2ftrField: w2fieldDrawer('footer') },
   expose: { w2chrome: W2_CHROME },
   on: {
     boot: () => {
-      w2addSections(['chrome']);
-      setTimeout(w2strip); // the first render ran before the extensions loaded
-      // the section steps aside while a selection's own section is in the bar (no room for both at 1366 px)
-      // and comes back with the general tools, or when a header/footer item is picked
+      setTimeout(w2strip);
+      // the two sections step aside while a selection's own section is in the bar (1366 px has no room for both)
+      // and come back with the general tools; a picked header/footer item brings back its own band's section
       new MutationObserver(() => {
         const sel = root.querySelector('.island')?.classList.contains('has-sel');
-        w2showSection('chrome', !sel || !!W2.sel);
+        w2showSection('header', !sel || W2.sel?.part === 'header');
+        w2showSection('footer', !sel || W2.sel?.part === 'footer');
       }).observe(root, { subtree: true, attributes: true, attributeFilter: ['class'] });
       w2docCss('w2-doc-css', `@media print{.w2-strip{display:none!important}}
 .w2-strip{font-size:9pt;color:var(--muted);background:var(--paper,#fff);border:1px dashed var(--rule-strong);border-radius:2mm;max-width:210mm;margin:4mm auto;padding:1.5mm 3mm;display:grid;gap:1mm}
@@ -186,7 +191,7 @@ bwExt({
   },
 });
 document.addEventListener('click', (e) => {
-  const el = e.target.closest?.('#bw-pair .w2-strip [data-ci]');
+  const el = e.target.closest?.('#bw-pair :is(.w2-strip, .bw-runs) [data-ci]');
   if (!el) { if (e.target.closest?.('#bw-pair main.bw-doc')) W2.sel = null; return; }
   const [part, i] = el.dataset.ci.split(':');
   W2.sel = { part, i: +i };
@@ -195,7 +200,7 @@ document.addEventListener('click', (e) => {
   root.querySelector('.sec[data-cat="chrome"]')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
 });
 document.addEventListener('input', (e) => {
-  const el = e.target.closest?.('#bw-pair .w2-strip [data-w2p]');
+  const el = e.target.closest?.('#bw-pair :is(.w2-strip, .bw-runs) [data-w2p]');
   if (el) setText(el.dataset.w2p, el.innerText.replace(/\s+/g, ' ').trim(), S.ed);
 });
-document.addEventListener('focusout', (e) => { if (e.target.closest?.('#bw-pair .w2-strip [data-w2p]')) render(); });
+document.addEventListener('focusout', (e) => { if (e.target.closest?.('#bw-pair :is(.w2-strip, .bw-runs) [data-w2p]')) render(); });

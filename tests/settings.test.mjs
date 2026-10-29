@@ -204,7 +204,7 @@ try {
       const d = r.querySelector('.drawer');
       d.querySelectorAll('details.pgrp').forEach((x) => { x.open = true; }); // 0.13 A7: groups start collapsed (except the first)
       const box = (el) => { const b = el.getBoundingClientRect(); return [b.x, b.y, b.width].map(Math.round).join(','); };
-      return { text: d.innerText, cards: [...d.querySelectorAll('.card')].map(box), drawer: box(d), status: d.querySelector('.set-status').textContent };
+      return { text: d.innerText, cards: [...d.querySelectorAll('.card')].map((c) => { /* in the drawer's content: a scroll is not a flip */ const b = c.getBoundingClientRect(); return [b.x, b.y + d.scrollTop, b.width].map(Math.round).join(','); }), drawer: box(d), status: d.querySelector('.set-status').textContent };
     });
     const ar = await info();
     check('Settings opens from the toolbar\'s View section and from Ctrl+K', btnOnBar);
@@ -217,7 +217,7 @@ try {
     await page.waitForTimeout(500);
     const en = await info();
     check('Preferences → English: the interface switches and Settings stays open', (await page.evaluate(() => window.BW.S.ui)) === 'en' && en.text.includes('Check now') && en.text.includes('Preferences'));
-    check('the layout never flips: the drawer and its cards keep their boxes in both languages', en.drawer === ar.drawer && en.cards.slice(0, 1).join() === ar.cards.slice(0, 1).join(), `${ar.drawer} / ${en.drawer}`);
+    check('the layout never flips: the drawer and its cards keep their boxes in both languages', en.drawer === ar.drawer && en.cards.slice(0, 1).join() === ar.cards.slice(0, 1).join(), `${ar.drawer} / ${en.drawer} · ${ar.cards[0]} / ${en.cards[0]}`);
     await shot(page, 'settings-en');
     await sh(page, (r) => r.querySelector('.drawer [data-k="setView"][data-v="single"]').click());
     await page.waitForTimeout(400);
@@ -259,6 +259,18 @@ try {
     put(s.dir, 'out/mine.editor.html', '<!doctype html><title>mine</title>');
     put(s.dir, 'logos/client.svg', '<svg xmlns="http://www.w3.org/2000/svg"/>');
     const before = [sha(fs.readFileSync(userFile)), sha(fs.readFileSync(path.join(s.dir, 'logos/client.svg')))];
+    if (ui === 'ar') {
+      // axe on a HELD progress view: the live one ends in a reload, which destroyed the page under axe (a race)
+      const h = await open(s.url, { ui });
+      await waitPopup(h.page);
+      await h.page.route('**/api/update/apply', (r) => r.fulfill({ json: { started: true, to: NEWER } }));
+      await h.page.route('**/api/update/progress', (r) => r.fulfill({ json: { stage: 'replace' } }));
+      await uh(h.page, (r) => r.querySelector('.row button.primary').click());
+      await h.page.waitForFunction(() => document.getElementById('bw-update').dataset.open === 'progress');
+      await h.page.waitForTimeout(900); // the steps have faded in
+      await axe(h.page, 'update progress');
+      await h.ctx.close();
+    }
     const { ctx, page, errors } = await open(s.url, { ui });
     await waitPopup(page);
     await uh(page, (r) => r.querySelector('.row button.primary').focus());
@@ -277,7 +289,6 @@ try {
     await page.waitForTimeout(120);
     const steps = await uh(page, (r) => [...r.querySelectorAll('.steps li')].map((li) => li.dataset.step));
     await page.waitForTimeout(450); // the steps have faded in
-    if (ui === 'ar') await axe(page, 'update progress'); // before the screenshot: the reload follows the server within about a second
     await shot(page, `progress-${ui}`).catch(() => {});
     const reloaded = await nav;
     await page.waitForFunction(() => window.BW?.ready, null, { timeout: 20000 });

@@ -147,12 +147,13 @@ window.addEventListener('pointerdown', (e) => {
 }, true);
 window.addEventListener('resize', () => uxMenusOpen().forEach((m) => uxMenuPlace(m, m.previousElementSibling)));
 
-/* ── 0.13 A7: side panels — each heading and what follows it is a group, collapsed except the first ──────────
- * (and any the person opened, remembered per panel and position in sessionStorage; a group whose container
- * carries data-grp-open starts open: Settings → local learning, a live panel). The Design panel keeps its own
- * groups (design-panel.js); the Process panel is one form and stays flat. */
+/* ── 0.13 A7: side panels — each heading and what follows it is a group, collapsed except the first ─────────────
+ * (any the person opened is remembered per panel and position in sessionStorage). Every panel, the Process panel
+ * and Settings → local learning included; the Design panel keeps its own groups (design-panel.js), collapsed too. */
+// the Design panel's own groups: an open/close is remembered the moment it happens (a redraw may rebuild the drawer first)
+root.addEventListener('toggle', (e) => { const g = e.target; if (g.matches?.('details[data-grp]')) (S.grpOpen ||= {})[g.dataset.grp] = g.open; }, true);
 function uxDrawerGroups(d, kind) {
-  if (kind === 'theme' || kind === 'process') return;
+  if (kind === 'theme') return;
   const heads = [...d.querySelectorAll('h3, h4')].filter((h) => !h.closest('details, header'));
   heads.forEach((h, i) => {
     const key = `bw:grp:${kind}:${i}`;
@@ -163,7 +164,7 @@ function uxDrawerGroups(d, kind) {
     det.append(sum);
     sum.append(h);
     for (let n = det.nextSibling; n && !(n.nodeType === 1 && (n.matches('h3, h4') || n.querySelector('h3, h4')));) { const nx = n.nextSibling; det.append(n); n = nx; }
-    let open = i === 0 || !!h.closest('[data-grp-open]'); // a group may declare it starts open (a live panel)
+    let open = i === 0; // the first group open, every other collapsed (remembered once toggled)
     try { const v = sessionStorage.getItem(key); if (v != null) open = v === '1'; } catch { /* storage blocked: defaults */ }
     det.open = open;
     det.addEventListener('toggle', () => { try { sessionStorage.setItem(key, det.open ? '1' : '0'); } catch { /* storage blocked */ } });

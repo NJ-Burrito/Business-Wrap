@@ -69,7 +69,7 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
         return send(200, fs.readFileSync(f), f.endsWith('.ttf') ? 'font/ttf' : 'font/woff2');
       }
       // the Export & Print centre (0.11.0): engine/printers.mjs answers /api/print/* and /api/export/*
-      if (await printApi(req, res, url, { send, OUT, maxBody: MAX_BODY })) return;
+      if (await printApi(req, res, url, { send, OUT, maxBody: MAX_BODY, ws: () => !out && wsOf(), filesRoot })) return;
       if (req.method === 'GET' && url.pathname.startsWith('/files/')) {
         const base = filesRoot();
         const f = path.resolve(base, '.' + decodeURIComponent(url.pathname.slice(6)));

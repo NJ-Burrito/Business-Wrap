@@ -80,8 +80,27 @@ export function gateExport(files, { editions } = {}) {
 export async function gateLedger(file) {
   let mod;
   try { mod = await import('../ledger-v1.mjs'); } catch { return { stage: 'ledger', verdict: 'SKIP', problems: [], why: 'engine/ledger-v1.mjs is not in this build yet (WP4)' }; }
-  const r = await mod.verify(fs.readFileSync(file));
-  return res('ledger', r.ok ? [] : [r.reason || 'ledger does not verify']);
+  const { BWLOG1 } = mod;
+  // a .bwlog envelope (its document id from <name>.heads.json, as HISTORY\ keeps it) or a Save-HTML editor file
+  const logs = [];
+  try {
+    const text = fs.readFileSync(file, 'utf8');
+    if (/\.bwlog$/i.test(file)) {
+      const heads = file.replace(/\.bwlog$/i, '.heads.json');
+      if (!fs.existsSync(heads)) return res('ledger', [`no document id: ${path.basename(heads)} is not beside the log`]);
+      const doc = JSON.parse(fs.readFileSync(heads, 'utf8')).doc;
+      logs.push(await BWLOG1.unseal(text, doc));
+    } else {
+      const m = /<script type="application\/json" id="bw-data">([\s\S]*?)<\/script>/.exec(text);
+      const prov = m ? JSON.parse(m[1]).prov || {} : null;
+      if (!prov) return res('ledger', ['not a bwlog file or a Save-HTML editor file']);
+      for (const x of Object.values(prov)) logs.push(await BWLOG1.unseal(x.log, x.doc));
+      if (!logs.length) return res('ledger', ['the file carries no history']);
+    }
+  } catch (e) { return res('ledger', [`unreadable: ${String(e.message || e).slice(0, 120)}`]); }
+  const p = [];
+  for (const L of logs) { const r = await BWLOG1.verify(L); for (const i of r.issues) p.push(`${L.doc} entry ${i.seq}: ${i.reason}`); }
+  return res('ledger', p);
 }
 
 export const GATES = { harvest: gateHarvest, evidence: gateEvidence, document: gateDocument, render: gateRender, export: gateExport, ledger: gateLedger };

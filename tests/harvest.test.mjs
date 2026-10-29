@@ -137,6 +137,10 @@ try {
   const added = await p.evaluate(() => ({ n: Object.keys(window.BW.M).length, svc: window.BW.S.svc, ch: window.BW.M[window.BW.S.svc].ar.doc.chapters.length, opts: document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('select[data-a="svc"] option').length }));
   check('wizard: a model file becomes a new service, both editions, in the selector', added.n === before + 1 && added.ch === 7 && added.opts === added.n, JSON.stringify(added));
   await p.evaluate(() => window.BW.runAction('process')); // folded into the Document section's «More» at this width
+  await p.waitForTimeout(300);
+  const pg = await p.evaluate(() => [...document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('.drawer details.pgrp')].map((d) => d.open));
+  check('A7: the Process panel opens with only its first group expanded', pg.length >= 2 && pg[0] && pg.slice(1).every((x) => !x), JSON.stringify(pg));
+  await p.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('.drawer details.pgrp').forEach((d) => { d.open = true; })); // A7: collapsed groups
   await p.locator('.drawer [data-k="pr-step"]').click();
   const steps0 = await p.evaluate(() => window.BW.M[window.BW.S.svc][window.BW.S.ed].doc.process.steps.length);
   await p.locator('.drawer [data-k="pr-regen"]').click();

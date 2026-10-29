@@ -134,7 +134,7 @@ function decorate() {
 
 /* ── extension seam (0.13.0): editor/ext/*.js register through bwExt; the contract is editor/ext/README.md ── */
 const EXT = { cmds: [], sections: [], actions: {}, drawers: {}, settings: [], status: null, guards: [],
-  on: { boot: [], commit: [], render: [], save: [], saveHtml: [], export: [], pagehide: [], open: [], keydown: [] } };
+  on: { boot: [], commit: [], render: [], save: [], saveHtml: [], beforeExport: [], export: [], pagehide: [], open: [], keydown: [] } };
 function bwExt(def = {}) {
   for (const c of def.cmds || []) { const x = { group: 'document', edit: false, ...c }; EXT.cmds.push(x); CMDS.push(x); }
   for (const x of def.sections || []) { EXT.sections.push(x); if (!GENERAL_GROUPS.includes(x.cat)) GENERAL_GROUPS.push(x.cat); }
@@ -148,8 +148,11 @@ function bwExt(def = {}) {
     EXT.on[ev].push(...[].concat(f));
   }
   Object.assign(EXT, def.expose); // named services for other extensions, e.g. EXT.ledger
+  if (window.BW?.ready && (def.cmds?.length || def.sections?.length || def.status)) buildUi(); // registered after boot: patched in place
 }
 const emit = (ev, ...a) => EXT.on[ev].forEach((f) => { try { f(...a); } catch (e) { console.error(e); } });
+/** Awaited before a server export (PDF/DOCX/print): e.g. the first export asks for the save folder (A11). */
+const beforeExport = async () => { for (const f of EXT.on.beforeExport) { try { await f(); } catch (e) { console.error(e); } } };
 /** Every guard is asked before a change; false or a reason string refuses it: nothing changes, the reason is toasted, the caller stops (throws). */
 function guard(what, info) {
   for (const g of EXT.guards) {
@@ -246,9 +249,19 @@ function undo(ed = S.ed) {
   while (e.ops.length && e.ops.at(-1).id.split('.')[0] === g) grp.unshift(e.ops.pop());
   e.redo.push(grp);
   rebuild(e);
+  // a structural edit was mirrored into the other edition (ids g.m0 …): it goes with it, or the pair drifts apart
+  const o = mirrorOf(ed, g, (x) => x.ops.at(-1));
+  if (o) { const m = []; while (o.ops.length && o.ops.at(-1).id.split('.')[0] === g) m.unshift(o.ops.pop()); o.redo.push(m); rebuild(o); }
   touched();
   render();
   emit('commit', grp, ed, 'undo');
+}
+/** The other edition when its newest op (or redo group) is the mirror of group g, else null. */
+function mirrorOf(ed, g, last) {
+  if (!hasOther()) return null;
+  const o = cur(other(ed));
+  const x = o && last(o);
+  return x && String(x.id).startsWith(`${g}.m`) ? o : null;
 }
 function redo(ed = S.ed) {
   const e = cur(ed);
@@ -257,6 +270,9 @@ function redo(ed = S.ed) {
   const grp = e.redo.pop();
   e.ops.push(...grp);
   rebuild(e);
+  const g = grp[0]?.id.split('.')[0];
+  const o = g && mirrorOf(ed, g, (x) => x.redo.at(-1)?.[0]);
+  if (o) { o.ops.push(...o.redo.pop()); rebuild(o); }
   touched();
   render();
   emit('commit', grp, ed, 'redo');
@@ -508,6 +524,7 @@ async function exportPdfDocx() {
   const e = cur();
   const body = { service: S.svc, locale: S.ed, doc: e.doc, theme: S.theme, embedFonts: S.docxFonts };
   if (location.protocol.startsWith('http')) {
+    await beforeExport();
     try {
       const r = await fetch('/api/export', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json();
@@ -2554,12 +2571,14 @@ function boot() {
   render(false);
   offerRecovery();
   window.BW.ready = true; // booted and rendered with the remembered state
-  // editor/ext/*.js load after this file: once the whole script has run, draw their sections and tell them
-  queueMicrotask(() => { if (EXT.sections.length || EXT.status) buildUi(); emit('boot'); emit('open', S.svc, S.ed); });
+  // boot() runs once the whole script has loaded (engine/build-editor.mjs calls it after editor/ext/*.js), so the
+  // first mount already draws every extension's commands and sections: no second build, the recovery banner and the
+  // first-open motion stay. The events wait one microtask, for the local-learning layer that wraps the editor last.
+  queueMicrotask(() => { emit('boot'); emit('open', S.svc, S.ed); });
 }
 // a re-harvest that met a hand edit: the person's text was kept; show the source's new text beside it
 for (const [svc, eds] of Object.entries(M)) for (const [ed, e] of Object.entries(eds)) for (const c of e.doc.harvestConflicts || []) if (svc === S.svc) S.conflicts.push({ ed, path: c.path, mine: c.manual, theirs: c.harvested, kind: 'text' });
 if (S.conflicts.length) toast(t('reharvestConflicts', { n: S.conflicts.length }), 'warn', { actions: [[t('show'), () => openDrawer('conflicts')]], persist: true });
 { const n = (cur().doc.process?.actors || []).filter((a) => a.unresolved).length; if (n) toast(t('rolesUnresolved', { n }), 'warn', { actions: [[t('show'), () => openDrawer('process')]], persist: true }); }
 window.BW = { flushDraft, S, M, commit, runAction, toast, DIAGRAM, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll, EXT, emit, bwExt, openDrawer };
-boot();
+// boot(): called by engine/build-editor.mjs after editor/ext/*.js (the seam)

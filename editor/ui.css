@@ -220,7 +220,7 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
 .drawer .card { margin: 10px 0 14px; padding: 12px 14px; border-radius: 16px; background: var(--wash-2); box-shadow: 0 0 0 1px var(--panel-line); animation: rise .4s var(--e-out) both; }
 .drawer .card + .card { animation-delay: .06s; }
 .drawer .card h3 { display: flex; align-items: center; gap: 8px; margin-top: 0; color: var(--navy); font-size: 15px; }
-.drawer textarea[data-f="crawl"] { font: 12.5px/1.45 ui-monospace, Consolas, monospace; color: var(--panel-ink); background: var(--panel); border: 1px solid var(--panel-line); border-radius: 10px; padding: 8px; width: 100%; }
+.drawer textarea[data-f="crawl"] { font: 12.5px/1.45 var(--bw-font-ui); color: var(--panel-ink); background: var(--panel); border: 1px solid var(--panel-line); border-radius: 10px; padding: 8px; width: 100%; }
 .drawer .proc-fig { border-radius: 12px; overflow: auto; background: #fff; box-shadow: 0 0 0 1px var(--panel-line); max-height: 260px; } /* doc-colour: the process figure prints on paper */
 .drawer .proc-fig svg { display: block; width: 100%; height: auto; min-width: 560px; }
 .drawer .row3 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }

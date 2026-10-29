@@ -379,7 +379,8 @@ def _anchor_xml(wrap, x_mm, y_mm, cx, cy, graphic, name, h_rel='column', v_rel='
     ns = nsdecls('wp')
     w = WRAP_XML.get(wrap, WRAP_XML['front']).format(ns=ns, poly=POLY)
     behind = '1' if wrap == 'behind' else '0'
-    return (f'<wp:anchor {nsdecls("wp", "a", "pic", "r")} xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" distT="0" distB="0" distL="114300" distR="114300" simplePos="0" '
+    side = 0 if wrap == 'through' else 114300  # through: the text runs up to (and into) the shape, no side gap; tight keeps 3.2 mm
+    return (f'<wp:anchor {nsdecls("wp", "a", "pic", "r")} xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" distT="0" distB="0" distL="{side}" distR="{side}" simplePos="0" '
             f'relativeHeight="{251700000 + _SEQ[0]}" behindDoc="{behind}" locked="0" layoutInCell="1" allowOverlap="1">'
             f'<wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="{h_rel}"><wp:posOffset>{emu(x_mm)}</wp:posOffset></wp:positionH>'
             f'<wp:positionV relativeFrom="{v_rel}"><wp:posOffset>{emu(y_mm)}</wp:posOffset></wp:positionV>'

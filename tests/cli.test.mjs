@@ -5,6 +5,7 @@
 //   node tests/cli.test.mjs
 import fs from 'node:fs';
 import path from 'node:path';
+import net from 'node:net';
 import http from 'node:http';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -29,7 +30,7 @@ net.Socket.prototype.connect = function (...a) { const o = a[0] && typeof a[0] =
 const f = globalThis.fetch; globalThis.fetch = (u, ...r) => { const h = new URL(String(u?.url || u)).hostname; if (!ok(h)) return Promise.reject(new Error('NETWORK BLOCKED ' + h)); return f(u, ...r); };`;
 const PRELOAD = `data:text/javascript,${encodeURIComponent(BLOCK)}`;
 const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^(ANTHROPIC|OPENAI)_/i.test(k)));
-Object.assign(env, { BW_STATE_DIR: path.join(OUT, 'state'), BW_LEARNING_DIR: path.join(OUT, 'learning'), INIT_CWD: OUT });
+Object.assign(env, { BW_STATE_DIR: path.join(OUT, 'state'), BW_LEARNING_DIR: path.join(OUT, 'learning'), INIT_CWD: OUT, BW_WORKSPACE: path.join(process.env.TEMP || process.env.TMPDIR || '/tmp', 'bw-cli-test-ws') });
 const bw = (...args) => {
   const r = spawnSync(process.execPath, ['--import', PRELOAD, path.join(REPO, 'update', 'cli.mjs'), ...args], { cwd: OUT, env, encoding: 'utf8', timeout: 240000 });
   let json = null;
@@ -92,8 +93,9 @@ try {
   r = bw('nonsense');
   check('an unknown verb exits 2 with the usage', r.code === 2 && /business-wrap open/.test(r.err));
 
+  const PORT = await new Promise((ok) => { const sv = net.createServer().listen(0, '127.0.0.1', () => { const p = sv.address().port; sv.close(() => ok(p)); }); }); // a free port
   // open → the host answers with the document → close stops it
-  r = bw('open', path.join(REPO, 'samples', 'event-permit'), '--port', '4391', '--no-browser', '--json');
+  r = bw('open', path.join(REPO, 'samples', 'event-permit'), '--port', String(PORT), '--no-browser', '--json');
   const page = r.json?.url ? await get(r.json.url) : { code: 0, body: '' };
   check('open: host up, the page carries the document', r.code === 0 && page.code === 200 && page.body.includes('BW-SRS-SAMPLE-001') && r.json.doc_id === 'BW-SRS-SAMPLE-001', `${r.json?.url} ${page.code} ${r.err.slice(0, 160)}`);
   const pid = r.json?.pid;
@@ -101,7 +103,7 @@ try {
   check('status lists the running host', r.json?.hosts?.some((h) => h.pid === pid));
   r = bw('close', '--json');
   await new Promise((ok) => setTimeout(ok, 800));
-  const after = r.json?.url ? null : await get(`http://127.0.0.1:${4391}/`);
+  const after = r.json?.url ? null : await get(`http://127.0.0.1:${PORT}/`);
   check('close stops the host it started (port no longer answers)', r.code === 0 && r.json?.pids?.includes(pid) && after?.code === 0, JSON.stringify(r.json) + ` after=${after?.code}`);
 
   // the grep gate: no model or API client in any code path

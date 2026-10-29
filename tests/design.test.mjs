@@ -88,7 +88,10 @@ async function open(ctx, ui) {
   await page.waitForFunction(() => window.BW?.ready);
   return { page, errors };
 }
-const theme = async (page) => { await page.locator('.island button[data-a="theme"]').click(); await page.locator('.drawer .dgrp').first().waitFor(); await page.waitForTimeout(500); };
+// A7: the panel's groups start collapsed; these tests work inside them, so they open them as a person would (the open
+// state is remembered for the page, across redraws); «labels» and «css» stay closed, as the screenshots expect
+const openGroups = (page) => page.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('.drawer details.dgrp:not([data-grp="labels"]):not([data-grp="css"])').forEach((d) => { d.open = true; }));
+const theme = async (page) => { await page.locator('.island button[data-a="theme"]').click(); await page.locator('.drawer .dgrp').first().waitFor(); await openGroups(page); await page.waitForTimeout(500); };
 const design = (page) => page.evaluate(() => window.BW.M[window.BW.S.svc][window.BW.S.ed].doc.design || {});
 /** viewport screenshot of one element, after asserting it lies inside the viewport */
 async function shot(page, sel, name) {

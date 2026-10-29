@@ -234,7 +234,12 @@ export async function report({ from, to }) {
   if (!from || !to) throw Object.assign(new Error('report <from YYYY-MM-DD> <to YYYY-MM-DD>'), { code: 2 });
   let m;
   try { m = await import('./report.mjs'); } catch { throw new Pending('engine/report.mjs is not in this build yet (WP4)'); }
-  return m.report({ from, to });
+  const d = (x) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(x)) throw Object.assign(new Error(`report: dates as YYYY-MM-DD, got "${x}"`), { code: 2 }); return x; };
+  const { workspace, ensure } = await import('./workspace.mjs');
+  const ws = ensure(workspace());
+  const logs = await m.readHistory(ws.dirs.history);
+  const r = await m.exportReport(logs, { from: d(from), to: d(to), pdfPath: path.join(ws.dirs.pdf, `performance-report_${from}_${to}.ar.pdf`) });
+  return { pdf: r.pdf, people: r.data.people.length, docs: r.data.docs.length };
 }
 
 export function update(args) {

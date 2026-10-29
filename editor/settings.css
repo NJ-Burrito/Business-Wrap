@@ -7,7 +7,7 @@
 .set-logo svg { inline-size: 100%; block-size: 100%; }
 .set-id p { margin: 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .set-name { font: 800 18px/1.2 'Thmanyah Sans', system-ui, sans-serif; color: var(--navy); }
-.set-ver { font: 700 12px/1 ui-monospace, Consolas, monospace; padding: 4px 8px; border-radius: 999px; background: var(--wash); color: var(--panel-ink); }
+.set-ver { font: 700 12px/1 var(--bw-font-ui); padding: 4px 8px; border-radius: 999px; background: var(--wash); color: var(--panel-ink); }
 .set-dl { display: grid; grid-template-columns: minmax(96px, max-content) 1fr; gap: 6px 14px; margin: 0; }
 .set-dl dt { color: var(--panel-soft); font-weight: 600; }
 .set-dl dd { margin: 0; color: var(--panel-ink); overflow-wrap: anywhere; }
@@ -19,7 +19,7 @@
 .set .btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }
 .set-file { margin: 10px 0; padding: 10px 12px; border-radius: 12px; background: var(--panel); box-shadow: 0 0 0 1px var(--panel-line); }
 .set-file p { margin: 4px 0; }
-.set-file code { display: block; margin-top: 4px; padding: 6px 8px; border-radius: 8px; background: var(--wash); color: var(--panel-ink); font: 12.5px/1.4 ui-monospace, Consolas, monospace; text-align: left; overflow-wrap: anywhere; }
+.set-file code { display: block; margin-top: 4px; padding: 6px 8px; border-radius: 8px; background: var(--wash); color: var(--panel-ink); font: 12.5px/1.4 var(--bw-font-ui); text-align: left; overflow-wrap: anywhere; }
 .set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0; flex-wrap: wrap; }
 .set-k { color: var(--panel-soft); font-weight: 600; }
 .shell[data-tdir="ltr"] .set :is(.set-k, dt, dd, b) { direction: ltr; }

@@ -111,7 +111,7 @@ function editorScript(extDir) {
   const strip = (s) => s.replace(/^export /gm, '').replace(/^import .*$/gm, '');
   // the harvest model code lives in its own scope (HV), so its helper names stay out of the editor's
   const hv = ['xml.mjs', 'yaml.mjs', 'model.mjs', 'docs.mjs'].map((f) => strip(read(path.join(HERE, 'harvest', f)))).join('\n');
-  return `(() => {\n'use strict';\n${strip(read(path.join(HERE, 'edits.mjs')))}\n${strip(read(path.join(HERE, 'diagram.mjs')))}\n${strip(read(path.join(HERE, 'render.mjs')))}\n${strip(read(path.join(HERE, 'fontinfo.mjs')))}\nconst HV = (() => {\n${hv}\nreturn { parseModel, modelToDocument, processFigure, humanGraph, harvestToDocument, mergeToDocument };\n})();\n${['value-control.js', 'fonts.js', 'design-panel.js', 'editor.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${read(path.join(REPO, 'editor', 'diagram-ui.js'))}\n${['shell-ux.js', 'views.js', 'explainers.js', 'print-center.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${['update.js', 'settings.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${extFiles(extDir, '.js').map(read).join('\n')}\n})();`;
+  return `(() => {\n'use strict';\n${strip(read(path.join(HERE, 'edits.mjs')))}\n${strip(read(path.join(HERE, 'diagram.mjs')))}\n${strip(read(path.join(HERE, 'render.mjs')))}\n${strip(read(path.join(HERE, 'fontinfo.mjs')))}\n${strip(read(path.join(HERE, 'ledger-v1.mjs')))}\nconst HV = (() => {\n${hv}\nreturn { parseModel, modelToDocument, processFigure, humanGraph, harvestToDocument, mergeToDocument };\n})();\n${['value-control.js', 'fonts.js', 'design-panel.js', 'editor.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${read(path.join(REPO, 'editor', 'diagram-ui.js'))}\n${['shell-ux.js', 'views.js', 'explainers.js', 'print-center.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${['update.js', 'settings.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${extFiles(extDir, '.js').map(read).join('\n')}\nboot();\n})();`;
 }
 
 export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, localFonts = false, watermarkDir = DEFAULT_WATERMARK_DIR, ui = 'ar', ops = {}, extDir = EXT_DIR }) {
@@ -156,6 +156,8 @@ function editorHtml({ services, setId, ui = 'ar', theme, fontCss, fontFamilies, 
   for (const l of ['ar', 'en']) Object.assign(I.ui[l], UX[l], PC[l]);
   mergeExtI18n(I.ui, extDir);
   const app = appScript(extDir);
+  // parse it here: two concatenated files declaring the same name (a merge of parallel work) fail the build, not the browser
+  try { new Function(app); } catch (e) { throw new Error(`editor app script does not parse: ${e.message}`); }
   const csp = [
     "default-src 'none'",
     `script-src 'sha256-${crypto.createHash('sha256').update(app).digest('base64')}'`,

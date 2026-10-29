@@ -44,9 +44,33 @@ try {
   await page.goto(pathToFileURL(file).href);
   await page.waitForFunction(() => window.BW?.ready);
   const sh = (fn) => page.evaluate(`(${fn})(document.getElementById('bw-ui-host').shadowRoot)`);
-  check('editor: the «الترويسة والتذييل» toolbar section (one section: the bar has room for one at 1366 px)', await sh((r) => r.querySelector('.island .sec[data-cat="chrome"] .st')?.textContent === 'الترويسة والتذييل'));
-  check('editor: the section carries the footer tools too', await sh((r) => ['ftrText', 'ftrField'].every((a) => r.querySelector(`.sec[data-cat="chrome"] [data-a="${a}"]`))));
-  check('editor: the section carries add text/field/logo, align, delete, scope, logo on every page, confidentiality', await sh((r) => ['hdrText', 'hdrField', 'hdrLogo', 'chStart', 'chCenter', 'chEnd', 'chDelete', 'chScope', 'every', 'hdrConf'].every((a) => r.querySelector(`.sec[data-cat="chrome"] [data-a="${a}"]`))));
+  // A5: TWO sections, as asked — «الترويسة» and «التذييل» — each with its own add and item tools
+  check('editor: two toolbar sections «الترويسة» and «التذييل»', await sh((r) => r.querySelector('.island .sec[data-cat="header"] .st')?.textContent === 'الترويسة' && r.querySelector('.island .sec[data-cat="footer"] .st')?.textContent === 'التذييل' && !r.querySelector('.island .sec[data-cat="chrome"]')));
+  check('editor: «الترويسة» carries add text/field/logo, logo on every page, align, delete, scope', await sh((r) => ['hdrText', 'hdrField', 'hdrLogo', 'every', 'hdrStart', 'hdrCenter', 'hdrEnd', 'hdrDelete', 'hdrScope'].every((a) => r.querySelector(`.sec[data-cat="header"] [data-a="${a}"]`))));
+  check('editor: «التذييل» carries add text/field, confidentiality, align, delete, scope', await sh((r) => ['ftrText', 'ftrField', 'hdrConf', 'ftrStart', 'ftrCenter', 'ftrEnd', 'ftrDelete', 'ftrScope'].every((a) => r.querySelector(`.sec[data-cat="footer"] [data-a="${a}"]`))));
+  {
+    const p2 = await (await browser.newContext({ viewport: { width: 1366, height: 768 } })).newPage();
+    await p2.goto(pathToFileURL(file).href);
+    await p2.waitForFunction(() => window.BW?.ready);
+    const fit = await p2.evaluate(() => { const r = document.getElementById('bw-ui-host').shadowRoot; const bar = r.querySelector('.island'); const box = (c) => r.querySelector(`.island .sec[data-cat="${c}"]`)?.getBoundingClientRect(); const h = box('header'), f = box('footer'); return { over: bar.scrollWidth - bar.clientWidth, h: !!h && h.width > 0 && h.right <= innerWidth && h.left >= 0, f: !!f && f.width > 0 && f.right <= innerWidth && f.left >= 0 }; });
+    check('editor: at 1366 px both sections are in the bar and the bar does not scroll sideways', fit.over <= 0 && fit.h && fit.f, JSON.stringify(fit));
+    // the paged views: every page frame after the cover carries its header and footer, page numbers filled per frame
+    await p2.evaluate(() => window.BW.runAction('view.single'));
+    await p2.waitForTimeout(600);
+    const fr = await p2.evaluate(() => ({ n: window.BW.S.pageN, frames: document.querySelectorAll('#bw-pair .bw-runs .bw-run-f').length, code: [...document.querySelectorAll('#bw-pair .bw-runs .bw-run-h')].every((h) => h.textContent.includes(window.BW.M[window.BW.S.svc].ar.doc.control.documentId)), pages: [...document.querySelectorAll('#bw-pair .bw-runs .bw-run-f')].map((f) => f.querySelector('[data-bw-page]')?.textContent) }));
+    check('editor: single page view — each page frame after the cover has its own header (code) and footer page number', fr.n > 2 && fr.frames === fr.n - 1 && fr.code && fr.pages.every((x, i) => x === String(i + 2)), JSON.stringify(fr));
+    await p2.evaluate(() => { window.BW.EXT.w2chrome.add('header', { kind: 'text', value: 'FRAMEHEAD' }); });
+    await p2.waitForTimeout(500);
+    const ed = await p2.evaluate(() => { const el = [...document.querySelectorAll('#bw-pair .bw-runs .bw-run-h [data-w2p]')].find((x) => x.textContent.includes('FRAMEHEAD')); return { found: !!el, editable: !!el?.isContentEditable, frames: [...document.querySelectorAll('#bw-pair .bw-runs .bw-run-h')].filter((h) => h.textContent.includes('FRAMEHEAD')).length }; });
+    check('editor: a header item added shows in every page frame, editable in place', ed.found && ed.editable && ed.frames === fr.frames, JSON.stringify(ed));
+    const el = p2.locator('#bw-pair .bw-runs .bw-run-f').first().locator('[data-w2p]', { hasText: 'FRAMEHEAD' });
+    await p2.evaluate(() => window.BW.runAction('view.single')); // stays on the first page with content
+    const ptr = await el.getAttribute('data-w2p');
+    await el.evaluate((x) => { x.textContent = 'FRAMEEDIT'; x.dispatchEvent(new InputEvent('input', { bubbles: true })); });
+    await p2.waitForTimeout(150);
+    check('editor: typing in a page frame header edits the item', await p2.evaluate((ptr) => { const d = window.BW.M[window.BW.S.svc].ar.doc; return ptr.split('/').slice(1).reduce((o, k) => o?.[k], d)?.value === 'FRAMEEDIT' || JSON.stringify(d.chrome).includes('FRAMEEDIT'); }, ptr));
+    await p2.context().close();
+  }
   check('editor: the band strip shows today\'s header on screen (document code)', await page.evaluate(() => document.querySelector('#bw-pair .w2-strip .w2-band-h')?.textContent.includes(window.BW.M[window.BW.S.svc].ar.doc.control.documentId)));
   const n0 = await page.evaluate(() => window.BW.M[window.BW.S.svc].ar.ops.length);
   await page.evaluate(() => { window.BW.runAction('hdrText'); });
@@ -56,7 +80,7 @@ try {
   check('editor: the new header text is on screen, editable in place', await page.evaluate(() => { const el = [...document.querySelectorAll('#bw-pair .w2-strip [data-w2p^="/chrome/header/items/"]')].find((x) => x.textContent.includes('WP2HEAD')); return !!el && el.isContentEditable; }));
   // delete the default page number from the footer: pick it on screen, then «حذف عنصر التذييل»
   await page.click('#bw-pair .w2-strip [data-ci^="footer:"][data-bw-page]');
-  await page.evaluate(() => window.BW.runAction('chDelete'));
+  await page.evaluate(() => window.BW.runAction('ftrDelete')); // the footer section's own item tool
   edited = await page.evaluate(() => JSON.parse(JSON.stringify(window.BW.M[window.BW.S.svc].ar.doc)));
   ops = await page.evaluate(() => window.BW.M[window.BW.S.svc].ar.ops.length);
   check('editor: deleting the page item is one op (materialise + add = one group, delete = one op)', ops === n0 + 3 && !edited.chrome.footer.items.some((x) => x.kind === 'page'), `${n0} → ${ops}`);

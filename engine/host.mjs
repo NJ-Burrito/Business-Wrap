@@ -45,7 +45,7 @@ async function freePort(from) { for (let p = from; p < from + 50; p++) if (await
 
 export async function start({ editor, port = 4317, open = true } = {}) {
   const now = status();
-  if (now.running) { if (open) launchBrowser([now.url]); return { pid: now.pid, port: now.port, url: now.url }; }
+  if (now.running) { const b = open ? launchBrowser([now.url]) : null; return { pid: now.pid, port: now.port, url: now.url, browserPid: b?.pids[0] ?? null }; }
   if (fs.existsSync(hostFile())) fs.rmSync(hostFile(), { force: true }); // stale: its server is gone
   if (!editor || !fs.existsSync(editor)) throw new Error(`host.start: editor file not found: ${editor}`);
   const p = await freePort(port);
@@ -60,8 +60,8 @@ export async function start({ editor, port = 4317, open = true } = {}) {
     if (!alive(child.pid) || Date.now() - t0 > 20000) { await stop(); throw new Error('host.start: the server did not come up'); }
     await new Promise((r) => setTimeout(r, 150));
   }
-  if (open) launchBrowser([url]);
-  return { pid: child.pid, port: p, url };
+  const b = open ? launchBrowser([url]) : null;
+  return { pid: child.pid, port: p, url, browserPid: b?.pids[0] ?? null }; // the caller can say whether Edge opened
 }
 
 function killTree(pid) {

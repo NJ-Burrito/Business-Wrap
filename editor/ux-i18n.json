@@ -218,7 +218,9 @@
   "ext.refused": "هذا التعديل غير مسموح الآن.",
   "ux.selSection": "قسم",
   "set.explainAlways": "أظهر البطاقة في كل مرة (لا تتذكر ما عرضته)",
-  "ux.jump": "اذهب إليه"
+  "ux.jump": "اذهب إليه",
+  "explain.library": "يفتح «المستندات»: كل ما حفظته في هذا المتصفح والقوالب. افتح هنا أو في تبويب جديد، أنشئ مستنداً جديداً، استورد PDF أو DOCX أو HTML، أو احذف.",
+  "explain.timeline": "يفتح «تغييرات»: خط زمني بكل تعديل منذ آخر حفظ HTML، مع رجوع وتقدّم ونقاط حفظ."
  },
  "en": {
   "ux.dirRtl": "Words run right to left (the layout stays put; your choice is remembered)",
@@ -438,6 +440,8 @@
   "ext.refused": "This change is not allowed right now.",
   "ux.selSection": "Section",
   "set.explainAlways": "Show the card every time (do not remember what was shown)",
-  "ux.jump": "Go to it"
+  "ux.jump": "Go to it",
+  "explain.library": "Opens Documents: everything you saved in this browser, and the templates. Open here or in a new tab, start a new document, import PDF, DOCX or HTML, or delete.",
+  "explain.timeline": "Opens Changes: a timeline of every edit since the last Save HTML, with back, forward and checkpoints."
  }
 }
