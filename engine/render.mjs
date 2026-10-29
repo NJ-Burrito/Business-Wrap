@@ -14,6 +14,7 @@
 
 import { DIAGRAM } from './diagram.mjs';
 import { isRich, textOf } from './edits.mjs';
+import { coveredOf, splitLines } from './cells.mjs';
 const NL = '\n';
 const KEEP_ROWS = 3;
 const GROUPABLE_ROWS = 12;
@@ -605,6 +606,7 @@ export function modelCss(doc) {
   const richBlock = (b) => isRich(b.text) || isRich(b.caption) || (b.paragraphs || []).some(isRich) || (b.columns || []).some(isRich) || (b.rows || []).some((r) => Array.isArray(r) && r.some(isRich));
   const anyRich = chs.some((ch) => (ch.sections || []).some((x) => (x.blocks || []).some(richBlock))) || (doc.overlays || []).some((o) => isRich(o.text)) || (doc.controlTable?.rows || []).some((r) => Array.isArray(r) && r.some(isRich));
   if (anyRich) out.push('.bw-quote{border-inline-start:3px solid var(--accent-rule);padding-inline-start:4mm;color:var(--muted);font-style:italic}', 'code{font-family:inherit;background:var(--card);padding:0 1mm;border-radius:1mm}', 'a.bw-link{color:var(--primary);text-decoration:underline}', 'ol.bw-list,ul.bw-list{margin:2mm 0;padding-inline-start:7mm}', 'li.bw-nest{list-style:none}', 'html.bw-ed a.bw-link{pointer-events:none}');
+  if (anyRich) out.push('td.bw-cell-list ul.bw-list,td.bw-cell-list ol.bw-list{margin:0;padding-inline-start:5mm}', 'td.bw-cell-list li{white-space:pre-wrap}', 'td.bw-nl{white-space:pre-line}');
   if ((doc.overlays || []).some((o) => o.wrap || o.kind === 'text')) out.push('.bw-ovf{position:relative;z-index:1}', '.bw-ovf img{display:block;width:100%;height:auto}', '.bw-ov.bw-behind{z-index:-1}', '.bw-ov.bw-front{z-index:3}', '.bw-tb{display:flex;flex-direction:column;border:1px solid var(--rule-strong);background:var(--card);padding:3mm;font-size:var(--t-table);line-height:1.5}', '.bw-tb-body{white-space:pre-wrap}');
   return out.length ? out.join('\n') + '\n' : '';
 }
@@ -693,6 +695,29 @@ export function renderParts(doc, o) {
       part.length ? `<tbody${hold ? ' class="hold"' : ''}>${part.join(NL)}</tbody>` : ''
     );
 
+  const rowH = (h) => (Number.isFinite(+h) && +h >= 4 && +h <= 400 ? ` style="height:${+h}mm"` : '');
+  /** One body cell: spans, fill, wrap and a list (one item per line) are the spreadsheet cell's own look (cells.mjs). */
+  function cell(c, ri, ci, span, t) {
+    const st = isRich(c) ? c.style || {} : {};
+    const li = listOf(c);
+    const d = [];
+    if (HEX.test(String(st.fill))) d.push(`background:${st.fill}`);
+    if (st.wrap === false) d.push('white-space:nowrap;overflow:hidden;text-overflow:ellipsis');
+    let attrs = isRich(c) ? leafAttrs(c, textOf(c).length > 200 ? 'long' : '') : String(c).length > 200 ? ' class="long"' : '';
+    if (d.length) attrs = /style="/.test(attrs) ? attrs.replace('style="', `style="${d.join(';')};`) : attrs + ` style="${d.join(';')}"`;
+    if (li) attrs = /class="/.test(attrs) ? attrs.replace('class="', 'class="bw-cell-list ') : attrs + ' class="bw-cell-list"';
+    else if (textOf(c).includes('\n')) attrs = /class="/.test(attrs) ? attrs.replace('class="', 'class="bw-nl ') : attrs + ' class="bw-nl"';
+    const sp = (span && span.cs > 1 ? ` colspan="${span.cs}"` : '') + (span && span.rs > 1 ? ` rowspan="${span.rs}"` : '');
+    const f = st.formula ? ` data-f="${attr(st.formula)}"` : '';
+    let body;
+    if (li) {
+      const tag = li.kind === 'number' ? 'ol' : 'ul';
+      const type = li.kind === 'number' ? numFormatAt(0, li.numFormat) : li.kind === 'shape' ? `"${li.shape} "` : 'disc';
+      body = `<${tag} class="bw-list" style="list-style-type:${type}">${splitLines(c).map((ln) => `<li>${richHtml(ln, bidi0)}</li>`).join('')}</${tag}>`;
+    } else body = bidi(c);
+    return `<td${attrs}${sp}${f}${dp(t.cellPtr ? t.cellPtr(ri, ci) : t.rowsPtr && `${t.rowsPtr}/${ri}/${ci}`)} data-r="${ri}" data-c="${ci}">${body}</td>`;
+  }
+
   /**
    * t = { columns, rows, colsPtr, rowsPtr, extra, caption, b (block ptr), alt }
    * Column sizing exactly as the source: square root of a typical-length measure.
@@ -701,10 +726,14 @@ export function renderParts(doc, o) {
     const columnsIn = t.columns || [];
     const rowsIn = t.rows || [];
     const width = Math.max(columnsIn.length, ...rowsIn.map((r) => r.length), 0);
-    const keep = Array.from({ length: width }, (_, i) => rowsIn.some((r) => !blank(r[i])));
+    // merges / column widths address columns by position: nothing is dropped from such a table (cells.mjs)
+    const cw = Array.isArray(t.colWidths) && t.colWidths.length === width ? t.colWidths : null;
+    const covered = coveredOf(t.merges || []);
+    const spanAt = new Map((t.merges || []).map((m) => [`${m.r},${m.c}`, m]));
+    const keep = Array.from({ length: width }, (_, i) => (cw ? +cw[i] > 0 : t.merges?.length ? true : rowsIn.some((r) => !blank(r[i]))));
     const idx = keep.map((k, i) => (k ? i : -1)).filter((i) => i >= 0);
     const columns = columnsIn.length ? idx.map((i) => columnsIn[i] ?? '') : [];
-    const rows = rowsIn.map((r) => idx.map((i) => (blank(r[i]) ? none : r[i])));
+    const rows = rowsIn.map((r) => idx.map((i) => (blank(r[i]) ? (isRich(r[i]) ? { ...r[i], text: none } : none) : r[i])));
     const headings = columns.length ? columns : (rows[0] ?? []).map(() => '');
     const measure = headings.map((c, i) => {
       const lengths = rows.map((r) => textOf(r[i] ?? '').length).sort((a, b) => a - b);
@@ -728,7 +757,7 @@ export function renderParts(doc, o) {
       );
     });
     const total = measure.reduce((a, b) => a + b, 0) || 1;
-    const cols = measure.map((m) => `<col style="width:${((m / total) * 100).toFixed(2)}%" />`).join('');
+    const cols = measure.map((m, k) => `<col style="width:${(cw ? +cw[idx[k]] : (m / total) * 100).toFixed(2)}%" />`).join('');
     let n = 0;
     const meta =
       (t.b ? ` data-b="${attr(t.b)}"` : '') +
@@ -748,13 +777,8 @@ export function renderParts(doc, o) {
   ${guardedBody(
     rows.map(
       (r, ri) =>
-        `<tr${t.alt && n++ % 2 ? ' class="alt"' : ''} data-r="${ri}">${r
-          .map(
-            (c, j) =>
-              `<td${isRich(c) ? leafAttrs(c, textOf(c).length > 200 ? 'long' : '') : String(c).length > 200 ? ' class="long"' : ''}${dp(
-                t.cellPtr ? t.cellPtr(ri, idx[j]) : t.rowsPtr && `${t.rowsPtr}/${ri}/${idx[j]}`
-              )} data-r="${ri}" data-c="${idx[j]}">${bidi(c)}</td>`
-          )
+        `<tr${t.alt && n++ % 2 ? ' class="alt"' : ''} data-r="${ri}"${rowH(t.rowHeights?.[ri])}>${r
+          .map((c, j) => (covered.has(`${ri},${idx[j]}`) ? '' : cell(c, ri, idx[j], spanAt.get(`${ri},${idx[j]}`), t)))
           .join('')}</tr>`
     )
   )}
@@ -849,6 +873,9 @@ export function renderParts(doc, o) {
       extra,
       caption,
       b,
+      merges: block.merges,
+      colWidths: block.colWidths,
+      rowHeights: block.rowHeights,
     });
 
   let figNo = 0;

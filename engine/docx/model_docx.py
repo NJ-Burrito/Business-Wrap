@@ -183,6 +183,37 @@ def number_paragraph(document, paragraph, info):
     pPr.insert(0, numPr)
 
 
+
+# ── spreadsheet cells (0.14.0, engine/cells.mjs): lines, lists, fill, wrap, merges, sizes ──
+def leaf_lines(leaf):
+    """A cell's lines ('\n'), marks sliced as engine/cells.mjs splitLines; strings give strings."""
+    text = text_of(leaf)
+    if not is_rich(leaf):
+        return text.split(chr(10))
+    out, at = [], 0
+    for ln in text.split(chr(10)):
+        a, b = at, at + len(ln)
+        at = b + 1
+        marks = [[max(m[0], a) - a, min(m[1], b) - a, *m[2:]] for m in (leaf.get('marks') or []) if isinstance(m, list) and len(m) >= 3 and min(m[1], b) > max(m[0], a)]
+        out.append({**leaf, 'text': ln, 'marks': marks})
+    return out
+
+
+def fill_cell(document, cell, leaf, font, add_script_runs, bold=False):
+    """A body cell: one paragraph per line (a list numbers each line), fill, no-wrap."""
+    st = (leaf.get('style') or {}) if is_rich(leaf) else {}
+    info = list_info(leaf)
+    for i, ln in enumerate(leaf_lines(leaf)):
+        p = cell.paragraphs[0] if i == 0 else cell.add_paragraph()
+        add_leaf(p, ln if is_rich(ln) else str(ln), font, add_script_runs, bold=bold)
+        if info:
+            number_paragraph(document, p, info)
+    tcPr = cell._tc.get_or_add_tcPr()
+    if HEX.match(str(st.get('fill') or '')):
+        shd = OxmlElement('w:shd'); shd.set(qn('w:val'), 'clear'); shd.set(qn('w:color'), 'auto'); shd.set(qn('w:fill'), st['fill'][1:].upper()); tcPr.append(shd)
+    if st.get('wrap') is False:
+        tcPr.append(OxmlElement('w:noWrap'))
+
 # ── pages: breaks, sizes, segments ───────────────────────────────────────────
 def page_break(document):
     p = document.add_paragraph()

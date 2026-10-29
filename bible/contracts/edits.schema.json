@@ -69,7 +69,10 @@
             "quote": { "type": "boolean" },
             "list": { "type": "string", "pattern": "^(bullet|number|shape:.)$" },
             "level": { "type": "integer", "minimum": 0, "maximum": 8 },
-            "numFormat": { "enum": ["decimal", "lower-alpha", "upper-alpha", "lower-roman", "upper-roman", "arabic-indic"] }
+            "numFormat": { "enum": ["decimal", "lower-alpha", "upper-alpha", "lower-roman", "upper-roman", "arabic-indic"] },
+            "fill": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$", "description": "table cell background (0.14.0)" },
+            "wrap": { "type": "boolean", "description": "table cell: false = no wrapping (0.14.0)" },
+            "formula": { "type": "string", "pattern": "^=", "description": "table cell formula, e.g. =SUM(A1:A3) (0.14.0, engine/cells.mjs); text holds the last result so every export prints the value. A1 = first column, first body row; SUM AVERAGE MIN MAX COUNT + - * / and parentheses; a bad formula or cycle shows #ERR" }
           }
         }
       }

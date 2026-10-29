@@ -1368,7 +1368,7 @@ function ctxModel(b, tb) {
     return null;
   }
   const blk = get(cur().doc, b.ptr);
-  if (tb) return { cat: 'table', label: t('selTable'), groups: [['rowAdd', 'rowDel', 'colAdd', 'colDel', 'rowUp', 'rowDown'], ['duplicate', 'delete', 'moveUp', 'moveDown'], ['comment', 'styleThis', 'hideBlock', 'breakBefore', 'keepNext']] };
+  if (tb) return { cat: 'table', label: t('selTable'), groups: [['rowAdd', 'rowDel', 'colAdd', 'colDel', 'rowUp', 'rowDown'], ['duplicate', 'delete', 'moveUp', 'moveDown'], ['comment', 'styleThis', 'hideBlock', 'breakBefore', 'keepNext'], ...(EXT.cells ? [EXT.cells.tools()] : [])] };
   return { cat: 'text', label: t('selText', { x: kindName(blk?.kind || 'text') }), groups: [['duplicate', 'delete', 'moveUp', 'moveDown', 'addPara'], ['comment', 'styleThis', 'hideBlock', 'breakBefore', 'keepNext']] };
 }
 function ctxTool(id, ov) {
