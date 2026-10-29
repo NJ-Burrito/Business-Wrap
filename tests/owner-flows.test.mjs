@@ -362,6 +362,25 @@ try {
   const shareName = (fs.existsSync(htmlDir) ? fs.readdirSync(htmlDir) : []).filter((n) => !htmlBefore.has(n));
   check(15, 'share writes «<title>-<date>-AR.html» like a save (not doc-<id>.editor.html)', shareName.length >= 1 && shareName.every((n) => n.includes(today) && /-AR\.html$/.test(n)), shareName.join(',') || 'no shared file', true);
 
+  // H1 (owner 2026-10-29): documents grouped by project, bulk edit on a project or hand-picked documents. In the owner's
+  // page: the «تعديل جماعي» tool and the projects bar of «المستندات» with icons; the whole flows run in tests/projects.test.mjs
+  // and tests/bulk.test.mjs (spawned below, so `npm test` runs them through this suite)
+  const h1ui = await R((r) => ({ tool: !!r.querySelector('[data-a="bulkEdit"] .ic[data-ic="bulkEdit"]') }));
+  await act('library');
+  await wait(300);
+  const h1bar = await R((r) => ({ bar: !!r.querySelector('.drawer .pj-bar [data-pj="new"] .ic[data-ic="pjNew"]'), filter: !!r.querySelector('.drawer .pj-bar [data-pj-filter]') }));
+  check('H1', 'projects: «المستندات» carries the project bar (filter + «مشروع جديد» with its icon); the toolbar has «تعديل جماعي»', h1ui.tool && h1bar.bar && h1bar.filter, JSON.stringify({ h1ui, h1bar }));
+  await act('bulkEdit');
+  await wait(300);
+  const h1bk = await R((r) => ({ preview: !!r.querySelector('.drawer [data-bk="preview"]'), apply: r.querySelector('.drawer [data-bk="apply"]')?.disabled, ops: r.querySelectorAll('.drawer [data-bk-f="op"] option').length }));
+  check('H1', 'bulk edit: the panel opens with 7 operations, Preview, and Apply off until a preview', h1bk.preview && h1bk.apply === true && h1bk.ops === 7, JSON.stringify(h1bk));
+  await page.keyboard.press('Escape');
+  for (const suite of ['projects.test.mjs', 'bulk.test.mjs']) {
+    const r = spawnSync(process.execPath, [path.join(REPO, 'tests', suite)], { encoding: 'utf8', timeout: 5 * 60e3 });
+    const tail = (r.stdout || '').trim().split('\n').filter((l) => /^(FAIL|ALL PASS|FAILED)/.test(l)).join(' / ');
+    check('H1', `owner flows of tests/${suite}: ${suite.startsWith('projects') ? 'make «Project A», put 3 documents in it, groups survive a reload and reach a fresh browser' : 'bulk add a field to a project of 3, delete a section from 2 hand-picked, preview counts, logs per document, locked one skipped, undo per document'}`, r.status === 0, tail || r.stderr?.slice(0, 300));
+  }
+
   // L14 closing the last tab saves and stops the host; a relaunch offers resume or new work
   const pid = h.pid;
   for (const p of ctx.pages()) await p.close({ runBeforeUnload: true });

@@ -1,0 +1,4 @@
+{
+  "ar": { "pjTitle": "المشروع", "pjAll": "كل المشاريع", "pjNone": "بلا مشروع", "pjNew": "مشروع جديد", "pjRename": "إعادة تسمية", "pjDelete": "حذف المشروع", "pjTrash": "مشاريع محذوفة", "pjName": "اسم المشروع", "pjOk": "حفظ", "pjMove": "انقل إلى مشروع", "pjTaken": "يوجد مشروع باسم «{name}».", "pjMade": "أُنشئ المشروع «{name}»", "pjDeleted": "حُذف المشروع «{name}»؛ مستنداته باقية بلا مشروع." },
+  "en": { "pjTitle": "Project", "pjAll": "All projects", "pjNone": "No project", "pjNew": "New project", "pjRename": "Rename", "pjDelete": "Delete project", "pjTrash": "Deleted projects", "pjName": "Project name", "pjOk": "Save", "pjMove": "Move to project", "pjTaken": "A project named «{name}» already exists.", "pjMade": "Project «{name}» created", "pjDeleted": "Project «{name}» deleted; its documents stay, in no project." }
+}
