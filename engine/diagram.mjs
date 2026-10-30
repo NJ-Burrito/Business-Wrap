@@ -606,8 +606,9 @@ export const DIAGRAM = (() => {
       }
       if (n.kind === 'text') { fore.push(textItem(wrap(n.label, Math.max(n.w, 40), FS.text), cx, cy, FS.text, P.head, 500, { id, node: true })); continue; }
       if (n.kind === 'symbol') {
-        fore.push({ t: 'shape', geom: 'rect', x: n.x, y: n.y, w: n.w, h: n.h, fill: 'none', line: 'none', lw: 0, dash: '', id, hit: true });
         glyph(SYMBOLS.includes(n.icon) ? n.icon : 'person', cx, cy, skinOf(n).line === P.skins.staff.line && !n.color ? P.head : skinOf(n).line, Math.min(n.w, n.h) / 12, fore);
+        // the hit area goes ON TOP of the glyph: a press on the drawing's own strokes lands on the symbol (0.14.0 · O2)
+        fore.push({ t: 'shape', geom: 'rect', x: n.x, y: n.y, w: n.w, h: n.h, fill: 'none', line: 'none', lw: 0, dash: '', id, hit: true });
         continue;
       }
       if (n.kind === 'decision') {
@@ -751,16 +752,17 @@ export const DIAGRAM = (() => {
 
   /* ── SVG ──────────────────────────────────────────────────────────────── */
   function shapeSvg(s) {
-    const a = `fill="${s.fill}" stroke="${s.line}" stroke-width="${s.lw}"${s.dash ? ` stroke-dasharray="${s.dash}"` : ''}`;
+    // a symbol's hit area has no paint: pointer-events="all" lets the editor pick and drag it (nothing prints from it)
+    const a = `fill="${s.fill}" stroke="${s.line}" stroke-width="${s.lw}"${s.dash ? ` stroke-dasharray="${s.dash}"` : ''}${s.hit ? ' pointer-events="all"' : ''}`;
     if (s.geom === 'diamond') return `<polygon points="${r1(s.x + s.w / 2)},${r1(s.y)} ${r1(s.x + s.w)},${r1(s.y + s.h / 2)} ${r1(s.x + s.w / 2)},${r1(s.y + s.h)} ${r1(s.x)},${r1(s.y + s.h / 2)}" ${a}/>`;
     if (s.geom === 'note') { const c = Math.min(14, s.w / 4, s.h / 3); return `<path d="M${r1(s.x)} ${r1(s.y)}H${r1(s.x + s.w - c)}L${r1(s.x + s.w)} ${r1(s.y + c)}V${r1(s.y + s.h)}H${r1(s.x)}Z" ${a}/><path d="M${r1(s.x + s.w - c)} ${r1(s.y)}V${r1(s.y + c)}H${r1(s.x + s.w)}" fill="none" stroke="${s.line}" stroke-width="${s.lw}"/>`; }
     const rx = s.geom === 'rect' ? 0 : s.geom === 'stadium' ? s.h / 2 : s.rx ?? G.rx;
     return `<rect x="${r1(s.x)}" y="${r1(s.y)}" width="${r1(s.w)}" height="${r1(s.h)}"${rx ? ` rx="${r1(rx)}"` : ''} ${a}/>`;
   }
-  function textSvg(t) {
+  function textSvg(t, editor = false) {
     const first = t.y - ((t.lines.length - 1) * t.lh) / 2;
     const plate = t.plate ? `<rect x="${r1(t.box.x - 3)}" y="${r1(t.box.y + 1)}" width="${r1(t.box.w + 6)}" height="${r1(t.box.h - 2)}" fill="${t.plate}"/>` : '';
-    return plate + t.lines.map((l, i) => `<text x="${t.x}" y="${r1(first + i * t.lh + t.size * 0.34)}" text-anchor="middle" font-size="${t.size}"${t.weight && t.weight !== 400 ? ` font-weight="${t.weight}"` : ''} fill="${t.color}"${arabic(l) ? ' direction="rtl"' : ''}>${esc(l)}</text>`).join('');
+    return plate + t.lines.map((l, i) => `<text x="${t.x}" y="${r1(first + i * t.lh + t.size * 0.34)}" text-anchor="middle" font-size="${t.size}"${t.weight && t.weight !== 400 ? ` font-weight="${t.weight}"` : ''} fill="${t.color}"${arabic(l) ? ' direction="rtl"' : ''}${editor && t.legend ? ` data-dg-legend="${esc(t.legend)}"` : ''}>${esc(l)}</text>`).join('');
   }
   function render(model, { theme, locale = 'ar', title = '', editor = false } = {}) {
     const r = resolve(model, { theme, locale });
@@ -780,7 +782,7 @@ export const DIAGRAM = (() => {
         const d = it.d || `M${it.pts.map(([x, y]) => `${x} ${y}`).join('L')}`;
         out.push(`<path d="${d}" fill="none" stroke="${it.color}" stroke-width="${r1(it.lw)}"${it.dash ? ` stroke-dasharray="${it.dash}"` : ''} stroke-linecap="round" stroke-linejoin="round"${it.arrow ? ` marker-end="url(#bwdg-tip-${it.wire || 'main'})"` : ''}/>`);
         if (editor && it.wire && it.id) out.push(`<path d="${d}" fill="none" stroke="transparent" stroke-width="12" class="dg-hit"/>`);
-      } else if (it.t === 'text') out.push(textSvg(it));
+      } else if (it.t === 'text') out.push(textSvg(it, editor));
     }
     out.push(close());
     void open;

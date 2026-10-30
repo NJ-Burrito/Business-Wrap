@@ -34,7 +34,11 @@
   "explain.wrapThrough": "يلفّ النص حول شكل الصورة ويقترب منه أكثر.",
   "explain.wrapTopBottom": "يضع الصورة في سطر وحدها والنص فوقها وتحتها.",
   "explain.wrapBehind": "يضع الصورة خلف النص.",
-  "explain.wrapFront": "يضع الصورة أمام النص."
+  "explain.wrapFront": "يضع الصورة أمام النص.",
+  "w2.wrapMenu": "التفاف النص",
+  "w2.posMenu": "الموضع",
+  "w2.posText": "يتحرك مع النص",
+  "w2.posPage": "ثابت على الصفحة"
  },
  "en": {
   "secWrap": "Wrap text",
@@ -71,6 +75,10 @@
   "explain.wrapThrough": "Wraps the text through the image's shape, closer still.",
   "explain.wrapTopBottom": "Puts the image on its own line, text above and below.",
   "explain.wrapBehind": "Puts the image behind the text.",
-  "explain.wrapFront": "Puts the image in front of the text."
+  "explain.wrapFront": "Puts the image in front of the text.",
+  "w2.wrapMenu": "Wrap text",
+  "w2.posMenu": "Position",
+  "w2.posText": "Move with text",
+  "w2.posPage": "Fix on page"
  }
 }

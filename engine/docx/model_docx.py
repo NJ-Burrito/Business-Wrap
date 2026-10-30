@@ -404,7 +404,7 @@ POLY = '<wp:wrapPolygon edited="0"><wp:start x="0" y="0"/><wp:lineTo x="0" y="21
 _SEQ = [0]
 
 
-def _anchor_xml(wrap, x_mm, y_mm, cx, cy, graphic, name, h_rel='column', v_rel='paragraph'):
+def _anchor_xml(wrap, x_mm, y_mm, cx, cy, graphic, name, h_rel='column', v_rel='paragraph', locked=False):
     _SEQ[0] += 1
     emu = lambda mm: int(round(float(mm) * 36000))
     ns = nsdecls('wp')
@@ -412,7 +412,7 @@ def _anchor_xml(wrap, x_mm, y_mm, cx, cy, graphic, name, h_rel='column', v_rel='
     behind = '1' if wrap == 'behind' else '0'
     side = 0 if wrap == 'through' else 114300  # through: the text runs up to (and into) the shape, no side gap; tight keeps 3.2 mm
     return (f'<wp:anchor {nsdecls("wp", "a", "pic", "r")} xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" distT="0" distB="0" distL="{side}" distR="{side}" simplePos="0" '
-            f'relativeHeight="{251700000 + _SEQ[0]}" behindDoc="{behind}" locked="0" layoutInCell="1" allowOverlap="1">'
+            f'relativeHeight="{251700000 + _SEQ[0]}" behindDoc="{behind}" locked="{1 if locked else 0}" layoutInCell="1" allowOverlap="1">'
             f'<wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="{h_rel}"><wp:posOffset>{emu(x_mm)}</wp:posOffset></wp:positionH>'
             f'<wp:positionV relativeFrom="{v_rel}"><wp:posOffset>{emu(y_mm)}</wp:posOffset></wp:positionV>'
             f'<wp:extent cx="{cx}" cy="{cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/>{w}'
@@ -430,7 +430,7 @@ def wrapped_picture(paragraph, img, o):
     ext = inline.find(qn('wp:extent'))
     graphic = inline.find(qn('a:graphic'))
     from lxml import etree
-    xml = _anchor_xml(wrap, float(o.get('x', 0)), float(o.get('y', 0)), ext.get('cx'), ext.get('cy'), etree.tostring(graphic).decode(), 'Picture')
+    xml = _anchor_xml(wrap, float(o.get('x', 0)), float(o.get('y', 0)), ext.get('cx'), ext.get('cy'), etree.tostring(graphic).decode(), 'Picture', locked=o.get('pos') == 'page')
     inline.getparent().replace(inline, parse_xml(xml))
 
 
@@ -457,7 +457,7 @@ def text_box(paragraph, o, font, roles, locale, add_script_runs):
                f'<wps:bodyPr rot="0" vert="horz" wrap="square" lIns="{pad}" tIns="{pad}" rIns="{pad}" bIns="{pad}" anchor="{anchor}"><a:noAutofit/></wps:bodyPr></wps:wsp>'
                f'</a:graphicData></a:graphic>')
     wrap = o.get('wrap') or 'square'
-    xml = _anchor_xml('square' if wrap == 'inline' else wrap, float(o.get('x', 0)), float(o.get('y', 0)), cx, cy, graphic, 'Text Box')
+    xml = _anchor_xml('square' if wrap == 'inline' else wrap, float(o.get('x', 0)), float(o.get('y', 0)), cx, cy, graphic, 'Text Box', locked=o.get('pos') == 'page')
     r = OxmlElement('w:r')
     d = OxmlElement('w:drawing')
     d.append(parse_xml(xml))

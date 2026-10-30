@@ -71,6 +71,15 @@ const W2_OBJECTS = {
     commit([...pre, { op: 'replace', path: `/overlays/${i}`, value: { ...o, mode: 'anchor', anchor, wrap: mode, x: o.mode === 'anchor' ? o.x : 0, y: o.mode === 'anchor' ? o.y : 0 }, old: o }]);
     return true;
   },
+  /** 0.14.0 · O1: «يتحرك مع النص» (text) or «ثابت على الصفحة» (page); one op, undoable. DOCX: the anchor is locked (wp:anchor locked="1"). */
+  position(i, pos) {
+    const o = (w2doc().overlays || [])[i];
+    if (!o || o.kind === 'logo' || !['text', 'page'].includes(pos) || (o.pos === 'page' ? 'page' : 'text') === pos) return false;
+    const next = { ...o };
+    if (pos === 'page') next.pos = 'page'; else delete next.pos;
+    commit([{ op: 'replace', path: `/overlays/${i}`, value: next, old: o }]);
+    return true;
+  },
   /** review2 · 14: the way back from «مع النص». A one-picture shots block (what inline made) becomes an overlay again,
    *  anchored to the block before it (else after it), in the picked mode; one commit, undoable. */
   unInline(ptr, mode) {
@@ -115,6 +124,35 @@ const w2inlinePic = () => { const b = blockOf(S.sel?.b); const blk = b && get(w2
 const w2wrapOn = () => (S.selOv != null && !!(w2doc().overlays || [])[S.selOv] && (w2doc().overlays || [])[S.selOv].kind !== 'logo') || w2inlinePic();
 const PM_anchor = (d, a) => pageModel(d).ids.get(String(a)) || a;
 const W2_WRAP_IDS = WRAPS.map((w) => 'wrap' + w[0].toUpperCase() + w.slice(1));
+/* 0.14.0 · O1: a visible «التفاف النص / Wrap» menu in the selection bar (the seven buttons sat behind «…»):
+ * Word's six modes in one list, plus the position (moves with the text / fixed on the page = `pos`). */
+const W2_PICK_MODES = ['inline', 'square', 'tight', 'topBottom', 'behind', 'front'];
+const W2_MODE_KEY = { inline: 'wrapInline', square: 'wrapSquare', tight: 'wrapTight', through: 'wrapThrough', topBottom: 'wrapTopBottom', behind: 'wrapBehind', front: 'wrapFront' };
+/** The wrap of what is picked: an overlay's own mode ('front' when none is set), 'inline' for a picture in the flow; null = not wrappable. */
+const w2wrapCur = () => {
+  const o = S.selOv != null ? (w2doc().overlays || [])[S.selOv] : null;
+  if (o) return o.kind === 'logo' ? null : { mode: o.wrap || 'front', pos: o.pos === 'page' ? 'page' : 'text', ov: true, text: o.kind === 'text' };
+  return w2inlinePic() ? { mode: 'inline', pos: 'text', ov: false } : null;
+};
+/** The two ready controls (selects) for the selection bar; '' when nothing wrappable is picked. */
+function w2wrapPick() {
+  const c = w2wrapCur();
+  if (!c) return '';
+  const modes = c.mode === 'through' ? [...W2_PICK_MODES.slice(0, 3), 'through', ...W2_PICK_MODES.slice(3)] : W2_PICK_MODES;
+  const mk = (name, label, opts) => `<label class="pick w2-pick"><span class="vh">${esc(label)}</span><select data-w2="${name}" aria-label="${esc(label)}" title="${esc(label)}">${opts}</select></label>`;
+  const opt = (v, cur0, label) => `<option value="${v}"${v === cur0 ? ' selected' : ''}>${esc(label)}</option>`;
+  const wrap = mk('wrap', t('w2.wrapMenu'), modes.map((m) => opt(m, c.mode, t(W2_MODE_KEY[m]))).join(''));
+  const pos = c.ov ? mk('pos', t('w2.posMenu'), opt('text', c.pos, t('w2.posText')) + opt('page', c.pos, t('w2.posPage'))) : '';
+  return wrap + pos;
+}
+root.addEventListener('change', (e) => {
+  const el = e.target.closest?.('select[data-w2]');
+  if (!el) return;
+  if (el.dataset.w2 === 'wrap') {
+    const k = WRAPS.indexOf(el.value);
+    if (k >= 0) w2objectAction(W2_WRAP_IDS[k]);
+  } else if (el.dataset.w2 === 'pos') W2_OBJECTS.position(S.selOv, el.value);
+});
 async function w2objectAction(id) {
   if (id === 'insTable') {
     const v = await ask(t('w2.tablePrompt'), '3x3');
@@ -142,7 +180,7 @@ bwExt({
     ...W2_WRAP_IDS.map((id) => ({ id, group: 'wrap', edit: true })),
   ],
   actions: Object.fromEntries([...['insTable', 'insSection', 'insChapter', 'insTextBox', 'copyBlock', 'pasteBlock'], ...W2_WRAP_IDS].map((id) => [id, w2objectAction])),
-  expose: { w2objects: W2_OBJECTS },
+  expose: { w2objects: W2_OBJECTS, w2wrapPick },
   on: {
     // Ctrl+C / Ctrl+V with a block selected and no text range: the whole block (text copy stays the browser's)
     keydown: (e) => {
