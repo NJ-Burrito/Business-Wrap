@@ -506,6 +506,39 @@ bwExt({
 { const plain = saveAll; saveAll = function () { if (!EXT.session?.info) return plain(); writeDraft(); S.dirty = false; emitHook('save'); emit('save'); }; }
 /* H3: File › Import is the documents list's import (HTML incl. shares, DOCX, PDF, JSON); edits files still merge;
  * File › Save HTML waits for a Save in place still capturing (LIB.queued) */
-{ const plain = runAction; runAction = async function (a) { if (a === 'import') { await LIB.importAny(await pickFile(LIB.ACCEPT)); return; } if (a === 'saveHtml') return LIB.queued(() => plain(a)); return plain(a); }; window.BW.runAction = runAction; }
+{ const plain = runAction; runAction = async function (a) { if (a === 'import') { await LIB.importAny(await pickFile(LIB.ACCEPT)); return; } if (a === 'saveHtml') return LIB.queued(() => libSaveCopy(plain)); return plain(a); }; window.BW.runAction = runAction; }
+/* 0.14.0 D4: three different saves, said plainly. Save (yellow, Ctrl+S) = in place: the document's own HTML file is overwritten
+ * (the old one is kept in Versions\). «حفظ نسخة جديدة / Save as new copy» (File › Save HTML) = a NEW dated file in the document's
+ * Versions\ folder; the document's own file is not touched. Export HTML = the clean copy in Exports\. Served: POST
+ * /api/workspace/html { copy: true }. file:// has no folder: the browser downloads a new file, as it always did. */
+async function libSaveCopy(plain) {
+  const sess = EXT.session;
+  if (!location.protocol.startsWith('http') || !sess?.info) return plain('saveHtml');
+  LIB.syncAll();
+  if (!(await sess.ensureFolder())) { toast(t('libSaveNoFolder'), 'warn'); return null; }
+  let cap = null;
+  const dl0 = download;
+  download = (name, text) => { cap = { name, text }; };
+  try { await saveHtml(!!S.embedFonts); } finally { download = dl0; }
+  if (!cap) return null;
+  const r = await fetch('/api/workspace/html', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: LIB.titleOf(), locale: S.ed, html: cap.text, copy: true }) }).then((x) => x.json()).catch((e) => ({ error: String(e.message || e) }));
+  if (!r.ok) { toast(t('libCopyFailed', { why: r.error || '' }), 'err'); return null; }
+  document.documentElement.dataset.bwSavedCopy = r.file;
+  toast(t('libSavedCopy', { file: r.file }), 'ok', { actions: [[t('rpOpenFolder'), () => { fetch('/api/workspace/open', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ file: r.file }) }).catch(() => {}); }]] });
+  return r;
+}
+/* the three words and their tooltips (the base strings are lane A's file; the build refuses a duplicate key, so these are set at load) */
+Object.assign(I18N.ui.ar, {
+  saveHtml: 'حفظ نسخة جديدة', 'export.html': 'تصدير HTML (نسخة نظيفة)',
+  'explain.saveHtml': 'ينشئ نسخة HTML جديدة مؤرَّخة في مجلد Versions داخل مجلد الوثيقة، ولا يمسّ ملف الوثيقة نفسه. الحفظ الأصفر يحفظ في الملف نفسه، والتصدير ينشئ نسخة نظيفة في Exports.',
+  'explain.save': 'يحفظ الوثيقة في مكانها: يستبدل ملف HTML الخاص بها (ويحتفظ بالقديم في Versions) وسطرها في «المستندات»، ولا ينشئ ملفًا جديدًا. لنسخة جديدة استعمل «حفظ نسخة جديدة». بلا الخادم المحلي يُنزّل ملف التعديلات.',
+  'explain.export.html': 'ينشئ نسخة HTML نظيفة في مجلد Exports لمشاركتها؛ لا يغيّر ملف الوثيقة.',
+});
+Object.assign(I18N.ui.en, {
+  saveHtml: 'Save as new copy', 'export.html': 'Export HTML (clean copy)',
+  'explain.saveHtml': "Creates a new dated HTML copy in the document's Versions folder and leaves the document's own file alone. The yellow Save writes to the same file; Export makes a clean copy in Exports.",
+  'explain.save': 'Saves the document in place: it overwrites its own HTML file (the old one is kept in Versions) and its Documents entry, and creates no new file. For a new file use Save as new copy. Without the local server it downloads the edits file.',
+  'explain.export.html': "Makes a clean HTML copy in the Exports folder to share; the document's own file is not changed.",
+});
 // «حُفظ تلقائياً» toast → the «آخر حفظ» stamp beside the change counter (extra 1): it says what was saved where and when
 { const plain = flash; flash = function (msg, bad = false) { if (!bad && msg === t('autosaved')) { LIB.stamp(); return; } return plain(msg, bad); }; }

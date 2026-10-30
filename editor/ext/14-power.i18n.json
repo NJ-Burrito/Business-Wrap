@@ -8,7 +8,10 @@
     "pwNo": "إلغاء",
     "pwOffTitle": "بزنس راب متوقف",
     "pwOffLead": "حُفظت مستنداتك، وتوقف الخادم المحلي وكل ما شغّله. أغلق هذه النافذة، وافتح المحرر متى شئت بأمر الفتح.",
-    "pwFailed": "تعذّر الإيقاف: {e}"
+    "pwFailed": "تعذّر الإيقاف: {e}",
+    "rpOpenFolder": "افتح المجلد",
+    "rpOpenFolderTip": "يفتح مجلد تقرير الأداء ويحدّد الملف: {x}",
+    "rpOpenFolderFail": "تعذّر فتح المجلد. الملف في: {x}"
   },
   "en": {
     "powerOff": "Turn off",
@@ -19,6 +22,9 @@
     "pwNo": "Cancel",
     "pwOffTitle": "Business-Wrap is off",
     "pwOffLead": "Your documents are saved, and the local host and everything it started have stopped. Close this window, and open the editor again with the open command whenever you like.",
-    "pwFailed": "Could not turn off: {e}"
+    "pwFailed": "Could not turn off: {e}",
+    "rpOpenFolder": "Open folder",
+    "rpOpenFolderTip": "Opens the performance report folder with the file selected: {x}",
+    "rpOpenFolderFail": "Could not open the folder. The file is at: {x}"
   }
 }

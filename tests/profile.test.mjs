@@ -98,8 +98,8 @@ try {
   await L.append(hist, { kind: 'sign', actor: al, keys: keysB, at: new Date(t0 + 864e5 + 60e3).toISOString() });
   const d = reportData([hist], { from: '2026-10-01', to: '2026-10-31' });
   const html = reportHtml(d, { lang: 'en' });
-  check('report model: people, edits, active hours, documents', d.people.length === 2 && d.people.find((x) => x.name === 'Mark').edits === 10 && d.docs.length === 1 && d.docs[0].status === 'signed', JSON.stringify(d.people.map((x) => [x.name, x.edits, x.activeMs])));
-  check('report print HTML: 3 SVG charts and a template story naming the person', (html.match(/<svg /g) || []).length === 3 && /During 2026-10-01 – 2026-10-31, Mark worked on 1 document/.test(html));
+  check('report model: people, active hours, documents (no edit counts, 0.14.0)', d.people.length === 2 && Math.round(d.people.find((x) => x.name === 'Mark').activeMs / 6e4) === 3 && !('edits' in d.people[0]) && d.docs.length === 1 && d.docs[0].status === 'signed' && !('edits' in d.docs[0]), JSON.stringify(d.people.map((x) => [x.name, x.activeMs])));
+  check('report print HTML: 5 SVG charts (line, columns, donut, heat map, bars) and a template story naming the person', (html.match(/<svg /g) || []).length === 5 && /During 2026-10-01 – 2026-10-31, Mark worked on 1 document/.test(html));
 
   // review 0.13.0 line 16: many documents. A template opened at launch (no work), a document saved from it (its log
   // starts with a copy of the template's), typed edits (one op re-logged after each pause) and exports
@@ -122,9 +122,9 @@ try {
   await L.append(other, { kind: 'export', actor: nd, keys: kN, at: at(110), data: { pdf: true } });
   const dm = reportData([tpl, tplWork, forked, other], { from: '2026-10-01', to: '2026-10-31', people: ['actor-rami'] });
   const pn = dm.people[0] || {};
-  check('report across documents: 4 edits (a typed op once, a copied entry once), 2 exports, 2 documents (the opened template is not work)', pn.edits === 4 && pn.exports === 2 && pn.docs === 2 && dm.docs.length === 2, JSON.stringify({ edits: pn.edits, exports: pn.exports, docs: pn.docs, list: dm.docs }));
+  check('report across documents: 2 exports, 2 documents (the opened template is not work; a copied entry counts once)', pn.exports === 2 && pn.docs === 2 && dm.docs.length === 2, JSON.stringify({ exports: pn.exports, docs: pn.docs, list: dm.docs }));
   const st = reportHtml(dm, { lang: 'ar' });
-  check('report story matches the numbers (edits, exports, busiest document)', /أجرى 4 تعديلًا/.test(st) && /صدّر 2 مرة/.test(st) && /أكثر الوثائق نشاطًا «طلب ترخيص فعالية عامة في الساحات» بـ 3 تعديلًا/.test(st), st.match(/خلال[^<]*/)?.[0]);
+  check('report story matches the numbers (exports; no edit counts, no busiest-by-edits line)', /صدّر 2 مرة/.test(st) && !/تعديل/.test(st.replace(/<style>[\s\S]*?<\/style>/, '')) && !/أكثر الوثائق نشاطًا/.test(st), st.match(/خلال[^<]*/)?.[0]);
   { // review2 #11/#12: the report reads the title the document has now (docTitle on save/export), and one profile key
     // renamed mid-period stays one person, shown with the other name it used
     const live = { doc: 'doc-live', entries: [] };

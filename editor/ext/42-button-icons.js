@@ -57,7 +57,7 @@ const BI_MAP = [
   ['[data-pv="tab-history"]', 'biLog'], ['[data-pv="tab-prov"]', 'pvOpen'], ['[data-pv="sign"]', 'pvSign'], ['[data-pv="lock"]', 'lkToggle'], ['[data-pv="share"]', 'shShare'],
   ['[data-k="setView"][data-v="continuous"]', 'view.continuous'], ['[data-k="setView"][data-v="single"]', 'view.single'], ['[data-k="setView"][data-v="spread"]', 'view.spread'],
   ['[data-lrn="rules"]', 'biRules'], ['[data-lrn="export"]', 'biExport'], ['[data-lrn="import"]', 'biImport'], ['[data-lrn="forget"]', 'biForget'],
-  ['[data-pf="pick"]', 'biPicture'], ['[data-pf="prov"]', 'pvOpen'], ['[data-rp="go"]', 'biReport'],
+  ['[data-pf="pick"]', 'biPicture'], ['[data-pf="prov"]', 'pvOpen'], ['[data-rp="go"]', 'biReport'], ['[data-rp="open"]', 'biOpen'],
   ['[data-palimp]', 'biPalette'], ['[data-palex]', 'biExport'], ['[data-k="texp"]', 'biExport'], ['[data-k="timp"]', 'biImport'], ['[data-k="dcssApply"]', 'biApply'],
   ['[data-k="snap"]', 'biSnap'], ['[data-k="log"]', 'biExport'], ['.drawer [data-k="next"]', 'biNext'], ['.drawer [data-k="all"]', 'biReplaceAll'],
   ['[data-sh="open"]', 'biOpen'], ['[data-sh="copy"]', 'biCopy'],

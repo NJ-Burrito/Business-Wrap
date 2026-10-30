@@ -57,8 +57,44 @@ const PW = (() => {
   return { off, confirmOff, stopped };
 })();
 
+/* 0.14.0 D2: once the performance report PDF is made (Settings › report, served), «افتح المجلد / Open folder» appears beside
+ * its result: POST /api/workspace/open { file } shows that PDF in the file manager. The report panel (30-profile.js) is not
+ * touched: the one POST /api/report answer is watched here. file:// has no report (it reads the server's logs). */
+const RPT = (() => {
+  if (!location.protocol.startsWith('http')) return {};
+  const f0 = window.fetch.bind(window);
+  const isReport = (input, init) => { try { const u = String(typeof input === 'string' ? input : input?.url || '').split('?')[0]; return /\/api\/report$/.test(u) && String(init?.method || input?.method || 'GET').toUpperCase() === 'POST'; } catch { return false; } };
+  function offer(pdf) {
+    const out = root.querySelector('[data-rp="out"]');
+    if (!out) return false;
+    out.parentElement.querySelector('[data-rp="open"]')?.remove();
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'b';
+    b.dataset.rp = 'open';
+    b.dataset.file = pdf;
+    b.innerHTML = `<span class="w">${esc(t('rpOpenFolder'))}</span>`;
+    b.title = t('rpOpenFolderTip', { x: pdf });
+    b.addEventListener('click', async () => {
+      try {
+        const r = await f0('/api/workspace/open', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ file: pdf }) });
+        if (!r.ok) throw new Error('open');
+        document.documentElement.dataset.bwReportFolder = 'opened';
+      } catch { toast(t('rpOpenFolderFail', { x: pdf }), 'warn'); document.documentElement.dataset.bwReportFolder = 'failed'; }
+    });
+    out.insertAdjacentElement('afterend', b);
+    return true;
+  }
+  window.fetch = function (input, init) {
+    const p = f0(input, init);
+    if (isReport(input, init)) p.then((r) => (r.ok ? r.clone().json() : null)).then((j) => { if (j?.pdf) offer(j.pdf); }).catch(() => {});
+    return p;
+  };
+  return { offer };
+})();
+
 bwExt({
   cmds: location.protocol.startsWith('http') ? [{ id: 'powerOff', group: 'view', edit: false }] : [], // file:// has no host to turn off
   actions: { powerOff: () => PW.off() },
-  expose: { power: PW },
+  expose: { power: PW, reportFolder: RPT },
 });
