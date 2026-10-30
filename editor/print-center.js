@@ -141,6 +141,8 @@ function pcPrintState() {
   if (!S.pp) S.pp = { printers: [], at: '', printer: '', ed: S.ed, copies: 1, range: '', color: 'color', duplex: 'one', paper: '', orientation: 'auto', error: '' };
   return S.pp;
 }
+/** the print center leaves with the shared exit (editor.js leaveEl): fade and a small scale, then the native close */
+function pcClose(d = root.querySelector('dialog.pc-dlg')) { if (d?.open) leaveEl(d, () => d.close()); }
 function pcOpenPrint() {
   const shell = root.querySelector('.shell');
   if (!shell) return;
@@ -150,6 +152,7 @@ function pcOpenPrint() {
     d = document.createElement('dialog');
     d.className = 'pc-dlg';
     d.addEventListener('keydown', (e) => { if (e.key === 'Escape') e.stopPropagation(); }); // Esc closes this panel only
+    d.addEventListener('cancel', (e) => { e.preventDefault(); pcClose(d); }); // Esc leaves the way the button does (UIP-13)
     d.addEventListener('click', pcPrintClick);
     d.addEventListener('change', pcPrintChange);
     d.addEventListener('input', pcPrintChange);
@@ -159,6 +162,7 @@ function pcOpenPrint() {
   d.lang = S.ui;
   d.setAttribute('aria-labelledby', 'pc-title');
   pcPrintRender(d);
+  arriveEl(d);
   if (!d.open) d.showModal();
   d.querySelector('[data-pp="close"]')?.focus();
   if (pcServer() && !pcPrintState().at) pcRefresh(false);
@@ -225,10 +229,10 @@ function pcPrintChange(e) {
 async function pcPrintClick(e) {
   const b = e.target.closest('[data-pp]');
   const d = root.querySelector('dialog.pc-dlg');
-  if (!b) { if (e.target === d) d.close(); return; } // a click on the backdrop closes
+  if (!b) { if (e.target === d) pcClose(d); return; } // a click on the backdrop closes
   const k = b.dataset.pp;
-  if (k === 'close') { d.close(); return; }
-  if (k === 'browser') { d.close(); window.print(); return; }
+  if (k === 'close') { pcClose(d); return; }
+  if (k === 'browser') { d.classList.remove('closing'); d.close(); window.print(); return; }
   if (k === 'refresh') { await pcRefresh(true); root.querySelector('dialog.pc-dlg [data-pp="refresh"]')?.focus(); return; }
   const p = pcPrintState();
   const eds = pcEds(p.ed);
