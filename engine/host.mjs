@@ -43,6 +43,13 @@ export function status() {
 const free = (port) => new Promise((ok) => { const s = net.createServer().once('error', () => ok(false)).once('listening', () => s.close(() => ok(true))).listen(port, '127.0.0.1'); });
 async function freePort(from) { for (let p = from; p < from + 50; p++) if (await free(p)) return p; throw new Error(`no free port from ${from}`); }
 
+/** GET /api/host/health of the running host (engine/routes/health.mjs), or null when none answers. */
+export async function health(timeoutMs = 2500) {
+  const st = status();
+  if (!st.running) return null;
+  try { const r = await fetch(`${st.url}api/host/health`, { signal: AbortSignal.timeout(timeoutMs) }); return r.ok ? await r.json() : null; } catch { return null; }
+}
+
 export async function start({ editor, port = 4317, open = true } = {}) {
   const now = status();
   if (now.running) { const b = open ? launchBrowser([now.url]) : null; return { pid: now.pid, port: now.port, url: now.url, browserPid: b?.pids[0] ?? null }; }

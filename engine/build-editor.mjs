@@ -167,6 +167,7 @@ function editorHtml({ services, setId, ui = 'ar', theme, fontCss, fontFamilies, 
     `script-src 'sha256-${crypto.createHash('sha256').update(app).digest('base64')}'`,
     "style-src 'unsafe-inline'",
     "font-src 'self' file: data:",
+    "worker-src 'self'", // 0.15.0: the session SharedWorker (/api/session/worker.js) and the spell worker
     'img-src data: blob: file:',
     "connect-src 'self' file: http://127.0.0.1:*", // 0.13.3: loopback only, so a file:// page can ask whether a local server answers (Settings › start server)
     "base-uri 'none'",

@@ -7,9 +7,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
+import { fileURLToPath } from 'node:url';
 import { ensure, readJson, localDir, subdir, systemDir } from '../workspace.mjs';
 import { launchBrowser, closeBrowsers, noteHost, hostState } from '../host.mjs';
 
+/** editor/session-worker.js, next to the editor sources (installed copies keep the same layout). */
+const WORKER_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'editor', 'session-worker.js');
 export const IDLE_MS = Number(process.env.BW_IDLE_MS || 4000);
 const TAB = /^[A-Za-z0-9_-]{4,64}$/;
 const RUN = /^\d{8}-\d{6}-[a-f0-9]{6}$/;
@@ -17,8 +20,34 @@ const pad = (n) => String(n).padStart(2, '0');
 const stamp = (d) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 const day = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-function state(ctx) {
-  return (ctx.session ||= { runId: `${stamp(new Date())}-${crypto.randomBytes(3).toString('hex')}`, startedAt: new Date().toISOString(), live: new Map(), timer: null, ended: false, inflight: 0, closing: new Map() });
+/** 0.15.0 L1: one live connection per BROWSER, not per tab. A client (the page's SharedWorker, or the Web Locks leader tab) holds the one
+ *  event stream and lists its tabs with POST /api/session/tabs; a tab is live while some connected client lists it. A page that connects
+ *  directly (?tab=, an older page) is a client of one tab. clients: Map<clientId, {id, conns:Set<res>, tabs:Map<tab, info>, since, listedAt}>. */
+export function state(ctx) {
+  return (ctx.session ||= { runId: `${stamp(new Date())}-${crypto.randomBytes(3).toString('hex')}`, startedAt: new Date().toISOString(), clients: new Map(), timer: null, ended: false, inflight: 0, closing: new Map(), startedMs: Date.now() });
+}
+const connected = (s) => [...s.clients.values()].filter((c) => c.conns.size);
+const liveTabs = (s) => new Set(connected(s).flatMap((c) => [...c.tabs.keys()]));
+const nConns = (s) => connected(s).reduce((n, c) => n + c.conns.size, 0);
+const clientOf = (s, id) => { let c = s.clients.get(id); if (!c) s.clients.set(id, c = { id, conns: new Set(), tabs: new Map(), since: Date.now(), listedAt: 0 }); return c; };
+/** Push a server event to the tabs: `tab` set = the one tab (the page-side hub routes it by data.tab), else every tab. Returns how many streams got it. */
+export function emit(ctx, event, data = {}, tab = null) {
+  const s = state(ctx);
+  const body = `event: ${event}\ndata: ${JSON.stringify(tab ? { ...data, tab } : data)}\n\n`;
+  let n = 0;
+  for (const c of s.clients.values()) for (const r of c.conns) { try { r.write(body); n += 1; } catch { /* closing */ } }
+  return n;
+}
+/** After a tab left a client's list, or a client went: a tab no client lists any more goes through the 4 s grace and, only while other tabs
+ *  are still live (the last tab going is the run's end, and stays), leaves the run. */
+function settle(ctx, tabs) {
+  const s = state(ctx);
+  const live = liveTabs(s);
+  for (const tab of tabs) {
+    if (live.has(tab)) { clearTimeout(s.closing.get(tab)); s.closing.delete(tab); continue; }
+    if (s.closing.has(tab)) continue;
+    s.closing.set(tab, setTimeout(() => { s.closing.delete(tab); const now = liveTabs(s); if (now.size && !now.has(tab)) dropTab(ctx, tab); }, IDLE_MS));
+  }
 }
 const root = (ctx) => subdir(ensure(ctx.workspace).dirs, 'sessions');
 const runDir = (ctx, id) => path.join(root(ctx), id);
@@ -111,6 +140,19 @@ function writeTab(ctx, b) {
   fs.writeFileSync(f, JSON.stringify(rec));
 }
 
+/** The registry as GET /api/host/health reports it (engine/routes/health.mjs). */
+export function registry(ctx) {
+  const s = state(ctx);
+  const now = Date.now();
+  const cl = connected(s);
+  const tabs = [];
+  for (const c of cl) for (const [tab, o] of c.tabs) tabs.push({ tab, svc: o.svc || null, docs: o.docs || [], automation: !!o.automation, live: true, lastBeatMs: Math.round((o.ago || 0) + (c.listedAt ? now - c.listedAt : 0)) });
+  const warnings = [];
+  if (nConns(s) >= 5) warnings.push({ code: 'MANY_CLIENTS', conns: nConns(s), note: 'five or more event streams: pages that do not use the shared worker each hold one of the six connections a browser allows per origin' });
+  for (const t of tabs) if (t.lastBeatMs > 15000) warnings.push({ code: 'TAB_STALE', tab: t.tab, lastBeatMs: t.lastBeatMs });
+  return { runId: s.runId, clients: cl.map((c) => ({ client: c.id, conns: c.conns.size, tabs: [...c.tabs.keys()], since: new Date(c.since).toISOString() })), tabs, warnings };
+}
+
 export default async (req, url, send, ctx, res) => {
   const p = url.pathname;
   if (p === '/api/profile') {
@@ -121,6 +163,14 @@ export default async (req, url, send, ctx, res) => {
     } catch (e) { send(e.code === 413 ? 413 : 400, { error: String(e.message || e).slice(0, 200) }); return true; }
     return false;
   }
+  if (req.method === 'GET' && p === '/api/session/worker.js') { // the SharedWorker: one event stream for every tab of this browser (it must be a URL, a blob: worker is not shared)
+    try {
+      const js = fs.readFileSync(WORKER_FILE);
+      res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; connect-src 'self'" });
+      res.end(js);
+    } catch { send(404, { error: 'worker' }); }
+    return true;
+  }
   if (!p.startsWith('/api/session/') && p !== '/api/host/stop') return false;
   if (!ctx.workspace) return false; // no save folder (a --out server): no sessions
   const s = state(ctx);
@@ -128,26 +178,53 @@ export default async (req, url, send, ctx, res) => {
     if (req.method === 'GET' && p === '/api/session/info') { send(200, { runId: s.runId, host: !!process.env.BW_HOST_TOKEN, workspace: { root: ctx.workspace.root, chosen: ctx.workspace.chosen !== false } }); return true; }
     if (req.method === 'GET' && p === '/api/session/live') {
       const tab = url.searchParams.get('tab');
-      if (!TAB.test(String(tab)) || !res) { send(400, { error: 'tab' }); return true; }
+      const cid = url.searchParams.get('client');
+      if (!res || (cid ? !TAB.test(String(cid)) : !TAB.test(String(tab)))) { send(400, { error: cid ? 'client' : 'tab' }); return true; }
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
       res.write(`event: hello\ndata: ${JSON.stringify({ runId: s.runId })}\n\n`);
       clearTimeout(s.timer);
-      clearTimeout(s.closing.get(tab)); s.closing.delete(tab); // a reload reconnects: the tab stays
-      s.live.set(res, tab);
-      noteHost({ tabs: new Set(s.live.values()).size });
+      const c = clientOf(s, cid || `tab:${tab}`);
+      c.conns.add(res);
+      if (!cid) c.tabs.set(tab, { tab }); // a direct page: a client of one tab
+      settle(ctx, [...c.tabs.keys()]); // a reload or a reconnect: the tabs stay
+      noteHost({ tabs: liveTabs(s).size });
       req.on('close', () => {
-        s.live.delete(res);
-        noteHost({ tabs: new Set(s.live.values()).size });
-        if (!s.live.size) {
-          // the last page gone: every tab that closed in the last IDLE_MS went with it (a window closed, Edge quit) and stays
+        c.conns.delete(res);
+        const gone = [...c.tabs.keys()];
+        if (!c.conns.size) s.clients.delete(c.id);
+        noteHost({ tabs: liveTabs(s).size });
+        if (!connected(s).length) {
+          // the last connection gone: every tab that closed in the last IDLE_MS went with it (a window closed, Edge quit) and stays
           for (const t of s.closing.values()) clearTimeout(t);
           s.closing.clear();
-          clearTimeout(s.timer); s.timer = setTimeout(() => { if (!s.live.size) finish(ctx); }, IDLE_MS);
-        } else if (![...s.live.values()].includes(tab)) {
-          clearTimeout(s.closing.get(tab));
-          s.closing.set(tab, setTimeout(() => { s.closing.delete(tab); if (s.live.size && ![...s.live.values()].includes(tab)) dropTab(ctx, tab); }, IDLE_MS));
-        }
+          clearTimeout(s.timer); s.timer = setTimeout(() => { if (!connected(s).length) finish(ctx); }, IDLE_MS);
+        } else settle(ctx, gone);
       });
+      return true;
+    }
+    if (req.method === 'POST' && p === '/api/session/tabs') {
+      // the tab registry: {client, tabs:[tabId | {tab, svc, docs:[id], automation, ago}]}; sent by the worker (or leader tab) on every change and every 5 s
+      const b = await readJson(req, 2e5);
+      if (!TAB.test(String(b.client)) || !Array.isArray(b.tabs) || b.tabs.length > 400) { send(400, { error: 'tabs' }); return true; }
+      const c = clientOf(s, b.client);
+      const next = new Map();
+      for (const x of b.tabs) {
+        const o = typeof x === 'string' ? { tab: x } : x;
+        if (!o || !TAB.test(String(o.tab))) { send(400, { error: 'tab' }); return true; }
+        next.set(o.tab, { tab: o.tab, svc: typeof o.svc === 'string' ? o.svc.slice(0, 120) : undefined, docs: Array.isArray(o.docs) ? o.docs.filter((d) => typeof d === 'string').slice(0, 50).map((d) => d.slice(0, 80)) : [], automation: o.automation === true, ago: Math.max(0, Number(o.ago) || 0) });
+      }
+      const left = [...c.tabs.keys()].filter((t) => !next.has(t));
+      c.tabs = next;
+      c.listedAt = Date.now();
+      if (!c.conns.size && !next.size) s.clients.delete(c.id);
+      settle(ctx, [...next.keys(), ...left]);
+      noteHost({ tabs: liveTabs(s).size });
+      send(200, { ok: true, n: next.size });
+      return true;
+    }
+    if (req.method === 'POST' && p === '/api/session/_emit' && process.env.BW_TEST_MODE === '1') { // the suites' hook for the event contract; never on in a real host
+      const b = await readJson(req);
+      send(200, { ok: true, n: emit(ctx, String(b.event), b.data || {}, b.tab || null) });
       return true;
     }
     if (req.method === 'POST' && (p === '/api/session/state' || p === '/api/session/flush')) { s.inflight += 1; try { writeTab(ctx, await readJson(req)); } finally { s.inflight -= 1; } send(200, { ok: true }); return true; }
@@ -190,7 +267,7 @@ export default async (req, url, send, ctx, res) => {
     if (req.method === 'POST' && p === '/api/host/stop') {
       const { token } = await readJson(req);
       if (!process.env.BW_HOST_TOKEN || token !== process.env.BW_HOST_TOKEN) { send(403, { error: 'token' }); return true; }
-      for (const r of s.live.keys()) r.write('event: flush\ndata: {}\n\n'); // every tab sends its state now
+      emit(ctx, 'flush'); // every tab sends its state now
       send(200, { ok: true });
       setTimeout(() => finish(ctx), 800);
       return true;
