@@ -6,7 +6,7 @@
 //   business-wrap stop --all                               stop every host, server and Edge window this install started (tabs saved first)
 //   business-wrap close                                    the same as stop --all
 //   business-wrap status                                   version, running hosts, heal count
-//   business-wrap new [--title "…"] [--out dir] [--no-open]  a blank document pair + its editor
+//   business-wrap new [--title "…"] [--out dir] [--no-open]  a blank document pair + its editor (default: Documents\<title>\ in the save folder)
 //   business-wrap build <doc.json|folder ...> --out <editor.html> [--ui ar|en]
 //   business-wrap harvest <url|crawl.json|model|PDF/DOCX/HTML|folder> [--out dir] [--name n] [--roles f] [--no-open]
 //   business-wrap import <file|folder ...> [--out dir] [--no-open]   user sources (BPMN, draw.io, YAML, PDF, DOCX, HTML)
@@ -15,6 +15,7 @@
 //   business-wrap heal-log                                 the HEALED lines
 //   business-wrap verify-history <file> [--history dir]    the trust ledger check, as strict as the editor's
 //   business-wrap library [list]                           documents in the save folder
+//   business-wrap tidy [--dry-run]                          moves an old save folder (PDF, DOCX, HTML, HISTORY) into the document tree
 //   business-wrap report <from> <to>                       the work report (WP4)
 //   business-wrap update [--check|--apply --yes|--notes]   the updater (update/cli.mjs)
 // Add --json for machine output. Exit 0 done · 1 failed · 2 usage · 3 needs a module that is not in this build yet.
@@ -30,6 +31,8 @@ import { harvestModel, harvestCrawl } from './harvest/cli.mjs';
 import { harvestSources, MODEL_EXT, TEXT_EXT } from './harvest/sources.mjs';
 import { STATE_DIR, healPort, healStaleHosts, healWorkspace, healFont, readHealLog, alive } from './heal/index.mjs';
 import { GATES } from './heal/gates.mjs';
+import { workspace, ensure, reportPath, sourcesDir, keepVersion, docTitle, outName, uniquePath, DOCS_NAME } from './workspace.mjs';
+import { tidy } from './tidy.mjs';
 
 const pkg = () => JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8'));
 const HOSTS = () => path.join(STATE_DIR(), 'cli-hosts.json');
@@ -144,7 +147,9 @@ export async function status() {
 
 export async function newDoc({ title, out, browser = true, openIt = true } = {}) {
   const slug = fileStem(title || 'new-document').toLowerCase();
-  const dir = path.resolve(out || path.join(userCwd(), 'bw-new', slug));
+  // no --out: the save folder, Documents\<title>\ (the pair of JSON files in Sources\, the editor as <title>.html)
+  const tree = out ? null : sourcesDir([title || 'مستند جديد - New document']);
+  const dir = tree ? tree.dir : path.resolve(out);
   fs.mkdirSync(dir, { recursive: true });
   const documents = [];
   for (const ed of ['ar', 'en']) {
@@ -155,7 +160,9 @@ export async function newDoc({ title, out, browser = true, openIt = true } = {})
     fs.writeFileSync(f, JSON.stringify(d, null, 1) + '\n');
     documents.push(f);
   }
-  const editor = buildEditor({ inputs: documents, out: path.join(dir, `${slug}.editor.html`), set: slug, watermarkDir: null }).out;
+  const editorFile = tree ? path.join(tree.docDir, `${tree.folder}.html`) : path.join(dir, `${slug}.editor.html`);
+  if (tree) keepVersion(editorFile);
+  const editor = buildEditor({ inputs: documents, out: editorFile, set: slug, watermarkDir: null }).out;
   return { documents, editor, ...(openIt ? { opened: await open({ inputs: [editor], browser }) } : {}) };
 }
 
@@ -175,7 +182,7 @@ function harvestGates(r, ir) {
 
 export async function harvest({ input, out, name, roles, openIt = false, browser = true }) {
   if (!input) throw Object.assign(new Error('harvest <url|crawl.json|model|file|folder>'), { code: 2 });
-  const o = path.resolve(out || path.join(userCwd(), 'bw-harvest'));
+  const o = out ? path.resolve(out) : undefined; // no --out: Documents\<name>\Sources in the save folder
   let r;
   let gates;
   if (/^https?:\/\//i.test(input)) {
@@ -198,7 +205,7 @@ export async function harvest({ input, out, name, roles, openIt = false, browser
 
 export async function importSources({ inputs, out, name, roles, openIt = false, browser = true }) {
   if (!inputs?.length) throw Object.assign(new Error('import <file|folder ...>'), { code: 2 });
-  const { results, skipped } = await harvestSources(inputs, { out: path.resolve(out || path.join(userCwd(), 'bw-harvest')), name, roles: roles && path.resolve(roles) });
+  const { results, skipped } = await harvestSources(inputs, { out: out ? path.resolve(out) : undefined, name, roles: roles && path.resolve(roles) });
   const documents = results.flatMap((x) => x.documents);
   const res = { results, skipped, documents, gates: documents.map((d) => ({ ...GATES.document(d), file: d })) };
   if (openIt && documents.length) res.opened = await open({ inputs: results[0].documents, browser });
@@ -220,11 +227,13 @@ export async function exportDoc({ document, locale, out, edits, docx = true }) {
     const have = new Set([...fontsFor(th).used.map((c) => c.family), ...systemFonts().map((f) => f.family)]);
     for (const [role, fam] of chosen) { const h = healFont(fam, (x) => have.has(x)); if (h.healed) { doc.design.fonts[role] = h.family; steps.push({ stage: 'fonts', verdict: 'HEALED', problems: [], from: fam, to: h.family }); } }
   }
-  const dir = path.resolve(out || path.join(path.dirname(file), 'exports'));
+  // no --out: the save folder, Documents\<title>\Exports\<date> <title> - <language>.pdf|docx
+  const dir = out ? path.resolve(out) : null;
   const stem = `${fileStem(doc.service || doc.control.documentId)}.${ed}`;
-  const pdf = (await exportPdf(doc, { locale: ed, theme: th, pdfPath: path.join(dir, `${stem}.pdf`) })).pdf;
+  const target = (ext) => (dir ? path.join(dir, `${stem}.${ext}`) : uniquePath(ensure(workspace()).dirs.docs, outName(docTitle(doc, doc.service), new Date(), ed, ext)));
+  const pdf = (await exportPdf(doc, { locale: ed, theme: th, pdfPath: target('pdf') })).pdf;
   const files = [pdf];
-  if (docx) files.push(exportDocx(doc, { locale: ed, theme: th, docxPath: path.join(dir, `${stem}.docx`) }).docx);
+  if (docx) files.push(exportDocx(doc, { locale: ed, theme: th, docxPath: target('docx') }).docx);
   return { locale: ed, pdf, docx: docx ? files[1] : undefined, gates: [...steps, GATES.render(pdf, { allow: Object.values(doc.design?.fonts || {}) }), GATES.export(files, { editions: [ed] })] };
 }
 
@@ -241,10 +250,11 @@ export async function verifyHistory({ file, history }) {
 }
 
 export async function library() {
-  let dir = EDITORS();
-  try { const w = await import('./workspace.mjs'); dir = w.workspace().dirs.html; } catch { /* WP3 workspace not in this build: the CLI's own editors */ }
-  const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => /\.html?$/i.test(f)).sort() : [];
-  return { dir, documents: files.map((f) => ({ name: f, file: path.join(dir, f), modified: fs.statSync(path.join(dir, f)).mtime.toISOString() })) };
+  const dir = workspace().dirs.docs; // one folder per document: Documents\<title>\<title>.html
+  const folders = fs.existsSync(dir) ? fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort() : [];
+  const documents = folders.map((f) => path.join(dir, f, `${f}.html`)).filter((f) => fs.existsSync(f))
+    .map((file) => ({ name: path.basename(path.dirname(file)), file, modified: fs.statSync(file).mtime.toISOString() }));
+  return { dir, documents };
 }
 
 export async function report({ from, to }) {
@@ -252,11 +262,18 @@ export async function report({ from, to }) {
   let m;
   try { m = await import('./report.mjs'); } catch { throw new Pending('engine/report.mjs is not in this build yet (WP4)'); }
   const d = (x) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(x)) throw Object.assign(new Error(`report: dates as YYYY-MM-DD, got "${x}"`), { code: 2 }); return x; };
-  const { workspace, ensure, reportPath } = await import('./workspace.mjs');
   const ws = ensure(workspace());
   const logs = await m.readHistory(ws.dirs.history);
-  const r = await m.exportReport(logs, { from: d(from), to: d(to), pdfPath: reportPath(ws.dirs.pdf, 'ar') });
+  const r = await m.exportReport(logs, { from: d(from), to: d(to), pdfPath: reportPath(ws.dirs.docs, 'ar') });
   return { pdf: r.pdf, people: r.data.people.length, docs: r.data.docs.length };
+}
+
+/** tidy [--dry-run]: the old PDF\, DOCX\, HTML\, HISTORY\ folders into the document tree (engine/tidy.mjs); --dry-run only prints the plan. */
+export function tidyCmd({ dryRun = false } = {}) {
+  const ws = workspace();
+  if (!dryRun) ensure(ws); // the first start of 0.13.3 does this on its own; here it is on request
+  const r = tidy(ws, { dryRun });
+  return { root: ws.root, dryRun, files_before: r.before, moved: r.moved, unmatched: r.unmatched, failed: r.failed, lines: r.lines };
 }
 
 export function update(args) {
@@ -265,7 +282,7 @@ export function update(args) {
 }
 
 /** Every verb this CLI answers (the plugin commands may only call these). */
-export const VERBS = ['open', 'close', 'stop', 'status', 'new', 'build', 'harvest', 'import', 'export', 'gate', 'heal-log', 'verify-history', 'library', 'report', 'update', 'help'];
+export const VERBS = ['open', 'close', 'stop', 'status', 'new', 'build', 'harvest', 'import', 'export', 'gate', 'heal-log', 'verify-history', 'library', 'tidy', 'report', 'update', 'help'];
 
 const USAGE = fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').filter((l) => l.startsWith('//   business-wrap')).map((l) => l.slice(5)).join('\n');
 export async function run(argv) {
@@ -288,6 +305,7 @@ export async function run(argv) {
     case 'heal-log': return { healed: readHealLog() };
     case 'verify-history': return verifyHistory({ file: pos[0], history: val('history') });
     case 'library': return library();
+    case 'tidy': return tidyCmd({ dryRun: flags.has('--dry-run') });
     case 'report': return report({ from: pos[0], to: pos[1] });
     case 'update': return update(rest);
     case undefined: case 'help': case '--help': case '-h': return { usage: USAGE };
@@ -301,6 +319,7 @@ export async function main(argv = process.argv.slice(2)) {
   try {
     const r = await run(argv.filter((a) => a !== '--json'));
     if (r.usage) console.log(r.usage);
+    else if (argv[0] === 'tidy') { if (r.lines.length) console.log(r.lines.join(String.fromCharCode(10))); console.log(json ? JSON.stringify({ ...r, lines: undefined }) : `${r.dryRun ? 'plan' : 'tidy'}: ${r.moved} of ${r.files_before} files, unsorted ${r.unmatched}, failed ${r.failed}  (${r.root})`); }
     else if (argv[0] === 'update') process.stdout.write(r.output);
     else console.log(json ? JSON.stringify(r, null, 1) : Object.entries(r).map(([k, v]) => `${k.padEnd(10)} ${typeof v === 'object' ? JSON.stringify(v) : v}`).join('\n'));
     const gates = [...(r.gates || []), ...(r.opened?.gates || [])];

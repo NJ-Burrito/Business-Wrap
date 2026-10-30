@@ -21,7 +21,7 @@ export default async (req, url, send, ctx) => {
     const dirs = await dirsOf(ctx);
     const logs = await readHistory(dirs.history);
     fs.mkdirSync(dirs.pdf, { recursive: true });
-    const pdf = reportPath(dirs.pdf, lang); // the save-folder rule (A11): <title>-<date>-<AR|ENG>.pdf in PDF\
+    const pdf = reportPath(dirs.docs || dirs.pdf, lang); // the tree: Documents\<report title>\Exports\<date> <title> - <language>.pdf
     const r = await exportReport(logs, { from: d(b.from), to: d(b.to), people: Array.isArray(b.people) && b.people.length ? b.people.map(String) : null, lang, pdfPath: pdf });
     send(200, { pdf: r.pdf, people: r.data.people.length, docs: r.data.docs.length });
   } catch (e) { send(500, { error: String(e.message || e) }); }

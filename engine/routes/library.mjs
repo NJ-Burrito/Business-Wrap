@@ -1,11 +1,11 @@
 // The document library's server half (A2): import a DOCX/PDF/HTML as a new document, the blank placeholder SRS,
-// and the machine-only mirror of each saved library entry in <workspace>\HISTORY\library\ (gzip, not for hand use).
+// and the machine-only mirror of each saved library entry in <workspace>\.system\library\ (gzip, not for hand use).
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { REPO } from '../export.mjs';
-import { ensure, readJson, outName, uniquePath } from '../workspace.mjs';
+import { ensure, readJson, saveHtml, subdir } from '../workspace.mjs';
 import { importFile } from '../import/import.mjs';
 
 const ID = /^doc-[A-Za-z0-9-]{4,64}$/;
@@ -32,22 +32,18 @@ export default async (req, url, send, ctx) => {
       return true;
     }
     if (req.method === 'POST' && p === '/api/library/html') {
-      // H3 Save in place: the document's own file in HTML\, overwritten on every Save (`file`, when it names a file
-      // inside HTML\); the first Save names it «<title>-<date>-<AR|ENG>.html» (-2 on a clash with another document)
+      // H3 Save in place: the document's own file Documents\<title>\<title>.html, found by its id (so a renamed document keeps its
+      // file), overwritten on every Save; the file it replaces is kept in Versions\. A second document with the same title gets " (2)".
       const b = await readJson(req);
       if (!ID.test(String(b.id)) || typeof b.html !== 'string' || !/^\s*<!doctype html>/i.test(b.html) || !b.html.includes('id="bw-data"')) { send(400, { error: 'html: {id, html: a Save-HTML document}' }); return true; }
       if (!ctx.workspace) { send(409, { error: 'no save folder: this server was started with --out' }); return true; }
-      const dir = ensure(ctx.workspace).dirs.html;
-      const own = typeof b.file === 'string' && b.file ? path.resolve(b.file) : '';
-      const keep = own && path.dirname(own).toLowerCase() === path.resolve(dir).toLowerCase() && /\.html$/i.test(own);
-      const file = keep ? own : uniquePath(dir, outName(b.title || 'document', new Date(), b.locale, 'html'));
-      fs.writeFileSync(file, b.html, 'utf8');
-      send(200, { ok: true, file, overwritten: !!keep });
+      const r = saveHtml(ensure(ctx.workspace), { id: b.id, title: b.title || '', html: b.html });
+      send(200, { ok: true, file: r.file, folder: r.folder, overwritten: r.overwritten, version: r.version });
       return true;
     }
     if (p === '/api/library/mirror') {
       if (!ctx.workspace) { send(200, { ok: false, mirrored: false }); return true; }
-      const dir = path.join(ensure(ctx.workspace).dirs.history, 'library');
+      const dir = subdir(ensure(ctx.workspace).dirs, 'library');
       if (req.method === 'POST') {
         const { entry } = await readJson(req);
         if (!entry || !ID.test(String(entry.id))) { send(400, { error: 'entry.id' }); return true; }

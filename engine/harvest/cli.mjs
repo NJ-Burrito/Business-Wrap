@@ -15,6 +15,7 @@ import { harvestToDocument, mergeToDocument } from './docs.mjs';
 import { applyLearned } from '../learning/store.mjs';
 import { i18n, REPO, userCwd } from '../export.mjs';
 import { buildEditor } from '../build-editor.mjs';
+import { sourcesDir, keepVersion, docTitle } from '../workspace.mjs';
 import { get, applyOp, applyOps, migrate } from '../edits.mjs';
 
 const inflateRaw = (bin) => zlib.inflateRawSync(Buffer.from(bin)).toString('latin1');
@@ -57,10 +58,12 @@ const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
  * ({ir} and/or {raw}); they are kept beside the documents (process.json, harvest.json), so a second
  * harvest of the other kind into the same folder merges with the first instead of replacing it.
  */
-export function writeDocuments(build, outRoot, { editor = true, extra = {}, into, sources = {}, name } = {}) {
+export function writeDocuments(build, outRoot, { editor = true, extra = {}, into, sources = {}, name, folderTitle } = {}) {
   const H = i18n().harvest;
   let docs = { ar: build('ar', H.ar), en: build('en', H.en) };
-  const dir = path.resolve(into || path.resolve(outRoot, docs.en.service));
+  // no --out and no --into: the document's own folder in the save folder (Documents\<title>\Sources, the editor beside it as <title>.html)
+  const tree = !into && !outRoot ? sourcesDir([folderTitle || name, docTitle(docs.ar), docTitle(docs.en)]) : null;
+  const dir = tree ? tree.dir : path.resolve(into || path.resolve(outRoot, docs.en.service));
   const keptIr = sources.ir || (fs.existsSync(path.join(dir, 'process.json')) ? readJson(path.join(dir, 'process.json')) : null);
   const keptRaw = sources.raw || (fs.existsSync(path.join(dir, 'harvest.json')) ? readJson(path.join(dir, 'harvest.json')) : null);
   if (keptIr && keptRaw) docs = { ar: mergeToDocument(keptIr, keptRaw, { locale: 'ar', L: H.ar, name }), en: mergeToDocument(keptIr, keptRaw, { locale: 'en', L: H.en, name }) };
@@ -80,7 +83,11 @@ export function writeDocuments(build, outRoot, { editor = true, extra = {}, into
   for (const [ed, d] of Object.entries(docs)) fs.writeFileSync(path.join(dir, `document.${ed}.json`), JSON.stringify(d, null, 1) + '\n');
   for (const [name, v] of Object.entries(extra)) fs.writeFileSync(path.join(dir, name), JSON.stringify(v, null, 1) + '\n');
   const out = { dir, documents: [path.join(dir, 'document.ar.json'), path.join(dir, 'document.en.json')], service: docs.en.service, conflicts, learned: [...new Set(Object.values(docs).flatMap((d) => (d.learned || []).map((x) => x.rule)))] };
-  if (editor) out.editor = buildEditor({ inputs: out.documents, out: path.join(dir, `${docs.en.service}.editor.html`), set: docs.en.service, watermarkDir: null }).out;
+  if (editor) {
+    const editorFile = tree ? path.join(tree.docDir, `${tree.folder}.html`) : path.join(dir, `${docs.en.service}.editor.html`);
+    if (tree) keepVersion(editorFile);
+    out.editor = buildEditor({ inputs: out.documents, out: editorFile, set: docs.en.service, watermarkDir: null }).out;
+  }
   return out;
 }
 
@@ -98,22 +105,22 @@ export async function readModel(file, { name, roles } = {}) {
 /** A raw crawl harvest: the harvest.json file, or the folder that holds it. */
 const readRaw = (f) => readJson(fs.statSync(f).isDirectory() ? path.join(f, 'harvest.json') : f);
 
-export async function harvestModel(file, { out = path.join(userCwd(), 'bw-harvest'), name, roles, editor = true, into } = {}) {
+export async function harvestModel(file, { out, name, roles, editor = true, into } = {}) {
   const ir = await readModel(file, { name, roles });
   return { ...writeDocuments((locale, L) => modelToDocument(ir, { locale, L }), out, { editor, into, sources: { ir }, name }), ir };
 }
 
 /** `raw`: a saved harvest.json to map again without a browser (offline re-run). */
-export async function harvestCrawl(config, { out = path.join(userCwd(), 'bw-harvest'), editor = true, log, browser, raw: rawFile, into, yesFileRealRequest = false, ask } = {}) {
+export async function harvestCrawl(config, { out, editor = true, log, browser, raw: rawFile, into, yesFileRealRequest = false, ask } = {}) {
   const cfg = typeof config === 'string' ? JSON.parse(fs.readFileSync(config, 'utf8')) : config;
   const { raw, outDir } = rawFile
     ? { raw: readRaw(rawFile), outDir: path.dirname(path.resolve(rawFile)) }
-    : await crawl({ ...cfg, outDir: cfg.outDir || path.join(out, 'raw', String(cfg.name || 'service').replace(/[^\w-]+/g, '-')) }, { log, browser, yesFileRealRequest, ask });
-  return { ...writeDocuments((locale, L) => harvestToDocument(raw, { locale, L }), out, { editor, into, sources: { raw } }), raw, rawDir: outDir };
+    : await crawl({ ...cfg, outDir: cfg.outDir || (out ? path.join(out, 'raw', String(cfg.name || 'service').replace(/[^\w-]+/g, '-')) : undefined) }, { log, browser, yesFileRealRequest, ask });
+  return { ...writeDocuments((locale, L) => harvestToDocument(raw, { locale, L }), out, { editor, into, sources: { raw }, folderTitle: cfg.name }), raw, rawDir: outDir };
 }
 
 /** The documented union of a crawl and a model, with provenance per section and row, conflicts listed. */
-export async function harvestMerge(crawlFile, modelFile, { out = path.join(userCwd(), 'bw-harvest'), name, roles, editor = true, into } = {}) {
+export async function harvestMerge(crawlFile, modelFile, { out, name, roles, editor = true, into } = {}) {
   const raw = readRaw(crawlFile);
   const ir = await readModel(modelFile, { roles });
   return { ...writeDocuments((locale, L) => mergeToDocument(ir, raw, { locale, L, name }), out, { editor, into, sources: { ir, raw }, name }), ir, raw };

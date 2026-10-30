@@ -18,6 +18,7 @@ import { assertBase } from './edits-base.mjs';
 import { loadManifest, resolveFonts, fontFaceCss, systemFamily, normaliseFont, ttfDataUri } from './fonts.mjs';
 import { config } from './config.mjs';
 import { DIAGRAM } from './diagram.mjs';
+import { workspace, ensure, uniquePath, outName, docTitle } from './workspace.mjs'; // the default output folder of the command line (a cycle by design: used inside functions only)
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO = path.resolve(HERE, '..');
@@ -57,7 +58,7 @@ export const userCwd = () => process.env.INIT_CWD || process.cwd();
 
 const familyName = (f) => String(f || '').replace(/[^\p{L}\p{N}\s._-]/gu, '').trim();
 // scratch for normalised font copies and print pages; BW_FONT_NORM_DIR lets a test own its sub-folder (read at call time)
-const outTmp = () => process.env.BW_FONT_NORM_DIR || path.join(REPO, 'out', 'font-norm');
+const outTmp = () => process.env.BW_FONT_NORM_DIR || path.join(REPO, 'out', 'font-norm'); // dev scratch in the git-ignored out/ (removed after use)
 
 /**
  * The chosen fonts outside the house pair, ready to print and embed as real text (owner decision
@@ -328,22 +329,25 @@ export function loadEdited(docFile, editsFile, { force = false } = {}) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const a = args(process.argv.slice(2));
   if (!a.doc) {
-    console.error('usage: node engine/export.mjs --doc <document.json> [--edits e.json] [--locale ar|en] [--theme t.json] [--out dir] [--no-docx] [--no-embed-fonts]');
+    console.error('usage: node engine/export.mjs --doc <document.json> [--edits e.json] [--locale ar|en] [--theme t.json] [--out dir] [--no-docx] [--no-embed-fonts]  (no --out: the save folder, Documents<title>xports)');
     process.exit(2);
   }
   const doc = loadEdited(path.resolve(userCwd(), a.doc), a.edits && path.resolve(userCwd(), a.edits));
   const locale = a.locale || (/\.en\.json$/.test(a.doc) ? 'en' : 'ar');
   const theme = loadTheme(a.theme);
-  // beside the user's document (or --out), never inside this repository
-  const out = path.resolve(userCwd(), a.out || path.join(path.dirname(path.resolve(userCwd(), a.doc)), 'exports', locale));
+  // --out: that folder, as "<service>.<locale>.<ext>"; without it the save folder, never this repository:
+  // Documents\<title>\Exports\<date> <title> - <language>.<ext>
+  const out = a.out ? path.resolve(userCwd(), a.out) : null;
   const stem = `${fileStem(doc.service)}.${locale}`;
+  const target = (ext) => (out ? path.join(out, `${stem}.${ext}`) : uniquePath(ensure(workspace()).dirs.docs, outName(docTitle(doc, doc.service), new Date(), locale, ext)));
   if (a['html-only']) {
-    fs.mkdirSync(out, { recursive: true });
-    fs.writeFileSync(path.join(out, `${stem}.print.html`), printHtml(doc, { locale, theme }).html);
-    console.log(path.join(out, `${stem}.print.html`));
+    const f = target('print.html');
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, printHtml(doc, { locale, theme }).html);
+    console.log(f);
   } else {
-    const r = await exportPdf(doc, { locale, theme, pdfPath: path.join(out, `${stem}.pdf`) });
+    const r = await exportPdf(doc, { locale, theme, pdfPath: target('pdf') });
     console.log(`PDF  ${r.pdf}  (${r.post})`);
-    if (!a['no-docx']) console.log(`DOCX ${exportDocx(doc, { locale, theme, docxPath: path.join(out, `${stem}.docx`), embedFonts: !a['no-embed-fonts'] }).docx}`);
+    if (!a['no-docx']) console.log(`DOCX ${exportDocx(doc, { locale, theme, docxPath: target('docx'), embedFonts: !a['no-embed-fonts'] }).docx}`);
   }
 }
