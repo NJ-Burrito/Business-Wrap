@@ -31,3 +31,7 @@
 .set-seg button[aria-pressed="true"] { background: var(--navy); color: var(--on-primary); box-shadow: 0 0 0 1px var(--gold) inset; }
 .shell[data-calm="1"] .set-seg button { transition: none; }
 @media (prefers-reduced-motion: reduce) { .set-seg button { transition: none; } }
+/* Servers card (0.13.3): start / stop. The icons are the toolbar's own (send, powerOff, connect) with their own moves (40-icon-motion.css). */
+.set-srv-status[data-st="on"] { color: var(--bw-accent-strong); }
+.set-srv .btns .b[disabled] { opacity: .6; cursor: progress; }
+.set-srv .btns .b .i { inline-size: 18px; block-size: 18px; }

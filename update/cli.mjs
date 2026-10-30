@@ -87,6 +87,27 @@ async function main() {
 // set the exit code and let the loop drain: process.exit() with a socket still closing trips a libuv assertion on Windows
 // 0.13.0 B1: every verb other than `update` is the script-first CLI (engine/cli.mjs: open, close, status, harvest …)
 const FIRST = process.argv[2];
-if (FIRST && FIRST !== 'update' && !FIRST.startsWith('-')) import('../engine/cli.mjs').then((m) => m.main(process.argv.slice(2))).then((code) => { process.exitCode = code; });
+// 0.13.3 Settings › start / stop servers: the business-wrap: URL protocol (engine/protocol.mjs). `protocol` registers the per-user
+// handler, `handle "<url>"` is what the registered handler runs (open <file> | stop; anything else is refused with exit 2).
+if (FIRST === 'protocol' || FIRST === 'handle') {
+  import('../engine/protocol.mjs').then(async (m) => {
+    const json = process.argv.includes('--json');
+    const say = (o) => console.log(json ? JSON.stringify(o) : Object.entries(o).map(([k, v]) => `${k.padEnd(10)} ${typeof v === 'object' ? JSON.stringify(v) : v}`).join('\n'));
+    if (FIRST === 'handle') {
+      try { say(await m.handle(process.argv[3])); process.exitCode = 0; } catch (e) { console.error(`business-wrap handle: ${e.message}`); process.exitCode = typeof e.code === 'number' ? e.code : 1; }
+      return;
+    }
+    const sub = process.argv[3];
+    try {
+      if (sub === 'register') say(m.register());
+      else if (sub === 'unregister') say(m.unregister());
+      else if (sub === 'status') say(m.status());
+      else { console.error('usage: business-wrap protocol register | unregister | status [--json]'); process.exitCode = 2; }
+    } catch (e) { console.error(`business-wrap protocol ${sub}: ${e.message}`); process.exitCode = 1; }
+  });
+} else if (FIRST === 'open') {
+  // `open` makes sure the Settings buttons can start the server from a file:// page later (idempotent, per user, no admin; best effort)
+  import('../engine/protocol.mjs').then((m) => m.ensureRegistered(), () => {}).finally(() => import('../engine/cli.mjs').then((m) => m.main(process.argv.slice(2))).then((code) => { process.exitCode = code; }));
+} else if (FIRST && FIRST !== 'update' && !FIRST.startsWith('-')) import('../engine/cli.mjs').then((m) => m.main(process.argv.slice(2))).then((code) => { process.exitCode = code; });
 else main().then((code) => { process.exitCode = code; }, () => { process.exitCode = 0; });
 // (--help / unknown flags are answered at the top of main(): no update check, no network)

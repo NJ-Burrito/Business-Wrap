@@ -167,7 +167,7 @@ function editorHtml({ services, setId, ui = 'ar', theme, fontCss, fontFamilies, 
     "style-src 'unsafe-inline'",
     "font-src 'self' file: data:",
     'img-src data: blob: file:',
-    "connect-src 'self' file:",
+    "connect-src 'self' file: http://127.0.0.1:*", // 0.13.3: loopback only, so a file:// page can ask whether a local server answers (Settings › start server)
     "base-uri 'none'",
     "form-action 'none'",
   ].join('; ');
