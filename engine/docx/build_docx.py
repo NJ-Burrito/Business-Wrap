@@ -397,14 +397,14 @@ def add_stories(document, block, font, counters, chapter_number, story_seq):
         if actions and actions.get('rows'):
             p = document.add_paragraph()
             add_script_runs(p, L['actionsTable'], font, bold=True)
-            add_table(document, actions.get('columns', []), actions.get('rows', []), font)
+            add_table(document, actions.get('columns', []), actions.get('rows', []), font, spec=actions)
             document.add_paragraph()
             counters['stories_actions_table'] = counters.get('stories_actions_table', 0) + 1
         dictionary = item.get('dictionary')
         if dictionary and dictionary.get('rows'):
             p = document.add_paragraph()
             add_script_runs(p, L['dictionary'], font, bold=True)
-            dict_tbl = add_table(document, dictionary.get('columns', []), dictionary.get('rows', []), font)
+            dict_tbl = add_table(document, dictionary.get('columns', []), dictionary.get('rows', []), font, spec=dictionary)
             theme_mod.style_dictionary_table(dict_tbl, _THEME_ROLES)
             document.add_paragraph()
             counters['stories_dictionary_table'] = counters.get('stories_dictionary_table', 0) + 1

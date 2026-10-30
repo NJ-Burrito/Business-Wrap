@@ -766,6 +766,7 @@ export function renderParts(doc, o) {
     let n = 0;
     const meta =
       (t.b ? ` data-b="${attr(t.b)}"` : '') +
+      (t.tb && t.b ? ` data-t="${attr(t.tb)}"` : '') +
       (t.rowsPtr ? ` data-rows="${attr(t.rowsPtr)}"` : '') +
       (t.colsPtr ? ` data-cols="${attr(t.colsPtr)}"` : '') +
       ` data-w="${width}"` + (t.meta || '');
@@ -936,6 +937,10 @@ export function renderParts(doc, o) {
                     rowsPtr: `${sp}/${key}/rows`,
                     extra: 'dict',
                     alt: true,
+                    ...(o.editor ? { b, tb: `${sp}/${key}` } : {}),
+                    merges: s[key].merges,
+                    colWidths: s[key].colWidths,
+                    rowHeights: s[key].rowHeights,
                   })
                 : '';
             const dictionary = sub('dictionary');

@@ -8,7 +8,9 @@
 const CE = { ed: null, rows: null, b: null, sel: new Set(), anchor: null, clip: null, drag: null, rz: null };
 const ceKey = (r, c) => `${r},${c}`;
 const ceCellEl = (n) => n?.closest?.('#bw-pair main.bw-doc table[data-b][data-rows] td[data-r][data-c]') || null;
-const ceTblOf = (td) => { const tb = td.closest('table'); return { ed: td.closest('main.bw-doc').dataset.locale, rows: tb.dataset.rows, b: tb.dataset.b, el: tb }; };
+/** the pointer of the object that holds rows/merges/widths: a user story's own table (data-t) or the table block (data-b) */
+const ceTblPtr = (tb) => tb.dataset.t || tb.dataset.b;
+const ceTblOf = (td) => { const tb = td.closest('table'); return { ed: td.closest('main.bw-doc').dataset.locale, rows: tb.dataset.rows, b: ceTblPtr(tb), el: tb }; };
 const ceTableEl = () => mainOf(CE.ed)?.querySelector(`table[data-rows="${CSS.escape(CE.rows || '')}"]`);
 function cePaint() {
   document.querySelectorAll('.bw-csel,.bw-fillh').forEach((x) => x.classList.remove('bw-csel', 'bw-fillh'));
@@ -37,7 +39,7 @@ function ceTarget() {
   }
   const x = tableCtx();
   if (!x || !x.b || x.r < 0 || x.c < 0) return null;
-  return { ed: S.sel?.ed || S.ed, rows: x.rows, b: x.b, cols: x.cols, cells: [[x.r, x.c]], el: lastCell?.closest('table') || null, sel: false };
+  return { ed: S.sel?.ed || S.ed, rows: x.rows, b: lastCell?.closest('table')?.dataset.t || x.b, cols: x.cols, cells: [[x.r, x.c]], el: lastCell?.closest('table') || null, sel: false };
 }
 const ceLive = (tg, cells) => { const cov = coveredOf(ceBlk(tg.ed, tg.b).merges || []); return cells.filter(([r, c]) => !cov.has(ceKey(r, c))); };
 
@@ -304,7 +306,7 @@ function ceFinish(td) {
   if (CE.busy) return;
   const tb = td.closest('table[data-b][data-rows]');
   if (!tb || !td.dataset.p) return;
-  const tg = { ed: td.closest('main.bw-doc').dataset.locale, rows: tb.dataset.rows, b: tb.dataset.b };
+  const tg = { ed: td.closest('main.bw-doc').dataset.locale, rows: tb.dataset.rows, b: ceTblPtr(tb) };
   const blk = ceBlk(tg.ed, tg.b);
   if (!Array.isArray(blk?.rows)) return;
   const r = +td.dataset.r, c = +td.dataset.c;

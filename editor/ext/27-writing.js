@@ -77,7 +77,9 @@ const W2_WRITE = {
   emptyStory(ref, id) {
     const sub = (t0) => (t0?.columns ? { columns: [...t0.columns], rows: [t0.columns.map(() => '…')] } : null);
     const it = { id, name: '…', as: '…', want: '…', so: '…', acceptance: ['…'] };
-    const a = sub(ref?.actions), dd = sub(ref?.dictionary);
+    // no story to copy from: two small tables of the document's own placeholder, so the story has tables to grow (rows, columns, merge)
+    const dflt = { columns: ['…', '…'], rows: [['…', '…']] };
+    const a = sub(ref?.actions) || (ref ? null : { ...dflt, columns: [...dflt.columns], rows: dflt.rows.map((r) => [...r]) }), dd = sub(ref?.dictionary) || (ref ? null : { ...dflt, columns: [...dflt.columns], rows: dflt.rows.map((r) => [...r]) });
     if (a) it.actions = a;
     if (dd) it.dictionary = dd;
     return it;
