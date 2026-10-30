@@ -311,6 +311,30 @@ export function saveHtml(ws, { id, title, html }) {
   return { file, folder, dir, overwritten: exists, version };
 }
 
+/** «حفظ نسخة جديدة / Save as new copy» (0.14.0): a NEW dated file in the document's Versions\ folder
+ *  (<date time> <title> - copy.html, never an overwrite: "(2)" when the name is taken). The document's own file is not touched.
+ *  → {file, folder, dir, copy: true}. */
+export function saveCopy(ws, { id, title, html }) {
+  ensure(ws);
+  const info = htmlInfo(html, id);
+  const titles = titlesOf(info, title);
+  const { folder, dir } = docFolder(ws.dirs.docs || ws.dirs.html, { ids: id ? [id] : info.ids, titles: titles.length ? titles : [title || ''], hist: info.hist });
+  if (info.hist.length) linkHistory(ws.dirs.history, folder, info.hist);
+  const vdir = path.join(dir, 'Versions');
+  fs.mkdirSync(vdir, { recursive: true });
+  const file = uniquePath(vdir, `${stamp(new Date())} ${folder} - copy.html`);
+  fs.writeFileSync(file, html, 'utf8');
+  return { file, folder, dir, copy: true };
+}
+
+/** A file the server may show in the file manager: inside the documents folder (never .system), and it exists. → the path or null. */
+export function revealable(ws, file) {
+  if (typeof file !== 'string' || !file) return null;
+  const p = path.resolve(file);
+  const inside = [ws.dirs.docs, ws.dirs.pdf, ws.dirs.html].filter(Boolean).some((d) => { const rel = path.relative(path.resolve(d), p); return rel && !rel.startsWith('..') && !path.isAbsolute(rel) && !inHistory(d, p); });
+  return inside && fs.existsSync(p) ? p : null;
+}
+
 /** The dialog's command per platform. Windows: FolderBrowserDialog owned by a 1-px TopMost form that is shown and
  *  brought to the front (an Alt tap lifts the foreground lock a background process has), so it opens in front. */
 export const PICK_PS = [

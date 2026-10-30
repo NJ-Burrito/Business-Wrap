@@ -1317,6 +1317,12 @@ function measureBar() {
 function fitBar() {
   const bar = root.querySelector('.island');
   if (!bar) return;
+  // 0.14.0 perf: refreshUi runs on EVERY keystroke and this fit re-measured the whole bar (two-language word swap, ~270 DOM
+  // mutations, forced layouts, 0.9 s of style + layout over 40 keys). The fit depends only on the bar's own markup, the
+  // window width and the UI language, so when none of them moved since the last fit it is skipped (resize / font load force it).
+  const fitSig = `${innerWidth}|${S.ui}|${bar.outerHTML}`;
+  if (!fitBar.force && fitBar.bar === bar && fitBar.sig === fitSig) return;
+  fitBar.force = false;
   bar.classList.remove('sq0', 'sq1', 'sq2', 'sq3', 'sq4', 'sq5', 'sq6');
   if (typeof w2selFold === 'function') w2selFold(bar); // 20-chrome: header / footer fold with a selection
   const secs = [...bar.querySelectorAll('.sec:not(.now)')].filter((x) => x.querySelector('.more.tail'));
@@ -1339,9 +1345,11 @@ function fitBar() {
   for (const x of secs.reverse()) { if (!over()) break; x.classList.add('folded'); bar.classList.add('sq1'); }
   for (const step of ['sq2', 'sq3', 'sq4', 'sq5', 'sq6']) { if (!over()) break; bar.classList.add(step); }
   restore();
+  fitBar.bar = bar;
+  fitBar.sig = `${innerWidth}|${S.ui}|${bar.outerHTML}`;
 }
-window.addEventListener('resize', () => { fitBar(); setTimeout(fitBar, 200); }); // and once the resize has settled (a window drag lands mid-layout)
-document.fonts?.addEventListener?.('loadingdone', () => fitBar()); // the first fit can run before the UI face is in: refit once it lands
+window.addEventListener('resize', () => { fitBar.force = true; fitBar(); setTimeout(() => { fitBar.force = true; fitBar(); }, 200); }); // and once the resize has settled (a window drag lands mid-layout)
+document.fonts?.addEventListener?.('loadingdone', () => { fitBar.force = true; fitBar(); }); // the first fit can run before the UI face is in: refit once it lands
 let lastCount = -1;
 const opCount = () => EXT.status?.count() ?? liveOps(cur()).length;
 function refreshUi() {
