@@ -1,6 +1,6 @@
 /* A10 session + A11 save folder, the page half (0.13.0). Only on the local server with a save folder
  * (GET /api/session/info answers): each tab has a tabId (sessionStorage, or ?tab= when the server reopened it),
- * holds a live connection (EventSource), pushes its state 0.4 s after a change and, on pagehide or when the tab is
+ * holds a live connection (one event stream per browser, shared by every tab: SharedWorker, else the Web Locks leader), pushes its state 0.4 s after a change and, on pagehide or when the tab is
  * hidden, beacons the edits made since that push (a delta: a beacon carries at most 64 KB, a document does not), so
  * closing the tab right after typing loses nothing and closing the last tab saves every tab before the host stops.
  * The profile travels with the host (.local/profile.json, served back in #bw-host-profile): a resumed tab on another
@@ -17,7 +17,8 @@ if (!ls.get('bw:profile')) {
 }
 const SESS = (() => {
   const P = new URLSearchParams(location.search);
-  let info = null, tab = null, es = null, timer = 0, sent = null, profSent = '';
+  let info = null, tab = null, timer = 0, sent = null, profSent = '';
+  const AUTO = P.get('automation') === '1' || document.documentElement.dataset.bwAutomation === '1'; // a tool's tab (0.15.0): never asks to resume
   const json = (u, b) => fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) }).then((r) => r.json().catch(() => ({})));
   const newId = () => `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
   const titleNow = () => (EXT.library ? EXT.library.titleOf() : cur().doc.control?.title || S.svc);
@@ -34,6 +35,83 @@ const SESS = (() => {
     const lib = EXT.library;
     return { tab, title: titleNow(), svc: S.svc, ed: S.ed, entry: lib?.isDoc(S.svc) ? lib.entryOf(S.svc) : null, snap: snapshotState(), profile: profile() };
   }
+  /* 0.15.0 L1 transport: ONE event stream per browser. Edge and Chrome allow 6 HTTP/1.1 connections per origin and every tab used to hold one,
+   * so the 7th tab never loaded. Primary: a SharedWorker (/api/session/worker.js) holds the stream for all tabs. Fallback (no SharedWorker, or
+   * the worker failed): BroadcastChannel 'bw-live' + the Web Locks lock 'bw-live-leader', whose holder opens the one stream and relays; when it
+   * closes another tab takes the lock. Both keep the server's tab registry (POST /api/session/tabs) and route flush/req/ingest/progress to
+   * the tab (data.tab) or every tab. Tabs answer the hub's ping from a message handler, never from a timer (a hidden tab's timers sleep). */
+  const hub = (() => {
+    const subs = {};
+    let mode = 'none', port = null, ch = null, es = null, lead = false, client = '', beatTimer = 0, sentKey = '', sentAt = 0;
+    const known = new Map(); // leader: tab → {info, at}
+    const me = () => ({ tab, svc: S.svc, docs: EXT.library?.isDoc(S.svc) ? [S.svc] : [], automation: AUTO });
+    const deliver = (event, data) => {
+      if (data?.tab && data.tab !== tab) return;
+      (subs[event] || []).forEach((f) => { try { f(data); } catch { /* a listener must not break the stream */ } });
+      window.dispatchEvent(new CustomEvent('bw:srv', { detail: { event, data } }));
+    };
+    const list = () => { known.set(tab, { info: me(), at: Date.now() }); return [...known.values()].map((k) => ({ ...k.info, ago: Date.now() - k.at })); };
+    const postList = (force) => {
+      if (!lead) return;
+      const l = list();
+      const key = JSON.stringify(l.map(({ ago, ...r }) => r));
+      if (!force && key === sentKey && Date.now() - sentAt < 4500) return;
+      sentKey = key; sentAt = Date.now();
+      fetch('/api/session/tabs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ client, tabs: l }), keepalive: true }).catch(() => {});
+    };
+    function leaderOpen() {
+      lead = true; mode = 'leader';
+      client = `l${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+      es = new EventSource(`/api/session/live?client=${client}`);
+      for (const n of ['flush', 'req', 'ingest', 'progress']) es.addEventListener(n, (e) => {
+        let data = {};
+        try { data = e.data ? JSON.parse(e.data) : {}; } catch { data = {}; }
+        ch.postMessage({ t: 'ev', event: n, data });
+        deliver(n, data);
+      });
+      es.addEventListener('open', () => postList(true));
+      known.clear();
+      ch.postMessage({ t: 'who' }); // a new leader: every tab announces itself again
+      postList(true);
+      beatTimer = setInterval(() => { ch.postMessage({ t: 'ping' }); postList(false); }, 3000);
+    }
+    function fallback() {
+      mode = 'follower';
+      ch = new BroadcastChannel('bw-live');
+      ch.onmessage = (m) => {
+        const d = m.data || {};
+        if (d.t === 'ev') deliver(d.event, d.data);
+        else if (d.t === 'ping' || d.t === 'who') ch.postMessage({ t: d.t === 'who' ? 'hello' : 'beat', ...me() });
+        else if (lead && (d.t === 'hello' || d.t === 'beat')) { known.set(d.tab, { info: { tab: d.tab, svc: d.svc, docs: d.docs, automation: d.automation }, at: Date.now() }); postList(d.t === 'hello'); }
+        else if (lead && d.t === 'bye') { known.delete(d.tab); postList(true); }
+      };
+      if (navigator.locks?.request) navigator.locks.request('bw-live-leader', () => { leaderOpen(); return new Promise(() => {}); }).catch(() => {});
+      else { mode = 'direct'; es = new EventSource(`/api/session/live?tab=${encodeURIComponent(tab)}`); es.addEventListener('flush', () => deliver('flush', {})); } // no Web Locks: a stream of this tab's own (the old way)
+      ch.postMessage({ t: 'hello', ...me() });
+    }
+    function shared() {
+      const w = new SharedWorker('/api/session/worker.js', { name: 'bw-session' });
+      port = w.port;
+      port.onmessage = (m) => {
+        const d = m.data || {};
+        if (d.t === 'ev') deliver(d.event, d.data);
+        else if (d.t === 'ping') port.postMessage({ t: 'beat', ...me() });
+      };
+      w.onerror = () => { if (mode === 'shared') { mode = 'none'; try { port.close(); } catch { /* closed */ } port = null; fallback(); } }; // the worker could not start: the fallback, once
+      port.start();
+      port.postMessage({ t: 'hello', ...me() });
+      mode = 'shared';
+    }
+    return {
+      start() { try { if (typeof SharedWorker === 'function') shared(); else fallback(); } catch { if (mode === 'none') fallback(); } },
+      bye() {
+        try { if (port) port.postMessage({ t: 'bye', tab }); else if (ch && !lead) ch.postMessage({ t: 'bye', tab }); else if (lead) { clearInterval(beatTimer); es?.close(); } } catch { /* closing */ }
+      },
+      again() { try { if (port) port.postMessage({ t: 'hello', ...me() }); else if (ch) ch.postMessage({ t: 'hello', ...me() }); } catch { /* none */ } },
+      on(ev, fn) { (subs[ev] ||= []).push(fn); },
+      get mode() { return mode; },
+    };
+  })();
   const push = () => {
     clearTimeout(timer); timer = 0;
     if (!info) return;
@@ -92,9 +170,9 @@ const SESS = (() => {
         dlg.querySelector('.out').textContent = r.ok ? t('sessOpened', { n: r.n }) : String(r.error || '');
         document.documentElement.dataset.bwResume = r.ok ? 'resumed' : 'failed';
         // this tab becomes the run's first tab (never an extra one): it opens there itself
-        if (r.ok && r.here) { info = null; es?.close(); setTimeout(() => location.replace(r.here), 600); }
+        if (r.ok && r.here) { info = null; hub.bye(); setTimeout(() => location.replace(r.here), 600); }
       }
-      else { document.documentElement.dataset.bwResume = 'new'; await EXT.library?.newDocument(); }
+      else { document.documentElement.dataset.bwResume = 'new'; if (!/[#&]doc=/.test(location.hash)) await EXT.library?.newDocument(); } // a tab opened on one document keeps it (0.15.0)
       setTimeout(() => { dlg.close(); dlg.remove(); }, k === 'resume' ? 1200 : 0);
     });
     dlg.showModal();
@@ -128,10 +206,11 @@ const SESS = (() => {
     try { tab ||= sessionStorage.getItem('bw:tab'); } catch { /* no storage */ }
     tab ||= newId();
     try { sessionStorage.setItem('bw:tab', tab); } catch { /* no storage */ }
-    es = new EventSource(`/api/session/live?tab=${encodeURIComponent(tab)}`);
-    es.addEventListener('flush', flush);
+    if (AUTO) document.documentElement.dataset.bwAutomation = '1';
+    hub.on('flush', flush);
+    hub.start();
     if (resumed) await apply(resumed);
-    else {
+    else if (!AUTO) {
       const last = await fetch('/api/session/last').then((r) => r.json()).catch(() => null);
       if (last?.tabs?.length) modal(last);
     }
@@ -143,7 +222,7 @@ const SESS = (() => {
     const r = await json('/api/workspace/pick', {});
     if (r.ok) { info.workspace = { root: r.root, chosen: true }; el.querySelector('.ws-root').textContent = r.root; }
   });
-  return { boot, push, soon, flush, ensureFolder, card, mountCard, get tab() { return tab; }, get info() { return info; } };
+  return { boot, push, soon, flush, ensureFolder, card, mountCard, on: hub.on, bye: hub.bye, again: hub.again, get transport() { return hub.mode; }, get automation() { return AUTO; }, get tab() { return tab; }, get info() { return info; } };
 })();
 
 bwExt({
@@ -155,7 +234,8 @@ bwExt({
     save: () => { SESS.ensureFolder(); SESS.soon(); },
     beforeExport: () => SESS.ensureFolder(), // the first export asks for the save folder too (once; then it is remembered)
     export: () => SESS.push(),
-    pagehide: () => SESS.flush(),
+    pagehide: () => { SESS.flush(); SESS.bye(); },
   },
 });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') SESS.flush(); });
+window.addEventListener('pageshow', (e) => { if (e.persisted) SESS.again(); }); // back from the back/forward cache: the hub is told this tab is here again
