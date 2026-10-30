@@ -32,9 +32,21 @@ function bwModal({ title, html, buttons, mount, cls = '', modal = true }) {
     m.innerHTML = `<div class="bw-modal-card" role="dialog" aria-modal="${modal}" aria-labelledby="bw-modal-h"><h2 id="bw-modal-h">${esc(title)}</h2>${html}<div class="btns">${buttons.map(([k, l, primary]) => `<button type="button" class="b${primary ? ' primary' : ''}" data-mk="${esc(k)}"><span class="w">${esc(l)}</span></button>`).join('')}</div></div>`;
     // a toolbar rebuild (root.innerHTML) drops it: put it back until it is answered
     const keep = new MutationObserver(() => { if (!m.isConnected) root.appendChild(m); });
-    const done = (k) => { keep.disconnect(); m.remove(); res(k); };
+    const opener = root.activeElement; // UIP-02: the focus goes back where it came from
+    const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches || root.querySelector('.shell')?.dataset.calm === '1';
+    // UIP-13: one close transition (fast, ease-in) like every dialog; the answer is given at once
+    const done = (k) => { keep.disconnect(); res(k); if (still()) { m.remove(); opener?.focus?.(); return; } m.classList.add('closing'); setTimeout(() => { m.remove(); opener?.focus?.(); }, 160); };
     m.addEventListener('click', (e) => { const k = e.target.closest('[data-mk]')?.dataset.mk; if (k) done(k); });
-    m.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); done('cancel'); } });
+    m.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.stopPropagation(); done('cancel'); return; }
+      if (e.key !== 'Tab' || !modal) return;
+      // UIP-02: aria-modal means Tab stays inside the card (wraps first <-> last)
+      const f = [...m.querySelectorAll('button:not(:disabled), input:not([type="hidden"]):not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])')];
+      if (!f.length) return;
+      const a = root.activeElement;
+      if (e.shiftKey && (a === f[0] || !m.contains(a))) { e.preventDefault(); f[f.length - 1].focus(); }
+      else if (!e.shiftKey && (a === f[f.length - 1] || !m.contains(a))) { e.preventDefault(); f[0].focus(); }
+    });
     root.appendChild(m);
     keep.observe(root, { childList: true });
     mount?.(m);

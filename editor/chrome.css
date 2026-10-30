@@ -30,7 +30,9 @@
 /* brand icons: sized by their slot; the gold part is the marker-icon role on panels and plain gold on the navy glass */
 .ic.bw-i { width: 18px; height: 18px; overflow: visible; }
 .i > .ic.bw-i { width: 100%; height: 100%; }
-.bw-i .hl { fill: var(--bw-marker-icon); }
+/* UI-CHROME-05: the gold part on the panels and the palette is the 3:1 rule gold (light #9c7e36 on white, dark #be9a41 on the navy), not the marker tone (2.66:1 / 1.68:1) */
+.bw-i .hl { fill: var(--bw-accent-rule); }
+.bw-i .hl.rl { fill: none; stroke: var(--bw-accent-rule); }
 .island .bw-i .hl, .pop .bw-i .hl, .ctx .bw-i .hl, .more .menu .bw-i .hl { fill: var(--bw-accent); }
 .island .bw-i .hl.rl, .pop .bw-i .hl.rl, .ctx .bw-i .hl.rl, .more .menu .bw-i .hl.rl { fill: none; stroke: var(--bw-accent); }
 /* toolbar weight (DESIGN d.4): stroke 2 at 18 px on the navy glass */
@@ -56,6 +58,8 @@
 /* hierarchy: the one primary action on the glass is a gold fill with a navy label; everything else stays quiet */
 .island .b.primary { box-shadow: 0 0 0 1px color-mix(in srgb, var(--bw-accent) 45%, transparent); }
 .island .b.primary:hover:not(:disabled) { transform: translateY(-1px); }
+/* UI-CHROME-07: the primary button presses like every other (its hover lift outranked the shared :active) */
+.island .b.primary:active:not(:disabled) { transform: scale(var(--press, .96)); }
 .drawer .b.primary, .dialog .b.primary { box-shadow: var(--bw-shadow-1); }
 
 /* motion (DESIGN e.3 and e.5): hover in fast, out base; press instant at .96; focus ring settles 6 to 2 px */

@@ -1,5 +1,5 @@
 /* H1 bulk edit drawer (the icons' motion lives in 13-projects.css) */
-.drawer .bk fieldset { border: 1px solid rgb(127 127 127 / .3); border-radius: 10px; margin: 0 0 12px; padding: 8px 10px 10px; }
+.drawer .bk fieldset { border: 1px solid var(--panel-line); border-radius: 10px; margin: 0 0 12px; padding: 8px 10px 10px; }
 .drawer .bk legend { font-weight: 700; padding: 0 4px; }
 .drawer .bk-list { max-height: 34vh; overflow: auto; }
 .drawer .bk-g > summary { cursor: pointer; padding: 4px 0; }
@@ -14,10 +14,10 @@
 .drawer .bk .btns .b { gap: 6px; }
 .drawer .bk .btns .i { display: inline-flex; }
 .drawer .bk-sum { display: flex; flex-wrap: wrap; gap: 6px; }
-.drawer .bk-st { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .85em; font-weight: 600; background: rgb(127 127 127 / .14); }
-.drawer .bk-st[data-st="change"], .drawer .bk-st[data-st="done"] { background: rgb(31 111 92 / .18); }
-.drawer .bk-st[data-st="conflict"], .drawer .bk-st[data-st="error"] { background: rgb(176 58 46 / .2); }
-.drawer .bk-st[data-st="locked"] { background: rgb(160 120 20 / .2); }
+.drawer .bk-st { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .85em; font-weight: 600; background: color-mix(in srgb, var(--panel-ink) 10%, transparent); }
+.drawer .bk-st[data-st="change"], .drawer .bk-st[data-st="done"] { background: var(--bw-success-wash); color: var(--bw-on-success-wash); }
+.drawer .bk-st[data-st="conflict"], .drawer .bk-st[data-st="error"] { background: var(--bw-signal-wash); color: var(--bw-on-signal-wash); }
+.drawer .bk-st[data-st="locked"] { background: color-mix(in srgb, var(--bw-accent) 22%, transparent); }
 .drawer .bk-res { width: 100%; border-collapse: collapse; font-size: .9em; }
-.drawer .bk-res th, .drawer .bk-res td { text-align: start; padding: 4px 6px; border-bottom: 1px solid rgb(127 127 127 / .2); vertical-align: top; }
+.drawer .bk-res th, .drawer .bk-res td { text-align: start; padding: 4px 6px; border-bottom: 1px solid var(--panel-line); vertical-align: top; }
 @media (max-width: 600px) { .drawer .bk-grid { grid-template-columns: 1fr; } }

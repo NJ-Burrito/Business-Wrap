@@ -27,7 +27,7 @@
 .set-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--wash); }
 .set-seg button { font: inherit; border: 0; border-radius: 9px; padding: 5px 12px; background: transparent; color: var(--panel-ink); cursor: pointer; transition: background .22s var(--e-out), color .22s var(--e-out), transform .22s var(--e-spring); }
 .set-seg button:hover { background: var(--wash-2); }
-.set-seg button:active { transform: scale(.96); }
+.set-seg button:active { transform: scale(var(--press, .96)); }
 .set-seg button[aria-pressed="true"] { background: var(--navy); color: var(--on-primary); box-shadow: 0 0 0 1px var(--gold) inset; }
 .shell[data-calm="1"] .set-seg button { transition: none; }
 @media (prefers-reduced-motion: reduce) { .set-seg button { transition: none; } }

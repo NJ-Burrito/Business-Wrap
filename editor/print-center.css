@@ -47,7 +47,6 @@
 /* ── Print panel (a modal <dialog> in the top layer) ── */
 dialog.pc-dlg { width: min(760px, 94vw); max-height: 90vh; padding: 0; border: 1px solid var(--panel-line); border-radius: 18px; background: var(--panel); color: var(--panel-ink); box-shadow: var(--bw-shadow-3); overflow: hidden; }
 dialog.pc-dlg[open] { display: flex; flex-direction: column; animation: pop-in .3s var(--e-out) both; }
-dialog.pc-dlg::backdrop { background: color-mix(in srgb, var(--bw-band, #001e3d) 45%, transparent); }
 .pc-dlg .b { color: var(--panel-ink); border: 1px solid var(--panel-line); }
 .pc-dlg .b:hover:not(:disabled) { background: var(--wash-2); }
 .pc-dlg .b.primary { background: var(--navy); color: var(--on-primary); border-color: var(--navy); }
