@@ -78,9 +78,9 @@ const migrated = new Set();
 export function ensure(ws = workspace()) {
   if (ws.root && !migrated.has(ws.root)) {
     migrated.add(ws.root);
-    // only a folder the user chose (or BW_WORKSPACE names), never the default Documents guess, and never the owner's real folder from a test:
+    // only a folder the user chose (or BW_WORKSPACE names), never the default Documents guess, never under the test runner (BW_TEST_SLOT), and never the owner's real folder from a test:
     // `business-wrap tidy` moves any other folder on request
-    if (!process.env.BW_NO_MIGRATE && !(isTestMode() && isRealRoot(ws.root)) && ws.chosen && LEGACY.some((n) => fs.existsSync(path.join(ws.root, n)))) tidyNow(ws);
+    if (!process.env.BW_NO_MIGRATE && process.env.BW_TEST_SLOT === undefined && !(isTestMode() && isRealRoot(ws.root)) && ws.chosen && LEGACY.some((n) => fs.existsSync(path.join(ws.root, n)))) tidyNow(ws);
   }
   for (const d of Object.values(ws.dirs)) fs.mkdirSync(d, { recursive: true });
   const sys = ws.dirs.system || ws.dirs.history;

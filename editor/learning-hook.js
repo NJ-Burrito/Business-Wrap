@@ -51,7 +51,7 @@ const LRN = (() => {
   }
 
   function record(ev, ed = S.ed) {
-    if (!on()) return null;
+    if (!on() || !cur(ed)) return null; // no edition loaded yet (a text flush after the page reset): nothing to record
     const d = cur(ed).doc;
     const note = ev.note ?? cur(ed).comments.filter((c) => ev.path && (ev.path === c.path || ev.path.startsWith(c.path + '/'))).at(-1)?.text;
     const e = LEARN.redact({
