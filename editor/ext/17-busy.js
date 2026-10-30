@@ -63,8 +63,8 @@ const BUSY = (() => {
     const id = ++seq;
     jobs.set(id, { what, t0: performance.now() });
     if (jobs.size === 1 && !timer && root.querySelector('.bw-busy')?.hidden !== false) timer = setTimeout(() => { timer = 0; show(); }, DELAY);
-    else if (!root.querySelector('.bw-busy')?.hidden) paint(root.querySelector('.bw-busy').classList.contains('slow'));
-    return () => { jobs.delete(id); if (!jobs.size) hide(false); else if (!root.querySelector('.bw-busy')?.hidden) paint(false); };
+    else if (root.querySelector('.bw-busy') && !root.querySelector('.bw-busy').hidden) paint(root.querySelector('.bw-busy').classList.contains('slow'));
+    return () => { jobs.delete(id); if (!jobs.size) hide(false); else if (root.querySelector('.bw-busy') && !root.querySelector('.bw-busy').hidden) paint(false); };
   }
   // busy(on): the editor's own calls (export, new document, crawl, print …) keep their .progress bar and gain the card
   const base = busy;

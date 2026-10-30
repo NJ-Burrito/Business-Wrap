@@ -64,6 +64,8 @@ const RD = (() => {
   for (const ev of ['pointerdown', 'mousedown', 'click', 'dblclick', 'contextmenu', 'dragstart']) {
     document.addEventListener(ev, (e) => { if (isOn() && outside(e) && !(e.target.closest?.('a[href]') && ev === 'click')) { e.stopImmediatePropagation(); if (ev === 'dragstart' || ev === 'contextmenu') e.preventDefault(); } }, true);
   }
+  // a click on a focusable cell (tabindex) still focuses it by default and the editor would select it: no focus enters the page while reading
+  document.addEventListener('focusin', (e) => { if (isOn() && outside(e)) { e.stopImmediatePropagation(); e.target.blur?.(); } }, true);
   for (const ev of ['beforeinput', 'paste', 'cut', 'drop']) {
     document.addEventListener(ev, (e) => { if (isOn()) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
   }

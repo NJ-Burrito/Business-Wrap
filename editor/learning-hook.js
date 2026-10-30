@@ -202,8 +202,12 @@ const LRN = (() => {
   }
   const _render = render;
   render = function (...a) { const r = _render(...a); mark(); return r; };
-  document.addEventListener('click', (ev) => {
+  let undoneAt = 0;
+  // the undo runs on the press: the page re-renders on selection between press and release, and the click then lands on the table, not the cell
+  for (const evName of ['pointerdown', 'mousedown', 'click']) document.addEventListener(evName, (ev) => {
     if (!ev.altKey) return;
+    if (evName !== 'pointerdown' && performance.now() - undoneAt < 800) { ev.stopPropagation(); ev.preventDefault(); return; } // the rest of a press already used for the undo
+    if (evName === 'mousedown') return;
     const el = ev.target.closest?.('.bw-learned');
     const x = el && (cur().doc.learned || []).find((y) => y.rule === el.dataset.bwRule && (el.dataset.p === y.path || el.dataset.b === y.path.replace(/\/model$/, '')));
     if (!x || typeof x.from !== 'string' || typeof x.to !== 'string') return;
@@ -211,6 +215,7 @@ const LRN = (() => {
     ev.stopPropagation();
     const now = get(cur().doc, x.path);
     if (typeof now !== 'string') return;
+    undoneAt = performance.now();
     setText(x.path, now.split(x.to).join(x.from), S.ed, { rule: x.rule });
     flushText();
     reverted.add(x.path);
