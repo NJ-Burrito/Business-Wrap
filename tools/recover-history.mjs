@@ -33,6 +33,8 @@ export function htmlFiles(folder) {
   if (docs) return fs.readdirSync(path.join(folder, docs.name), { withFileTypes: true }).filter((e) => e.isDirectory()).flatMap((e) => html(path.join(folder, docs.name, e.name)));
   return html(path.join(folder, 'HTML'));
 }
+/** The file a record names: below HTML\ in an older folder (the record keeps the bare name), else below the folder. */
+const fileOf = (folder, f) => (fs.existsSync(path.join(folder, 'HTML', f)) ? path.join(folder, 'HTML', f) : path.join(folder, f));
 const historyDir = (folder) => (fs.existsSync(path.join(folder, '.system', 'history')) ? path.join(folder, '.system', 'history') : path.join(folder, 'HISTORY'));
 const backupDir = (folder) => (fs.existsSync(path.join(folder, '.system')) ? path.join(folder, '.system', 'backups') : path.join(folder, 'HISTORY', 'backups'));
 
@@ -40,6 +42,7 @@ export async function scanDocs(folder) {
   const docs = [], withHistory = [];
   for (const f of htmlFiles(folder)) {
     let d;
+    const legacy = /^HTML[\\/]/.test(f), name = legacy ? path.basename(f) : f;
     try { d = dataOf(fs.readFileSync(path.join(folder, f), 'utf8')); } catch { continue; }
     for (const s of d.services || []) {
       const eds = Object.fromEntries(Object.entries(s.editions || {}).map(([ed, e]) => [ed, { hash: sha(e.raw || ''), ops: e.ops || [] }]));
@@ -51,7 +54,7 @@ export async function scanDocs(folder) {
         try { const c = JSON.parse(e.raw).control || {}; [c.title, c.coverTitle].forEach((t) => t && titles.add(norm(t))); } catch { /* base unreadable */ }
         for (const o of e.ops || []) if (/^\/control\/(title|coverTitle)$/.test(o.path || '') && typeof o.value === 'string') titles.add(norm(o.value));
       }
-      const rec = { file: f, svc: s.id, state: await L.docHash(eds), ops, titles: [...titles].filter(Boolean) };
+      const rec = { file: name, svc: s.id, state: await L.docHash(eds), ops, titles: [...titles].filter(Boolean) };
       (has ? withHistory : docs).push(rec);
     }
   }
@@ -105,7 +108,7 @@ export function report({ folder, docs, withHistory, logs, bad, pairs }) {
 
 /** Re-attach one approved pair. Returns {ok, entries, backup} or throws after putting the original back. */
 export async function apply(folder, p) {
-  const file = path.join(folder, p.doc.file);
+  const file = fileOf(folder, p.doc.file);
   const original = fs.readFileSync(file, 'utf8');
   const bdir = backupDir(folder);
   fs.mkdirSync(bdir, { recursive: true });

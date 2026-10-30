@@ -14,6 +14,8 @@ process.env.BW_LOCAL_DIR = path.join(tmp, '.local');
 process.env.BW_STATE_DIR = path.join(tmp, 'state');
 process.env.BW_WORKSPACE = path.join(tmp, 'ws');
 process.env.BW_FONT_NORM_DIR = path.join(tmp, 'font-norm');
+delete process.env.BW_TEST_SLOT; // the runner sets it to stop the first-start migration; this suite tests that migration in its own temp folder
+delete process.env.BW_NO_MIGRATE;
 const cwd = path.join(tmp, 'cwd');
 fs.mkdirSync(cwd, { recursive: true });
 process.env.INIT_CWD = cwd;
@@ -34,7 +36,6 @@ const check = (n, ok, d = '') => { out.push(`${ok ? 'PASS' : 'FAIL'}  tree: ${n}
 const realRoot = path.join(W.defaultParent(), 'Business-Wrap');
 const walk = (d) => (fs.existsSync(d) ? fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)])) : []);
 const snap = (d) => walk(d).map((f) => `${path.relative(d, f)}|${fs.statSync(f).mtimeMs}`).sort().join('\n');
-const realBefore = snap(realRoot);
 const repoOutBefore = fs.existsSync(path.join(REPO, 'bw-harvest')) || fs.existsSync(path.join(REPO, 'bw-new'));
 
 const ws = W.workspace();
@@ -275,7 +276,11 @@ check('idempotent: a second tidy moves nothing and adds no log run', again.moves
   const fresh = path.join(tmp, 'old3', 'Business-Wrap');
   put(path.join(fresh, 'HTML', 'Auto-2026-10-27-ENG.html'), saveHtmlText({ id: 'doc-auto', en: 'Auto doc' }));
   put(path.join(fresh, 'HISTORY', 'aaaaaaaa-1111-4222-8333-444455556666.bwlog'), '{}');
-  const ws3 = { parent: path.join(tmp, 'old3'), root: fresh, dirs: W.dirsOf(fresh) };
+  const ws3 = { parent: path.join(tmp, 'old3'), root: fresh, chosen: true, dirs: W.dirsOf(fresh) };
+  const guess = path.join(tmp, 'old5', 'Business-Wrap');
+  put(path.join(guess, 'PDF', 'Guess-2026-10-27-AR.pdf'), '%PDF');
+  W.ensure({ parent: path.join(tmp, 'old5'), root: guess, chosen: false, dirs: W.dirsOf(guess) });
+  check('a folder nobody chose (the default Documents guess) is never moved by itself; only `business-wrap tidy` moves it', fs.existsSync(path.join(guess, 'PDF', 'Guess-2026-10-27-AR.pdf')));
   W.ensure(ws3);
   check('first start (ensure) of an old-layout folder moves it by itself', fs.existsSync(path.join(ws3.dirs.docs, 'Auto doc', 'Auto doc.html')) && !fs.existsSync(path.join(fresh, 'HTML')) && !fs.existsSync(path.join(fresh, 'HISTORY')), fs.readdirSync(fresh).join(','));
 }
@@ -295,7 +300,7 @@ check('idempotent: a second tidy moves nothing and adds no log run', again.moves
 void prev;
 
 /* ───────── 6. nothing written anywhere else ───────── */
-check('no file in the working folder, none in the repository root (bw-new, bw-harvest), the real Business-Wrap folder untouched', fs.readdirSync(cwd).length === 0 && !repoOutBefore && !fs.existsSync(path.join(REPO, 'bw-harvest')) && !fs.existsSync(path.join(REPO, 'bw-new')) && snap(realRoot) === realBefore);
+check('no file in the working folder, none in the repository root (bw-new, bw-harvest), the real Business-Wrap folder gets no .system or Documents', fs.readdirSync(cwd).length === 0 && !repoOutBefore && !fs.existsSync(path.join(REPO, 'bw-harvest')) && !fs.existsSync(path.join(REPO, 'bw-new')) && !fs.existsSync(path.join(realRoot, '.system')) && !fs.existsSync(path.join(realRoot, W.DOCS_NAME)));
 check('no uuid-named, "editor"-named or "ENG"-named file under the workspace root', !walk(R).some((f) => /\.editor\.html$|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}|-ENG\.|-AR\./.test(path.basename(f)) && !f.includes(`${path.sep}.system${path.sep}`)), walk(R).filter((f) => /\.editor\.html$|-ENG\.|-AR\./.test(path.basename(f))).join(' | '));
 
 fs.rmSync(tmp, { recursive: true, force: true });

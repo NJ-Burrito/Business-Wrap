@@ -1,5 +1,7 @@
 // The save folder over HTTP (A11): read it, choose it (OS dialog or a typed path), and write a Save-HTML file as the document's own file (Documents\<title>\<title>.html).
-import { workspace, ensure, setParent, pickParent, saveHtml, readJson } from '../workspace.mjs';
+import path from 'node:path';
+import { reveal } from '../host.mjs';
+import { workspace, ensure, setParent, pickParent, saveHtml, readJson, README_NAME } from '../workspace.mjs';
 
 export default async (req, url, send, ctx) => {
   if (!url.pathname.startsWith('/api/workspace')) return false;
@@ -8,6 +10,13 @@ export default async (req, url, send, ctx) => {
     if (req.method === 'GET' && url.pathname === '/api/workspace') { const w = live(); send(200, { ...w, served: !!ctx.workspace }); return true; }
     if (req.method === 'POST' && url.pathname === '/api/workspace/pick') { const p = await pickParent(); send(200, { ok: !!p, ...(p ? workspace() : {}) }); return true; }
     if (req.method === 'POST' && url.pathname === '/api/workspace/parent') { send(200, { ok: true, ...setParent((await readJson(req)).parent) }); return true; }
+    // Settings «افتح المجلد / Open folder»: the file manager on the tree root (its README selected, so the folder itself opens)
+    if (req.method === 'POST' && url.pathname === '/api/workspace/open') {
+      const w = ensure(live());
+      reveal(path.join(w.root, README_NAME));
+      send(200, { ok: true, root: w.root });
+      return true;
+    }
     if (req.method === 'POST' && url.pathname === '/api/workspace/html') {
       const b = await readJson(req);
       if (typeof b.html !== 'string' || !/^\s*<!doctype html>/i.test(b.html)) { send(400, { error: 'html: a Save-HTML document' }); return true; }

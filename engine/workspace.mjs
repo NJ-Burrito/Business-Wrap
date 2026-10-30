@@ -22,6 +22,8 @@ const store = () => path.join(localDir(), 'workspace.json');
 const inside = (p, dir) => { const r = path.relative(dir, p); return !r || (!r.startsWith('..') && !path.isAbsolute(r)); };
 
 export function defaultParent() {
+  // under the test runner (tests/run.mjs sets BW_TEST_SLOT) a suite that names no BW_WORKSPACE gets a temp parent, never the real Documents
+  if (process.env.BW_TEST_SLOT !== undefined) return path.join(os.tmpdir(), `bw-test-parent-${process.env.BW_TEST_SLOT}`);
   const docs = path.join(os.homedir(), 'Documents');
   return fs.existsSync(docs) ? docs : os.homedir();
 }
@@ -68,13 +70,15 @@ export function setParent(p) {
 }
 
 /** Create the folders; .system carries the hidden attribute on Windows (dot-folder elsewhere), the README of the tree is written once, and an
- *  old 0.13.0-0.13.2 layout (PDF, DOCX, HTML, HISTORY) is moved into the tree once per process (engine/tidy.mjs; BW_NO_MIGRATE=1 skips it). */
+ *  old 0.13.0-0.13.2 layout (PDF, DOCX, HTML, HISTORY) of a chosen folder is moved into the tree once per process (engine/tidy.mjs; BW_NO_MIGRATE=1 skips it). */
 const hidden = new Set();
 const migrated = new Set();
 export function ensure(ws = workspace()) {
   if (ws.root && !migrated.has(ws.root)) {
     migrated.add(ws.root);
-    if (!process.env.BW_NO_MIGRATE && LEGACY.some((n) => fs.existsSync(path.join(ws.root, n)))) tidyNow(ws);
+    // only a folder the user chose (or BW_WORKSPACE names), never the default Documents guess, and never under the test runner:
+    // `business-wrap tidy` moves any other folder on request
+    if (!process.env.BW_NO_MIGRATE && process.env.BW_TEST_SLOT === undefined && ws.chosen && LEGACY.some((n) => fs.existsSync(path.join(ws.root, n)))) tidyNow(ws);
   }
   for (const d of Object.values(ws.dirs)) fs.mkdirSync(d, { recursive: true });
   const sys = ws.dirs.system || ws.dirs.history;
@@ -161,7 +165,12 @@ export function allocFolder(idx, docsDir, { ids = [], titles = [], hist = [] } =
   titles = uniq(titles.map((x) => (String(x || '').trim() ? titleStem(x) : '')));
   const key = (f) => Object.keys(idx.folders).find((k) => sameName(k, f));
   let folder = ids.map((i) => idx.ids[i]).find((f) => f && idx.folders[f]);
-  if (!folder && !ids.length) folder = titles.map((x) => Object.keys(idx.folders).find((f) => sameName(f, x) || idx.folders[f].titles.some((y) => sameName(y, x)))).find(Boolean);
+  if (!folder && !ids.length) {
+    // no id (an export): the folder named like the title, else the most recently touched folder that has carried the title
+    const byName = (x) => Object.keys(idx.folders).find((f) => sameName(f, x));
+    const byTitle = (x) => Object.keys(idx.folders).filter((f) => idx.folders[f].titles.some((y) => sameName(y, x))).sort((a, b) => (idx.folders[b].at || 0) - (idx.folders[a].at || 0))[0];
+    folder = titles.map(byName).find(Boolean) || titles.map(byTitle).find(Boolean);
+  }
   if (!folder) {
     const base = titleStem(titles[0] || '');
     const taken = key(base);
@@ -170,7 +179,9 @@ export function allocFolder(idx, docsDir, { ids = [], titles = [], hist = [] } =
     else for (let n = 2; ; n++) { folder = `${base.slice(0, 74)} (${n})`; if (!key(folder) && !fs.existsSync(path.join(docsDir, folder))) break; }
   }
   const e = (idx.folders[folder] ||= { ids: [], titles: [], history: [] });
+  const grew = ids.some((i) => !e.ids.includes(i)) || titles.some((x) => !e.titles.includes(x));
   e.ids = uniq([...e.ids, ...ids]); e.titles = uniq([...e.titles, ...titles]); e.history = uniq([...e.history, ...hist]);
+  if (grew || !e.at) e.at = Date.now();
   for (const i of ids) idx.ids[i] = folder;
   return folder;
 }
@@ -244,7 +255,7 @@ export function uniquePath(dir, name) {
     let rest = parts.slice(1).join(path.sep);
     if (folder !== t) rest = rest.replace(` ${t} - `, ` ${folder} - `).replace(`${t}.html`, `${folder}.html`);
     base = path.join(fdir, rest);
-  }
+  } else if (name.includes('/')) base = path.join(dir, path.basename(name)); // a folder that is not the documents folder (a hand-made one): the file name only
   fs.mkdirSync(path.dirname(base), { recursive: true });
   const dirName = path.dirname(base), file = path.basename(base);
   const ext = /(\.print|\.shared)?\.[^.]+$/.exec(file)?.[0] || '', stem = file.slice(0, file.length - ext.length); // "x.print.html" → "x (2).print.html"
@@ -256,18 +267,18 @@ export function uniquePath(dir, name) {
 /* ── titles and ids inside a Save-HTML ── */
 const BWDATA = /<script type="application\/json" id="bw-data">([\s\S]*?)<\/script>/;
 /** {titles: {ar, en}, ids, hist, locale}: what a Save-HTML says about its document (ids: service ids; hist: history doc ids). */
-export function htmlInfo(html) {
+export function htmlInfo(html, pick) {
   const out = { titles: {}, ids: [], hist: [], locale: /<html[^>]*\blang="en"/i.test(html) ? 'en' : 'ar' };
   const trace = /<meta[^>]*name=["']bw-ledger["'][^>]*content=["'][^"']*doc=([\w.:-]+)/i.exec(String(html).split(/<\/head>/i)[0])?.[1] || /data-bw-ledger="([\w.:-]+)"/.exec(String(html).slice(0, 4000))?.[1];
   if (trace) out.hist.push(trace);
   try {
     const data = JSON.parse(BWDATA.exec(html)[1]);
+    // a Save-HTML may carry several services; the document is the one asked for (`pick`, its id), else the first
     const svcs = data.services || [];
-    for (const s of svcs) {
-      if (s.id) out.ids.push(String(s.id));
-      if (data.prov?.[s.id]?.doc) out.hist.push(String(data.prov[s.id].doc));
-    }
-    const eds = svcs[0]?.editions || {};
+    const s0 = pick ? svcs.find((x) => x.id === pick) : svcs[0]; // asked for an id the file does not carry: nothing is taken from another service
+    if (s0?.id) out.ids.push(String(s0.id));
+    if (s0 && data.prov?.[s0.id]?.doc) out.hist.push(String(data.prov[s0.id].doc));
+    const eds = s0?.editions || {};
     const docs = Object.fromEntries(Object.entries(eds).map(([k, x]) => [k, applyOps(JSON.parse(x.raw), x.ops || [])])); // the document as on screen: the base plus its edits
     for (const [k, d] of Object.entries(docs)) out.titles[k] = pairedTitle(d, Object.values(docs).filter((x) => x !== d), '');
   } catch { /* not a Save-HTML */ }
@@ -281,9 +292,9 @@ export const titlesOf = (info, given) => uniq([info.titles.ar, info.titles.en, g
  *  replaces goes to Versions\<its date> <title>.html first (kept, never deleted). → {file, folder, dir, overwritten, version}. */
 export function saveHtml(ws, { id, title, html }) {
   ensure(ws);
-  const info = htmlInfo(html);
+  const info = htmlInfo(html, id);
   const titles = titlesOf(info, title);
-  const { folder, dir } = docFolder(ws.dirs.docs || ws.dirs.html, { ids: [id, ...info.ids], titles: titles.length ? titles : [title || ''], hist: info.hist });
+  const { folder, dir } = docFolder(ws.dirs.docs || ws.dirs.html, { ids: id ? [id] : info.ids, titles: titles.length ? titles : [title || ''], hist: info.hist });
   if (info.hist.length) linkHistory(ws.dirs.history, folder, info.hist);
   const file = path.join(dir, `${folder}.html`);
   let version = null;

@@ -163,8 +163,19 @@ const PJ = (() => {
 IC.pjNew = '<svg aria-hidden="true" focusable="false" class="ic" data-ic="pjNew" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><path d="M12 10v6"/><path d="M9 13h6"/></svg>';
 IC.pjRename = '<svg aria-hidden="true" focusable="false" class="ic" data-ic="pjRename" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11.5V5a2 2 0 0 1 2-2h3.9c.7 0 1.3.3 1.7.9l.8 1.2c.4.6 1 .9 1.7.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-9.5"/><path d="M11.378 13.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/></svg>';
 IC.pjDelete = '<svg aria-hidden="true" focusable="false" class="ic" data-ic="pjDelete" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><path d="m9.5 10.5 5 5"/><path d="m14.5 10.5-5 5"/></svg>';
+/* 0.13.3 the tree: a Settings card shows the save folder's root and opens it (the file manager) with «افتح المجلد / Open folder». */
+const TREE_CARD = {
+  id: 'tree', title: 'مجلد الملفات · Files folder', icon: 'prefs',
+  html: () => `<p class="hint">المستندات - Documents · كل مستند في مجلده: Exports · Sources · Versions<br dir="ltr">Documents · one folder per document: Exports · Sources · Versions</p><p><code class="tree-root" dir="ltr">…</code></p><div class="btns"><button type="button" class="b" data-tree="open"><span class="i">${ic('secFile')}</span><span class="w">افتح المجلد / Open folder</span></button></div>`,
+  mount: (el) => {
+    if (!el || !location.protocol.startsWith('http')) { el?.querySelector('[data-tree]')?.setAttribute('hidden', ''); return; }
+    fetch('/api/workspace').then((r) => r.json()).then((w) => { const c = el.querySelector('.tree-root'); if (c) c.textContent = w.root || ''; }).catch(() => {});
+    el.querySelector('[data-tree="open"]')?.addEventListener('click', () => fetch('/api/workspace/open', { method: 'POST' }).catch(() => {}));
+  },
+};
 bwExt({
   expose: { projects: PJ },
+  settings: [TREE_CARD],
   on: {
     boot: () => { PJ.watch(); PJ.sync(); },
     open: (svc) => { PJ.onOpen(svc); },

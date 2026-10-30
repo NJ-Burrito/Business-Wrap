@@ -102,9 +102,9 @@ try {
   const s1 = await post('/api/library/html', { id: 'doc-5ave0001', title: 'وثيقة الحفظ', locale: 'ar', html: mkSave('one') });
   const s2 = await post('/api/library/html', { id: 'doc-5ave0001', title: 'عنوان تغير', locale: 'ar', html: mkSave('two'), file: s1.j.file });
   const s3 = await post('/api/library/html', { id: 'doc-5ave0001', title: 'وثيقة الحفظ', locale: 'ar', html: mkSave('three'), file: path.join(tmp, 'x.html') });
-  const mine = fs.readdirSync(ws.dirs.docs).filter((f) => f.startsWith('وثيقة الحفظ') || f.startsWith('عنوان تغير') || f === W.titleStem(W.docTitle(docs.ar)));
-  check('Save in place: Documents\\<title>\\<title>.html at the first Save, the same file overwritten after by its id (no -2, a renamed title keeps the file)', s1.s === 200 && s1.j.file === path.join(ws.dirs.docs, W.titleStem(W.docTitle(docs.ar)), `${W.titleStem(W.docTitle(docs.ar))}.html`) && s2.j.file === s1.j.file && s2.j.overwritten === true && fs.readFileSync(s1.j.file, 'utf8').includes('<p>three</p>') && fs.readdirSync(path.join(path.dirname(s1.j.file), 'Versions')).length === 2, JSON.stringify({ s1: s1.j, s2: s2.j }));
-  check('Save in place: a `file` outside the documents folder is never written (the document\'s own file is used; the title inside the file names the folder)', s3.j.file === s1.j.file && !fs.existsSync(path.join(tmp, 'x.html')) && mine.length === 1, JSON.stringify({ s3: s3.j, mine }));
+  const mine = fs.readdirSync(ws.dirs.docs).filter((f) => f.startsWith('وثيقة الحفظ') || f.startsWith('عنوان تغير') );
+  check('Save in place: Documents\\<title>\\<title>.html at the first Save, the same file overwritten after by its id (no -2, a renamed title keeps the file)', s1.s === 200 && s1.j.file === path.join(ws.dirs.docs, 'وثيقة الحفظ', 'وثيقة الحفظ.html') && s2.j.file === s1.j.file && s2.j.overwritten === true && fs.readFileSync(s1.j.file, 'utf8').includes('<p>three</p>') && fs.readdirSync(path.join(path.dirname(s1.j.file), 'Versions')).length === 2, JSON.stringify({ s1: s1.j, s2: s2.j }));
+  check('Save in place: a `file` outside the documents folder is never written (the document\'s own file is used)', s3.j.file === s1.j.file && !fs.existsSync(path.join(tmp, 'x.html')) && mine.length === 1, JSON.stringify({ s3: s3.j, mine }));
   const notOurs = await post('/api/library/html', { id: 'doc-5ave0001', title: 'x', locale: 'ar', html: '<!doctype html><p>x</p>' });
   check('Save in place refuses anything but a Save-HTML document', notOurs.s === 400);
 

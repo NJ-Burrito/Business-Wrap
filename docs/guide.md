@@ -62,3 +62,22 @@
 2. Send the hand-over set: document JSON + `edits.json` + `theme.json` (+ logos they are allowed to use). Fonts are NOT sent: the colleague's Business-Wrap uses its bundled Thmanyah fallback or their own licensed copy ([fonts/README.md](../fonts/README.md)).
 3. The colleague opens the document JSON, loads the edits file, and continues; their edits append to the same file.
 4. Agree who edits next: one writer at a time per edits file; merge by replaying one file after the other, resolving any `setText` conflict shown by the editor.
+
+## 6. Where your files go / أين تُحفظ ملفاتك
+
+```
+Business-Wrap\
+  اقرأني - README.txt                 what each folder is, in Arabic and English
+  المستندات - Documents\
+    <Document title>\                 one folder per document (the Arabic title, else the English one)
+      <Document title>.html           the editable file: Save HTML overwrites it
+      Exports\                        <YYYY-MM-DD HH-MM> <Document title> - العربية.pdf | - English.pdf | .docx | - both.pdf
+      Sources\                        what a harvest or an import collected for this document
+      Versions\                       the previous saves (kept, never deleted)
+    _غير مصنف - Unsorted\             old files whose document could not be told
+  .system\                            hidden: history\ (the work log), backups\, sessions\, library\, cache\
+```
+
+- Open it from Settings with «Open folder / افتح المجلد»; every export and Save toast shows the real path.
+- Old folder (0.13.0-0.13.2: `PDF`, `DOCX`, `HTML`, `HISTORY`, uuid history names)? It is moved in on the first start of 0.13.3. See the plan first with `business-wrap tidy --dry-run`; apply by hand with `business-wrap tidy`. Nothing is deleted; the log is `.system\migration-0.13.3.json`.
+- Do not move or edit `.system`: it holds the tamper-evident history (`history\<Document title> (<id8>).bwlog`, found by `index.json`).

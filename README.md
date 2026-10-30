@@ -227,7 +227,7 @@ Each gives the Arabic and English document JSON and an editor. In the editor: **
 
 - **Documents** («المستندات», Ctrl+O): every Save is a document of its own (a template is never overwritten); open here or in a new tab, duplicate, delete and restore, import PDF, DOCX or HTML.
 - **Changes** («تغييرات», Ctrl+Shift+H): a timeline of every edit with back, forward and checkpoints; the counter starts again at each Save HTML.
-- **Save folder:** `<folder>\Business-Wrap\{PDF,DOCX,HTML,HISTORY}`, files named `<title>-<date>-<AR|ENG>`, asked once on the first Save or export.
+- **Save folder** (asked once on the first Save or export; «Open folder» in Settings shows it): see *Where your files go* below.
 - **Background host:** closing the last tab saves every tab and stops the server; the next launch offers to resume everything or start new work.
 - **Header and Footer** toolbar sections: text, fields, logos, page numbers; each item for every page, this page only, or from this page on; edited on each page in the page views.
 - **Page setup:** A3, A4, A5, Letter, Legal; portrait or landscape for the whole document or one section, shown on the editor canvas as it will print (0.13.1); page breaks at a chosen section.
@@ -238,6 +238,23 @@ Each gives the Arabic and English document JSON and an editor. In the editor: **
 - **Trust:** profile, provenance per change, sign, share, lock and unlock, a tamper-evident history, a work report as PDF.
 - **Tooling:** the `business-wrap` CLI (offline, no AI), "/" commands, MCP harvest → editor, healers and per-stage gates.
 - **Design:** import a colour palette (with the contrast gate), logo motion, calmer side panels (groups collapsed), short click-to-dismiss toasts.
+
+### Where your files go / أين تُحفظ ملفاتك
+
+```
+Business-Wrap\
+  اقرأني - README.txt                 what each folder is, in Arabic and English
+  المستندات - Documents\
+    <Document title>\                 one folder per document (the Arabic title, else the English one)
+      <Document title>.html           the editable file: Save HTML overwrites it
+      Exports\                        <YYYY-MM-DD HH-MM> <Document title> - العربية.pdf | - English.pdf | .docx | - both.pdf
+      Sources\                        what a harvest or an import collected for this document
+      Versions\                       the previous saves (kept, never deleted)
+    _غير مصنف - Unsorted\             old files whose document could not be told
+  .system\                            hidden: history\ (the work log), backups\, sessions\, library\, cache\
+```
+
+Every export and every save toast names the real path. Nothing is written anywhere else (`business-wrap new|harvest|import|export` without `--out` use the same folders; `--out` is for builds and tests). A folder from 0.13.0-0.13.2 (`PDF`, `DOCX`, `HTML`, `HISTORY`) is moved in on the first start of 0.13.3: nothing is deleted, every move is logged in `.system\migration-0.13.3.json`, and the history stays found by document id. `business-wrap tidy --dry-run` prints the plan, `business-wrap tidy` applies it.
 
 </details>
 
