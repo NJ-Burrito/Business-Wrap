@@ -159,6 +159,8 @@ try {
     // it is selected at once; click elsewhere, then pick it again by a click on it
     const symEl = page.locator(`main.bw-doc[data-locale="${loc}"] [data-dg-node="${symNode.id}"]`).first();
     await symEl.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    // the ribbon band (taller with the Diagram tab) is fixed over the page: bring the drawing's corner below it before pressing it
+    await fig.locator('svg').evaluate((el) => { const bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bw-bar-h')) || 0; window.scrollBy(0, el.getBoundingClientRect().top - bar - 16); });
     const fb2 = await fig.locator('svg').boundingBox();
     await page.mouse.click(fb2.x + 6, fb2.y + 6);
     const picked0 = await page.evaluate(() => window.BW.S.dg?.nodes || []);

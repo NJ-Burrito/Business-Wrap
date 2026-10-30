@@ -1310,7 +1310,12 @@ function measureBar() {
   const bar = root.querySelector('.island');
   if (S.focus || !bar) { barH = 0; document.documentElement.style.setProperty('--bw-bar-h', '12px'); return; }
   const h = Math.round(bar.offsetTop + bar.offsetHeight + 12); // layout box: never the entry animation's mid-flight transform
-  if (h > barH) { barH = h; document.documentElement.style.setProperty('--bw-bar-h', `${h}px`); }
+  if (h > barH) {
+    const grew = barH ? h - barH : 0;
+    barH = h; document.documentElement.style.setProperty('--bw-bar-h', `${h}px`);
+    // a contextual ribbon tab (Table, Picture, Diagram) opens on the press and grows the band: scroll by the same amount so the thing pressed stays under the pointer and the click lands on it
+    if (grew && window.scrollY > 0) window.scrollBy({ top: grew, behavior: 'instant' });
+  }
 }
 /** The bar never scrolls sideways when it can fold: first each section's extra tools go into its «More»,
  *  then (still too wide) the words of the selection's tools; section titles always stay. */
