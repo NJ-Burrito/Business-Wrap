@@ -213,12 +213,12 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
 /* toasts: rise with a spring, leave quicker */
 .toasts { position: fixed; z-index: 60; inset-block-end: 22px; inset-inline-start: 50%; transform: translateX(-50%); display: grid; gap: 8px; justify-items: center; pointer-events: none; }
 .shell[dir="rtl"] .toasts { transform: translateX(50%); }
-.toast { pointer-events: auto; display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 16px; background: var(--deep); color: var(--on-glass); box-shadow: var(--bw-shadow-3); max-width: min(560px, 92vw); animation: toast-in var(--bw-dur-slow) var(--bw-ease-out) both; }
+.toast { pointer-events: auto; display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 16px; background: var(--deep); color: var(--on-glass); box-shadow: var(--bw-shadow-3); max-width: min(560px, 92vw); animation: toast-in var(--t-open) both; }
 .toast:not(.banner) { cursor: pointer; }
 /* a banner (restore draft, tamper warning …) waits for its choice: it reads as a standing notice, not a passing toast */
 .toast.banner { order: -1; border-radius: 12px; border-inline-start: 4px solid var(--gold); padding-block: 12px; }
 .toast.banner.warn, .toast.banner.err { border-inline-start-color: var(--bw-sec-design); }
-.toast.out { animation: toast-out var(--bw-dur-base) var(--bw-ease-in) both; }
+.toast.out { animation: toast-out var(--t-close) both; }
 /* status icons on the navy toast: the light ramp steps that read on the band (always beside a word) */
 .toast.ok .i { color: var(--bw-sec-edit); } .toast.err .i { color: var(--bw-sec-design); } .toast.warn .i { color: var(--bw-sec-file); } .toast.info .i { color: var(--bw-sec-insert); }
 .toast button { font: inherit; font-weight: 700; color: var(--on-gold); background: var(--gold); border: 0; border-radius: 10px; padding: 5px 11px; cursor: pointer; }
@@ -316,16 +316,16 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
 
 /* 0.13 A7: side-panel groups and alternating rows */
 .drawer details.pgrp { margin: 4px 0; }
-.drawer details.pgrp > summary { cursor: pointer; display: flex; align-items: center; gap: 8px; border-radius: var(--bw-radius-md); padding-inline: 6px; margin-inline: -6px; transition: background-color var(--bw-dur-fast) var(--bw-ease-out), transform var(--bw-dur-slow) var(--e-spring); }
-.drawer details.pgrp > summary:hover { background: var(--wash-2); }
-.drawer details.pgrp > summary:active { transform: scale(var(--press, .96)); transition-duration: var(--bw-dur-instant); }
-.drawer details.pgrp > summary > :is(h3, h4) { margin: 10px 0 6px; }
-.drawer details.pgrp > summary::before { content: ""; inline-size: 7px; block-size: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .2s var(--e-out); color: var(--panel-soft); flex: none; }
+.drawer :is(details.pgrp, details.palguide) > summary { cursor: pointer; display: flex; align-items: center; gap: 8px; border-radius: var(--bw-radius-md); padding-inline: 6px; margin-inline: -6px; transition: background-color var(--bw-dur-fast) var(--bw-ease-out), transform var(--bw-dur-slow) var(--e-spring); }
+.drawer :is(details.pgrp, details.palguide) > summary:hover { background: var(--wash-2); }
+.drawer :is(details.pgrp, details.palguide) > summary:active { transform: scale(var(--press, .96)); transition-duration: var(--bw-dur-instant); }
+.drawer :is(details.pgrp, details.palguide) > summary > :is(h3, h4) { margin: 10px 0 6px; }
+.drawer :is(details.pgrp, details.palguide) > summary::before { content: ""; inline-size: 7px; block-size: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .2s var(--e-out); color: var(--panel-soft); flex: none; }
 /* F2 · 38: one chevron convention in every panel, by the UI's reading direction (the shell itself is always rtl):
    physical right + bottom borders; collapsed points forward (› in English, ‹ in Arabic), open points down */
-.shell[data-tdir="rtl"] .drawer details.pgrp > summary::before, .shell[data-tdir="rtl"] .drawer .dgrp:not([open]) > summary::after { transform: rotate(135deg); }
-.shell .drawer details.pgrp[open] > summary::before, .shell .drawer .dgrp[open] > summary::after { transform: rotate(45deg); }
-.drawer details.pgrp > summary::-webkit-details-marker { display: none; }
+.shell[data-tdir="rtl"] .drawer :is(details.pgrp, details.palguide) > summary::before, .shell[data-tdir="rtl"] .drawer .dgrp:not([open]) > summary::after { transform: rotate(135deg); }
+.shell .drawer :is(details.pgrp, details.palguide)[open] > summary::before, .shell .drawer .dgrp[open] > summary::after { transform: rotate(45deg); }
+.drawer :is(details.pgrp, details.palguide) > summary::-webkit-details-marker { display: none; }
 .drawer .list > li { padding-inline: 8px; background: var(--panel); }
 .drawer .list > li:nth-child(even), .drawer .set-row:nth-of-type(even) { background: var(--wash-2); }
 /* F2 · 11: a shade between the fields of every group too (Design, Settings, Process), not only between list rows */
@@ -334,7 +334,7 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
 .drawer header:has(.hact) { flex-wrap: wrap; }
 .drawer header .hact { order: 3; flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 6px; }
 .drawer .jump { font: inherit; font-size: 12px; color: var(--panel-ink); background: var(--wash); border: 1px solid var(--panel-line); border-radius: 8px; padding: 2px 8px; margin-inline-start: 6px; cursor: pointer; }
-.shell[data-calm="1"] .drawer details.pgrp > summary::before { transition: none; }
+.shell[data-calm="1"] .drawer :is(details.pgrp, details.palguide) > summary::before { transition: none; }
 /* F2 · 17: a check finding fixed in a Design group rings that group (as a body jump rings the element) */
 .drawer .bw-jump { outline: 3px solid var(--gold); outline-offset: 2px; border-radius: 8px; }
 
@@ -353,3 +353,14 @@ dialog::backdrop { background: var(--scrim); backdrop-filter: var(--scrim-blur);
 
 /* UIP-10: code and numbers in the house face (Thmanyah sans, tabular figures), never the browser's monospace */
 .shell :is(code, samp, kbd, pre, textarea), dialog :is(code, samp, kbd, pre, textarea), .bw-modal :is(code, samp, pre, textarea) { font-family: var(--bw-font-ui); font-variant-numeric: tabular-nums; }
+
+/* UIP-14: a panel group header reads like a Design group header (display face, navy, small step), and the nested guide uses the same chevron, not the browser's triangle */
+.drawer details.pgrp > summary > :is(h3, h4) { font: var(--bw-weight-bold) var(--bw-size-sm)/var(--bw-leading-snug) var(--bw-font-display); color: var(--navy); }
+.drawer details.palguide > summary { list-style: none; }
+.drawer details.palguide > summary::-webkit-details-marker { display: none; }
+/* UIP-11: one icon size in every panel heading, group and dialog (18 px; the buttons' own icons are 18 too) */
+:is(.drawer, .dialog, dialog.pc-dlg, .bw-modal) .ic:not(.bw-i) { inline-size: 18px; block-size: 18px; }
+/* UIP-12: one radius family on controls: pill for panel buttons, 10 px for fields and cards' inner controls */
+.drawer .jump, .drawer .btns > button:not(.b) { border-radius: var(--bw-radius-md); }
+/* a moving icon part must never become the pointer's target (it would re-arm the explainer card's timer and flicker :hover): the control is the target */
+:is(button, summary, [role="option"], .sc) .ic { pointer-events: none; }

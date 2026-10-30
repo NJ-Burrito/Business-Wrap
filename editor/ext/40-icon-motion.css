@@ -221,6 +221,7 @@
 [data-ic="export.png"] > * { --s:1.14; --icm: icm-pop var(--mvt); }
 [data-ic="exportAll"] > * { --y: -3px; --icm: icm-from var(--mvt); }
 [data-ic="export.editsAll"] > * { --s: 1.14; --icm: icm-pop var(--mvt); }
+[data-ic="pfUser"] > * { --s: 1.12; --icm: icm-pop var(--mvt); }
 [data-ic="print"] > * { --y:-2px; --icm: icm-nudge var(--mvt); }
 [data-ic="zoomOut"] > * { --s:.8; --icm: icm-recede var(--mvt); }
 [data-ic="zoomIn"] > * { --s:1.2; --icm: icm-pop var(--mvt); }

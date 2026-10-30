@@ -30,7 +30,7 @@
 /* brand icons: sized by their slot; the gold part is the marker-icon role on panels and plain gold on the navy glass */
 .ic.bw-i { width: 18px; height: 18px; overflow: visible; }
 .i > .ic.bw-i { width: 100%; height: 100%; }
-/* UI-CHROME-05: the gold part on the panels and the palette is the 3:1 rule gold (light #9c7e36 on white, dark #be9a41 on the navy), not the marker tone (2.66:1 / 1.68:1) */
+/* UI-CHROME-05: the gold part on the panels and the palette is the 3:1 rule-gold token, not the marker tone (2.66:1 light, 1.68:1 dark) */
 .bw-i .hl { fill: var(--bw-accent-rule); }
 .bw-i .hl.rl { fill: none; stroke: var(--bw-accent-rule); }
 .island .bw-i .hl, .pop .bw-i .hl, .ctx .bw-i .hl, .more .menu .bw-i .hl { fill: var(--bw-accent); }

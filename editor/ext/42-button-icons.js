@@ -46,6 +46,7 @@ Object.assign(IC, {
   storyCard: BI_G('<path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9l7-7V5a2 2 0 0 0-2-2z"/><path d="M14 21v-5a1 1 0 0 1 1-1h6"/>'), // lucide sticky-note (ISC)
   exportAll: BI_G('<path d="M12 13V3"/><path d="m7 8 5 5 5-5"/><path d="M4 17h16"/><path d="M6 21h12"/>'), // download onto a stack of rules: every service
   'export.editsAll': BI_G('<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1"/><path d="M14 18a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-1a1 1 0 0 0-1-1"/><path d="M2 7v13a2 2 0 0 0 2 2"/>'), // lucide file-braces + a second page edge (ISC)
+  pfUser: BI_G('<path d="M18 20a6 6 0 0 0-12 0"/><circle cx="12" cy="10" r="4"/><circle cx="12" cy="12" r="10"/>'), // lucide circle-user-round (ISC): the profile card
   both: BI_G('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 3v18"/>'), // the two editions side by side (was the keep-with-next glyph)
 });
 const BI_MAP = [

@@ -33,9 +33,7 @@ function bwModal({ title, html, buttons, mount, cls = '', modal = true }) {
     // a toolbar rebuild (root.innerHTML) drops it: put it back until it is answered
     const keep = new MutationObserver(() => { if (!m.isConnected) root.appendChild(m); });
     const opener = root.activeElement; // UIP-02: the focus goes back where it came from
-    const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches || root.querySelector('.shell')?.dataset.calm === '1';
-    // UIP-13: one close transition (fast, ease-in) like every dialog; the answer is given at once
-    const done = (k) => { keep.disconnect(); res(k); if (still()) { m.remove(); opener?.focus?.(); return; } m.classList.add('closing'); setTimeout(() => { m.remove(); opener?.focus?.(); }, 160); };
+    const done = (k) => { keep.disconnect(); m.remove(); res(k); opener?.focus?.(); };
     m.addEventListener('click', (e) => { const k = e.target.closest('[data-mk]')?.dataset.mk; if (k) done(k); });
     m.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') { e.stopPropagation(); done('cancel'); return; }
@@ -143,8 +141,8 @@ async function pfReportMount(el) {
 
 bwExt({
   settings: [
-    { id: 'profile', title: 'pfTitle', icon: 'prefs', html: () => `<div class="pf-form">${pfForm()}</div>`, mount: (el) => el && pfWire(el.querySelector('.pf-form'), true) },
-    { id: 'report', title: 'pfReport', icon: 'prefs', html: pfReportHtml, mount: pfReportMount },
+    { id: 'profile', title: 'pfTitle', icon: 'pfUser', html: () => `<div class="pf-form">${pfForm()}</div>`, mount: (el) => el && pfWire(el.querySelector('.pf-form'), true) },
+    { id: 'report', title: 'pfReport', icon: 'biReport', html: pfReportHtml, mount: pfReportMount },
     { id: 'trust', title: 'pfTrustTitle', icon: 'info', html: () => `<p class="pf-limit">${esc(t('pfTrustLimit'))}</p><div class="btns"><button type="button" class="b" data-pf="prov"><span class="w">${esc(t('pvOpen'))}</span></button></div>`, mount: (el) => el?.querySelector('[data-pf="prov"]').addEventListener('click', () => openDrawer('provenance')) },
   ],
   expose: { profile: { get: PF.get, actor: PF.actor, recording: PF.recording, takePings: pfTakePings, pictureInSharedHtml: PF_PICTURE_IN_SHARED_HTML } },
