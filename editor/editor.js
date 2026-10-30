@@ -5,6 +5,10 @@
  * (#bw-overlay): both are print-hidden and never written into an export.
  */
 const DATA = JSON.parse(document.getElementById('bw-data').textContent);
+/* 0.15.0 automation-safe start: `?automation=1` (or BW_AUTOMATION from the host-launched tab) marks the page before anything else runs,
+ * so the extensions (resume dialog, first-launch card) read data-bw-automation and stay out of the way of a tool-driven tab. */
+const AUTOMATION = (() => { try { return new URLSearchParams(location.search).get('automation') === '1'; } catch { return false; } })();
+if (AUTOMATION) document.documentElement.dataset.bwAutomation = '1';
 const WATERMARK = (() => {
   const el = document.getElementById('bw-watermark-data');
   try { return el ? JSON.parse(el.textContent) : []; } catch { return []; }
@@ -1044,6 +1048,31 @@ function replaceAll(q, r) {
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ── validation ────────────────────────────────────────────────────────── */
+/* 0.15.0 perf: the table-overflow check reads scrollWidth, which forces a layout; validate() runs on every refreshUi, i.e. every key.
+ * The answer only changes when a table (or the page around it) changes, so it is cached and recomputed after: another main node
+ * (a render), a mutation inside or around a table, a window resize or a zoom step. Typing in a paragraph no longer forces a layout. */
+const TBL = { main: null, dirty: true, list: [], mo: null, zoom: 0 };
+const tblTouch = (n) => { const e = n?.nodeType === 1 ? n : n?.parentElement; return !!e && (!!e.closest?.('table') || !!e.querySelector?.('table')); };
+window.addEventListener('resize', () => { TBL.dirty = true; });
+document.fonts?.addEventListener?.('loadingdone', () => { TBL.dirty = true; }); // a face arriving can reflow a table
+function tableOverflow(main) {
+  if (!main) return [];
+  if (TBL.main !== main) {
+    TBL.mo?.disconnect();
+    TBL.main = main; TBL.dirty = true;
+    TBL.mo = new MutationObserver((recs) => { if (!TBL.dirty && recs.some((r) => tblTouch(r.target) || [...r.addedNodes, ...r.removedNodes].some(tblTouch))) TBL.dirty = true; });
+    TBL.mo.observe(main, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['style', 'class', 'colspan', 'rowspan', 'dir'] });
+  }
+  if (TBL.zoom !== S.zoom) { TBL.zoom = S.zoom; TBL.dirty = true; }
+  if (!TBL.dirty) { TBL.mo.takeRecords().some((r) => tblTouch(r.target) || [...r.addedNodes, ...r.removedNodes].some(tblTouch)) && (TBL.dirty = true); }
+  if (TBL.dirty) {
+    TBL.dirty = false;
+    TBL.list = [...main.querySelectorAll('table')].filter((tb) => tb.scrollWidth > tb.parentElement.clientWidth + 2)
+      .map((tb) => ({ x: tb.querySelector('th,td')?.textContent?.slice(0, 30) || '', path: tb.dataset.b || tb.querySelector('[data-p]')?.dataset.p }));
+    TBL.mo.takeRecords(); // the read itself changed nothing
+  }
+  return TBL.list;
+}
 function validate() {
   const out = [];
   const d = cur().doc;
@@ -1063,10 +1092,7 @@ function validate() {
     const st = cur().stale.size;
     if (st) out.push(['warn', t('vStale', { n: st }), [...cur().stale][0]]);
   }
-  const main = mainOf(S.ed);
-  main?.querySelectorAll('table').forEach((tb) => {
-    if (tb.scrollWidth > tb.parentElement.clientWidth + 2) out.push(['warn', t('vOverflow', { x: tb.querySelector('th,td')?.textContent?.slice(0, 30) || '' }), tb.dataset.b || tb.querySelector('[data-p]')?.dataset.p]);
-  });
+  for (const o of tableOverflow(mainOf(S.ed))) out.push(['warn', t('vOverflow', { x: o.x }), o.path]);
   const fth = designTheme(S.theme, d).fonts;
   for (const f of new Set([fth.text, fth.display])) {
     const src = FONTS.sourceOf(f);
@@ -1147,12 +1173,12 @@ const EDIT_GROUPS = new Set(['insert', 'text', 'table', 'diagram', 'shape', 'arr
 const EDIT_IDS = new Set(['import', 'undo', 'redo', 'renumber', 'theme', 'styleThis', 'hideBlock', 'newdoc', 'process']);
 /** Every action, in one registry: the island, the selection bar and the palette read from it. */
 const CMDS = [
-  ['save', 'file', 'Ctrl+S'], ['saveHtml', 'file'], ['import', 'file'], ['exportEdits', 'file'], ['exportAll', 'file'],
+  ['save', 'file', 'Ctrl+S'], ['saveHtml', 'file'], ['import', 'file'], ['exportEdits', 'file'], ['exportAll', 'file'], ['projExport', 'file'], ['projImport', 'file'],
   ['image', 'insert'], ['logo', 'insert'], ['addDiagram', 'insert'], ['addPara', 'insert'],
   ['undo', 'edit', 'Ctrl+Z'], ['redo', 'edit', 'Ctrl+Y'], ['find', 'edit', 'Ctrl+F'],
   ['newdoc', 'document'], ['process', 'document'], ['outline', 'document'], ['pages', 'document'], ['check', 'document'], ['history', 'document'], ['renumber', 'document'], ['webhooks', 'document'],
   ['theme', 'design'], ['styleThis', 'design'], ['hideBlock', 'design'],
-  ['side', 'view'], ['both', 'view'], ['uiLang', 'view'], ['dir', 'view'], ['dark', 'view'], ['calm', 'view'], ['focus', 'view', 'F'], ['spell', 'view'], ['snap', 'view'], ['zoomOut', 'view'], ['zoomReset', 'view'], ['zoomIn', 'view'], ['zoomFit', 'view'], ['view.continuous', 'view'], ['view.single', 'view'], ['view.spread', 'view'], ['settings', 'view'],
+  ['side', 'view'], ['both', 'view'], ['uiLang', 'view'], ['dir', 'view'], ['dark', 'view'], ['calm', 'view'], ['focus', 'view', 'F'], ['spell', 'view'], ['snap', 'view'], ['zoomOut', 'view'], ['zoomReset', 'view'], ['zoomIn', 'view'], ['zoomFit', 'view', 'Ctrl+Alt+8'], ['zoomHeight', 'view', 'Ctrl+Alt+9'], ['zoomPct', 'view'], ['view.continuous', 'view'], ['view.single', 'view'], ['view.spread', 'view'], ['settings', 'view'],
   ['print', 'export', 'Ctrl+P'], ['exportPdf', 'export'], ...pcExportIds().map((id) => [id, 'export']),
   ['duplicate', 'text', 'Ctrl+D'], ['delete', 'text', 'Del'], ['moveUp', 'text', 'Alt+↑'], ['moveDown', 'text', 'Alt+↓'], ['comment', 'text'], ['breakBefore', 'text'], ['keepNext', 'text'],
   ['rowAdd', 'table'], ['rowDel', 'table'], ['colAdd', 'table'], ['colDel', 'table'],
@@ -1214,6 +1240,7 @@ function uiHtml() {
     <span class="spacer"></span>
     <div class="status" role="status" aria-live="polite">
       <button type="button" class="count" data-a="history" title="${esc(t('history'))}" aria-label="${esc(changesName(opCount()))}"><span class="i">${ic('history')}</span><span class="w" data-alt="${esc(tAlt('changesWord'))}">${esc(t('changesWord'))}</span> <span class="n" aria-hidden="true">${opCount()}</span></button>
+      <span class="zpill" data-zoom-pill title="${esc(t('zoomPct'))}"${S.zoom <= ZOOM_MIN || S.zoom >= ZOOM_MAX ? ' data-limit="1"' : ''}>${Math.round(S.zoom * 100)}%</span>
       <span class="sel vh">${esc(selDesc())}</span><span class="flash vh"></span>
     </div>
     <div class="sec" data-cat="view" role="group" aria-label="${esc(t('secView'))}"><span class="sc" aria-hidden="true"><span class="i">${ic('secView')}</span><span class="st">${esc(t('secView'))}</span></span><div class="sb">
@@ -1310,6 +1337,15 @@ let barH = 0;
 function measureBar(force = false) {
   const bar = root.querySelector('.island');
   if (S.focus || !bar) { barH = 0; document.documentElement.style.setProperty('--bw-bar-h', '12px'); return; }
+  // 0.15.0: the ribbon can change height after the last measure (tab switch, collapse, font load): the bar's own size re-measures it
+  // (non-forcing: the band still only grows, so the page never jumps under the reader)
+  if (measureBar.roBar !== bar && typeof ResizeObserver === 'function') {
+    measureBar.ro?.disconnect();
+    let q = 0;
+    measureBar.ro = new ResizeObserver(() => { if (!q) q = requestAnimationFrame(() => { q = 0; measureBar(); }); });
+    measureBar.ro.observe(bar);
+    measureBar.roBar = bar;
+  }
   // bar.offsetTop includes the room the server banner (18-server.js) takes above the toolbar
   const h = Math.round(bar.offsetTop + bar.offsetHeight + 12); // layout box: never the entry animation's mid-flight transform
   // force: the server banner came or went, the band follows it both ways; the page keeps its place under the pointer either way
@@ -1328,9 +1364,24 @@ function fitBar() {
   // 0.14.0 perf: refreshUi runs on EVERY keystroke and this fit re-measured the whole bar (two-language word swap, ~270 DOM
   // mutations, forced layouts, 0.9 s of style + layout over 40 keys). The fit depends only on the bar's own markup, the
   // window width and the UI language, so when none of them moved since the last fit it is skipped (resize / font load force it).
-  const fitSig = `${innerWidth}|${S.ui}|${bar.outerHTML}`;
-  if (!fitBar.force && fitBar.bar === bar && fitBar.sig === fitSig) return;
+  // 0.15.0 perf: the signature was bar.outerHTML (a full serialisation, 2.2 ms per key). A MutationObserver on the bar now says
+  // «the markup changed since the last fit» (a flag), so the cheap part of the signature is only width and language.
+  const FIT_OBS = { subtree: true, childList: true, attributes: true, attributeOldValue: true, characterData: true, characterDataOldValue: true };
+  // A write that leaves the markup as it was (the same class, the same text set again, the visually hidden status line) is not a change.
+  const real = (r) => {
+    if (r.target.nodeType === 1 && r.target.closest?.('.vh')) return false;
+    if (r.type === 'attributes') return r.target.getAttribute(r.attributeName) !== r.oldValue;
+    if (r.type === 'characterData') return r.target.data !== r.oldValue;
+    const gone = [...r.removedNodes], came = [...r.addedNodes];
+    if (gone.length && gone.length === came.length && gone.every((n) => n.nodeType === 3) && came.every((n) => n.nodeType === 3)) return gone.map((n) => n.nodeValue).join('') !== came.map((n) => n.nodeValue).join('');
+    return true;
+  };
+  if (fitBar.bar !== bar) { fitBar.mo?.disconnect(); fitBar.mo = new MutationObserver((rs) => { if (rs.some(real)) fitBar.dirty = true; }); fitBar.mo.observe(bar, FIT_OBS); fitBar.dirty = true; }
+  if (fitBar.mo.takeRecords().some(real)) fitBar.dirty = true; // a change made in this same task, before the observer's microtask ran
+  const fitSig = `${innerWidth}|${S.ui}`;
+  if (!fitBar.force && fitBar.bar === bar && fitBar.sig === fitSig && !fitBar.dirty) return;
   fitBar.force = false;
+  fitBar.mo.disconnect(); // the fit's own class and word changes are not watched (hundreds of records on a tab switch)
   bar.classList.remove('sq0', 'sq1', 'sq2', 'sq3', 'sq4', 'sq5', 'sq6');
   if (typeof w2selFold === 'function') w2selFold(bar); // 20-chrome: header / footer fold with a selection
   const secs = [...bar.querySelectorAll('.sec:not(.now)')].filter((x) => x.querySelector('.more.tail'));
@@ -1354,7 +1405,9 @@ function fitBar() {
   for (const step of ['sq2', 'sq3', 'sq4', 'sq5', 'sq6']) { if (!over()) break; bar.classList.add(step); }
   restore();
   fitBar.bar = bar;
-  fitBar.sig = `${innerWidth}|${S.ui}|${bar.outerHTML}`;
+  fitBar.sig = `${innerWidth}|${S.ui}`;
+  fitBar.mo.observe(bar, FIT_OBS);
+  fitBar.dirty = false;
 }
 window.addEventListener('resize', () => { fitBar.force = true; fitBar(); setTimeout(() => { fitBar.force = true; fitBar(); }, 200); }); // and once the resize has settled (a window drag lands mid-layout)
 document.fonts?.addEventListener?.('loadingdone', () => { fitBar.force = true; fitBar(); }); // the first fit can run before the UI face is in: refit once it lands
@@ -1362,6 +1415,14 @@ let lastCount = -1;
 /** the changes button's accessible name is exactly its visible text (the word, then the number): WCAG 2.5.3 label in name */
 const changesName = (n) => t('changesWord') + ' ' + n;
 const opCount = () => EXT.status?.count() ?? liveOps(cur()).length;
+/** The zoom pill next to the status follows every zoom step; at 25 % and 400 % it carries data-limit (a gold rule). */
+function zoomPillSync() {
+  const p = root.querySelector('[data-zoom-pill]');
+  if (!p) return;
+  const txt = `${Math.round(S.zoom * 100)}%`;
+  if (p.textContent !== txt) p.textContent = txt;
+  p.toggleAttribute('data-limit', S.zoom <= ZOOM_MIN || S.zoom >= ZOOM_MAX);
+}
 /** undo / redo are disabled while there is nothing to undo / redo, on the toolbar and on whatever ribbon tab is drawn */
 function syncUndoState() {
   const dis = { undo: !cur().ops.length, redo: !cur().redo.length };
@@ -1370,6 +1431,7 @@ function syncUndoState() {
 function refreshUi() {
   const c = root.querySelector('.count');
   if (!c) return;
+  zoomPillSync();
   const n = opCount();
   if (n !== lastCount) {
     const el = c.querySelector('.n');
@@ -1705,7 +1767,59 @@ function setDir(d) {
   buildUi();
   render();
 }
-async function runAction(a) {
+/* ── zoom (0.15.0 note 9): 25 % to 400 %, presets for the buttons, x1.1 for Ctrl+wheel, the point under the window centre stays put ── */
+const ZOOM_MIN = 0.25;
+const ZOOM_MAX = 4;
+const ZOOM_PRESETS = [25, 33, 50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200, 250, 300, 400];
+const A4_W = 210 * 96 / 25.4; // px at 100 %
+const A4_H = 297 * 96 / 25.4;
+const zoomClamp = (z) => (Number.isFinite(+z) ? Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(+z * 100) / 100)) : S.zoom);
+/** Set the zoom (a fraction, 1 = 100 %), clamped to 25-400 %; keeps the document point under the window centre where it was. */
+function setZoom(z) {
+  const next = zoomClamp(z);
+  const el = document.documentElement;
+  const sh = el.scrollHeight || 1, sw = el.scrollWidth || 1;
+  const cy = (window.scrollY + innerHeight / 2) / sh, cx = (window.scrollX + innerWidth / 2) / sw;
+  const changed = next !== S.zoom;
+  S.zoom = next;
+  if (changed) {
+    render();
+    const h = el.scrollHeight, w = el.scrollWidth;
+    if (h > innerHeight || w > innerWidth) window.scrollTo({ left: Math.max(0, cx * w - innerWidth / 2), top: Math.max(0, cy * h - innerHeight / 2), behavior: 'instant' });
+  }
+  viewPct();
+  zoomPillSync();
+  return S.zoom;
+}
+/** The next preset above / below the current zoom (the buttons step through the list, not by a fixed 10 %). */
+function zoomStep(dir) {
+  const pct = Math.round(S.zoom * 100);
+  const p = dir > 0 ? ZOOM_PRESETS.find((v) => v > pct) : [...ZOOM_PRESETS].reverse().find((v) => v < pct);
+  return setZoom((p ?? (dir > 0 ? 400 : 25)) / 100);
+}
+const zoomFitWidth = () => setZoom((document.documentElement.clientWidth - 96) / A4_W);
+const zoomFitHeight = () => setZoom((document.documentElement.clientHeight - (barH || 72) - 48) / A4_H);
+/** The % field of the View tab: accepts 25-400, anything else is corrected inline to the nearest limit (no toast). */
+function zoomFromField(v) {
+  const n = parseFloat(String(v ?? '').replace(/[^\d.]/g, ''));
+  if (!Number.isFinite(n)) { viewPct(); return S.zoom; }
+  return setZoom(n / 100);
+}
+// Ctrl + wheel zooms the page by x1.1 per notch (a diagram figure keeps its own Ctrl+wheel); one render per frame however many notches arrive
+{
+  let acc = 1, raf = 0;
+  document.addEventListener('wheel', (e) => {
+    if (!(e.ctrlKey || e.metaKey) || e.target.closest?.('#bw-pair figure[data-dg]')) return;
+    if (e.composedPath?.().some((x) => x === document.getElementById('bw-ui-host'))) return;
+    e.preventDefault();
+    acc *= e.deltaY < 0 ? 1.1 : 1 / 1.1;
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; const f = acc; acc = 1; setZoom(S.zoom * f); });
+  }, { passive: false });
+}
+/** Does runAction know this id? (the core switch below, the registered extensions' actions, export.* and the diagram tools) */
+let coreActionSrc = ''; // runAction's own source, read once right after it is defined (before any extension wraps it)
+const actionKnown = (a) => typeof a === 'string' && (new RegExp(`case '${a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`).test(coreActionSrc) || !!EXT.actions[a] || /^export\./.test(a) || a === 'addDiagram' || a === 'dgSymbol' || /^dg/.test(a));
+async function runAction(a, arg) {
   switch (a) {
     case 'side': S.side = !S.side; buildUi(); render(false); break;
     case 'uiLang': setLang(S.ui === 'ar' ? 'en' : 'ar'); break;
@@ -1756,19 +1870,32 @@ async function runAction(a) {
     case 'exportPdf': busy(true); try { await exportPdfDocx(); } finally { busy(false); } break;
     case 'print': pcOpenPrint(); break;
     case 'both': S.both = !S.both; buildUi(); break;
-    case 'zoomReset': S.zoom = 1; render(); viewPct(); break;
-    case 'zoomFit': S.zoom = Math.max(0.4, Math.min(2, +((document.documentElement.clientWidth - 96) / (210 * 96 / 25.4)).toFixed(2))); render(); viewPct(); break;
-    case 'zoomIn': S.zoom = Math.min(2, +(S.zoom + 0.1).toFixed(2)); render(); viewPct(); break;
-    case 'zoomOut': S.zoom = Math.max(0.4, +(S.zoom - 0.1).toFixed(2)); render(); viewPct(); break;
+    case 'zoomReset': setZoom(1); break;
+    case 'zoomFit': zoomFitWidth(); break;
+    case 'zoomHeight': zoomFitHeight(); break;
+    case 'zoomIn': zoomStep(1); break;
+    case 'zoomOut': zoomStep(-1); break;
+    case 'zoomPct': zoomFromField(arg ?? root.querySelector('[data-a="zoomPct"] input, input[data-a="zoomPct"]')?.value ?? window.BW?.zoomPctValue); break;
+    // the projects lane (13-projects.js) registers these through bwExt({ actions }); until then the button says so instead of doing nothing
+    case 'projExport': case 'projImport':
+      if (EXT.actions[a]) await EXT.actions[a](a);
+      else { window.dispatchEvent(new CustomEvent('bw:project', { detail: { op: a === 'projExport' ? 'export' : 'import' } })); toast(t('projSoon'), 'info'); }
+      break;
     case 'spell': S.spell[S.ed] = !S.spell[S.ed]; buildUi(); render(); break;
     case 'view.continuous': viewsSet('continuous'); break;
     case 'view.single': viewsSet('single'); break;
     case 'view.spread': viewsSet('spread'); break;
     case 'view.prev': viewsGo(-1); break;
     case 'view.next': viewsGo(1); break;
-    default: if (EXT.actions[a]) await EXT.actions[a](a); else if (/^export\./.test(a)) await pcAction(a); else await dgAction(a); break;
+    default:
+      if (EXT.actions[a]) await EXT.actions[a](a);
+      else if (/^export\./.test(a)) await pcAction(a);
+      else if (a === 'addDiagram' || a === 'dgSymbol' || /^dg/.test(a)) await dgAction(a);
+      else throw new Error(`unknown action: ${a}`); // 0.15.0: a typo or a stale id fails loudly instead of doing nothing
+      break;
   }
 }
+coreActionSrc = runAction.toString();
 
 /* ── drawers (slide-over panels) ───────────────────────────────────────── */
 function closeDrawer() {
@@ -2695,6 +2822,7 @@ document.addEventListener('keydown', (e) => {
   if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); saveAll(); return; }
   if (mod && e.key.toLowerCase() === 'f') { e.preventDefault(); openDrawer('find'); return; }
   if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); openPalette(); return; }
+  if (mod && e.altKey && (e.code === 'Digit8' || e.code === 'Digit9')) { e.preventDefault(); if (e.code === 'Digit8') zoomFitWidth(); else zoomFitHeight(); return; } // fit width / fit height (0.15.0)
   if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'p') { e.preventDefault(); pcOpenPrint(); return; } // the Print panel (print-center.js)
   if (inUi && (inText || e.key === 'Escape')) { if (e.key === 'Escape') uxEscape(); return; }
   if (!inText && !inUi && !mod && !e.altKey && e.key.toLowerCase() === 'f') { e.preventDefault(); runAction('focus'); return; }
@@ -2719,103 +2847,76 @@ window.addEventListener('pagehide', () => emit('pagehide'));
 window.addEventListener('beforeunload', flushDraft);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushDraft(); });
 
-/* ── tool watermark: the NJ role mark, behaving as on the owner's portfolio ──────
- * Copied from NJ-Burrito.github.io index.html: roles in the order tester → teacher →
- * volunteer → professional (PER, l.1042-1043); click / Enter / Space = next role
- * (nextPersona + listeners, l.1082-1087); the role word rises letter by letter, 560 ms,
- * 40 ms stagger, cubic-bezier(.2,.8,.2,1) (setTag, l.1076-1081); the colour change runs
- * .96s on --e-move cubic-bezier(.76,0,.24,1) (l.68, l.130); idle float sin(t·.9)·6px and
- * a pointer tilt on a spring k=90 c=16 (frame, l.1094-1112), paused when the tab is hidden
- * (l.1116); the intro plays once per browser and a click skips it (l.58, l.1197);
- * reduced motion: no float, no tilt, no letter motion, transitions .2s (l.375, l.1040).
- * Here it is a watermark: UI only, print-hidden, never written into an export. */
-function mountWatermark() {
-  const RMm = matchMedia('(prefers-reduced-motion: reduce)');
-  const RM = { get matches() { return RMm.matches || document.documentElement.dataset.bwCalm === '1'; }, addEventListener: (...a) => RMm.addEventListener(...a) };
-  const roles = WATERMARK.filter((w) => !w.intro);
-  const intro = WATERMARK.find((w) => w.intro);
-  if (!roles.length && !intro) return;
-  const wm = document.createElement('div');
-  wm.id = 'bw-watermark';
-  wm.innerHTML = `<div class="bw-wm-stage" role="button" tabindex="0"><div class="bw-wm-mark">${[...roles, ...(intro ? [intro] : [])]
-    .map((w, i) => `<img alt="" draggable="false" data-i="${i}" ${w.intro ? 'data-intro="1"' : ''} src="${esc(w.src)}">`).join('')}</div></div><span class="bw-wm-tag" aria-hidden="true"></span><span class="bw-wm-live" aria-live="polite"></span>`;
-  document.body.appendChild(wm);
-  const stage = wm.querySelector('.bw-wm-stage');
-  const mark = wm.querySelector('.bw-wm-mark');
-  const imgs = [...mark.querySelectorAll('img')];
-  const tag = wm.querySelector('.bw-wm-tag');
-  const live = wm.querySelector('.bw-wm-live');
-  let pi = 0;
-  const roleName = () => { const r = roles[pi]?.role; return r ? t(`role_${r}`) : ''; };
-  const show = (img) => imgs.forEach((x) => x.classList.toggle('on', x === img));
-  const setTag = (animate) => {
-    const word = roleName();
-    const parts = S.ui === 'ar' ? [word] : [...word];
-    tag.innerHTML = parts.map((ch) => `<span><i>${esc(ch)}</i></span>`).join('');
-    if (!animate || RM.matches) return;
-    [...tag.querySelectorAll('i')].forEach((el, k) => el.animate([{ transform: 'translateY(110%)' }, { transform: 'translateY(-8%)', offset: 0.7 }, { transform: 'translateY(0)' }],
-      { duration: 560, delay: k * 40, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' }));
-  };
-  const label = () => {
-    wm.dir = S.ui === 'ar' ? 'rtl' : 'ltr';
-    wm.lang = S.ui;
-    stage.setAttribute('aria-label', t('wmLabel', { r: roleName() }));
-  };
-  const settle = () => { wm.dataset.intro = 'done'; show(imgs[pi]); setTag(false); label(); };
-  const next = (e) => {
-    e?.preventDefault?.();
-    if (wm.dataset.intro === 'playing') { settle(); return; } // a click skips the intro, as on the portfolio
-    if (!roles.length) return;
-    pi = (pi + 1) % roles.length;
-    show(imgs[pi]);
-    wm.dataset.role = roles[pi].role || String(pi);
-    S2.vy += RM.matches ? 0 : 5;
-    setTag(true);
-    label();
-    live.textContent = t('wmLive', { r: roleName() });
-  };
-  stage.addEventListener('click', next);
-  stage.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') next(e); });
-  wm.dataset.role = roles[0]?.role || '0';
+/* ── tool watermark: moved to editor/ext/34-watermark.js in 0.15.0 (mount, the 20 reactions W01-W20, the bw:wm event). It mounts on the boot event. ── */
 
-  // the intro plays once per browser, never under reduced motion
-  let seen = false;
-  try { seen = localStorage.getItem('bw:wm-intro') === '1'; } catch { /* storage unavailable */ }
-  if (intro && !seen && !RM.matches) {
-    wm.dataset.intro = 'playing';
-    show(imgs[imgs.length - 1]);
-    try { localStorage.setItem('bw:wm-intro', '1'); } catch { /* storage unavailable */ }
-    setTimeout(() => { if (wm.dataset.intro === 'playing') settle(); }, 8000); // the animation's own length
-    label();
-  } else settle();
-
-  // idle float + pointer tilt on a spring (the portfolio's frame loop)
-  const S2 = { rx: 0, ry: 0, vx: 0, vy: 0 };
-  let pointer = null, last = 0, raf = 0;
-  const t0 = performance.now();
-  const spring = (v, target, vel, k, c, dt) => { const a = k * (target - v) - c * vel; vel += a * dt; return [v + vel * dt, vel]; };
-  wm.addEventListener('pointermove', (e) => { if (e.pointerType === 'touch') return; const r = stage.getBoundingClientRect(); pointer = { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }; });
-  wm.addEventListener('pointerleave', () => { pointer = null; });
-  const frame = (now) => {
-    raf = 0;
-    const dt = Math.min(0.033, (now - (last || now)) / 1000);
-    last = now;
-    const tt = (now - t0) / 1000;
-    const rm = RM.matches;
-    const p = pointer && !rm ? pointer : null;
-    const tx = p ? (p.y - 0.5) * -18 : rm ? 0 : Math.sin(tt * 0.55) * 4;
-    const ty = p ? (p.x - 0.5) * 22 : rm ? 0 : Math.sin(tt * 0.37 + 1) * 6;
-    [S2.rx, S2.vx] = spring(S2.rx, tx, S2.vx, 90, 16, dt);
-    [S2.ry, S2.vy] = spring(S2.ry, ty, S2.vy, 90, 16, dt);
-    const floatY = rm || p ? 0 : Math.sin(tt * 0.9) * 6;
-    mark.style.transform = `translateY(${floatY.toFixed(2)}px) rotateX(${S2.rx.toFixed(3)}deg) rotateY(${S2.ry.toFixed(3)}deg)`;
-    if (!document.hidden && !rm) raf = requestAnimationFrame(frame);
-  };
-  const start = () => { if (!raf && !document.hidden && !RM.matches) { last = 0; raf = requestAnimationFrame(frame); } };
-  document.addEventListener('visibilitychange', start);
-  RM.addEventListener?.('change', () => { mark.style.transform = ''; start(); });
-  start();
-  window.BW_WM = { next, roles: () => roles.map((r) => r.role), current: () => wm.dataset.role, relabel: () => { setTag(false); label(); } };
+/* ── dialog hooks and the settled-ready signal (0.15.0, docs/automation.md) ────────────────────────────
+ * Every modal carries data-bw-dialog="<id>" (set here from what the modal is, so a call site that names none still gets one;
+ * a call site that sets the attribute itself wins). BW.dialogs() lists them, BW.dialog(id) returns the element (inside the
+ * UI shadow root: Playwright's CSS pierces it, document.querySelector does not).
+ * Ready: window.BW.ready (boolean) still means «booted and rendered». `bw:ready` (window event, once), data-bw-ready="1" on <html>
+ * and BW.whenReady() mean «settled»: booted, no modal open, no hold taken with BW.holdReady(reason), and the document named by
+ * #doc=<id> is the one on screen. The resume dialog and the first-launch card take a hold (or are suppressed by data-bw-automation). */
+const DIALOG_IDS = [['pf-first', 'pf-first'], ['bw-resume', 'resume'], ['sh-done', 'share-done'], ['sh-modal', 'share'], ['pc-dlg', 'print'], ['pj-ask', 'ask']];
+function dialogIdOf(el) {
+  if (el.dataset.bwDialog) return el.dataset.bwDialog;
+  for (const [cls, id] of DIALOG_IDS) if (el.classList.contains(cls) || el.querySelector?.(`.${cls}`)) return id;
+  return el.querySelector?.('[data-mk="cancel"]') && el.querySelector('[data-mk="ok"]') ? 'confirm' : 'dialog';
+}
+function tagDialogs() {
+  const taken = new Set([...root.querySelectorAll('[data-bw-dialog]'), ...document.querySelectorAll('[data-bw-dialog]')].map((x) => x.dataset.bwDialog));
+  for (const el of [...root.querySelectorAll('.bw-modal, dialog.bw-resume, dialog.pc-dlg'), ...document.querySelectorAll('dialog.bw-resume')]) {
+    if (el.dataset.bwDialog) continue;
+    const base = dialogIdOf(el);
+    let id = base, n = 1;
+    while (taken.has(id)) { n += 1; id = `${base}-${n}`; } // ids are unique among the dialogs that exist now
+    taken.add(id);
+    el.dataset.bwDialog = id;
+  }
+}
+const dialogEls = () => [...root.querySelectorAll('[data-bw-dialog]'), ...document.querySelectorAll('[data-bw-dialog]')];
+const dialogOpen = (el) => el.isConnected && (el.tagName === 'DIALOG' ? el.open : !el.hidden);
+/* graceMs: a dialog that opens asynchronously after boot (the first-launch card waits for the stored profile, the resume dialog for the host) must
+ * not be missed by a fast check, so «settled» cannot come sooner than this after boot unless a module says so; a module that knows it will ask takes a hold. */
+const BWR = { booted: false, fired: false, holds: new Set(), waiters: [], bootAt: 0, graceMs: 700 };
+/** A module that is about to ask the person something (resume, first launch) takes a hold; the returned function releases it. */
+function holdReady(reason = 'hold') {
+  const h = String(reason);
+  BWR.holds.add(h);
+  let done = false;
+  return () => { if (done) return; done = true; BWR.holds.delete(h); readyCheck(); };
+}
+function readyBlockers() {
+  const out = [];
+  if (!BWR.booted) out.push('boot');
+  else if (performance.now() - BWR.bootAt < BWR.graceMs) out.push('settling');
+  for (const h of BWR.holds) out.push(`hold:${h}`);
+  tagDialogs();
+  for (const el of dialogEls()) if (dialogOpen(el)) out.push(`dialog:${el.dataset.bwDialog}`);
+  const want = /[#&]doc=([^&]+)/.exec(location.hash);
+  if (want) { let id = want[1]; try { id = decodeURIComponent(id); } catch { /* keep raw */ } if (M[id] && S.svc !== id) out.push(`doc:${id}`); }
+  return out;
+}
+function readyCheck() {
+  if (BWR.fired || readyBlockers().length) return;
+  BWR.fired = true;
+  document.documentElement.dataset.bwReady = '1';
+  window.dispatchEvent(new Event('bw:ready'));
+  BWR.waiters.splice(0).forEach((w) => { clearTimeout(w.timer); w.res(true); });
+}
+/** Resolves once the editor is settled; rejects after `ms` (20 s) naming what still blocks it, so a script never hangs behind a modal. */
+function whenReady(ms = 20000) {
+  readyCheck();
+  if (BWR.fired) return Promise.resolve(true);
+  return new Promise((res, rej) => {
+    const w = { res, timer: setTimeout(() => { BWR.waiters = BWR.waiters.filter((x) => x !== w); rej(new Error(`BW.whenReady: not ready after ${ms} ms, blocked by ${readyBlockers().join(', ') || 'nothing known'}`)); }, ms) };
+    BWR.waiters.push(w);
+  });
+}
+{
+  const mo = new MutationObserver(() => { tagDialogs(); if (!BWR.fired) readyCheck(); });
+  mo.observe(root, { childList: true });
+  mo.observe(document.body, { childList: true });
+  const poll = setInterval(() => { if (BWR.fired) clearInterval(poll); else readyCheck(); }, 100); // a hold released, a dialog closed, #doc= reached
 }
 
 /* ── boot ──────────────────────────────────────────────────────────────── */
@@ -2827,12 +2928,14 @@ function boot() {
   overlay.grip = ov.querySelector('.bw-grip');
   overlay.drop = ov.querySelector('.bw-drop');
   overlay.grip.addEventListener('pointerdown', startDrag);
-  if (WATERMARK.length) mountWatermark();
   document.documentElement.dataset.bwDark = S.dark ? '1' : '0';
   buildUi();
   render(false);
   offerRecovery();
   window.BW.ready = true; // booted and rendered with the remembered state
+  BWR.bootAt = performance.now();
+  BWR.booted = true; // the settled signal (bw:ready) fires from here once nothing blocks it
+  readyCheck();
   // boot() runs once the whole script has loaded (engine/build-editor.mjs calls it after editor/ext/*.js), so the
   // first mount already draws every extension's commands and sections: no second build, the recovery banner and the
   // first-open motion stay. The events wait one microtask, for the local-learning layer that wraps the editor last.
@@ -2842,5 +2945,5 @@ function boot() {
 for (const [svc, eds] of Object.entries(M)) for (const [ed, e] of Object.entries(eds)) for (const c of e.doc.harvestConflicts || []) if (svc === S.svc) S.conflicts.push({ ed, path: c.path, mine: c.manual, theirs: c.harvested, kind: 'text' });
 if (S.conflicts.length) toast(t('reharvestConflicts', { n: S.conflicts.length }), 'warn', { actions: [[t('show'), () => openDrawer('conflicts')]], persist: true });
 { const n = (cur().doc.process?.actors || []).filter((a) => a.unresolved).length; if (n) toast(t('rolesUnresolved', { n }), 'warn', { actions: [[t('show'), () => openDrawer('process')]], persist: true }); }
-window.BW = { ic, IC, undoToast, flushDraft, S, M, commit, runAction, toast, DIAGRAM, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll, EXT, emit, bwExt, openDrawer };
+window.BW = { whenReady, holdReady, dialogs: () => { tagDialogs(); return dialogEls().map((el) => ({ id: el.dataset.bwDialog, open: dialogOpen(el) })); }, dialog: (id) => dialogEls().find((el) => el.dataset.bwDialog === id) || null, hasAction: actionKnown, setZoom, zoomTo: zoomFromField, automation: AUTOMATION, ic, IC, undoToast, flushDraft, S, M, commit, runAction, toast, DIAGRAM, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll, EXT, emit, bwExt, openDrawer };
 // boot(): called by engine/build-editor.mjs after editor/ext/*.js (the seam)
