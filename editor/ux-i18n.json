@@ -3,6 +3,10 @@
  "ar": {
   "ux.dirRtl": "الكلمات من اليمين إلى اليسار (يبقى التخطيط في مكانه، ويُحفظ اختيارك)",
   "ux.dirLtr": "الكلمات من اليسار إلى اليمين (يبقى التخطيط في مكانه، ويُحفظ اختيارك)",
+  "xpl.panel": "الشرح",
+  "xpl.hint": "مرّر المؤشر فوق أي أداة أو ركّز عليها بلوحة المفاتيح لتظهر شرحها هنا.",
+  "xpl.collapse": "طيّ لوحة الشرح",
+  "xpl.expand": "فتح لوحة الشرح",
   "view.mode": "الصفحات",
   "view.continuous": "متصل",
   "view.single": "صفحة",
@@ -257,6 +261,10 @@
  "en": {
   "ux.dirRtl": "Words run right to left (the layout stays put; your choice is remembered)",
   "ux.dirLtr": "Words run left to right (the layout stays put; your choice is remembered)",
+  "xpl.panel": "Help",
+  "xpl.hint": "Rest the pointer on a tool, or focus it with the keyboard, and its explanation appears here.",
+  "xpl.collapse": "Collapse the help panel",
+  "xpl.expand": "Open the help panel",
   "view.mode": "Pages",
   "view.continuous": "Continuous",
   "view.single": "Single",

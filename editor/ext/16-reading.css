@@ -1,0 +1,6 @@
+/* 0.14.0 A4 · Reading mode: the chrome goes, the page pill and the exit button stay. */
+:host([data-reading]) :is(.island, .ctx, .drawer, .dialog, .xpl-dock, .focus-exit, #viewpop, .progress) { display: none !important; }
+.rd-exit { position: fixed; z-index: 42; inset-block-start: 12px; inset-inline-end: 12px; display: inline-flex; align-items: center; gap: 8px; background: var(--glass) !important; color: var(--on-glass) !important; border-radius: 999px; box-shadow: var(--bw-shadow-3); animation: pop-in .4s var(--e-spring) both; }
+.rd-exit kbd { font: inherit; font-size: 11px; opacity: .75; border: 1px solid currentColor; border-radius: 6px; padding: 0 5px; }
+@media (prefers-reduced-transparency: reduce) { .rd-exit { background: var(--deep) !important; } }
+@media (prefers-reduced-motion: reduce) { .rd-exit { animation: none; } }

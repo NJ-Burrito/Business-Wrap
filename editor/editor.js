@@ -1262,7 +1262,7 @@ function mountUi() {
  * motion add. A node whose kind changed is replaced: only that node is new. */
 const UI_OWN = '.ctx, .drawer, .dialog, .toasts, #cmdlist';
 const UI_OWN_ATTR = new Set(['data-theme', 'lang', 'dir']);
-const UI_RUNTIME = '.xpl, .pager';
+const UI_RUNTIME = '.xpl, .pager, .xpl-dock, .bw-busy, .rd-exit';
 const UI_KEEP_ATTR = new Set(['style', 'data-tt', 'aria-describedby', 'popover', 'data-open', 'disabled']);
 const UI_RUNTIME_CLS = /^(has-sel|sq\d|nw|folded|sel-fold|done|swap|tick|in|closing)$/;
 function uiMorph(a, b) {

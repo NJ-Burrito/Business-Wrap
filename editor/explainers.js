@@ -4,7 +4,10 @@
  * one of a few scenes, carrying the tool's own icon). Moving to the next tool while a card is up shows the next card
  * at once (warm-up, as native tooltips do). Leaving, pressing, scrolling or Esc hides it. Reduced motion or calm mode:
  * the illustration holds a still frame. The card is never focusable and never covers the control it explains.
- * Declarations only (hoisted) — xplWire() runs from uxAfterBuild(). */
+ * 0.14.0 A1: the card no longer floats near the tool (it could slip behind lists or under the page): it appears in ONE
+ * side panel (.xpl-dock) at the inline-end edge, below the toolbar, collapsible (open/closed is remembered in
+ * localStorage bw:xpl-panel) and moved aside for an open slide-over panel, so nothing can cover it. Hover and keyboard
+ * focus both fill it. Declarations only (hoisted) — xplWire() runs from uxAfterBuild(). */
 
 /** Which explainer a control has: data-x (a field), data-a (a tool), data-dg (a selection picker), data-k / data-f (panel option). */
 function xplKey(el) {
@@ -46,12 +49,49 @@ function xplMark(k) {
 function xplTarget(node) {
   if (xplMode() === 'off') return null; // Settings → Preferences: explainer cards off
   const el = node?.closest?.('button[data-a], select[data-a], select[data-dg], [data-x], .drawer [data-k], .drawer [data-f], .pop label.chk, .drawer :is([data-fpopen], [data-fplocal], [data-fpupload], [data-fprm], .vc-s, .vc-n, .vc-u, .cc-hex, input[type="color"], [data-dpart], [data-dmove], [data-lab])');
-  if (!el || el.closest('.palette, .xpl')) return null;
+  if (!el || el.closest('.palette, .xpl, .xpl-dock')) return null;
   if (el.matches('.pop label.chk')) { el.dataset.x = el.dataset.x || 'both'; }
   const k = xplKey(el);
   return k && I18N.ui[S.ui][`explain.${k}`] ? el : null;
 }
+/** 0.14.0 A1: the side panel's open/closed state ('0' = collapsed), remembered per browser. */
+function xplPanelOpen() { return ls.get('bw:xpl-panel') !== '0'; }
+/** The one side panel (built once, kept across rebuilds by UI_RUNTIME); its words follow the UI language. */
+function xplDock() {
+  const shell = root.querySelector('.shell');
+  if (!shell) return null;
+  let dock = shell.querySelector(':scope > .xpl-dock');
+  if (!dock) {
+    dock = document.createElement('aside');
+    dock.className = 'xpl-dock';
+    dock.innerHTML = '<button type="button" class="xd-t" aria-controls="bw-xpl-body"><span class="i"></span><span class="xd-w"></span><span class="xd-c" aria-hidden="true"></span></button><div class="xd-b" id="bw-xpl-body"><p class="xph"></p></div>';
+    shell.appendChild(dock);
+    dock.querySelector('.xd-t').addEventListener('click', () => xplPanelSet(!xplPanelOpen()));
+    const card = root.querySelector('.xpl');
+    if (card) dock.querySelector('.xd-b').appendChild(card);
+  }
+  const open = xplPanelOpen();
+  dock.hidden = xplMode() === 'off';
+  dock.dir = shell.dataset.tdir || 'rtl';
+  dock.lang = S.ui;
+  dock.dataset.open = open ? '1' : '0';
+  dock.setAttribute('aria-label', t('xpl.panel'));
+  const btn = dock.querySelector('.xd-t');
+  btn.setAttribute('aria-expanded', String(open));
+  btn.title = t(open ? 'xpl.collapse' : 'xpl.expand');
+  btn.querySelector('.i').innerHTML = ic('info');
+  btn.querySelector('.xd-w').textContent = t('xpl.panel');
+  dock.querySelector('.xph').textContent = t('xpl.hint');
+  dock.querySelector('.xd-b').hidden = !open;
+  return dock;
+}
+function xplPanelSet(open) {
+  ls.set('bw:xpl-panel', open ? '1' : '0');
+  if (!open) xplHide();
+  xplDock();
+}
 function xplWire() {
+  xplDock();
   if (root.__xplWired) return;
   root.__xplWired = true;
   const st = { timer: 0, el: null, warmUntil: 0 };
@@ -107,6 +147,8 @@ function xplHide() {
 function xplShow(el) {
   const st = xplWire.st;
   if (!el.isConnected || !root.contains(el)) return;
+  const dock = xplDock();
+  if (!dock || dock.hidden || !xplPanelOpen()) return; // collapsed or off: the person asked for no explanations on screen
   const shell = root.querySelector('.shell');
   let card = root.querySelector('.xpl');
   if (!card) {
@@ -115,8 +157,8 @@ function xplShow(el) {
     card.id = 'bw-xpl';
     card.setAttribute('role', 'tooltip');
     card.hidden = true;
-    shell.appendChild(card);
   }
+  if (card.parentElement !== dock.querySelector('.xd-b')) dock.querySelector('.xd-b').appendChild(card);
   const k = xplKey(el);
   const name = el.getAttribute('aria-label')?.split(':')[0] || el.querySelector('.w, .sw')?.textContent || el.dataset.tt || t(k);
   const key = CMDS.find((c) => c.id === k)?.key;
@@ -124,15 +166,7 @@ function xplShow(el) {
   card.lang = S.ui;
   card.innerHTML = `<div class="xa" aria-hidden="true">${xplArt(k)}</div><div class="xt"><b>${esc(name)}</b>${key ? `<kbd>${esc(key)}</kbd>` : ''}</div><p>${esc(t(`explain.${k}`))}</p>`;
   card.hidden = false;
-  // under the control, centred on it, kept inside the window; above it when there is no room below
-  const r = el.getBoundingClientRect();
-  const cw = card.offsetWidth;
-  const ch = card.offsetHeight;
-  const x = Math.min(innerWidth - cw - 10, Math.max(10, r.left + r.width / 2 - cw / 2));
-  const below = r.bottom + 10 + ch < innerHeight;
-  card.style.left = `${Math.round(x)}px`;
-  card.style.top = `${Math.round(below ? r.bottom + 10 : r.top - ch - 10)}px`;
-  card.dataset.side = below ? 'below' : 'above';
+  card.dataset.side = 'panel';
   card.classList.remove('in'); void card.offsetWidth; card.classList.add('in');
   el.setAttribute('aria-describedby', 'bw-xpl');
   st.el = el;

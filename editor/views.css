@@ -48,3 +48,12 @@ html[data-bw-calm="1"] #bw-pair .bw-view > main.bw-doc { transition: none; }
 }
 html[data-bw-calm="1"] main.bw-doc .bw-jump { animation: none; }
 @media (prefers-reduced-motion: reduce) { main.bw-doc .bw-jump { animation: none; } }
+
+/* 0.14.0 A4: reading mode — no editing affordance is drawn on the pages (the chrome is hidden in ext/16-reading.css) */
+@media screen {
+  html[data-bw-reading="1"] main.bw-doc * { outline: none !important; caret-color: transparent; cursor: default; }
+  html[data-bw-reading="1"] main.bw-doc a[href] { cursor: pointer; }
+  html[data-bw-reading="1"] :is(#bw-overlay, .bw-dg-edit, .bw-hnd, .bw-handle, .bw-ov-h) { display: none !important; }
+  html[data-bw-reading="1"] main.bw-doc :is([data-p], [data-w2p]):hover { background: none !important; box-shadow: none !important; }
+  html[data-bw-reading="1"] #bw-pair[data-pages] { padding-block-end: 84px; }
+}

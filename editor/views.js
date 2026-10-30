@@ -222,8 +222,8 @@ window.addEventListener('resize', () => { if (viewsActive()) { viewsFit(); views
 
 /* ── the View menu (0.11.0): grouped, labelled, switches for toggles, segments for modes, in the top layer ───────── */
 /** One switch: icon + label + an on/off track; the state is aria-checked (never a gold-filled pill). */
-function viewSwitch(id, on, label = t(id)) {
-  return `<button type="button" class="b swt" role="switch" data-a="${id}" aria-checked="${!!on}"><span class="i">${ic(id)}</span><span class="w">${esc(label)}</span><span class="tg" aria-hidden="true"><i></i></span></button>`;
+function viewSwitch(id, on, label = t(id), icon = id) {
+  return `<button type="button" class="b swt" role="switch" data-a="${id}" aria-checked="${!!on}"><span class="i">${ic(icon)}</span><span class="w">${esc(label)}</span><span class="tg" aria-hidden="true"><i></i></span></button>`;
 }
 function viewPop() {
   const grp = (k, body) => `<div class="vg" role="group" aria-labelledby="vg-${k}"><span class="vgh" id="vg-${k}">${esc(t('viewg.' + k))}</span><div class="vr">${body}</div></div>`;
@@ -234,7 +234,7 @@ function viewPop() {
     ${grp('zoom', `${zb('zoomOut', t('zoomOut'))}${zb('zoomReset', `${Math.round(S.zoom * 100)}%`)}${zb('zoomIn', t('zoomIn'))}${zb('zoomFit', t('zoomFit'))}`)}
     ${grp('compare', `${multi ? viewSwitch('side', S.side, t('sideBySide')) : ''}${viewSwitch('both', S.both, t('bothEditions'))}`)}
     ${grp('look', `${viewSwitch('dark', S.dark)}${viewSwitch('calm', S.calm)}`)}
-    ${grp('aids', `${viewSwitch('focus', S.focus)}${viewSwitch('spell', S.spell[S.ed])}${viewSwitch('snap', S.snap)}`)}
+    ${grp('aids', `${viewSwitch('reading', S.reading, t('reading'), 'view.single')}${viewSwitch('focus', S.focus)}${viewSwitch('spell', S.spell[S.ed])}${viewSwitch('snap', S.snap)}`)}
   </div>`;
 }
 /** After buildUi(): an open View menu goes to the top layer, under its button, and the control just used keeps the focus. */

@@ -1,0 +1,30 @@
+{
+ "ar": {
+  "busy.work": "جارٍ العمل… يرجى الانتظار",
+  "busy.export": "جارٍ تصدير الوثيقة… يرجى الانتظار",
+  "busy.import": "جارٍ الاستيراد… يرجى الانتظار",
+  "busy.print": "جارٍ إرسال الطباعة…",
+  "busy.update": "جارٍ تحديث التطبيق…",
+  "busy.library": "جارٍ الحفظ في المستندات…",
+  "busy.harvest": "جارٍ جمع الصفحات…",
+  "busy.share": "جارٍ المشاركة…",
+  "busy.webhook": "جارٍ الإرسال…",
+  "busy.slow": "يستغرق وقتًا أطول من المعتاد",
+  "busy.hide": "إخفاء",
+  "busy.gaveUp": "ما زال العمل جارياً أو تعذّر إنهاؤه؛ أُخفيت رسالة الانتظار. تحقق من النتيجة."
+ },
+ "en": {
+  "busy.work": "Working… please wait",
+  "busy.export": "Exporting the document… please wait",
+  "busy.import": "Importing… please wait",
+  "busy.print": "Sending to print…",
+  "busy.update": "Updating the app…",
+  "busy.library": "Saving to Documents…",
+  "busy.harvest": "Collecting pages…",
+  "busy.share": "Sharing…",
+  "busy.webhook": "Sending…",
+  "busy.slow": "taking longer than usual",
+  "busy.hide": "Hide",
+  "busy.gaveUp": "The work is still running or could not finish; the waiting message was hidden. Check the result."
+ }
+}
