@@ -13,6 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fileURLToPath as toPath, pathToFileURL } from 'node:url';
+import { registerServer, unregisterServer } from './server-registry.mjs';
 import { exportPdf, exportDocx, pageThumbs, loadTheme, fontsFor, REPO, i18n, fileStem, userCwd } from './export.mjs';
 import { checkForUpdate, token, settings as updateSettings } from '../update/check.mjs';
 import { applyUpdate, STAGES } from '../update/apply.mjs';
@@ -254,6 +255,8 @@ if (process.argv[1] && real(process.argv[1]) === real(fileURLToPath(import.meta.
   const editor = path.resolve(userCwd(), file);
   if (!fs.existsSync(editor)) { console.error(`editor file not found: ${editor}
 usage: node engine/serve.mjs <editor.html> [--port 4317] [--out <exports folder>]`); process.exit(2); }
+  registerServer(); // this state folder owns this process: `close` stops it, a server of another state folder is left alone
+  process.on('exit', () => unregisterServer());
   if (!process.env.BW_SERVE_CHILD) {
     // the supervisor: runs the server as a child and starts it again (on the new code) after an in-editor update
     // started in the background by engine/host.mjs (no console of its own): the server gets no window either. An inherited

@@ -27,6 +27,7 @@ import { fileURLToPath } from 'node:url';
 import { buildEditor } from './build-editor.mjs';
 import { exportPdf, exportDocx, loadTheme, loadEdited, fontsFor, REPO, userCwd, fileStem } from './export.mjs';
 import { systemFonts } from './fonts.mjs';
+import { registeredServers } from './server-registry.mjs';
 import { harvestModel, harvestCrawl } from './harvest/cli.mjs';
 import { harvestSources, MODEL_EXT, TEXT_EXT } from './harvest/sources.mjs';
 import { STATE_DIR, healPort, healStaleHosts, healWorkspace, healFont, readHealLog, alive } from './heal/index.mjs';
@@ -115,7 +116,8 @@ function ownServers() {
   const ps = process.platform === 'win32'
     ? spawnSync('powershell.exe', ['-NoProfile', '-Command', "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | ForEach-Object { \"$($_.ProcessId)`t$($_.CommandLine)\" }"], { encoding: 'utf8', windowsHide: true })
     : spawnSync('ps', ['-eo', 'pid=,args='], { encoding: 'utf8' });
-  return String(ps.stdout || '').split(/\r?\n/).map((l) => /^\s*(\d+)\s+(.*)$/.exec(l)).filter((m) => m && ownsServe(m[2])).map((m) => Number(m[1]));
+  const mine = new Set(registeredServers()); // only servers registered in THIS state folder (engine/server-registry.mjs)
+  return String(ps.stdout || '').split(/\r?\n/).map((l) => /^\s*(\d+)\s+(.*)$/.exec(l)).filter((m) => m && ownsServe(m[2]) && mine.has(Number(m[1]))).map((m) => Number(m[1]));
 }
 
 /** close = stop --all (owner request 2026-10-29): the background host (every tab flushed first), the hosts this CLI

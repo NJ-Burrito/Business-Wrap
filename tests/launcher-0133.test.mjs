@@ -280,6 +280,18 @@ try {
   check('stop/file: the page notices — «every server stopped», no Open button', await until(async () => { const c = await card(fd); return !c.open && /تم إيقاف|stopped|لا يعمل|No server/.test(c.status); }, 15000));
   await ctxD.close();
 
+  // a server of ANOTHER state folder (a parallel suite, another profile) is not this install's to stop: stop-all keeps it
+  const pF = await free();
+  const fenv = { ...env, BW_LOCAL_DIR: path.join(tmp, 'local-foreign'), BW_STATE_DIR: path.join(tmp, 'state-foreign') };
+  const fc = spawn(process.execPath, [path.join(REPO, 'engine', 'serve.mjs'), editor, '--port', String(pF)], { env: { ...fenv, BW_SERVE_CHILD: '1' }, detached: true, stdio: 'ignore', windowsHide: true });
+  fc.unref();
+  stray.push({ pid: fc.pid, port: pF });
+  await until(() => up(pF));
+  const hf = handler('business-wrap://stop');
+  check('stop/foreign: a Business-Wrap server of another state folder survives stop-all', hf.status === 0 && (await up(pF)) && alive(fc.pid), hf.stdout + hf.stderr);
+  const hfs = spawnSync(process.execPath, [CLI, 'close', '--json'], { env: fenv, encoding: 'utf8', timeout: 60000, windowsHide: true });
+  check('stop/foreign: stop-all in its own state folder does stop it', hfs.status === 0 && (await until(async () => !(await up(pF)), 15000)), hfs.stdout + hfs.stderr);
+
   // the same stop through the handler when nothing runs: exit 0, nothing found
   const hz = handler('business-wrap://stop');
   check('stop/none: with nothing running the handler still exits 0 and reports nothing stopped', hz.status === 0 && /"stopped":0/.test(hz.stdout.replace(/\s/g, '')), hz.stdout + hz.stderr);
