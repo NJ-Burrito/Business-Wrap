@@ -169,6 +169,17 @@ async function srvWait(want, ms) {
   }
   return false;
 }
+/** The shared start (Settings and the 18-server.js banner): ask the ports, launch business-wrap://open?file=<f> when none answers,
+ *  wait for one. Resolves 'running' (one already answered, nothing launched), 'started' or 'failed'. onStep('checking'|'starting') for the UI. */
+async function srvBegin(f, onStep = () => {}) {
+  onStep('checking');
+  SRV.found = await srvProbe();
+  SRV.asked = true;
+  if (SRV.found.length) return 'running';
+  onStep('starting');
+  srvLaunch(`business-wrap://open?file=${encodeURIComponent(f)}`);
+  return (await srvWait(true, 25000)) ? 'started' : 'failed';
+}
 async function srvStart() {
   if (srvServed() || SRV.busy) return;
   const f = srvFilePath();
@@ -176,16 +187,11 @@ async function srvStart() {
   SRV.busy = true;
   SRV.note = '';
   srvDraw(); // «checking…»: does a server already answer on 4317-4327?
-  SRV.found = await srvProbe();
-  SRV.asked = true;
-  if (SRV.found.length) { SRV.busy = false; srvDraw('srvOpen'); return; } // one is running: nothing to start, offer to open it
-  SRV.note = t('srv.starting');
-  srvDraw();
-  srvLaunch(`business-wrap://open?file=${encodeURIComponent(f)}`);
-  const ok = await srvWait(true, 25000);
+  const r = await srvBegin(f, (st) => { if (st === 'starting') { SRV.note = t('srv.starting'); srvDraw(); } });
   SRV.busy = false;
-  SRV.note = ok ? '' : t('srv.noHandler');
-  srvDraw(ok ? 'srvOpen' : 'srvStart');
+  SRV.note = r === 'failed' ? t('srv.noHandler') : '';
+  srvDraw(r === 'failed' ? 'srvStart' : 'srvOpen');
+  EXT.server?.sync?.();
 }
 /** The confirm dialog for «stop all» (the power-off look: Cancel has the focus, Esc cancels). */
 function srvConfirm(lead) {

@@ -17,6 +17,12 @@ const flushTabs = (ctx) => { for (const r of ctx.session?.live?.keys() || []) r.
 const LOCAL = /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/;
 
 export default async (req, url, send, ctx) => {
+  if (url.pathname === '/api/servers/file') { // 0.14.0: the document this server serves; the page keeps it to start the same document again if the server dies (editor/ext/18-server.js)
+    if (req.method !== 'GET') { send(405, { error: 'GET' }); return true; }
+    if (req.headers.origin && !LOCAL.test(req.headers.origin)) { send(403, { error: 'origin' }); return true; }
+    send(200, { file: ctx.editorFile || '' });
+    return true;
+  }
   if (url.pathname === '/api/servers') {
     if (req.method !== 'GET') { send(405, { error: 'GET' }); return true; }
     if (req.headers.origin && !LOCAL.test(req.headers.origin)) { send(403, { error: 'origin' }); return true; }

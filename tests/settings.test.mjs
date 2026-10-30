@@ -247,7 +247,7 @@ try {
     await sh(page, (r) => r.querySelector('.drawer [data-k="updCheck"]').click());
     await page.waitForTimeout(300);
     const st = await sh(page, (r) => r.querySelector('.drawer .set-status').textContent);
-    const net = reqs.filter((u) => /^https?:/.test(u));
+    const net = reqs.filter((u) => /^https?:/.test(u) && !/^http:\/\/127\.0\.0\.1:43(1[7-9]|2[0-7])\/api\/version$/.test(u.split('?')[0])); // 0.14.0: the server banner's one GET /api/version probe of 127.0.0.1:4317-4327 is allowed, nothing else
     check('file://: Settings shows how to update (start the server, or the terminal command)', fb.file.includes('npm run serve') && fb.file.includes('npx business-wrap update'), fb.file.slice(0, 120));
     check('file://: «تحقّق الآن» says why it cannot check', /npm run serve/.test(st), st);
     check('file://: no request to GitHub and no network request at all from the page', !net.length && !reqs.some((u) => u.includes('github')), net.join(' '));
