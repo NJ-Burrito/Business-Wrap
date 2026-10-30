@@ -48,7 +48,7 @@ export function pdfItems(text, { rtl = false } = {}) {
   const used = pages.filter((p) => p.some((l) => l.trim())).length;
   const running = (l) => used >= 3 && seen[key(l)] >= Math.max(2, used * 0.5);
   const items = [], toc = new Set();
-  let para = [], rows = [], tail = false; // tail: the contents may run on at the top of the next page
+  let para = [], rows = [], tail = false, lastCh = 0; // tail: the contents may run on at the top of the next page
   const flush = () => { if (para.length) items.push({ p: para.join(' ') }); para = []; };
   const bare = (c) => /^[0-9٠-٩]+(\.[0-9٠-٩]+)*$/.test(c);
   const tocRow = (cells) => { const h = cells.length === 1 ? heading(cells[0]) : cells.length === 2 && cells.some(bare) ? { text: cells.find((c) => !bare(c)) || '' } : null; return h && tocKey(h.text).length > 2 ? tocKey(h.text) : null; };
@@ -69,11 +69,25 @@ export function pdfItems(text, { rtl = false } = {}) {
       if (!line) { flushRows(); flush(); continue; }
       const cells = line.split(/\s{3,}/);
       if (tail) { const k = tocRow(line.split(/\s{2,}/)); if (k && !toc.has(k)) { toc.add(k); continue; } if (!k && (CODEY.test(line) || /\d\.\d+\S/.test(line))) continue; tail = false; } // contents rows until a heading comes twice
+      // poppler before ~24.05 prints a chapter heading as two cells, «title   1» (newer: «1 title»): the next chapter number
+      // beside a title that the contents lists is a chapter heading too (a table row «name   3» is not: it must be next in line)
+      if (cells.length === 2 && toc.size) {
+        const bi = cells.findIndex((c) => /^[1-9١-٩][0-9٠-٩]?$/.test(clean(c).trim()));
+        const t = bi < 0 ? '' : clean(cells[1 - bi]).trim();
+        const k = tocKey(t);
+        if (bi >= 0 && k.length > 2 && !/^[0-9٠-٩\s.]+$/.test(t) && Number(latin(clean(cells[bi]).trim())) === lastCh + 1 && [...toc].some((x) => x.startsWith(k) || k.startsWith(x))) {
+          flushRows(); flush();
+          lastCh += 1;
+          items.push({ h: 1, number: String(lastCh), text: t, line });
+          continue;
+        }
+      }
       const hi = cells.findIndex((c) => heading(c));
       if (hi >= 0 && cells.length <= 2) {
         flushRows(); flush();
         const rest = cells.filter((_, i) => i !== hi).join(' ');
         items.push({ ...heading(cells[hi]), line });
+        if (heading(cells[hi]).h === 1 && Number(heading(cells[hi]).number) === lastCh + 1) lastCh += 1;
         if (rest) para.push(rest);
         continue;
       }

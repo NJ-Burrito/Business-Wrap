@@ -15,6 +15,7 @@ import { buildEditor } from '../engine/build-editor.mjs';
 import { launchOptions, REPO, exportPdf, exportDocx, loadTheme } from '../engine/export.mjs';
 import { serve } from '../engine/serve.mjs';
 import { py } from '../engine/py.mjs';
+import { pdfItems, structure } from '../engine/import/import.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-lib-'));
 process.env.BW_LOCAL_DIR = path.join(tmp, '.local'); // the host's profile and state stay in this run's folder (never the install's .local or a caller's)
@@ -237,6 +238,17 @@ try {
   const pdf = path.join(tmp, 'sample.pdf');
   await exportPdf(src, { locale: 'ar', theme: loadTheme(), pdfPath: pdf });
   const jp = shape(await post('sample.pdf', pdf));
+  { // pdftotext text as poppler 24.02 (Ubuntu 24.04, the CI runner) prints it: a chapter heading is «title   N», a section « N.M title»
+    const pad = (n) => ' '.repeat(n), RLE = '\u202b', PDF = '\u202c';
+    const row = (t, n) => pad(40) + RLE + t + PDF + pad(12) + RLE + '\u202a' + n + PDF + PDF;
+    const sec = (n, t) => pad(30) + RLE + '\u202a ' + n + PDF + t + PDF;
+    const contents = ['', pad(40) + RLE + 'جدول المحتويات' + PDF, '', row('المقدمة', 1), row('الغرض من الوثيقة', '1.1'), row('بطاقة الخدمة', 2), row('وصف الخدمة', '2.1')].join('\n');
+    const body = [row('المقدمة', 1), sec('1.1', 'الغرض من الوثيقة'), '', row('بطاقة الخدمة', 2), sec('2.1', 'وصف الخدمة')].join('\n');
+    const old = structure(pdfItems(contents + '\f' + body, { rtl: true }));
+    check('import (poppler 24.02 text): chapter headings printed as «title   N» are chapters, sections stay sections', JSON.stringify(old.body.filter((i) => i.h === 1).map((i) => i.text)) === JSON.stringify(['المقدمة', 'بطاقة الخدمة']) && old.body.filter((i) => i.h === 2).length === 2, JSON.stringify(old.body));
+    const tbl = structure(pdfItems(contents + '\f' + [row('المقدمة', 1), '', pad(20) + 'الرمز' + pad(10) + '3', pad(20) + 'النوع' + pad(10) + '5'].join('\n'), { rtl: true }));
+    check('import (poppler 24.02 text): a row «name   3» that is not the next chapter stays out of the headings', tbl.body.filter((i) => i.h === 1).length === 1, JSON.stringify(tbl.body));
+  }
   check('served: a PDF import is titled by its cover title (not «sample») with its 5 chapters', jp.status === 200 && jp.title === 'تصريح استيراد تجريبي' && JSON.stringify(jp.chapters) === JSON.stringify(want), JSON.stringify(jp));
   const ourDocx = path.join(tmp, 'sample.docx');
   exportDocx(src, { locale: 'ar', theme: loadTheme(), docxPath: ourDocx, embedFonts: false });
