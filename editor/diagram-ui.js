@@ -37,7 +37,7 @@ function dgContext() {
       : pick('badge', t('dgIcon'), [opt('', Array.isArray(node.icons) ? (node.icons[0] || '-') : '', t('dgAuto2')), opt('-', Array.isArray(node.icons) && !node.icons.length ? '-' : '', t('dgNone')), ...DIAGRAM.SYMBOLS.map((k) => opt(k, Array.isArray(node.icons) ? node.icons[0] : '', t(`sym_${k}`)))].join(''));
     return { cat: 'shape', label: t('selShape', { x: dgNodeName(node) }), groups: [['dgLabel', kinds, colours, 'dgConnect', 'dgDel'], [icon, 'dgSub', 'dgDup', 'dgFront', 'dgBack']], keep: zoomKeep() };
   }
-  const sym = pick('symbol', t('dgSymbol'), [`<option value="">${esc(t('dgSymbol'))} …</option>`, ...DIAGRAM.SYMBOLS.map((k) => opt(k, '', t(`sym_${k}`)))].join(''));
+  const sym = btn('dgSymbol'); // 0.14.0 · O2: a gallery with the full names (the old select was squeezed to a sliver inside the «…» menu)
   return { cat: 'diagram', label: t('selDiagram'), groups: [['dgStaff', 'dgDecision', 'dgStart', 'dgOk', 'dgStop', sym], ['dgApplicant', 'dgPayment', 'dgRework', 'dgSystem', 'dgNote', 'dgGroup', 'dgText', 'dgAuto', 'dgReset', 'dgFlow', 'dgLegend', 'dgZoom100', 'dgMermaidIn', 'dgMermaidOut']], keep: zoomKeep() };
 }
 /* ── selection paint: outline + resize handle, editor DOM only (never exported) ── */
@@ -144,14 +144,20 @@ function dgInline(target) {
   const m = dgModel();
   const node = target.node ? m.nodes.find((n) => n.id === target.node) : null;
   const edge = target.edge ? m.edges.find((x) => x.id === target.edge) : null;
-  const obj = node || edge;
+  // 0.14.0 · O2: a legend entry (the key under the drawing) is edited in place too: model.legend[key]
+  const legendKey = target.legend || null;
+  const legendItem = legendKey ? DIAGRAM.resolve(m, { theme: S.theme, locale: S.dg.ed }).items.find((it) => it.t === 'text' && it.legend === legendKey) : null;
+  const obj = node || edge || (legendItem ? { text: legendItem.lines.join(' ') } : null);
   if (!obj) return;
-  const field = target.field === 'sub' ? 'sub' : 'label';
+  const field = legendItem ? 'text' : target.field === 'sub' ? 'sub' : 'label';
   const r = DIAGRAM.resolve(m, { theme: S.theme, locale: S.dg.ed });
   const F = DIAGRAM.FS;
   let box;
   let size;
-  if (node) {
+  if (legendItem) {
+    size = F.key;
+    box = { x: legendItem.x - 80, y: legendItem.y - 12, w: 160, h: 24 };
+  } else if (node) {
     size = node.kind === 'decision' ? F.gate : node.kind === 'text' ? F.text : field === 'sub' ? F.sub : F.title;
     const sub = r.items.find((it) => it.t === 'text' && it.id === node.id && it.sub);
     if (field === 'sub') box = sub ? { x: node.x + 6, y: sub.box.y - 3, w: node.w - 12, h: sub.box.h + 6 } : { x: node.x + 6, y: node.y + node.h - 24, w: node.w - 12, h: 22 };
@@ -199,6 +205,14 @@ function dgInline(target) {
     el.remove();
     if (!save || v === (obj[field] || '')) { dgPaint(); return; }
     const m2 = dgModel();
+    if (legendItem) {
+      const base = DIAGRAM.words(S.dg.ed)[legendKey];
+      const lg = m2.legend && typeof m2.legend === 'object' ? { ...m2.legend } : {};
+      if (!v || v === base) delete lg[legendKey]; else lg[legendKey] = v;
+      if (Object.keys(lg).length) m2.legend = lg; else delete m2.legend;
+      dgSave(m2);
+      return;
+    }
     const o2 = node ? m2.nodes.find((n) => n.id === node.id) : m2.edges.find((x) => x.id === edge.id);
     if (!o2) return;
     o2[field] = v;
@@ -340,6 +354,8 @@ document.addEventListener('dblclick', (e) => {
   if (!fig || !S.dg) return;
   const n = e.target.closest('[data-dg-node]');
   const edEl = e.target.closest('[data-dg-edge]');
+  const lgEl = e.target.closest('[data-dg-legend]');
+  if (lgEl && !n) { dgInline({ legend: lgEl.dataset.dgLegend }); return; }
   if (n) {
     const node = dgModel().nodes.find((x) => x.id === n.dataset.dgNode);
     const onSub = !!(node?.sub && e.target.closest('text')?.textContent === node.sub);
@@ -424,7 +440,48 @@ function dgFinishPick(targetId) {
 }
 const ALIGN = { dgAlignL: ['x', 0], dgAlignC: ['x', 0.5], dgAlignR: ['x', 1], dgAlignT: ['y', 0], dgAlignM: ['y', 0.5], dgAlignB: ['y', 1] };
 const ADD = { dgStaff: 'staff', dgApplicant: 'applicant', dgStart: 'start', dgPayment: 'payment', dgRework: 'rework', dgSystem: 'system', dgDecision: 'decision', dgOk: 'ok', dgStop: 'stop', dgNote: 'note', dgGroup: 'group', dgText: 'text' };
+/** 0.14.0 · O2: every symbol by its full name, on a panel of its own (never inside the toolbar's «…» menu); a pick adds it, selected. */
+function dgSymbolGallery() {
+  document.querySelector('.bw-dg-gallery')?.remove();
+  if (!document.getElementById('bw-dg-gallery-css')) {
+    const st = document.createElement('style');
+    st.id = 'bw-dg-gallery-css';
+    st.textContent = '.bw-dg-gallery{position:fixed;z-index:2147483000;box-sizing:border-box;width:min(480px,92vw);max-height:min(62vh,440px);overflow:auto;padding:10px;background:#fff;color:#14233a;border:1px solid #b9c3d3;border-radius:12px;box-shadow:0 12px 32px rgba(10,25,50,.28);display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;font:600 15px/1.35 inherit}.bw-dg-gallery button{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:8px;padding:9px 12px;min-height:40px;border-radius:8px;border:1px solid #d3dae6;white-space:normal;overflow-wrap:anywhere}.bw-dg-gallery button:hover,.bw-dg-gallery button:focus-visible{background:#e1eaf4;border-color:#005fc2}';
+    document.head.appendChild(st);
+  }
+  const el = document.createElement('div');
+  el.className = 'bw-dg-gallery';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-label', t('dgSymbol'));
+  el.dir = uiDir();
+  el.lang = S.ui;
+  el.style.fontFamily = 'inherit';
+  el.innerHTML = DIAGRAM.SYMBOLS.map((k) => `<button type="button" data-sym="${k}">${esc(t(`sym_${k}`))}</button>`).join('');
+  document.body.appendChild(el);
+  const bt = root.querySelector('[data-a="dgSymbol"]')?.getBoundingClientRect();
+  const w = el.getBoundingClientRect().width;
+  const left = bt ? Math.max(8, Math.min(innerWidth - w - 8, bt.left + bt.width / 2 - w / 2)) : Math.max(8, (innerWidth - w) / 2);
+  el.style.left = `${left}px`;
+  el.style.top = `${Math.min(innerHeight - 120, (bt ? bt.bottom : 70) + 8)}px`;
+  const close = () => { el.remove(); document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc2, true); };
+  const away = (ev) => { if (!ev.composedPath().includes(el)) close(); };
+  const esc2 = (ev) => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(); } };
+  document.addEventListener('pointerdown', away, true);
+  document.addEventListener('keydown', esc2, true);
+  const at = S.dg ? { b: S.dg.b, ed: S.dg.ed } : null; // a press outside the page clears the pick: keep where the drawing was
+  el.addEventListener('click', (ev) => {
+    const b = ev.target.closest('button[data-sym]');
+    if (!b || !at || !dgBlock(at.b, at.ed)) return;
+    close();
+    dgSelect(at.b, at.ed, {});
+    const m = dgModel();
+    dgAdd(m, 'symbol', { icon: b.dataset.sym });
+    dgSave(m);
+  });
+  el.querySelector('button')?.focus();
+}
 async function dgAction(a) {
+  if (a === 'dgSymbol') { dgSymbolGallery(); return; }
   if (a === 'addDiagram') {
     const b = blockOf(S.sel?.b);
     const arr = b ? b.arr : '/chapters/0/sections/0/blocks';

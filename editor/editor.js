@@ -1382,8 +1382,8 @@ function refreshUi() {
 function ctxModel(b, tb) {
   const ov = S.selOv != null ? (cur().doc.overlays || [])[S.selOv] : null;
   // a text box is not a picture: no «استبدال» (replace image), its own name (F2 · 38)
-  if (ov?.kind === 'text') return { cat: 'image', label: t('insTextBox'), groups: [['ovDelete']] };
-  if (ov) return { cat: ov.kind === 'logo' ? 'logo' : 'image', label: t(ov.kind === 'logo' ? 'selLogo' : 'selImage'), groups: [['replace', 'caption', ...(ov.kind === 'logo' ? ['every'] : []), 'ovDelete']] };
+  if (ov?.kind === 'text') return { cat: 'image', label: t('insTextBox'), groups: [[...(EXT.w2wrapPick?.() ? [EXT.w2wrapPick()] : []), 'ovDelete']] };
+  if (ov) return { cat: ov.kind === 'logo' ? 'logo' : 'image', label: t(ov.kind === 'logo' ? 'selLogo' : 'selImage'), groups: [['replace', 'caption', ...(ov.kind === 'logo' ? ['every'] : EXT.w2wrapPick?.() ? [EXT.w2wrapPick()] : []), 'ovDelete']] };
   const dg = dgContext();
   if (dg) return dg;
   // R5: the table tools come first, for every table with rows (front matter too: only the tools that apply there)
@@ -1398,7 +1398,7 @@ function ctxModel(b, tb) {
   }
   const blk = get(cur().doc, b.ptr);
   if (tb) return { cat: 'table', label: t('selTable'), groups: [['rowAdd', 'rowDel', 'colAdd', 'colDel', 'rowUp', 'rowDown'], ['duplicate', 'delete', 'moveUp', 'moveDown'], ['comment', 'styleThis', 'hideBlock', 'breakBefore', 'keepNext'], ...(EXT.cells ? [EXT.cells.tools()] : [])] };
-  return { cat: 'text', label: t('selText', { x: kindName(blk?.kind || 'text') }), groups: [['duplicate', 'delete', 'moveUp', 'moveDown', 'addPara'], ['comment', 'styleThis', 'hideBlock', 'breakBefore', 'keepNext']] };
+  return { cat: 'text', label: t('selText', { x: kindName(blk?.kind || 'text') }), groups: [['duplicate', 'delete', 'moveUp', 'moveDown', 'addPara', ...(EXT.w2wrapPick?.() ? [EXT.w2wrapPick()] : [])], ['comment', 'styleThis', 'hideBlock', 'breakBefore', 'keepNext']] };
 }
 function ctxTool(id, ov) {
   if (typeof id === 'string' && id.startsWith('<')) return id; // a ready control (a select)
