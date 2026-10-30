@@ -57,6 +57,29 @@ def splice(pdf_path, part_path, pages):
     print("splice: %d page(s)" % len(nums))
 
 
+BADGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "brand", "v3", "file-icons", "pdf-128.png")
+
+
+def brand_stamp(doc):
+    """0.14.0: Creator/Producer «Business-Wrap» and the PDF badge as page 1's /Thumb (Acrobat-style viewers show it)."""
+    meta = dict(doc.metadata or {})
+    meta.update(creator="Business-Wrap", producer="Business-Wrap")
+    doc.set_metadata(meta)
+    if not os.path.exists(BADGE):
+        return
+    pix = pymupdf.Pixmap(BADGE)
+    rgb = bytearray()
+    s, n = pix.samples, pix.n
+    for i in range(0, len(s), n):  # flatten the badge's transparency onto white: /Thumb has no alpha
+        a = s[i + 3] / 255 if n == 4 else 1
+        rgb += bytes(int(s[i + k] * a + 255 * (1 - a)) for k in range(3))
+    import zlib
+    xref = doc.get_new_xref()
+    doc.update_object(xref, "<</Type/XObject/Subtype/Image/Width %d/Height %d/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/FlateDecode>>" % (pix.width, pix.height))
+    doc.update_stream(xref, zlib.compress(bytes(rgb)), compress=False, new=True)
+    doc.xref_set_key(doc[0].xref, "Thumb", "%d 0 R" % xref)
+
+
 def main(pdf_path, fontfile, anchor_text, direction, folio="right:n"):
     doc = pymupdf.open(pdf_path)
     cover = doc[0]
@@ -97,6 +120,7 @@ def main(pdf_path, fontfile, anchor_text, direction, folio="right:n"):
         done += 1
     if missed:
         raise SystemExit("no footer run found on sheet(s) %s" % ", ".join(map(str, missed)))
+    brand_stamp(doc)
     doc.subset_fonts()
     doc.ez_save(pdf_path + ".tmp")
     doc.close()
