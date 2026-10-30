@@ -1,0 +1,10 @@
+{
+  "ar": {
+    "ln.noLineAbove": "لا يوجد سطر فارغ فوق المؤشر لحذفه",
+    "ln.noLineBelow": "لا يوجد سطر فارغ تحت المؤشر لحذفه"
+  },
+  "en": {
+    "ln.noLineAbove": "There is no empty line above the caret to remove",
+    "ln.noLineBelow": "There is no empty line below the caret to remove"
+  }
+}

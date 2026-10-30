@@ -28,7 +28,12 @@
   "explain.fmColAdd": "يضيف عموداً إلى جدول ضبط الوثيقة.",
   "explain.fmColDel": "يحذف العمود المحدد من جدول ضبط الوثيقة.",
   "secFront": "الصفحات الأولى",
-  "grp_front": "الصفحات الأولى"
+  "grp_front": "الصفحات الأولى",
+  "ruler": "المسطرة",
+  "explain.ruler": "يُظهر مسطرة بالسنتيمتر أعلى كل صفحة بعرضها الفعلي، فتتبع الصفحة العرضية عرضها وهوامشها.",
+  "w2.rulerOn": "المسطرة ظاهرة",
+  "w2.rulerOff": "المسطرة مخفية",
+  "w2.thisPage": "هذه الصفحة فقط"
  },
  "en": {
   "secPage": "Page",
@@ -59,6 +64,11 @@
   "explain.fmColAdd": "Adds a column to the document control table.",
   "explain.fmColDel": "Deletes the picked column of the document control table.",
   "secFront": "Front matter",
-  "grp_front": "Front matter"
+  "grp_front": "Front matter",
+  "ruler": "Ruler",
+  "explain.ruler": "Shows a centimetre ruler above each page at its real width, so a landscape page has its own width and margins.",
+  "w2.rulerOn": "Ruler shown",
+  "w2.rulerOff": "Ruler hidden",
+  "w2.thisPage": "This page only"
  }
 }
