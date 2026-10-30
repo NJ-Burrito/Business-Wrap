@@ -1,9 +1,12 @@
-// The save folder (A11, 0.13.0): <parent>\Business-Wrap\{PDF,DOCX,HTML,HISTORY}.
+// The save folder (0.13.3 tree): <parent>\Business-Wrap\
+//   اقرأني - README.txt
+//   المستندات - Documents\<Document title>\{<title>.html, Exports\, Sources\, Versions\}   (one folder per document)
+//   .system\{history\, backups\, sessions\, library\, cache\, index in history\index.json}      (machine state, hidden)
 // The parent is chosen once (pickParent: the OS folder dialog) and kept in .local/workspace.json; the default is the
-// user's Documents folder (else home), never inside this repository. HISTORY is machine state only (hidden on Windows).
+// user's Documents folder (else home), never inside this repository.
 //
-//   workspace()                        → {parent, root, dirs: {pdf, docx, html, history}}
-//   outName(title, date, locale, ext)  → "<title>-<YYYY-MM-DD>-<AR|ENG>.<ext>"
+//   workspace()                        → {parent, root, dirs: {docs, pdf=docs, docx=docs, html=docs, system, history, backups, sessions, library, cache}}
+//   outName(title, date, locale, ext)  → "<title>/Exports/<YYYY-MM-DD HH-MM> <title> - <العربية|English|both>.<ext>" (a path below the documents folder)
 //   pickParent()                       → the chosen folder (stored) or null when cancelled
 import fs from 'node:fs';
 import os from 'node:os';
@@ -11,6 +14,7 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { applyOps } from './edits.mjs';
 import { REPO } from './export.mjs';
+import { tidyNow } from './tidy.mjs'; // a cycle by design: used only when ensure() meets an old layout
 
 /** .local/ (gitignored); BW_LOCAL_DIR moves it (tests). */
 export const localDir = () => path.resolve(process.env.BW_LOCAL_DIR || path.join(REPO, '.local'));
@@ -29,14 +33,30 @@ export function validParent(p) {
   return inside(abs, REPO) ? null : abs;
 }
 
+export const DOCS_NAME = 'المستندات - Documents';
+export const SYSTEM_NAME = '.system';
+export const UNSORTED_NAME = '_غير مصنف - Unsorted';
+export const README_NAME = 'اقرأني - README.txt';
+export const LEGACY = ['PDF', 'DOCX', 'HTML', 'HISTORY'];
+
+/** The folders of one save folder (root = <parent>\Business-Wrap). pdf, docx and html are the documents folder itself
+ *  (callers that still say dirs.pdf get paths routed into the document's own Exports\ by uniquePath). */
+export function dirsOf(root) {
+  const docs = path.join(root, DOCS_NAME), system = path.join(root, SYSTEM_NAME);
+  return { docs, pdf: docs, docx: docs, html: docs, system, history: path.join(system, 'history'), backups: path.join(system, 'backups'), sessions: path.join(system, 'sessions'), library: path.join(system, 'library'), cache: path.join(system, 'cache') };
+}
 /** Order: BW_WORKSPACE (env) → .local/workspace.json → Documents. A stored parent inside the repo is ignored. */
 export function workspace() {
   let saved = null;
   try { saved = JSON.parse(fs.readFileSync(store(), 'utf8')).parent; } catch { /* not chosen yet */ }
   const parent = validParent(process.env.BW_WORKSPACE) || validParent(saved) || defaultParent();
   const root = path.join(parent, 'Business-Wrap');
-  return { parent, root, chosen: !!(validParent(process.env.BW_WORKSPACE) || validParent(saved)), dirs: { pdf: path.join(root, 'PDF'), docx: path.join(root, 'DOCX'), html: path.join(root, 'HTML'), history: path.join(root, 'HISTORY') } };
+  return { parent, root, chosen: !!(validParent(process.env.BW_WORKSPACE) || validParent(saved)), dirs: dirsOf(root) };
 }
+/** A machine-state sub-folder of a workspace's dirs; a hand-made dirs object (tests) without it keeps it inside history. */
+export const subdir = (dirs, key) => dirs[key] || path.join(dirs.history, key);
+/** Machine-state files that sit directly in .system (projects.json, profile.json.gz). */
+export const systemDir = (dirs) => dirs.system || dirs.history;
 
 /** Remember a parent folder; refuses one inside the repository. */
 export function setParent(p) {
@@ -47,39 +67,235 @@ export function setParent(p) {
   return workspace();
 }
 
-/** Create the four folders; HISTORY carries the hidden attribute on Windows whenever it lacks it (a folder made or
- *  copied before 0.13.1 too): `attrib +h` once per folder per process, idempotent. */
+/** Create the folders; .system carries the hidden attribute on Windows (dot-folder elsewhere), the README of the tree is written once, and an
+ *  old 0.13.0-0.13.2 layout (PDF, DOCX, HTML, HISTORY) is moved into the tree once per process (engine/tidy.mjs; BW_NO_MIGRATE=1 skips it). */
 const hidden = new Set();
+const migrated = new Set();
 export function ensure(ws = workspace()) {
-  for (const d of Object.values(ws.dirs)) fs.mkdirSync(d, { recursive: true });
-  if (process.platform === 'win32' && !hidden.has(ws.dirs.history)) {
-    spawnSync('attrib', ['+h', ws.dirs.history], { windowsHide: true, stdio: 'ignore' });
-    hidden.add(ws.dirs.history);
+  if (ws.root && !migrated.has(ws.root)) {
+    migrated.add(ws.root);
+    if (!process.env.BW_NO_MIGRATE && LEGACY.some((n) => fs.existsSync(path.join(ws.root, n)))) tidyNow(ws);
   }
+  for (const d of Object.values(ws.dirs)) fs.mkdirSync(d, { recursive: true });
+  const sys = ws.dirs.system || ws.dirs.history;
+  if (process.platform === 'win32' && !hidden.has(sys)) {
+    spawnSync('attrib', ['+h', sys], { windowsHide: true, stdio: 'ignore' });
+    hidden.add(sys);
+  }
+  if (ws.root) writeReadme(ws.root);
   return ws;
 }
-/** True when `file` lies inside <base>\HISTORY (case-insensitive on Windows): machine state, never served. */
+/** True when `file` lies inside <base>\.system (or the old HISTORY; case-insensitive on Windows): machine state, never served. */
 export function inHistory(base, file) {
   const r = path.relative(path.resolve(base), path.resolve(file));
   const first = r.split(/[\\/]/)[0];
-  return !!r && !r.startsWith('..') && (process.platform === 'win32' ? first.toLowerCase() === 'history' : first === 'HISTORY');
+  const win = process.platform === 'win32';
+  return !!r && !r.startsWith('..') && ((win ? first.toLowerCase() : first) === SYSTEM_NAME || (win ? first.toLowerCase() === 'history' : first === 'HISTORY'));
 }
 
-const day = (d) => { const x = d instanceof Date ? d : new Date(d ?? Date.now()); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
-/** The title as a file name: Arabic and the spaces between words kept (as the pipeline outputs name theirs), path-hostile
- *  characters with the spaces around them → -, at most 80 characters. */
-export const titleStem = (s) => String(s || '').normalize('NFC').replace(/\s*[\\/:*?"<>|\u0000-\u001f]+\s*/g, '-').replace(/\s+/g, ' ').replace(/-{2,}/g, '-').replace(/^[-.\s]+|[-.\s]+$/g, '').slice(0, 80).trim() || 'document';
-/** "<title>-<YYYY-MM-DD>-<AR|ENG>.<ext>": every file the editor saves (PDF, DOCX, HTML, share, report). */
+export const README_TEXT = `اقرأني · README
+================
+
+العربية
+  المستندات - Documents\\   مجلّد لكل مستند باسمه: ملف المستند (.html) وبداخله:
+      Exports\\   كل ملفات PDF وDOCX المصدّرة، باسم التاريخ والعنوان واللغة
+      Sources\\   ما جُمع أو استُورد لهذا المستند (صفحات، لقطات، ملفات)
+      Versions\\  النسخ السابقة عند كل حفظ (لا يُحذف منها شيء)
+  المستندات - Documents\\_غير مصنف - Unsorted\\   ملفات قديمة لم نعرف مستندها
+  .system\\   مخفي: سجل التاريخ والنسخ الاحتياطية والجلسات. لا تنقله ولا تغيّره.
+
+English
+  Documents\\   one folder per document, named by its title: the document file (.html) and inside it:
+      Exports\\   every exported PDF and DOCX, named date, title, language
+      Sources\\   what was harvested or imported for this document (pages, screenshots, files)
+      Versions\\  the previous saves, kept (nothing is deleted)
+  Documents\\_Unsorted\\   old files whose document we could not tell
+  .system\\   hidden: the history log, backups and sessions. Do not move or change it.
+`;
+function writeReadme(root) {
+  try { const f = path.join(root, README_NAME); if (!fs.existsSync(f)) fs.writeFileSync(f, '﻿' + README_TEXT.replace(/\n/g, '\r\n'), 'utf8'); } catch { /* read-only parent: no README */ }
+}
+
+const pad2 = (n) => String(n).padStart(2, '0');
+const day = (d) => { const x = d instanceof Date ? d : new Date(d ?? Date.now()); return `${x.getFullYear()}-${pad2(x.getMonth() + 1)}-${pad2(x.getDate())}`; };
+/** "YYYY-MM-DD HH-MM": the date of every output and version file name. */
+export const stamp = (d) => { const x = d instanceof Date ? d : new Date(d ?? Date.now()); return `${day(x)} ${pad2(x.getHours())}-${pad2(x.getMinutes())}`; };
+const RESERVED = /^(con|prn|aux|nul|com\d|lpt\d)$/i;
+export const UNTITLED = 'مستند بلا عنوان - Untitled';
+/** The title as a file or folder name: Arabic and the spaces between words kept, path-hostile characters with the
+ *  spaces around them → -, no trailing dot or space, at most 80 characters, never a Windows device name. */
+export const titleStem = (s) => {
+  const t = String(s || '').normalize('NFC').replace(/\s*[\\/:*?"<>|\u0000-\u001f]+\s*/g, '-').replace(/\s+/g, ' ').replace(/-{2,}/g, '-').replace(/^[-.\s]+|[-.\s]+$/g, '').slice(0, 80).replace(/[.\s]+$/, '').trim();
+  return !t ? UNTITLED : RESERVED.test(t) ? `${t}-` : t;
+};
+export const LANG_WORD = { ar: 'العربية', en: 'English', both: 'both' };
+/** The path below the documents folder: "<title>/Exports/<stamp> <title> - <language>.<ext>"; ext "html" → "<title>/<title>.html". */
 export function outName(title, date, locale, ext) {
-  return `${titleStem(title)}-${day(date)}-${locale === 'en' ? 'ENG' : 'AR'}.${String(ext).replace(/^\./, '')}`;
+  const t = titleStem(title), e = String(ext).replace(/^\./, '');
+  if (e === 'html') return `${t}/${t}.html`;
+  return `${t}/Exports/${stamp(date)} ${t} - ${LANG_WORD[locale] || LANG_WORD.ar}.${e}`;
 }
 
-/** dir/name, or name-2, name-3 … when it exists: never an overwrite. */
+/* ── the index: document id → folder, history id → file stem (.system\history\index.json) ── */
+const isDocsRoot = (dir) => path.basename(path.resolve(dir)) === DOCS_NAME;
+const histOf = (docsDir) => path.join(path.dirname(path.resolve(docsDir)), SYSTEM_NAME, 'history');
+const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+export const indexFile = (histDir) => path.join(histDir, 'index.json');
+export function readIndex(histDir) {
+  try { const j = JSON.parse(fs.readFileSync(indexFile(histDir), 'utf8')); if (j && j.folders && j.ids && j.history) return j; } catch { /* none yet */ }
+  return { v: 1, folders: {}, ids: {}, history: {} };
+}
+export function writeIndex(histDir, idx) {
+  fs.mkdirSync(histDir, { recursive: true });
+  const f = indexFile(histDir), tmp = `${f}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(idx, null, 1));
+  fs.renameSync(tmp, f);
+}
+const uniq = (a) => [...new Set(a.filter(Boolean).map(String))];
+/** Pure: the folder name for a document, registered in `idx` (in memory). `ids`: the document's ids (library id, service ids);
+ *  `titles`: the titles of its editions (the first names the folder: AR before EN). A document the index knows by id keeps its
+ *  folder; with no id, a title the index knows names that folder (a second export of the same document). A folder that exists
+ *  but belongs to no id is adopted (an export made before the first Save); one owned by another id gets " (2)". */
+export function allocFolder(idx, docsDir, { ids = [], titles = [], hist = [] } = {}) {
+  ids = uniq(ids); hist = uniq(hist);
+  titles = uniq(titles.map((x) => (String(x || '').trim() ? titleStem(x) : '')));
+  const key = (f) => Object.keys(idx.folders).find((k) => sameName(k, f));
+  let folder = ids.map((i) => idx.ids[i]).find((f) => f && idx.folders[f]);
+  if (!folder && !ids.length) folder = titles.map((x) => Object.keys(idx.folders).find((f) => sameName(f, x) || idx.folders[f].titles.some((y) => sameName(y, x)))).find(Boolean);
+  if (!folder) {
+    const base = titleStem(titles[0] || '');
+    const taken = key(base);
+    if (!taken) folder = base;
+    else if (!idx.folders[taken].ids.length || !ids.length) folder = taken;
+    else for (let n = 2; ; n++) { folder = `${base.slice(0, 74)} (${n})`; if (!key(folder) && !fs.existsSync(path.join(docsDir, folder))) break; }
+  }
+  const e = (idx.folders[folder] ||= { ids: [], titles: [], history: [] });
+  e.ids = uniq([...e.ids, ...ids]); e.titles = uniq([...e.titles, ...titles]); e.history = uniq([...e.history, ...hist]);
+  for (const i of ids) idx.ids[i] = folder;
+  return folder;
+}
+/** The document's folder inside the documents folder (made; registered in the index). */
+export function docFolder(docsDir, info) {
+  const hist = histOf(docsDir);
+  const idx = readIndex(hist);
+  const before = JSON.stringify(idx);
+  const folder = allocFolder(idx, docsDir, info);
+  if (JSON.stringify(idx) !== before) writeIndex(hist, idx);
+  const dir = path.join(docsDir, folder);
+  fs.mkdirSync(dir, { recursive: true });
+  return { folder, dir };
+}
+const idPart = (id, n = 8) => String(id).replace(/^doc-/, '').replace(/[^\w]/g, '').slice(0, n) || 'unknown';
+/** "<title> (<first 8 of id>)", longer when another history id already has that stem. */
+export function stemFor(idx, id, title) {
+  const used = new Set(Object.entries(idx.history).filter(([k]) => k !== id).map(([, h]) => h.stem.toLowerCase()));
+  let stem = `${title} (${idPart(id)})`;
+  for (let n = 9; used.has(stem.toLowerCase()); n++) { stem = `${title} (${idPart(id, n)})`; if (n > 60) { stem += `-${used.size}`; break; } }
+  return stem;
+}
+/** The history files' stem for a history id (null when there is none and nothing is created). An unlinked id gets
+ *  "<Untitled> (<id8>)", renamed when a Save of the document links the two; an id with a pre-0.13.3 "<id>.bwlog" keeps that file. */
+export function historyStem(histDir, id, { create = false } = {}) {
+  const idx = readIndex(histDir);
+  if (idx.history[id]) return idx.history[id].stem;
+  const legacy = String(id).replace(/:/g, '_');
+  if (fs.existsSync(path.join(histDir, `${legacy}.bwlog`)) || fs.existsSync(path.join(histDir, `${legacy}.heads.json`))) return legacy;
+  if (!create) return null;
+  const stem = stemFor(idx, id, UNTITLED);
+  idx.history[id] = { stem, folder: null };
+  writeIndex(histDir, idx);
+  return stem;
+}
+/** The path of a history id's .heads.json (null when there is none): for a reader that looked up "<id>.heads.json" before. */
+export function headsFile(histDir, id) {
+  const s = historyStem(histDir, id);
+  return s ? path.join(histDir, `${s}.heads.json`) : null;
+}
+/** Link history ids to a document folder: their files are renamed "<Document title> (<id8>)", the index remembers it. */
+export function linkHistory(histDir, folder, histIds = []) {
+  const idx = readIndex(histDir);
+  let changed = false;
+  for (const id of uniq(histIds)) {
+    const legacy = String(id).replace(/:/g, '_');
+    const cur = idx.history[id]?.stem || (fs.existsSync(path.join(histDir, `${legacy}.bwlog`)) || fs.existsSync(path.join(histDir, `${legacy}.heads.json`)) ? legacy : null);
+    const stem = stemFor(idx, id, folder);
+    let now = stem;
+    if (cur && cur !== stem) {
+      const clash = ['.bwlog', '.heads.json'].some((e) => fs.existsSync(path.join(histDir, stem + e)));
+      if (clash) now = cur;
+      else for (const e of ['.bwlog', '.heads.json']) { const from = path.join(histDir, cur + e); if (fs.existsSync(from)) fs.renameSync(from, path.join(histDir, stem + e)); }
+    }
+    if (idx.history[id]?.stem !== now || idx.history[id]?.folder !== folder) { idx.history[id] = { stem: now, folder }; changed = true; }
+    const f = idx.folders[folder];
+    if (f && !f.history.includes(id)) { f.history.push(id); changed = true; }
+  }
+  if (changed) writeIndex(histDir, idx);
+  return idx;
+}
+
+/** dir/name, or "name (2)", "name (3)" … when it exists: never an overwrite. A name made by outName() under the
+ *  documents folder lands in that document's folder (found by title in the index, else made); parents are created. */
 export function uniquePath(dir, name) {
-  const ext = /(\.print)?\.[^.]+$/.exec(name)?.[0] || '', stem = name.slice(0, name.length - ext.length); // "x.print.html" → x-2.print.html
-  let f = path.join(dir, name);
-  for (let n = 2; fs.existsSync(f); n++) f = path.join(dir, `${stem}-${n}${ext}`);
+  let base = path.join(dir, name);
+  if (isDocsRoot(dir) && name.includes('/')) {
+    const parts = name.split('/');
+    const t = parts[0];
+    const { folder, dir: fdir } = docFolder(dir, { titles: [t] });
+    let rest = parts.slice(1).join(path.sep);
+    if (folder !== t) rest = rest.replace(` ${t} - `, ` ${folder} - `).replace(`${t}.html`, `${folder}.html`);
+    base = path.join(fdir, rest);
+  }
+  fs.mkdirSync(path.dirname(base), { recursive: true });
+  const dirName = path.dirname(base), file = path.basename(base);
+  const ext = /(\.print|\.shared)?\.[^.]+$/.exec(file)?.[0] || '', stem = file.slice(0, file.length - ext.length); // "x.print.html" → "x (2).print.html"
+  let f = base;
+  for (let n = 2; fs.existsSync(f); n++) f = path.join(dirName, `${stem} (${n})${ext}`);
   return f;
+}
+
+/* ── titles and ids inside a Save-HTML ── */
+const BWDATA = /<script type="application\/json" id="bw-data">([\s\S]*?)<\/script>/;
+/** {titles: {ar, en}, ids, hist, locale}: what a Save-HTML says about its document (ids: service ids; hist: history doc ids). */
+export function htmlInfo(html) {
+  const out = { titles: {}, ids: [], hist: [], locale: /<html[^>]*\blang="en"/i.test(html) ? 'en' : 'ar' };
+  const trace = /<meta[^>]*name=["']bw-ledger["'][^>]*content=["'][^"']*doc=([\w.:-]+)/i.exec(String(html).split(/<\/head>/i)[0])?.[1] || /data-bw-ledger="([\w.:-]+)"/.exec(String(html).slice(0, 4000))?.[1];
+  if (trace) out.hist.push(trace);
+  try {
+    const data = JSON.parse(BWDATA.exec(html)[1]);
+    const svcs = data.services || [];
+    for (const s of svcs) {
+      if (s.id) out.ids.push(String(s.id));
+      if (data.prov?.[s.id]?.doc) out.hist.push(String(data.prov[s.id].doc));
+    }
+    const eds = svcs[0]?.editions || {};
+    const docs = Object.fromEntries(Object.entries(eds).map(([k, x]) => [k, applyOps(JSON.parse(x.raw), x.ops || [])])); // the document as on screen: the base plus its edits
+    for (const [k, d] of Object.entries(docs)) out.titles[k] = pairedTitle(d, Object.values(docs).filter((x) => x !== d), '');
+  } catch { /* not a Save-HTML */ }
+  out.hist = uniq(out.hist);
+  return out;
+}
+/** The folder-naming titles of a Save-HTML: AR before EN, a still-blank placeholder never. */
+export const titlesOf = (info, given) => uniq([info.titles.ar, info.titles.en, given].filter((x) => x && !PLACEHOLDER_TITLES.has(x)));
+
+/** Save a Save-HTML as the document's file: <Document title>\<Document title>.html, overwritten on every Save; the file it
+ *  replaces goes to Versions\<its date> <title>.html first (kept, never deleted). → {file, folder, dir, overwritten, version}. */
+export function saveHtml(ws, { id, title, html }) {
+  ensure(ws);
+  const info = htmlInfo(html);
+  const titles = titlesOf(info, title);
+  const { folder, dir } = docFolder(ws.dirs.docs || ws.dirs.html, { ids: [id, ...info.ids], titles: titles.length ? titles : [title || ''], hist: info.hist });
+  if (info.hist.length) linkHistory(ws.dirs.history, folder, info.hist);
+  const file = path.join(dir, `${folder}.html`);
+  let version = null;
+  const exists = fs.existsSync(file);
+  if (exists && fs.readFileSync(file, 'utf8') !== html) {
+    const vdir = path.join(dir, 'Versions');
+    fs.mkdirSync(vdir, { recursive: true });
+    version = uniquePath(vdir, `${stamp(fs.statSync(file).mtime)} ${folder}.html`);
+    fs.copyFileSync(file, version);
+  }
+  fs.writeFileSync(file, html, 'utf8');
+  return { file, folder, dir, overwritten: exists, version };
 }
 
 /** The dialog's command per platform. Windows: FolderBrowserDialog owned by a 1-px TopMost form that is shown and
@@ -139,20 +355,35 @@ export async function readJson(req, max = 60 * 1024 * 1024) {
   try { return s ? JSON.parse(s) : {}; } catch { throw Object.assign(new Error('bad json'), { code: 400 }); }
 }
 
-/** The performance report's file in PDF\: "<تقرير الأداء|Performance report>-<date>-<AR|ENG>.pdf", -2 on a clash. */
-export const reportPath = (pdfDir, lang) => uniquePath(pdfDir, outName(lang === 'en' ? 'Performance report' : 'تقرير الأداء', new Date(), lang, 'pdf'));
+/** The performance report's file: <Performance report>\Exports\<stamp> <title> - <language>.pdf in the documents folder. */
+export const reportPath = (docsDir, lang) => uniquePath(docsDir, outName(lang === 'en' ? 'Performance report' : 'تقرير الأداء', new Date(), lang, 'pdf'));
 
-/** A shared Save-HTML's file in HTML\: named by the document inside it (bw-data), never by its id. */
-export function sharePath(htmlDir, html, fallback = 'document') {
-  const locale = /<html[^>]*\blang="en"/i.test(html) ? 'en' : 'ar';
-  let title = '';
-  try {
-    const data = JSON.parse(/<script type="application\/json" id="bw-data">([\s\S]*?)<\/script>/.exec(html)[1]);
-    const eds = data.services?.[0]?.editions || {};
-    // the document as it is on screen: the base plus its edits (a renamed cover lives in the ops, not in raw)
-    const docs = Object.fromEntries(Object.entries(eds).map(([k, x]) => [k, applyOps(JSON.parse(x.raw), x.ops || [])]));
-    const own = docs[locale] || Object.values(docs)[0];
-    title = pairedTitle(own, Object.values(docs).filter((d) => d !== own), '');
-  } catch { /* not a Save-HTML: the fallback */ }
-  return uniquePath(htmlDir, outName(title || String(fallback).replace(/(\.editor)?\.html?$/i, ''), new Date(), locale, 'html'));
+/** A shared Save-HTML's file: its document's Exports\ "<stamp> <title> - <language>.shared.html", named by the document inside it. */
+export function sharePath(docsDir, html, fallback = 'document') {
+  const info = htmlInfo(html);
+  const titles = titlesOf(info, String(fallback).replace(/(\.editor)?\.html?$/i, ''));
+  if (!isDocsRoot(docsDir)) return uniquePath(docsDir, `${titleStem(titles[0])} - ${LANG_WORD[info.locale]}.shared.html`);
+  const { folder, dir } = docFolder(docsDir, { ids: info.ids, titles, hist: info.hist });
+  if (info.hist.length) linkHistory(histOf(docsDir), folder, info.hist);
+  return uniquePath(path.join(dir, 'Exports'), `${stamp(new Date())} ${folder} - ${LANG_WORD[info.locale]}.shared.html`);
+}
+
+/** Documents\<title>\Sources (made) for what a harvest or an import collects. `titles`: the first names the folder (an existing
+ *  document of that title is joined). → {dir: …\Sources, docDir, folder}. */
+export function sourcesDir(titles, ws = workspace()) {
+  ensure(ws);
+  const list = [].concat(titles).filter((x) => x && !PLACEHOLDER_TITLES.has(x));
+  const { folder, dir } = docFolder(ws.dirs.docs, { titles: list.length ? list : [''] });
+  const s = path.join(dir, 'Sources');
+  fs.mkdirSync(s, { recursive: true });
+  return { dir: s, docDir: dir, folder };
+}
+/** Before a file the user may have worked on is written over: the old one is copied to Versions\ beside it (never lost). */
+export function keepVersion(file) {
+  if (!fs.existsSync(file)) return null;
+  const vdir = path.join(path.dirname(file), 'Versions');
+  fs.mkdirSync(vdir, { recursive: true });
+  const to = uniquePath(vdir, `${stamp(fs.statSync(file).mtime)} ${path.basename(file)}`);
+  fs.copyFileSync(file, to);
+  return to;
 }

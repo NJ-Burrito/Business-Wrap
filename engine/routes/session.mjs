@@ -2,12 +2,12 @@
 // with sendBeacon. The last connection gone → 4 s (a reload reconnects within it) → run.json, then ctx.onIdle
 // (the host's server exits 0). A relaunch asks /api/session/last and either resumes every tab (the server opens
 // Edge with all URLs, 30 per command line) or archives the run (new work).
-// Files: <workspace>\HISTORY\sessions\<runId>\<tabId>.json, run.json; archive\<YYYY-MM-DD>\<runId>\. Machine-only.
+// Files: <workspace>\.system\sessions\<runId>\<tabId>.json, run.json; archive\<YYYY-MM-DD>\<runId>\. Machine-only.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
-import { ensure, readJson, localDir } from '../workspace.mjs';
+import { ensure, readJson, localDir, subdir, systemDir } from '../workspace.mjs';
 import { launchBrowser, closeBrowsers, noteHost, hostState } from '../host.mjs';
 
 export const IDLE_MS = Number(process.env.BW_IDLE_MS || 4000);
@@ -20,16 +20,16 @@ const day = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate(
 function state(ctx) {
   return (ctx.session ||= { runId: `${stamp(new Date())}-${crypto.randomBytes(3).toString('hex')}`, startedAt: new Date().toISOString(), live: new Map(), timer: null, ended: false, inflight: 0, closing: new Map() });
 }
-const root = (ctx) => path.join(ensure(ctx.workspace).dirs.history, 'sessions');
+const root = (ctx) => subdir(ensure(ctx.workspace).dirs, 'sessions');
 const runDir = (ctx, id) => path.join(root(ctx), id);
 const tabsOf = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith('.json') && f !== 'run.json') : []).map((f) => { try { return JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch { return null; } }).filter(Boolean);
 
 /** The profile (name, picture, actor id) kept with the host: .local/profile.json. A tab on another origin (a new port)
  *  or another browser profile has an empty localStorage; serve.mjs hands this to the page, so «من أنت؟» is not asked again. */
 export const profileFile = () => path.join(localDir(), 'profile.json');
-/** H3: a second copy in the save folder's HISTORY\profile.json.gz (machine state, like the library mirror): an update into a new install folder (a new, empty
+/** H3: a second copy in the save folder's \.system\profile.json.gz (machine state, like the library mirror): an update into a new install folder (a new, empty
  *  .local) or a lost browser storage still finds the owner, so the first-launch card is never asked twice. */
-const historyProfile = (ctx) => (ctx?.workspace ? path.join(ctx.workspace.dirs.history, 'profile.json.gz') : null);
+const historyProfile = (ctx) => (ctx?.workspace ? path.join(systemDir(ctx.workspace.dirs), 'profile.json.gz') : null);
 function keepProfile(p, ctx) {
   if (!p || typeof p !== 'object' || typeof p.profile !== 'string' || !p.profile || p.profile.length > 2e6) return false;
   try { JSON.parse(p.profile); } catch { return false; }
@@ -97,12 +97,12 @@ function writeTab(ctx, b) {
   } else {
     let entry = b.entry || null;
     // a pagehide flush past 64 KB comes without the editions' base text (raw): it is taken back from this tab's last
-    // record of the same document, else from the library mirror the Save wrote (HISTORY\library\<id>.json.gz)
+    // record of the same document, else from the library mirror the Save wrote (library\<id>.json.gz in .system)
     if (entry?.editions && Object.values(entry.editions).some((x) => x && x.raw == null)) {
       let base = null;
       try { const old = JSON.parse(fs.readFileSync(f, 'utf8')); if (old.entry?.id === entry.id) base = old.entry; } catch { /* none */ }
       if (!base && /^doc-[A-Za-z0-9-]{4,64}$/.test(String(entry.id))) {
-        try { base = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(ensure(ctx.workspace).dirs.history, 'library', `${entry.id}.json.gz`))).toString('utf8')); } catch { /* none */ }
+        try { base = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(subdir(ensure(ctx.workspace).dirs, 'library'), `${entry.id}.json.gz`))).toString('utf8')); } catch { /* none */ }
       }
       for (const [ed, x] of Object.entries(entry.editions)) if (x && x.raw == null) { if (base?.editions?.[ed]?.raw == null) return; x.raw = base.editions[ed].raw; }
     }

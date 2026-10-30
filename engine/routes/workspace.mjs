@@ -1,6 +1,5 @@
-// The save folder over HTTP (A11): read it, choose it (OS dialog or a typed path), and write a Save-HTML file into HTML\.
-import fs from 'node:fs';
-import { workspace, ensure, setParent, pickParent, outName, uniquePath, readJson } from '../workspace.mjs';
+// The save folder over HTTP (A11): read it, choose it (OS dialog or a typed path), and write a Save-HTML file as the document's own file (Documents\<title>\<title>.html).
+import { workspace, ensure, setParent, pickParent, saveHtml, readJson } from '../workspace.mjs';
 
 export default async (req, url, send, ctx) => {
   if (!url.pathname.startsWith('/api/workspace')) return false;
@@ -14,9 +13,8 @@ export default async (req, url, send, ctx) => {
       if (typeof b.html !== 'string' || !/^\s*<!doctype html>/i.test(b.html)) { send(400, { error: 'html: a Save-HTML document' }); return true; }
       if (!ctx.workspace) { send(409, { error: 'no save folder: this server was started with --out' }); return true; }
       const w = ensure(ctx.workspace);
-      const file = uniquePath(w.dirs.html, outName(b.title || 'document', new Date(), b.locale, 'html'));
-      fs.writeFileSync(file, b.html, 'utf8');
-      send(200, { ok: true, file });
+      const r = saveHtml(w, { title: b.title || '', html: b.html });
+      send(200, { ok: true, file: r.file, folder: r.folder, overwritten: r.overwritten, version: r.version });
       return true;
     }
   } catch (e) { send(e.code === 400 || e.code === 413 ? e.code : 500, { error: String(e.message || e).slice(0, 300) }); return true; }

@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { launchOptions, REPO, loadPlaywright } from '../export.mjs';
+import { sourcesDir } from '../workspace.mjs';
 
 const SECRETS = path.join(REPO, '.local', 'harvest-secrets.json');
 export function resolveValue(v) {
@@ -409,7 +410,7 @@ async function conditions(page, fields, scope) {
 export async function crawl(cfg, { log = (m) => process.stderr.write(`${m}\n`), browser: shared, yesFileRealRequest = false, ask } = {}) {
   const filing = await mayFile(cfg, { yesFileRealRequest, ask });
   if (cfg.submit === true && !filing) log('submit: true without the go-ahead (--yes-file-real-request or a typed YES): running as a dry run');
-  const outDir = path.resolve(cfg.outDir || path.join(REPO, 'out', 'harvest', String(cfg.name || 'service').replace(/[^\w-]+/g, '-')));
+  const outDir = path.resolve(cfg.outDir || path.join(sourcesDir([cfg.name || 'service']).dir, 'crawl')); // Documents\<name>\Sources\crawl (never inside the repository)
   fs.mkdirSync(outDir, { recursive: true });
   const { chromium } = await loadPlaywright();
   const browser = shared || (await chromium.launch({ ...launchOptions(), headless: cfg.headed === false }));

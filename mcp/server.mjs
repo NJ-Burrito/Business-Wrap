@@ -7,6 +7,7 @@ import path from 'node:path';
 import { McpServer, z } from './vendor/sdk.mjs';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { exportPdf, exportDocx, loadTheme, fontsFor, REPO } from '../engine/export.mjs';
+import { workspace, ensure, uniquePath, outName, docTitle } from '../engine/workspace.mjs';
 import { applyOps, migrate, validateEdits } from '../engine/edits.mjs';
 import { assertBase } from '../engine/edits-base.mjs';
 import { checkForUpdate, oneLiner, token, currentVersion } from '../update/check.mjs';
@@ -122,7 +123,7 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
       document: z.string().describe('Document JSON path'),
       edits: z.string().optional().describe('Edits JSON to replay first'),
       locale: z.enum(['ar', 'en']).optional().describe('Edition (default: from the file name or the title script)'),
-      out_dir: z.string().describe('Folder for the outputs'),
+      out_dir: z.string().optional().describe('Folder for the outputs (default: the save folder, Documents\\<title>\\)'),
       theme: z.string().optional().describe('Theme / design-pack JSON'),
       docx: z.boolean().optional().describe('Also build the DOCX (default true)'),
       force: z.boolean().optional().describe('Replay the edits even when their baseHash or edition does not match this document (default false: refused)'),
@@ -133,10 +134,11 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     const ed = localeOf(document, doc, locale);
     const th = loadTheme(theme && path.resolve(theme));
     const stem = `${doc.service || 'document'}.${ed}`;
-    const dir = path.resolve(out_dir);
-    const pdf = await exportPdf(doc, { locale: ed, theme: th, pdfPath: path.join(dir, `${stem}.pdf`) });
+    const dir = out_dir ? path.resolve(out_dir) : null; // no out_dir: the save folder, Documents\<title>\Exports\<date> <title> - <language>
+    const target = (ext) => (dir ? path.join(dir, `${stem}.${ext}`) : uniquePath(ensure(workspace()).dirs.docs, outName(docTitle(doc, doc.service), new Date(), ed, ext)));
+    const pdf = await exportPdf(doc, { locale: ed, theme: th, pdfPath: target('pdf') });
     const res = { locale: ed, ops_applied: ops, pdf: pdf.pdf, post: pdf.post };
-    if (docx !== false) res.docx = exportDocx(doc, { locale: ed, theme: th, docxPath: path.join(dir, `${stem}.docx`) }).docx;
+    if (docx !== false) res.docx = exportDocx(doc, { locale: ed, theme: th, docxPath: target('docx') }).docx;
     return res;
   }));
 
@@ -175,14 +177,14 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     description: 'Turn a BPMN 2.0 file (Flowable, Camunda, Activiti), a monitoring-graph JSON, a draw.io diagram or a YAML/JSON step list into the Arabic and English document JSON (actors, workflow figure of the steps people do, steps, rules, user stories, statuses) and build the editor for it.',
     inputSchema: {
       model: z.string().describe('Path of the .bpmn / .xml / .drawio / .yaml / .json file'),
-      out_dir: z.string().describe('Folder for the documents and the editor'),
+      out_dir: z.string().optional().describe('Folder for the documents and the editor (default: the save folder, Documents\\<title>\\)'),
       name: z.string().optional().describe('Service name (wins over the name in the model)'),
       roles: z.string().optional().describe('Path of a roles mapping JSON: readable names (string or {ar, en}) for expression assignees and raw keys'),
       open: OPEN,
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   }, guard(async ({ model, out_dir, name, roles, open }) => {
-    const r = await harvestModel(path.resolve(model), { out: path.resolve(out_dir), name, roles: roles && path.resolve(roles) });
+    const r = await harvestModel(path.resolve(model), { out: out_dir ? path.resolve(out_dir) : undefined, name, roles: roles && path.resolve(roles) });
     return opened({ documents: r.documents, editor: r.editor, actors: r.ir.actors.length, unresolved_roles: r.ir.actors.filter((a) => a.unresolved).map((a) => a.raw), steps: r.ir.steps.filter((s) => s.type === 'task').length, learned_rules_applied: r.learned }, open);
   }));
 
@@ -192,14 +194,14 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     inputSchema: {
       crawl: z.string().describe('Path of the raw crawl harvest (harvest.json) or its folder'),
       model: z.string().describe('Path of process.json or a model file (BPMN, monitoring-graph JSON, draw.io, YAML)'),
-      out_dir: z.string().describe('Folder for the documents and the editor'),
+      out_dir: z.string().optional().describe('Folder for the documents and the editor (default: the save folder, Documents\\<title>\\)'),
       name: z.string().optional().describe('Service name for both editions'),
       roles: z.string().optional().describe('Path of a roles mapping JSON'),
       open: OPEN,
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   }, guard(async ({ crawl, model, out_dir, name, roles, open }) => {
-    const r = await harvestMerge(path.resolve(crawl), path.resolve(model), { out: path.resolve(out_dir), name, roles: roles && path.resolve(roles) });
+    const r = await harvestMerge(path.resolve(crawl), path.resolve(model), { out: out_dir ? path.resolve(out_dir) : undefined, name, roles: roles && path.resolve(roles) });
     return opened({ documents: r.documents, editor: r.editor, conflicts: r.conflicts, learned_rules_applied: r.learned }, open);
   }));
 
@@ -208,13 +210,13 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     description: 'Walk an e-service in a real browser from a crawl config (start URL per language, optional login steps with $env: / $secret: values, OTP pause rule) and turn what it shows into the document JSON + the editor. Opens a visible Chrome unless the config says headed: false; an OTP or captcha pause waits for the human. It never files a request: it stops before Send / Submit / Pay (a dry run).',
     inputSchema: {
       config: z.string().describe('Path of the crawl config JSON (see bible/contracts/harvest.schema.json#/$defs/crawlConfig)'),
-      out_dir: z.string().describe('Folder for the raw harvest, screenshots, documents and the editor'),
+      out_dir: z.string().optional().describe('Folder for the raw harvest, screenshots, documents and the editor (default: the save folder, Documents\\<title>\\)'),
       open: OPEN,
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
   }, guard(async ({ config, out_dir, open }) => {
     // never files a request from an agent: a dry run that stops before Send / Submit / Pay
-    const r = await harvestCrawl(path.resolve(config), { out: path.resolve(out_dir), log: () => {}, ask: async () => false });
+    const r = await harvestCrawl(path.resolve(config), { out: out_dir ? path.resolve(out_dir) : undefined, log: () => {}, ask: async () => false });
     return opened({ documents: r.documents, editor: r.editor, raw: path.join(r.rawDir, 'harvest.json'), languages: Object.keys(r.raw.languages), steps: Object.values(r.raw.languages)[0]?.steps.length ?? 0, learned_rules_applied: r.learned }, open);
   }));
 
@@ -223,14 +225,14 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     description: 'Turn files or folders the user provides into the Arabic and English document JSON + the editor: process models (BPMN, draw.io, YAML/JSON step lists, monitoring graph) through the model parser, and documents (PDF, DOCX, HTML, TXT, MD) whose numbered or bulleted lines become the steps. No model, no network. Files it cannot read are listed in skipped with the reason.',
     inputSchema: {
       sources: z.array(z.string()).min(1).describe('Files or folders'),
-      out_dir: z.string().describe('Folder for the documents and the editors'),
+      out_dir: z.string().optional().describe('Folder for the documents and the editors (default: the save folder, Documents\\<title>\\)'),
       name: z.string().optional().describe('Service name for every document'),
       roles: z.string().optional().describe('Path of a roles mapping JSON'),
       open: OPEN,
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   }, guard(async ({ sources, out_dir, name, roles, open }) => {
-    const { results, skipped } = await harvestSources(sources, { out: path.resolve(out_dir), name, roles: roles && path.resolve(roles) });
+    const { results, skipped } = await harvestSources(sources, { out: out_dir ? path.resolve(out_dir) : undefined, name, roles: roles && path.resolve(roles) });
     return opened({ results, skipped, documents: results[0]?.documents || [] }, open);
   }));
 

@@ -12,6 +12,7 @@ import { gateHarvest } from '../heal/gates.mjs';
 import { parseModel, modelToDocument } from './model.mjs';
 import { unescapeXml } from './xml.mjs';
 import { i18n, userCwd } from '../export.mjs';
+import { sourcesDir } from '../workspace.mjs';
 
 export const MODEL_EXT = /\.(bpmn|bpmn20\.xml|xml|drawio|ya?ml|json)$/i;
 export const TEXT_EXT = /\.(pdf|docx|html?|txt|md)$/i;
@@ -79,7 +80,7 @@ const expand = (srcs) => srcs.flatMap((s) => (fs.statSync(s).isDirectory() ? fs.
  * Every source → one document pair (+ editor). Returns { results: [{source, kind, documents, editor, service}], skipped }.
  * A file that is neither a model nor a readable document is listed in `skipped` with the reason.
  */
-export async function harvestSources(sources, { out = path.join(userCwd(), 'bw-harvest'), name, roles, editor = true } = {}) {
+export async function harvestSources(sources, { out, name, roles, editor = true } = {}) {
   const results = [];
   const skipped = [];
   // several sources of one call that land on the same service folder (one `name` for all) never overwrite each other:
@@ -87,7 +88,8 @@ export async function harvestSources(sources, { out = path.join(userCwd(), 'bw-h
   const used = new Map();
   const H = i18n().harvest;
   const into = (ir) => {
-    const dir = path.resolve(out, modelToDocument(ir, { locale: 'en', L: H.en }).service);
+    const service = modelToDocument(ir, { locale: 'en', L: H.en }).service;
+    const dir = out ? path.resolve(out, service) : path.join(sourcesDir([name || ir.name || service]).dir, service); // no --out: inside the document's Sources\
     const n = (used.get(dir) || 0) + 1;
     used.set(dir, n);
     return n === 1 ? undefined : `${dir}-${n}`;

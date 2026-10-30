@@ -1,10 +1,10 @@
 // Projects (H1, 0.13.1): the editor's project list and which document sits in which project, kept beside the library
-// mirror in <workspace>\HISTORY\projects.json so a reload, a resumed host or a second browser finds the same groups.
+// mirror in <workspace>\.system\projects.json so a reload, a resumed host or a second browser finds the same groups.
 //   GET  /api/projects          → the stored state ({} when none yet)
 //   POST /api/projects {state}  → stored when newer than what is there (savedAt), else the stored one comes back
 import fs from 'node:fs';
 import path from 'node:path';
-import { ensure, readJson } from '../workspace.mjs';
+import { ensure, readJson, systemDir } from '../workspace.mjs';
 
 const PJ = /^pj-[A-Za-z0-9-]{4,64}$/;
 const DOC = /^doc-[A-Za-z0-9-]{4,64}$/;
@@ -28,7 +28,7 @@ export default async (req, url, send, ctx) => {
   if (url.pathname !== '/api/projects') return false;
   try {
     if (!ctx.workspace) { send(200, { ok: false, stored: false }); return true; }
-    const f = path.join(ensure(ctx.workspace).dirs.history, 'projects.json');
+    const f = path.join(systemDir(ensure(ctx.workspace).dirs), 'projects.json');
     let have = null;
     try { have = cleanState(JSON.parse(fs.readFileSync(f, 'utf8'))); } catch { /* none yet */ }
     if (req.method === 'GET') { send(200, { ok: true, state: have }); return true; }
