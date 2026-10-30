@@ -13,7 +13,7 @@
 // do not move a line, so the editor's markup and the printed markup are one.
 
 import { DIAGRAM } from './diagram.mjs';
-import { isRich, textOf } from './edits.mjs';
+import { isRich, textOf, docNumbers } from './edits.mjs';
 import { coveredOf, splitLines } from './cells.mjs';
 const NL = '\n';
 const KEEP_ROWS = 3;
@@ -645,6 +645,8 @@ export function renderParts(doc, o) {
   const bidi = (v) => (isRich(v) ? richHtml(v, bidi0) : bidi0(v));
   const none = L.none;
   const PM = pageModel(doc);
+  const NUM = docNumbers(doc); // 0.15.0 (F4): what prints comes from position, never from a stored number
+  const storyNo = (ptr, blk) => { const m = /^\/chapters\/(\d+)\/sections\/(\d+)\/blocks\/(\d+)/.exec(ptr || ''); return m ? (NUM.story[+m[1]]?.[+m[2]]?.[+m[3]] || (NUM.manual ? (blk.number ?? '') : '')) : (blk.number ?? ''); };
   const segOn = PM.segments.length > 1;
   const segStarts = new Map(PM.segments.filter((x) => x.start).map((x) => [x.start, x]));
   const segOfPtr = (p) => PM.segOf.get(p) ?? 0;
@@ -967,7 +969,7 @@ export function renderParts(doc, o) {
             const colgroup = '<colgroup><col style="width:22%" /><col style="width:78%" /></colgroup>';
             const partsArr = [
               `<div class="id-card"><table class="control story-info">${colgroup}
-    <caption class="story-head"><span class="sn"${dp(b + '/number')}>${bidi(block.number ?? '')}</span>${lb('userStory')}</caption>
+    <caption class="story-head"><span class="sn"${dp(b + '/number')}>${bidi(storyNo(b, block))}</span>${lb('userStory')}</caption>
     <tbody>
       ${row('storyId', `<bdi dir="ltr"${dp(sp + '/id')}>${esc(s.id)}</bdi>`)}
     </tbody>
@@ -1098,12 +1100,12 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     return doc.chapters.flatMap((ch, ci) => {
       if (ch.tocHidden) return [];
       const cp = `/chapters/${ci}`;
-      const head = row(ch.number, ch.title, 'toc-chapter', cp, cp + '/number', cp + '/title');
+      const head = row(NUM.ch[ci], ch.title, 'toc-chapter', cp, cp + '/number', cp + '/title');
       if (ch.sections.length === 1) {
         const cards = ch.sections[0].blocks.map((x, k) => [x, k]).filter(([x]) => x.kind === 'subhead' && !x.tocHidden).map(([x, k]) => row('', x.text, 'toc-card', `${cp}/sections/0/blocks/${k}`, '', `${cp}/sections/0/blocks/${k}/text`));
         return [head, ...cards];
       }
-      return [head, ...ch.sections.map((sec, si) => [sec, si]).filter(([sec]) => !sec.tocHidden).map(([sec, si]) => row(sec.number, sec.title, '', `${cp}/sections/${si}`, `${cp}/sections/${si}/number`, `${cp}/sections/${si}/title`))];
+      return [head, ...ch.sections.map((sec, si) => [sec, si]).filter(([sec]) => !sec.tocHidden).map(([sec, si]) => row(NUM.sec[ci][si], sec.title, '', `${cp}/sections/${si}`, `${cp}/sections/${si}/number`, `${cp}/sections/${si}/title`))];
     });
   }
 
@@ -1126,7 +1128,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
       const cp = `/chapters/${ci}`;
       const hasFigure = ch.sections.some((sec) => sec.blocks.some((x) => x.kind === 'figure' || x.kind === 'diagram'));
       const single = ch.sections.length === 1;
-      const h2 = `<h2><span class="num"${dp(cp + '/number')}>${bidi(ch.number)}</span><span${dp(cp + '/title')}>${bidi(ch.title)}</span></h2>`;
+      const h2 = `<h2><span class="num"${dp(cp + '/number')}>${bidi(NUM.ch[ci])}</span><span${dp(cp + '/title')}>${bidi(ch.title)}</span></h2>`;
       const first = ch.sections[0];
       const opensLong = !!first?.blocks[0] && !['figure', 'diagram', 'stories', 'shots'].includes(first.blocks[0].kind);
       // page segments (A18 / A6): a container takes the segment of its first block; figure chapters keep their sheet
@@ -1143,7 +1145,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
       sec.blocks,
       `${sp}/blocks`,
       (i === 0 && opensLong ? h2 : '') +
-        `<h3><span class="sn"${dp(sp + '/number')}>${bidi(sec.number)}</span><span${dp(sp + '/title')}>${bidi(sec.title)}</span></h3>`,
+        `<h3><span class="sn"${dp(sp + '/number')}>${bidi(NUM.sec[ci][i])}</span><span${dp(sp + '/title')}>${bidi(sec.title)}</span></h3>`,
       segOn && !hasFigure ? sSeg : -1
     )}
   </section>`;

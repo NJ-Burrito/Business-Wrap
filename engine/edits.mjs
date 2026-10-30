@@ -450,3 +450,45 @@ export function docIdFromEdit(before, after, oldId) {
   const next = after.slice(head.length, after.length - tail.length);
   return next && next !== oldId ? next : null;
 }
+
+/* ── 0.15.0 · render-time numbering (F4) ─────────────────────────────────────────────────────────────────────────────
+ * Chapter, section and story numbers come from position, so a stored number can never drift from what prints.
+ * `control.numbering === 'manual'` opts a document out: the stored numbers then print as they are. */
+export const isManualNumbering = (doc) => doc?.control?.numbering === 'manual';
+
+/** @returns {{manual: boolean, ch: string[], sec: string[][], story: string[][][]}} what prints, by position.
+ *  ch[i] = "i+1", sec[i][j] = "i+1.j+1", story[i][j][k] = the section number for a `stories` block at blocks[k] (others ''). */
+export function docNumbers(doc) {
+  const manual = isManualNumbering(doc);
+  const chs = doc?.chapters || [];
+  const out = { manual, ch: [], sec: [], story: [] };
+  chs.forEach((ch, i) => {
+    const n = manual ? String(ch.number ?? '') : String(i + 1);
+    out.ch.push(n);
+    out.sec.push([]);
+    out.story.push([]);
+    (ch.sections || []).forEach((s, j) => {
+      const sn = manual ? String(s.number ?? '') : `${i + 1}.${j + 1}`;
+      out.sec[i].push(sn);
+      out.story[i].push((s.blocks || []).map((b) => (b.kind === 'stories' ? (manual ? String(b.number ?? '') : sn) : '')));
+    });
+  });
+  return out;
+}
+
+/** Writes the computed numbers into the document itself (in place, returns it) so the JSON on disk equals what prints.
+ *  Every `stories` block takes its section's number. Manual documents are left untouched. */
+export function normaliseNumbers(doc) {
+  if (!doc?.chapters || isManualNumbering(doc)) return doc;
+  const N = docNumbers(doc);
+  doc.chapters.forEach((ch, i) => {
+    ch.number = N.ch[i];
+    (ch.sections || []).forEach((s, j) => {
+      s.number = N.sec[i][j];
+      (s.blocks || []).forEach((b) => {
+        if (b.kind === 'stories') b.number = N.sec[i][j];
+      });
+    });
+  });
+  return doc;
+}

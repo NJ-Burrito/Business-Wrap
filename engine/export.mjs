@@ -13,7 +13,7 @@ import { spawnSync } from 'node:child_process';
 import { py } from './py.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { renderDocument, chromeTemplates, relaxTallGroups, relaxArgs, PAGE, pageGeom, pageModel, folioOf, designTheme, confidentialText, uploadedFontCss, faceWeights } from './render.mjs';
-import { applyOps, migrate } from './edits.mjs';
+import { applyOps, migrate, normaliseNumbers } from './edits.mjs';
 import { assertBase } from './edits-base.mjs';
 import { loadManifest, resolveFonts, fontFaceCss, systemFamily, normaliseFont, ttfDataUri } from './fonts.mjs';
 import { config } from './config.mjs';
@@ -128,6 +128,43 @@ export async function loadPlaywright() {
 }
 async function chromium() {
   return (await loadPlaywright()).chromium;
+}
+
+/** 0.15.0 (F5): a diagram model → PNG through the same headless Chrome the PDF uses (no new dependency), Thmanyah embedded.
+ *  scale = device pixel ratio (2 = 2x). Returns {png, width, height, legibility}. */
+export async function renderDiagramPng(model, { theme, locale = 'ar', scale = 2, pngPath, browser: shared, frameMm } = {}) {
+  const th = designTheme(theme || loadTheme(), {});
+  const svg = DIAGRAM.render(model, { theme: th, locale });
+  const view = DIAGRAM.resolve(model, { theme: th, locale }).view;
+  const { used } = fontsFor(th);
+  const css = fontFaceCss(used.filter((c) => [400, 500, 600, 700].includes(c.weight)), { embed: true });
+  const html = `<!doctype html><meta charset="utf-8"><style>${css}html,body{margin:0;background:#fff}svg{display:block}</style>${svg}`;
+  const browser = shared || (await (await chromium()).launch(launchOptions()));
+  try {
+    const width = Math.ceil(view.w);
+    const height = Math.ceil(view.h);
+    const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: scale });
+    await page.setContent(html, { waitUntil: 'load' });
+    await page.evaluate(() => document.fonts.ready.then(() => true));
+    fs.mkdirSync(path.dirname(pngPath), { recursive: true });
+    await page.screenshot({ path: pngPath, clip: { x: 0, y: 0, width, height } });
+    await page.close();
+    return { png: pngPath, width: width * scale, height: height * scale, legibility: DIAGRAM.legibility(model, { theme: th, locale, ...(frameMm ? { frameMm } : {}) }) };
+  } finally {
+    if (!shared) await browser.close();
+  }
+}
+
+/** One warning line per diagram block that would print too small or with overlapping text (warn, never block). */
+export function diagramWarnings(doc, { theme, locale = 'ar', frameMm, minPt } = {}) {
+  const out = [];
+  const th = designTheme(theme || loadTheme(), doc);
+  (doc.chapters || []).forEach((ch, ci) => (ch.sections || []).forEach((sec, si) => (sec.blocks || []).forEach((b, bi) => {
+    if (b.kind !== 'diagram' || !b.model) return;
+    const r = DIAGRAM.legibility(b.model, { theme: th, locale, ...(frameMm ? { frameMm } : {}), ...(minPt ? { minPt } : {}) });
+    if (!r.ok) out.push(`diagram /chapters/${ci}/sections/${si}/blocks/${bi}: ${r.small.length ? `text prints at ${r.minPtPrinted} pt (below ${r.minPt}); ` : ''}${r.overlaps.length ? `${r.overlaps.length} overlap(s)` : ''}`.replace(/; $/, ''));
+  })));
+  return out;
 }
 
 /** Prints doc → pdfPath. Returns {pdf, pages}. A tagged, header/footer PDF like the source. */
@@ -288,7 +325,7 @@ export function exportDocx(doc, { locale, theme, docxPath, embedFonts = true }) 
   const cuts = plan.cuts;
   const docJson = path.join(work, 'document.json');
   const themeJson = path.join(work, 'theme.json');
-  fs.writeFileSync(docJson, JSON.stringify(withResolvedDiagrams(doc, designTheme(theme, doc), locale)), 'utf8');
+  fs.writeFileSync(docJson, JSON.stringify(normaliseNumbers(structuredClone(withResolvedDiagrams(doc, designTheme(theme, doc), locale)))) /* 0.15.0 (F4): the same positional numbers the PDF prints */, 'utf8');
   fs.writeFileSync(themeJson, JSON.stringify(designTheme(theme, doc)), 'utf8');
   fs.mkdirSync(path.dirname(docxPath), { recursive: true });
   // the house pair keeps the builder's own Thmanyah naming; any other choice names the families as chosen
@@ -346,6 +383,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     fs.writeFileSync(f, printHtml(doc, { locale, theme }).html);
     console.log(f);
   } else {
+    for (const w of diagramWarnings(doc, { theme, locale })) console.error(`WARN ${w}`);
     const r = await exportPdf(doc, { locale, theme, pdfPath: target('pdf') });
     console.log(`PDF  ${r.pdf}  (${r.post})`);
     if (!a['no-docx']) console.log(`DOCX ${exportDocx(doc, { locale, theme, docxPath: target('docx'), embedFonts: !a['no-embed-fonts'] }).docx}`);
