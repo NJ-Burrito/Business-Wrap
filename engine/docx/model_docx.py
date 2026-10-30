@@ -137,7 +137,11 @@ def list_info(leaf):
         return None
     level = max(0, min(8, int(st.get('level') or 0)))
     if kind in ('bullet', 'number'):
-        return {'kind': kind, 'level': level, 'fmt': st.get('numFormat')}
+        info = {'kind': kind, 'level': level, 'fmt': st.get('numFormat')}
+        sv = st.get('start')  # 0.14.0 (E2): a number run starts at this value, or goes on from the previous list
+        if kind == 'number' and (sv == 'continue' or (isinstance(sv, (int, float)) and not isinstance(sv, bool) and 0 <= sv <= 9999)):
+            info['start'] = sv if sv == 'continue' else int(sv)
+        return info
     m = re.match(r'^shape:(.)$', str(kind))
     return {'kind': 'shape', 'shape': m.group(1), 'level': level} if m and m.group(1) in '•◦▪–✓➤' else None
 
@@ -174,11 +178,48 @@ def list_num_id(document, info):
     return _num_id(document, key, ''.join(lv))
 
 
+_RUN = {}
+
+
+def _run_num_id(document, paragraph, info, base):
+    """0.14.0 (E2): a number run with a start value gets its own w:num (startOverride) and its next items follow it;
+    a run that goes on ('continue') or has no start keeps the shared list, as before."""
+    lv = info['level']
+    start = info.get('start')
+    if info['kind'] != 'number':
+        return base
+    if isinstance(start, int):
+        root = document.part.numbering_part.numbering_definitions._numbering
+        abs_id = next((n.find(qn('w:abstractNumId')).get(qn('w:val')) for n in root.findall(qn('w:num')) if n.get(qn('w:numId')) == str(base)), '0')
+        nid = max([int(e.get(qn('w:numId'))) for e in root.findall(qn('w:num'))] + [100]) + 1
+        root.append(parse_xml(f'<w:num {nsdecls("w")} w:numId="{nid}"><w:abstractNumId w:val="{abs_id}"/><w:lvlOverride w:ilvl="{lv}"><w:startOverride w:val="{start}"/></w:lvlOverride></w:num>'))
+        _RUN[lv] = nid
+        return nid
+    if start == 'continue':
+        _RUN.pop(lv, None)
+        return base
+    # no start: stay in the run opened above while the previous paragraphs are its items (or deeper items of it)
+    prev = paragraph._p.getprevious()
+    while prev is not None:
+        n = prev.find(qn('w:pPr') + '/' + qn('w:numPr'))
+        if n is None:
+            break
+        pl = int(n.find(qn('w:ilvl')).get(qn('w:val')))
+        if pl > lv:
+            prev = prev.getprevious()
+            continue
+        if pl == lv and _RUN.get(lv) is not None and n.find(qn('w:numId')).get(qn('w:val')) == str(_RUN[lv]):
+            return _RUN[lv]
+        break
+    _RUN.pop(lv, None)
+    return base
+
+
 def number_paragraph(document, paragraph, info):
     pPr = paragraph._p.get_or_add_pPr()
     numPr = OxmlElement('w:numPr')
     il = OxmlElement('w:ilvl'); il.set(qn('w:val'), str(info['level']))
-    ni = OxmlElement('w:numId'); ni.set(qn('w:val'), str(list_num_id(document, info)))
+    ni = OxmlElement('w:numId'); ni.set(qn('w:val'), str(_run_num_id(document, paragraph, info, list_num_id(document, info))))
     numPr.append(il); numPr.append(ni)
     pPr.insert(0, numPr)
 

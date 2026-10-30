@@ -238,7 +238,12 @@ export function listOf(leaf) {
   const l = isRich(leaf) && leaf.style?.list;
   if (!l) return null;
   const level = Math.max(0, Math.min(8, (leaf.style.level | 0)));
-  if (l === 'bullet' || l === 'number') return { kind: l, level, numFormat: leaf.style.numFormat };
+  if (l === 'bullet' || l === 'number') {
+    const li = { kind: l, level, numFormat: leaf.style.numFormat };
+    const st = leaf.style.start; // 0.14.0 (E2): a number-list run starts at this value, or continues the previous list
+    if (l === 'number' && (st === 'continue' || (Number.isInteger(+st) && st !== '' && st !== null && +st >= 0 && +st <= 9999))) li.start = st === 'continue' ? st : +st;
+    return li;
+  }
   const m = /^shape:(.)$/u.exec(String(l));
   return m && '•◦▪–✓➤'.includes(m[1]) ? { kind: 'shape', shape: m[1], level } : null;
 }
@@ -702,6 +707,7 @@ export function renderParts(doc, o) {
 
   const rowH = (h) => (Number.isFinite(+h) && +h >= 4 && +h <= 400 ? ` style="height:${+h}mm"` : '');
   /** One body cell: spans, fill, wrap and a list (one item per line) are the spreadsheet cell's own look (cells.mjs). */
+  const cellNext = new Map();
   function cell(c, ri, ci, span, t) {
     const st = isRich(c) ? c.style || {} : {};
     const li = listOf(c);
@@ -718,7 +724,15 @@ export function renderParts(doc, o) {
     if (li) {
       const tag = li.kind === 'number' ? 'ol' : 'ul';
       const type = li.kind === 'number' ? numFormatAt(0, li.numFormat) : li.kind === 'shape' ? `"${li.shape} "` : 'disc';
-      body = `<${tag} class="bw-list" style="list-style-type:${type}">${splitLines(c).map((ln) => `<li>${richHtml(ln, bidi0)}</li>`).join('')}</${tag}>`;
+      const lines = splitLines(c);
+      let startAt = '';
+      if (li.kind === 'number') { // 0.14.0 (E2): start value, or on from the numbered list above in the same column
+        const key = `${t.rowsPtr || ''}|${ci}`;
+        const from = li.start === 'continue' ? cellNext.get(key) || 1 : li.start != null ? li.start : 1;
+        cellNext.set(key, from + lines.length);
+        if (from !== 1) startAt = ` start="${from}"`;
+      }
+      body = `<${tag} class="bw-list"${startAt} style="list-style-type:${type}">${lines.map((ln) => `<li>${richHtml(ln, bidi0)}</li>`).join('')}</${tag}>`;
     } else body = bidi(c);
     return `<td${attrs}${sp}${f}${dp(t.cellPtr ? t.cellPtr(ri, ci) : t.rowsPtr && `${t.rowsPtr}/${ri}/${ci}`)} data-r="${ri}" data-c="${ci}">${body}</td>`;
   }
@@ -846,26 +860,31 @@ export function renderParts(doc, o) {
   const paras = (block, b) =>
     (block.paragraphs || []).map((text, k) => (isRich(text) ? { text: textOf(text), leaf: text, p: `${b}/paragraphs/${k}` } : { text: String(text), p: `${b}/paragraphs/${k}` }));
   /** Nested lists (A26): bullets / numbers / shapes, levels 0–8, one <ol>/<ul> per level, the text in its own span. */
+  const listNext = new Map(); // 0.14.0 (E2): level → the number the next numbered list at that level goes on with
   function richList(items, b) {
     const out = [];
     const st = [];
     const listTag = (li) => (li.kind === 'number' ? 'ol' : 'ul');
     const listType = (li) => (li.kind === 'number' ? numFormatAt(li.level, li.numFormat) : li.kind === 'shape' ? `"${li.shape} "` : ['disc', 'circle', 'square'][li.level % 3]);
-    const openList = (lv, li) => `<${listTag(li)} class="bw-list" data-level="${lv}" style="list-style-type:${lv === li.level ? listType(li) : 'none'}">`;
+    const openList = (lv, li, from = 1) => `<${listTag(li)} class="bw-list" data-level="${lv}"${listTag(li) === 'ol' && from !== 1 ? ` start="${from}"` : ''} style="list-style-type:${lv === li.level ? listType(li) : 'none'}">`;
+    const closeTop = () => { const x = st.pop(); out.push(`</li></${x.tag}>`); if (x.tag === 'ol' && !x.nest) listNext.set(x.level, x.from + x.n); };
     for (const it of items) {
       const L = it.li.level;
       const tag = listTag(it.li);
-      while (st.length && st.at(-1).level > L) out.push(`</li></${st.pop().tag}>`);
-      if (st.length && st.at(-1).level === L && st.at(-1).tag !== tag) out.push(`</li></${st.pop().tag}>`);
+      if (tag === 'ol' && it.li.start !== undefined && st.length && st.at(-1).level === L && st.at(-1).tag === tag) closeTop(); // a start value mid-list begins a new run
+      while (st.length && st.at(-1).level > L) closeTop();
+      if (st.length && st.at(-1).level === L && st.at(-1).tag !== tag) closeTop();
       if (st.length && st.at(-1).level === L) out.push('</li>');
       else {
-        for (let lv = st.length ? st.at(-1).level + 1 : L; lv < L; lv += 1) { out.push(openList(lv, { ...it.li, level: -1 }) + '<li class="bw-nest">'); st.push({ tag: listTag(it.li), level: lv }); }
-        out.push(openList(L, it.li));
-        st.push({ tag, level: L });
+        for (let lv = st.length ? st.at(-1).level + 1 : L; lv < L; lv += 1) { out.push(openList(lv, { ...it.li, level: -1 }) + '<li class="bw-nest">'); st.push({ tag: listTag(it.li), level: lv, nest: true, from: 1, n: 0 }); }
+        const from = tag === 'ol' ? (it.li.start === 'continue' ? listNext.get(L) || 1 : it.li.start != null ? it.li.start : 1) : 1;
+        out.push(openList(L, it.li, from));
+        st.push({ tag, level: L, from, n: 0 });
       }
+      st.at(-1).n += 1;
       out.push(`<li data-b="${attr(b)}" data-level="${L}"${leafAttrs(it.leaf)}><span${dp(it.p)}>${richHtml(it.leaf, bidi0)}</span>`);
     }
-    while (st.length) out.push(`</li></${st.pop().tag}>`);
+    while (st.length) closeTop();
     return out.join('');
   }
 

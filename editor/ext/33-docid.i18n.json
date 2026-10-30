@@ -1,0 +1,12 @@
+{
+ "ar": {
+  "docId": "رقم الوثيقة",
+  "docid.prompt": "رقم الوثيقة (يتغيّر في كل مكان يظهر فيه)",
+  "docid.done": "تم تحديث رقم الوثيقة في {n} مواضع"
+ },
+ "en": {
+  "docId": "Document ID",
+  "docid.prompt": "Document ID (changes everywhere it appears)",
+  "docid.done": "Document ID updated in {n} places"
+ }
+}
