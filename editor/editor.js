@@ -18,6 +18,8 @@ const ls = {
 };
 
 const S = {
+  // Save HTML carries the fonts when the page is served: its font files are server-relative (/font/…), which a saved copy cannot reach (TSYS-01)
+  embedFonts: /^https?:$/.test(location.protocol),
   ui: ls.get('bw:ui') || DATA.uiLang || 'ar',
   // review2 · 34: the RTL/LTR choice is per edition (bw:dir:ar / bw:dir:en); none = the edition's own direction
   dirs: { ar: ls.get('bw:dir:ar') || null, en: ls.get('bw:dir:en') || null },
@@ -68,6 +70,8 @@ const t = (k, vars = {}) => {
   for (const [a, b] of Object.entries(vars)) s = s.replace(`{${a}}`, b);
   return s;
 };
+/** A UI string in the language of edition `ed` (what a placeholder written into that edition says, whatever the UI language is). */
+const tIn = (k, ed) => I18N.ui[ed]?.[k] ?? I18N.ui.en[k] ?? k;
 const tAlt = (k) => I18N.ui[S.ui === 'ar' ? 'en' : 'ar'][k] ?? ''; // the other language's word (toolbar parity measure)
 const kindName = (k) => (I18N.ui[S.ui].kinds || {})[k] || k;
 
@@ -187,6 +191,8 @@ function commit(ops, { ed = S.ed, rerender = true, group = newGroup(), mirror = 
   const e = cur(ed);
   const paired = ops.some(isStructural) && hasOther() && pairShape(); // only a structural op can change the pair's shape
   const sigs = [];
+  // an op may carry `mirrorValue`: what the OTHER edition gets instead of a verbatim copy (a placeholder in its own language, DOCS-02); it never enters the history
+  const alt = ops.map((op) => { const v = op.mirrorValue; delete op.mirrorValue; return v; });
   ops.forEach((op, k) => {
     op.id = `${group}.${k}`;
     op.at = new Date().toISOString();
@@ -198,7 +204,7 @@ function commit(ops, { ed = S.ed, rerender = true, group = newGroup(), mirror = 
   if (mirror === 'auto') mirror = ops.some(isStructural);
   if (mirror && S.both && hasOther()) {
     const o = cur(other(ed));
-    const copy = ops.map((op) => ({ ...JSON.parse(JSON.stringify(op)) }));
+    const copy = ops.map((op, k) => ({ ...JSON.parse(JSON.stringify(op)), ...(alt[k] !== undefined ? { value: JSON.parse(JSON.stringify(alt[k])) } : {}) }));
     try {
       const test = JSON.parse(JSON.stringify(o.doc));
       // the other edition must hold the same kind of thing at every source pointer: a move from a hole is refused
@@ -287,7 +293,7 @@ function mirrorOf(ed, g, last) {
   if (!hasOther()) return null;
   const o = cur(other(ed));
   const x = o && last(o);
-  return x && String(x.id).startsWith(`${g}.m`) ? o : null;
+  return x && String(x.id).split('.')[0] === g ? o : null; // the same action's op in the other edition (a mirror g.m0, or a paired placeholder)
 }
 function redo(ed = S.ed) {
   const e = cur(ed);
@@ -509,6 +515,7 @@ async function saveHtml(embedFonts) {
     editions[ed] = { ...s.editions[ed], name: e.name, raw: e.raw, hash: e.hash, ops: e.ops, status: e.status, stale: [...e.stale], comments: e.comments, versions: e.versions }; // ...first: an edition attribute this build does not know travels on (engine/format.mjs)
   let fontCss = DATA.fontCss;
   if (embedFonts) fontCss = await inlineFonts(fontCss);
+  else fontCss = fontCss.replace(/url\(\/font\/([^)]+)\)/g, (m, enc) => `url(${decodeURIComponent(enc)})`); // not embedded: back to the file:// paths, never a dead server-relative one
   const data = { ...DATA, setId: `${DATA.setId}:${S.svc}`, services: [{ id: s.id, editions }], theme: S.theme, fontCss, uiLang: S.ui };
   emit('saveHtml', data); // an extension may add its own keys to the embedded data
   const parts = renderParts(cur().doc, { locale: S.ed, labels: I18N.doc[S.ed], theme: S.theme });
@@ -528,7 +535,8 @@ ${documentMain(parts, S.theme.logos, S.ed)}
   download(`${S.svc}.editor.html`, html, 'text/html');
 }
 async function inlineFonts(css) {
-  const urls = [...css.matchAll(/url\((file:[^)]+)\)/g)].map((m) => m[1]);
+  // file:// (a file opened from disk) and /font/<file url> (the same fonts as engine/serve.mjs hands them to a served page, TSYS-01)
+  const urls = [...css.matchAll(/url\(((?:file:|\/font\/)[^)]+)\)/g)].map((m) => m[1]);
   for (const u of urls) {
     try {
       const b = await (await fetch(u)).blob();
@@ -597,6 +605,8 @@ function selectEl(el) {
   refreshUi();
 }
 function paintSel() {
+  // the picked picture or box shows it, the free ones (.bw-ov) and the in-flow ones (.bw-ovf) alike (DOCS-06)
+  document.querySelectorAll('#bw-pair .bw-ov, #bw-pair .bw-ovf').forEach((x) => x.classList.toggle('bw-ov-sel', S.selOv != null && +x.dataset.i === S.selOv));
   document.querySelectorAll('.bw-sel').forEach((x) => x.classList.remove('bw-sel'));
   if (!S.sel?.b) { overlay.grip.hidden = true; return; }
   const main = mainOf(S.sel.ed);
@@ -1580,7 +1590,8 @@ const GENERAL_GROUPS = ['file', 'insert', 'edit', 'document', 'design', 'view', 
 function paletteCmds() {
   const m = ctxModel(blockOf(S.sel?.b), !!tableCtx());
   const here = new Set([...(m?.groups || []).flat(), ...(m?.keep || [])]);
-  return CMDS.filter((c) => GENERAL_GROUPS.includes(c.group) || here.has(c.id));
+  const fmt = typeof W2F !== 'undefined' && W2F.leaf?.() != null; // the format bar is showing: its tools are in the palette too (TW-06)
+  return CMDS.filter((c) => GENERAL_GROUPS.includes(c.group) || here.has(c.id) || (fmt && c.group === 'format'));
 }
 function fillPalette() {
   const q = fold(root.querySelector('.palette input').value.trim());
@@ -2549,11 +2560,29 @@ document.addEventListener('click', (e) => {
     if (S.sel || S.selOv != null || S.dg) { S.sel = null; S.selOv = null; dgClear(); paintSel(); refreshUi(); }
   }
 });
+const leafShown = (el) => (el.dataset.pfx || '') + el.innerText.replace(/\n{2,}/g, '\n').trim(); // a typed line break stays (Enter in a cell, Shift+Enter)
+// what the leaf showed right before the browser changes it (TW-01): the page draws text through polish(), so a typed change is a delta on the DOM text, applied to the document text
+document.addEventListener('beforeinput', (e) => {
+  const el = e.target.closest?.('#bw-pair [data-p]');
+  if (el) el.__bwShown = leafShown(el);
+}, true);
 document.addEventListener('input', (e) => {
   const el = e.target.closest?.('#bw-pair [data-p]');
   if (!el) return;
   const ed = el.closest('main.bw-doc').dataset.locale;
-  const text = (el.dataset.pfx || '') + el.innerText.replace(/\n{2,}/g, '\n').trim(); // a typed line break stays (Enter in a cell, Shift+Enter)
+  let text = leafShown(el);
+  const prev = el.__bwShown;
+  el.__bwShown = text;
+  const leaf = M[S.svc]?.[ed] ? get(cur(ed).doc, el.dataset.p) : undefined;
+  const docOld = typeof leaf === 'string' || isRich(leaf) ? textOf(leaf) : null;
+  if (docOld != null && prev != null && prev !== text && prev !== docOld) { // the document keeps what the page does not draw (diacritics, tatweel): only the typed change goes in
+    let a = 0;
+    while (a < prev.length && a < text.length && prev[a] === text[a]) a += 1;
+    let z = 0;
+    while (z < prev.length - a && z < text.length - a && prev[prev.length - 1 - z] === text[text.length - 1 - z]) z += 1;
+    const map = w2align(docOld, prev);
+    text = docOld.slice(0, map[a]) + text.slice(a, text.length - z) + docOld.slice(map[prev.length - z]);
+  }
   setText(el.dataset.p, text, ed);
 });
 document.addEventListener('focusout', (e) => {
@@ -2608,8 +2637,11 @@ document.addEventListener('keydown', (e) => {
   if (inUi && (inText || e.key === 'Escape')) { if (e.key === 'Escape') uxEscape(); return; }
   if (!inText && !inUi && !mod && !e.altKey && e.key.toLowerCase() === 'f') { e.preventDefault(); runAction('focus'); return; }
   if (e.key === 'Escape' && S.focus) { runAction('focus'); return; }
-  if (mod && !e.shiftKey && e.key.toLowerCase() === 'z' && !e.target.isContentEditable) { e.preventDefault(); undo(); return; }
-  if (mod && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z')) && !e.target.isContentEditable) { e.preventDefault(); redo(); return; }
+  // in a text leaf the browser's own undo runs only while a typing group is open (its stack holds the typing); after any app-level
+  // edit (Ctrl+B, Enter, a list, an alignment) that stack is empty, so the keyboard undoes the app's last edit (TW-04)
+  const typingOpen = () => { const l = cur().ops.at(-1); return !!(S.typingGroup && l && l.op === 'setText' && String(l.id).startsWith(S.typingGroup + '.')); };
+  if (mod && !e.shiftKey && e.key.toLowerCase() === 'z' && (!e.target.isContentEditable || !typingOpen())) { e.preventDefault(); undo(); return; }
+  if (mod && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z')) && (!e.target.isContentEditable || cur().redo.length > 0)) { e.preventDefault(); redo(); return; }
   if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); A.duplicate(); return; }
   if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); A.moveKey(e.key === 'ArrowUp' ? -1 : 1); return; }
   if ((e.key === 'Delete') && !inText && S.sel?.b) { e.preventDefault(); A.delete(); return; }

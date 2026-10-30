@@ -13,30 +13,47 @@ const W2W = { focus: null };
   for (const [k, v] of Object.entries(alias)) IC[k] = IC[k] || IC[v] || IC.pages; }
 const w2wBlank = (v) => !textOf(v ?? '').trim();
 const w2wNextId = () => [...JSON.stringify(w2doc().chapters).matchAll(/"id":"US-(\d+)"/g)].reduce((a, x) => Math.max(a, +x[1]), 0) + 1;
-/** A leaf cut at n: head keeps marks up to n, tail the rest (shifted); a string is just sliced. */
-function w2wSplit(leaf, n) {
-  if (!isRich(leaf)) { const s = textOf(leaf); return [s.slice(0, n), s.slice(n)]; }
+/** A leaf cut at n: head keeps marks up to n, tail the rest from e (default n; e > n drops the characters between), shifted; a string is just sliced. */
+function w2wSplit(leaf, n, e = n) {
+  if (!isRich(leaf)) { const s = textOf(leaf); return [s.slice(0, n), s.slice(e)]; }
   const m = leaf.marks || [];
   return [
     { ...leaf, text: leaf.text.slice(0, n), marks: m.map(([a, b, ...r]) => [a, Math.min(b, n), ...r]).filter(([a, b]) => b > a) },
-    { ...leaf, text: leaf.text.slice(n), marks: m.map(([a, b, ...r]) => [Math.max(0, a - n), b - n, ...r]).filter(([a, b]) => b > a) },
+    { ...leaf, text: leaf.text.slice(e), marks: m.map(([a, b, ...r]) => [Math.max(0, a - e), b - e, ...r]).filter(([a, b]) => b > a) },
   ];
 }
 const W2_WRITE = {
-  /** Enter inside the leaf at `path` (caret at character n): a new paragraph / acceptance point after it. */
-  splitAt(path, n, ed = S.ed) {
+  /** Enter inside the leaf at `path` (caret at character n): a new paragraph / acceptance point after it. `to` = {path, n}: the
+   *  highlighted range ends there (same leaf, or a later leaf of the same list): the range is removed first (TW-03). The
+   *  placeholder for the other edition and the split are ONE undo step (TW-05). */
+  splitAt(path, n, ed = S.ed, to = null) {
     const m = /^(.*\/(?:paragraphs|acceptance))\/(\d+)$/.exec(path);
     if (!m) return false;
     const leaf = get(cur(ed).doc, path);
     if (leaf == null || (typeof leaf === 'object' && !isRich(leaf))) return false;
-    const [head, tail] = w2wSplit(leaf, n);
-    const next = `${m[1]}/${+m[2] + 1}`;
+    const i = +m[2];
+    const tm = to && to.path !== path ? /^(.*\/(?:paragraphs|acceptance))\/(\d+)$/.exec(to.path) : null;
+    const j = tm && tm[1] === m[1] && +tm[2] > i ? +tm[2] : i;
+    const leaf2 = j > i ? get(cur(ed).doc, to.path) : leaf;
+    if (leaf2 == null || (typeof leaf2 === 'object' && !isRich(leaf2))) return false;
+    const head = w2wSplit(leaf, n)[0];
+    const tail = w2wSplit(leaf2, j > i ? to.n : to?.path === path ? to.n : n)[1];
+    const next = `${m[1]}/${i + 1}`;
     S.typingGroup = null;
-    // the other edition keeps the same shape: an empty placeholder of its own language (silently; the render below shows both)
+    const group = newGroup();
     const o = other(ed);
-    if (S.both && hasOther() && Array.isArray(get(cur(o).doc, m[1]))) commit([{ op: 'insert', path: next, value: I18N.doc[o].newParagraph }], { ed: o, mirror: false, rerender: false });
+    const both = S.both && hasOther() && Array.isArray(get(cur(o).doc, m[1]));
+    // the paragraphs between the two ends go from both editions, so the pair keeps its shape
+    const drop = (doc) => { const out = []; for (let k = j - 1; k > i; k -= 1) out.push({ op: 'delete', path: `${m[1]}/${k}`, old: get(doc, `${m[1]}/${k}`) }); return out; };
     W2W.focus = { path: next, ed };
-    commit([{ op: 'replace', path, value: head, old: leaf }, { op: 'insert', path: next, value: tail }], { ed, mirror: false });
+    if (j > i) {
+      if (both && j - i > 1) commit(drop(cur(o).doc), { ed: o, mirror: false, rerender: false, group });
+      commit([{ op: 'replace', path, value: head, old: leaf }, { op: 'replace', path: to.path, value: tail, old: leaf2 }, ...drop(cur(ed).doc)], { ed, mirror: false, group });
+      return true;
+    }
+    // the other edition keeps the same shape: an empty placeholder of its own language (silently; the render below shows both)
+    if (both) commit([{ op: 'insert', path: next, value: I18N.doc[o].newParagraph }], { ed: o, mirror: false, rerender: false, group });
+    commit([{ op: 'replace', path, value: head, old: leaf }, { op: 'insert', path: next, value: tail }], { ed, mirror: false, group });
     return true;
   },
   /** A new `stories` block after the selection (house layout, placeholders only). */
@@ -95,7 +112,9 @@ const W2_WRITE = {
   setBreak(on, ptr) {
     const s = w2sectionOf(ptr || S.sel?.b || S.sel?.p);
     if (!s) { toast(t('w2.needBlock'), 'warn'); return false; }
-    const at = s.sec || s.ch;
+    let at = s.sec || s.ch;
+    // the dashed line above a chapter's first section is the chapter's own break (DOCS-05): removing it there removes that one
+    if (!on && s.sec && /\/sections\/0$/.test(s.sec) && !get(w2doc(), s.sec).layout?.breakBefore && get(w2doc(), s.ch).layout?.breakBefore) at = s.ch;
     const node = get(w2doc(), at);
     if (!!node.layout?.breakBefore === on) { toast(t(on ? 'w2w.breakHas' : 'w2w.breakNone'), 'info'); return false; }
     const lay = { ...(node.layout || {}) };
@@ -195,8 +214,14 @@ bwExt({
       const s = getSelection();
       if (/\/(paragraphs|acceptance)\/\d+$/.test(el.dataset.p) && s.rangeCount && el.contains(s.anchorNode)) {
         e.preventDefault();
-        if (!s.isCollapsed) s.deleteFromDocument();
-        return W2_WRITE.splitAt(el.dataset.p, w2offset(el, s.anchorNode, s.anchorOffset), ed) || true;
+        // the range is read BEFORE anything is removed: the document drops it (TW-03), the DOM is redrawn by the commit
+        const r = s.getRangeAt(0);
+        const aEl = w2leafEl(r.startContainer), zEl = w2leafEl(r.endContainer);
+        const isPara = (x) => x && /\/(paragraphs|acceptance)\/\d+$/.test(x.dataset.p) && x.closest('main.bw-doc').dataset.locale === ed;
+        const from = isPara(aEl) ? aEl : el;
+        const at = w2offset(from, from === aEl ? r.startContainer : s.anchorNode, from === aEl ? r.startOffset : s.anchorOffset);
+        const to = s.isCollapsed || !isPara(zEl) ? null : { path: zEl.dataset.p, n: w2offset(zEl, r.endContainer, r.endOffset) };
+        return W2_WRITE.splitAt(from.dataset.p, at, ed, to) || true;
       }
       if (el.closest('td, th, li')) return /^\s*=/.test(el.textContent) && !el.closest('li') ? false : lineBreak(); // a formula typed in a cell (lane A) still commits on Enter
       return false; // titles and other one-line leaves: Enter still commits and leaves
@@ -213,15 +238,24 @@ bwExt({
       getSelection().removeAllRanges(); getSelection().addRange(r);
       el.scrollIntoView({ block: 'nearest' });
     },
-    // a deleted block or section that held the page size of its pages: the next block takes it, so the following pages do not turn
+    // a deleted block or section that held the page size of its pages: the block that FOLLOWS it in reading order takes it, in both
+    // editions, so the following pages do not turn (DOCS-01); the hand-over joins the delete's undo step
     commit: (ops, ed, kind) => {
       if (kind !== 'commit' || ops.length !== 1 || ops[0].op !== 'delete') return;
       const [op] = ops;
       const page = op.old?.layout?.page || op.old?.blocks?.[0]?.layout?.page;
-      if (!page) return;
-      const at = /\/blocks\/\d+$/.test(op.path) ? op.path : /\/sections\/\d+$/.test(op.path) ? `${op.path}/blocks/0` : null;
-      const next = at && get(cur(ed).doc, at);
-      if (next && !next.layout?.page) commit([{ op: 'replace', path: `${at}/layout`, value: { ...(next.layout || {}), page }, old: next.layout }], { ed, mirror: false });
+      const m = page && /^\/chapters\/(\d+)\/sections\/(\d+)(?:\/blocks\/(\d+))?$/.exec(op.path);
+      if (!m) return;
+      const key = [+m[1], +m[2], m[3] == null ? 0 : +m[3]];
+      const g = String(op.id).split('.')[0];
+      const after = (x) => x.ci - key[0] || x.si - key[1] || x.bi - key[2]; // first block at or behind the deleted position
+      for (const e2 of [ed, ...(S.both && hasOther() ? [other(ed)] : [])]) {
+        const nx = blocksInOrder(cur(e2).doc).find((x) => after(x) >= 0);
+        if (!nx || nx.block.layout?.page) continue;
+        const n0 = cur(e2).ops.length;
+        commit([{ op: 'replace', path: `${nx.ptr}/layout`, value: { ...(nx.block.layout || {}), page }, old: nx.block.layout }], { ed: e2, mirror: false, rerender: e2 === ed });
+        cur(e2).ops.slice(n0).forEach((o, k) => { o.id = `${g}.${e2 === ed ? 'f' : 'mf'}${k}`; });
+      }
     },
   },
 });

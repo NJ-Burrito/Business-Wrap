@@ -60,8 +60,8 @@ const W2_LAYOUT = {
     if (!m) return false;
     const ch = get(w2doc(), m[1]);
     const at = m[2] != null ? +m[2] + 1 : ch.sections.length;
-    const L = I18N.doc[S.ed];
-    commit([{ op: 'insert', path: `${m[1]}/sections/${at}`, value: { number: `${ch.number}.${at + 1}`, title: L.newSection || t('w2.newSection'), blocks: [{ kind: 'prose', paragraphs: [L.newParagraph] }] } }], { mirror: true });
+    const mk = (ed) => ({ number: `${ch.number}.${at + 1}`, title: I18N.doc[ed].newSection || tIn('w2.newSection', ed), blocks: [{ kind: 'prose', paragraphs: [I18N.doc[ed].newParagraph] }] }); // each edition gets its own language (DOCS-02)
+    commit([{ op: 'insert', path: `${m[1]}/sections/${at}`, value: mk(S.ed), mirrorValue: mk(other(S.ed)) }], { mirror: true });
     return true;
   },
   /** A25: doc.controlTable from the ten fixed keys (one op); a no-op once it exists. Returns true when it made it. */
@@ -73,33 +73,38 @@ const W2_LAYOUT = {
     commit([{ op: 'replace', path: '/controlTable', value: { columns: ['', ''], rows: keys.map((k) => [L.control[k], { bind: k }]) }, old: undefined }], { ed });
     return true;
   },
+  /** Both editions get their control table (each with its own labels) before a row or column is added or removed, so the pair stays one (DOCS-03). */
+  materialiseBoth() {
+    this.materialiseControl();
+    if (S.both && hasOther()) this.materialiseControl(other(S.ed));
+  },
   rowAdd(table, r, cells) {
-    if (table === 'control') { this.materialiseControl(); const T = w2doc().controlTable; const w = T.columns.length; commit([{ op: 'insert', path: `/controlTable/rows/${r + 1}`, value: cells || Array.from({ length: w }, () => '') }]); return true; }
+    if (table === 'control') { this.materialiseBoth(); const T = w2doc().controlTable; const w = T.columns.length; commit([{ op: 'insert', path: `/controlTable/rows/${r + 1}`, value: cells || Array.from({ length: w }, () => '') }], { mirror: true }); return true; }
     if (table === 'revisions') { commit([{ op: 'insert', path: `/revisions/${r + 1}`, value: cells || ['', ''] }], { mirror: true }); return true; }
-    if (table === 'questions') { const d = w2doc(); const pre = d.openQuestions ? [] : [{ op: 'replace', path: '/openQuestions', value: [] }]; commit([...pre, { op: 'insert', path: `/openQuestions/${r + 1}`, value: { id: `Q${(d.openQuestions || []).length + 1}`, question: '…', owner: '…', blocks: '…' } }]); return true; }
+    if (table === 'questions') { const d = w2doc(); const pre = d.openQuestions ? [] : [{ op: 'replace', path: '/openQuestions', value: [] }]; commit([...pre, { op: 'insert', path: `/openQuestions/${r + 1}`, value: { id: `Q${(d.openQuestions || []).length + 1}`, question: '…', owner: '…', blocks: '…' } }], { mirror: true }); return true; }
     return false;
   },
   rowDel(table, r) {
     const p = { control: '/controlTable/rows', revisions: '/revisions', questions: '/openQuestions' }[table];
     if (!p) return false;
-    if (table === 'control') this.materialiseControl();
+    if (table === 'control') this.materialiseBoth();
     const old = get(w2doc(), `${p}/${r}`);
     if (old === undefined) return false;
-    commit([{ op: 'delete', path: `${p}/${r}`, old }], { mirror: table !== 'control' });
+    commit([{ op: 'delete', path: `${p}/${r}`, old }], { mirror: true });
     return true;
   },
   colAdd(table, c) {
     if (table !== 'control') return false;
-    this.materialiseControl();
+    this.materialiseBoth();
     const T = w2doc().controlTable;
-    commit([{ op: 'insert', path: `/controlTable/columns/${c + 1}`, value: '' }, ...T.rows.map((_, r) => ({ op: 'insert', path: `/controlTable/rows/${r}/${c + 1}`, value: '' }))]);
+    commit([{ op: 'insert', path: `/controlTable/columns/${c + 1}`, value: '' }, ...T.rows.map((_, r) => ({ op: 'insert', path: `/controlTable/rows/${r}/${c + 1}`, value: '' }))], { mirror: true });
     return true;
   },
   colDel(table, c) {
     if (table !== 'control' || c < 1) return false; // the label column stays
-    this.materialiseControl();
+    this.materialiseBoth();
     const T = w2doc().controlTable;
-    commit([{ op: 'delete', path: `/controlTable/columns/${c}` }, ...T.rows.map((row, r) => (row.length > c ? { op: 'delete', path: `/controlTable/rows/${r}/${c}`, old: row[c] } : null)).filter(Boolean)]);
+    commit([{ op: 'delete', path: `/controlTable/columns/${c}` }, ...T.rows.map((row, r) => (row.length > c ? { op: 'delete', path: `/controlTable/rows/${r}/${c}`, old: row[c] } : null)).filter(Boolean)], { mirror: true });
     return true;
   },
 };
