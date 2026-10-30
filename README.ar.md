@@ -129,7 +129,8 @@ node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|e
 |---|---|
 | `/business-wrap:open [doc.json\|folder\|editor.html]` | يشغّل الخادم المحلي ويفتح المحرر في Edge (وثيقة فارغة إن لم يُعطَ ملف) |
 | `/business-wrap:close` | يوقف كل خادم ويغلق كل نافذة Edge فتحها هذا التثبيت |
-| `/business-wrap:status` | الإصدار، والخوادم العاملة، وعدد الخطوات التي عولجت ذاتيًا |
+| `/business-wrap:status` | الإصدار، والخوادم العاملة، وعدد الخطوات التي عولجت ذاتيًا، وأي مشكلة في MCP |
+| `/business-wrap:doctor` | ما المثبّت، وأين تعيش الحالة، وآخر بدايات خادم MCP، وهل ترك تحديث الإضافة الخادم على الإصدار السابق |
 | `/business-wrap:new ["Title"]` | زوج وثيقة فارغ جديد (عربي وإنجليزي) يُفتح في المحرر |
 | `/business-wrap:harvest <url\|crawl.json\|model\|PDF/DOCX/HTML\|folder>` | يحصد خدمة حية (دون إرسال أبدًا) أو نموذج إجراء أو وثيقة، ثم يفتحها |
 | `/business-wrap:import <file\|folder ...>` | مصادرك (BPMN وdraw.io وYAML وPDF وDOCX وHTML) إلى وثائق |
@@ -149,7 +150,7 @@ node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|e
 
 🛡️ «حدث الآن» يأخذ نسخة احتياطية أولا، ويستبدل ملفات البرنامج فقط، ويعيد الإصدار السابق عند أي فشل.
 
-🧩 **إضافة Claude Code:** `/plugin marketplace update business-wrap` ثم `/plugin update business-wrap`.
+🧩 **إضافة Claude Code:** `/plugin marketplace update business-wrap` ثم `/plugin update business-wrap` ثم `/reload-plugins` (وإن كان العميل بلا هذا الأمر فأعد تشغيله). لا تُحدَّث الإضافة في مكانها أبدا؛ وإلى أن تعيد التحميل يجيب خادم MCP العامل بـ `RESTART_REQUIRED`، وقد تبقى عبارة «غير متصل» مخزّنة 15 دقيقة. والأمر `/business-wrap:doctor` يعرض ما هو محمّل.
 
 ⌨️ **الطرفية أو الوكيل:** `node update/cli.mjs --check` (طلب واحد في اليوم على الأكثر)، و`--apply --yes` للتثبيت، و`--notes` لما تغير.
 

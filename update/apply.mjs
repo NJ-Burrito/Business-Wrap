@@ -10,6 +10,10 @@ import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { isReleaseZipUrl, isAssetApiUrl, isAllowedRedirect, isNewer } from './core.mjs';
+import { isPluginInstall } from '../engine/testguard.mjs';
+
+/** What to do instead of an in-place update when Business-Wrap runs as a Claude Code plugin (0.15.0). */
+export const PLUGIN_UPDATE_HOW = ['/plugin marketplace update business-wrap', '/plugin update business-wrap', '/reload-plugins (or restart the MCP client): the running server keeps the previous version folder until then'];
 
 /** User-owned paths that an update never replaces or removes (relative to the install folder). */
 export const KEEP = ['.local', '.local/learning', '.git', 'node_modules', 'out', 'design/custom', 'logos', 'fonts/custom', 'drafts', 'exports', 'harvest', 'profiles'];
@@ -189,6 +193,9 @@ function gitUpdate(dir, version, stage, current) {
  */
 export async function applyUpdate({ dir, release, repo, token = '', current, onStage = () => {}, failAt = '', fetch: fetchImpl = globalThis.fetch }) {
   const stage = (s) => { try { onStage(s); } catch { /* a progress listener never stops the update */ } };
+  // a plugin install is Claude Code's copy (<plugins>/cache/<marketplace>/<plugin>/<version>): rewriting it in place forks it from what the
+  // client believes is installed and leaves a running server on a half-new tree. The client's own update path is the only one.
+  if (isPluginInstall(dir)) return { ok: false, applied: false, plugin: true, error: 'plugin install: not updated in place', how: PLUGIN_UPDATE_HOW };
   // never a downgrade (0.13.1): a release that is not strictly newer than the installed version is refused, whatever
   // offered it (an old npm copy, a stale cache, a feed that lags behind the GitHub tags)
   const installed = current || (() => { try { return JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).version; } catch { return ''; } })();

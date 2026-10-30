@@ -17,7 +17,9 @@
 //   business-wrap library [list]                           documents in the save folder
 //   business-wrap tidy [--dry-run]                          moves an old save folder (PDF, DOCX, HTML, HISTORY) into the document tree
 //   business-wrap report <from> <to>                       the work report (WP4)
-//   business-wrap update [--check|--apply --yes|--notes]   the updater (update/cli.mjs)
+//   business-wrap update [--check|--apply --yes|--notes]   the updater (update/cli.mjs; a Claude Code plugin is updated by the client, never in place)
+//   business-wrap doctor                                   what is installed, where state lives, the last MCP server starts, version drift
+//   business-wrap editor <list|get|outline|ops|action|new|import|health> [--doc id] [--pointer p] [--locale ar|en] [--ops-file f.json|-] [--mirror] [--agent name] [--id action] [--args-file f.json|-] [--project p] [--title t] [--file f]   drive the document OPEN in the editor, through the host (always JSON)
 // Add --json for machine output. Exit 0 done · 1 failed · 2 usage · 3 needs a module that is not in this build yet.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -34,6 +36,8 @@ import { STATE_DIR, healPort, healStaleHosts, healWorkspace, healFont, readHealL
 import { GATES } from './heal/gates.mjs';
 import { workspace, ensure, reportPath, sourcesDir, keepVersion, docTitle, outName, uniquePath, DOCS_NAME } from './workspace.mjs';
 import { tidy } from './tidy.mjs';
+import { migrateLocal } from './testguard.mjs';
+import { doctor as doctorInfo } from '../mcp/startup.mjs';
 
 const pkg = () => JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8'));
 const HOSTS = () => path.join(STATE_DIR(), 'cli-hosts.json');
@@ -144,7 +148,8 @@ export async function status() {
   const real = await hostModule();
   let host = null;
   try { host = real?.status?.() ?? null; } catch { host = null; }
-  return { version: pkg().version, hosts: hosts.map(({ pid, port, url, editor }) => ({ pid, port, url, editor })), host, healed: readHealLog().length, ai: false };
+  const d = await doctorInfo().catch(() => null); // the MCP side in one line: plugin or clone, where state lives, drift, last start
+  return { version: pkg().version, hosts: hosts.map(({ pid, port, url, editor }) => ({ pid, port, url, editor })), host, healed: readHealLog().length, ai: false, mcp: d && { plugin: d.plugin, state: d.local, last_initialize_ms: d.last_initialize_ms, problems: d.problems } };
 }
 
 export async function newDoc({ title, out, browser = true, openIt = true } = {}) {
@@ -283,15 +288,53 @@ export function update(args) {
   return { code: r.status ?? 1, output: (r.stdout || '') + (r.stderr || '') };
 }
 
+/** Read a JSON file, or stdin when the path is "-" (a pointer or an op list is never an argv: quoting breaks it on every shell). */
+const readJsonArg = (f) => JSON.parse(f === '-' ? fs.readFileSync(0, 'utf8') : fs.readFileSync(path.resolve(f), 'utf8'));
+/** business-wrap editor <verb>: the same verbs as the MCP editor_* tools, against the document OPEN in the editor (mcp/editor-tools.mjs). */
+async function editorCmd(pos, val, flags) {
+  const { callEditor, checkOps, hostTarget, BwError, EDITOR_ACTIONS } = await import('../mcp/editor-tools.mjs');
+  const [verb] = pos;
+  const doc = val('doc');
+  const need = (v, what) => { if (!v) throw new BwError('BAD_ARGS', `editor ${verb}: ${what} is required`); return v; };
+  switch (verb) {
+    case 'list': return callEditor('list', { args: val('project') ? { project: val('project') } : {} });
+    case 'get': return callEditor('get', { doc: need(doc, '--doc'), args: { ...(val('pointer') ? { pointer: val('pointer') } : {}), ...(val('locale') ? { locale: val('locale') } : {}) } });
+    case 'outline': return callEditor('outline', { doc: need(doc, '--doc'), args: val('locale') ? { locale: val('locale') } : {} });
+    case 'ops': {
+      const raw = readJsonArg(need(val('ops-file'), '--ops-file (a file, or - for stdin)'));
+      const ops = Array.isArray(raw) ? raw : raw.ops;
+      const locale = need(val('locale') || raw.locale, '--locale ar|en');
+      checkOps(ops, locale);
+      return callEditor('ops', { doc: need(doc, '--doc'), args: { ops, locale, mirror: flags.has('--mirror'), ...(val('agent') ? { agent: val('agent') } : {}), ...(val('group') ? { group: val('group') } : {}) } });
+    }
+    case 'action': {
+      const id = need(val('id'), '--id');
+      if (!EDITOR_ACTIONS.includes(id)) throw new BwError('UNKNOWN_ACTION', `unknown action "${id}"`, { allowed: EDITOR_ACTIONS });
+      return callEditor('action', { doc: need(doc, '--doc'), args: { id, ...(val('args-file') ? { args: readJsonArg(val('args-file')) } : {}) } });
+    }
+    case 'new': return callEditor('new', { args: { title: need(val('title'), '--title'), ...(val('project') ? { project: val('project') } : {}) } });
+    case 'import': {
+      if (!val('file') && !val('args-file')) throw new BwError('BAD_ARGS', 'editor import: --file (a document JSON path) or --args-file (a document, or - for stdin) is required');
+      return callEditor('import', { args: { ...(val('file') ? { file: path.resolve(val('file')) } : { document: readJsonArg(val('args-file')) }), ...(val('project') ? { project: val('project') } : {}) } });
+    }
+    case 'health': {
+      const t = await hostTarget({ start: false });
+      const res = await fetch(new URL('/api/host/health', t.url), { headers: { 'x-bw-token': t.token } });
+      return res.json();
+    }
+    default: throw Object.assign(new Error(`editor: unknown verb ${verb || ''} (list|get|outline|ops|action|new|import|health)`), { code: 2 });
+  }
+}
+
 /** Every verb this CLI answers (the plugin commands may only call these). */
-export const VERBS = ['open', 'close', 'stop', 'status', 'new', 'build', 'harvest', 'import', 'export', 'gate', 'heal-log', 'verify-history', 'library', 'tidy', 'report', 'update', 'help'];
+export const VERBS = ['open', 'close', 'stop', 'status', 'new', 'build', 'harvest', 'import', 'export', 'gate', 'heal-log', 'verify-history', 'library', 'tidy', 'report', 'update', 'doctor', 'editor', 'help'];
 
 const USAGE = fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').filter((l) => l.startsWith('//   business-wrap')).map((l) => l.slice(5)).join('\n');
 export async function run(argv) {
   const [verb, ...rest] = argv;
   const flags = new Set(rest.filter((a) => a.startsWith('--')));
   const val = (k) => { const i = rest.indexOf(`--${k}`); return i >= 0 ? rest[i + 1] : undefined; };
-  const VALUED = new Set(['--out', '--port', '--name', '--roles', '--edits', '--title', '--ui', '--history']);
+  const VALUED = new Set(['--out', '--port', '--name', '--roles', '--edits', '--title', '--ui', '--history', '--doc', '--pointer', '--locale', '--ops-file', '--agent', '--group', '--id', '--args-file', '--project', '--file']);
   const pos = rest.filter((a, i) => !a.startsWith('--') && !VALUED.has(rest[i - 1]));
   const browser = !flags.has('--no-browser');
   switch (verb) {
@@ -316,6 +359,8 @@ export async function run(argv) {
     }
     case 'report': return report({ from: pos[0], to: pos[1] });
     case 'update': return update(rest);
+    case 'doctor': return doctorInfo();
+    case 'editor': return editorCmd(pos, val, flags);
     case undefined: case 'help': case '--help': case '-h': return { usage: USAGE };
     default: throw Object.assign(new Error(`unknown command: ${verb}\n${USAGE}`), { code: 2 });
   }
@@ -325,15 +370,17 @@ export async function run(argv) {
 export async function main(argv = process.argv.slice(2)) {
   const json = argv.includes('--json');
   try {
+    if (argv[0] !== 'doctor') await migrateLocal(REPO); // plugin installs: state moves to the plugin data folder once
     const r = await run(argv.filter((a) => a !== '--json'));
     if (r.usage) console.log(r.usage);
+    else if (argv[0] === 'editor') console.log(JSON.stringify(r, null, 1));
     else if (argv[0] === 'tidy') { if (r.lines.length) console.log(r.lines.join(String.fromCharCode(10))); console.log(json ? JSON.stringify({ ...r, lines: undefined }) : `${r.dryRun ? 'plan' : 'tidy'}: ${r.moved} of ${r.files_before} files, unsorted ${r.unmatched}, failed ${r.failed}  (${r.root})`); }
     else if (argv[0] === 'update') process.stdout.write(r.output);
     else console.log(json ? JSON.stringify(r, null, 1) : Object.entries(r).map(([k, v]) => `${k.padEnd(10)} ${typeof v === 'object' ? JSON.stringify(v) : v}`).join('\n'));
     const gates = [...(r.gates || []), ...(r.opened?.gates || [])];
     return argv[0] === 'update' ? r.code : gates.some((g) => g.verdict === 'FAIL') ? 1 : 0;
   } catch (e) {
-    console.error(json ? JSON.stringify({ error: e.message, code: e.code || 1 }) : `business-wrap ${argv[0] || ''}: ${e.message}`);
+    console.error(json || argv[0] === 'editor' ? JSON.stringify({ ok: false, error: e.message, code: e.code || 1, ...(e.data || {}) }) : `business-wrap ${argv[0] || ''}: ${e.message}`);
     return typeof e.code === 'number' ? e.code : 1;
   }
 }

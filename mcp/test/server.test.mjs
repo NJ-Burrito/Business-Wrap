@@ -48,7 +48,7 @@ try {
   await client.connect(transport);
   const { tools } = await client.listTools();
   const names = tools.map((t) => t.name).sort();
-  check('tools/list', JSON.stringify(names) === JSON.stringify(['apply_edits', 'apply_update', 'build_editor', 'check_fonts', 'check_update', 'close_editor', 'diagram_mermaid', 'export_design_pack', 'export_document', 'harvest_crawl', 'harvest_merge', 'harvest_model', 'harvest_sources', 'learning_conflicts', 'learning_distill', 'learning_export', 'learning_forget', 'learning_import', 'learning_promote', 'learning_retire', 'learning_rules', 'open_in_editor', 'validate_edits']), names.join(','));
+  check('tools/list', JSON.stringify(names) === JSON.stringify(['apply_edits', 'apply_update', 'build_editor', 'check_fonts', 'check_update', 'close_editor', 'diagram_mermaid', 'editor_action', 'editor_get', 'editor_import', 'editor_list_documents', 'editor_new', 'editor_ops', 'editor_outline', 'export_design_pack', 'export_document', 'harvest_crawl', 'harvest_merge', 'harvest_model', 'harvest_sources', 'host_health', 'learning_conflicts', 'learning_distill', 'learning_export', 'learning_forget', 'learning_import', 'learning_promote', 'learning_retire', 'learning_rules', 'open_in_editor', 'validate_edits']), names.join(','));
   check('every tool has a description and an input schema', tools.every((t) => t.description && t.inputSchema?.type === 'object'));
 
   let r = await client.callTool({ name: 'validate_edits', arguments: { edits: editsFile } });

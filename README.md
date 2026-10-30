@@ -108,7 +108,8 @@ Installed as a plugin, Business-Wrap adds these commands; type `/` in Claude Cod
 |---|---|
 | `/business-wrap:open [doc.json\|folder\|editor.html]` | Start the local host and open the editor in Edge (a blank document when no file is given) |
 | `/business-wrap:close` | Stop every host and close every Edge window this install started |
-| `/business-wrap:status` | Version, running hosts, how many steps were healed |
+| `/business-wrap:status` | Version, running hosts, how many steps were healed, any MCP problem |
+| `/business-wrap:doctor` | What is installed, where state lives, the last MCP server starts, and whether a plugin update left the server on the previous version |
 | `/business-wrap:new ["Title"]` | A new blank document pair (Arabic + English), opened in the editor |
 | `/business-wrap:harvest <url\|crawl.json\|model\|PDF/DOCX/HTML\|folder>` | Harvest a live site (never submits), a process model or a document, then open it |
 | `/business-wrap:import <file\|folder ...>` | Your own sources (BPMN, draw.io, YAML, PDF, DOCX, HTML) into documents |
@@ -128,7 +129,7 @@ Without Claude Code the same verbs run as `npm run cli -- <verb>` (for example `
 
 🛡️ Update now backs up first, replaces program files only, and puts the old version back on any failure.
 
-🧩 **Claude Code plugin:** `/plugin marketplace update business-wrap`, then `/plugin update business-wrap`.
+🧩 **Claude Code plugin:** `/plugin marketplace update business-wrap`, then `/plugin update business-wrap`, then `/reload-plugins` (an MCP client without it: restart the client). The plugin is never updated in place; until you reload, the running MCP server answers `RESTART_REQUIRED`, and a stale "not connected" can stay cached for 15 minutes. `/business-wrap:doctor` shows what is loaded.
 
 ⌨️ **Terminal or agent:** `node update/cli.mjs --check` (at most one request a day), `--apply --yes` to install, `--notes` for what changed.
 

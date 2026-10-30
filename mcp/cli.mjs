@@ -21,10 +21,21 @@ Run by an MCP client, which talks to it over stdin/stdout. Add it to the client'
   business-wrap-mcp --version    the installed version`;
   if (unknown.length) { console.error(`business-wrap-mcp: unknown option ${unknown.join(' ')}\n\n${usage}`); process.exitCode = 2; } else console.log(usage);
 } else {
+  // 0.15.0: connect FIRST. The client's handshake never waits for a network call, a migration or an update check.
+  const { logLine, startupFacts, sinceStart, cachedUpdate } = await import('./startup.mjs');
+  logLine('start', startupFacts({ ms: sinceStart() }));
+  process.on('uncaughtException', (e) => { logLine('error', { phase: 'uncaught', message: String(e?.stack || e), ms: sinceStart() }); console.error(e); process.exit(1); });
+  process.on('unhandledRejection', (e) => { logLine('error', { phase: 'rejection', message: String(e?.stack || e), ms: sinceStart() }); });
   const { StdioServerTransport } = await import('./vendor/sdk.mjs');
   const { createServer } = await import('./server.mjs');
-  const { checkForUpdate } = await import('../update/check.mjs');
-  // cached (one request a day at most), bounded to 4 s so a slow network never delays the client
-  const update = await Promise.race([checkForUpdate().catch(() => null), new Promise((r) => setTimeout(() => r(null), 4000))]);
-  await createServer({ update }).connect(new StdioServerTransport());
+  const { migrateLocal } = await import('../engine/testguard.mjs');
+  const { update, ageMs } = await cachedUpdate(); // the cache only: no request here
+  const migration = migrateLocal(ROOT).then((r) => { if (r.migrated || r.reason === 'nothing-to-move' || !/^(not-plugin-data|target-exists)$/.test(r.reason || '')) logLine('migrate', r); return r; });
+  const server = createServer({ update, ready: migration });
+  server.server.oninitialized = () => logLine('initialize', { ms: sinceStart(), updateCacheAgeMs: ageMs });
+  server.server.onerror = (e) => logLine('error', { phase: 'protocol', message: String(e?.message || e), ms: sinceStart() });
+  await server.connect(new StdioServerTransport());
+  logLine('connected', { ms: sinceStart() });
+  // the refresh runs after the handshake; a newer release shows on the next tool result (decorate), never delays startup
+  import('../update/check.mjs').then(({ checkForUpdate }) => checkForUpdate()).then((u) => server.bwSetUpdate?.(u)).catch(() => {});
 }
