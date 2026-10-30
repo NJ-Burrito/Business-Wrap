@@ -69,6 +69,10 @@
 .ribbon .rb-tools .b .w { white-space: normal; text-align: center; max-width: 84px; }
 .ribbon .rb-g.dense .rb-tools > .b { min-height: 34px; min-width: 34px; padding: 6px; }
 .ribbon .rb-g.dense .rb-tools > .b .w { display: none; }
+.rb-panel.tight .rb-tools { max-width: 224px; } /* a tab too wide for the window (a contextual tab at 1366 px): every group goes compact (icons, names in the title) so the group titles stay in view and the band stays low */
+.ribbon .rb-panel.tight .rb-tools > .b, .ribbon .rb-panel.tight .rb-tools .more > .b { min-height: 34px; min-width: 34px; padding: 6px; }
+.ribbon .rb-panel.tight .rb-tools .b .w { display: none; }
+.rb-panel.tight .rb-g { padding: 0 5px; }
 .ribbon .b .i, .ribbon .b .ic { width: 20px; height: 20px; }
 .ribbon .b[aria-pressed="true"] { background: color-mix(in srgb, var(--on-glass) 18%, transparent); box-shadow: inset 0 -2px 0 var(--gold); }
 .ribbon .b:disabled { opacity: .45; cursor: default; }

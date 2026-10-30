@@ -239,6 +239,8 @@ try {
 
   // ── A5: hover / focus explainers ───────────────────────────────────────
   {
+    // the library extension (editor/ext/10-library.js) words «Save» for the 0.14 save-in-place / save-as-copy split and overrides the core sentence
+    const SAVE_TXT = { ar: 'يحفظ الوثيقة في مكانها: يستبدل ملف HTML الخاص بها (ويحتفظ بالقديم في Versions) وسطرها في «المستندات»، ولا ينشئ ملفًا جديدًا. لنسخة جديدة استعمل «حفظ نسخة جديدة». بلا الخادم المحلي يُنزّل ملف التعديلات.', en: 'Saves the document in place: it overwrites its own HTML file (the old one is kept in Versions) and its Documents entry, and creates no new file. For a new file use Save as new copy. Without the local server it downloads the edits file.' };
     const keys = new Set();
     for (const ui of ['ar', 'en']) {
       const { ctx, page } = await open({ ui, width: 1366, store: { 'bw:explainers': 'always' } }); // 0.12 behaviour: every hover (0.13 «once» is checked below)
@@ -252,7 +254,7 @@ try {
       const early = await card();
       await page.waitForTimeout(900);
       const shown = await card();
-      check(`A5 ${ui}: hover ~900 ms shows the card (not at 300 ms) with its sentence and a running animation`, !early && shown && shown.text === UX[ui]['explain.save'] && shown.anim > 0 && shown.lang === ui, JSON.stringify({ early, shown }));
+      check(`A5 ${ui}: hover ~900 ms shows the card (not at 300 ms) with its sentence and a running animation`, !early && shown && shown.text === SAVE_TXT[ui] && shown.anim > 0 && shown.lang === ui, JSON.stringify({ early, shown }));
       await page.keyboard.press('Escape');
       check(`A5 ${ui}: Esc hides the card`, !(await card()));
       await page.mouse.move(700, 600); // leave first: hovering the same spot again sends no pointerover
@@ -261,13 +263,13 @@ try {
       const second = await card();
       await page.mouse.move(700, 600);
       await page.waitForTimeout(150);
-      check(`A5 ${ui}: leaving hides the card`, second?.text === UX[ui]['explain.save'] && !(await card()), JSON.stringify(second));
+      check(`A5 ${ui}: leaving hides the card`, second?.text === SAVE_TXT[ui] && !(await card()), JSON.stringify(second));
       // keyboard focus shows it too
       await page.keyboard.press('Tab');
       await rbTabFor(page, 'save'); await sh(page, (r) => r.querySelector('.ribbon .rb-panel [data-a="save"]').focus());
       await page.waitForTimeout(1150);
       const kb = await card();
-      check(`A5 ${ui}: keyboard focus shows the card`, kb?.text === UX[ui]['explain.save'], JSON.stringify(kb));
+      check(`A5 ${ui}: keyboard focus shows the card`, kb?.text === SAVE_TXT[ui], JSON.stringify(kb));
       // the Design panel's own controls (font picker, machine fonts, slider / number / unit, colour swatch and hex)
       await page.keyboard.press('Escape');
       await page.evaluate(() => window.BW.runAction('theme'));
@@ -509,6 +511,7 @@ try {
     check('0.13 R2: language words follow in place', r.ui === 'en' && r.lang === 'en' && /Save/i.test(r.save), JSON.stringify(r));
     // animations after a real RTL->LTR click (the logo's own idle loops, A22, run by design and are not counted)
     await page.evaluate(() => window.BW.runAction('uiLang')); await page.waitForTimeout(600);
+    await rbTabFor(page, 'dir', 'ltr'); // the direction switch is on the View tab: open it first, as a person would
     const btn = page.locator('.ribbon .rb-panel [data-a="dir"][data-d="ltr"]');
     await btn.click();
     const anims = await sh(page, async (R) => { const seen = new Set(); const t0 = performance.now(); while (performance.now() - t0 < 600) { R.getAnimations().forEach((a) => { const el = a.effect?.target; if (el && !el.closest?.('.brand')) seen.add((el.className?.baseVal ?? el.className) + '@' + (el.closest('[data-x]')?.dataset.x || el.dataset?.a || el.tagName)); }); await new Promise((r) => setTimeout(r, 40)); } return [...seen]; });

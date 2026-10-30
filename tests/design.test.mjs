@@ -440,7 +440,7 @@ try {
     await n.p.setViewportSize({ width: 2600, height: 900 });
     await n.p.waitForTimeout(500);
     const pick = await shadow(n.p, (r, ks) => [...r.querySelectorAll('.ribbon .rb-panel .b[data-a]')].find((b) => b.checkVisibility() && ks.includes(b.querySelector('.ic')?.dataset.ic) && !b.disabled)?.dataset.a, n.keys);
-    const btn = n.p.locator(`.island .b[data-a="${pick}"]`).first();
+    const btn = n.p.locator(`.island .ribbon .rb-panel .b[data-a="${pick}"]`).first(); // the ribbon's button: the hidden legacy twin of the same action comes first in the DOM
     await btn.hover(); await n.p.waitForTimeout(900);
     const before = await icm(n.p, '.ic[data-ic]');
     await btn.click();

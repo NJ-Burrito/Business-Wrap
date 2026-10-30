@@ -6,7 +6,7 @@
   :root[data-bw-dark="1"] { --bw-desk: var(--bw-bg, #001e3d); --bw-sel: var(--bw-primary, #bfd6ee); --bw-hover: var(--bw-sec-insert, #84b7eb); }
   @media (prefers-color-scheme: dark) { :root:not([data-bw-dark="0"]) { --bw-desk: var(--bw-bg, #001e3d); } }
 
-  html { background: var(--bw-desk); }
+  html { background: var(--bw-desk); scroll-padding-top: var(--bw-bar-h, 120px); } /* scrollIntoView / focus / anchors land below the fixed toolbar, not under it */ /* scrollIntoView / focus / anchors land below the fixed toolbar, not under it */
   body { padding-top: var(--bw-bar-h, 120px); background: var(--bw-desk); }
   #bw-pair { padding: 12px 0 80px; }
   #bw-pair main.bw-doc { width: 210mm; margin: 0 auto 24px; background: var(--paper); box-shadow: var(--bw-shadow-3, 0 1px 2px rgba(0,30,61,.12), 0 24px 60px -28px rgba(0,30,61,.45)); zoom: var(--bw-zoom, 1); position: relative; z-index: 1; border-radius: 3px; }

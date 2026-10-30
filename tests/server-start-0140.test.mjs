@@ -55,6 +55,7 @@ async function openPage(ctx, url, { ports, ui } = {}) {
   await page.addInitScript(({ ports: pp, ui: u }) => {
     if (pp) window.__bwProbePorts = pp;
     if (u) { try { localStorage.setItem('bw:ui', u); } catch { /* none */ } }
+    try { localStorage.setItem('bw:srv-banner', '1'); } catch { /* none */ } // an automated browser has no banner unless it asks (editor/ext/18-server.js)
     window.__launched = [];
     document.addEventListener('click', (e) => { const a = e.composedPath().find((n) => n.matches?.('a[href^="business-wrap:"]')); if (a) { window.__launched.push(a.getAttribute('href')); e.preventDefault(); } }, true);
   }, { ports, ui });

@@ -8,8 +8,10 @@
 .drawer .lib-m { display: block; opacity: .75; font-size: .85em; }
 .drawer .lib-tpls { margin-top: 12px; }
 .drawer .lib-tpls summary { cursor: pointer; }
-.count { position: relative; }
-.count .bw-stamp { position: absolute; top: calc(100% + 18px); left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 600; white-space: nowrap; background: var(--glass); color: var(--on-glass); padding: 3px 10px; border-radius: 999px; box-shadow: 0 2px 8px rgb(0 0 0 / .15); pointer-events: none; }
+.status { position: relative; }
+.status .bw-stamp { position: absolute; top: calc(100% + 18px); left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 600; white-space: nowrap; background: var(--glass); color: var(--on-glass); padding: 3px 10px; border-radius: 999px; box-shadow: 0 2px 8px rgb(0 0 0 / .15); pointer-events: none; }
 /* UI-CHROME-10: centred under the counter it overran the island's edge below 1500 px (clipped at 1280, 66 px off at 1024): it starts at the counter's edge instead, and goes away below 1280 px */
-@media (max-width: 1500px) { .count .bw-stamp { left: auto; inset-inline-start: 0; transform: none; } }
-@media (max-width: 1280px) { .count .bw-stamp { display: none; } }
+@media (max-width: 1500px) { .status .bw-stamp { left: auto; inset-inline-start: 0; transform: none; } }
+@media (max-width: 1280px) { .status .bw-stamp { display: none; } }
+
+.island.has-sel .status .bw-stamp { display: none; }

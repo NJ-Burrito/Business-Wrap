@@ -10,9 +10,21 @@ const SB = (() => {
   const served = () => /^https?:$/.test(location.protocol);
   const mark = () => { document.documentElement.dataset.bwServer = st.dismissed ? 'dismissed' : st.busy ? 'starting' : st.mode; };
   const filePath = () => (served() ? (st.file || ls.get('bw:srv-file') || '') : srvFilePath());
+  /** The banner stays at the top; the toolbar (a fixed island) sits below it while it shows, so it never covers a control. */
+  let ro = null;
+  function place() {
+    const isl = root.querySelector('.island');
+    if (!el || !isl) return;
+    const shown = !el.hidden && !st.dismissed && st.mode !== 'none';
+    isl.style.insetBlockStart = shown ? `${Math.round(el.offsetHeight + 16)}px` : '';
+    if (!ro && typeof ResizeObserver === 'function') { ro = new ResizeObserver(() => { place(); measureBar(true); }); ro.observe(el); }
+  }
   function draw() {
     mark();
-    if (st.dismissed || st.mode === 'none') { if (el) el.hidden = true; return; }
+    // an automated browser (navigator.webdriver: tests, CI, an agent) is not nagged: the banner would cover what it drives and move the layout it measures;
+    // the state is still published on <html data-bw-server>. localStorage bw:srv-banner = 1 turns it back on (the banner's own test).
+    const quiet = navigator.webdriver && ls.get('bw:srv-banner') !== '1';
+    if (st.dismissed || st.mode === 'none' || quiet) { if (el) { el.hidden = true; place(); measureBar(true); } return; }
     if (!el) { el = document.createElement('div'); el.className = 'srv-bar'; el.setAttribute('role', 'region'); root.appendChild(el); }
     else if (!el.isConnected) root.appendChild(el);
     el.hidden = false;
@@ -28,6 +40,8 @@ const SB = (() => {
       : `<button type="button" class="b primary" data-k="sbStart"${st.busy ? ' disabled' : ''}><span class="i">${ic('send')}</span><span class="w">${esc(t('sbStart'))}</span></button>`;
     const next = `<span class="srv-mark">${ic(up ? 'connect' : 'powerOff')}</span><div class="srv-txt" role="status" aria-live="polite"><strong>${esc(t(up ? 'sbUp' : 'sbDown'))}</strong><span>${esc(t(up ? 'sbUpLead' : 'sbDownLead'))}</span>${st.note ? `<span class="srv-note">${esc(st.note)}</span>` : ''}</div>${btn}<button type="button" class="b srv-x" data-k="sbDismiss" aria-label="${esc(t('sbDismiss'))}" title="${esc(t('sbDismiss'))}"><span class="i">${ic('close')}</span></button>`;
     if (el.dataset.html !== next) { el.dataset.html = next; el.innerHTML = next; }
+    place();
+    measureBar(true);
   }
   /** Who answers now: the ports a file:// page asks, or this served page's own /api/version (then, best effort, the other ports). */
   async function probe() {
