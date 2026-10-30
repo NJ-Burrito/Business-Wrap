@@ -64,6 +64,27 @@ try {
   const edited = JSON.parse(fs.readFileSync(path.join(OUT, 'edited.ar.json'), 'utf8'));
   check('apply_edits: writes the edited document', !r.isError && edited.chapters[0].sections[0].blocks[0].paragraphs[0] === 'نص عبر خادم MCP' && edited.chapters[1].sections[2].blocks[0].rows.length === 2, text(r).slice(0, 120));
 
+  // 0.13.3 TSYS-03: the edits belong to one document and one edition
+  {
+    const EN = path.join(SAMPLE, 'document.en.json');
+    const wrongOut = path.join(OUT, 'wrong.en.json');
+    r = await client.callTool({ name: 'apply_edits', arguments: { document: EN, edits: editsFile, out: wrongOut } });
+    check('apply_edits: AR edits on the EN document are refused (baseHash), nothing written', r.isError === true && /baseHash|edition/.test(text(r)) && !fs.existsSync(wrongOut), text(r).slice(0, 160));
+    const badHash = path.join(OUT, 'edits-badhash.json');
+    fs.writeFileSync(badHash, JSON.stringify({ ...edits, baseHash: `sha256:${'0'.repeat(64)}` }));
+    r = await client.callTool({ name: 'apply_edits', arguments: { document: AR, edits: badHash, out: path.join(OUT, 'badhash.ar.json') } });
+    check('apply_edits: a wrong baseHash is refused', r.isError === true && /baseHash/.test(text(r)), text(r).slice(0, 160));
+    const enRaw = fs.readFileSync(EN, 'utf8').replace(/\r\n/g, '\n');
+    const badEd = path.join(OUT, 'edits-badedition.json');
+    fs.writeFileSync(badEd, JSON.stringify({ ...edits, baseHash: `sha256:${crypto.createHash('sha256').update(enRaw).digest('hex')}`, locale: 'ar' }));
+    r = await client.callTool({ name: 'apply_edits', arguments: { document: EN, edits: badEd, out: path.join(OUT, 'badedition.en.json') } });
+    check('apply_edits: an edition mismatch is refused even with the right hash', r.isError === true && /edition mismatch/.test(text(r)), text(r).slice(0, 160));
+    r = await client.callTool({ name: 'apply_edits', arguments: { document: EN, edits: editsFile, out: path.join(OUT, 'forced.en.json'), force: true } });
+    check('apply_edits: force: true overrides on purpose', !r.isError && data(r)?.ops_applied === 2, text(r).slice(0, 160));
+    r = await client.callTool({ name: 'export_document', arguments: { document: EN, edits: editsFile, out_dir: path.join(OUT, 'refused-export'), docx: false } });
+    check('export_document: refuses mismatched edits too', r.isError === true && /baseHash|edition/.test(text(r)), text(r).slice(0, 160));
+  }
+
   r = await client.callTool({ name: 'apply_edits', arguments: { document: AR, edits: editsFile, out: path.join(OUT, 'edited.exe') } });
   check('apply_edits: refuses a non-.json output', r.isError === true, text(r).slice(0, 120));
 

@@ -138,7 +138,7 @@ export function systemFamily(family, dirs) {
  * engine/font_normalise.py (the house otf-to-ttf path) in the gitignored out/ folder, removed at once.
  * The licence of a chosen font is the user's responsibility. */
 const NORM = new Map();
-const OUT_TMP = path.join(REPO, 'out', 'font-norm');
+const outTmp = () => process.env.BW_FONT_NORM_DIR || path.join(REPO, 'out', 'font-norm'); // BW_FONT_NORM_DIR: a test owns its sub-folder
 /** a TrueType copy of the font (Buffer) with fsType 0; index picks the face of a .ttc */
 export function normaliseFont(bytes, index = 0, { embolden = false } = {}) {
   const buf = Buffer.from(bytes);
@@ -151,8 +151,8 @@ export function normaliseFont(bytes, index = 0, { embolden = false } = {}) {
     const n = out.readUInt16BE(4);
     for (let i = 0; i < n; i += 1) if (out.toString('latin1', 12 + i * 16, 16 + i * 16) === 'OS/2') out.writeUInt16BE(0, out.readUInt32BE(12 + i * 16 + 8) + 8);
   } else {
-    fs.mkdirSync(OUT_TMP, { recursive: true });
-    const stem = path.join(OUT_TMP, `${process.pid}-${key.slice(0, 12)}`);
+    fs.mkdirSync(outTmp(), { recursive: true });
+    const stem = path.join(outTmp(), `${process.pid}-${key.slice(0, 12)}`);
     fs.writeFileSync(`${stem}.in`, buf);
     try {
       const r = spawnSync('uv', ['run', '--no-project', '--with', 'fonttools', '--with', 'brotli', 'python', path.join(HERE, 'font_normalise.py'), `${stem}.in`, `${stem}.ttf`, '--index', String(index), ...(embolden ? ['--embolden'] : [])], { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } });

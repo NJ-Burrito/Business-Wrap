@@ -685,6 +685,10 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     merge_labels(data)
     hide = set((data.get('layout') or {}).get('hide') or [])
     document = Document()
+    # core properties: Word, Explorer and screen readers show the title and the language (the PDF carries them too)
+    _ctl = data.get('control') or {}
+    document.core_properties.title = str(_ctl.get('title') or '')
+    document.core_properties.language = 'ar-JO' if LOCALE == 'ar' else 'en-US'
     section = document.sections[0]
     section.page_width, section.page_height = (Inches(8.27), Inches(11.69))
     section.top_margin = section.bottom_margin = Inches(0)

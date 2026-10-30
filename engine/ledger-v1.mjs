@@ -13,6 +13,7 @@
 export const BWLOG1 = (() => {
   const APP_KEY_V1 = 'ace2275efb605532c67c8accc166b936cd77f3bb5b6a2bd183134fae43cd4ea4';
   const KDF_INFO = 'business-wrap/bwlog/v1';
+  const SESSION_ONLY = new Set(['actor-key', 'open', 'x-active']); // entries a session writes before anything is saved or edited
   const KINDS = ['open', 'op', 'save', 'saveHtml', 'export', 'checkpoint', 'share', 'lock', 'unlock', 'sign', 'import', 'merge', 'actor-key'];
   let subtle = globalThis.crypto?.subtle;
   const use = (s) => { subtle = s; };
@@ -123,7 +124,10 @@ export const BWLOG1 = (() => {
       const lastSeq = E.length - 1;
       if (lastSeq < head.seq) {
         const same = lastSeq < 0 || opts.mirror.hashes?.[lastSeq] === E[lastSeq].hash;
-        issues.push({ seq: Math.max(0, lastSeq), reason: same ? 'truncated' : 'fork' });
+        // an unsaved session leaves only its own bookkeeping (key, open, activity pings) in the mirror: an older copy of the file, not tampering
+        const kinds = opts.mirror.kinds;
+        const bookkeeping = same && Array.isArray(kinds) && kinds.length > head.seq && kinds.slice(lastSeq + 1, head.seq + 1).every((k) => SESSION_ONLY.has(k));
+        if (!bookkeeping) issues.push({ seq: Math.max(0, lastSeq), reason: same ? 'truncated' : 'fork' });
       } else if (E[head.seq].hash !== head.hash) issues.push({ seq: head.seq, reason: 'fork' });
     }
     if (opts.editions) {
@@ -140,9 +144,9 @@ export const BWLOG1 = (() => {
   /** Mirror record of a log: head, every hash by seq, merged pins. `prev` (the old record) never moves the head back. */
   function mirrorOf(log, prev, pins = {}) {
     const last = log.entries.at(-1);
-    const mine = { head: last ? { seq: last.seq, hash: last.hash } : null, hashes: log.entries.map((e) => e.hash) };
+    const mine = { head: last ? { seq: last.seq, hash: last.hash } : null, hashes: log.entries.map((e) => e.hash), kinds: log.entries.map((e) => e.kind) };
     const keep = prev?.head && (!mine.head || prev.head.seq > mine.head.seq) ? prev : mine;
-    return { doc: log.doc, head: keep.head, hashes: keep.hashes, pins: { ...pins, ...(prev?.pins || {}) } };
+    return { doc: log.doc, head: keep.head, hashes: keep.hashes, kinds: keep.kinds, pins: { ...pins, ...(prev?.pins || {}) } };
   }
 
   /* ── metrics (A12): derived from the log only ── */
