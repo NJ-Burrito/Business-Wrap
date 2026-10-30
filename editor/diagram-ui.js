@@ -54,6 +54,16 @@ function dgPaint() {
   const ns = 'http://www.w3.org/2000/svg';
   const g = document.createElementNS(ns, 'g');
   g.setAttribute('class', 'dg-ui');
+  // 0.15.0 (F5): lettering that would print too small, or text that overlaps, is a warning on the sheet (editor only, never blocks)
+  try {
+    const lg = DIAGRAM.legibility(m, { locale: S.ed === 'en' ? 'en' : 'ar' });
+    if (!lg.ok) {
+      const en = S.ed === 'en';
+      const msg = en ? `Prints at ${lg.minPtPrinted} pt${lg.overlaps.length ? `, ${lg.overlaps.length} overlap(s)` : ''}: split the figure or enlarge the frame` : `يُطبع بحجم ${lg.minPtPrinted} نقطة${lg.overlaps.length ? `، ${lg.overlaps.length} تداخل` : ''}: قسّم الشكل أو كبّر الإطار`;
+      const v = lg.view;
+      g.insertAdjacentHTML('beforeend', `<g class="dg-legib"><rect x="${v.x + 6}" y="${v.y + 6}" width="${Math.min(v.w - 12, 20 + msg.length * 6.4)}" height="24" rx="5" fill="#fff4d6" stroke="#8b5a05" stroke-width="1"/><text x="${v.x + 14}" y="${v.y + 22}" font-size="12" fill="#4e3102" direction="${en ? 'ltr' : 'rtl'}" ${en ? '' : `text-anchor="start" x="${v.x + 14}"`}>${esc(msg)}</text></g>`);
+    }
+  } catch { /* a model the check cannot read is the Check panel's business */ }
   for (const id of S.dg.nodes) {
     const n = m.nodes.find((x) => x.id === id);
     if (!n) continue;

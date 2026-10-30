@@ -23,7 +23,7 @@ export const DIAGRAM = (() => {
   const SYMBOLS = ['person', 'people', 'clock', 'check', 'cross', 'cog', 'document', 'mail', 'warning', 'calendar', 'lock', 'flag', 'star'];
   const FREE = new Set(['note', 'group', 'text', 'symbol']); // placed by hand, never by the layout
   const STADIUM = new Set(['start', 'ok', 'stop']);
-  const SKIN_OF = { staff: 'staff', applicant: 'applicant', start: 'applicant', payment: 'payment', rework: 'rework', system: 'system', ok: 'ok', stop: 'stop', note: 'note' };
+  const SKIN_OF = { continue: 'applicant', staff: 'staff', applicant: 'applicant', start: 'applicant', payment: 'payment', rework: 'rework', system: 'system', ok: 'ok', stop: 'stop', note: 'note' };
   const BADGES = { staff: ['person'], applicant: ['person'], start: ['person'], payment: ['person', 'clock'], rework: ['person'], system: ['cog'], ok: ['check'], stop: ['cross'] };
 
   /* house palette (design/ours diagram-* tokens); a design pack overrides them through theme.vars */
@@ -57,8 +57,8 @@ export const DIAGRAM = (() => {
 
   /* legend wording; a model may rename any entry (model.legend[key]) */
   const KEY = {
-    ar: { staff: 'مرحلة الموظف', applicant: 'مرحلة مقدم الطلب', rework: 'استكمال من مُقدّم الطلب', payment: 'دفع من مُقدّم الطلب', system: 'خطوة ينفذها النظام', stop: 'نهاية بالإلغاء أو الرفض', ok: 'نهاية بالاعتماد', note: 'ملاحظة', 'wire-main': 'المسار الأساسي للطلب', 'wire-return': 'إرجاع إلى مرحلة سابقة', 'wire-stop': 'مسار الرفض أو الإلغاء', action: 'إجراء', start: 'تقديم الطلب', newStage: 'مرحلة جديدة', newText: 'نص' },
-    en: { staff: 'Staff stage', applicant: 'Applicant step', rework: 'Applicant completes', payment: 'Applicant pays', system: 'System step', stop: 'Ends refused or cancelled', ok: 'Ends approved', note: 'Note', 'wire-main': 'Main path', 'wire-return': 'Back to an earlier stage', 'wire-stop': 'Refusal or cancellation', action: 'Action', start: 'Submit request', newStage: 'New stage', newText: 'Text' },
+    ar: { staff: 'مرحلة الموظف', applicant: 'مرحلة مقدم الطلب', rework: 'استكمال من مُقدّم الطلب', payment: 'دفع من مُقدّم الطلب', system: 'خطوة ينفذها النظام', stop: 'نهاية بالإلغاء أو الرفض', ok: 'نهاية بالاعتماد', note: 'ملاحظة', 'wire-main': 'المسار الأساسي للطلب', 'wire-return': 'إرجاع إلى مرحلة سابقة', 'wire-stop': 'مسار الرفض أو الإلغاء', action: 'إجراء', start: 'تقديم الطلب', newStage: 'مرحلة جديدة', newText: 'نص', continueTo: 'يتابع في الشكل {n}', continueFrom: 'من الشكل {n}' },
+    en: { staff: 'Staff stage', applicant: 'Applicant step', rework: 'Applicant completes', payment: 'Applicant pays', system: 'System step', stop: 'Ends refused or cancelled', ok: 'Ends approved', note: 'Note', 'wire-main': 'Main path', 'wire-return': 'Back to an earlier stage', 'wire-stop': 'Refusal or cancellation', action: 'Action', start: 'Submit request', newStage: 'New stage', newText: 'Text', continueTo: 'Continues in figure {n}', continueFrom: 'From figure {n}' },
   };
   const words = (locale) => KEY[locale === 'ar' ? 'ar' : 'en'];
 
@@ -151,7 +151,38 @@ export const DIAGRAM = (() => {
 
   /* ── auto layout: the reference's chain, wrapped onto the sheet's proportion ── */
   const PAGE_RATIO = 269 / 140;
-  function layout(input, { force = false } = {}) {
+  /** Auto layout. Options (0.15.0 · F4/F5): `aspect` = the bounding box ratio to land on (±12 %, measured on the drawn sheet,
+   *  not estimated), `maxRows` (default 5, 10 with an aspect), `maxNodes` (a graph above it gets a `split` suggestion by phase).
+   *  With none of them the layout is exactly the 0.14 one, so saved hand-laid figures never shift. */
+  function layout(input, opts = {}) {
+    const { force = false, aspect, maxRows, maxNodes } = opts;
+    let out;
+    if (aspect > 0) {
+      const spineN = spineOf(clone(input)).length;
+      let best = null;
+      const kMax = Math.max(1, Math.min(maxRows || 10, spineN));
+      for (let k = 1; k <= kMax; k += 1) {
+        const m = layoutOnce(input, { force, aspect, rowsK: k });
+        const v = resolve(m).view;
+        const miss = Math.abs(Math.log(v.w / v.h / aspect));
+        if (!best || miss < best.miss - 0.01) best = { m, miss, k };
+        if (best.miss < 0.04) break;
+      }
+      // one more pass with the sheet spread along its short axis (boxes keep their size, only the gaps grow)
+      const v = resolve(best.m).view;
+      const ratio = v.w / v.h;
+      const grow = Math.min(1.8, Math.max(1, ratio > aspect ? ratio / aspect : aspect / ratio));
+      out = grow > 1.04 ? layoutOnce(input, { force, aspect, rowsK: best.k, stretch: ratio > aspect ? { x: 1, y: grow } : { x: grow, y: 1 } }) : best.m;
+      const v2 = resolve(out).view;
+      if (Math.abs(Math.log(v2.w / v2.h / aspect)) > Math.abs(Math.log(ratio / aspect))) out = best.m;
+    } else out = layoutOnce(input, { force });
+    if (maxNodes > 0) {
+      const sug = splitByPhase(out, { maxNodes, suggestOnly: true });
+      if (sug.length > 1) out.split = sug;
+    }
+    return out;
+  }
+  function layoutOnce(input, { force = false, aspect, rowsK, stretch } = {}) {
     const model = clone(input);
     model.nodes = model.nodes.filter((n) => !(n.kind === 'group' && n.auto));
     for (const e of model.edges || []) delete e.via; // a new layout routes every arrow afresh
@@ -172,7 +203,8 @@ export const DIAGRAM = (() => {
     const sats = model.nodes.filter((n) => n.kind === 'stop' || n.kind === 'rework');
     const satH = Math.max(0, ...sats.map((n) => n.h));
     let best = null;
-    for (let k = 1; k <= Math.min(5, spine.length); k += 1) {
+    const target0 = aspect > 0 ? aspect : PAGE_RATIO;
+    for (let k = rowsK || 1; k <= (rowsK || Math.min(5, spine.length)); k += 1) {
       const rows = [[]];
       let w = 0;
       const target = total / k;
@@ -184,7 +216,7 @@ export const DIAGRAM = (() => {
       });
       const W = Math.max(...rows.map((r) => r.reduce((s, n) => s + n.w + G.gap, 0))) + 80;
       const H = rows.reduce((s, r) => s + Math.max(...r.map((n) => n.h)), 0) + rows.length * (satH + 150) + 60;
-      const score = Math.abs(Math.log(W / H / PAGE_RATIO)) + (rows.at(-1).length === 1 && rows.length > 1 ? 0.4 : 0);
+      const score = Math.abs(Math.log(W / H / target0)) + (rows.at(-1).length === 1 && rows.length > 1 ? 0.4 : 0);
       if (!best || score < best.score - 0.02) best = { rows, score };
     }
     const rows = best.rows;
@@ -240,6 +272,9 @@ export const DIAGRAM = (() => {
     const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : x0 + width / 2);
     below.forEach((list) => place(list, (s) => mean(model.edges.filter((e) => e.to === s.id && byId.get(e.from) && rowOf.has(e.from)).map((e) => cx(byId.get(e.from))))));
     above.forEach((list) => place(list, (s) => mean([...model.edges.filter((e) => e.to === s.id && rowOf.has(e.from)).map((e) => cx(byId.get(e.from))), ...model.edges.filter((e) => e.from === s.id && rowOf.has(e.to)).map((e) => cx(byId.get(e.to)))])));
+    if (stretch && (stretch.x !== 1 || stretch.y !== 1)) {
+      for (const n of model.nodes) { n.x = G.margin + (n.x - G.margin) * stretch.x; n.y = G.margin + (n.y - G.margin) * stretch.y; }
+    }
     // the applicant's own run of steps stands in one band (common region), one per row
     const mine = (n) => ['start', 'applicant', 'payment'].includes(n.kind);
     const groups = [];
@@ -264,6 +299,116 @@ export const DIAGRAM = (() => {
     for (const n of model.nodes) for (const k of ['x', 'y', 'w', 'h']) if (n[k] != null) n[k] = Math.round(n[k]);
     model.nodes = [...groups.map((g) => ({ ...g, x: Math.round(g.x), y: Math.round(g.y), w: Math.round(g.w), h: Math.round(g.h) })), ...model.nodes];
     return model;
+  }
+
+  /* ── 0.15.0 · F5: a graph too big for one sheet is cut into phase figures, joined by continuation nodes ── */
+  const fill = (tpl, n) => String(tpl).replace('{n}', n);
+  /** @returns {{caption: string, nodes: string[], model?: object}[]} Each figure holds at most `maxNodes` nodes (continuations included).
+   *  suggestOnly: ids only, no model built (what `layout({maxNodes})` attaches as `split`). */
+  function splitByPhase(modelIn, { maxNodes = 20, locale = 'ar', aspect = 1.5, suggestOnly = false } = {}) {
+    const m = clone(modelIn);
+    m.nodes = (m.nodes || []).filter((n) => n && n.id && !(n.kind === 'group' && n.auto));
+    const ids = new Set(m.nodes.map((n) => n.id));
+    m.edges = (m.edges || []).filter((e) => e && ids.has(e.from) && ids.has(e.to));
+    m.edges.forEach((e, i) => { if (!e.id) e.id = `e${i + 1}`; });
+    const byId = new Map(m.nodes.map((n) => [n.id, n]));
+    const countable = m.nodes.filter((n) => !FREE.has(n.kind));
+    const whole = () => [{ caption: '', nodes: countable.map((n) => n.id), ...(suggestOnly ? {} : { model: m }) }];
+    if (countable.length <= maxNodes) return whole();
+    const spine = spineOf(m);
+    const isSat = (id) => ['stop', 'rework'].includes(byId.get(id)?.kind);
+    const satsOf = (id) => [...new Set(m.edges.filter((e) => (e.from === id && isSat(e.to)) || (e.to === id && isSat(e.from))).map((e) => (e.from === id ? e.to : e.from)))];
+    const label = (id) => String(byId.get(id)?.label || id).replace(/\s+/g, ' ');
+    const w = words(locale);
+    for (let cap = Math.max(4, maxNodes - 2); cap >= 3; cap -= 1) {
+      const chunks = [];
+      let cur = null;
+      spine.forEach((id, i) => {
+        const add = satsOf(id).filter((x) => !cur?.sats.has(x));
+        const cost = 1 + add.length;
+        const afterGate = i > 0 && byId.get(spine[i - 1])?.kind === 'decision';
+        if (!cur || (cur.size + cost > cap && cur.spine.length && !(afterGate && cur.size + cost <= cap + 1))) { cur = { spine: [], sats: new Set(), size: 0 }; chunks.push(cur); }
+        cur.spine.push(id);
+        add.forEach((x) => cur.sats.add(x));
+        cur.size += cost;
+      });
+      const chunkOfSpine = new Map();
+      chunks.forEach((c, ci) => c.spine.forEach((id) => chunkOfSpine.set(id, ci)));
+      const parts = chunks.map(() => ({ nodes: new Map(), edges: [], toFig: new Map(), fromFig: new Map() }));
+      chunks.forEach((c, ci) => {
+        for (const id of [...c.spine, ...c.sats]) parts[ci].nodes.set(id, clone(byId.get(id)));
+      });
+      for (const n of m.nodes) if (FREE.has(n.kind)) parts[0].nodes.set(n.id, clone(n));
+      let ecount = 0;
+      const cont = (ci, dir, other) => {
+        const map = parts[ci][dir === 'to' ? 'toFig' : 'fromFig'];
+        if (!map.has(other)) {
+          const id = `cont-${dir}-${other + 1}`;
+          map.set(other, id);
+          parts[ci].nodes.set(id, { id, kind: 'continue', label: fill(dir === 'to' ? w.continueTo : w.continueFrom, other + 1) });
+        }
+        return map.get(other);
+      };
+      for (const e of m.edges) {
+        const fs0 = chunkOfSpine.get(e.from);
+        const ts0 = chunkOfSpine.get(e.to);
+        const fc = fs0 ?? ts0;
+        const tc = ts0 ?? fs0;
+        if (fc == null || tc == null) continue;
+        if (fc === tc) { if (parts[fc].nodes.has(e.from) && parts[fc].nodes.has(e.to)) parts[fc].edges.push(clone(e)); continue; }
+        // an edge between two figures: a continuation leaves one and arrives in the other
+        if (parts[fc].nodes.has(e.from)) parts[fc].edges.push({ ...clone(e), id: `${e.id}-o${++ecount}`, to: cont(fc, 'to', tc) });
+        if (parts[tc].nodes.has(e.to)) { const c = { ...clone(e), id: `${e.id}-i${++ecount}`, from: cont(tc, 'from', fc) }; delete c.label; parts[tc].edges.push(c); }
+      }
+      const figs = parts.map((p, ci) => ({ p, ci, caption: `${label(chunks[ci].spine[0])} → ${label(chunks[ci].spine.at(-1))}`, nodes: [...p.nodes.values()].filter((n) => !FREE.has(n.kind)).map((n) => n.id) }));
+      if (figs.some((f) => f.nodes.length > maxNodes) && cap > 3) continue;
+      return figs.map((f) => {
+        const out = { caption: f.caption, nodes: f.nodes };
+        if (!suggestOnly) {
+          const sub = { ...clone(m), nodes: [...f.p.nodes.values()], edges: f.p.edges.map((e) => { const c = { ...e }; delete c.via; return c; }) };
+          for (const n of sub.nodes) { delete n.x; delete n.y; delete n.w; delete n.h; }
+          out.model = layout(sub, { force: true, aspect, maxRows: 6 });
+        }
+        return out;
+      });
+    }
+    return whole();
+  }
+
+  /* ── 0.15.0 · F5: is the lettering readable once the sheet is printed into its frame? ── */
+  /** Printed size of every text on the sheet when the drawing is fitted into `frameMm` (the figure's frame on the page),
+   *  plus the texts that overlap a neighbour or overrun their own shape. Computed from the resolved drawing, never typed.
+   *  @returns {{scale: number, minPt: number, minPtPrinted: number, small: string[], overlaps: string[][], ok: boolean}}  scale = mm per drawing unit */
+  function legibility(modelIn, { frameMm = [269, 140], theme, locale = 'ar', minPt = 7 } = {}) {
+    const r = resolve(modelIn, { theme, locale });
+    const scale = Math.min(frameMm[0] / r.view.w, frameMm[1] / r.view.h);
+    const pt = (size) => size * scale * (72 / 25.4);
+    const texts = r.items.filter((it) => it.t === 'text');
+    const nameOf = (t) => t.id || (t.edge ? `edge:${t.edge}` : t.legend ? `legend:${t.legend}` : '?');
+    const sizes = texts.map((t) => pt(t.size));
+    const small = [...new Set(texts.filter((t) => pt(t.size) < minPt).map(nameOf))];
+    const overlaps = [];
+    const rect = (b) => ({ l: b.x + 1, t: b.y + 1, r: b.x + b.w - 1, b: b.y + b.h - 1 });
+    const hit = (a, b) => a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t;
+    for (let i = 0; i < texts.length; i += 1) {
+      for (let j = i + 1; j < texts.length; j += 1) {
+        const a = texts[i];
+        const b = texts[j];
+        if (a.id && a.id === b.id) continue; // a label and its own sub line sit in one shape
+        if (hit(rect(a.box), rect(b.box))) overlaps.push([nameOf(a), nameOf(b)]);
+      }
+    }
+    const shapes = r.items.filter((it) => it.t === 'shape' && it.id && !it.hit && r.model.nodes.find((n) => n.id === it.id)?.kind !== 'group');
+    for (const t of texts) {
+      const tb = rect(t.box);
+      for (const sh of shapes) {
+        const sb = { l: sh.x, t: sh.y, r: sh.x + sh.w, b: sh.y + sh.h };
+        if (sh.id === t.id) { if (t.box.w > sh.w + 1 || t.box.h > sh.h + 1) overlaps.push([nameOf(t), `overflow:${sh.id}`]); continue; }
+        if ((t.plate || t.edge || t.legend) && hit(tb, sb)) overlaps.push([nameOf(t), sh.id]);
+      }
+    }
+    const minPtPrinted = sizes.length ? Math.round(Math.min(...sizes) * 10) / 10 : 0;
+    return { scale, view: r.view, minPt, minPtPrinted, small, overlaps, ok: small.length === 0 && overlaps.length === 0 };
   }
 
   /** A model ready to draw: sizes and positions filled in, edge kinds settled. */
@@ -514,6 +659,15 @@ export const DIAGRAM = (() => {
       }
       if (Math.abs(prev[0] - q[0]) >= 0.5 || Math.abs(prev[1] - q[1]) >= 0.5 || i === pts.length - 1) out.push(q);
     }
+    // 0.15.0 (F5): a last leg that runs ALONG the face it enters (a via point level with a box top or bottom) hides the
+    // arrowhead on the outline; step out one lane and come in square, so the head always lands on the face
+    if (out.length >= 2 && !(sb === 'l' || sb === 'r')) {
+      const [q, e] = [out.at(-2), out.at(-1)];
+      if (Math.abs(q[1] - e[1]) < 0.5 && Math.abs(q[0] - e[0]) >= 0.5) {
+        const y = e[1] + (sb === 't' ? -G.lane : G.lane);
+        out.splice(-1, 0, [q[0], y], [e[0], y]);
+      }
+    }
     // the arrowhead needs a last leg with a length: drop a zero-length tail point
     while (out.length > 2 && Math.hypot(out.at(-1)[0] - out.at(-2)[0], out.at(-1)[1] - out.at(-2)[1]) < 0.5) out.splice(-2, 1);
     return out;
@@ -619,7 +773,7 @@ export const DIAGRAM = (() => {
       const sk = skinOf(n);
       const stadium = STADIUM.has(n.kind);
       if (n.kind === 'note') fore.push({ t: 'shape', geom: 'note', x: n.x, y: n.y, w: n.w, h: n.h, fill: sk.fill, line: sk.line, lw: 1, dash: '', id });
-      else fore.push({ t: 'shape', geom: stadium ? 'stadium' : 'round', rx: stadium ? n.h / 2 : G.rx, x: n.x, y: n.y, w: n.w, h: n.h, fill: sk.fill, line: sk.line, lw: stadium ? G.strokeTerm : G.stroke, dash: '', id });
+      else fore.push({ t: 'shape', geom: stadium ? 'stadium' : 'round', rx: stadium ? n.h / 2 : G.rx, x: n.x, y: n.y, w: n.w, h: n.h, fill: sk.fill, line: sk.line, lw: stadium ? G.strokeTerm : G.stroke, dash: n.kind === 'continue' ? '6 4' : '', id });
       // badges: a task's in its leading top corner (the start side of the reading direction), a terminator's inside its cap
       const icons = Array.isArray(n.icons) ? n.icons.filter((x) => GLYPHS[x]) : BADGES[n.kind] || [];
       const lead = rtl ? -1 : 1;
@@ -938,5 +1092,5 @@ export const DIAGRAM = (() => {
     });
   }
 
-  return { KINDS, WIRE_KINDS, COLORS, SYMBOLS, FS, G, palette, words, measure, wrap, textW, classify, layout, ensure, route, resolve, render, fromGraph, toMermaid, fromMermaid, starter, glyph };
+  return { splitByPhase, legibility, KINDS, WIRE_KINDS, COLORS, SYMBOLS, FS, G, palette, words, measure, wrap, textW, classify, layout, ensure, route, resolve, render, fromGraph, toMermaid, fromMermaid, starter, glyph };
 })();
