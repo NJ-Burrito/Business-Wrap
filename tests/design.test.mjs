@@ -12,6 +12,7 @@
 //    keeps number + unit, arrows step, colours take a hex code.
 // Screenshots (viewport only) → out/compare-0.10.0-design/.
 import './_isolate.mjs';
+import { act, rbBtn } from './_ribbon.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -95,7 +96,7 @@ async function open(ctx, ui) {
 // A7: the panel's groups start collapsed; these tests work inside them, so they open them as a person would (the open
 // state is remembered for the page, across redraws); «labels» and «css» stay closed, as the screenshots expect
 const openGroups = (page) => page.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('.drawer details.dgrp:not([data-grp="labels"]):not([data-grp="css"])').forEach((d) => { d.open = true; }));
-const theme = async (page) => { await page.locator('.ribbon .rb-panel [data-a="theme"]').click(); await page.locator('.drawer .dgrp').first().waitFor(); await openGroups(page); await page.waitForTimeout(500); };
+const theme = async (page) => { await (await rbBtn(page,'theme')).click(); await page.locator('.drawer .dgrp').first().waitFor(); await openGroups(page); await page.waitForTimeout(500); };
 const design = (page) => page.evaluate(() => window.BW.M[window.BW.S.svc][window.BW.S.ed].doc.design || {});
 /** viewport screenshot of one element, after asserting it lies inside the viewport */
 async function shot(page, sel, name) {
@@ -438,7 +439,7 @@ try {
     // (Documents, Share, a table …) sits on the bar itself, then press it there
     await n.p.setViewportSize({ width: 2600, height: 900 });
     await n.p.waitForTimeout(500);
-    const pick = await shadow(n.p, (r, ks) => [...r.querySelectorAll('.island .b[data-a]')].find((b) => b.checkVisibility() && ks.includes(b.querySelector('.ic')?.dataset.ic) && !b.disabled)?.dataset.a, n.keys);
+    const pick = await shadow(n.p, (r, ks) => [...r.querySelectorAll('.ribbon .rb-panel .b[data-a]')].find((b) => b.checkVisibility() && ks.includes(b.querySelector('.ic')?.dataset.ic) && !b.disabled)?.dataset.a, n.keys);
     const btn = n.p.locator(`.island .b[data-a="${pick}"]`).first();
     await btn.hover(); await n.p.waitForTimeout(900);
     const before = await icm(n.p, '.ic[data-ic]');

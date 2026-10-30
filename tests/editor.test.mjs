@@ -11,6 +11,7 @@
 // conflict (#8), the tool watermark in the UI and never in any output, Save-HTML
 // round trip, and a 60-page timing.
 import './_isolate.mjs';
+import { act as ribbonAct } from './_ribbon.mjs';
 import fs from 'node:fs';
 import http from 'node:http';
 import { createRequire } from 'node:module';
@@ -97,8 +98,7 @@ const ui = (page, a, extra = '') => page.locator(`button[data-a="${a}"]${extra}`
 async function act(page, a, extra = '') {
   const b = page.locator(`button[data-a="${a}"]${extra}`);
   if ((await b.count()) && (await b.first().isVisible())) return b.first().click();
-  await page.keyboard.press('Control+K');
-  await page.locator(`#cmdlist [data-cmd="${a}"]`).click();
+  return ribbonAct(page, a); // the ribbon tab that holds it (0.14), else the palette
 }
 async function pickEdition(page, ed) {
   await act(page, 'ed', `[data-ed="${ed}"]`);
