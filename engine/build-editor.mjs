@@ -4,6 +4,7 @@
 //
 //   node engine/build-editor.mjs <doc.json | dir>... [--out file] [--set name]
 //        [--theme theme.json] [--embed-fonts] [--watermark-dir dir] [--ui ar|en]
+import { faviconLink } from './brand-icons.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -195,6 +196,7 @@ function editorHtml({ services, setId, ui = 'ar', theme, fontCss, fontFamilies, 
     whatsNew: { human: notes.human, migration: notes.migration },
   };
   const head = `<meta http-equiv="Content-Security-Policy" content="${csp}">
+${faviconLink('html')}
 <style id="bw-editor-css">${read(path.join(REPO, 'editor', 'editor.css'))}
 ${read(path.join(REPO, 'editor', 'views.css'))}</style>
 `;

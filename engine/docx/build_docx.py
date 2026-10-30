@@ -890,6 +890,7 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     if toc:
         counters['toc_refresh'] = refresh_fields(out_docx, F['body'])
     counters['font_embed'] = embed_fonts(out_docx)
+    from thumbnail import add_thumbnail; counters['thumbnail'] = add_thumbnail(out_docx)  # 0.14.0: the DOCX badge in Explorer/Word thumbnails
     return counters
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()

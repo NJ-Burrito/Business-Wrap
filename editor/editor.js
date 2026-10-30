@@ -524,6 +524,7 @@ async function saveHtml(embedFonts) {
 <meta http-equiv="Content-Security-Policy" content="${DATA.csp}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(cur().doc.control.title)}</title>
+${document.head.querySelector('link[rel~="icon"]')?.outerHTML || ''}
 <style id="bw-fonts">${fontCss}</style>
 <style id="bw-doc-css">${documentCss(S.theme, parts.sheet, cur().doc)}</style>
 <style id="bw-editor-css">${document.getElementById('bw-editor-css').textContent}</style>
