@@ -1213,7 +1213,7 @@ function uiHtml() {
     ${sec('export', [pcExportMenu(), tool(CMDS.find((c) => c.id === 'print')), tool(CMDS.find((c) => c.id === 'exportPdf'))])}
     <span class="spacer"></span>
     <div class="status" role="status" aria-live="polite">
-      <span class="count" aria-label="${esc(t('changes', { n: opCount() }))}"><span class="n">${opCount()}</span><span class="w" data-alt="${esc(tAlt('changesWord'))}">${esc(t('changesWord'))}</span></span>
+      <button type="button" class="count" data-a="history" title="${esc(t('history'))}" aria-label="${esc(t('changes', { n: opCount() }))}"><span class="i">${ic('history')}</span><span class="w" data-alt="${esc(tAlt('changesWord'))}">${esc(t('changesWord'))}</span><span class="n" aria-hidden="true">${opCount()}</span></button>
       <span class="sel vh">${esc(selDesc())}</span><span class="flash vh"></span>
     </div>
     <div class="sec" data-cat="view" role="group" aria-label="${esc(t('secView'))}"><span class="sc" aria-hidden="true"><span class="i">${ic('secView')}</span><span class="st">${esc(t('secView'))}</span></span><div class="sb">
@@ -1263,7 +1263,7 @@ function mountUi() {
  * motion add. A node whose kind changed is replaced: only that node is new. */
 const UI_OWN = '.ctx, .drawer, .dialog, .toasts, #cmdlist';
 const UI_OWN_ATTR = new Set(['data-theme', 'lang', 'dir']);
-const UI_RUNTIME = '.xpl, .pager, .xpl-dock, .bw-busy, .rd-exit';
+const UI_RUNTIME = '.xpl, .pager, .xpl-dock, .bw-busy, .rd-exit, .ribbon';
 const UI_KEEP_ATTR = new Set(['style', 'data-tt', 'aria-describedby', 'popover', 'data-open', 'disabled']);
 const UI_RUNTIME_CLS = /^(has-sel|sq\d|nw|folded|sel-fold|done|swap|tick|in|closing)$/;
 function uiMorph(a, b) {

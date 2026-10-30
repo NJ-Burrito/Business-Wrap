@@ -1,0 +1,82 @@
+/* 0.14.0 · UX-RIBBON — the Word-style ribbon (R1), the language + direction pair (R3), the changes button (R4).
+ * Colours are the toolbar's own variables only; motion is the toolbar's tokens (calm / reduced → static). */
+
+/* the island is two rows now: the quick strip (brand, document, language+direction, selection shortcuts, changes, palette) and the ribbon */
+.island:has(> .ribbon) { flex-wrap: wrap; row-gap: 4px; }
+.island:has(> .ribbon) > .sec:not(.now):not([data-cat="view"]) { display: none; } /* their tools live in the ribbon; the markup stays for every older hook */
+.island:has(> .ribbon) > .sec[data-cat="view"], .island:has(> .ribbon) > .sec[data-cat="view"] > .sb { display: contents; }
+.island:has(> .ribbon) > .sec[data-cat="view"] > .sc { display: none; }
+.island:has(> .ribbon) > .sec[data-cat="view"] .seg.ui { order: 2; }
+.island:has(> .ribbon) > .sec[data-cat="view"] .sb > .b { order: 7; }
+.island:has(> .ribbon) > .brand { order: 0; }
+.island:has(> .ribbon) > .grp.doc { order: 1; border-inline-end: 0; padding-inline-end: 0; }
+.island:has(> .ribbon) > .ctx { order: 3; }
+.island:has(> .ribbon) > .spacer { order: 4; }
+.island:has(> .ribbon) > .status { order: 5; }
+.island:has(> .ribbon) > .b.cmd { order: 8; }
+.island:has(> .ribbon) > .progress { order: 9; }
+.island:has(> .ribbon) > .ribbon { order: 10; }
+
+/* R3 · language and direction side by side: one pill group, one hairline between them, no gap of toolbar between */
+.island:has(> .ribbon) .grp.doc .seg.lang, .island:has(> .ribbon) .seg.ui { background: color-mix(in srgb, var(--on-glass) 8%, transparent); }
+.island:has(> .ribbon) .grp.doc .seg.lang { border-start-end-radius: 6px; border-end-end-radius: 6px; margin-inline-end: -6px; }
+.island:has(> .ribbon) .seg.ui { border-start-start-radius: 6px; border-end-start-radius: 6px; margin-inline-start: 0; box-shadow: inset 1px 0 0 var(--hair); }
+.island:has(> .ribbon) .seg.ui { margin-inline-end: 6px; }
+.island:has(> .ribbon) > .grp.doc, .island:has(> .ribbon) .seg.ui { align-self: center; }
+
+/* R4 · the changes button: icon + word + count badge, a real button (border, hover lift, press) */
+.status .count {
+  display: inline-flex; align-items: center; gap: 6px; padding-block: 5px; padding-inline: 11px 6px; min-height: 34px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--hair); background: color-mix(in srgb, var(--on-glass) 10%, transparent); color: var(--on-glass); font: inherit; font-size: 13px;
+  transition: background-color .18s var(--e-out), border-color .18s var(--e-out), transform .42s var(--e-spring), box-shadow .18s var(--e-out);
+}
+.status .count .i { display: inline-flex; width: 16px; height: 16px; color: var(--bw-sec-file); }
+.status .count .i .ic { width: 16px; height: 16px; }
+.status .count .w { font-weight: 600; }
+.status .count .n {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding-inline: 6px; border-radius: 999px; font-weight: 800; font-size: 12px;
+  font-variant-numeric: tabular-nums; background: var(--bw-sec-file); color: var(--deep);
+}
+.status .count:hover { background: color-mix(in srgb, var(--on-glass) 18%, transparent); border-color: var(--bw-sec-file); transform: translateY(-1px); box-shadow: 0 2px 8px color-mix(in srgb, var(--deep) 35%, transparent); }
+.status .count:active { transform: scale(var(--press, .96)); box-shadow: none; transition-duration: .08s; }
+.status .count:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .status .count, .status .count:hover, .status .count:active { transition: none; transform: none; } }
+:host-context(html[data-bw-calm="1"]) .status .count, :host-context(html[data-bw-calm="1"]) .status .count:hover, :host-context(html[data-bw-calm="1"]) .status .count:active { transition: none; transform: none; }
+
+/* R1 · the ribbon */
+.ribbon { flex: 0 0 100%; min-width: 0; display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--hair); padding-top: 2px; position: relative; }
+.rb-bar { display: flex; align-items: center; gap: 2px; }
+.rb-tabs { display: flex; align-items: center; gap: 2px; overflow-x: auto; scrollbar-width: none; min-width: 0; }
+.rb-tab { border: 0; background: transparent; color: var(--on-glass-soft); font: inherit; font-size: 13.5px; font-weight: 600; padding: 5px 14px; border-radius: 9px 9px 0 0; cursor: pointer; white-space: nowrap; position: relative; transition: background-color .18s var(--e-out), color .18s var(--e-out); }
+.rb-tab:hover { background: color-mix(in srgb, var(--on-glass) 10%, transparent); color: var(--on-glass); }
+.rb-tab[aria-selected="true"] { color: var(--on-glass); background: color-mix(in srgb, var(--on-glass) 14%, transparent); box-shadow: inset 0 -2px 0 var(--gold); }
+.rb-tab.ctx { color: var(--gold); box-shadow: inset 0 2px 0 var(--gold); }
+.rb-tab.ctx[aria-selected="true"] { color: var(--on-glass); }
+.rb-tab:focus-visible, .rb-col:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+.rb-sp { flex: 1; }
+.rb-col { border: 0; background: transparent; color: var(--on-glass-soft); width: 30px; height: 28px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.rb-col:hover { background: color-mix(in srgb, var(--on-glass) 12%, transparent); color: var(--on-glass); }
+.rb-chev { width: 8px; height: 8px; border-inline-end: 2px solid currentColor; border-block-end: 2px solid currentColor; transform: rotate(-135deg) translate(-1px, -1px); transition: transform .3s var(--e-out); }
+.rb-col[aria-expanded="false"] .rb-chev { transform: rotate(45deg) translate(-1px, -1px); }
+.rb-panel { display: flex; align-items: stretch; gap: 0; overflow-x: auto; scrollbar-width: thin; padding: 4px 0 2px; background: color-mix(in srgb, var(--on-glass) 6%, transparent); border-radius: 0 0 10px 10px; animation: rb-in .22s var(--e-out) both; }
+.rb-panel[hidden] { display: none; }
+.rb-g { display: flex; flex-direction: column; justify-content: space-between; padding: 0 8px; border-inline-end: 1px solid var(--hair); flex: none; min-width: 0; }
+.rb-g:last-child { border: 0; }
+.rb-tools { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 2px; max-width: 460px; }
+.rb-g.dense .rb-tools { max-width: 300px; }
+.rb-gl { text-align: center; font-size: 11px; font-weight: 600; color: var(--on-glass-soft); padding-top: 2px; white-space: nowrap; }
+.ribbon .rb-tools > .b, .ribbon .rb-tools .more > .b { flex-direction: column; gap: 3px; min-height: 52px; min-width: 52px; padding: 5px 6px; justify-content: center; font-size: 12px; line-height: 1.15; }
+.ribbon .rb-tools .b .w { white-space: normal; text-align: center; max-width: 84px; }
+.ribbon .rb-g.dense .rb-tools > .b { min-height: 34px; min-width: 34px; padding: 6px; }
+.ribbon .rb-g.dense .rb-tools > .b .w { display: none; }
+.ribbon .b .i, .ribbon .b .ic { width: 20px; height: 20px; }
+.ribbon .b[aria-pressed="true"] { background: color-mix(in srgb, var(--on-glass) 18%, transparent); box-shadow: inset 0 -2px 0 var(--gold); }
+.ribbon .b:disabled { opacity: .45; cursor: default; }
+.ribbon .more .menu { z-index: 60; }
+/* a collapsed ribbon is the tab row only; a tab pressed meanwhile peeks the panel in flow until a tool or Esc */
+@keyframes rb-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .rb-panel { animation: none; } .rb-chev, .rb-tab { transition: none; } }
+:host-context(html[data-bw-calm="1"]) .rb-panel { animation: none; }
+:host-context(html[data-bw-focus="1"]) .ribbon { display: none; }
+/* the quick strip has room now (the sections moved into the ribbon): the changes button stays while something is selected */
+.island:has(> .ribbon).has-sel .status .count { display: inline-flex; }
