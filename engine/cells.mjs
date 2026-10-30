@@ -61,6 +61,7 @@ export function evalFormula(formula, at) {
     for (let r = Math.min(a.r, b.r); r <= Math.max(a.r, b.r); r += 1) for (let c = Math.min(a.c, b.c); c <= Math.max(a.c, b.c); c += 1) { const v = at(r, c); if (v != null) out.push(v); }
     return out;
   }
+  // a bare range outside a function is #ERR, not a silent SUM (TCELLS-03); an empty reference stays 0, like Excel
   function primary() {
     const k = toks[i];
     if (!k) throw new Error('end');
@@ -68,7 +69,7 @@ export function evalFormula(formula, at) {
     if (k.t === '(') { i += 1; const v = expr(); eat(')'); return v; }
     if (k.t === '-') { i += 1; return -primary(); }
     if (k.t === '+') { i += 1; return primary(); }
-    if (k.t === 'r') { const n = toks[i + 1]; if (n?.t === ':') return FUNCS.SUM(range()); i += 1; const { r, c } = refOf(k.v); return cellNum(r, c); }
+    if (k.t === 'r') { const n = toks[i + 1]; if (n?.t === ':') throw new Error('range'); i += 1; const { r, c } = refOf(k.v); return cellNum(r, c); }
     if (k.t === 'f') {
       if (!FUNCS[k.v]) throw new Error('fn');
       i += 1; eat('(');

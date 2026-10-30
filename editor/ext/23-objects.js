@@ -17,9 +17,8 @@ const w2after = () => {
 const W2_OBJECTS = {
   /** A24: rows × cols with a header row, after the selection (or first in the selected/empty section). */
   table(rows = 3, cols = 3, where = w2after()) {
-    const L = I18N.doc[S.ed];
-    const value = { kind: 'table', columns: Array.from({ length: cols }, (_, i) => `${t('w2.col')} ${i + 1}`), rows: Array.from({ length: Math.max(1, rows - 1) }, () => Array.from({ length: cols }, () => L.none || '—')) };
-    commit([{ op: 'insert', path: `${where.arr}/${where.at}`, value }], { mirror: true });
+    const mk = (ed) => ({ kind: 'table', columns: Array.from({ length: cols }, (_, i) => `${tIn('w2.col', ed)} ${i + 1}`), rows: Array.from({ length: Math.max(1, rows - 1) }, () => Array.from({ length: cols }, () => I18N.doc[ed].none || '—')) }); // each edition's own language (DOCS-02)
+    commit([{ op: 'insert', path: `${where.arr}/${where.at}`, value: mk(S.ed), mirrorValue: mk(other(S.ed)) }], { mirror: true });
     S.sel = { b: `${where.arr}/${where.at}`, p: null, ed: S.ed };
     paintSel();
     return `${where.arr}/${where.at}`;
@@ -32,8 +31,8 @@ const W2_OBJECTS = {
     const d = w2doc();
     const s = w2sectionOf(S.sel?.b || S.sel?.p);
     const at = s ? +s.ch.split('/')[2] + 1 : d.chapters.length;
-    const L = I18N.doc[S.ed];
-    commit([{ op: 'insert', path: `/chapters/${at}`, value: { number: String(at + 1), title: L.newChapter || t('w2.newChapter'), sections: [{ number: `${at + 1}.1`, title: L.newSection || t('w2.newSection'), blocks: [{ kind: 'prose', paragraphs: [L.newParagraph] }] }] } }], { mirror: true });
+    const mk = (ed) => { const L = I18N.doc[ed]; return { number: String(at + 1), title: L.newChapter || tIn('w2.newChapter', ed), sections: [{ number: `${at + 1}.1`, title: L.newSection || tIn('w2.newSection', ed), blocks: [{ kind: 'prose', paragraphs: [L.newParagraph] }] }] }; };
+    commit([{ op: 'insert', path: `/chapters/${at}`, value: mk(S.ed), mirrorValue: mk(other(S.ed)) }], { mirror: true });
     return true;
   },
   /** A23: a text box anchored to the selected block (it gains an id), in front of the text by default. */
@@ -50,6 +49,7 @@ const W2_OBJECTS = {
     S.selOv = w2doc().overlays.length - 1;
     S.sel = null;
     paintSel(); refreshUi();
+    w2showSection('wrap', true); // the wrap tools are there at once, as after an inserted picture (DOCS-07)
     return S.selOv;
   },
   /** A15: one op. inline turns the overlay into a shots block after its anchor (and back is "square"). */

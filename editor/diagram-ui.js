@@ -429,7 +429,8 @@ async function dgAction(a) {
     const b = blockOf(S.sel?.b);
     const arr = b ? b.arr : '/chapters/0/sections/0/blocks';
     const at = b ? b.i + 1 : 0;
-    commit([{ op: 'insert', path: `${arr}/${at}`, value: { kind: 'diagram', caption: HL(S.ed).figureCaption.replace('{name}', cur().name || ''), model: DIAGRAM.starter(S.ed) } }]);
+    const mk = (ed) => ({ kind: 'diagram', caption: HL(ed).figureCaption.replace('{name}', cur(ed).name || ''), model: DIAGRAM.starter(ed) }); // each edition's own language (DOCS-02)
+    commit([{ op: 'insert', path: `${arr}/${at}`, value: mk(S.ed), mirrorValue: mk(other(S.ed)) }]);
     dgSelect(`${arr}/${at}`, S.ed, {});
     return;
   }

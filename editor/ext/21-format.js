@@ -5,15 +5,51 @@
  * the focus) still knows what was selected. Fonts: the Thmanyah families only. */
 const W2F = { at: null }; // {path, ed, start, end}
 
-/** Character offset of (node, off) inside a leaf element, counted over the leaf's own words (data-pfx included). */
+/** The page draws a leaf through polish() (Arabic diacritics, tatweel and stray spaces are dropped), so its DOM text is not the
+ *  document text. map[i] = the document offset that matches display offset i (0.13.3, TW-01/TW-02): greedy walk, display
+ *  characters that are not in the document (inserted spaces) keep the offset, document characters that are not shown
+ *  (diacritics, tatweel, spaces polish removed) are skipped and belong to the character before them. */
+function w2align(doc, disp) {
+  const map = new Array(disp.length + 1);
+  const dia = /[\u064B-\u0652\u0670\u0640]/, ws = /\s/;
+  let j = 0;
+  for (let i = 0; i < disp.length; i += 1) {
+    const c = disp[i];
+    map[i] = j;
+    while (j < doc.length && doc[j] !== c && (dia.test(doc[j]) || (ws.test(doc[j]) && !ws.test(c)))) j += 1;
+    if (doc[j] === c) { j += 1; while (j < doc.length && dia.test(doc[j]) && !dia.test(c)) j += 1; }
+    else if (j < doc.length && (ws.test(c) || /[\u060C\u061B]/.test(c)) && !/[\p{L}\p{N}]/u.test(doc[j])) j += 1; // nbsp / dash polish turned into a space or a comma
+  }
+  map[disp.length] = /^[\s\u064B-\u0652\u0670\u0640]*$/.test(doc.slice(j)) ? doc.length : j;
+  return map;
+}
+/** The leaf element's document text and its displayed text (data-pfx in front of both). */
+function w2leafTexts(el) {
+  const ed = el.closest('main.bw-doc')?.dataset.locale;
+  const v = ed && M[S.svc]?.[ed] ? get(cur(ed).doc, el.dataset.p) : undefined;
+  const pfx = el.dataset.pfx || '';
+  const r = document.createRange();
+  r.selectNodeContents(el);
+  return { doc: typeof v === 'string' || isRich(v) ? textOf(v) : null, disp: pfx + r.toString(), pfx: pfx.length };
+}
+/** Document offset of (node, off) inside a leaf element (data-pfx included). */
 function w2offset(el, node, off) {
   const r = document.createRange();
   r.selectNodeContents(el);
   try { r.setEnd(node, off); } catch { return 0; }
-  return (el.dataset.pfx || '').length + r.toString().length;
+  const n = (el.dataset.pfx || '').length + r.toString().length;
+  const T = w2leafTexts(el);
+  return T.doc == null ? n : w2align(T.doc, T.disp)[Math.min(n, T.disp.length)];
 }
-/** The text node and offset of character `off` (as w2offset counts it) inside a leaf element; null when the leaf has no text there. */
+/** The text node and offset of document character `off` (as w2offset counts it) inside a leaf element; null when the leaf has no text there. */
 function w2point(el, off) {
+  const T = w2leafTexts(el);
+  if (T.doc != null) { // document offset → display offset: the last display position at or before it
+    const map = w2align(T.doc, T.disp);
+    let k = 0;
+    while (k < T.disp.length && map[k + 1] <= off) k += 1;
+    off = k;
+  }
   let n = (el.dataset.pfx || '').length;
   const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
   let node;

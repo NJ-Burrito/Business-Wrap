@@ -217,12 +217,20 @@ function ceStructCtx() {
   if (!Array.isArray(blk?.rows)) return null;
   return { ...tg, blk, cols: tg.cols || `${tg.b}/columns`, w: Math.max(blk.columns?.length || 0, ...blk.rows.map((r) => r.length), 1) };
 }
-/** formulas after a structural change: refs follow their cells, then a recalculation (a second commit for this edition only) */
+/** Runs fn (it commits more ops) right after a commit of this edition and folds those ops into that commit's undo group: one user
+ *  action is ONE undo step (TCELLS-01/04). The ids stay unique (`<group>.f<k>`, the way ceFinish joins a typing group). */
+function ceJoin(ed, fn) {
+  const e = cur(ed);
+  const g = e.ops.at(-1)?.id.split('.')[0], n0 = e.ops.length;
+  fn();
+  if (g) e.ops.slice(n0).forEach((op, k) => { op.id = `${g}.f${k}`; });
+}
+/** formulas after a structural change: refs follow their cells, then a recalculation (a second commit for this edition only, same undo step) */
 function ceFixFormulas(x, axis, at, delta) {
   const rows = ceBlk(x.ed, x.b).rows;
   const edits = new Map();
   rows.forEach((row, r) => row.forEach((leaf, c) => { const f = formulaOf(leaf); if (f) edits.set(ceKey(r, c), { ...leaf, style: { ...leaf.style, formula: adjustFormula(f, axis, at, delta) } }); }));
-  if (edits.size) cePut(x, edits);
+  if (edits.size) ceJoin(x.ed, () => cePut(x, edits));
 }
 const A_CORE = { rowAdd: A.rowAdd, rowDel: A.rowDel, colAdd: A.colAdd, colDel: A.colDel };
 A.rowAdd = () => {
@@ -249,7 +257,7 @@ A.rowDel = () => {
   commit(ops, { ed: x.ed, mirror: true });
   lastCell = null;
   ceClearSel();
-  for (const r of rs) ceFixFormulas(x, 'row', r, -1);
+  ceJoin(x.ed, () => { for (const r of rs) ceFixFormulas(x, 'row', r, -1); });
 };
 A.colAdd = () => {
   const x = ceStructCtx();
@@ -283,12 +291,17 @@ A.colDel = () => {
   commit(ops, { ed: x.ed, mirror: true });
   lastCell = null;
   ceClearSel();
-  for (const c of cs) ceFixFormulas(x, 'col', c, -1);
+  ceJoin(x.ed, () => { for (const c of cs) ceFixFormulas(x, 'col', c, -1); });
 };
+
+// the page is redrawn by the structural commit: the cell that had the focus loses it, and its focusout must not recalculate the
+// table in a commit of its own, before the references have followed (TCELLS-01: one user action, one undo step)
+for (const k of ['rowAdd', 'rowDel', 'colAdd', 'colDel']) { const f = A[k]; A[k] = (...a) => { CE.busy = true; try { return f(...a); } finally { CE.busy = false; } }; }
 
 /* ── formulas typed into a cell ─────────────────────────────────────────── */
 /** A cell left after typing: '=…' becomes a formula (result shown), a changed value recalculates the formulas that read it. */
 function ceFinish(td) {
+  if (CE.busy) return;
   const tb = td.closest('table[data-b][data-rows]');
   if (!tb || !td.dataset.p) return;
   const tg = { ed: td.closest('main.bw-doc').dataset.locale, rows: tb.dataset.rows, b: tb.dataset.b };
@@ -379,7 +392,7 @@ function cePaste(tg, r, c, text) {
   };
   if (targets) for (const [rr, cc] of targets) put(rr, cc, 0, 0);
   else grid.forEach((row, i) => row.forEach((_, j) => put(r + i, c + j, i, j)));
-  cePut(tg, edits);
+  if (ops.length) ceJoin(tg.ed, () => cePut(tg, edits)); else cePut(tg, edits); // the rows a paste adds and the values are one undo step
   ceSet(targets || grid.flatMap((row, i) => row.map((_, j) => [r + i, c + j])).filter(([rr, cc]) => cc < w), tg);
 }
 document.addEventListener('copy', (e) => { ceCopy(e, false); });
@@ -543,6 +556,8 @@ function ceKey_(e) {
   const td = ceCellEl(t0);
   if (CE.sel.size && !editing && ceTableEl()) {
     if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); CE_ACT.clearValue(); return true; }
+    const fk = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && { b: 'fmtBold', i: 'fmtItalic', u: 'fmtUnderline' }[e.key.toLowerCase()]; // Ctrl+B / I / U on the selected cells (TCELLS-02)
+    if (fk) { e.preventDefault(); CE_FMT[fk](); return true; }
     if (e.key === 'Enter' || e.key === 'F2') {
       e.preventDefault();
       const [r, c] = [...CE.sel][0].split(',');
