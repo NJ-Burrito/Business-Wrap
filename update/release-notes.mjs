@@ -33,7 +33,7 @@ export function leadWithTenSeconds(notes) {
 }
 
 const footer = '\n\n---\nUpdate / التحديث: `node update/cli.mjs update --apply --yes` in your install (keeps .local, design/custom, logos, fonts/custom, drafts)'
-  + ' · Claude Code: `/plugin marketplace update business-wrap` then `/plugin update business-wrap`'
+  + ' · Claude Code: `/plugin marketplace update business-wrap`, then `/plugin update business-wrap`, then `/reload-plugins` (after an update the running MCP server keeps the previous version folder until you reload; a stale "not connected" can stay cached for 15 minutes)'
   + ` · MCP: \`${MCP}\`\n`;
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

@@ -20,7 +20,7 @@ claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.14.
 
 ## 🧰 الأدوات
 
-خادم MCP عبر stdio فوق محرك Business-Wrap، فيه 15 أداة (عدا أدوات التعلّم المحلي). ويجب أن تنتهي المخرجات بالامتداد المذكور.
+خادم MCP عبر stdio فوق محرك Business-Wrap، فيه 23 أداة (عدا أدوات التعلّم المحلي). ويجب أن تنتهي المخرجات بالامتداد المذكور.
 
 | الأداة | المعطيات | ما تفعله |
 |---|---|---|
@@ -36,9 +36,29 @@ claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.14.
 | `harvest_sources` | sources[], out_dir, name?, roles?, open? | ملفاتك أو مجلداتك: BPMN وdraw.io وخطوات YAML/JSON وPDF وDOCX وHTML وTXT وMD ← وثائق، وما لا يُقرأ يُذكر في المتروك |
 | `open_in_editor` | documents[]? \| editor? \| doc_id? | يشغّل الخادم المحلي عند الحاجة ويفتح المحرر في Edge، ويعيد `{url, doc_id}` |
 | `close_editor` | (لا شيء) | يوقف كل خادم ونافذة Edge شغّلها هذا التثبيت |
+| `editor_list_documents` | project? | الوثائق في مكتبة المحرر عند الخادم العامل (ويشغّل الخادم إن لم يكن يعمل) |
+| `editor_outline` | doc, locale? | الفصول والأقسام وأنواع الكتل ومعرّفاتها مع مؤشر JSON لكل عقدة، من المحرر الحي |
+| `editor_get` | doc, pointer?, locale? | القيمة عند مؤشر في الوثيقة كما يحملها المحرر الآن (بما فيها التعديلات غير المحفوظة) |
+| `editor_ops` | doc, ops[], locale, mirror?, agent?, group? | يطبّق دفعة تعديلات على الوثيقة المفتوحة في المحرر خطوة تراجع واحدة، ويحفظها ويوقّعها باسم الوكيل؛ و`old` الخاطئ يعيد `CONFLICT` ولا يطبّق شيئا |
+| `editor_action` | doc, id, args? | ترقيم وفحص وحفظ HTML ومشاركة {to, note} وتصدير PDF لوثيقة في المحرر |
+| `editor_new` | title, project?, template? | وثيقة فارغة جديدة في مكتبة المحرر |
+| `editor_import` | document? | file?, project? | يضع وثيقة في مكتبة المحرر (وفي مشروع) |
+| `host_health` | (لا شيء) | الخادم وألسنته وأي لسان معلّق (`lastBeatMs` فوق 15000) |
 | `check_fonts` | theme? | أي الخطوط متاح وهل سيطبع أي منها بصيغة Type 3 |
 | `check_update` | force? | هل يوجد إصدار أحدث (طلب واحد في اليوم على الأكثر) |
-| `apply_update` | confirm | يثبت الإصدار الأحدث ويحفظ إعداداتك وملفاتك، ويرفض دون `confirm: true` |
+| `apply_update` | confirm | يثبت الإصدار الأحدث في نسخة محلية أو تثبيت npx ويحفظ إعداداتك وملفاتك، ويرفض دون `confirm: true`. وفي إضافة Claude Code لا يغيّر شيئا ويعيد `{plugin: true, how}` (فالعميل هو الذي يحدّث الإضافة) |
+
+أدوات `editor_*` تعمل على الوثيقة التي فتحها المستخدم، عبر الخادم المحلي، فيرى التعديل وهو يحدث. وأخطاؤها تحمل `code`: `NO_HOST` و`NO_DOC` و`TAB_TIMEOUT` و`CONFLICT` و`BAD_OP` و`UNKNOWN_ACTION` و`RESTART_REQUIRED`. وتعمل الأفعال نفسها من الطرفية بـ `business-wrap editor <verb>`. العقد: [docs/automation.md](../docs/automation.md).
+
+## 🔄 بعد تحديث الإضافة
+
+🔁 يبقي Claude Code خادم MCP العامل على مجلد الإصدار الذي بدأ منه. بعد `/plugin update business-wrap` شغّل `/reload-plugins` (وإن كان العميل بلا هذا الأمر فأعد تشغيله). وإلى أن تفعل، تجيب كل أداة بـ `RESTART_REQUIRED` مع الإصدار الذي حمّله الخادم والمثبّت على القرص، بدل أن تشغّل شيفرة نصفها قديم.
+
+⏳ الخادم الذي فشل بدؤه مرة قد يبقى «غير متصل» حتى 15 دقيقة (يخزّن Claude Code الفشل)، و`/reload-plugins` أو تعديل إعداد الإضافة يعيد المحاولة فورا.
+
+🩺 `business-wrap doctor` (أو `/business-wrap:doctor`) يطبع الإصدار على القرص ومكان الحالة وآخر بدايات الخادم مع زمن `initialize` وأي انحراف. والسجل `mcp.log` في مجلد الحالة.
+
+💾 في إضافة Claude Code تعيش الحالة (host.json وملف Edge وworkspace.json والإعدادات) في مجلد بيانات الإضافة الذي ينجو من التحديثات، وأول تشغيل بعد التحديث ينسخها من مجلد الإصدار السابق.
 
 ## ▶️ التشغيل
 

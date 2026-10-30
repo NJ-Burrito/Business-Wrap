@@ -11,7 +11,9 @@ import { workspace, ensure, uniquePath, outName, docTitle } from '../engine/work
 import { applyOps, migrate, validateEdits } from '../engine/edits.mjs';
 import { assertBase } from '../engine/edits-base.mjs';
 import { checkForUpdate, oneLiner, token, currentVersion } from '../update/check.mjs';
-import { applyUpdate } from '../update/apply.mjs';
+import { applyUpdate, PLUGIN_UPDATE_HOW } from '../update/apply.mjs';
+import { isPluginInstall } from '../engine/testguard.mjs';
+import { BwError, registerEditorTools } from './editor-tools.mjs';
 import { harvestModel, harvestCrawl, harvestMerge } from '../engine/harvest/cli.mjs';
 import { DIAGRAM } from '../engine/diagram.mjs';
 import { modelIn } from '../engine/diagram-cli.mjs';
@@ -23,6 +25,8 @@ const pkg = JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8'))
 const readJson = (p) => JSON.parse(fs.readFileSync(path.resolve(p), 'utf8'));
 const ok = (data) => ({ content: [{ type: 'text', text: JSON.stringify(data, null, 1) }], structuredContent: data });
 const fail = (msg) => ({ isError: true, content: [{ type: 'text', text: msg }] });
+/** An error an agent can branch on: {ok:false, code, message, ...}. */
+const failData = (data) => ({ isError: true, content: [{ type: 'text', text: JSON.stringify(data, null, 1) }], structuredContent: data });
 const out = (p, ext) => {
   const f = path.resolve(p);
   if (!f.toLowerCase().endsWith(ext)) throw new Error(`output must end in ${ext}: ${p}`);
@@ -47,13 +51,28 @@ let decorate = (d) => d;
 const OPEN = z.boolean().optional().describe('Also open the result in the Business-Wrap editor (starts the local host, opens an Edge tab); default false');
 /** open: true puts the documents into the editor through the host; the answer gains opened: {url, doc_id} */
 const opened = async (r, open) => (open && r.documents?.length ? { ...r, opened: await openEditor({ inputs: r.documents }) } : r);
+// Set by createServer: the startup work (state migration) every tool waits for, and the version the process LOADED.
+let ready = Promise.resolve();
+/** The version on disk now, null when the folder is gone (Claude Code removes an orphaned version folder after 14 days). */
+const diskVersion = () => { try { return JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8')).version; } catch { return null; } };
+/** The process loaded one version's code; when the folder now holds another (an in-place update, a client that swapped the
+ *  folder under a running server) the lazily imported modules would come from a mixed tree, so no tool runs: RESTART_REQUIRED. */
+export const driftOf = (loaded = pkg.version, installed = diskVersion()) => (installed === loaded ? null
+  : { ok: false, code: 'RESTART_REQUIRED', message: installed ? `Business-Wrap ${installed} is installed but this server loaded ${loaded}: reload it` : `the folder this server was started from is gone (it loaded ${loaded})`, loaded, installed, how: 'run /reload-plugins (Claude Code plugin) or restart your MCP client; a stale "not connected" can stay cached for 15 minutes' });
 const guard = (fn) => async (args) => {
-  try { return ok(decorate(await fn(args))); } catch (e) { return fail(String(e?.message || e)); }
+  try {
+    const d = driftOf();
+    if (d) return failData(d);
+    await ready;
+    return ok(decorate(await fn(args)));
+  } catch (e) { return e?.bw ? failData({ ok: false, code: e.code, message: e.message, ...e.data }) : fail(String(e?.message || e)); }
 };
 
 const BASE_INSTRUCTIONS = 'Business-Wrap: bilingual (AR RTL / EN LTR) requirements documents. build_editor makes the HTML editor; '
   + 'apply_edits / validate_edits work on edits files (contract v1; a newer edits version is refused until Business-Wrap is updated); '
-  + 'export_document prints PDF + DOCX. check_update reports a newer release; apply_update installs it only with confirm: true after the user agreed. '
+  + 'export_document prints PDF + DOCX. To edit the document the user has OPEN in the editor use editor_list_documents / editor_outline / editor_get / editor_ops (one undo step, signed as you), editor_action, not apply_edits. '
+  + 'check_update reports a newer release; apply_update installs it only with confirm: true after the user agreed (a Claude Code plugin is updated by the client: /plugin update, then /reload-plugins). '
+  + 'Errors from the editor tools carry a code: NO_HOST NO_DOC TAB_TIMEOUT CONFLICT BAD_OP UNKNOWN_ACTION RESTART_REQUIRED. '
   + 'Local learning: call learning_rules before harvesting, authoring or generating and apply the rules; call learning_distill after the user edits or exports; tell the user in one line which learned rules were applied.';
 
 /** The notice an agent shows its user: version, three highlights, the update command; migration notes for the agent itself. */
@@ -62,8 +81,9 @@ export function updateNotice(u) {
   return { current: u.current, latest: u.latest, highlights: u.highlights || [], migration_notes: u.migration || [], command: 'npx business-wrap update --apply --yes', url: u.url, message_en: oneLiner(u, 'en'), message_ar: oneLiner(u, 'ar') };
 }
 
-export function createServer({ update = null } = {}) {
-  const notice = updateNotice(update);
+export function createServer({ update = null, ready: startup = null } = {}) {
+  ready = Promise.resolve(startup).catch(() => null);
+  let notice = updateNotice(update);
   const instructions = notice
     ? `${BASE_INSTRUCTIONS}
 UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). Tell the user in one line with these highlights: ${notice.highlights.join(' | ')}. Offer: ${notice.command}. Never update without the user's consent.${notice.migration_notes.length ? ` Migration notes for you: ${notice.migration_notes.join(' | ')}` : ''}`
@@ -71,6 +91,8 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
   let told = false;
   decorate = (d) => (notice && !told && d && typeof d === 'object' ? ((told = true), { ...d, update_available: notice }) : d);
   const server = new McpServer({ name: 'business-wrap', version: pkg.version }, { instructions });
+  /** A refresh that finished after the handshake: the notice rides on the next tool result (never on initialize). */
+  server.bwSetUpdate = (u) => { const n = updateNotice(u); if (n && !notice) { notice = n; told = false; } };
 
   server.registerTool('build_editor', {
     title: 'Build the HTML editor',
@@ -298,12 +320,16 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
   }, guard(async ({ confirm }) => {
     const u = await checkForUpdate({ force: true });
     if (u.status !== 'available') return { applied: false, status: u.status, current: u.current };
+    // a Claude Code plugin is the client's copy (cache/<marketplace>/<plugin>/<version>): never rewritten in place
+    if (isPluginInstall(REPO)) return { applied: false, plugin: true, current: u.current, latest: u.latest, how: PLUGIN_UPDATE_HOW };
     if (confirm !== true) return { applied: false, needs_confirmation: true, would_update: { from: u.current, to: u.latest }, keeps: ['.local', 'design/custom', 'logos', 'fonts/custom', 'drafts', 'out'], ask_user: oneLiner(u, 'en') };
     const repo = JSON.parse(fs.readFileSync(path.join(REPO, 'update', 'source.json'), 'utf8')).repo;
     const r = await applyUpdate({ dir: REPO, release: { version: u.latest, zip: u.zip, zipApi: u.zipApi, sha256: u.sha256 }, repo, token: token(), current: currentVersion() });
-    return { applied: !!r.ok, ...r, migration_notes: u.migration || [], restart: 'restart the MCP server to load the new version' };
+    if (r.ok) server.sendToolListChanged().catch(() => {});
+    return { applied: !!r.ok, ...r, migration_notes: u.migration || [], restart: 'restart the MCP server (or run /reload-plugins) to load the new version; until then every tool answers RESTART_REQUIRED' };
   }));
 
+  registerEditorTools(server, z, guard);
   registerLearningTools(server, z, guard);
   return server;
 }
