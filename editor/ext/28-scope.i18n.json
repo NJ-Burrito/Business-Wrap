@@ -1,0 +1,28 @@
+{
+ "ar": {
+  "scope.title": "ماذا تريد أن تحذف؟",
+  "scope.pick": "حدّد نصاً أو عنصراً أولاً",
+  "scope.line": "هذا السطر أو الفقرة فقط",
+  "scope.cell": "محتوى هذه الخلية فقط",
+  "scope.row": "هذا الصف",
+  "scope.column": "هذا العمود",
+  "scope.part": "هذا الجزء (بطاقة القصة)",
+  "scope.element": "هذا العنصر (صورة أو مخطط أو صندوق)",
+  "scope.block": "الكتلة كاملة (كل ما بداخلها)",
+  "scope.section": "القسم كاملاً",
+  "scope.done": "تم الحذف: {x}"
+ },
+ "en": {
+  "scope.title": "What do you want to delete?",
+  "scope.pick": "Select some text or an element first",
+  "scope.line": "This line or paragraph only",
+  "scope.cell": "This cell's content only",
+  "scope.row": "This row",
+  "scope.column": "This column",
+  "scope.part": "This part (story card)",
+  "scope.element": "This element (picture, diagram or box)",
+  "scope.block": "The whole block (everything in it)",
+  "scope.section": "The whole section",
+  "scope.done": "Deleted: {x}"
+ }
+}

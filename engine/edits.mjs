@@ -347,3 +347,106 @@ export function shape(doc) {
     ).join('|')
   );
 }
+
+/* ── 0.14.0 · edit scope (E1), list numbering (E2), the document id (E3) ─────────────────────────────────────────────
+ * Pure helpers shared by the editor extensions (ext/28-scope.js, 29-numbering.js, 33-docid.js) and the tests: they read a
+ * document and return ops; they never touch the DOM. */
+
+/** E1 · What a Delete can take, from the selection {p: leaf pointer, b: block pointer, ov: overlay index}. Each entry
+ *  {scope, path}, smallest first: line · cell · row · column · part · element · block · section. `row`, `column`, `section` and an
+ *  overlay `element` are done by the editor's own tools (they keep merges, widths, page sizes); the rest are plain ops here. */
+export const DELETE_SCOPES = ['line', 'cell', 'row', 'column', 'part', 'element', 'block', 'section'];
+const BLOCK_RE = /^(\/chapters\/\d+\/sections\/\d+\/blocks\/\d+)(?:\/|$)/;
+const SECTION_RE = /^(\/chapters\/\d+\/sections\/\d+)(?:\/|$)/;
+export function scopesAt(doc, sel = {}) {
+  const out = [];
+  const p = sel.p || '';
+  const b = sel.b || BLOCK_RE.exec(p)?.[1] || null;
+  const blk = b ? get(doc, b) : null;
+  if (sel.ov != null && sel.ov !== false) out.push({ scope: 'element', path: `/overlays/${sel.ov}`, overlay: true });
+  const line = /^(.*\/(?:paragraphs|acceptance))\/(\d+)$/.exec(p);
+  if (line && Array.isArray(get(doc, line[1]))) out.push({ scope: 'line', path: p, last: get(doc, line[1]).length <= 1 });
+  const m = /^(.*\/rows)\/(\d+)\/(\d+)$/.exec(p);
+  if (m && Array.isArray(get(doc, m[1]))) {
+    const rows = get(doc, m[1]);
+    out.push({ scope: 'cell', path: p });
+    if (rows.length > 1) out.push({ scope: 'row', path: `${m[1]}/${m[2]}` });
+    if ((rows[+m[2]] || []).length > 1) out.push({ scope: 'column', path: `${m[1]}/${m[2]}/${m[3]}`, c: +m[3] });
+  }
+  const part = /^(.*\/items)\/(\d+)(?:\/|$)/.exec(p);
+  if (part && blk?.kind === 'stories' && Array.isArray(get(doc, part[1])) && get(doc, part[1]).length > 1) out.push({ scope: 'part', path: `${part[1]}/${part[2]}` });
+  if (blk && ['figure', 'shots', 'diagram'].includes(blk.kind)) out.push({ scope: 'element', path: b });
+  if (b) out.push({ scope: 'block', path: b, kind: blk?.kind });
+  const s = SECTION_RE.exec(b || p);
+  if (s) out.push({ scope: 'section', path: s[1] });
+  return out;
+}
+/** E1 · The ops of one plain scope (line · cell · part · element · block); null for the scopes the editor's tools do. */
+export function deleteOps(doc, scope, sel = {}) {
+  const hit = scopesAt(doc, sel).find((x) => x.scope === scope);
+  if (!hit) return null;
+  const old = get(doc, hit.path);
+  if (scope === 'line') return hit.last ? [{ op: 'replace', path: hit.path, value: '', old }] : [{ op: 'delete', path: hit.path, old }];
+  if (scope === 'cell') return [{ op: 'replace', path: hit.path, value: '', old }];
+  if (scope === 'part' || scope === 'block' || (scope === 'element' && !hit.overlay)) return [{ op: 'delete', path: hit.path, old }];
+  return null;
+}
+
+/** E2 · A numbered paragraph is a leaf with style.list === 'number'. `style.start` = a whole number (this paragraph starts a run
+ *  at that value) or 'continue' (the run goes on from the previous numbered list at its level). No start = 1, as before. */
+export const isNumbered = (leaf) => isRich(leaf) && leaf.style?.list === 'number';
+export const validStart = (v) => v === 'continue' || (String(v).trim() !== '' && Number.isInteger(+v) && +v >= 0 && +v <= 9999);
+/** The ops that make the run starting at `path` (a numbered paragraph, or a cell holding a numbered list) start as asked.
+ *  mode: 'restart' (at 1) · 'continue' · 'set' (value). [] when the leaf is not numbered or the value is invalid. */
+export function renumberOps(doc, path, mode, value) {
+  const leaf = get(doc, path);
+  if (!isNumbered(leaf)) return [];
+  const start = mode === 'restart' ? 1 : mode === 'continue' ? 'continue' : validStart(value) && value !== 'continue' ? +value : null;
+  if (start == null || leaf.style.start === start) return [];
+  return [{ op: 'replace', path, value: styleLeaf(leaf, { start }), old: leaf }];
+}
+
+/** E3 · The document id as a whole token: BW-1 is not found inside BW-12 or BW-1-A. */
+const idRe = (id) => new RegExp(`(?<![\\p{L}\\p{N}_])${String(id).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}_]|-[\\p{L}\\p{N}])`, 'gu');
+const ID_ROOTS = ['control', 'controlTable', 'revisions', 'approvals', 'chapters', 'chrome', 'openQuestions'];
+/** E3 · `text` with every token `oldId` turned into `newId`. */
+export const replaceId = (text, oldId, newId) => (oldId ? String(text ?? '').replace(idRe(oldId), () => newId) : String(text ?? ''));
+const ID_SKIP = new Set(['svg', 'images', 'kind', 'service', 'composedAt', 'layout', 'model', 'src', 'style', 'merges', 'colWidths', 'rowHeights', 'id']);
+/** E3 · Every text leaf of the document that holds `id` as a token: [{path, text}] (the id field itself included). */
+export function docIdInstances(doc, id) {
+  id = String(id ?? '');
+  if (!id) return [];
+  const re = idRe(id);
+  const out = [];
+  const walk = (v, p) => {
+    if (typeof v === 'string' || isRich(v)) { const s = textOf(v); re.lastIndex = 0; if (re.test(s)) out.push({ path: p, text: s }); return; }
+    if (Array.isArray(v)) { v.forEach((x, i) => walk(x, `${p}/${i}`)); return; }
+    if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) if (!ID_SKIP.has(k)) walk(x, `${p}/${k.replace(/~/g, '~0').replace(/\//g, '~1')}`);
+  };
+  for (const k of ID_ROOTS) if (doc?.[k] !== undefined) walk(doc[k], `/${k}`);
+  return out;
+}
+/** E3 · The ops that turn every instance of `oldId` into `newId` (`skip` = the path the user just typed in). */
+export function docIdOps(doc, oldId, newId, skip = null) {
+  oldId = String(oldId ?? ''); newId = String(newId ?? '');
+  if (!oldId || !newId || oldId === newId) return [];
+  const re = idRe(oldId);
+  const ops = [];
+  for (const x of docIdInstances(doc, oldId)) {
+    if (x.path === skip) continue;
+    re.lastIndex = 0;
+    ops.push({ op: 'setText', path: x.path, value: replaceId(x.text, oldId, newId), old: get(doc, x.path) });
+  }
+  return ops;
+}
+/** E3 · The id a user's edit of one instance means: the leaf was `before`, is now `after`, and held `oldId`. Null when the edit is not inside the id. */
+export function docIdFromEdit(before, after, oldId) {
+  before = String(before ?? ''); after = String(after ?? ''); oldId = String(oldId ?? '');
+  if (!oldId) return null;
+  const at = before.search(idRe(oldId));
+  if (at < 0) return null;
+  const head = before.slice(0, at), tail = before.slice(at + oldId.length);
+  if (!after.startsWith(head) || !after.endsWith(tail) || after.length < head.length + tail.length) return null;
+  const next = after.slice(head.length, after.length - tail.length);
+  return next && next !== oldId ? next : null;
+}
