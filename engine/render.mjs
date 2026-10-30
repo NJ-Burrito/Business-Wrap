@@ -819,7 +819,7 @@ export function renderParts(doc, o) {
         continue;
       }
       flush();
-      out.push(`<p data-b="${attr(b)}"${dp(para.p)}${leafAttrs(para.leaf)}>${bidi(para.leaf ?? para.text)}</p>`);
+      out.push(`<p data-b="${attr(b)}"${dp(para.p)}${leafAttrs(para.leaf)}>${bidi(para.leaf ?? para.text) || '<br>'}</p>`); // an empty line keeps its height (0.14.0 page lines)
     }
     flush();
     flushList();

@@ -1,0 +1,5 @@
+/* the ruler tool (22-layout): its ticks measure in turn, like the page-setup glyph; calm and reduced-motion stay still (40-icon-motion.css gates) */
+[data-ic="ruler"] > :nth-child(n+2) { --icm: icm-grow-y var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
+[data-ic="ruler"] > :nth-child(3) { --d: var(--bw-stagger); }
+[data-ic="ruler"] > :nth-child(4) { --d: calc(var(--bw-stagger) * 2); }
+[data-ic="ruler"] > :nth-child(5) { --d: calc(var(--bw-stagger) * 3); }

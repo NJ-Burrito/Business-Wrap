@@ -6,13 +6,27 @@
  *      (the section stays: Lead decision); «إضافة» = a new section after the row's section. The document control table
  *      is materialised as doc.controlTable (cells; a {bind: key} cell keeps editing /control/<key>) before its first
  *      structural edit — WP1's table toolbar calls BW.EXT.w2layout.materialiseControl() for that. */
-IC.secFront = IC.secFront || IC.pages; // the front-matter section's icon
+IC.secFront = IC.secFront || IC.pages;
+IC.ruler = IC.ruler || IC.pgSetup; // the ruler's tool shares the page-setup glyph (a ruler with ticks) // the front-matter section's icon
 const W2L = { cell: null }; // last front-matter cell clicked: {table: 'toc'|'control'|'revisions'|'questions', r, c, sec}
 const w2sectionOf = (p) => { const m = /^(\/chapters\/\d+)(\/sections\/\d+)?/.exec(p || ''); return m ? { ch: m[1], sec: m[2] ? m[1] + m[2] : null } : null; };
 
+/** The place a page setting applies to when nothing was named: the picked block or text, the line caret, else the first block. */
+function w2pageTarget() {
+  if (S.sel?.b || S.sel?.p) return S.sel.b || S.sel.p;
+  const ln = EXT.w2lines?.slot;
+  if (ln) {
+    const arr = get(cur(ln.ed).doc, ln.arr) || [];
+    const i = ln.at < arr.length ? ln.at : ln.at - 1;
+    return i >= 0 ? `${ln.arr}/${i}` : ln.arr.replace(/\/blocks$/, '');
+  }
+  return blocksInOrder(w2doc())[0]?.ptr || null;
+}
 const W2_LAYOUT = {
   sizes: Object.keys(PAPER),
-  /** A18: whole document (scope 'all') or the section holding `ptr` ('section'). */
+  /** A18: whole document (scope 'all'), the section holding `ptr` ('section'), or this page: from the block holding `ptr` to the end of
+   *  its section ('here'). `ptr` falls back to the picked block or text, then the line caret (26-lines), then the document's first block,
+   *  so «this section / this page only» never fails for want of a click (0.14.0). */
   page(size, orientation, scope = 'all', ptr) {
     const d = w2doc();
     const value = { size, orientation };
@@ -21,14 +35,17 @@ const W2_LAYOUT = {
       commit([{ op: 'replace', path: '/layout', value: lay, old: d.layout }], { mirror: true });
       return true;
     }
-    const s = w2sectionOf(ptr || S.sel?.b || S.sel?.p);
+    const target = ptr || w2pageTarget();
+    const s = w2sectionOf(target);
     if (!s) { toast(t('w2.needBlock'), 'warn'); return false; }
     const secPtr = s.sec || `${s.ch}/sections/0`;
     const ops = [];
-    const first = get(d, `${secPtr}/blocks/0`);
+    const bm = scope === 'here' && /^(\/chapters\/\d+\/sections\/\d+\/blocks\/\d+)/.exec(target || '');
+    const startPtr = bm ? bm[1] : `${secPtr}/blocks/0`;
+    const first = get(d, startPtr);
     if (!first) { toast(t('w2.needBlock'), 'warn'); return false; }
-    ops.push({ op: 'replace', path: `${secPtr}/blocks/0/layout`, value: { ...(first.layout || {}), page: value }, old: first.layout });
-    // the section after it goes back to the document's own page
+    ops.push({ op: 'replace', path: `${startPtr}/layout`, value: { ...(first.layout || {}), page: value }, old: first.layout });
+    // the block after the section goes back to the document's own page
     const order = blocksInOrder(d);
     const lastOfSec = order.filter((x) => x.ptr.startsWith(secPtr + '/')).at(-1);
     const after = order[order.indexOf(lastOfSec) + 1];
@@ -145,8 +162,42 @@ function w2pageCss() {
   w2docCss('w2-page-css', `@media screen{${rules.join('')}}`);
   w2fit();
 }
+/** The ruler (0.14.0): a horizontal scale in centimetres across the top of every sheet, as wide as THAT sheet is (a section turned
+ *  landscape draws its own, wider, ruler), with the side margins shaded. Screen only; it starts at the right edge in an Arabic page. */
+const W2R = { on: ls.get('bw:ruler') === '1', margin: 16 }; // margin = the page's side margin in mm (render.mjs: --page-side)
+function w2rulerEl(page) {
+  const el = document.createElement('div');
+  el.className = 'bw-ruler';
+  el.contentEditable = 'false';
+  el.setAttribute('aria-hidden', 'true');
+  Object.assign(el.dataset, { w: page.w, h: page.h, orient: page.orientation, size: page.size });
+  const marks = [];
+  for (let mm = 0; mm <= Math.min(page.w, 1200); mm += 5) marks.push(`<s class="${mm % 10 ? 'h' : 'c'}" style="inset-inline-start:${mm}mm"></s>${mm && mm % 10 === 0 ? `<b style="inset-inline-start:${mm}mm">${mm / 10}</b>` : ''}`);
+  el.innerHTML = `<i class="s" style="width:${W2R.margin}mm"></i><i class="e" style="width:${W2R.margin}mm"></i>${marks.join('')}`;
+  return el;
+}
+/** One ruler on each sheet of the open editions: the document's own page at the top of the document, then every page segment. */
+function w2rulers() {
+  document.querySelectorAll('#bw-pair .bw-ruler').forEach((x) => x.remove());
+  w2docCss('w2-ruler-css', `@media screen{html.bw-ed .bw-ruler{display:block;position:relative;height:6mm;width:100%;box-sizing:border-box;margin:0 0 3mm;overflow:hidden;border-bottom:1px solid var(--rule-strong,#cfd6de);background:var(--paper,#fff);font:7pt/1 var(--font-sans,sans-serif);color:var(--muted,#667);user-select:none;pointer-events:none}
+html.bw-ed .bw-ruler i{position:absolute;top:0;bottom:0;background:rgba(0,30,61,.08)} html.bw-ed .bw-ruler i.s{inset-inline-start:0} html.bw-ed .bw-ruler i.e{inset-inline-end:0}
+html.bw-ed .bw-ruler s{position:absolute;bottom:0;width:0;border-inline-start:1px solid currentColor;opacity:.55} html.bw-ed .bw-ruler s.c{height:3mm} html.bw-ed .bw-ruler s.h{height:1.6mm}
+html.bw-ed .bw-ruler b{position:absolute;top:.4mm;width:6mm;margin-inline-start:-3mm;text-align:center;font-weight:400}
+html.bw-ed [style^="page:bw-seg-"] > .bw-ruler{margin-inline:calc(0mm - var(--page-side,16mm));width:calc(100% + 2 * var(--page-side,16mm))}}
+@media print{.bw-ruler{display:none!important}}`);
+  if (!W2R.on) return;
+  for (const ed of Object.keys(M[S.svc] || {})) {
+    const main = mainOf(ed);
+    const d = cur(ed)?.doc;
+    if (!main || !d) continue;
+    const segs = pageModel(d).segments;
+    main.prepend(w2rulerEl(segs[0].page));
+    for (const x of segs.slice(1)) main.querySelector(`[style="page:bw-seg-${x.n}"]`)?.prepend(w2rulerEl(x.page));
+  }
+}
 async function w2layoutAction(id) {
   if (id === 'pgSetup') { openDrawer('w2page'); return; }
+  if (id === 'ruler') { W2R.on = !W2R.on; ls.set('bw:ruler', W2R.on ? '1' : '0'); w2rulers(); buildUi(); toast(t(W2R.on ? 'w2.rulerOn' : 'w2.rulerOff'), 'info'); return; }
   if (id === 'pgBreak') { W2_LAYOUT.breakBefore(); return; }
   const c = W2L.cell;
   if (!c) { toast(t('w2.pickRow'), 'info'); return; }
@@ -160,9 +211,9 @@ async function w2layoutAction(id) {
 }
 bwExt({
   // page setup and breaks join Document; the front-matter tools are a section of their own while a front-matter cell is picked
-  cmds: ['pgSetup', 'pgBreak', 'tocHide', 'tocAdd', 'fmRowAdd', 'fmRowDel', 'fmColAdd', 'fmColDel'].map((id) => ({ id, group: id.startsWith('pg') ? 'document' : 'front', edit: id !== 'pgSetup' })),
+  cmds: ['pgSetup', 'ruler', 'pgBreak', 'tocHide', 'tocAdd', 'fmRowAdd', 'fmRowDel', 'fmColAdd', 'fmColDel'].map((id) => ({ id, group: id.startsWith('pg') || id === 'ruler' ? 'document' : 'front', edit: id !== 'pgSetup' && id !== 'ruler' })),
   // materialiseControl: WP1's table toolbar (editor.js tableCtx) asks it before the first structural op on the control table
-  actions: { ...Object.fromEntries(['pgSetup', 'pgBreak', 'tocHide', 'tocAdd', 'fmRowAdd', 'fmRowDel', 'fmColAdd', 'fmColDel'].map((id) => [id, w2layoutAction])), materialiseControl: () => W2_LAYOUT.materialiseControl() },
+  actions: { ...Object.fromEntries(['pgSetup', 'ruler', 'pgBreak', 'tocHide', 'tocAdd', 'fmRowAdd', 'fmRowDel', 'fmColAdd', 'fmColDel'].map((id) => [id, w2layoutAction])), materialiseControl: () => W2_LAYOUT.materialiseControl() },
   drawers: {
     w2page: () => {
       const now = w2doc().layout?.page || {};
@@ -170,22 +221,21 @@ bwExt({
         title: t('secPage'),
         html: `<label>${esc(t('w2.size'))} <select data-w2="size">${PAPER && Object.keys(PAPER).map((k) => `<option value="${k}"${(now.size || 'A4') === k ? ' selected' : ''}>${k}</option>`).join('')}</select></label>
 <label>${esc(t('w2.orient'))} <select data-w2="orient"><option value="portrait">${esc(t('w2.portrait'))}</option><option value="landscape"${now.orientation === 'landscape' ? ' selected' : ''}>${esc(t('w2.landscape'))}</option></select></label>
-<div class="btns"><button type="button" class="b primary" data-w2a="all"><span class="w">${esc(t('w2.wholeDoc'))}</span></button><button type="button" class="b" data-w2a="section"><span class="w">${esc(t('w2.thisSection'))}</span></button></div>`,
+<div class="btns"><button type="button" class="b primary" data-w2a="all"><span class="w">${esc(t('w2.wholeDoc'))}</span></button><button type="button" class="b" data-w2a="here"><span class="w">${esc(t('w2.thisPage'))}</span></button><button type="button" class="b" data-w2a="section"><span class="w">${esc(t('w2.thisSection'))}</span></button></div>`,
         mount: (el) => el.addEventListener('click', (e) => {
           const b = e.target.closest('[data-w2a]');
           if (!b) return;
-          W2_LAYOUT.page(el.querySelector('[data-w2="size"]').value, el.querySelector('[data-w2="orient"]').value, b.dataset.w2a);
-          closeDrawer();
+          if (W2_LAYOUT.page(el.querySelector('[data-w2="size"]').value, el.querySelector('[data-w2="orient"]').value, b.dataset.w2a)) closeDrawer(); // a refusal keeps the panel open with its toast
         }),
       };
     },
   },
-  expose: { w2layout: W2_LAYOUT },
+  expose: { w2layout: W2_LAYOUT, w2ruler: W2R },
   on: {
     boot: () => w2docCss('w2-layout-css', `@media screen{html.bw-ed section.bw-brk{border-top:2px dashed var(--accent-rule);padding-top:3mm;position:relative}
 html.bw-ed section.bw-brk::before{content:attr(data-w2brk);position:absolute;top:-3.2mm;inset-inline-start:0;font-size:8pt;color:var(--accent);background:var(--paper,#fff);padding:0 2mm}}
 @media print{html.bw-ed section.bw-brk::before{display:none}}`),
-    render: () => { document.querySelectorAll('#bw-pair section.bw-brk').forEach((x) => { x.dataset.w2brk = t('w2.pageBreak'); }); w2pageCss(); },
+    render: () => { document.querySelectorAll('#bw-pair section.bw-brk').forEach((x) => { x.dataset.w2brk = t('w2.pageBreak'); }); w2pageCss(); w2rulers(); },
   },
 });
 const w2pickCell = (e) => {
