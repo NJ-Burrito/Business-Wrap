@@ -7,7 +7,7 @@ body:
     attributes:
       label: "Version / الإصدار"
       description: "Run `npx business-wrap update --check` (or `node update/cli.mjs --check`) and paste the version. / شغل الأمر والصق رقم الإصدار."
-      placeholder: "0.13.3"
+      placeholder: "0.14.0"
     validations:
       required: true
   - type: textarea

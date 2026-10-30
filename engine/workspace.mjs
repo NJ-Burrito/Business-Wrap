@@ -15,6 +15,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { applyOps } from './edits.mjs';
 import { REPO } from './export.mjs';
 import { localBase, isTestMode, testSandbox, isRealRoot, realParent } from './testguard.mjs';
+import { ensureFolderIcon } from './brand-icons.mjs';
 import { tidyNow } from './tidy.mjs'; // a cycle by design: used only when ensure() meets an old layout
 
 /** .local/ (gitignored); BW_LOCAL_DIR moves it (tests). */
@@ -196,6 +197,7 @@ export function docFolder(docsDir, info) {
   if (JSON.stringify(idx) !== before) writeIndex(hist, idx);
   const dir = path.join(docsDir, folder);
   fs.mkdirSync(dir, { recursive: true });
+  ensureFolderIcon(dir); // Windows only, never throws
   return { folder, dir };
 }
 const idPart = (id, n = 8) => String(id).replace(/^doc-/, '').replace(/[^\w]/g, '').slice(0, n) || 'unknown';

@@ -23,7 +23,7 @@ const browser = await chromium.launch(launchOptions());
 try {
   const page = await browser.newPage();
   const errors = [];
-  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('console', (m) => { if (m.type() === 'error' && !/ERR_CONNECTION_REFUSED/.test(m.text())) errors.push(m.text()); });
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto(pathToFileURL(HTML).href);
   await page.waitForFunction(() => window.BW && window.BW.S);

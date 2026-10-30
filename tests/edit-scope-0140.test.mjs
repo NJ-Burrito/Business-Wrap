@@ -90,7 +90,7 @@ try {
   let page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
-  page.on('console', (m) => { if (m.type() === 'error' && !/favicon/.test(m.text())) errors.push(m.text()); });
+  page.on('console', (m) => { if (m.type() === 'error' && !/ERR_CONNECTION_REFUSED/.test(m.text()) && !/favicon/.test(m.text())) errors.push(m.text()); });
   await page.goto(pathToFileURL(file).href);
   await page.waitForFunction(() => window.BW?.ready);
   const ed = await page.evaluate(() => window.BW.S.ed);

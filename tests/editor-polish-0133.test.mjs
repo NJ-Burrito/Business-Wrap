@@ -47,7 +47,7 @@ try {
     const { ctx, page, errors } = await open(browser, { ui: 'ar' });
     await pick(page, P1);
     const fc = page.waitForEvent('filechooser', { timeout: 6000 }).catch(() => null);
-    await page.locator('#bw-ui-host >> [data-a="image"]').first().click();
+    await page.locator('#bw-ui-host >> css=.ribbon .rb-panel [data-a="image"]').first().click();
     (await fc)?.setFiles(PNG);
     await page.waitForFunction(() => (window.BW.M[window.BW.S.svc].ar.doc.overlays || []).length > 0, null, { timeout: 8000 });
     await page.waitForTimeout(500);

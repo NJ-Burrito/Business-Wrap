@@ -1,6 +1,6 @@
 {
   "name": "business-wrap",
-  "version": "0.13.3",
+  "version": "0.14.0",
   "description": "Bilingual (Arabic RTL / English LTR) requirements documents from evidence: an interactive HTML editor that is the print layout, PDF + DOCX export, design packs and security gates.",
   "license": "MIT",
   "mcpName": "io.github.NJ-Burrito/business-wrap",
@@ -57,6 +57,10 @@
     "brand/v3/logo",
     "brand/v3/icons/*.svg",
     "brand/v3/icons/icons.css",
+    "brand/v3/file-icons/*.png",
+    "brand/v3/file-icons/*.jpg",
+    "brand/v3/file-icons/*.svg",
+    "brand/v3/file-icons/folder.ico",
     "NOTICE.md",
     "update",
     "CHANGELOG.md",

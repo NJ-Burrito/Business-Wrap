@@ -446,7 +446,7 @@ function dgSymbolGallery() {
   if (!document.getElementById('bw-dg-gallery-css')) {
     const st = document.createElement('style');
     st.id = 'bw-dg-gallery-css';
-    st.textContent = '.bw-dg-gallery{position:fixed;z-index:2147483000;box-sizing:border-box;width:min(480px,92vw);max-height:min(62vh,440px);overflow:auto;padding:10px;background:#fff;color:#14233a;border:1px solid #b9c3d3;border-radius:12px;box-shadow:0 12px 32px rgba(10,25,50,.28);display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;font:600 15px/1.35 inherit}.bw-dg-gallery button{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:8px;padding:9px 12px;min-height:40px;border-radius:8px;border:1px solid #d3dae6;white-space:normal;overflow-wrap:anywhere}.bw-dg-gallery button:hover,.bw-dg-gallery button:focus-visible{background:#e1eaf4;border-color:#005fc2}';
+    st.textContent = '.bw-dg-gallery{position:fixed;z-index:calc(2147483*1000);box-sizing:border-box;width:min(480px,92vw);max-height:min(62vh,440px);overflow:auto;padding:10px;background:#fff;color:#14233a;border:1px solid #b9c3d3;border-radius:12px;box-shadow:0 12px 32px rgba(10,25,50,.28);display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;font:600 15px/1.35 inherit}.bw-dg-gallery button{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:8px;padding:9px 12px;min-height:40px;border-radius:8px;border:1px solid #d3dae6;white-space:normal;overflow-wrap:anywhere}.bw-dg-gallery button:hover,.bw-dg-gallery button:focus-visible{background:#e1eaf4;border-color:#005fc2}';
     document.head.appendChild(st);
   }
   const el = document.createElement('div');

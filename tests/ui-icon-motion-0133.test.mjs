@@ -102,13 +102,13 @@ try {
   await page.waitForTimeout(500);
   await harvest(page);
   // folded menus
-  const nMore = await page.evaluate(() => __root().querySelectorAll('.island [data-a="more"]').length);
+  const nMore = await page.evaluate(() => __root().querySelectorAll('.ribbon .rb-panel [data-a="more"]').length);
   for (let k = 0; k < nMore; k += 1) {
-    await page.evaluate((k) => __root().querySelectorAll('.island [data-a="more"]')[k].click(), k);
+    await page.evaluate((k) => __root().querySelectorAll('.ribbon .rb-panel [data-a="more"]')[k].click(), k);
     await page.waitForTimeout(300); await harvest(page);
     await page.keyboard.press('Escape'); await page.waitForTimeout(120);
   }
-  await page.evaluate(() => __root().querySelector('.island [data-a="view"]')?.click()); await page.waitForTimeout(350); await harvest(page);
+  await page.evaluate(() => __root().querySelector('.ribbon .rb-panel [data-a="view"]')?.click()); await page.waitForTimeout(350); await harvest(page);
   await page.keyboard.press('Escape'); await page.waitForTimeout(150);
   // context bars: paragraph, table cell, then every object kind present in the sample
   for (const sel of ['main.bw-doc [data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]', 'main.bw-doc [data-p="/chapters/1/sections/0/blocks/1/rows/0/1"]']) {
@@ -148,13 +148,13 @@ try {
     await page.keyboard.press('Escape'); await page.waitForTimeout(200);
   }
   // every folded menu and the view popover
-  const nm0 = await page.evaluate(() => __root().querySelectorAll('.island [data-a="more"]').length);
+  const nm0 = await page.evaluate(() => __root().querySelectorAll('.ribbon .rb-panel [data-a="more"]').length);
   for (let k = 0; k < nm0; k += 1) {
-    await page.evaluate((k) => __root().querySelectorAll('.island [data-a="more"]')[k].click(), k); await page.waitForTimeout(300);
+    await page.evaluate((k) => __root().querySelectorAll('.ribbon .rb-panel [data-a="more"]')[k].click(), k); await page.waitForTimeout(300);
     await surfaceCheck(page, '.menu[data-open="1"]', 'menu ' + k, true);
     await page.keyboard.press('Escape'); await page.waitForTimeout(150);
   }
-  await page.evaluate(() => __root().querySelector('.island [data-a="view"]')?.click()); await page.waitForTimeout(350);
+  await page.evaluate(() => __root().querySelector('.ribbon .rb-panel [data-a="view"]')?.click()); await page.waitForTimeout(350);
   await surfaceCheck(page, '#viewpop', 'view popover');
   await page.keyboard.press('Escape'); await page.waitForTimeout(150);
 

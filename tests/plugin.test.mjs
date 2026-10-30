@@ -62,7 +62,7 @@ check('plugin MCP: no npm package spec anywhere in the plugin manifest', !/npx|b
   const sm = fs.readFileSync(path.join(REPO, 'mcp', 'smithery.yaml'), 'utf8');
   check('F5 5: server.json and smithery.yaml launch node mcp/cli.mjs locally, no npm/npx package', !sj.packages && launch.command === 'node' && launch.args?.[0] === 'mcp/cli.mjs' && /command: "node"/.test(sm) && /args: \["mcp\/cli\.mjs"\]/.test(sm) && !/npx|business-wrap@/.test(sm + JSON.stringify(sj)), JSON.stringify(launch));
 }
-check('plugin version is 0.13.3 (plugin.json, package.json, server.json)', [plugin.version, JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8')).version, JSON.parse(fs.readFileSync(path.join(REPO, 'mcp', 'server.json'), 'utf8')).version].every((v) => v === '0.13.3'));
+check('plugin version is 0.14.0 (plugin.json, package.json, server.json)', [plugin.version, JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8')).version, JSON.parse(fs.readFileSync(path.join(REPO, 'mcp', 'server.json'), 'utf8')).version].every((v) => v === '0.14.0'));
 
 // the vendored bundle is exactly a fresh build from the locked packages (security/gitleaks.toml allowlists it by path)
 const esbuildDir = path.join(REPO, 'node_modules', 'esbuild');

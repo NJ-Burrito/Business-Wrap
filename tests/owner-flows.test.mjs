@@ -66,7 +66,7 @@ try {
   const status = spawnSync(process.execPath, [path.join(REPO, 'engine', 'cli.mjs'), 'status', '--json'], { encoding: 'utf8', env: { ...process.env, BW_STATE_DIR: path.join(tmp, 'state') } });
   let st = {}; try { st = JSON.parse(status.stdout); } catch { /* printed below */ }
   check(3, 'the healer is installed and reported by `business-wrap status`', status.status === 0 && fs.existsSync(path.join(REPO, 'engine', 'heal')) && JSON.stringify(st).includes('heal'), status.stderr || status.stdout.slice(0, 200));
-  check(5, 'this checkout is 0.13.3 with its CHANGELOG entry (the version worked on)', pkg.version === '0.13.3' && /0\.13\.2/.test(fs.readFileSync(path.join(REPO, 'CHANGELOG.md'), 'utf8')));
+  check(5, 'this checkout is 0.14.0 with its CHANGELOG entry (the version worked on)', pkg.version === '0.14.0' && /0\.14\.0/.test(fs.readFileSync(path.join(REPO, 'CHANGELOG.md'), 'utf8')));
   check(31, 'licence: MIT in LICENSE, package.json and plugin.json', /MIT License/.test(fs.readFileSync(path.join(REPO, 'LICENSE'), 'utf8')) && pkg.license === 'MIT' && readJ(path.join(REPO, '.claude-plugin', 'plugin.json')).license === 'MIT');
   check(33, 'script, not AI: the CLI covers open/close/status/new/build/harvest/import/export/report/update and says ai false', ['open', 'close', 'status', 'new', 'build', 'harvest', 'import', 'export', 'report', 'update'].every((v) => VERBS.includes(v)) && st.ai === false, JSON.stringify({ VERBS, ai: st.ai }));
   const tools = await new Promise((resolve) => {
@@ -94,7 +94,7 @@ try {
   const viaSuite = (f) => listed.some((g) => fs.readFileSync(path.join(REPO, 'tests', g), 'utf8').includes(f)); // srs.test.mjs runs srs-heal and srs-wp8
   const missing = suites.filter((f) => !listed.includes(f) && !viaSuite(f));
   check(36, 'tests on each step: every tests/*.test.mjs (this suite included) runs in `npm test`, directly or from a suite it runs', !missing.length && (pkg.scripts.test.includes('mcp/test/server.test.mjs') || pkg.scripts.test.includes('tests/run.mjs')), missing.join(', '));
-  check(37, 'version 0.13.3 everywhere the release reads it (package, plugin, marketplace, MCP server.json)', [pkg.version, readJ(path.join(REPO, '.claude-plugin', 'plugin.json')).version, readJ(path.join(REPO, '.claude-plugin', 'marketplace.json')).plugins[0].version, readJ(path.join(REPO, 'mcp', 'server.json')).version].every((v) => v === '0.13.3'));
+  check(37, 'version 0.14.0 everywhere the release reads it (package, plugin, marketplace, MCP server.json)', [pkg.version, readJ(path.join(REPO, '.claude-plugin', 'plugin.json')).version, readJ(path.join(REPO, '.claude-plugin', 'marketplace.json')).plugins[0].version, readJ(path.join(REPO, 'mcp', 'server.json')).version].every((v) => v === '0.14.0'));
   const ws = W.workspace();
   check(39, 'outputs go under a generated «Business-Wrap» folder: المستندات - Documents (a folder per document) and the hidden .system', path.basename(ws.root) === 'Business-Wrap' && path.basename(ws.dirs.docs) === 'المستندات - Documents' && path.basename(ws.dirs.system) === '.system' && ws.dirs.history === path.join(ws.dirs.system, 'history'), JSON.stringify(ws.dirs));
   check(41, 'extras are written down (CHANGELOG «Extras»)', /extras/i.test(fs.readFileSync(path.join(REPO, 'CHANGELOG.md'), 'utf8')));
@@ -151,7 +151,7 @@ try {
   // L8 hover explainer: waits, then does not come back on the same tool
   const xpl = () => R((r) => { const c = r.querySelector('.xpl'); return !!c && !c.hidden; });
   await page.mouse.move(700, 600);
-  const saveBtn = page.locator('#bw-ui-host >> css=.island [data-a="save"]');
+  const saveBtn = page.locator('#bw-ui-host >> css=.ribbon .rb-panel [data-a="save"]');
   await saveBtn.hover(); await wait(400);
   const early = await xpl();
   await wait(900);
@@ -342,7 +342,7 @@ try {
 
   // L29 TOC rows and the document-control table
   await clickDoc('[data-part="toc"] td[data-p]');
-  check(29, 'a TOC cell is editable and brings the TOC and table tools', await R((r) => ['tocHide', 'tocAdd', 'fmRowAdd', 'fmColAdd'].every((a) => r.querySelector(`.island [data-a="${a}"]`))));
+  check(29, 'a TOC cell is editable and brings the TOC and table tools', await R((r) => ['tocHide', 'tocAdd', 'fmRowAdd', 'fmColAdd'].every((a) => r.querySelector(`.ribbon .rb-panel [data-a="${a}"]`))));
   await clickDoc('[data-part="control"] td[data-r="0"]');
   const ctl0 = await opsN();
   await act('fmRowAdd'); await act('fmColAdd');
@@ -447,12 +447,12 @@ try {
   // review2 · 34: RTL/LTR per edition; the direction field (and View, Settings, header, footer) stays in the bar at 1024–1920
   {
     const mainDir = (l) => page.evaluate((l) => document.querySelector(`#bw-pair main.bw-doc[data-locale="${l}"]`)?.dir, l);
-    const dirBtn = (d) => R((r, d) => r.querySelector(`.island [data-a="dir"][data-d="${d}"]`).click(), d);
+    const dirBtn = (d) => R((r, d) => r.querySelector(`.ribbon .rb-panel [data-a="dir"][data-d="${d}"]`).click(), d);
     if ((await page.evaluate(() => window.BW.S.ed)) !== 'en') await act('uiLang');
     const onEn = await page.evaluate(() => window.BW.S.ed);
     await dirBtn('ltr'); await wait(150);
     await act('uiLang'); await wait(150);
-    const arDir = { ed: await page.evaluate(() => window.BW.S.ed), dir: await mainDir('ar'), pressed: await R((r) => r.querySelector('.island [data-a="dir"][aria-pressed="true"]')?.dataset.d) };
+    const arDir = { ed: await page.evaluate(() => window.BW.S.ed), dir: await mainDir('ar'), pressed: await R((r) => r.querySelector('.ribbon .rb-panel [data-a="dir"][aria-pressed="true"]')?.dataset.d) };
     await dirBtn('ltr'); await wait(150);
     await act('uiLang'); await wait(150);
     const enDir = await mainDir('en');
@@ -463,7 +463,7 @@ try {
     const seen = [];
     const inBar = () => R((r) => {
       const ok = (sel) => { const e = r.querySelector(sel); if (!e || !e.checkVisibility()) return false; const q = e.getBoundingClientRect(); const at = r.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2); return q.left >= 0 && q.right <= innerWidth && !!at && (at === e || e.contains(at)); };
-      return { rtl: ok('.island [data-a="dir"][data-d="rtl"]'), ltr: ok('.island [data-a="dir"][data-d="ltr"]'), view: ok('.island [data-a="view"]'), settings: ok('.island [data-a="settings"]'), hdr: !!r.querySelector('.island .sec[data-cat="header"]'), ftr: !!r.querySelector('.island .sec[data-cat="footer"]') };
+      return { rtl: ok('.ribbon .rb-panel [data-a="dir"][data-d="rtl"]'), ltr: ok('.ribbon .rb-panel [data-a="dir"][data-d="ltr"]'), view: ok('.ribbon .rb-panel [data-a="view"]'), settings: ok('.ribbon .rb-panel [data-a="settings"]'), hdr: !!r.querySelector('.island .sec[data-cat="header"]'), ftr: !!r.querySelector('.island .sec[data-cat="footer"]') };
     });
     for (const sel of ['none', 'text', 'table']) {
       if (sel === 'text') await clickDoc('[data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]');
@@ -492,7 +492,7 @@ try {
   await fc.setFiles(png);
   await p24.waitForFunction(() => { const d = window.BW.M[window.BW.S.svc][window.BW.S.ed].doc; return d.chapters[0].sections[0].blocks.some((b) => b.kind === 'shots') || (d.overlays || []).some((o) => o.kind === 'image'); }, null, { timeout: 5000 }).catch(() => {});
   await p24.waitForTimeout(200);
-  const wrap = await p24.evaluate(() => ['wrapInline', 'wrapSquare', 'wrapTight', 'wrapThrough', 'wrapTopBottom', 'wrapBehind', 'wrapFront'].filter((a) => document.getElementById('bw-ui-host').shadowRoot.querySelector(`.island [data-a="${a}"]`)).length);
+  const wrap = await p24.evaluate(() => ['wrapInline', 'wrapSquare', 'wrapTight', 'wrapThrough', 'wrapTopBottom', 'wrapBehind', 'wrapFront'].filter((a) => document.getElementById('bw-ui-host').shadowRoot.querySelector(`.ribbon .rb-panel [data-a="${a}"]`)).length);
   check(18, '«إدراج صورة»: the inserted image offers in line + 6 wrap options', wrap === 7, `${wrap}/7`, true);
   await para.scrollIntoViewIfNeeded(); await para.click();
   for (let i = 0; i < 2; i++) { await p24.evaluate(() => window.BW.runAction('moveDown')).catch((e) => err24.push(e.message)); await p24.waitForTimeout(150); }
@@ -589,7 +589,7 @@ try {
     await page.keyboard.press('End');
     await page.keyboard.type(' مرة ثانية');
     await page.mouse.click(1000, 450); await wait(300);
-    await page.locator('#bw-ui-host >> css=.island [data-a="save"]').click();
+    await page.locator('#bw-ui-host >> css=.ribbon .rb-panel [data-a="save"]').click();
     const f2 = await savedFile();
     await wait(800); // the autosave after the Save HTML mark
     const added = changedSince(hb, DOCFILE);

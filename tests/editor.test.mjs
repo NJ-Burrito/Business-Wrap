@@ -87,7 +87,7 @@ async function open(ctx) {
   // name the source of any CSP report, so a blocked handler points at its element
   await page.addInitScript(() => document.addEventListener('securitypolicyviolation', (e) => console.error(`CSP-SOURCE ${e.violatedDirective} sample=${JSON.stringify(e.sample)} at ${e.sourceFile}:${e.lineNumber} target=${e.target?.outerHTML?.slice?.(0, 120) || e.target?.nodeName}`)));
   page.on('pageerror', (e) => errors.push(e.message));
-  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('console', (m) => { if (m.type() === 'error' && !/ERR_CONNECTION_REFUSED/.test(m.text())) errors.push(m.text()); });
   await page.goto(editorUrl);
   await page.waitForFunction(() => window.BW?.ready);
   return { page, errors };

@@ -8,6 +8,54 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.14.0] - 2026-10-30
+
+🎀 The owner-notes release: a ribbon with tabs, safer deleting, user-story tables, file badges, a faster editor and a better report. / 🎀 إصدار ملاحظات المالك: شريط بتبويبات، وحذف أكثر أمانًا، وجداول قصص المستخدم، وشارات للملفات، ومحرر أسرع، وتقرير أفضل.
+
+**In 10 seconds / في عشر ثوان**
+- 🎀 The toolbar is now a ribbon with tabs, and your selection is kept when you change tab. / صار الشريط شريطًا بتبويبات، وتبقى جملتك المحددة عند تغيير التبويب.
+- 🗑️ Delete has scopes (this item, this section, the whole list) and lists renumber on their own. / للحذف نطاقات (هذا العنصر أو هذا القسم أو القائمة كلها)، وتُعاد ترقيم القوائم تلقائيًا.
+- 📋 User-story tables, one document ID, click on a line to place the caret and insert there. / جداول قصص المستخدم، ومعرّف واحد للوثيقة، والنقر على سطر لوضع المؤشر والإدراج عنده.
+- 🏷️ Your files get their own badges: HTML favicon, DOCX and PDF thumbnails, a folder icon. / لملفاتك شاراتها: أيقونة تبويب HTML، ومصغّرات DOCX وPDF، وأيقونة المجلد.
+- ⚡ Typing is about three times faster, and Save, Save as new copy and Export are three clear actions. / الكتابة أسرع بنحو ثلاث مرات، والحفظ و«حفظ كنسخة جديدة» والتصدير ثلاثة إجراءات واضحة.
+
+### Added / أضيف
+- 🎀 **Ribbon tabs** replace the row of section buttons; the selected text or cell stays selected when you switch tab. / **تبويبات الشريط** تحل محل صف أزرار الأقسام؛ ويبقى النص أو الخلية المحددة محددًا عند تبديل التبويب.
+- 🗑️ **Delete scopes**: delete this item, this section or the whole list, each one undo step. / **نطاقات الحذف**: احذف هذا العنصر أو هذا القسم أو القائمة كلها، وكلها خطوة تراجع واحدة.
+- 🔢 **Renumber lists**: numbered lists renumber after an insert, a delete or a move, in the editor, the PDF and the DOCX. / **إعادة ترقيم القوائم**: القوائم المرقمة تُعاد ترقيمها بعد الإدراج أو الحذف أو النقل، في المحرر وPDF وDOCX.
+- 🆔 **One document ID**: a document keeps one ID across its two editions, its history and its folder. / **معرّف واحد للوثيقة**: تحتفظ الوثيقة بمعرّف واحد عبر نسختيها وسجلها ومجلدها.
+- 📋 **User-story tables**: a table kind for user stories with an ID, a role, a goal and acceptance criteria. / **جداول قصص المستخدم**: نوع جدول لقصص المستخدم بمعرّف ودور وهدف ومعايير قبول.
+- 🖱️ **Click on a line** puts the caret there, and **insert at the caret** adds the new block at that point. / **النقر على سطر** يضع المؤشر عنده، و**الإدراج عند المؤشر** يضيف الكتلة الجديدة في تلك النقطة.
+- 📏 **Ruler and one-page landscape**: a page ruler, and a landscape setting for a single page. / **المسطرة والصفحة الأفقية**: مسطرة للصفحة، وإعداد أفقي لصفحة واحدة.
+- 🖼️ **Wrap modes and position** for pictures and boxes, set from the ribbon. / **أنماط الالتفاف والموضع** للصور والصناديق، من الشريط.
+- 🧩 **Diagram symbol gallery and legend edit**: pick a symbol from a gallery and edit the legend in place. / **معرض رموز المخطط وتحرير المفتاح**: اختر رمزًا من معرض وحرّر مفتاح الرموز في مكانه.
+- 💡 **Explainer side panel** that says what the selected thing is and what you can do with it. / **لوحة شرح جانبية** تقول ما هو العنصر المحدد وما يمكنك فعله به.
+- ⏳ **Waiting popup** for slow work, with what is happening. / **نافذة انتظار** للأعمال البطيئة تبيّن ما يجري.
+- 📖 **Reading mode** to read the document without the editing tools. / **وضع القراءة** لقراءة الوثيقة دون أدوات التحرير.
+- 🔌 **Server banner** with Start and Open buttons when the page is opened from disk. / **شريط الخادم** بزري تشغيل وفتح عندما تُفتح الصفحة من القرص.
+- 🏷️ **File badges**: the HTML file has its own favicon, the DOCX and PDF files carry a thumbnail (the PDF also names its creator), and each document folder has the Business-Wrap folder icon. On Windows the PDF in Explorer shows the icon of your PDF app, which Windows decides. / **شارات الملفات**: لملف HTML أيقونة تبويب خاصة، ولملفي DOCX وPDF مصغّر (ويذكر PDF منشئه)، ولكل مجلد وثيقة أيقونة مجلد Business-Wrap. في ويندوز يعرض مستكشف الملفات لملف PDF أيقونة برنامج PDF لديك، وويندوز هو من يقرر ذلك.
+- 📊 **Report PDF** without edits, with 4 chart kinds, and an **Open folder** button. / **تقرير PDF** بلا تعديلات، مع 4 أنواع من الرسوم، وزر **افتح المجلد**.
+
+### Changed / تغير
+- 🔔 **Toasts** appear clear of the page controls. / **الإشعارات** تظهر بعيدًا عن أزرار الصفحة.
+- 💾 **Save, Save as new copy and Export** are three separate actions with their own names. / **حفظ و«حفظ كنسخة جديدة» وتصدير** ثلاثة إجراءات منفصلة بأسماء واضحة.
+- ⚡ **Typing is about three times faster** on long documents. / **الكتابة أسرع بنحو ثلاث مرات** في الوثائق الطويلة.
+- 📁 **The old section buttons** are inside the ribbon tabs; the commands are the same. / **أزرار الأقسام القديمة** صارت داخل تبويبات الشريط؛ والأوامر هي نفسها.
+
+### Fixed / أصلح
+- ♿ **Accessibility**: the changes button's accessible name now contains its visible count. / **إمكانية الوصول**: الاسم المتاح لزر التغييرات يحوي الآن العدد الظاهر.
+- 🔌 **Stop all** stops only the servers of its own state folder. / **إيقاف الكل** يوقف خوادم مجلد حالته فقط.
+- 📄 **PDF import** on Linux reads headings correctly. / **استيراد PDF** على لينكس يقرأ العناوين بشكل صحيح.
+
+### Migration notes / ملاحظات الترحيل
+- Nothing to run: your documents open as they are, and the first save in a document folder gives the folder its icon (Windows only). / لا شيء لتشغله: تُفتح وثائقك كما هي، وأول حفظ في مجلد وثيقة يعطي المجلد أيقونته (ويندوز فقط).
+- A tool or a script that clicked the old section buttons should open the ribbon tab first. / الأداة أو النص البرمجي الذي كان ينقر أزرار الأقسام القديمة عليه أن يفتح تبويب الشريط أولًا.
+
+### Known limits / حدود معروفة
+- Hovering over a very long document still costs some time. / المرور بالمؤشر فوق وثيقة طويلة جدًا ما زال يكلف بعض الوقت.
+- The story ID card is a card, not a grid. / بطاقة معرّف القصة بطاقة وليست شبكة.
+- Fix on the page is an anchor lock: it keeps the object at its anchor and does not float it freely. / التثبيت على الصفحة قفل مرساة: يُبقي الكائن عند مرساته ولا يطفو بحرية.
+
 ## [0.13.3] - 2026-10-30
 
 🧭 An audit pass: typing, cells and pages behave, every icon moves the same way, one folder per document, and Settings starts and stops the local servers. / 🧭 جولة تدقيق: الكتابة والخلايا والصفحات تعمل كما يُتوقع، وكل أيقونة تتحرك بالأسلوب نفسه، ومجلد واحد لكل وثيقة، والإعدادات تشغّل الخوادم المحلية وتوقفها.

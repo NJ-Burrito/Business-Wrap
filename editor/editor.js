@@ -1213,7 +1213,7 @@ function uiHtml() {
     ${sec('export', [pcExportMenu(), tool(CMDS.find((c) => c.id === 'print')), tool(CMDS.find((c) => c.id === 'exportPdf'))])}
     <span class="spacer"></span>
     <div class="status" role="status" aria-live="polite">
-      <button type="button" class="count" data-a="history" title="${esc(t('history'))}" aria-label="${esc(t('changes', { n: opCount() }))}"><span class="i">${ic('history')}</span><span class="w" data-alt="${esc(tAlt('changesWord'))}">${esc(t('changesWord'))}</span><span class="n" aria-hidden="true">${opCount()}</span></button>
+      <button type="button" class="count" data-a="history" title="${esc(t('history'))}" aria-label="${esc(t('changesWord') + ' ' + opCount())}"><span class="i">${ic('history')}</span><span class="w" data-alt="${esc(tAlt('changesWord'))}">${esc(t('changesWord'))}</span><span class="n" aria-hidden="true">${opCount()}</span></button>
       <span class="sel vh">${esc(selDesc())}</span><span class="flash vh"></span>
     </div>
     <div class="sec" data-cat="view" role="group" aria-label="${esc(t('secView'))}"><span class="sc" aria-hidden="true"><span class="i">${ic('secView')}</span><span class="st">${esc(t('secView'))}</span></span><div class="sb">
