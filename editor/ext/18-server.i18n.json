@@ -1,0 +1,26 @@
+{
+  "ar": {
+    "sbDown": "الخادم المحلي متوقف",
+    "sbDownLead": "لا يعمل أي خادم لبزنس راب الآن. شغّله لتعمل على هذا المستند.",
+    "sbStart": "تشغيل الخادم",
+    "sbStarting": "جارٍ تشغيل الخادم… وافق على فتح بزنس راب إن سألك المتصفح.",
+    "sbUp": "الخادم المحلي يعمل",
+    "sbUpLead": "افتح المستند نفسه من الخادم لتكمل عملك.",
+    "sbOpen": "افتح من الخادم",
+    "sbDismiss": "إخفاء هذا التنبيه",
+    "sbFailed": "لم يبدأ الخادم. سجّل المعالج مرة واحدة بالأمر: business-wrap protocol register ثم اضغط من جديد.",
+    "sbNoPath": "تعذّر معرفة مسار هذا الملف. شغّل الأمر business-wrap open من الطرفية."
+  },
+  "en": {
+    "sbDown": "The local server is not running",
+    "sbDownLead": "No Business-Wrap server is running. Start it to work on this document.",
+    "sbStart": "Start server",
+    "sbStarting": "Starting the server… allow the browser to open Business-Wrap if it asks.",
+    "sbUp": "The local server is running",
+    "sbUpLead": "Open this same document from the server to keep working.",
+    "sbOpen": "Open from the server",
+    "sbDismiss": "Dismiss this notice",
+    "sbFailed": "The server did not start. Register the handler once with: business-wrap protocol register, then press again.",
+    "sbNoPath": "This file's path cannot be read. Run business-wrap open from a terminal."
+  }
+}
