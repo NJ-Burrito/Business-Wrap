@@ -160,3 +160,37 @@
 .island { overflow: clip visible; }
 .more .menu:popover-open { position: fixed; inset: auto; margin: 0; display: flex; color: var(--on-glass); overflow: auto; }
 .more .menu:popover-open { animation: pop-in .26s var(--e-out) both; }
+
+/* ── 0.14.0 A1: ONE explainer side panel (inline-end, below the toolbar, collapsible); the card lives inside it ── */
+.shell { --xd-w: 272px; --rside: 0px; }
+.shell:has(.drawer:not([hidden])) { --rside: calc(min(420px, 92vw) + 60px); } /* 420 + its 2 × 18 padding + 2 × 12 margin */ /* a slide-over panel owns the inline-end edge: the explainer panel and the toasts step aside */
+.xpl-dock {
+  position: fixed; z-index: 41; inset-block-start: calc(var(--bw-bar-h, 72px) + 10px); inset-inline-end: calc(12px + var(--rside)); inline-size: var(--xd-w); max-inline-size: calc(100vw - 24px);
+  max-block-size: calc(100vh - var(--bw-bar-h, 72px) - 96px); overflow: auto; border-radius: 16px; background: var(--panel); color: var(--panel-ink);
+  box-shadow: var(--bw-shadow-3), 0 0 0 1px var(--panel-line); font-size: 13px; line-height: 1.45; transition: inset-inline-end .25s var(--e-out);
+}
+.xpl-dock[hidden] { display: none; }
+.xpl-dock .xd-t { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 8px; inline-size: 100%; padding: 9px 12px; cursor: pointer; font-weight: 800; color: var(--navy); border-radius: 16px; }
+.xpl-dock .xd-t:focus-visible { outline: 2px solid var(--bw-accent); outline-offset: -2px; }
+.xpl-dock .xd-t:hover { background: var(--wash-2); }
+.xpl-dock .xd-t .i { inline-size: 18px; block-size: 18px; display: inline-flex; }
+.xpl-dock .xd-w { flex: 1; }
+.xpl-dock .xd-c { inline-size: 8px; block-size: 8px; border-inline-end: 2px solid currentColor; border-block-end: 2px solid currentColor; rotate: 45deg; transition: rotate .2s var(--e-out); }
+.xpl-dock[data-open="0"] .xd-c { rotate: -135deg; }
+.xpl-dock[data-open="0"] { inline-size: auto; }
+.xpl-dock[data-open="0"] .xd-w { display: none; }
+.xpl-dock .xd-b { padding: 0 12px 12px; }
+.xpl-dock .xph { margin: 0; color: var(--panel-soft); }
+.xpl-dock:has(.xpl:not([hidden])) .xph { display: none; }
+.xpl-dock .xpl { position: static; inline-size: auto; padding: 0; box-shadow: none; background: transparent; z-index: auto; }
+.xpl-dock .xpl[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .xpl-dock, .xpl-dock .xd-c { transition: none; } }
+
+/* ── 0.14.0 A3: toasts and undo prompts never cover the page controls ───────────────────────────────────────────
+ * They stay bottom-centre, but centred on the room left of an open slide-over panel (its own page-range and preview
+ * controls live there) and lifted clear of the page pill (pages · previous · next) whenever that is showing. */
+.shell[dir] .toasts { inset-inline-start: auto; left: calc((100% - var(--rside)) / 2); right: auto; transform: translateX(-50%); max-inline-size: calc(100vw - var(--rside) - 24px); }
+.shell[dir="rtl"] .toasts { left: calc((100% + var(--rside)) / 2); } /* the slide-over panel is on the left in the right-to-left layout */
+.shell:has(.pager:not([hidden])) .toasts { inset-block-end: 78px; }
+.toasts .toast { max-inline-size: min(560px, 100%); }
+.shell:has(.pager:not([hidden])) .pager { translate: -50% 0; }

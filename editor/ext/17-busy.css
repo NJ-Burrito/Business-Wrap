@@ -1,0 +1,14 @@
+/* 0.14.0 A2 · waiting popup: top-centre under the toolbar, away from the page pill, the toasts and the side panels. */
+.bw-busy {
+  position: fixed; z-index: 55; inset-block-start: calc(var(--bw-bar-h, 72px) + 10px); inset-inline-start: 50%; translate: -50% 0; display: inline-flex; align-items: center; gap: 10px;
+  max-inline-size: min(520px, 92vw); padding: 10px 16px; border-radius: 16px; background: var(--deep); color: var(--on-glass); box-shadow: var(--bw-shadow-3); animation: pop-in .3s var(--e-spring) both;
+}
+.shell[dir="rtl"] .bw-busy { translate: 50% 0; }
+.bw-busy[hidden] { display: none; }
+.bw-busy .bz-sp { flex: none; inline-size: 18px; block-size: 18px; border-radius: 50%; border: 2.5px solid color-mix(in srgb, var(--on-glass) 25%, transparent); border-block-start-color: var(--gold); animation: bz-spin .8s linear infinite; }
+.bw-busy .bz-x { font: inherit; font-weight: 700; color: var(--on-glass); background: color-mix(in srgb, var(--on-glass) 14%, transparent); border: 0; border-radius: 10px; padding: 4px 10px; cursor: pointer; }
+.bw-busy .bz-x[hidden] { display: none; }
+@keyframes bz-spin { to { rotate: 360deg; } }
+:host([data-reading]) .bw-busy { inset-block-start: 12px; }
+@media (prefers-reduced-motion: reduce) { .bw-busy, .bw-busy .bz-sp { animation: none; } }
+html[data-bw-calm="1"] .bw-busy .bz-sp { animation: none; }
