@@ -65,6 +65,35 @@ async function cmd(page, id) {
   await page.waitForTimeout(450);
 }
 
+// every visible icon button of a surface, in its real container: hover = icon move + (wash or colour), focus = house ring
+async function surfaceCheck(page, scope, name, allowEmpty = false) {
+  const idx = await page.evaluate((scope) => {
+    const out = [];
+    let k = 0;
+    __root().querySelectorAll('[data-qa-s]').forEach((e) => e.removeAttribute('data-qa-s'));
+    for (const el of __root().querySelectorAll(scope + ' button, ' + scope + ' [role="option"], ' + scope + ' summary')) {
+      const b = el.getBoundingClientRect();
+      if (!b.width || !b.height || el.disabled || !el.querySelector('svg.ic[data-ic]')) continue;
+      el.dataset.qaS = String(k++); out.push(k - 1);
+    }
+    return out;
+  }, scope);
+  const bad = [];
+  for (const i of idx) {
+    const loc = page.locator('[data-qa-s="' + i + '"]');
+    await loc.scrollIntoViewIfNeeded().catch(() => {});
+    const bb = await loc.boundingBox(); if (!bb) continue;
+    await page.mouse.move(5, 5); await page.waitForTimeout(40);
+    const rest = await loc.evaluate((e) => { const s = e.querySelector('svg.ic'); return { bg: getComputedStyle(e).backgroundColor, col: getComputedStyle(s).color, sh: getComputedStyle(e).boxShadow }; });
+    await page.mouse.move(bb.x + 4, bb.y + bb.height / 2, { steps: 2 }); await page.waitForTimeout(120);
+    const h = await loc.evaluate((e) => { const s = e.querySelector('svg.ic'); const on = e.getAttribute('aria-pressed') === 'true' || e.getAttribute('aria-checked') === 'true'; const parts = [...s.querySelectorAll('*')].filter((p) => getComputedStyle(p).animationName !== 'none').length; return { bg: getComputedStyle(e).backgroundColor, col: getComputedStyle(s).color, sh: getComputedStyle(e).boxShadow, parts, on, key: s.dataset.ic, bw: s.classList.contains('bw-i') }; });
+    const visible = h.on || h.bg !== rest.bg || h.col !== rest.col || h.sh !== rest.sh;
+    if (!h.parts || !visible) bad.push(h.key + (h.parts ? '' : ' no-move') + (visible ? '' : ' no-state'));
+  }
+  await page.mouse.move(5, 5);
+  check(`${name}: ${idx.length} icon controls each hover with a move and a visible state`, (allowEmpty || idx.length > 0) && bad.length === 0, bad.join(', '));
+}
+
 const browser = await chromium.launch(launchOptions());
 const failedIcons = { hover: [], press: [], focus: [], colour: [], rows: [] };
 try {
@@ -92,6 +121,32 @@ try {
   for (const [k, v] of Object.entries(JSON.parse(fs.readFileSync(path.join(REPO, 'editor', 'icons.json'), 'utf8')).icons)) ALL.set(k, v);
   for (const [k, v] of ALL) if (!seen.has(k)) seen.set(k, { key: k, bw: /class="ic bw-i|bw-i/.test(v), html: v.replace('<svg', `<svg data-ic="${k}"`) });
   check('static icon list covers more than the screen walk', ALL.size > 150, `${ALL.size} from source, ${seen.size} in all`);
+
+  // the surfaces, one by one, in their real containers
+  await page.keyboard.press('Escape'); await page.mouse.click(700, 500);
+  await surfaceCheck(page, '.island', 'toolbar');
+  for (const [nm, sel] of [['paragraph', 'main.bw-doc [data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]'], ['table cell', 'main.bw-doc [data-p="/chapters/1/sections/0/blocks/1/rows/0/1"]']]) {
+    const L = page.locator(sel).first();
+    if (await L.count()) { await L.click(); await page.waitForTimeout(600); await surfaceCheck(page, '.ctx', 'context bar, ' + nm); }
+  }
+  // the context bars of an object: a text box, a diagram (inserted through the palette, as a person would)
+  for (const [id, nm] of [['insTextBox', 'text box'], ['addDiagram', 'diagram']]) {
+    await cmd(page, id); await page.waitForTimeout(700);
+    const shown = await page.evaluate(() => { const c = __root().querySelector('.ctx'); return !!c && !c.hidden; });
+    check('context bar opens for ' + nm, shown);
+    if (shown) await surfaceCheck(page, '.ctx', 'context bar, ' + nm);
+    await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+  }
+  // every folded menu and the view popover
+  const nm0 = await page.evaluate(() => __root().querySelectorAll('.island [data-a="more"]').length);
+  for (let k = 0; k < nm0; k += 1) {
+    await page.evaluate((k) => __root().querySelectorAll('.island [data-a="more"]')[k].click(), k); await page.waitForTimeout(300);
+    await surfaceCheck(page, '.menu[data-open="1"]', 'menu ' + k, true);
+    await page.keyboard.press('Escape'); await page.waitForTimeout(150);
+  }
+  await page.evaluate(() => __root().querySelector('.island [data-a="view"]')?.click()); await page.waitForTimeout(350);
+  await surfaceCheck(page, '#viewpop', 'view popover');
+  await page.keyboard.press('Escape'); await page.waitForTimeout(150);
 
   // every distinct icon, in a neutral button: rest colour, then hover, keyboard focus and the press replay
   const items = [...seen.values()];
