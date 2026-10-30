@@ -105,6 +105,12 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
         const type = f.endsWith('.pdf') ? 'application/pdf' : f.endsWith('.html') ? 'text/html; charset=utf-8' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
         return send(200, fs.readFileSync(f), type);
       }
+      // 0.13.3 Settings › start server: a file:// editor (Origin: null) probes whether any server answers. That one GET, and only
+      // that, is readable from a null origin, and only name + version + port are given (no update state, no repository).
+      if (req.method === 'GET' && url.pathname === '/api/version' && req.headers.origin === 'null') {
+        res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'access-control-allow-origin': 'null', vary: 'Origin' });
+        return res.end(JSON.stringify({ name: 'Business-Wrap', version: versionOf(), served: true, port: server.address()?.port ?? null }));
+      }
       if (url.pathname === '/api/version' || url.pathname.startsWith('/api/update')) {
         // the editor's Settings page and update popup (editor/update.js, editor/settings.js). The check runs here,
         // from the public release list, no token needed: the page never holds a token and never calls GitHub itself.

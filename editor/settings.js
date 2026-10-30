@@ -56,6 +56,8 @@ function settingsPanel() {
 </dl>${t('pfTrustLimit') !== 'pfTrustLimit' ? `<p class="hint set-limit">${esc(t('pfTrustLimit'))}</p>` : ''}</section>
 <section class="card set-upd" aria-labelledby="set-h-upd"><h3 id="set-h-upd"><span class="i">${ic('update')}</span>${esc(t('set.update'))}</h3>
 <div class="set-upd-body">${setUpdateInner()}</div></section>
+<section class="card set-srv" aria-labelledby="set-h-srv"><h3 id="set-h-srv"><span class="i">${ic('connect')}</span>${esc(t('srv.title'))}</h3>
+<div class="set-srv-body">${srvInner()}</div></section>
 <section class="card set-prefs" aria-labelledby="set-h-prefs"><h3 id="set-h-prefs"><span class="i">${ic('prefs')}</span>${esc(t('set.prefs'))}</h3>
 <div class="set-row"><span class="set-k">${esc(t('set.lang'))}</span>${setSeg('setLang', [['ar', 'ع العربية', S.ui === 'ar', 'ar'], ['en', 'E English', S.ui === 'en', 'en']], t('set.lang'))}</div>
 <div class="set-row"><span class="set-k">${esc(t('set.dir'))}</span>${setSeg('setDir', ['rtl', 'ltr'].map((d) => [d, t(d), uiDir() === d]), t('set.dir'))}</div>
@@ -89,6 +91,9 @@ async function settingsClick(x) {
     return true;
   }
   if (k === 'updNow') { const st = updState(); if (st?.status === 'available') window.BW_UPDATE.popup(st, { manual: true }); return true; }
+  if (k === 'srvStart') { srvStart(); return true; }
+  if (k === 'srvStop') { srvStop(); return true; }
+  if (k === 'srvOpen') { location.href = `http://127.0.0.1:${Number(v)}/`; return true; }
   if (k === 'setLang') { setLang(v); return true; }
   if (k === 'setDir') { setDir(v); return true; }
   if (k === 'setView') { viewsSet(v); return true; }
@@ -100,4 +105,140 @@ function settingsChange(el) {
   if (k === 'explain') { ls.set('bw:explainers', el.checked ? '1' : '0'); if (!el.checked) xplHide(); const al = root.querySelector('.drawer [data-set="explainAlways"]'); if (al) { al.disabled = !el.checked; al.checked = false; } }
   if (k === 'explainAlways') ls.set('bw:explainers', el.checked ? 'always' : '1'); // off / once (default) / always
   if (k === 'calm') { S.calm = el.checked; ls.set('bw:calm', S.calm ? '1' : '0'); buildUi(); root.querySelector('.drawer [data-set="calm"]')?.focus(); }
+}
+
+/* ── Servers (0.13.3): start / stop. A file:// page cannot start a process, so it asks the installed Business-Wrap through the
+ *    per-user business-wrap: URL protocol (engine/protocol.mjs); a served page talks to its own server (engine/routes/servers.mjs). ── */
+const SRV = { found: [], note: '', busy: false, asked: false }; // found: ports that answer (file:// only)
+function srvServed() { return /^https?:$/.test(location.protocol); }
+/** The ports a file:// page asks: 4317-4327. window.__bwProbePorts is a test hook only (the tests run their own servers on free ports). */
+function srvPorts() { return Array.isArray(window.__bwProbePorts) ? window.__bwProbePorts : Array.from({ length: 11 }, (_, i) => 4317 + i); }
+async function srvProbe() {
+  const found = [];
+  await Promise.all(srvPorts().map(async (p) => {
+    try {
+      const j = await (await fetch(`http://127.0.0.1:${p}/api/version`, { cache: 'no-store', signal: AbortSignal.timeout(900) })).json();
+      if (j && j.name === 'Business-Wrap') found.push(p);
+    } catch { /* nothing answers on this port */ }
+  }));
+  return found.sort((a, b) => a - b);
+}
+/** This file's own path for business-wrap://open?file=…, from location (a drive letter becomes C:\…); '' for a network path. */
+function srvFilePath() {
+  if (location.protocol !== 'file:' || location.host) return '';
+  let f = '';
+  try { f = decodeURIComponent(location.pathname); } catch { return ''; }
+  return /^\/[A-Za-z]:\//.test(f) ? f.slice(1).replace(/\//g, '\\') : f;
+}
+function srvLaunch(url) { // a link click: how a page asks the browser to hand a business-wrap: URL to its registered handler
+  const a = document.createElement('a');
+  a.href = url;
+  a.hidden = true;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+function srvStatus() {
+  if (SRV.note) return SRV.note;
+  if (srvServed()) return t('srv.running', { p: location.port || '80' });
+  if (SRV.asked) return SRV.found.length ? t('srv.running', { p: SRV.found[0] }) : t('srv.none');
+  return t(SRV.busy ? 'srv.checking' : 'srv.idle'); // a file:// page asks the local ports only when a button is pressed, never on its own
+}
+function srvInner() {
+  const served = srvServed();
+  const start = served ? '' : `<button type="button" class="b primary" data-k="srvStart"${SRV.busy ? ' disabled' : ''}><span class="i">${ic('send')}</span><span class="w">${esc(t('srv.start'))}</span></button>`;
+  const open = !served && SRV.found.length ? `<button type="button" class="b" data-k="srvOpen" data-v="${Number(SRV.found[0])}"><span class="i">${ic('connect')}</span><span class="w">${esc(t('srv.open'))}</span></button>` : '';
+  const stop = `<button type="button" class="b danger" data-k="srvStop"${SRV.busy ? ' disabled' : ''}><span class="i">${ic('powerOff')}</span><span class="w">${esc(t('srv.stop'))}</span></button>`;
+  return `<p class="set-status set-srv-status" role="status" aria-live="polite" data-st="${served || SRV.found.length ? 'on' : SRV.asked ? 'off' : ''}">${esc(srvStatus())}</p>
+<div class="btns">${start}${open}${stop}</div>
+<p class="hint">${esc(t(served ? 'srv.hintServed' : 'srv.hintFile'))}</p>`;
+}
+function srvDraw(focusKey) {
+  const body = root.querySelector('.drawer .set-srv-body');
+  if (!body) return;
+  body.innerHTML = srvInner();
+  if (focusKey) body.querySelector(`[data-k="${focusKey}"]`)?.focus();
+}
+/** Wait for a server to appear (want = true) or for none to answer (want = false), up to ms. */
+async function srvWait(want, ms) {
+  for (const t0 = Date.now(); Date.now() - t0 < ms;) {
+    await new Promise((r) => setTimeout(r, 700));
+    SRV.found = await srvProbe();
+    SRV.asked = true;
+    if (!!SRV.found.length === want) return true;
+  }
+  return false;
+}
+async function srvStart() {
+  if (srvServed() || SRV.busy) return;
+  const f = srvFilePath();
+  if (!f) { SRV.note = t('srv.nopath'); srvDraw('srvStart'); return; }
+  SRV.busy = true;
+  SRV.note = '';
+  srvDraw(); // «checking…»: does a server already answer on 4317-4327?
+  SRV.found = await srvProbe();
+  SRV.asked = true;
+  if (SRV.found.length) { SRV.busy = false; srvDraw('srvOpen'); return; } // one is running: nothing to start, offer to open it
+  SRV.note = t('srv.starting');
+  srvDraw();
+  srvLaunch(`business-wrap://open?file=${encodeURIComponent(f)}`);
+  const ok = await srvWait(true, 25000);
+  SRV.busy = false;
+  SRV.note = ok ? '' : t('srv.noHandler');
+  srvDraw(ok ? 'srvOpen' : 'srvStart');
+}
+/** The confirm dialog for «stop all» (the power-off look: Cancel has the focus, Esc cancels). */
+function srvConfirm(lead) {
+  const d = root.querySelector('.dialog');
+  d.hidden = false;
+  d.setAttribute('aria-label', t('srv.stopTitle'));
+  d.classList.add('pw-dlg');
+  d.innerHTML = `<h2>${esc(t('srv.stopTitle'))}</h2><p>${esc(lead)}</p><div class="btns"><button type="button" class="b danger" data-k="srv-yes"><span class="i">${ic('powerOff')}</span><span class="w">${esc(t('srv.stopYes'))}</span></button><button type="button" class="b" data-k="srv-no"><span class="w">${esc(t('srv.no'))}</span></button></div>`;
+  d.querySelector('[data-k="srv-no"]').focus();
+  setTimeout(() => { if (!d.hidden && !d.contains(root.activeElement)) d.querySelector('[data-k="srv-no"]')?.focus(); }, 150); // a recovery card that opens late must not take the focus from the question
+  document.documentElement.dataset.bwServers = 'asked';
+  return new Promise((res) => {
+    const done = (v) => { d.hidden = true; d.classList.remove('pw-dlg'); d.onclick = d.onkeydown = null; if (!v) document.documentElement.dataset.bwServers = 'cancelled'; res(v); };
+    d.onclick = (e) => { const k = e.target.closest('button')?.dataset.k; if (k) done(k === 'srv-yes'); };
+    d.onkeydown = (e) => { if (e.key === 'Escape') done(false); };
+  });
+}
+async function srvSaveHere() { // the same three saves as the power button: the draft, the library entry, the session state
+  try { writeDraft(); } catch { /* nothing to write */ }
+  try { await EXT.library?.persistNow?.(); } catch { /* not a library document */ }
+  try { EXT.session?.flush?.(); } catch { /* no session */ }
+}
+async function srvStop() {
+  if (SRV.busy) return;
+  const served = srvServed();
+  let lead = t('srv.stopLeadGeneric');
+  if (served) {
+    const info = await fetch('/api/servers', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (info) lead = t('srv.stopLead', { n: info.servers.length, b: info.browsers });
+  } else {
+    SRV.found = await srvProbe();
+    SRV.asked = true;
+    if (SRV.found.length) lead = t('srv.stopLeadFile', { n: SRV.found.length });
+  }
+  if (!(await srvConfirm(lead))) { srvDraw('srvStop'); return; }
+  SRV.busy = true;
+  if (served) {
+    await srvSaveHere();
+    try { new BroadcastChannel('bw-power').postMessage('off'); } catch { /* this tab only */ }
+    try {
+      const r = await fetch('/api/servers/stop', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+      document.documentElement.dataset.bwServers = 'stopped';
+      EXT.power?.stopped?.();
+    } catch (e) { SRV.busy = false; toast(t('srv.failed', { e: e.message || e }), 'warn'); document.documentElement.dataset.bwServers = 'failed'; srvDraw('srvStop'); }
+    return;
+  }
+  SRV.note = t('srv.stopping');
+  srvDraw();
+  srvLaunch('business-wrap://stop');
+  const gone = await srvWait(false, 20000);
+  SRV.busy = false;
+  SRV.note = gone ? t('srv.stoppedAll') : t('srv.noHandlerStop');
+  document.documentElement.dataset.bwServers = gone ? 'stopped' : 'failed';
+  srvDraw('srvStop');
 }
