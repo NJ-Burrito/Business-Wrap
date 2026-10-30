@@ -338,8 +338,9 @@ try {
     const titles = () => p2.evaluate(() => {
       const sh = document.getElementById('bw-ui-host').shadowRoot;
       const bar = sh.querySelector('.island');
-      const st = [...sh.querySelectorAll('.island .sec .sc .st')];
-      return { n: st.length, hidden: st.filter((x) => { const r = x.getBoundingClientRect(); return !(r.width > 4 && r.height > 4 && r.left >= 0 && r.right <= innerWidth); }).map((x) => x.textContent), overflow: bar.scrollWidth - bar.clientWidth };
+      // 0.14 ribbon: the tab names and the labels of the open tab's groups stand where the old section titles did
+      const st = [...sh.querySelectorAll('.ribbon .rb-tab .rb-tl, .ribbon .rb-panel .rb-gl')];
+      return { n: st.length, hidden: st.filter((x) => { const r = x.getBoundingClientRect(); return !(r.width > 4 && r.height > 4 && r.left >= 0 && r.right <= innerWidth); }).map((x) => x.textContent), overflow: bar.scrollWidth - bar.clientWidth, ctxTab: !!sh.querySelector('.ribbon .rb-tab.ctx') };
     });
     const bad = [];
     for (const [name, go] of [
@@ -350,7 +351,7 @@ try {
     ]) {
       await go();
       const r = await titles();
-      if (r.n < 7 || r.hidden.length || r.overflow > 0) bad.push(`${name}: ${JSON.stringify(r)}`);
+      if (r.n < 8 || r.hidden.length || r.overflow > 0 || (name !== 'none' && !r.ctxTab)) bad.push(`${name}: ${JSON.stringify(r)}`);
     }
     check(`toolbar ${ui} 1366: every section title visible in every context, no sideways scroll`, !bad.length, bad.join(' | '));
     await c2.close();

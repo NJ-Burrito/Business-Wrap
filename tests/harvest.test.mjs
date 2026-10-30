@@ -5,6 +5,7 @@
 //
 //   node tests/harvest.test.mjs
 import './_isolate.mjs';
+import { act, rbBtn } from './_ribbon.mjs';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
@@ -131,7 +132,7 @@ try {
   await p.goto(pathToFileURL(bp.editor).href);
   await p.waitForFunction(() => window.BW?.ready);
   const before = await p.evaluate(() => Object.keys(window.BW.M).length);
-  await p.locator('.ribbon .rb-panel [data-a="newdoc"]').click();
+  await (await rbBtn(p,'newdoc')).click();
   const [fc] = await Promise.all([p.waitForEvent('filechooser'), p.locator('.drawer [data-k="nd-model"]').click()]);
   await fc.setFiles(path.join(FIX, 'permit.drawio'));
   await p.waitForFunction((n) => Object.keys(window.BW.M).length > n, before, { timeout: 10000 }).catch(() => {});

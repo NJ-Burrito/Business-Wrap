@@ -3,6 +3,7 @@
 //
 //   node tests/a11y.test.mjs
 import './_isolate.mjs';
+import { act, rbBtn } from './_ribbon.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -41,9 +42,7 @@ try {
       if (st === 'selection') await page.locator('main.bw-doc [data-p="/chapters/1/sections/0/blocks/1/rows/0/1"]').click();
       else if (st === 'palette') await page.keyboard.press('Control+K');
       else if (st !== 'toolbar') {
-        const b = page.locator(`.ribbon .rb-panel [data-a="${st}"]:visible`); // folded tools are reached through the palette
-        if (await b.count()) await b.click();
-        else { await page.keyboard.press('Control+K'); await page.locator(`#cmdlist [data-cmd="${st}"]`).click(); }
+        await act(page, st); // the ribbon tab that holds the tool, else the palette
       }
       await page.waitForTimeout(650); // let open/close motion settle: axe measures colours mid-fade otherwise
       const v = await page.evaluate(async () => {
@@ -54,7 +53,6 @@ try {
       const bad = v.filter((x) => x.impact === 'serious' || x.impact === 'critical');
       check(`axe ${ui} UI, ${st}: no serious/critical`, bad.length === 0, bad.map((x) => `${x.id}×${x.n} @${x.target}`).join(' | '));
       if (st !== 'toolbar') await page.keyboard.press('Escape');
-      if (st === 'view') await page.locator('.ribbon .rb-panel [data-a="view"]').click();
     }
 
     // keyboard only: Tab reaches the toolbar and a document field, Enter-less edit, move, undo

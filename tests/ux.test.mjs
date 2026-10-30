@@ -6,6 +6,7 @@
 //
 //   node tests/ux.test.mjs
 import './_isolate.mjs';
+import { act, rbBtn, rbTabFor } from './_ribbon.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -187,7 +188,7 @@ try {
     await page.locator('.ctx select').first().click({ force: true });
     await page.keyboard.press('Escape');
     ok = (await still('picker')) && ok;
-    await page.locator('.ribbon .rb-panel [data-a="theme"]').click();
+    await (await rbBtn(page,'theme')).click();
     await settle(page, 500);
     ok = (await still('design panel open')) && ok;
     await page.locator('.drawer h3').first().click();
@@ -195,10 +196,10 @@ try {
     const col = page.locator('.drawer input[type="color"]').first();
     if (await col.count()) { await col.evaluate((e) => { e.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true })); }); await col.evaluate((e) => { e.value = '#123456'; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); }); }
     ok = (await still('colour picker')) && ok;
-    await page.locator('.ribbon .rb-panel [data-a="view"]').click();
+    await rbTabFor(page, 'dark'); // 0.14: the View popover is the ribbon's View tab; the tab switch redraws the tools
     await settle(page, 300);
-    ok = (await still('view popover (rebuild)')) && ok;
-    await page.locator('.ribbon .rb-panel [data-a="view"]').click();
+    ok = (await still('view tab (rebuild)')) && ok;
+    await rbTabFor(page, 'undo');
     await page.locator('.drawer [data-k="close"]').click();
     await settle(page, 300);
     ok = (await still('panel closed')) && ok;
@@ -217,7 +218,7 @@ try {
     await page.mouse.click(ovb.x + ovb.width / 2, ovb.y + ovb.height / 2);
     await settle(page, 250);
     const onLogo = await state(page);
-    await page.locator('.ribbon .rb-panel [data-a="theme"]').click();
+    await (await rbBtn(page,'theme')).click();
     await settle(page, 450);
     await page.locator('.drawer h3').nth(1).click();
     const afterPanel = await state(page);
@@ -229,7 +230,7 @@ try {
     check(`A4 ${ui}: a click on empty space returns the general tools`, desk.ctx === '' && desk.selOv == null, JSON.stringify(desk));
     if (await page.evaluate(() => window.BW.S.drawer)) await page.locator('.drawer [data-k="close"]').click();
     await page.locator('main.bw-doc [data-p="/chapters/1/sections/0/blocks/1/rows/0/1"]').click();
-    await page.locator('.ribbon .rb-panel [data-a="save"]').focus();
+    await (await rbBtn(page,'save')).focus();
     await page.keyboard.press('Escape'); // nothing open: the selection leaves
     const esc = await state(page);
     check(`A4 ${ui}: Esc in the toolbar (nothing open) returns the general tools`, esc.ctx === '', JSON.stringify(esc));
@@ -246,7 +247,7 @@ try {
       await page.locator('main.bw-doc [data-p="/chapters/1/sections/0/blocks/1/rows/0/1"]').click();
       (await sh(page, (r) => [...r.querySelectorAll('.ctx [data-a]')].map((el) => el.dataset.a))).forEach((k) => keys.add(k));
       const card = () => sh(page, (r) => { const c = r.querySelector('.xpl'); if (!c || c.hidden) return null; const anim = [...c.querySelectorAll('svg *')].flatMap((e) => e.getAnimations()).length; return { text: c.querySelector('p').textContent, name: c.querySelector('b').textContent, anim, lang: c.lang }; });
-      await page.locator('.ribbon .rb-panel [data-a="save"]').hover();
+      await (await rbBtn(page,'save')).hover();
       await page.waitForTimeout(300);
       const early = await card();
       await page.waitForTimeout(900);
@@ -255,7 +256,7 @@ try {
       await page.keyboard.press('Escape');
       check(`A5 ${ui}: Esc hides the card`, !(await card()));
       await page.mouse.move(700, 600); // leave first: hovering the same spot again sends no pointerover
-      await page.locator('.ribbon .rb-panel [data-a="save"]').hover();
+      await (await rbBtn(page,'save')).hover();
       await page.waitForTimeout(1150);
       const second = await card();
       await page.mouse.move(700, 600);
@@ -263,7 +264,7 @@ try {
       check(`A5 ${ui}: leaving hides the card`, second?.text === UX[ui]['explain.save'] && !(await card()), JSON.stringify(second));
       // keyboard focus shows it too
       await page.keyboard.press('Tab');
-      await sh(page, (r) => r.querySelector('.ribbon .rb-panel [data-a="save"]').focus());
+      await rbTabFor(page, 'save'); await sh(page, (r) => r.querySelector('.ribbon .rb-panel [data-a="save"]').focus());
       await page.waitForTimeout(1150);
       const kb = await card();
       check(`A5 ${ui}: keyboard focus shows the card`, kb?.text === UX[ui]['explain.save'], JSON.stringify(kb));
@@ -295,7 +296,7 @@ try {
     // 0.13.1 final pass #5: Save and Import say what they do since H3 (save in place; import opens the file as a document)
     check('A5: Save / Import hover help describe the 0.13.1 behaviour (save in place, import opens as a document), AR + EN', /في مكانها/.test(UX.ar['explain.save']) && /in place/.test(UX.en['explain.save']) && /وثيقةً في «المستندات»/.test(UX.ar['explain.import']) && /as a document/.test(UX.en['explain.import']), JSON.stringify([UX.ar['explain.save'], UX.en['explain.import']]));
     const rm = await open({ ui: 'ar', reduced: true });
-    await rm.page.locator('.ribbon .rb-panel [data-a="save"]').hover();
+    await (await rbBtn(rm.page,'save')).hover();
     await rm.page.waitForTimeout(1200);
     const still = await sh(rm.page, (r) => { const c = r.querySelector('.xpl'); return c && !c.hidden ? [...c.querySelectorAll('svg *')].flatMap((e) => e.getAnimations()).length : -1; });
     check('A5: reduced motion → the card shows a still frame', still === 0, String(still));
@@ -307,7 +308,7 @@ try {
     const { ctx, page, errors } = await open({ ui, width: 1366 });
     if (ui === 'en') { await page.evaluate(() => window.BW.runAction('uiLang')); await page.evaluate(() => window.BW.runAction('uiLang')); await settle(page, 300); }
     const ed = (await state(page)).ed;
-    const mode = async (m) => { if (!(await page.evaluate(() => window.BW.S.view))) await page.locator('.ribbon .rb-panel [data-a="view"]').click(); await page.locator(`.pop [data-a="view.${m}"]`).click(); };
+    const mode = async (m) => { await act(page, `view.${m}`); };
     await mode('spread');
     await settle(page, 500);
     const geo = () => page.evaluate(() => {
@@ -499,7 +500,7 @@ try {
   //    table tools on every table incl. front matter (R5/A25; WP2's TOC/control pointers put on by hand as a fixture) ──
   { // 0.13 R2
     const { ctx, page, errors } = await open({ width: 1440, height: 900 });
-    const r = await sh(page, (R) => {
+    await rbTabFor(page, 'save'); const r = await sh(page, (R) => {
       const isl = R.querySelector('.island'); const out = {};
       for (const a of ['dark', 'calm', 'calm', 'snap', 'view', 'view', 'uiLang', 'dir', 'dark']) { window.BW.runAction(a); out[a] = R.querySelector('.island') === isl; }
       return { out, ui: window.BW.S.ui, lang: R.querySelector('.shell').lang, save: R.querySelector('.ribbon .rb-panel [data-a="save"] .w').textContent };
@@ -521,7 +522,7 @@ try {
     const { ctx, page } = await open({ width: 1440, height: 900 });
     const card = () => sh(page, (R) => { const c = R.querySelector('.xpl'); return !!c && !c.hidden; });
     await page.mouse.move(700, 600);
-    const save = page.locator('.ribbon .rb-panel [data-a="save"]');
+    const save = (await rbBtn(page,'save'));
     const t0 = Date.now(); await save.hover();
     let at = -1; while (Date.now() - t0 < 1600) { if (await card()) { at = Date.now() - t0; break; } await page.waitForTimeout(30); }
     check('0.13 A3: first hover shows the card at 880–1100 ms', at >= 850 && at <= 1150, String(at));
@@ -529,14 +530,14 @@ try {
     await save.hover(); await page.waitForTimeout(2000);
     check('0.13 A3: second hover within the window: no card in 2 s', !(await card()));
     await page.mouse.move(700, 600);
-    const und = page.locator('.ribbon .rb-panel [data-a="newdoc"]');
+    const und = (await rbBtn(page,'newdoc'));
     await und.click(); await page.mouse.move(700, 600); await page.keyboard.press('Escape'); await und.hover(); await page.waitForTimeout(1500);
     check('0.13 A3: a pressed tool, hovered again: no card', !(await card()));
     await ctx.close();
     const al = await open({ width: 1440, height: 900, store: { 'bw:explainers': 'always' } });
     const c2 = () => sh(al.page, (R) => { const c = R.querySelector('.xpl'); return !!c && !c.hidden; });
-    await al.page.mouse.move(700, 600); await al.page.locator('.ribbon .rb-panel [data-a="save"]').hover(); await al.page.waitForTimeout(1200); const a1 = await c2();
-    await al.page.mouse.move(700, 600); await al.page.waitForTimeout(200); await al.page.locator('.ribbon .rb-panel [data-a="save"]').hover(); await al.page.waitForTimeout(1200); const a2 = await c2();
+    await al.page.mouse.move(700, 600); await (await rbBtn(al.page,'save')).hover(); await al.page.waitForTimeout(1200); const a1 = await c2();
+    await al.page.mouse.move(700, 600); await al.page.waitForTimeout(200); await (await rbBtn(al.page,'save')).hover(); await al.page.waitForTimeout(1200); const a2 = await c2();
     check('0.13 A3: setting "always" restores the repeat', a1 && a2, JSON.stringify({ a1, a2 }));
     await al.ctx.close();
   }

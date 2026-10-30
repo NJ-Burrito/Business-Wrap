@@ -12,6 +12,7 @@
 //   node tests/owner-flows.test.mjs              headless (npm test)
 //   BW_HEADED=1 node tests/owner-flows.test.mjs  headed, slowed down, to watch it
 import './_isolate.mjs';
+import { act, rbBtn, rbTabFor, rbHas } from './_ribbon.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import net from 'node:net';
@@ -151,7 +152,7 @@ try {
   // L8 hover explainer: waits, then does not come back on the same tool
   const xpl = () => R((r) => { const c = r.querySelector('.xpl'); return !!c && !c.hidden; });
   await page.mouse.move(700, 600);
-  const saveBtn = page.locator('#bw-ui-host >> css=.ribbon .rb-panel [data-a="save"]');
+  const saveBtn = (await rbBtn(page,'save'));
   await saveBtn.hover(); await wait(400);
   const early = await xpl();
   await wait(900);
@@ -342,7 +343,7 @@ try {
 
   // L29 TOC rows and the document-control table
   await clickDoc('[data-part="toc"] td[data-p]');
-  check(29, 'a TOC cell is editable and brings the TOC and table tools', await R((r) => ['tocHide', 'tocAdd', 'fmRowAdd', 'fmColAdd'].every((a) => r.querySelector(`.ribbon .rb-panel [data-a="${a}"]`))));
+  check(29, 'a TOC cell is editable and brings the TOC and table tools', (await rbHas(page, ['tocHide', 'tocAdd', 'fmRowAdd', 'fmColAdd'])).length === 4);
   await clickDoc('[data-part="control"] td[data-r="0"]');
   const ctl0 = await opsN();
   await act('fmRowAdd'); await act('fmColAdd');
@@ -447,7 +448,7 @@ try {
   // review2 · 34: RTL/LTR per edition; the direction field (and View, Settings, header, footer) stays in the bar at 1024–1920
   {
     const mainDir = (l) => page.evaluate((l) => document.querySelector(`#bw-pair main.bw-doc[data-locale="${l}"]`)?.dir, l);
-    const dirBtn = (d) => R((r, d) => r.querySelector(`.ribbon .rb-panel [data-a="dir"][data-d="${d}"]`).click(), d);
+    const dirBtn = async (d) => { await rbTabFor(page, 'dir', d); return R((r, d) => r.querySelector(`.ribbon .rb-panel [data-a="dir"][data-d="${d}"]`).click(), d); };
     if ((await page.evaluate(() => window.BW.S.ed)) !== 'en') await act('uiLang');
     const onEn = await page.evaluate(() => window.BW.S.ed);
     await dirBtn('ltr'); await wait(150);
@@ -461,9 +462,10 @@ try {
     const arBack = await mainDir('ar');
     check(34, 'direction per edition: LTR in English leaves Arabic RTL; LTR in Arabic leaves English as chosen', onEn === 'en' && arDir.ed === 'ar' && arDir.dir === 'rtl' && arDir.pressed === 'rtl' && enDir === 'ltr' && arBack === 'rtl', JSON.stringify({ onEn, arDir, enDir, arBack }));
     const seen = [];
-    const inBar = () => R((r) => {
+    const inBar = async () => { await rbTabFor(page, 'dir', 'rtl'); const hf = await rbHas(page, ['hdrText', 'ftrText']); await rbTabFor(page, 'dir', 'rtl'); const o = await inBarView(); o.hdr = hf.includes('hdrText'); o.ftr = hf.includes('ftrText'); return o; };
+    const inBarView = () => R((r) => {
       const ok = (sel) => { const e = r.querySelector(sel); if (!e || !e.checkVisibility()) return false; const q = e.getBoundingClientRect(); const at = r.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2); return q.left >= 0 && q.right <= innerWidth && !!at && (at === e || e.contains(at)); };
-      return { rtl: ok('.ribbon .rb-panel [data-a="dir"][data-d="rtl"]'), ltr: ok('.ribbon .rb-panel [data-a="dir"][data-d="ltr"]'), view: ok('.ribbon .rb-panel [data-a="view"]'), settings: ok('.ribbon .rb-panel [data-a="settings"]'), hdr: !!r.querySelector('.island .sec[data-cat="header"]'), ftr: !!r.querySelector('.island .sec[data-cat="footer"]') };
+      return { rtl: ok('.ribbon .rb-panel [data-a="dir"][data-d="rtl"]'), ltr: ok('.ribbon .rb-panel [data-a="dir"][data-d="ltr"]'), view: ok('.ribbon .rb-panel [data-a="view.continuous"]'), settings: ok('.ribbon .rb-panel [data-a="settings"]') };
     });
     for (const sel of ['none', 'text', 'table']) {
       if (sel === 'text') await clickDoc('[data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]');
@@ -492,7 +494,7 @@ try {
   await fc.setFiles(png);
   await p24.waitForFunction(() => { const d = window.BW.M[window.BW.S.svc][window.BW.S.ed].doc; return d.chapters[0].sections[0].blocks.some((b) => b.kind === 'shots') || (d.overlays || []).some((o) => o.kind === 'image'); }, null, { timeout: 5000 }).catch(() => {});
   await p24.waitForTimeout(200);
-  const wrap = await p24.evaluate(() => ['wrapInline', 'wrapSquare', 'wrapTight', 'wrapThrough', 'wrapTopBottom', 'wrapBehind', 'wrapFront'].filter((a) => document.getElementById('bw-ui-host').shadowRoot.querySelector(`.ribbon .rb-panel [data-a="${a}"]`)).length);
+  const wrap = (await rbHas(p24, ['wrapInline', 'wrapSquare', 'wrapTight', 'wrapThrough', 'wrapTopBottom', 'wrapBehind', 'wrapFront'])).length;
   check(18, '«إدراج صورة»: the inserted image offers in line + 6 wrap options', wrap === 7, `${wrap}/7`, true);
   await para.scrollIntoViewIfNeeded(); await para.click();
   for (let i = 0; i < 2; i++) { await p24.evaluate(() => window.BW.runAction('moveDown')).catch((e) => err24.push(e.message)); await p24.waitForTimeout(150); }
@@ -589,7 +591,7 @@ try {
     await page.keyboard.press('End');
     await page.keyboard.type(' مرة ثانية');
     await page.mouse.click(1000, 450); await wait(300);
-    await page.locator('#bw-ui-host >> css=.ribbon .rb-panel [data-a="save"]').click();
+    await (await rbBtn(page,'save')).click();
     const f2 = await savedFile();
     await wait(800); // the autosave after the Save HTML mark
     const added = changedSince(hb, DOCFILE);

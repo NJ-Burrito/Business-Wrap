@@ -6,6 +6,7 @@
 //   UIP-13   the ask dialog, the palette and the print center leave with .closing (the bw-modal family), and at once in calm mode
 //   node tests/editor-polish-0133.test.mjs
 import './_isolate.mjs';
+import { act, rbBtn } from './_ribbon.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright-core';
@@ -47,7 +48,7 @@ try {
     const { ctx, page, errors } = await open(browser, { ui: 'ar' });
     await pick(page, P1);
     const fc = page.waitForEvent('filechooser', { timeout: 6000 }).catch(() => null);
-    await page.locator('#bw-ui-host >> css=.ribbon .rb-panel [data-a="image"]').first().click();
+    await (await rbBtn(page, 'image')).click();
     (await fc)?.setFiles(PNG);
     await page.waitForFunction(() => (window.BW.M[window.BW.S.svc].ar.doc.overlays || []).length > 0, null, { timeout: 8000 });
     await page.waitForTimeout(500);

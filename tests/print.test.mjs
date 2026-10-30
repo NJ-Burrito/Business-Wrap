@@ -6,6 +6,7 @@
 //
 //   node tests/print.test.mjs        (BW_SHOTS=<folder> also writes the viewport screenshots there)
 import './_isolate.mjs';
+import { rbTabFor } from './_ribbon.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -194,14 +195,15 @@ try {
       const { ctx, page, errors } = await open(url, { ui, width });
       const tag = `${srv ? 'server' : 'file'} ${ui} ${width}`;
       // toolbar: one row, no sideways scroll; at 1920 the words show where they fit
-      const bar = await sh(page, (r) => { const b = r.querySelector('.island'); const bx = [...b.querySelectorAll(':scope > .sec:not([hidden]), :scope > .grp, :scope > .status')].map((x) => x.getBoundingClientRect()); return { over: b.scrollWidth > b.clientWidth, rows: Math.max(...bx.map((x) => x.top)) < Math.min(...bx.map((x) => x.bottom)) ? 1 : 2, words: [...b.querySelectorAll(':scope > .sec:not(.now) > .sb > .b .w')].filter((w) => w.offsetWidth > 0).length }; });
+      await rbTabFor(page, 'print'); // the File tab: the export menu lives there
+      const bar = await sh(page, (r) => { const b = r.querySelector('.island'); const tb = [...r.querySelectorAll('.ribbon .rb-tab')].map((x) => x.getBoundingClientRect()); return { over: b.scrollWidth > b.clientWidth, rows: Math.max(...tb.map((x) => x.top)) < Math.min(...tb.map((x) => x.bottom)) ? 1 : 2, words: [...r.querySelectorAll('.ribbon .rb-panel .b .w')].filter((w) => w.offsetWidth > 0).length }; });
       check(`${tag}: toolbar on one row, no sideways scroll`, !bar.over && bar.rows === 1, JSON.stringify(bar));
       if (width === 1920) check(`${tag}: tool labels show on the bar where they fit`, bar.words > 0, JSON.stringify(bar));
       // every «More» menu and the Export menu: fully visible, every item labelled
-      const mores = await sh(page, (r) => [...r.querySelectorAll('.island .sec:not(.now) .more > [data-a="more"]')].filter((b) => b.offsetWidth > 0).map((b) => b.closest('.sec').dataset.cat + (b.dataset.x ? ':' + b.dataset.x : '')));
+      const mores = await sh(page, (r) => [...r.querySelectorAll('.ribbon .rb-panel .more > [data-a="more"]')].filter((b) => b.offsetWidth > 0).map((b) => 'file' + (b.dataset.x ? ':' + b.dataset.x : '')));
       const bad = [];
       for (const [i] of mores.entries()) {
-        await sh(page, (r, i) => [...r.querySelectorAll('.island .sec:not(.now) .more > [data-a="more"]')].filter((b) => b.offsetWidth > 0)[i].click(), i);
+        await sh(page, (r, i) => [...r.querySelectorAll('.ribbon .rb-panel .more > [data-a="more"]')].filter((b) => b.offsetWidth > 0)[i].click(), i);
         await page.waitForTimeout(320);
         const a = await sh(page, menuAudit);
         if (!a.open || !a.inside || a.scroll || a.bare.length || !a.n) bad.push(`${mores[i]} ${JSON.stringify(a)}`);
@@ -219,7 +221,8 @@ try {
       await page.keyboard.press('Escape');
       // palette ⊆ toolbar, with this selection and with none
       const parity = async () => sh(page, (r) => {
-        const reach = new Set([...r.querySelectorAll('.island [data-a], .pop [data-a], .island [data-cmds]')].flatMap((x) => [x.dataset.a, ...(x.dataset.cmds || '').split(' ')]).filter(Boolean));
+        const R = window.BW.EXT.ribbon; const cur = R.state.tab; const rb = []; for (const t of R.tabs()) { R.setTab(t); rb.push(...r.querySelectorAll('.ribbon .rb-panel [data-a]')); } R.setTab(cur);
+        const reach = new Set([...rb, ...r.querySelectorAll('.island [data-a], .pop [data-a], .island [data-cmds]')].flatMap((x) => [x.dataset.a, ...(x.dataset.cmds || '').split(' ')]).filter(Boolean));
         window.BW.runAction?.('palette');
         const ids = [...r.querySelectorAll('#cmdlist [data-cmd]')].map((x) => x.dataset.cmd);
         r.querySelector('.scrim').hidden = true;
