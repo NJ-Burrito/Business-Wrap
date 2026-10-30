@@ -36,7 +36,7 @@ const check = (n, ok, d = '') => { out.push(`${ok ? 'PASS' : 'FAIL'}  tree: ${n}
 // the real user folder must not move during this run
 const realRoot = path.join(W.defaultParent(), 'Business-Wrap');
 const walk = (d) => (fs.existsSync(d) ? fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)])) : []);
-const snap = (d) => walk(d).map((f) => `${path.relative(d, f)}|${fs.statSync(f).mtimeMs}`).sort().join('\n');
+const snap = (d) => walk(d).map((f) => `${path.relative(d, f)}|${fs.statSync(f).mtimeMs}`).sort().join('|');
 const repoOutBefore = fs.existsSync(path.join(REPO, 'bw-harvest')) || fs.existsSync(path.join(REPO, 'bw-new'));
 
 const ws = W.workspace();
@@ -297,6 +297,28 @@ check('idempotent: a second tidy moves nothing and adds no log run', again.moves
   const stillThere = fs.existsSync(path.join(old4, 'Business-Wrap', 'PDF', 'Cli doc-2026-10-27-AR.pdf'));
   const a = run('tidy');
   check('business-wrap tidy --dry-run prints the plan and moves nothing; business-wrap tidy applies it', d.status === 0 && /plan: 1 of 1/.test(d.stdout) && stillThere && a.status === 0 && /tidy: 1 of 1/.test(a.stdout) && !fs.existsSync(path.join(old4, 'Business-Wrap', 'PDF')) && fs.readdirSync(path.join(old4, 'Business-Wrap', 'المستندات - Documents', W.UNSORTED_NAME)).length === 1, `${d.stdout}${d.stderr} | ${a.stdout}${a.stderr}`);
+}
+// help and bad flags never act (release blocker 2026-10-30: `tidy --help` applied the migration); both entry points, no BW_NO_MIGRATE
+{
+  const old6 = path.join(tmp, 'old6');
+  put(path.join(old6, 'Business-Wrap', 'PDF', 'Help doc-2026-10-27-AR.pdf'), '%PDF');
+  put(path.join(old6, 'Business-Wrap', 'HISTORY', 'bbbbbbbb-1111-4222-8333-444455556666.bwlog'), '{}');
+  const snap = () => walk(old6).map((f) => `${f}|${fs.statSync(f).size}|${fs.statSync(f).mtimeMs}`).sort().join('|');
+  const before = snap();
+  const env = { ...process.env, BW_WORKSPACE: old6 };
+  delete env.BW_NO_MIGRATE;
+  const { spawnSync } = await import('node:child_process');
+  const entries = [path.join(REPO, 'engine', 'cli.mjs'), path.join(REPO, 'update', 'cli.mjs')];
+  const codes = [];
+  for (const e of entries) for (const args of [['tidy', '--help'], ['tidy', '-h'], ['tidy', 'help'], ['tidy', '--bogus'], ['tidy', '--dry-run', '--bogus'], ['protocol', '--help'], ['handle', '--help']]) {
+    const r = spawnSync(process.execPath, [e, ...args], { encoding: 'utf8', env, cwd });
+    codes.push(`${path.basename(path.dirname(e))} ${args.join(' ')} -> ${r.status}`);
+    if (snap() !== before) { check(`${args.join(' ')} via ${path.basename(path.dirname(e))}/cli.mjs changed the folder`, false, codes.at(-1)); }
+  }
+  const h = spawnSync(process.execPath, [entries[0], 'tidy', '--help'], { encoding: 'utf8', env, cwd });
+  const bg = spawnSync(process.execPath, [entries[0], 'tidy', '--bogus'], { encoding: 'utf8', env, cwd });
+  const uh = spawnSync(process.execPath, [entries[1], 'tidy', '--help'], { encoding: 'utf8', env, cwd });
+  check('tidy --help / -h / help and an unknown flag (also protocol --help, handle --help) leave the old folder byte-identical, through engine/cli.mjs and update/cli.mjs', snap() === before && h.status === 0 && /business-wrap tidy/.test(h.stdout) && bg.status === 2 && uh.status === 0, codes.join('; '));
 }
 void prev;
 

@@ -305,7 +305,13 @@ export async function run(argv) {
     case 'heal-log': return { healed: readHealLog() };
     case 'verify-history': return verifyHistory({ file: pos[0], history: val('history') });
     case 'library': return library();
-    case 'tidy': return tidyCmd({ dryRun: flags.has('--dry-run') });
+    case 'tidy': {
+      // only `tidy` and `tidy --dry-run` act; help prints usage and changes nothing; anything else exits 2 and changes nothing
+      if (rest.some((a) => ['--help', '-h', 'help', '-?'].includes(a))) return { usage: USAGE };
+      const bad = rest.filter((a) => a !== '--dry-run');
+      if (bad.length) throw Object.assign(new Error(`tidy: unknown argument ${bad[0]} (usage: business-wrap tidy [--dry-run]); nothing was changed`), { code: 2 });
+      return tidyCmd({ dryRun: flags.has('--dry-run') });
+    }
     case 'report': return report({ from: pos[0], to: pos[1] });
     case 'update': return update(rest);
     case undefined: case 'help': case '--help': case '-h': return { usage: USAGE };

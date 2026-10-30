@@ -89,7 +89,9 @@ async function main() {
 const FIRST = process.argv[2];
 // 0.13.3 Settings › start / stop servers: the business-wrap: URL protocol (engine/protocol.mjs). `protocol` registers the per-user
 // handler, `handle "<url>"` is what the registered handler runs (open <file> | stop; anything else is refused with exit 2).
-if (FIRST === 'protocol' || FIRST === 'handle') {
+if ((FIRST === 'protocol' || FIRST === 'handle') && ['--help', '-h', 'help'].includes(process.argv[3])) {
+  console.log(['usage: business-wrap protocol register | unregister | status [--json]', '       business-wrap handle "business-wrap://open?file=<a Business-Wrap .html file>" | "business-wrap://stop"'].join(String.fromCharCode(10)));
+} else if (FIRST === 'protocol' || FIRST === 'handle') {
   import('../engine/protocol.mjs').then(async (m) => {
     const json = process.argv.includes('--json');
     const say = (o) => console.log(json ? JSON.stringify(o) : Object.entries(o).map(([k, v]) => `${k.padEnd(10)} ${typeof v === 'object' ? JSON.stringify(v) : v}`).join('\n'));
