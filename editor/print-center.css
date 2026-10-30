@@ -46,7 +46,10 @@
 
 /* ── Print panel (a modal <dialog> in the top layer) ── */
 dialog.pc-dlg { width: min(760px, 94vw); max-height: 90vh; padding: 0; border: 1px solid var(--panel-line); border-radius: 18px; background: var(--panel); color: var(--panel-ink); box-shadow: var(--bw-shadow-3); overflow: hidden; }
-dialog.pc-dlg[open] { display: flex; flex-direction: column; animation: pop-in .3s var(--e-out) both; }
+dialog.pc-dlg[open] { display: flex; flex-direction: column; animation: dialog-in var(--t-open, var(--bw-dur-base) var(--bw-ease-out)) both; }
+/* exit (UIP-13): the shared family (ui.css): fade and a small scale, the backdrop fades with it */
+dialog.pc-dlg[open].closing { animation: dialog-out var(--t-close, var(--bw-dur-fast) var(--bw-ease-in)) both; pointer-events: none; }
+dialog.pc-dlg[open].closing::backdrop { animation: fade-out var(--t-close, var(--bw-dur-fast) var(--bw-ease-in)) both; }
 .pc-dlg .b { color: var(--panel-ink); border: 1px solid var(--panel-line); }
 .pc-dlg .b:hover:not(:disabled) { background: var(--wash-2); }
 .pc-dlg .b.primary { background: var(--navy); color: var(--on-primary); border-color: var(--navy); }
@@ -81,7 +84,7 @@ dialog.pc-dlg[open] { display: flex; flex-direction: column; animation: pop-in .
 .pc-prev figure { margin: 0; text-align: center; font-size: 12px; color: var(--panel-soft); }
 .pc-prev img { height: 150px; border: 1px solid var(--panel-line); border-radius: 4px; background: #fff; display: block; } /* doc-colour: a printed page preview */
 .pc-ft { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 18px; border-top: 1px solid var(--panel-line); }
-@media (prefers-reduced-motion: reduce) { .spin { animation-duration: 3s; } .tg i, .tg { transition: none; } dialog.pc-dlg[open] { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .spin { animation-duration: 3s; } .tg i, .tg { transition: none; } dialog.pc-dlg[open], dialog.pc-dlg[open].closing, dialog.pc-dlg[open].closing::backdrop { animation: none; } }
 :host-context(html[data-bw-calm="1"]) .tg i, :host-context(html[data-bw-calm="1"]) .tg { transition: none; }
 /* PDF / DOCX / diagram: one row of three per format, so the whole menu fits a 768 px-high window */
 .pc-g.row { flex-direction: row; flex-wrap: wrap; align-items: center; }

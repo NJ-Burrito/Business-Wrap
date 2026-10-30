@@ -8,6 +8,11 @@
  *        «إزالة الصفحات الفارغة»; deleting a block that held the section's page size hands it to the next block.
  * Additive only: no new schema, no change to the save format. */
 const W2W = { focus: null };
+// UI-CHROME-11: the header / footer delete tools get their own page glyph (a band at the top, or at the foot, and a cross), not the shared bin;
+// rowUp, rowDown and keepNext have theirs in icons.json
+{ const pg = (band, x) => `<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <rect x="4" y="3" width="16" height="18" rx="2" /> <path d="${band}" /> <path d="${x[0]}" /> <path d="${x[1]}" /> </svg>`;
+  IC.hdrDelete = pg('M4 8h16', ['m9.5 12.5 5 5', 'm14.5 12.5-5 5']);
+  IC.ftrDelete = pg('M4 16h16', ['m9.5 6.5 5 5', 'm14.5 6.5-5 5']); }
 // icons: the house set's own glyphs, by what each tool does (tests/ux.test.mjs fails an icon-less tool)
 { const alias = { addStory: 'addPara', storyPoint: 'rowAdd', storyCard: 'duplicate', pgBreakAdd: 'pgBreak', pgBreakDel: 'pgBreak', pgPullUp: 'moveUp', secDel: 'delete', pgEmpty: 'delete', secGaps: 'pages' };
   for (const [k, v] of Object.entries(alias)) IC[k] = IC[k] || IC[v] || IC.pages; }

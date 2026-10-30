@@ -188,6 +188,11 @@ ins { background: var(--bw-success-wash); color: var(--bw-on-success-wash); text
 .dialog .b:hover:not(:disabled) { background: var(--wash); }
 .dialog .b.primary:hover:not(:disabled) { background: var(--bw-primary-hover) !important; }
 .dialog .b.primary { background: var(--navy); color: var(--on-primary) !important; }
+/* exit (UIP-13): the bw-modal family, --t-close; the JS never adds .closing in calm mode or under reduced motion */
+.dialog.closing { animation: dialog-out var(--t-close) both; pointer-events: none; }
+.scrim.closing { animation: fade-out var(--t-close) both; pointer-events: none; }
+.scrim.closing .palette { animation: dialog-out var(--t-close) both; }
+@media (prefers-reduced-motion: reduce) { .dialog.closing, .scrim.closing, .scrim.closing .palette { animation: none; } }
 @keyframes dialog-in { from { opacity: 0; scale: var(--bw-scale-press); } to { opacity: 1; scale: 1; } }
 
 /* command palette */

@@ -76,7 +76,12 @@
 [data-ic="fmtJustify"] > :nth-child(2) { --d: var(--bw-stagger); }
 [data-ic="fmtJustify"] > :nth-child(3) { --d: calc(var(--bw-stagger) * 2); }
 /* remove item: the bin's lid lifts */
-:is([data-ic="chDelete"], [data-ic="hdrDelete"], [data-ic="ftrDelete"]) > :is(:nth-child(4), :nth-child(5)) { transform-origin: 0 100%; --y: -2px; --r: -10deg; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1, icm-tilt var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+:is([data-ic="chDelete"]) > :is(:nth-child(4), :nth-child(5)) { transform-origin: 0 100%; --y: -2px; --r: -10deg; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1, icm-tilt var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+/* remove the header / footer item: the band slips away from its edge, the cross recedes */
+[data-ic="hdrDelete"] > :nth-child(2) { --y: -2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="ftrDelete"] > :nth-child(2) { --y: 2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+:is([data-ic="hdrDelete"], [data-ic="ftrDelete"]) > :is(:nth-child(3), :nth-child(4)) { --s: .7; --icm: icm-recede var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; --d: 50ms; }
+:is([data-ic="hdrDelete"], [data-ic="ftrDelete"]) > :nth-child(1) { --s: 1.04; --icm: icm-pop var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 /* which pages: the layers part and settle */
 :is([data-ic="chScope"], [data-ic="hdrScope"], [data-ic="ftrScope"]) > :nth-child(1) { --y: -2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 :is([data-ic="chScope"], [data-ic="hdrScope"], [data-ic="ftrScope"]) > :nth-child(2) { --y: 1.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; --d: 60ms; }
@@ -238,15 +243,19 @@
 [data-ic="delete"] > * { --icm: icm-shake var(--mvt); }
 [data-ic="moveUp"] > * { --y:-3px; --icm: icm-nudge var(--mvt); }
 [data-ic="moveDown"] > * { --y:3px; --icm: icm-nudge var(--mvt); }
-[data-ic="rowUp"] > * { --y:-3px; --icm: icm-nudge var(--mvt); }
-[data-ic="rowDown"] > * { --y:3px; --icm: icm-nudge var(--mvt); }
+[data-ic="rowUp"] > :is(:nth-child(1), :nth-child(2)) { --y:-3px; --icm: icm-nudge var(--mvt); }
+[data-ic="rowUp"] > :is(:nth-child(3), :nth-child(4), :nth-child(5)) { --y:2px; --icm: icm-nudge var(--mvt); --d: 40ms; }
+[data-ic="rowDown"] > :is(:nth-child(1), :nth-child(2)) { --y:3px; --icm: icm-nudge var(--mvt); }
+[data-ic="rowDown"] > :is(:nth-child(3), :nth-child(4), :nth-child(5)) { --y:-2px; --icm: icm-nudge var(--mvt); --d: 40ms; }
 [data-ic="rowAdd"] > * { --s:1.2; --icm: icm-pop var(--mvt); }
 [data-ic="rowDel"] > * { --s:.8; --icm: icm-recede var(--mvt); }
 [data-ic="colAdd"] > * { --s:1.2; --icm: icm-pop var(--mvt); }
 [data-ic="colDel"] > * { --s:.8; --icm: icm-recede var(--mvt); }
 [data-ic="comment"] > * { --r:-10deg; --icm: icm-tilt var(--mvt); }
 [data-ic="breakBefore"] > * { --y:-2px; --icm: icm-nudge var(--mvt); }
-[data-ic="keepNext"] > * { --y:2px; --icm: icm-nudge var(--mvt); }
+[data-ic="keepNext"] > :nth-child(1) { --y:1.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="keepNext"] > :nth-child(2) { --y:-1.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="keepNext"] > :nth-child(3) { --s:1.35; --icm: icm-pop var(--mvt); --d: 50ms; }
 [data-ic="close"] > * { --r:90deg; --icm: icm-spin var(--mvt); }
 [data-ic="prefs"] > * { --r:90deg; --icm: icm-spin var(--mvt); }
 [data-ic="learning"] > * { --s:1.14; --icm: icm-pop var(--mvt); }
@@ -315,8 +324,13 @@
 [data-ic="dgZoomFit"] > * { --s:.84; --icm: icm-recede var(--mvt); }
 [data-ic="dgZoom100"] > * { --s:.88; --icm: icm-pop var(--mvt); }
 
+/* glyph swapped for the partner in a right-to-left UI (editor.js IC_SWAP, data-sw): its move runs the way the drawn glyph points */
+.ic[data-sw]:is([data-ic="chStart"], [data-ic="hdrStart"], [data-ic="ftrStart"], [data-ic="fmtAlignStart"]) { --x: -4px; }
+.ic[data-sw]:is([data-ic="chEnd"], [data-ic="hdrEnd"], [data-ic="ftrEnd"], [data-ic="fmtAlignEnd"]) { --x: 4px; }
+.ic[data-sw][data-ic="undo"] > * { --r: 28deg; }
+.ic[data-sw][data-ic="redo"] > * { --r: -28deg; }
 /* Arabic mirrors the directional glyphs (the shell is always dir=rtl, data-tdir carries the UI's reading direction) */
-.shell[data-tdir="rtl"] .ic:is([data-ic="undo"], [data-ic="redo"], [data-ic="fmtAlignStart"], [data-ic="fmtAlignEnd"], [data-ic="hdrStart"], [data-ic="hdrEnd"], [data-ic="ftrStart"], [data-ic="ftrEnd"], [data-ic="chStart"], [data-ic="chEnd"], [data-ic="fmtIndent"], [data-ic="fmtOutdent"], [data-ic="fmtBefore"], [data-ic="fmtAfter"], [data-ic="biBack"], [data-ic="biFwd"], [data-ic="view.left"], [data-ic="view.right"], [data-ic="side"], [data-ic="dgFrom"], [data-ic="dgTo"], [data-ic="dgAlignL"], [data-ic="dgAlignR"]) { scale: -1 1; }
+.shell[data-tdir="rtl"] .ic:not([data-sw]):is([data-ic="undo"], [data-ic="redo"], [data-ic="fmtAlignStart"], [data-ic="fmtAlignEnd"], [data-ic="hdrStart"], [data-ic="hdrEnd"], [data-ic="ftrStart"], [data-ic="ftrEnd"], [data-ic="chStart"], [data-ic="chEnd"], [data-ic="fmtIndent"], [data-ic="fmtOutdent"], [data-ic="fmtBefore"], [data-ic="fmtAfter"], [data-ic="biBack"], [data-ic="biFwd"], [data-ic="view.left"], [data-ic="view.right"], [data-ic="side"], [data-ic="dgFrom"], [data-ic="dgTo"], [data-ic="dgAlignL"], [data-ic="dgAlignR"]) { scale: -1 1; }
 /* calm mode and reduced motion: drawn, never moving */
 @media (prefers-reduced-motion: reduce) { .ic[data-ic] > * { animation: none !important; } }
 .shell[data-calm="1"] .ic[data-ic] > * { animation: none !important; }

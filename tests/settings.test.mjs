@@ -129,7 +129,11 @@ try {
     const txt = await uh(page, (r) => r.querySelector('.dlg').innerText);
     check(`${ui}: newer release → the popup, with the version, the notes and three buttons`, shown && txt.includes(NEWER) && /Settings page|صفحة الإعدادات/.test(txt) && (await uh(page, (r) => r.querySelectorAll('.row button').length)) === 3, txt.slice(0, 200));
     check(`${ui}: release notes are text only (no markup from the feed reaches the page)`, !(await uh(page, (r) => !!r.querySelector('.dlg b[onclick], .dlg [onclick]'))) && !txt.includes('**'));
-    check(`${ui}: AR+EN section headings`, txt.includes('أُضيف · Added') && txt.includes('أُصلح · Fixed'));
+    // UIP-15: the English UI shows English labels only, left to right; the Arabic UI keeps its bilingual labels
+    const body = await uh(page, (r) => { const b = r.querySelector('.dlg .body'); return b ? { dir: getComputedStyle(b).direction, text: b.innerText } : null; });
+    check(`${ui}: section headings follow the UI language (en: English only, ltr; ar: «أُضيف · Added», rtl)`, !!body && (ui === 'en'
+      ? txt.includes('Added') && txt.includes('Fixed') && !txt.includes('أُضيف') && !/[؀-ۿ]/.test(body.text) && body.dir === 'ltr'
+      : txt.includes('أُضيف · Added') && txt.includes('أُصلح · Fixed') && body.dir === 'rtl'), JSON.stringify(body)?.slice(0, 240));
     await shot(page, `popup-${ui}`);
     if (ui === 'ar') await axe(page, 'update popup');
     await page.keyboard.press('Escape');

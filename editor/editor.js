@@ -606,7 +606,8 @@ function selectEl(el) {
 }
 function paintSel() {
   // the picked picture or box shows it, the free ones (.bw-ov) and the in-flow ones (.bw-ovf) alike (DOCS-06)
-  document.querySelectorAll('#bw-pair .bw-ov, #bw-pair .bw-ovf').forEach((x) => x.classList.toggle('bw-ov-sel', S.selOv != null && +x.dataset.i === S.selOv));
+  // a text box counts as picked while its words hold the caret too, so a bare click shows the same look as a drag or an insert
+  document.querySelectorAll('#bw-pair .bw-ov, #bw-pair .bw-ovf').forEach((x) => x.classList.toggle('bw-ov-sel', (S.selOv != null && +x.dataset.i === S.selOv) || (x.classList.contains('bw-tb') && x.contains(document.activeElement))));
   document.querySelectorAll('.bw-sel').forEach((x) => x.classList.remove('bw-sel'));
   if (!S.sel?.b) { overlay.grip.hidden = true; return; }
   const main = mainOf(S.sel.ed);
@@ -1118,7 +1119,15 @@ document.body.prepend(host);
 const root = host.attachShadow({ mode: 'open' });
 const IC = DATA.icons || {};
 // data-ic names the icon, so its own motion (editor/ext/40-icon-motion.css) finds it wherever it is drawn
-const ic = (k) => (IC[k] ? IC[k].replace('<svg', `<svg data-ic="${k}"`) : '');
+// UI-CHROME-09: in a right-to-left UI the start/end and undo/redo glyphs swap with their partner (the partner is their exact mirror),
+// and the SVG says so (data-sw) so the CSS mirror in 40-icon-motion.css skips it: never both. Indent/outdent, before/after,
+// back/forward... keep the CSS mirror (swapping them would point the arrow the wrong way).
+const IC_SWAP = { fmtAlignStart: 'fmtAlignEnd', fmtAlignEnd: 'fmtAlignStart', hdrStart: 'hdrEnd', hdrEnd: 'hdrStart', ftrStart: 'ftrEnd', ftrEnd: 'ftrStart', chStart: 'chEnd', chEnd: 'chStart', undo: 'redo', redo: 'undo' };
+const ic = (k) => {
+  const sw = IC_SWAP[k] && uiDir() === 'rtl' && IC[IC_SWAP[k]];
+  const g = sw || IC[k];
+  return g ? g.replace('<svg', `<svg data-ic="${k}"${sw ? ' data-sw="1"' : ''}`) : '';
+};
 const RMQ = matchMedia('(prefers-reduced-motion: reduce)');
 S.calm = ls.get('bw:calm') === '1';
 S.focus = false;
@@ -1524,10 +1533,22 @@ function icPress(b) {
 /** A small edit dialog. review2 · extra 9: what was typed is never thrown away without a choice — a click outside, or
  *  another tool asking, leaves a changed dialog open (it nudges); only «حفظ» / «إغلاق» / Esc end it.
  *  type: 'text' (a textarea), 'color' (the native swatch), 'number' (a stepper, min/max/step), 'select' (options). */
+/** UIP-13: one exit for the ask dialog, the palette and the print center, the family of the drawer and bw-modal exits
+ * (.closing: fade + small scale, --t-close = --bw-dur-fast, ease-in). Calm mode and reduced motion hide at once. */
+function leaveEl(el, done) {
+  clearTimeout(el.bwLeave);
+  const end = () => { el.bwLeave = 0; el.classList.remove('closing'); done(); };
+  if (isCalm() || el.hidden) { end(); return; }
+  el.classList.add('closing');
+  el.bwLeave = setTimeout(() => { if (el.classList.contains('closing')) end(); }, 180); // 160 ms (--bw-dur-fast) + a frame
+}
+/** the counterpart: a panel opened again before its exit finished stays open */
+function arriveEl(el) { clearTimeout(el.bwLeave); el.bwLeave = 0; el.classList.remove('closing'); }
 function ask(label, value = '', { type = 'text', options = [], min, max, step } = {}) {
   const d = root.querySelector('.dialog');
   if (!d.hidden && d.bwDirty?.()) { dlgNudge(d); return Promise.resolve(''); }
   d.bwCancel?.();
+  arriveEl(d);
   d.hidden = false;
   d.setAttribute('aria-label', label);
   const num = (k, v) => (v != null ? ` ${k}="${esc(String(v))}"` : '');
@@ -1541,7 +1562,7 @@ function ask(label, value = '', { type = 'text', options = [], min, max, step } 
   d.bwDirty = () => f.value !== initial;
   f.focus();
   return new Promise((res) => {
-    const done = (v) => { d.hidden = true; d.bwDirty = null; d.bwCancel = null; res(v); };
+    const done = (v) => { d.bwDirty = null; d.bwCancel = null; leaveEl(d, () => { d.hidden = true; }); res(v); };
     d.bwCancel = () => done('');
     d.onclick = (e) => {
       const k = e.target.closest('button')?.dataset.k;
@@ -1616,6 +1637,7 @@ function markPal() {
 }
 function openPalette() {
   const s = root.querySelector('.scrim');
+  arriveEl(s);
   s.hidden = false;
   palIdx = 0;
   const input = root.querySelector('.palette input');
@@ -1625,7 +1647,7 @@ function openPalette() {
 }
 function closePalette() {
   const s = root.querySelector('.scrim');
-  if (s) s.hidden = true;
+  if (s && !s.hidden) leaveEl(s, () => { s.hidden = true; });
 }
 
 async function onBar(e) {
@@ -2123,7 +2145,7 @@ function showGuides(main, guides, base) {
 }
 
 /** Move (body) and resize (corner handle) on pointer events; one commit on release, corrected to the drop point. */
-function startOvDrag(e, el, resize) {
+function startOvDrag(e, el, resize, dir = 1) {
   const i = +el.dataset.i;
   const o = ovList()[i];
   if (!o) return;
@@ -2146,7 +2168,7 @@ function startOvDrag(e, el, resize) {
     if (resize) {
       // review2 · extra 10: the handle sits bottom-right in both directions (the box grows rightwards from its left edge);
       // a text box keeps room for its words (20 mm), a picture 6 mm
-      const w = Math.max(o.kind === 'text' ? 20 : 6, Math.min(200, o.w + dx / k));
+      const w = Math.max(o.kind === 'text' ? 20 : 6, Math.min(200, o.w + dir * dx / k));
       el.style.width = `${w}mm`;
       last = { w };
     } else {
@@ -2197,6 +2219,20 @@ function startOvDrag(e, el, resize) {
   window.addEventListener('pointercancel', up, true);
 }
 function decorateOverlays(main) {
+  // DOCS-08: a square-wrap (floated) picture or box has the same corner handle as a free one and resizes by drag;
+  // it sits at the corner that stays still while the width changes (right edge for a box floated left, left edge for one floated right)
+  main.querySelectorAll('.bw-ovf').forEach((el) => {
+    let h = el.querySelector(':scope > .bw-ov-handle');
+    if (!h) {
+      h = document.createElement('span');
+      h.className = 'bw-ov-handle';
+      h.setAttribute('aria-hidden', 'true');
+      el.appendChild(h);
+    }
+    const right = getComputedStyle(el).float === 'right';
+    h.dataset.side = right ? 'l' : 'r';
+    h.style.cssText = right ? 'left:-7px;right:auto;cursor:nesw-resize' : '';
+  });
   main.querySelectorAll('.bw-ov').forEach((el) => {
     el.tabIndex = 0;
     el.setAttribute('role', 'button');
@@ -2218,6 +2254,9 @@ function decorateOverlays(main) {
   });
 }
 document.addEventListener('pointerdown', (e) => {
+  // DOCS-08: only the corner handle of an in-flow (.bw-ovf) object starts a drag (a click on it picks it, see 23-objects.js)
+  const fl = e.target.closest?.('#bw-pair .bw-ovf > .bw-ov-handle');
+  if (fl && e.button === 0) { startOvDrag(e, fl.parentElement, true, fl.dataset.side === 'l' ? -1 : 1); return; }
   const el = e.target.closest?.('#bw-pair .bw-ov');
   if (!el || e.target.closest('[data-p]')) return;
   startOvDrag(e, el, e.target.classList.contains('bw-ov-handle'));
