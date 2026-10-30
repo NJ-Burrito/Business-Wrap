@@ -255,8 +255,10 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
 .sec .sc .i, .sec .sc .ic { width: 13px; height: 13px; }
 .sec .sb { display: flex; align-items: center; gap: 2px; }
 /* section names on the glass: four tokens (each 6.38:1 or more on the band); the rest read in the soft paper tone */
-.sec[data-cat="file"], .sec[data-cat="export"] { --cat: var(--bw-sec-file); } .sec[data-cat="insert"], .sec[data-cat="document"] { --cat: var(--bw-sec-insert); }
-.sec[data-cat="edit"] { --cat: var(--bw-sec-edit); } .sec[data-cat="design"] { --cat: var(--bw-sec-design); } .sec[data-cat="view"] { --cat: var(--on-glass-soft); }
+.sec[data-cat="file"] { --cat: var(--bw-sec-file); } .sec[data-cat="insert"] { --cat: var(--bw-sec-insert); } .sec[data-cat="edit"] { --cat: var(--bw-sec-edit); } .sec[data-cat="design"] { --cat: var(--bw-sec-design); }
+/* UI-CHROME-12 (0.13.3): every section has its own colour (brand v3 light-ramp steps, each >= 6.38:1 on the band) so the names tell sections apart */
+.sec[data-cat="document"] { --cat: var(--bw-sec-document); } .sec[data-cat="export"] { --cat: var(--bw-sec-export); } .sec[data-cat="view"] { --cat: var(--bw-sec-view); }
+.sec[data-cat="gaps"] { --cat: var(--bw-sec-gaps); } .sec[data-cat="header"], .sec[data-cat="chrome"] { --cat: var(--bw-sec-header); } .sec[data-cat="footer"] { --cat: var(--bw-sec-footer); }
 .sec.now { background: color-mix(in srgb, var(--on-glass) 8%, transparent); border: 1px solid var(--hair); border-radius: 12px; padding: 2px 8px; --cat: var(--on-glass); }
 .sec.now.swap { animation: sel-in .32s var(--e-out) both; }
 @keyframes sel-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }

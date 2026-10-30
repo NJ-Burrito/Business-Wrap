@@ -122,6 +122,15 @@ try {
   for (const [k, v] of ALL) if (!seen.has(k)) seen.set(k, { key: k, bw: /class="ic bw-i|bw-i/.test(v), html: v.replace('<svg', `<svg data-ic="${k}"`) });
   check('static icon list covers more than the screen walk', ALL.size > 150, `${ALL.size} from source, ${seen.size} in all`);
 
+  // UI-CHROME-12: each toolbar section has its own colour, readable on the band
+  const secs = await page.evaluate(() => {
+    const lum = (c) => { const m = (c.match(/[0-9.]+/g) || ['0', '0', '0']).map(Number).map((v) => (c.startsWith('color(') ? v * 255 : v)); const f = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }; return .2126 * f(m[0]) + .7152 * f(m[1]) + .0722 * f(m[2]); };
+    const band = (() => { const d = document.createElement('i'); d.style.color = getComputedStyle(__root().querySelector('.shell')).getPropertyValue('--bw-band').trim() || '#001e3d'; __root().appendChild(d); const c = getComputedStyle(d).color; d.remove(); return c; })();
+    return [...__root().querySelectorAll('.island > .sec[data-cat]')].map((s) => { const c = getComputedStyle(s.querySelector('.sc')).color; const a = lum(c), b = lum(band); return { cat: s.dataset.cat, c, band, cr: (Math.max(a, b) + .05) / (Math.min(a, b) + .05) }; });
+  });
+  const colours = secs.map((s) => s.c);
+  check('toolbar sections each have their own colour', secs.length >= 8 && new Set(colours).size === colours.length, secs.map((s) => s.cat + ':' + s.c).join(' '));
+  check('section titles read at >= 4.5:1 on the band', secs.every((s) => s.cr >= 4.5), secs.map((s) => s.cat + ' ' + s.cr.toFixed(1) + ' ' + s.c + ' on ' + s.band).join(' | '));
   // the surfaces, one by one, in their real containers
   await page.keyboard.press('Escape'); await page.mouse.click(700, 500);
   await surfaceCheck(page, '.island', 'toolbar');

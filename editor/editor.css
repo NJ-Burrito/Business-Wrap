@@ -16,15 +16,18 @@
   main.bw-doc .bw-sel { animation: bw-sel-in .35s cubic-bezier(.16,1,.3,1); }
   @keyframes bw-sel-in { from { box-shadow: inset 0 0 0 6px color-mix(in srgb, var(--bw-gold) 35%, transparent); } }
   /* free-placed logos and images: grab to move, corner handle to resize */
-  main.bw-doc .bw-ov { cursor: grab; touch-action: none; outline: 1.5px dashed transparent; outline-offset: 2px; border-radius: 2px; transition: outline-color .2s, box-shadow .3s; }
-  main.bw-doc .bw-ov:hover, main.bw-doc .bw-ov:focus-visible { outline-color: var(--bw-sel); }
-  main.bw-doc .bw-ov.bw-ov-sel { outline: 2px solid var(--bw-gold); }
-  main.bw-doc .bw-ov.bw-dragging { cursor: grabbing; z-index: 5; box-shadow: var(--bw-shadow-3, 0 18px 40px -12px rgba(0,30,61,.45)); transition: none; }
+  main.bw-doc :is(.bw-ov, .bw-ovf) { cursor: grab; touch-action: none; outline: 1.5px dashed transparent; outline-offset: 2px; border-radius: 2px; transition: outline-color .2s, box-shadow .3s; }
+  main.bw-doc :is(.bw-ov, .bw-ovf):hover, main.bw-doc :is(.bw-ov, .bw-ovf):focus-visible { outline-color: var(--bw-sel); }
+  main.bw-doc :is(.bw-ov, .bw-ovf).bw-ov-sel { outline: 2px solid var(--bw-gold); }
+  main.bw-doc :is(.bw-ov, .bw-ovf).bw-dragging { cursor: grabbing; z-index: 5; box-shadow: var(--bw-shadow-3, 0 18px 40px -12px rgba(0,30,61,.45)); transition: none; }
   main.bw-doc .bw-ov-handle { position: absolute; right: -7px; bottom: -7px; width: 14px; height: 14px; border-radius: 5px; background: var(--bw-gold); border: 2px solid var(--bw-surface, #ffffff); cursor: nwse-resize; opacity: 0; transform: scale(.6); transition: opacity .2s, transform .35s cubic-bezier(.34,1.56,.64,1); }
-  main.bw-doc .bw-ov:hover .bw-ov-handle, main.bw-doc .bw-ov.bw-ov-sel .bw-ov-handle { opacity: 1; transform: none; }
+  main.bw-doc :is(.bw-ov, .bw-ovf):hover .bw-ov-handle, main.bw-doc :is(.bw-ov, .bw-ovf).bw-ov-sel .bw-ov-handle { opacity: 1; transform: none; }
   /* review2 · extra 10: a text box's body is for typing, so it carries a move grip on its top edge */
   main.bw-doc .bw-ov-move { position: absolute; inset-inline: 30%; top: -9px; height: 10px; border-radius: 5px; background: var(--bw-gold); cursor: move; opacity: 0; transition: opacity .2s; }
-  main.bw-doc .bw-ov:hover .bw-ov-move, main.bw-doc .bw-ov.bw-ov-sel .bw-ov-move { opacity: 1; }
+  main.bw-doc :is(.bw-ov, .bw-ovf):hover .bw-ov-move, main.bw-doc :is(.bw-ov, .bw-ovf).bw-ov-sel .bw-ov-move { opacity: 1; }
+  /* DOCS-08 / selected text box: a floated picture or text box (.bw-ovf) and a free one (.bw-ov) share ONE selected look (solid 2px gold outline, corner handle, move bar); a focused box shows it too (the class itself is set by decorateOverlays in editor.js) */
+  main.bw-doc .bw-tb:is(:focus, :focus-within) { outline: 2px solid var(--bw-gold); }
+  main.bw-doc .bw-ovf:is(.bw-ov-sel, :focus-within) .bw-ov-handle, main.bw-doc .bw-tb:is(:focus, :focus-within) .bw-ov-handle { opacity: 1; transform: none; }
   main.bw-doc .bw-guide.x { position: absolute; top: 0; bottom: 0; left: var(--at); border-left: 1px dashed var(--bw-gold); z-index: 6; pointer-events: none; }
   html.bw-drop #bw-pair main.bw-doc { outline: 3px dashed var(--bw-gold); outline-offset: 6px; }
   #bw-pair.bw-side { display: flex; gap: 16px; justify-content: center; align-items: flex-start; overflow-x: auto; }
