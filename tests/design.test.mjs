@@ -33,6 +33,9 @@ const SHOTS = path.join(REPO, 'out', 'compare-0.10.0-design');
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
 fs.mkdirSync(SHOTS, { recursive: true });
+// this suite's own scratch for normalised font copies: another suite's export in flight can never show up in its leftovers check
+const NORM = path.join(OUT, 'font-norm');
+process.env.BW_FONT_NORM_DIR = NORM;
 const POPPLER = [config().poppler].find((d) => d && fs.existsSync(path.join(d, 'pdffonts.exe')));
 const tool = (name) => (POPPLER ? path.join(POPPLER, `${name}.exe`) : name);
 
@@ -343,7 +346,7 @@ try {
         const cd = exportDocx(cdoc, { locale: 'en', theme: loadTheme(), docxPath: path.join(OUT, 'cff.en.docx') });
         check('B1 gate: the DOCX embeds the converted CFF font', /w:name="Cff Probe">[^]*?embedRegular/.test(unzip(cd.docx, 'word/fontTable.xml')), JSON.stringify(cd.fontNotes));
       } else skip('B1 gate: CFF font → TrueType', 'no .otf (CFF) font installed on this machine');
-      check('B1: normalised font copies are not left behind', !fs.existsSync(path.join(REPO, 'out', 'font-norm')) || fs.readdirSync(path.join(REPO, 'out', 'font-norm')).length === 0, fs.existsSync(path.join(REPO, 'out', 'font-norm')) ? fs.readdirSync(path.join(REPO, 'out', 'font-norm')).join(',') : '');
+      check('B1: normalised font copies are not left behind', !fs.existsSync(NORM) || fs.readdirSync(NORM).length === 0, fs.existsSync(NORM) ? fs.readdirSync(NORM).join(',') : '');
       const css = uploadedFontCss({ design: { fontFaces: [{ family: "x');}body{color:red", src: 'data:font/ttf;base64,AAAA' }, { family: 'ok', src: 'https://evil/x.ttf' }] } });
       check('B1: @font-face from a document is sanitised (family, data URI only)', !css.includes("'x')") && !css.includes('evil'), css.slice(0, 120));
     } else if (!FONT) skip(`${ui} B1: PDF + DOCX`, 'no TrueType font installed on this machine');

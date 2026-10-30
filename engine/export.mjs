@@ -14,6 +14,7 @@ import { py } from './py.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { renderDocument, chromeTemplates, relaxTallGroups, relaxArgs, PAGE, pageGeom, pageModel, folioOf, designTheme, confidentialText, uploadedFontCss, faceWeights } from './render.mjs';
 import { applyOps, migrate } from './edits.mjs';
+import { assertBase } from './edits-base.mjs';
 import { loadManifest, resolveFonts, fontFaceCss, systemFamily, normaliseFont, ttfDataUri } from './fonts.mjs';
 import { config } from './config.mjs';
 import { DIAGRAM } from './diagram.mjs';
@@ -55,7 +56,8 @@ export const fileStem = (s) => String(s || 'document').normalize('NFC').replace(
 export const userCwd = () => process.env.INIT_CWD || process.cwd();
 
 const familyName = (f) => String(f || '').replace(/[^\p{L}\p{N}\s._-]/gu, '').trim();
-const OUT_TMP = path.join(REPO, 'out', 'font-norm');
+// scratch for normalised font copies and print pages; BW_FONT_NORM_DIR lets a test own its sub-folder (read at call time)
+const outTmp = () => process.env.BW_FONT_NORM_DIR || path.join(REPO, 'out', 'font-norm');
 
 /**
  * The chosen fonts outside the house pair, ready to print and embed as real text (owner decision
@@ -131,8 +133,8 @@ async function chromium() {
 export async function exportPdf(doc, { locale, theme, pdfPath, browser: shared }) {
   const { html, fontCss, labels, used, chosen } = printHtml(doc, { locale, theme, embed: true });
   // the print page carries the normalised font copies: it lives in the gitignored out/ and is removed after
-  fs.mkdirSync(OUT_TMP, { recursive: true });
-  const tmp = path.join(OUT_TMP, `bw-print-${process.pid}-${Date.now()}.html`);
+  fs.mkdirSync(outTmp(), { recursive: true });
+  const tmp = path.join(outTmp(), `bw-print-${process.pid}-${Date.now()}.html`);
   fs.writeFileSync(tmp, html, 'utf8');
   const browser = shared || (await (await chromium()).launch(launchOptions()));
   try {
@@ -166,7 +168,7 @@ export async function exportPdf(doc, { locale, theme, pdfPath, browser: shared }
   // a chosen heading font stamps the folios too, as its normalised TrueType copy (written to out/, removed after)
   let folioTmp = '';
   const pick = chosen.faces.find((f) => f.family === familyName(display) && f.weight === 700) || chosen.faces.find((f) => f.family === familyName(display));
-  if (pick) { fs.mkdirSync(OUT_TMP, { recursive: true }); folioTmp = path.join(OUT_TMP, `folio-${process.pid}-${Date.now()}.ttf`); fs.writeFileSync(folioTmp, pick.bytes); }
+  if (pick) { fs.mkdirSync(outTmp(), { recursive: true }); folioTmp = path.join(outTmp(), `folio-${process.pid}-${Date.now()}.ttf`); fs.writeFileSync(folioTmp, pick.bytes); }
   const folioFace = used.find((c) => c.family === display && c.weight === 700 && c.format === 'truetype') || (folioTmp && { file: folioTmp }) || used.find((c) => c.format === 'truetype');
   const anchor = confidentialText(doc, theme, labels, locale);
   const folio = folioOf(doc, locale);
@@ -279,8 +281,8 @@ export function docxFonts(doc, { theme, work, embed = true }) {
 /** DOCX replica through the copied builder (the edited JSON is written beside it first).
  * embedFonts (default true): the fonts that may travel go inside the file (word/fonts/*.odttf); fontNotes says which could not. */
 export function exportDocx(doc, { locale, theme, docxPath, embedFonts = true }) {
-  fs.mkdirSync(OUT_TMP, { recursive: true });
-  const work = fs.mkdtempSync(path.join(OUT_TMP, 'bw-docx-'));
+  fs.mkdirSync(outTmp(), { recursive: true });
+  const work = fs.mkdtempSync(path.join(outTmp(), 'bw-docx-'));
   const plan = docxFonts(doc, { theme, work, embed: embedFonts });
   const cuts = plan.cuts;
   const docJson = path.join(work, 'document.json');
@@ -311,9 +313,15 @@ function args(argv) {
   return a;
 }
 
-export function loadEdited(docFile, editsFile) {
-  let doc = JSON.parse(fs.readFileSync(docFile, 'utf8'));
-  if (editsFile) doc = applyOps(doc, migrate(JSON.parse(fs.readFileSync(editsFile, 'utf8'))).ops);
+export function loadEdited(docFile, editsFile, { force = false } = {}) {
+  const rawText = fs.readFileSync(docFile, 'utf8');
+  let doc = JSON.parse(rawText);
+  if (editsFile) {
+    const rawEdits = JSON.parse(fs.readFileSync(editsFile, 'utf8'));
+    const edits = migrate(rawEdits);
+    assertBase({ file: docFile, rawText, doc, edits, bare: Array.isArray(rawEdits), force });
+    doc = applyOps(doc, edits.ops);
+  }
   return doc;
 }
 

@@ -19,7 +19,8 @@ const { buildEditor } = await import('../engine/build-editor.mjs');
 let failed = 0;
 const out = [];
 const check = (n, ok, d = '') => { out.push(`${ok ? 'PASS' : 'FAIL'}  workspace: ${n}${d && !ok ? '  — ' + d : ''}`); if (!ok) failed += 1; };
-const inside = (p, dir) => !path.relative(dir, p).startsWith('..');
+// same rule as engine/workspace.mjs: a path on another drive comes back from path.relative as an absolute path, not inside
+const inside = (p, dir) => { const r = path.relative(dir, p); return !r || (!r.startsWith('..') && !path.isAbsolute(r)); };
 
 // the default and the guard against the repository
 const d0 = W.workspace();

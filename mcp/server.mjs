@@ -8,6 +8,7 @@ import { McpServer, z } from './vendor/sdk.mjs';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { exportPdf, exportDocx, loadTheme, fontsFor, REPO } from '../engine/export.mjs';
 import { applyOps, migrate, validateEdits } from '../engine/edits.mjs';
+import { assertBase } from '../engine/edits-base.mjs';
 import { checkForUpdate, oneLiner, token, currentVersion } from '../update/check.mjs';
 import { applyUpdate } from '../update/apply.mjs';
 import { harvestModel, harvestCrawl, harvestMerge } from '../engine/harvest/cli.mjs';
@@ -28,13 +29,16 @@ const out = (p, ext) => {
   return f;
 };
 const localeOf = (file, doc, given) => given || (/\.en\.json$/i.test(file) ? 'en' : /\.ar\.json$/i.test(file) ? 'ar' : /[؀-ۿ]/.test(doc.control?.title || '') ? 'ar' : 'en');
-function loadDocument(file, editsFile) {
-  const doc = readJson(file);
+function loadDocument(file, editsFile, force = false) {
+  const rawText = fs.readFileSync(path.resolve(file), 'utf8');
+  const doc = JSON.parse(rawText);
   if (!doc.chapters || !doc.control) throw new Error(`not a document JSON (needs control + chapters): ${file}`);
   if (!editsFile) return { doc, ops: 0 };
-  const edits = migrate(readJson(editsFile));
+  const rawEdits = readJson(editsFile);
+  const edits = migrate(rawEdits);
   const errs = validateEdits(edits);
   if (errs.length) throw new Error(`edits file invalid: ${errs.join('; ')}`);
+  assertBase({ file, rawText, doc, edits, bare: Array.isArray(rawEdits), force });
   return { doc: applyOps(doc, edits.ops), ops: edits.ops.length };
 }
 // update_available rides once per session on the first tool result, so any MCP client's model sees it.
@@ -101,10 +105,11 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
       document: z.string().describe('Base document JSON path'),
       edits: z.string().describe('Edits JSON path'),
       out: z.string().describe('Output .json path for the edited document'),
+      force: z.boolean().optional().describe('Apply even when the edits baseHash or edition does not match this document (default false: refused)'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-  }, guard(({ document, edits, out: o }) => {
-    const { doc, ops } = loadDocument(document, edits);
+  }, guard(({ document, edits, out: o, force }) => {
+    const { doc, ops } = loadDocument(document, edits, !!force);
     const f = out(o, '.json');
     fs.writeFileSync(f, JSON.stringify(doc, null, 1) + '\n', 'utf8');
     return { document: f, ops_applied: ops };
@@ -120,10 +125,11 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
       out_dir: z.string().describe('Folder for the outputs'),
       theme: z.string().optional().describe('Theme / design-pack JSON'),
       docx: z.boolean().optional().describe('Also build the DOCX (default true)'),
+      force: z.boolean().optional().describe('Replay the edits even when their baseHash or edition does not match this document (default false: refused)'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-  }, guard(async ({ document, edits, locale, out_dir, theme, docx }) => {
-    const { doc, ops } = loadDocument(document, edits);
+  }, guard(async ({ document, edits, locale, out_dir, theme, docx, force }) => {
+    const { doc, ops } = loadDocument(document, edits, !!force);
     const ed = localeOf(document, doc, locale);
     const th = loadTheme(theme && path.resolve(theme));
     const stem = `${doc.service || 'document'}.${ed}`;

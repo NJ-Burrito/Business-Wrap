@@ -19,7 +19,21 @@ const has = (f) => argv.includes(f);
 const val = (f, d) => { const i = argv.indexOf(f); return i >= 0 && argv[i + 1] ? argv[i + 1] : d; };
 const lang = val('--lang', /^ar/i.test(process.env.LANG || process.env.LC_ALL || '') ? 'ar' : 'en');
 
+const FLAGS = new Set(['--check', '--apply', '--notes', '--hook', '--enable-hook', '--disable-hook', '--off', '--on', '--json', '--lang', '--force', '--yes', '--help', '-h']);
+const USAGE = `business-wrap update — the version check and the update
+
+  business-wrap update --check [--json] [--lang ar|en] [--force]   one line when an update exists (cached, at most one request a day)
+  business-wrap update --apply --yes                                update this install (keeps .local, design/custom, logos, fonts/custom, drafts, out)
+  business-wrap update --notes [--json]                             what's new in the installed version
+  business-wrap update --hook                                       for the SessionStart hook: prints only when enabled and an update exists
+  business-wrap update --enable-hook | --disable-hook | --off | --on
+  business-wrap update --help                                       this text (no network)
+Any other verb runs the script-first CLI (business-wrap help lists them).`;
+
 async function main() {
+  if (has('--help') || has('-h') || has('help')) { console.log(USAGE); return 0; }
+  const unknown = argv.filter((a, i) => a.startsWith('-') && !FLAGS.has(a) && !(argv[i - 1] === '--lang'));
+  if (unknown.length) { console.error(`business-wrap update: unknown option ${unknown.join(' ')}\n\n${USAGE}`); return 2; }
   if (fromNpx()) {
     // `npx business-wrap update` runs npm's copy from a temporary cache (npm can lag behind GitHub: 0.12.0 under a 0.13
     // install). Inside an install, hand over to that install's own updater; elsewhere never apply into the cache.
@@ -75,3 +89,4 @@ async function main() {
 const FIRST = process.argv[2];
 if (FIRST && FIRST !== 'update' && !FIRST.startsWith('-')) import('../engine/cli.mjs').then((m) => m.main(process.argv.slice(2))).then((code) => { process.exitCode = code; });
 else main().then((code) => { process.exitCode = code; }, () => { process.exitCode = 0; });
+// (--help / unknown flags are answered at the top of main(): no update check, no network)

@@ -50,7 +50,7 @@ export default async (req, url, send, ctx) => {
       const m = b.mirror || {};
       // the highest point ever seen here wins; the first key pinned for an actor id stays pinned
       const keepOld = old?.head && (!m.head || old.head.seq > m.head.seq);
-      const rec = { doc: b.doc, head: keepOld ? old.head : m.head || null, hashes: keepOld ? old.hashes : m.hashes || [], pins: { ...(m.pins || {}), ...(old?.pins || {}) } };
+      const rec = { doc: b.doc, head: keepOld ? old.head : m.head || null, hashes: keepOld ? old.hashes : m.hashes || [], kinds: keepOld ? old.kinds : m.kinds, pins: { ...(m.pins || {}), ...(old?.pins || {}) } };
       fs.writeFileSync(f + '.bwlog', b.log);
       fs.writeFileSync(f + '.heads.json', JSON.stringify(rec));
       send(200, { ok: true, mirror: rec });

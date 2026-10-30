@@ -212,7 +212,7 @@ try {
       return { in: r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight, bs, r: [r.left, r.top, r.right, r.bottom] };
     });
     check(`toast fully visible at ${w}×${h}, buttons whole`, fit.in && fit.bs.length === 2 && fit.bs.every((b) => b.ok), JSON.stringify(fit));
-    await pg.screenshot({ path: path.join(REPO, `share-toast-${w}x${h}.png`) }); // viewport only
+    await pg.screenshot({ path: path.join(OUT, `share-toast-${w}x${h}.png`) }); // viewport only
     await pg.context().close();
   }
 } finally {
