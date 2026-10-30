@@ -59,6 +59,11 @@ id = "bw-jo-national-id"
 description = "A 10-digit national-number shape (starts 9 or 2)"
 regex = '''\b[29][0-9]{9}\b'''
 
+[[rules.allowlists]]
+description = "CSS z-index:2147483000 (editor/diagram-ui.js, an overlay stacked just under the 32-bit maximum) is not a national number; this exact value only, for this rule only"
+regexTarget = "match"
+regexes = ['''^2147483000$''']
+
 [[rules]]
 id = "bw-jo-phone"
 description = "A mobile number shape (+962 / 07x)"
