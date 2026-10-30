@@ -8,7 +8,7 @@
 .island:not(.sq3) .sec[data-cat="view"] .b[data-a="view"] .w { display: inline; }
 
 /* ── Export menu ── */
-.more .menu.pc-menu { min-width: 300px; max-width: min(420px, 94vw); gap: 4px; padding: 8px; }
+.more .menu.pc-menu { min-width: 300px; max-width: min(420px, 94vw); gap: 4px; padding: 8px; max-height: calc(100vh - 140px); } /* 14 tools in 4 groups: taller than the 70vh of a plain menu, so none falls outside its box (0.15 stabilise) */
 .pc-opts { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 4px 6px 8px; border-bottom: 1px solid var(--hair); }
 .pc-f { display: inline-flex; align-items: center; gap: 6px; color: var(--on-glass-soft); font-size: 13px; }
 .pc-f.wide { flex-basis: 100%; }

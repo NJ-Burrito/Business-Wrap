@@ -83,8 +83,11 @@ function rbPaint(el, html) {
   const tpl = document.createElement('template');
   tpl.innerHTML = html;
   const ak = [...el.childNodes], bk = [...tpl.content.childNodes];
-  bk.forEach((n, i) => { if (ak[i]) uiMorph(ak[i], n); else el.appendChild(n); });
+  bk.forEach((n, i) => { if (ak[i]) uiMorph(ak[i], n, true); else el.appendChild(n); });
   ak.slice(bk.length).forEach((n) => n.remove());
+  syncUndoState();
+  const pn = el.querySelector('.rb-panel');
+  if (pn) { pn.classList.remove('tight'); if (pn.scrollWidth > pn.clientWidth + 1) pn.classList.add('tight'); }
 }
 /** One pass: mount if missing, redraw when something the ribbon shows changed, refresh the pressed states otherwise. */
 function rbSync() {

@@ -1,4 +1,4 @@
-/* Server banner (editor/ext/18-server.js, 0.14.0): shown at the top while no Business-Wrap server answers. A sibling of .shell in the
+/* Server banner (editor/ext/18-server.js, 0.14.0): shown at the top (the toolbar moves down below it, so nothing is covered) while no Business-Wrap server answers. A sibling of .shell in the
    shadow root, so it carries its own colour roles. Calm mode and reduced motion: no entrance move. */
 .srv-bar { --navy: var(--bw-primary); --gold: var(--bw-accent); --on-gold: var(--bw-on-accent); --focus: var(--bw-focus); --r-btn: var(--bw-radius-md); --e-out: var(--bw-ease-out); --e-spring: var(--bw-ease-out);
   position: fixed; z-index: 70; inset-block-start: 10px; inset-inline: 0; margin-inline: auto; inline-size: min(760px, 94vw); box-sizing: border-box;

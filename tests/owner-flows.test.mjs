@@ -205,16 +205,17 @@ try {
   const treeHtml = () => { const o = new Map(); const w = (d) => { for (const e of fs.existsSync(d) ? fs.readdirSync(d, { withFileTypes: true }) : []) { const f = path.join(d, e.name); if (e.isDirectory()) w(f); else if (/\.html$/.test(e.name)) o.set(path.relative(htmlDir, f).split(path.sep).join('/'), fs.statSync(f).mtimeMs); } }; w(htmlDir); return o; };
   const changedSince = (before, re) => [...treeHtml()].filter(([n, m]) => before.get(n) !== m && (!re || re.test(n))).map(([n]) => n);
   const DOCFILE = /^[^/]+\/[^/]+\.html$/; // <title>\<title>.html: a document's own file
-  const SHARED = /^[^/]+\/Exports\/[^/]+\.shared\.html$/;
+  const COPYFILE = /^[^/]+\/Versions\/[^/]+ - copy( \(\d+\))?\.html$/; // 0.14 «Save as new copy» (File › Save HTML): a NEW dated file in Versions\, the document's own file is not touched
+  const SHARED =/^[^/]+\/Exports\/[^/]+\.shared\.html$/;
   const htmlPre = treeHtml(); // H3: the Saves above wrote each document's own file
   await act('saveHtml');
   const t0 = Date.now();
   let saved = [];
-  while (Date.now() - t0 < 10000 && !saved.length) { saved = changedSince(htmlPre, DOCFILE); if (!saved.length) await wait(200); }
+  while (Date.now() - t0 < 10000 && !saved.length) { saved = changedSince(htmlPre, COPYFILE); if (!saved.length) await wait(200); }
   const savedText = saved[0] ? fs.readFileSync(path.join(htmlDir, saved[0]), 'utf8') : '';
   const today = W.stamp(new Date()).slice(0, 10);
   // Save HTML (an export) is a copy beside the document's own file: «-2» when the Save already wrote «<title>-<date>-AR.html»
-  check(15, 'Save HTML writes the document\'s own file Documents\\<title>\\<title>.html (the file it replaces is kept in Versions\\)', saved.length === 1 && /^(خدمة المالك [^/]+)\/\1\.html$/.test(saved[0]), saved.join(','));
+  check(15, 'Save HTML (0.14 «Save as new copy») writes a NEW dated file Documents\\<title>\\Versions\\<date> <title> - copy.html and leaves the document\'s own file alone', saved.length === 1 && /^(خدمة المالك [^/]+)\/Versions\/[^/]+ - copy( \(\d+\))?\.html$/.test(saved[0]), saved.join(','));
   const data = (() => { const m = /<script type="application\/json" id="bw-data">([^]*?)<\/script>/.exec(savedText); try { return m && JSON.parse(m[1]); } catch { return null; } })();
   check(20, 'a document opened from the list, edited and saved as HTML carries its provenance log (prov)', !!data?.prov?.[id1]?.log, data ? Object.keys(data.prov || {}).join(',') || 'no prov' : 'no file', true);
   check(13, 'the change counter restarts at Save HTML', c0 >= 1 && (await counter()) === 0, `${c0} → ${await counter()}`);
@@ -515,7 +516,7 @@ try {
       if (m === 'behind') { await p24.keyboard.down('Alt'); await p24.mouse.click(b.x + b.width / 2, b.y + b.height / 2); await p24.keyboard.up('Alt'); }
       else await p24.mouse.click(b.x + b.width / 2, b.y + Math.min(b.height / 2, 20));
       await p24.waitForTimeout(120);
-      return p24.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('.island .sec[data-cat="wrap"] [data-a^="wrap"]').length);
+      return p24.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('.island .ribbon .rb-panel [data-a^="wrap"]').length /* the ribbon's picture tab; the legacy .island sections are hidden */);
     };
     const bad = [];
     for (const from of WR) {

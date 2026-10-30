@@ -1213,7 +1213,7 @@ function uiHtml() {
     ${sec('export', [pcExportMenu(), tool(CMDS.find((c) => c.id === 'print')), tool(CMDS.find((c) => c.id === 'exportPdf'))])}
     <span class="spacer"></span>
     <div class="status" role="status" aria-live="polite">
-      <button type="button" class="count" data-a="history" title="${esc(t('history'))}" aria-label="${esc(t('changesWord') + ' ' + opCount())}"><span class="i">${ic('history')}</span><span class="w" data-alt="${esc(tAlt('changesWord'))}">${esc(t('changesWord'))}</span><span class="n" aria-hidden="true">${opCount()}</span></button>
+      <button type="button" class="count" data-a="history" title="${esc(t('history'))}" aria-label="${esc(changesName(opCount()))}"><span class="i">${ic('history')}</span><span class="w" data-alt="${esc(tAlt('changesWord'))}">${esc(t('changesWord'))}</span> <span class="n" aria-hidden="true">${opCount()}</span></button>
       <span class="sel vh">${esc(selDesc())}</span><span class="flash vh"></span>
     </div>
     <div class="sec" data-cat="view" role="group" aria-label="${esc(t('secView'))}"><span class="sc" aria-hidden="true"><span class="i">${ic('secView')}</span><span class="st">${esc(t('secView'))}</span></span><div class="sb">
@@ -1266,7 +1266,8 @@ const UI_OWN_ATTR = new Set(['data-theme', 'lang', 'dir']);
 const UI_RUNTIME = '.xpl, .pager, .xpl-dock, .bw-busy, .rd-exit, .ribbon';
 const UI_KEEP_ATTR = new Set(['style', 'data-tt', 'aria-describedby', 'popover', 'data-open', 'disabled']);
 const UI_RUNTIME_CLS = /^(has-sel|sq\d|nw|folded|sel-fold|done|swap|tick|in|closing)$/;
-function uiMorph(a, b) {
+function uiMorph(a, b, fresh = false) {
+  // fresh: the new markup is the whole truth about `disabled` (a ribbon tab switch lands other buttons in the same slots, so the old tab's disabled must not carry over)
   if (a.nodeType !== b.nodeType || a.nodeName !== b.nodeName) { a.replaceWith(b); return; }
   if (a.nodeType !== 1) { if (a.nodeValue !== b.nodeValue) a.nodeValue = b.nodeValue; return; }
   const own = a.matches(UI_OWN);
@@ -1279,12 +1280,12 @@ function uiMorph(a, b) {
   }
   if (own) return;
   for (const { name } of [...a.attributes]) {
-    if (b.hasAttribute(name) || UI_KEEP_ATTR.has(name)) continue;
+    if (b.hasAttribute(name) || (UI_KEEP_ATTR.has(name) && !(fresh && name === 'disabled'))) continue;
     if (name === 'class') { const keep = [...a.classList].filter((c) => UI_RUNTIME_CLS.test(c)); if (keep.length) a.setAttribute('class', keep.join(' ')); else a.removeAttribute('class'); } else a.removeAttribute(name);
   }
   const ak = [...a.childNodes].filter((n) => !(n.nodeType === 1 && n.matches(UI_RUNTIME)));
   const bk = [...b.childNodes];
-  bk.forEach((n, i) => { if (ak[i]) uiMorph(ak[i], n); else a.appendChild(n); });
+  bk.forEach((n, i) => { if (ak[i]) uiMorph(ak[i], n, fresh); else a.appendChild(n); });
   ak.slice(bk.length).forEach((n) => n.remove());
 }
 function syncUi() {
@@ -1306,11 +1307,13 @@ function syncUi() {
 }
 // The page never jumps under the reader: the reserved band only grows (wrap, font load), resets only for focus mode.
 let barH = 0;
-function measureBar() {
+function measureBar(force = false) {
   const bar = root.querySelector('.island');
   if (S.focus || !bar) { barH = 0; document.documentElement.style.setProperty('--bw-bar-h', '12px'); return; }
+  // bar.offsetTop includes the room the server banner (18-server.js) takes above the toolbar
   const h = Math.round(bar.offsetTop + bar.offsetHeight + 12); // layout box: never the entry animation's mid-flight transform
-  if (h > barH) {
+  // force: the server banner came or went, the band follows it both ways; the page keeps its place under the pointer either way
+  if (h > barH || (force && h !== barH)) {
     const grew = barH ? h - barH : 0;
     barH = h; document.documentElement.style.setProperty('--bw-bar-h', `${h}px`);
     // a contextual ribbon tab (Table, Picture, Diagram) opens on the press and grows the band: scroll by the same amount so the thing pressed stays under the pointer and the click lands on it
@@ -1356,7 +1359,14 @@ function fitBar() {
 window.addEventListener('resize', () => { fitBar.force = true; fitBar(); setTimeout(() => { fitBar.force = true; fitBar(); }, 200); }); // and once the resize has settled (a window drag lands mid-layout)
 document.fonts?.addEventListener?.('loadingdone', () => { fitBar.force = true; fitBar(); }); // the first fit can run before the UI face is in: refit once it lands
 let lastCount = -1;
+/** the changes button's accessible name is exactly its visible text (the word, then the number): WCAG 2.5.3 label in name */
+const changesName = (n) => t('changesWord') + ' ' + n;
 const opCount = () => EXT.status?.count() ?? liveOps(cur()).length;
+/** undo / redo are disabled while there is nothing to undo / redo, on the toolbar and on whatever ribbon tab is drawn */
+function syncUndoState() {
+  const dis = { undo: !cur().ops.length, redo: !cur().redo.length };
+  root.querySelectorAll('.island button[data-a]').forEach((x) => { if (x.dataset.a in dis) x.disabled = dis[x.dataset.a]; });
+}
 function refreshUi() {
   const c = root.querySelector('.count');
   if (!c) return;
@@ -1364,15 +1374,14 @@ function refreshUi() {
   if (n !== lastCount) {
     const el = c.querySelector('.n');
     el.textContent = String(n);
-    c.setAttribute('aria-label', t('changes', { n }));
+    c.setAttribute('aria-label', changesName(n));
     if (lastCount >= 0 && !isCalm()) { el.classList.remove('tick'); void el.offsetWidth; el.classList.add('tick'); }
     lastCount = n;
   }
   root.querySelector('.sel').textContent = selDesc();
   const b = blockOf(S.sel?.b);
   const tb = !!tableCtx();
-  const dis = { undo: !cur().ops.length, redo: !cur().redo.length };
-  root.querySelectorAll('.island button[data-a]').forEach((x) => { if (x.dataset.a in dis) x.disabled = dis[x.dataset.a]; });
+  syncUndoState();
   const v = validate();
   if (v.some((x) => x[0] === 'err') && !refreshUi.err) emitHook('validation.failed', { problems: v.filter((x) => x[0] === 'err').map((x) => x[1]) });
   refreshUi.err = v.some((x) => x[0] === 'err');

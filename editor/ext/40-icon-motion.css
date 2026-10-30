@@ -216,6 +216,11 @@
 [data-ic="outline"] > * { --icm: icm-grow-x var(--mvt); }
 [data-ic="history"] > * { --r:-360deg; --icm: icm-spin var(--mvt); }
 [data-ic="renumber"] > * { --y:3px; --icm: icm-from var(--mvt); }
+/* the same list icon under two more ids (29-numbering.js renumList, 33-docid.js docId): own move on hover */
+[data-ic="renumList"] > :nth-child(-n+3) { transform-origin: 0 50%; --icm: icm-grow-x var(--bw-dur-slow) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="renumList"] > :nth-child(2) { --d: var(--bw-stagger); }
+[data-ic="renumList"] > :nth-child(3) { --d: calc(var(--bw-stagger) * 2); }
+[data-ic="docId"] > * { --y: 3px; --icm: icm-from var(--mvt); }
 [data-ic="webhooks"] > * { --s:1.15; --icm: icm-pop var(--mvt); }
 [data-ic="styleThis"] > * { --r:14deg; --icm: icm-tilt var(--mvt); }
 [data-ic="hideBlock"] > * { --s:.78; --icm: icm-recede var(--mvt); }

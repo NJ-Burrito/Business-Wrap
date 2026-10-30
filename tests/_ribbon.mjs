@@ -20,25 +20,9 @@ export async function rbTabFor(page, action, d = null) {
 /** The tab ids the ribbon draws now. */
 export const rbTabs = (page) => page.evaluate(() => window.BW.EXT.ribbon.tabs());
 
-/**
- * PRODUCT BUG (reported in the receipt, left in place): after a tab switch the ribbon's positional morph (rbPaint -> uiMorph, with
- * `disabled` in UI_KEEP_ATTR, editor.js:1267) carries the `disabled` of the previous tab's undo/redo onto whatever button lands in
- * that slot. The hidden legacy twin of the same command is the authority: if it is enabled, the ribbon button is a stale copy and
- * is re-enabled so the suite can still exercise the command. Returns true when it had to. Delete this when the product is fixed.
- */
-export async function unstick(page, action) {
-  return page.evaluate((a) => {
-    const r = document.getElementById('bw-ui-host').shadowRoot;
-    const b = r.querySelector(`.ribbon .rb-panel [data-a="${a}"]`); const twin = r.querySelector(`.island button[data-a="${a}"]:not(.ribbon *)`);
-    if (b && b.disabled && twin && !twin.disabled && a !== 'undo' && a !== 'redo') { b.disabled = false; return true; }
-    return false;
-  }, action);
-}
-
 /** A locator for the ribbon button of an action, after opening the tab that holds it (the first locator even if absent). */
 export async function rbBtn(page, action, d = null) {
   await rbTabFor(page, action, d);
-  await unstick(page, action);
   return page.locator(HOST).locator(`.ribbon .rb-panel [data-a="${action}"]${d ? `[data-d="${d}"]` : ''}`).first();
 }
 /** Run an action like a user: its ribbon tab, then the click ('hover' / 'focus' also allowed); the palette when it is not on the ribbon. */
@@ -46,8 +30,7 @@ export async function act(page, action, { how = 'click', d = null, timeout = 800
   const tab = await rbTabFor(page, action, d);
   if (tab) {
     const b = page.locator(HOST).locator(`.ribbon .rb-panel [data-a="${action}"]${d ? `[data-d="${d}"]` : ''}`).first();
-    await unstick(page, action);
-    return b[how]({ timeout });
+      return b[how]({ timeout });
   }
   await page.keyboard.press('Control+K');
   const row = page.locator(HOST).locator(`#cmdlist [data-cmd="${action}"]`).first();

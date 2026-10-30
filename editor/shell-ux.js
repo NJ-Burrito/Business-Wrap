@@ -126,6 +126,7 @@ function uxMenuPlace(menu, btn) {
   const left = Math.min(vw - w - 8, Math.max(8, r.right - w));
   let top = r.bottom + 6;
   if (top + h > innerHeight - 8 && r.top - h - 6 >= 8) top = r.top - h - 6; // flip above when there is room
+  else if (top + h > innerHeight - 8 && h <= innerHeight - 16) top = innerHeight - h - 8; // neither side has room (a tall menu under a tall ribbon): slide up over the ribbon instead of scrolling inside
   if (top + h > innerHeight - 8) { top = Math.max(8, top); menu.style.maxHeight = `${innerHeight - top - 8}px`; h = innerHeight - top - 8; }
   Object.assign(menu.style, { left: `${Math.round(left)}px`, top: `${Math.round(top)}px` });
 }
