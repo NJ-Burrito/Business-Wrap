@@ -4,8 +4,8 @@
    (an IntersectionObserver adds it) or the icon gets .is-playing. Nothing moves under reduced motion. */
 .bw-i { width: 1.5em; height: 1.5em; vertical-align: middle; overflow: visible; }
 /* the gold part: a fill (seals, tabs) in --bw-marker-icon; The Rule (a stroke under a line) in --bw-accent-rule */
-.bw-i .hl { fill: var(--bw-marker-icon, #be9a41); }
-.bw-i .hl.rl { fill: none; stroke: var(--bw-accent-rule, #9c7e36); }
+.bw-i .hl { fill: var(--bw-marker-icon); }
+.bw-i .hl.rl { fill: none; stroke: var(--bw-accent-rule); }
 /* toolbar weight (DESIGN d.4): 2 at 18 px on the navy glass */
 .bw-i.bw-i-bold { stroke-width: 2; }
 .bw-i .mv { transform-box: fill-box; transform-origin: 50% 50%; }

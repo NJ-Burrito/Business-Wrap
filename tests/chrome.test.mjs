@@ -5,6 +5,7 @@
 // section header; an "all" item is on every non-cover page. Headless Chrome, closed at the end.
 //
 //   node tests/chrome.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

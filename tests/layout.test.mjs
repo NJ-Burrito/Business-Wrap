@@ -6,6 +6,7 @@
 // table gets a row and a column (PDF + DOCX) and its bound cell still drives the cover spine. Headless Chrome.
 //
 //   node tests/layout.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

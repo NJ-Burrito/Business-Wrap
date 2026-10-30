@@ -14,17 +14,18 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { applyOps } from './edits.mjs';
 import { REPO } from './export.mjs';
+import { localBase, isTestMode, testSandbox, isRealRoot, realParent } from './testguard.mjs';
 import { tidyNow } from './tidy.mjs'; // a cycle by design: used only when ensure() meets an old layout
 
 /** .local/ (gitignored); BW_LOCAL_DIR moves it (tests). */
-export const localDir = () => path.resolve(process.env.BW_LOCAL_DIR || path.join(REPO, '.local'));
+export const localDir = () => localBase(REPO);
 const store = () => path.join(localDir(), 'workspace.json');
 const inside = (p, dir) => { const r = path.relative(dir, p); return !r || (!r.startsWith('..') && !path.isAbsolute(r)); };
 
 export function defaultParent() {
   // under the test runner (tests/run.mjs sets BW_TEST_SLOT) a suite that names no BW_WORKSPACE gets a temp parent, never the real Documents
-  if (process.env.BW_TEST_SLOT !== undefined) return path.join(os.tmpdir(), `bw-test-parent-${process.env.BW_TEST_SLOT}`);
-  const docs = path.join(os.homedir(), 'Documents');
+  if (isTestMode()) return testSandbox('parent');
+  const docs = realParent();
   return fs.existsSync(docs) ? docs : os.homedir();
 }
 
@@ -32,6 +33,7 @@ export function defaultParent() {
 export function validParent(p) {
   if (typeof p !== 'string' || !p || /[\u0000-\u001f]/.test(p) || !path.isAbsolute(p)) return null;
   const abs = path.resolve(p);
+  if (isTestMode() && (isRealRoot(abs) || isRealRoot(path.join(abs, 'Business-Wrap')))) return null; // a test never works in the owner's real folder
   return inside(abs, REPO) ? null : abs;
 }
 
@@ -76,9 +78,9 @@ const migrated = new Set();
 export function ensure(ws = workspace()) {
   if (ws.root && !migrated.has(ws.root)) {
     migrated.add(ws.root);
-    // only a folder the user chose (or BW_WORKSPACE names), never the default Documents guess, and never under the test runner:
+    // only a folder the user chose (or BW_WORKSPACE names), never the default Documents guess, and never the owner's real folder from a test:
     // `business-wrap tidy` moves any other folder on request
-    if (!process.env.BW_NO_MIGRATE && process.env.BW_TEST_SLOT === undefined && ws.chosen && LEGACY.some((n) => fs.existsSync(path.join(ws.root, n)))) tidyNow(ws);
+    if (!process.env.BW_NO_MIGRATE && !(isTestMode() && isRealRoot(ws.root)) && ws.chosen && LEGACY.some((n) => fs.existsSync(path.join(ws.root, n)))) tidyNow(ws);
   }
   for (const d of Object.values(ws.dirs)) fs.mkdirSync(d, { recursive: true });
   const sys = ws.dirs.system || ws.dirs.history;

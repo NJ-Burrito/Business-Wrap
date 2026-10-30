@@ -2,6 +2,7 @@
 // document with other content, and an untouched one. Dry run matches only the right pair; --apply touches only it.
 //
 //   node tests/recover-history.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

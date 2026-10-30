@@ -3,6 +3,7 @@
 // and the refusals that keep a file safe (a newer format, a failing migration: untouched original + backup + error page).
 //
 //   node tests/history-compat.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

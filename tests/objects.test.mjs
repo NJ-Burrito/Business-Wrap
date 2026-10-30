@@ -5,6 +5,7 @@
 // A 4×2 table into an empty section; copy the stories block and paste it into another document = the same JSON.
 //
 //   node tests/objects.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

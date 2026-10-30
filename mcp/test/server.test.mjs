@@ -2,6 +2,7 @@
 // tools, and call each one on the anonymised sample.
 //
 //   node mcp/test/server.test.mjs
+import '../../tests/_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

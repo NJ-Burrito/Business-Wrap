@@ -4,6 +4,7 @@
 //   plus the editor's New-document wizard and Process panel.
 //
 //   node tests/harvest.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';

@@ -7,9 +7,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { localBase } from './testguard.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const CONFIG_FILE = path.join(REPO, '.local', 'config.json');
+export const CONFIG_FILE = path.join(localBase(REPO), 'config.json');
 
 let cached;
 export function config() {

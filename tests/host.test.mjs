@@ -4,6 +4,7 @@
 // 100 URLs → 4 launches of ≤ 30; New work → the run is archived; stop with no tabs → no node process left (sweep).
 //
 //   node tests/host.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -27,7 +28,7 @@ const PORT_B = await freePort();
 let failed = 0;
 const out = [];
 const check = (n, ok, d = '') => { out.push(`${ok ? 'PASS' : 'FAIL'}  host: ${n}${d && !ok ? '  — ' + d : ''}`); if (!ok) failed += 1; };
-const sessions = path.join(tmp, 'ws', 'Business-Wrap', 'HISTORY', 'sessions');
+const sessions = path.join(tmp, 'ws', 'Business-Wrap', '.system', 'sessions');
 const runs = () => (fs.existsSync(sessions) ? fs.readdirSync(sessions).filter((d) => d !== 'archive') : []);
 const gone = async (pid, ms) => { const t0 = Date.now(); while (H.alive(pid) && Date.now() - t0 < ms) await new Promise((r) => setTimeout(r, 100)); return { gone: !H.alive(pid), ms: Date.now() - t0 }; };
 const stubLines = () => (fs.existsSync(process.env.BW_BROWSER_STUB) ? fs.readFileSync(process.env.BW_BROWSER_STUB, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);

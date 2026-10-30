@@ -2,6 +2,7 @@
 // one check that fails on main @ cdfc1b4 and passes after. Invented inputs only (tests/fixtures/srs/wp8/).
 //
 //   node tests/srs-srs2.test.mjs        (also run from tests/srs.test.mjs, so `npm test` carries it)
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

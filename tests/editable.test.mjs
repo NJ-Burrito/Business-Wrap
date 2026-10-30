@@ -5,6 +5,7 @@
 // the move, Alt+↑ / Ctrl+Z work with the focus in the toolbar, and redo never freezes with learning on.
 //
 //   node tests/editable.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';

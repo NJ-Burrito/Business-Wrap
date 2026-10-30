@@ -2,6 +2,7 @@
 // check that fails on v013/wp7 @ 9c4b006 and passes after its fix. Invented inputs only (tests/fixtures/srs/wp8/).
 //
 //   node tests/srs-wp8.test.mjs        (also run from tests/srs.test.mjs, so `npm test` carries it)
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

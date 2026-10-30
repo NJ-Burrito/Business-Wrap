@@ -4,6 +4,7 @@
 // served: a DOCX gives ≥ 1 table and ≥ 3 headings, a PDF's Arabic word count matches pdftotext. Headless Chrome.
 //
 //   node tests/library.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -223,8 +224,8 @@ try {
   await sp.waitForFunction(() => /^doc-/.test(window.BW.S.svc) && window.BW.M[window.BW.S.svc].ar, null, { timeout: 60000 }).catch(() => {});
   const dx = await sp.evaluate(() => { const d = window.BW.M[window.BW.S.svc]?.ar?.doc; if (!d) return null; const secs = d.chapters.flatMap((c) => c.sections); return { headings: d.chapters.length + secs.filter((s) => s.title !== d.chapters.find((c) => c.sections.includes(s)).title).length, tables: secs.flatMap((s) => s.blocks).filter((b) => b.kind === 'table').length, q: d.openQuestions.length }; });
   check('served: a DOCX import opens as a new entry with ≥ 3 headings and ≥ 1 table', dx && dx.headings >= 3 && dx.tables >= 1 && dx.q === 1, JSON.stringify(dx));
-  const mirrored = fs.existsSync(path.join(ws.dirs.history, 'library')) && fs.readdirSync(path.join(ws.dirs.history, 'library')).some((f) => f.endsWith('.json.gz'));
-  check('served: the entry is mirrored to HISTORY\\library (gzip, machine-only)', mirrored);
+  const mirrored = fs.existsSync(path.join(ws.dirs.history, 'library')) && fs.readdirSync(path.join(ws.dirs.history, 'library')).some((f) => f.endsWith('.json.gz')); // a hand-made old-layout dirs object: the mirror stays inside its history
+  check('served: the entry is mirrored to .system\\library (gzip, machine-only)', mirrored);
 
   // review line 7 + extra 4: an import keeps the document's structure and takes ITS title (not the file name), for PDF,
   // DOCX (ours and a hand-made one) and HTML; the front matter (cover, control table, contents) is not a chapter
@@ -255,8 +256,8 @@ try {
   const ef = async () => (await fetch(base + '/api/export/file', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ service: 'blank', locale: 'ar', doc: blankAr, format: 'printHtml' }) })).json();
   const e1 = await ef();
   const e2 = await ef();
-  const nm = /-\d{4}-\d\d-\d\d-AR\.print\.html$/;
-  check('served: print-centre export → save folder HTML\\, "<title>-<date>-AR" name, a second export gets -2 (never an overwrite)', e1.file?.startsWith(ws.dirs.html + path.sep) && nm.test(e1.file) && e2.file === e1.file.replace(/\.print\.html$/, '-2.print.html') && !!e1.url, JSON.stringify({ e1: e1.file, e2: e2.file, url: e1.url }));
+  const nm = /\d{4}-\d\d-\d\d \d\d-\d\d .* - العربية( \(2\))?\.print\.html$/;
+  check('served: print-centre export → the document Exports\\, "<date> <title> - العربية" name, a second export never overwrites', e1.file?.startsWith(ws.dirs.html + path.sep) && nm.test(e1.file) && e2.file !== e1.file && fs.existsSync(e1.file) && fs.existsSync(e2.file) && !!e1.url, JSON.stringify({ e1: e1.file, e2: e2.file, url: e1.url }));
   await ctx.close();
 } finally {
   await browser.close();

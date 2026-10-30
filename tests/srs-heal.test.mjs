@@ -2,6 +2,7 @@
 // gap, each failing on 0.12.0 and passing after its fix. Invented inputs only (samples/, tests/fixtures/srs/).
 //
 //   node tests/srs-heal.test.mjs        (also run from tests/srs.test.mjs, so `npm test` carries it)
+import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';

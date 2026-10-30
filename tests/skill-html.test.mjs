@@ -1,6 +1,7 @@
 // The editor shipped inside the skill (assets/editor/business-wrap.html):
 // current with the source, no machine path and no font bytes, opens from disk with no
 // console error on the blank document, offers the sample, and opens a document JSON at run time.
+import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';

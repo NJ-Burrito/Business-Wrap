@@ -6,6 +6,7 @@
 // the HTML into the workspace folder and the mirror into HISTORY.
 //
 //   node tests/provenance.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

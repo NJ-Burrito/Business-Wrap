@@ -3,6 +3,7 @@
 // host it starts is stopped by `close`; no code path in engine/, editor/ or mcp/ imports a model or API client.
 //
 //   node tests/cli.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import net from 'node:net';

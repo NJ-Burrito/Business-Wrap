@@ -1,6 +1,7 @@
 // Updates: the version logic, a mock release feed newer and older than this version, the CLI one-liner,
 // the hook (prints only when enabled), the MCP initialize notice + once-per-session tool field, the
 // install swap that keeps user files, user-data migration, the schema gate, version sync, AGENTS.md.
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

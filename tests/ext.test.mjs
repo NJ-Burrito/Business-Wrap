@@ -5,6 +5,7 @@
 // from an extension route (foreign-origin writes refused). Headless Chrome and the server are closed at the end.
 //
 //   node tests/ext.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

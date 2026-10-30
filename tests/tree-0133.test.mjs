@@ -3,6 +3,7 @@
 //
 //   node tests/tree-0133.test.mjs
 // Runs in its own temp workspace (BW_WORKSPACE / BW_LOCAL_DIR under the temp folder); never the real Documents\Business-Wrap.
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

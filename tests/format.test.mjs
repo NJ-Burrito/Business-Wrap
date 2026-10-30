@@ -4,6 +4,7 @@
 // across a bold run) and the back-compat golden (old documents render byte-identical). Headless Chrome, closed at the end.
 //
 //   node tests/format.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

@@ -5,6 +5,7 @@
 // axe 0 serious. Headless Chrome, closed at the end; no check reads a Thmanyah glyph (HAVE_FONTS-independent).
 //
 //   node tests/print.test.mjs        (BW_SHOTS=<folder> also writes the viewport screenshots there)
+import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';

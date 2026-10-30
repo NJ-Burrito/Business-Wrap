@@ -4,6 +4,7 @@
 // Own state folders and free ports (BW_LOCAL_DIR, BW_STATE_DIR, BW_WORKSPACE, BW_PROBE_PORTS): never the user's host on 4317.
 // The real HKCU\Software\Classes\business-wrap is never touched: registration runs in a temp HKCU subkey (Windows) or a
 // temp applications folder (Linux). Every process started here is stopped here; an unrelated node process must survive.
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import net from 'node:net';

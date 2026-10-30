@@ -12,8 +12,9 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { launchOptions, REPO, loadPlaywright } from '../export.mjs';
 import { sourcesDir } from '../workspace.mjs';
+import { localBase } from '../testguard.mjs';
 
-const SECRETS = path.join(REPO, '.local', 'harvest-secrets.json');
+const SECRETS = path.join(localBase(REPO), 'harvest-secrets.json');
 export function resolveValue(v) {
   const s = String(v ?? '');
   let m = /^\$env:([A-Z0-9_]+)$/i.exec(s);

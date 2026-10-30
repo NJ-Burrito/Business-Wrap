@@ -3,6 +3,7 @@
 // Headless Chrome, closed at the end.
 //
 //   node tests/writing.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';

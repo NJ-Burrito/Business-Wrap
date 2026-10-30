@@ -5,10 +5,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { localBase } from '../engine/testguard.mjs';
 import { checkLatest, isNewer, parseNotes, extractNotes, parseVersion } from './core.mjs';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const LOCAL = process.env.BW_LOCAL_DIR || path.join(ROOT, '.local'); // BW_LOCAL_DIR: tests and read-only installs
+const LOCAL = localBase(ROOT); // BW_LOCAL_DIR: tests and read-only installs
 export const STATE_FILE = path.join(LOCAL, 'update-state.json');
 export const SETTINGS_FILE = path.join(LOCAL, 'update.json');
 export const DAY_MS = 24 * 60 * 60 * 1000;

@@ -5,6 +5,7 @@
 // Pure model (engine/cells.mjs) in Node, the editor in headless Chrome (closed at the end), the PDF with poppler, the DOCX as XML.
 //
 //   node tests/cells.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

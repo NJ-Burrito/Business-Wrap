@@ -4,6 +4,7 @@
 // harvest, forget, export / import, the security rule on a tracked journal, update apply keeps it.
 //
 //   node tests/learning.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import http from 'node:http';

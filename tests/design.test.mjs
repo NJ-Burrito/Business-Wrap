@@ -11,6 +11,7 @@
 // B3 numbers: letters refused, "12.5" taken, slider ↔ field live, unit change converts, the edits JSON
 //    keeps number + unit, arrows step, colours take a hex code.
 // Screenshots (viewport only) → out/compare-0.10.0-design/.
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

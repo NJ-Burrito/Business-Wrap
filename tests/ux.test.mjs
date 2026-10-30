@@ -5,6 +5,7 @@
 // table tools on every table (R5/A25). Headless Chrome, closed at the end. Font-independent: no check reads a Thmanyah glyph.
 //
 //   node tests/ux.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';

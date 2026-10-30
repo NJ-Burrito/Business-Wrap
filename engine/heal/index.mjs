@@ -6,8 +6,9 @@ import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import { REPO } from '../export.mjs';
+import { localBase } from '../testguard.mjs';
 
-export const STATE_DIR = () => path.resolve(process.env.BW_STATE_DIR || path.join(REPO, '.local'));
+export const STATE_DIR = () => path.resolve(process.env.BW_STATE_DIR || localBase(REPO));
 export const HEAL_LOG = () => process.env.BW_HEAL_LOG || path.join(STATE_DIR(), 'heal-log.jsonl');
 /** What may never heal: the run fails, no heal is attempted, nothing is logged as HEALED. */
 export const NEVER_HEAL = ['gate', 'hash', 'signature', 'document-code'];

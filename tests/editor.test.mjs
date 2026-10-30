@@ -10,6 +10,7 @@
 // Plus: paste sanitising + CSP (#1), autosave recovery (#2), import with a
 // conflict (#8), the tool watermark in the UI and never in any output, Save-HTML
 // round trip, and a 60-page timing.
+import './_isolate.mjs';
 import fs from 'node:fs';
 import http from 'node:http';
 import { createRequire } from 'node:module';

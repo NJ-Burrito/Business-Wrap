@@ -2,6 +2,7 @@
 // the DOCX carries the document title (both editions), and the edits base check refuses another document / edition.
 //
 //   node tests/system-cli-0133.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

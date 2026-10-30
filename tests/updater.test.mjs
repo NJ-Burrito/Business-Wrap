@@ -5,6 +5,7 @@
 // forward-only, idempotent) and the re-wrap of a 0.9.1 and a 0.10.0 Save-HTML file in this version's editor.
 //
 //   node tests/updater.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

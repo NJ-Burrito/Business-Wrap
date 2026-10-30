@@ -81,3 +81,29 @@ Business-Wrap\
 - Open it from Settings with «Open folder / افتح المجلد»; every export and Save toast shows the real path.
 - Old folder (0.13.0-0.13.2: `PDF`, `DOCX`, `HTML`, `HISTORY`, uuid history names)? It is moved in on the first start of 0.13.3. See the plan first with `business-wrap tidy --dry-run`; apply by hand with `business-wrap tidy`. Nothing is deleted; the log is `.system\migration-0.13.3.json`.
 - Do not move or edit `.system`: it holds the tamper-evident history (`history\<Document title> (<id8>).bwlog`, found by `index.json`).
+
+
+## 7. The local server and the `business-wrap:` link
+
+### Start and stop the servers from Settings
+
+Settings has a **Local server** card with two buttons.
+
+- **Start server** (only on a page opened from disk, `file://`). A page opened from disk cannot start a program. The button first asks the local ports 4317 to 4327 whether a Business-Wrap server already answers. If one does, it offers **Open from the server** and starts nothing. If none does, it asks your installed Business-Wrap to open this file, through the `business-wrap:` link (see below), and offers **Open from the server** as soon as the server answers.
+- **Stop all Business-Wrap servers** (on a page opened from disk and on a served page). A dialog says how many servers and browser windows will close and that your open documents are saved first, as with the power button. On a served page the editor saves, then the server closes every Business-Wrap host, stray server and browser window the host opened, and itself last. On a page opened from disk the button sends `business-wrap://stop`. It never ends a program that is not a Business-Wrap server or a browser window Business-Wrap opened.
+
+On a served page the Start button is hidden and the card says "The server is running on port N".
+
+#### The `business-wrap:` link
+
+The page uses a per-user URL protocol, registered for your account only (no administrator rights): on Windows under `HKCU\Software\Classes\business-wrap`, on Linux as `~/.local/share/applications/business-wrap-handler.desktop`. `business-wrap open` registers it when it is missing. Manage it yourself with:
+
+```
+business-wrap protocol register
+business-wrap protocol status
+business-wrap protocol unregister
+```
+
+The registered handler runs `node <install>/update/cli.mjs handle "<url>"` and accepts only two links: `business-wrap://open?file=<absolute path of a Business-Wrap .html file>` and `business-wrap://stop`. Anything else is refused. The file must exist, end in `.html`, sit inside your home folder, the temp folder, this install, the save folder or the install's drive, and contain the editor's `bw-data` block. The browser may ask once whether to allow opening Business-Wrap.
+
+If the Start button does nothing, register the handler once with `business-wrap protocol register` and press it again.

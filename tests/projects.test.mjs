@@ -4,6 +4,7 @@
 // browser through the save folder (HISTORY\projects.json, engine/routes/projects.mjs). Headless Chrome, served on a free port.
 //
 //   node tests/projects.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

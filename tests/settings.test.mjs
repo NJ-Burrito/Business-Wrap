@@ -6,6 +6,7 @@
 // edited, axe 0 serious. Font-independent. Viewport screenshots → out/settings/shots (BW_SHOTS_DIR copies them).
 //
 //   node tests/settings.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

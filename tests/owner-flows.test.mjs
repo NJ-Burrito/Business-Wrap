@@ -11,6 +11,7 @@
 //
 //   node tests/owner-flows.test.mjs              headless (npm test)
 //   BW_HEADED=1 node tests/owner-flows.test.mjs  headed, slowed down, to watch it
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import net from 'node:net';
@@ -65,7 +66,7 @@ try {
   const status = spawnSync(process.execPath, [path.join(REPO, 'engine', 'cli.mjs'), 'status', '--json'], { encoding: 'utf8', env: { ...process.env, BW_STATE_DIR: path.join(tmp, 'state') } });
   let st = {}; try { st = JSON.parse(status.stdout); } catch { /* printed below */ }
   check(3, 'the healer is installed and reported by `business-wrap status`', status.status === 0 && fs.existsSync(path.join(REPO, 'engine', 'heal')) && JSON.stringify(st).includes('heal'), status.stderr || status.stdout.slice(0, 200));
-  check(5, 'this checkout is 0.13.2 with its CHANGELOG entry (the version worked on)', pkg.version === '0.13.2' && /0\.13\.1/.test(fs.readFileSync(path.join(REPO, 'CHANGELOG.md'), 'utf8')));
+  check(5, 'this checkout is 0.13.3 with its CHANGELOG entry (the version worked on)', pkg.version === '0.13.3' && /0\.13\.2/.test(fs.readFileSync(path.join(REPO, 'CHANGELOG.md'), 'utf8')));
   check(31, 'licence: MIT in LICENSE, package.json and plugin.json', /MIT License/.test(fs.readFileSync(path.join(REPO, 'LICENSE'), 'utf8')) && pkg.license === 'MIT' && readJ(path.join(REPO, '.claude-plugin', 'plugin.json')).license === 'MIT');
   check(33, 'script, not AI: the CLI covers open/close/status/new/build/harvest/import/export/report/update and says ai false', ['open', 'close', 'status', 'new', 'build', 'harvest', 'import', 'export', 'report', 'update'].every((v) => VERBS.includes(v)) && st.ai === false, JSON.stringify({ VERBS, ai: st.ai }));
   const tools = await new Promise((resolve) => {
@@ -93,9 +94,9 @@ try {
   const viaSuite = (f) => listed.some((g) => fs.readFileSync(path.join(REPO, 'tests', g), 'utf8').includes(f)); // srs.test.mjs runs srs-heal and srs-wp8
   const missing = suites.filter((f) => !listed.includes(f) && !viaSuite(f));
   check(36, 'tests on each step: every tests/*.test.mjs (this suite included) runs in `npm test`, directly or from a suite it runs', !missing.length && (pkg.scripts.test.includes('mcp/test/server.test.mjs') || pkg.scripts.test.includes('tests/run.mjs')), missing.join(', '));
-  check(37, 'version 0.13.2 everywhere the release reads it (package, plugin, marketplace, MCP server.json)', [pkg.version, readJ(path.join(REPO, '.claude-plugin', 'plugin.json')).version, readJ(path.join(REPO, '.claude-plugin', 'marketplace.json')).plugins[0].version, readJ(path.join(REPO, 'mcp', 'server.json')).version].every((v) => v === '0.13.2'));
+  check(37, 'version 0.13.3 everywhere the release reads it (package, plugin, marketplace, MCP server.json)', [pkg.version, readJ(path.join(REPO, '.claude-plugin', 'plugin.json')).version, readJ(path.join(REPO, '.claude-plugin', 'marketplace.json')).plugins[0].version, readJ(path.join(REPO, 'mcp', 'server.json')).version].every((v) => v === '0.13.3'));
   const ws = W.workspace();
-  check(39, 'outputs go under a generated «Business-Wrap» folder with PDF, DOCX, HTML, HISTORY', path.basename(ws.root) === 'Business-Wrap' && ['PDF', 'DOCX', 'HTML', 'HISTORY'].every((d) => Object.values(ws.dirs).map((x) => path.basename(x)).includes(d)), JSON.stringify(ws.dirs));
+  check(39, 'outputs go under a generated «Business-Wrap» folder: المستندات - Documents (a folder per document) and the hidden .system', path.basename(ws.root) === 'Business-Wrap' && path.basename(ws.dirs.docs) === 'المستندات - Documents' && path.basename(ws.dirs.system) === '.system' && ws.dirs.history === path.join(ws.dirs.system, 'history'), JSON.stringify(ws.dirs));
   check(41, 'extras are written down (CHANGELOG «Extras»)', /extras/i.test(fs.readFileSync(path.join(REPO, 'CHANGELOG.md'), 'utf8')));
 
   // ── the editor, served by the background host, as the owner opens it ─────────
@@ -128,7 +129,7 @@ try {
   // moment it is set, in the host's .local and in HISTORY, before any edit (it used to travel only with a tab's push)
   await wait(800);
   const keptProf = (() => { try { return JSON.parse(fs.readFileSync(path.join(process.env.BW_LOCAL_DIR, 'profile.json'), 'utf8')).profile; } catch { return ''; } })();
-  check(16, 'the profile is kept on this machine the moment it is set (host .local + HISTORY), before any edit', /Mark/.test(keptProf) && fs.existsSync(path.join(W.workspace().dirs.history, 'profile.json.gz')), keptProf.slice(0, 80));
+  check(16, 'the profile is kept on this machine the moment it is set (host .local + HISTORY), before any edit', /Mark/.test(keptProf) && fs.existsSync(path.join(W.workspace().dirs.system, 'profile.json.gz')), keptProf.slice(0, 80));
 
   // L9 the toolbar is never rebuilt by a click
   const n9 = await R((r) => { const b = [...r.querySelectorAll('.island [data-a]')]; b.forEach((x) => { x.__ownerTag = 1; }); return b.length; });
@@ -198,16 +199,21 @@ try {
   await page.evaluate(() => window.BW.setText('/chapters/0/title', 'مقدمة عدّلها المالك'));
   await wait(300);
   const c0 = await counter();
-  const htmlDir = path.join(process.env.BW_WORKSPACE, 'Business-Wrap', 'HTML');
-  const htmlPre = new Set(fs.existsSync(htmlDir) ? fs.readdirSync(htmlDir) : []); // H3: the Saves above wrote each document's own file
+  const htmlDir = W.workspace().dirs.docs; // 0.13.3: Documents\<title>\<title>.html, its Exports\ and Versions\
+  // every .html below the documents folder as «relative path|mtime»: a file written (new or overwritten) after a snapshot is what changed
+  const treeHtml = () => { const o = new Map(); const w = (d) => { for (const e of fs.existsSync(d) ? fs.readdirSync(d, { withFileTypes: true }) : []) { const f = path.join(d, e.name); if (e.isDirectory()) w(f); else if (/\.html$/.test(e.name)) o.set(path.relative(htmlDir, f).split(path.sep).join('/'), fs.statSync(f).mtimeMs); } }; w(htmlDir); return o; };
+  const changedSince = (before, re) => [...treeHtml()].filter(([n, m]) => before.get(n) !== m && (!re || re.test(n))).map(([n]) => n);
+  const DOCFILE = /^[^/]+\/[^/]+\.html$/; // <title>\<title>.html: a document's own file
+  const SHARED = /^[^/]+\/Exports\/[^/]+\.shared\.html$/;
+  const htmlPre = treeHtml(); // H3: the Saves above wrote each document's own file
   await act('saveHtml');
   const t0 = Date.now();
   let saved = [];
-  while (Date.now() - t0 < 10000 && !saved.length) { saved = fs.existsSync(htmlDir) ? fs.readdirSync(htmlDir).filter((f) => f.endsWith('.html') && !htmlPre.has(f)) : []; if (!saved.length) await wait(200); }
+  while (Date.now() - t0 < 10000 && !saved.length) { saved = changedSince(htmlPre, DOCFILE); if (!saved.length) await wait(200); }
   const savedText = saved[0] ? fs.readFileSync(path.join(htmlDir, saved[0]), 'utf8') : '';
-  const today = W.outName('x', new Date(), 'ar', 'html').slice(2, 12);
+  const today = W.stamp(new Date()).slice(0, 10);
   // Save HTML (an export) is a copy beside the document's own file: «-2» when the Save already wrote «<title>-<date>-AR.html»
-  check(15, 'Save HTML lands in Business-Wrap\\HTML as «<title>-<date>-AR.html» (a copy, beside the saved document\'s own file)', saved.length === 1 && /^خدمة المالك الأولى-\d{4}-\d\d-\d\d-AR(-\d+)?\.html$/.test(saved[0]), saved.join(','));
+  check(15, 'Save HTML writes the document\'s own file Documents\\<title>\\<title>.html (the file it replaces is kept in Versions\\)', saved.length === 1 && /^(خدمة المالك [^/]+)\/\1\.html$/.test(saved[0]), saved.join(','));
   const data = (() => { const m = /<script type="application\/json" id="bw-data">([^]*?)<\/script>/.exec(savedText); try { return m && JSON.parse(m[1]); } catch { return null; } })();
   check(20, 'a document opened from the list, edited and saved as HTML carries its provenance log (prov)', !!data?.prov?.[id1]?.log, data ? Object.keys(data.prov || {}).join(',') || 'no prov' : 'no file', true);
   check(13, 'the change counter restarts at Save HTML', c0 >= 1 && (await counter()) === 0, `${c0} → ${await counter()}`);
@@ -233,7 +239,7 @@ try {
   await page.evaluate(() => window.BW.EXT.ledger.ready());
   const exLog = await page.evaluate(() => window.BW.EXT.ledger.log().entries.filter((e) => e.kind === 'export').map((e) => e.data));
   const { readHistory, reportData } = await import('../engine/report.mjs');
-  const rep = reportData(await readHistory(path.join(process.env.BW_WORKSPACE, 'Business-Wrap', 'HISTORY')), {});
+  const rep = reportData(await readHistory(path.join(process.env.BW_WORKSPACE, 'Business-Wrap', '.system', 'history')), {});
   const repDoc = rep.docs.find((x) => x.doc === id1);
   check(16, 'review2 #11: a DOCX export is logged (fmt, edition, live title) and the report counts exports (DOCX + the HTML save) under the live cover title', exLog.some((x) => x.fmt === 'docx' && x.locale === 'ar' && x.docTitle === 'خدمة مراجعة الإصدار') && rep.people.reduce((s, p) => s + p.exports, 0) >= 2 && repDoc?.title === 'خدمة مراجعة الإصدار', JSON.stringify({ exLog, exports: rep.people.map((p) => p.exports), docs: rep.docs.map((x) => x.title) }));
 
@@ -529,15 +535,15 @@ try {
   check(23, 'the owner\'s whole run (every flow above but the line-24 one): no page error', !errors.length, errors.join(' | '));
 
   // L15 share names the file like a save
-  const htmlBefore = new Set(fs.existsSync(htmlDir) ? fs.readdirSync(htmlDir) : []);
+  const htmlBefore = treeHtml();
   await fire('shShare');
   await wait(300);
   await page.locator('#bw-ui-host >> css=.bw-modal [data-sh="to"]').fill('Alaa').catch(() => {});
   await R((r) => r.querySelector('.bw-modal [data-mk="ok"]')?.click());
   await wait(1500);
   await R((r) => r.querySelectorAll(".sh-done [data-mk=\"close\"]").forEach((b) => b.click())); // H3: the share result card
-  const shareName = (fs.existsSync(htmlDir) ? fs.readdirSync(htmlDir) : []).filter((n) => !htmlBefore.has(n));
-  check(15, 'share writes «<title>-<date>-AR.html» like a save (not doc-<id>.editor.html)', shareName.length >= 1 && shareName.every((n) => n.includes(today) && /-AR(-\d+)?\.html$/.test(n)), shareName.join(',') || 'no shared file', true);
+  const shareName = changedSince(htmlBefore, SHARED);
+  check(15, 'share writes the document\'s Exports\\«<date> <title> - العربية.shared.html» (not doc-<id>.editor.html)', shareName.length >= 1 && shareName.every((n) => n.includes(today) && / - العربية( \(\d+\))?\.shared\.html$/.test(n)), shareName.join(',') || 'no shared file', true);
 
   // G3 (review 2 row 2, L7): the cover title the owner types drives the list, the document title, the share file and
   // every saved file name live; the EN file follows the same «<title>-<date>-ENG» rule (no «خدمة جديدة» / "New service")
@@ -552,15 +558,15 @@ try {
   const t7 = await page.evaluate(async () => { const B = window.BW, id = B.S.svc, e = await B.EXT.library.get(id); return { list: e?.title, ar: B.M[id].ar.doc.control.title, en: B.M[id].en?.doc.control.title, enName: B.EXT.library.titleOf(id, 'en') }; });
   check(7, 'the cover title typed by the owner names the list entry and «عنوان الوثيقة», and the EN edition follows', t7.list === 'خدمة مراجعة الإصدار' && /: خدمة مراجعة الإصدار$/.test(t7.ar) && /خدمة مراجعة الإصدار$/.test(t7.en || '') && t7.enName === 'خدمة مراجعة الإصدار', JSON.stringify(t7));
   const exEn = await page.evaluate(async () => { const B = window.BW, id = B.S.svc; const r = await fetch('/api/export', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ service: id, locale: 'en', doc: B.M[id].en.doc, embedFonts: false }) }); return (await r.json()).pdf || ''; });
-  check(15, 'the EN export is named «<title>-<date>-ENG.pdf» with the same title (not "New service")', path.basename(exEn) === W.outName('خدمة مراجعة الإصدار', new Date(), 'en', 'pdf'), path.basename(exEn));
-  const hb2 = new Set(fs.readdirSync(htmlDir));
+  check(15, 'the EN export is named «<date> <title> - English.pdf» with the same title (not "New service"), in the same document folder', path.basename(exEn).endsWith(' خدمة مراجعة الإصدار - English.pdf') || / خدمة مراجعة الإصدار - English \(\d+\)\.pdf$/.test(path.basename(exEn)), path.basename(exEn));
+  const hb2 = treeHtml();
   await fire('shShare'); await wait(300);
   await page.locator('#bw-ui-host >> css=.bw-modal [data-sh="to"]').fill('Alaa').catch(() => {});
   await R((r) => r.querySelector('.bw-modal [data-mk="ok"]')?.click());
   await wait(1500);
   await R((r) => r.querySelectorAll(".sh-done [data-mk=\"close\"]").forEach((b) => b.click())); // H3: the share result card
-  const share2 = fs.readdirSync(htmlDir).filter((n) => !hb2.has(n));
-  check(7, 'the share file carries the edited title (not «خدمة جديدة»)', share2.length >= 1 && share2.every((n) => n.startsWith('خدمة مراجعة الإصدار-')), share2.join(',') || 'no shared file');
+  const share2 = changedSince(hb2, SHARED);
+  check(7, 'the share file carries the edited title (not «خدمة جديدة»)', share2.length >= 1 && share2.every((n) => n.startsWith('خدمة مراجعة الإصدار/Exports/')), share2.join(',') || 'no shared file');
   // H3 (owner 2026-10-29): Ctrl+S and the yellow Save save THE document: its own HTML file in HTML\ (one file,
   // overwritten, history appended), the list entry, the counter back to 0 (A9); no download, no extra copy
   {
@@ -574,7 +580,7 @@ try {
     await page.keyboard.press('Control+A');
     await page.keyboard.type('خدمة الحفظ في مكانها');
     await page.mouse.click(1000, 450); await wait(300);
-    const hb = new Set(fs.readdirSync(htmlDir));
+    const hb = treeHtml();
     const savedFile = async () => { await page.waitForFunction(() => !!document.documentElement.dataset.bwSavedFile, null, { timeout: 20000 }).catch(() => {}); return page.evaluate(() => { const f = document.documentElement.dataset.bwSavedFile || ''; document.documentElement.dataset.bwSavedFile = ''; return f; }); };
     await page.keyboard.press('Control+s');
     const f1 = await savedFile();
@@ -586,11 +592,11 @@ try {
     await page.locator('#bw-ui-host >> css=.island [data-a="save"]').click();
     const f2 = await savedFile();
     await wait(800); // the autosave after the Save HTML mark
-    const added = fs.readdirSync(htmlDir).filter((n) => !hb.has(n));
+    const added = changedSince(hb, DOCFILE);
     const txt = f2 && fs.existsSync(f2) ? fs.readFileSync(f2, 'utf8') : '';
     const ent = await page.evaluate(async () => { const B = window.BW, e = await B.EXT.library.get(B.S.svc); return { id: e?.id, files: e?.htmlFiles, stamp: document.getElementById('bw-ui-host').shadowRoot.querySelector('.bw-stamp')?.dataset.html || '' }; });
     page.off('download', onDl);
-    check(7, 'Ctrl+S and the yellow Save save the document itself: one «<title>-<date>-AR.html», overwritten in place, no download', !!f1 && f1 === f2 && added.length === 1 && path.basename(f1) === W.outName('خدمة الحفظ في مكانها', new Date(), 'ar', 'html') && txt.includes('مرة ثانية') && txt.includes('id="bw-data"') && !dls.length && ent.files?.ar === f1, JSON.stringify({ f1, f2, added, dls, ent }));
+    check(7, 'Ctrl+S and the yellow Save save the document itself: one «<title>.html» in its folder, overwritten in place, no download', !!f1 && f1 === f2 && added.length === 1 && path.basename(f1).endsWith('.html') && path.basename(path.dirname(f1)) === path.basename(f1, '.html') && txt.includes('مرة ثانية') && txt.includes('id="bw-data"') && !dls.length && ent.files?.ar === f1, JSON.stringify({ f1, f2, added, dls, ent }));
     const cNow = await counter();
     check(13, 'Save in place is the Save-HTML point: the change counter goes back to 0 and the HTML time is stamped', c1 === 0 && cNow === 0 && !!ent.stamp, JSON.stringify({ c1, cNow, stamp: ent.stamp }));
   }
@@ -613,7 +619,7 @@ try {
     const stays = await R((r) => !!r.querySelector('.sh-done'));
     if (card?.close) await page.locator('#bw-ui-host >> css=.sh-done [data-mk="close"]').click();
     check(19, 'share popup: recipient, note and what travels (edits, history, lock, signatures), in the house face', !!pop && pop.to && pop.note && ['edits', 'history', 'lock', 'signs'].every((k) => pop.travels.includes(k)) && !/Times|(^|,\s*)serif$/.test(pop.font), JSON.stringify(pop));
-    check(19, 'share result card: «افتح موقع الملف» opens Explorer with THAT file selected, «انسخ المسار», close', !!sharedFile && path.dirname(sharedFile) === htmlDir && !!card?.copy && stays && (process.platform === 'win32' ? rv?.cmd === 'explorer.exe' && rv.verbatim && rv.args[0] === `/select,"${sharedFile}"` : !!rv), JSON.stringify({ sharedFile, card, rv, stays }));
+    check(19, 'share result card: «افتح موقع الملف» opens Explorer with THAT file selected, «انسخ المسار», close', !!sharedFile && path.dirname(path.dirname(sharedFile)) === path.join(htmlDir, path.basename(path.dirname(path.dirname(sharedFile)))) && path.basename(path.dirname(sharedFile)) === 'Exports' && !!card?.copy && stays && (process.platform === 'win32' ? rv?.cmd === 'explorer.exe' && rv.verbatim && rv.args[0] === `/select,"${sharedFile}"` : !!rv), JSON.stringify({ sharedFile, card, rv, stays }));
   }
   // H3: File › Import = the documents list's import: a shared HTML (its log kept), a DOCX, a PDF, a document JSON
   {
@@ -639,9 +645,9 @@ try {
     check(7, 'File › Import takes DOCX, PDF and JSON: each opens as its own new document in the list', ['.docx', '.pdf', '.json', '.html'].every((x) => accept.includes(x)) && rest.every((x) => x?.inList) && new Set(rest.map((x) => x?.id)).size === 3, JSON.stringify({ accept, rest }));
   }
   // G3 (review 2 row 10, L15): HISTORY hidden and never served, whatever the case of the address
-  const histAttr = process.platform === 'win32' ? spawnSync('attrib', [ws.dirs.history], { encoding: 'utf8' }).stdout.split(ws.dirs.history)[0] : ' H ';
-  const histServed = (await Promise.all(['HISTORY', 'history'].map(async (d) => (await fetch(`${h.url}files/${d}/sessions`)).status))).every((c) => c === 404);
-  check(15, 'HISTORY carries the hidden attribute and is never served (any case)', /(^|\s)H(\s|$)/.test(histAttr) && histServed, JSON.stringify({ histAttr, histServed }));
+  const histAttr = process.platform === 'win32' ? spawnSync('attrib', [ws.dirs.system], { encoding: 'utf8' }).stdout.split(ws.dirs.system)[0] : ' H ';
+  const histServed = (await Promise.all(['.system', '.SYSTEM'].map(async (d) => (await fetch(`${h.url}files/${d}/sessions`)).status))).every((c) => c === 404);
+  check(15, '.system carries the hidden attribute and is never served (any case)', /(^|\s)H(\s|$)/.test(histAttr) && histServed, JSON.stringify({ histAttr, histServed }));
 
   // H1 (owner 2026-10-29): documents grouped by project, bulk edit on a project or hand-picked documents. In the owner's
   // page: the «تعديل جماعي» tool and the projects bar of «المستندات» with icons; the whole flows run in tests/projects.test.mjs
@@ -683,7 +689,7 @@ try {
   const resume = await p2.evaluate(() => { const d = document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-resume'); if (!d) return null; const b = d.querySelector('[data-s="resume"]'); const cs = b && getComputedStyle(b); return { resume: !!b, fresh: !!d.querySelector('[data-s="new"]'), font: getComputedStyle(d).fontFamily, bg: cs?.backgroundColor, border: cs?.borderStyle }; });
   check(14, 'closing the last tab stops the host; a relaunch offers «استأنف كل شيء» and «عمل جديد»', stopped && resume?.resume && resume?.fresh, JSON.stringify({ stopped, resume }));
   const lastRun = await (await fetch(`${h.url}api/session/last`)).json();
-  const typedRec = (() => { try { return fs.readFileSync(path.join(ws.dirs.history, 'sessions', lastRun.runId, `${lastTab}.json`), 'utf8'); } catch { return ''; } })();
+  const typedRec = (() => { try { return fs.readFileSync(path.join(ws.dirs.sessions, lastRun.runId, `${lastTab}.json`), 'utf8'); } catch { return ''; } })();
   check(14, 'text typed right before closing the tab is in the saved run, whole («تعديل غير مكتمل للنهاية»)', typedRec.includes('تعديل غير مكتمل للنهاية'), typedRec ? typedRec.slice(typedRec.indexOf('تعديل غير') - 40, typedRec.indexOf('تعديل غير') + 40) : `no record ${lastRun.runId}/${lastTab}`);
   check(14, 'only the tabs open at shutdown are offered (the line-24 tab closed earlier is not)', lastRun.tabs?.length === 1 && lastRun.tabs[0].tab === lastTab, JSON.stringify(lastRun.tabs));
   const prof2 = await p2.evaluate(() => localStorage.getItem('bw:profile') || '');

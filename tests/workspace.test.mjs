@@ -4,6 +4,7 @@
 // names with : / are sanitised; the default parent is never inside the repository; the folder dialog (stubbed) stores the choice.
 //
 //   node tests/workspace.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

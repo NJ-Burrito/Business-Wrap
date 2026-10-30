@@ -2,6 +2,7 @@
 // panel open in turn) + a keyboard-only pass. Serious/critical axe issues fail.
 //
 //   node tests/a11y.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';

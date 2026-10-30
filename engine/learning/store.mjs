@@ -8,13 +8,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { REPO } from '../export.mjs';
+import { localBase } from '../testguard.mjs';
 import { redact, distil, rulesOf, rulesMarkdown, applyRules, LEARN_VERSION } from './core.mjs';
 
 export const MAX_JOURNAL = 4 * 1024 * 1024; // per file; three rotations kept → at most ~16 MB on disk
 const ROTATIONS = 3;
 const KINDS = new Set(['edit', 'note', 'export', 'revert']);
 
-export const dir = () => process.env.BW_LEARNING_DIR || path.join(REPO, '.local', 'learning');
+export const dir = () => process.env.BW_LEARNING_DIR || path.join(localBase(REPO), 'learning');
 const f = (name) => path.join(dir(), name);
 const readJson = (p, d) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return d; } };
 const write = (name, text) => { fs.mkdirSync(dir(), { recursive: true }); fs.writeFileSync(f(name), text, 'utf8'); };

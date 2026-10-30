@@ -3,6 +3,7 @@
 // toolbar, every folded menu, the view popover, the context bars, the palette and the side panels.
 //
 //   node tests/ui-icon-motion-0133.test.mjs            (UI_DUMP=1 prints the failing icons)
+import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright-core';

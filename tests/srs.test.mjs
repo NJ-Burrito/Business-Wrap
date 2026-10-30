@@ -2,6 +2,7 @@
 // profile parameterisation, domain neutrality. Invented inputs only (samples/ and the fixtures below).
 //
 //   node tests/srs.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';

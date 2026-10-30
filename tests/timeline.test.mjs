@@ -4,6 +4,7 @@
 // Save-HTML file. Headless Chrome, file://.
 //
 //   node tests/timeline.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

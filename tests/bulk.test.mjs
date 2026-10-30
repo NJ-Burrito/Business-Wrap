@@ -6,6 +6,7 @@
 // skipped and listed), and one document's change is undone alone. A reload keeps it all.
 //
 //   node tests/bulk.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

@@ -62,9 +62,9 @@
 ```
 💬 Then say **"build the requirements document for …"** or **"open it in the editor"**.
 
-🔌 **MCP server only** (any MCP client, stdio, local; 0.13.2 from the GitHub tag; npm still serves 0.12.0):
+🔌 **MCP server only** (any MCP client, stdio, local; 0.13.3 from the GitHub tag; npm still serves 0.12.0):
 ```
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.13.2 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.13.3 business-wrap-mcp
 ```
 
 💻 **From source:** `git clone https://github.com/NJ-Burrito/Business-Wrap`, then the [Quick start](#️-quick-start).

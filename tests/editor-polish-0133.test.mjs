@@ -5,6 +5,7 @@
 //   UIC-11   hdrDelete, ftrDelete, rowUp, rowDown, keepNext have their own glyph and their own named move
 //   UIP-13   the ask dialog, the palette and the print center leave with .closing (the bw-modal family), and at once in calm mode
 //   node tests/editor-polish-0133.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright-core';

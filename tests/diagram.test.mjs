@@ -1,6 +1,7 @@
 // Diagram check: the model, the house look, editing in place, the contextual toolbar, Mermaid, PDF + DOCX.
 //
 //   node tests/diagram.test.mjs            (screenshots of each toolbar context → out/diagram-compare/)
+import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';

@@ -40,7 +40,7 @@ const results = [];
 const t0 = Date.now();
 const run = (f) => new Promise((res) => {
   const s = Date.now(); let out = '';
-  const p = spawn(process.execPath, [f], { cwd: ROOT, env: { ...process.env, BW_TEST_SLOT: String(results.length) } });
+  const p = spawn(process.execPath, [f], { cwd: ROOT, env: { ...process.env, BW_TEST_SLOT: String(results.length), BW_TEST_MODE: '1' } });
   p.stdout.on('data', (d) => (out += d)); p.stderr.on('data', (d) => (out += d));
   p.on('close', (code) => { const r = { f, code, s: (Date.now() - s) / 1000, out }; results.push(r); console.log(`${code ? 'FAIL' : 'ok  '} ${r.s.toFixed(1).padStart(6)}s ${f}`); res(); });
 });

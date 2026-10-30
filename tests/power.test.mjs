@@ -3,6 +3,7 @@
 //
 //   node tests/power.test.mjs
 // Own state folders and free ports (BW_LOCAL_DIR, BW_STATE_DIR, BW_WORKSPACE): never the hosts on 4317/4327.
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import net from 'node:net';
@@ -75,8 +76,8 @@ try {
     const t = tree(h.pid);
     check(`launch: no process of the host tree has a visible window (${t.map((x) => x.name).join(', ')})`, t.length >= 2 && t.every((x) => !x.visible), JSON.stringify(t));
   }
-  const log = path.join(env.BW_WORKSPACE, 'Business-Wrap', 'HISTORY', 'host.log');
-  check('launch: the host\'s output goes to HISTORY\\host.log', fs.existsSync(log) && /Business-Wrap editor on/.test(fs.readFileSync(log, 'utf8')));
+  const log = path.join(env.BW_WORKSPACE, 'Business-Wrap', '.system', 'history', 'host.log');
+  check('launch: the host\'s output goes to .system\\history\\host.log', fs.existsSync(log) && /Business-Wrap editor on/.test(fs.readFileSync(log, 'utf8')));
 
   // ── the power route refuses without the confirmation ──
   const bad = await fetch(o.url + 'api/power/off', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });

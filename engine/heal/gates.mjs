@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { config } from '../config.mjs';
+import { headsFile } from '../workspace.mjs';
 
 const res = (stage, problems, extra = {}) => ({ stage, verdict: problems.length ? 'FAIL' : 'PASS', problems, ...extra });
 const readMaybe = (x) => (typeof x === 'string' ? JSON.parse(fs.readFileSync(x, 'utf8')) : x);
@@ -90,7 +91,7 @@ export async function gateLedger(file, { history } = {}) {
   const problems = [];
   let hist = history;
   if (hist === undefined) { try { hist = (await import('../workspace.mjs')).workspace().dirs.history; } catch { hist = null; } }
-  const headsOf = (doc) => { try { return JSON.parse(fs.readFileSync(path.join(hist, `${String(doc).replace(/:/g, '_')}.heads.json`), 'utf8')); } catch { return null; } };
+  const headsOf = (doc) => { try { const f = headsFile(hist, doc) || path.join(hist, `${String(doc).replace(/:/g, '_')}.heads.json`); return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; } };
   const sha = async (s) => `sha256:${BWLOG1.hex(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))))}`;
   try {
     const text = fs.readFileSync(file, 'utf8');

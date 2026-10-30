@@ -2,6 +2,7 @@
 // The page is driven by real keys and real selections; every check reads the DOCUMENT (BW.M), not the DOM.
 //
 //   node tests/editor-0133.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

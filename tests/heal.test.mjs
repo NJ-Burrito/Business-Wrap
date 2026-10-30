@@ -3,6 +3,7 @@
 // document code FAIL with no heal attempt. Only locators and waits heal in a browser walk (a real headless page).
 //
 //   node tests/heal.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';

@@ -31,7 +31,7 @@ function openOrRefuse(text, file, ws) {
   try { return { html: rewrapEditorHtml(text) }; } catch (e) {
     let kept = '';
     try {
-      const dir = path.join(ws ? ensureWorkspace(ws).dirs.history : localDir(), 'backups');
+      const dir = (ws ? ensureWorkspace(ws).dirs.backups : path.join(localDir(), 'backups'));
       fs.mkdirSync(dir, { recursive: true });
       kept = path.join(dir, `${new Date().toISOString().replace(/[:.]/g, '-')}-${path.basename(file)}`);
       fs.copyFileSync(file, kept);

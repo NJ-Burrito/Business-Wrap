@@ -2,6 +2,7 @@
 // Logic only (engine/ledger-v1.mjs + the history route's mirror merge); the served-editor path is scenario H5 of the QA runner.
 //
 //   node tests/system-ledger-0133.test.mjs
+import './_isolate.mjs';
 import { BWLOG1 as L } from '../engine/ledger-v1.mjs';
 
 const results = [];
