@@ -35,6 +35,8 @@
     "editor",
     "mcp/cli.mjs",
     "mcp/server.mjs",
+    "mcp/startup.mjs",
+    "mcp/editor-tools.mjs",
     "mcp/vendor/sdk.mjs",
     "mcp/README.md",
     "mcp/README.ar.md",
