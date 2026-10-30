@@ -104,3 +104,8 @@ regexes = ['''^contrast-v3\.md$''']
 [[allowlists]]
 description = "The vendored MCP SDK bundle (npm run vendor:mcp): minified third-party code from @modelcontextprotocol/sdk, zod, ajv; its numbers and OAuth field names match the ID and password rules. tests/plugin.test.mjs fails unless the file is byte-identical to a fresh build from the locked packages, so nothing else can hide in it"
 paths = ['''^mcp/vendor/sdk\.mjs$''']
+
+[[allowlists]]
+description = "APP_KEY_V1, the public bwlog v1 app key (engine/ledger-v1.mjs: Business-Wrap is MIT, so the key is public by design; tamper-evidence comes from the hash chain, signatures and mirror, bible/11). Only this exact value is allowed, in the module and in the built editor"
+regexTarget = "secret"
+regexes = ['''^ace2275efb605532c67c8accc166b936cd77f3bb5b6a2bd183134fae43cd4ea4$''']
