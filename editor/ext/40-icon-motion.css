@@ -2,23 +2,13 @@
    Same house style as the 0.12 brand icons (brand/v3/icons/icons.css): one move, once, on hover of its button, on
    keyboard focus, on a palette row's hover, on a section title's hover, and again on its own press (.ic-go, set by
    icPress in editor.js on the pressed button only, A4). Timings are the v3 tokens. Each part says what it plays in
-   --icm; the trigger rule below plays it. Calm mode and reduced motion: nothing moves (also ui.css). */
-:where(.ic[data-ic]:not(.bw-i)) > * { transform-box: fill-box; transform-origin: 50% 50%; }
-:is(.b:hover:not(:disabled), .b:focus-visible, .b.ic-go, [role="option"]:hover, .sc:hover) .ic:is(
-  [data-ic="library"], [data-ic="timeline"], [data-ic="secChrome"], [data-ic="secHeader"], [data-ic="secFooter"], [data-ic="secFormat"], [data-ic="secWrap"],
-  [data-ic="hdrText"], [data-ic="ftrText"], [data-ic="hdrField"], [data-ic="ftrField"], [data-ic="hdrLogo"], [data-ic="hdrConf"],
-  [data-ic="chStart"], [data-ic="hdrStart"], [data-ic="ftrStart"], [data-ic="chCenter"], [data-ic="hdrCenter"], [data-ic="ftrCenter"],
-  [data-ic="chEnd"], [data-ic="hdrEnd"], [data-ic="ftrEnd"], [data-ic="chDelete"], [data-ic="hdrDelete"], [data-ic="ftrDelete"],
-  [data-ic="chScope"], [data-ic="hdrScope"], [data-ic="ftrScope"],
-  [data-ic="fmtBold"], [data-ic="fmtItalic"], [data-ic="fmtUnderline"], [data-ic="fmtStrike"], [data-ic="fmtCode"], [data-ic="fmtLink"],
-  [data-ic="fmtColor"], [data-ic="fmtFont"], [data-ic="fmtSize"], [data-ic="fmtClear"], [data-ic="fmtAlignStart"], [data-ic="fmtAlignCenter"],
-  [data-ic="fmtAlignEnd"], [data-ic="fmtJustify"], [data-ic="fmtTop"], [data-ic="fmtMiddle"], [data-ic="fmtBottom"], [data-ic="fmtLine"],
-  [data-ic="fmtBefore"], [data-ic="fmtAfter"], [data-ic="fmtQuote"], [data-ic="fmtBullets"], [data-ic="fmtNumbers"], [data-ic="fmtShapes"],
-  [data-ic="fmtIndent"], [data-ic="fmtOutdent"], [data-ic="pgSetup"], [data-ic="pgBreak"], [data-ic="tocHide"], [data-ic="tocAdd"],
-  [data-ic="fmRowAdd"], [data-ic="fmRowDel"], [data-ic="fmColAdd"], [data-ic="fmColDel"], [data-ic="insTable"], [data-ic="insSection"],
-  [data-ic="insChapter"], [data-ic="insTextBox"], [data-ic="copyBlock"], [data-ic="pasteBlock"], [data-ic="wrapInline"], [data-ic="wrapSquare"],
-  [data-ic="wrapTight"], [data-ic="wrapThrough"], [data-ic="wrapTopBottom"], [data-ic="wrapBehind"], [data-ic="wrapFront"],
-  [data-ic="pvOpen"], [data-ic="pvSign"], [data-ic="lkToggle"], [data-ic="shShare"]) > * { animation: var(--icm, none); }
+   --icm; the trigger rule below plays it. Calm mode and reduced motion: nothing moves (also ui.css).
+   0.13.3 (owner request 2026-10-30): ONE trigger for every icon (below); no icon is left with the shared scale alone, every one has its own
+   --icm move, a theme colour on hover (ui.css .ic hover rule) and the same move on focus and press. */
+:where(.ic[data-ic]:not(.bw-i)) > * { transform-box: fill-box; transform-origin: 50% 50%; --mvt: var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+/* the one trigger: hover, keyboard focus, press (:active, and .ic-go which icPress sets on a pressed .b), a palette row's hover and
+   its keyboard selection, a panel group's summary, a checkbox row, a section title */
+:is(button, summary, [role="option"], .sc, label.chk, label.set-chk, a.b):is(:hover:not(:disabled), :focus-visible, :active:not(:disabled), .ic-go, [aria-selected="true"]) .ic[data-ic]:not(.bw-i) > * { animation: var(--icm, var(--pjm, none)); }
 
 /* the moves (parts set --x/--y/--r/--s/--o) */
 @keyframes icm-nudge { 0%, 100% { translate: 0 0; } 45% { translate: var(--x, 0) var(--y, 0); } }
@@ -35,6 +25,8 @@
 @keyframes icm-shake { 0%, 100% { translate: 0 0; } 20% { translate: -1.5px 0; } 40% { translate: 1.5px 0; } 60% { translate: -1px 0; } 80% { translate: .5px 0; } }
 @keyframes icm-recede { 0%, 100% { scale: 1; opacity: 1; } 45% { scale: var(--s, .8); opacity: .45; } }
 @keyframes icm-lift { 0%, 100% { translate: 0 0; rotate: 0deg; } 45% { translate: 0 -2px; rotate: -4deg; } }
+
+@keyframes icm-flip { 0%, 100% { scale: 1 1; } 50% { scale: -1 1; } }
 
 /* Documents «المستندات»: the folder lifts open */
 [data-ic="library"] > * { transform-origin: 50% 100%; --icm: icm-lift var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
@@ -179,7 +171,6 @@
 [data-ic="shShare"] > :nth-child(3) { --d: calc(var(--bw-stagger) * 4); }
 
 /* 0.13.2 icons (cells, writing, page gaps): one whole-icon move each, same trigger as above */
-:is(.b:hover:not(:disabled), .b:focus-visible, .b.ic-go, [role="option"]:hover, .sc:hover) .ic:is([data-ic="cellMerge"], [data-ic="cellSplit"], [data-ic="cellWrap"], [data-ic="cellFill"], [data-ic="cellColW"], [data-ic="cellRowH"], [data-ic="cellClearValue"], [data-ic="cellClearFormat"], [data-ic="addStory"], [data-ic="storyPoint"], [data-ic="storyCard"], [data-ic="pgBreakAdd"], [data-ic="pgBreakDel"], [data-ic="pgPullUp"], [data-ic="secDel"], [data-ic="pgEmpty"]) > * { animation: var(--icm, none); }
 [data-ic="cellMerge"] > * { --s: 1.15; --r: 10deg; --icm: icm-recede var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 [data-ic="cellSplit"] > * { --s: 1.15; --r: 10deg; --icm: icm-pop var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 [data-ic="cellWrap"] > * { --s: 1.15; --r: 10deg; --icm: icm-tilt var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
@@ -197,6 +188,135 @@
 [data-ic="secDel"] > * { --s: 1.15; --r: 10deg; --icm: icm-lift var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 [data-ic="pgEmpty"] > * { --s: 1.15; --r: 10deg; --icm: icm-blink var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 
+/* 0.13.3: the 121 toolbar, menu, popover, context-bar, panel and diagram icons that only had the shared scale. One whole-icon move each,
+   chosen for what the icon is (undo tilts back, delete shakes, zoom pops, a check draws …); parts: --x --y --r --s */
+[data-ic="save"] > * { --y:2px; --icm: icm-nudge var(--mvt); }
+[data-ic="saveHtml"] > * { --y:-3px; --icm: icm-from var(--mvt); }
+[data-ic="import"] > * { --y:-3px; --icm: icm-from var(--mvt); }
+[data-ic="logo"] > * { --y:2px; --icm: icm-nudge var(--mvt); }
+[data-ic="more"] > * { --s:1.25; --icm: icm-pop var(--mvt); }
+[data-ic="image"] > * { --r:-9deg; --icm: icm-tilt var(--mvt); }
+[data-ic="undo"] > * { --r:-28deg; --icm: icm-tilt var(--mvt); }
+[data-ic="redo"] > * { --r:28deg; --icm: icm-tilt var(--mvt); }
+[data-ic="secFile"] > * { --icm: icm-lift var(--mvt); }
+[data-ic="secInsert"] > * { --s:1.18; --icm: icm-pop var(--mvt); }
+[data-ic="secDocument"] > * { --icm: icm-draw var(--mvt); }
+[data-ic="secView"] > * { --s:1.14; --icm: icm-pop var(--mvt); }
+[data-ic="secSel"] > * { --r:10deg; --icm: icm-tilt var(--mvt); }
+[data-ic="view"] > * { --s:1.14; --icm: icm-pop var(--mvt); }
+[data-ic="settings"] > * { --r:90deg; --icm: icm-spin var(--mvt); }
+[data-ic="palette"] > * { --r:90deg; --icm: icm-spin var(--mvt); }
+[data-ic="addPara"] > * { --s:1.2; --icm: icm-pop var(--mvt); }
+[data-ic="find"] > * { --r:-14deg; --icm: icm-tilt var(--mvt); }
+[data-ic="outline"] > * { --icm: icm-grow-x var(--mvt); }
+[data-ic="history"] > * { --r:-360deg; --icm: icm-spin var(--mvt); }
+[data-ic="renumber"] > * { --y:3px; --icm: icm-from var(--mvt); }
+[data-ic="webhooks"] > * { --s:1.15; --icm: icm-pop var(--mvt); }
+[data-ic="styleThis"] > * { --r:14deg; --icm: icm-tilt var(--mvt); }
+[data-ic="hideBlock"] > * { --s:.78; --icm: icm-recede var(--mvt); }
+[data-ic="every"] > * { --r:180deg; --icm: icm-spin var(--mvt); }
+[data-ic="export.html"] > * { --y:-3px; --icm: icm-from var(--mvt); }
+[data-ic="export.printHtml"] > * { --s:1.14; --icm: icm-pop var(--mvt); }
+[data-ic="export.svg"] > * { --icm: icm-draw var(--mvt); }
+[data-ic="export.png"] > * { --s:1.14; --icm: icm-pop var(--mvt); }
+[data-ic="exportAll"] > * { --y: -3px; --icm: icm-from var(--mvt); }
+[data-ic="export.editsAll"] > * { --s: 1.14; --icm: icm-pop var(--mvt); }
+[data-ic="pfUser"] > * { --s: 1.12; --icm: icm-pop var(--mvt); }
+[data-ic="print"] > * { --y:-2px; --icm: icm-nudge var(--mvt); }
+[data-ic="zoomOut"] > * { --s:.8; --icm: icm-recede var(--mvt); }
+[data-ic="zoomIn"] > * { --s:1.2; --icm: icm-pop var(--mvt); }
+[data-ic="zoomReset"] > * { --s:.86; --icm: icm-pop var(--mvt); }
+[data-ic="zoomFit"] > * { --s:.84; --icm: icm-recede var(--mvt); }
+[data-ic="side"] > * { --x:-2.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="both"] > * { --icm: icm-grow-x var(--mvt); }
+[data-ic="dark"] > * { --r:-24deg; --icm: icm-tilt var(--mvt); }
+[data-ic="calm"] > * { --s:.82; --icm: icm-recede var(--mvt); }
+[data-ic="focus"] > * { --s:1.16; --icm: icm-pop var(--mvt); }
+[data-ic="spell"] > * { --icm: icm-draw var(--mvt); }
+[data-ic="snap"] > * { --y:-2px; --icm: icm-nudge var(--mvt); }
+[data-ic="duplicate"] > * { --x:1.5px; --y:1.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="delete"] > * { --icm: icm-shake var(--mvt); }
+[data-ic="moveUp"] > * { --y:-3px; --icm: icm-nudge var(--mvt); }
+[data-ic="moveDown"] > * { --y:3px; --icm: icm-nudge var(--mvt); }
+[data-ic="rowUp"] > * { --y:-3px; --icm: icm-nudge var(--mvt); }
+[data-ic="rowDown"] > * { --y:3px; --icm: icm-nudge var(--mvt); }
+[data-ic="rowAdd"] > * { --s:1.2; --icm: icm-pop var(--mvt); }
+[data-ic="rowDel"] > * { --s:.8; --icm: icm-recede var(--mvt); }
+[data-ic="colAdd"] > * { --s:1.2; --icm: icm-pop var(--mvt); }
+[data-ic="colDel"] > * { --s:.8; --icm: icm-recede var(--mvt); }
+[data-ic="comment"] > * { --r:-10deg; --icm: icm-tilt var(--mvt); }
+[data-ic="breakBefore"] > * { --y:-2px; --icm: icm-nudge var(--mvt); }
+[data-ic="keepNext"] > * { --y:2px; --icm: icm-nudge var(--mvt); }
+[data-ic="close"] > * { --r:90deg; --icm: icm-spin var(--mvt); }
+[data-ic="prefs"] > * { --r:90deg; --icm: icm-spin var(--mvt); }
+[data-ic="learning"] > * { --s:1.14; --icm: icm-pop var(--mvt); }
+[data-ic="info"] > * { --s:1.16; --icm: icm-pop var(--mvt); }
+[data-ic="add"] > * { --r:90deg; --icm: icm-spin var(--mvt); }
+[data-ic="connect"] > * { --x:2.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="send"] > * { --x:3px; --y:-2px; --icm: icm-nudge var(--mvt); }
+[data-ic="grip"] > * { --y:-2px; --icm: icm-nudge var(--mvt); }
+[data-ic="replace"] > * { --r:180deg; --icm: icm-spin var(--mvt); }
+[data-ic="caption"] > * { --icm: icm-grow-x var(--mvt); }
+[data-ic="ok"] > * { --icm: icm-draw var(--mvt); }
+[data-ic="warn"] > * { --icm: icm-shake var(--mvt); }
+[data-ic="err"] > * { --icm: icm-shake var(--mvt); }
+[data-ic="link"] > * { --x:1.5px; --y:-1.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="print.refresh"] > * { --r:360deg; --icm: icm-spin var(--mvt); }
+[data-ic="print.browser"] > * { --x:2px; --y:-2px; --icm: icm-nudge var(--mvt); }
+[data-ic="view.left"] > * { --x:-2.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="view.right"] > * { --x:2.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="updDone"] > * { --icm: icm-draw var(--mvt); }
+[data-ic="updStep"] > * { --s:1.2; --icm: icm-pop var(--mvt); }
+[data-ic="updFail"] > * { --icm: icm-shake var(--mvt); }
+[data-ic="dgStaff"] > * { --s:1.14; --icm: icm-pop var(--mvt); }
+[data-ic="dgApplicant"] > * { --icm: icm-lift var(--mvt); }
+[data-ic="dgStart"] > * { --s:1.2; --icm: icm-pop var(--mvt); }
+[data-ic="dgPayment"] > * { --r:10deg; --icm: icm-tilt var(--mvt); }
+[data-ic="dgRework"] > * { --r:-360deg; --icm: icm-spin var(--mvt); }
+[data-ic="dgSystem"] > * { --s:1.12; --icm: icm-pop var(--mvt); }
+[data-ic="dgDecision"] > * { --r:45deg; --icm: icm-tilt var(--mvt); }
+[data-ic="dgOk"] > * { --icm: icm-draw var(--mvt); }
+[data-ic="dgStop"] > * { --s:.8; --icm: icm-recede var(--mvt); }
+[data-ic="dgNote"] > * { --icm: icm-lift var(--mvt); }
+[data-ic="dgGroup"] > * { --s:1.12; --icm: icm-pop var(--mvt); }
+[data-ic="dgText"] > * { --icm: icm-blink var(--mvt); }
+[data-ic="dgSymbol"] > * { --s:1.2; --icm: icm-pop var(--mvt); }
+[data-ic="dgConnect"] > * { --icm: icm-draw var(--mvt); }
+[data-ic="dgLabel"] > * { --r:-9deg; --icm: icm-tilt var(--mvt); }
+[data-ic="dgSub"] > * { --icm: icm-grow-y var(--mvt); }
+[data-ic="dgDup"] > * { --x:1.5px; --y:1.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="dgDel"] > * { --icm: icm-shake var(--mvt); }
+[data-ic="dgFront"] > * { --s:1.16; --icm: icm-pop var(--mvt); }
+[data-ic="dgBack"] > * { --s:.8; --icm: icm-recede var(--mvt); }
+[data-ic="dgAlignL"] > * { --x:-2.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="dgAlignC"] > * { --icm: icm-grow-x var(--mvt); }
+[data-ic="dgAlignR"] > * { --x:2.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="dgAlignT"] > * { --y:-2.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="dgAlignM"] > * { --icm: icm-grow-y var(--mvt); }
+[data-ic="dgAlignB"] > * { --y:2.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="dgDistH"] > * { --icm: icm-grow-x var(--mvt); }
+[data-ic="dgDistV"] > * { --icm: icm-grow-y var(--mvt); }
+[data-ic="dgWrap"] > * { --r:8deg; --icm: icm-tilt var(--mvt); }
+[data-ic="dgAuto"] > * { --r:180deg; --icm: icm-spin var(--mvt); }
+[data-ic="dgReset"] > * { --r:-360deg; --icm: icm-spin var(--mvt); }
+[data-ic="dgFlow"] > * { --icm: icm-draw var(--mvt); }
+[data-ic="dgMermaidIn"] > * { --y:-3px; --icm: icm-from var(--mvt); }
+[data-ic="dgMermaidOut"] > * { --y:-3px; --icm: icm-nudge var(--mvt); }
+[data-ic="dgReverse"] > * { --icm: icm-flip var(--mvt); }
+[data-ic="dgFrom"] > * { --x:-2.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="dgTo"] > * { --x:2.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="dgLegend"] > * { --icm: icm-grow-x var(--mvt); }
+[data-ic="dgEdgeLabel"] > * { --r:-9deg; --icm: icm-tilt var(--mvt); }
+[data-ic="dgBendAdd"] > * { --s:1.2; --icm: icm-pop var(--mvt); }
+[data-ic="dgBendDel"] > * { --s:.8; --icm: icm-recede var(--mvt); }
+[data-ic="dgRouteAuto"] > * { --icm: icm-draw var(--mvt); }
+[data-ic="dgZoomIn"] > * { --s:1.2; --icm: icm-pop var(--mvt); }
+[data-ic="dgZoomOut"] > * { --s:.8; --icm: icm-recede var(--mvt); }
+[data-ic="dgZoomFit"] > * { --s:.84; --icm: icm-recede var(--mvt); }
+[data-ic="dgZoom100"] > * { --s:.88; --icm: icm-pop var(--mvt); }
+
+/* Arabic mirrors the directional glyphs (the shell is always dir=rtl, data-tdir carries the UI's reading direction) */
+.shell[data-tdir="rtl"] .ic:is([data-ic="undo"], [data-ic="redo"], [data-ic="fmtAlignStart"], [data-ic="fmtAlignEnd"], [data-ic="hdrStart"], [data-ic="hdrEnd"], [data-ic="ftrStart"], [data-ic="ftrEnd"], [data-ic="chStart"], [data-ic="chEnd"], [data-ic="fmtIndent"], [data-ic="fmtOutdent"], [data-ic="fmtBefore"], [data-ic="fmtAfter"], [data-ic="biBack"], [data-ic="biFwd"], [data-ic="view.left"], [data-ic="view.right"], [data-ic="side"], [data-ic="dgFrom"], [data-ic="dgTo"], [data-ic="dgAlignL"], [data-ic="dgAlignR"]) { scale: -1 1; }
 /* calm mode and reduced motion: drawn, never moving */
 @media (prefers-reduced-motion: reduce) { .ic[data-ic] > * { animation: none !important; } }
 .shell[data-calm="1"] .ic[data-ic] > * { animation: none !important; }

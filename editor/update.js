@@ -38,10 +38,13 @@ function resumeAfterUpdate(d) {
   const V = DATA.version || '';
   const NEW = DATA.whatsNew || { human: [], migration: [] };
   const DAY = 24 * 60 * 60 * 1000;
-  const KIND = { added: 'أُضيف · Added', changed: 'تغيّر · Changed', fixed: 'أُصلح · Fixed', other: 'أخرى · Other' };
+  // UIP-15: the labels follow the UI language (English UI: English only, Arabic UI: Arabic only)
+  const KIND_AR = { added: 'أُضيف · Added', changed: 'تغيّر · Changed', fixed: 'أُصلح · Fixed', other: 'أخرى · Other' };
+  const KIND_EN = { added: 'Added', changed: 'Changed', fixed: 'Fixed', other: 'Other' };
+  const KIND = new Proxy({}, { get: (_, k) => (S.ui === 'en' ? KIND_EN : KIND_AR)[k] });
   const STEPS = ['download', 'backup', 'replace', 'verify', 'done'];
   const lang = () => (S.ui === 'en' ? 'en' : 'ar');
-  const tdir = () => uiDir();
+  const tdir = () => (S.ui === 'en' ? 'ltr' : uiDir()); // UIP-15: English text is always left to right
   const host = document.createElement('div');
   host.id = 'bw-update';
   const ur = host.attachShadow({ mode: 'open' });

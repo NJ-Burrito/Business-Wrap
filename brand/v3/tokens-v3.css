@@ -45,6 +45,12 @@
   --bw-sec-insert: #84b7eb;
   --bw-sec-edit: #7cd5bb;
   --bw-sec-design: #dc898c;
+  --bw-sec-document: #b9a4ec;
+  --bw-sec-export: #f0a46a;
+  --bw-sec-view: #6fd0e0;
+  --bw-sec-gaps: #b9d56a;
+  --bw-sec-header: #e59ac7;
+  --bw-sec-footer: #e3d36a;
   --bw-shadow-1: 0 1px 0 rgba(27,24,19,.05), 0 1px 3px rgba(27,24,19,.08);
   --bw-shadow-2: 0 2px 4px rgba(27,24,19,.05), 0 10px 24px -6px rgba(0,30,61,.14);
   --bw-shadow-3: 0 6px 12px rgba(27,24,19,.06), 0 28px 56px -12px rgba(0,30,61,.24);
@@ -162,6 +168,12 @@
     --bw-sec-insert: #84b7eb;
     --bw-sec-edit: #7cd5bb;
     --bw-sec-design: #dc898c;
+    --bw-sec-document: #b9a4ec;
+    --bw-sec-export: #f0a46a;
+    --bw-sec-view: #6fd0e0;
+    --bw-sec-gaps: #b9d56a;
+    --bw-sec-header: #e59ac7;
+    --bw-sec-footer: #e3d36a;
     --bw-shadow-1: 0 1px 0 rgba(0,0,0,.30), 0 1px 3px rgba(0,0,0,.40);
     --bw-shadow-2: 0 2px 4px rgba(0,0,0,.30), 0 10px 24px -6px rgba(0,0,0,.50);
     --bw-shadow-3: 0 6px 12px rgba(0,0,0,.35), 0 28px 56px -12px rgba(0,0,0,.60);
@@ -212,6 +224,12 @@
   --bw-sec-insert: #84b7eb;
   --bw-sec-edit: #7cd5bb;
   --bw-sec-design: #dc898c;
+  --bw-sec-document: #b9a4ec;
+  --bw-sec-export: #f0a46a;
+  --bw-sec-view: #6fd0e0;
+  --bw-sec-gaps: #b9d56a;
+  --bw-sec-header: #e59ac7;
+  --bw-sec-footer: #e3d36a;
   --bw-shadow-1: 0 1px 0 rgba(0,0,0,.30), 0 1px 3px rgba(0,0,0,.40);
   --bw-shadow-2: 0 2px 4px rgba(0,0,0,.30), 0 10px 24px -6px rgba(0,0,0,.50);
   --bw-shadow-3: 0 6px 12px rgba(0,0,0,.35), 0 28px 56px -12px rgba(0,0,0,.60);

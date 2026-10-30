@@ -32,9 +32,19 @@ function bwModal({ title, html, buttons, mount, cls = '', modal = true }) {
     m.innerHTML = `<div class="bw-modal-card" role="dialog" aria-modal="${modal}" aria-labelledby="bw-modal-h"><h2 id="bw-modal-h">${esc(title)}</h2>${html}<div class="btns">${buttons.map(([k, l, primary]) => `<button type="button" class="b${primary ? ' primary' : ''}" data-mk="${esc(k)}"><span class="w">${esc(l)}</span></button>`).join('')}</div></div>`;
     // a toolbar rebuild (root.innerHTML) drops it: put it back until it is answered
     const keep = new MutationObserver(() => { if (!m.isConnected) root.appendChild(m); });
-    const done = (k) => { keep.disconnect(); m.remove(); res(k); };
+    const opener = root.activeElement; // UIP-02: the focus goes back where it came from
+    const done = (k) => { keep.disconnect(); m.remove(); res(k); opener?.focus?.(); };
     m.addEventListener('click', (e) => { const k = e.target.closest('[data-mk]')?.dataset.mk; if (k) done(k); });
-    m.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); done('cancel'); } });
+    m.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.stopPropagation(); done('cancel'); return; }
+      if (e.key !== 'Tab' || !modal) return;
+      // UIP-02: aria-modal means Tab stays inside the card (wraps first <-> last)
+      const f = [...m.querySelectorAll('button:not(:disabled), input:not([type="hidden"]):not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])')];
+      if (!f.length) return;
+      const a = root.activeElement;
+      if (e.shiftKey && (a === f[0] || !m.contains(a))) { e.preventDefault(); f[f.length - 1].focus(); }
+      else if (!e.shiftKey && (a === f[f.length - 1] || !m.contains(a))) { e.preventDefault(); f[0].focus(); }
+    });
     root.appendChild(m);
     keep.observe(root, { childList: true });
     mount?.(m);
@@ -131,8 +141,8 @@ async function pfReportMount(el) {
 
 bwExt({
   settings: [
-    { id: 'profile', title: 'pfTitle', icon: 'prefs', html: () => `<div class="pf-form">${pfForm()}</div>`, mount: (el) => el && pfWire(el.querySelector('.pf-form'), true) },
-    { id: 'report', title: 'pfReport', icon: 'prefs', html: pfReportHtml, mount: pfReportMount },
+    { id: 'profile', title: 'pfTitle', icon: 'pfUser', html: () => `<div class="pf-form">${pfForm()}</div>`, mount: (el) => el && pfWire(el.querySelector('.pf-form'), true) },
+    { id: 'report', title: 'pfReport', icon: 'biReport', html: pfReportHtml, mount: pfReportMount },
     { id: 'trust', title: 'pfTrustTitle', icon: 'info', html: () => `<p class="pf-limit">${esc(t('pfTrustLimit'))}</p><div class="btns"><button type="button" class="b" data-pf="prov"><span class="w">${esc(t('pvOpen'))}</span></button></div>`, mount: (el) => el?.querySelector('[data-pf="prov"]').addEventListener('click', () => openDrawer('provenance')) },
   ],
   expose: { profile: { get: PF.get, actor: PF.actor, recording: PF.recording, takePings: pfTakePings, pictureInSharedHtml: PF_PICTURE_IN_SHARED_HTML } },

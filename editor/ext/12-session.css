@@ -1,6 +1,5 @@
 /* A10 resume modal + A11 Settings card */
 dialog.bw-resume { max-width: min(520px, 92vw); border: 1px solid currentColor; border-radius: 14px; padding: 20px 22px; background: var(--panel, Canvas); color: var(--panel-ink, CanvasText); }
-dialog.bw-resume::backdrop { background: rgb(0 0 0 / .35); }
 dialog.bw-resume h2 { margin: 0 0 8px; font-size: 1.15em; }
 dialog.bw-resume ol { max-height: 40vh; overflow: auto; }
 .ws-root { word-break: break-all; }

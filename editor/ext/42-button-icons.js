@@ -32,6 +32,23 @@ IC.biReplaceAll = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="h
 IC.biAllPages = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2h-4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8"/><path d="M16.706 2.706A2.4 2.4 0 0 0 15 2v5a1 1 0 0 0 1 1h5a2.4 2.4 0 0 0-.706-1.706z"/><path d="M5 7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 1.732-1"/></svg>'; // lucide files (ISC)
 IC.biSection = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>'; // lucide file-text (ISC)
 IC.biCopy = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>'; // lucide copy (ISC)
+// UI-CHROME-11 (0.13.3): commands that shared a glyph with another command get their own (the 27-writing.js aliases only fill a key nothing defined, so these win; they also survive a vendor-icons regeneration of icons.json)
+const BI_G = (inner) => '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + inner + '</svg>';
+const BI_DASH = '<path d="M3 17h3"/><path d="M10.5 17h3"/><path d="M18 17h3"/>';
+Object.assign(IC, {
+  pgBreakAdd: BI_G(BI_DASH + '<path d="M12 3v7"/><path d="M8.5 6.5h7"/>'), // a page-break rule with a plus
+  pgBreakDel: BI_G(BI_DASH + '<path d="m9 4 6 6"/><path d="m15 4-6 6"/>'), // the same rule struck out
+  pgPullUp: BI_G('<path d="M12 21V9"/><path d="m7 14 5-5 5 5"/><path d="M5 3h14"/>'), // pull what follows up to the line
+  secDel: BI_G('<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="m14.5 12.5-5 5"/><path d="m9.5 12.5 5 5"/>'), // lucide file-x (ISC)
+  pgEmpty: BI_G('<path d="M20 8 14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2z" stroke-dasharray="3 3"/><path d="M9 15h6"/>'), // an empty (dashed) page, taken away
+  addStory: BI_G('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8"/><path d="M12 8v8"/>'), // lucide square-plus (ISC)
+  storyPoint: BI_G('<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>'), // lucide circle-check (ISC)
+  storyCard: BI_G('<path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9l7-7V5a2 2 0 0 0-2-2z"/><path d="M14 21v-5a1 1 0 0 1 1-1h6"/>'), // lucide sticky-note (ISC)
+  exportAll: BI_G('<path d="M12 13V3"/><path d="m7 8 5 5 5-5"/><path d="M4 17h16"/><path d="M6 21h12"/>'), // download onto a stack of rules: every service
+  'export.editsAll': BI_G('<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1"/><path d="M14 18a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-1a1 1 0 0 0-1-1"/><path d="M2 7v13a2 2 0 0 0 2 2"/>'), // lucide file-braces + a second page edge (ISC)
+  pfUser: BI_G('<path d="M18 20a6 6 0 0 0-12 0"/><circle cx="12" cy="10" r="4"/><circle cx="12" cy="12" r="10"/>'), // lucide circle-user-round (ISC): the profile card
+  both: BI_G('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 3v18"/>'), // the two editions side by side (was the keep-with-next glyph)
+});
 const BI_MAP = [
   ['[data-go][data-ring]', 'biJump'],
   ['[data-lib="new"]', 'biNew'], ['[data-lib="import"]', 'biImport'], ['[data-lib="open"]', 'biOpen'], ['[data-lib="tab"]', 'biTab'],

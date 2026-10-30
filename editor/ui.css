@@ -17,7 +17,11 @@
   font: 500 14px/1.35 var(--bw-font-ui); color: var(--panel-ink);
 }
 /* the toolbar, popovers and menus are navy glass in both themes (the cover band): focus there is the gold ring */
-.island, .pop, .ctx, .more .menu, .focus-exit, .toast { --focus: var(--bw-accent); }
+.island, .pop, .ctx, .more .menu, .focus-exit, .toast { --focus: var(--bw-accent); --ic-hot: var(--bw-accent); }
+/* 0.13.3 one system: the icon colour on hover, focus and press (gold on the navy glass, the 3:1 rule gold on the panels), one press scale,
+   one scrim, one open and one close transition */
+.shell, dialog { --ic-hot: var(--bw-accent-rule); --press: var(--bw-scale-press); --scrim: color-mix(in srgb, var(--bw-band, #001e3d) 45%, transparent); --scrim-blur: blur(3px); --t-open: var(--bw-dur-base) var(--bw-ease-out); --t-close: var(--bw-dur-fast) var(--bw-ease-in); }
+.island, .pop, .ctx, .more .menu, .focus-exit, .toast { --ic-hot: var(--bw-accent); }
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* ── the toolbar: docked at the very top, labelled sections (File · Insert · Edit · Document · Design · Export · View);
@@ -52,7 +56,7 @@ button { font: inherit; color: inherit; }
 }
 .island .b, .ctx .b, .pop .b { color: var(--on-glass); }
 .island .b:hover:not(:disabled), .ctx .b:hover:not(:disabled), .pop .b:hover:not(:disabled) { background: color-mix(in srgb, var(--on-glass) 10%, transparent); }
-.b:active:not(:disabled) { transform: scale(.94); transition-duration: .08s; }
+.b:active:not(:disabled) { transform: scale(var(--press, .96)); transition-duration: var(--bw-dur-instant); }
 .b:disabled { opacity: .42; cursor: default; }
 /* a pressed toggle on the glass: a light wash and a 2 px gold rule under it (the one gold fill is the primary action) */
 .b[aria-pressed="true"] { background: color-mix(in srgb, var(--on-glass) 16%, transparent); box-shadow: inset 0 -2px 0 var(--gold); }
@@ -60,23 +64,23 @@ button { font: inherit; color: inherit; }
 .b.primary { background: var(--gold); color: var(--on-gold) !important; font-weight: 700; }
 .b.primary:hover:not(:disabled) { background: var(--bw-accent-hover) !important; }
 .i { display: inline-grid; place-items: center; width: 18px; height: 18px; flex: none; }
-.ic { width: 18px; height: 18px; stroke-width: 1.75; transition: transform .42s var(--e-spring); }
-.b:hover:not(:disabled) .ic { transform: translateY(-1px) scale(1.12); }
-.b[data-a="undo"]:hover .ic { transform: rotate(-28deg) scale(1.1); }
-.b[data-a="redo"]:hover .ic { transform: rotate(28deg) scale(1.1); }
-.b[data-a="save"]:hover .ic, .b[data-a="exportPdf"]:hover .ic { transform: translateY(2px) scale(1.1); }
-.b[data-a="delete"]:hover .ic, .b[data-a="ovDelete"]:hover .ic { animation: wiggle .5s var(--e-out); }
-.b[data-a="find"]:hover .ic { transform: rotate(-14deg) scale(1.16); }
-.b[data-a="palette"]:hover .ic { transform: rotate(90deg) scale(1.08); }
-.b[data-a="image"]:hover .ic, .b[data-a="logo"]:hover .ic { transform: translateY(-2px) rotate(-6deg) scale(1.12); }
-.b[data-a="pages"]:hover .ic { transform: translateX(2px) scale(1.1); }
-@keyframes wiggle { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-12deg); } 60% { transform: rotate(10deg); } }
+/* one stroke width for every icon (2, the brand v3 weight; Lucide was 1.75), one hover pose (the icon's own move plays on its parts, 40-icon-motion.css) */
+.ic { width: 18px; height: 18px; stroke-width: 2; transition: transform .42s var(--e-spring), color var(--bw-dur-fast) var(--bw-ease-out); }
+@media (prefers-reduced-motion: no-preference) {
+  .shell:not([data-calm="1"]) .b:hover:not(:disabled) .ic { transform: translateY(-1px) scale(1.12); }
+}
+/* the theme colour reaches every mono icon on hover, keyboard focus and press (the brand icons carry their gold part already) */
+:is(button, summary, [role="option"], .sc, label.chk, a.b):is(:hover:not(:disabled), :focus-visible, :active:not(:disabled), .ic-go, [aria-selected="true"]) .ic:not(.bw-i) { color: var(--ic-hot); }
 /* success pop: the button flashes the confirmation colour and its icon bounces */
 .b.done { animation: done-pop .9s var(--e-out); }
 .b.done .ic { animation: icon-pop .7s var(--e-spring); }
 @keyframes done-pop { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--bw-accent) 70%, transparent); } 100% { box-shadow: 0 0 0 14px transparent; } }
 @keyframes icon-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.3); } 100% { transform: scale(1); } }
 .b:focus-visible, select:focus-visible, input:focus-visible, [role="option"]:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+/* UIP-01: no control keeps the browser's own dark ring (1.39:1 on the dark theme): summaries, textareas, links, the segmented buttons */
+.shell :is(summary, textarea, button, a[href], [tabindex]:not([tabindex="-1"]), .seg button, .set-seg button, .vpop button):focus-visible, dialog :is(summary, textarea, button, a[href], input, select):focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.shell input:is([type="date"], [type="time"], [type="month"], [type="datetime-local"]):focus-within { outline: 3px solid var(--focus); outline-offset: 2px; }
+.shell label.chk:has(:focus-visible) { outline: 3px solid var(--focus); outline-offset: 0; }
 .b.cmd { background: color-mix(in srgb, var(--on-glass) 10%, transparent); border: 1px solid var(--hair); }
 
 /* segmented RTL / LTR: the pill slides to the pressed side */
@@ -84,7 +88,8 @@ button { font: inherit; color: inherit; }
 .seg .cap { font-size: 11px; color: var(--on-glass-soft); padding-inline: 6px 2px; }
 .seg button { border: 0; background: transparent; color: var(--on-glass); font-weight: 700; letter-spacing: .04em; padding: 6px 11px; border-radius: 10px; cursor: pointer; min-height: 32px; transition: background-color .3s var(--e-move), color .3s var(--e-move), transform .4s var(--e-spring); }
 .seg button[aria-pressed="true"] { background: color-mix(in srgb, var(--on-glass) 18%, transparent); color: var(--on-glass); box-shadow: inset 0 -2px 0 var(--gold); }
-.seg button:active { transform: scale(.94); }
+.seg button:hover:not(:disabled):not([aria-pressed="true"]) { background: color-mix(in srgb, var(--on-glass) 10%, transparent); }
+.seg button:active { transform: scale(var(--press, .96)); }
 
 /* the live counter: the number rolls up when it changes */
 .status { display: inline-flex; align-items: center; gap: 10px; color: var(--on-glass-soft); font-size: 13px; }
@@ -131,7 +136,9 @@ button { font: inherit; color: inherit; }
 .drawer .b.primary { background: var(--navy); color: var(--on-primary) !important; }
 .drawer .b.primary:hover:not(:disabled) { background: var(--bw-primary-hover) !important; }
 .drawer label { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; color: var(--panel-soft); }
-.drawer label.chk, .chk { flex-direction: row; align-items: center; gap: 8px; }
+.drawer label.chk, .chk { flex-direction: row; align-items: center; gap: 8px; cursor: pointer; transition: background-color var(--bw-dur-fast) var(--bw-ease-out); }
+.drawer label.chk:hover { background: var(--wash) !important; }
+.pop .chk:hover { background: color-mix(in srgb, var(--on-glass) 10%, transparent); border-radius: var(--r-btn); }
 .drawer input[type="search"], .drawer input[type="text"], .drawer input[type="url"], .drawer select, .dialog textarea {
   font: inherit; color: var(--panel-ink); background: var(--panel); border: 1px solid var(--panel-line); border-radius: 10px; padding: 8px 10px;
 }
@@ -178,11 +185,13 @@ ins { background: var(--bw-success-wash); color: var(--bw-on-success-wash); text
 .dialog.nudge { animation: dialog-nudge .36s var(--bw-ease-out) both; }
 @keyframes dialog-nudge { 0%, 100% { translate: 0; } 25% { translate: -6px 0; } 75% { translate: 6px 0; } }
 .dialog .b { color: var(--panel-ink); background: var(--wash-2); }
+.dialog .b:hover:not(:disabled) { background: var(--wash); }
+.dialog .b.primary:hover:not(:disabled) { background: var(--bw-primary-hover) !important; }
 .dialog .b.primary { background: var(--navy); color: var(--on-primary) !important; }
 @keyframes dialog-in { from { opacity: 0; scale: var(--bw-scale-press); } to { opacity: 1; scale: 1; } }
 
 /* command palette */
-.scrim { position: fixed; inset: 0; z-index: 50; background: color-mix(in srgb, var(--bw-band) 28%, transparent); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); animation: fade var(--bw-dur-base) var(--bw-ease-out) both; }
+.scrim { position: fixed; inset: 0; z-index: 50; background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); animation: fade var(--bw-dur-base) var(--bw-ease-out) both; }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 .palette { position: absolute; inset-block-start: 14vh; inset-inline-start: 50%; width: min(620px, 92vw); transform: translateX(-50%); border-radius: 22px; background: var(--panel); color: var(--panel-ink); box-shadow: var(--bw-shadow-3), 0 0 0 1px var(--panel-line); overflow: hidden; animation: pal-in var(--bw-dur-base) var(--bw-ease-out) both; }
 .shell[dir="rtl"] .palette { transform: translateX(50%); }
@@ -193,8 +202,10 @@ ins { background: var(--bw-success-wash); color: var(--bw-on-success-wash); text
 #cmdlist { list-style: none; margin: 0; padding: 6px 8px 10px; max-height: 52vh; overflow: auto; }
 #cmdlist .gh { font-size: 12px; color: var(--panel-soft); padding: 10px 10px 4px; }
 #cmdlist [role="option"] { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 12px; cursor: pointer; animation: rise .32s var(--e-out) both; animation-delay: calc(min(var(--k, 0), 12) * 14ms); }
-#cmdlist [role="option"][aria-selected="true"] { background: var(--wash); color: var(--navy); }
-.shell[data-theme="dark"] #cmdlist [role="option"][aria-selected="true"] { color: var(--bw-ink); }
+#cmdlist [role="option"] { transition: background-color var(--bw-dur-fast) var(--bw-ease-out), color var(--bw-dur-fast) var(--bw-ease-out); }
+#cmdlist [role="option"]:hover, #cmdlist [role="option"][aria-selected="true"] { background: var(--wash); color: var(--navy); }
+#cmdlist [role="option"]:active { background: var(--wash-2); }
+.shell[data-theme="dark"] #cmdlist [role="option"]:is(:hover, [aria-selected="true"]) { color: var(--bw-ink); }
 #cmdlist .w { flex: 1; }
 kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7px; border-radius: 7px; background: var(--wash-2); border: 1px solid var(--panel-line); color: var(--panel-soft); direction: ltr; }
 .empty { padding: 18px; color: var(--panel-soft); }
@@ -202,12 +213,12 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
 /* toasts: rise with a spring, leave quicker */
 .toasts { position: fixed; z-index: 60; inset-block-end: 22px; inset-inline-start: 50%; transform: translateX(-50%); display: grid; gap: 8px; justify-items: center; pointer-events: none; }
 .shell[dir="rtl"] .toasts { transform: translateX(50%); }
-.toast { pointer-events: auto; display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 16px; background: var(--deep); color: var(--on-glass); box-shadow: var(--bw-shadow-3); max-width: min(560px, 92vw); animation: toast-in var(--bw-dur-slow) var(--bw-ease-out) both; }
+.toast { pointer-events: auto; display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 16px; background: var(--deep); color: var(--on-glass); box-shadow: var(--bw-shadow-3); max-width: min(560px, 92vw); animation: toast-in var(--t-open) both; }
 .toast:not(.banner) { cursor: pointer; }
 /* a banner (restore draft, tamper warning …) waits for its choice: it reads as a standing notice, not a passing toast */
 .toast.banner { order: -1; border-radius: 12px; border-inline-start: 4px solid var(--gold); padding-block: 12px; }
 .toast.banner.warn, .toast.banner.err { border-inline-start-color: var(--bw-sec-design); }
-.toast.out { animation: toast-out var(--bw-dur-base) var(--bw-ease-in) both; }
+.toast.out { animation: toast-out var(--t-close) both; }
 /* status icons on the navy toast: the light ramp steps that read on the band (always beside a word) */
 .toast.ok .i { color: var(--bw-sec-edit); } .toast.err .i { color: var(--bw-sec-design); } .toast.warn .i { color: var(--bw-sec-file); } .toast.info .i { color: var(--bw-sec-insert); }
 .toast button { font: inherit; font-weight: 700; color: var(--on-gold); background: var(--gold); border: 0; border-radius: 10px; padding: 5px 11px; cursor: pointer; }
@@ -221,7 +232,8 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
 
 /* calm mode and reduced motion: instant, no movement */
 .shell[data-calm="1"] *, .shell[data-calm="1"] { animation: none !important; transition: none !important; }
-@media (prefers-reduced-motion: reduce) { .shell *, .shell { animation: none !important; transition: none !important; } }
+.shell[data-calm="1"] .ic, .shell[data-calm="1"] .b, .shell[data-calm="1"] summary, .shell[data-calm="1"] button { transform: none !important; }
+@media (prefers-reduced-motion: reduce) { .shell *, .shell { animation: none !important; transition: none !important; } .shell .ic, .shell .b, .shell summary, .shell button { transform: none !important; } }
 @media (prefers-reduced-transparency: reduce) { .island, .pop { background: var(--deep); backdrop-filter: none; } }
 @media (max-width: 1520px) { .island { gap: 6px 8px; padding: 7px 10px; } .grp { gap: 2px; padding-inline-end: 7px; } .b { padding: 6px 8px; gap: 6px; font-size: 13.5px; } .seg .cap { display: none; } .pick select { max-width: 170px; } }
 @media (max-width: 1100px) { .b .w { font-size: 12.5px; } .count .w { display: none; } }
@@ -243,8 +255,10 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
 .sec .sc .i, .sec .sc .ic { width: 13px; height: 13px; }
 .sec .sb { display: flex; align-items: center; gap: 2px; }
 /* section names on the glass: four tokens (each 6.38:1 or more on the band); the rest read in the soft paper tone */
-.sec[data-cat="file"], .sec[data-cat="export"] { --cat: var(--bw-sec-file); } .sec[data-cat="insert"], .sec[data-cat="document"] { --cat: var(--bw-sec-insert); }
-.sec[data-cat="edit"] { --cat: var(--bw-sec-edit); } .sec[data-cat="design"] { --cat: var(--bw-sec-design); } .sec[data-cat="view"] { --cat: var(--on-glass-soft); }
+.sec[data-cat="file"] { --cat: var(--bw-sec-file); } .sec[data-cat="insert"] { --cat: var(--bw-sec-insert); } .sec[data-cat="edit"] { --cat: var(--bw-sec-edit); } .sec[data-cat="design"] { --cat: var(--bw-sec-design); }
+/* UI-CHROME-12 (0.13.3): every section has its own colour (brand v3 light-ramp steps, each >= 6.38:1 on the band) so the names tell sections apart */
+.sec[data-cat="document"] { --cat: var(--bw-sec-document); } .sec[data-cat="export"] { --cat: var(--bw-sec-export); } .sec[data-cat="view"] { --cat: var(--bw-sec-view); }
+.sec[data-cat="gaps"] { --cat: var(--bw-sec-gaps); } .sec[data-cat="header"], .sec[data-cat="chrome"] { --cat: var(--bw-sec-header); } .sec[data-cat="footer"] { --cat: var(--bw-sec-footer); }
 .sec.now { background: color-mix(in srgb, var(--on-glass) 8%, transparent); border: 1px solid var(--hair); border-radius: 12px; padding: 2px 8px; --cat: var(--on-glass); }
 .sec.now.swap { animation: sel-in .32s var(--e-out) both; }
 @keyframes sel-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
@@ -302,14 +316,16 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
 
 /* 0.13 A7: side-panel groups and alternating rows */
 .drawer details.pgrp { margin: 4px 0; }
-.drawer details.pgrp > summary { cursor: pointer; display: flex; align-items: center; gap: 6px; border-radius: 8px; padding: 2px 4px; }
-.drawer details.pgrp > summary > :is(h3, h4) { margin: 10px 0 6px; }
-.drawer details.pgrp > summary::before { content: ""; inline-size: 7px; block-size: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .2s var(--e-out); color: var(--panel-soft); flex: none; }
+.drawer :is(details.pgrp, details.palguide) > summary { cursor: pointer; display: flex; align-items: center; gap: 8px; border-radius: var(--bw-radius-md); padding-inline: 6px; margin-inline: -6px; transition: background-color var(--bw-dur-fast) var(--bw-ease-out), transform var(--bw-dur-slow) var(--e-spring); }
+.drawer :is(details.pgrp, details.palguide) > summary:hover { background: var(--wash-2); }
+.drawer :is(details.pgrp, details.palguide) > summary:active { transform: scale(var(--press, .96)); transition-duration: var(--bw-dur-instant); }
+.drawer :is(details.pgrp, details.palguide) > summary > :is(h3, h4) { margin: 10px 0 6px; }
+.drawer :is(details.pgrp, details.palguide) > summary::before { content: ""; inline-size: 7px; block-size: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .2s var(--e-out); color: var(--panel-soft); flex: none; }
 /* F2 · 38: one chevron convention in every panel, by the UI's reading direction (the shell itself is always rtl):
    physical right + bottom borders; collapsed points forward (› in English, ‹ in Arabic), open points down */
-.shell[data-tdir="rtl"] .drawer details.pgrp > summary::before, .shell[data-tdir="rtl"] .drawer .dgrp:not([open]) > summary::after { transform: rotate(135deg); }
-.shell .drawer details.pgrp[open] > summary::before, .shell .drawer .dgrp[open] > summary::after { transform: rotate(45deg); }
-.drawer details.pgrp > summary::-webkit-details-marker { display: none; }
+.shell[data-tdir="rtl"] .drawer :is(details.pgrp, details.palguide) > summary::before, .shell[data-tdir="rtl"] .drawer .dgrp:not([open]) > summary::after { transform: rotate(135deg); }
+.shell .drawer :is(details.pgrp, details.palguide)[open] > summary::before, .shell .drawer .dgrp[open] > summary::after { transform: rotate(45deg); }
+.drawer :is(details.pgrp, details.palguide) > summary::-webkit-details-marker { display: none; }
 .drawer .list > li { padding-inline: 8px; background: var(--panel); }
 .drawer .list > li:nth-child(even), .drawer .set-row:nth-of-type(even) { background: var(--wash-2); }
 /* F2 · 11: a shade between the fields of every group too (Design, Settings, Process), not only between list rows */
@@ -318,7 +334,7 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
 .drawer header:has(.hact) { flex-wrap: wrap; }
 .drawer header .hact { order: 3; flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 6px; }
 .drawer .jump { font: inherit; font-size: 12px; color: var(--panel-ink); background: var(--wash); border: 1px solid var(--panel-line); border-radius: 8px; padding: 2px 8px; margin-inline-start: 6px; cursor: pointer; }
-.shell[data-calm="1"] .drawer details.pgrp > summary::before { transition: none; }
+.shell[data-calm="1"] .drawer :is(details.pgrp, details.palguide) > summary::before { transition: none; }
 /* F2 · 17: a check finding fixed in a Design group rings that group (as a body jump rings the element) */
 .drawer .bw-jump { outline: 3px solid var(--gold); outline-offset: 2px; border-radius: 8px; }
 
@@ -331,6 +347,20 @@ dialog.bw-resume[open] .list > li:nth-child(even) { background: var(--wash-2); }
 dialog.bw-resume[open] .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
 dialog.bw-resume[open] .b { border: 1px solid var(--panel-line); color: var(--panel-ink); background: var(--wash-2); padding: 8px 14px; border-radius: var(--r-btn, 10px); font: inherit; font-weight: 700; cursor: pointer; }
 dialog.bw-resume[open] .b.primary { background: var(--gold); color: var(--on-gold); border-color: transparent; }
-dialog.bw-resume::backdrop { background: color-mix(in srgb, var(--bw-band, #0b1f3a) 45%, transparent); backdrop-filter: blur(2px); }
+dialog::backdrop { background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); }
 /* F2 · 38: themed scrollbars on the glass menus and the panels: no white strip beside a menu */
 .island, .pop, .ctx, .menu, [popover], .drawer, dialog, .drawer .list { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, currentColor 35%, transparent) transparent; }
+
+/* UIP-10: code and numbers in the house face (Thmanyah sans, tabular figures), never the browser's monospace */
+.shell :is(code, samp, kbd, pre, textarea), dialog :is(code, samp, kbd, pre, textarea), .bw-modal :is(code, samp, pre, textarea) { font-family: var(--bw-font-ui); font-variant-numeric: tabular-nums; }
+
+/* UIP-14: a panel group header reads like a Design group header (display face, navy, small step), and the nested guide uses the same chevron, not the browser's triangle */
+.drawer details.pgrp > summary > :is(h3, h4) { font: var(--bw-weight-bold) var(--bw-size-sm)/var(--bw-leading-snug) var(--bw-font-display); color: var(--navy); }
+.drawer details.palguide > summary { list-style: none; }
+.drawer details.palguide > summary::-webkit-details-marker { display: none; }
+/* UIP-11: one icon size in every panel heading, group and dialog (18 px; the buttons' own icons are 18 too) */
+:is(.drawer, .dialog, dialog.pc-dlg, .bw-modal) .ic:not(.bw-i) { inline-size: 18px; block-size: 18px; }
+/* UIP-12: one radius family on controls: pill for panel buttons, 10 px for fields and cards' inner controls */
+.drawer .jump, .drawer .btns > button:not(.b) { border-radius: var(--bw-radius-md); }
+/* a moving icon part must never become the pointer's target (it would re-arm the explainer card's timer and flicker :hover): the control is the target */
+:is(button, summary, [role="option"], .sc) .ic { pointer-events: none; }

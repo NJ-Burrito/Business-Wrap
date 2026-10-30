@@ -4,13 +4,13 @@
    Before this the plain ones had the card's own colour and read as bare text. Destructive ones take the danger tone.
    The segmented buttons themselves, the font picker and list rows keep their own looks. Calm / reduced motion: still. */
 .drawer :is(.b, .btns > button):not(.primary, .set-seg button) {
-  background: var(--panel); color: var(--panel-ink); border: 1px solid var(--bw-line-strong); border-radius: 999px;
+  background: var(--panel); color: var(--panel-ink); border: 1px solid var(--bw-line-strong); border-radius: var(--bw-radius-pill, 999px);
   padding-block: 6px; padding-inline: 14px; font-weight: 600; cursor: pointer;
   transition: background-color var(--bw-dur-fast) var(--bw-ease-out), color var(--bw-dur-fast) var(--bw-ease-out),
     border-color var(--bw-dur-fast) var(--bw-ease-out), box-shadow var(--bw-dur-fast) var(--bw-ease-out), transform .22s var(--e-spring);
 }
 .drawer :is(.b, .btns > button):not(.primary, .set-seg button):hover:not(:disabled) { background: var(--wash); color: var(--navy); border-color: var(--navy); }
-.drawer :is(.b, .btns > button):not(.set-seg button):active:not(:disabled) { transform: scale(.96); }
+.drawer :is(.b, .btns > button):not(.set-seg button):active:not(:disabled) { transform: scale(var(--press, .96)); }
 .drawer :is(.b, .btns > button):not(.primary, .set-seg button)[aria-pressed="true"] { background: var(--navy); color: var(--on-primary) !important; border-color: var(--navy); box-shadow: 0 0 0 1px var(--gold) inset; }
 .drawer .b.primary { border: 1px solid var(--navy); border-radius: 999px; padding-block: 6px; padding-inline: 14px; transition: background-color var(--bw-dur-fast) var(--bw-ease-out), transform .22s var(--e-spring); }
 .drawer :is(.b, .btns > button):focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }

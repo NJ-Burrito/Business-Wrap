@@ -428,3 +428,34 @@ main { view-transition-name: bw-page; }
   a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 9pt; overflow-wrap: anywhere; }
   .tile::after, .site-foot a::after { content: none; }
 }
+
+/* 0.13.3 SITE-01: every UI icon of the site has its own move on hover, keyboard focus and press (the editor's icon system, same timings),
+   and the gold on hover; none moves under prefers-reduced-motion. SITE-02: the footer links are 44 px targets. */
+.ui { transform-box: fill-box; transform-origin: 50% 50%; }
+.tbtn .ui, .btn .ui, .copy .ui { transition: color var(--bw-dur-fast) var(--bw-ease-out); }
+:is(.tbtn, .btn-ghost, .copy):is(:hover, :focus-visible, :active) .ui { color: var(--bw-accent-rule); }
+.btn-primary:is(:hover, :focus-visible, :active) .ui { color: var(--bw-accent); }
+@keyframes ui-lift { 0%, 100% { translate: 0 0; rotate: 0deg; } 45% { translate: 0 -2px; rotate: -6deg; } }
+@keyframes ui-tilt { 0%, 100% { rotate: 0deg; } 40% { rotate: -24deg; } 70% { rotate: 6deg; } }
+@keyframes ui-spin { from { rotate: 0deg; } to { rotate: 180deg; } }
+@keyframes ui-spin-x { from { rotate: 0deg; } to { rotate: 90deg; } }
+@keyframes ui-drop { 0%, 100% { translate: 0 0; } 45% { translate: 0 3px; } }
+@keyframes ui-pop { 0%, 100% { scale: 1; } 40% { scale: 1.2; } 70% { scale: .96; } }
+@keyframes ui-slide { 0%, 100% { translate: 0 0; } 45% { translate: 2px -2px; } }
+@keyframes ui-grow { from { scale: .6 1; } to { scale: 1 1; } }
+@keyframes ui-draw { from { stroke-dasharray: 0 40; } to { stroke-dasharray: 40 0; } }
+@media (prefers-reduced-motion: no-preference) {
+  :is(a, button, summary):is(:hover, :focus-visible, :active) > .ui.i-github { animation: ui-lift var(--bw-dur-page) var(--bw-ease-out) 1; }
+  :is(a, button, summary):is(:hover, :focus-visible, :active) > .ui.i-moon { animation: ui-tilt var(--bw-dur-page) var(--bw-ease-out) 1; }
+  :is(a, button, summary):is(:hover, :focus-visible, :active) > .ui.i-sun { animation: ui-spin var(--bw-dur-page) var(--bw-ease-in-out) 1; }
+  :is(a, button, summary):is(:hover, :focus-visible, :active) > .ui.i-languages { animation: ui-pop var(--bw-dur-page) var(--bw-ease-out) 1; }
+  :is(a, button, summary):is(:hover, :focus-visible, :active) > .ui.i-menu { animation: ui-grow var(--bw-dur-slow) var(--bw-ease-spring) 1; }
+  :is(a, button, summary):is(:hover, :focus-visible, :active) > .ui.i-x { animation: ui-spin-x var(--bw-dur-slow) var(--bw-ease-out) 1; }
+  :is(a, button, summary):is(:hover, :focus-visible, :active) > .ui.i-download { animation: ui-drop var(--bw-dur-page) var(--bw-ease-out) 1; }
+  :is(a, button, summary):is(:hover, :focus-visible, :active) > .ui.i-copy { animation: ui-slide var(--bw-dur-page) var(--bw-ease-out) 1; }
+  :is(a, button, summary):is(:hover, :focus-visible, :active) > .ui.i-check { animation: ui-draw var(--bw-dur-page) var(--bw-ease-out) 1; }
+  :is(a, button, summary):is(:hover, :focus-visible, :active) > .ui.i-chevron { animation: ui-drop var(--bw-dur-page) var(--bw-ease-out) 1; }
+  :is(a, button, summary, .tile, .story, .way):is(:hover, :focus-visible, :active) .ui.i-shield-check { animation: ui-pop var(--bw-dur-page) var(--bw-ease-out) 1; }
+}
+@media (prefers-reduced-motion: reduce) { .ui { animation: none !important; } }
+.site-foot .fine a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; }

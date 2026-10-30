@@ -1,5 +1,10 @@
 /* A12 profile modal + Settings cards (30-profile.js); bwModal is shared by 31/32 */
-.bw-modal { position: fixed; inset: 0; z-index: 55; display: grid; place-items: center; background: color-mix(in srgb, var(--bw-band, #000) 28%, transparent); }
+.bw-modal { position: fixed; inset: 0; z-index: 55; display: grid; place-items: center; background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); animation: fade var(--t-open) both; }
+.bw-modal.closing { animation: fade-out var(--t-close) both; pointer-events: none; }
+.bw-modal-card { animation: dialog-in var(--t-open) both; }
+.bw-modal.closing .bw-modal-card { animation: dialog-out var(--t-close) both; }
+@keyframes fade-out { to { opacity: 0; } }
+@keyframes dialog-out { to { opacity: 0; scale: var(--bw-scale-pop); } }
 .bw-modal-card { width: min(460px, 92vw); max-height: 86vh; overflow: auto; padding: 18px; border-radius: 20px; background: var(--panel); color: var(--panel-ink); box-shadow: var(--bw-shadow-3), 0 0 0 1px var(--panel-line); display: grid; gap: 10px; }
 .bw-modal-card h2 { margin: 0; font-size: 1.1rem; }
 .bw-modal-card label:not(.chk), .pf-form label:not(.chk), .pf-period label { display: grid; gap: 4px; }
@@ -19,5 +24,13 @@
 .bw-modal-card .b.primary { background: var(--navy); color: var(--on-primary) !important; }
 .lk-banner .b { color: var(--on-glass); }
 /* the card and the lock banner sit beside .shell (a toolbar rebuild must not drop them): the same tokens as .shell */
-.bw-modal, .lk-banner { --navy: var(--bw-primary); --deep: var(--bw-band); --wash: var(--bw-primary-soft); --wash-2: var(--bw-surface-2); --on-primary: var(--bw-on-primary); --on-glass: var(--bw-on-glass); --panel: var(--bw-surface); --panel-ink: var(--bw-ink); --panel-soft: var(--bw-ink-muted); --panel-line: var(--bw-line); font-family: var(--bw-font-ui); } /* H3: the house face (inherit gave the browser's serif) */
+.bw-modal, .lk-banner { --scrim: color-mix(in srgb, var(--bw-band, #001e3d) 45%, transparent); --scrim-blur: blur(3px); --t-open: var(--bw-dur-base) var(--bw-ease-out); --t-close: var(--bw-dur-fast) var(--bw-ease-in); --press: var(--bw-scale-press); --focus: var(--bw-focus); --ic-hot: var(--bw-accent-rule); --navy: var(--bw-primary); --deep: var(--bw-band); --wash: var(--bw-primary-soft); --wash-2: var(--bw-surface-2); --on-primary: var(--bw-on-primary); --on-glass: var(--bw-on-glass); --panel: var(--bw-surface); --panel-ink: var(--bw-ink); --panel-soft: var(--bw-ink-muted); --panel-line: var(--bw-line); font-family: var(--bw-font-ui); } /* H3: the house face (inherit gave the browser's serif) */
 .bw-modal button, .bw-modal input, .bw-modal textarea { font: inherit; }
+
+/* UIP-01/02: the Share dialog's buttons and fields have the house focus ring (not the browser's dark one), and the same press */
+.bw-modal :is(button, input, textarea, select, a[href]):focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.bw-modal .b { transition: background-color var(--bw-dur-fast) var(--bw-ease-out), transform var(--bw-dur-slow) var(--bw-ease-spring); }
+.bw-modal .b:active:not(:disabled) { transform: scale(var(--press)); transition-duration: var(--bw-dur-instant); }
+.bw-modal textarea { font-family: var(--bw-font-ui); }
+.shell[data-calm="1"] ~ .bw-modal, .shell[data-calm="1"] ~ .bw-modal * { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { .bw-modal, .bw-modal * { animation: none !important; transition: none !important; transform: none !important; } }
