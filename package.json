@@ -78,6 +78,7 @@
     "test": "node engine/build-skill-html.mjs --check && node tests/run.mjs",
     "test:serial": "node engine/build-skill-html.mjs --check && node tests/run.mjs --serial",
     "test:changed": "node tests/run.mjs --changed",
+    "ci:failed": "node tools/ci/fix-loop.mjs",
     "test:only": "node tests/run.mjs",
     "fixture:history": "node tools/fixtures/history.mjs make",
     "gate:history": "node tools/release/history-gate.mjs",
