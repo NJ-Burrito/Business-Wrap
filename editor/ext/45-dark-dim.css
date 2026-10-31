@@ -1,0 +1,64 @@
+/* 0.15.0 note 14 · the dim navy dark mode (owner: "dark is too blue, it should be dark and dim").
+   The brand v3 dark set (brand/v3/tokens-v3.css) is the cover navy #001e3d / #002d5c / #003c7a: saturated royal blue, relative luminance
+   0.0127 for the desk. The editor's dark chrome now uses a desaturated, darker ramp (desk #0c1729 = 0.0078). Only the tool's own
+   chrome moves: the generated brand tokens stay as they are (the release agent folds these values into palette/tokens.json later), the
+   document keeps its design pack, and its on-screen sheet is dimmed in editor.css. Light mode is untouched.
+   Every text pair is >= 4.5:1 and every icon, control border and focus ring >= 3:1; tests/look-contrast.test.mjs recomputes them from
+   the shipped CSS (it resolves these custom properties in the real editor, so a drifted value fails the gate).
+   The shell's navy-glass toolbar and its gold ring stay the same family; --bw-sec-* (tab and tool icon colours) are kept. */
+:is(.shell, dialog)[data-theme="dark"] {
+  --bw-bg: #0c1729;
+  --bw-surface: #121f36;
+  --bw-surface-2: #182a47;
+  --bw-surface-sunk: #08101d;
+  --bw-ink: #eef1f6;
+  --bw-ink-muted: #c3cde0;
+  --bw-ink-faint: #9fadc4;
+  --bw-line: #223656;
+  --bw-rule-strong: #35527f;
+  --bw-line-strong: #6f819f;
+  --bw-primary: #9fc4f2;
+  --bw-primary-hover: #c3d9f5;
+  --bw-on-primary: #0a1322;
+  --bw-primary-soft: #1c3558;
+  --bw-primary-wash: #152540;
+  --bw-accent: #d2ad55;
+  --bw-accent-hover: #dcc07a;
+  --bw-on-accent: #0a1322;
+  --bw-accent-rule: #d2ad55;
+  --bw-accent-strong: #dcc07a;
+  --bw-marker: #dcc07a;
+  --bw-on-marker: #0a1322;
+  --bw-focus: #e6c46a;
+  --bw-band: #0a1322;
+  --bw-signal: #f29aa0;
+  --bw-on-signal: #0a1322;
+  --bw-signal-wash: #4a1418;
+  --bw-on-signal-wash: #eef1f6;
+  --bw-success: #7fdcc0;
+  --bw-success-wash: #123d33;
+  --bw-on-success-wash: #eef1f6;
+  --bw-warning: #dcc07a;
+  --bw-info: #9fc4f2;
+  --bw-danger: #f29aa0;
+  --bw-glass: #0a1322;
+  --bw-on-glass: #eef1f6;
+  --bw-on-glass-soft: #c3cde0;
+}
+@media (prefers-color-scheme: dark) {
+  :is(.shell, dialog):not([data-theme="light"]):not([data-theme="dark"]) {
+    --bw-bg: #0c1729; --bw-surface: #121f36; --bw-surface-2: #182a47; --bw-surface-sunk: #08101d;
+    --bw-ink: #eef1f6; --bw-ink-muted: #c3cde0; --bw-ink-faint: #9fadc4;
+    --bw-line: #223656; --bw-rule-strong: #35527f; --bw-line-strong: #6f819f;
+    --bw-primary: #9fc4f2; --bw-primary-hover: #c3d9f5; --bw-on-primary: #0a1322; --bw-primary-soft: #1c3558; --bw-primary-wash: #152540;
+    --bw-accent: #d2ad55; --bw-accent-hover: #dcc07a; --bw-on-accent: #0a1322; --bw-accent-rule: #d2ad55; --bw-accent-strong: #dcc07a;
+    --bw-marker: #dcc07a; --bw-on-marker: #0a1322; --bw-focus: #e6c46a; --bw-band: #0a1322;
+    --bw-signal: #f29aa0; --bw-on-signal: #0a1322; --bw-signal-wash: #4a1418; --bw-on-signal-wash: #eef1f6;
+    --bw-success: #7fdcc0; --bw-success-wash: #123d33; --bw-on-success-wash: #eef1f6;
+    --bw-warning: #dcc07a; --bw-info: #9fc4f2; --bw-danger: #f29aa0;
+    --bw-glass: #0a1322; --bw-on-glass: #eef1f6; --bw-on-glass-soft: #c3cde0;
+  }
+}
+/* the drawer's own spine, the sticky drawer header and wells that painted the old brown "sunk" colour follow the new ramp by token;
+   the one thing that was hard-coded is the 2 px inner ring on paper (focus on the document sheet keeps a navy inner ring) */
+:is(.shell, dialog)[data-theme="dark"] { --bw-shadow-ring: 0 0 0 3px rgba(230, 196, 106, .45); }

@@ -3,13 +3,17 @@
   /* the desk carries the document's own navy, the selection its gold */
   /* page-level editing roles: brand v3 roles with their light / dark values as fallbacks (the page sits outside the shadow root) */
   :root { --bw-desk: var(--bw-primary-soft, #e1eaf4); --bw-sel: var(--bw-primary, #003c7a); --bw-gold: var(--bw-accent, #be9a41); --bw-hover: var(--bw-sec-insert, #84b7eb); --bw-stale: var(--bw-accent-rule, #9c7e36); --bw-stale-wash: var(--bw-surface-2, #efede6); --bw-hit: var(--bw-marker, #e3ddce); }
-  :root[data-bw-dark="1"] { --bw-desk: var(--bw-bg, #001e3d); --bw-sel: var(--bw-primary, #bfd6ee); --bw-hover: var(--bw-sec-insert, #84b7eb); }
-  @media (prefers-color-scheme: dark) { :root:not([data-bw-dark="0"]) { --bw-desk: var(--bw-bg, #001e3d); } }
+  /* 0.15.0 note 14: the dim navy dark desk (ext/45-dark-dim.css has the chrome's side of the same ramp); the sheet is dimmed on screen only */
+  :root[data-bw-dark="1"] { --bw-desk: var(--bw-dim-desk, #0c1729); --bw-sel: var(--bw-dim-sel, #9fc4f2); --bw-hover: var(--bw-sec-insert, #84b7eb); }
+  @media (prefers-color-scheme: dark) { :root:not([data-bw-dark="0"]):not([data-bw-dark="1"]) { --bw-desk: var(--bw-dim-desk, #0c1729); } }
 
   html { background: var(--bw-desk); scroll-padding-top: var(--bw-bar-h, 120px); } /* scrollIntoView / focus / anchors land below the fixed toolbar, not under it */ /* scrollIntoView / focus / anchors land below the fixed toolbar, not under it */
-  body { padding-top: var(--bw-bar-h, 120px); background: var(--bw-desk); }
+  body { padding-top: var(--bw-bar-h, 120px); background: transparent; } /* the desk is on html; a transparent body lets #bw-backdrop (z-index -1) show through */
   #bw-pair { padding: 12px 0 80px; }
   #bw-pair main.bw-doc { width: 210mm; margin: 0 auto 24px; background: var(--paper); box-shadow: var(--bw-shadow-3, 0 1px 2px rgba(0,30,61,.12), 0 24px 60px -28px rgba(0,30,61,.45)); zoom: var(--bw-zoom, 1); position: relative; z-index: 1; border-radius: 3px; }
+  /* 0.15.0 note 14: the on-screen sheet is dimmed in dark mode (a warm light grey, about 7 % darker than the page white: less glare); the printed and exported document is untouched */
+  :root[data-bw-dark="1"] #bw-pair main.bw-doc { background: color-mix(in srgb, var(--paper) 80%, var(--bw-dim-sheet-shade, #a39d8f)); }
+  :root[data-bw-dark="1"] main.bw-doc :is(table.control.story-info, table.dict) td { background: color-mix(in srgb, var(--paper) 80%, var(--bw-dim-sheet-shade, #a39d8f)); }
   html:not(.bw-ready) #bw-pair main.bw-doc { animation: bw-page-in .7s cubic-bezier(.16,1,.3,1) both; }
   @keyframes bw-page-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
   main.bw-doc [data-p] { transition: background-color .25s cubic-bezier(.16,1,.3,1), box-shadow .25s cubic-bezier(.16,1,.3,1); }
@@ -74,10 +78,25 @@
   #bw-watermark .bw-wm-tag i { display: block; font-style: normal; }
   #bw-watermark .bw-wm-live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   :root[data-bw-dark="1"] #bw-watermark .bw-wm-tag { color: var(--bw-ink-muted, #d5cfc3); }
+  /* 0.15.0 note 13 · the giant NJ backdrop: ext/46-backdrop.js adds #bw-backdrop (aria-hidden) as the first child of the body. It is only
+     tint on the desk (contrast 1.08 to 1.20 against it, never text), never takes a pointer event, and moves with transform and opacity only
+     (compositor: no layout, no paint). One light wash sweeps across the monogram (a gradient layer sliding under the mask) so one part of
+     the N and the J brightens while the other dims, and the whole breathes between 70 and 100 %. Still in calm mode, with reduced motion,
+     in focus mode (root flags data-bw-calm / data-bw-focus), in a hidden tab and above 200 % zoom (the script sets .bd-still). */
+  #bw-backdrop { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; contain: strict; --bd-bright: var(--bw-backdrop-bright, rgb(0 60 122 / .075)); --bd-dim: var(--bw-backdrop-dim, rgb(0 60 122 / .045)); animation: bd-breathe 28s ease-in-out infinite alternate; }
+  :root[data-bw-dark="1"] #bw-backdrop { --bd-bright: var(--bw-backdrop-bright, rgb(238 241 246 / .065)); --bd-dim: var(--bw-backdrop-dim, rgb(238 241 246 / .038)); }
+  #bw-backdrop .bd-mark { position: absolute; inset-block-start: 50%; inset-inline-start: calc(50% - 87vmin); inline-size: 150vmin; block-size: 150vmin; translate: 0 -50%; overflow: hidden;
+    -webkit-mask: var(--bd-mask) center / contain no-repeat; mask: var(--bd-mask) center / contain no-repeat; }
+  #bw-backdrop .bd-wash { position: absolute; inset: -60%; background: linear-gradient(135deg, var(--bd-dim) 0%, var(--bd-dim) 30%, var(--bd-bright) 50%, var(--bd-dim) 70%, var(--bd-dim) 100%); animation: bd-sweep 90s ease-in-out infinite alternate; will-change: transform; }
+  @keyframes bd-sweep { from { transform: translate3d(-22%, -22%, 0); } to { transform: translate3d(22%, 22%, 0); } }
+  @keyframes bd-breathe { from { opacity: .7; } to { opacity: 1; } }
+  #bw-backdrop.bd-still, #bw-backdrop.bd-still .bd-wash, :root[data-bw-calm="1"] #bw-backdrop, :root[data-bw-calm="1"] #bw-backdrop .bd-wash, :root[data-bw-focus="1"] #bw-backdrop, :root[data-bw-focus="1"] #bw-backdrop .bd-wash { animation-play-state: paused; }
+  #bw-backdrop.bd-off { display: none; }
+  @media (prefers-reduced-motion: reduce) { #bw-backdrop, #bw-backdrop .bd-wash { animation: none; } }
   #bw-ui-host { position: fixed; inset: 0 0 auto 0; z-index: 40; }
 }
 @media print {
-  #bw-ui-host, #bw-overlay, #bw-watermark { display: none !important; }
+  #bw-ui-host, #bw-overlay, #bw-watermark, #bw-backdrop { display: none !important; }
   body { padding: 0 !important; }
   main.bw-doc { zoom: 1 !important; box-shadow: none !important; width: auto !important; margin: 0 !important; }
   main.bw-other { display: none !important; }

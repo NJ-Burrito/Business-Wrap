@@ -46,6 +46,7 @@ Object.assign(IC, {
   storyCard: BI_G('<path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9l7-7V5a2 2 0 0 0-2-2z"/><path d="M14 21v-5a1 1 0 0 1 1-1h6"/>'), // lucide sticky-note (ISC)
   exportAll: BI_G('<path d="M12 13V3"/><path d="m7 8 5 5 5-5"/><path d="M4 17h16"/><path d="M6 21h12"/>'), // download onto a stack of rules: every service
   'export.editsAll': BI_G('<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1"/><path d="M14 18a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-1a1 1 0 0 0-1-1"/><path d="M2 7v13a2 2 0 0 0 2 2"/>'), // lucide file-braces + a second page edge (ISC)
+  biHere: BI_G('<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>'), // lucide map-pin (ISC): from this page on
   pfUser: BI_G('<path d="M18 20a6 6 0 0 0-12 0"/><circle cx="12" cy="10" r="4"/><circle cx="12" cy="12" r="10"/>'), // lucide circle-user-round (ISC): the profile card
   both: BI_G('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 3v18"/>'), // the two editions side by side (was the keep-with-next glyph)
 });
@@ -61,26 +62,42 @@ const BI_MAP = [
   ['[data-palimp]', 'biPalette'], ['[data-palex]', 'biExport'], ['[data-k="texp"]', 'biExport'], ['[data-k="timp"]', 'biImport'], ['[data-k="dcssApply"]', 'biApply'],
   ['[data-k="snap"]', 'biSnap'], ['[data-k="log"]', 'biExport'], ['.drawer [data-k="next"]', 'biNext'], ['.drawer [data-k="all"]', 'biReplaceAll'],
   ['[data-sh="open"]', 'biOpen'], ['[data-sh="copy"]', 'biCopy'],
-  ['[data-w2a="all"]', 'biAllPages'], ['[data-w2a="section"]', 'biSection'],
+  ['[data-w2a="all"]', 'biAllPages'], ['[data-w2a="section"]', 'biSection'], ['[data-w2a="here"]', 'biHere'],
 ];
 /** The buttons left as words on purpose (their label is the value they pick). */
 const BI_WORDS = '[data-a="ed"], [data-a="dir"], [data-k="setLang"], [data-k="setDir"], .fp-btn, [data-tl="go"]';
-function biDecorate() {
-  for (const [sel, key] of BI_MAP) {
-    const inDrawer = sel.startsWith('.drawer ');
-    for (const b of root.querySelectorAll(`button:is(${inDrawer ? sel.slice(8) : sel})`)) {
-      if (inDrawer && !b.closest('.drawer')) continue;
-      if (b.querySelector('svg') || !(IC[key] || IC.biLog)) continue;
+/** Give the buttons under `scope` (the whole shadow root by default) their icon. 0.15.0 perf booster 5: the mutation observer used to run all 41
+ *  selectors over the whole root on every mutation microtask (1.7 ms per key, 6.5 ms per selection, 6 ms per tab switch); now it only asks
+ *  the nodes that were added (a button, or the buttons under an added node) with `matches`. */
+function biDecorate(scope = root) {
+  const buttons = scope.nodeType === 1 && scope.matches('button') ? [scope, ...scope.querySelectorAll('button')] : scope.querySelectorAll('button');
+  for (const b of buttons) {
+    if (b.querySelector('svg')) continue;
+    for (const [sel, key] of BI_MAP) {
+      const inDrawer = sel.startsWith('.drawer ');
+      if (!b.matches(inDrawer ? sel.slice(8) : sel) || (inDrawer && !b.closest('.drawer'))) continue;
+      if (!(IC[key] || IC.biLog)) continue;
       b.insertAdjacentHTML('afterbegin', `<span class="i bi-i">${ic(IC[key] ? key : 'biLog')}</span>`);
+      break; // the first map entry that fits, as before (a decorated button is skipped by the svg test on the next entry)
     }
   }
 }
-let biQueued = false;
+let biObserver = null;
 bwExt({
   on: {
     boot: () => {
       biDecorate();
-      new MutationObserver(() => { if (biQueued) return; biQueued = true; queueMicrotask(() => { biQueued = false; biDecorate(); }); }).observe(root, { childList: true, subtree: true });
+      // only what was added is looked at; a removed icon (a morph) re-checks its own button; our own insertions are dropped from the queue
+      biObserver = new MutationObserver((recs) => {
+        const todo = new Set();
+        for (const r of recs) {
+          for (const n of r.addedNodes) if (n.nodeType === 1 && !n.classList.contains('bi-i')) todo.add(n);
+          if (r.removedNodes.length && r.target.nodeType === 1 && r.target.matches('button')) todo.add(r.target);
+        }
+        for (const n of todo) if (n.isConnected) biDecorate(n);
+        biObserver.takeRecords();
+      });
+      biObserver.observe(root, { childList: true, subtree: true });
     },
   },
   expose: { buttonIcons: { map: BI_MAP, words: BI_WORDS, decorate: biDecorate } },
