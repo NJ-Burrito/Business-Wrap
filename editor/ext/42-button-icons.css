@@ -37,6 +37,7 @@ button > .bi-i > .ic { inline-size: 18px; block-size: 18px; }
 [data-ic="biNext"] > * { --y: 2.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 [data-ic="biReplaceAll"] > * { --s: 1.12; --icm: icm-pop var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1; }
 [data-ic="biAllPages"] > * { --x: 1.5px; --y: -1.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="edOne"] > :nth-child(2) { --x: 1.5px; --y: -1.5px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 [data-ic="biSection"] > :nth-child(n+3) { --icm: icm-grow-x var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
 /* Settings › view (the toolbar's page-view icons): the sheet slides (continuous), lifts (single), opens (book) */
 [data-ic="view.continuous"] > * { --y: 2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }

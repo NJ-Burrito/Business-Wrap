@@ -1040,7 +1040,11 @@ function placeGrip(els) {
   g.hidden = false;
   const rtl = getComputedStyle(els[0]).direction === 'rtl';
   g.style.top = `${r.top + window.scrollY}px`;
-  g.style.left = `${(rtl ? main.right + 6 : main.left - g.offsetWidth - 6) + window.scrollX}px`;
+  const right = main.right + 6, left = main.left - g.offsetWidth - 6;
+  g.style.left = `${(rtl ? right : left) + window.scrollX}px`;
+  // 0.15.3: a side panel (explanation, spelling) floats over the pages' right edge; a grip under it cannot be grabbed, so it takes the page's other margin
+  const under = (x) => [...(host.shadowRoot?.querySelectorAll('.bw-sidepanel:not([data-slide="out"])') || [])].some((p) => { const q = p.getBoundingClientRect(); return q.width && x + g.offsetWidth > q.left && x < q.right && r.top < q.bottom && r.top + g.offsetHeight > q.top; });
+  if (under(rtl ? right : left) && !under(rtl ? left : right)) g.style.left = `${(rtl ? left : right) + window.scrollX}px`;
 }
 function startDrag(ev) {
   const b = blockOf(S.sel?.b);

@@ -73,7 +73,7 @@ try {
   const status = spawnSync(process.execPath, [path.join(REPO, 'engine', 'cli.mjs'), 'status', '--json'], { encoding: 'utf8', env: { ...process.env, BW_STATE_DIR: path.join(tmp, 'state') } });
   let st = {}; try { st = JSON.parse(status.stdout); } catch { /* printed below */ }
   check(3, 'the healer is installed and reported by `business-wrap status`', status.status === 0 && fs.existsSync(path.join(REPO, 'engine', 'heal')) && JSON.stringify(st).includes('heal'), status.stderr || status.stdout.slice(0, 200));
-  check(5, 'this checkout is 0.15.2 with its CHANGELOG entry (the version worked on)', pkg.version === '0.15.2' && /0\.14\.0/.test(fs.readFileSync(path.join(REPO, 'CHANGELOG.md'), 'utf8')));
+  check(5, 'this checkout is 0.15.3 with its CHANGELOG entry (the version worked on)', pkg.version === '0.15.3' && /0\.14\.0/.test(fs.readFileSync(path.join(REPO, 'CHANGELOG.md'), 'utf8')));
   check(31, 'licence: MIT in LICENSE, package.json and plugin.json', /MIT License/.test(fs.readFileSync(path.join(REPO, 'LICENSE'), 'utf8')) && pkg.license === 'MIT' && readJ(path.join(REPO, '.claude-plugin', 'plugin.json')).license === 'MIT');
   check(33, 'script, not AI: the CLI covers open/close/status/new/build/harvest/import/export/report/update and says ai false', ['open', 'close', 'status', 'new', 'build', 'harvest', 'import', 'export', 'report', 'update'].every((v) => VERBS.includes(v)) && st.ai === false, JSON.stringify({ VERBS, ai: st.ai }));
   const tools = await new Promise((resolve) => {
@@ -101,7 +101,7 @@ try {
   const viaSuite = (f) => listed.some((g) => fs.readFileSync(path.join(REPO, 'tests', g), 'utf8').includes(f)); // srs.test.mjs runs srs-heal and srs-wp8
   const missing = suites.filter((f) => !listed.includes(f) && !viaSuite(f));
   check(36, 'tests on each step: every tests/*.test.mjs (this suite included) runs in `npm test`, directly or from a suite it runs', !missing.length && (pkg.scripts.test.includes('mcp/test/server.test.mjs') || pkg.scripts.test.includes('tests/run.mjs')), missing.join(', '));
-  check(37, 'version 0.15.2 everywhere the release reads it (package, plugin, marketplace, MCP server.json)', [pkg.version, readJ(path.join(REPO, '.claude-plugin', 'plugin.json')).version, readJ(path.join(REPO, '.claude-plugin', 'marketplace.json')).plugins[0].version, readJ(path.join(REPO, 'mcp', 'server.json')).version].every((v) => v === '0.15.2'));
+  check(37, 'version 0.15.3 everywhere the release reads it (package, plugin, marketplace, MCP server.json)', [pkg.version, readJ(path.join(REPO, '.claude-plugin', 'plugin.json')).version, readJ(path.join(REPO, '.claude-plugin', 'marketplace.json')).plugins[0].version, readJ(path.join(REPO, 'mcp', 'server.json')).version].every((v) => v === '0.15.3'));
   const ws = W.workspace();
   check(39, 'outputs go under a generated «Business-Wrap» folder: المستندات - Documents (a folder per document) and the hidden .system', path.basename(ws.root) === 'Business-Wrap' && path.basename(ws.dirs.docs) === 'المستندات - Documents' && path.basename(ws.dirs.system) === '.system' && ws.dirs.history === path.join(ws.dirs.system, 'history'), JSON.stringify(ws.dirs));
   check(41, 'extras are written down (CHANGELOG «Extras»)', /extras/i.test(fs.readFileSync(path.join(REPO, 'CHANGELOG.md'), 'utf8')));

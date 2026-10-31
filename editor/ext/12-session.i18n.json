@@ -1,4 +1,36 @@
 {
-  "ar": { "sessTitle": "متابعة العمل", "sessLead": "أُغلق آخر عمل وفيه {n} من التبويبات المحفوظة.", "sessResume": "استأنف كل شيء ({n})", "sessNew": "عمل جديد", "sessOpened": "فُتحت {n} من التبويبات.", "wsTitle": "مجلد الحفظ", "wsLead": "تُحفظ ملفات PDF وDOCX وHTML في مجلد Business-Wrap داخل هذا المجلد؛ مجلد HISTORY للجهاز فقط.", "wsChange": "غيّر المجلد", "wsChosen": "مجلد الحفظ: {dir}", "wsSavedHtml": "حُفظ HTML في: {file}", "wsServerOnly": "اختيار مجلد الحفظ يحتاج الخادم المحلي (npm run serve)." },
-  "en": { "sessTitle": "Pick up where you left off", "sessLead": "Your last session closed with {n} saved tabs.", "sessResume": "Resume everything ({n})", "sessNew": "New work", "sessOpened": "{n} tabs opened.", "wsTitle": "Save folder", "wsLead": "PDF, DOCX and HTML files go into a Business-Wrap folder inside this one; HISTORY is for the machine only.", "wsChange": "Change folder", "wsChosen": "Save folder: {dir}", "wsSavedHtml": "HTML saved to: {file}", "wsServerOnly": "Choosing the save folder needs the local server (npm run serve)." }
+ "ar": {
+  "sessTitle": "متابعة العمل",
+  "sessLead": "أُغلق آخر عمل وفيه {n} من التبويبات المحفوظة.",
+  "sessResume": "استأنف كل شيء ({n})",
+  "sessNew": "عمل جديد",
+  "sessOpened": "فُتحت {n} من التبويبات.",
+  "wsTitle": "مجلد الحفظ",
+  "wsLead": "تُحفظ ملفات PDF وDOCX وHTML في مجلد Business-Wrap داخل هذا المجلد؛ مجلد HISTORY للجهاز فقط.",
+  "wsChange": "غيّر المجلد",
+  "wsChosen": "مجلد الحفظ: {dir}",
+  "wsSavedHtml": "حُفظ HTML في: {file}",
+  "wsServerOnly": "اختيار مجلد الحفظ يحتاج الخادم المحلي (npm run serve).",
+  "leaseFollower": "هذه الوثيقة مفتوحة للتحرير في تبويب آخر، لذلك هذا التبويب للقراءة فقط. أغلق التبويب الآخر ثم أعد التحميل.",
+  "leaseStale": "تغيّرت هذه الوثيقة في تبويب آخر ونسختك أقدم. أعد التحميل قبل أي تعديل حتى لا تُحفظ نسخة قديمة فوق الأحدث.",
+  "leaseAsleep": "{n} تبويب نائم (ميزة التبويبات النائمة في Edge). اضغط عليه ليستيقظ.",
+  "leaseReload": "إعادة التحميل"
+ },
+ "en": {
+  "sessTitle": "Pick up where you left off",
+  "sessLead": "Your last session closed with {n} saved tabs.",
+  "sessResume": "Resume everything ({n})",
+  "sessNew": "New work",
+  "sessOpened": "{n} tabs opened.",
+  "wsTitle": "Save folder",
+  "wsLead": "PDF, DOCX and HTML files go into a Business-Wrap folder inside this one; HISTORY is for the machine only.",
+  "wsChange": "Change folder",
+  "wsChosen": "Save folder: {dir}",
+  "wsSavedHtml": "HTML saved to: {file}",
+  "wsServerOnly": "Choosing the save folder needs the local server (npm run serve).",
+  "leaseFollower": "This document is open for editing in another tab, so this tab is read-only. Close the other tab, then reload.",
+  "leaseStale": "This document changed in another tab and your copy is older. Reload before editing so an old copy is never saved over the newer one.",
+  "leaseAsleep": "{n} tab(s) asleep (Edge sleeping tabs). Click them to wake them.",
+  "leaseReload": "Reload"
+ }
 }
