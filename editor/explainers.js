@@ -1,19 +1,21 @@
-/* Business-Wrap editor — hover/focus explainers (0.10.0), concatenated after views.js.
- * Rest on a tool (pointer or keyboard focus) for 900 ms (0.13; was 700) → a card: the tool's name, its shortcut, one plain sentence
- * (i18n `explain.<id>`, Arabic and English) and a small looping illustration of what it does (SVG + CSS motion,
- * one of a few scenes, carrying the tool's own icon). Moving to the next tool while a card is up shows the next card
- * at once (warm-up, as native tooltips do). Leaving, pressing, scrolling or Esc hides it. Reduced motion or calm mode:
- * the illustration holds a still frame. The card is never focusable and never covers the control it explains.
- * 0.14.0 A1: the card no longer floats near the tool (it could slip behind lists or under the page): it appears in ONE
- * side panel (.xpl-dock) at the inline-end edge, below the toolbar, collapsible (open/closed is remembered in
- * localStorage bw:xpl-panel) and moved aside for an open slide-over panel, so nothing can cover it. Hover and keyboard
- * focus both fill it. Declarations only (hoisted) — xplWire() runs from uxAfterBuild(). */
+/* Business-Wrap editor — explanation panel (0.15.0), concatenated after views.js.
+ * Owner note 10 (2026-10-30): ONE panel on the physical RIGHT of the screen (the shell is fixed right-to-left, so it no longer sits
+ * with the slide-over drawers on the left). Rest the pointer on a tool, a ribbon tab, a field or a toggle for 400 ms (keyboard
+ * focus: 400 ms too; touch: a 500 ms long press) and the panel shows its name, its shortcut, one plain explanation
+ * (i18n `explain.<id>`, Arabic and English) and its own picture (xpl-art.js: XPL_ART, one drawing per id, no text in it).
+ * Moving along a row of tools within 600 ms of leaving one shows the next card at once (no flicker). There is no "seen" memory:
+ * the card shows every time, and it stays when the pointer leaves (the panel is a reference area, not a tooltip). The user
+ * closes the panel with its X; an edge tab on the right brings it back (state: localStorage bw:xpl-panel, '0' = closed).
+ * An old bw:explainers='0' closes it once (migration); nothing else reads bw:explainers any more. While a slide-over drawer is
+ * open below 1280 px the panel steps aside to its edge tab by itself (CSS), without touching the saved choice; at 1280 px and
+ * wider both show (the drawers are on the left, the panel on the right, and the drawers hold most of the controls to explain).
+ * Declarations only (hoisted): xplWire() runs from uxAfterBuild(). */
 
-/** Which explainer a control has: data-x (a field), data-a (a tool), data-dg (a selection picker), data-k / data-f (panel option). */
+/** Which explainer a control has: data-x (a field), data-a (a tool), data-dg (a selection picker), data-k / data-f (panel option), a ribbon tab. */
 function xplKey(el) {
   if (!el) return '';
+  if (el.dataset.rb === 'tab' && el.dataset.tab) return `rbtab_${el.dataset.tab}`;
   if (el.dataset.x) return el.dataset.x;
-  if (el.dataset.a === 'ed' || el.dataset.a === 'dir') return el.dataset.a;
   if (el.dataset.a) return el.dataset.a;
   if (el.dataset.dg) return `dg_${el.dataset.dg}`;
   if (el.dataset.k) return `k_${el.dataset.k}`;
@@ -33,30 +35,35 @@ function xplKey(el) {
   if (el.dataset.lab) return 'design.label';
   return '';
 }
-/* 0.13 A3: 900 ms rest; a card shown, or a tool pressed, is not shown again by pointer for 10 minutes
- * (sessionStorage bw:xpl-seen). Settings: off ('0') / once (default) / always ('always': the 0.12 behaviour). */
-function xplDelay() { return 900; }
-function xplSeenMs() { return 10 * 60 * 1000; }
-function xplMode() { const v = ls.get('bw:explainers'); return v === '0' ? 'off' : v === 'always' ? 'always' : 'once'; }
-function xplSeen(k) {
-  if (xplMode() === 'always') return false;
-  try { const m = JSON.parse(sessionStorage.getItem('bw:xpl-seen') || '{}'); return Date.now() - (m[k] || 0) < xplSeenMs(); } catch { return false; }
-}
-function xplMark(k) {
-  if (!k) return;
-  try { const m = JSON.parse(sessionStorage.getItem('bw:xpl-seen') || '{}'); m[k] = Date.now(); sessionStorage.setItem('bw:xpl-seen', JSON.stringify(m)); } catch { /* storage blocked: no memory */ }
-}
+const XPL_DELAY = 400; // ms the pointer or the focus rests on a control before its card shows
+const XPL_WARM = 600; // ms after leaving a control in which the next one shows at once
+const XPL_HOLD = 500; // ms of a touch long-press
+const XPL_PAD_MIN = 1280; // below this width the page is not pushed aside (the panel may cover its edge)
+function xplDelay() { return XPL_DELAY; }
+/** The control a node belongs to when it has an explanation (null otherwise). */
 function xplTarget(node) {
-  if (xplMode() === 'off') return null; // Settings → Preferences: explainer cards off
-  const el = node?.closest?.('button[data-a], select[data-a], select[data-dg], [data-x], .drawer [data-k], .drawer [data-f], .pop label.chk, .drawer :is([data-fpopen], [data-fplocal], [data-fpupload], [data-fprm], .vc-s, .vc-n, .vc-u, .cc-hex, input[type="color"], [data-dpart], [data-dmove], [data-lab])');
+  const el = node?.closest?.('button[data-a], select[data-a], select[data-dg], [data-x], .rb-tab[data-tab], .drawer [data-k], .drawer [data-f], .pop label.chk, .drawer :is([data-fpopen], [data-fplocal], [data-fpupload], [data-fprm], .vc-s, .vc-n, .vc-u, .cc-hex, input[type="color"], [data-dpart], [data-dmove], [data-lab])');
   if (!el || el.closest('.palette, .xpl, .xpl-dock')) return null;
   if (el.matches('.pop label.chk')) { el.dataset.x = el.dataset.x || 'both'; }
   const k = xplKey(el);
   return k && I18N.ui[S.ui][`explain.${k}`] ? el : null;
 }
-/** 0.14.0 A1: the side panel's open/closed state ('0' = collapsed), remembered per browser. */
-function xplPanelOpen() { return ls.get('bw:xpl-panel') !== '0'; }
-/** The one side panel (built once, kept across rebuilds by UI_RUNTIME); its words follow the UI language. */
+/** The panel's open/closed state ('0' = closed), remembered per browser; an old "explainers off" closes it once. */
+function xplPanelOpen() {
+  if (ls.get('bw:xpl-panel') == null && ls.get('bw:explainers') === '0') ls.set('bw:xpl-panel', '0');
+  return ls.get('bw:xpl-panel') !== '0';
+}
+/** True while the panel is really on screen (open, and not stepped aside for a drawer). */
+function xplPanelVisible() {
+  const head = root.querySelector('.xpl-dock .xd-h'); // the header is hidden whenever the dock is only its edge tab
+  return !!head && getComputedStyle(head).display !== 'none';
+}
+/** The page makes room on the right while the panel is showing (wide screens only), so it never covers the document. */
+function xplPad() {
+  const on = xplPanelVisible() && document.documentElement.clientWidth >= XPL_PAD_MIN;
+  document.body.style.paddingRight = on ? `${(root.querySelector('.xpl-dock')?.offsetWidth || 304) + 16}px` : '';
+}
+/** The one panel (built once, kept across rebuilds by UI_RUNTIME); its words follow the UI language. */
 function xplDock() {
   const shell = root.querySelector('.shell');
   if (!shell) return null;
@@ -64,186 +71,153 @@ function xplDock() {
   if (!dock) {
     dock = document.createElement('aside');
     dock.className = 'xpl-dock';
-    dock.innerHTML = '<button type="button" class="xd-t" aria-controls="bw-xpl-body"><span class="i"></span><span class="xd-w"></span><span class="xd-c" aria-hidden="true"></span></button><div class="xd-b" id="bw-xpl-body"><p class="xph"></p></div>';
+    dock.innerHTML = '<header class="xd-h"><span class="i"></span><b class="xd-w"></b><button type="button" class="xd-x" aria-controls="bw-xpl-body"></button></header><div class="xd-b" id="bw-xpl-body"><div class="xph"><div class="xa" aria-hidden="true"></div><p></p></div></div><button type="button" class="xd-tab"><span class="i"></span></button>';
     shell.appendChild(dock);
-    dock.querySelector('.xd-t').addEventListener('click', () => xplPanelSet(!xplPanelOpen()));
+    const tab = dock.querySelector('.xd-tab'); // closed (or stepped aside) the dock IS this 40 x 96 edge tab
+    dock.querySelector('.xd-x').addEventListener('click', () => xplPanelSet(false));
+    tab.addEventListener('click', () => { dock.dataset.force = '1'; xplPanelSet(true); });
     const card = root.querySelector('.xpl');
     if (card) dock.querySelector('.xd-b').appendChild(card);
+    if (typeof ResizeObserver === 'function') new ResizeObserver(() => xplPad()).observe(dock);
+    window.addEventListener('resize', xplPad);
   }
+  const tab = dock.querySelector('.xd-tab');
   const open = xplPanelOpen();
-  dock.hidden = xplMode() === 'off';
+  if (!shell.querySelector('.drawer:not([hidden])')) delete dock.dataset.force; // a stepped-aside panel returns with the next drawer-free moment
   dock.dir = shell.dataset.tdir || 'rtl';
   dock.lang = S.ui;
   dock.dataset.open = open ? '1' : '0';
   dock.setAttribute('aria-label', t('xpl.panel'));
-  const btn = dock.querySelector('.xd-t');
-  btn.setAttribute('aria-expanded', String(open));
-  btn.title = t(open ? 'xpl.collapse' : 'xpl.expand');
-  btn.querySelector('.i').innerHTML = ic('info');
-  btn.querySelector('.xd-w').textContent = t('xpl.panel');
-  dock.querySelector('.xph').textContent = t('xpl.hint');
+  dock.querySelector('.i').innerHTML = ic('info');
+  dock.querySelector('.xd-w').textContent = t('xpl.panel');
+  const x = dock.querySelector('.xd-x');
+  x.innerHTML = ic('close');
+  x.setAttribute('aria-label', t('xpl.close'));
+  x.title = t('xpl.close');
+  tab.dir = dock.dir;
+  tab.lang = S.ui;
+  tab.querySelector('.i').innerHTML = ic('info');
+  tab.setAttribute('aria-label', t('xpl.open'));
+  tab.title = t('xpl.open');
+  tab.setAttribute('aria-expanded', String(open));
+  const ph = dock.querySelector('.xph');
+  ph.querySelector('p').textContent = t('xpl.hint');
+  ph.querySelector('.xa').innerHTML = xplArtFor('');
   dock.querySelector('.xd-b').hidden = !open;
+  xplPad();
   return dock;
 }
 function xplPanelSet(open) {
   ls.set('bw:xpl-panel', open ? '1' : '0');
-  if (!open) xplHide();
+  if (!open) xplClear();
   xplDock();
 }
 function xplWire() {
   xplDock();
   if (root.__xplWired) return;
   root.__xplWired = true;
-  const st = { timer: 0, el: null, warmUntil: 0 };
+  const st = { timer: 0, hold: 0, el: null, warmUntil: 0 };
   xplWire.st = st;
   const arm = (el, delay) => {
     clearTimeout(st.timer);
     // the card replaces the native tooltip; the name the title gave moves to aria-label so it is never lost
     if (el.title) { el.dataset.tt = el.title; el.removeAttribute('title'); if (!el.getAttribute('aria-label')) el.setAttribute('aria-label', el.dataset.tt); }
-    st.timer = setTimeout(() => xplShow(el), delay);
+    const k = xplKey(el);
+    st.timer = setTimeout(() => xplShow(el, k), delay);
   };
+  const warm = () => (performance.now() < st.warmUntil ? 0 : xplDelay());
   root.addEventListener('pointerover', (e) => {
     if (e.pointerType === 'touch') return;
     const el = xplTarget(e.target);
-    if (!el || el === st.el || el === st.pressed || xplSeen(xplKey(el))) return;
-    arm(el, performance.now() < st.warmUntil ? 0 : xplDelay());
+    // the card already shows this tool: nothing to do (compared by key: the ribbon repaints by morphing, so one button node can become another tool)
+    if (!el || root.querySelector('.xpl:not([hidden])')?.dataset.k === xplKey(el)) return;
+    arm(el, warm());
   });
   root.addEventListener('pointerout', (e) => {
     const el = xplTarget(e.target);
-    if (!el || el.contains(e.relatedTarget)) return;
-    clearTimeout(st.timer);
-    if (st.pressed === el) st.pressed = null; // the pointer left the pressed tool: it may explain again (unless seen)
-    if (st.el === el) xplHide();
+    if (!el || el.contains(e.relatedTarget) || !el.isConnected) return; // a repainted (removed) button is not the pointer leaving
+    const to = xplTarget(e.relatedTarget);
+    if (to && xplKey(to) === xplKey(el)) return; // the ribbon swapped the button under a resting pointer: same tool, keep waiting
+    clearTimeout(st.timer); // a card still waiting for its delay is dropped; the one on screen stays
+    if (st.el === el) st.warmUntil = performance.now() + XPL_WARM;
   });
   root.addEventListener('focusin', (e) => {
     const el = xplTarget(e.target);
-    if (!el || !el.matches(':focus-visible') || el === st.pressed) return;
-    if (xplSeen(xplKey(el))) { el.setAttribute('aria-description', t(`explain.${xplKey(el)}`)); return; } // seen: the words, no card
-    arm(el, performance.now() < st.warmUntil ? 0 : xplDelay());
+    if (!el || !el.matches(':focus-visible')) return;
+    arm(el, warm());
   });
-  root.addEventListener('focusout', () => { clearTimeout(st.timer); xplHide(); });
-  root.addEventListener('pointerdown', (e) => {
+  root.addEventListener('focusout', (e) => {
+    const el = xplTarget(e.target);
+    if (el && !el.isConnected) return; // a repaint removed the focused button: not the focus leaving
     clearTimeout(st.timer);
-    xplHide();
-    const el = xplTarget(e.composedPath()[0]);
-    st.pressed = el; // after a press the card waits until the pointer leaves that control
-    if (el) xplMark(xplKey(el));
+    if (el && st.el === el) st.warmUntil = performance.now() + XPL_WARM;
+  });
+  // touch has no hover: a long press (500 ms) shows the card, a move or a lift cancels it
+  root.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'touch') return;
+    const el = xplTarget(e.target);
+    clearTimeout(st.hold);
+    if (el) { const k = xplKey(el); st.hold = setTimeout(() => xplShow(el, k), XPL_HOLD); }
   }, true);
-  window.addEventListener('scroll', () => xplHide(), { passive: true });
-  // Esc hides the card first, wherever the focus is (the next Esc does the usual)
-  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && xplHide()) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+  for (const ev of ['pointerup', 'pointercancel', 'pointermove']) root.addEventListener(ev, (e) => { if (e.pointerType === 'touch') clearTimeout(st.hold); }, true);
 }
-/** Hide the card; true when one was showing. */
+/** Stops a card that is still waiting for its delay. The card on screen stays (the user closes the panel). Always false: Esc is never swallowed. */
 function xplHide() {
   const st = xplWire.st;
-  if (!st) return false;
-  clearTimeout(st.timer);
-  const card = root.querySelector('.xpl');
-  const was = !!(card && !card.hidden);
-  if (st.el) { st.el.removeAttribute('aria-describedby'); st.el = null; }
-  if (was) { card.hidden = true; st.warmUntil = performance.now() + 450; }
-  return was;
+  if (st) { clearTimeout(st.timer); clearTimeout(st.hold); }
+  return false;
 }
-function xplShow(el) {
+/** Hides the card itself (the panel was closed, or it has nothing to explain). */
+function xplClear() {
+  xplHide();
   const st = xplWire.st;
-  if (!el.isConnected || !root.contains(el)) return;
+  const card = root.querySelector('.xpl');
+  if (card) card.hidden = true;
+  if (st?.el) { st.el.removeAttribute('aria-describedby'); st.el = null; }
+  root.querySelector('.xpl-dock')?.classList.remove('has-card');
+}
+/** The element for a control whose node a repaint replaced (the ribbon redraws its buttons): same tool, same place. */
+function xplLive(el, k) {
+  if (el.isConnected && root.contains(el)) return el;
+  const rb = k.startsWith('rbtab_') ? `.rb-tab[data-tab="${k.slice(6)}"]` : `.ribbon [data-a="${k}"]`;
+  return root.querySelector(rb) || root.querySelector(`[data-a="${k}"], [data-x="${k}"]`);
+}
+function xplShow(el, k) {
+  const st = xplWire.st;
+  const live = xplLive(el, k);
+  if (!live) return;
+  el = live;
   const dock = xplDock();
-  if (!dock || dock.hidden || !xplPanelOpen()) return; // collapsed or off: the person asked for no explanations on screen
+  if (!dock || !xplPanelOpen() || !xplPanelVisible()) return; // closed or stepped aside: the person asked for no explanations on screen
   const shell = root.querySelector('.shell');
   let card = root.querySelector('.xpl');
   if (!card) {
     card = document.createElement('div');
     card.className = 'xpl';
     card.id = 'bw-xpl';
-    card.setAttribute('role', 'tooltip');
+    card.setAttribute('role', 'status');
     card.hidden = true;
   }
-  if (card.parentElement !== dock.querySelector('.xd-b')) dock.querySelector('.xd-b').appendChild(card);
-  const k = xplKey(el);
-  const name = el.getAttribute('aria-label')?.split(':')[0] || el.querySelector('.w, .sw')?.textContent || el.dataset.tt || t(k);
+  const body = dock.querySelector('.xd-b');
+  if (card.parentElement !== body) body.appendChild(card);
   const key = CMDS.find((c) => c.id === k)?.key;
+  // the name: the visible word under the tool, else its label without the "(shortcut)" tail
+  const name = (el.querySelector('.w, .sw, .rb-tl')?.textContent || el.getAttribute('aria-label') || el.dataset.tt || t(k) || '').split(':')[0].replace(/\s*\([^)]*\)\s*$/, '').trim() || t(k);
   card.dir = shell.dataset.tdir || 'rtl';
   card.lang = S.ui;
-  card.innerHTML = `<div class="xa" aria-hidden="true">${xplArt(k)}</div><div class="xt"><b>${esc(name)}</b>${key ? `<kbd>${esc(key)}</kbd>` : ''}</div><p>${esc(t(`explain.${k}`))}</p>`;
+  card.innerHTML = `<div class="xa" aria-hidden="true">${xplArtFor(k)}</div><div class="xb"><div class="xt"><b>${esc(name)}</b>${key ? `<kbd>${esc(key)}</kbd>` : ''}</div><p>${esc(t(`explain.${k}`))}</p><button type="button" class="xm" hidden>${esc(t('xpl.more'))}</button></div>`;
   card.hidden = false;
   card.dataset.side = 'panel';
+  card.dataset.k = k;
+  dock.classList.add('has-card');
   card.classList.remove('in'); void card.offsetWidth; card.classList.add('in');
+  // a long explanation shows five lines and a "More" button inside the panel (no scrolling inside the card)
+  const p = card.querySelector('.xb p'), more = card.querySelector('.xm');
+  if (p.scrollHeight > p.clientHeight + 2) {
+    more.hidden = false;
+    more.addEventListener('click', () => { const o = p.classList.toggle('open'); more.textContent = t(o ? 'xpl.less' : 'xpl.more'); });
+  }
+  if (st.el && st.el !== el) st.el.removeAttribute('aria-describedby');
   el.setAttribute('aria-describedby', 'bw-xpl');
   st.el = el;
-  xplMark(k);
-}
-
-/* ── illustrations: a scene per kind of action, with the tool's own icon ─────────────── */
-function xplScene(k) {
-  const by = {
-    pop: ['image', 'logo', 'addDiagram', 'addPara', 'newdoc', 'comment', 'dgStaff', 'dgApplicant', 'dgStart', 'dgPayment', 'dgRework', 'dgSystem', 'dgDecision', 'dgOk', 'dgStop', 'dgNote', 'dgGroup', 'dgText', 'dg_symbol', 'k_logoAdd'],
-    dup: ['duplicate', 'dgDup'],
-    del: ['delete', 'ovDelete', 'dgDel', 'hideBlock'],
-    up: ['moveUp', 'rowUp', 'dgFront'],
-    down: ['moveDown', 'rowDown', 'dgBack'],
-    rows: ['rowAdd', 'rowDel'],
-    cols: ['colAdd', 'colDel'],
-    undo: ['undo'],
-    redo: ['redo'],
-    scan: ['find', 'check', 'outline', 'k_q', 'k_next', 'k_all', 'k_r', 'renumber'],
-    save: ['save', 'saveHtml', 'exportEdits', 'exportAll', 'k_snap', 'k_log'],
-    out: ['exportPdf', 'print'],
-    in: ['import', 'dgMermaidIn', 'replace', 'dgMermaidOut', 'svc'],
-    panel: ['theme', 'styleThis', 'history', 'process', 'webhooks', 'pages', 'palette', 'more', 'view', 'k_close'],
-    zoom: ['zoomIn', 'zoomOut', 'dgZoomIn', 'dgZoomOut', 'dgZoomFit', 'dgZoom100'],
-    toggle: ['dark', 'calm', 'snap', 'spell', 'focus', 'both', 'every'],
-    lang: ['ed', 'uiLang'],
-    dir: ['dir', 'dgFlow', 'dgReverse'],
-    align: ['dgAlignL', 'dgAlignC', 'dgAlignR', 'dgAlignT', 'dgAlignM', 'dgAlignB', 'dgDistH', 'dgDistV', 'dgWrap', 'dgAuto', 'dgReset'],
-    link: ['dgConnect', 'dgEdgeLabel', 'dgBendAdd', 'dgBendDel', 'dgRouteAuto', 'dgFrom', 'dgTo', 'dg_wire', 'keepNext'],
-    split: ['breakBefore'],
-    font: ['font.pick', 'font.local', 'font.upload', 'font.remove', 'k_embed', 'k_docxFonts'],
-    slider: ['vc.slider', 'vc.number', 'vc.unit', 'design.part', 'design.move'],
-    swatch: ['design.swatch', 'design.hex', 'k_texp', 'k_timp', 'k_dcssApply', 'k_stclear', 'k_sthide'],
-    label: ['design.label', 'k_laball', 'k_addSection', 'k_addTable', 'dgLabel', 'dgSub', 'caption', 'dg_kind', 'dg_color', 'dg_badge', 'dg_icon', 'dgLegend'],
-    single: ['view.single', 'view.prev', 'view.next'],
-    spread: ['view.spread', 'view.mode', 'side'],
-    flow: ['view.continuous'],
-  };
-  if (/^(export|print)\./.test(k) || k === 'zoomReset' || k === 'zoomFit') return k.startsWith('zoom') ? 'zoom' : 'out';
-  for (const [scene, ids] of Object.entries(by)) if (ids.includes(k)) return scene;
-  return 'panel';
-}
-/** A 160×96 drawing: a page (or two), the moving part, and the tool's icon in a gold badge. */
-function xplArt(k) {
-  const scene = xplScene(k);
-  const lines = (x, y, n, w = 44) => Array.from({ length: n }, (_, i) => `<rect class="ln" x="${x}" y="${y + i * 9}" width="${i % 3 === 2 ? w - 14 : w}" height="4" rx="2"/>`).join('');
-  const page = (x = 52, cls = 'pg') => `<g class="${cls}"><rect class="sheet" x="${x}" y="8" width="56" height="78" rx="5"/>${lines(x + 6, 18, 7)}</g>`;
-  const block = (cls, y = 36) => `<rect class="${cls}" x="58" y="${y}" width="44" height="12" rx="3"/>`;
-  const art = {
-    pop: `${page()}${block('blk pop')}`,
-    dup: `${page()}${block('blk')}${block('blk ghost dup', 36)}`,
-    del: `${page()}${block('blk del')}`,
-    up: `${page()}${block('blk up', 54)}`,
-    down: `${page()}${block('blk down', 22)}`,
-    rows: `<g class="tbl"><rect class="sheet" x="40" y="14" width="80" height="66" rx="5"/>${[0, 1, 2].map((i) => `<rect class="cell" x="46" y="${22 + i * 14}" width="68" height="10" rx="2"/>`).join('')}<rect class="cell hi grow-y" x="46" y="64" width="68" height="10" rx="2"/></g>`,
-    cols: `<g class="tbl"><rect class="sheet" x="40" y="14" width="80" height="66" rx="5"/>${[0, 1, 2].map((i) => `<rect class="cell" x="${46 + i * 18}" y="22" width="14" height="52" rx="2"/>`).join('')}<rect class="cell hi grow-x" x="100" y="22" width="14" height="52" rx="2"/></g>`,
-    undo: `${page()}<rect class="blk type" x="58" y="36" width="44" height="12" rx="3"/><path class="arc back" d="M118 30 a14 14 0 1 0 6 18" />`,
-    redo: `${page()}<rect class="blk type" x="58" y="36" width="44" height="12" rx="3"/><path class="arc fwd" d="M42 30 a14 14 0 1 1 -6 18" />`,
-    scan: `${page()}<rect class="hit" x="58" y="24" width="30" height="7" rx="2"/><g class="lens"><circle cx="0" cy="0" r="9"/><path d="M6 6 l8 8"/></g>`,
-    save: `${page()}<g class="drop"><path d="M80 -6 v16 m-7 -7 l7 7 l7 -7"/></g><rect class="tray" x="60" y="88" width="40" height="5" rx="2"/>`,
-    out: `${page()}<g class="fly">${page(52, 'pg copy')}</g><rect class="tray" x="118" y="70" width="30" height="20" rx="4"/>`,
-    in: `<rect class="tray" x="10" y="36" width="30" height="24" rx="4"/>${page()}<rect class="blk slidein" x="58" y="36" width="44" height="12" rx="3"/>`,
-    panel: `${page(70)}<g class="pane"><rect class="side" x="14" y="8" width="44" height="78" rx="6"/>${lines(20, 20, 5, 30)}</g>`,
-    zoom: `<g class="zm">${page()}</g>`,
-    toggle: `<rect class="track" x="48" y="34" width="64" height="28" rx="14"/><circle class="knob" cx="62" cy="48" r="10"/>`,
-    lang: `<rect class="sheet" x="30" y="16" width="100" height="62" rx="8"/><text class="glyph a" x="80" y="57" text-anchor="middle">ع</text><text class="glyph e" x="80" y="57" text-anchor="middle">E</text>`,
-    dir: `<rect class="sheet" x="30" y="16" width="100" height="62" rx="8"/><g class="rtl">${lines(70, 30, 4, 50)}</g><path class="dirarrow" d="M58 70 h44 m-8 -6 l8 6 l-8 6"/>`,
-    align: `<rect class="sheet" x="26" y="10" width="108" height="76" rx="6"/><rect class="bx a1" x="40" y="20" width="34" height="16" rx="3"/><rect class="bx a2" x="66" y="44" width="50" height="16" rx="3"/><rect class="bx a3" x="52" y="66" width="26" height="12" rx="3"/><path class="guide" d="M40 14 v68"/>`,
-    link: `<rect class="sheet" x="18" y="10" width="124" height="76" rx="6"/><rect class="bx" x="28" y="36" width="34" height="22" rx="4"/><rect class="bx" x="98" y="36" width="34" height="22" rx="4"/><path class="wire" d="M62 47 C 76 30, 84 64, 98 47"/><path class="tip" d="M92 42 l6 5 l-6 5"/>`,
-    split: `${page(28, 'pg p1')}${page(78, 'pg p2')}<path class="cut" d="M58 4 v88"/>`,
-    label: `<rect class="sheet" x="26" y="18" width="108" height="58" rx="8"/><rect class="bx" x="44" y="34" width="72" height="26" rx="5"/><rect class="caret" x="60" y="41" width="2" height="12"/><rect class="type" x="64" y="43" width="36" height="8" rx="2"/>`,
-    font: `<rect class="sheet" x="26" y="14" width="108" height="66" rx="8"/><text class="glyph a" x="80" y="58" text-anchor="middle">Aa</text><text class="glyph e fnt" x="80" y="58" text-anchor="middle">أب</text>`,
-    slider: `<rect class="sheet" x="18" y="22" width="124" height="50" rx="8"/><rect class="track" x="28" y="44" width="70" height="6" rx="3"/><circle class="knob slide" cx="36" cy="47" r="7"/><rect class="cell" x="106" y="36" width="28" height="22" rx="4"/><rect class="type" x="111" y="44" width="18" height="6" rx="2"/>`,
-    swatch: `<rect class="sheet" x="26" y="18" width="108" height="58" rx="8"/><rect class="chip" x="38" y="30" width="34" height="34" rx="6"/><rect class="cell" x="80" y="38" width="44" height="16" rx="3"/><rect class="type" x="85" y="43" width="30" height="6" rx="2"/>`,
-    single: `<g class="book one">${page(52)}</g><path class="turn" d="M112 48 l8 0 m-4 -4 l4 4 l-4 4"/>`,
-    spread: `<g class="book">${page(24, 'pg l')}${page(84, 'pg r')}</g>`,
-    flow: `<g class="scroll">${page(52)}<g transform="translate(0 84)">${page(52)}</g></g>`,
-  }[scene];
-  return `<svg viewBox="0 0 160 96" class="sc-${scene}" focusable="false">${art}<g class="badge" transform="translate(132 68)"><circle r="14"/><g transform="translate(-9 -9) scale(.75)">${(ic(k) || ic(k.replace(/^dg_/, 'dg')) || ic('info')).replace('<svg', '<svg width="24" height="24"')}</g></g></svg>`;
 }

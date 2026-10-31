@@ -43,148 +43,224 @@
 .pager .pn { min-width: 9ch; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 13px; }
 @media (prefers-reduced-transparency: reduce) { .pager { background: var(--deep); backdrop-filter: none; } }
 
-/* ── A5: explainer card ── */
-.xpl {
-  position: fixed; z-index: 70; width: 252px; padding: 10px 12px 12px; border-radius: 16px; pointer-events: none;
-  background: var(--panel); color: var(--panel-ink); box-shadow: var(--bw-shadow-3), 0 0 0 1px var(--panel-line);
-  font-size: 13px; line-height: 1.45;
-}
+/* ── explainer card (0.15.0: it lives inside the right-hand panel, .xpl-dock) ── */
+.xpl { font-size: 13.5px; line-height: 1.55; color: var(--panel-ink); }
 .xpl.in { animation: xpl-in .32s var(--e-spring) both; }
-.xpl[data-side="above"].in { animation-name: xpl-up; }
 @keyframes xpl-in { from { opacity: 0; transform: translateY(-6px) scale(.97); } to { opacity: 1; transform: none; } }
-@keyframes xpl-up { from { opacity: 0; transform: translateY(6px) scale(.97); } to { opacity: 1; transform: none; } }
-.xpl .xa { border-radius: 11px; background: linear-gradient(160deg, var(--wash-2), var(--wash)); margin-bottom: 8px; overflow: hidden; }
-.xpl svg { display: block; width: 100%; height: auto; }
+.xpl .xa { background: linear-gradient(160deg, var(--wash-2), var(--wash)); overflow: hidden; }
+.xpl-dock svg { display: block; width: 100%; height: auto; }
+.xpl .xb { padding: 10px 16px 14px; }
 .xpl .xt { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.xpl .xt b { font-weight: 800; color: var(--navy); }
-.xpl p { margin: 4px 0 0; color: var(--panel-soft); }
+.xpl .xt b { font: 800 15px/1.3 'Thmanyah Sans', system-ui, sans-serif; color: var(--navy); }
+.xpl .xt kbd { font: 700 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 3px 7px; border-radius: 6px; background: var(--wash-2); color: var(--panel-soft); box-shadow: 0 0 0 1px var(--panel-line); white-space: nowrap; direction: ltr; }
+.xpl p { margin: 6px 0 0; color: var(--panel-soft); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5; line-clamp: 5; overflow: hidden; }
+.xpl p.open { -webkit-line-clamp: unset; line-clamp: unset; display: block; }
+.xpl .xm { all: unset; box-sizing: border-box; margin-top: 4px; cursor: pointer; color: var(--bw-accent-strong, var(--bw-primary)); font-weight: 800; font-size: 12.5px; border-radius: 6px; padding: 2px 4px; }
+.xpl .xm:hover { background: var(--wash-2); }
+.xpl .xm:focus-visible { outline: 2px solid var(--bw-accent); outline-offset: 1px; }
 
 /* illustration parts: the explainer draws the editor in brand roles (they follow the light and dark theme) */
-.xpl svg .sheet { fill: var(--bw-surface); stroke: var(--bw-rule-strong); stroke-width: 1; }
-.xpl svg .ln { fill: var(--bw-rule-strong); }
-.xpl svg .blk, .xpl svg .bx, .xpl svg .cell { fill: var(--bw-primary-soft); stroke: var(--bw-primary); stroke-width: 1; }
-.xpl svg .cell { fill: var(--bw-primary-wash); stroke: var(--bw-rule-strong); }
-.xpl svg .hi, .xpl svg .hit, .xpl svg .type { fill: var(--bw-marker); stroke: var(--bw-accent-rule); }
-.xpl svg .side { fill: var(--bw-band); }
-.xpl svg .pane .ln { fill: var(--bw-sec-insert); }
-.xpl svg .tray { fill: var(--bw-primary); opacity: .85; }
-.xpl svg .track { fill: var(--bw-rule-strong); }
-.xpl svg .knob { fill: var(--bw-accent); }
-.xpl svg .glyph { font: 800 30px 'Thmanyah Sans', system-ui, sans-serif; fill: var(--bw-primary); }
-.xpl svg :is(.arc, .wire, .dirarrow, .guide, .cut, .tip, .turn) { fill: none; stroke: var(--bw-accent); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-.xpl svg .guide, .xpl svg .cut { stroke-dasharray: 4 3; }
-.xpl svg .lens circle { fill: color-mix(in srgb, var(--bw-surface) 40%, transparent); stroke: var(--bw-primary); stroke-width: 2.4; }
-.xpl svg .lens path, .xpl svg .drop path { fill: none; stroke: var(--bw-primary); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
-.xpl svg .caret { fill: var(--bw-primary); }
-.xpl svg .badge circle { fill: var(--bw-accent); }
-.xpl svg .badge .ic { color: var(--bw-on-accent); stroke: var(--bw-on-accent); }
-.xpl svg * { transform-box: fill-box; transform-origin: center; }
+.xpl-dock svg .sheet { fill: var(--bw-surface); stroke: var(--bw-rule-strong); stroke-width: 1; }
+.xpl-dock svg .ln { fill: var(--bw-rule-strong); }
+.xpl-dock svg .blk, .xpl-dock svg .bx, .xpl-dock svg .cell { fill: var(--bw-primary-soft); stroke: var(--bw-primary); stroke-width: 1; }
+.xpl-dock svg .cell { fill: var(--bw-primary-wash); stroke: var(--bw-rule-strong); }
+.xpl-dock svg .hi, .xpl-dock svg .hit, .xpl-dock svg .type { fill: var(--bw-marker); stroke: var(--bw-accent-rule); }
+.xpl-dock svg .side { fill: var(--bw-band); }
+.xpl-dock svg .pane .ln { fill: var(--bw-sec-insert); }
+.xpl-dock svg .tray { fill: var(--bw-primary); opacity: .85; }
+.xpl-dock svg .track { fill: var(--bw-rule-strong); }
+.xpl-dock svg .knob { fill: var(--bw-accent); }
+.xpl-dock svg .glyph { font: 800 30px 'Thmanyah Sans', system-ui, sans-serif; fill: var(--bw-primary); }
+.xpl-dock svg :is(.arc, .wire, .dirarrow, .guide, .cut, .tip, .turn) { fill: none; stroke: var(--bw-accent); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.xpl-dock svg .guide, .xpl-dock svg .cut { stroke-dasharray: 4 3; }
+.xpl-dock svg .lens circle { fill: color-mix(in srgb, var(--bw-surface) 40%, transparent); stroke: var(--bw-primary); stroke-width: 2.4; }
+.xpl-dock svg .lens path, .xpl-dock svg .drop path { fill: none; stroke: var(--bw-primary); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.xpl-dock svg .caret { fill: var(--bw-primary); }
+.xpl-dock svg .badge circle { fill: var(--bw-accent); }
+.xpl-dock svg .badge .ic { color: var(--bw-on-accent); stroke: var(--bw-on-accent); }
+.xpl-dock svg * { transform-box: fill-box; transform-origin: center; }
 
 /* motion: each scene loops gently; still frames are meaningful on their own */
-.xpl svg .pop { animation: x-pop 2.4s var(--e-spring) infinite; }
+.xpl-dock svg .pop { animation: x-pop 2.4s var(--e-spring) infinite; }
 @keyframes x-pop { 0%, 12% { scale: 0; opacity: 0; } 34%, 86% { scale: 1; opacity: 1; } 100% { scale: 1; opacity: 0; } }
-.xpl svg .dup { animation: x-dup 2.4s var(--e-move) infinite; opacity: .75; }
+.xpl-dock svg .dup { animation: x-dup 2.4s var(--e-move) infinite; opacity: .75; }
 @keyframes x-dup { 0%, 15% { translate: 0 0; opacity: 0; } 45%, 85% { translate: 0 16px; opacity: .75; } 100% { translate: 0 16px; opacity: 0; } }
-.xpl svg .del { animation: x-del 2.4s var(--e-out) infinite; }
+.xpl-dock svg .del { animation: x-del 2.4s var(--e-out) infinite; }
 @keyframes x-del { 0%, 25% { opacity: 1; scale: 1; } 55%, 85% { opacity: 0; scale: .6; } 100% { opacity: 1; scale: 1; } }
-.xpl svg .up { animation: x-up 2.4s var(--e-move) infinite; }
+.xpl-dock svg .up { animation: x-up 2.4s var(--e-move) infinite; }
 @keyframes x-up { 0%, 20% { translate: 0 0; } 55%, 85% { translate: 0 -32px; } 100% { translate: 0 0; } }
-.xpl svg .down { animation: x-down 2.4s var(--e-move) infinite; }
+.xpl-dock svg .down { animation: x-down 2.4s var(--e-move) infinite; }
 @keyframes x-down { 0%, 20% { translate: 0 0; } 55%, 85% { translate: 0 32px; } 100% { translate: 0 0; } }
-.xpl svg .grow-y { animation: x-gy 2.4s var(--e-spring) infinite; transform-origin: top; }
+.xpl-dock svg .grow-y { animation: x-gy 2.4s var(--e-spring) infinite; transform-origin: top; }
 @keyframes x-gy { 0%, 20% { scale: 1 0; } 50%, 85% { scale: 1 1; } 100% { scale: 1 0; } }
-.xpl svg .grow-x { animation: x-gx 2.4s var(--e-spring) infinite; transform-origin: left; }
+.xpl-dock svg .grow-x { animation: x-gx 2.4s var(--e-spring) infinite; transform-origin: left; }
 @keyframes x-gx { 0%, 20% { scale: 0 1; } 50%, 85% { scale: 1 1; } 100% { scale: 0 1; } }
-.xpl svg .type { animation: x-type 2.4s steps(6) infinite; transform-origin: left; }
+.xpl-dock svg .type { animation: x-type 2.4s steps(6) infinite; transform-origin: left; }
 @keyframes x-type { 0% { scale: .1 1; } 60%, 100% { scale: 1 1; } }
-.xpl svg .sc-undo .type { animation: x-untype 2.4s steps(6) infinite; transform-origin: left; }
+.xpl-dock svg .sc-undo .type { animation: x-untype 2.4s steps(6) infinite; transform-origin: left; }
 @keyframes x-untype { 0%, 30% { scale: 1 1; } 80%, 100% { scale: .1 1; } }
-.xpl svg .arc { stroke-dasharray: 80; animation: x-draw 2.4s var(--e-out) infinite; }
+.xpl-dock svg .arc { stroke-dasharray: 80; animation: x-draw 2.4s var(--e-out) infinite; }
 @keyframes x-draw { 0% { stroke-dashoffset: 80; } 50%, 100% { stroke-dashoffset: 0; } }
-.xpl svg .lens { animation: x-scan 2.6s var(--e-move) infinite; }
+.xpl-dock svg .lens { animation: x-scan 2.6s var(--e-move) infinite; }
 @keyframes x-scan { 0% { translate: 62px 22px; } 35% { translate: 96px 30px; } 65% { translate: 70px 48px; } 100% { translate: 62px 22px; } }
-.xpl svg .hit { animation: x-blink 2.6s steps(1) infinite; }
+.xpl-dock svg .hit { animation: x-blink 2.6s steps(1) infinite; }
 @keyframes x-blink { 0%, 30% { opacity: 0; } 31%, 100% { opacity: 1; } }
-.xpl svg .drop { animation: x-drop 2s var(--e-move) infinite; }
+.xpl-dock svg .drop { animation: x-drop 2s var(--e-move) infinite; }
 @keyframes x-drop { 0% { translate: 0 0; opacity: 0; } 30% { opacity: 1; } 70%, 100% { translate: 0 80px; opacity: 0; } }
-.xpl svg .fly { animation: x-fly 2.4s var(--e-move) infinite; }
+.xpl-dock svg .fly { animation: x-fly 2.4s var(--e-move) infinite; }
 @keyframes x-fly { 0%, 15% { translate: 0 0; scale: 1; opacity: .9; } 70%, 100% { translate: 64px 18px; scale: .4; opacity: 0; } }
-.xpl svg .slidein { animation: x-in 2.4s var(--e-move) infinite; }
+.xpl-dock svg .slidein { animation: x-in 2.4s var(--e-move) infinite; }
 @keyframes x-in { 0%, 10% { translate: -44px 0; opacity: 0; } 55%, 90% { translate: 0 0; opacity: 1; } 100% { opacity: 0; } }
-.xpl svg .pane { animation: x-pane 2.6s var(--e-move) infinite; }
+.xpl-dock svg .pane { animation: x-pane 2.6s var(--e-move) infinite; }
 @keyframes x-pane { 0%, 10% { translate: -50px 0; opacity: 0; } 45%, 85% { translate: 0 0; opacity: 1; } 100% { translate: -50px 0; opacity: 0; } }
-.xpl svg .zm { animation: x-zoom 2.4s var(--e-spring) infinite; }
+.xpl-dock svg .zm { animation: x-zoom 2.4s var(--e-spring) infinite; }
 @keyframes x-zoom { 0%, 15% { scale: .8; } 50%, 80% { scale: 1.12; } 100% { scale: .8; } }
-.xpl svg .knob { animation: x-knob 2.2s var(--e-spring) infinite; }
+.xpl-dock svg .knob { animation: x-knob 2.2s var(--e-spring) infinite; }
 @keyframes x-knob { 0%, 20% { translate: 0 0; } 50%, 80% { translate: 36px 0; } 100% { translate: 0 0; } }
-.xpl svg .glyph.a { animation: x-ga 2.6s var(--e-move) infinite; }
-.xpl svg .glyph.e { animation: x-ge 2.6s var(--e-move) infinite; }
+.xpl-dock svg .glyph.a { animation: x-ga 2.6s var(--e-move) infinite; }
+.xpl-dock svg .glyph.e { animation: x-ge 2.6s var(--e-move) infinite; }
 @keyframes x-ga { 0%, 40% { opacity: 1; translate: 0 0; } 50%, 90% { opacity: 0; translate: 0 -10px; } 100% { opacity: 1; translate: 0 0; } }
 @keyframes x-ge { 0%, 40% { opacity: 0; translate: 0 10px; } 50%, 90% { opacity: 1; translate: 0 0; } 100% { opacity: 0; translate: 0 10px; } }
-.xpl svg .rtl { animation: x-rtl 2.6s var(--e-move) infinite; }
+.xpl-dock svg .rtl { animation: x-rtl 2.6s var(--e-move) infinite; }
 @keyframes x-rtl { 0%, 35% { translate: 0 0; } 55%, 90% { translate: -36px 0; } 100% { translate: 0 0; } }
-.xpl svg .dirarrow { animation: x-flip 2.6s var(--e-move) infinite; }
+.xpl-dock svg .dirarrow { animation: x-flip 2.6s var(--e-move) infinite; }
 @keyframes x-flip { 0%, 35% { scale: -1 1; } 55%, 90% { scale: 1 1; } 100% { scale: -1 1; } }
-.xpl svg .a1 { animation: x-a1 2.4s var(--e-spring) infinite; }
-.xpl svg .a2 { animation: x-a2 2.4s var(--e-spring) infinite; }
-.xpl svg .a3 { animation: x-a3 2.4s var(--e-spring) infinite; }
+.xpl-dock svg .a1 { animation: x-a1 2.4s var(--e-spring) infinite; }
+.xpl-dock svg .a2 { animation: x-a2 2.4s var(--e-spring) infinite; }
+.xpl-dock svg .a3 { animation: x-a3 2.4s var(--e-spring) infinite; }
 @keyframes x-a1 { 0%, 20% { translate: 12px 0; } 55%, 85% { translate: 0 0; } 100% { translate: 12px 0; } }
 @keyframes x-a2 { 0%, 20% { translate: 0 0; } 55%, 85% { translate: -26px 0; } 100% { translate: 0 0; } }
 @keyframes x-a3 { 0%, 20% { translate: 0 0; } 55%, 85% { translate: -12px 0; } 100% { translate: 0 0; } }
-.xpl svg .wire { stroke-dasharray: 60; animation: x-wire 2.4s var(--e-out) infinite; }
+.xpl-dock svg .wire { stroke-dasharray: 60; animation: x-wire 2.4s var(--e-out) infinite; }
 @keyframes x-wire { 0%, 10% { stroke-dashoffset: 60; } 60%, 100% { stroke-dashoffset: 0; } }
-.xpl svg .tip { animation: x-blink 2.4s steps(1) infinite; }
-.xpl svg .p2 { animation: x-push 2.4s var(--e-move) infinite; }
+.xpl-dock svg .tip { animation: x-blink 2.4s steps(1) infinite; }
+.xpl-dock svg .p2 { animation: x-push 2.4s var(--e-move) infinite; }
 @keyframes x-push { 0%, 25% { translate: -12px 0; } 60%, 90% { translate: 0 0; } 100% { translate: -12px 0; } }
-.xpl svg .caret { animation: x-caret 1s steps(1) infinite; }
+.xpl-dock svg .caret { animation: x-caret 1s steps(1) infinite; }
 @keyframes x-caret { 50% { opacity: 0; } }
-.xpl svg .sc-label .type { animation: x-type 2.4s steps(8) infinite; }
-.xpl svg .one { animation: x-turn 2.4s var(--e-move) infinite; }
+.xpl-dock svg .sc-label .type { animation: x-type 2.4s steps(8) infinite; }
+.xpl-dock svg .one { animation: x-turn 2.4s var(--e-move) infinite; }
 @keyframes x-turn { 0%, 30% { translate: 0 0; opacity: 1; } 60% { translate: -30px 0; opacity: 0; } 61% { translate: 30px 0; opacity: 0; } 90%, 100% { translate: 0 0; opacity: 1; } }
-.xpl svg .book .l { animation: x-l 2.6s var(--e-move) infinite; transform-origin: right; }
+.xpl-dock svg .book .l { animation: x-l 2.6s var(--e-move) infinite; transform-origin: right; }
 @keyframes x-l { 0%, 20% { scale: .2 1; opacity: 0; } 55%, 100% { scale: 1 1; opacity: 1; } }
-.xpl svg .scroll { animation: x-scroll 3s linear infinite; }
+.xpl-dock svg .scroll { animation: x-scroll 3s linear infinite; }
 @keyframes x-scroll { from { translate: 0 0; } to { translate: 0 -84px; } }
 
-.xpl svg .fnt { font-family: 'Thmanyah Serif Display', serif; }
-.xpl svg .slide { animation: x-slide 2.4s var(--e-move) infinite; }
+.xpl-dock svg .fnt { font-family: 'Thmanyah Serif Display', serif; }
+.xpl-dock svg .slide { animation: x-slide 2.4s var(--e-move) infinite; }
 @keyframes x-slide { 0%, 15% { translate: 0 0; } 55%, 85% { translate: 52px 0; } 100% { translate: 0 0; } }
-.xpl svg .chip { animation: x-chip 3s steps(1) infinite; fill: var(--bw-primary); }
+.xpl-dock svg .chip { animation: x-chip 3s steps(1) infinite; fill: var(--bw-primary); }
 @keyframes x-chip { 0% { fill: var(--bw-primary); } 33% { fill: var(--bw-accent); } 66% { fill: var(--bw-success); } }
 
+/* ── 0.15.0 art kit: more brand-role parts and the k-* motion vocabulary. Every scene is drawn in its END state; each k-* class plays
+ * "before" -> "after" in 2.4 s (--dx/--dy offset, --sx/--sy and --sc start scales), so calm mode (no animation) shows the result. ── */
+.xpl-dock svg :is(.pr, .ac, .mk, .ok, .no, .sg, .night, .dot, .wh, .rng, .rl, .rl2, .wl, .mkln, .hue) { stroke: none; }
+.xpl-dock svg .pr { fill: var(--bw-primary); }
+.xpl-dock svg .ac { fill: var(--bw-accent); }
+.xpl-dock svg .mk { fill: var(--bw-marker); stroke: var(--bw-accent-rule); stroke-width: .8; }
+.xpl-dock svg .ok { fill: var(--bw-success); }
+.xpl-dock svg .no { fill: var(--bw-danger); }
+.xpl-dock svg .sg { fill: var(--bw-signal); }
+.xpl-dock svg .night { fill: var(--bw-band); }
+.xpl-dock svg .dot { fill: var(--bw-primary); }
+.xpl-dock svg .sf { fill: var(--bw-primary-soft); stroke: var(--bw-primary); stroke-width: 1; }
+.xpl-dock svg .wl { fill: var(--bw-on-glass-soft, #fff); opacity: .7; }
+.xpl-dock svg rect.wh, .xpl-dock svg circle.wh { fill: var(--bw-on-primary); }
+.xpl-dock svg path.wh { fill: none; stroke: var(--bw-on-primary); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.xpl-dock svg .mkln { fill: var(--bw-marker); }
+.xpl-dock svg .ln.hue { fill: var(--bw-accent); }
+.xpl-dock svg .rl2 { fill: var(--bw-rule-strong); }
+.xpl-dock svg .rng { fill: none; stroke: var(--bw-accent); stroke-width: 2; }
+.xpl-dock svg :is(.prs, .acs, .okS, .mkl, .wr, .tipm, .rl) { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.xpl-dock svg .prs { stroke: var(--bw-primary); stroke-width: 2.2; }
+.xpl-dock svg .acs { stroke: var(--bw-accent); stroke-width: 2.4; }
+.xpl-dock svg .okS { stroke: var(--bw-success); stroke-width: 2.6; }
+.xpl-dock svg .mkl { stroke: var(--bw-accent-rule); stroke-width: 2; }
+.xpl-dock svg .wr { stroke: var(--bw-primary); stroke-width: 2; }
+.xpl-dock svg .tipm { stroke: var(--bw-primary); stroke-width: 2; }
+.xpl-dock svg .rl { stroke: var(--bw-rule-strong); stroke-width: 2.4; }
+.xpl-dock svg path.no { fill: none; stroke: var(--bw-danger); stroke-width: 2; }
+.xpl-dock svg .gh { fill: none; stroke: var(--bw-rule-strong); stroke-width: 1.4; stroke-dasharray: 4 3; }
+.xpl-dock svg path.gh { fill: none; }
+.xpl-dock svg .ghost { stroke-dasharray: 4 3; opacity: .6; }
+.xpl-dock svg .dash { stroke-dasharray: 3 2; }
+.xpl-dock svg .dim { opacity: .45; }
+.xpl-dock svg .lensc { fill: color-mix(in srgb, var(--bw-surface) 40%, transparent); stroke: var(--bw-primary); stroke-width: 2.4; }
+.xpl-dock svg .lensp { fill: none; stroke: var(--bw-primary); stroke-width: 2.6; stroke-linecap: round; }
+.xpl-dock svg .k-draw { stroke-dasharray: 100; animation: k-draw 2.4s var(--e-move) infinite; }
+.xpl-dock svg .k-in { animation: k-in 2.4s var(--e-spring) infinite; }
+.xpl-dock svg .k-in2 { animation: k-in2 2.4s var(--e-spring) infinite; }
+.xpl-dock svg .k-gone { opacity: 0; animation: k-gone 2.4s var(--e-out) infinite; }
+.xpl-dock svg .k-gone2 { opacity: 0; animation: k-gone2 2.4s var(--e-out) infinite; }
+.xpl-dock svg .k-mv { animation: k-mv 2.4s var(--e-move) infinite; }
+.xpl-dock svg .k-grow { animation: k-grow 2.4s var(--e-spring) infinite; }
+.xpl-dock svg .k-fade { animation: k-fade 2.4s var(--e-move) infinite; }
+.xpl-dock svg .k-flash { opacity: 0; animation: k-flash 2.4s var(--e-out) infinite; }
+.xpl-dock svg .k-blink { animation: k-blink 2.4s steps(1) infinite; }
+.xpl-dock svg .k-scale { scale: var(--se, 1); animation: k-scale 2.4s var(--e-spring) infinite; }
+@keyframes k-draw { 0%, 14% { stroke-dashoffset: 100; } 44%, 100% { stroke-dashoffset: 0; } }
+@keyframes k-in { 0%, 10% { opacity: 0; scale: .6; translate: var(--dx, 0px) var(--dy, 0px); } 32%, 86% { opacity: 1; scale: 1; translate: 0 0; } 100% { opacity: 0; scale: 1; translate: 0 0; } }
+@keyframes k-in2 { 0%, 30% { opacity: 0; scale: .6; translate: var(--dx, 0px) var(--dy, 0px); } 52%, 88% { opacity: 1; scale: 1; translate: 0 0; } 100% { opacity: 0; scale: 1; translate: 0 0; } }
+@keyframes k-gone { 0%, 14% { opacity: 1; scale: 1; } 40%, 88% { opacity: 0; scale: .6; } 100% { opacity: 1; scale: 1; } }
+@keyframes k-gone2 { 0%, 30% { opacity: 0; } 40%, 86% { opacity: .9; scale: 1; } 100% { opacity: 0; } }
+@keyframes k-mv { 0%, 14% { translate: var(--dx, 0px) var(--dy, 0px); } 44%, 88% { translate: 0 0; } 100% { translate: var(--dx, 0px) var(--dy, 0px); } }
+@keyframes k-grow { 0%, 14% { scale: var(--sx, 1) var(--sy, 1); } 44%, 88% { scale: 1 1; } 100% { scale: var(--sx, 1) var(--sy, 1); } }
+@keyframes k-fade { 0%, 14% { opacity: 0; } 44%, 88% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes k-blink { 0%, 30% { opacity: 1; } 40%, 70% { opacity: .15; } 71%, 100% { opacity: 1; } }
+@keyframes k-flash { 0%, 30% { opacity: 0; } 38% { opacity: .85; } 62%, 100% { opacity: 0; } }
+@keyframes k-scale { 0%, 14% { scale: var(--sc, 1); } 46%, 88% { scale: var(--se, 1); } 100% { scale: var(--sc, 1); } }
+
 /* reduced motion / calm mode: still frames (the end state each scene explains) */
-.shell[data-calm="1"] .xpl svg *, .shell[data-calm="1"] .xpl { animation: none !important; }
-@media (prefers-reduced-motion: reduce) { .xpl svg *, .xpl { animation: none !important; } }
+.shell[data-calm="1"] .xpl-dock svg *, .shell[data-calm="1"] .xpl, .shell[data-calm="1"] .xpl-dock { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .xpl-dock svg *, .xpl { animation: none !important; } }
+.shell[data-calm="1"] .xpl-dock svg .k-gone, .shell[data-calm="1"] .xpl-dock svg .k-gone2 { opacity: 0; }
 
 /* toolbar menus in the top layer: anchored by uxMenuPlace; the toolbar itself never scrolls */
 .island { overflow: clip visible; }
 .more .menu:popover-open { position: fixed; inset: auto; margin: 0; display: flex; color: var(--on-glass); overflow: auto; }
 .more .menu:popover-open { animation: pop-in .26s var(--e-out) both; }
 
-/* ── 0.14.0 A1: ONE explainer side panel (inline-end, below the toolbar, collapsible); the card lives inside it ── */
-.shell { --xd-w: 272px; --rside: 0px; }
-.shell:has(.drawer:not([hidden])) { --rside: calc(min(420px, 92vw) + 60px); } /* 420 + its 2 × 18 padding + 2 × 12 margin */ /* a slide-over panel owns the inline-end edge: the explainer panel and the toasts step aside */
+/* ── 0.15.0 note 10: ONE explanation panel on the physical RIGHT (the shell is fixed right-to-left, the slide-over drawers are on the
+ * left, so the two never meet); closed, a 40 × 96 edge tab stays on the right edge. Below 1280 px an open drawer sends the panel
+ * to its edge tab (until the person taps the tab); above that both show (the drawer is where most controls to explain live). --rside is the drawer's width, still used by the toasts. ── */
+.shell { --xd-w: 304px; --rside: 0px; }
+.shell:has(.drawer:not([hidden])) { --rside: calc(min(420px, 92vw) + 60px); } /* 420 + its 2 × 18 padding + 2 × 12 margin */
 .xpl-dock {
-  position: fixed; z-index: 41; inset-block-start: calc(var(--bw-bar-h, 72px) + 10px); inset-inline-end: calc(12px + var(--rside)); inline-size: var(--xd-w); max-inline-size: calc(100vw - 24px);
-  max-block-size: calc(100vh - var(--bw-bar-h, 72px) - 96px); overflow: auto; border-radius: 16px; background: var(--panel); color: var(--panel-ink);
-  box-shadow: var(--bw-shadow-3), 0 0 0 1px var(--panel-line); font-size: 13px; line-height: 1.45; transition: inset-inline-end .25s var(--e-out);
+  position: fixed; z-index: 41; inset-inline: auto; right: 12px; left: auto; inset-block-start: calc(var(--bw-bar-h, 72px) + 12px); inline-size: var(--xd-w); max-inline-size: calc(100vw - 24px);
+  max-block-size: calc(100vh - var(--bw-bar-h, 72px) - 24px - 96px); overflow: hidden auto; border-radius: 16px; background: var(--panel); color: var(--panel-ink);
+  box-shadow: var(--bw-shadow-3), 0 0 0 1px var(--panel-line); font-size: 13px; line-height: 1.45;
 }
 .xpl-dock[hidden] { display: none; }
-.xpl-dock .xd-t { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 8px; inline-size: 100%; padding: 9px 12px; cursor: pointer; font-weight: 800; color: var(--navy); border-radius: 16px; }
-.xpl-dock .xd-t:focus-visible { outline: 2px solid var(--bw-accent); outline-offset: -2px; }
-.xpl-dock .xd-t:hover { background: var(--wash-2); }
-.xpl-dock .xd-t .i { inline-size: 18px; block-size: 18px; display: inline-flex; }
-.xpl-dock .xd-w { flex: 1; }
-.xpl-dock .xd-c { inline-size: 8px; block-size: 8px; border-inline-end: 2px solid currentColor; border-block-end: 2px solid currentColor; rotate: 45deg; transition: rotate .2s var(--e-out); }
-.xpl-dock[data-open="0"] .xd-c { rotate: -135deg; }
-.xpl-dock[data-open="0"] { inline-size: auto; }
-.xpl-dock[data-open="0"] .xd-w { display: none; }
-.xpl-dock .xd-b { padding: 0 12px 12px; }
-.xpl-dock .xph { margin: 0; color: var(--panel-soft); }
-.xpl-dock:has(.xpl:not([hidden])) .xph { display: none; }
-.xpl-dock .xpl { position: static; inline-size: auto; padding: 0; box-shadow: none; background: transparent; z-index: auto; }
+.xpl-dock .xd-h { display: flex; align-items: center; gap: 8px; block-size: 48px; padding-inline: 14px 8px; position: sticky; top: 0; z-index: 1; background: var(--panel); box-shadow: 0 1px 0 var(--panel-line); }
+.xpl-dock .xd-h .i { inline-size: 18px; block-size: 18px; display: inline-flex; color: var(--bw-primary); }
+.xpl-dock .xd-w { flex: 1; font: 800 15px/1.2 'Thmanyah Sans', system-ui, sans-serif; color: var(--navy); }
+.xpl-dock .xd-x { all: unset; box-sizing: border-box; inline-size: 32px; block-size: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; cursor: pointer; color: var(--panel-soft); }
+.xpl-dock .xd-x .ic { inline-size: 16px; block-size: 16px; }
+.xpl-dock .xd-x:hover { background: var(--wash-2); color: var(--navy); }
+.xpl-dock .xd-x:focus-visible, .xpl-dock .xd-tab:focus-visible { outline: 2px solid var(--bw-accent); outline-offset: -2px; }
+.xpl-dock .xd-b { padding: 0; }
+.xpl-dock .xph .xa { background: linear-gradient(160deg, var(--wash-2), var(--wash)); opacity: .9; }
+.xpl-dock .xph p { margin: 0; padding: 10px 16px 14px; color: var(--panel-soft); font-size: 13.5px; line-height: 1.55; }
+.xpl-dock.has-card .xph { display: none; }
+.xpl-dock .xpl { position: static; inline-size: auto; padding: 0; box-shadow: none; background: transparent; z-index: auto; pointer-events: auto; }
 .xpl-dock .xpl[hidden] { display: none; }
-@media (prefers-reduced-motion: reduce) { .xpl-dock, .xpl-dock .xd-c { transition: none; } }
+/* the edge tab state: closed by the person, or stepped aside for a drawer (the dock shrinks to its tab) */
+.xpl-dock[data-open="0"] {
+  inline-size: 40px; block-size: 96px; max-inline-size: none; max-block-size: none; inset-block-start: calc(var(--bw-bar-h, 72px) + 24px); right: 0; border-radius: 14px 0 0 14px; overflow: visible; box-shadow: var(--bw-shadow-2), 0 0 0 1px var(--panel-line);
+}
+.xpl-dock[data-open="0"] :is(.xd-h, .xd-b) { display: none; }
+.xpl-dock .xd-tab { all: unset; box-sizing: border-box; position: absolute; inset: 0; display: none; align-items: center; justify-content: center; cursor: pointer; color: var(--bw-primary); border-radius: inherit; }
+.xpl-dock[data-open="0"] .xd-tab { display: flex; }
+.xpl-dock .xd-tab .i { inline-size: 20px; block-size: 20px; display: inline-flex; }
+.xpl-dock .xd-tab:hover { background: var(--wash-2); }
+@media (max-width: 1279.98px) {
+  .shell:has(.drawer:not([hidden])) .xpl-dock:not([data-force]) {
+  inline-size: 40px; block-size: 96px; max-inline-size: none; max-block-size: none; inset-block-start: calc(var(--bw-bar-h, 72px) + 24px); right: 0; border-radius: 14px 0 0 14px; overflow: visible; box-shadow: var(--bw-shadow-2), 0 0 0 1px var(--panel-line);
+  }
+  .shell:has(.drawer:not([hidden])) .xpl-dock:not([data-force]) :is(.xd-h, .xd-b) { display: none; }
+  .shell:has(.drawer:not([hidden])) .xpl-dock:not([data-force]) .xd-tab { display: flex; }
+}
+@media (prefers-reduced-motion: reduce) { .xpl-dock, .xpl.in { animation: none; transition: none; } }
 
 /* ── 0.14.0 A3: toasts and undo prompts never cover the page controls ───────────────────────────────────────────
  * They stay bottom-centre, but centred on the room left of an open slide-over panel (its own page-range and preview

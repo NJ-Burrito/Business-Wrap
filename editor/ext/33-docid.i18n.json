@@ -1,13 +1,11 @@
 {
  "ar": {
   "docId": "رقم الوثيقة",
-  "explain.docId": "يغيّر رقم الوثيقة في كل موضع يظهر فيه: الغلاف والترويسة وجدول الإصدارات.",
   "docid.prompt": "رقم الوثيقة (يتغيّر في كل مكان يظهر فيه)",
   "docid.done": "تم تحديث رقم الوثيقة في {n} مواضع"
  },
  "en": {
   "docId": "Document ID",
-  "explain.docId": "Changes the document ID everywhere it appears: the cover, the header and the version table.",
   "docid.prompt": "Document ID (changes everywhere it appears)",
   "docid.done": "Document ID updated in {n} places"
  }

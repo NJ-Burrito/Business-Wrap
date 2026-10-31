@@ -1,7 +1,6 @@
 {
  "ar": {
   "renumList": "إعادة ترقيم القائمة",
-  "explain.renumList": "يبدأ القائمة المرقّمة من رقم تختاره أو يتابع ترقيم القائمة السابقة.",
   "num.title": "ترقيم القائمة المرقّمة",
   "num.pick": "ضع المؤشر داخل قائمة مرقّمة أولاً",
   "num.bad": "اكتب رقماً صحيحاً بين 0 و9999",
@@ -12,7 +11,6 @@
  },
  "en": {
   "renumList": "Renumber list",
-  "explain.renumList": "Starts the numbered list at a number you choose, or continues the previous list.",
   "num.title": "Number this list",
   "num.pick": "Put the cursor inside a numbered list first",
   "num.bad": "Type a whole number from 0 to 9999",

@@ -60,7 +60,7 @@ try {
   for (const ui of ['ar', 'en']) {
     const { ctx, page, errors } = await open({ ui, store: { 'bw:explainers': 'always' } });
     const idle = await sh(page, (r) => { const d = r.querySelector('.xpl-dock'); const b = d?.getBoundingClientRect(); return d && !d.hidden ? { open: d.dataset.open, hint: d.querySelector('.xph')?.textContent, edge: Math.min(b.left, document.documentElement.clientWidth - b.right), t: b.top } : null; });
-    check(`A1 ${ui}: one side panel at the inline-end edge, open by default, with its hint`, idle?.open === '1' && idle.hint === UX[ui]['xpl.hint'] && idle.edge >= 0 && idle.edge <= 40 && idle.t > 40, JSON.stringify(idle));
+    check(`A1 ${ui}: one side panel at the physical right edge (0.15.0), open by default, with its hint`, idle?.open === '1' && idle.hint?.trim() === UX[ui]['xpl.hint'] && idle.edge >= 0 && idle.edge <= 40 && idle.t > 40, JSON.stringify(idle));
     const bt = await saveXY(page);
     await page.mouse.move(bt.x, bt.y);
     await page.waitForTimeout(1300);
@@ -70,7 +70,7 @@ try {
     check(`A1 ${ui}: the card is fully on screen and nothing is drawn over it`, geo.inside && geo.topIsPanel, JSON.stringify(geo));
     await page.mouse.move(5, 400);
     await page.waitForTimeout(250);
-    check(`A1 ${ui}: leaving the tool clears the panel back to its hint`, !(await card(page)));
+    check(`A1 ${ui}: leaving the tool keeps the card in the panel (0.15.0 note 10: the panel is a reference area, the user closes it)`, !!(await card(page)));
     await page.evaluate(() => document.activeElement?.blur());
     await sh(page, (r) => { r.querySelector('.ribbon .rb-panel [data-a="save"]').focus(); });
     await page.keyboard.press('Shift+Tab'); await page.keyboard.press('Tab');
@@ -81,7 +81,7 @@ try {
     await page.waitForTimeout(800);
     const [dk, dr] = [await rect(page, '.xpl-dock'), await rect(page, '.drawer')];
     check(`A1 ${ui}: with a slide-over panel open the explainer panel steps aside (no overlap)`, dk && dr && !hit(dk, dr), JSON.stringify({ dk, dr }));
-    await sh(page, (r) => r.querySelector('.xpl-dock .xd-t').click());
+    await sh(page, (r) => r.querySelector('.xpl-dock .xd-x').click());
     await page.waitForTimeout(300);
     const col = await sh(page, (r) => ({ open: r.querySelector('.xpl-dock').dataset.open, body: r.querySelector('.xd-b').hidden, ls: localStorage.getItem('bw:xpl-panel') }));
     check(`A1 ${ui}: collapse works and is remembered (bw:xpl-panel=0)`, col.open === '0' && col.body && col.ls === '0', JSON.stringify(col));

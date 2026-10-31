@@ -205,12 +205,12 @@ try {
     ok = (await still('panel closed')) && ok;
     check(`A4 ${ui}: a shape's tools stay through menus, pickers, the design panel, colour input, popover`, ok, kept.join(' · '));
     // a logo: selected by a click, kept while the panel is used
-    await page.mouse.click(1220, 420); // empty desk: the general tools come back
+    await page.mouse.click(40, 420); // empty desk (left margin: the explanation panel owns the right edge since 0.15.0): the general tools come back
     await page.keyboard.press('Control+K');
     const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.locator('#cmdlist [data-cmd="logo"]').click()]);
     await chooser.setFiles(PNG);
     await page.waitForFunction(() => document.querySelector('main.bw-doc .bw-ov'));
-    await page.mouse.click(1220, 420); // empty desk
+    await page.mouse.click(40, 420); // empty desk
     await settle(page, 200);
     const cleared = await state(page);
     await page.evaluate(() => window.scrollTo(0, 0));
@@ -224,7 +224,7 @@ try {
     const afterPanel = await state(page);
     check(`A4 ${ui}: clicking a logo selects it and its tools stay (the 0.9.1 drop is gone)`, cleared.ctx === '' && onLogo.ctx === 'logo' && afterPanel.ctx === 'logo', JSON.stringify({ cleared, onLogo, afterPanel }));
     // only empty space (or Esc) brings the general tools back
-    await page.mouse.click(1220, 420);
+    await page.mouse.click(497, 420); // empty desk between the open drawer (left) and the page; the explanation panel owns the right edge
     await settle(page, 200);
     const desk = await state(page);
     check(`A4 ${ui}: a click on empty space returns the general tools`, desk.ctx === '' && desk.selOv == null, JSON.stringify(desk));
@@ -256,14 +256,14 @@ try {
       const shown = await card();
       check(`A5 ${ui}: hover ~900 ms shows the card (not at 300 ms) with its sentence and a running animation`, !early && shown && shown.text === SAVE_TXT[ui] && shown.anim > 0 && shown.lang === ui, JSON.stringify({ early, shown }));
       await page.keyboard.press('Escape');
-      check(`A5 ${ui}: Esc hides the card`, !(await card()));
+      check(`A5 ${ui}: Esc leaves the card in the panel (0.15.0: the user closes the panel, nothing hides the card by itself)`, !!(await card()));
       await page.mouse.move(700, 600); // leave first: hovering the same spot again sends no pointerover
       await (await rbBtn(page,'save')).hover();
       await page.waitForTimeout(1150);
       const second = await card();
       await page.mouse.move(700, 600);
       await page.waitForTimeout(150);
-      check(`A5 ${ui}: leaving hides the card`, second?.text === SAVE_TXT[ui] && !(await card()), JSON.stringify(second));
+      check(`A5 ${ui}: leaving keeps the card (reference area) and the same tool shows it again`, second?.text === SAVE_TXT[ui] && !!(await card()), JSON.stringify(second));
       // keyboard focus shows it too
       await page.keyboard.press('Tab');
       await rbTabFor(page, 'save'); await sh(page, (r) => r.querySelector('.ribbon .rb-panel [data-a="save"]').focus());
@@ -514,10 +514,10 @@ try {
     await rbTabFor(page, 'dir', 'ltr'); // the direction switch is on the View tab: open it first, as a person would
     const btn = page.locator('.ribbon .rb-panel [data-a="dir"][data-d="ltr"]');
     await btn.click();
-    const anims = await sh(page, async (R) => { const seen = new Set(); const t0 = performance.now(); while (performance.now() - t0 < 600) { R.getAnimations().forEach((a) => { const el = a.effect?.target; if (el && !el.closest?.('.brand')) seen.add((el.className?.baseVal ?? el.className) + '@' + (el.closest('[data-x]')?.dataset.x || el.dataset?.a || el.tagName)); }); await new Promise((r) => setTimeout(r, 40)); } return [...seen]; });
+    const anims = await sh(page, async (R) => { const seen = new Set(); const t0 = performance.now(); while (performance.now() - t0 < 600) { R.getAnimations().forEach((a) => { const el = a.effect?.target; if (el && !el.closest?.('.brand, .xpl-dock')) seen.add((el.className?.baseVal ?? el.className) + '@' + (el.closest('[data-x]')?.dataset.x || el.dataset?.a || el.tagName)); }); await new Promise((r) => setTimeout(r, 40)); } return [...seen]; });
     check('0.13 A4: after RTL→LTR only the direction thumb animates', anims.length >= 1 && anims.filter((x) => !/^toast/.test(x)).every((x) => /thumb@dir/.test(x)), JSON.stringify(anims));
     const xpl = await sh(page, (R) => { const c = R.querySelector('.xpl'); return !!c && !c.hidden; });
-    check('0.13 A4: no explainer after the press', !xpl);
+    check('0.15 A4: the explanation panel is still in place after the press (its card is a reference, it stays)', await sh(page, (R) => !!R.querySelector('.xpl-dock .xd-h')));
     check('0.13 R2: no page errors', !errors.length, errors.join(' | '));
     await ctx.close();
   }
@@ -528,20 +528,20 @@ try {
     const save = (await rbBtn(page,'save'));
     const t0 = Date.now(); await save.hover();
     let at = -1; while (Date.now() - t0 < 1600) { if (await card()) { at = Date.now() - t0; break; } await page.waitForTimeout(30); }
-    check('0.13 A3: first hover shows the card at 880–1100 ms', at >= 850 && at <= 1150, String(at));
-    await page.mouse.move(700, 600); await page.waitForTimeout(200);
-    await save.hover(); await page.waitForTimeout(2000);
-    check('0.13 A3: second hover within the window: no card in 2 s', !(await card()));
+    check('0.15 A3: first hover shows the card at about 400 ms (owner note 10)', at >= 330 && at <= 1000, String(at));
+    await page.mouse.move(700, 600); await page.waitForTimeout(700);
+    await save.hover(); await page.waitForTimeout(1200);
+    check('0.15 A3: second hover: the card shows again (no seen-memory)', await card());
     await page.mouse.move(700, 600);
     const und = (await rbBtn(page,'newdoc'));
     await und.click(); await page.mouse.move(700, 600); await page.keyboard.press('Escape'); await und.hover(); await page.waitForTimeout(1500);
-    check('0.13 A3: a pressed tool, hovered again: no card', !(await card()));
+    check('0.15 A3: a pressed tool, hovered again: the card shows', await card());
     await ctx.close();
     const al = await open({ width: 1440, height: 900, store: { 'bw:explainers': 'always' } });
     const c2 = () => sh(al.page, (R) => { const c = R.querySelector('.xpl'); return !!c && !c.hidden; });
     await al.page.mouse.move(700, 600); await (await rbBtn(al.page,'save')).hover(); await al.page.waitForTimeout(1200); const a1 = await c2();
     await al.page.mouse.move(700, 600); await al.page.waitForTimeout(200); await (await rbBtn(al.page,'save')).hover(); await al.page.waitForTimeout(1200); const a2 = await c2();
-    check('0.13 A3: setting "always" restores the repeat', a1 && a2, JSON.stringify({ a1, a2 }));
+    check('0.15 A3: the old "always" setting is simply the new behaviour (repeat shows)', a1 && a2, JSON.stringify({ a1, a2 }));
     await al.ctx.close();
   }
   { // 0.13 A7
