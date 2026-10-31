@@ -5,6 +5,8 @@
 //        200 {ok:true, result}                         the tab's answer
 //        404 {ok:false, code:'NO_TAB'}                 no live tab at all (open the editor first)
 //        404 {ok:false, code:'NO_DOC'}                 the tab has no such document in its library
+//        503 TAB_ASLEEP {tab, lastBeatMs, how}        the tab stopped answering (sleeping tab): said at once, not after the 15 s timeout
+//        409 NOT_OWNER {owner}                          the document is owned by another tab (one document = one tab)
 //        409 CONFLICT · 422 BAD_OP · 400 BAD_ARGS|UNKNOWN_ACTION · 423 REFUSED (locked) · 504 {code:'TAB_TIMEOUT', tab, lastBeatMs}
 //   POST /api/editor/reply  body {id, ok, result | error:{code, message, ...}}   what the tab sends back (page origin check, as every non-GET route)
 //
@@ -12,10 +14,10 @@
 // in ctx.pendingRequests until the tab's reply (or BW_BRIDGE_TIMEOUT_MS, default 15 s). The tab half is editor/ext/12-session.js → BW.bridge.
 import crypto from 'node:crypto';
 import { readJson } from '../workspace.mjs';
-import { emit, registry } from './session.mjs';
+import { emit, registry, beat } from './session.mjs';
 
 export const TOOLS = ['list', 'get', 'outline', 'ops', 'action', 'new', 'import'];
-const STATUS = { NO_TAB: 404, NO_DOC: 404, CONFLICT: 409, BAD_OP: 422, BAD_ARGS: 400, UNKNOWN_ACTION: 400, REFUSED: 423, TAB_TIMEOUT: 504 };
+const STATUS = { NO_TAB: 404, NO_DOC: 404, CONFLICT: 409, BAD_OP: 422, BAD_ARGS: 400, UNKNOWN_ACTION: 400, REFUSED: 423, TAB_TIMEOUT: 504, TAB_ASLEEP: 503, NOT_OWNER: 409 };
 const timeoutMs = () => Number(process.env.BW_BRIDGE_TIMEOUT_MS) || 15000;
 
 const pendingOf = (ctx) => {
@@ -23,11 +25,17 @@ const pendingOf = (ctx) => {
   return ctx.bridgePending;
 };
 
-/** The tab that should serve a call: the one named, else a tab that has the document open, else a tool's tab (automation), else the most recently heard from. */
+/** The tab that should serve a call. A document has ONE owning tab (its lease, engine/routes/session.mjs): ops and reads of it go there and nowhere else.
+ *  Otherwise: the one named, else a tab with the document open, else a tool's tab (automation), else the most recently heard from; a sleeping tab is
+ *  taken only when no awake one is left. {notOwner} when the named tab is a follower of the document. */
 export function pickTab(ctx, { doc, tab }) {
-  const tabs = registry(ctx).tabs.filter((t) => t.live);
+  const r = registry(ctx);
+  const tabs = r.tabs.filter((t) => t.live);
+  const owner = doc ? r.leases?.[doc] : null;
+  if (owner && tab && tab !== owner && tabs.some((t) => t.tab === owner)) return { notOwner: owner };
   if (tab) return tabs.find((t) => t.tab === tab) || null;
-  const fresh = (a) => [...a].sort((x, y) => x.lastBeatMs - y.lastBeatMs)[0] || null;
+  if (owner) { const o = tabs.find((t) => t.tab === owner); if (o) return o; }
+  const fresh = (a) => [...a].sort((x, y) => (x.asleep - y.asleep) || (x.lastBeatMs - y.lastBeatMs))[0] || null;
   if (doc) { const own = fresh(tabs.filter((t) => t.docs.includes(doc) || t.svc === doc)); if (own) return own; }
   return fresh(tabs.filter((t) => t.automation)) || fresh(tabs);
 }
@@ -42,6 +50,7 @@ export default async (req, url, send, ctx) => {
       const w = typeof b.id === 'string' ? pending.get(b.id) : null;
       if (!w) { send(404, { ok: false, code: 'NO_REQUEST', error: 'no such request (answered already, or timed out)' }); return true; }
       pending.delete(b.id);
+      beat(ctx, w.tab); // it answered: its page runs
       clearTimeout(w.timer);
       w.done(b.ok === false || b.error ? { ok: false, ...(typeof b.error === 'object' && b.error ? b.error : { message: String(b.error || 'failed') }) } : { ok: true, result: b.result });
       send(200, { ok: true });
@@ -55,7 +64,9 @@ export default async (req, url, send, ctx) => {
     if (!TOOLS.includes(tool)) { send(400, { ok: false, code: 'BAD_ARGS', error: `unknown tool "${tool}"`, tools: TOOLS }); return true; }
     if (doc !== undefined && typeof doc !== 'string') { send(400, { ok: false, code: 'BAD_ARGS', error: 'doc must be a string' }); return true; }
     const target = pickTab(ctx, { doc, tab: b.tab });
+    if (target?.notOwner) { send(409, { ok: false, code: 'NOT_OWNER', error: `tab ${b.tab} is a follower of ${doc}: it is owned by tab ${target.notOwner}`, owner: target.notOwner, tab: b.tab, how: 'send the call to the owner (omit tab to let the host route it)' }); return true; }
     if (!target) { send(404, { ok: false, code: 'NO_TAB', error: b.tab ? `tab ${b.tab} is not connected` : 'no editor tab is connected to this host', how: 'open the editor (open_in_editor tool or business-wrap open) and retry' }); return true; }
+    if (target.asleep) { send(503, { ok: false, code: 'TAB_ASLEEP', error: `tab ${target.tab} is asleep: it has not answered for ${target.lastBeatMs} ms (Edge sleeping tab, a frozen or discarded page)`, tab: target.tab, lastBeatMs: target.lastBeatMs, how: 'click the tab to wake it, or reopen the editor with business-wrap open (its Edge keeps tabs awake) and retry' }); return true; }
     const id = crypto.randomUUID();
     const answer = await new Promise((resolve) => {
       const timer = setTimeout(() => { pending.delete(id); resolve({ ok: false, code: 'TAB_TIMEOUT', message: `tab ${target.tab} did not answer within ${timeoutMs()} ms`, tab: target.tab, lastBeatMs: registry(ctx).tabs.find((t) => t.tab === target.tab)?.lastBeatMs ?? null }); }, timeoutMs());

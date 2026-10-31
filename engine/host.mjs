@@ -50,9 +50,41 @@ export async function health(timeoutMs = 2500) {
   try { const r = await fetch(`${st.url}api/host/health`, { signal: AbortSignal.timeout(timeoutMs) }); return r.ok ? await r.json() : null; } catch { return null; }
 }
 
-export async function start({ editor, port = 4317, open = true } = {}) {
-  const now = status();
-  if (now.running) { const b = open ? launchBrowser([now.url]) : null; return { pid: now.pid, port: now.port, url: now.url, browserPid: b?.pids[0] ?? null }; }
+/** 0.15.3 T4: one host per state folder. `start` calls queue in this process and take an atomic lock file (host.lock, created with the
+ *  `wx` flag) across processes, so two `open`s in the same second can never spawn two servers: the second waits, then reuses the first's host. */
+export const lockFile = () => path.join(localDir(), 'host.lock');
+let chain = Promise.resolve();
+async function acquire(ms = 40000) {
+  fs.mkdirSync(localDir(), { recursive: true });
+  for (const t0 = Date.now(); ;) {
+    try { const fd = fs.openSync(lockFile(), 'wx'); fs.writeSync(fd, JSON.stringify({ pid: process.pid, at: Date.now() })); fs.closeSync(fd); return; } catch (e) { if (e.code !== 'EEXIST') throw e; }
+    let l = null, age = 0;
+    try { l = JSON.parse(fs.readFileSync(lockFile(), 'utf8')); } catch { /* being written, or gone */ }
+    try { age = Date.now() - fs.statSync(lockFile()).mtimeMs; } catch { continue; }
+    if ((l ? !alive(l.pid) || Date.now() - l.at > 60000 : age > 5000)) { try { fs.rmSync(lockFile(), { force: true }); } catch { /* raced */ } continue; } // its owner is dead: stale
+    if (Date.now() - t0 > ms) throw new Error('host.start: another start holds the host lock');
+    await new Promise((r) => setTimeout(r, 120));
+  }
+}
+const release = () => { try { const l = JSON.parse(fs.readFileSync(lockFile(), 'utf8')); if (l.pid === process.pid) fs.rmSync(lockFile(), { force: true }); } catch { /* none */ } };
+/** The server really answers on that url (its own /api/version). */
+const answers = async (url, ms = 1000) => { try { return (await fetch(`${url}api/version`, { signal: AbortSignal.timeout(ms) })).ok; } catch { return false; } };
+
+export function start(opts = {}) {
+  const run = chain.then(async () => { await acquire(); try { return await startLocked(opts); } finally { release(); } });
+  chain = run.catch(() => {});
+  return run;
+}
+
+async function startLocked({ editor, port = 4317, open = true } = {}) {
+  let now = status();
+  if (now.running) {
+    // reuse only a host that is really listening (a recorded pid with nothing on its port is not one)
+    let up = await answers(now.url);
+    for (let i = 0; !up && i < 3; i++) { await new Promise((r) => setTimeout(r, 400)); up = await answers(now.url); }
+    if (up) { const b = open ? launchBrowser([now.url]) : null; return { pid: now.pid, port: now.port, url: now.url, browserPid: b?.pids[0] ?? null, reused: true }; }
+    const h0 = read(); try { await fetch(`${now.url}api/host/stop`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: h0?.token }), signal: AbortSignal.timeout(1500) }); } catch { /* not listening: nothing to ask */ } // the recorded host answers nothing: asked to go (by its token, never killed by pid), then replaced
+  }
   if (fs.existsSync(hostFile())) fs.rmSync(hostFile(), { force: true }); // stale: its server is gone
   if (!editor || !fs.existsSync(editor)) throw new Error(`host.start: editor file not found: ${editor}`);
   const p = await freePort(port);
@@ -69,8 +101,20 @@ export async function start({ editor, port = 4317, open = true } = {}) {
     if (!alive(child.pid) || Date.now() - t0 > 20000) { await stop(); throw new Error('host.start: the server did not come up'); }
     await new Promise((r) => setTimeout(r, 150));
   }
+  // The recorded pid is the supervisor this start spawned (engine/serve.mjs forks the listening server); host.json also names the LISTENER, which answers with
+  // its pid and a key derived from OUR token. A server on this port that does not carry our key (another checkout's host that took the port) is NEVER
+  // adopted, stopped or killed: this start refuses, removing only its own spawn and its own host.json.
+  const pid = child.pid;
+  let hp = null;
+  try { hp = await (await fetch(url + 'api/host/health', { signal: AbortSignal.timeout(2000) })).json(); } catch { /* an older server without the route */ }
+  if (hp && hp.hostKey !== crypto.createHash('sha256').update(token).digest('hex').slice(0, 16)) {
+    killTree(child.pid); // our own spawn only
+    fs.rmSync(hostFile(), { force: true });
+    throw new Error(`host.start: port ${p} is answered by another server (pid ${hp.pid}), not by the one this start spawned: it was left alone`);
+  }
+  if (hp?.pid) write({ ...read(), listener: hp.pid });
   const b = open ? launchBrowser([url]) : null;
-  return { pid: child.pid, port: p, url, browserPid: b?.pids[0] ?? null }; // the caller can say whether Edge opened
+  return { pid, port: p, url, browserPid: b?.pids[0] ?? null }; // the caller can say whether Edge opened
 }
 
 function killTree(pid) {
@@ -102,13 +146,23 @@ export function edgePath() {
   return c.find((f) => fs.existsSync(f)) || null;
 }
 
+/** 0.15.3 T2: the editor's Edge must not put its tabs to sleep or throttle them: a frozen or throttled tab stops answering the host (TAB_STALE,
+ *  TAB_TIMEOUT). The three throttling switches are Chromium's own; the feature names after --disable-features are Edge's/Chromium's sleeping,
+ *  freezing and discarding features (a name this build does not know is ignored, never an error). [A] not measured on a real Edge build here. */
+export const KEEP_AWAKE_ARGS = [
+  '--disable-background-timer-throttling',
+  '--disable-renderer-backgrounding',
+  '--disable-backgrounding-occluded-windows',
+  '--disable-features=CalculateNativeWinOcclusion,IntensiveWakeUpThrottling,SleepingTabs,msSleepingTabs,msEdgeSleepingTabs,TabFreeze,BackgroundTabFreezing,AutomaticTabDiscarding,PerformanceInterventionUI',
+];
+
 /** All URLs on as few command lines as the Windows 32 767-character limit allows: 30 per launch. A page cannot open 100 tabs (one popup per gesture); the server can. */
 export function launchBrowser(urls, { chunk = 30 } = {}) {
   const chunks = [];
   for (let i = 0; i < urls.length; i += chunk) chunks.push(urls.slice(i, i + chunk));
   const pids = [];
   for (const c of chunks) {
-    const args = [`--user-data-dir=${profileDir()}`, '--no-first-run', '--no-default-browser-check', '--new-window', ...c];
+    const args = [`--user-data-dir=${profileDir()}`, '--no-first-run', '--no-default-browser-check', ...KEEP_AWAKE_ARGS, '--new-window', ...c];
     if (process.env.BW_BROWSER_STUB) { fs.appendFileSync(process.env.BW_BROWSER_STUB, JSON.stringify({ args }) + '\n'); continue; }
     const exe = edgePath();
     if (!exe) throw new Error('Microsoft Edge not found (BW_EDGE names it)');

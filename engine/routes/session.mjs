@@ -24,8 +24,12 @@ const day = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate(
  *  event stream and lists its tabs with POST /api/session/tabs; a tab is live while some connected client lists it. A page that connects
  *  directly (?tab=, an older page) is a client of one tab. clients: Map<clientId, {id, conns:Set<res>, tabs:Map<tab, info>, since, listedAt}>. */
 export function state(ctx) {
-  return (ctx.session ||= { runId: `${stamp(new Date())}-${crypto.randomBytes(3).toString('hex')}`, startedAt: new Date().toISOString(), clients: new Map(), timer: null, ended: false, inflight: 0, closing: new Map(), startedMs: Date.now() });
+  return (ctx.session ||= { runId: `${stamp(new Date())}-${crypto.randomBytes(3).toString('hex')}`, startedAt: new Date().toISOString(), clients: new Map(), timer: null, ended: false, inflight: 0, closing: new Map(), startedMs: Date.now(), leases: new Map(), revs: new Map(), beats: new Map(), asleepKey: '' });
 }
+/** 0.15.3 T2: a tab not heard from for this long is ASLEEP (Edge sleeping tabs, a frozen or discarded page): the bridge answers TAB_ASLEEP at once instead of waiting 15 s. The worker pings every 3 s. */
+export const asleepMs = () => Number(process.env.BW_ASLEEP_MS) || 9000;
+/** Any proof that a tab's page runs (a state push, a flush, a bridge reply) counts as a beat, whatever the last tab list said. */
+export const beat = (ctx, tab) => { if (typeof tab === 'string') state(ctx).beats.set(tab, Date.now()); };
 const connected = (s) => [...s.clients.values()].filter((c) => c.conns.size);
 const liveTabs = (s) => new Set(connected(s).flatMap((c) => [...c.tabs.keys()]));
 const nConns = (s) => connected(s).reduce((n, c) => n + c.conns.size, 0);
@@ -48,6 +52,44 @@ function settle(ctx, tabs) {
     if (s.closing.has(tab)) continue;
     s.closing.set(tab, setTimeout(() => { s.closing.delete(tab); const now = liveTabs(s); if (now.size && !now.has(tab)) dropTab(ctx, tab); }, IDLE_MS));
   }
+}
+/** 0.15.3 T1: one document = one owning tab. The first live tab that lists a document owns it (its lease); another tab on the same document is a
+ *  follower (read-only, told so by the `lease` event). The lease passes to the next claimant when the owner leaves the list. `rev` counts the saves
+ *  of a document the host accepted: a save whose base is older than it is refused (acceptWrite). */
+export const leaseInfo = (s) => ({ leases: Object.fromEntries([...s.leases].map(([d, l]) => [d, l.tab])), revs: Object.fromEntries([...s.revs].map(([d, r]) => [d, r.rev])) });
+function reconcile(ctx) {
+  const s = state(ctx);
+  const live = new Map();
+  for (const c of connected(s)) for (const [tab, o] of c.tabs) if (!live.has(tab)) live.set(tab, o.docs || []);
+  let changed = false;
+  for (const [doc, l] of [...s.leases]) if (!(live.get(l.tab) || []).includes(doc)) { s.leases.delete(doc); changed = true; }
+  for (const [tab, docs] of live) for (const doc of docs) if (!s.leases.has(doc)) { s.leases.set(doc, { tab, since: Date.now() }); changed = true; }
+  if (changed) emit(ctx, 'lease', leaseInfo(s));
+  return changed;
+}
+/** A tab writes a library document (POST /api/library/mirror, engine/routes/doc-lease.mjs): refused when another LIVE tab owns the document
+ *  (NOT_OWNER) or when the tab's base revision is older than the host's (STALE_BASE). Accepted: the revision advances and every tab is told. */
+export function acceptWrite(ctx, { tab, doc, base }) {
+  const s = state(ctx);
+  const owner = s.leases.get(doc)?.tab;
+  const live = owner && [...liveTabs(s)].includes(owner);
+  if (owner && owner !== tab && live) return { ok: false, code: 'NOT_OWNER', owner, rev: s.revs.get(doc)?.rev ?? 0 };
+  const rev = s.revs.get(doc)?.rev ?? 0;
+  if (Number.isFinite(base) && base < rev) return { ok: false, code: 'STALE_BASE', owner: owner || null, rev };
+  if (!owner || !live) { s.leases.set(doc, { tab, since: Date.now() }); emit(ctx, 'lease', leaseInfo(s)); }
+  s.revs.set(doc, { rev: rev + 1, tab, at: Date.now() });
+  beat(ctx, tab);
+  emit(ctx, 'rev', { doc, rev: rev + 1, by: tab });
+  return { ok: true, rev: rev + 1 };
+}
+/** Tell every tab which tabs are asleep, only when that set changes (the awake tabs show a visible warning). */
+function sweepAsleep(ctx) {
+  const s = state(ctx);
+  const asleep = registry(ctx).tabs.filter((t) => t.asleep);
+  const key = asleep.map((t) => t.tab).sort().join(',');
+  if (key === s.asleepKey) return;
+  s.asleepKey = key;
+  emit(ctx, 'asleep', { tabs: asleep.map((t) => ({ tab: t.tab, svc: t.svc })) });
 }
 const root = (ctx) => subdir(ensure(ctx.workspace).dirs, 'sessions');
 const runDir = (ctx, id) => path.join(root(ctx), id);
@@ -114,6 +156,7 @@ const spliceOps = (old = [], d) => {
  *  drops an older one, so a late push never overwrites a newer delta (a typed-just-before-close edit was lost to this). No seq = an older page: applied. */
 function writeTab(ctx, b) {
   if (!TAB.test(String(b.tab))) throw Object.assign(new Error('tab'), { code: 400 });
+  beat(ctx, b.tab);
   if (typeof b.seq === 'number' && Number.isFinite(b.seq)) {
     const seqs = (state(ctx).seqs ||= new Map());
     if (b.seq < (seqs.get(b.tab) ?? -Infinity)) return false; // older than what this tab already has on disk
@@ -155,11 +198,20 @@ export function registry(ctx) {
   const now = Date.now();
   const cl = connected(s);
   const tabs = [];
-  for (const c of cl) for (const [tab, o] of c.tabs) tabs.push({ tab, svc: o.svc || null, docs: o.docs || [], automation: !!o.automation, live: true, lastBeatMs: Math.round((o.ago || 0) + (c.listedAt ? now - c.listedAt : 0)) });
+  for (const c of cl) for (const [tab, o] of c.tabs) {
+    const listed = Math.round((o.ago || 0) + (c.listedAt ? now - c.listedAt : 0));
+    const heard = s.beats.has(tab) ? now - s.beats.get(tab) : Infinity; // a push, a flush or a bridge reply is a fresher proof than the list
+    const lastBeatMs = Math.min(listed, Math.round(heard));
+    const rec = { tab, svc: o.svc || null, docs: o.docs || [], automation: !!o.automation, live: true, lastBeatMs, asleep: lastBeatMs > asleepMs(), owns: [...s.leases].filter(([, l]) => l.tab === tab).map(([d]) => d) };
+    // a tab can be listed by two clients (a frozen old leader still holds its stream): the freshest proof wins
+    const at = tabs.findIndex((x) => x.tab === tab);
+    if (at < 0) tabs.push(rec); else if (rec.lastBeatMs < tabs[at].lastBeatMs) tabs[at] = rec;
+  }
   const warnings = [];
+  for (const t of tabs) if (t.asleep) warnings.push({ code: 'TAB_ASLEEP', tab: t.tab, lastBeatMs: t.lastBeatMs, how: 'the tab stopped answering (Edge sleeping tab, a frozen or discarded page): click the tab to wake it, or reopen with business-wrap open (its Edge is started with sleeping tabs off)' });
   if (nConns(s) >= 5) warnings.push({ code: 'MANY_CLIENTS', conns: nConns(s), note: 'five or more event streams: pages that do not use the shared worker each hold one of the six connections a browser allows per origin' });
   for (const t of tabs) if (t.lastBeatMs > 15000) warnings.push({ code: 'TAB_STALE', tab: t.tab, lastBeatMs: t.lastBeatMs });
-  return { runId: s.runId, clients: cl.map((c) => ({ client: c.id, conns: c.conns.size, tabs: [...c.tabs.keys()], since: new Date(c.since).toISOString() })), tabs, warnings };
+  return { runId: s.runId, ...leaseInfo(s), clients: cl.map((c) => ({ client: c.id, conns: c.conns.size, tabs: [...c.tabs.keys()], since: new Date(c.since).toISOString() })), tabs, warnings };
 }
 
 export default async (req, url, send, ctx, res) => {
@@ -185,6 +237,7 @@ export default async (req, url, send, ctx, res) => {
   const s = state(ctx);
   try {
     if (req.method === 'GET' && p === '/api/session/info') { send(200, { runId: s.runId, host: !!process.env.BW_HOST_TOKEN, workspace: { root: ctx.workspace.root, chosen: ctx.workspace.chosen !== false } }); return true; }
+    if (req.method === 'GET' && p === '/api/session/leases') { send(200, { ok: true, ...leaseInfo(s) }); return true; }
     if (req.method === 'GET' && p === '/api/session/live') {
       const tab = url.searchParams.get('tab');
       const cid = url.searchParams.get('client');
@@ -202,6 +255,7 @@ export default async (req, url, send, ctx, res) => {
         const gone = [...c.tabs.keys()];
         if (!c.conns.size) s.clients.delete(c.id);
         noteHost({ tabs: liveTabs(s).size });
+        reconcile(ctx);
         if (!connected(s).length) {
           // the last connection gone: every tab that closed in the last IDLE_MS went with it (a window closed, Edge quit) and stays
           for (const t of s.closing.values()) clearTimeout(t);
@@ -229,6 +283,8 @@ export default async (req, url, send, ctx, res) => {
       c.listedAt = Date.now();
       if (!c.conns.size && !next.size) s.clients.delete(c.id);
       settle(ctx, [...next.keys(), ...left]);
+      reconcile(ctx);
+      sweepAsleep(ctx);
       noteHost({ tabs: liveTabs(s).size });
       send(200, { ok: true, n: next.size });
       return true;

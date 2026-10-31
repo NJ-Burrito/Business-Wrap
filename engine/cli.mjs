@@ -41,6 +41,7 @@ import { workspace, localDir, ensure, reportPath, sourcesDir, keepVersion, docTi
 import { tidy } from './tidy.mjs';
 import { migrateLocal, pluginData, realParent, isTestMode } from './testguard.mjs';
 import { doctor as doctorInfo } from '../mcp/startup.mjs';
+import { KEEP_AWAKE_ARGS } from './host.mjs';
 
 const pkg = () => JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8'));
 const HOSTS = () => path.join(STATE_DIR(), 'cli-hosts.json');
@@ -64,7 +65,7 @@ export function edgePath() {
 function openEdge(url) {
   const exe = edgePath();
   if (!exe) return null;
-  const c = spawn(exe, [`--user-data-dir=${path.join(STATE_DIR(), 'edge-profile')}`, '--no-first-run', '--new-window', url], { detached: true, stdio: 'ignore', windowsHide: true });
+  const c = spawn(exe, [`--user-data-dir=${path.join(STATE_DIR(), 'edge-profile')}`, '--no-first-run', ...KEEP_AWAKE_ARGS, '--new-window', url], { detached: true, stdio: 'ignore', windowsHide: true });
   c.unref();
   return c.pid;
 }
@@ -72,7 +73,7 @@ function openEdge(url) {
 export async function startHost({ editor, port = 4317, browser = true } = {}) {
   const real = await hostModule();
   if (real) {
-    try { const r = await real.start({ editor, port, open: browser }); record((h) => [...h, { ...r, editor, by: 'host.mjs' }]); return { ...r, editor }; } catch (e) { if (!/not built yet/.test(e.message)) throw e; }
+    try { const r = await real.start({ editor, port, open: browser }); record((h) => (h.some((x) => x.pid === r.pid) ? h : [...h, { ...r, editor, by: 'host.mjs' }])); return { ...r, editor }; } catch (e) { if (!/not built yet/.test(e.message)) throw e; }
   }
   const same = record((h) => h).find((h) => h.editor === editor);
   if (same && (await answers(same.url))) return { ...same, reused: true };
@@ -165,7 +166,7 @@ export async function status() {
   let host = null;
   try { host = real?.status?.() ?? null; } catch { host = null; }
   const d = await doctorInfo().catch(() => null); // the MCP side in one line: plugin or clone, where state lives, drift, last start
-  return { version: pkg().version, hosts: hosts.map(({ pid, port, url, editor }) => ({ pid, port, url, editor })), host, healed: readHealLog().length, ai: false, mcp: d && { plugin: d.plugin, state: d.local, last_initialize_ms: d.last_initialize_ms, problems: d.problems } };
+  return { version: pkg().version, hosts: hosts.map(({ pid, port, url, editor }) => ({ pid, port, url, editor })), host, healed: readHealLog().length, ai: false, mcp: d && { plugin: d.plugin, state: d.local, last_initialize_ms: d.last_initialize_ms, registered: d.registered?.registered ?? null, last_start: d.last_start, last_error: d.last_error, problems: d.problems } };
 }
 
 export async function newDoc({ title, out, browser = true, openIt = true } = {}) {
