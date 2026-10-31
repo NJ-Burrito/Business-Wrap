@@ -1,47 +1,72 @@
-/* Server banner (owner request 2026-10-30). When an editor is opened and no Business-Wrap server answers (a file:// page, or a served
- * page whose server died), a banner at the top says so and offers «Start server»: the same action as Settings › Local server (srvBegin in
- * editor/settings.js: business-wrap://open?file=<this document> through the registered URL protocol). When a server answers, it turns into
- * «Open from the server», which goes to the served address of the SAME document. Dismissible (it comes back on the next open). The page
- * re-checks every 10 s and when the window regains focus. The only network traffic from a file:// page is the GET /api/version probe of
- * 127.0.0.1:4317-4327 (srvProbe); a served page asks its own /api/version. */
+/* The server toggle (0.15.0, owner note 15). ONE button starts and stops the local Business-Wrap server and shows, in colour AND in icon AND in words,
+ * whether it is online. It lives in two places, one component: the top bar (inline-end, after the history counter) and Settings › Local server.
+ * The banner of 0.14.0 and the Start / Stop / Open buttons are gone.
+ *   - offline  -> press: «Starting…» (disabled, aria-busy, up to 30 s) -> online with the port, or an error state, one toast and «Try again».
+ *   - online   -> press: stops at once (the open documents are saved first); one 6 s «Undo» toast starts it again.
+ *                 Refused, with the reason in the tooltip, while an export / import / print job runs.
+ *   - a file:// page with no server found pulses the gold ring twice, once per open (calm mode: no pulse).
+ * A file:// page cannot start a process, so it asks the installed Business-Wrap through the business-wrap: URL protocol (srvBegin in editor/settings.js);
+ * a served page talks to its own server (engine/routes/servers.mjs). The only network traffic from a file:// page is the GET /api/version probe of
+ * 127.0.0.1:4317-4327 (srvProbe); a served page asks its own /api/version.
+ * Contract for other lanes: window event `bw:server` {detail:{online}} on every change of the answer; `bw:wm` W07 (went online) / W08 (went offline)
+ * on a real transition only; <html data-bw-server="online|offline|starting|stopping|error|checking"> for tests. */
 const SB = (() => {
-  const st = { mode: 'none', note: '', busy: false, dismissed: false, port: 0, started: false, file: '', lang: '' };
-  let el = null;
   const served = () => /^https?:$/.test(location.protocol);
-  const mark = () => { document.documentElement.dataset.bwServer = st.dismissed ? 'dismissed' : st.busy ? 'starting' : st.mode; };
+  const ICO = (p) => `<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+  const SRV_IC = { // Lucide (ISC): server, server-off, loader-circle, triangle-alert
+    online: ICO('<rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><path d="M6 6h.01"/><path d="M6 18h.01"/>'),
+    offline: ICO('<path d="M7 2h13a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-5"/><path d="M10 10 2.5 2.5"/><path d="M22 17v-1a2 2 0 0 0-2-2h-1"/><path d="M4 14a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h14"/><path d="M6 18h.01"/><path d="m2 2 20 20"/>'),
+    busy: ICO('<path d="M21 12a9 9 0 1 1-6.219-8.56"/>'),
+    error: ICO('<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>'),
+  };
+  const st = { mode: served() ? 'online' : 'checking', port: served() ? Number(location.port) || 80 : 0, note: '', file: '', pulse: false, known: served(), answered: null };
+  let pulsed = false;
+  const word = () => ({ online: `${t('sv.on')}${st.port ? ` :${st.port}` : ''}`, offline: t('sv.off'), starting: t('sv.starting'), stopping: t('sv.stopping'), checking: t('sv.checking'), error: t('sv.error') })[st.mode];
+  const isBusy = () => st.mode === 'starting' || st.mode === 'stopping' || st.mode === 'checking';
+  const jobRunning = () => (window.BW?.EXT?.busy || EXT.busy)?.active?.() > 0;
   const filePath = () => (served() ? (st.file || ls.get('bw:srv-file') || '') : srvFilePath());
-  /** The banner stays at the top; the toolbar (a fixed island) sits below it while it shows, so it never covers a control. */
-  let ro = null;
-  function place() {
-    const isl = root.querySelector('.island');
-    if (!el || !isl) return;
-    const shown = !el.hidden && !st.dismissed && st.mode !== 'none';
-    isl.style.insetBlockStart = shown ? `${Math.round(el.offsetHeight + 16)}px` : '';
-    if (!ro && typeof ResizeObserver === 'function') { ro = new ResizeObserver(() => { place(); measureBar(true); }); ro.observe(el); }
+  /** The toggle's markup: a pure function of the state, so the toolbar's in-place patch (syncUi) and our own redraw agree. */
+  function html(where = 'top') {
+    const m = st.mode;
+    const online = m === 'online';
+    const refused = online && jobRunning();
+    const tip = refused ? t('sv.tipBusy') : st.note && (m === 'error' || m === 'offline') ? st.note : online ? t('sv.tipOn') : m === 'offline' || m === 'error' ? t('sv.tipOff') : word();
+    const icon = isBusy() ? SRV_IC.busy : m === 'error' ? SRV_IC.error : online ? SRV_IC.online : SRV_IC.offline;
+    return `<button type="button" class="srv-toggle" data-k="srvToggle" data-where="${where}" data-st="${m}" data-pulse="${st.pulse ? '1' : '0'}" role="switch" aria-checked="${online ? 'true' : 'false'}"${isBusy() ? ' aria-busy="true" disabled' : ''}${refused ? ' aria-disabled="true"' : ''} title="${esc(tip)}" aria-label="${esc(`${t('sv.label')}: ${word()}`)}"><span class="srv-track" aria-hidden="true"><i class="srv-thumb"></i></span><span class="srv-ic" aria-hidden="true">${icon}</span><span class="srv-w">${esc(word())}</span></button>`;
   }
+  /** The one sentence Settings shows under its toggle. */
+  function sentence() {
+    if (st.mode === 'online') return t('sv.setOn', { p: st.port || '' });
+    if (st.mode === 'error' || (st.mode === 'offline' && st.note)) return st.note;
+    if (st.mode === 'starting') return t('srv.starting');
+    if (st.mode === 'stopping') return t('srv.stopping');
+    if (st.mode === 'checking') return t('srv.checking');
+    return t('sv.setOff');
+  }
+  function mark() { document.documentElement.dataset.bwServer = st.mode; }
   function draw() {
     mark();
-    // an automated browser (navigator.webdriver: tests, CI, an agent) is not nagged: the banner would cover what it drives and move the layout it measures;
-    // the state is still published on <html data-bw-server>. localStorage bw:srv-banner = 1 turns it back on (the banner's own test).
-    const quiet = navigator.webdriver && ls.get('bw:srv-banner') !== '1';
-    if (st.dismissed || st.mode === 'none' || quiet) { if (el) { el.hidden = true; place(); measureBar(true); } return; }
-    if (!el) { el = document.createElement('div'); el.className = 'srv-bar'; el.setAttribute('role', 'region'); root.appendChild(el); }
-    else if (!el.isConnected) root.appendChild(el);
-    el.hidden = false;
-    el.dataset.st = st.mode;
-    el.dataset.lang = S.ui;
-    el.dataset.calm = isCalm() ? '1' : '0';
-    el.dir = S.ui === 'ar' ? 'rtl' : 'ltr';
-    el.lang = S.ui;
-    const up = st.mode === 'up';
-    el.setAttribute('aria-label', t(up ? 'sbUp' : 'sbDown'));
-    const btn = up
-      ? `<button type="button" class="b primary" data-k="sbOpen"><span class="i">${ic('connect')}</span><span class="w">${esc(t('sbOpen'))}</span></button>`
-      : `<button type="button" class="b primary" data-k="sbStart"${st.busy ? ' disabled' : ''}><span class="i">${ic('send')}</span><span class="w">${esc(t('sbStart'))}</span></button>`;
-    const next = `<span class="srv-mark">${ic(up ? 'connect' : 'powerOff')}</span><div class="srv-txt" role="status" aria-live="polite"><strong>${esc(t(up ? 'sbUp' : 'sbDown'))}</strong><span>${esc(t(up ? 'sbUpLead' : 'sbDownLead'))}</span>${st.note ? `<span class="srv-note">${esc(st.note)}</span>` : ''}</div>${btn}<button type="button" class="b srv-x" data-k="sbDismiss" aria-label="${esc(t('sbDismiss'))}" title="${esc(t('sbDismiss'))}"><span class="i">${ic('close')}</span></button>`;
-    if (el.dataset.html !== next) { el.dataset.html = next; el.innerHTML = next; }
-    place();
+    root.querySelectorAll('.srv-toggle').forEach((el) => {
+      const tpl = document.createElement('template');
+      tpl.innerHTML = html(el.dataset.where || 'top');
+      uiMorph(el, tpl.content.firstElementChild, true);
+    });
+    srvDraw(); // the Settings card (sentence, open link), when its drawer is open
     measureBar(true);
+  }
+  function set(mode, note = '') {
+    st.mode = mode;
+    st.note = note;
+    if (mode === 'online') st.pulse = false;
+    draw();
+    const online = mode === 'online';
+    const answer = online ? true : mode === 'offline' || mode === 'error' ? false : null;
+    if (answer !== null && answer !== st.answered) {
+      const first = st.answered === null;
+      st.answered = answer;
+      window.dispatchEvent(new CustomEvent('bw:server', { detail: { online: answer } }));
+      if (!first) window.dispatchEvent(new CustomEvent('bw:wm', { detail: { id: online ? 'W07' : 'W08' } }));
+    }
   }
   /** Who answers now: the ports a file:// page asks, or this served page's own /api/version (then, best effort, the other ports). */
   async function probe() {
@@ -52,57 +77,89 @@ const SB = (() => {
           if (!st.file) { try { const s = await (await fetch('/api/servers/file', { cache: 'no-store' })).json(); if (s?.file) { st.file = s.file; ls.set('bw:srv-file', s.file); } } catch { /* the file is learned next time */ } }
           return [Number(location.port) || 80];
         }
-      } catch (e) { if (e?.name === 'TimeoutError' || e?.name === 'AbortError') return null; /* slow, not dead: keep what the banner shows */ }
-      return srvProbe();
+      } catch (e) { if (e?.name === 'TimeoutError' || e?.name === 'AbortError') return null; /* slow, not dead: keep what the toggle shows */ }
     }
     return srvProbe();
   }
   async function check() {
-    if (st.busy || SRV.busy) return;
+    if (isBusy() && st.mode !== 'checking') return;
+    if (SRV.busy) return;
     const found = await probe();
-    if (!found) return;
-    if (st.busy || SRV.busy) return;
-    if (served()) {
-      const own = found[0] === (Number(location.port) || 80);
-      st.mode = own ? 'none' : found.length ? 'up' : 'down';
-    } else {
-      st.mode = found.length ? (st.started || st.mode === 'down' ? 'up' : 'none') : 'down'; // a server already up when the file was opened: nothing to nag about; one that comes up while the banner shows: offer it
-    }
+    if (!found || (isBusy() && st.mode !== 'checking') || SRV.busy) return;
     st.port = found[0] || 0;
-    if (st.mode === 'down' && !st.busy) st.note = st.note === t('sbStarting') ? '' : st.note;
-    draw();
+    if (found.length) set('online');
+    else {
+      if (st.mode === 'error') { draw(); return; } // an error stays until the next press or a server appears
+      const first = st.mode === 'checking';
+      set('offline', st.mode === 'offline' ? st.note : '');
+      if (first && !served() && !pulsed && !isCalm()) { pulsed = true; st.pulse = true; draw(); setTimeout(() => { st.pulse = false; draw(); }, 1300); }
+    }
   }
   async function start() {
-    if (st.busy || SRV.busy) return;
+    if (isBusy() || SRV.busy) return;
     const f = filePath();
-    if (!f) { st.note = t('sbNoPath'); draw(); return; }
-    st.busy = true; SRV.busy = true; st.note = '';
-    draw();
-    const r = await srvBegin(f, (s) => { if (s === 'starting') { st.note = t('sbStarting'); draw(); } });
-    SRV.busy = false; st.busy = false;
-    if (r === 'failed') { st.mode = 'down'; st.note = t('sbFailed'); } else { st.mode = 'up'; st.port = SRV.found[0]; st.started = true; st.note = ''; }
-    draw();
-    el?.querySelector(r === 'failed' ? '[data-k="sbStart"]' : '[data-k="sbOpen"]')?.focus();
-    srvDraw();
+    if (!f) { set('error', t('srv.nopath')); toast(t('sv.failed', { r: t('srv.nopath') }), 'warn', { actions: [[t('sv.retry'), start]] }); return; }
+    SRV.busy = true;
+    set('starting');
+    const r = await srvBegin(f);
+    SRV.busy = false;
+    if (r === 'failed') {
+      set('error', t('srv.noHandler'));
+      toast(t('sv.failed', { r: t('srv.noHandler') }), 'warn', { actions: [[t('sv.retry'), start]] });
+      return;
+    }
+    st.port = SRV.found[0] || st.port;
+    set('online');
+    if (served() && st.port && st.port !== (Number(location.port) || 80)) location.href = `http://127.0.0.1:${st.port}/`; // the same document, from the server that is up now
   }
+  async function stop() {
+    if (isBusy() || SRV.busy) return;
+    if (jobRunning()) { toast(t('sv.tipBusy'), 'warn'); return; }
+    SRV.busy = true;
+    set('stopping');
+    let gone = false;
+    let why = '';
+    if (served()) {
+      await srvSaveHere();
+      try {
+        const r = await fetch('/api/servers/stop', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+        gone = true;
+      } catch (e) { why = String(e.message || e); }
+    } else {
+      srvLaunch('business-wrap://stop');
+      gone = await srvWait(false, 20000);
+      why = t('srv.noHandlerStop');
+    }
+    SRV.busy = false;
+    if (!gone) { st.port = st.port || 0; set('online'); toast(t('sv.stopFailed', { r: why }), 'warn'); return; }
+    set('offline');
+    toast(t('sv.stoppedToast'), 'info', { ms: 6000, actions: [[t('sv.undo'), start]] });
+  }
+  function press() { return st.mode === 'online' ? stop() : st.mode === 'offline' || st.mode === 'error' ? start() : undefined; }
   function open() { if (st.port) location.href = `http://127.0.0.1:${Number(st.port)}/`; }
-  function click(e) {
-    const k = e.target.closest('button')?.dataset.k;
-    if (k === 'sbStart') start();
-    if (k === 'sbOpen') open();
-    if (k === 'sbDismiss') { st.dismissed = true; draw(); }
-  }
+  // the top bar's own markup carries the toggle (so syncUi keeps the very same node): after the history counter, or where a lane put a data-srv-slot
+  const baseUi = uiHtml;
+  uiHtml = function () {
+    const h = baseUi();
+    const tg = html('top');
+    if (/<span data-srv-slot><\/span>/.test(h)) return h.replace(/<span data-srv-slot><\/span>/, () => tg);
+    if (/<span class="flash vh"><\/span>\s*<\/div>/.test(h)) return h.replace(/(<span class="flash vh"><\/span>\s*<\/div>)/, (m) => m + tg);
+    return h.replace(/<div class="progress"/, (m) => tg + m);
+  };
   function init() {
-    root.addEventListener('click', (e) => { if (el && e.composedPath().includes(el)) click(e); });
+    root.addEventListener('click', (e) => { const b = e.target.closest?.('.srv-toggle'); if (b && !b.disabled) press(); });
+    mark();
     check();
-    setInterval(check, 10000);
+    setInterval(() => { check(); if (st.mode === 'online') draw(); }, 10000);
     window.addEventListener('focus', check);
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+    if (served()) set('online');
   }
-  return { init, check, draw, start, open, state: st, sync: () => { if (!st.busy) check(); } };
+  return { init, check, draw, start, stop, press, open, html, sentence, state: st, sync: () => { if (!isBusy()) check(); } };
 })();
 
 bwExt({
-  on: { boot: () => SB.init(), render: () => { if (SB.state.mode !== 'none') SB.draw(); } },
+  on: { boot: () => SB.init(), render: () => SB.draw() },
   expose: { server: SB },
 });

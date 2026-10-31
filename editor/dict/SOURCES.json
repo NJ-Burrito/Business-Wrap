@@ -1,0 +1,49 @@
+{
+  "note": "Dictionary files are shipped unmodified. Regenerate with tools/vendor-spell.mjs.",
+  "ar": {
+    "name": "Ayaspell (Arabic), as packaged by LibreOffice",
+    "upstream": "http://ayaspell.sourceforge.net/",
+    "source": "https://github.com/LibreOffice/dictionaries/tree/master/ar",
+    "libreofficeCommit": "4f1df64b2e8e14751aa7c2205d170ca016071315",
+    "lastChangedIn": "10e0418ad6a7e1c519cbcf6b9329f0940bd07c9f (2019-03-07)",
+    "licence": "GPL 2.0 / LGPL 2.1 / MPL 1.1 tri-licence; used here under the MPL 1.1 grant"
+  },
+  "en": {
+    "name": "dictionary-en (SCOWL en_US)",
+    "version": "4.0.0",
+    "source": "https://github.com/wooorm/dictionaries/tree/main/dictionaries/en",
+    "licence": "BSD (SCOWL, Kevin Atkinson) / MIT packaging"
+  },
+  "engine": {
+    "name": "hunspell-asm",
+    "version": "4.0.2",
+    "source": "https://github.com/kwonoj/hunspell-asm",
+    "licence": "MIT wrapper; Hunspell is MPL 1.1 / GPL 2 / LGPL 2.1"
+  },
+  "files": {
+    "ar/ar.aff": {
+      "bytes": 86949,
+      "sha256": "cec30b8621001e49618feb05aec1984c5fcfbf7d2ec309901d5cbf66585217a3"
+    },
+    "ar/ar.dic": {
+      "bytes": 7217161,
+      "sha256": "2a3e5367f61c1583734db9d66734f5603e6be5c2d227cf5c5cd7e4ca586e34fe"
+    },
+    "ar/COPYING.txt": {
+      "bytes": 532,
+      "sha256": "73480d918cd78d655508e80aa88c022cbd53634524a0f714b5f2519f2cf19124"
+    },
+    "en/index.aff": {
+      "bytes": 3086,
+      "sha256": "8ae1f19d4840d957728ad90555d5a8dff6cc5c046279c95ff0c00fc0a0136c7b"
+    },
+    "en/index.dic": {
+      "bytes": 551762,
+      "sha256": "f0b1a234bd178bdd01875b2a392a9647f888b8fe879f79c52aae62c2759b3647"
+    },
+    "en/license": {
+      "bytes": 15731,
+      "sha256": "2a7e8d8ae9e8facc84818546ae2a8d83aec5e9c80a675ff789acd1c338b53b3d"
+    }
+  }
+}
