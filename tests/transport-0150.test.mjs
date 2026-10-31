@@ -149,6 +149,54 @@ async function lostBye(label, { fallback }) {
   await H.stop();
 }
 
+async function latePush() {
+  // data-loss guard (0.15.0): a state push still in flight must never overwrite the newer pagehide/flush delta of the same tab
+  const h = await H.start({ editor, port: await freePort(), open: false });
+  const sess = path.join(tmp, 'ws', 'Business-Wrap', '.system', 'sessions');
+  const rec = (tab) => { for (const r of fs.readdirSync(sess).filter((d) => d !== 'archive').sort().reverse()) { const f = path.join(sess, r, `${tab}.json`); if (fs.existsSync(f)) return JSON.parse(fs.readFileSync(f, 'utf8')); } return null; };
+  const post = (u, b) => fetch(h.url + u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) }).then((r) => r.json());
+  const entry = (n) => ({ id: 'doc-late0001', editions: { ar: { raw: 'x', ops: Array.from({ length: n }, (_, i) => ({ id: `o${i}`, value: `v${i}` })) } } });
+  const T = 'tablate00x';
+  // server level: full(seq 10, 2 ops) -> delta(seq 20, +1 op) -> a LATE older full(seq 15, 2 ops) must be dropped
+  await post('api/session/state', { tab: T, seq: 10, title: 't', svc: 'doc-late0001', ed: 'ar', entry: entry(2), snap: null });
+  await post('api/session/flush', { tab: T, seq: 20, svc: 'doc-late0001', ed: 'ar', title: 't', delta: { ar: { from: 2, prev: 'o1', ops: [{ id: 'o2', value: 'v2' }] } } });
+  const late = await post('api/session/state', { tab: T, seq: 15, title: 't', svc: 'doc-late0001', ed: 'ar', entry: entry(2), snap: null });
+  check('server: a late older push is dropped, the newer delta stays (3 ops)', rec(T)?.entry?.editions?.ar?.ops?.length === 3 && late.stale === true, JSON.stringify({ ops: rec(T)?.entry?.editions?.ar?.ops?.length, late }));
+  const newer = await post('api/session/state', { tab: T, seq: 30, title: 't', svc: 'doc-late0001', ed: 'ar', entry: entry(4), snap: null });
+  check('server: a newer push is applied (4 ops) and a push without seq (older page) is still applied', rec(T)?.entry?.editions?.ar?.ops?.length === 4 && !newer.stale && (await post('api/session/state', { tab: T, title: 't', svc: 'doc-late0001', ed: 'ar', entry: entry(1), snap: null })).ok && rec(T)?.entry?.editions?.ar?.ops?.length === 1);
+  // the tab registry too: a late older list of one client (still on the wire when the list without a closed tab landed) must not bring the tab back
+  const sse = await fetch(h.url + 'api/session/live?client=cseqtest0', { headers: { accept: 'text/event-stream' } });
+  await post('api/session/tabs', { client: 'cseqtest0', seq: 5, tabs: ['tabseq00x', 'tabseq01x'] });
+  await post('api/session/tabs', { client: 'cseqtest0', seq: 7, tabs: ['tabseq00x'] });
+  const lateList = await post('api/session/tabs', { client: 'cseqtest0', seq: 6, tabs: ['tabseq00x', 'tabseq01x'] });
+  const hl2 = await health(h);
+  check('server: a late older tab list is dropped (the closed tab stays gone)', lateList.stale === true && hl2.tabs.filter((t) => t.tab.startsWith('tabseq')).length === 1, JSON.stringify({ lateList, tabs: hl2.tabs.map((t) => t.tab) }));
+  await sse.body.cancel().catch(() => {});
+  // real page: hold the 0.4 s state push in flight, type more, flush (the pagehide path), then let the older push land
+  const ctx = await browser.newContext();
+  await ctx.addInitScript(() => { try { localStorage.setItem('bw:profile-prompt', '1'); } catch { /* none */ } });
+  let hold = false;
+  const held = [];
+  await ctx.route('**/api/session/state', (route) => { if (hold) held.push(route); else route.continue(); });
+  const pg = await open(ctx, h.url + '?tab=tablate01x');
+  await sleep(700);
+  hold = true;
+  await pg.evaluate(() => window.BW.setText('/chapters/0/title', 'OLDER-PUSH'));
+  const heldOk = await until(() => held.length > 0, 4000); // positive sample: the push is on the wire and stalled
+  await pg.evaluate(() => window.BW.setText('/chapters/0/title', 'NEWER-FLUSH-TEXT'));
+  await pg.evaluate(() => window.BW.EXT.session.flush());
+  await sleep(700);
+  hold = false;
+  for (const r of held) await r.continue().catch(() => {}); // the older push arrives AFTER the flush
+  await sleep(900);
+  const txt = JSON.stringify(rec('tablate01x') || {});
+  check('page: the older push was held in flight (positive sample)', heldOk);
+  check('page: the flushed latest text survives the late older push', txt.includes('NEWER-FLUSH-TEXT') && !txt.includes('OLDER-PUSH'), txt.slice(0, 200));
+  await pg.close().catch(() => {});
+  await ctx.close();
+  await H.stop();
+}
+
 async function automation() {
   // a stored previous run exists → a plain tab asks; an automation tab never does
   const h = await H.start({ editor, port: await freePort(), open: false });
@@ -186,9 +234,10 @@ try {
   await closing();
   await lostBye('lost bye (shared)', { fallback: false });
   await lostBye('lost bye (fallback)', { fallback: true });
+  await latePush();
   await automation();
 } catch (e) {
-  check('suite ran to the end', false, String(e.stack || e).slice(0, 500));
+  check('suite ran to the end', false, String(e.stack || e).slice(0, 900) + String(e.cause?.message || ''));
 } finally {
   await browser.close().catch(() => {});
   await H.stop().catch(() => {});
