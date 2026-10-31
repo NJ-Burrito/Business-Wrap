@@ -37,8 +37,8 @@ try {
 
   // ── R1 · tabs, groups, every command reachable ───────────────────────────
   const tabsAr = await sh(page, (r) => [...r.querySelectorAll('.ribbon .rb-tab')].map((x) => x.textContent.trim()));
-  check('R1 happy: the Arabic ribbon has the Word-style tabs (ملف الرئيسية إدراج التخطيط التصميم مراجعة عرض)', ['ملف', 'الرئيسية', 'إدراج', 'التخطيط', 'التصميم', 'مراجعة', 'عرض'].every((w) => tabsAr.includes(w)) && tabsAr.length === 7, tabsAr.join());
-  check('R1 happy: tabs are a tablist, each with aria-selected, and the panel is a tabpanel with labelled groups', await sh(page, (r) => !!r.querySelector('.ribbon [role=tablist]') && r.querySelectorAll('.ribbon [role=tab]').length === 7 && r.querySelectorAll('.ribbon [role=tab][aria-selected=true]').length === 1 && r.querySelector('.ribbon [role=tabpanel]') && [...r.querySelectorAll('.ribbon [role=tabpanel] [role=group]')].every((g) => g.getAttribute('aria-label'))));
+  check('R1 happy: the Arabic ribbon has the 11 general tabs of 0.15.0 (ملف تصدير الرئيسية الخط الفقرة إدراج التخطيط الترويسة والتذييل التصميم مراجعة عرض)', ['ملف', 'تصدير', 'الرئيسية', 'الخط', 'الفقرة', 'إدراج', 'التخطيط', 'الترويسة والتذييل', 'التصميم', 'مراجعة', 'عرض'].every((w) => tabsAr.includes(w)) && tabsAr.length === 11, tabsAr.join());
+  check('R1 happy: tabs are a tablist, each with aria-selected, and the panel is a tabpanel with labelled groups', await sh(page, (r) => !!r.querySelector('.ribbon [role=tablist]') && r.querySelectorAll('.ribbon [role=tab]').length === 11 && r.querySelectorAll('.ribbon [role=tab][aria-selected=true]').length === 1 && r.querySelector('.ribbon [role=tabpanel]') && [...r.querySelectorAll('.ribbon [role=tabpanel] [role=group]')].every((g) => g.getAttribute('aria-label'))));
   // every command of the registry is on some tab: drawn in a general tab, or listed in a contextual one (Table / Picture / Diagram)
   const reach = await page.evaluate(async () => {
     const B = window.BW; const R = B.EXT.ribbon; const r = document.getElementById('bw-ui-host').shadowRoot;
@@ -62,9 +62,9 @@ try {
   await page.locator('#bw-ui-host').locator('.ribbon .rb-col').click();
   check('R1 edge: the collapse button folds the ribbon to its tab row (panel hidden, aria-expanded=false)', await sh(page, (r) => r.querySelector('.ribbon .rb-panel').hidden && r.querySelector('.rb-col').getAttribute('aria-expanded') === 'false'));
   await page.locator('#bw-ui-host').locator('#rb-tab-insert').click();
-  check('R1 edge: a tab pressed while collapsed peeks its tools, a second press closes them again', await sh(page, (r) => !r.querySelector('.ribbon .rb-panel').hidden && r.querySelector('#rb-tab-insert').getAttribute('aria-selected') === 'true'));
+  check('R1 edge (0.15.0): a tab pressed while collapsed selects it and expands the ribbon (no peek)', await sh(page, (r) => !r.querySelector('.ribbon .rb-panel').hidden && r.querySelector('#rb-tab-insert').getAttribute('aria-selected') === 'true'));
   await page.locator('#bw-ui-host').locator('#rb-tab-insert').click();
-  check('R1 edge: …and it is hidden again', await sh(page, (r) => r.querySelector('.ribbon .rb-panel').hidden));
+  check('R1 edge (0.15.0): …pressing the selected tab again folds the ribbon', await sh(page, (r) => r.querySelector('.ribbon .rb-panel').hidden));
   check('R1 edge: the collapsed state is remembered (localStorage)', await page.evaluate(() => localStorage.getItem('bw:rb:c') === '1'));
   await page.locator('#bw-ui-host').locator('.ribbon .rb-col').click();
   check('R1 edge: expanding brings the panel back', await sh(page, (r) => !r.querySelector('.ribbon .rb-panel').hidden));
@@ -72,11 +72,11 @@ try {
   // R1 keyboard + RTL: tabs run right to left in Arabic; ArrowRight goes to the previous (visually right) tab
   const geo = await sh(page, (r) => { const a = r.querySelector('#rb-tab-file').getBoundingClientRect(), b = r.querySelector('#rb-tab-home').getBoundingClientRect(); return { fileRight: a.right, homeRight: b.right, dir: getComputedStyle(r.querySelector('.ribbon')).direction }; });
   check('R1 RTL: Arabic mirrors the ribbon (first tab «ملف» is the rightmost, direction rtl)', geo.dir === 'rtl' && geo.fileRight > geo.homeRight, JSON.stringify(geo));
-  await page.locator('#bw-ui-host').locator('#rb-tab-home').focus();
+  await page.locator('#bw-ui-host').locator('#rb-tab-export').focus();
   await page.keyboard.press('ArrowRight');
   check('R1 keyboard: ArrowRight in RTL moves to the previous tab (ملف) and selects it', await sh(page, (r) => r.querySelector('#rb-tab-file').getAttribute('aria-selected') === 'true' && r.activeElement?.id === 'rb-tab-file'));
   await page.keyboard.press('ArrowLeft'); await page.keyboard.press('ArrowLeft');
-  check('R1 keyboard: ArrowLeft twice goes on to «إدراج»; End → last tab, Home → first', await sh(page, (r) => r.activeElement?.id === 'rb-tab-insert') && (await page.keyboard.press('End'), await sh(page, (r) => r.activeElement?.id === 'rb-tab-view')) && (await page.keyboard.press('Home'), await sh(page, (r) => r.activeElement?.id === 'rb-tab-file')));
+  check('R1 keyboard: ArrowLeft twice goes on to «الرئيسية»; End → last tab, Home → first', await sh(page, (r) => r.activeElement?.id === 'rb-tab-home') && (await page.keyboard.press('End'), await sh(page, (r) => r.activeElement?.id === 'rb-tab-view')) && (await page.keyboard.press('Home'), await sh(page, (r) => r.activeElement?.id === 'rb-tab-file')));
   await page.keyboard.press('ArrowDown');
   check('R1 keyboard: ArrowDown goes into the tools, Esc back to the tab', await sh(page, (r) => !!r.activeElement?.closest('.rb-panel')) && (await page.keyboard.press('Escape'), await sh(page, (r) => r.activeElement?.id === 'rb-tab-file')));
   await page.locator('#bw-ui-host').locator('#rb-tab-home').click();
@@ -103,7 +103,7 @@ try {
   await page.locator('#bw-ui-host').locator('.rb-panel [data-a="cellWrap"]').click();
   check('R2 happy (cells): pressing «التفاف» in the Table tab keeps the same 4 cells selected and the tab stays', (await selKeys()) === before && before.split(' ').length === 4 && await sh(page, (r) => r.querySelector('#rb-tab-table')?.getAttribute('aria-selected') === 'true'), `${before} -> ${await selKeys()}`);
   // a tool that rebuilds the whole toolbar (dark mode) must not cost the selection either
-  await page.locator('#bw-ui-host').locator('#rb-tab-view').click();
+  await page.locator('#bw-ui-host').locator('#rb-tab-design').click();
   await page.locator('#bw-ui-host').locator('.rb-panel [data-a="dark"]').click();
   await page.locator('#bw-ui-host').locator('.rb-panel [data-a="dark"]').click();
   check('R2 edge (cells): a rebuilding tool (dark mode twice) leaves the cell range selected, and the Table tab is still there', (await selKeys()) === before && await sh(page, (r) => !!r.querySelector('#rb-tab-table')));
@@ -136,7 +136,7 @@ try {
   await page.locator('#bw-ui-host').locator('.rb-panel [data-a="zoomIn"]').click();
   const sel1 = await page.evaluate(() => ({ s: getSelection().toString(), inDoc: !!document.activeElement?.closest?.('#bw-pair') }));
   check('R2 happy (text): a selected word is still selected after pressing a ribbon tool, focus stays in the page', para.length === 6 && sel0 === para && sel1.s === para && sel1.inDoc, `${para} | ${sel0} | ${JSON.stringify(sel1)}`);
-  await page.locator('#bw-ui-host').locator('#rb-tab-home').click();
+  await page.locator('#bw-ui-host').locator('#rb-tab-font').click();
   const nOps = await page.evaluate(() => { const B = window.BW; return B.M[B.S.svc][B.S.ed].ops.length; });
   await page.locator('#bw-ui-host').locator('.rb-panel [data-a="fmtItalic"]').click();
   await page.waitForTimeout(200);
@@ -144,7 +144,7 @@ try {
   // …and through a popup (a «more» menu entry: the export menu)
   await page.locator('#bw-ui-host').locator('#rb-tab-file').click();
   const para2 = await page.evaluate(() => { const p = document.querySelector(`#bw-pair main.bw-doc [data-p="${window.__para}"]`); p.focus(); const t = [...p.childNodes].find((n) => n.nodeType === 3 && n.length > 4); const r = document.createRange(); r.setStart(t, 0); r.setEnd(t, 3); const s = getSelection(); s.removeAllRanges(); s.addRange(r); return s.toString(); });
-  await page.locator('#bw-ui-host').locator('.rb-panel .more > .b').first().click();
+  await page.locator('#bw-ui-host').locator('.island > .sec[data-cat="view"] [data-a="view"]').first().click(); // 0.15.0: the ribbon has no folded menus; the View popover is the popup left
   check('R2 edge (popup): opening a popup menu from the ribbon keeps the text selection', para2.length === 3 && (await page.evaluate(() => getSelection().toString())) === para2, para2);
   await page.keyboard.press('Escape');
   // R2 Arabic: the same on an Arabic word is what the above did (the sample is Arabic); an EN edition run follows below.
@@ -159,7 +159,7 @@ try {
   await small.page.context().close();
   const en = await open('en');
   const s3 = await stack(en.page);
-  check('R3 (EN edition): together too, and the English ribbon reads File Home Insert …', s3.gap <= 12 && s3.dy < 6 && !s3.between.length && (await sh(en.page, (r) => [...r.querySelectorAll('.rb-tab')].map((x) => x.textContent.trim()).slice(0, 3).join(' '))) === 'File Home Insert', JSON.stringify(s3));
+  check('R3 (EN edition): together too, and the English ribbon reads File Export Home …', s3.gap <= 12 && s3.dy < 6 && !s3.between.length && (await sh(en.page, (r) => [...r.querySelectorAll('.rb-tab')].map((x) => x.textContent.trim()).slice(0, 3).join(' '))) === 'File Export Home', JSON.stringify(s3));
   await page.locator('#bw-ui-host').locator('[data-a="ed"][data-ed="en"]').click();
   await page.waitForTimeout(300);
   await page.locator('#bw-ui-host').locator('[data-a="dir"][data-d="ltr"]').first().click();

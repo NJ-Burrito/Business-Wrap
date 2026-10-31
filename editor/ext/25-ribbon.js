@@ -4,32 +4,58 @@
  * registry and the same buttons (`data-a`), so one click handler (onBar) runs every command. No command is invented here.
  * A contextual tab (Table · Picture · Diagram) appears while that selection exists and stays until it is gone; the docked
  * selection section (.ctx) stays as the shortcut strip. Keyboard: a tap on Alt, arrows, Home/End, Down into the tools, Esc out. */
-const RB = { tab: 'home', collapsed: ls.get('bw:rb:c') === '1', peek: false, ctx: null, key: '', snap: null, altOnly: false };
-/** [tab, [group, ids, dense?]…]; an id that no command has is skipped at draw time, a command no group lists lands in «more» (rbSweep). */
+const RB = { tab: 'home', collapsed: ls.get('bw:rb:c') === '1', ctx: null, key: '', base: '', cache: new Map(), snap: null, altOnly: false };
+/** One tab: [id, [group, ids]…, contextual selection id | null, tab colour token, ] — the allocation of the 0.15.0 ribbon (note 7). A tab holds at most RB_MAX_TOOLS tools in at most
+ *  RB_MAX_GROUPS groups, so the panel never needs a scroll bar (note 3); an id that no command has is skipped at draw time, a command no group lists lands in «more» (rbSweep). */
+const RB_MAX_TOOLS = 28, RB_MAX_GROUPS = 6;
 const RB_TABS = [
-  ['file', [['save', ['save', 'saveHtml', 'import', 'exportEdits', 'exportAll']], ['share', ['library', 'shShare']], ['export', ['export*', 'print', 'exportPdf']], ['newdoc', ['newdoc', 'process']]]],
-  ['home', [['edit', ['undo', 'redo', 'find', 'copyBlock', 'pasteBlock']], ['font', ['fmtBold', 'fmtItalic', 'fmtUnderline', 'fmtStrike', 'fmtCode', 'fmtLink', 'fmtColor', 'fmtFont', 'fmtSize', 'fmtClear'], 1],
-    ['para', ['fmtAlignStart', 'fmtAlignCenter', 'fmtAlignEnd', 'fmtJustify', 'fmtTop', 'fmtMiddle', 'fmtBottom', 'fmtLine', 'fmtBefore', 'fmtAfter', 'fmtQuote', 'fmtBullets', 'fmtNumbers', 'fmtShapes', 'fmtIndent', 'fmtOutdent'], 1],
-    ['block', ['duplicate', 'delete', 'moveUp', 'moveDown', 'comment']]]],
-  ['insert', [['content', ['image', 'logo', 'addDiagram', 'addPara', 'insTable', 'insSection', 'insChapter', 'insTextBox']], ['story', ['addStory', 'storyPoint', 'storyCard']], ['wrap', ['wrapInline', 'wrapSquare', 'wrapTight', 'wrapThrough', 'wrapTopBottom', 'wrapBehind', 'wrapFront'], 1],
-    ['rows', ['rowAdd', 'rowDel', 'rowUp', 'rowDown', 'colAdd', 'colDel']], ['cells', ['cellMerge', 'cellSplit', 'cellWrap', 'cellFill', 'cellColW', 'cellRowH', 'cellClearValue', 'cellClearFormat']]]],
+  ['file', [['save', ['save', 'saveHtml', 'import']], ['share', ['library', 'shShare']], ['newdoc', ['newdoc', 'process']]], null, '--bw-sec-file'],
+  ['export', [['xpdf', ['export.pdf.ar', 'export.pdf.en', 'export.pdf.both']], ['xdocx', ['export.docx.ar', 'export.docx.en', 'export.docx.both']], ['xweb', ['export.html', 'export.printHtml', 'export.edits', 'export.editsAll', 'export.pack']],
+    ['xdiagram', ['export.mermaid', 'export.svg', 'export.png']], ['xprint', ['print', 'exportPdf', 'export.opts']], ['xproj', ['projExport', 'projImport']]], null, '--bw-sec-export'],
+  ['home', [['edit', ['undo', 'redo', 'find', 'copyBlock', 'pasteBlock']], ['block', ['duplicate', 'delete', 'moveUp', 'moveDown', 'comment']]], null, '--bw-sec-edit'],
+  ['font', [['fontface', ['fmtFont', 'fmtSize', 'fmtColor']], ['style', ['fmtBold', 'fmtItalic', 'fmtUnderline', 'fmtStrike', 'fmtCode']], ['fother', ['fmtLink', 'fmtClear']]], null, '--bw-sec-font'],
+  ['para', [['align', ['fmtAlignStart', 'fmtAlignCenter', 'fmtAlignEnd', 'fmtJustify', 'fmtTop', 'fmtMiddle', 'fmtBottom']], ['spacing', ['fmtLine', 'fmtBefore', 'fmtAfter']],
+    ['lists', ['fmtQuote', 'fmtBullets', 'fmtNumbers', 'fmtShapes', 'fmtIndent', 'fmtOutdent']]], null, '--bw-sec-para'],
+  ['insert', [['content', ['image', 'logo', 'addDiagram', 'addPara', 'insTable', 'insSection', 'insChapter', 'insTextBox']], ['story', ['addStory', 'storyPoint', 'storyCard']],
+    ['wrap', ['wrapInline', 'wrapSquare', 'wrapTight', 'wrapThrough', 'wrapTopBottom', 'wrapBehind', 'wrapFront']]], null, '--bw-sec-insert'],
   ['layout', [['page', ['pgSetup', 'pgBreak', 'breakBefore', 'keepNext', 'pages', 'renumber']], ['gaps', ['pgBreakAdd', 'pgBreakDel', 'pgPullUp', 'secDel', 'pgEmpty']],
-    ['header', ['hdrText', 'hdrField', 'hdrLogo', 'every', 'hdrStart', 'hdrCenter', 'hdrEnd', 'hdrDelete', 'hdrScope']], ['footer', ['ftrText', 'ftrField', 'hdrConf', 'ftrStart', 'ftrCenter', 'ftrEnd', 'ftrDelete', 'ftrScope']],
-    ['front', ['tocHide', 'tocAdd', 'fmRowAdd', 'fmRowDel', 'fmColAdd', 'fmColDel']]]],
-  ['design', [['design', ['theme', 'styleThis', 'hideBlock']]]],
-  ['review', [['check', ['check', 'history', 'outline', 'find', 'comment']], ['flow', ['timeline', 'bulkEdit', 'webhooks']], ['sign', ['pvOpen', 'pvSign', 'lkToggle']]]],
-  ['view', [['view', ['view', 'side', 'both', 'uiLang', 'dir*', 'dark', 'calm', 'focus', 'spell', 'snap', 'settings']], ['zoom', ['zoomOut', 'zoomReset', 'zoomIn', 'zoomFit']], ['pages', ['view.continuous', 'view.single', 'view.spread']]]],
-  ['table', [['rows', ['rowAdd', 'rowDel', 'rowUp', 'rowDown']], ['cols', ['colAdd', 'colDel']], ['cells', ['cellMerge', 'cellSplit', 'cellWrap', 'cellFill', 'cellColW', 'cellRowH', 'cellClearValue', 'cellClearFormat']], ['tblblock', ['duplicate', 'delete', 'moveUp', 'moveDown', 'comment', 'styleThis', 'hideBlock', 'breakBefore', 'keepNext']]], 'table'],
-  ['picture', [['pic', ['replace', 'caption', 'every', 'ovDelete']], ['wrap', ['wrapInline', 'wrapSquare', 'wrapTight', 'wrapThrough', 'wrapTopBottom', 'wrapBehind', 'wrapFront'], 1]], 'picture'],
-  ['diagram', [['nodes', ['dgStaff', 'dgApplicant', 'dgStart', 'dgPayment', 'dgRework', 'dgSystem', 'dgDecision', 'dgOk', 'dgStop', 'dgNote', 'dgGroup', 'dgText'], 1], ['dgflow', ['dgAuto', 'dgReset', 'dgFlow', 'dgLegend', 'dgMermaidIn', 'dgMermaidOut']],
-    ['shape', ['dgLabel', 'dgSub', 'dgConnect', 'dgDup', 'dgDel', 'dgFront', 'dgBack']], ['arrange', ['dgAlignL', 'dgAlignC', 'dgAlignR', 'dgAlignT', 'dgAlignM', 'dgAlignB', 'dgDistH', 'dgDistV', 'dgWrap'], 1],
-    ['arrow', ['dgEdgeLabel', 'dgBendAdd', 'dgBendDel', 'dgRouteAuto', 'dgReverse', 'dgFrom', 'dgTo']], ['dgzoom', ['dgZoomIn', 'dgZoomOut', 'dgZoomFit', 'dgZoom100'], 1]], 'diagram'],
+    ['front', ['tocHide', 'tocAdd', 'fmRowAdd', 'fmRowDel', 'fmColAdd', 'fmColDel']]], null, '--bw-sec-gaps'],
+  ['hf', [['header', ['hdrText', 'hdrField', 'hdrLogo', 'every', 'hdrStart', 'hdrCenter', 'hdrEnd', 'hdrDelete', 'hdrScope']], ['footer', ['ftrText', 'ftrField', 'hdrConf', 'ftrStart', 'ftrCenter', 'ftrEnd', 'ftrDelete', 'ftrScope']]], null, '--bw-sec-header'],
+  ['design', [['design', ['theme', 'styleThis', 'hideBlock']], ['appearance', ['dark', 'calm', 'focus']]], null, '--bw-sec-design'],
+  ['review', [['check', ['check', 'history', 'outline', 'find', 'comment']], ['flow', ['timeline', 'bulkEdit', 'webhooks']], ['sign', ['pvOpen', 'pvSign', 'lkToggle']]], null, '--bw-sec-document'],
+  ['view', [['view', ['view', 'side', 'both', 'spell', 'snap', 'settings']], ['zoom', ['zoomOut', 'zoomPct', 'zoomIn', 'zoomReset', 'zoomFit', 'zoomHeight']], ['pages', ['view.continuous', 'view.single', 'view.spread']]], null, '--bw-sec-view'],
+  ['table', [['rows', ['rowAdd', 'rowDel', 'rowUp', 'rowDown']], ['cols', ['colAdd', 'colDel']], ['cells', ['cellMerge', 'cellSplit', 'cellWrap', 'cellFill', 'cellColW', 'cellRowH', 'cellClearValue', 'cellClearFormat']],
+    ['tblblock', ['duplicate', 'delete', 'moveUp', 'moveDown', 'comment', 'styleThis', 'hideBlock', 'breakBefore', 'keepNext']]], 'table', '--bw-sec-table'],
+  ['picture', [['pic', ['replace', 'caption', 'every', 'ovDelete']], ['wrap', ['wrapInline', 'wrapSquare', 'wrapTight', 'wrapThrough', 'wrapTopBottom', 'wrapBehind', 'wrapFront']]], 'picture', '--bw-sec-footer'],
+  ['diagram', [['nodes', ['dgStaff', 'dgApplicant', 'dgStart', 'dgPayment', 'dgRework', 'dgSystem', 'dgDecision', 'dgOk', 'dgStop', 'dgNote', 'dgGroup', 'dgText']],
+    ['dgflow', ['dgAuto', 'dgReset', 'dgFlow', 'dgLegend', 'dgMermaidIn', 'dgMermaidOut']], ['dgzoom', ['dgZoomIn', 'dgZoomOut', 'dgZoomFit', 'dgZoom100']]], 'diagram', '--bw-sec-diagram'],
+  ['diagram2', [['shape', ['dgLabel', 'dgSub', 'dgConnect', 'dgDup', 'dgDel', 'dgFront', 'dgBack']], ['arrange', ['dgAlignL', 'dgAlignC', 'dgAlignR', 'dgAlignT', 'dgAlignM', 'dgAlignB', 'dgDistH', 'dgDistV', 'dgWrap']],
+    ['arrow', ['dgEdgeLabel', 'dgBendAdd', 'dgBendDel', 'dgRouteAuto', 'dgReverse', 'dgFrom', 'dgTo']]], 'diagram', '--bw-sec-diagram'],
 ];
-const RB_LISTED = new Set(RB_TABS.flatMap((x) => x[1].flatMap((g) => g[1])));
+const RB_ALIAS = ['exportEdits', 'exportAll']; // the old File-tab twins of export.edits / export.editsAll: one tool each now, on the Export tab
+const RB_LISTED = new Set([...RB_TABS.flatMap((x) => x[1].flatMap((g) => g[1])), ...RB_ALIAS]);
 const RB_PRESSED = { dark: () => S.dark, calm: () => S.calm, focus: () => S.focus, snap: () => S.snap, side: () => S.side, both: () => S.both };
-const RB_SKIP = new Set(['uiLang', 'dir']); // drawn by their own tokens («dir*»)
-/** The tab ids the ribbon draws now: the general ones, plus the contextual one while its selection exists. */
-const rbTabs = () => RB_TABS.filter((x) => !x[2] || x[2] === RB.ctx);
+const RB_SKIP = new Set(['uiLang', 'dir']); // the language and direction pills live in the quick strip only (note 8)
+/** The tab definitions with the sweep merged in: a command no group lists goes to View's «more» group, or to a tab of its own («tools») once View would pass the cap. */
+function rbDefs() {
+  if (RB.defs && RB.defsN === CMDS.length) return RB.defs;
+  const defs = RB_TABS.map((x) => x.slice());
+  const rest = CMDS.filter((c) => !RB_LISTED.has(c.id) && !RB_SKIP.has(c.id)).map((c) => c.id);
+  if (rest.length) {
+    const vi = defs.findIndex((x) => x[0] === 'view');
+    const used = defs[vi][1].reduce((n, g) => n + g[1].length, 0);
+    if (used + rest.length <= RB_MAX_TOOLS && defs[vi][1].length < RB_MAX_GROUPS) defs[vi] = [defs[vi][0], [...defs[vi][1], ['more', rest]], ...defs[vi].slice(2)];
+    else {
+      const gs = [];
+      for (let i = 0; i < rest.length && gs.length < RB_MAX_GROUPS; i += 12) gs.push(['more', rest.slice(i, i + 12)]);
+      defs.splice(vi + 1, 0, ['tools', gs, null, '--bw-sec-file']);
+    }
+  }
+  RB.defs = defs; RB.defsN = CMDS.length;
+  return defs;
+}
+/** The tab ids the ribbon draws now: the general ones, plus the contextual ones while their selection exists. */
+const rbTabs = () => rbDefs().filter((x) => !x[2] || x[2] === RB.ctx);
 /** What is selected, as a contextual tab id: a picture/logo, a diagram, or a table (a cell range counts). null = nothing. */
 function rbCtxNow() {
   try {
@@ -39,45 +65,80 @@ function rbCtxNow() {
   } catch { /* a selection mid-change: no contextual tab this round */ }
   return null;
 }
+/** A tool's name under its icon: a ribbon-short word (rb.s.<id>) when the full one needs three lines in a 64 px cell, the command's own word, or the ribbon's word for a command that has none yet (rb.n.<id>). */
+function rbLabel(id) {
+  const D = I18N.ui[S.ui] || {};
+  if (D[`rb.s.${id}`]) return D[`rb.s.${id}`];
+  if (D[id] ?? I18N.ui.en[id]) return t(id);
+  return D[`rb.n.${id}`] ?? I18N.ui.en[`rb.n.${id}`] ?? t(id);
+}
+/** The Export tab's tools say why they cannot run, as the old Export menu did (a server-only format, no diagram, no edition). */
+function rbExportExtra(id) {
+  if (!/^export\./.test(id) || typeof pcServer !== 'function') return '';
+  const need = !pcServer() && pcServerOnly(id);
+  const noDg = !pcDiagrams().length && /^export\.(mermaid|svg|png)$/.test(id);
+  const l = /\.(ar|en)$/.exec(id)?.[1];
+  const note = need ? t('export.needsServer') : noDg ? t('export.noDiagram') : l && !M[S.svc][l] ? t('export.noEdition') : '';
+  return note ? ` aria-disabled="true" data-note="${esc(note)}"` : '';
+}
 function rbBtn(id) {
   if (id === 'ovDelete') return btn('ovDelete', { label: t('delete') }).replace('<span class="i"></span>', `<span class="i">${ic('delete')}</span>`);
   const c = CMDS.find((x) => x.id === id);
   const pressed = RB_PRESSED[id] ? !!RB_PRESSED[id]() : undefined;
-  return btn(id, { cls: id === 'save' ? 'primary' : '', tip: TIPS[id] ? t(TIPS[id]) : c?.key ? `${t(id)} (${c.key})` : '', pressed });
+  return btn(id, { label: rbLabel(id), cls: id === 'save' ? 'primary' : '', tip: TIPS[id] ? t(TIPS[id]) : c?.key ? `${rbLabel(id)} (${c.key})` : rbLabel(id), pressed, extra: rbExportExtra(id) });
 }
-function rbGroups() {
-  const out = rbTabs().map(([tab, groups]) => {
-    const gs = groups.map(([g, ids, dense]) => {
-      const items = ids.map((id) => {
-        if (id === 'export*') return typeof pcExportMenu === 'function' ? pcExportMenu() : '';
-        if (id === 'dir*') return ['rtl', 'ltr'].map((d) => `<button type="button" class="b" data-a="dir" data-d="${d}" aria-pressed="${uiDir() === d}" title="${esc(t(d === 'rtl' ? 'ux.dirRtl' : 'ux.dirLtr'))}"><span class="i">${ic('dir')}</span><span class="w">${esc(t(d))}</span></button>`).join('');
-        if (RB_SKIP.has(id) && id !== 'uiLang') return '';
-        const known = CMDS.some((c) => c.id === id) || ['rowUp', 'rowDown', 'replace', 'caption', 'every', 'ovDelete'].includes(id);
-        if (!known) return '';
-        return rbBtn(id);
-      }).filter(Boolean);
-      return { g, items, dense };
-    }).filter((x) => x.items.length);
-    return { tab, gs };
-  });
-  // every command a group above forgot (a later extension's) still has a place: the last general tab's «more» group
-  const rest = CMDS.filter((c) => !RB_LISTED.has(c.id) && !RB_SKIP.has(c.id)).map((c) => rbBtn(c.id));
-  if (rest.length) out.find((x) => x.tab === 'view').gs.push({ g: 'more', items: rest, dense: false });
-  return out;
+const RB_EXTRA_KNOWN = ['rowUp', 'rowDown', 'replace', 'caption', 'every', 'ovDelete'];
+/** The export options (page range, cover page, save folder) the old Export menu held: a button that opens a small menu with just those fields; they feed the same pcOpts() the Export tab's tools read. */
+function rbExportOpts() {
+  if (typeof pcOpts !== 'function') return '';
+  const o = pcOpts(), srv = typeof pcServer === 'function' && pcServer(), name = rbLabel('export.opts');
+  return `<div class="more pcx"><button type="button" class="b" data-a="more" data-x="export.opts" aria-expanded="false" aria-haspopup="true" title="${esc(name)}"><span class="i">${ic('prefs')}</span><span class="w">${esc(name)}</span></button>
+<div class="menu pc-menu" role="group" aria-label="${esc(name)}" hidden><div class="pc-opts">
+  <label class="pc-f"><span>${esc(t('export.range'))}</span><input type="text" data-pc="range" inputmode="numeric" placeholder="1-3,5" value="${esc(o.range)}" spellcheck="false"></label>
+  <label class="pc-c"><input type="checkbox" data-pc="cover" ${o.cover ? 'checked' : ''}> <span>${esc(t('export.cover'))}</span></label>
+  ${srv ? `<label class="pc-f wide"><span>${esc(t('export.folder'))}</span><input type="text" data-pc="folder" placeholder="${esc(t('export.folderHint'))}" value="${esc(o.folder)}" spellcheck="false" dir="ltr"></label>` : `<p class="pc-note">${esc(t('export.offline'))}</p>`}
+  <p class="pc-note">${esc(t('export.noWatermark'))}</p>
+</div></div></div>`;
 }
+const rbItem = (id) => (id === 'export.opts' ? rbExportOpts() : RB_SKIP.has(id) || !(CMDS.some((c) => c.id === id) || RB_EXTRA_KNOWN.includes(id)) ? '' : rbBtn(id));
 const rbTabWord = (tab) => t(`rb.tab.${tab}`);
+/** One tab's groups as markup; a group whose commands are all absent is left out. */
+function rbPanelInner(tab) {
+  const def = rbDefs().find((x) => x[0] === tab);
+  return (def ? def[1] : []).map(([g, ids]) => ({ g, items: ids.map(rbItem).filter(Boolean) })).filter((x) => x.items.length)
+    .map(({ g, items }) => `<div class="rb-g" role="group" aria-label="${esc(t(`rb.g.${g}`))}"><div class="rb-tools">${items.join('')}</div><span class="rb-gl" aria-hidden="true">${esc(t(`rb.g.${g}`))}</span></div>`).join('');
+}
+/** What the Export tab's tools depend on besides the language: the service and its editions, a diagram in the document, a server. */
+const rbStamp = () => [S.svc, Object.keys(M[S.svc] || {}).join(''), typeof pcDiagrams === 'function' && pcDiagrams().length ? 1 : 0, typeof pcServer === 'function' && pcServer() ? 1 : 0].join(',');
 function rbHtml() {
-  const all = rbGroups();
-  if (!all.some((x) => x.tab === RB.tab)) RB.tab = 'home';
-  const tabs = all.map(({ tab }) => {
-    const on = tab === RB.tab, ctx = tab === RB.ctx;
-    return `<button type="button" class="rb-tab${ctx ? ' ctx' : ''}" role="tab" id="rb-tab-${tab}" data-rb="tab" data-tab="${tab}" aria-selected="${on}" aria-controls="rb-panel" tabindex="${on ? 0 : -1}"><span class="rb-tl" data-alt="${esc(tAltRb(tab))}">${esc(rbTabWord(tab))}</span></button>`;
+  const defs = rbTabs();
+  if (!defs.some((x) => x[0] === RB.tab)) RB.tab = 'home';
+  const tabs = defs.map(([tab, , ctx, color]) => {
+    const on = tab === RB.tab, w = rbTabWord(tab);
+    return `<button type="button" class="rb-tab${ctx ? ' ctx' : ''}" role="tab" id="rb-tab-${tab}" data-rb="tab" data-tab="${tab}" style="--tc: var(${color})" aria-selected="${on}"${on ? ` aria-expanded="${!RB.collapsed}"` : ''} aria-controls="rb-panel" aria-label="${esc(w)}" tabindex="${on ? 0 : -1}"><span class="rb-ti" aria-hidden="true">${ic(`rbt.${tab}`)}</span><span class="rb-tl" data-alt="${esc(tAltRb(tab))}">${esc(w)}</span></button>`;
   }).join('');
-  const cur = all.find((x) => x.tab === RB.tab);
-  const panel = cur.gs.map(({ g, items, dense }) => `<div class="rb-g${dense ? ' dense' : ''}" role="group" aria-label="${esc(t(`rb.g.${g}`))}"><div class="rb-tools">${items.join('')}</div><span class="rb-gl" aria-hidden="true">${esc(t(`rb.g.${g}`))}</span></div>`).join('');
-  return `<div class="rb-bar"><div class="rb-tabs" role="tablist" aria-label="${esc(t('rb.label'))}">${tabs}</div><span class="rb-sp"></span><button type="button" class="rb-col" data-rb="collapse" aria-expanded="${!RB.collapsed}" aria-controls="rb-panel" title="${esc(t(RB.collapsed ? 'rb.expand' : 'rb.collapse'))}" aria-label="${esc(t(RB.collapsed ? 'rb.expand' : 'rb.collapse'))}"><span class="rb-chev" aria-hidden="true"></span></button></div><div class="rb-panel" id="rb-panel" role="tabpanel" aria-labelledby="rb-tab-${RB.tab}"${RB.collapsed && !RB.peek ? ' hidden' : ''}>${panel}</div>`;
+  return `<div class="rb-bar"><div class="rb-tabs" role="tablist" aria-label="${esc(t('rb.label'))}">${tabs}</div><button type="button" class="rb-col" data-rb="collapse" aria-expanded="${!RB.collapsed}" aria-controls="rb-panel" title="${esc(t(RB.collapsed ? 'rb.expand' : 'rb.collapse'))}" aria-label="${esc(t(RB.collapsed ? 'rb.expand' : 'rb.collapse'))}"><span class="rb-chev" aria-hidden="true">${ic('rbt.collapse')}</span></button></div><div class="rb-panel" id="rb-panel" role="tabpanel" data-tab="${RB.tab}" aria-labelledby="rb-tab-${RB.tab}"${RB.collapsed ? ' hidden' : ''}>${RB.collapsed ? '' : rbPanelInner(RB.tab)}</div>`;
 }
 function tAltRb(tab) { const o = S.ui; S.ui = other(o); const w = rbTabWord(tab); S.ui = o; return w; }
+/** The selected tab, the tab stops and the collapsed state, read from RB: the only thing a tab press changes on the bar. */
+function rbMark(el) {
+  el.querySelectorAll('.rb-tab').forEach((x) => {
+    const on = x.dataset.tab === RB.tab;
+    x.setAttribute('aria-selected', String(on));
+    x.tabIndex = on ? 0 : -1;
+    if (on) x.setAttribute('aria-expanded', String(!RB.collapsed)); else x.removeAttribute('aria-expanded');
+  });
+  const col = el.querySelector('.rb-col');
+  if (col) { const w = t(RB.collapsed ? 'rb.expand' : 'rb.collapse'); col.setAttribute('aria-expanded', String(!RB.collapsed)); col.title = w; col.setAttribute('aria-label', w); }
+}
+/** Unselected tabs shrink to their icon (the name stays in aria-label and the right-hand explainer) when the words do not fit the bar. */
+function rbFitTabs(el) {
+  const tabs = el?.querySelector('.rb-tabs');
+  if (!tabs) return;
+  tabs.classList.remove('icons');
+  if (tabs.scrollWidth > tabs.clientWidth + 1) tabs.classList.add('icons');
+}
+window.addEventListener('resize', () => { const el = root.querySelector('.island > .ribbon'); if (el) rbFitTabs(el); });
 /** The new markup is patched into the live ribbon node by node (uiMorph), so a language or direction toggle never replaces the tools. */
 function rbPaint(el, html) {
   const tpl = document.createElement('template');
@@ -86,47 +147,73 @@ function rbPaint(el, html) {
   bk.forEach((n, i) => { if (ak[i]) uiMorph(ak[i], n, true); else el.appendChild(n); });
   ak.slice(bk.length).forEach((n) => n.remove());
   syncUndoState();
+  rbFitTabs(el);
+}
+/** 0.15.0 perf (booster 6): when only the tab (or the collapsed state) changed, the panel's children are swapped from a markup cached per tab and language, direction,
+ *  selection and service: no morph, no per-node attribute copy, no second decorate pass. The cache is never live nodes, so a swapped-in panel carries no stale disabled state. */
+function rbSwap(el) {
   const pn = el.querySelector('.rb-panel');
-  if (pn) { pn.classList.remove('tight'); if (pn.scrollWidth > pn.clientWidth + 1) pn.classList.add('tight'); }
+  rbMark(el);
+  pn.hidden = RB.collapsed;
+  pn.setAttribute('aria-labelledby', `rb-tab-${RB.tab}`);
+  if (RB.collapsed || (pn.dataset.tab === RB.tab && pn.firstElementChild)) return;
+  let tpl = RB.cache.get(RB.tab);
+  if (!tpl) { tpl = document.createElement('template'); tpl.innerHTML = rbPanelInner(RB.tab); if (RB.tab !== 'export') RB.cache.set(RB.tab, tpl); } // Export holds live option fields: drawn fresh, never cached
+  pn.replaceChildren(tpl.content.cloneNode(true));
+  pn.dataset.tab = RB.tab;
+  syncUndoState();
+  if (typeof lkOn === 'function' && lkOn()) lkPaint();
+  if (!isCalm()) pn.animate([{ opacity: 0, transform: 'translateY(-3px)' }, { opacity: 1, transform: 'none' }], { duration: 160, easing: 'cubic-bezier(.2,.8,.2,1)' });
 }
 /** One pass: mount if missing, redraw when something the ribbon shows changed, refresh the pressed states otherwise. */
 function rbSync() {
   const isl = root.querySelector('.island');
   if (!isl) return;
   let el = isl.querySelector(':scope > .ribbon');
-  if (!el) { el = document.createElement('div'); el.className = 'ribbon'; isl.appendChild(el); RB.key = ''; rbWire(el); }
+  if (!el) { el = document.createElement('div'); el.className = 'ribbon'; isl.appendChild(el); RB.key = ''; RB.base = ''; rbWire(el); }
   const now = rbCtxNow();
   if (now !== RB.ctx) {
     const was = RB.ctx;
     RB.ctx = now;
-    if (now) RB.tab = now; // the contextual tab opens once, when the selection starts
-    else if (RB.tab === was) RB.tab = 'home';
-    RB.peek = false;
+    if (now) { RB.tab = now; if (RB.collapsed) { RB.collapsed = false; ls.set('bw:rb:c', '0'); } } // the contextual tab opens once, when the selection starts
+    else if (RB.tab === was || RB.tab === 'diagram2') RB.tab = 'home';
   }
-  const key = [S.ui, uiDir(), RB.ctx, RB.tab, RB.collapsed, RB.peek, CMDS.length].join('|');
+  if (!rbTabs().some((x) => x[0] === RB.tab)) RB.tab = 'home';
+  const base = [S.ui, uiDir(), RB.ctx, CMDS.length, rbStamp()].join('|');
+  const key = `${base}|${RB.tab}|${RB.collapsed}`;
   if (key !== RB.key) {
     const had = el.contains(root.activeElement) && root.activeElement?.closest?.('.rb-tab') ? root.activeElement.dataset.tab : null;
+    const fast = RB.base === base && !!el.querySelector('.rb-panel');
     RB.key = key;
     el.dir = 'rtl'; // the toolbar never moves with the language (0.10.0); the keys read the computed direction
-    rbPaint(el, rbHtml());
+    if (fast) rbSwap(el);
+    else {
+      RB.base = base; RB.cache.clear();
+      rbPaint(el, rbHtml());
+      if (typeof measureBar === 'function') measureBar(); // the band's height is read after the panel is in, so a drawer starts under it
+    }
     if (had) el.querySelector(`#rb-tab-${had}`)?.focus({ preventScroll: true });
   }
   el.querySelectorAll('[data-a]').forEach((b) => { const p = RB_PRESSED[b.dataset.a]; if (p) b.setAttribute('aria-pressed', String(!!p())); });
-  el.querySelectorAll('[data-a="dir"]').forEach((b) => b.setAttribute('aria-pressed', String(uiDir() === b.dataset.d)));
   isl.classList.toggle('rb-collapsed', RB.collapsed);
 }
 
 /* ── tabs, collapse, keyboard ──────────────────────────────────────────────── */
+/** Select a tab (the programmatic and keyboard-arrow path): a collapsed ribbon opens on it. */
 function rbSetTab(tab, { focus = false } = {}) {
-  if (RB.collapsed && RB.tab === tab && RB.peek) { RB.peek = false; } else { RB.tab = tab; if (RB.collapsed) RB.peek = true; }
+  RB.tab = tab;
+  if (RB.collapsed) { RB.collapsed = false; ls.set('bw:rb:c', '0'); }
   rbSync();
   if (focus) root.querySelector(`#rb-tab-${tab}`)?.focus({ preventScroll: true });
 }
 function rbCollapse(on) {
   RB.collapsed = on ?? !RB.collapsed;
-  RB.peek = false;
   ls.set('bw:rb:c', RB.collapsed ? '1' : '0');
   rbSync();
+}
+/** A press on a tab (click, Enter, Space): the selected tab folds / unfolds the ribbon, another tab is selected (note 6). */
+function rbTabPress(tab, opts) {
+  if (tab === RB.tab) { rbCollapse(); if (opts?.focus) root.querySelector(`#rb-tab-${tab}`)?.focus({ preventScroll: true }); } else rbSetTab(tab, opts);
 }
 const rbDirSign = (el) => (getComputedStyle(el).direction === 'rtl' ? -1 : 1); // +1: the next item is to the right
 function rbMove(list, from, key, el) {
@@ -140,17 +227,16 @@ function rbMove(list, from, key, el) {
 function rbWire(el) {
   el.addEventListener('click', (e) => {
     const x = e.target.closest('[data-rb]');
-    if (!x) { if (e.target.closest('button[data-a]') && RB.collapsed && RB.peek) { RB.peek = false; rbSync(); } return; }
-    if (x.dataset.rb === 'tab') rbSetTab(x.dataset.tab);
+    if (!x) return;
+    if (x.dataset.rb === 'tab') rbTabPress(x.dataset.tab);
     else if (x.dataset.rb === 'collapse') rbCollapse();
   });
-  el.addEventListener('dblclick', (e) => { if (e.target.closest('.rb-tab')) rbCollapse(); });
   el.addEventListener('keydown', (e) => {
     const tab = e.target.closest?.('.rb-tab');
     const tabs = [...el.querySelectorAll('.rb-tab')];
     if (tab) {
       if (e.key === 'ArrowDown') { e.preventDefault(); el.querySelector('.rb-panel [data-a], .rb-panel button')?.focus({ preventScroll: true }); return; }
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); rbSetTab(tab.dataset.tab, { focus: true }); return; }
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); rbTabPress(tab.dataset.tab, { focus: true }); return; }
       const to = rbMove(tabs, tab, e.key, el);
       if (to) { e.preventDefault(); to.focus({ preventScroll: true }); if (!RB.collapsed) rbSetTab(to.dataset.tab, { focus: true }); }
       return;
@@ -158,7 +244,7 @@ function rbWire(el) {
     const b = e.target.closest?.('.rb-panel button');
     if (!b) return;
     const tools = [...el.querySelectorAll('.rb-panel button:not(:disabled)')];
-    if (e.key === 'Escape') { e.preventDefault(); if (RB.collapsed && RB.peek) { RB.peek = false; rbSync(); } root.querySelector(`#rb-tab-${RB.tab}`)?.focus({ preventScroll: true }); return; }
+    if (e.key === 'Escape') { e.preventDefault(); root.querySelector(`#rb-tab-${RB.tab}`)?.focus({ preventScroll: true }); return; }
     if (e.key === 'ArrowUp') { e.preventDefault(); root.querySelector(`#rb-tab-${RB.tab}`)?.focus({ preventScroll: true }); return; }
     const to = rbMove(tools, b, e.key, el);
     if (to) { e.preventDefault(); to.focus({ preventScroll: true }); }
@@ -256,4 +342,4 @@ function rbShellWire() {
 }
 { const o = buildCtx; buildCtx = function (b, tb) { o(b, tb); rbShellWire(); rbSync(); }; } // refreshUi and every (re)build end in buildCtx
 
-bwExt({ on: { render: () => { if (RB.last) rbRestoreText(RB.last); } }, expose: { ribbon: { listed: () => [...RB_LISTED].filter((x) => !/\*$/.test(x)), tabs: () => rbTabs().map((x) => x[0]), state: RB, sync: rbSync, snap: rbSnap, restore: rbRestore, restoreText: rbRestoreText, setTab: rbSetTab, collapse: rbCollapse } } });
+bwExt({ on: { render: () => { if (RB.last) rbRestoreText(RB.last); } }, expose: { ribbon: { panelHtml: rbPanelInner, listed: () => [...RB_LISTED], tabs: () => rbTabs().map((x) => x[0]), budget: (raw = false) => (raw ? RB_TABS : rbDefs()).map((x) => ({ tab: x[0], tools: x[1].reduce((n, g) => n + g[1].length, 0), groups: x[1].length, ctx: x[2] })), max: { tools: RB_MAX_TOOLS, groups: RB_MAX_GROUPS }, state: RB, sync: rbSync, snap: rbSnap, restore: rbRestore, restoreText: rbRestoreText, setTab: rbSetTab, collapse: rbCollapse } } });

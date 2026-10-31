@@ -205,12 +205,12 @@ try {
     ok = (await still('panel closed')) && ok;
     check(`A4 ${ui}: a shape's tools stay through menus, pickers, the design panel, colour input, popover`, ok, kept.join(' · '));
     // a logo: selected by a click, kept while the panel is used
-    await page.mouse.click(1220, 420); // empty desk: the general tools come back
+    await page.mouse.click(1352, 700); // empty desk (0.15.0: the fixed 184 px ribbon moved the page down; the old point hit the diagram): the general tools come back
     await page.keyboard.press('Control+K');
     const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.locator('#cmdlist [data-cmd="logo"]').click()]);
     await chooser.setFiles(PNG);
     await page.waitForFunction(() => document.querySelector('main.bw-doc .bw-ov'));
-    await page.mouse.click(1220, 420); // empty desk
+    await page.mouse.click(1352, 700); // empty desk (0.15.0: the fixed 184 px ribbon moved the page down; the old point hit the diagram)
     await settle(page, 200);
     const cleared = await state(page);
     await page.evaluate(() => window.scrollTo(0, 0));
@@ -512,7 +512,7 @@ try {
     // animations after a real RTL->LTR click (the logo's own idle loops, A22, run by design and are not counted)
     await page.evaluate(() => window.BW.runAction('uiLang')); await page.waitForTimeout(600);
     await rbTabFor(page, 'dir', 'ltr'); // the direction switch is on the View tab: open it first, as a person would
-    const btn = page.locator('.ribbon .rb-panel [data-a="dir"][data-d="ltr"]');
+    const btn = page.locator('.island [data-a="dir"][data-d="ltr"]');
     await btn.click();
     const anims = await sh(page, async (R) => { const seen = new Set(); const t0 = performance.now(); while (performance.now() - t0 < 600) { R.getAnimations().forEach((a) => { const el = a.effect?.target; if (el && !el.closest?.('.brand')) seen.add((el.className?.baseVal ?? el.className) + '@' + (el.closest('[data-x]')?.dataset.x || el.dataset?.a || el.tagName)); }); await new Promise((r) => setTimeout(r, 40)); } return [...seen]; });
     check('0.13 A4: after RTL→LTR only the direction thumb animates', anims.length >= 1 && anims.filter((x) => !/^toast/.test(x)).every((x) => /thumb@dir/.test(x)), JSON.stringify(anims));

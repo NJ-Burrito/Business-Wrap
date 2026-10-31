@@ -17,11 +17,11 @@
 .island:has(> .ribbon) > .progress { order: 9; }
 .island:has(> .ribbon) > .ribbon { order: 10; }
 
-/* R3 · language and direction side by side: one pill group, one hairline between them, no gap of toolbar between */
+/* R3 / note 8 · top-bar spacing: logo 16 selectors 24 language pill 12 direction pill 24 history, no overlapping pills (the negative margin is gone) */
 .island:has(> .ribbon) .grp.doc .seg.lang, .island:has(> .ribbon) .seg.ui { background: color-mix(in srgb, var(--on-glass) 8%, transparent); }
-.island:has(> .ribbon) .grp.doc .seg.lang { border-start-end-radius: 6px; border-end-end-radius: 6px; margin-inline-end: -6px; }
-.island:has(> .ribbon) .seg.ui { border-start-start-radius: 6px; border-end-start-radius: 6px; margin-inline-start: 0; box-shadow: inset 1px 0 0 var(--hair); }
-.island:has(> .ribbon) .seg.ui { margin-inline-end: 6px; }
+.island:has(> .ribbon) > .brand { margin-inline-end: 10px; }
+.island:has(> .ribbon) > .grp.doc { gap: 24px; }
+.island:has(> .ribbon) .seg.ui { margin-inline: 4px 18px; box-shadow: none; }
 .island:has(> .ribbon) > .grp.doc, .island:has(> .ribbon) .seg.ui { align-self: center; }
 
 /* R4 · the changes button: icon + word + count badge, a real button (border, hover lift, press) */
@@ -43,44 +43,84 @@
 @media (prefers-reduced-motion: reduce) { .status .count, .status .count:hover, .status .count:active { transition: none; transform: none; } }
 :host-context(html[data-bw-calm="1"]) .status .count, :host-context(html[data-bw-calm="1"]) .status .count:hover, :host-context(html[data-bw-calm="1"]) .status .count:active { transition: none; transform: none; }
 
-/* R1 · the ribbon */
-.ribbon { flex: 0 0 100%; min-width: 0; display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--hair); padding-top: 2px; position: relative; }
-.rb-bar { display: flex; align-items: center; gap: 2px; }
-.rb-tabs { display: flex; align-items: center; gap: 2px; overflow-x: auto; scrollbar-width: none; min-width: 0; }
-.rb-tab { border: 0; background: transparent; color: var(--on-glass-soft); font: inherit; font-size: 13.5px; font-weight: 600; padding: 5px 14px; border-radius: 9px 9px 0 0; cursor: pointer; white-space: nowrap; position: relative; transition: background-color .18s var(--e-out), color .18s var(--e-out); }
+/* 0.15.0 · the ribbon: tabs centred with an icon and a colour each (note 1), a 64 x 72 grid on an 8 px unit (note 2), no horizontal scroll (note 3),
+ * a raised selected tab and shaded categories (note 4), a name under every tool (note 5), a re-press folds the ribbon (note 6). */
+.shell { --bw-sec-font: #8fdc8f; --bw-sec-para: #9aa8f5; --bw-sec-table: #d6a0f0; --bw-sec-diagram: #6fd0e0; }
+.ribbon {
+  --rb-hi: #84b7eb; --rb-base: var(--bw-glass);
+  --rb-ground: color-mix(in srgb, var(--rb-base) 88%, var(--rb-hi) 12%);
+  --rb-sel: color-mix(in srgb, var(--rb-base) 78%, var(--rb-hi) 22%);
+  --rb-c1: color-mix(in srgb, var(--rb-base) 92%, var(--rb-hi) 8%);
+  --rb-c2: color-mix(in srgb, var(--rb-base) 86%, var(--rb-hi) 14%);
+  --rb-c3: color-mix(in srgb, var(--rb-base) 80%, var(--rb-hi) 20%);
+  flex: 0 0 100%; min-width: 0; display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--hair); padding-top: 6px; position: relative;
+}
+.rb-bar { display: flex; align-items: flex-end; justify-content: center; block-size: 44px; padding-inline: 16px; box-sizing: border-box; position: relative; }
+.rb-tabs { display: flex; align-items: flex-end; gap: 4px; min-width: 0; }
+.rb-tab {
+  flex: none; display: inline-flex; align-items: center; gap: 8px; block-size: 36px; padding-inline: 14px; border: 0; border-radius: 10px 10px 0 0; background: transparent; cursor: pointer;
+  color: var(--on-glass-soft); font: inherit; font-size: 13.5px; font-weight: 700; white-space: nowrap; position: relative; box-sizing: border-box;
+  transition: background-color .18s var(--e-out), color .18s var(--e-out);
+}
+.rb-ti { display: inline-grid; place-items: center; inline-size: 18px; block-size: 18px; color: var(--tc, var(--on-glass)); flex: none; }
+.rb-ti .ic { width: 18px; height: 18px; stroke-width: 2; }
+/* the tab's own colour wins over the theme's hover / selected icon colour (ui.css 73) */
+.shell .ribbon button.rb-tab .rb-ti svg.ic:not(.bw-i) { color: var(--tc, var(--on-glass)); }
 .rb-tab:hover { background: color-mix(in srgb, var(--on-glass) 10%, transparent); color: var(--on-glass); }
-.rb-tab[aria-selected="true"] { color: var(--on-glass); background: color-mix(in srgb, var(--on-glass) 14%, transparent); box-shadow: inset 0 -2px 0 var(--gold); }
-.rb-tab.ctx { color: var(--gold); box-shadow: inset 0 2px 0 var(--gold); }
-.rb-tab.ctx[aria-selected="true"] { color: var(--on-glass); }
+.rb-tab[aria-selected="true"] {
+  color: var(--on-glass); background: var(--rb-sel); block-size: 38px; box-shadow: 0 -3px 8px rgb(0 0 0 / .35), inset 0 3px 0 var(--tc, var(--gold)); z-index: 1;
+}
+.rb-tab.ctx { box-shadow: inset 0 2px 0 var(--gold); }
+.rb-tab.ctx[aria-selected="true"] { box-shadow: 0 -3px 8px rgb(0 0 0 / .35), inset 0 3px 0 var(--gold); }
 .rb-tab:focus-visible, .rb-col:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
-.rb-sp { flex: 1; }
-.rb-col { border: 0; background: transparent; color: var(--on-glass-soft); width: 30px; height: 28px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.rb-tabs.icons .rb-tab:not([aria-selected="true"]) { padding-inline: 10px; }
+.rb-tabs.icons .rb-tab:not([aria-selected="true"]) .rb-tl { display: none; }
+@media (max-width: 1279px) { .rb-tab:not([aria-selected="true"]) { padding-inline: 10px; } .rb-tab:not([aria-selected="true"]) .rb-tl { display: none; } }
+.rb-col { position: absolute; inset-inline-end: 16px; inset-block-start: 8px; border: 0; background: transparent; color: var(--on-glass-soft); width: 30px; height: 28px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .rb-col:hover { background: color-mix(in srgb, var(--on-glass) 12%, transparent); color: var(--on-glass); }
-.rb-chev { width: 8px; height: 8px; border-inline-end: 2px solid currentColor; border-block-end: 2px solid currentColor; transform: rotate(-135deg) translate(-1px, -1px); transition: transform .3s var(--e-out); }
-.rb-col[aria-expanded="false"] .rb-chev { transform: rotate(45deg) translate(-1px, -1px); }
-.rb-panel { display: flex; align-items: stretch; gap: 0; overflow-x: auto; scrollbar-width: thin; padding: 4px 0 2px; background: color-mix(in srgb, var(--on-glass) 6%, transparent); border-radius: 0 0 10px 10px; animation: rb-in .22s var(--e-out) both; }
+.rb-chev { display: inline-grid; place-items: center; transition: transform .3s var(--e-out); }
+.rb-chev .ic { width: 18px; height: 18px; }
+.rb-col[aria-expanded="false"] .rb-chev { transform: rotate(180deg); }
+
+/* the panel: the same 184 px on every tab (8 + two 72 px rows + a 24 px label + 8), so nothing under it moves when the tab changes; the first 8 px share the selected tab's shade so the two read as one piece */
+.rb-panel {
+  display: flex; align-items: flex-start; justify-content: center; gap: 4px; block-size: 184px; box-sizing: border-box; padding: 8px 16px; overflow: hidden;
+  background: linear-gradient(var(--rb-sel) 0 8px, var(--rb-ground) 8px); border-radius: 0 0 12px 12px;
+}
 .rb-panel[hidden] { display: none; }
-.rb-g { display: flex; flex-direction: column; justify-content: space-between; padding: 0 8px; border-inline-end: 1px solid var(--hair); flex: none; min-width: 0; }
-.rb-g:last-child { border: 0; }
-.rb-tools { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 2px; max-width: 460px; }
-.rb-g.dense .rb-tools { max-width: 300px; }
-.rb-gl { text-align: center; font-size: 11px; font-weight: 600; color: var(--on-glass-soft); padding-top: 2px; white-space: nowrap; }
-.ribbon .rb-tools > .b, .ribbon .rb-tools .more > .b { flex-direction: column; gap: 3px; min-height: 52px; min-width: 52px; padding: 5px 6px; justify-content: center; font-size: 12px; line-height: 1.15; }
-.ribbon .rb-tools .b .w { white-space: normal; text-align: center; max-width: 84px; }
-.ribbon .rb-g.dense .rb-tools > .b { min-height: 34px; min-width: 34px; padding: 6px; }
-.ribbon .rb-g.dense .rb-tools > .b .w { display: none; }
-.rb-panel.tight .rb-tools { max-width: 224px; } /* a tab too wide for the window (a contextual tab at 1366 px): every group goes compact (icons, names in the title) so the group titles stay in view and the band stays low */
-.ribbon .rb-panel.tight .rb-tools > .b, .ribbon .rb-panel.tight .rb-tools .more > .b { min-height: 34px; min-width: 34px; padding: 6px; }
-.ribbon .rb-panel.tight .rb-tools .b .w { display: none; }
-.rb-panel.tight .rb-g { padding: 0 5px; }
-.ribbon .b .i, .ribbon .b .ic { width: 20px; height: 20px; }
+.rb-g { display: flex; flex-direction: column; flex: none; min-width: 0; padding-inline: 8px; border-radius: 8px; background: var(--rb-c1); }
+.rb-g:nth-child(3n+2) { background: var(--rb-c2); }
+.rb-g:nth-child(3n+3) { background: var(--rb-c3); }
+.rb-tools { display: grid; grid-template-rows: repeat(2, 72px); grid-auto-flow: column; grid-auto-columns: 64px; gap: 0; }
+.rb-gl { display: flex; align-items: center; justify-content: center; block-size: 24px; font-size: 11px; font-weight: 700; color: var(--on-glass-soft); white-space: nowrap; }
+.ribbon .rb-tools > .more { display: contents; }
+.ribbon .rb-tools .b {
+  flex-direction: column; justify-content: flex-start; align-items: center; gap: 4px; inline-size: 64px; block-size: 72px; min-height: 0; padding: 8px 2px 0; box-sizing: border-box; border-radius: 8px;
+  font-size: 11.5px; line-height: 14px; font-weight: 600; white-space: normal; text-align: center;
+}
+.ribbon .rb-tools .b .w { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; inline-size: 100%; white-space: normal; text-align: center; }
+.ribbon .rb-tools .b .i, .ribbon .rb-tools .b .ic { width: 24px; height: 24px; }
 .ribbon .b[aria-pressed="true"] { background: color-mix(in srgb, var(--on-glass) 18%, transparent); box-shadow: inset 0 -2px 0 var(--gold); }
-.ribbon .b:disabled { opacity: .45; cursor: default; }
+.ribbon .b:disabled, .ribbon .b[aria-disabled="true"] { opacity: .45; cursor: default; }
 .ribbon .more .menu { z-index: 60; }
-/* a collapsed ribbon is the tab row only; a tab pressed meanwhile peeks the panel in flow until a tool or Esc */
-@keyframes rb-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .rb-panel { animation: none; } .rb-chev, .rb-tab { transition: none; } }
-:host-context(html[data-bw-calm="1"]) .rb-panel { animation: none; }
+/* below 1024 px the groups wrap to a second band: the fallback, never a scroll bar */
+@media (max-width: 1023px) { .rb-panel { flex-wrap: wrap; block-size: auto; min-block-size: 184px; row-gap: 8px; } }
+@media (prefers-reduced-motion: reduce) { .rb-chev, .rb-tab { transition: none; } }
 :host-context(html[data-bw-focus="1"]) .ribbon { display: none; }
 /* the quick strip has room now (the sections moved into the ribbon): the changes button stays while something is selected */
 .island:has(> .ribbon).has-sel .status .count { display: inline-flex; }
+/* the «last saved» stamp (10-library) sits in the quick strip's empty middle, beside the change counter, instead of floating over the tab row */
+.island:has(> .ribbon) .status .bw-stamp { position: static; inset: auto; transform: none; background: none; box-shadow: none; padding: 0; color: var(--on-glass-soft); }
+
+/* icon motion for the icons this file added (the trigger and the keyframes are 40-icon-motion.css's): one move each, on hover, focus and press */
+[data-ic^="rbt."] > * { --s: 1.16; --icm: icm-pop var(--mvt); }
+[data-ic="rbt.file"] > * { transform-origin: 50% 100%; --icm: icm-lift var(--mvt); }
+[data-ic="rbt.export"] > * { --y: 2px; --icm: icm-nudge var(--mvt); }
+[data-ic="rbt.design"] > *, [data-ic="rbt.tools"] > * { --r: 14deg; --icm: icm-tilt var(--mvt); }
+[data-ic="rbt.para"] > * { --icm: icm-grow-x var(--mvt); }
+[data-ic="rbt.review"] > * { --y: -1.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="zoomHeight"] > * { --s: .84; --icm: icm-recede var(--mvt); }
+[data-ic="zoomPct"] > * { --s: 1.18; --icm: icm-pop var(--mvt); }
+[data-ic="projExport"] > * { --y: 2px; --icm: icm-nudge var(--mvt); }
+[data-ic="projImport"] > * { --y: -2px; --icm: icm-nudge var(--mvt); }
+.rb-tab[aria-selected="true"]:hover { background: color-mix(in srgb, var(--rb-sel) 88%, var(--on-glass) 12%); }
