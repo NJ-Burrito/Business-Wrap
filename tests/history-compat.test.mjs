@@ -73,7 +73,7 @@ try {
         const e = await window.BW.EXT.library.importAny(new File([txt], 'in.html', { type: 'text/html' }));
         await window.BW.EXT.ledger.ready();
         const L = window.BW.EXT.ledger.log();
-        return { n: L.entries.length, prefix: L.entries.map((x) => x.kind).join(','), ok: L.verdict.ok, ops: window.BW.M[window.BW.S.svc].ar.ops.length, id: e?.id };
+        return { n: L.entries.length, prefix: L.entries.map((x) => x.kind).join(','), ok: L.verdict.ok, ops: window.BW.M[window.BW.S.svc].ar.ops.length, id: e?.id, toasts: [...document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('.toast .m')].map((x) => x.textContent).join(' | ') };
       }, html);
       check(`${v}: imported into the library: its log and ${wantOps} ops come with it`, imp.id && imp.ok && imp.prefix.startsWith(want.logs[svc].kinds) && imp.ops === wantOps, JSON.stringify(imp));
       await ctx.close();
