@@ -447,21 +447,29 @@ const USAGE = fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n'
 /** The flags each verb knows (T11: an unknown flag is an error, never silently ignored). */
 const COMMON = ['--json'];
 const KNOWN_FLAGS = {
-  open: ['--port', '--no-browser', '--ui'], close: [], stop: [], status: [], new: ['--title', '--out', '--no-browser', '--no-open'], build: ['--out', '--ui'],
+  open: ['--port', '--no-browser', '--ui'], close: ['--all'], stop: ['--all'], status: [], new: ['--title', '--out', '--no-browser', '--no-open'], build: ['--out', '--ui'],
   harvest: ['--out', '--name', '--roles', '--no-open', '--no-browser'], import: ['--out', '--name', '--roles', '--no-open', '--no-browser'],
   export: ['--out', '--edits', '--no-docx'], gate: [], 'heal-log': [], 'verify-history': ['--history'], library: [], report: [], doctor: [], reset: ['--all', '--dry-run', '--yes'],
   editor: ['--doc', '--pointer', '--pointer-file', '--locale', '--ops-file', '--mirror', '--agent', '--group', '--id', '--args-file', '--project', '--title', '--file', '--tab', '--out', '--scale'],
 };
+/** Flags that take a value: whatever follows one is its value, even a lone - (stdin) or a dash-led name. */
+const VALUED = new Set(['--pointer-file', '--tab', '--scale', '--out', '--port', '--name', '--roles', '--edits', '--title', '--ui', '--history', '--doc', '--pointer', '--locale', '--ops-file', '--agent', '--group', '--id', '--args-file', '--project', '--file']);
 const HELP = ['--help', '-h', 'help', '-?'];
+/** T11: an unknown flag is an error. A lone - and anything right after a valued flag is a VALUE (stdin, a dash-led name), never a flag. Exported for tests/cli-0154. */
+export function checkFlags(verb, rest) {
+  const known = KNOWN_FLAGS[verb];
+  if (!known) return;
+  const bad = rest.find((a, i) => a.length > 1 && a.startsWith('-') && !VALUED.has(rest[i - 1]) && !known.includes(a) && !COMMON.includes(a));
+  if (bad) throw Object.assign(new Error(`${verb}: unknown option ${bad}${bad === '--tab' ? ' (--tab belongs to business-wrap editor)' : ''}; nothing was done
+${USAGE}`), { code: 2 });
+}
 export async function run(argv) {
   const [verb, ...rest] = argv;
   // T13: --help of ANY verb prints usage and does nothing else: no host, no Edge, no file (the check comes before every other step)
   if (rest.some((a) => HELP.includes(a)) && verb && !HELP.includes(verb)) return { usage: USAGE };
-  const known = KNOWN_FLAGS[verb];
-  if (known) { const bad = rest.find((a) => a.startsWith('-') && !known.includes(a) && !COMMON.includes(a)); if (bad) throw Object.assign(new Error(`${verb}: unknown option ${bad}${bad === '--tab' ? ' (--tab belongs to business-wrap editor)' : ''}; nothing was done\n${USAGE}`), { code: 2 }); }
+  checkFlags(verb, rest);
   const flags = new Set(rest.filter((a) => a.startsWith('--')));
   const val = (k) => { const i = rest.indexOf(`--${k}`); return i >= 0 ? rest[i + 1] : undefined; };
-  const VALUED = new Set(['--pointer-file', '--tab', '--scale', '--out', '--port', '--name', '--roles', '--edits', '--title', '--ui', '--history', '--doc', '--pointer', '--locale', '--ops-file', '--agent', '--group', '--id', '--args-file', '--project', '--file']);
   const pos = rest.filter((a, i) => !a.startsWith('--') && !VALUED.has(rest[i - 1]));
   const browser = !flags.has('--no-browser');
   switch (verb) {

@@ -78,7 +78,7 @@ try {
     const R = document.getElementById('bw-ui-host').shadowRoot;
     const pair = document.getElementById('bw-pair'); const pn = R.querySelector('.rb-panel');
     const out = []; const t0 = performance.now();
-    const f = () => { const m = new DOMMatrix(getComputedStyle(pair).transform); out.push({ t: Math.round(performance.now() - t0), ty: m.m42, top: pair.getBoundingClientRect().top, h: pn.getBoundingClientRect().height }); if (performance.now() - t0 < 420) requestAnimationFrame(f); else res(out); };
+    const f = () => { const m = new DOMMatrix(getComputedStyle(pair).transform); out.push({ t: Math.round(performance.now() - t0), ty: m.m42, top: pair.getBoundingClientRect().top, h: pn.getBoundingClientRect().height }); const el = performance.now() - t0; if (el < 420 || (el < 2500 && out[out.length - 1].h > 0.5)) requestAnimationFrame(f); else res(out); }; // a slow runner (n=9 frames in 420 ms) may not have landed by 420 ms: keep sampling until the panel is shut (the proof is the same: monotonic shrink, no regrowth)
     window.BW.EXT.ribbon.collapse(); requestAnimationFrame(f);
   }));
   const pairTop = (page) => page.evaluate(() => document.getElementById('bw-pair').getBoundingClientRect().top);

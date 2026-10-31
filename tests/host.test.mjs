@@ -141,6 +141,11 @@ try {
   const docId = await p.evaluate(() => window.BW.S.svc); // the document typed into (the «عمل جديد» blank may come first)
   const inPage = await p.evaluate(() => { const e = window.BW.M[window.BW.S.svc].ar; return `${window.BW.S.svc} n=${e.ops.length} last=${String(e.ops.at(-1)?.value).slice(0, 40)}`; });
   await p.close({ runBeforeUnload: true }); // at once: no wait after the last key
+  // the pagehide beacon is in the browser's network queue once the page is gone; closing the context at once can cancel it on a loaded runner (the same race as section 1,
+  // Ubuntu runs 41179426698 and 41202743358: the record kept the earlier push, its ops []). Beacons are not covered by the 0.15.3 document lease (only POST /api/library/mirror is).
+  // Wait for the real state (the record holding the edit), then close.
+  const landed5 = () => { try { const r = runs().sort().at(-1); return fs.readFileSync(path.join(sessions, r, `${myTab}.json`), 'utf8').includes('نهاية-كاملة-XYZ'); } catch { return false; } };
+  for (let i = 0; i < 100 && !landed5(); i++) await new Promise((r) => setTimeout(r, 100));
   await ctx.close();
   const g5 = await gone(h.pid, 12000);
   const run5 = runs().sort().at(-1);
