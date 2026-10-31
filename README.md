@@ -24,6 +24,12 @@
 
 📄 **Out:** PDF and DOCX, fonts embedded as real, selectable text.
 
+🎀 **A ribbon with 12 tabs,** an explanation panel for every tool, offline Arabic and English spell checking, and a dim navy dark mode.
+
+🤖 **Your AI assistant can drive the open editor:** read it, edit it as one undoable step, proofread it, draw a diagram.
+
+📦 Export and import a whole project.
+
 🆓 Free and open source (MIT). Runs on your computer. Nothing is uploaded.
 
 **Jump to:** [▶️ Quick start](#️-quick-start) · [✅ Before you start](#-before-you-start) · [🧩 Install](#-install) · [🚀 Commands](#-commands) · [🔁 Updates](#-updates) · [🧰 What it does](#-what-it-does) · [🔤 Fonts](#-fonts) · [🤖 For AI agents](#-for-ai-agents) · [🔒 Is it safe?](#-is-it-safe) · [❓ Questions](#-questions) · [🆘 Problems?](#-problems)
@@ -74,7 +80,7 @@ claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.15.
 
 - Release zip: `business-wrap-<version>.zip` + `.sha256` from https://github.com/NJ-Burrito/Business-Wrap/releases/latest. In that folder: `npm ci`.
 - MCP from a clone: `claude mcp add business-wrap -- node <path-to>/Business-Wrap/mcp/cli.mjs` (no `npm ci` needed)
-- Tools (15): `build_editor`, `validate_edits`, `apply_edits`, `export_document`, `export_design_pack`, `check_fonts`, `harvest_model`, `harvest_crawl`, `harvest_merge`, `harvest_sources`, `open_in_editor`, `close_editor`, `diagram_mermaid`, `check_update`, `apply_update`, plus the `learning_*` tools. A harvest tool given `open: true` opens its result in the editor. See [mcp/README.md](mcp/README.md).
+- Core tools (15): `build_editor`, `validate_edits`, `apply_edits`, `export_document`, `export_design_pack`, `check_fonts`, `harvest_model`, `harvest_crawl`, `harvest_merge`, `harvest_sources`, `open_in_editor`, `close_editor`, `diagram_mermaid`, `check_update`, `apply_update`, plus the `learning_*` tools. The live editor tools (`editor_list_documents`, `editor_get`, `editor_outline`, `editor_ops`, `editor_action`, `editor_new`, `editor_import`) and `host_health` need an open editor tab. A harvest tool given `open: true` opens its result in the editor. See [mcp/README.md](mcp/README.md).
 
 </details>
 
@@ -125,11 +131,15 @@ Installed as a plugin, Business-Wrap adds these commands; type `/` in Claude Cod
 | `/business-wrap:check [doc-id]` | Run the editor's Check panel on the open document and summarise the problems |
 | `/business-wrap:diagram <description>` | Draft a diagram, render it to PNG, insert it into the open document |
 | `/business-wrap:explain <tool or feature>` | Explain an editor feature from the docs and where it is on the ribbon |
-| `/business-wrap:action <name>` | Run one editor action: `check`, `renumber`, `saveHtml`, `exportPdf`, `share` |
+| `/business-wrap:action <name>` | Run one safe editor action: `check`, `renumber`, `saveHtml`, `exportPdf`, `share`, zoom, theme, reading mode, find, save, outline, next and previous page. Anything that deletes, closes or stops something is refused |
+
+The last 8 commands (`tabs` to `action`) talk to the open editor and need it open: without a tab they say so instead of guessing.
 
 Without Claude Code the same verbs run as `npm run cli -- <verb>` (for example `npm run cli -- open samples/event-permit`, `npm run host:close`). Every verb works offline, with no AI.
 
 </details>
+
+<!-- reset: section added by the cli lane -->
 
 ## 🔁 Updates
 
@@ -156,6 +166,24 @@ At launch the editor (served by `npm run serve -- <editor.html>` or `node engine
 
 📝 **Editor:** one HTML file. The page you edit is the page that prints. Every change is undoable and recorded.
 
+🎀 **Ribbon:** 12 tabs (File, Export, Home, Font, Paragraph, Insert, Layout, Header and footer, Design, Review, Spelling, View), plus 4 that appear when you select a table, a picture or a diagram. Each tab has its own icon and colour, every tool has its name under it, nothing scrolls sideways, and it opens and closes with a smooth glide.
+
+💡 **Explanation panel:** rest on a tool for a moment and a panel on the right shows a small drawing of what it does. It floats over the pages and moves nothing.
+
+🔤 **Spelling:** offline Arabic and English checking with one switch. A Spelling tab (next, previous, fix, fix all, ignore, add to dictionary, a count) and a side panel with suggestions when you click a misspelt word.
+
+📦 **Projects:** export every document of a project as HTML, PDF, DOCX or edits, in one folder or one zip with an index page. Import a project, a folder, a zip or a pile of PDF, DOCX and HTML files as one project.
+
+🤖 **Live editor tools:** your AI assistant can list the open documents, read one, get its outline, apply a batch of edits as one undo step signed as the agent, and run a safe editor action. Eight `/business-wrap:` commands wrap them (see Commands).
+
+🔍 **Zoom:** 25% to 400%, with Fill width, Fill height and Ctrl plus the mouse wheel. 100% is true size.
+
+🌙 **Look:** a dim navy dark mode, a calm drafting-grid background behind the pages, and a watermark that reacts now and then without a sound.
+
+🔌 **Server switch:** one toggle in the top bar. Turn the server off and the editor stays open with a Turn on card.
+
+🗂️ **File and folder icons (Windows):** in Settings, use Business-Wrap icons for your PDF, Word and web page files; Restore puts the Windows icons back. File icons follow the app record Windows 11 keeps for each file type, and your document folders get an icon that matches what is inside (PDF, Word or web page), set automatically.
+
 🔀 **Two languages, one layout:** «ع» / «E» switches language; RTL / LTR switches word direction. The toolbar and the page stay where they are.
 
 🧭 **Diagrams:** the workflow figure is editable on the page. Mermaid in and out.
@@ -173,8 +201,10 @@ At launch the editor (served by `npm run serve -- <editor.html>` or `node engine
 |---|---|
 | **Harvest** | Two ways in, and a merge: a process model (BPMN, draw.io, YAML) gives roles, workflow, rules and statuses; a crawl of the live service gives the card, the form, attachments and messages. The merge keeps both, never picks. |
 | **Editor** | One HTML file, opened from disk. The page you edit is the page that prints. Every printed word, table, label and design property is editable, undoable and recorded. |
-| **Toolbar** | Labelled sections (File · Insert · Edit · Document · Design · Export · View). Select something and its own tools come first and **stay** while you work in panels, menus and pickers; a click on empty space or Esc brings the general tools back. |
-| **Explainers** | Rest on any tool for a moment (or reach it with the keyboard): a card names it, shows its shortcut, says what it does in one sentence and plays a small animation of it. Arabic and English. |
+| **Ribbon** | 12 tabs, plus a Table, Picture or Diagram tab when you select one. Tools sit on an even grid with a name under each. Select something and its own tools come first and **stay** while you work in panels, menus and pickers; a click on empty space or Esc brings the general tools back. Press the open tab again to fold it. |
+| **Explainers** | Rest on any tool for a moment (or reach it with the keyboard): a panel on the right names it, shows its shortcut, says what it does in one sentence and shows a small drawing of it. Arabic and English. |
+| **Spelling** | Offline Arabic and English, checked by script so a mixed paragraph gets the right dictionary. A Spelling tab and a side panel with suggestions. Dictionaries are not stored in a saved HTML file: a file opened from disk uses the browser's own checker. |
+| **Projects** | Export a whole project (HTML, PDF, DOCX or edits; a folder or a zip with an index) and import a project, folder, zip or pile of files, with progress and a summary. |
 | **Layout** | The layout never flips. «ع» / «E» changes the language and the edition; RTL / LTR changes the direction of the words. Toolbar, panels, page and watermark stay where they are. |
 | **Page views** | Continuous, Single page, or Book (the cover alone, then two pages side by side in the document's reading direction). Remembered; print and export are untouched. |
 | **Diagrams** | Shapes, arrows with bends, labels in place, alignment, auto layout, zoom, legend. Mermaid in and out. |
@@ -209,6 +239,8 @@ Each gives the Arabic and English document JSON and an editor. In the editor: **
 - **«ع» / «E»** switch the interface language and the edition you edit; **RTL / LTR** switch the direction of the words.
 - **Commands** (`Ctrl+K`): every action, searchable. **Focus mode** (`F`) hides the tools; **Calm mode** turns motion off (also on when the system asks for reduced motion).
 
+**Zoom** runs from 25% to 400%: type a number, use Ctrl plus the wheel, or press Fill width or Fill height.
+
 **Page views** (View → Pages): *Continuous* is the long sheet; *Single* shows one page at a time; *Book* opens on the cover alone, then pairs pages in the document's reading direction (Arabic: first page of a pair on the right).
 
 **Diagrams:** click a shape for shape tools, an arrow for arrow tools, the empty drawing for diagram tools. Drag to move, drag a corner to resize, drag an arrow's segment to bend it, double-click to edit a label, Ctrl + wheel to zoom. **Import / Export Mermaid** (`npm run diagram:mermaid`, MCP `diagram_mermaid`).
@@ -228,6 +260,23 @@ Each gives the Arabic and English document JSON and an editor. In the editor: **
 **Template packs:** e-service, e-commerce, call-centre, approval, SaaS, generic IEEE 29148, plus your own (`templates/_example-custom`). Every requirement cites its evidence. See [bible/09-template-packs.md](bible/09-template-packs.md).
 
 **Local learning:** a journal of your edits in `.local/learning/` on this machine only; `npm run learn` turns repeated corrections into rules for your AI agent. Settings → "Local learning" to switch it off or forget everything. See [bible/10-learning.md](bible/10-learning.md).
+
+</details>
+
+<details>
+<summary>🆕 New in 0.15</summary>
+
+- 🎀 **Ribbon (0.15.0):** tabs with icons and colours, tools on a grid with names, no sideways scroll. **Spelling** joined in 0.15.2.
+- 💡 **Explanation panel:** a drawing for every tool; since 0.15.2 it opens after a short rest on a tool and floats over the pages.
+- 🌙 **Dark mode is a dim navy;** the page sits on a soft giant NJ logo (0.15.0), then a drafting-grid background (0.15.2).
+- 🔌 **One server switch;** a lost connection with many tabs open is fixed.
+- ✍️ **Offline spell checking** in Arabic and English (0.15.0), with the Spelling tab and side panel (0.15.2).
+- 📦 **Project export and import** (0.15.0).
+- 🤖 **Live editor tools and 8 slash commands** (0.15.0 and 0.15.2).
+- 🔍 **Zoom 25% to 400%** and Fill height (0.15.0); 100% is true size (0.15.2).
+- 🗂️ **File icons** (0.15.1) and **folder icons per file type**, set automatically (merged on main for 0.15.3).
+- 📋 **The user-story ID card is a real table** (0.15.1).
+- ⚡ **Lighter on your PC** (0.15.2). Details: [CHANGELOG.md](CHANGELOG.md).
 
 </details>
 
@@ -280,6 +329,12 @@ Every export and every save toast names the real path. Nothing is written anywhe
 ## 🤖 For AI agents
 
 📘 Read [AGENTS.md](AGENTS.md) and [SKILL.md](SKILL.md) (Claude Code, Claude Desktop, Codex, Cursor, Gemini CLI or any MCP client).
+
+🎛️ **Live editor tools (MCP):** `editor_list_documents`, `editor_get`, `editor_outline`, `editor_ops` (a batch of edits, one undo step, signed as the agent), `editor_action`, `editor_new`, `editor_import`, and `host_health`. They need an open editor tab.
+
+🛑 **`editor_action` is an allow-list:** `renumber`, `check`, `saveHtml`, `share`, `exportPdf`, and safe view actions (zoom, theme, reading mode, find, save, outline, page turns). Anything that deletes, closes, clears or stops is refused (`REFUSED`).
+
+🚦 **Errors to expect:** `NO_TAB` (no editor tab is open: open the editor first), `TAB_TIMEOUT` (the tab did not answer in 15 seconds: call `host_health`), `REFUSED` (a locked document or a destructive action). Details: [docs/automation.md](docs/automation.md).
 
 🔔 At the start of a task run `node update/cli.mjs --check` (or MCP `check_update`); tell the user about a newer release in one line; never update without consent.
 
