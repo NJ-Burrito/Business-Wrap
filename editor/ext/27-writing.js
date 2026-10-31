@@ -278,3 +278,29 @@ bwExt({
     },
   },
 });
+
+/* 0.15.3 (doc lane): the words of the Check panel's new findings and fixes (set at load: the base string files belong to other lanes) */
+Object.assign(I18N.ui.ar, {
+  'doc153.fixRenumber': 'إعادة الترقيم',
+  'doc153.vTashkeel': 'تشكيل ظاهر في {n} موضع من النص (لا تشكيل في النص المرئي)',
+  'doc153.fixTashkeel': 'إزالة التشكيل',
+  'doc153.fixSplit': 'تقسيم هذا الرسم',
+  'doc153.partOf': '(الجزء {a} من {b})',
+  'doc153.editions': 'لغات الوثيقة',
+  'doc153.editionsHint': 'وثيقة بلغة واحدة لا تحتاج نسخة ثانية: يتجاوز الفحص مقارنة النسختين ويحذف التصدير النسخة الفارغة.',
+  'doc153.edBoth': 'نسختان (عربي وإنجليزي)',
+  'doc153.edAr': 'عربي فقط',
+  'doc153.edEn': 'إنجليزي فقط',
+});
+Object.assign(I18N.ui.en, {
+  'doc153.fixRenumber': 'Renumber',
+  'doc153.vTashkeel': 'Visible tashkeel (vowel marks) in {n} place(s): visible text carries none',
+  'doc153.fixTashkeel': 'Remove tashkeel',
+  'doc153.fixSplit': 'Split this figure',
+  'doc153.partOf': '(part {a} of {b})',
+  'doc153.editions': 'Document languages',
+  'doc153.editionsHint': 'A document in one language needs no second edition: Check skips the pair comparison and exports leave the empty edition out.',
+  'doc153.edBoth': 'Two editions (Arabic and English)',
+  'doc153.edAr': 'Arabic only',
+  'doc153.edEn': 'English only',
+});

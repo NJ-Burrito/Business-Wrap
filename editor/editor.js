@@ -63,7 +63,7 @@ for (const s of DATA.services) {
 }
 const cur = (ed = S.ed, svc = S.svc) => M[svc][ed];
 const other = (ed = S.ed) => (ed === 'ar' ? 'en' : 'ar');
-const hasOther = () => !!M[S.svc][other()];
+const hasOther = () => !!M[S.svc][other()] && !isSingleEdition(cur().doc); // 0.15.3: a single-edition document (control.editions: ['ar']) has no pair to mirror, shape-check or stale-mark
 const liveOps = (e) => e.ops.filter((o) => e.status[o.id] !== 'rejected');
 function rebuild(e) { e.doc = applyOps(e.base, liveOps(e)); return e.doc; }
 for (const s of Object.values(M)) for (const e of Object.values(s)) rebuild(e);
@@ -520,8 +520,9 @@ function mergeComments(j) {
 async function saveHtml(embedFonts) {
   const s = DATA.services.find((x) => x.id === S.svc);
   const editions = {};
+  const only = editionsOf(cur().doc)?.length === 1 ? editionsOf(cur().doc)[0] : null; // 0.15.3: a single-edition document saves without its empty edition
   for (const [ed, e] of Object.entries(M[S.svc]))
-    editions[ed] = { ...s.editions[ed], name: e.name, raw: e.raw, hash: e.hash, ops: e.ops, status: e.status, stale: [...e.stale], comments: e.comments, versions: e.versions }; // ...first: an edition attribute this build does not know travels on (engine/format.mjs)
+    if (!only || ed === only || ed === S.ed) editions[ed] = { ...s.editions[ed], name: e.name, raw: e.raw, hash: e.hash, ops: e.ops, status: e.status, stale: [...e.stale], comments: e.comments, versions: e.versions }; // ...first: an edition attribute this build does not know travels on (engine/format.mjs)
   let fontCss = DATA.fontCss;
   if (embedFonts) fontCss = await inlineFonts(fontCss);
   else fontCss = fontCss.replace(/url\(\/font\/([^)]+)\)/g, (m, enc) => `url(${decodeURIComponent(enc)})`); // not embedded: back to the file:// paths, never a dead server-relative one
@@ -767,7 +768,7 @@ const DESIGN = {
         commit([{ op: 'insert', path: at, value: { kind: 'table', columns: ['', ''], rows: [['', '']] } }], { mirror: true });
       } else {
         const c = d.chapters[ch];
-        commit([{ op: 'insert', path: `/chapters/${ch}/sections/-`, value: { number: `${c.number}.${c.sections.length + 1}`, title: t('newSection'), blocks: [{ kind: 'prose', paragraphs: [labelsOf().newParagraph] }] } }], { mirror: true });
+        commit([{ op: 'insert', path: `/chapters/${ch}/sections/-`, value: { number: `${docNumbers(cur().doc).ch[ch]}.${c.sections.length + 1}`, title: t('newSection'), blocks: [{ kind: 'prose', paragraphs: [labelsOf().newParagraph] }] } }], { mirror: true });
       }
     } else if (f.k === 'dcssApply') {
       const v = root.querySelector('.drawer textarea[data-dcss]').value;
@@ -904,7 +905,7 @@ const A = {
     const m = /^\/chapters\/(\d+)\/sections\/(\d+)$/.exec(x.sec || '');
     if (!m) return;
     const c = cur().doc.chapters[+m[1]];
-    commit([{ op: 'insert', path: `/chapters/${m[1]}/sections/${+m[2] + 1}`, value: { number: `${c.number}.${c.sections.length + 1}`, title: t('newSection'), blocks: [{ kind: 'prose', paragraphs: [labelsOf().newParagraph] }] } }], { mirror: true });
+    commit([{ op: 'insert', path: `/chapters/${m[1]}/sections/${+m[2] + 1}`, value: { number: `${docNumbers(cur().doc).ch[+m[1]]}.${c.sections.length + 1}`, title: t('newSection'), blocks: [{ kind: 'prose', paragraphs: [labelsOf().newParagraph] }] } }], { mirror: true });
   },
   /** A25 TOC: «حذف من الفهرس» hides the entry only (tocHidden); the section stays in the body. */
   tocHide(x) {
@@ -944,27 +945,90 @@ const A = {
     render();
   },
   renumber() {
-    // 0.15.0 (render-time numbering): numbers come from position at render, so only a document that opted out (control.numbering: 'manual') has stored numbers to fix
+    // 0.15.3 (T5): what prints is always computed from position (docNumbers). Renumber also writes those numbers into the document, in every edition,
+    // so the JSON an agent reads, the outline and a manual-numbering document hold the same numbers the PDF shows (one undo step)
+    const group = newGroup();
     for (const ed of Object.keys(M[S.svc])) {
-      const d = cur(ed).doc;
-      if (typeof isManualNumbering === 'function' && !isManualNumbering(d)) continue;
-      const ops = [];
-      d.chapters.forEach((ch, i) => {
-        const n = String(i + 1);
-        if (ch.number !== n) ops.push({ op: 'replace', path: `/chapters/${i}/number`, value: n, old: ch.number });
-        ch.sections.forEach((s, j) => {
-          const sn = `${n}.${j + 1}`;
-          if (s.number !== sn) ops.push({ op: 'replace', path: `/chapters/${i}/sections/${j}/number`, value: sn, old: s.number });
-          s.blocks.forEach((b, k) => {
-            if (b.kind === 'stories' && b.number !== undefined && b.number !== sn) ops.push({ op: 'replace', path: `/chapters/${i}/sections/${j}/blocks/${k}/number`, value: sn, old: b.number });
-          });
-        });
-      });
-      if (ops.length) commit(ops, { ed, rerender: false });
+      const ops = numberingOps(cur(ed).doc);
+      if (ops.length) commit(ops, { ed, rerender: false, group, mirror: false });
     }
     render();
   },
 };
+
+/* ── 0.15.3 · doc lane: one-click fixes of the Check panel, also reachable through the bridge (MCP) ───────────────────────── */
+const DOC153 = {
+  /** T12: strip tashkeel from every edition's visible text, one undo group. @returns {number} leaves changed */
+  fixTashkeel() {
+    const group = newGroup();
+    let n = 0;
+    for (const ed of Object.keys(M[S.svc])) {
+      const ops = tashkeelOps(cur(ed).doc);
+      if (!ops.length) continue;
+      n += ops.length;
+      commit(ops, { ed, rerender: false, group, mirror: false });
+    }
+    if (n) render();
+    return n;
+  },
+  /** T6: `control.editions`: 'ar' | 'en' = one language only, 'both' = a pair again. */
+  singleEdition(lang) {
+    const docs = Object.fromEntries(Object.keys(M[S.svc]).map((ed) => [ed, cur(ed).doc]));
+    const list = singleEditionOps(docs, lang === 'ar' || lang === 'en' ? lang : 'both');
+    const group = newGroup();
+    for (const { ed, op } of list) commit([op], { ed, rerender: false, group, mirror: false });
+    if (list.length) render();
+    return list.length;
+  },
+  /** T7: the diagram at `ptr` (a block pointer) becomes the fewest figures that print at 7 pt or more, cut on phase / role boundaries,
+   *  with «يتبع» / "continued" stubs at each cut. The other edition is cut the same way (same boundaries) so the pair keeps its shape. */
+  splitFigure(ptr) {
+    const m = /^(\/chapters\/\d+\/sections\/\d+)\/blocks\/(\d+)$/.exec(ptr || '');
+    const bl = m && get(cur().doc, ptr);
+    if (!bl || bl.kind !== 'diagram' || !bl.model) return { figures: 0, reason: 'not a diagram' };
+    const mk = (ed) => ({ theme: designTheme(S.theme, cur(ed).doc), locale: ed === 'en' ? 'en' : 'ar' });
+    const res = DIAGRAM.splitForLegibility(bl.model, mk(S.ed));
+    if (!res || res.figures.length < 2) return { figures: 1, reason: 'already legible or too small to cut' };
+    const group = newGroup();
+    const cap = res.cap;
+    const N = res.figures.length;
+    const doEd = (ed, figs) => {
+      const blk = get(cur(ed).doc, ptr);
+      if (!blk || blk.kind !== 'diagram') return false;
+      const part = (i) => (tIn('doc153.partOf', ed) || '').replace('{a}', i + 1).replace('{b}', N);
+      const cap0 = textOf(blk.caption);
+      const ops = [{ op: 'replace', path: ptr, value: { ...blk, caption: `${cap0} ${part(0)}`.trim(), model: figs[0].model }, old: blk }];
+      for (let i = 1; i < N; i += 1) ops.push({ op: 'insert', path: `${m[1]}/blocks/${+m[2] + i}`, value: { ...blk, caption: `${cap0} ${part(i)}`.trim(), model: figs[i].model } });
+      commit(ops, { ed, rerender: false, group, mirror: false });
+      return true;
+    };
+    doEd(S.ed, res.figures);
+    if (hasOther()) {
+      const oe = other();
+      const ob = get(cur(oe).doc, ptr);
+      if (ob?.kind === 'diagram' && ob.model) {
+        const figs = DIAGRAM.splitByPhase(DIAGRAM.ensure(ob.model), { maxNodes: cap, locale: mk(oe).locale, aspect: 1.5, byRole: true });
+        if (figs.length === N) doEd(oe, figs);
+      }
+    }
+    render();
+    return { figures: N, minPtPrinted: res.minPtPrinted };
+  },
+  async fix(id, arg) {
+    if (id === 'renumber') return A.renumber();
+    if (id === 'fixTashkeel') return DOC153.fixTashkeel();
+    if (id === 'singleEdition') return DOC153.singleEdition(arg);
+    if (id === 'splitFigure') return DOC153.splitFigure(arg);
+    return null;
+  },
+};
+/** The Check panel's «one language only» control (T6): shown at the foot of the panel, AR + EN. */
+function singleEditionPanel() {
+  const now = editionsOf(cur().doc);
+  const cur1 = now && now.length === 1 ? now[0] : 'both';
+  const b = (arg, key) => `<button type="button" class="b${cur1 === arg ? ' primary' : ''}" data-fix="singleEdition" data-fix-arg="${arg}" aria-pressed="${cur1 === arg}"><span class="w">${esc(t(key))}</span></button>`;
+  return `<section class="doc153-ed"><h3>${esc(t('doc153.editions'))}</h3><p class="hint">${esc(t('doc153.editionsHint'))}</p><div class="btns">${b('both', 'doc153.edBoth')}${b('ar', 'doc153.edAr')}${b('en', 'doc153.edEn')}</div></section>`;
+}
 
 /* ── drag to move ──────────────────────────────────────────────────────── */
 const overlay = {};
@@ -1095,14 +1159,18 @@ function diagramLegibility(model, d) {
 function validate() {
   const out = [];
   const d = cur().doc;
+  const NUM = docNumbers(d); // 0.15.3 (T5): the numbers that print (position), never the stored ones: an auto-numbered document is never out of sequence
   d.chapters.forEach((ch, i) => {
-    if (ch.number !== String(i + 1)) out.push(['warn', t('vNumbering', { x: `${ch.number} ${ch.title}` }), `/chapters/${i}/title`]);
+    // only a manual-numbering document has stored numbers to get wrong
+    if (NUM.manual && ch.number !== String(i + 1)) out.push(['warn', t('vNumbering', { x: `${ch.number} ${ch.title}` }), `/chapters/${i}/title`, { id: 'renumber', label: t('doc153.fixRenumber') }]);
     ch.sections.forEach((s, j) => {
       const empty = !s.blocks.length || s.blocks.every((b) => (b.kind === 'prose' && b.paragraphs.every((p) => !String(p).trim())) || (b.kind === 'table' && !b.rows.length));
-      if (empty) out.push(['err', t('vEmptySection', { x: `${s.number} ${s.title}` }), `/chapters/${i}/sections/${j}/title`]);
-      if (ch.sections.length > 1 && s.number !== `${ch.number}.${j + 1}`) out.push(['warn', t('vNumbering', { x: `${s.number} ${s.title}` }), `/chapters/${i}/sections/${j}/title`]);
+      if (empty) out.push(['err', t('vEmptySection', { x: `${NUM.sec[i][j]} ${s.title}` }), `/chapters/${i}/sections/${j}/title`]);
+      if (NUM.manual && ch.sections.length > 1 && s.number !== `${ch.number}.${j + 1}`) out.push(['warn', t('vNumbering', { x: `${s.number} ${s.title}` }), `/chapters/${i}/sections/${j}/title`, { id: 'renumber', label: t('doc153.fixRenumber') }]);
     });
   });
+  // 0.15.3 (T12): tashkeel (U+064B to U+0652) in visible text is a warning with a one-click fix
+  { const tk = tashkeelLeaves(d); if (tk.length) out.push(['warn', t('doc153.vTashkeel', { n: tk.length }), tk[0].path, { id: 'fixTashkeel', label: t('doc153.fixTashkeel') }]); }
   if (hasOther()) {
     const a = shape(cur('ar').doc);
     const b = shape(cur('en').doc);
@@ -1116,7 +1184,7 @@ function validate() {
   d.chapters.forEach((ch, ci) => ch.sections.forEach((sec, si) => sec.blocks.forEach((bl, bi) => {
     if (bl.kind !== 'diagram' || !bl.model || typeof DIAGRAM.legibility !== 'function') return;
     const r = diagramLegibility(bl.model, d);
-    if (r && !r.ok) out.push(['warn', t('vLegibility', { p: `${ci + 1}.${si + 1}`, pt: r.minPtPrinted, min: r.minPt, n: r.overlaps.length }), `/chapters/${ci}/sections/${si}/blocks/${bi}`]);
+    if (r && !r.ok) out.push(['warn', t('vLegibility', { p: `${ci + 1}.${si + 1}`, pt: r.minPtPrinted, min: r.minPt, n: r.overlaps.length }), `/chapters/${ci}/sections/${si}/blocks/${bi}`, ...(r.small.length && bl.model.nodes.length >= 6 ? [{ id: 'splitFigure', arg: `/chapters/${ci}/sections/${si}/blocks/${bi}`, label: t('doc153.fixSplit') }] : [])]);
   })));
   const fth = designTheme(S.theme, d).fonts;
   for (const f of new Set([fth.text, fth.display])) {
@@ -1994,14 +2062,14 @@ function openDrawer(kind, soft = false) {
   } else if (kind === 'check') {
     const v = validate();
     d.setAttribute('aria-label', t('checkTitle'));
-    html = head(t('checkTitle')) + (v.length ? `<ul class="list">${v.map(([lv, msg, ptr]) => `<li class="${lv}"><span class="i">${icon[lv]}</span> <b>${esc(word[lv])}</b> ${esc(msg)}${ptr ? ` <button type="button" class="jump" data-go="${esc(ptr)}" data-ring="1">${esc(t('ux.jump'))}</button>` : ''}</li>`).join('')}</ul>` : `<p class="ok"><span class="i">${icon.ok}</span> ${esc(t('vAllGood'))}</p>`);
+    html = head(t('checkTitle')) + (v.length ? `<ul class="list">${v.map(([lv, msg, ptr, fix]) => `<li class="${lv}"><span class="i">${icon[lv]}</span> <b>${esc(word[lv])}</b> ${esc(msg)}${ptr ? ` <button type="button" class="jump" data-go="${esc(ptr)}" data-ring="1">${esc(t('ux.jump'))}</button>` : ''}${fix ? ` <button type="button" class="jump fix" data-fix="${esc(fix.id)}"${fix.arg != null ? ` data-fix-arg="${esc(fix.arg)}"` : ''}>${esc(fix.label)}</button>` : ''}</li>`).join('')}</ul>` : `<p class="ok"><span class="i">${icon.ok}</span> ${esc(t('vAllGood'))}</p>`) + singleEditionPanel();
   } else if (kind === 'pages') {
     d.setAttribute('aria-label', t('pagesTitle'));
     html = head(t('pagesTitle')) + `<p class="hint out" role="status"></p><ol class="thumbs">${Array.from({ length: 6 }, () => '<li class="skel" aria-hidden="true"><i></i></li>').join('')}</ol>`;
     setTimeout(() => loadThumbs(d), 0);
   } else if (kind === 'outline') {
     d.setAttribute('aria-label', t('outline'));
-    html = head(t('outline')) + `<ol class="list nav">${cur().doc.chapters.map((ch, i) => `<li><button type="button" data-go="/chapters/${i}/title">${esc(ch.number)} ${esc(ch.title)}</button><ol>${ch.sections.map((s, j) => `<li><button type="button" data-go="/chapters/${i}/sections/${j}/title">${esc(s.number)} ${esc(s.title)}</button></li>`).join('')}</ol></li>`).join('')}</ol>`;
+    html = head(t('outline')) + `<ol class="list nav">${(() => { const NUM = docNumbers(cur().doc); return cur().doc.chapters.map((ch, i) => `<li><button type="button" data-go="/chapters/${i}/title">${esc(NUM.ch[i])} ${esc(ch.title)}</button><ol>${ch.sections.map((s, j) => `<li><button type="button" data-go="/chapters/${i}/sections/${j}/title">${esc(NUM.sec[i][j])} ${esc(s.title)}</button></li>`).join('')}</ol></li>`).join(''); })()}</ol>`;
   } else if (kind === 'find') {
     d.setAttribute('aria-label', t('find'));
     html = head(t('find')) + `<label>${esc(t('findLabel'))}<input data-f="q" type="search"></label><label>${esc(t('replaceLabel'))}<input data-f="r" type="text"></label><p class="hint">${esc(t('foldHint'))}</p><div class="btns"><button type="button" class="b primary" data-k="next"><span class="w">${esc(t('findNext'))}</span></button><button type="button" class="b" data-k="all"><span class="w">${esc(t('replaceAll'))}</span></button></div><p class="out" role="status"></p>`;
@@ -2088,6 +2156,11 @@ async function onDrawer(e) {
       if (hit) break;
     }
     if (hit) { hit.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' }); hit.focus(); }
+    return;
+  }
+  if (x.dataset.fix) { // 0.15.3: a Check finding's one-click fix (the finding goes away on the redraw)
+    const id = x.dataset.fix;
+    Promise.resolve(DOC153.fix(id, x.dataset.fixArg)).then(() => { if (S.drawer === 'check') openDrawer('check'); });
     return;
   }
   if (x.dataset.go) {
@@ -3047,7 +3120,8 @@ const BRIDGE = (() => {
   }
   // 0.15.2 note 12: the allow-list adds SAFE actions (they change the view, never the content); destructive ones stay locked (REFUSED, never run)
   const SAFE = ['zoomPct', 'zoomHeight', 'zoomWidth', 'zoomIn', 'zoomOut', 'zoomReset', 'theme', 'reading', 'find', 'save', 'outline', 'nextPage', 'prevPage'];
-  const ACTIONS = ['renumber', 'check', 'saveHtml', 'share', 'exportPdf', ...SAFE];
+  const FIXES = ['fixTashkeel', 'singleEdition', 'splitFigure']; // 0.15.3: the Check panel's fixes, one call each
+  const ACTIONS = ['renumber', 'check', 'saveHtml', 'share', 'exportPdf', ...FIXES, ...SAFE];
   const LOCKED = /^(delete|remove|close|stop|power|clear|purge|reset|wipe|erase|trash|quit|exit)/i;
   const tools = {
     async list({ project } = {}) {
@@ -3055,9 +3129,10 @@ const BRIDGE = (() => {
       const documents = rows.map((e) => {
         const pid = EXT.projects?.of(e.id) || null;
         const proj = pid ? EXT.projects.state().projects.find((p) => p.id === pid)?.name || pid : null;
-        let doc = M[e.id] ? Object.values(M[e.id])[0]?.doc : null;
-        if (!doc) { try { doc = JSON.parse(Object.values(e.editions)[0].raw); } catch { doc = null; } }
-        return { id: e.id, title: M[e.id] ? EXT.library.titleOf(e.id) : e.title, project: proj, editions: Object.keys(e.editions || {}), savedAt: e.savedAt, words: doc ? wordsOf(doc) : 0 };
+        // 0.15.3 (T8): words come from each BUILT edition (what it holds now: the open document live, a stored one by its saved count or base + ops), never from the first edition's blank base
+        const by = M[e.id] ? Object.fromEntries(Object.entries(M[e.id]).map(([ed, x]) => [ed, wordCount(x.doc)])) : (e.words && typeof e.words === 'object' ? e.words : entryWords(e));
+        const eds = (() => { for (const x of Object.values(M[e.id] || {})) { const l = editionsOf(x.doc); if (l?.length === 1) return l; } return Object.keys(by); })();
+        return { id: e.id, title: M[e.id] ? EXT.library.titleOf(e.id) : e.title, project: proj, editions: Object.keys(e.editions || {}), savedAt: e.savedAt, words: Math.max(0, ...eds.map((ed) => by[ed] || 0)), wordsByEdition: by };
       }).filter((d) => !project || d.project === project);
       return { documents };
     },
@@ -3070,9 +3145,10 @@ const BRIDGE = (() => {
     async outline({ locale } = {}, doc) {
       const ed = await target(doc, locale);
       const d = cur(ed).doc;
+      const NUM = docNumbers(d); // what prints, by position (a stale stored number is never reported)
       const chapters = (d.chapters || []).map((ch, i) => ({
-        pointer: `/chapters/${i}`, number: ch.number, title: textOf(ch.title),
-        sections: (ch.sections || []).map((s, j) => ({ pointer: `/chapters/${i}/sections/${j}`, number: s.number, title: textOf(s.title), blocks: (s.blocks || []).map((b, k) => ({ pointer: `/chapters/${i}/sections/${j}/blocks/${k}`, kind: b.kind, ...(b.id ? { id: b.id } : {}) })) })),
+        pointer: `/chapters/${i}`, number: NUM.ch[i], title: textOf(ch.title),
+        sections: (ch.sections || []).map((s, j) => ({ pointer: `/chapters/${i}/sections/${j}`, number: NUM.sec[i][j], title: textOf(s.title), blocks: (s.blocks || []).map((b, k) => ({ pointer: `/chapters/${i}/sections/${j}/blocks/${k}`, kind: b.kind, ...(b.id ? { id: b.id } : {}) })) })),
       }));
       return { doc: S.svc, locale: ed, title: textOf(d.control?.title), chapters, counts: { chapters: chapters.length, sections: chapters.reduce((n, c) => n + c.sections.length, 0), blocks: chapters.reduce((n, c) => n + c.sections.reduce((m, s) => m + s.blocks.length, 0), 0), words: wordsOf(d) } };
     },
@@ -3083,6 +3159,7 @@ const BRIDGE = (() => {
       const e = cur(ed);
       const test = clone(e.doc);
       const list = clone(ops);
+      list.forEach((op, i) => { const bad = opShapeErrors(op); if (bad.length) throw err('BAD_OP', `op ${i}: ${bad[0]}`, { index: i }); }); // columns: [] and a hand-written story number are refused here as in the host
       list.forEach((op, i) => {
         if (!op || !['setText', 'replace', 'insert', 'delete', 'move', 'duplicate'].includes(op.op) || typeof op.path !== 'string') throw err('BAD_OP', `op ${i}: bad op or path`, { index: i });
         if ('old' in op) { const live = get(test, op.path); if (!same(live, op.old)) throw err('CONFLICT', `op ${i}: ${op.path} holds something else than old`, { index: i, path: op.path, live: clone(live) ?? null }); }
@@ -3099,6 +3176,17 @@ const BRIDGE = (() => {
       if (!ACTIONS.includes(id)) throw err('UNKNOWN_ACTION', `unknown action "${id}"`, { allowed: ACTIONS });
       const ed = await target(doc, args.locale);
       if (id === 'check') return checkAll();
+      if (FIXES.includes(id)) {
+        const before = cur(ed).ops.length;
+        let r = null;
+        await asAgent(args.agent || 'Claude', async () => {
+          if (id === 'fixTashkeel') r = { changed: DOC153.fixTashkeel() };
+          else if (id === 'singleEdition') r = { changed: DOC153.singleEdition(args.editions ?? args.value ?? 'both') };
+          else r = DOC153.splitFigure(args.pointer);
+        }, true);
+        await EXT.library?.persist?.(S.svc);
+        return { id, ...r, opsAdded: cur(ed).ops.length - before };
+      }
       if (SAFE.includes(id)) return safeAction(id, args);
       if (id === 'share') return shareAs(args);
       const before = cur(ed).ops.length;
@@ -3129,7 +3217,7 @@ const BRIDGE = (() => {
   };
   /** /business-wrap:check (0.15.2 note 13): the Check panel's findings, plus the spelling error counts (ar / en) and the diagram legibility warnings. */
   async function checkAll() {
-    const findings = validate().map(([level, message, path]) => ({ level, message, path }));
+    const findings = validate().map(([level, message, path, fix]) => ({ level, message, path, ...(fix ? { fix: { action: fix.id, ...(fix.arg != null ? { args: { pointer: fix.arg } } : {}) } } : {}) })); // fix = the bridge action that settles it
     const sp = EXT.spell;
     let spelling = { enabled: false, ar: 0, en: 0, total: 0 };
     if (sp?.enabled?.(S.ed)) {

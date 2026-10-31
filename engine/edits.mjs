@@ -140,6 +140,21 @@ export function applyOps(base, ops) {
   return doc;
 }
 
+/** 0.15.3 (T16) · shape rules an op must keep, whoever wrote it (the host validator and the editor bridge both call this):
+ *  a table is never written with `columns: []` (it would print as label/value rows with no header: give it its header texts, or leave `columns` out);
+ *  a `stories` block's number comes from its section, never from an op. */
+export function opShapeErrors(op) {
+  const out = [];
+  if (!op || typeof op !== 'object') return out;
+  const emptyCols = (b) => b && typeof b === 'object' && b.kind === 'table' && Array.isArray(b.columns) && b.columns.length === 0;
+  if (['replace', 'insert', 'setText'].includes(op.op)) {
+    if (emptyCols(op.value)) out.push('a table needs at least one column header: columns: [] is refused (omit `columns` for a headerless table)');
+    if (/\/columns$/.test(String(op.path)) && Array.isArray(op.value) && op.value.length === 0) out.push('columns: [] is refused (a table keeps its column headers; delete the columns with the column scope instead)');
+    if (/\/chapters\/\d+\/sections\/\d+\/blocks\/(\d+|-)\/number$/.test(String(op.path))) out.push('the number of a story block comes from its section, never by hand: renumber the section instead');
+  }
+  return out;
+}
+
 /** Older or unversioned edits files → v1. Stub: v0 was a bare op array. */
 export function migrate(file) {
   if (Array.isArray(file)) return { version: 1, document: '', baseHash: '', locale: 'ar', ops: file, migratedFrom: 0 };
@@ -194,6 +209,7 @@ export function validateEdits(file) {
     if (typeof op.path !== 'string' || !/^(\/([^~/]|~[01])*)*$/.test(op.path)) errs.push(`op ${i}: bad path`);
     if (op.op === 'move' && typeof op.from !== 'string') errs.push(`op ${i}: move needs from`);
     if (['setText', 'replace', 'insert'].includes(op.op) && !('value' in op)) errs.push(`op ${i}: needs value`);
+    errs.push(...opShapeErrors(op).map((e) => `op ${i}: ${e}`));
   }
   return errs;
 }
@@ -270,6 +286,7 @@ export function textLeaves(doc) {
     else if (v && typeof v === 'object')
       for (const [k, x] of Object.entries(v)) {
         if (['svg', 'images', 'kind', 'service', 'composedAt', 'layout'].includes(k)) continue;
+        if (p === '/control' && (k === 'editions' || k === 'numbering')) continue; // 0.15.3: settings, not words
         if (k === 'id' && 'kind' in v) continue; // a block's stable id (anchors) is not text; a story's id is
         // a diagram's words are its labels; ids, kinds and geometry are not text
         if (k === 'model' && x && typeof x === 'object') {
@@ -491,4 +508,75 @@ export function normaliseNumbers(doc) {
     });
   });
   return doc;
+}
+
+/* ── 0.15.3 · numbers everywhere, single-edition documents, tashkeel, words ─────────────────────────────────────────── */
+
+/** The ops that write the positional numbers (what prints in an auto-numbered document) into the stored fields, chapter, section and story:
+ *  what «Renumber» does, for an auto-numbered document (so the JSON agrees with the page) and for a manual one (whose numbers are then real). */
+export function numberingOps(doc) {
+  const ops = [];
+  (doc?.chapters || []).forEach((ch, i) => {
+    const n = String(i + 1);
+    if (ch.number !== n) ops.push({ op: 'replace', path: `/chapters/${i}/number`, value: n, old: ch.number });
+    (ch.sections || []).forEach((s, j) => {
+      const sn = `${n}.${j + 1}`;
+      if (s.number !== sn) ops.push({ op: 'replace', path: `/chapters/${i}/sections/${j}/number`, value: sn, old: s.number });
+      (s.blocks || []).forEach((b, k) => {
+        if (b.kind === 'stories' && b.number !== sn) ops.push({ op: 'replace', path: `/chapters/${i}/sections/${j}/blocks/${k}/number`, value: sn, old: b.number });
+      });
+    });
+  });
+  return ops;
+}
+
+/** `control.editions: ['ar']` marks a document written in one language only: no second edition is expected, paired or exported. */
+export const editionsOf = (doc) => {
+  const e = doc?.control?.editions;
+  if (!Array.isArray(e)) return null;
+  const ok = [...new Set(e.filter((x) => x === 'ar' || x === 'en'))];
+  return ok.length ? ok : null;
+};
+export const isSingleEdition = (doc) => editionsOf(doc)?.length === 1;
+/** The ops that turn single-edition on (one language) or off (both) on every edition doc given: [{ed, op}]. */
+export function singleEditionOps(docs, lang) {
+  const out = [];
+  for (const [ed, doc] of Object.entries(docs || {})) {
+    if (!doc?.control) continue;
+    if (lang === 'ar' || lang === 'en') { const v = [lang]; if (JSON.stringify(doc.control.editions) !== JSON.stringify(v)) out.push({ ed, op: { op: 'replace', path: '/control/editions', value: v, old: doc.control.editions } }); }
+    else if ('editions' in doc.control) out.push({ ed, op: { op: 'delete', path: '/control/editions', old: doc.control.editions } });
+  }
+  return out;
+}
+/** The editions of a library entry that an export writes: a single-edition document drops the other (empty) one. */
+export function exportEditions(entry) {
+  const have = Object.keys(entry?.editions || {}).filter((ed) => entry.editions[ed]?.raw);
+  for (const ed of have) {
+    try { const e = editionsOf(JSON.parse(entry.editions[ed].raw)); if (e?.length === 1) return have.filter((x) => x === e[0]); } catch { /* unreadable: keep all */ }
+  }
+  return have;
+}
+
+/** Visible text must not carry tashkeel (U+064B to U+0652): the owner's rule; it belongs to text-to-speech only. */
+export const TASHKEEL = /[ً-ْ]/g;
+export const stripTashkeel = (s) => String(s ?? '').replace(TASHKEEL, '');
+export const tashkeelLeaves = (doc) => textLeaves(doc).filter((l) => /[ً-ْ]/.test(l.value));
+export function tashkeelOps(doc) {
+  return tashkeelLeaves(doc).map((l) => ({ op: 'setText', path: l.path, value: stripTashkeel(l.value), old: l.value }));
+}
+
+/** Words of one edition document (what the library lists): the text leaves, split on white space. */
+export function wordCount(doc) {
+  try { return textLeaves(doc).map((x) => x.value).join(' ').split(/\s+/).filter(Boolean).length; } catch { return 0; }
+}
+/** Words per edition of a library entry, from what the edition holds NOW (base + its live ops), never from the blank placeholder base. */
+export function entryWords(entry) {
+  const out = {};
+  for (const [ed, e] of Object.entries(entry?.editions || {})) {
+    try {
+      const live = (e.ops || []).filter((o) => (e.status || {})[o.id] !== 'rejected');
+      out[ed] = wordCount(applyOps(JSON.parse(e.raw), live));
+    } catch { out[ed] = 0; }
+  }
+  return out;
 }
