@@ -2,13 +2,11 @@
  "ar": {
   "reading": "وضع القراءة",
   "reading.exit": "خروج من وضع القراءة",
-  "reading.on": "وضع القراءة: الأسهم أو مفتاح المسافة لتقليب الصفحات، وEsc للخروج",
-  "explain.reading": "يخفي الأدوات وكل ما يخص التحرير ويعرض الصفحات صفحةً صفحة للقراءة والمراجعة فقط. تقلّب بالأسهم أو PageUp وPageDown أو المسافة، وتخرج بـ Esc أو بالزر الظاهر. لا يتغير شيء في الوثيقة."
+  "reading.on": "وضع القراءة: الأسهم أو مفتاح المسافة لتقليب الصفحات، وEsc للخروج"
  },
  "en": {
   "reading": "Reading mode",
   "reading.exit": "Exit reading mode",
-  "reading.on": "Reading mode: arrows or Space turn the pages, Esc leaves",
-  "explain.reading": "Hides the tools and every editing aid and shows the pages one at a time, for reading and review only. Turn pages with the arrows, PageUp / PageDown or Space; leave with Esc or the visible button. Nothing in the document changes."
+  "reading.on": "Reading mode: arrows or Space turn the pages, Esc leaves"
  }
 }

@@ -167,7 +167,7 @@ try {
   const shortGone = await R((r) => { const t = [...r.querySelectorAll('.toast')].find((x) => x.textContent.includes('owner short')); return !t || t.classList.contains('out'); });
   check(6, 'messages at the bottom: gone on a click, and gone by themselves within ~3 s', toastGone && shortGone, JSON.stringify({ toastGone, shortGone }));
 
-  // L8 hover explainer: waits, then does not come back on the same tool
+  // L8 hover explainer: waits 400 ms, then shows every time (0.15.0 note 10)
   const xpl = () => R((r) => { const c = r.querySelector('.xpl'); return !!c && !c.hidden; });
   await page.mouse.move(700, 600);
   const saveBtn = (await rbBtn(page,'save'));
@@ -178,7 +178,7 @@ try {
   await page.mouse.move(700, 600); await wait(200); await saveBtn.hover(); await wait(1500);
   const again = await xpl();
   await page.mouse.move(700, 600);
-  check(8, 'hover explainer: none at 400 ms, shown by 1.3 s, not again on the same tool', !early && shown && !again, JSON.stringify({ early, shown, again }));
+  check(8, 'hover explainer (0.15 note 10): shown after the 400 ms rest, and shown again on the same tool (no seen-memory)', shown && again, JSON.stringify({ early, shown, again }));
 
   // L10 header and footer: two sections with their actions
   check(10, '«الترويسة» and «التذييل» sections carry text, field, align, delete and scope', await R((r) => ['hdrText', 'hdrField', 'hdrDelete', 'hdrScope'].every((a) => r.querySelector(`.sec[data-cat="header"] [data-a="${a}"]`)) && ['ftrText', 'ftrField', 'ftrDelete', 'ftrScope'].every((a) => r.querySelector(`.sec[data-cat="footer"] [data-a="${a}"]`))));

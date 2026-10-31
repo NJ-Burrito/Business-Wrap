@@ -1,30 +1,28 @@
 {
-  "ar": {
-    "powerOff": "إيقاف",
-    "explain.powerOff": "يوقف بزنس راب كله: يحفظ مستنداتك المفتوحة، ثم يوقف الخادم المحلي وكل عملية شغّلها، ويغلق نوافذه. يسألك قبل ذلك.",
-    "pwTitle": "إيقاف بزنس راب؟",
-    "pwLead": "ستُحفظ كل المستندات المفتوحة، ثم يتوقف الخادم المحلي وكل ما شغّله بزنس راب وتُغلق نوافذه. لن يعمل التصدير والطباعة حتى تفتح المحرر من جديد.",
-    "pwYes": "أوقف كل شيء",
-    "pwNo": "إلغاء",
-    "pwOffTitle": "بزنس راب متوقف",
-    "pwOffLead": "حُفظت مستنداتك، وتوقف الخادم المحلي وكل ما شغّله. أغلق هذه النافذة، وافتح المحرر متى شئت بأمر الفتح.",
-    "pwFailed": "تعذّر الإيقاف: {e}",
-    "rpOpenFolder": "افتح المجلد",
-    "rpOpenFolderTip": "يفتح مجلد تقرير الأداء ويحدّد الملف: {x}",
-    "rpOpenFolderFail": "تعذّر فتح المجلد. الملف في: {x}"
-  },
-  "en": {
-    "powerOff": "Turn off",
-    "explain.powerOff": "Turns all of Business-Wrap off: saves your open documents, then stops the local host and every process it started, and closes its windows. It asks first.",
-    "pwTitle": "Turn Business-Wrap off?",
-    "pwLead": "Every open document is saved, then the local host and everything Business-Wrap started stop and its windows close. Export and print stay off until you open the editor again.",
-    "pwYes": "Turn everything off",
-    "pwNo": "Cancel",
-    "pwOffTitle": "Business-Wrap is off",
-    "pwOffLead": "Your documents are saved, and the local host and everything it started have stopped. Close this window, and open the editor again with the open command whenever you like.",
-    "pwFailed": "Could not turn off: {e}",
-    "rpOpenFolder": "Open folder",
-    "rpOpenFolderTip": "Opens the performance report folder with the file selected: {x}",
-    "rpOpenFolderFail": "Could not open the folder. The file is at: {x}"
-  }
+ "ar": {
+  "powerOff": "إيقاف",
+  "pwTitle": "إيقاف بزنس راب؟",
+  "pwLead": "ستُحفظ كل المستندات المفتوحة، ثم يتوقف الخادم المحلي وكل ما شغّله بزنس راب وتُغلق نوافذه. لن يعمل التصدير والطباعة حتى تفتح المحرر من جديد.",
+  "pwYes": "أوقف كل شيء",
+  "pwNo": "إلغاء",
+  "pwOffTitle": "بزنس راب متوقف",
+  "pwOffLead": "حُفظت مستنداتك، وتوقف الخادم المحلي وكل ما شغّله. أغلق هذه النافذة، وافتح المحرر متى شئت بأمر الفتح.",
+  "pwFailed": "تعذّر الإيقاف: {e}",
+  "rpOpenFolder": "افتح المجلد",
+  "rpOpenFolderTip": "يفتح مجلد تقرير الأداء ويحدّد الملف: {x}",
+  "rpOpenFolderFail": "تعذّر فتح المجلد. الملف في: {x}"
+ },
+ "en": {
+  "powerOff": "Turn off",
+  "pwTitle": "Turn Business-Wrap off?",
+  "pwLead": "Every open document is saved, then the local host and everything Business-Wrap started stop and its windows close. Export and print stay off until you open the editor again.",
+  "pwYes": "Turn everything off",
+  "pwNo": "Cancel",
+  "pwOffTitle": "Business-Wrap is off",
+  "pwOffLead": "Your documents are saved, and the local host and everything it started have stopped. Close this window, and open the editor again with the open command whenever you like.",
+  "pwFailed": "Could not turn off: {e}",
+  "rpOpenFolder": "Open folder",
+  "rpOpenFolderTip": "Opens the performance report folder with the file selected: {x}",
+  "rpOpenFolderFail": "Could not open the folder. The file is at: {x}"
+ }
 }
