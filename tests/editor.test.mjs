@@ -403,7 +403,7 @@ try {
     const wm = pa.locator('#bw-watermark');
     const st = await pa.evaluate(() => { const w = document.getElementById('bw-watermark'); const r = w.getBoundingClientRect(); return { n: w.querySelectorAll('img').length, intro: w.dataset.intro, x: r.left, dir: w.dir }; });
     check(`${ui}: avatar mounted with 4 roles + intro, intro plays first`, st.n === 5 && st.intro === 'playing', JSON.stringify(st));
-    check(`${ui}: avatar keeps the default layout's corner (bottom right) in both languages; its words follow the UI`, st.x > 1000 && st.dir === (ui === 'ar' ? 'rtl' : 'ltr'), JSON.stringify(st)); // 0.10.0: the layout never flips
+    check(`${ui}: avatar keeps the default layout's corner (bottom LEFT, physical, 0.15.2 note 5/6) in both languages; its words follow the UI`, st.x < 100 && st.dir === (ui === 'ar' ? 'rtl' : 'ltr'), JSON.stringify(st)); // 0.10.0: the layout never flips
     await wm.locator('.bw-wm-stage').click(); // skips the intro, as on the portfolio
     const r0 = await pa.evaluate(() => [document.getElementById('bw-watermark').dataset.role, document.querySelector('#bw-watermark img.on').dataset.i]);
     await wm.locator('.bw-wm-stage').click();

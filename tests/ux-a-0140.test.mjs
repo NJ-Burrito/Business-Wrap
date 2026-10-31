@@ -165,8 +165,8 @@ try {
   {
     const { ctx, page } = await open({});
     await page.evaluate(() => window.BW.toast('where', 'info'));
-    const o = await sh(page, (r) => { const b = r.querySelector('.toast').getBoundingClientRect(); return { bottom: innerHeight - b.bottom, centre: Math.abs(b.left + b.width / 2 - document.documentElement.clientWidth / 2) }; });
-    check('A3: in the continuous view the toast stays bottom-centre', o.bottom <= 40 && o.centre <= 4, JSON.stringify(o));
+    const o = await sh(page, (r) => { const b = r.querySelector('.toast').getBoundingClientRect(); return { bottom: innerHeight - b.bottom, right: document.documentElement.clientWidth - b.right, left: b.left }; });
+    check('A3: in the continuous view the toast sits bottom RIGHT (0.15.2 owner note; was bottom-centre)', o.bottom <= 40 && o.right >= 0 && o.right <= 40 && o.left > 683, JSON.stringify(o));
     await ctx.close();
   }
 
