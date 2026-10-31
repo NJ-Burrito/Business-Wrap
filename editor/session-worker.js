@@ -13,6 +13,7 @@ let es = null;
 let sentKey = '';
 let sentAt = 0;
 let pingTimer = 0;
+let listSeq = 0; // the server keeps the newest list of this client, whatever order the requests arrive in
 
 const tabs = () => [...ports.values()].filter((p) => p.tab).map((p) => ({ tab: p.tab, svc: p.svc, docs: p.docs, automation: p.automation, ago: Date.now() - p.at }));
 function post(force) {
@@ -20,7 +21,7 @@ function post(force) {
   const key = JSON.stringify(list.map(({ ago, ...rest }) => rest));
   if (!force && key === sentKey && Date.now() - sentAt < 4500) return Promise.resolve();
   sentKey = key; sentAt = Date.now();
-  return fetch('/api/session/tabs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ client, tabs: list }), keepalive: true }).catch(() => {});
+  return fetch('/api/session/tabs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ client, seq: ++listSeq, tabs: list }), keepalive: true }).catch(() => {});
 }
 function route(event, raw) {
   let data = {};

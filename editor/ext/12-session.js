@@ -17,7 +17,8 @@ if (!ls.get('bw:profile')) {
 }
 const SESS = (() => {
   const P = new URLSearchParams(location.search);
-  let info = null, tab = null, timer = 0, sent = null, profSent = '';
+  let info = null, tab = null, timer = 0, sent = null, profSent = '', pushing = 0;
+  const seq = () => performance.timeOrigin + performance.now(); // orders this tab's pushes and flushes on the server (a late older push is dropped)
   const AUTO = P.get('automation') === '1' || document.documentElement.dataset.bwAutomation === '1'; // a tool's tab (0.15.0): never asks to resume
   const json = (u, b) => fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) }).then((r) => r.json().catch(() => ({})));
   const newId = () => `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -33,7 +34,7 @@ const SESS = (() => {
   }
   function payload() {
     const lib = EXT.library;
-    return { tab, title: titleNow(), svc: S.svc, ed: S.ed, entry: lib?.isDoc(S.svc) ? lib.entryOf(S.svc) : null, snap: snapshotState(), profile: profile() };
+    return { tab, seq: seq(), title: titleNow(), svc: S.svc, ed: S.ed, entry: lib?.isDoc(S.svc) ? lib.entryOf(S.svc) : null, snap: snapshotState(), profile: profile() };
   }
   /* 0.15.0 L1 transport: ONE event stream per browser. Edge and Chrome allow 6 HTTP/1.1 connections per origin and every tab used to hold one,
    * so the 7th tab never loaded. Primary: a SharedWorker (/api/session/worker.js) holds the stream for all tabs. Fallback (no SharedWorker, or
@@ -42,7 +43,7 @@ const SESS = (() => {
    * the tab (data.tab) or every tab. Tabs answer the hub's ping from a message handler, never from a timer (a hidden tab's timers sleep). */
   const hub = (() => {
     const subs = {};
-    let mode = 'none', port = null, ch = null, es = null, lead = false, client = '', beatTimer = 0, sentKey = '', sentAt = 0;
+    let mode = 'none', port = null, ch = null, es = null, lead = false, client = '', beatTimer = 0, sentKey = '', sentAt = 0, listSeq = 0;
     const known = new Map(); // leader: tab → {info, at}
     const me = () => ({ tab, svc: S.svc, docs: EXT.library?.isDoc(S.svc) ? [S.svc] : [], automation: AUTO });
     const deliver = (event, data) => {
@@ -57,7 +58,7 @@ const SESS = (() => {
       const key = JSON.stringify(l.map(({ ago, ...r }) => r));
       if (!force && key === sentKey && Date.now() - sentAt < 4500) return;
       sentKey = key; sentAt = Date.now();
-      fetch('/api/session/tabs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ client, tabs: l }), keepalive: true }).catch(() => {});
+      fetch('/api/session/tabs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ client, seq: ++listSeq, tabs: l }), keepalive: true }).catch(() => {});
     };
     /** a follower that died without a bye: its Web Lock `bw-tab:<tab>` is gone twice in a row (see editor/session-worker.js) */
     async function sweep() {
@@ -129,7 +130,8 @@ const SESS = (() => {
     clearTimeout(timer); timer = 0;
     if (!info) return;
     const mark = { svc: S.svc, lens: lens() };
-    json('/api/session/state', payload()).then((r) => { if (r.ok) sent = mark; }).catch(() => {});
+    pushing += 1;
+    json('/api/session/state', payload()).then((r) => { if (r.ok && !r.stale) sent = mark; }).catch(() => {}).finally(() => { pushing -= 1; });
   };
   const soon = () => { if (!info) return; clearTimeout(timer); timer = setTimeout(push, 400); };
   const beacon = (body) => navigator.sendBeacon?.('/api/session/flush', new Blob([body], { type: 'application/json' })) || (fetch('/api/session/flush', { method: 'POST', headers: { 'content-type': 'application/json' }, body, keepalive: true }).catch(() => {}), body.length < 63000);
@@ -137,14 +139,19 @@ const SESS = (() => {
   function flush() {
     if (!info) return;
     clearTimeout(timer);
-    if (!sent || sent.svc !== S.svc) {
-      // no push of this document yet (a Save switched to it a moment ago): the whole state, without the base text when
-      // that is what makes it too big for a beacon (the server takes it back from the library mirror)
+    if (!sent || sent.svc !== S.svc || pushing) {
+      // no push of this document yet (a Save switched to it a moment ago) or one still in flight (its answer is not in: the delta's base is
+      // uncertain): the whole latest state, without the base text when that is what makes it too big for a beacon (the server takes it back
+      // from the library mirror). A document past a beacon with a push in flight keeps the delta: it is relative to the last acknowledged push
+      // and the server drops the older in-flight push by its seq.
       const pl = payload();
+      const bytes = (x) => new TextEncoder().encode(x).length; // a beacon's 64 KB is bytes: Arabic is 2 per letter
       let body = JSON.stringify(pl);
-      if (body.length > 60000 && pl.entry) { for (const x of Object.values(pl.entry.editions)) delete x.raw; body = JSON.stringify(pl); }
-      beacon(body); // ponytail: edits alone past 64 KB (a pasted book) are lost here; the 0.4 s push before it is the net
-      return;
+      if (bytes(body) > 60000 && pl.entry) { for (const x of Object.values(pl.entry.editions)) delete x.raw; body = JSON.stringify(pl); }
+      if (!(sent && sent.svc === S.svc && bytes(body) > 60000)) {
+        beacon(body); // ponytail: edits alone past 64 KB (a pasted book) are lost here; the 0.4 s push before it is the net
+        return;
+      }
     }
     const delta = {};
     for (const [ed, e] of Object.entries(M[S.svc] || {})) {
@@ -154,7 +161,7 @@ const SESS = (() => {
       delta[ed] = { from, prev: from ? e.ops[from - 1]?.id ?? null : null, ops: e.ops.slice(from) };
     }
     const mark = { svc: S.svc, lens: lens() };
-    if (beacon(JSON.stringify({ tab, svc: S.svc, ed: S.ed, title: titleNow(), delta }))) sent = mark;
+    if (beacon(JSON.stringify({ tab, seq: seq(), svc: S.svc, ed: S.ed, title: titleNow(), delta }))) sent = mark;
   }
   async function apply(rec) {
     if (rec.entry && EXT.library) await EXT.library.adopt(rec.entry);
