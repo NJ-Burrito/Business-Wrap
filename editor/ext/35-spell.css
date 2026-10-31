@@ -3,14 +3,19 @@
 .sp { display: grid; gap: 12px; }
 .sp-eds { display: grid; gap: 8px; }
 .sp-chip { display: flex; align-items: center; gap: 12px; min-block-size: 40px; padding: 8px 12px; border-radius: var(--bw-radius-md); background: var(--bw-surface-2, var(--bw-surface)); box-shadow: inset 0 0 0 1px var(--bw-line); }
-.sp-sw { position: relative; flex: none; display: inline-flex; align-items: center; justify-content: center; inline-size: 56px; block-size: 40px; border-radius: 20px; border: 0; cursor: pointer; background: var(--bw-line); color: var(--bw-ink); font: 800 14px/1 var(--bw-font-ui); }
+.sp-sws { display: grid; gap: 8px; }
+.sp-sw { position: relative; flex: none; inline-size: 56px; block-size: 32px; padding: 0; border-radius: 16px; border: 0; cursor: pointer; background: var(--bw-line); color: var(--bw-ink); transition: background-color 160ms var(--bw-ease-out, ease-out); }
 .sp-sw[aria-checked="true"] { background: #0f5a46; color: #eef1f6; }
+.sp-knob { position: absolute; inset-block-start: 4px; inset-inline-start: 4px; inline-size: 24px; block-size: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .35); transition: transform 160ms var(--bw-ease-out, ease-out); }
+.sp-sw[aria-checked="true"] .sp-knob { transform: translateX(24px); }
+.sp-sw[aria-checked="true"]:dir(rtl) .sp-knob { transform: translateX(-24px); }
 .sp-sw:disabled { cursor: not-allowed; opacity: .6; }
-.sp-sw:focus-visible, .sp .b:focus-visible, .sp-s:focus-visible, .sp-w:focus-visible { outline: 3px solid var(--bw-focus); outline-offset: 2px; }
-.sp-dot { position: absolute; inset-block-end: 5px; inset-inline-end: 8px; inline-size: 8px; block-size: 8px; border-radius: 50%; background: currentColor; opacity: .55; }
-.sp-chip[data-st="ready"] .sp-dot { opacity: 1; background: #7fdcc0; }
+.sp-sw:focus-visible, .sp .b:focus-visible, .sp-s:focus-visible, .sp-w:focus-visible, .sp-side .b:focus-visible { outline: 3px solid var(--bw-focus); outline-offset: 2px; }
+.sp-ed { position: relative; flex: none; display: inline-flex; align-items: center; justify-content: center; inline-size: 44px; block-size: 32px; border-radius: 16px; background: var(--bw-line); font: 800 13px/1 var(--bw-font-ui); color: var(--bw-ink); }
+.sp-dot { position: absolute; inset-block-end: 3px; inset-inline-end: 6px; inline-size: 7px; block-size: 7px; border-radius: 50%; background: currentColor; opacity: .55; }
+.sp-chip[data-st="ready"] .sp-dot { opacity: 1; background: #1f8f6f; }
 .sp-chip[data-st="loading"] .sp-dot { animation: sp-pulse 1s ease-in-out infinite; }
-.sp-chip[data-st="error"] .sp-dot { background: #f29aa0; opacity: 1; }
+.sp-chip[data-st="error"] .sp-dot { background: #c43d46; opacity: 1; }
 .sp-meta { display: grid; gap: 2px; min-inline-size: 0; font: 500 13px/1.35 var(--bw-font-ui); }
 .sp-meta b { font-weight: 800; font-size: 14px; }
 .sp-meta span { color: var(--bw-ink-muted); }
@@ -40,3 +45,30 @@
 @keyframes sp-slide { 0% { margin-inline-start: -40%; } 100% { margin-inline-start: 100%; } }
 html[data-bw-calm="1"] .sp-bar i, html[data-bw-calm="1"] .sp-chip[data-st="loading"] .sp-dot { animation: none; }
 @media (prefers-reduced-motion: reduce) { .sp-bar i, .sp-chip[data-st="loading"] .sp-dot { animation: none; } }
+
+/* the Spelling tab: the error count on its tool */
+.rb-tools [data-a="spellCount"] .i { position: relative; }
+.sp-badge { position: absolute; inset-block-start: -6px; inset-inline-end: -10px; min-inline-size: 18px; block-size: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: #a81a1f; color: #fff; font: 800 11px/18px var(--bw-font-ui); text-align: center; }
+.shell { --bw-sec-spell: #ff9d8a; }
+/* the side panel (owner notes 8 and 15): a non-modal <dialog> over the pages. position: fixed, so opening and closing it never moves a page or changes the zoom.
+   It mirrors the drawer's overlay (same top, same width family, same panel colours); the shared .bw-sidepanel class lives in ux.css (explain lane): when it ships this block can shrink to the content rules. */
+.sp-side { position: fixed; inset-block-start: var(--bw-drawer-top, calc(var(--bw-bar-h, 72px) - 4px)); right: 12px; left: auto; z-index: 41; margin: 0; --bw-sp-w: 340px; width: min(340px, calc(100vw - 24px));
+  max-block-size: calc(100vh - var(--bw-drawer-top, calc(var(--bw-bar-h, 72px) - 4px)) - 12px); overflow: auto; box-sizing: border-box; padding: 12px 16px 16px; border: 0; border-radius: 20px;
+  background: var(--bw-surface); color: var(--bw-ink); box-shadow: var(--bw-shadow-3), 0 0 0 1px var(--bw-line); display: grid; gap: 10px; align-content: start; font: 500 14px/1.35 var(--bw-font-ui);
+  transform: translate3d(0, 0, 0); transition: transform .22s cubic-bezier(.65, 0, .35, 1), opacity .22s cubic-bezier(.65, 0, .35, 1); }
+.sp-side[data-slide="out"] { transform: translate3d(calc(100% + 24px), 0, 0); opacity: 0; pointer-events: none; }
+.sp-side:not([open]) { display: none; }
+.sp-sh { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.sp-sh h2 { margin: 0; font: 800 16px/1.2 var(--bw-font-ui); color: var(--bw-ink); }
+.sp-side .b { min-block-size: 40px; padding-inline: 12px; color: var(--bw-ink); background: var(--bw-surface-2, var(--bw-surface)); }
+.sp-side .sp-x { min-block-size: 36px; padding-inline: 8px; }
+.sp-side .i .ic { inline-size: 18px; block-size: 18px; }
+.sp-bigw { margin: 0; font: 800 22px/1.3 var(--bw-font-ui); color: var(--bw-ink); text-decoration: underline wavy var(--bw-signal) 1.5px; text-underline-offset: 6px; overflow-wrap: anywhere; }
+.sp-side .hint { margin: 0; color: var(--bw-ink-muted); font-size: 13px; }
+.sp-h3 { margin: 4px 0 0; font: 800 13px/1.3 var(--bw-font-ui); color: var(--bw-ink-muted); }
+.sp-sug-col { display: grid; gap: 6px; }
+.sp-sug-col .sp-s { justify-self: stretch; text-align: start; min-block-size: 40px; padding: 0 14px; font-size: 15px; border-radius: 12px; }
+.sp-side .sp-act { display: flex; flex-wrap: wrap; gap: 6px; }
+.sp-side .sp-act .b { flex: 1 1 auto; font-size: 13px; }
+html[data-bw-calm="1"] .sp-side { transition: none; }
+html[data-bw-calm="1"] .sp-sw, html[data-bw-calm="1"] .sp-knob { transition: none; }
