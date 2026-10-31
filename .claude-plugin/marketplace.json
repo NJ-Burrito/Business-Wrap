@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "Business-Wrap: bilingual requirements documents, an HTML editor that is the print layout, PDF + DOCX export.",
-    "version": "0.15.0"
+    "version": "0.15.1"
   },
   "plugins": [
     {
       "name": "business-wrap",
       "source": "./",
       "description": "Bilingual (Arabic RTL / English LTR) requirements documents from evidence: an interactive HTML editor that is the print layout, PDF + DOCX export, design packs and security gates.",
-      "version": "0.15.0",
+      "version": "0.15.1",
       "license": "MIT",
       "category": "productivity",
       "keywords": [

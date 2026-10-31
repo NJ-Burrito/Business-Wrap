@@ -8,6 +8,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.15.1] - 2026-10-31
+
+🗂️ A small release: Business-Wrap file icons on this PC, faster GitHub checks, and a calmer toolbar. / 🗂️ إصدار صغير: أيقونات Business-Wrap لملفاتك على هذا الجهاز، وفحوص GitHub أسرع، وشريط أدوات أهدأ.
+
+### Added / أضيف
+- 🗂️ **Settings > File icons**: "Use Business-Wrap icons on this PC" and "Restore Windows icons". It needs the local server and works on Windows only. Be aware that it changes the icon of every PDF, Word and web page file on this Windows account, including other file types that share the same app (for example .htm). Restore puts back exactly what was there. / **الإعدادات > أيقونات الملفات**: "استعمال أيقونات Business-Wrap على هذا الجهاز" و"استعادة أيقونات ويندوز". يحتاج إلى الخادم المحلي ويعمل على ويندوز فقط. انتبه إلى أنه يغيّر أيقونة كل ملفات PDF وWord وصفحات الويب في حساب ويندوز هذا، ومنها أنواع أخرى تشترك في التطبيق نفسه (مثل ‎.htm). والاستعادة تعيد بالضبط ما كان موجودًا.
+
+### Changed / تغير
+- ⚙️ **GitHub checks run in 4 parallel parts**: about 9.5 minutes instead of about 24. / **فحوص GitHub تعمل في 4 أجزاء متوازية**: نحو 9.5 دقيقة بدل نحو 24.
+- 🛡️ **A guard test catches Windows-only code in tests**, so a test that only passes on Windows is flagged early. / **اختبار حارس يكشف الشيفرة الخاصة بويندوز في الاختبارات**، فيُنبَّه مبكرًا إلى أي اختبار ينجح على ويندوز فقط.
+
+### Fixed / أصلح
+- ⌨️ **The toolbar no longer re-measures on every key**: 450 changes became 55 per 20 keystrokes. / **شريط الأدوات لم يعد يعيد القياس عند كل ضغطة مفتاح**: من 450 تغييرًا إلى 55 لكل 20 ضغطة.
+- 🧪 **Tests that failed only on Linux** now pass: the zip check, the Edge path, the Arabic direction reload, the provenance contributors, the tab flush on close, the palette hover and the power-off confirmation in Settings. / **اختبارات كانت تفشل على لينكس فقط** صارت تنجح: فحص الملف المضغوط، ومسار Edge، وإعادة تحميل اتجاه العربية، ومساهمو سجل المصدر، وحفظ التبويب عند الإغلاق، ومرور المؤشر على لوحة الأوامر، وتأكيد الإطفاء في الإعدادات.
+
 ## [0.15.0] - 2026-10-31
 
 🎛️ The second owner-notes release: a tidier ribbon, an explanation panel with a picture for every tool, a dim navy dark mode, one server switch, offline spell checking, whole-project export and import, and an editor your AI assistant can drive. / 🎛️ إصدار ملاحظات المالك الثاني: شريط أكثر ترتيبًا، ولوحة شرح برسم لكل أداة، ووضع داكن كحلي معتم، ومفتاح واحد للخادم، وتدقيق إملائي بلا إنترنت، وتصدير المشاريع واستيرادها كاملة، ومحرر يستطيع مساعدك الذكي تشغيله.
