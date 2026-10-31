@@ -400,17 +400,33 @@ try {
         await page.waitForTimeout(250);
         await probeMenu(cat);
       }
-      // an outside click on the toolbar closes the menu and keeps the shape's tools
+      // an outside click on the toolbar closes the menu and keeps the shape's tools.
+      // 0.15.2 note 14 (CI run 41183106592, ar 1920 on Ubuntu only): the menu opens in the top layer and, with the Ubuntu fallback fonts, can reach over the
+      // brand mark, so a click on the brand landed INSIDE the menu. The click point is now chosen OUTSIDE the open menu's rectangle (the brand when it is clear,
+      // else another point of the toolbar, else the page below it), and the close / focus reads wait up to 2 s instead of reading at once (timing only: what is proved is unchanged).
       await page.locator('.ctx [data-a="more"]').click();
-      await page.locator('.island .brand').click();
+      const spot = await sh(page, (r) => {
+        const m = r.querySelector('.more .menu[data-open="1"]');
+        const mr = m ? m.getBoundingClientRect() : { left: 0, right: 0, top: 0, bottom: 0 };
+        const clear = (x, y) => !(x >= mr.left - 4 && x <= mr.right + 4 && y >= mr.top - 4 && y <= mr.bottom + 4);
+        const br = r.querySelector('.island .brand')?.getBoundingClientRect();
+        const ib = r.querySelector('.island').getBoundingClientRect();
+        const cands = [br && [br.x + br.width / 2, br.y + br.height / 2], [ib.left + 6, ib.top + 6], [ib.right - 6, ib.top + 6], [ib.left + 6, ib.bottom - 6], [ib.right - 6, ib.bottom - 6], [innerWidth / 2, Math.min(innerHeight - 8, ib.bottom + 40)]].filter(Boolean);
+        const c = cands.find(([x, y]) => clear(x, y)) || cands.at(-1);
+        return { x: c[0], y: c[1], menu: [mr.left, mr.top, mr.right, mr.bottom].map(Math.round) };
+      });
+      await page.mouse.click(spot.x, spot.y);
+      const closed = async () => !(await sh(page, (r) => !!r.querySelector('.more .menu[data-open="1"]')));
+      for (let i = 0; i < 20 && !(await closed()); i += 1) await page.waitForTimeout(100);
       const after = await state(page);
-      const stillOpen = await sh(page, (r) => !!r.querySelector('.more .menu[data-open="1"]'));
+      const stillOpen = !(await closed());
       // Esc closes and returns focus to the button
       await page.locator('.ctx [data-a="more"]').click();
       await page.keyboard.press('Escape');
-      const focus = await sh(page, (r) => [r.activeElement?.dataset?.a, !!r.querySelector('.more .menu[data-open="1"]')]);
+      let focus = [];
+      for (let i = 0; i < 20; i += 1) { focus = await sh(page, (r) => [r.activeElement?.dataset?.a, !!r.querySelector('.more .menu[data-open="1"]')]); if (focus[0] === 'more' && !focus[1]) break; await page.waitForTimeout(100); }
       check(`menus ${ui} ${width}: every toolbar menu opens fully visible in the top layer, last item reachable, no toolbar scroll (${folded.length + 1} menus)`, !fails.length, fails.join(' | '));
-      check(`menus ${ui} ${width}: outside click closes the menu and keeps the selection; Esc closes and returns focus`, !stillOpen && after.ctx === 'shape' && focus[0] === 'more' && !focus[1], JSON.stringify({ stillOpen, after, focus }));
+      check(`menus ${ui} ${width}: outside click closes the menu and keeps the selection; Esc closes and returns focus`, !stillOpen && after.ctx === 'shape' && focus[0] === 'more' && !focus[1], JSON.stringify({ stillOpen, after, focus, spot }));
       await ctx.close();
     }
   }

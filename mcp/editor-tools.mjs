@@ -21,7 +21,11 @@ export class BwError extends Error {
 }
 
 /** The actions the tab runs on a document (architect §4); anything else is refused here and again by the tab. */
-export const EDITOR_ACTIONS = ['renumber', 'check', 'saveHtml', 'share', 'exportPdf'];
+// 0.15.2 note 12: the safe view actions follow the first five (zoomPct takes args {value: 25-400}; theme takes {mode: dark or light}; reading takes {on}); none edits the content
+export const EDITOR_ACTIONS = ['renumber', 'check', 'saveHtml', 'share', 'exportPdf',
+  'zoomPct', 'zoomHeight', 'zoomWidth', 'zoomIn', 'zoomOut', 'zoomReset', 'theme', 'reading', 'find', 'save', 'outline', 'nextPage', 'prevPage'];
+/** Destructive names are LOCKED: refused here (REFUSED) and again by the tab; they are never run through this tool. */
+export const LOCKED_ACTIONS = /^(delete|remove|close|stop|power|clear|purge|reset|wipe|erase|trash|quit|exit)/i;
 const TOOLS = ['list', 'get', 'outline', 'ops', 'action', 'new', 'import'];
 export const callTimeoutMs = () => Number(process.env.BW_EDITOR_TIMEOUT_MS) || 45000;
 
@@ -130,10 +134,11 @@ export function registerEditorTools(server, z, guard) {
 
   server.registerTool('editor_action', {
     title: 'Run an editor action on a document',
-    description: `Run one allow-listed action on a document in the open editor: ${EDITOR_ACTIONS.join(', ')}. share takes args {to, note} (the coworker-share dialog, recipient may be empty). Anything else returns UNKNOWN_ACTION.`,
+    description: `Run one allow-listed action on a document in the open editor: ${EDITOR_ACTIONS.join(', ')}. share takes args {to, note} (the coworker-share dialog, recipient may be empty); zoomPct takes args {value} (25 to 400); theme takes {mode:'dark'|'light'} (else toggles); reading takes {on}; check also answers spelling counts and diagramWarnings. A destructive action (delete, close, stop the server, clear) is locked: REFUSED. Anything else returns UNKNOWN_ACTION.`,
     inputSchema: { doc: DOC, id: z.string().describe(`One of ${EDITOR_ACTIONS.join(', ')}`), args: z.record(z.any()).optional().describe('Action arguments, e.g. {to, note} for share') },
     annotations: RW,
   }, guard(({ doc, id, args }) => {
+    if (LOCKED_ACTIONS.test(String(id))) throw new BwError('REFUSED', `"${id}" is locked: a destructive action is never run through editor_action`, { id });
     if (!EDITOR_ACTIONS.includes(id)) throw new BwError('UNKNOWN_ACTION', `unknown action "${id}"`, { allowed: EDITOR_ACTIONS });
     return callEditor('action', { doc, args: { id, ...(args ? { args } : {}) } });
   }));

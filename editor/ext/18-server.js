@@ -156,7 +156,9 @@ const SB = (() => {
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
     if (served()) set('online');
   }
-  return { init, check, draw, start, stop, press, open, html, sentence, state: st, sync: () => { if (!isBusy()) check(); } };
+  /** The page learned the server is gone (the power card): show «offline» at once, without a probe. */
+  function markOff() { if (st.mode === 'online') set('offline'); }
+  return { init, check, draw, start, stop, press, markOff, open, html, sentence, state: st, sync: () => { if (!isBusy()) check(); } };
 })();
 
 bwExt({

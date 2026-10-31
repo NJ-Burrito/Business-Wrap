@@ -231,7 +231,7 @@ function viewPop() {
   const multi = Object.keys(M[S.svc]).length > 1;
   return `<div class="pop vpop" id="viewpop" role="dialog" aria-label="${esc(t('view'))}" dir="${LAYOUT_DIR}" lang="${S.ui}" ${S.view ? '' : 'hidden'}>
     ${grp('pages', viewsSeg())}
-    ${grp('zoom', `${zb('zoomOut', t('zoomOut'))}${zb('zoomReset', `${Math.round(S.zoom * 100)}%`)}${zb('zoomIn', t('zoomIn'))}${zb('zoomFit', t('zoomFit'))}${zb('zoomHeight', t('zoomHeight'))}`)}
+    ${grp('zoom', `${zb('zoomOut', t('zoomOut'))}${zb('zoomReset', `${zoomPctNow()}%`)}${zb('zoomIn', t('zoomIn'))}${zb('zoomFit', t('zoomFit'))}${zb('zoomHeight', t('zoomHeight'))}`)}
     ${grp('compare', `${multi ? viewSwitch('side', S.side, t('sideBySide')) : ''}${viewSwitch('both', S.both, t('bothEditions'))}`)}
     ${grp('look', `${viewSwitch('dark', S.dark)}${viewSwitch('calm', S.calm)}`)}
     ${grp('aids', `${viewSwitch('reading', S.reading, t('reading'), 'view.single')}${viewSwitch('focus', S.focus)}${viewSwitch('spell', S.spell[S.ed])}${viewSwitch('snap', S.snap)}`)}
@@ -250,7 +250,7 @@ function viewPopAfterBuild() {
 /** The zoom read-out follows every zoom step without a rebuild. */
 function viewPct() {
   const w = root.querySelector('#viewpop [data-a="zoomReset"] .w');
-  if (w) w.textContent = `${Math.round(S.zoom * 100)}%`;
+  if (w) w.textContent = `${zoomPctNow()}%`;
 }
 function viewPopClose() {
   if (!S.view) return;
