@@ -444,6 +444,8 @@ try {
       const sh = () => pu.evaluateHandle(() => document.getElementById('bw-ui-host').shadowRoot);
       await (await sh()).evaluate((r, d) => r.querySelector(`[data-a="dir"][data-d="${d}"]`).click(), flip);
       const st = await pu.evaluate(() => ({ ui: window.BW.S.ui, ed: window.BW.S.ed, shell: document.getElementById('bw-ui-host').shadowRoot.querySelector('.shell').dataset.tdir, doc: document.querySelector('main.bw-doc').dir, saved: localStorage.getItem(`bw:dir:${window.BW.S.ed}`) }));
+      await pu.waitForFunction((d) => localStorage.getItem(`bw:dir:${window.BW.S.ed}`) === d, flip, { timeout: 5000 }).catch(() => {}); // the write is in the page's storage before the page goes away
+      await pu.waitForTimeout(500); // and a beat for the browser process to take it (a first context on a slow Linux runner lost it on an immediate reload)
       await pu.reload();
       await pu.waitForFunction(() => window.BW?.ready);
       // wait on the outcome (the remembered direction applied), then report what the reopened page holds

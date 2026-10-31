@@ -225,9 +225,12 @@ const LIB = (() => {
     const html = Object.values(M[S.svc] || {}).flatMap((e) => (e.marks || []).filter((m) => m.kind === 'saveHtml')).map((m) => m.at).sort().at(-1);
     const doc = isDoc(S.svc) && !pending[S.svc];
     const list = doc ? savedAt[S.svc] : S.savedAt;
-    el.textContent = t(doc ? 'libStamp' : 'libStampDraft', { list: hhmm(list), html: hhmm(html) });
-    el.dataset.list = list ? new Date(list).toISOString() : '';
-    el.dataset.html = html || '';
+    // every key lands here (persistSoon): write only what changed, so the toolbar fit (a MutationObserver on the bar) is not woken per key
+    const txt = t(doc ? 'libStamp' : 'libStampDraft', { list: hhmm(list), html: hhmm(html) });
+    if (el.textContent !== txt) el.textContent = txt;
+    const dl = list ? new Date(list).toISOString() : '';
+    if (el.dataset.list !== dl) el.dataset.list = dl;
+    if (el.dataset.html !== (html || '')) el.dataset.html = html || '';
   }
   const titleFromRaw = (raw, id) => { const c = JSON.parse(raw).control || {}; return String(c.coverTitle || String(c.title || '').split(/\s*[:—]\s+/).slice(1).join(': ') || c.title || id); };
   const makeEntry = (editions, origin, service, theme = S.theme) => {

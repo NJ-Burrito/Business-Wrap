@@ -1390,6 +1390,7 @@ function fitBar() {
   // A write that leaves the markup as it was (the same class, the same text set again, the visually hidden status line) is not a change.
   const real = (r) => {
     if (r.target.nodeType === 1 && r.target.closest?.('.vh')) return false;
+    if (r.type === 'attributes' && ((r.attributeName.startsWith('data-') && r.target.classList?.contains('bw-stamp')) || r.attributeName === 'data-pulse')) return false; // the save stamp's data-* (a timestamp) and the server toggle's pulse flag (a timed animation switch) never change the bar's layout
     if (r.type === 'attributes') return r.target.getAttribute(r.attributeName) !== r.oldValue;
     if (r.type === 'characterData') return r.target.data !== r.oldValue;
     const gone = [...r.removedNodes], came = [...r.addedNodes];

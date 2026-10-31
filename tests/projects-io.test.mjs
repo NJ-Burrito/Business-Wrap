@@ -144,9 +144,10 @@ try {
   check('zip layout: one file, one root folder holding the same tree with index.json and Index.html', j2.state === 'done' && Z.endsWith('.zip') && !j2.result.root && top.size === 1 && zl.some((e) => e.name.endsWith('/index.json')) && zl.some((e) => e.name.endsWith('/00 فهرس - Index.html')), JSON.stringify([...top]));
   const pyz = spawnSync('python', ['-X', 'utf8', '-c', 'import zipfile,sys\nz=zipfile.ZipFile(sys.argv[1]);assert z.testzip() is None;print(len(z.namelist()))', Z], { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } });
   const dest = path.join(tmp, 'ps-ex');
-  const ps = spawnSync('powershell', ['-NoProfile', '-Command', `Expand-Archive -LiteralPath '${Z}' -DestinationPath '${dest}' -Force`], { encoding: 'utf8' });
+  const isWin = process.platform === 'win32'; // Expand-Archive is Windows PowerShell: off Windows only the python half runs
+  const ps = isWin ? spawnSync('powershell', ['-NoProfile', '-Command', `Expand-Archive -LiteralPath '${Z}' -DestinationPath '${dest}' -Force`], { encoding: 'utf8' }) : { status: 0, stderr: '' };
   const exRoot = path.join(dest, [...top][0]);
-  check('the zip opens with python zipfile and PowerShell Expand-Archive to the same tree (index.json equal, Arabic names)', pyz.status === 0 && +pyz.stdout.trim() === zl.length && ps.status === 0 && JSON.parse(fs.readFileSync(path.join(exRoot, 'index.json'), 'utf8')).documents.length === 3, pyz.stderr + ps.stderr);
+  check('the zip opens with python zipfile and PowerShell Expand-Archive to the same tree (index.json equal, Arabic names)', pyz.status === 0 && +pyz.stdout.trim() === zl.length && ps.status === 0 && (!isWin || JSON.parse(fs.readFileSync(path.join(exRoot, 'index.json'), 'utf8')).documents.length === 3), pyz.stderr + ps.stderr);
   const dl = await fetch(`${A.base}/api/project/file?job=${x2.body.job}`);
   check('GET /api/project/file streams the zip', dl.status === 200 && dl.headers.get('content-type') === 'application/zip' && Buffer.from(await dl.arrayBuffer()).equals(fs.readFileSync(Z)));
   check('no staging folder is left in the temp folder by the zip job', !fs.readdirSync(os.tmpdir()).some((n) => n.startsWith('bw-pexp-') && fs.statSync(path.join(os.tmpdir(), n)).mtimeMs > t0));
