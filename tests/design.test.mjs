@@ -375,7 +375,7 @@ try {
 
   // ── A22 logo motion: idle loops + ≥ 3 hover animations on the mark's parts; none in calm mode or reduced motion ──
   {
-    const anims = (page) => shadow(page, (r) => r.querySelector('.brand svg').getAnimations({ subtree: true }).map((a) => a.animationName || a.transitionProperty || a.constructor.name));
+    const anims = (page) => shadow(page, (r) => r.querySelector('.brand svg').getAnimations({ subtree: true }).map((a) => a.id || a.animationName || a.transitionProperty || a.constructor.name)); // 0.15.0: the idle nod is one-shot Web Animations with ids bwm-idle-* (ext/46-backdrop.js)
     const shot22 = async (name, opts, calm) => {
       const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 }, ...opts });
       if (calm) await ctx.addInitScript(() => { try { localStorage.setItem('bw:calm', '1'); } catch {} });
@@ -384,6 +384,8 @@ try {
       await p.waitForFunction(() => window.BW?.ready);
       await p.mouse.move(700, 600);
       await p.waitForTimeout(300);
+      await p.evaluate(() => window.BW.EXT.look.idleNow()); // 0.15.0 perf booster 2: the nod is played from a timer, not an infinite loop; ask for it now
+      await p.waitForTimeout(60);
       const idle = await anims(p);
       await p.locator('.brand').hover();
       await p.waitForTimeout(120);
@@ -394,7 +396,7 @@ try {
     const n = await shot22('normal', {});
     const hovNames = [...new Set(n.hov.filter((x) => /^bwm-hov/.test(x)))];
     const idleNames = [...new Set(n.idle.filter((x) => /^bwm-idle/.test(x)))];
-    check('A22: the mark moves while idle (≥ 3 idle loops)', idleNames.length >= 3, idleNames.join(','));
+    check('A22: the mark moves while idle (≥ 3 idle nods; no infinite loop since 0.15.0)', idleNames.length >= 3, idleNames.join(','));
     check('A22: hover plays ≥ 3 animations on the parts of the mark (spine, cap, lines, rule, sheet)', hovNames.length >= 3, hovNames.join(','));
     const c = await shot22('calm', {}, true);
     check('A22: calm mode → 0 animations on the mark (idle and hover)', c.idle.length === 0 && c.hov.length === 0, `${c.idle} | ${c.hov}`);

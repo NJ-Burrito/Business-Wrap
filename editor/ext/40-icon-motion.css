@@ -5,6 +5,11 @@
    --icm; the trigger rule below plays it. Calm mode and reduced motion: nothing moves (also ui.css).
    0.13.3 (owner request 2026-10-30): ONE trigger for every icon (below); no icon is left with the shared scale alone, every one has its own
    --icm move, a theme colour on hover (ui.css .ic hover rule) and the same move on focus and press. */
+/* 0.15.0 perf booster 1 (measured, out/qa-0.15.0/perf/engineer.md section 2): a hover cost 70 ms of main-thread CPU (14.8 layouts) because three
+   or four animations ran at once for 360 to 520 ms and every frame in which anything animates costs ~6 ms. One icon move is now capped at 200 ms
+   for every icon and every button family (the moves read --bw-dur-page / --bw-dur-slow; inside an icon those two tokens are 200 ms; the
+   shell's own motion tokens are not touched). */
+.ic[data-ic]:not(.bw-i) { --bw-dur-page: 200ms; --bw-dur-slow: 200ms; }
 :where(.ic[data-ic]:not(.bw-i)) > * { transform-box: fill-box; transform-origin: 50% 50%; --mvt: var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 /* the one trigger: hover, keyboard focus, press (:active, and .ic-go which icPress sets on a pressed .b), a palette row's hover and
    its keyboard selection, a panel group's summary, a checkbox row, a section title */
@@ -339,3 +344,6 @@
 /* calm mode and reduced motion: drawn, never moving */
 @media (prefers-reduced-motion: reduce) { .ic[data-ic] > * { animation: none !important; } }
 .shell[data-calm="1"] .ic[data-ic] > * { animation: none !important; }
+
+/* 0.15.0: the "from this page on" button of the page-number dialog (42-button-icons.js biHere) */
+[data-ic="biHere"] > :first-child { --y: -2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }

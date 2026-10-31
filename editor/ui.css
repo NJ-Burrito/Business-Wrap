@@ -65,7 +65,7 @@ button { font: inherit; color: inherit; }
 .b.primary:hover:not(:disabled) { background: var(--bw-accent-hover) !important; }
 .i { display: inline-grid; place-items: center; width: 18px; height: 18px; flex: none; }
 /* one stroke width for every icon (2, the brand v3 weight; Lucide was 1.75), one hover pose (the icon's own move plays on its parts, 40-icon-motion.css) */
-.ic { width: 18px; height: 18px; stroke-width: 2; transition: transform .42s var(--e-spring), color var(--bw-dur-fast) var(--bw-ease-out); }
+.ic { width: 18px; height: 18px; stroke-width: 2; } /* 0.15.0 perf booster 1: no colour or transform transition on the icon itself (an animated svg root costs main-thread frames); its own motion is the icm-* move, capped at 200 ms */
 @media (prefers-reduced-motion: no-preference) {
   .shell:not([data-calm="1"]) .b:hover:not(:disabled) .ic { transform: translateY(-1px) scale(1.12); }
 }
@@ -111,23 +111,26 @@ button { font: inherit; color: inherit; }
   backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%);
   box-shadow: var(--bw-shadow-3);
 }
-.pop { inset-block-start: calc(var(--bw-bar-h, 72px) - 4px); inset-inline-end: 24px; max-width: min(560px, 92vw); transform-origin: top right; animation: pop-in .36s var(--e-spring) both; }
+.pop { inset-block-start: var(--bw-drawer-top, calc(var(--bw-bar-h, 72px) - 4px)); inset-inline-end: 24px; max-width: min(560px, 92vw); transform-origin: top right; animation: pop-in .36s var(--e-spring) both; }
 .shell[dir="rtl"] .pop { transform-origin: top left; }
 .pop .chk { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; color: var(--on-glass); cursor: pointer; }
 @keyframes pop-in { from { opacity: 0; transform: translateY(-6px) scale(.96); } to { opacity: 1; transform: none; } }
 
-/* slide-over panels: enter and leave along the same edge */
+/* slide-over panels (0.15.0, note 11): every drawer hangs from the top bar, 8 px under it, down to 12 px above the bottom edge, and
+   grows out of that top edge (clip + 8 px drop, 260 ms ease-out); it closes the same way in 160 ms. Its top is the bar's REAL bottom:
+   ext/46-backdrop.js keeps --bw-drawer-top in step with the island's box (editor.js measureBar only ever grows --bw-bar-h and is not
+   run when the ribbon folds, so the owner saw a drawer 275 px down); --bw-bar-h stays the fallback. */
 .drawer {
-  position: fixed; inset-block: calc(var(--bw-bar-h, 72px) + 2px) 12px; inset-inline-end: 12px; z-index: 39; width: min(420px, 92vw);
+  position: fixed; inset-block-start: var(--bw-drawer-top, calc(var(--bw-bar-h, 72px) - 4px)); inset-block-end: 12px; inset-inline-end: 12px; z-index: 39; width: min(420px, 92vw);
+  max-block-size: calc(100vh - var(--bw-drawer-top, calc(var(--bw-bar-h, 72px) - 4px)) - 12px);
   overflow: auto; padding: 14px 18px; border-radius: 20px; background: var(--panel); color: var(--panel-ink);
   box-shadow: var(--bw-shadow-3), 0 0 0 1px var(--panel-line);
-  animation: drawer-in var(--bw-dur-page) var(--bw-ease-out) both;
+  animation: drawer-in 260ms var(--bw-ease-out) both;
 }
-/* open from the inline-end with a 2 px cross-blur (page, ease-out); close half the distance (base, ease-in): a softer exit */
-.shell[dir="ltr"] .drawer { --from: var(--bw-dist-large); } .shell[dir="rtl"] .drawer { --from: calc(-1 * var(--bw-dist-large)); }
-.drawer.closing { animation: drawer-out var(--bw-dur-base) var(--bw-ease-in) both; }
-@keyframes drawer-in { from { opacity: 0; transform: translateX(var(--from, 24px)); filter: blur(var(--bw-blur-small)); } to { opacity: 1; transform: none; filter: none; } }
-@keyframes drawer-out { to { opacity: 0; transform: translateX(calc(var(--from, 24px) / 2)); } }
+.drawer.closing { animation: drawer-out 160ms var(--bw-ease-in) both; }
+/* negative insets keep the shadow and the 1 px line outside the border box visible while (and after) the clip runs */
+@keyframes drawer-in { from { opacity: 0; transform: translateY(-8px); clip-path: inset(-80px -80px 100% -80px round 20px); } to { opacity: 1; transform: none; clip-path: inset(-80px -80px -80px -80px round 20px); } }
+@keyframes drawer-out { from { opacity: 1; transform: none; clip-path: inset(-80px -80px -80px -80px round 20px); } to { opacity: 0; transform: translateY(-8px); clip-path: inset(-80px -80px 100% -80px round 20px); } }
 .drawer header { display: flex; justify-content: space-between; align-items: center; gap: 8px; position: sticky; top: -14px; background: var(--panel); padding-block: 4px 8px; z-index: 1; }
 .drawer h2 { font: 800 17px/1.2 'Thmanyah Sans', system-ui, sans-serif; margin: 0; color: var(--navy); }
 .drawer h3 { font-size: 13px; margin: 18px 0 6px; color: var(--panel-soft); }
