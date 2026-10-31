@@ -117,6 +117,7 @@ Installed as a plugin, Business-Wrap adds these commands; type `/` in Claude Cod
 | `/business-wrap:export <doc.json> [ar\|en]` | PDF + DOCX, then the render and export gates |
 | `/business-wrap:verify-history <file>` | Check the tamper-evident history |
 | `/business-wrap:report <from> <to>` | Work report for a date range |
+| `/business-wrap:reset --dry-run` | List every library, Edge profile and plugin-data folder this program keeps; with `--yes` (only after you agree) send them to the Recycle Bin so an old library cannot come back (`--all`: whole workspaces too) |
 | `/business-wrap:update [--check\|--notes\|--apply --yes]` | Check, read what is new, or install (only after you agree) |
 | `/business-wrap:tabs [project]` | The documents open in the live editor and the host health (needs the editor open) |
 | `/business-wrap:outline [doc-id] [ar\|en]` | The outline of the open document: chapters, sections, blocks |
@@ -126,6 +127,8 @@ Installed as a plugin, Business-Wrap adds these commands; type `/` in Claude Cod
 | `/business-wrap:diagram <description>` | Draft a diagram, render it to PNG, insert it into the open document |
 | `/business-wrap:explain <tool or feature>` | Explain an editor feature from the docs and where it is on the ribbon |
 | `/business-wrap:action <name>` | Run one editor action: `check`, `renumber`, `saveHtml`, `exportPdf`, `share` |
+
+🧹 **Reset (a clean start).** An uninstall does not remove your libraries: older versions kept them outside the program (`DocumentsBusiness-Wrap`, `DownloadsBusiness-Wrap`) and a new start imports them again. `business-wrap doctor` lists every known workspace, Edge profile and plugin-data path. `business-wrap reset --dry-run` prints what a reset would send away; `business-wrap reset --yes` sends the machine state (the editor's Edge profile, every `.system` folder, local settings) to the Recycle Bin; `--all` also sends whole workspaces (your documents and exports) and the plugin data. It never hard-deletes, so everything can be restored from the Recycle Bin, and without `--yes` in a non-interactive shell it refuses.
 
 Without Claude Code the same verbs run as `npm run cli -- <verb>` (for example `npm run cli -- open samples/event-permit`, `npm run host:close`). Every verb works offline, with no AI.
 

@@ -6,13 +6,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { localBase } from '../engine/testguard.mjs';
-import { checkLatest, isNewer, parseNotes, extractNotes, parseVersion } from './core.mjs';
+import { checkLatest, FEED, isNewer, parseNotes, extractNotes, parseVersion } from './core.mjs';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LOCAL = localBase(ROOT); // BW_LOCAL_DIR: tests and read-only installs
 export const STATE_FILE = path.join(LOCAL, 'update-state.json');
 export const SETTINGS_FILE = path.join(LOCAL, 'update.json');
 export const DAY_MS = 24 * 60 * 60 * 1000;
+/** A cached answer older than this is asked again (T9: a day was long enough to say "latest" while a newer tag existed). BW_UPDATE_REFRESH_H overrides (hours). */
+export const refreshMs = () => (Number(process.env.BW_UPDATE_REFRESH_H) > 0 ? Number(process.env.BW_UPDATE_REFRESH_H) : 6) * 60 * 60 * 1000;
+export const cacheAgeHours = (checkedAt, now = Date.now()) => (checkedAt ? Math.max(0, Math.round(((now - checkedAt) / 3600000) * 10) / 10) : null);
 
 export const currentVersion = () => JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 const repoOf = () => JSON.parse(fs.readFileSync(path.join(ROOT, 'update', 'source.json'), 'utf8')).repo;
@@ -73,11 +76,12 @@ export function splitNotes(text) {
  */
 export async function checkForUpdate({ force = false, now = Date.now(), current = currentVersion() } = {}) {
   if (!force && !settings().check) return { status: 'off', current };
-  const state = readJson(STATE_FILE, {});
+  const raw = readJson(STATE_FILE, {});
+  const state = raw.feed === FEED ? raw : {}; // a cache from the old releases/latest feed is dropped, not trusted
   let next = state;
   let cached = true;
   let reason = '';
-  if (force || !state.checkedAt || now - state.checkedAt >= DAY_MS || state.forVersion !== current) {
+  if (force || !state.checkedAt || now - state.checkedAt >= refreshMs() || state.forVersion !== current) {
     const base = feedFetch();
     // what went wrong, for the Settings page: the request threw (offline), no release published yet (404), or rate limit
     const f = async (...a) => { try { const r = await base(...a); if (r.status === 404) reason = 'no-release'; else if (r.status === 401) reason = 'no-access'; else if (r.status === 403 || r.status === 429) reason = 'rate-limit'; else if (!r.ok && r.status !== 304) reason = 'error'; return r; } catch (e) { reason = 'offline'; throw e; } };
@@ -89,10 +93,10 @@ export async function checkForUpdate({ force = false, now = Date.now(), current 
   }
   if (!next || (!next.checkedAt && !next.latest)) return { status: 'unknown', current, reason: reason || 'error', checkedAt: state.checkedAt };
   const l = next.latest;
-  if (!l || !isNewer(l.version, current)) return { status: 'current', current, checkedAt: next.checkedAt, cached };
+  if (!l || !isNewer(l.version, current)) return { status: 'current', current, checkedAt: next.checkedAt, cacheAgeHours: cacheAgeHours(next.checkedAt, now), cached };
   const { human, migration } = splitNotes(l.notes);
   const highlights = human.flatMap((s) => s.items).slice(0, 3);
-  return { status: 'available', current, latest: l.version, url: l.url, zip: l.zip, zipApi: l.zipApi, sha256: l.sha256, publishedAt: l.publishedAt, highlights, notes: { human, migration }, migration, checkedAt: next.checkedAt, cached };
+  return { status: 'available', current, latest: l.version, url: l.url, zip: l.zip, zipApi: l.zipApi, sha256: l.sha256, publishedAt: l.publishedAt, highlights, notes: { human, migration }, migration, checkedAt: next.checkedAt, cacheAgeHours: cacheAgeHours(next.checkedAt, now), cached };
 }
 
 /** The update command for this install: its own update/cli.mjs (never `npx business-wrap`, which resolves npm). */

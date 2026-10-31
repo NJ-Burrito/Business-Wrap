@@ -22,7 +22,7 @@ const lang = val('--lang', /^ar/i.test(process.env.LANG || process.env.LC_ALL ||
 const FLAGS = new Set(['--check', '--apply', '--notes', '--hook', '--enable-hook', '--disable-hook', '--off', '--on', '--json', '--lang', '--force', '--yes', '--help', '-h']);
 const USAGE = `business-wrap update — the version check and the update
 
-  business-wrap update --check [--json] [--lang ar|en] [--force]   one line when an update exists (cached, at most one request a day)
+  business-wrap update --check [--json] [--lang ar|en] [--force]   one line when an update exists (the answer is cached up to 6 hours and its age is shown)
   business-wrap update --apply --yes                                update this install (keeps .local, design/custom, logos, fonts/custom, drafts, out)
   business-wrap update --notes [--json]                             what's new in the installed version
   business-wrap update --hook                                       for the SessionStart hook: prints only when enabled and an update exists
@@ -78,7 +78,7 @@ async function main() {
   const r = await checkForUpdate({ force: has('--force') });
   if (has('--json')) console.log(JSON.stringify(r, null, 1));
   else if (r.status === 'available') console.log(oneLiner(r, lang));
-  else if (r.status === 'current') console.log(lang === 'ar' ? `Business-Wrap ${r.current} هو الأحدث.` : `Business-Wrap ${r.current} is the latest.`);
+  else if (r.status === 'current') { const age = r.cacheAgeHours == null ? '' : r.cacheAgeHours < 0.1 ? (lang === 'ar' ? ' (تم الفحص الآن)' : ' (checked just now)') : (lang === 'ar' ? ` (آخر فحص قبل ${r.cacheAgeHours} ساعة)` : ` (checked ${r.cacheAgeHours} h ago)`); console.log(lang === 'ar' ? `Business-Wrap ${r.current} هو الأحدث${age}.` : `Business-Wrap ${r.current} is the latest${age}.`); }
   else if (r.status === 'off') console.log(lang === 'ar' ? 'فحص التحديثات متوقف (--on لتشغيله).' : 'Update checks are off (--on to turn them on).');
   else console.log(lang === 'ar' ? 'تعذر فحص التحديثات الآن.' : "Can't check for updates now.");
   return 0;
@@ -107,7 +107,8 @@ if ((FIRST === 'protocol' || FIRST === 'handle') && ['--help', '-h', 'help'].inc
       else { console.error('usage: business-wrap protocol register | unregister | status [--json]'); process.exitCode = 2; }
     } catch (e) { console.error(`business-wrap protocol ${sub}: ${e.message}`); process.exitCode = 1; }
   });
-} else if (FIRST === 'open') {
+} else if (FIRST === 'open' && !process.argv.slice(3).some((a) => ['--help', '-h', 'help', '-?'].includes(a))) {
+  // `open --help` falls through to the CLI below: usage only, no protocol registration, no host, no file
   // `open` makes sure the Settings buttons can start the server from a file:// page later (idempotent, per user, no admin; best effort)
   import('../engine/protocol.mjs').then((m) => m.ensureRegistered(), () => {}).finally(() => import('../engine/cli.mjs').then((m) => m.main(process.argv.slice(2))).then((code) => { process.exitCode = code; }));
 } else if (FIRST && FIRST !== 'update' && !FIRST.startsWith('-')) import('../engine/cli.mjs').then((m) => m.main(process.argv.slice(2))).then((code) => { process.exitCode = code; });

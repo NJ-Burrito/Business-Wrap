@@ -18,25 +18,28 @@
 //   business-wrap tidy [--dry-run]                          moves an old save folder (PDF, DOCX, HTML, HISTORY) into the document tree
 //   business-wrap report <from> <to>                       the work report (WP4)
 //   business-wrap update [--check|--apply --yes|--notes]   the updater (update/cli.mjs; a Claude Code plugin is updated by the client, never in place)
-//   business-wrap doctor                                   what is installed, where state lives, the last MCP server starts, version drift
-//   business-wrap editor <list|get|outline|ops|action|new|import|health> [--doc id] [--pointer p] [--locale ar|en] [--ops-file f.json|-] [--mirror] [--agent name] [--id action] [--args-file f.json|-] [--project p] [--title t] [--file f]   drive the document OPEN in the editor, through the host (always JSON)
+//   business-wrap doctor                                   what is installed, where state lives, the last MCP server starts, version drift, EVERY known workspace / Edge profile / plugin-data path
+//   business-wrap reset [--all] [--dry-run] [--yes]        send the machine state (Edge profile, .system, local state; --all: whole workspaces + plugin data) to the Recycle Bin; --dry-run lists only
+//   business-wrap editor <list|get|outline|ops|action|new|import|health|render> [--doc id] [--pointer p] [--locale ar|en] [--ops-file f.json|-] [--mirror] [--agent name] [--id action] [--args-file f.json|-] [--project p] [--title t] [--file f] [--tab id] [--pointer-file f|-] [--out x.png]   drive the document OPEN in the editor, through the host (always JSON)
 // Add --json for machine output. Exit 0 done · 1 failed · 2 usage · 3 needs a module that is not in this build yet.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { buildEditor } from './build-editor.mjs';
-import { exportPdf, exportDocx, loadTheme, loadEdited, fontsFor, REPO, userCwd, fileStem } from './export.mjs';
+import { exportPdf, exportDocx, loadTheme, loadEdited, fontsFor, REPO, userCwd, fileStem, renderDiagramPng } from './export.mjs';
+import { modelIn } from './diagram-cli.mjs';
 import { systemFonts } from './fonts.mjs';
 import { registeredServers } from './server-registry.mjs';
 import { harvestModel, harvestCrawl } from './harvest/cli.mjs';
 import { harvestSources, MODEL_EXT, TEXT_EXT } from './harvest/sources.mjs';
 import { STATE_DIR, healPort, healStaleHosts, healWorkspace, healFont, readHealLog, alive } from './heal/index.mjs';
 import { GATES } from './heal/gates.mjs';
-import { workspace, ensure, reportPath, sourcesDir, keepVersion, docTitle, outName, uniquePath, DOCS_NAME } from './workspace.mjs';
+import { workspace, localDir, ensure, reportPath, sourcesDir, keepVersion, docTitle, outName, uniquePath, DOCS_NAME } from './workspace.mjs';
 import { tidy } from './tidy.mjs';
-import { migrateLocal } from './testguard.mjs';
+import { migrateLocal, pluginData, realParent, isTestMode } from './testguard.mjs';
 import { doctor as doctorInfo } from '../mcp/startup.mjs';
 
 const pkg = () => JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8'));
@@ -95,7 +98,17 @@ async function libraryImport(url, documents) {
 }
 
 /* ── the verbs (each returns a plain object; main() prints it) ── */
+/** The documents of the save folder, newest first (Documents<title><title>.html). */
+export function libraryDocs() {
+  const dir = workspace().dirs.docs;
+  const folders = fs.existsSync(dir) ? fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name) : [];
+  return folders.map((f) => path.join(dir, f, `${f}.html`)).filter((f) => fs.existsSync(f)).map((file) => ({ name: path.basename(path.dirname(file)), file, modified: fs.statSync(file).mtime.toISOString() })).sort((a, b) => b.modified.localeCompare(a.modified));
+}
+/** T13: `open` with no file opens the last document of the library; a blank one is made only when the library is empty. */
+export const lastDocument = () => libraryDocs()[0] || null;
+
 export async function open({ inputs = [], port = 4317, browser = true, ui } = {}) {
+  if (!inputs.length) { const last = lastDocument(); if (last) inputs = [last.file]; }
   let editor;
   let documents = [];
   if (inputs.length === 1 && /\.html?$/i.test(inputs[0])) editor = path.resolve(inputs[0]);
@@ -286,6 +299,66 @@ export function tidyCmd({ dryRun = false } = {}) {
   return { root: ws.root, dryRun, files_before: r.before, moved: r.moved, unmatched: r.unmatched, failed: r.failed, lines: r.lines };
 }
 
+/* ── T3 (0.15.3): every place this program keeps a library or its state, and a reset that sends them to the Recycle Bin ── */
+const homeDir = () => (process.env.BW_HOME_DIR ? path.resolve(process.env.BW_HOME_DIR) : os.homedir());
+const sameP = (a, b) => path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
+const within = (p, dir) => { const r = path.relative(path.resolve(dir), path.resolve(p)); return !!r && !r.startsWith('..') && !path.isAbsolute(r); };
+const entriesOf = (p) => { try { return fs.statSync(p).isDirectory() ? fs.readdirSync(p).length : 1; } catch { return 0; } };
+/** Every known workspace root (a library the editor syncs back in), workspace state, Edge profile, local state and plugin-data path.
+ *  kind: workspace | workspace-state | edge-profile | state | plugin-data. Only the paths that exist carry exists:true. */
+export function knownRoots() {
+  const items = [];
+  const add = (kind, p, note = '') => {
+    if (!p || items.some((i) => i.kind === kind && sameP(i.path, p))) return;
+    const exists = fs.existsSync(p);
+    items.push({ kind, path: path.resolve(p), exists, ...(exists ? { entries: entriesOf(p) } : {}), ...(note ? { note } : {}) });
+  };
+  const home = homeDir();
+  const docs = process.env.BW_HOME_DIR ? path.join(home, 'Documents') : realParent();
+  let saved = null;
+  try { saved = JSON.parse(fs.readFileSync(path.join(localDir(), 'workspace.json'), 'utf8')).parent; } catch { /* none */ }
+  const roots = [[workspace().root, 'the folder in use now'], [path.join(docs, 'Business-Wrap'), 'default (0.13.3 and later)'], [path.join(home, 'Downloads', 'Business-Wrap'), 'older 0.13.x save folder'], [path.join(home, 'OneDrive', 'Documents', 'Business-Wrap'), 'Documents redirected to OneDrive'], [path.join(home, 'Desktop', 'Business-Wrap'), ''], [path.join(home, 'Business-Wrap'), ''], [saved && path.join(saved, 'Business-Wrap'), 'the folder chosen in Settings']];
+  for (const [r, note] of roots) { add('workspace', r, note); if (r) add('workspace-state', path.join(r, '.system'), 'history, library sync, sessions'); }
+  add('edge-profile', path.join(STATE_DIR(), 'edge-profile'), 'the editor\'s Edge profile (its IndexedDB library)');
+  add('edge-profile', path.join(localDir(), 'edge-profile'));
+  add('state', STATE_DIR(), 'local state: host.json, workspace.json, update cache');
+  if (!isTestMode()) add('state', path.join(REPO, '.local'), 'state of a clone or an older plugin folder');
+  const pd = pluginData(REPO);
+  if (pd && !isTestMode()) add('plugin-data', pd, 'Claude Code plugin data (kept across updates)');
+  return items;
+}
+/** What a reset sends away: the machine state by default (the Edge profile, every .system, the local state: nothing a user wrote);
+ *  with all, also every whole workspace (documents and exports) and the plugin data. Nested paths are folded into their parent. */
+export function resetPlan({ all = false } = {}) {
+  const kinds = new Set(['edge-profile', 'workspace-state', 'state', ...(all ? ['workspace', 'plugin-data'] : [])]);
+  const picked = knownRoots().filter((i) => i.exists && kinds.has(i.kind));
+  return picked.filter((i) => !picked.some((o) => o !== i && within(i.path, o.path)));
+}
+/** One path to the Recycle Bin, never a hard delete. Windows: Microsoft.VisualBasic FileSystem SendToRecycleBin (no dialog);
+ *  Linux: gio trash; macOS: Finder. True only when the path is gone afterwards. */
+export function recycle(p) {
+  if (process.platform === 'win32') {
+    const ps = "Add-Type -AssemblyName Microsoft.VisualBasic; $p = $env:BW_RECYCLE_PATH; if (Test-Path -LiteralPath $p -PathType Container) { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($p, 'OnlyErrorDialogs', 'SendToRecycleBin') } else { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($p, 'OnlyErrorDialogs', 'SendToRecycleBin') }";
+    spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], { env: { ...process.env, BW_RECYCLE_PATH: p }, windowsHide: true, stdio: 'ignore' });
+  } else if (process.platform === 'darwin') spawnSync('osascript', ['-e', 'on run argv\ntell application "Finder" to delete POSIX file (item 1 of argv)\nend run', p], { stdio: 'ignore' });
+  else spawnSync('gio', ['trash', p], { stdio: 'ignore' });
+  return !fs.existsSync(p);
+}
+const ask = (q) => new Promise((ok) => { import('node:readline').then(({ createInterface }) => { const rl = createInterface({ input: process.stdin, output: process.stderr }); rl.question(q, (a) => { rl.close(); ok(/^y(es)?$/i.test(a.trim())); }); }); });
+export async function reset({ all = false, dryRun = false, yes = false } = {}) {
+  const plan = resetPlan({ all });
+  const base = { scope: all ? 'all' : 'state', dryRun, items: plan.map((i) => ({ kind: i.kind, path: i.path, entries: i.entries })) };
+  if (dryRun || !plan.length) return { ...base, recycled: 0, failed: 0 };
+  if (!yes) {
+    if (!process.stdin.isTTY) throw Object.assign(new Error(`reset: ${plan.length} item(s) would go to the Recycle Bin and no --yes was given (not interactive): nothing was changed. List: ${plan.map((i) => i.path).join(' | ')}`), { code: 2 });
+    process.stderr.write(`${plan.map((i) => `  ${i.kind.padEnd(16)} ${i.path}`).join('\n')}\n`);
+    if (!(await ask(`Send these ${plan.length} item(s) to the Recycle Bin? [y/N] `))) return { ...base, recycled: 0, failed: 0, cancelled: true };
+  }
+  if (!process.env.BW_RESET_KEEP_HOSTS) await close().catch(() => {}); // a running host or Edge window holds the profile open
+  const done = plan.map((i) => ({ kind: i.kind, path: i.path, recycled: recycle(i.path) }));
+  return { ...base, items: done, recycled: done.filter((d) => d.recycled).length, failed: done.filter((d) => !d.recycled).length };
+}
+
 export function update(args) {
   const r = spawnSync(process.execPath, [path.join(REPO, 'update', 'cli.mjs'), 'update', ...args], { encoding: 'utf8' });
   return { code: r.status ?? 1, output: (r.stdout || '') + (r.stderr || '') };
@@ -295,20 +368,56 @@ export function update(args) {
 const readJsonArg = (f) => JSON.parse(f === '-' ? fs.readFileSync(0, 'utf8') : fs.readFileSync(path.resolve(f), 'utf8'));
 /** business-wrap editor <verb>: the same verbs as the MCP editor_* tools, against the document OPEN in the editor (mcp/editor-tools.mjs). */
 async function editorCmd(pos, val, flags) {
-  const { callEditor, checkOps, hostTarget, BwError, EDITOR_ACTIONS } = await import('../mcp/editor-tools.mjs');
+  const { callEditor: callAny, checkOps, hostTarget, BwError, EDITOR_ACTIONS } = await import('../mcp/editor-tools.mjs');
   const [verb] = pos;
   const doc = val('doc');
+  const tab = val('tab');
+  // T11: --tab is honoured (the host routes the call to that tab; an unknown tab answers NO_TAB), never silently dropped
+  const callEditor = async (tool, { doc: d, args = {} } = {}) => {
+    if (!tab) return callAny(tool, { doc: d, args });
+    const t = await hostTarget();
+    const res = await fetch(new URL('/api/editor/call', t.url), { method: 'POST', headers: { 'x-bw-token': t.token, 'content-type': 'application/json' }, body: JSON.stringify({ tool, ...(d ? { doc: d } : {}), tab, args }) });
+    const body = await res.json().catch(() => ({}));
+    if (res.ok && body?.ok !== false) { const r = 'result' in body ? body.result : body; return { ok: true, ...(r && typeof r === 'object' && !Array.isArray(r) ? r : { result: r }) }; }
+    const { code, message, error, ok: _o, ...rest } = body || {};
+    throw new BwError(code || (res.status === 404 ? 'NO_TAB' : 'HOST_ERROR'), String(message || error || `host answered ${res.status}`), rest);
+  };
   const need = (v, what) => { if (!v) throw new BwError('BAD_ARGS', `editor ${verb}: ${what} is required`); return v; };
+  /** T11: a read without --doc works only when exactly one document is open; with several it lists them and refuses (never "another doc"). */
+  const docOrSole = async () => {
+    if (doc) return doc;
+    const docs = (await callEditor('list', {})).documents || [];
+    if (docs.length === 1) return docs[0].id;
+    throw new BwError(docs.length ? 'BAD_ARGS' : 'NO_DOC', docs.length ? `editor ${verb}: --doc is required, ${docs.length} documents are open` : `editor ${verb}: no document is open`, { documents: docs.map((d) => ({ id: d.id, title: d.title })) });
+  };
+  // a pointer is a file (or - for stdin) holding the JSON pointer as plain text or as a JSON string
+  const pointerOf = () => {
+    if (val('pointer-file')) { const raw = (val('pointer-file') === '-' ? fs.readFileSync(0, 'utf8') : fs.readFileSync(path.resolve(val('pointer-file')), 'utf8')).replace(/^\uFEFF/, '').trim(); try { const j = JSON.parse(raw); return typeof j === 'string' ? j : j?.pointer ?? raw; } catch { return raw; } }
+    return val('pointer');
+  };
   switch (verb) {
     case 'list': return callEditor('list', { args: val('project') ? { project: val('project') } : {} });
-    case 'get': return callEditor('get', { doc: need(doc, '--doc'), args: { ...(val('pointer') ? { pointer: val('pointer') } : {}), ...(val('locale') ? { locale: val('locale') } : {}) } });
-    case 'outline': return callEditor('outline', { doc: need(doc, '--doc'), args: val('locale') ? { locale: val('locale') } : {} });
+    case 'get': { const p = pointerOf(); return callEditor('get', { doc: await docOrSole(), args: { ...(p ? { pointer: p } : {}), ...(val('locale') ? { locale: val('locale') } : {}) } }); }
+    case 'outline': return callEditor('outline', { doc: await docOrSole(), args: val('locale') ? { locale: val('locale') } : {} });
+    case 'render': {
+      // T14: a diagram block's PNG preview, through the same renderer as the PDF (render_diagram)
+      const p = need(pointerOf(), '--pointer (or --pointer-file) of a diagram block');
+      const out = need(val('out'), '--out x.png');
+      const got = await callEditor('get', { doc: await docOrSole(), args: { pointer: p, ...(val('locale') ? { locale: val('locale') } : {}) } });
+      const block = got.value;
+      if (!block || block.kind !== 'diagram' || !block.model) throw new BwError('BAD_ARGS', `editor render: ${p} is not a diagram block (kind ${block?.kind ?? 'none'})`);
+      const r = await renderDiagramPng(modelIn(block.model), { theme: loadTheme(), locale: got.locale || val('locale') || 'ar', scale: Number(val('scale')) || 2, pngPath: path.resolve(out) });
+      const L = r.legibility;
+      return { ok: true, png: r.png, width: r.width, height: r.height, pointer: p, legible: !!L?.ok, min_pt: L?.minPtPrinted, small: L?.small?.length ?? 0, overlaps: L?.overlaps?.length ?? 0 };
+    }
     case 'ops': {
       const raw = readJsonArg(need(val('ops-file'), '--ops-file (a file, or - for stdin)'));
       const ops = Array.isArray(raw) ? raw : raw.ops;
       const locale = need(val('locale') || raw.locale, '--locale ar|en');
       checkOps(ops, locale);
-      return callEditor('ops', { doc: need(doc, '--doc'), args: { ops, locale, mirror: flags.has('--mirror'), ...(val('agent') ? { agent: val('agent') } : {}), ...(val('group') ? { group: val('group') } : {}) } });
+      const r = await callEditor('ops', { doc: need(doc, '--doc'), args: { ops, locale, mirror: flags.has('--mirror'), ...(val('agent') ? { agent: val('agent') } : {}), ...(val('group') ? { group: val('group') } : {}) } });
+      // T14: opsLen is the length of the undo stack, not the batch: say how many ops were sent and applied
+      return { ...r, batch: ops.length, applied: r.applied ?? ops.length, undo_depth: r.opsLen };
     }
     case 'action': {
       const id = need(val('id'), '--id');
@@ -325,19 +434,32 @@ async function editorCmd(pos, val, flags) {
       const res = await fetch(new URL('/api/host/health', t.url), { headers: { 'x-bw-token': t.token } });
       return res.json();
     }
-    default: throw Object.assign(new Error(`editor: unknown verb ${verb || ''} (list|get|outline|ops|action|new|import|health)`), { code: 2 });
+    default: throw Object.assign(new Error(`editor: unknown verb ${verb || ''} (list|get|outline|ops|action|new|import|health|render)`), { code: 2 });
   }
 }
 
 /** Every verb this CLI answers (the plugin commands may only call these). */
-export const VERBS = ['open', 'close', 'stop', 'status', 'new', 'build', 'harvest', 'import', 'export', 'gate', 'heal-log', 'verify-history', 'library', 'tidy', 'report', 'update', 'doctor', 'editor', 'help'];
+export const VERBS = ['open', 'close', 'stop', 'status', 'new', 'build', 'harvest', 'import', 'export', 'gate', 'heal-log', 'verify-history', 'library', 'tidy', 'report', 'update', 'doctor', 'reset', 'editor', 'help'];
 
 const USAGE = fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').filter((l) => l.startsWith('//   business-wrap')).map((l) => l.slice(5)).join('\n');
+/** The flags each verb knows (T11: an unknown flag is an error, never silently ignored). */
+const COMMON = ['--json'];
+const KNOWN_FLAGS = {
+  open: ['--port', '--no-browser', '--ui'], close: [], stop: [], status: [], new: ['--title', '--out', '--no-browser', '--no-open'], build: ['--out', '--ui'],
+  harvest: ['--out', '--name', '--roles', '--no-open', '--no-browser'], import: ['--out', '--name', '--roles', '--no-open', '--no-browser'],
+  export: ['--out', '--edits', '--no-docx'], gate: [], 'heal-log': [], 'verify-history': ['--history'], library: [], report: [], doctor: [], reset: ['--all', '--dry-run', '--yes'],
+  editor: ['--doc', '--pointer', '--pointer-file', '--locale', '--ops-file', '--mirror', '--agent', '--group', '--id', '--args-file', '--project', '--title', '--file', '--tab', '--out', '--scale'],
+};
+const HELP = ['--help', '-h', 'help', '-?'];
 export async function run(argv) {
   const [verb, ...rest] = argv;
+  // T13: --help of ANY verb prints usage and does nothing else: no host, no Edge, no file (the check comes before every other step)
+  if (rest.some((a) => HELP.includes(a)) && verb && !HELP.includes(verb)) return { usage: USAGE };
+  const known = KNOWN_FLAGS[verb];
+  if (known) { const bad = rest.find((a) => a.startsWith('-') && !known.includes(a) && !COMMON.includes(a)); if (bad) throw Object.assign(new Error(`${verb}: unknown option ${bad}${bad === '--tab' ? ' (--tab belongs to business-wrap editor)' : ''}; nothing was done\n${USAGE}`), { code: 2 }); }
   const flags = new Set(rest.filter((a) => a.startsWith('--')));
   const val = (k) => { const i = rest.indexOf(`--${k}`); return i >= 0 ? rest[i + 1] : undefined; };
-  const VALUED = new Set(['--out', '--port', '--name', '--roles', '--edits', '--title', '--ui', '--history', '--doc', '--pointer', '--locale', '--ops-file', '--agent', '--group', '--id', '--args-file', '--project', '--file']);
+  const VALUED = new Set(['--pointer-file', '--tab', '--scale', '--out', '--port', '--name', '--roles', '--edits', '--title', '--ui', '--history', '--doc', '--pointer', '--locale', '--ops-file', '--agent', '--group', '--id', '--args-file', '--project', '--file']);
   const pos = rest.filter((a, i) => !a.startsWith('--') && !VALUED.has(rest[i - 1]));
   const browser = !flags.has('--no-browser');
   switch (verb) {
@@ -362,7 +484,8 @@ export async function run(argv) {
     }
     case 'report': return report({ from: pos[0], to: pos[1] });
     case 'update': return update(rest);
-    case 'doctor': return doctorInfo();
+    case 'doctor': return { ...(await doctorInfo()), roots: knownRoots() };
+    case 'reset': return reset({ all: flags.has('--all'), dryRun: flags.has('--dry-run'), yes: flags.has('--yes') });
     case 'editor': return editorCmd(pos, val, flags);
     case undefined: case 'help': case '--help': case '-h': return { usage: USAGE };
     default: throw Object.assign(new Error(`unknown command: ${verb}\n${USAGE}`), { code: 2 });
@@ -373,15 +496,16 @@ export async function run(argv) {
 export async function main(argv = process.argv.slice(2)) {
   const json = argv.includes('--json');
   try {
-    if (argv[0] !== 'doctor') await migrateLocal(REPO); // plugin installs: state moves to the plugin data folder once
+    if (argv[0] !== 'doctor' && !argv.some((a) => HELP.includes(a))) await migrateLocal(REPO); // plugin installs: state moves to the plugin data folder once
     const r = await run(argv.filter((a) => a !== '--json'));
     if (r.usage) console.log(r.usage);
     else if (argv[0] === 'editor') console.log(JSON.stringify(r, null, 1));
     else if (argv[0] === 'tidy') { if (r.lines.length) console.log(r.lines.join(String.fromCharCode(10))); console.log(json ? JSON.stringify({ ...r, lines: undefined }) : `${r.dryRun ? 'plan' : 'tidy'}: ${r.moved} of ${r.files_before} files, unsorted ${r.unmatched}, failed ${r.failed}  (${r.root})`); }
+    else if (argv[0] === 'reset' && !json) { for (const i of r.items) console.log(`${i.recycled === undefined ? (r.dryRun ? 'would recycle' : 'listed') : i.recycled ? 'recycled' : 'FAILED'}  ${i.kind.padEnd(16)} ${i.path}`); console.log(r.cancelled ? 'cancelled: nothing changed' : r.dryRun ? `dry run: ${r.items.length} item(s) would go to the Recycle Bin (add --yes to do it)` : `${r.recycled} item(s) sent to the Recycle Bin${r.failed ? `, ${r.failed} failed (is Edge or a host still running?)` : ''}`); }
     else if (argv[0] === 'update') process.stdout.write(r.output);
     else console.log(json ? JSON.stringify(r, null, 1) : Object.entries(r).map(([k, v]) => `${k.padEnd(10)} ${typeof v === 'object' ? JSON.stringify(v) : v}`).join('\n'));
     const gates = [...(r.gates || []), ...(r.opened?.gates || [])];
-    return argv[0] === 'update' ? r.code : gates.some((g) => g.verdict === 'FAIL') ? 1 : 0;
+    return argv[0] === 'update' ? r.code : argv[0] === 'reset' && r.failed ? 1 : gates.some((g) => g.verdict === 'FAIL') ? 1 : 0;
   } catch (e) {
     console.error(json || argv[0] === 'editor' ? JSON.stringify({ ok: false, error: e.message, code: e.code || 1, ...(e.data || {}) }) : `business-wrap ${argv[0] || ''}: ${e.message}`);
     return typeof e.code === 'number' ? e.code : 1;

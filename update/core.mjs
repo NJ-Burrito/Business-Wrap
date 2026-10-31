@@ -10,6 +10,8 @@
 // "can't check", never an error.
 
 const REPO_RE = /^\w[\w.-]*\/\w[\w.-]*$/;
+/** State written by an older build came from /releases/latest: it is never reused (its ETag and "no newer release" answer may be stale). */
+export const FEED = 'list-v2';
 export const BACKOFF_MS = 60 * 60 * 1000;
 const NOTES_MAX = 4000;
 
@@ -54,6 +56,13 @@ export function isAllowedRedirect(url, repo) {
   return /^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.githubusercontent\.com\/\S*$/.test(s) && !/[\\@]/.test(s.split('?')[0]);
 }
 
+/** The releases list (GitHub /releases) or one release -> the HIGHEST clean release, never a draft or pre-release (T9: /releases/latest names
+ *  the release the maintainer flagged "latest", which can lag behind newer tags). */
+export function pickNewest(j, repo) {
+  const all = (Array.isArray(j) ? j : [j]).map((r) => pickRelease(r, repo)).filter(Boolean);
+  return all.reduce((a, r) => (!a || isNewer(r.version, a.version) ? r : a), null);
+}
+
 /** The release JSON -> what the notice needs, or null for a draft, a pre-release or a tag that is not a clean version. */
 export function pickRelease(j, repo) {
   if (!j || j.draft || j.prerelease || !parseVersion(j.tag_name)) return null;
@@ -85,7 +94,7 @@ export async function checkLatest({ repo, current, state = {}, token = '', fetch
   if (token) headers.Authorization = `Bearer ${token}`;
   try {
     const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined;
-    const url = `https://api.github.com/repos/${repo}/releases/latest`;
+    const url = `https://api.github.com/repos/${repo}/releases?per_page=30`;
     let res = await f(url, { method: 'GET', headers, cache: 'no-store', redirect: 'follow', signal });
     if (res.status === 401 && headers.Authorization) {
       try { res.body?.cancel?.(); } catch { /* already consumed */ }
@@ -102,8 +111,8 @@ export async function checkLatest({ repo, current, state = {}, token = '', fetch
       return { ...state, backoffUntil: now + Math.min(Math.max(wait || reset || BACKOFF_MS, BACKOFF_MS), 24 * BACKOFF_MS) };
     }
     if (!res.ok) { drop(); return null; }
-    const rel = pickRelease(await res.json(), repo);
-    return { etag: res.headers?.get?.('etag') || '', checkedAt: now, latest: rel && isNewer(rel.version, current) ? rel : null };
+    const rel = pickNewest(await res.json(), repo);
+    return { etag: res.headers?.get?.('etag') || '', checkedAt: now, feed: FEED, latest: rel && isNewer(rel.version, current) ? rel : null };
   } catch {
     return null;
   }
