@@ -205,12 +205,12 @@ try {
     ok = (await still('panel closed')) && ok;
     check(`A4 ${ui}: a shape's tools stay through menus, pickers, the design panel, colour input, popover`, ok, kept.join(' · '));
     // a logo: selected by a click, kept while the panel is used
-    await page.mouse.click(40, 420); // empty desk (left margin: the explanation panel owns the right edge since 0.15.0): the general tools come back
+    await page.mouse.click(40, 700); // empty desk below the fixed 184 px ribbon (left margin: the explanation panel owns the right edge since 0.15.0): the general tools come back
     await page.keyboard.press('Control+K');
     const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.locator('#cmdlist [data-cmd="logo"]').click()]);
     await chooser.setFiles(PNG);
     await page.waitForFunction(() => document.querySelector('main.bw-doc .bw-ov'));
-    await page.mouse.click(40, 420); // empty desk
+    await page.mouse.click(40, 700); // empty desk
     await settle(page, 200);
     const cleared = await state(page);
     await page.evaluate(() => window.scrollTo(0, 0));
@@ -519,7 +519,7 @@ try {
     await page.evaluate(() => window.BW.runAction('uiLang')); await page.waitForTimeout(600);
     await rbTabFor(page, 'dir', 'ltr'); // the direction switch is on the View tab: open it first, as a person would
     await page.waitForTimeout(900); // the tab walk above plays the tools' entrance motion; let it end before the press is observed
-    const btn = page.locator('.ribbon .rb-panel [data-a="dir"][data-d="ltr"]');
+    const btn = page.locator('.island [data-a="dir"][data-d="ltr"]');
     await btn.click();
     const anims = await sh(page, async (R) => { const seen = new Set(); const t0 = performance.now(); while (performance.now() - t0 < 600) { R.getAnimations().forEach((a) => { const el = a.effect?.target; if (el && !el.closest?.('.brand, .xpl-dock')) seen.add((el.className?.baseVal ?? el.className) + '@' + (el.closest('[data-x]')?.dataset.x || el.dataset?.a || el.tagName)); }); await new Promise((r) => setTimeout(r, 40)); } return [...seen]; });
     // 0.14: the ribbon's own tools (buttons, their icons, the panel) re-seat when the page direction flips, and the pressed button plays its hover

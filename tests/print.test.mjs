@@ -195,7 +195,7 @@ try {
       const { ctx, page, errors } = await open(url, { ui, width });
       const tag = `${srv ? 'server' : 'file'} ${ui} ${width}`;
       // toolbar: one row, no sideways scroll; at 1920 the words show where they fit
-      await rbTabFor(page, 'print'); // the File tab: the export menu lives there
+      await rbTabFor(page, 'print'); // 0.15.0: the Export tab (real buttons per format; the page range / cover / folder fields sit in its «Export options» menu)
       const bar = await sh(page, (r) => { const b = r.querySelector('.island'); const tb = [...r.querySelectorAll('.ribbon .rb-tab')].map((x) => x.getBoundingClientRect()); return { over: b.scrollWidth > b.clientWidth, rows: Math.max(...tb.map((x) => x.top)) < Math.min(...tb.map((x) => x.bottom)) ? 1 : 2, words: [...r.querySelectorAll('.ribbon .rb-panel .b .w')].filter((w) => w.offsetWidth > 0).length }; });
       check(`${tag}: toolbar on one row, no sideways scroll`, !bar.over && bar.rows === 1, JSON.stringify(bar));
       if (width === 1920) check(`${tag}: tool labels show on the bar where they fit`, bar.words > 0, JSON.stringify(bar));
@@ -206,12 +206,12 @@ try {
         await sh(page, (r, i) => [...r.querySelectorAll('.ribbon .rb-panel .more > [data-a="more"]')].filter((b) => b.offsetWidth > 0)[i].click(), i);
         await page.waitForTimeout(320);
         const a = await sh(page, menuAudit);
-        if (!a.open || !a.inside || a.scroll || a.bare.length || !a.n) bad.push(`${mores[i]} ${JSON.stringify(a)}`);
-        if (mores[i].includes('export.menu')) await shot(page, `export-menu-${ui}-${width}.png`);
+        if (!a.open || !a.inside || a.scroll || a.bare.length || (!a.n && !mores[i].includes('export.opts'))) bad.push(`${mores[i]} ${JSON.stringify(a)}`);
+        if (mores[i].includes('export.opts')) await shot(page, `export-menu-${ui}-${width}.png`);
         await page.keyboard.press('Escape');
         await page.waitForTimeout(150);
       }
-      check(`${tag}: ${mores.length} menus (every «More» + Export) fully visible, every item icon + label`, mores.length >= 1 && mores.some((m) => m.includes('export.menu')) && !bad.length, bad.join(' | '));
+      check(`${tag}: ${mores.length} menus (every «More» + Export) fully visible, every item icon + label`, mores.length >= 1 && mores.some((m) => m.includes('export.opts')) && !bad.length, bad.join(' | '));
       // the selection's «More» menu (a text block)
       await page.locator('main.bw-doc p[data-b]').nth(2).click();
       await page.waitForTimeout(350);
@@ -296,25 +296,26 @@ try {
       }
       await page.keyboard.press('Escape');
       await page.waitForTimeout(200);
-      // Export menu: axe, offline messages, in-browser files
-      await sh(page, (r) => r.querySelector('[data-x="export.menu"]').click());
+      // Export tab: axe (with the options menu open), offline messages, in-browser files
+      await page.evaluate(() => window.BW.EXT.ribbon.setTab('export'));
+      await page.waitForTimeout(250);
+      await sh(page, (r) => r.querySelector('[data-x="export.opts"]').click());
       await page.waitForTimeout(300);
       if (width === 1366) {
         const v = await axe(page);
-        check(`${tag}: axe 0 serious with the Export menu open`, !v.length, JSON.stringify(v));
+        check(`${tag}: axe 0 serious with the Export tab and its options menu open`, !v.length, JSON.stringify(v));
       }
       if (!srv && width === 1366) {
-        const off = await sh(page, (r) => ({ docx: [...r.querySelectorAll('.pc-menu [data-a^="export.docx"]')].every((b) => b.getAttribute('aria-disabled') === 'true'), pdf: [...r.querySelectorAll('.pc-menu [data-a^="export.pdf"]')].every((b) => !b.hasAttribute('aria-disabled')), note: r.querySelector('.pc-menu').textContent }));
+        const off = await sh(page, (r) => ({ docx: [...r.querySelectorAll('.rb-panel [data-a^="export.docx"]')].every((b) => b.getAttribute('aria-disabled') === 'true'), pdf: [...r.querySelectorAll('.rb-panel [data-a^="export.pdf"]')].every((b) => !b.hasAttribute('aria-disabled')), note: r.querySelector('.rb-panel').textContent }));
         check(`${tag}: file:// — DOCX marked «needs the server», PDF still offered (browser print dialog)`, off.docx && off.pdf && /DOCX/.test(off.note));
-        await sh(page, (r) => r.querySelector('.pc-menu [data-a="export.docx.ar"]').click());
+        await page.keyboard.press('Escape');
+        await sh(page, (r) => r.querySelector('.rb-panel [data-a="export.docx.ar"]').click());
         await page.waitForTimeout(300);
         const ban = await sh(page, (r) => r.querySelector('.toast.banner')?.textContent || '');
         check(`${tag}: file:// — DOCX says plainly the server is needed and how to start it`, ban.includes('npm run serve'), ban);
         const dl = {};
         for (const id of ['export.html', 'export.edits', 'export.editsAll', 'export.pack', 'export.mermaid', 'export.svg', 'export.png']) {
-          await sh(page, (r) => { if (!r.querySelector('.pc-menu[data-open="1"]')) r.querySelector('[data-x="export.menu"]').click(); });
-          await page.waitForTimeout(200);
-          const [d] = await Promise.all([page.waitForEvent('download', { timeout: 15000 }).catch(() => null), sh(page, (r, id) => r.querySelector(`.pc-menu [data-a="${id}"]`).click(), id)]);
+                    const [d] = await Promise.all([page.waitForEvent('download', { timeout: 15000 }).catch(() => null), sh(page, (r, id) => r.querySelector(`.rb-panel [data-a="${id}"]`).click(), id)]);
           if (!d) { dl[id] = 'none'; continue; }
           const p = path.join(OUT, `dl-${ui}-${d.suggestedFilename()}`);
           await d.saveAs(p);
