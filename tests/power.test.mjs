@@ -113,8 +113,9 @@ try {
   await page.locator('.dialog [data-k="pw-yes"]').click();
   const shown = await until(() => page.evaluate(() => !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.pw-off')), 5000);
   check('power: confirm → the «stopped» page', shown);
-  const gone = await until(() => ![h.pid, ...kids, strayPid].some(alive), 20000);
-  check('power: confirm → no Business-Wrap node of this install is left (host, its server, a stray server)', gone, JSON.stringify([h.pid, ...kids, strayPid].map((p) => [p, alive(p)])));
+  const gone = await until(() => ![h.pid, ...kids].some(alive), 20000);
+  check('power: confirm → the host and its server stop (0.15.2 note 4: ONLY the host process; the page stays open, see host-0152)', gone, JSON.stringify([h.pid, ...kids].map((p) => [p, alive(p)])));
+  check('power: …and nothing else is closed: a stray server of this install is still running (close everything is `stop --all`)', alive(strayPid));
   check('power: host.json is removed', !hostJson());
   check('power: another install\'s process is untouched', alive(other));
   check('power: no page errors', !errors.length, errors.join(' | '));

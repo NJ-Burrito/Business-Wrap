@@ -120,6 +120,8 @@ function render(keepScroll = true) {
   dgZoomAll();
   if (S.dg) dgPaint();
   viewsApply();
+  zoomPillSync();
+  viewPct();
   emit('render');
 }
 function mainOf(ed) {
@@ -1261,7 +1263,7 @@ function uiHtml() {
     <span class="spacer"></span>
     <div class="status" role="status" aria-live="polite">
       <button type="button" class="count" data-a="history" title="${esc(t('history'))}" aria-label="${esc(changesName(opCount()))}"><span class="i">${ic('history')}</span><span class="w" data-alt="${esc(tAlt('changesWord'))}">${esc(t('changesWord'))}</span> <span class="n" aria-hidden="true">${opCount()}</span></button>
-      <span class="zpill" data-zoom-pill title="${esc(t('zoomPct'))}"${S.zoom <= ZOOM_MIN || S.zoom >= ZOOM_MAX ? ' data-limit="1"' : ''}>${Math.round(S.zoom * 100)}%</span>
+      <span class="zpill" data-zoom-pill title="${esc(t('zoomPct'))}"${zoomEff() <= ZOOM_MIN + 1e-6 || zoomEff() >= ZOOM_MAX - 1e-6 ? ' data-limit="1"' : ''}>${zoomPctNow()}%</span>
       <span class="sel vh">${esc(selDesc())}</span><span class="flash vh"></span>
     </div>
     <div class="sec" data-cat="view" role="group" aria-label="${esc(t('secView'))}"><span class="sc" aria-hidden="true"><span class="i">${ic('secView')}</span><span class="st">${esc(t('secView'))}</span></span><div class="sb">
@@ -1363,7 +1365,7 @@ function measureBar(force = false) {
   if (measureBar.roBar !== bar && typeof ResizeObserver === 'function') {
     measureBar.ro?.disconnect();
     let q = 0;
-    measureBar.ro = new ResizeObserver(() => { if (!q) q = requestAnimationFrame(() => { q = 0; measureBar(); }); });
+    measureBar.ro = new ResizeObserver(() => { window.__bwFillAgain?.(); if (!q) q = requestAnimationFrame(() => { q = 0; measureBar(); }); });
     measureBar.ro.observe(bar);
     measureBar.roBar = bar;
   }
@@ -1441,9 +1443,9 @@ const opCount = () => EXT.status?.count() ?? liveOps(cur()).length;
 function zoomPillSync() {
   const p = root.querySelector('[data-zoom-pill]');
   if (!p) return;
-  const txt = `${Math.round(S.zoom * 100)}%`;
+  const txt = `${zoomPctNow()}%`;
   if (p.textContent !== txt) p.textContent = txt;
-  p.toggleAttribute('data-limit', S.zoom <= ZOOM_MIN || S.zoom >= ZOOM_MAX);
+  p.toggleAttribute('data-limit', zoomEff() <= ZOOM_MIN + 1e-6 || zoomEff() >= ZOOM_MAX - 1e-6);
 }
 /** undo / redo are disabled while there is nothing to undo / redo, on the toolbar and on whatever ribbon tab is drawn */
 function syncUndoState() {
@@ -1795,19 +1797,33 @@ const ZOOM_MAX = 4;
 const ZOOM_PRESETS = [25, 33, 50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200, 250, 300, 400];
 const A4_W = 210 * 96 / 25.4; // px at 100 %
 const A4_H = 297 * 96 / 25.4;
-const zoomClamp = (z) => (Number.isFinite(+z) ? Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(+z * 100) / 100)) : S.zoom);
-/** Set the zoom (a fraction, 1 = 100 %), clamped to 25-400 %; keeps the document point under the window centre where it was. */
-function setZoom(z) {
-  const next = zoomClamp(z);
+const zoomClamp = (z) => (Number.isFinite(+z) ? Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(+z * 1000) / 1000)) : zoomEff());
+/** 0.15.2 note 11: the zoom the person sees is the real size of a page on screen: 100 % = an A4 sheet at 96 dpi (793.7 CSS px wide), in every view.
+ *  S.zoom is the number CSS multiplies by; the page views (views.js) multiply it by their fit-to-window scale (--bw-pz = fit x S.zoom) and the
+ *  side-by-side view by .62, so the pill, the field, Ctrl+wheel and the presets all speak the EFFECTIVE percentage: eff = S.zoom x base. */
+function zoomBase() {
+  if (document.getElementById('bw-pair')?.classList.contains('bw-side')) return 0.62;
+  if (typeof viewsActive === 'function' && viewsActive()) { const pz = parseFloat(document.documentElement.style.getPropertyValue('--bw-pz')); return pz > 0 && S.zoom > 0 ? pz / S.zoom : 1; }
+  return 1;
+}
+const zoomEff = () => S.zoom * zoomBase();
+const zoomPctNow = () => Math.round(zoomEff() * 100);
+let zoomFillOn = false; // Fill height stays on (re-fitted when the ribbon opens / closes and the window resizes) until the next manual zoom
+/** Set the zoom (a fraction, 1 = 100 % true size), clamped to 25-400 %; keeps the document point under the window centre where it was. */
+function setZoom(z, o = {}) {
+  if (!o.fill) zoomFillOn = false;
+  const base = zoomBase();
+  const eff = zoomClamp(z);
+  const next = eff / base;
   const el = document.documentElement;
   const sh = el.scrollHeight || 1, sw = el.scrollWidth || 1;
   const cy = (window.scrollY + innerHeight / 2) / sh, cx = (window.scrollX + innerWidth / 2) / sw;
-  const changed = next !== S.zoom;
+  const changed = Math.abs(next - S.zoom) > 1e-9;
   S.zoom = next;
   if (changed) {
     render();
     const h = el.scrollHeight, w = el.scrollWidth;
-    if (h > innerHeight || w > innerWidth) window.scrollTo({ left: Math.max(0, cx * w - innerWidth / 2), top: Math.max(0, cy * h - innerHeight / 2), behavior: 'instant' });
+    if (!o.fill && (h > innerHeight || w > innerWidth)) window.scrollTo({ left: Math.max(0, cx * w - innerWidth / 2), top: Math.max(0, cy * h - innerHeight / 2), behavior: 'instant' });
   }
   viewPct();
   zoomPillSync();
@@ -1815,12 +1831,41 @@ function setZoom(z) {
 }
 /** The next preset above / below the current zoom (the buttons step through the list, not by a fixed 10 %). */
 function zoomStep(dir) {
-  const pct = Math.round(S.zoom * 100);
+  const pct = zoomPctNow();
   const p = dir > 0 ? ZOOM_PRESETS.find((v) => v > pct) : [...ZOOM_PRESETS].reverse().find((v) => v < pct);
   return setZoom((p ?? (dir > 0 ? 400 : 25)) / 100);
 }
-const zoomFitWidth = () => setZoom((document.documentElement.clientWidth - 96) / A4_W);
-const zoomFitHeight = () => setZoom((document.documentElement.clientHeight - (barH || 72) - 48) / A4_H);
+const zoomFitWidth = () => {
+  const pages = (document.getElementById('bw-pair')?.classList.contains('bw-side') || (typeof viewsMode === 'function' && viewsActive() && viewsMode() === 'spread')) ? 2 : 1;
+  return setZoom((document.documentElement.clientWidth - 96) / (A4_W * pages + (pages - 1) * 24));
+};
+/** Fill height (0.15.2 note 10): the page's top right under the ribbon / toolbar and its bottom just above the page pager (or the window's bottom
+ *  when there is no pager), the SAME gap on both sides. The gap is the view's own natural top gap (the reserved band + the page view's padding);
+ *  re-fitted when the ribbon opens, folds or finishes its transition, and on window resize, until another zoom is chosen. */
+function zoomFillNow() {
+  measureBar(true);
+  if (typeof viewsActive === 'function' && viewsActive()) viewsFit(); // the page views' fit-to-window scale depends on the band just measured: read it fresh
+  const bar = root.querySelector('.island');
+  const view = document.querySelector('#bw-pair .bw-view') || document.querySelector('#bw-pair main.bw-doc');
+  if (!view) return;
+  const barBottom = S.focus || !bar ? 0 : bar.offsetTop + bar.offsetHeight;
+  const pager = root.querySelector('.pager:not([hidden])');
+  const limit = pager ? pager.getBoundingClientRect().top : innerHeight;
+  window.scrollTo({ top: 0, behavior: 'instant' });
+  const natural = Math.max(0, view.getBoundingClientRect().top - barBottom);
+  const gap = Math.max(8, Math.min(28, natural)); // a tall reserved band above a continuous page is scrolled away, never kept as a gap
+  setZoom((limit - barBottom - 2 * gap) / A4_H, { fill: true });
+  const now = document.querySelector('#bw-pair .bw-view') || document.querySelector('#bw-pair main.bw-doc'); // render() replaced the nodes
+  window.scrollTo({ top: Math.max(0, (now || view).getBoundingClientRect().top - barBottom - gap), behavior: 'instant' });
+}
+function zoomFitHeight() { zoomFillOn = true; zoomFillNow(); return S.zoom; }
+{
+  let t = 0;
+  const again = () => { if (!zoomFillOn) return; clearTimeout(t); t = setTimeout(() => { if (zoomFillOn) zoomFillNow(); }, 140); };
+  addEventListener('resize', again);
+  addEventListener('resize', () => setTimeout(() => { zoomPillSync(); viewPct(); }, 0)); // the page views refit to the window: the pill follows the real size
+  window.__bwFillAgain = again; // the ribbon's height changes (the bar's ResizeObserver in measureBar) and its transitionend call this
+}
 /** The % field of the View tab: accepts 25-400, anything else is corrected inline to the nearest limit (no toast). */
 function zoomFromField(v) {
   const n = parseFloat(String(v ?? '').replace(/[^\d.]/g, ''));
@@ -1835,7 +1880,7 @@ function zoomFromField(v) {
     if (e.composedPath?.().some((x) => x === document.getElementById('bw-ui-host'))) return;
     e.preventDefault();
     acc *= e.deltaY < 0 ? 1.1 : 1 / 1.1;
-    if (!raf) raf = requestAnimationFrame(() => { raf = 0; const f = acc; acc = 1; setZoom(S.zoom * f); });
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; const f = acc; acc = 1; setZoom(zoomEff() * f); });
   }, { passive: false });
 }
 /** Does runAction know this id? (the core switch below, the registered extensions' actions, export.* and the diagram tools) */
@@ -2998,7 +3043,10 @@ const BRIDGE = (() => {
     if (!M[S.svc]?.[ed]) throw err('BAD_ARGS', `the document has no "${ed}" edition`, { editions: Object.keys(M[S.svc] || {}) });
     return ed;
   }
-  const ACTIONS = ['renumber', 'check', 'saveHtml', 'share', 'exportPdf'];
+  // 0.15.2 note 12: the allow-list adds SAFE actions (they change the view, never the content); destructive ones stay locked (REFUSED, never run)
+  const SAFE = ['zoomPct', 'zoomHeight', 'zoomWidth', 'zoomIn', 'zoomOut', 'zoomReset', 'theme', 'reading', 'find', 'save', 'outline', 'nextPage', 'prevPage'];
+  const ACTIONS = ['renumber', 'check', 'saveHtml', 'share', 'exportPdf', ...SAFE];
+  const LOCKED = /^(delete|remove|close|stop|power|clear|purge|reset|wipe|erase|trash|quit|exit)/i;
   const tools = {
     async list({ project } = {}) {
       const rows = ((await EXT.library?.all()) || []).filter((e) => e.kind !== 'template' && !e.deletedAt && EXT.library.isDoc(e.id));
@@ -3045,9 +3093,11 @@ const BRIDGE = (() => {
       return { applied: list.length, group: g, opsLen: e.ops.length, hash: await sha(JSON.stringify(e.doc)), doc: S.svc, locale: ed, actor: { id: `agent:${slug(name)}`, name } };
     },
     async action({ id, args = {} } = {}, doc) {
+      if (LOCKED.test(String(id || ''))) throw err('REFUSED', `"${id}" is locked: a destructive action is never run through the bridge`, { id });
       if (!ACTIONS.includes(id)) throw err('UNKNOWN_ACTION', `unknown action "${id}"`, { allowed: ACTIONS });
       const ed = await target(doc, args.locale);
-      if (id === 'check') return { id, findings: validate().map(([level, message, path]) => ({ level, message, path })) };
+      if (id === 'check') return checkAll();
+      if (SAFE.includes(id)) return safeAction(id, args);
       if (id === 'share') return shareAs(args);
       const before = cur(ed).ops.length;
       await asAgent(args.agent || 'Claude', async () => { await runAction(id); }, true); // an action may log after an await: bound until it settles
@@ -3075,6 +3125,45 @@ const BRIDGE = (() => {
       return { id: entry.id, title: entry.title, project: project || null };
     },
   };
+  /** /business-wrap:check (0.15.2 note 13): the Check panel's findings, plus the spelling error counts (ar / en) and the diagram legibility warnings. */
+  async function checkAll() {
+    const findings = validate().map(([level, message, path]) => ({ level, message, path }));
+    const sp = EXT.spell;
+    let spelling = { enabled: false, ar: 0, en: 0, total: 0 };
+    if (sp?.enabled?.(S.ed)) {
+      try { await sp.scan?.(); } catch { /* the engine may be loading: count what is there */ }
+      const list = sp.issues?.() || [];
+      spelling = { enabled: true, ar: list.filter((i) => i.lang === 'ar').length, en: list.filter((i) => i.lang === 'en').length, total: list.length };
+    }
+    const d = cur().doc;
+    const diagramWarnings = [];
+    (d.chapters || []).forEach((ch, ci) => (ch.sections || []).forEach((sec, si) => (sec.blocks || []).forEach((bl, bi) => {
+      if (bl.kind !== 'diagram' || !bl.model || typeof DIAGRAM.legibility !== 'function') return;
+      const r = diagramLegibility(bl.model, d);
+      if (r && !r.ok) diagramWarnings.push({ path: `/chapters/${ci}/sections/${si}/blocks/${bi}`, minPtPrinted: r.minPtPrinted, minPt: r.minPt, small: (r.small || []).length, overlaps: (r.overlaps || []).length });
+    })));
+    return { id: 'check', findings, spelling, diagramWarnings };
+  }
+  /** The safe view actions: zoom, theme, reading mode, find, save, outline, page turns. None adds an op to the document. */
+  async function safeAction(id, args) {
+    const zoomed = () => ({ id, zoomPct: zoomPctNow(), zoom: +zoomEff().toFixed(4) });
+    switch (id) {
+      case 'zoomPct': { const v = args.value ?? args.percent ?? args.pct; if (!Number.isFinite(parseFloat(v))) throw err('BAD_ARGS', 'zoomPct needs args {value} (25 to 400)'); zoomFromField(v); return zoomed(); }
+      case 'zoomHeight': zoomFitHeight(); return zoomed();
+      case 'zoomWidth': zoomFitWidth(); return zoomed();
+      case 'zoomIn': case 'zoomOut': case 'zoomReset': await runAction(id); return zoomed();
+      case 'theme': { const want = args.mode ? args.mode === 'dark' : !S.dark; if (want !== S.dark) await runAction('dark'); return { id, dark: !!S.dark, theme: S.dark ? 'dark' : 'light' }; }
+      case 'reading': { const want = typeof args.on === 'boolean' ? args.on : !S.reading; if (want !== !!S.reading) await runAction('reading'); return { id, reading: !!S.reading }; }
+      case 'find': case 'outline': if (S.drawer !== id) await runAction(id); return { id, open: S.drawer === id };
+      case 'save': await runAction('save'); return { id, saved: true };
+      case 'nextPage': case 'prevPage': {
+        const dir = id === 'nextPage' ? 1 : -1;
+        if (viewsActive()) viewsGo(dir); else window.scrollBy({ top: dir * Math.round(innerHeight * 0.9), behavior: 'instant' });
+        return { id, page: (S.pageAt || 0) + 1, pages: S.pageN || 1 };
+      }
+      default: throw err('UNKNOWN_ACTION', `unknown action "${id}"`, { allowed: ACTIONS });
+    }
+  }
   /** The coworker-share dialog driven like a person would: recipient and note typed in, «Share» pressed, the result card read, then closed. */
   async function shareAs({ to = '', note = '' } = {}) {
     const wait = async (f, ms = 8000) => { for (const t0 = Date.now(); Date.now() - t0 < ms; await new Promise((r) => setTimeout(r, 60))) { const v = f(); if (v) return v; } return null; };

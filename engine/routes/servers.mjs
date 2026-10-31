@@ -2,15 +2,12 @@
 // engine/protocol.mjs).
 //   GET  /api/servers                      → {self, servers:[{port,version}], browsers}  what a stop would close (the confirm dialog)
 //   POST /api/servers/stop {confirm:true}  → every open tab of this server saves (the `flush` event), every other
-//        Business-Wrap server is asked to do the same, then everything this install started stops through the same code as
-//        `business-wrap close` (hosts, strays, host-launched browsers) and this server goes last, like power off.
+//        Business-Wrap server is asked to do the same, then ONLY this host process stops (0.15.2 note 4: no browser window or tab is closed; the page shows «server off»).
 //   POST /api/servers/stop {confirm:true, flushOnly:true}   only the flush (what the first server asks of its peers)
 // A request that changes anything must come from this server's own page (serve.mjs already refuses a foreign Origin).
-import fs from 'node:fs';
-import { close } from '../cli.mjs';
 import { readJson } from '../workspace.mjs';
-import { hostFile, hostState } from '../host.mjs';
 import { emit } from './session.mjs';
+import { stopSelf } from './power.mjs';
 import { probeServers, countBrowsers, flushPeers } from '../protocol.mjs';
 
 const GRACE = () => Number(process.env.BW_POWER_GRACE_MS || 1500);
@@ -42,13 +39,6 @@ export default async (req, url, send, ctx) => {
   const selfPort = ctx.server?.address?.()?.port ?? null;
   const peers = await flushPeers({ selfPort });
   send(200, { ok: true, grace: GRACE(), servers: peers.length + 1 });
-  setTimeout(async () => {
-    const self = [process.pid, process.ppid]; // this server and its supervisor stop themselves, after everything else
-    try { await close({ keep: self }); } catch { /* best effort: this server still stops */ }
-    if (self.includes(hostState()?.pid)) fs.rmSync(hostFile(), { force: true });
-    ctx.server?.close();
-    ctx.server?.closeAllConnections?.();
-    if (process.env.BW_SERVE_CHILD) setTimeout(() => process.exit(0), 300);
-  }, GRACE());
+  setTimeout(() => stopSelf(ctx), GRACE());
   return true;
 };

@@ -1,7 +1,7 @@
 /* Power off (owner request 2026-10-29). A command (Settings › Local server, under the single server toggle; no top-bar button since 0.15.0), only when the editor is served by the local
  * host: a confirm dialog (Cancel has the focus, Esc cancels) → this tab and every other tab of this host save
  * (the draft, the library entry, the session state) → POST /api/power/off (engine/routes/power.mjs) → the «stopped»
- * page. The server then stops everything this install started, Edge windows on its own profile included, and itself.
+ * page. The server then stops ONLY itself (0.15.2 note 4: the page and every browser window stay open; the card has a «Turn the host on» button).
  * Other tabs hear it on a BroadcastChannel and save and show the same page. */
 IC.powerOff = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="M12 2v10" /> <path d="M18.4 6.6a9 9 0 1 1-12.77.04" /> </svg>';
 const PW = (() => {
@@ -19,11 +19,22 @@ const PW = (() => {
     d.className = 'pw-off';
     d.setAttribute('role', 'alert');
     d.dataset.theme = S.dark ? 'dark' : 'light';
-    d.innerHTML = `<div class="pw-card"><span class="pw-mark">${IC.powerOff}</span><h2>${esc(t('pwOffTitle'))}</h2><p>${esc(t('pwOffLead'))}</p></div>`;
+    d.innerHTML = `<div class="pw-card"><span class="pw-mark">${IC.powerOff}</span><h2>${esc(t('pwOffTitle'))}</h2><p>${esc(t('pwOffLead'))}</p><button type="button" class="b" data-k="pw-on"><span class="w">${esc(t('pwTurnOn'))}</span></button></div>`;
+    d.querySelector('[data-k="pw-on"]').addEventListener('click', () => { EXT.server?.start?.(); });
+    waitDown();
     (root.querySelector('.shell') || root).appendChild(d);
+    document.documentElement.dataset.bwTitle = document.title;
     document.title = t('pwOffTitle');
     document.documentElement.dataset.bwPower = 'off';
   }
+  /** The server answers for a moment after the answer (the grace): once it is really gone the toggle shows «offline», so «Turn on» can start it. */
+  async function waitDown() {
+    for (const t0 = Date.now(); Date.now() - t0 < 15000;) {
+      await new Promise((r) => setTimeout(r, 400));
+      try { await fetch('/api/version', { cache: 'no-store', signal: AbortSignal.timeout(1500) }); } catch { EXT.server?.markOff?.(); return; }
+    }
+  }
+  window.addEventListener('bw:server', (e) => { if (e.detail?.online) { root.querySelector('.pw-off')?.remove(); document.documentElement.dataset.bwPower = 'on'; document.title = document.documentElement.dataset.bwTitle || document.title; } });
   bc && (bc.onmessage = async (e) => { if (e.data === 'off') { await saveHere(); stopped(); } });
   function confirmOff() {
     const d = root.querySelector('.dialog');

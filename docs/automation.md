@@ -36,7 +36,7 @@ Result shapes the tools expect from the tab: `list` → `{documents:[{id, title,
 - ✍️ `locale` is required for `editor_ops`; the mirror default is `false` and explicit.
 - 🧪 A batch is checked against the edits contract v1 (op names, JSON-pointer paths, `value` where needed) before any call: `BAD_OP` costs no round trip.
 - 🔁 One batch is ONE undo group, saved to the library and signed in the provenance log as the agent (never with the human's key). An op may carry `old`; a mismatch is `CONFLICT` and nothing is applied.
-- 🛑 `editor_action` is an allow-list: `renumber`, `check`, `saveHtml`, `share {to, note}`, `exportPdf`. Anything else is `UNKNOWN_ACTION`.
+- 🛑 `editor_action` is an allow-list: `renumber`, `check`, `saveHtml`, `share {to, note}`, `exportPdf`, and (0.15.2) the safe view actions `zoomPct {value 25-400}`, `zoomHeight`, `zoomWidth`, `zoomIn`, `zoomOut`, `zoomReset`, `theme {mode: dark|light}` (no mode toggles), `reading {on}`, `find`, `save`, `outline`, `nextPage`, `prevPage`. `check` also answers `spelling {enabled, ar, en, total}` and `diagramWarnings [{path, minPtPrinted, minPt, small, overlaps}]`. A destructive action (delete, close, stop the server, clear, power) is locked: `REFUSED` (423), never run. Anything else is `UNKNOWN_ACTION`.
 - 🔒 The token authorises local-process control of the editor on `127.0.0.1` only (same trust as `open_in_editor`). `BW_HOST_URL` + `BW_HOST_TOKEN` point the tools at another host (tests).
 
 ## 🖥️ The page surface an automation can rely on (core, 0.15.0)
@@ -87,7 +87,7 @@ business-wrap editor ops --doc BW-SRS-001 --locale ar --ops-file ops.json --agen
 - ✍️ `locale` مطلوب في `editor_ops`، والمرآة افتراضيا `false` وبشكل صريح.
 - 🧪 تُفحص الدفعة بعقد التعديلات الإصدار 1 قبل أي استدعاء، فيكلّف `BAD_OP` رحلة صفرا.
 - 🔁 الدفعة الواحدة خطوة تراجع واحدة، تُحفظ في المكتبة وتُوقَّع في سجل المصدر باسم الوكيل (لا بمفتاح الإنسان أبدا). وإن حمل التعديل `old` فعدم التطابق `CONFLICT` ولا يُطبَّق شيء.
-- 🛑 `editor_action` قائمة سماح: `renumber` و`check` و`saveHtml` و`share {to, note}` و`exportPdf`؛ وما سواها `UNKNOWN_ACTION`.
+- 🛑 `editor_action` قائمة سماح: `renumber` و`check` و`saveHtml` و`share {to, note}` و`exportPdf`، ومعها (0.15.2) إجراءات العرض الآمنة: `zoomPct {value من 25 إلى 400}` و`zoomHeight` و`zoomWidth` و`zoomIn` و`zoomOut` و`zoomReset` و`theme {mode: dark|light}` (دون mode يبدّل) و`reading {on}` و`find` و`save` و`outline` و`nextPage` و`prevPage`. ويعيد `check` أيضا `spelling {enabled, ar, en, total}` و`diagramWarnings`. أي إجراء مدمّر (حذف أو إغلاق أو إيقاف الخادم أو مسح) مقفل: `REFUSED` (423) ولا يُنفَّذ أبدا؛ وما سواها `UNKNOWN_ACTION`.
 - 🔒 الرمز يخوّل التحكم بالمحرر من عملية محلية على `127.0.0.1` فقط (الثقة نفسها في `open_in_editor`).
 
 ## 🖥️ سطح الصفحة الذي تعتمد عليه الأتمتة (الأساس، 0.15.0)

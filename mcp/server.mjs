@@ -70,7 +70,7 @@ const guard = (fn) => async (args) => {
 
 const BASE_INSTRUCTIONS = 'Business-Wrap: bilingual (AR RTL / EN LTR) requirements documents. build_editor makes the HTML editor; '
   + 'apply_edits / validate_edits work on edits files (contract v1; a newer edits version is refused until Business-Wrap is updated); '
-  + 'export_document prints PDF + DOCX. To edit the document the user has OPEN in the editor use editor_list_documents / editor_outline / editor_get / editor_ops (one undo step, signed as you), editor_action, not apply_edits. '
+  + 'export_document prints PDF + DOCX. To edit the document the user has OPEN in the editor use editor_list_documents / editor_outline / editor_get / editor_ops (one undo step, signed as you), editor_action (renumber, check, saveHtml, share, exportPdf and the safe view actions zoomPct/zoomHeight/zoomWidth/theme/reading/find/save/outline/nextPage; destructive ones are REFUSED), not apply_edits. '
   + 'check_update reports a newer release; apply_update installs it only with confirm: true after the user agreed (a Claude Code plugin is updated by the client: /plugin update, then /reload-plugins). '
   + 'Errors from the editor tools carry a code: NO_HOST NO_DOC TAB_TIMEOUT CONFLICT BAD_OP UNKNOWN_ACTION NO_TAB REFUSED RESTART_REQUIRED. '
   + 'Local learning: call learning_rules before harvesting, authoring or generating and apply the rules; call learning_distill after the user edits or exports; tell the user in one line which learned rules were applied.';
