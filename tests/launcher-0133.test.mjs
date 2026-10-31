@@ -225,20 +225,22 @@ try {
     const badPost = await fetch(`http://127.0.0.1:${A.port}/api/servers/stop`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
   const foreign = await fetch(`http://127.0.0.1:${A.port}/api/servers/stop`, { method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://example.com' }, body: '{"confirm":true}' });
   check('stop/served: no confirm → 400, a foreign page → 403, nothing stops', badPost.status === 400 && foreign.status === 403 && (await up(A.port)) && (await up(B.port)));
-  // two servers: Stop from the first page closes both; the second page's tabs were told to flush first
+  // two servers: 0.15.2 note 4: Stop from the first page stops ONLY that host; the second server's page is told to flush first and keeps running; `stop --all` (the handler) then stops it
   await sb.evaluate(() => { window.__flushes = 0; }); // count only what this press causes
   await sa.bringToFront(); // two pages in one window: only the front one has focus
   await press(sa, 'srvStop');
   const shown = await until(async () => { const c = await card(sa); return c.st === 'offline' && !!(await toastTexts(sa)).some((x) => /تراجع|Undo/.test(x)); }, 12000);
   check('stop/two servers: one press → the toggle goes offline and an «تراجع» (Undo) toast is offered (no dialog)', shown);
-    const gone = await until(() => ![A.pid, B.pid].some(alive), 25000);
-  check('stop/two servers: both servers (two ports) are gone, the unrelated node process is alive', gone && alive(other), JSON.stringify([A, B].map((s) => [s.pid, alive(s.pid)])));
+    const gone = await until(async () => !alive(A.pid) && !(await up(A.port)), 25000);
+  check('stop/two servers: the pressed server (its port) is gone; the other server and the unrelated node process are alive (0.15.2: Stop stops only this host)', gone && alive(B.pid) && (await up(B.port)) && alive(other), JSON.stringify([A, B].map((s) => [s.pid, alive(s.pid)])));
   check('stop/two servers: the other server\'s open page was told to save first (a flush event arrived)', (await sb.evaluate(() => window.__flushes).catch(() => 0)) >= 1, 'flush count: ' + (await sb.evaluate(() => window.__flushes).catch(() => 'page gone')));
+  const hAll = handler('business-wrap://stop');
+  check('stop/two servers: stop --all (the handler) still stops every remaining server of this install; the unrelated node process lives', hAll.status === 0 && (await until(async () => !alive(B.pid) && !(await up(B.port)), 25000)) && alive(other), hAll.stdout + hAll.stderr);
   check('stop/two servers: no page errors', !sa.errors.length && !pa.errors.length, [...sa.errors, ...pa.errors].join(' | '));
   await ctxA.close();
   await ctxB.close();
 
-  // one server, a stray plus a recorded host: Stop from the page stops them all
+  // one server, a stray plus a recorded host: Stop from the page stops only the pressed stray (0.15.2); `stop --all` stops the background host too
   const [cp, hp] = [await free(), await free()];
   probeEnv([cp, hp]);
   const C = await server(cp);
@@ -246,8 +248,12 @@ try {
   const ctxC = await browser.newContext({ viewport: { width: 1366, height: 860 } });
   const sc = await openPage(ctxC, `http://127.0.0.1:${C.port}/`, [C.port, hp]);
   await press(sc, 'srvStop');
-    const gone3 = await until(async () => !alive(C.pid) && !(await up(C.port)) && !(await up(hp)), 25000);
-  check('stop/stray + host: a stray server and the background host both stop; the unrelated process lives; host.json is removed', gone3 && alive(other) && !hostPort(), `${oh.status} ${hp}`);
+    const goneC = await until(async () => !alive(C.pid) && !(await up(C.port)), 25000);
+  const hostStays = (await up(hp)) && !!hostPort();
+  check('stop/stray + host: Stop from the page stops only that stray server; the background host keeps running and the unrelated process lives', goneC && hostStays && alive(other), `${oh.status} ${hp}`);
+  const hAll3 = handler('business-wrap://stop');
+  const gone3 = await until(async () => !(await up(hp)), 25000);
+  check('stop/stray + host: stop --all stops the background host; the unrelated process lives; host.json is removed', hAll3.status === 0 && gone3 && alive(other) && !hostPort(), `${hAll3.stdout}${hAll3.stderr} ${hp}`);
   await ctxC.close();
 
   // ── STOP (file:// page) ──

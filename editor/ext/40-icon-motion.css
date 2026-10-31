@@ -251,6 +251,16 @@
 [data-ic="calm"] > * { --s:.82; --icm: icm-recede var(--mvt); }
 [data-ic="focus"] > * { --s:1.16; --icm: icm-pop var(--mvt); }
 [data-ic="spell"] > * { --icm: icm-draw var(--mvt); }
+/* 0.15.3 Spelling bar «الإملاء» (0.15.2 added the 9 icons without a move): same house moves, same hover-intent trigger as the rules above */
+[data-ic="spellNext"] > * { --x:2.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="spellPrev"] > * { --x:-2.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="spellFix"] > * { --s:1.18; --icm: icm-pop var(--mvt); }
+[data-ic="spellFixAll"] > * { --s:1.22; --icm: icm-pop var(--mvt); }
+[data-ic="spellIgnore"] > * { --s:.8; --icm: icm-recede var(--mvt); }
+[data-ic="spellIgnoreAll"] > * { --s:.78; --icm: icm-recede var(--mvt); }
+[data-ic="spellAdd"] > * { --y:3px; --icm: icm-from var(--mvt); }
+[data-ic="spellCount"] > * { --s:1.14; --icm: icm-pop var(--mvt); }
+[data-ic="spellLang"] > * { --r:12deg; --icm: icm-tilt var(--mvt); }
 [data-ic="snap"] > * { --y:-2px; --icm: icm-nudge var(--mvt); }
 [data-ic="duplicate"] > * { --x:1.5px; --y:1.5px; --icm: icm-nudge var(--mvt); }
 [data-ic="delete"] > * { --icm: icm-shake var(--mvt); }
