@@ -129,10 +129,24 @@ const day = (d) => { const x = d instanceof Date ? d : new Date(d ?? Date.now())
 export const stamp = (d) => { const x = d instanceof Date ? d : new Date(d ?? Date.now()); return `${day(x)} ${pad2(x.getHours())}-${pad2(x.getMinutes())}`; };
 const RESERVED = /^(con|prn|aux|nul|com\d|lpt\d)$/i;
 export const UNTITLED = 'مستند بلا عنوان - Untitled';
+/** Longest document folder name (T15, 0.15.3: was 80). The Windows path limit is shared by the folder, the file inside it and
+ *  the exported file's own title part (see uniquePath), so the folder keeps the whole name up to here and a longer one is cut. */
+export const FOLDER_MAX = 100;
+/** The longest full path written (Windows MAX_PATH is 260 with the terminator; a few characters stay free for " (2)"). */
+export const PATH_MAX = 250;
+/** A clean cut: at most `max` characters, on a word boundary (a space or a hyphen) when one lies in the second half, else on the
+ *  character; no ellipsis, no trailing separator. Arabic and English alike (the text is NFC, so no mark is split from its letter). */
+export const cutWords = (t, max) => {
+  if (t.length <= max) return t;
+  const head = t.slice(0, max);
+  let cut = head;
+  if (!/[\s-]/.test(t[max])) { const i = Math.max(head.lastIndexOf(' '), head.lastIndexOf('-')); if (i >= Math.floor(max / 2)) cut = head.slice(0, i); }
+  return cut.replace(/[-.\s]+$/, '').trim();
+};
 /** The title as a file or folder name: Arabic and the spaces between words kept, path-hostile characters with the
- *  spaces around them → -, no trailing dot or space, at most 80 characters, never a Windows device name. */
-export const titleStem = (s) => {
-  const t = String(s || '').normalize('NFC').replace(/\s*[\\/:*?"<>|\u0000-\u001f]+\s*/g, '-').replace(/\s+/g, ' ').replace(/-{2,}/g, '-').replace(/^[-.\s]+|[-.\s]+$/g, '').slice(0, 80).replace(/[.\s]+$/, '').trim();
+ *  spaces around them → -, no trailing dot or space, at most FOLDER_MAX characters (cut on a word boundary), never a Windows device name. */
+export const titleStem = (s, max = FOLDER_MAX) => {
+  const t = cutWords(String(s || '').normalize('NFC').replace(/\s*[\\/:*?"<>|\u0000-\u001f]+\s*/g, '-').replace(/\s+/g, ' ').replace(/-{2,}/g, '-').replace(/^[-.\s]+|[-.\s]+$/g, ''), max).replace(/[.\s]+$/, '').trim();
   return !t ? UNTITLED : RESERVED.test(t) ? `${t}-` : t;
 };
 export const LANG_WORD = { ar: 'العربية', en: 'English', both: 'both' };
@@ -179,7 +193,7 @@ export function allocFolder(idx, docsDir, { ids = [], titles = [], hist = [] } =
     const taken = key(base);
     if (!taken) folder = base;
     else if (!idx.folders[taken].ids.length || !ids.length) folder = taken;
-    else for (let n = 2; ; n++) { folder = `${base.slice(0, 74)} (${n})`; if (!key(folder) && !fs.existsSync(path.join(docsDir, folder))) break; }
+    else for (let n = 2; ; n++) { folder = `${cutWords(base, FOLDER_MAX - 6)} (${n})`; if (!key(folder) && !fs.existsSync(path.join(docsDir, folder))) break; }
   }
   const e = (idx.folders[folder] ||= { ids: [], titles: [], history: [] });
   const grew = ids.some((i) => !e.ids.includes(i)) || titles.some((x) => !e.titles.includes(x));
@@ -273,6 +287,9 @@ export function uniquePath(dir, name) {
     const { folder, dir: fdir } = docFolder(dir, { titles: [t] });
     let rest = parts.slice(1).join(path.sep);
     if (folder !== t) rest = rest.replace(` ${t} - `, ` ${folder} - `).replace(`${t}.html`, `${folder}.html`);
+    // T15: the folder keeps the whole name; the exported file's title part is cut (on a word boundary) only as far as the Windows path limit needs
+    const over = path.join(fdir, rest).length - PATH_MAX;
+    if (over > 0 && rest.includes(` ${folder} - `)) rest = rest.replace(` ${folder} - `, ` ${cutWords(folder, Math.max(12, folder.length - over))} - `);
     base = path.join(fdir, rest);
   } else if (name.includes('/')) base = path.join(dir, path.basename(name)); // a folder that is not the documents folder (a hand-made one): the file name only
   fs.mkdirSync(path.dirname(base), { recursive: true });

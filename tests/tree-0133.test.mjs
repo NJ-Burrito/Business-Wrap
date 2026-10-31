@@ -71,7 +71,7 @@ check('outName: no uuid, "editor", "service", "out" or "ENG" in the name', !/edi
 
 /* ───────── 2. names: illegal characters, Arabic, collision, device names, length ───────── */
 check('titleStem: illegal characters → -, Arabic kept, spaces kept', W.titleStem('a:b/c*d?e"f<g>h|i') === 'a-b-c-d-e-f-g-h-i' && W.titleStem('تصريح: فعالية/عامة') === 'تصريح-فعالية-عامة' && W.titleStem('Two  words here') === 'Two words here', W.titleStem('تصريح: فعالية/عامة'));
-check('titleStem: no trailing dot or space, Windows device names get a suffix, empty → the Untitled name, at most 80 characters', W.titleStem('name. . ') === 'name' && W.titleStem('CON') === 'CON-' && W.titleStem('   ') === W.UNTITLED && W.titleStem('x'.repeat(200)).length === 80);
+check('titleStem: no trailing dot or space, Windows device names get a suffix, empty → the Untitled name, at most 100 characters (0.15.3 T15, was 80)', W.titleStem('name. . ') === 'name' && W.titleStem('CON') === 'CON-' && W.titleStem('   ') === W.UNTITLED && W.titleStem('x'.repeat(200)).length === 100);
 {
   const a = W.docFolder(D.docs, { ids: ['doc-a1111111'], titles: ['Same title'] });
   const b = W.docFolder(D.docs, { ids: ['doc-b2222222'], titles: ['Same title'] });

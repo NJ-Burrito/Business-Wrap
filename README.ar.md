@@ -144,6 +144,7 @@ node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|e
 | `/business-wrap:export <doc.json> [ar\|en]` | PDF وDOCX، ثم فحوص العرض والتصدير |
 | `/business-wrap:verify-history <file>` | يفحص السجل الكاشف للعبث |
 | `/business-wrap:report <from> <to>` | تقرير العمل لفترة |
+| `/business-wrap:reset [--all] [--dry-run]` | يعرض كل مكتبة وملف شخصي لـ Edge ومجلد بيانات إضافة يحتفظ بها البرنامج، وبعد موافقتك فقط (`--yes`) يرسلها إلى سلة المحذوفات حتى لا تعود مكتبة قديمة |
 | `/business-wrap:update [--check\|--notes\|--apply --yes]` | يفحص، أو يعرض الجديد، أو يثبّت (بعد موافقتك فقط) |
 | `/business-wrap:tabs [project]` | الوثائق المفتوحة في المحرر الحي وصحة الخادم (يحتاج المحرر مفتوحًا) |
 | `/business-wrap:outline [doc-id] [ar\|en]` | مخطط الوثيقة المفتوحة: الفصول والأقسام والكتل |
@@ -155,6 +156,8 @@ node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|e
 | `/business-wrap:action <name>` | يشغّل إجراءً آمنًا واحدًا في المحرر: `check` و`renumber` و`saveHtml` و`exportPdf` و`share`، والتكبير، والمظهر، ووضع القراءة، والبحث، والحفظ، والفهرس، والصفحة التالية والسابقة. وأي إجراء يحذف أو يغلق أو يوقف شيئًا يُرفض |
 
 الأوامر الثمانية الأخيرة (من `tabs` إلى `action`) تكلّم المحرر المفتوح وتحتاجه مفتوحًا: وبلا لسان محرر تقول ذلك بدل أن تخمّن.
+
+🧹 **إعادة ضبط (بداية نظيفة).** إزالة البرنامج لا تزيل مكتباتك: الإصدارات القديمة حفظتها خارج البرنامج (`DocumentsBusiness-Wrap` و`DownloadsBusiness-Wrap`) والتشغيل الجديد يستوردها من جديد. الأمر `business-wrap doctor` يعرض كل مجلد عمل وملف Edge شخصي ومسار بيانات إضافة معروف. الأمر `business-wrap reset --dry-run` يطبع ما سيُرسل، و`business-wrap reset --yes` يرسل حالة الجهاز (ملف Edge الشخصي ومجلدات `.system` والإعدادات المحلية) إلى سلة المحذوفات؛ و`--all` يرسل أيضا مجلدات العمل كاملة (مستنداتك وتصديراتك) وبيانات الإضافة. لا يحذف نهائيا أبدا فيمكن استعادة كل شيء من السلة، وبلا `--yes` في طرفية غير تفاعلية يرفض.
 
 ودون Claude Code تعمل الأوامر نفسها بـ `npm run cli -- <verb>` (مثلًا `npm run cli -- open samples/event-permit` و`npm run host:close`). كل أمر يعمل دون شبكة ودون ذكاء اصطناعي.
 
