@@ -1,15 +1,12 @@
-/* Business-Wrap editor — explanation panel (0.15.0), concatenated after views.js.
- * Owner note 10 (2026-10-30): ONE panel on the physical RIGHT of the screen (the shell is fixed right-to-left, so it no longer sits
- * with the slide-over drawers on the left). Rest the pointer on a tool, a ribbon tab, a field or a toggle for 400 ms (keyboard
- * focus: 400 ms too; touch: a 500 ms long press) and the panel shows its name, its shortcut, one plain explanation
- * (i18n `explain.<id>`, Arabic and English) and its own picture (xpl-art.js: XPL_ART, one drawing per id, no text in it).
- * Moving along a row of tools within 600 ms of leaving one shows the next card at once (no flicker). There is no "seen" memory:
- * the card shows every time, and it stays when the pointer leaves (the panel is a reference area, not a tooltip). The user
- * closes the panel with its X; an edge tab on the right brings it back (state: localStorage bw:xpl-panel, '0' = closed).
- * An old bw:explainers='0' closes it once (migration); nothing else reads bw:explainers any more. While a slide-over drawer is
- * open below 1280 px the panel steps aside to its edge tab by itself (CSS), without touching the saved choice; at 1280 px and
- * wider both show (the drawers are on the left, the panel on the right, and the drawers hold most of the controls to explain).
- * Declarations only (hoisted): xplWire() runs from uxAfterBuild(). */
+/* Business-Wrap editor — explanation panel (0.15.0; hover intent + overlay in 0.15.2), concatenated after views.js.
+ * ONE panel on the physical RIGHT of the screen. It is an OVERLAY (.bw-sidepanel, ux.css): it never pads the body, never pushes the
+ * pages and changes no zoom, open or closed. Its card shows only after INTENT: the pointer RESTS on one tool (speed under XPL_SPEED
+ * and within XPL_DRIFT px of where it settled) for XPL_INTENT ms; keyboard focus waits the same time. Once a card is on screen,
+ * resting on another tool swaps the content in place after XPL_SWAP ms (no close/open, no flash). Sweeping across tools, a tool that
+ * is disabled or hidden, or a pointer that already left, never opens anything. The card stays when the pointer leaves the ribbon
+ * (the panel is a reference area); the user closes the panel with its X, an edge tab brings it back (localStorage bw:xpl-panel,
+ * '0' = closed). No "seen" memory. An old bw:explainers='0' closes it once. Below 1280 px an open drawer sends the panel to its edge tab.
+ * Touch: a 500 ms long press. Declarations only (hoisted): xplWire() runs from uxAfterBuild(). */
 
 /** Which explainer a control has: data-x (a field), data-a (a tool), data-dg (a selection picker), data-k / data-f (panel option), a ribbon tab. */
 function xplKey(el) {
@@ -35,15 +32,47 @@ function xplKey(el) {
   if (el.dataset.lab) return 'design.label';
   return '';
 }
-const XPL_DELAY = 400; // ms the pointer or the focus rests on a control before its card shows
-const XPL_WARM = 600; // ms after leaving a control in which the next one shows at once
+const XPL_INTENT = 500; // ms the pointer must REST on one tool before the card opens (a deliberate dwell: long enough that a sweep or a reach never triggers it, short enough to feel helpful; the old 400 ms fired on slow sweeps)
+const XPL_SWAP = 250; // ms of rest on another tool before an open card swaps its content
+const XPL_SPEED = 0.2; // px per ms (200 px/s): the pointer counts as resting below this; aimed movement is 500-2000 px/s, hand tremor well under 50
+const XPL_DRIFT = 8; // px the pointer may creep from where it settled before the rest starts over
 const XPL_HOLD = 500; // ms of a touch long-press
-const XPL_PAD_MIN = 1280; // below this width the page is not pushed aside (the panel may cover its edge)
-function xplDelay() { return XPL_DELAY; }
+const XPL_SLIDE = 220; // ms of the overlay slide (see bwSidePanelOpen / bwSidePanelClose)
+
+/** SHARED OVERLAY PANEL (.bw-sidepanel, ux.css): a fixed panel that slides over the pages and never moves them. Any side panel (the spelling
+ * panel too) takes the class and calls these two. `apply` runs when the panel's state really changes (after the slide-out; before the slide-in).
+ * Not tied to the OS reduced-motion setting: only the editor's calm button (.shell[data-calm="1"]) makes it instant. */
+function bwSidePanelOpen(el, apply) {
+  clearTimeout(el.__spT);
+  el.style.transition = 'none';
+  el.dataset.slide = 'out'; // start parked off the edge, with no transition on the way there
+  if (apply) apply();
+  void el.offsetWidth;
+  el.style.transition = '';
+  delete el.dataset.slide; // the transition now carries it in
+}
+function bwSidePanelClose(el, apply) {
+  clearTimeout(el.__spT);
+  if (el.closest('.shell')?.dataset.calm === '1') { if (apply) apply(); return; }
+  el.dataset.slide = 'out';
+  el.__spT = setTimeout(() => {
+    el.style.transition = 'none';
+    if (apply) apply();
+    delete el.dataset.slide;
+    void el.offsetWidth;
+    el.style.transition = '';
+  }, XPL_SLIDE + 20);
+}
+/** A tool that is really on screen: connected and not hidden (no layout box = no card). A greyed-out (disabled) tool still explains itself. */
+function xplUsable(el) {
+  if (!el?.isConnected) return false;
+  if (el.closest('[hidden], [inert]')) return false;
+  return el.getClientRects().length > 0;
+}
 /** The control a node belongs to when it has an explanation (null otherwise). */
 function xplTarget(node) {
   const el = node?.closest?.('button[data-a], select[data-a], select[data-dg], [data-x], .rb-tab[data-tab], .drawer [data-k], .drawer [data-f], .pop label.chk, .drawer :is([data-fpopen], [data-fplocal], [data-fpupload], [data-fprm], .vc-s, .vc-n, .vc-u, .cc-hex, input[type="color"], [data-dpart], [data-dmove], [data-lab])');
-  if (!el || el.closest('.palette, .xpl, .xpl-dock')) return null;
+  if (!el || el.closest('.palette, .xpl, .xpl-dock') || !xplUsable(el)) return null;
   if (el.matches('.pop label.chk')) { el.dataset.x = el.dataset.x || 'both'; }
   const k = xplKey(el);
   return k && I18N.ui[S.ui][`explain.${k}`] ? el : null;
@@ -58,21 +87,6 @@ function xplPanelVisible() {
   const head = root.querySelector('.xpl-dock .xd-h'); // the header is hidden whenever the dock is only its edge tab
   return !!head && getComputedStyle(head).display !== 'none';
 }
-/** The page makes room on the right while the panel is showing (wide screens only), so it never covers the document. */
-function xplPad() {
-  const de = document.documentElement;
-  const need = (root.querySelector('.xpl-dock')?.offsetWidth || 304) + 16;
-  const on = xplPanelVisible() && de.clientWidth >= XPL_PAD_MIN;
-  document.body.style.paddingRight = on ? `${need}px` : '';
-  // room is made only while the page still fits beside the panel: a wide page (a wide table, a long unbroken line) would otherwise gain a horizontal
-  // scroll bar from the padding alone (owner-flows L38); the panel then floats over the desk's edge instead
-  if (on && de.scrollWidth > de.clientWidth + 1) document.body.style.paddingRight = '';
-  // a page whose size changes later (page setup, a re-render) is re-checked: watch the sheets
-  if (typeof ResizeObserver === 'function') {
-    xplPad.ro ||= new ResizeObserver(() => { cancelAnimationFrame(xplPad.raf); xplPad.raf = requestAnimationFrame(xplPad); });
-    for (const m of document.querySelectorAll('main.bw-doc')) xplPad.ro.observe(m);
-  }
-}
 /** The one panel (built once, kept across rebuilds by UI_RUNTIME); its words follow the UI language. */
 function xplDock() {
   const shell = root.querySelector('.shell');
@@ -80,7 +94,7 @@ function xplDock() {
   let dock = shell.querySelector(':scope > .xpl-dock');
   if (!dock) {
     dock = document.createElement('aside');
-    dock.className = 'xpl-dock';
+    dock.className = 'xpl-dock bw-sidepanel';
     dock.innerHTML = '<header class="xd-h"><span class="i"></span><b class="xd-w"></b><button type="button" class="xd-x" aria-controls="bw-xpl-body"></button></header><div class="xd-b" id="bw-xpl-body"><div class="xph"><div class="xa" aria-hidden="true"></div><p></p></div></div><button type="button" class="xd-tab"><span class="i"></span></button>';
     shell.appendChild(dock);
     const tab = dock.querySelector('.xd-tab'); // closed (or stepped aside) the dock IS this 40 x 96 edge tab
@@ -88,8 +102,6 @@ function xplDock() {
     tab.addEventListener('click', () => { dock.dataset.force = '1'; xplPanelSet(true); });
     const card = root.querySelector('.xpl');
     if (card) dock.querySelector('.xd-b').appendChild(card);
-    if (typeof ResizeObserver === 'function') new ResizeObserver(() => xplPad()).observe(dock);
-    window.addEventListener('resize', xplPad);
   }
   const tab = dock.querySelector('.xd-tab');
   const open = xplPanelOpen();
@@ -114,53 +126,82 @@ function xplDock() {
   ph.querySelector('p').textContent = t('xpl.hint');
   ph.querySelector('.xa').innerHTML = xplArtFor('');
   dock.querySelector('.xd-b').hidden = !open;
-  xplPad();
   return dock;
 }
 function xplPanelSet(open) {
   ls.set('bw:xpl-panel', open ? '1' : '0');
+  const dock = root.querySelector('.xpl-dock');
   if (!open) xplClear();
-  xplDock();
+  if (!dock) { xplDock(); return; }
+  if (open) bwSidePanelOpen(dock, xplDock); // slides in over the pages
+  else if (xplPanelVisible()) bwSidePanelClose(dock, xplDock); // slides out, then only the edge tab stays
+  else xplDock();
 }
 function xplWire() {
   xplDock();
   if (root.__xplWired) return;
   root.__xplWired = true;
-  const st = { timer: 0, hold: 0, el: null, warmUntil: 0 };
+  // cand = the ONE tool a card is waiting for ({ el, k, src, x, y }); timer = its single rest timer; last = the previous pointer sample
+  const st = { timer: 0, hold: 0, el: null, cand: null, last: null };
   xplWire.st = st;
-  const arm = (el, delay) => {
+  const shown = () => root.querySelector('.xpl:not([hidden])');
+  const cancel = () => { clearTimeout(st.timer); st.timer = 0; st.cand = null; };
+  /** (Re)starts the rest timer for the candidate: INTENT for a first card, SWAP when a card is already on screen. */
+  const schedule = (c) => {
     clearTimeout(st.timer);
-    // the card replaces the native tooltip; the name the title gave moves to aria-label so it is never lost
-    if (el.title) { el.dataset.tt = el.title; el.removeAttribute('title'); if (!el.getAttribute('aria-label')) el.setAttribute('aria-label', el.dataset.tt); }
-    const k = xplKey(el);
-    st.timer = setTimeout(() => xplShow(el, k), delay);
+    st.cand = c;
+    st.timer = setTimeout(() => {
+      if (st.cand !== c) return; // the pointer or the focus moved on: this timer is stale
+      st.timer = 0; st.cand = null;
+      xplShow(c.el, c.k);
+    }, shown() ? XPL_SWAP : XPL_INTENT);
   };
-  const warm = () => (performance.now() < st.warmUntil ? 0 : xplDelay());
+  const quiet = (el) => { // the card replaces the native tooltip; the name the title gave moves to aria-label so it is never lost
+    if (el.title) { el.dataset.tt = el.title; el.removeAttribute('title'); if (!el.getAttribute('aria-label')) el.setAttribute('aria-label', el.dataset.tt); }
+  };
   root.addEventListener('pointerover', (e) => {
     if (e.pointerType === 'touch') return;
     const el = xplTarget(e.target);
-    // the card already shows this tool: nothing to do (compared by key: the ribbon repaints by morphing, so one button node can become another tool)
-    if (!el || root.querySelector('.xpl:not([hidden])')?.dataset.k === xplKey(el)) return;
-    arm(el, warm());
+    if (!el) return;
+    quiet(el);
+    const k = xplKey(el);
+    // the card already shows this tool (compared by key: the ribbon repaints by morphing, so one button node can become another tool)
+    if (shown()?.dataset.k === k) { cancel(); return; }
+    // the same tool again (a child of it, or the ribbon swapped the button under a resting pointer): keep the timer already running
+    if (st.cand && st.cand.k === k) { st.cand.el = el; return; }
+    schedule({ el, k, src: 'pointer', x: e.clientX, y: e.clientY });
   });
+  root.addEventListener('pointermove', (e) => {
+    if (e.pointerType === 'touch') return;
+    const now = performance.now(), l = st.last;
+    st.last = { x: e.clientX, y: e.clientY, t: now };
+    const c = st.cand;
+    if (!c || c.src !== 'pointer') return;
+    const speed = l ? Math.hypot(e.clientX - l.x, e.clientY - l.y) / Math.max(now - l.t, 1) : 0;
+    if (speed > XPL_SPEED || Math.hypot(e.clientX - c.x, e.clientY - c.y) > XPL_DRIFT) { // still travelling, or crept away: the rest starts over from here
+      c.x = e.clientX; c.y = e.clientY;
+      schedule(c);
+    }
+  }, true);
   root.addEventListener('pointerout', (e) => {
     const el = xplTarget(e.target);
     if (!el || el.contains(e.relatedTarget) || !el.isConnected) return; // a repainted (removed) button is not the pointer leaving
     const to = xplTarget(e.relatedTarget);
     if (to && xplKey(to) === xplKey(el)) return; // the ribbon swapped the button under a resting pointer: same tool, keep waiting
-    clearTimeout(st.timer); // a card still waiting for its delay is dropped; the one on screen stays
-    if (st.el === el) st.warmUntil = performance.now() + XPL_WARM;
+    if (st.cand?.src === 'pointer') cancel(); // a card still waiting is dropped; the one on screen stays
   });
   root.addEventListener('focusin', (e) => {
     const el = xplTarget(e.target);
     if (!el || !el.matches(':focus-visible')) return;
-    arm(el, warm());
+    quiet(el);
+    const k = xplKey(el);
+    if (shown()?.dataset.k === k) { cancel(); return; }
+    schedule({ el, k, src: 'focus' });
   });
   root.addEventListener('focusout', (e) => {
-    const el = xplTarget(e.target);
-    if (el && !el.isConnected) return; // a repaint removed the focused button: not the focus leaving
-    clearTimeout(st.timer);
-    if (el && st.el === el) st.warmUntil = performance.now() + XPL_WARM;
+    const el = e.target;
+    if (!el.isConnected) return; // a repaint removed the focused button: not the focus leaving
+    if (st.cand?.src === 'focus' && (st.cand.el === el || st.cand.k === xplKey(el))) cancel();
   });
   // touch has no hover: a long press (500 ms) shows the card, a move or a lift cancels it
   root.addEventListener('pointerdown', (e) => {
@@ -171,10 +212,10 @@ function xplWire() {
   }, true);
   for (const ev of ['pointerup', 'pointercancel', 'pointermove']) root.addEventListener(ev, (e) => { if (e.pointerType === 'touch') clearTimeout(st.hold); }, true);
 }
-/** Stops a card that is still waiting for its delay. The card on screen stays (the user closes the panel). Always false: Esc is never swallowed. */
+/** Stops a card that is still waiting for its rest. The card on screen stays (the user closes the panel). Always false: Esc is never swallowed. */
 function xplHide() {
   const st = xplWire.st;
-  if (st) { clearTimeout(st.timer); clearTimeout(st.hold); }
+  if (st) { clearTimeout(st.timer); clearTimeout(st.hold); st.timer = 0; st.cand = null; }
   return false;
 }
 /** Hides the card itself (the panel was closed, or it has nothing to explain). */
@@ -188,17 +229,17 @@ function xplClear() {
 }
 /** The element for a control whose node a repaint replaced (the ribbon redraws its buttons): same tool, same place. */
 function xplLive(el, k) {
-  if (el.isConnected && root.contains(el)) return el;
+  if (el.isConnected && root.contains(el) && xplKey(el) === k) return el;
   const rb = k.startsWith('rbtab_') ? `.rb-tab[data-tab="${k.slice(6)}"]` : `.ribbon [data-a="${k}"]`;
   return root.querySelector(rb) || root.querySelector(`[data-a="${k}"], [data-x="${k}"]`);
 }
 function xplShow(el, k) {
   const st = xplWire.st;
   const live = xplLive(el, k);
-  if (!live) return;
+  if (!live || !xplUsable(live)) return; // gone or hidden: nothing to explain
   el = live;
   const dock = xplDock();
-  if (!dock || !xplPanelOpen() || !xplPanelVisible()) return; // closed or stepped aside: the person asked for no explanations on screen
+  if (!dock || dock.dataset.slide || !xplPanelOpen() || !xplPanelVisible()) return; // closed, sliding away or stepped aside: the person asked for no explanations on screen
   const shell = root.querySelector('.shell');
   let card = root.querySelector('.xpl');
   if (!card) {
@@ -210,6 +251,8 @@ function xplShow(el, k) {
   }
   const body = dock.querySelector('.xd-b');
   if (card.parentElement !== body) body.appendChild(card);
+  if (!card.hidden && card.dataset.k === k) { st.el = el; el.setAttribute('aria-describedby', 'bw-xpl'); return; } // already showing this tool: never a second open
+  const swap = !card.hidden; // a card is open: its content is replaced in place, it is never closed and reopened
   const key = CMDS.find((c) => c.id === k)?.key;
   // the name: the visible word under the tool, else its label without the "(shortcut)" tail
   const name = (el.querySelector('.w, .sw, .rb-tl')?.textContent || el.getAttribute('aria-label') || el.dataset.tt || t(k) || '').split(':')[0].replace(/\s*\([^)]*\)\s*$/, '').trim() || t(k);
@@ -220,7 +263,7 @@ function xplShow(el, k) {
   card.dataset.side = 'panel';
   card.dataset.k = k;
   dock.classList.add('has-card');
-  card.classList.remove('in'); void card.offsetWidth; card.classList.add('in');
+  card.classList.remove('in', 'swap'); void card.offsetWidth; card.classList.add(swap ? 'swap' : 'in');
   // a long explanation shows five lines and a "More" button inside the panel (no scrolling inside the card)
   const p = card.querySelector('.xb p'), more = card.querySelector('.xm');
   if (p.scrollHeight > p.clientHeight + 2) {

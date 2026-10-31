@@ -46,6 +46,8 @@
 /* ── explainer card (0.15.0: it lives inside the right-hand panel, .xpl-dock) ── */
 .xpl { font-size: 13.5px; line-height: 1.55; color: var(--panel-ink); }
 .xpl.in { animation: xpl-in .32s var(--e-spring) both; }
+.xpl.swap { animation: xpl-swap .18s var(--bw-sp-ease, cubic-bezier(.65, 0, .35, 1)) both; } /* a card replaced in place: a soft cross-fade, never a close and open */
+@keyframes xpl-swap { from { opacity: .35; } to { opacity: 1; } }
 @keyframes xpl-in { from { opacity: 0; transform: translateY(-6px) scale(.97); } to { opacity: 1; transform: none; } }
 .xpl .xa { background: linear-gradient(160deg, var(--wash-2), var(--wash)); overflow: hidden; }
 .xpl-dock svg { display: block; width: 100%; height: auto; }
@@ -212,7 +214,7 @@
 
 /* reduced motion / calm mode: still frames (the end state each scene explains) */
 .shell[data-calm="1"] .xpl-dock svg *, .shell[data-calm="1"] .xpl, .shell[data-calm="1"] .xpl-dock { animation: none !important; }
-@media (prefers-reduced-motion: reduce) { .xpl-dock svg *, .xpl { animation: none !important; } }
+.shell[data-calm="1"] .bw-sidepanel { transition: none !important; }
 .shell[data-calm="1"] .xpl-dock svg .k-gone, .shell[data-calm="1"] .xpl-dock svg .k-gone2 { opacity: 0; }
 
 /* toolbar menus in the top layer: anchored by uxMenuPlace; the toolbar itself never scrolls */
@@ -225,11 +227,23 @@
  * to its edge tab (until the person taps the tab); above that both show (the drawer is where most controls to explain live). --rside is the drawer's width, still used by the toasts. ── */
 .shell { --xd-w: 304px; --rside: 0px; }
 .shell:has(.drawer:not([hidden])) { --rside: calc(min(420px, 92vw) + 60px); } /* 420 + its 2 × 18 padding + 2 × 12 margin */
+/* 0.15.2 note 15: SHARED OVERLAY PANEL. A side panel (explanation, spelling) takes .bw-sidepanel: it is fixed to the physical right edge, floats OVER the pages
+ * (the body is never padded, nothing moves, no zoom change) and slides in/out with a human ease (soft start, soft landing, 220 ms). JS: bwSidePanelOpen /
+ * bwSidePanelClose (explainers.js) toggle data-slide="out" around the state change. Only the editor's calm button (.shell[data-calm]) makes it instant,
+ * never the OS reduced-motion setting. Panel-specific size: --bw-sp-w. Contents: any. */
+.bw-sidepanel {
+  --bw-sp-ease: cubic-bezier(.65, 0, .35, 1);
+  position: fixed; z-index: 41; right: 12px; left: auto; inset-block-start: calc(var(--bw-bar-h, 72px) + 12px); inline-size: var(--bw-sp-w, 304px); max-inline-size: calc(100vw - 24px);
+  transform: translate3d(0, 0, 0); opacity: 1; will-change: transform, opacity;
+  transition: transform .22s var(--bw-sp-ease), opacity .22s var(--bw-sp-ease);
+}
+.bw-sidepanel[data-slide="out"] { transform: translate3d(calc(100% + 24px), 0, 0); opacity: 0; pointer-events: none; }
 .xpl-dock {
-  position: fixed; z-index: 41; inset-inline: auto; right: 12px; left: auto; inset-block-start: calc(var(--bw-bar-h, 72px) + 12px); inline-size: var(--xd-w); max-inline-size: calc(100vw - 24px);
+  --bw-sp-w: var(--xd-w);
   max-block-size: calc(100vh - var(--bw-bar-h, 72px) - 24px - 96px); overflow: hidden auto; border-radius: 16px; background: var(--panel); color: var(--panel-ink);
   box-shadow: var(--bw-shadow-3), 0 0 0 1px var(--panel-line); font-size: 13px; line-height: 1.45;
 }
+.xpl-dock[data-open="0"], .xpl-dock[data-open="0"][data-slide] { transition: none; transform: none; opacity: 1; }
 .xpl-dock[hidden] { display: none; }
 .xpl-dock .xd-h { display: flex; align-items: center; gap: 8px; block-size: 48px; padding-inline: 14px 8px; position: sticky; top: 0; z-index: 1; background: var(--panel); box-shadow: 0 1px 0 var(--panel-line); }
 .xpl-dock .xd-h .i { inline-size: 18px; block-size: 18px; display: inline-flex; color: var(--bw-primary); }
@@ -260,7 +274,6 @@
   .shell:has(.drawer:not([hidden])) .xpl-dock:not([data-force]) :is(.xd-h, .xd-b) { display: none; }
   .shell:has(.drawer:not([hidden])) .xpl-dock:not([data-force]) .xd-tab { display: flex; }
 }
-@media (prefers-reduced-motion: reduce) { .xpl-dock, .xpl.in { animation: none; transition: none; } }
 
 /* ── 0.14.0 A3: toasts and undo prompts never cover the page controls ───────────────────────────────────────────
  * They stay bottom-centre, but centred on the room left of an open slide-over panel (its own page-range and preview
