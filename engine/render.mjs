@@ -327,6 +327,16 @@ export function pageModel(doc) {
   return { segments, segOf, ids };
 }
 
+/** The user-story ID card as table rows (0.15.1): what a story without a `card` prints, and what the first table edit stores.
+ *  A `{label: key}` cell is a house label (/labels/<key>, plain text once stored); a `{bind: field}` cell prints and edits the
+ *  story's own field (id, name, as, goal, acceptance), exactly like the control table's `{bind}` cells: the stored fields stay the
+ *  single source for the SRS, the harvest and every older edits file. Rows with nothing to print are left out, as before. */
+export const STORY_CARD_BINDS = ['id', 'name', 'as', 'goal', 'acceptance'];
+export function storyCardDefault(s) {
+  const has = { id: s.id, name: s.name, as: s.as, goal: s.goal || s.as || s.want || s.so, acceptance: (s.acceptance || []).length };
+  const lab = { id: 'storyId', name: 'storyName', as: 'storyUser', goal: 'storyGoalLabel', acceptance: 'acceptance' };
+  return STORY_CARD_BINDS.filter((k) => has[k]).map((k) => [{ label: lab[k] }, { bind: k }]);
+}
 const blank = (c) => ['', '—', '-', '–', 'N/A', 'n/a'].includes(textOf(c ?? '').trim());
 /** A table cell as the renderer takes it: a rich leaf as is, anything else as its string (0.12.0). */
 const keepLeaf = (v) => (isRich(v) ? v : String(v));
@@ -508,6 +518,8 @@ table.control.story-info th,table.control.story-info td{border:1px solid var(--r
   padding:2.5mm 3mm;font-size:var(--t-table);vertical-align:top}
 table.control.story-info th{color:var(--ink);font-weight:700;background:var(--primary-50);width:auto}
 table.control.story-info td{font-weight:400;background:var(--paper)}
+table.control.story-card>tbody.hold{break-inside:auto}
+table.control.story-card td:first-child{color:var(--ink);font-weight:700;background:var(--primary-50)}
 .story-info tr.ac,.story-info tr.ac td,.story-info tr.ac th{break-inside:auto}
 .story-info tr.ac ol{margin:0;padding-inline-start:8mm;max-width:none;list-style:decimal}
 .story-info tr.ac li{margin-bottom:1.2mm}
@@ -735,7 +747,7 @@ export function renderParts(doc, o) {
         if (from !== 1) startAt = ` start="${from}"`;
       }
       body = `<${tag} class="bw-list"${startAt} style="list-style-type:${type}">${lines.map((ln) => `<li>${richHtml(ln, bidi0)}</li>`).join('')}</${tag}>`;
-    } else body = bidi(c);
+    } else body = t.cellHtml?.(ri, ci) ?? (t.ltr?.has(`${ri},${ci}`) ? `<bdi dir="ltr">${esc(textOf(c))}</bdi>` : bidi(c));
     return `<td${attrs}${sp}${f}${dp(t.cellPtr ? t.cellPtr(ri, ci) : t.rowsPtr && `${t.rowsPtr}/${ri}/${ci}`)} data-r="${ri}" data-c="${ci}">${body}</td>`;
   }
 
@@ -788,7 +800,7 @@ export function renderParts(doc, o) {
       ` data-w="${width}"` + (t.meta || '');
     return `<table class="${t.extra || ''}"${meta}>
   <colgroup>${cols}</colgroup>
-  ${t.caption ? `<caption>${t.caption}</caption>` : ''}
+  ${t.caption ? `<caption${t.capClass ? ` class="${t.capClass}"` : ''}>${t.caption}</caption>` : ''}
   ${
     columns.length
       ? `<thead><tr>${columns
@@ -799,7 +811,7 @@ export function renderParts(doc, o) {
   ${guardedBody(
     rows.map(
       (r, ri) =>
-        `<tr${t.alt && n++ % 2 ? ' class="alt"' : ''} data-r="${ri}"${rowH(t.rowHeights?.[ri])}>${r
+        `<tr${t.alt && n++ % 2 ? ' class="alt"' : t.rowClass?.(ri) ? ` class="${t.rowClass(ri)}"` : ''} data-r="${ri}"${rowH(t.rowHeights?.[ri])}>${r
           .map((c, j) => (covered.has(`${ri},${idx[j]}`) ? '' : cell(c, ri, idx[j], spanAt.get(`${ri},${idx[j]}`), t)))
           .join('')}</tr>`
     )
@@ -938,14 +950,6 @@ export function renderParts(doc, o) {
         return (block.items || [])
           .map((s, i) => {
             const sp = `${b}/items/${i}`;
-            // One run, as the source prints it: editing it writes the story's own `goal`
-            // (the source schema's verbatim-goal field), so the PDF text order never splits.
-            const goal = s.goal
-              ? `<span${dp(sp + '/goal')}>${bidi(s.goal)}</span>`
-              : s.as || s.want || s.so
-                ? `<span${dp(sp + '/goal')}>${L.storyGoal.split(/(\{as\}|\{want\}|\{so\})/).map((x) => (x === '{as}' ? bidi(s.as) : x === '{want}' ? bidi(s.want) : x === '{so}' ? bidi(s.so) : esc(x))).join('')}</span>`
-                : '';
-            const row = (label, value) => (value ? `<tr><th>${lb(label)}</th><td>${value}</td></tr>` : '');
             const criteria = (s.acceptance || [])
               .map((a, k) => `<li${dp(`${sp}/acceptance/${k}`)}>${bidi(a)}</li>`)
               .join('');
@@ -966,22 +970,46 @@ export function renderParts(doc, o) {
                 : '';
             const dictionary = sub('dictionary');
             const actions = sub('actions');
-            const colgroup = '<colgroup><col style="width:22%" /><col style="width:78%" /></colgroup>';
+            const card = s.card && Array.isArray(s.card.rows) ? s.card : null;
+            const cardSrc = card ? card.rows : storyCardDefault(s);
+            const goalText = s.goal || (s.as || s.want || s.so ? L.storyGoal.split(/(\{as\}|\{want\}|\{so\})/).map((x) => (x === '{as}' ? s.as : x === '{want}' ? s.want : x === '{so}' ? s.so : x)).join('') : '');
+            const bound = (v) => v && typeof v === 'object' && !isRich(v) && STORY_CARD_BINDS.includes(v.bind);
+            const labelled = (v) => v && typeof v === 'object' && !isRich(v) && typeof v.label === 'string';
+            const ltr = new Set();
+            const cardRows = cardSrc.map((row, ri) => (Array.isArray(row) ? row : []).map((v, ci) => {
+              if (labelled(v)) return L[v.label] ?? '';
+              if (!bound(v)) return v ?? '';
+              if (v.bind === 'id') ltr.add(`${ri},${ci}`);
+              return v.bind === 'goal' ? goalText : v.bind === 'acceptance' ? (s.acceptance || []).join(' ') : s[v.bind] ?? '';
+            }));
+            const cardPtr = (ri, ci) => {
+              const v = cardSrc[ri]?.[ci];
+              if (labelled(v)) return '/labels/' + v.label;
+              if (bound(v)) return v.bind === 'acceptance' ? undefined : `${sp}/${v.bind}`;
+              return `${sp}/card/rows/${ri}/${ci}`;
+            };
+            const cardHtml = (ri, ci) => {
+              const v = cardSrc[ri]?.[ci];
+              return bound(v) && v.bind === 'acceptance' ? `<ol>${criteria}</ol>` : undefined;
+            };
+            const hasAc = (r) => bound(r?.[1]) && r[1].bind === 'acceptance';
+            const cardTable = table({
+              rows: cardRows,
+              rowsPtr: `${sp}/card/rows`,
+              extra: 'control story-info story-card',
+              capClass: 'story-head',
+              caption: `<span class="sn"${dp(b + '/number')}>${bidi(storyNo(b, block))}</span>${lb('userStory')}`,
+              ...(o.editor ? { b, tb: `${sp}/card` } : {}),
+              merges: card?.merges,
+              colWidths: Array.isArray(card?.colWidths) ? card.colWidths : [22, 78],
+              rowHeights: card?.rowHeights,
+              cellPtr: cardPtr,
+              cellHtml: cardHtml,
+              ltr,
+              rowClass: (ri) => (hasAc(cardSrc[ri]) ? 'ac' : ''),
+            });
             const partsArr = [
-              `<div class="id-card"><table class="control story-info">${colgroup}
-    <caption class="story-head"><span class="sn"${dp(b + '/number')}>${bidi(storyNo(b, block))}</span>${lb('userStory')}</caption>
-    <tbody>
-      ${row('storyId', `<bdi dir="ltr"${dp(sp + '/id')}>${esc(s.id)}</bdi>`)}
-    </tbody>
-  </table></div>
-  <table class="control story-info story-info-body">${colgroup}
-    <tbody>
-      ${row('storyName', `<span${dp(sp + '/name')}>${bidi(s.name)}</span>`)}
-      ${row('storyUser', `<span${dp(sp + '/as')}>${bidi(s.as)}</span>`)}
-      ${row('storyGoalLabel', goal)}
-      ${criteria ? `<tr class="ac"><th>${lb('acceptance')}</th><td><ol>${criteria}</ol></td></tr>` : ''}
-    </tbody>
-  </table>`,
+              `<div class="id-card">${cardTable}</div>`,
               ...(actions ? [`<p class="run-in dict-label">${lb('actionsTable')}</p>`, PLAIN + actions] : []),
               ...(dictionary ? [`<p class="run-in dict-label">${lb('dictionary')}</p>`, PLAIN + dictionary] : []),
             ];

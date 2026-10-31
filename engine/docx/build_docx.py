@@ -373,23 +373,33 @@ def add_stories(document, block, font, counters, chapter_number, story_seq):
         cap.paragraph_format.keep_with_next = True
         add_script_runs(cap, f"{chapter_number}.{story_seq[0]} {L['userStory']}", font, bold=True)
         as_, want, so = (item.get('as', ''), item.get('want', ''), item.get('so', ''))
-        rows = [[L['storyId'], item.get('id', '')], [L['storyName'], item.get('name', '')], [L['storyUser'], as_]]
-        if item.get('goal'):
-            rows.append([L['storyGoalLabel'], item['goal']])
-        elif as_ and want and so:
-            rows.append([L['storyGoalLabel'], L['storyGoal'].replace('{as}', as_).replace('{want}', want).replace('{so}', so)])
+        goal_text = item['goal'] if item.get('goal') else (L['storyGoal'].replace('{as}', as_).replace('{want}', want).replace('{so}', so) if as_ and want and so else '')
         acceptance_items = item.get('acceptance', [])
-        story_tbl = add_table(document, [], rows, font)
-        if acceptance_items:
-            ac_row = story_tbl.add_row()
-            label_cell, value_cell = (ac_row.cells[0], ac_row.cells[1])
-            col_w = Emu((int(Inches(8.27)) - int(Inches(0.55)) * 2) // 2)
-            for c in (label_cell, value_cell):
-                c.width = col_w
-            label_cell.paragraphs[0].text = ''
-            add_script_runs(label_cell.paragraphs[0], L['acceptance'], font, bold=True)
-            value_cell.paragraphs[0].text = ''
-            add_numbered_list_cell(value_cell, acceptance_items, font, new_criteria_num_id(document))
+        card = item.get('card') if isinstance(item.get('card'), dict) and isinstance(item['card'].get('rows'), list) else None
+        # 0.15.1: a story without `card` prints the ID card it always printed; with one, its rows (labels, {bind} cells, merges,
+        # widths) are the table, the same model as every other table. A {bind: field} cell prints the story's own field.
+        src = card['rows'] if card else [[{'label': 'storyId'}, {'bind': 'id'}], [{'label': 'storyName'}, {'bind': 'name'}], [{'label': 'storyUser'}, {'bind': 'as'}]] + ([[{'label': 'storyGoalLabel'}, {'bind': 'goal'}]] if goal_text else []) + ([[{'label': 'acceptance'}, {'bind': 'acceptance'}]] if acceptance_items else [])
+        fields = {'id': item.get('id', ''), 'name': item.get('name', ''), 'as': as_, 'goal': goal_text, 'acceptance': ''}
+        def resolve(v):
+            if isinstance(v, dict) and not MD.is_rich(v):
+                if isinstance(v.get('label'), str):
+                    return L.get(v['label'], '')
+                if v.get('bind') in fields:
+                    return fields[v['bind']]
+            return v if v is not None else ''
+        rows = [[resolve(v) for v in (r if isinstance(r, list) else [])] for r in src]
+        ac_at = [(ri, ci) for ri, r in enumerate(src) if isinstance(r, list) for ci, v in enumerate(r) if isinstance(v, dict) and v.get('bind') == 'acceptance']
+        story_tbl = add_table(document, [], rows, font, spec=card)
+        for ri, ci in ac_at:
+            if acceptance_items:
+                try:
+                    cell = story_tbl.cell(ri, ci)
+                except IndexError:
+                    continue
+                for pp in cell.paragraphs[1:]:
+                    pp._p.getparent().remove(pp._p)
+                cell.paragraphs[0].text = ''
+                add_numbered_list_cell(cell, acceptance_items, font, new_criteria_num_id(document))
         theme_mod.style_story_card(story_tbl, _THEME_ROLES)
         document.add_paragraph()
         counters['stories_table'] = counters.get('stories_table', 0) + 1

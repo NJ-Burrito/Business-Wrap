@@ -73,6 +73,17 @@ const W2_WRITE = {
     paintSel();
     return `${where.arr}/${where.at}`;
   },
+  /** 0.15.1: a story's ID card is a table. One with no `card` yet prints the default (render.mjs storyCardDefault); before its first
+   *  table edit it is stored: labels as plain text, `{bind}` cells that keep reading and editing the story's own fields. One op. */
+  materialiseCard(ptr, ed = S.ed) {
+    const sp = String(ptr).replace(/\/card(\/rows)?$/, '');
+    const it = get(cur(ed).doc, sp);
+    if (!it || typeof it !== 'object' || it.card) return false;
+    const L = labelsOf(ed);
+    const rows = storyCardDefault(it).map((r) => r.map((v) => (v.label ? textOf(L[v.label] ?? '') : { ...v })));
+    commit([{ op: 'replace', path: `${sp}/card`, value: { rows, colWidths: [22, 78] }, old: undefined }], { ed, rerender: false });
+    return true;
+  },
   /** One empty story card; the tables keep the columns of `ref` (a story already in the document), rows are one placeholder row. */
   emptyStory(ref, id) {
     const sub = (t0) => (t0?.columns ? { columns: [...t0.columns], rows: [t0.columns.map(() => '…')] } : null);
@@ -198,6 +209,7 @@ bwExt({
   sections: [{ cat: 'gaps' }],
   cmds: Object.entries(W2W_CMDS).map(([id, group]) => ({ id, group, edit: true })),
   actions: {
+    materialiseStoryCard: (ptr) => W2_WRITE.materialiseCard(ptr),
     addStory: () => { W2_WRITE.addStory(); },
     storyPoint: () => { W2_WRITE.addPoint(); },
     storyCard: () => { W2_WRITE.addCard(); },
