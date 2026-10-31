@@ -1,0 +1,42 @@
+/* Spelling panel and its Settings card (0.15.0 note 16; look: out/qa-0.15.0/ui/designer.md section 13). Lives in the drawer (shadow root).
+   The marks inside the document are ::highlight(bw-spell), injected into the page head by editor/ext/35-spell.js (the shadow root's styles cannot reach it). */
+.sp { display: grid; gap: 12px; }
+.sp-eds { display: grid; gap: 8px; }
+.sp-chip { display: flex; align-items: center; gap: 12px; min-block-size: 40px; padding: 8px 12px; border-radius: var(--bw-radius-md); background: var(--bw-surface-2, var(--bw-surface)); box-shadow: inset 0 0 0 1px var(--bw-line); }
+.sp-sw { position: relative; flex: none; display: inline-flex; align-items: center; justify-content: center; inline-size: 56px; block-size: 40px; border-radius: 20px; border: 0; cursor: pointer; background: var(--bw-line); color: var(--bw-ink); font: 800 14px/1 var(--bw-font-ui); }
+.sp-sw[aria-checked="true"] { background: #0f5a46; color: #eef1f6; }
+.sp-sw:disabled { cursor: not-allowed; opacity: .6; }
+.sp-sw:focus-visible, .sp .b:focus-visible, .sp-s:focus-visible, .sp-w:focus-visible { outline: 3px solid var(--bw-focus); outline-offset: 2px; }
+.sp-dot { position: absolute; inset-block-end: 5px; inset-inline-end: 8px; inline-size: 8px; block-size: 8px; border-radius: 50%; background: currentColor; opacity: .55; }
+.sp-chip[data-st="ready"] .sp-dot { opacity: 1; background: #7fdcc0; }
+.sp-chip[data-st="loading"] .sp-dot { animation: sp-pulse 1s ease-in-out infinite; }
+.sp-chip[data-st="error"] .sp-dot { background: #f29aa0; opacity: 1; }
+.sp-meta { display: grid; gap: 2px; min-inline-size: 0; font: 500 13px/1.35 var(--bw-font-ui); }
+.sp-meta b { font-weight: 800; font-size: 14px; }
+.sp-meta span { color: var(--bw-ink-muted); }
+.sp-bar { display: block; inline-size: 100%; block-size: 4px; border-radius: 2px; background: var(--bw-line); overflow: hidden; }
+.sp-bar i { display: block; inline-size: 40%; block-size: 100%; background: var(--bw-accent); animation: sp-slide 1.1s ease-in-out infinite; }
+.sp-sum { margin: 0; font: 800 15px/1.4 var(--bw-font-ui); color: var(--bw-ink); }
+.sp-sum:not([data-n="0"]) { color: var(--bw-signal); }
+.sp-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-block-size: 46vh; overflow: auto; }
+.sp-row { display: grid; gap: 6px; padding: 10px 12px; border-radius: var(--bw-radius-md); background: var(--bw-surface-2, var(--bw-surface)); box-shadow: inset 0 0 0 1px var(--bw-line); }
+.sp-row[aria-current="true"] { box-shadow: inset 0 0 0 2px var(--bw-accent); }
+.sp-w { justify-self: start; border: 0; background: none; padding: 0; cursor: pointer; font: 800 16px/1.4 var(--bw-font-ui); color: var(--bw-ink); text-decoration: underline wavy var(--bw-signal) 1.5px; text-underline-offset: 4px; }
+.sp-ctx { color: var(--bw-ink-muted); font: 500 13px/1.4 var(--bw-font-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-sug { display: flex; flex-wrap: wrap; gap: 6px; }
+.sp-s { min-block-size: 32px; padding: 0 12px; border-radius: 16px; border: 0; cursor: pointer; background: var(--bw-primary-soft); color: var(--bw-primary); font: 700 14px/1 var(--bw-font-ui); }
+.sp-s:hover { background: var(--bw-accent); color: var(--bw-on-accent); }
+.sp-nosug { color: var(--bw-ink-muted); font-size: 13px; }
+.sp-act { display: flex; flex-wrap: wrap; gap: 6px; }
+.sp-act .b { min-block-size: 32px; font-size: 13px; }
+.sp-nav { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.sp-nav .hint { margin: 0; }
+.sp-my summary { cursor: pointer; font: 700 14px/1.4 var(--bw-font-ui); }
+.sp-words { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.sp-words li { display: inline-flex; align-items: center; gap: 4px; padding-inline-start: 10px; border-radius: 16px; background: var(--bw-primary-soft); }
+.sp-words .b { min-block-size: 28px; padding: 0 6px; }
+.sp .i .ic { inline-size: 18px; block-size: 18px; }
+@keyframes sp-pulse { 50% { opacity: .2; } }
+@keyframes sp-slide { 0% { margin-inline-start: -40%; } 100% { margin-inline-start: 100%; } }
+html[data-bw-calm="1"] .sp-bar i, html[data-bw-calm="1"] .sp-chip[data-st="loading"] .sp-dot { animation: none; }
+@media (prefers-reduced-motion: reduce) { .sp-bar i, .sp-chip[data-st="loading"] .sp-dot { animation: none; } }

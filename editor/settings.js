@@ -91,8 +91,6 @@ async function settingsClick(x) {
     return true;
   }
   if (k === 'updNow') { const st = updState(); if (st?.status === 'available') window.BW_UPDATE.popup(st, { manual: true }); return true; }
-  if (k === 'srvStart') { srvStart(); return true; }
-  if (k === 'srvStop') { srvStop(); return true; }
   if (k === 'srvOpen') { location.href = `http://127.0.0.1:${Number(v)}/`; return true; }
   if (k === 'setLang') { setLang(v); return true; }
   if (k === 'setDir') { setDir(v); return true; }
@@ -138,25 +136,22 @@ function srvLaunch(url) { // a link click: how a page asks the browser to hand a
   a.click();
   a.remove();
 }
-function srvStatus() {
-  if (SRV.note) return SRV.note;
-  if (srvServed()) return t('srv.running', { p: location.port || '80' });
-  if (SRV.asked) return SRV.found.length ? t('srv.running', { p: SRV.found[0] }) : t('srv.none');
-  return t(SRV.busy ? 'srv.checking' : 'srv.idle'); // a file:// page asks the local ports only when a button is pressed, never on its own
-}
+/** Settings › Local server (0.15.0 note 15): the same toggle as the top bar (editor/ext/18-server.js), its sentence, the port and the link to the served editor. */
 function srvInner() {
+  const sb = EXT.server;
   const served = srvServed();
-  const start = served ? '' : `<button type="button" class="b primary" data-k="srvStart"${SRV.busy ? ' disabled' : ''}><span class="i">${ic('send')}</span><span class="w">${esc(t('srv.start'))}</span></button>`;
-  const open = !served && SRV.found.length ? `<button type="button" class="b" data-k="srvOpen" data-v="${Number(SRV.found[0])}"><span class="i">${ic('connect')}</span><span class="w">${esc(t('srv.open'))}</span></button>` : '';
-  const stop = `<button type="button" class="b danger" data-k="srvStop"${SRV.busy ? ' disabled' : ''}><span class="i">${ic('powerOff')}</span><span class="w">${esc(t('srv.stop'))}</span></button>`;
-  return `<p class="set-status set-srv-status" role="status" aria-live="polite" data-st="${served || SRV.found.length ? 'on' : SRV.asked ? 'off' : ''}">${esc(srvStatus())}</p>
-<div class="btns">${start}${open}${stop}</div>
-<p class="hint">${esc(t(served ? 'srv.hintServed' : 'srv.hintFile'))}</p>`;
+  const on = sb?.state.mode === 'online';
+  const open = !served && on && sb.state.port ? `<button type="button" class="b" data-k="srvOpen" data-v="${Number(sb.state.port)}"><span class="i">${ic('connect')}</span><span class="w">${esc(t('sv.open'))}</span></button>` : '';
+  return `<div class="set-srv-row">${sb ? sb.html('settings') : ''}${open}</div>
+<p class="set-status set-srv-status" role="status" aria-live="polite" data-st="${on ? 'on' : sb?.state.mode === 'offline' || sb?.state.mode === 'error' ? 'off' : ''}">${esc(sb ? sb.sentence() : '')}</p>
+<p class="hint">${esc(t(served ? 'sv.hintServed' : 'srv.hintFile'))}</p>`;
 }
 function srvDraw(focusKey) {
   const body = root.querySelector('.drawer .set-srv-body');
   if (!body) return;
+  const had = body.contains(root.activeElement) ? root.activeElement?.dataset?.k : '';
   body.innerHTML = srvInner();
+  focusKey = focusKey || had;
   if (focusKey) body.querySelector(`[data-k="${focusKey}"]`)?.focus();
 }
 /** Wait for a server to appear (want = true) or for none to answer (want = false), up to ms. */
@@ -169,7 +164,7 @@ async function srvWait(want, ms) {
   }
   return false;
 }
-/** The shared start (Settings and the 18-server.js banner): ask the ports, launch business-wrap://open?file=<f> when none answers,
+/** The shared start (the toggle, editor/ext/18-server.js): ask the ports, launch business-wrap://open?file=<f> when none answers,
  *  wait for one. Resolves 'running' (one already answered, nothing launched), 'started' or 'failed'. onStep('checking'|'starting') for the UI. */
 async function srvBegin(f, onStep = () => {}) {
   onStep('checking');
@@ -180,71 +175,8 @@ async function srvBegin(f, onStep = () => {}) {
   srvLaunch(`business-wrap://open?file=${encodeURIComponent(f)}`);
   return (await srvWait(true, 25000)) ? 'started' : 'failed';
 }
-async function srvStart() {
-  if (srvServed() || SRV.busy) return;
-  const f = srvFilePath();
-  if (!f) { SRV.note = t('srv.nopath'); srvDraw('srvStart'); return; }
-  SRV.busy = true;
-  SRV.note = '';
-  srvDraw(); // «checking…»: does a server already answer on 4317-4327?
-  const r = await srvBegin(f, (st) => { if (st === 'starting') { SRV.note = t('srv.starting'); srvDraw(); } });
-  SRV.busy = false;
-  SRV.note = r === 'failed' ? t('srv.noHandler') : '';
-  srvDraw(r === 'failed' ? 'srvStart' : 'srvOpen');
-  EXT.server?.sync?.();
-}
-/** The confirm dialog for «stop all» (the power-off look: Cancel has the focus, Esc cancels). */
-function srvConfirm(lead) {
-  const d = root.querySelector('.dialog');
-  d.hidden = false;
-  d.setAttribute('aria-label', t('srv.stopTitle'));
-  d.classList.add('pw-dlg');
-  d.innerHTML = `<h2>${esc(t('srv.stopTitle'))}</h2><p>${esc(lead)}</p><div class="btns"><button type="button" class="b danger" data-k="srv-yes"><span class="i">${ic('powerOff')}</span><span class="w">${esc(t('srv.stopYes'))}</span></button><button type="button" class="b" data-k="srv-no"><span class="w">${esc(t('srv.no'))}</span></button></div>`;
-  d.querySelector('[data-k="srv-no"]').focus();
-  setTimeout(() => { if (!d.hidden && !d.contains(root.activeElement)) d.querySelector('[data-k="srv-no"]')?.focus(); }, 150); // a recovery card that opens late must not take the focus from the question
-  document.documentElement.dataset.bwServers = 'asked';
-  return new Promise((res) => {
-    const done = (v) => { d.hidden = true; d.classList.remove('pw-dlg'); d.onclick = d.onkeydown = null; if (!v) document.documentElement.dataset.bwServers = 'cancelled'; res(v); };
-    d.onclick = (e) => { const k = e.target.closest('button')?.dataset.k; if (k) done(k === 'srv-yes'); };
-    d.onkeydown = (e) => { if (e.key === 'Escape') done(false); };
-  });
-}
 async function srvSaveHere() { // the same three saves as the power button: the draft, the library entry, the session state
   try { writeDraft(); } catch { /* nothing to write */ }
   try { await EXT.library?.persistNow?.(); } catch { /* not a library document */ }
   try { EXT.session?.flush?.(); } catch { /* no session */ }
-}
-async function srvStop() {
-  if (SRV.busy) return;
-  const served = srvServed();
-  let lead = t('srv.stopLeadGeneric');
-  if (served) {
-    const info = await fetch('/api/servers', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-    if (info) lead = t('srv.stopLead', { n: info.servers.length, b: info.browsers });
-  } else {
-    SRV.found = await srvProbe();
-    SRV.asked = true;
-    if (SRV.found.length) lead = t('srv.stopLeadFile', { n: SRV.found.length });
-  }
-  if (!(await srvConfirm(lead))) { srvDraw('srvStop'); return; }
-  SRV.busy = true;
-  if (served) {
-    await srvSaveHere();
-    try { new BroadcastChannel('bw-power').postMessage('off'); } catch { /* this tab only */ }
-    try {
-      const r = await fetch('/api/servers/stop', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
-      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
-      document.documentElement.dataset.bwServers = 'stopped';
-      EXT.power?.stopped?.();
-    } catch (e) { SRV.busy = false; toast(t('srv.failed', { e: e.message || e }), 'warn'); document.documentElement.dataset.bwServers = 'failed'; srvDraw('srvStop'); }
-    return;
-  }
-  SRV.note = t('srv.stopping');
-  srvDraw();
-  srvLaunch('business-wrap://stop');
-  const gone = await srvWait(false, 20000);
-  SRV.busy = false;
-  SRV.note = gone ? t('srv.stoppedAll') : t('srv.noHandlerStop');
-  document.documentElement.dataset.bwServers = gone ? 'stopped' : 'failed';
-  srvDraw('srvStop');
 }
