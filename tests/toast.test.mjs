@@ -65,14 +65,14 @@ try {
   const n = await page.evaluate(() => { const R = document.getElementById('bw-ui-host').shadowRoot; R.querySelectorAll('.toast').forEach((x) => x.remove()); window.BW.toast('autosaved', 'ok'); window.BW.toast('autosaved', 'ok'); const one = R.querySelectorAll('.toast').length; ['a', 'b', 'c', 'd'].forEach((x) => window.BW.toast(x, 'info')); return [one, R.querySelectorAll('.toast').length]; });
   check('the same message twice = one toast; at most two stacked (review2 · 1: one queue)', n[0] === 1 && n[1] === 2, JSON.stringify(n));
 
-  // bottom centre, both directions
+  // bottom RIGHT (0.15.2 notes 5 and 6; was bottom centre), both directions: a physical corner, not mirrored
   const offs = [];
   for (const d of ['rtl', 'ltr']) {
     await page.evaluate((d) => { window.BW.S.dir = d; window.BW.runAction('dir'); window.BW.runAction('dir'); }, d);
-    const o = await page.evaluate(() => { const R = document.getElementById('bw-ui-host').shadowRoot; R.querySelectorAll('.toast').forEach((x) => x.remove()); window.BW.toast('where', 'info'); const b = R.querySelector('.toast').getBoundingClientRect(); return { bottom: Math.round(innerHeight - b.bottom), centre: Math.round(Math.abs(b.left + b.width / 2 - document.documentElement.clientWidth / 2)), dir: R.querySelector('.shell').dataset.tdir }; });
+    const o = await page.evaluate(() => { const R = document.getElementById('bw-ui-host').shadowRoot; R.querySelectorAll('.toast').forEach((x) => x.remove()); window.BW.toast('where', 'info'); const b = R.querySelector('.toast').getBoundingClientRect(); return { bottom: Math.round(innerHeight - b.bottom), right: Math.round(document.documentElement.clientWidth - b.right), dir: R.querySelector('.shell').dataset.tdir }; });
     offs.push(o);
   }
-  check('RTL and LTR: bottom offset ≤ 40 px, centred', offs.every((o) => o.bottom >= 0 && o.bottom <= 40 && o.centre <= 4), JSON.stringify(offs));
+  check('RTL and LTR: bottom offset ≤ 40 px, at the bottom right (right gap 0 to 24 px)', offs.every((o) => o.bottom >= 0 && o.bottom <= 40 && o.right >= 0 && o.right <= 24), JSON.stringify(offs));
   check('no page errors', !errors.length, errors.join(' | '));
 } catch (e) {
   check('run', false, e.stack?.split('\n').slice(0, 3).join(' / '));

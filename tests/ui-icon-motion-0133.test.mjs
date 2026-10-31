@@ -87,7 +87,7 @@ async function surfaceCheck(page, scope, name, allowEmpty = false) {
     const bb = await loc.boundingBox(); if (!bb) continue;
     await page.mouse.move(5, 5); await page.waitForTimeout(40);
     const rest = await loc.evaluate((e) => { const s = e.querySelector('svg.ic'); return { bg: getComputedStyle(e).backgroundColor, col: getComputedStyle(s).color, sh: getComputedStyle(e).boxShadow }; });
-    await page.mouse.move(bb.x + 4, bb.y + bb.height / 2, { steps: 2 }); await page.waitForTimeout(120);
+    await page.mouse.move(bb.x + 4, bb.y + bb.height / 2, { steps: 2 }); await page.waitForTimeout(190);
     const h = await loc.evaluate((e) => { const s = e.querySelector('svg.ic'); const on = e.getAttribute('aria-pressed') === 'true' || e.getAttribute('aria-checked') === 'true'; const parts = [...s.querySelectorAll('*')].filter((p) => getComputedStyle(p).animationName !== 'none').length; return { bg: getComputedStyle(e).backgroundColor, col: getComputedStyle(s).color, sh: getComputedStyle(e).boxShadow, parts, on, key: s.dataset.ic, bw: s.classList.contains('bw-i') }; });
     const visible = h.on || h.bg !== rest.bg || h.col !== rest.col || h.sh !== rest.sh;
     if (!h.parts || !visible) bad.push(h.key + (h.parts ? '' : ' no-move') + (visible ? '' : ' no-state'));
@@ -174,7 +174,7 @@ try {
     await page.mouse.move(5, 5); await page.waitForTimeout(60);
     const rest = await page.evaluate(() => __moving(__root().querySelector('#qa-b svg')));
     await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2, { steps: 2 });
-    await page.waitForTimeout(110);
+    await page.waitForTimeout(190);
     const hover = await page.evaluate(() => __moving(__root().querySelector('#qa-b svg')));
     await page.mouse.move(5, 5); await page.waitForTimeout(60);
     await page.evaluate(() => __root().querySelector('#qa-b').focus());

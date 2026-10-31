@@ -34,7 +34,7 @@ const RB_TABS = [
 ];
 const RB_ALIAS = ['exportEdits', 'exportAll']; // the old File-tab twins of export.edits / export.editsAll: one tool each now, on the Export tab
 const RB_LISTED = new Set([...RB_TABS.flatMap((x) => x[1].flatMap((g) => g[1])), ...RB_ALIAS]);
-const RB_PRESSED = { dark: () => S.dark, calm: () => S.calm, focus: () => S.focus, snap: () => S.snap, side: () => S.side, both: () => S.both };
+const RB_PRESSED = { dark: () => S.dark, calm: () => S.calm, focus: () => S.focus, snap: () => S.snap, side: () => S.side, both: () => S.both, spell: () => !!(S.spell && (S.spell.ar || S.spell.en)) }; // spell: the one switch of 0.15.2 keeps S.spell.ar and .en equal
 const RB_SKIP = new Set(['uiLang', 'dir']); // the language and direction pills live in the quick strip only (note 8)
 /** The tab definitions with the sweep merged in: a command no group lists goes to View's «more» group, or to a tab of its own («tools») once View would pass the cap. */
 function rbDefs() {
@@ -181,6 +181,11 @@ function rbSync() {
   if (!rbTabs().some((x) => x[0] === RB.tab)) RB.tab = 'home';
   const base = [S.ui, uiDir(), RB.ctx, CMDS.length, rbStamp()].join('|');
   const key = `${base}|${RB.tab}|${RB.collapsed}`;
+  // 0.15.2 note 16: the panel is about to open or fold → measure first (one layout read, only on that transition), glide after the swap
+  const pn0 = el.querySelector('.rb-panel');
+  const turning = !S.focus && !!pn0 && (RB.glide ? RB.glide.target !== RB.collapsed : pn0.hidden !== RB.collapsed);
+  if (turning && RB.glide) rbGlideEnd();
+  const g0 = turning ? { b0: rbBand(isl), full: pn0.hidden ? 0 : pn0.offsetHeight, sy: window.scrollY } : null;
   if (key !== RB.key) {
     const had = el.contains(root.activeElement) && root.activeElement?.closest?.('.rb-tab') ? root.activeElement.dataset.tab : null;
     const fast = RB.base === base && !!el.querySelector('.rb-panel');
@@ -194,8 +199,59 @@ function rbSync() {
     }
     if (had) el.querySelector(`#rb-tab-${had}`)?.focus({ preventScroll: true });
   }
+  if (g0) rbGlide(isl, el, g0);
   el.querySelectorAll('[data-a]').forEach((b) => { const p = RB_PRESSED[b.dataset.a]; if (p) b.setAttribute('aria-pressed', String(!!p())); });
   isl.classList.toggle('rb-collapsed', RB.collapsed);
+}
+
+/* ── 0.15.2 note 16 · the pages glide ───────────────────────────────────────────────────────────────────────────────────────────────
+ * A ribbon tab opening pushes the pages DOWN and a re-press slides the panel back UP and the pages glide back (a side panel, by contrast, overlays
+ * and never pushes: note 15). How: the page band (--bw-bar-h, the body's top padding) jumps to its final value at once, so the pages are laid out
+ * ONCE; the jump is hidden by a Web Animation on #bw-pair (transform: compositor only, no layout per frame) from the old position to the new
+ * one, while the panel itself grows or shrinks (height, inside the toolbar's own fixed box) over the same 240 ms on the same curve, so the two stay
+ * edge to edge. Soft start, soft landing (ease-in-out), no overshoot. If the page is scrolled, the scroll position is moved by the same amount
+ * (instant), so the text under the pointer does not move and only the bar covers more or less of it: the glide plays for the part that could not
+ * be absorbed (page at the top). Only the editor's own calm button makes it instant: the OS reduced-motion setting is not read here (owner, 2026-10-31).
+ * measureBar and the drawer-top observer stand down while it runs (they would re-measure the growing box every frame). */
+const RB_GLIDE_MS = 240;
+const RB_GLIDE_EASE = 'cubic-bezier(.65, 0, .35, 1)';
+const rbBand = (isl) => Math.round(isl.offsetTop + isl.offsetHeight + 12); // the same sum as editor.js measureBar
+if (typeof measureBar === 'function') {
+  const rbMeasure = measureBar;
+  measureBar = function measureBarGlide(...a) { return RB.glide ? undefined : rbMeasure.apply(this, a); };
+}
+function rbGlideEnd() {
+  const g = RB.glide;
+  if (!g) return;
+  RB.glide = null;
+  g.anims.forEach((a) => { try { a.cancel(); } catch { /* gone */ } });
+  if (g.pn.isConnected) { g.pn.classList.remove('rb-glide'); g.pn.hidden = g.target; }
+  if (typeof dtSync === 'function') dtSync();
+  if (typeof measureBar === 'function') measureBar();
+}
+function rbGlide(isl, el, g0) {
+  const pn = el.querySelector('.rb-panel');
+  const closing = RB.collapsed;
+  const b1 = rbBand(isl); // layout with the panel in its new state
+  const delta = b1 - g0.b0;
+  if (!delta || !pn) return;
+  document.documentElement.style.setProperty('--bw-bar-h', `${b1}px`);
+  barH = b1; // editor.js's own record of the band (it only ever grew; here it follows the bar both ways)
+  if (g0.sy > 0) window.scrollBy({ top: delta, behavior: 'instant' });
+  const visual = delta - (window.scrollY - g0.sy); // how far the pages really moved on screen
+  if (S.calm || document.hidden || typeof pn.animate !== 'function') { if (typeof dtSync === 'function') dtSync(); return; }
+  const opts = { duration: RB_GLIDE_MS, easing: RB_GLIDE_EASE };
+  const anims = [];
+  const pair = document.getElementById('bw-pair');
+  if (pair && visual) anims.push(pair.animate([{ transform: `translateY(${-visual}px)` }, { transform: 'translateY(0)' }], opts));
+  const full = closing ? g0.full : pn.offsetHeight;
+  const up = { blockSize: `${full}px`, paddingBlock: '8px', opacity: 1 };
+  const down = { blockSize: '0px', paddingBlock: '0px', opacity: 0 };
+  if (closing) pn.classList.add('rb-glide'); // `hidden` is already set (the state is final at once); this class keeps the panel on screen while it folds
+  const a = pn.animate(closing ? [up, down] : [down, up], { ...opts, fill: closing ? 'forwards' : 'none' });
+  anims.push(a);
+  RB.glide = { anims, pn, target: closing };
+  a.onfinish = () => { if (RB.glide?.anims === anims) rbGlideEnd(); };
 }
 
 /* ── tabs, collapse, keyboard ──────────────────────────────────────────────── */

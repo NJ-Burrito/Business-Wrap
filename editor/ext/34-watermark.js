@@ -297,32 +297,48 @@
       label();
     } else settle();
 
-    // idle float + pointer tilt on a spring (the portfolio's frame loop)
+    // 0.15.2 hover cost: the idle float is ONE looping Web Animation on the mark's transform (compositor: no per-frame script, no layout), paused while
+    // the pointer is on the toolbar (root flag data-bw-hot, 46-backdrop.js), in a hidden tab and in calm mode. The portfolio's spring frame loop only runs
+    // while the pointer is on the mark (tilt) and until it has settled again.
     const S2 = { rx: 0, ry: 0, vx: 0, vy: 0 };
-    let pointer = null, last = 0, raf = 0;
-    const t0 = performance.now();
+    let pointer = null, last = 0, raf = 0, idle = null;
+    const LOOP = 14, STEPS = 56; // seconds; the periods inside it: float 7 s, tilt-x 14 s, tilt-y 14/3 s: whole cycles, so the loop is seamless
+    const idleFrames = Array.from({ length: STEPS + 1 }, (_, i) => {
+      const tt = (i / STEPS) * LOOP, tau = Math.PI * 2;
+      return { transform: `translateY(${(Math.sin(tau * tt / 7) * 6).toFixed(2)}px) rotateX(${(Math.sin(tau * tt / 14) * 4).toFixed(3)}deg) rotateY(${(Math.sin(tau * tt / (14 / 3) + 1) * 6).toFixed(3)}deg)` };
+    });
     const spring = (v, tgt, vel, k, c, dt) => { const a = k * (tgt - v) - c * vel; vel += a * dt; return [v + vel * dt, vel]; };
-    wm.addEventListener('pointermove', (e) => { if (e.pointerType === 'touch') return; const r = stage.getBoundingClientRect(); pointer = { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }; });
-    wm.addEventListener('pointerleave', () => { pointer = null; });
+    const idleWanted = () => !pointer && !raf && !document.hidden && !RM.matches && !calm() && document.documentElement.dataset.bwHot !== '1';
+    const idleSync = () => {
+      if (pointer || raf || RM.matches) { if (idle) { idle.cancel(); idle = null; } return; }
+      if (!idle && typeof mark.animate === 'function') { mark.style.transform = ''; idle = mark.animate(idleFrames, { duration: LOOP * 1000, iterations: Infinity, easing: 'linear' }); }
+      if (!idle) return;
+      const want = idleWanted();
+      if (want && idle.playState === 'paused') idle.play();
+      else if (!want && idle.playState === 'running') idle.pause();
+    };
     const frame = (nowT) => {
       raf = 0;
       const dt = Math.min(0.033, (nowT - (last || nowT)) / 1000);
       last = nowT;
-      const tt = (nowT - t0) / 1000;
-      const rm = RM.matches;
-      const p = pointer && !rm ? pointer : null;
-      const tx = p ? (p.y - 0.5) * -18 : rm ? 0 : Math.sin(tt * 0.55) * 4;
-      const ty = p ? (p.x - 0.5) * 22 : rm ? 0 : Math.sin(tt * 0.37 + 1) * 6;
+      const p = pointer && !RM.matches ? pointer : null;
+      const tx = p ? (p.y - 0.5) * -18 : 0;
+      const ty = p ? (p.x - 0.5) * 22 : 0;
       [S2.rx, S2.vx] = spring(S2.rx, tx, S2.vx, 90, 16, dt);
       [S2.ry, S2.vy] = spring(S2.ry, ty, S2.vy, 90, 16, dt);
-      const floatY = rm || p ? 0 : Math.sin(tt * 0.9) * 6;
-      mark.style.transform = `translateY(${floatY.toFixed(2)}px) rotateX(${S2.rx.toFixed(3)}deg) rotateY(${S2.ry.toFixed(3)}deg)`;
-      if (!document.hidden && !rm) raf = requestAnimationFrame(frame);
+      const settled = !p && Math.abs(S2.rx) < 0.02 && Math.abs(S2.ry) < 0.02 && Math.abs(S2.vx) < 0.05 && Math.abs(S2.vy) < 0.05;
+      if (settled) { S2.rx = S2.ry = S2.vx = S2.vy = 0; mark.style.transform = ''; idleSync(); return; }
+      mark.style.transform = `rotateX(${S2.rx.toFixed(3)}deg) rotateY(${S2.ry.toFixed(3)}deg)`;
+      if (!document.hidden) raf = requestAnimationFrame(frame);
     };
-    const start = () => { if (!raf && !document.hidden && !RM.matches) { last = 0; raf = requestAnimationFrame(frame); } };
-    document.addEventListener('visibilitychange', start);
-    RM.addEventListener?.('change', () => { mark.style.transform = ''; start(); });
-    start();
+    const tilt = () => { if (!raf && !document.hidden && !RM.matches) { last = 0; raf = requestAnimationFrame(frame); } };
+    wm.addEventListener('pointermove', (e) => { if (e.pointerType === 'touch') return; const r = stage.getBoundingClientRect(); const first = !pointer; pointer = { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }; if (first) { idleSync(); tilt(); } });
+    wm.addEventListener('pointerleave', () => { pointer = null; tilt(); if (!raf) idleSync(); });
+    document.addEventListener('visibilitychange', () => { idleSync(); });
+    window.addEventListener('bw:hot', idleSync);
+    new MutationObserver(idleSync).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bw-calm'] }); // the editor's own calm button
+    RM.addEventListener?.('change', () => { mark.style.transform = ''; idleSync(); });
+    idleSync();
     M0 = { wm, stage, mark, tag, parts, flip, next, live };
     window.BW_WM = { next, roles: () => roles.map((r) => r.role), current: () => wm.dataset.role, relabel: () => { setTag(false); label(); }, WM };
     st.lastAny = now(); // the first random reaction comes 25 to 70 s after the mark appears

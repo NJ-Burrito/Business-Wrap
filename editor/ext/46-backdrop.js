@@ -1,17 +1,13 @@
 /* 0.15.0 look lane (notes 11 and 13, perf booster 2). Three small, independent jobs that share one file because each is a few lines of
  * DOM plumbing the stylesheets cannot do:
- *   1. #bw-backdrop, the giant NJ monogram on the desk (note 13). The look is in editor/editor.css (page level: the desk is outside the
- *      shadow root, so an ext/*.css file could not reach it). Here: build the element once, hand it the monogram as a CSS mask, and still it
- *      (class bd-still) while the tab is hidden or the page is zoomed past 200 %. Calm, reduced motion and focus mode are CSS (root flags).
+ *   1. #bw-backdrop (0.15.2 note 1: a static drafting-grid layer, look in editor/editor.css; here the element is built once).
  *   2. --bw-drawer-top on the host (note 11): the real bottom of the top bar + 8 px, kept in step by a ResizeObserver. editor.js measureBar
  *      only grows --bw-bar-h and is not run when the ribbon folds, which left drawers hanging 275 px down. ui.css reads --bw-drawer-top
  *      and falls back to --bw-bar-h.
  *   3. The mark's idle nod (perf booster 2): one-shot animations set from a timer instead of `infinite` CSS loops (see chrome.css).
  * An extension's code runs in the editor's own scope: `root`, `S`, `isCalm` are in reach. */
-const BD_NJ = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><path fill="#000" d="M40 50H70L106 126V50H136V206H106L70 128V206H40Z"/>'
-  + '<path fill="#000" d="M154 50H220V152Q220 206 170 206H152V176H166Q190 176 190 148V80H154Z"/></svg>';
-const BD_MASK = `url("data:image/svg+xml,${encodeURIComponent(BD_NJ)}")`;
-
+/* 0.15.2 note 1: the backdrop is a static CSS layer now (editor/editor.css, a drafting grid over a soft glow): no mask, no animation, nothing to
+ * still or pause. Here: build the element once. */
 const lookState = { bd: null, ro: null, roEl: null, idleT: 0, idleN: 0 };
 
 function bdEnsure() {
@@ -20,21 +16,15 @@ function bdEnsure() {
     el = document.createElement('div');
     el.id = 'bw-backdrop';
     el.setAttribute('aria-hidden', 'true');
-    el.style.setProperty('--bd-mask', BD_MASK);
-    el.innerHTML = '<div class="bd-mark"><i class="bd-wash"></i></div>';
     document.body.prepend(el);
   }
   lookState.bd = el;
   return el;
 }
-function bdSync() {
-  const el = lookState.bd || bdEnsure();
-  const zoom = parseFloat(document.documentElement.style.getPropertyValue('--bw-zoom')) || 1;
-  el.classList.toggle('bd-still', document.hidden || zoom > 2);
-}
 
 /** The bar's real bottom + 8 px (the 12 px page band of measureBar is 4 px more: --bw-bar-h - 4 is the old fallback). */
 function dtSync() {
+  if (typeof RB !== 'undefined' && RB.glide) return; // the ribbon's panel is gliding (25-ribbon.js): measured once when it lands
   const bar = root.querySelector('.island');
   const host = document.getElementById('bw-ui-host');
   if (!host) return;
@@ -88,9 +78,11 @@ function idleLoop() {
 bwExt({
   on: {
     boot: () => {
-      bdEnsure(); bdSync(); dtSync();
-      document.addEventListener('visibilitychange', bdSync);
-      new MutationObserver(bdSync).observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
+      bdEnsure(); dtSync();
+      // 0.15.2 hover cost: while the pointer is on the toolbar the watermark's idle float pauses (root flag data-bw-hot, event bw:hot)
+      const hotSet = (on) => { const d = document.documentElement.dataset; if ((d.bwHot === '1') !== on) { d.bwHot = on ? '1' : '0'; window.dispatchEvent(new Event('bw:hot')); } };
+      root.addEventListener('pointerover', (e) => { if (e.pointerType !== 'touch' && e.target?.closest?.('.island')) hotSet(true); });
+      root.addEventListener('pointerout', (e) => { const isl = e.target?.closest?.('.island'); if (isl && !isl.contains(e.relatedTarget)) hotSet(false); });
       window.addEventListener('resize', dtSync);
       window.addEventListener('bw:server', () => requestAnimationFrame(dtSync));
       lookState.idleT = setTimeout(idleLoop, 2600);
