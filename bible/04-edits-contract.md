@@ -28,10 +28,18 @@ Pointers resolve against the state after all previous ops. `old` makes every op 
 ## Rules
 1. **Only through ops.** Save = write `edits.json`; Export = replay + render. A hand edit of the document JSON is lost on the next stage rebuild.
 2. **Conflict check:** a `setText` whose current value differs from `old` is a conflict; the editor shows both and asks, never overwrites silently.
-3. **Renumbering** after insert/delete/move is done by the renderer from position (TOC, headings, story captions, PDF and DOCX alike), not stored in ops. A document that sets `control.numbering: "manual"` opts out: its stored numbers are printed as written and the editor's renumber action emits ops for it.
+3. **Renumbering** after insert/delete/move is done by the renderer from position (TOC, headings, story captions, PDF and DOCX alike), not stored in ops. A document that sets `control.numbering: "manual"` opts out: its stored numbers are printed as written and the editor's renumber action emits ops for it. Everything the user or Check sees (editor view, outline, Check, PDF, DOCX, HTML) uses the same positional numbers, so Check never reports «numbering out of sequence» on an auto-numbered document. The **Renumber** action (also `editor action renumber`) writes those numbers into the stored `number` fields of every edition, chapters, sections and `stories` blocks, as one undo group; on a manual document it writes real numbers.
 4. **Paste is plain text.**
 5. **Recurring edits are defects upstream.** If the same op appears on several documents, fix the source rule; the edits file is for one document's human judgement.
 6. **No secrets, no watermark:** the edits file is an output; it carries no credentials, no personal data beyond initials, and never the editor watermark.
+
+## Document settings and shape rules (0.15.3)
+7. **One-language documents.** `control.editions: ["ar"]` (or `["en"]`) marks a document written in a single language. Check skips every pair rule (structure match, stale marks); the editor does not mirror structural edits into a second edition; Save HTML and project exports leave the empty edition out. Absent, or `["ar","en"]`, means a pair. Set it in the Check panel (Document languages: two editions / Arabic only / English only) or with an op: `{"op":"replace","path":"/control/editions","value":["ar"]}` (`delete` the path to turn it off), or `editor action singleEdition {editions: "ar"|"en"|"both"}`. It is a setting, not text: find, spelling and word counts never read it.
+8. **Tables keep their headers.** An op that writes a table with `columns: []`, or sets any `/columns` to `[]`, is refused (`BAD_OP`; `validateEdits` lists the reason). Leave `columns` out for a headerless table.
+9. **A story number is never written by hand.** `stories.number` is its section's number; an op on `/chapters/i/sections/j/blocks/k/number` is refused. Renumber the section instead.
+10. **No visible tashkeel.** Vowel marks U+064B to U+0652 in visible text are a Check warning with a one-click «Remove tashkeel» fix (`editor action fixTashkeel`, one undo group). Tashkeel belongs to speech text only.
+11. **Large figures.** Check warns when a diagram would print below 7 pt and offers «Split this figure» (`editor action splitFigure {pointer}`): the block becomes the fewest figures that each print at 7 pt or more, cut on phase (after a gate) or role (the stage kind changes) boundaries, with «يتبع» / "Continued" stub nodes at every cut; the other edition is cut at the same places so the pair keeps its shape.
+12. **Library words** are counted per built edition (what each edition holds now, base plus its live ops) and refreshed on every save; `editor list` reports `words` (the largest edition) and `wordsByEdition`.
 
 ## Example
 ```json

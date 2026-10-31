@@ -14,6 +14,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import { REPO } from '../export.mjs';
+import { entryWords } from '../edits.mjs';
 import { ensure, readJson, saveHtml, subdir, systemDir } from '../workspace.mjs';
 import { importFile } from '../import/import.mjs';
 import { assignDocs, ensureProject, readState } from './projects.mjs';
@@ -63,7 +64,7 @@ export function makeEntry(d, { origin = 'import' } = {}) {
   const now = new Date().toISOString(), id = `doc-${crypto.randomUUID()}`;
   let title = String(d.title || '').trim();
   if (!title) { const names = Object.values(editions).map((e) => titleOfRaw(e.raw, id)); title = names.find((n) => n && !PLACEHOLDER.has(n)) || names[0]; }
-  return { id, title, service: JSON.parse(first).service || 'document', origin, createdAt: now, savedAt: now, editions, bwlog: 1 };
+  return { id, title, service: JSON.parse(first).service || 'document', origin, createdAt: now, savedAt: now, editions, words: entryWords({ editions }), bwlog: 1 }; // words per built edition (0.15.3)
 }
 
 /**
@@ -127,7 +128,7 @@ function listMirror(ctx) {
     if (!c || c.mtimeMs !== st.mtimeMs || c.size !== st.size) {
       try {
         const e = JSON.parse(zlib.gunzipSync(fs.readFileSync(file)).toString('utf8'));
-        c = { mtimeMs: st.mtimeMs, size: st.size, row: ID.test(String(e.id)) ? { id: e.id, title: String(e.title || ''), savedAt: e.savedAt || null, ...(e.deletedAt ? { deletedAt: e.deletedAt } : {}), bytes: st.size } : null };
+        c = { mtimeMs: st.mtimeMs, size: st.size, row: ID.test(String(e.id)) ? { id: e.id, title: String(e.title || ''), savedAt: e.savedAt || null, ...(e.deletedAt ? { deletedAt: e.deletedAt } : {}), bytes: st.size, words: e.words && typeof e.words === 'object' ? e.words : entryWords(e) } : null }; // words per built edition (0.15.3)
       } catch { c = { mtimeMs: st.mtimeMs, size: st.size, row: null }; }
       listCache.set(file, c);
     }

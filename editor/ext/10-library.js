@@ -97,7 +97,7 @@ const LIB = (() => {
     const editions = {};
     for (const [ed, e] of Object.entries(M[id])) editions[ed] = snapEd(e);
     // A16: the lock state travels with the entry (32-lock exposes EXT.lock), so a locked document opens locked
-    return { id, title: titleOf(id), service: id, origin: 'template', createdAt: now, savedAt: now, editions, theme: S.theme, lock: EXT.lock?.of(id) || null, bwlog: 1, ...extra };
+    return { id, title: titleOf(id), service: id, origin: 'template', createdAt: now, savedAt: now, editions, words: Object.fromEntries(Object.entries(M[id]).map(([ed, e]) => [ed, wordCount(e.doc)])) /* 0.15.3: words per built edition, refreshed on every save */, theme: S.theme, lock: EXT.lock?.of(id) || null, bwlog: 1, ...extra };
   }
   /** An entry into the session (DATA.services + M), replacing what was there. */
   function mount(entry) {

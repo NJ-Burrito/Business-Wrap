@@ -57,8 +57,8 @@ export const DIAGRAM = (() => {
 
   /* legend wording; a model may rename any entry (model.legend[key]) */
   const KEY = {
-    ar: { staff: 'مرحلة الموظف', applicant: 'مرحلة مقدم الطلب', rework: 'استكمال من مُقدّم الطلب', payment: 'دفع من مُقدّم الطلب', system: 'خطوة ينفذها النظام', stop: 'نهاية بالإلغاء أو الرفض', ok: 'نهاية بالاعتماد', note: 'ملاحظة', 'wire-main': 'المسار الأساسي للطلب', 'wire-return': 'إرجاع إلى مرحلة سابقة', 'wire-stop': 'مسار الرفض أو الإلغاء', action: 'إجراء', start: 'تقديم الطلب', newStage: 'مرحلة جديدة', newText: 'نص', continueTo: 'يتابع في الشكل {n}', continueFrom: 'من الشكل {n}' },
-    en: { staff: 'Staff stage', applicant: 'Applicant step', rework: 'Applicant completes', payment: 'Applicant pays', system: 'System step', stop: 'Ends refused or cancelled', ok: 'Ends approved', note: 'Note', 'wire-main': 'Main path', 'wire-return': 'Back to an earlier stage', 'wire-stop': 'Refusal or cancellation', action: 'Action', start: 'Submit request', newStage: 'New stage', newText: 'Text', continueTo: 'Continues in figure {n}', continueFrom: 'From figure {n}' },
+    ar: { staff: 'مرحلة الموظف', applicant: 'مرحلة مقدم الطلب', rework: 'استكمال من مُقدّم الطلب', payment: 'دفع من مُقدّم الطلب', system: 'خطوة ينفذها النظام', stop: 'نهاية بالإلغاء أو الرفض', ok: 'نهاية بالاعتماد', note: 'ملاحظة', 'wire-main': 'المسار الأساسي للطلب', 'wire-return': 'إرجاع إلى مرحلة سابقة', 'wire-stop': 'مسار الرفض أو الإلغاء', action: 'إجراء', start: 'تقديم الطلب', newStage: 'مرحلة جديدة', newText: 'نص', continueTo: 'يتبع في الشكل {n}', continueFrom: 'تابع من الشكل {n}' },
+    en: { staff: 'Staff stage', applicant: 'Applicant step', rework: 'Applicant completes', payment: 'Applicant pays', system: 'System step', stop: 'Ends refused or cancelled', ok: 'Ends approved', note: 'Note', 'wire-main': 'Main path', 'wire-return': 'Back to an earlier stage', 'wire-stop': 'Refusal or cancellation', action: 'Action', start: 'Submit request', newStage: 'New stage', newText: 'Text', continueTo: 'Continued in figure {n}', continueFrom: 'Continued from figure {n}' },
   };
   const words = (locale) => KEY[locale === 'ar' ? 'ar' : 'en'];
 
@@ -305,7 +305,7 @@ export const DIAGRAM = (() => {
   const fill = (tpl, n) => String(tpl).replace('{n}', n);
   /** @returns {{caption: string, nodes: string[], model?: object}[]} Each figure holds at most `maxNodes` nodes (continuations included).
    *  suggestOnly: ids only, no model built (what `layout({maxNodes})` attaches as `split`). */
-  function splitByPhase(modelIn, { maxNodes = 20, locale = 'ar', aspect = 1.5, suggestOnly = false } = {}) {
+  function splitByPhase(modelIn, { maxNodes = 20, locale = 'ar', aspect = 1.5, suggestOnly = false, byRole = false } = {}) {
     const m = clone(modelIn);
     m.nodes = (m.nodes || []).filter((n) => n && n.id && !(n.kind === 'group' && n.auto));
     const ids = new Set(m.nodes.map((n) => n.id));
@@ -332,6 +332,21 @@ export const DIAGRAM = (() => {
         add.forEach((x) => cur.sats.add(x));
         cur.size += cost;
       });
+      if (byRole && chunks.length > 1) {
+        // 0.15.3 (T7): a cut falls on a phase (after a gate) or role (swimlane: the kind of the stage changes) boundary, within the last third of a figure
+        const kindOf = (id) => byId.get(id)?.kind;
+        for (let ci = 0; ci < chunks.length - 1; ci += 1) {
+          const a = chunks[ci].spine, b = chunks[ci + 1].spine;
+          const room = Math.floor(a.length / 3);
+          const joined = [...a, ...b];
+          let best = a.length;
+          for (let k = a.length; k > a.length - room && k > 1; k -= 1) {
+            if (kindOf(joined[k - 1]) === 'decision' || kindOf(joined[k]) !== kindOf(joined[k - 1])) { best = k; break; }
+          }
+          if (best !== a.length) { chunks[ci].spine = joined.slice(0, best); chunks[ci + 1].spine = joined.slice(best); }
+        }
+        for (const c of chunks) { c.sats = new Set(c.spine.flatMap((id) => satsOf(id))); c.size = c.spine.length + c.sats.size; }
+      }
       const chunkOfSpine = new Map();
       chunks.forEach((c, ci) => c.spine.forEach((id) => chunkOfSpine.set(id, ci)));
       const parts = chunks.map(() => ({ nodes: new Map(), edges: [], toFig: new Map(), fromFig: new Map() }));
@@ -373,6 +388,27 @@ export const DIAGRAM = (() => {
       });
     }
     return whole();
+  }
+
+  /** 0.15.3 (T7) · the fewest figures, cut on phase / role boundaries with continuation stubs, that each print at `minPt` or more.
+   *  @returns {{figures: {caption: string, nodes: string[], model: object, minPtPrinted: number}[], minPtPrinted: number, ok: boolean}|null}
+   *  null when the figure already prints legibly, or is too small to cut. */
+  function splitForLegibility(modelIn, { frameMm = [269, 140], theme, locale = 'ar', minPt = 7, aspect = 1.5, maxNodes } = {}) {
+    const base = ensure(modelIn);
+    const count = base.nodes.filter((n) => !FREE.has(n.kind)).length;
+    if (count < 6) return null;
+    const lg0 = legibility(base, { frameMm, theme, locale, minPt });
+    if (lg0.small.length === 0) return null;
+    let best = null;
+    for (let cap = Math.min(maxNodes || 20, count - 1); cap >= 4; cap -= 2) {
+      const figs = splitByPhase(base, { maxNodes: cap, locale, aspect, byRole: true });
+      if (figs.length < 2) continue;
+      const rated = figs.map((f) => ({ ...f, minPtPrinted: legibility(f.model, { frameMm, theme, locale, minPt }).minPtPrinted }));
+      const low = Math.min(...rated.map((f) => f.minPtPrinted));
+      if (!best || low > best.minPtPrinted) best = { figures: rated, minPtPrinted: low, ok: low >= minPt, cap };
+      if (low >= minPt) break;
+    }
+    return best;
   }
 
   /* ── 0.15.0 · F5: is the lettering readable once the sheet is printed into its frame? ── */
@@ -1092,5 +1128,5 @@ export const DIAGRAM = (() => {
     });
   }
 
-  return { splitByPhase, legibility, KINDS, WIRE_KINDS, COLORS, SYMBOLS, FS, G, palette, words, measure, wrap, textW, classify, layout, ensure, route, resolve, render, fromGraph, toMermaid, fromMermaid, starter, glyph };
+  return { splitByPhase, splitForLegibility, legibility, KINDS, WIRE_KINDS, COLORS, SYMBOLS, FS, G, palette, words, measure, wrap, textW, classify, layout, ensure, route, resolve, render, fromGraph, toMermaid, fromMermaid, starter, glyph };
 })();
