@@ -2965,5 +2965,135 @@ function boot() {
 for (const [svc, eds] of Object.entries(M)) for (const [ed, e] of Object.entries(eds)) for (const c of e.doc.harvestConflicts || []) if (svc === S.svc) S.conflicts.push({ ed, path: c.path, mine: c.manual, theirs: c.harvested, kind: 'text' });
 if (S.conflicts.length) toast(t('reharvestConflicts', { n: S.conflicts.length }), 'warn', { actions: [[t('show'), () => openDrawer('conflicts')]], persist: true });
 { const n = (cur().doc.process?.actors || []).filter((a) => a.unresolved).length; if (n) toast(t('rolesUnresolved', { n }), 'warn', { actions: [[t('show'), () => openDrawer('process')]], persist: true }); }
-window.BW = { whenReady, holdReady, dialogs: () => { tagDialogs(); return dialogEls().map((el) => ({ id: el.dataset.bwDialog, open: dialogOpen(el) })); }, dialog: (id) => dialogEls().find((el) => el.dataset.bwDialog === id) || null, hasAction: actionKnown, setZoom, zoomTo: zoomFromField, automation: AUTOMATION, ic, IC, undoToast, flushDraft, S, M, commit, runAction, toast, DIAGRAM, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll, EXT, emit, bwExt, openDrawer };
+/* ── editor bridge (0.15.0): what a tool asks of the OPEN document, answered here ──────────────────────────────────────────
+ * engine/routes/editor-bridge.mjs pushes the SSE event `req {id, tool, doc, args}` to this tab; editor/ext/12-session.js hands it to
+ * BW.bridge(tool, doc, args) and replies with POST /api/editor/reply. Errors carry a code: NO_DOC BAD_ARGS BAD_OP CONFLICT UNKNOWN_ACTION REFUSED.
+ * ops: validated on a COPY first (nothing changes when one op is wrong or an `old` does not match), then ONE commit = ONE undo group, saved to
+ * the library, and signed in the provenance log as the agent (its own actor id `agent:<name>`, never the person's). */
+const BRIDGE = (() => {
+  const err = (code, message, extra = {}) => Object.assign(new Error(message), { bw: code, extra });
+  const slug = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'agent';
+  const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const sha = async (s) => `sha256:${hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))}`;
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b) || (textOf(a) !== '' && textOf(a) === textOf(b));
+  const wordsOf = (doc) => { try { return textLeaves(doc).map((x) => x.value).join(' ').split(/\s+/).filter(Boolean).length; } catch { return 0; } };
+  /** Run fn with the provenance actor set to the agent; its log entries are queued inside commit, so wait for the queue before the person's name returns. */
+  async function asAgent(name, fn) {
+    if (typeof PF === 'undefined' || typeof PV === 'undefined') return fn();
+    const actor = { id: `agent:${slug(name)}`, name: String(name || 'Claude').slice(0, 80) };
+    try { if (typeof pvFlushTyping === 'function') pvFlushTyping(); await PV.q; } catch { /* the log is best effort */ }
+    const was = PF.actor;
+    PF.actor = () => actor;
+    try { return await fn(); } finally { try { await PV.q; } catch { /* idem */ } PF.actor = was; }
+  }
+  /** The document the call is about, mounted and shown: the open one, or a library entry of this browser; NO_DOC otherwise. */
+  async function target(doc, locale) {
+    if (doc && doc !== S.svc) {
+      let ok = false;
+      try { ok = !!(await EXT.library?.open(doc, locale)); } catch { ok = false; }
+      if (!ok || S.svc !== doc) throw err('NO_DOC', `no document "${doc}" in this editor's library`, { doc });
+    }
+    const ed = locale || S.ed;
+    if (!M[S.svc]?.[ed]) throw err('BAD_ARGS', `the document has no "${ed}" edition`, { editions: Object.keys(M[S.svc] || {}) });
+    return ed;
+  }
+  const ACTIONS = ['renumber', 'check', 'saveHtml', 'share', 'exportPdf'];
+  const tools = {
+    async list({ project } = {}) {
+      const rows = ((await EXT.library?.all()) || []).filter((e) => e.kind !== 'template' && !e.deletedAt && EXT.library.isDoc(e.id));
+      const documents = rows.map((e) => {
+        const pid = EXT.projects?.of(e.id) || null;
+        const proj = pid ? EXT.projects.state().projects.find((p) => p.id === pid)?.name || pid : null;
+        let doc = M[e.id] ? Object.values(M[e.id])[0]?.doc : null;
+        if (!doc) { try { doc = JSON.parse(Object.values(e.editions)[0].raw); } catch { doc = null; } }
+        return { id: e.id, title: M[e.id] ? EXT.library.titleOf(e.id) : e.title, project: proj, editions: Object.keys(e.editions || {}), savedAt: e.savedAt, words: doc ? wordsOf(doc) : 0 };
+      }).filter((d) => !project || d.project === project);
+      return { documents };
+    },
+    async get({ pointer = '', locale } = {}, doc) {
+      const ed = await target(doc, locale);
+      const value = pointer ? get(cur(ed).doc, pointer) : cur(ed).doc;
+      if (value === undefined) throw err('BAD_ARGS', `nothing at ${pointer}`, { pointer });
+      return { value: clone(value), pointer, locale: ed, doc: S.svc };
+    },
+    async outline({ locale } = {}, doc) {
+      const ed = await target(doc, locale);
+      const d = cur(ed).doc;
+      const chapters = (d.chapters || []).map((ch, i) => ({
+        pointer: `/chapters/${i}`, number: ch.number, title: textOf(ch.title),
+        sections: (ch.sections || []).map((s, j) => ({ pointer: `/chapters/${i}/sections/${j}`, number: s.number, title: textOf(s.title), blocks: (s.blocks || []).map((b, k) => ({ pointer: `/chapters/${i}/sections/${j}/blocks/${k}`, kind: b.kind, ...(b.id ? { id: b.id } : {}) })) })),
+      }));
+      return { doc: S.svc, locale: ed, title: textOf(d.control?.title), chapters, counts: { chapters: chapters.length, sections: chapters.reduce((n, c) => n + c.sections.length, 0), blocks: chapters.reduce((n, c) => n + c.sections.reduce((m, s) => m + s.blocks.length, 0), 0), words: wordsOf(d) } };
+    },
+    async ops({ ops, locale, mirror = false, agent, group } = {}, doc) {
+      if (!Array.isArray(ops) || !ops.length) throw err('BAD_OP', 'ops must be a non-empty array');
+      if (!locale) throw err('BAD_ARGS', 'locale is required (ar or en): no silent default');
+      const ed = await target(doc, locale);
+      const e = cur(ed);
+      const test = clone(e.doc);
+      const list = clone(ops);
+      list.forEach((op, i) => {
+        if (!op || !['setText', 'replace', 'insert', 'delete', 'move', 'duplicate'].includes(op.op) || typeof op.path !== 'string') throw err('BAD_OP', `op ${i}: bad op or path`, { index: i });
+        if ('old' in op) { const live = get(test, op.path); if (!same(live, op.old)) throw err('CONFLICT', `op ${i}: ${op.path} holds something else than old`, { index: i, path: op.path, live: clone(live) ?? null }); }
+        try { applyOp(test, op); } catch (x) { throw err('BAD_OP', `op ${i}: ${x.message}`, { index: i }); }
+      });
+      const g = `${newGroup()}${group ? `-${slug(group)}` : ''}`; // a group id never holds a dot: undo() splits on it
+      const name = agent || 'Claude';
+      try { await asAgent(name, async () => { commit(list, { ed, group: g, mirror }); }); } catch (x) { if (x?.refused) throw err('REFUSED', x.message); throw x; }
+      await EXT.library?.persist?.(S.svc);
+      return { applied: list.length, group: g, opsLen: e.ops.length, hash: await sha(JSON.stringify(e.doc)), doc: S.svc, locale: ed, actor: { id: `agent:${slug(name)}`, name } };
+    },
+    async action({ id, args = {} } = {}, doc) {
+      if (!ACTIONS.includes(id)) throw err('UNKNOWN_ACTION', `unknown action "${id}"`, { allowed: ACTIONS });
+      const ed = await target(doc, args.locale);
+      if (id === 'check') return { id, findings: validate().map(([level, message, path]) => ({ level, message, path })) };
+      if (id === 'share') return shareAs(args);
+      const before = cur(ed).ops.length;
+      await asAgent(args.agent || 'Claude', async () => { await runAction(id); });
+      return { id, opsAdded: cur(ed).ops.length - before };
+    },
+    async new({ title, project, template } = {}) {
+      if (!title) throw err('BAD_ARGS', 'title is required');
+      const PJ = EXT.projects;
+      const pid = project ? PJ?.state().projects.find((p) => !p.deletedAt && !p.purgedAt && (p.id === project || p.name === project))?.id || PJ?.create(project)?.id || null : null;
+      const entry = template ? await EXT.library.fromTemplate(template) : await PJ.newIn(pid);
+      if (!entry) throw err('BAD_ARGS', 'the new document could not be made (is the host serving the blank structure?)');
+      if (template && pid) PJ.assign(entry.id, pid);
+      for (const ed of Object.keys(M[S.svc])) await asAgent('Claude', async () => { commit([{ op: 'setText', path: '/control/title', value: String(title) }], { ed, mirror: false }); });
+      await EXT.library.persist(S.svc);
+      return { id: S.svc, title: String(title), project: project || null };
+    },
+    async import({ document, project } = {}) {
+      if (!document || typeof document !== 'object' || !document.chapters || !document.control) throw err('BAD_ARGS', 'document must be a document JSON object (control, chapters)');
+      const ed = /[؀-ۿ]/.test(document.control.title || '') ? 'ar' : 'en';
+      const file = new File([JSON.stringify(document)], `document.${ed}.json`, { type: 'application/json' });
+      const PJ = EXT.projects;
+      const pid = project ? PJ?.state().projects.find((p) => !p.deletedAt && (p.id === project || p.name === project))?.id || PJ?.create(project)?.id || null : null;
+      const entry = pid ? await PJ.importInto(pid, file) : await EXT.library.importAny(file);
+      if (!entry) throw err('BAD_ARGS', 'the document could not be imported');
+      return { id: entry.id, title: entry.title, project: project || null };
+    },
+  };
+  /** The coworker-share dialog driven like a person would: recipient and note typed in, «Share» pressed, the result card read, then closed. */
+  async function shareAs({ to = '', note = '' } = {}) {
+    const wait = async (f, ms = 8000) => { for (const t0 = Date.now(); Date.now() - t0 < ms; await new Promise((r) => setTimeout(r, 60))) { const v = f(); if (v) return v; } return null; };
+    const run = runAction('shShare');
+    const form = await wait(() => root.querySelector('.sh-modal [data-sh="to"]')?.closest('.sh-modal'));
+    if (!form) { await run.catch(() => {}); throw err('BAD_ARGS', 'the share dialog did not open'); }
+    form.querySelector('[data-sh="to"]').value = String(to).slice(0, 80);
+    form.querySelector('[data-sh="note"]').value = String(note).slice(0, 500);
+    form.querySelector('.primary')?.click();
+    const done = await wait(() => root.querySelector('.sh-done .sh-path'), 15000);
+    const path = done?.textContent || S.lastShare || null;
+    root.querySelector('.sh-done .btns:not(.sh-acts) button, .sh-done [data-k="close"]')?.click();
+    await Promise.race([run.catch(() => {}), new Promise((r) => setTimeout(r, 1500))]);
+    return { id: 'share', path };
+  }
+  return async (tool, doc, args) => {
+    if (!Object.hasOwn(tools, tool)) throw err('BAD_ARGS', `unknown tool "${tool}"`);
+    return tools[tool](args || {}, doc);
+  };
+})();
+
+window.BW = { bridge: BRIDGE, whenReady, holdReady, dialogs: () => { tagDialogs(); return dialogEls().map((el) => ({ id: el.dataset.bwDialog, open: dialogOpen(el) })); }, dialog: (id) => dialogEls().find((el) => el.dataset.bwDialog === id) || null, hasAction: actionKnown, setZoom, zoomTo: zoomFromField, automation: AUTOMATION, ic, IC, undoToast, flushDraft, S, M, commit, runAction, toast, DIAGRAM, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll, EXT, emit, bwExt, openDrawer };
 // boot(): called by engine/build-editor.mjs after editor/ext/*.js (the seam)

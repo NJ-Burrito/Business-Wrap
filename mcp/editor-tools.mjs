@@ -1,18 +1,21 @@
 // The live-editor tool family (0.15.0, architect F3): an agent edits the document that is OPEN in the editor, through the
-// local host, instead of editing files or driving the browser over CDP. Every verb is one POST to the host's frozen
-// bridge contract:
+// local host, instead of editing files or driving the browser over CDP. Every verb is one POST to the host's bridge
+// (engine/routes/editor-bridge.mjs; the tab half is BW.bridge in editor/editor.js, wired in editor/ext/12-session.js):
 //
-//   POST /api/editor/call   header x-bw-token: <host.json token>   body {tool, doc?, args}
+//   POST /api/editor/call   header x-bw-token: <host.json token>   body {tool, doc?, tab?, args}   (`op`, `doc_id` accepted as aliases)
 //     200 {ok:true, result}                                  the tab's answer
-//     404 {code:'NO_DOC'} · 504 {code:'TAB_TIMEOUT', tab, lastBeatMs} · 4xx {code:'CONFLICT'|'BAD_OP'|'UNKNOWN_ACTION', ...}
+//     404 {ok:false, code:'NO_TAB'} no editor tab is connected · 404 {code:'NO_DOC'} the tab's library has no such document
+//     409 {code:'CONFLICT', index, path, live} · 422 {code:'BAD_OP'} · 400 {code:'BAD_ARGS'|'UNKNOWN_ACTION'} · 423 {code:'REFUSED'} (locked)
+//     504 {code:'TAB_TIMEOUT', tab, lastBeatMs} · 403 {code:'AUTH'}
+//   POST /api/editor/reply  {id, ok, result | error:{code, message}}   (the tab's answer; never called by a tool)
 //   GET  /api/host/health                                    the frozen health schema (architect.md §2)
 //
-// The host half (routes/editor.mjs) and the tab half (ext/19-bridge.js) are other lanes'; this file is written against the
-// contract and tested with a mock host (mcp/test/editor-tools.test.mjs). docs/automation.md states the contract.
+// docs/automation.md states the contract; tests: mcp-editor-tools.test.mjs (mock host) and bridge-0150.test.mjs (real host + real Edge tab).
+import fs from 'node:fs';
 import http from 'node:http';
 import { validateEdits } from '../engine/edits.mjs';
 
-/** An error an agent can branch on: `code` is one of NO_HOST NO_DOC TAB_TIMEOUT CONFLICT BAD_OP UNKNOWN_ACTION BAD_ARGS AUTH HOST_ERROR RESTART_REQUIRED. */
+/** An error an agent can branch on: `code` is one of NO_HOST NO_TAB NO_DOC TAB_TIMEOUT REFUSED CONFLICT BAD_OP UNKNOWN_ACTION BAD_ARGS AUTH HOST_ERROR RESTART_REQUIRED. */
 export class BwError extends Error {
   constructor(code, message, data = {}) { super(message); this.bw = true; this.code = code; this.data = data; }
 }
@@ -56,7 +59,7 @@ function request(target, method, route, payload) {
   });
 }
 
-const KNOWN = new Set(['NO_HOST', 'NO_DOC', 'TAB_TIMEOUT', 'CONFLICT', 'BAD_OP', 'UNKNOWN_ACTION', 'BAD_ARGS']);
+const KNOWN = new Set(['NO_HOST', 'NO_TAB', 'REFUSED', 'NO_DOC', 'TAB_TIMEOUT', 'CONFLICT', 'BAD_OP', 'UNKNOWN_ACTION', 'BAD_ARGS']);
 function failFrom(status, body) {
   const code = KNOWN.has(body?.code) ? body.code : status === 401 || status === 403 ? 'AUTH' : status === 404 ? 'NO_DOC' : status === 504 ? 'TAB_TIMEOUT' : 'HOST_ERROR';
   const { code: _c, message, error, ok: _o, ...rest } = body || {};
@@ -149,7 +152,11 @@ export function registerEditorTools(server, z, guard) {
     annotations: RW,
   }, guard(({ document, file, project }) => {
     if (!document && !file) throw new BwError('BAD_ARGS', 'give document or file');
-    return callEditor('import', { args: { ...(document ? { document } : {}), ...(file ? { file } : {}), ...(project ? { project } : {}) } });
+    let doc = document;
+    if (!doc) { // the tab cannot read a path: this process (on the same machine as the host) reads the file and sends the document
+      try { doc = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { throw new BwError('BAD_ARGS', `cannot read ${file} as a document JSON: ${e?.message || e}`); }
+    }
+    return callEditor('import', { args: { document: doc, ...(project ? { project } : {}) } });
   }));
 
   server.registerTool('host_health', {

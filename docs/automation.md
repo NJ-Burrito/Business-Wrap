@@ -1,6 +1,6 @@
 # Automating the open editor (EN) · العربية أدناه
 
-> Status 0.15.0: the MCP/CLI half is built and tested against a mock host; the host route and the tab bridge are wired in wave 2. Until then the tools answer `NO_HOST` or `NO_DOC`, never a guess.
+> Status 0.15.0: the whole path is built and tested against a real host and a real Edge tab (`tests/bridge-0150.test.mjs`): tool, host route `engine/routes/editor-bridge.mjs`, tab handler `BW.bridge` (`editor/editor.js`, wired in `editor/ext/12-session.js`). With no editor tab open the tools answer `NO_TAB`, never a guess.
 
 ## ⚡ The idea
 
@@ -21,13 +21,13 @@ An op list or a pointer is never an argv value: give a file or stdin.
 
 | Piece | Shape |
 |---|---|
-| Call | `POST /api/editor/call` header `x-bw-token: <host.json token>` body `{tool, doc?, args}`; `tool` is `list get outline ops action new import` |
+| Call | `POST /api/editor/call` header `x-bw-token: <host.json token>` body `{tool, doc?, tab?, args}`; `tool` is `list get outline ops action new import` (`op` and `doc_id` are accepted as aliases of `tool` and `doc`). The host picks the tab that has `doc` open, else a tool's tab (`?automation=1`), else the most recently heard from; `tab` names one |
 | Success | `200 {ok: true, result}`; an object `result` is spread into the tool answer, anything else arrives as `{ok: true, result}` |
-| Errors | `404 {code:'NO_DOC'}` · `504 {code:'TAB_TIMEOUT', tab, lastBeatMs}` · `409 {code:'CONFLICT', path, live}` · `400 {code:'BAD_OP'\|'UNKNOWN_ACTION'}` · `401/403` is `AUTH` |
-| Tab reply | the tab answers over SSE `req {id, tool, args}` with `POST /api/editor/reply {id, ok, result \| error}` |
+| Errors | `404 {code:'NO_TAB'}` (no editor tab connected: open the editor first) · `404 {code:'NO_DOC'}` (the tab's library has no such document) · `504 {code:'TAB_TIMEOUT', tab, lastBeatMs}` (15 s, `BW_BRIDGE_TIMEOUT_MS`) · `409 {code:'CONFLICT', index, path, live}` · `422 {code:'BAD_OP', index}` · `400 {code:'BAD_ARGS'\|'UNKNOWN_ACTION'}` · `423 {code:'REFUSED'}` (locked document) · `403` is `AUTH` |
+| Tab reply | the host pushes the SSE event `req {id, tool, doc, args}` to ONE tab (`tab` field) and keeps it in `pendingRequests` (shown by `/api/host/health`); the tab answers `POST /api/editor/reply {id, ok:true, result}` or `{id, ok:false, error:{code, message, …}}`. One request at a time per tab, in order |
 | Health | `GET /api/host/health` → `{ok, version, pid, uptimeS, clients, tabs:[{tab, docs, live, lastBeatMs}], pendingRequests, warnings}` |
 
-Result shapes the tools expect from the tab: `list` → `{documents:[{id, title, project, editions, savedAt, words}]}`; `get` → `{value, pointer, locale}`; `outline` → `{chapters:[…]}` (each node with its pointer); `ops` → `{applied, group, opsLen, hash}`; `action` → `{id, done}`; `new` → `{id, title, project}`.
+Result shapes the tools expect from the tab: `list` → `{documents:[{id, title, project, editions, savedAt, words}]}`; `get` → `{value, pointer, locale}`; `outline` → `{chapters:[…]}` (each node with its pointer); `ops` → `{applied, group, opsLen, hash, doc, locale, actor:{id, name}}` (the whole batch is ONE undo step, saved to the library, and signed in the provenance log as the agent: actor id `agent:<name>`, never the person's); `action` → `check`: `{id, findings:[{level, message, path}]}`, `share`: `{id, path}`, others `{id, opsAdded}`; `new` → `{id, title, project}`; `import` → `{id, title, project}` (the MCP process reads `file` and sends the document). `old` on an op makes a mismatch a `CONFLICT` and applies nothing. A document that is in the tab's library but not on screen is opened in the tab the call lands on.
 
 ## 🧱 Rules the tools enforce
 
@@ -74,10 +74,10 @@ business-wrap editor ops --doc BW-SRS-001 --locale ar --ops-file ops.json --agen
 
 | الجزء | الشكل |
 |---|---|
-| الاستدعاء | `POST /api/editor/call` وترويسة `x-bw-token` (رمز host.json) والجسم `{tool, doc?, args}` |
+| الاستدعاء | `POST /api/editor/call` وترويسة `x-bw-token` (رمز host.json) والجسم `{tool, doc?, tab?, args}`؛ يختار المضيف اللسان الذي فيه الوثيقة مفتوحة، وإلا لسان الأدوات (`?automation=1`)، وإلا أحدث لسان سُمع منه |
 | النجاح | `200 {ok: true, result}` |
-| الأخطاء | `NO_DOC` (404) و`TAB_TIMEOUT` (504) و`CONFLICT` (409) و`BAD_OP` و`UNKNOWN_ACTION` (400) و`AUTH` (401/403) |
-| رد اللسان | يجيب اللسان عبر SSE `req {id, tool, args}` بـ `POST /api/editor/reply {id, ok, result \| error}` |
+| الأخطاء | `NO_TAB` (404، لا لسان محرر متصل: افتح المحرر أولا) و`NO_DOC` (404، مكتبة اللسان لا تحوي الوثيقة) و`TAB_TIMEOUT` (504، بعد 15 ثانية) و`CONFLICT` (409) و`BAD_OP` (422) و`BAD_ARGS` و`UNKNOWN_ACTION` (400) و`REFUSED` (423، وثيقة مقفلة) و`AUTH` (403) |
+| رد اللسان | يدفع المضيف حدث SSE اسمه `req {id, tool, doc, args}` إلى لسان واحد، ويجيب اللسان بـ `POST /api/editor/reply {id, ok, result \| error}`؛ كل دفعة تعديلات في `editor_ops` خطوة تراجع واحدة وتُوقَّع في سجل المصدر باسم الوكيل (`agent:<name>`) |
 | الصحة | `GET /api/host/health` |
 
 ## 🧱 قواعد تفرضها الأدوات

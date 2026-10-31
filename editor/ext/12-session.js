@@ -261,3 +261,22 @@ bwExt({
 window.addEventListener('pagehide', () => SESS.bye()); // not only through the extension seam: a throwing earlier handler must not leave the tab listed
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') SESS.flush(); });
 window.addEventListener('pageshow', (e) => { if (e.persisted) SESS.again(); }); // back from the back/forward cache: the hub is told this tab is here again
+
+/* 0.15.0 editor bridge, the tab half: the host's SSE `req {id, tool, doc, args}` (engine/routes/editor-bridge.mjs) is run through the core
+ * (BW.bridge in editor.js: ops = one undo group, signed as the agent) and answered with POST /api/editor/reply. One request at a time per tab,
+ * in arrival order: two agents on one tab never interleave their groups. */
+{
+  let queue = Promise.resolve();
+  const reply = (body) => fetch('/api/editor/reply', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
+  SESS.on('req', (d) => {
+    if (!d?.id) return;
+    queue = queue.then(async () => {
+      try {
+        await window.BW.whenReady(10000).catch(() => {}); // a tab still booting answers once it has, or after 10 s anyway
+        reply({ id: d.id, ok: true, result: await window.BW.bridge(d.tool, d.doc, d.args) });
+      } catch (e) {
+        reply({ id: d.id, ok: false, error: { code: e?.bw || 'HOST_ERROR', message: String(e?.message || e).slice(0, 400), ...(e?.extra || {}) } });
+      }
+    });
+  });
+}
