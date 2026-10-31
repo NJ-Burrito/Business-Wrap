@@ -479,7 +479,48 @@ const LIB = (() => {
       [t('restoreNo'), () => {}],
     ]);
   }
-  return { all, get, put, open, adopt, save, saveInPlace, captureHtml, queued, ACCEPT, persist, persistSoon, persistNow, stamp, saveTemplate, fromTemplate, metricsOf, newDocument, importAny, remove, restore, purge, duplicate, entryOf, titleOf, syncTitle, syncAll, onCommit, isDoc, fromHash, drawer, TEMPLATES };
+  /** Library <-> disk (0.15.0): what the host holds and this browser's IndexedDB does not (a wiped profile, a new browser, a plugin
+   *  update that moved the profile, a document the server queued with no tab open) comes in at boot and on the host's `ingest` push.
+   *  - the inbox (<workspace>\.system\inbox, engine/routes/library.mjs queueDocuments): stored, mirrored, then removed from the inbox;
+   *  - the mirror (.system\library): an id missing here and not purged (the host's tombstone list) is stored; an id held here is replaced
+   *    only by a strictly newer mirror copy and never while it is the open document (a newer local savedAt always wins).
+   *  Emits `bw:library-ingested` {added, skipped, ids}. One run at a time. */
+  let ingesting = null;
+  async function ingestMirror({ mirrorToo = true } = {}) {
+    if (!served) return { added: 0, skipped: 0, ids: [] };
+    if (ingesting) return ingesting;
+    ingesting = (async () => {
+      const got = async (u) => { const r = await fetch(u).catch(() => null); return r?.ok ? r.json().catch(() => null) : null; };
+      let added = 0, skipped = 0;
+      const ids = [];
+      const have = new Map(((await all()) || []).map((e) => [e.id, e]));
+      const inbox = (await got('/api/library/inbox'))?.ids || [];
+      for (const id of inbox) {
+        const e = await got(`/api/library/inbox?id=${encodeURIComponent(id)}`);
+        if (e && e.id === id && !have.has(id) && e.editions) { delete e.purge; await put(e); have.set(id, e); mirror(e); added += 1; ids.push(id); } else skipped += 1;
+        await fetch(`/api/library/inbox?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {});
+      }
+      if (mirrorToo) {
+        const list = (await got('/api/library/list')) || [];
+        const gone = new Set((await got('/api/library/mirror?tombstones=1'))?.ids || []);
+        for (const row of Array.isArray(list) ? list : []) {
+          const local = have.get(row.id);
+          if (gone.has(row.id)) { skipped += 1; continue; }
+          if (local && (String(local.savedAt) >= String(row.savedAt) || S.svc === row.id)) { skipped += 1; continue; }
+          const e = await got(`/api/library/mirror?id=${encodeURIComponent(row.id)}`);
+          if (!e || e.id !== row.id || e.purge || !e.editions) { skipped += 1; continue; }
+          await put(e); have.set(e.id, e); added += 1; ids.push(e.id);
+        }
+      }
+      if (added) { const d = root.querySelector('.drawer'); if (d && !d.hidden && S.drawer === 'library') fill(d); EXT.projects?.sync?.(); }
+      const r = { added, skipped, ids };
+      window.dispatchEvent(new CustomEvent('bw:library-ingested', { detail: r }));
+      document.documentElement.dataset.bwIngested = String(added);
+      return r;
+    })().finally(() => { ingesting = null; });
+    return ingesting;
+  }
+  return { ingestMirror, all, get, put, open, adopt, save, saveInPlace, captureHtml, queued, ACCEPT, persist, persistSoon, persistNow, stamp, saveTemplate, fromTemplate, metricsOf, newDocument, importAny, remove, restore, purge, duplicate, entryOf, titleOf, syncTitle, syncAll, onCommit, isDoc, fromHash, drawer, TEMPLATES };
 })();
 
 IC.library = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" /> </svg>';
@@ -489,7 +530,11 @@ bwExt({
   drawers: { library: LIB.drawer },
   expose: { library: LIB },
   on: {
-    boot: () => { LIB.fromHash(); },
+    // the host's queue first (an `open_in_editor` link is /#doc=<id> of a document that may still be in the inbox), then the document, then the rest of the mirror
+    boot: async () => {
+      // the host's `ingest` push (engine/routes/library.mjs queueDocuments; the transport relays every server event as window 'bw:srv')
+      window.addEventListener('bw:srv', (ev) => { if (ev.detail?.event === 'ingest') LIB.ingestMirror({ mirrorToo: false }).catch(() => {}); });
+      await LIB.ingestMirror({ mirrorToo: false }).catch(() => {}); await LIB.fromHash(); LIB.ingestMirror().catch(() => {}); },
     // Ctrl+O = «المستندات» (open a document); the toolbar tool sits in File
     keydown: (e) => { if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'o') { e.preventDefault(); openDrawer('library'); return true; } return false; },
     // H3: Save = the document itself (its list entry + its own HTML file), never a download
