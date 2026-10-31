@@ -95,18 +95,18 @@ async function open(ctx) {
 }
 // A context whose storage is proven to persist across pages before a "remembered" test relies on it (R15: a probe must show it looked).
 // On the Ubuntu runner the first context of the UI loop sometimes kept nothing between two loads (run 41177333084: bw:dir, the draft and the logo all gone,
-// the second context fine). Cause not proven; the probe retries on a fresh context and names every attempt, and a context that never holds storage fails the run with its attempts.
-async function storageContext(opts, initFn, initArg) {
+// the second context fine). 0.15.5: the UI loop now runs the editor from a local http address (below), because file:// pages share one opaque storage on Linux headless Chrome. Cause of the loss not proven; the probe retries on a fresh context and names every attempt, and a context that never holds storage fails the run with its attempts.
+async function storageContext(opts, initFn, initArg, url = editorUrl) {
   const attempts = [];
   for (let i = 1; i <= 3; i++) {
     const ctx = await browser.newContext(opts);
     await ctx.addInitScript(initFn, initArg);
     const a = await ctx.newPage();
-    await a.goto(editorUrl, { waitUntil: 'domcontentloaded' });
+    await a.goto(url, { waitUntil: 'domcontentloaded' });
     await a.evaluate(() => localStorage.setItem('bw:probe', '1'));
     await a.waitForTimeout(300);
     const b = await ctx.newPage();
-    await b.goto(editorUrl, { waitUntil: 'domcontentloaded' });
+    await b.goto(url, { waitUntil: 'domcontentloaded' });
     const seen = await b.evaluate(() => { const v = localStorage.getItem('bw:probe'); localStorage.removeItem('bw:probe'); return { v, origin: location.origin, keys: Object.keys(localStorage) }; });
     await a.close();
     await b.close();
@@ -450,12 +450,17 @@ try {
   })();
   const pngFile = path.join(OUT, 'logo-with-meta.png');
   fs.writeFileSync(pngFile, pngWithMeta);
+  // 0.15.5: the UI loop reads the editor from http://127.0.0.1:<free port> (the real local host, engine/serve.mjs), not file://: a file:// origin lost its
+  // localStorage between pages on the Ubuntu runner (runs 41177333084, 41205827544), an http origin keeps it; Windows behaves the same either way.
+  const { serve: serveUi } = await import('../engine/serve.mjs');
+  const uiSrv = await serveUi(editorFile, 0);
+  const uiUrl = `http://127.0.0.1:${uiSrv.address().port}/`;
   for (const uiL of ['ar', 'en']) {
-    const ctxU = await storageContext({ acceptDownloads: true, viewport: { width: 1366, height: 1000 } }, (l) => { try { localStorage.setItem('bw:ui', l); } catch {} }, uiL);
+    const ctxU = await storageContext({ acceptDownloads: true, viewport: { width: 1366, height: 1000 } }, (l) => { try { localStorage.setItem('bw:ui', l); } catch {} }, uiL, uiUrl);
     const pu = await ctxU.newPage();
     const errU = [];
     pu.on('pageerror', (e) => errU.push(e.message));
-    await pu.goto(editorUrl);
+    await pu.goto(uiUrl);
     await pu.waitForFunction(() => window.BW?.ready);
     const labels = await pu.evaluate(() => { const sh = document.getElementById('bw-ui-host').shadowRoot; return { ed: [...sh.querySelectorAll('[data-a="ed"]')].map((b) => b.textContent.trim()), ui: [...sh.querySelectorAll('[data-a="dir"]')].map((b) => b.textContent.trim()), named: [...sh.querySelectorAll('[data-a="ed"], [data-a="dir"]')].every((b) => b.getAttribute('aria-label') && b.title), icons: sh.querySelectorAll('.seg.lang .cap svg, .seg.ui .cap svg').length, brandWords: sh.querySelector('.brand').innerText.trim(), brandSvg: !!sh.querySelector('.brand svg'), dir: sh.querySelector('.shell').dir, tdir: sh.querySelector('.shell').dataset.tdir }; });
     check(`${uiL} UI: language reads «ع» / «E», direction reads RTL / LTR (icon, tooltip, name), the brand is a logo not words`, JSON.stringify(labels.ed) === '["ع","E"]' && JSON.stringify(labels.ui) === '["RTL","LTR"]' && labels.named && labels.icons === 2 && labels.brandWords === '' && labels.brandSvg && labels.dir === 'rtl' && labels.tdir === (uiL === 'ar' ? 'rtl' : 'ltr'), JSON.stringify(labels)); // 0.10.0: the layout stays right-to-left, the words follow
@@ -506,7 +511,7 @@ try {
     check(`${uiL} UI: logo dragged on the cover (mm position updated)`, o1.mode === 'cover' && Math.abs(o1.x - (o0.x - 120 / scale)) < 4 && Math.abs(o1.y - (o0.y + 150 / scale)) < 4, JSON.stringify({ x0: o0.x, y0: o0.y, x1: o1.x, y1: o1.y }));
     await pu.waitForFunction(() => !window.BW.S.pending);
     const pu2 = await ctxU.newPage();
-    await pu2.goto(editorUrl);
+    await pu2.goto(uiUrl);
     await pu2.waitForFunction(() => window.BW?.ready);
     await pu2.locator('.banner button').first().click({ timeout: 5000 }).catch(() => {});
     const o2 = await pu2.evaluate(() => window.BW.M['event-permit'][window.BW.S.ed].doc.overlays?.[0]);
@@ -542,6 +547,7 @@ try {
     check(`${uiL} UI: no page errors in the shell flows`, errU.length === 0, errU.join(' | '));
     await ctxU.close();
   }
+  uiSrv.close();
   // reduced motion and the brand mark's reveal
   const ctxM = await browser.newContext({ viewport: { width: 1366, height: 900 } });
   const pm = await ctxM.newPage();
