@@ -127,7 +127,7 @@ try {
     await page.mouse.move(5, 400); await page.waitForTimeout(700);
     await page.evaluate(() => window.BW.EXT.ribbon.setTab('home'));
     await page.waitForTimeout(250);
-    const u2 = await center(page, '.ribbon .rb-panel [data-a="find"]'); // (undo is disabled after a repaint on an empty history: a disabled tool explains nothing)
+    const u2 = await center(page, '.ribbon .rb-panel [data-a="find"]'); // (undo is disabled after a repaint on an empty history; any tool would do here)
     const t4 = Date.now(); await page.mouse.move(u2.x, u2.y);
     await page.waitForTimeout(120);
     await page.evaluate(() => { window.BW.EXT.ribbon.setTab('insert'); window.BW.EXT.ribbon.setTab('home'); });
@@ -243,17 +243,17 @@ try {
     // leaving the ribbon keeps the open panel
     await page.mouse.move(5, 400); await page.waitForTimeout(800);
     check(`${ui}: leaving the ribbon keeps the open panel and its card`, (await card(page))?.id === ids[6] && (await rect(page, '.xpl-dock .xd-h')).shown);
-    // a disabled tool never opens the card; a tool that vanishes during the rest neither
+    // a disabled tool still explains itself; a tool that vanishes during the rest does not
     await sh(page, (rt) => rt.querySelector('.xd-x').click()); await page.waitForTimeout(500);
     await sh(page, (rt) => rt.querySelector('.xd-tab').click()); await page.waitForTimeout(500);
     await sh(page, (rt, id) => { rt.querySelector(`.ribbon .rb-panel [data-a="${id}"]`).setAttribute('aria-disabled', 'true'); }, ids[7]);
     await page.mouse.move(pts[7].x, pts[7].y, { steps: 3 }); await page.waitForTimeout(900);
-    check(`${ui}: a disabled tool opens no card`, !(await card(page)));
+    check(`${ui}: a disabled (greyed) tool still opens its card after the rest delay`, (await card(page))?.id === ids[7], JSON.stringify(await card(page)));
     await page.mouse.move(5, 400); await page.waitForTimeout(100);
     await page.mouse.move(pts[8].x, pts[8].y, { steps: 3 }); await page.waitForTimeout(150);
     await sh(page, (rt) => { rt.querySelector('.ribbon .rb-panel').style.display = 'none'; }); // the tool under the pointer disappears (hiding one button would only shift its neighbour under it)
     await page.waitForTimeout(900);
-    check(`${ui}: a tool hidden during the rest opens no card`, !(await card(page)));
+    check(`${ui}: a tool hidden during the rest opens no card (the card of the disabled tool stays as it was)`, (await card(page))?.id === ids[7], JSON.stringify(await card(page)));
     check(`${ui}: hover intent: no page errors`, !errors.length, errors.join(' | '));
     await ctx.close();
   }

@@ -63,9 +63,9 @@ function bwSidePanelClose(el, apply) {
     el.style.transition = '';
   }, XPL_SLIDE + 20);
 }
-/** A tool the person can really use right now: connected, not disabled, not hidden (a disabled or hidden tool explains nothing). */
+/** A tool that is really on screen: connected and not hidden (no layout box = no card). A greyed-out (disabled) tool still explains itself. */
 function xplUsable(el) {
-  if (!el?.isConnected || el.disabled || el.getAttribute('aria-disabled') === 'true' || el.inert) return false;
+  if (!el?.isConnected) return false;
   if (el.closest('[hidden], [inert]')) return false;
   return el.getClientRects().length > 0;
 }
@@ -236,7 +236,7 @@ function xplLive(el, k) {
 function xplShow(el, k) {
   const st = xplWire.st;
   const live = xplLive(el, k);
-  if (!live || !xplUsable(live)) return; // gone, disabled or hidden: nothing to explain
+  if (!live || !xplUsable(live)) return; // gone or hidden: nothing to explain
   el = live;
   const dock = xplDock();
   if (!dock || dock.dataset.slide || !xplPanelOpen() || !xplPanelVisible()) return; // closed, sliding away or stepped aside: the person asked for no explanations on screen
