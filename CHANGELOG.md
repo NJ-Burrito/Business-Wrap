@@ -8,6 +8,60 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.15.0] - 2026-10-31
+
+🎛️ The second owner-notes release: a tidier ribbon, an explanation panel with a picture for every tool, a dim navy dark mode, one server switch, offline spell checking, whole-project export and import, and an editor your AI assistant can drive. / 🎛️ إصدار ملاحظات المالك الثاني: شريط أكثر ترتيبًا، ولوحة شرح برسم لكل أداة، ووضع داكن كحلي معتم، ومفتاح واحد للخادم، وتدقيق إملائي بلا إنترنت، وتصدير المشاريع واستيرادها كاملة، ومحرر يستطيع مساعدك الذكي تشغيله.
+
+**In 10 seconds / في عشر ثوان**
+- 🎀 The ribbon has 15 tabs, each with its own icon and colour, tools on a tidy grid with a name under each, and no scrolling. / للشريط 15 تبويبًا، لكل منها أيقونته ولونه، والأدوات على شبكة مرتبة باسم تحت كل أداة، بلا تمرير.
+- 💡 The explanation panel is on the right and shows a small drawing for every tool. / لوحة الشرح على اليمين وتعرض رسمًا صغيرًا لكل أداة.
+- 🌙 Dark mode is now a dim navy, and the page sits on a soft giant NJ logo. / الوضع الداكن صار كحليًا معتمًا، وتستند الصفحة إلى شعار NJ كبير وخافت.
+- 🔌 One server switch, offline Arabic and English spell checking, and a fix for the lost connection when you open many tabs. / مفتاح واحد للخادم، وتدقيق إملائي عربي وإنجليزي بلا إنترنت، وإصلاح لانقطاع الاتصال عند فتح تبويبات كثيرة.
+- 📦 Export and import a whole project, and your AI assistant can read and edit the open document. / تصدير مشروع كامل واستيراده، ويستطيع مساعدك الذكي قراءة الوثيقة المفتوحة وتحريرها.
+
+### Added / أضيف
+- 🎀 **A new ribbon**: 11 general tabs and 4 that appear when you select a table, a picture or a diagram. Tabs sit in the middle of the bar, each has its own icon and colour, and the selected tab looks raised. Tools are laid out on an even grid, grouped in shaded categories, and every tool has its name under it. Nothing scrolls sideways. Press the open tab again to fold it. / **شريط جديد**: 11 تبويبًا عامًا و4 تظهر عند تحديد جدول أو صورة أو مخطط. التبويبات في منتصف الشريط، ولكل تبويب أيقونته ولونه، ويبدو التبويب المحدد بارزًا. الأدوات على شبكة منتظمة ضمن فئات بدرجات لونية مختلفة، وتحت كل أداة اسمها. لا شيء يمرَّر أفقيًا. اضغط التبويب المفتوح مرة ثانية ليُطوى.
+- 🔍 **Zoom from 25% to 400%**, with **Fill height** beside Fill width, a zoom box you can type in, and Ctrl plus the mouse wheel. / **تكبير من 25% إلى 400%**، مع **ملء الارتفاع** بجانب ملء العرض، وخانة تكتب فيها النسبة، وCtrl مع عجلة الفأرة.
+- 💡 **Explanation panel on the right**: it opens when you rest on a tool for a moment, shows a short animated drawing for each one, stays until you close it, and no longer hides itself after a few views. / **لوحة الشرح على اليمين**: تفتح حين تقف على أداة لحظة، وتعرض رسمًا متحركًا قصيرًا لكل أداة، وتبقى حتى تغلقها، ولم تعد تختفي بعد بضع مرات.
+- 🐾 **A livelier NJ watermark**: 20 small reactions that show up now and then and make no sound. There is one hidden surprise too. / **علامة NJ أكثر حيوية**: 20 ردة فعل صغيرة تظهر بين حين وآخر بلا صوت. وفيها مفاجأة مخبأة واحدة.
+- 🖼️ **NJ backdrop**: one giant NJ logo, low in opacity, behind the pages. / **خلفية NJ**: شعار NJ كبير واحد بشفافية منخفضة خلف الصفحات.
+- 🔌 **One server switch** in the top bar and in Settings. Its colour and icon show whether the server is on. / **مفتاح واحد للخادم** في الشريط العلوي وفي الإعدادات. يبيّن لونه وأيقونته إن كان الخادم يعمل.
+- ✍️ **Spell checking** for Arabic and English, built in and offline, with its own switch for each edition. Words are checked by script, so a mixed paragraph gets the right dictionary. / **تدقيق إملائي** للعربية والإنجليزية، مدمج وبلا إنترنت، بمفتاح لكل نسخة. تُفحص الكلمات بحسب خطها، فتأخذ الفقرة المختلطة القاموس الصحيح.
+- 📦 **Project export and import**: export every document of a project as HTML, PDF, DOCX or edits, in one folder or one zip with an index page. Import a project, a folder, a zip or a pile of PDF, DOCX and HTML files into the library as one project, with progress and a summary of what came in and what failed. / **تصدير المشاريع واستيرادها**: صدّر كل وثائق مشروع بصيغة HTML أو PDF أو DOCX أو التعديلات، في مجلد واحد أو ملف مضغوط واحد مع صفحة فهرس. واستورد مشروعًا أو مجلدًا أو ملفًا مضغوطًا أو مجموعة ملفات PDF وDOCX وHTML إلى المكتبة كمشروع واحد، مع شريط تقدم وملخص بما دخل وما فشل.
+- 🤖 **Live editor tools for AI assistants**: list the open documents, read one, get its outline, apply a batch of edits in one undo step signed as the agent, and run an editor action. Your own edits made meanwhile stay signed as you. / **أدوات المحرر الحي للمساعدات الذكية**: سرد الوثائق المفتوحة، وقراءة واحدة منها، وجلب فهرسها، وتطبيق دفعة تعديلات بخطوة تراجع واحدة موقّعة باسم المساعد، وتشغيل إجراء في المحرر. وتبقى تعديلاتك أثناء ذلك موقّعة باسمك.
+- 🔢 **Numbers computed at render time**, and diagrams that split into several figures when they are too big to read, with a warning in the Check panel. / **ترقيم يُحسب عند العرض**، ومخططات تنقسم إلى عدة أشكال حين تكبر على القراءة، مع تحذير في لوحة الفحص.
+
+### Changed / تغير
+- ↔️ **Top bar spacing**: more room between the logo, history, language and direction controls. / **تباعد الشريط العلوي**: مساحة أوسع بين الشعار والسجل واللغة والاتجاه.
+- ⬇️ **Side drawers open from the top** of the screen, under the bar, instead of from the middle. / **الأدراج الجانبية تفتح من أعلى الشاشة**، تحت الشريط، بدل منتصفها.
+- 🌙 **Dark mode is a dim navy**, and every text and icon colour was checked for contrast. / **الوضع الداكن كحلي معتم**، وروجع تباين كل لون نص وأيقونة.
+- ⚡ **Faster**: idle, hover, tab switch and typing cost less work than in 0.14.0. / **أسرع**: الخمول والمرور بالمؤشر وتبديل التبويب والكتابة تستهلك عملًا أقل من 0.14.0.
+- ⏻ **Power-off moved to Settings**; the top bar keeps only the server switch. / **زر الإطفاء انتقل إلى الإعدادات**، ويبقى في الشريط العلوي مفتاح الخادم وحده.
+- 🔗 **Many tabs, one connection**: the editor now uses one live connection per browser, so opening more than a few tabs no longer stalls the rest. / **تبويبات كثيرة باتصال واحد**: يستعمل المحرر اتصالًا حيًا واحدًا لكل متصفح، فلا يتعطل الباقي عند فتح أكثر من بضعة تبويبات.
+- 🚀 **The MCP server starts faster** and no longer waits for the update check. After an update it tells your assistant to restart instead of running half-old code, and it keeps your settings across versions. / **خادم MCP يبدأ أسرع** ولم يعد ينتظر فحص التحديث. وبعد التحديث يطلب من مساعدك إعادة التشغيل بدل تشغيل شيفرة نصفها قديم، ويحتفظ بإعداداتك بين الإصدارات.
+- 🧭 **Automation mode**: open the editor with `?automation=1` to skip the resume and profile pop-ups; the page announces `bw:ready` when it is settled. / **وضع الأتمتة**: افتح المحرر بالرابط `?automation=1` لتجاوز نوافذ الاستئناف والملف الشخصي؛ وتعلن الصفحة `bw:ready` حين تستقر.
+
+### Fixed / أصلح
+- ⌨️ **No typed text lost when a tab closes**: the last words are flushed before the tab goes, and an older save can no longer overwrite a newer one. / **لا يضيع ما كتبته عند إغلاق التبويب**: تُحفظ آخر الكلمات قبل أن يُغلق، ولم يعد حفظ أقدم يكتب فوق أحدث.
+- 💾 **Stop and power-off save open tabs** first. / **الإيقاف والإطفاء يحفظان التبويبات المفتوحة** أولًا.
+- 🎛️ **Wrong greyed-out tools** after switching ribbon tabs. / **أدوات رمادية خطأً** بعد تبديل تبويبات الشريط.
+- ♿ **Changes button**: its spoken name matches the number on screen. / **زر التغييرات**: اسمه المنطوق يطابق الرقم الظاهر على الشاشة.
+- 🎞️ **Icons without hover motion** now move like the rest. / **أيقونات بلا حركة عند المرور** صارت تتحرك مثل بقية الأيقونات.
+- 📤 **Export menu** no longer scrolls, and all its formats are visible. / **قائمة التصدير** لم تعد تتمرر، وكل صيغها ظاهرة.
+- 🧩 **Diagram tab group names** are visible at 1366 px. / **أسماء مجموعات تبويب المخطط** ظاهرة عند عرض 1366 بكسل.
+- 📐 **Page layout**: the explanation panel no longer adds a sideways scroll bar on a wide page. / **تخطيط الصفحة**: لوحة الشرح لم تعد تضيف شريط تمرير أفقيًا على صفحة عريضة.
+- 📚 **Library import** reports its toasts instead of failing silently when nothing comes in. / **الاستيراد إلى المكتبة** يعرض إشعاراته بدل أن يفشل بصمت حين لا يدخل شيء.
+
+### Migration notes / ملاحظات الترحيل
+- Nothing to run: your documents and history open as they are. / لا شيء لتشغله: تُفتح وثائقك وسجلها كما هي.
+- A script that clicked the power-off button in the top bar should use Settings, and one that read the old explanation panel settings can drop them. / النص البرمجي الذي كان ينقر زر الإطفاء في الشريط العلوي عليه أن يستعمل الإعدادات، والذي كان يقرأ إعدادات لوحة الشرح القديمة يمكنه التخلي عنها.
+- MCP clients get the new tools `editor_list_documents`, `editor_get`, `editor_outline`, `editor_ops`, `editor_action`, `editor_new`, `editor_import` and `host_health`; they need an open editor tab, and answer `NO_TAB` without one. See docs/automation.md. / عملاء MCP يحصلون على الأدوات الجديدة `editor_list_documents` و`editor_get` و`editor_outline` و`editor_ops` و`editor_action` و`editor_new` و`editor_import` و`host_health`؛ وتحتاج إلى تبويب محرر مفتوح، وتجيب `NO_TAB` من دونه. انظر docs/automation.md.
+
+### Known limits / حدود معروفة
+- The spell dictionaries are not stored inside a saved HTML file; a file opened from disk uses the browser's own spell checking. / قواميس التدقيق الإملائي لا تُخزَّن داخل ملف HTML المحفوظ؛ والملف المفتوح من القرص يستعمل تدقيق المتصفح نفسه.
+- The first Arabic spell-check load takes about two seconds. / أول تحميل للتدقيق الإملائي العربي يستغرق نحو ثانيتين.
+- A PDF imported into a project may bring tables in as plain paragraphs. / ملف PDF المستورد إلى مشروع قد تصل جداوله فقرات عادية.
+
 ## [0.14.0] - 2026-10-30
 
 🎀 The owner-notes release: a ribbon with tabs, safer deleting, user-story tables, file badges, a faster editor and a better report. / 🎀 إصدار ملاحظات المالك: شريط بتبويبات، وحذف أكثر أمانًا، وجداول قصص المستخدم، وشارات للملفات، ومحرر أسرع، وتقرير أفضل.
