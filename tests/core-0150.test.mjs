@@ -41,7 +41,8 @@ async function open({ query = '', hash = '', clock = false, reduced = false, sto
   }
   await page.goto(URL + query + hash);
   await page.waitForFunction(() => window.BW?.ready);
-  if (clock) { await page.clock.runFor(1500); await page.clock.pauseAt(new Date('2026-10-31T09:00:30Z')); } else if (store['bw:profile-prompt']) await page.waitForTimeout(900); else await page.waitForFunction(() => document.documentElement.dataset.bwReady === '1', null, { timeout: 5000 });
+  // pauseAt JUMPS the clock and fires a due timer once, at the new time: the first random reaction is due 25 s after the mark appears, so the jump stops at 20 s (a reaction at 30 s landed on the first keypress / the first Save, CI runs 41202743358 and a local rerun)
+  if (clock) { await page.clock.runFor(1500); await page.clock.pauseAt(new Date('2026-10-31T09:00:20Z')); } else if (store['bw:profile-prompt']) await page.waitForTimeout(900); else await page.waitForFunction(() => document.documentElement.dataset.bwReady === '1', null, { timeout: 5000 });
   return { ctx, page, errors };
 }
 const WM = (page, fn, arg) => page.evaluate(([f, a]) => new Function('W', 'a', `return (${f})(W, a)`)(window.BW.EXT.watermark, a), [fn.toString(), arg]);

@@ -8,6 +8,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.15.4] - 2026-10-31
+
+🩹 A hotfix for two commands that 0.15.3 refused by mistake. / 🩹 إصلاح عاجل لأمرين رفضهما الإصدار 0.15.3 خطأً.
+
+### Fixed / أصلح
+- 📥 **`editor ops --ops-file -` and `--args-file -` (stdin) work again**: a lone `-` is a value, not a flag, so 0.15.3 refused it as "unknown option -". / **الأمران `editor ops --ops-file -` و`--args-file -` (الإدخال القياسي) يعملان من جديد**: الرمز `-` وحده قيمة وليس خيارًا، وكان 0.15.3 يرفضه بعبارة «خيار غير معروف».
+- 🛑 **`business-wrap stop --all` works again** (and `close --all`), as the README and `/business-wrap:close` document. / **الأمر `business-wrap stop --all` يعمل من جديد** (وكذلك `close --all`) كما يوثّقه الدليل والأمر `/business-wrap:close`.
+- ✍️ **Every documented command line is now checked by a test**, and an unknown option is still refused. / **كل سطر أمر موثّق صار يفحصه اختبار**، ولا يزال الخيار غير المعروف مرفوضًا.
+
 ## [0.15.3] - 2026-10-31
 
 🧭 The fourth owner-notes release: file icons that really change, one owning tab per document, a safer reset, single-edition documents and numbers that follow position. / 🧭 إصدار ملاحظات المالك الرابع: أيقونات ملفات تتغير فعلًا، وتبويب واحد مالك لكل وثيقة، وإعادة ضبط أكثر أمانًا، ووثائق بلغة واحدة، وأرقام تتبع الموضع.

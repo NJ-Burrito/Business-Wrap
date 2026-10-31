@@ -31,7 +31,7 @@ for (const f of files) {
   const fm = /^---\n([^]*?)\n---\n/.exec(src);
   const meta = Object.fromEntries((fm?.[1] || '').split('\n').map((l) => l.split(/:\s(.*)/s)).filter((p) => p.length > 1).map(([k, v]) => [k.trim(), v.trim()]));
   check(`${f}: front-matter description`, !!meta.description && meta.description.length > 20, meta.description);
-  // 0.15.3: the live-editor commands (tabs, edit, ...) call MCP tools, not the CLI; tests/commands-0152.test.mjs checks them
+  // 0.15.4: the live-editor commands (tabs, edit, ...) call MCP tools, not the CLI; tests/commands-0152.test.mjs checks them
   if (/^mcp__|^Read, /.test(meta['allowed-tools'] || '')) { check(`${f}: live-editor command (checked by commands-0152.test.mjs)`, true); continue; }
   check(`${f}: allowed-tools is node only`, meta['allowed-tools'] === 'Bash(node:*)', meta['allowed-tools']);
   const bangs = src.split('\n').filter((l) => l.startsWith('!'));
@@ -64,7 +64,7 @@ check('plugin MCP: no npm package spec anywhere in the plugin manifest', !/npx|b
   const sm = fs.readFileSync(path.join(REPO, 'mcp', 'smithery.yaml'), 'utf8');
   check('F5 5: server.json and smithery.yaml launch node mcp/cli.mjs locally, no npm/npx package', !sj.packages && launch.command === 'node' && launch.args?.[0] === 'mcp/cli.mjs' && /command: "node"/.test(sm) && /args: \["mcp\/cli\.mjs"\]/.test(sm) && !/npx|business-wrap@/.test(sm + JSON.stringify(sj)), JSON.stringify(launch));
 }
-check('plugin version is 0.15.3 (plugin.json, package.json, server.json)', [plugin.version, JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8')).version, JSON.parse(fs.readFileSync(path.join(REPO, 'mcp', 'server.json'), 'utf8')).version].every((v) => v === '0.15.3'));
+check('plugin version is 0.15.4 (plugin.json, package.json, server.json)', [plugin.version, JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8')).version, JSON.parse(fs.readFileSync(path.join(REPO, 'mcp', 'server.json'), 'utf8')).version].every((v) => v === '0.15.4'));
 
 // the vendored bundle is exactly a fresh build from the locked packages (security/gitleaks.toml allowlists it by path)
 const esbuildDir = path.join(REPO, 'node_modules', 'esbuild');
