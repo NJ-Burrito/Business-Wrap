@@ -29,7 +29,9 @@ buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, s
 const fileLib = path.join(tmp, 'lib.editor.html'); // a template and the blank document: the documents-list paths
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit'), path.join(REPO, 'samples', 'blank')], out: fileLib, set: 'prov-lib', watermarkDir: null });
 
-const profile = (name) => `localStorage.setItem('bw:profile', JSON.stringify({ name: ${JSON.stringify(name)}, activity: true }));`;
+// Each person's actor id is pinned too: on the Ubuntu runner a context sometimes keeps no storage between two pages (editor.test's probe), and a page that
+// minted a fresh bw:actor read as a third contributor (run 41179426698: rows 3, names Mark and Alaa). The rows are still one per person; the id is just stable.
+const profile = (name) => `localStorage.setItem('bw:profile', JSON.stringify({ name: ${JSON.stringify(name)}, activity: true })); if (!localStorage.getItem('bw:actor')) localStorage.setItem('bw:actor', ${JSON.stringify('actor-' + name.toLowerCase() + '-0000')});`;
 const sh = (page, fn, arg) => page.evaluate(([f, a]) => new Function('r', 'a', `return (${f})(r, a)`)(document.getElementById('bw-ui-host').shadowRoot, a), [String(fn), arg]);
 // the log's queue must settle: a hang fails the run instead of stalling it
 const ready = (page) => page.waitForFunction(() => window.BW?.ready && window.BW.EXT.ledger?.log()).then(() => page.evaluate(() => Promise.race([window.BW.EXT.ledger.ready(), new Promise((_, no) => setTimeout(() => no(new Error('ledger queue did not settle in 20 s')), 20000))])));
@@ -123,7 +125,7 @@ try {
   const v2 = await verdict(a2);
   check('Mark opens Alaa\'s copy: chain verifies, extends his mirror', v2.ok, JSON.stringify(v2));
   await a2.evaluate(() => window.BW.openDrawer('provenance'));
-  const dr = await sh(a2, (r) => ({ text: r.querySelector('.drawer').textContent, n: r.querySelectorAll('.drawer .pv-e').length, details: r.querySelectorAll('.drawer .pv-e > details').length, rows: r.querySelectorAll('.drawer .pv-people tbody tr').length }));
+  const dr = await sh(a2, (r) => ({ text: r.querySelector('.drawer').textContent, n: r.querySelectorAll('.drawer .pv-e').length, details: r.querySelectorAll('.drawer .pv-e > details').length, rows: r.querySelectorAll('.drawer .pv-people tbody tr').length, who: [...r.querySelectorAll('.drawer .pv-people tbody tr')].map((x) => `${x.dataset.actor}=${x.cells[0].textContent.trim()}/${x.cells[2].textContent}`) }));
   check('Provenance tab: every entry, expandable, both contributors', dr.n >= 13 && dr.details === dr.n && dr.rows === 2 && dr.text.includes('Alaa') && dr.text.includes('Mark'), JSON.stringify({ ...dr, text: dr.text.slice(0, 80) }));
   await a2.evaluate(() => window.BW.openDrawer('history'));
   await a2.waitForFunction(() => !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer .pv-tabs [data-pv="tab-prov"]'));
