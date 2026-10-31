@@ -86,8 +86,9 @@ try {
   // Arabic: 10 wrong words, 25 right ones, an id, a URL, a number
   await setLeaves(pa, 'ar', [AR_BAD.map((x) => x[0]).join(' ، '), `${AR_OK.join(' ')} BW-SRS-NEW-001 https://example.com/x 2026 ٢٠٢٦`]);
   await pa.evaluate(() => BW.runAction('spell'));
-  check('runAction(spell) opens the Spelling panel (drawer)', await until(() => shRoot(pa, (r) => !!r.querySelector('.drawer:not([hidden]) .sp')), 5000));
-  check('the Arabic edition is switched on by opening the panel', await pa.evaluate(() => BW.S.spell.ar === true));
+  await pa.evaluate(() => BW.EXT.spell.open());
+  check('runAction(spell) switches checking on and the Spelling list (drawer) opens', await until(() => shRoot(pa, (r) => !!r.querySelector('.drawer:not([hidden]) .sp')), 5000));
+  check('the one switch is on (both editions follow it, 0.15.2)', await pa.evaluate(() => BW.S.spell.ar === true));
   check('Arabic: exactly the 10 misspellings are flagged (25 correct words, an id, a URL, numbers and all the sample own Arabic text are not)', await waitIssues(pa, 10), JSON.stringify((await issues(pa)).map((i) => i.word)));
   const flagged = new Set((await issues(pa)).map((i) => i.word));
   check('Arabic: every misspelling is the one planted', AR_BAD.every(([w]) => flagged.has(w)), [...flagged].join(' '));
@@ -110,8 +111,8 @@ try {
   // English edition
   await switchEd(pa, 'en');
   await setLeaves(pa, 'en', [EN_BAD.map((x) => x[0]).join(' , '), `${EN_OK.join(' ')} BW-SRS-NEW-001 https://example.com/x 2026 JSON API`]);
-  await pa.evaluate(() => BW.runAction('spell'));
-  check('English: the English edition starts checking and all 10 misspellings are flagged', await until(async () => { const w = new Set((await issues(pa)).filter((i) => i.ed === 'en').map((i) => i.word)); return EN_BAD.every(([x]) => w.has(x)); }, 25000), JSON.stringify((await issues(pa)).map((i) => `${i.ed}:${i.word}`)));
+  await pa.evaluate(() => { if (!BW.S.spell[BW.S.ed]) return BW.runAction('spell'); });
+  check('English: the English edition starts checking (the one switch covers it) and all 10 misspellings are flagged', await until(async () => { const w = new Set((await issues(pa)).filter((i) => i.ed === 'en').map((i) => i.word)); return EN_BAD.every(([x]) => w.has(x)); }, 25000), JSON.stringify((await issues(pa)).map((i) => `${i.ed}:${i.word}`)));
   await until(async () => { const rows = await panelRows(pa); return EN_BAD.every(([w]) => rows.find((r) => r.w === w)?.n > 0); }, 20000);
   const rowsEn = await panelRows(pa);
   check('English: the first suggestion is the right word for all 10', EN_BAD.filter(([w, good]) => rowsEn.find((r) => r.w === w)?.first === good).length === 10, JSON.stringify(rowsEn.map((r) => [r.w, r.first])));
@@ -135,21 +136,19 @@ try {
   check('AC1: the replacement is ONE operation in the history (as typing is), the checker re-marks only «requirment»', opsAfter === opsBefore + 1 && (await until(async () => (await issues(pa)).filter((i) => i.path === p1).map((i) => i.word).join() === 'requirment', 10000)), `${opsBefore} -> ${opsAfter}`);
   await pa.evaluate(() => BW.undo('en'));
   check('AC1: ONE undo brings «recieve requirment» back', await until(() => pa.evaluate((p) => document.querySelector(`main.bw-doc[data-locale="en"] [data-p="${p}"]`)?.textContent.trim() === 'recieve requirment', p1), 5000), '');
-  // turning AR off removes the AR marks and leaves the EN marks alone; off removes everything
+  // 0.15.2: ONE switch for both dictionaries: off removes every mark (Arabic and English), on brings both back
   await switchEd(pa, 'ar');
   await pa.evaluate(() => { if (!BW.S.side) return BW.runAction('side'); }); // both editions on the page, so both can carry marks
   await setLeaves(pa, 'ar', ['وثيقةة المسنخدم', 'نص سليم']);
   await pa.evaluate(() => BW.EXT.spell.open());
   await until(async () => (await issues(pa)).some((i) => i.ed === 'ar'), 15000);
-  const enBefore = (await issues(pa)).filter((i) => i.ed === 'en').length;
-  await shRoot(pa, (r) => r.querySelector('.drawer .sp-sw[data-v="ar"]').click());
-  check('turning the Arabic edition off removes its marks within 1 s and leaves the English marks as they were', await until(async () => (await issues(pa)).every((i) => i.ed !== 'ar') && (await issues(pa)).filter((i) => i.ed === 'en').length === enBefore && enBefore > 0, 1000, 80), `${enBefore} en before; now ${JSON.stringify((await issues(pa)).map((i) => `${i.ed}:${i.word}`))}; mains ${await pa.evaluate(() => [...document.querySelectorAll('main.bw-doc')].map((m) => m.dataset.locale).join())}; side ${await pa.evaluate(() => BW.S.side)}`);
-  await shRoot(pa, (r) => r.querySelector('.drawer .sp-sw[data-v="en"]').click());
-  check('turning the English edition off removes every highlight', await until(async () => (await issues(pa)).length === 0 && !(await pa.evaluate(() => CSS.highlights.has('bw-spell'))), 1500, 80));
-  // the switches are remembered
-  check('the per-edition switches are remembered (localStorage bw:spell:ar / bw:spell:en)', await pa.evaluate(() => localStorage.getItem('bw:spell:ar') === '0' && localStorage.getItem('bw:spell:en') === '0'));
+  check('the open list has ONE spelling switch and no per-edition switches', await shRoot(pa, (r) => r.querySelectorAll('.drawer .sp-sw').length === 1 && r.querySelectorAll('.drawer .sp-sw[data-v]').length === 0));
+  await shRoot(pa, (r) => r.querySelector('.drawer .sp-sw').click());
+  check('turning the one switch off removes every highlight (Arabic and English) within 1.5 s', await until(async () => (await issues(pa)).length === 0 && !(await pa.evaluate(() => CSS.highlights.has('bw-spell'))), 1500, 80));
+  // the switch is remembered
+  check('the switch is remembered (localStorage bw:spell:on, and the old per-edition keys follow it)', await pa.evaluate(() => localStorage.getItem('bw:spell:on') === '0' && localStorage.getItem('bw:spell:ar') === '0' && localStorage.getItem('bw:spell:en') === '0'));
   // my dictionary: add a word, it is no longer flagged; remove it, it is flagged again
-  await shRoot(pa, (r) => r.querySelector('.drawer .sp-sw[data-v="en"]').click());
+  await shRoot(pa, (r) => r.querySelector('.drawer .sp-sw').click());
   await switchEd(pa, 'en');
   await setLeaves(pa, 'en', ['The zzyzx recieve']);
   await until(async () => { const w = (await issues(pa)).filter((i) => i.ed === 'en').map((i) => i.word); return w.includes('zzyzx') && w.includes('recieve'); }, 15000);
@@ -189,20 +188,20 @@ try {
   const saved = fs.readFileSync(await (await dl).path(), 'utf8');
   const mainHtml = (saved.match(/<main[\s\S]*?<\/main>/) || [''])[0];
   check('Save HTML: the saved page has no spelling marks in its document and no WebAssembly bytes', mainHtml.length > 100 && !/bw-spell|<mark[\s>]/.test(mainHtml) && !saved.includes('AGFzbQ'), `main ${mainHtml.length} B; marks ${(mainHtml.match(/bw-spell|<mark[\s>]/g) || []).length}; wasm ${saved.includes('AGFzbQ')}`);
-  // the command itself: panel open -> off; again -> on, with the panel (the View menu switch and the ribbon tool are this command)
-  await pa.evaluate(() => { if (!BW.S.spell[BW.S.ed]) BW.EXT.spell.toggle(); BW.EXT.spell.open(); });
+  // the command itself (0.15.2): a plain on/off toggle for both dictionaries (the View menu switch and the ribbon tools are this command)
+  await pa.evaluate(() => { if (!BW.S.spell[BW.S.ed]) BW.EXT.spell.toggle(); });
   await pa.evaluate(() => BW.runAction('spell'));
-  check('runAction(spell) with the panel open switches the open edition off', await pa.evaluate(() => !BW.S.spell[BW.S.ed]));
+  check('runAction(spell) switches checking off (both editions)', await pa.evaluate(() => !BW.S.spell.ar && !BW.S.spell.en));
   await pa.evaluate(() => BW.runAction('spell'));
-  check('runAction(spell) once more switches it on again, with the panel', await until(() => pa.evaluate(() => BW.S.spell[BW.S.ed] && BW.S.drawer === 'spell'), 3000));
+  check('runAction(spell) once more switches it on again (both editions)', await until(() => pa.evaluate(() => BW.S.spell.ar && BW.S.spell.en), 3000));
   // Settings card: the same switches, the licences in words, a button that opens the panel
   await pa.evaluate(() => BW.openDrawer('settings'));
   await until(() => shRoot(pa, (r) => !!r.querySelector('.set-x-spell .sp-sw')), 5000);
   const card = await shRoot(pa, (r) => { const c = r.querySelector('.set-x-spell'); return { sw: c?.querySelectorAll('.sp-sw').length, txt: c?.textContent || '' }; });
-  check('Settings has a Spelling card with the two edition switches, the licences (MPL 1.1, BSD) and the Save-HTML fallback note', card.sw === 2 && /MPL 1\.1/.test(card.txt) && /BSD/.test(card.txt) && /HTML/.test(card.txt), card.txt.slice(0, 200));
+  check('Settings has a Spelling card with the ONE switch, the licences (MPL 1.1, BSD) and the Save-HTML fallback note', card.sw === 1 && /MPL 1\.1/.test(card.txt) && /BSD/.test(card.txt) && /HTML/.test(card.txt), card.txt.slice(0, 200));
   const enWas = await pa.evaluate(() => BW.S.spell.en);
-  await shRoot(pa, (r) => r.querySelector('.set-x-spell .sp-sw[data-v="en"]').click());
-  check('the card switch works (turns the English edition on/off) and the Settings drawer stays open', (await pa.evaluate(() => BW.S.spell.en)) === !enWas && (await pa.evaluate(() => BW.S.drawer)) === 'settings');
+  await shRoot(pa, (r) => r.querySelector('.set-x-spell .sp-sw').click());
+  check('the card switch works (turns both dictionaries on/off) and the Settings drawer stays open', (await pa.evaluate(() => BW.S.spell.en)) === !enWas && (await pa.evaluate(() => BW.S.spell.ar)) === !enWas && (await pa.evaluate(() => BW.S.drawer)) === 'settings');
   await shRoot(pa, (r) => r.querySelector('.set-x-spell [data-k="spOpen"]').click());
   check('the card button opens the Spelling panel', await until(() => shRoot(pa, (r) => !!r.querySelector('.drawer .sp-list')), 4000));
   // the route itself
@@ -230,7 +229,7 @@ try {
   check('Worker: no CSP violation and no page error', pb.errors.length === 0 && !pb.cons.some((m) => /Content Security Policy/i.test(m)), `${pb.errors.join(' | ')} ${pb.cons.join(' | ')}`.slice(0, 300));
   await switchEd(pb, 'en');
   await setLeaves(pb, 'en', [EN_BAD.map((x) => x[0]).join(' , ')]);
-  await pb.evaluate(() => BW.runAction('spell'));
+  await pb.evaluate(() => { if (!BW.S.spell[BW.S.ed]) return BW.runAction('spell'); });
   check('Worker: the 10 English misspellings are flagged too', await until(async () => { const w = new Set((await issues(pb)).filter((i) => i.ed === 'en').map((i) => i.word)); return EN_BAD.every(([x]) => w.has(x)); }, 20000));
   await B.close();
 
@@ -238,6 +237,7 @@ try {
   const C = await open(build('file'), { served: false });
   const pc = C.page;
   await pc.evaluate(() => BW.runAction('spell'));
+  await pc.evaluate(() => BW.EXT.spell.open());
   await sleep(1200);
   const txt = await shRoot(pc, (r) => r.querySelector('.drawer .sp')?.innerText || '');
   check('file://: the panel opens and says the bundled dictionaries need the local server', /الخادم المحلي|local server/.test(txt), txt.slice(0, 120));
