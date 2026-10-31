@@ -6,7 +6,7 @@
  * A tab answers the worker's ping from its message handler (no page timer: a hidden tab's timers are throttled to once a minute). A tab that
  * stops answering stays listed (a sleeping tab is not a closed tab); /api/host/health shows its lastBeatMs and flags it TAB_STALE.
  */
-const EVENTS = ['flush', 'req', 'ingest', 'progress', 'hello'];
+const EVENTS = ['flush', 'req', 'ingest', 'progress', 'hello', 'lease', 'rev', 'asleep']; // lease/rev/asleep: 0.15.3 (one document = one owning tab; a tab asleep)
 const ports = new Map(); // port → {tab, svc, docs, automation, at}
 const client = `w${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 let es = null;
@@ -36,7 +36,7 @@ function connect() {
 }
 function start() {
   connect();
-  if (!pingTimer) pingTimer = setInterval(() => { for (const port of ports.keys()) { try { port.postMessage({ t: 'ping' }); } catch { /* gone */ } } post(false); sweep(); }, 3000);
+  if (!pingTimer) pingTimer = setInterval(() => { for (const port of ports.keys()) { try { port.postMessage({ t: 'ping' }); } catch { /* gone */ } } post(true); sweep(); }, 2000); // 0.15.3: every 2 s the pages are pinged and the list (with each tab's age) is re-sent, so a healthy tab reads < 5 s and BW_ASLEEP_MS can be short
 }
 function stop() {
   clearInterval(pingTimer); pingTimer = 0;

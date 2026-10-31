@@ -43,7 +43,7 @@ const SESS = (() => {
    * the tab (data.tab) or every tab. Tabs answer the hub's ping from a message handler, never from a timer (a hidden tab's timers sleep). */
   const hub = (() => {
     const subs = {};
-    let mode = 'none', port = null, ch = null, es = null, lead = false, client = '', beatTimer = 0, sentKey = '', sentAt = 0, listSeq = 0;
+    let mode = 'none', port = null, ch = null, es = null, lead = false, client = '', beatTimer = 0, sentKey = '', sentAt = 0, listSeq = 0, lastLead = Date.now(), watchTimer = 0;
     const known = new Map(); // leader: tab → {info, at}
     const me = () => ({ tab, svc: S.svc, docs: EXT.library?.isDoc(S.svc) ? [S.svc] : [], automation: AUTO });
     const deliver = (event, data) => {
@@ -77,7 +77,7 @@ const SESS = (() => {
       lead = true; mode = 'leader';
       client = `l${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
       es = new EventSource(`/api/session/live?client=${client}`);
-      for (const n of ['flush', 'req', 'ingest', 'progress']) es.addEventListener(n, (e) => {
+      for (const n of ['flush', 'req', 'ingest', 'progress', 'lease', 'rev', 'asleep', 'hello']) es.addEventListener(n, (e) => {
         let data = {};
         try { data = e.data ? JSON.parse(e.data) : {}; } catch { data = {}; }
         ch.postMessage({ t: 'ev', event: n, data });
@@ -87,20 +87,32 @@ const SESS = (() => {
       known.clear();
       ch.postMessage({ t: 'who' }); // a new leader: every tab announces itself again
       postList(true);
-      beatTimer = setInterval(() => { ch.postMessage({ t: 'ping' }); sweep(); postList(false); }, 3000);
+      beatTimer = setInterval(() => { ch.postMessage({ t: 'ping' }); sweep(); postList(true); }, 2000);
+    }
+    /** 0.15.3 T2: the leader tab slept (a frozen or discarded page keeps its Web Lock, so no other tab could take over). The leader pings every 3 s; a follower that
+     *  has heard nothing from it for 12 s takes the lock with {steal:true} (a little jitter, so followers do not all steal at once) and opens the one stream itself. A stolen
+     *  holder that wakes later is told by an AbortError and steps down. */
+    function demote() { if (!lead) return; lead = false; mode = 'follower'; clearInterval(beatTimer); try { es?.close(); } catch { /* closed */ } es = null; lastLead = Date.now(); }
+    const takeLead = (steal) => navigator.locks.request('bw-live-leader', steal ? { steal: true } : {}, () => { leaderOpen(); return new Promise(() => {}); }).catch(() => { demote(); });
+    function watchLeader() {
+      watchTimer = setInterval(() => {
+        if (lead || Date.now() - lastLead < 12000) return;
+        lastLead = Date.now() - 6000 + Math.random() * 3000; // not again for a few seconds, whoever wins
+        takeLead(true);
+      }, 4000);
     }
     function fallback() {
       mode = 'follower';
       ch = new BroadcastChannel('bw-live');
       ch.onmessage = (m) => {
         const d = m.data || {};
-        if (d.t === 'ev') deliver(d.event, d.data);
-        else if (d.t === 'ping' || d.t === 'who') ch.postMessage({ t: d.t === 'who' ? 'hello' : 'beat', ...me() });
+        if (d.t === 'ev') { lastLead = Date.now(); deliver(d.event, d.data); }
+        else if (d.t === 'ping' || d.t === 'who') { lastLead = Date.now(); ch.postMessage({ t: d.t === 'who' ? 'hello' : 'beat', ...me() }); }
         else if (lead && (d.t === 'hello' || d.t === 'beat')) { known.set(d.tab, { info: { tab: d.tab, svc: d.svc, docs: d.docs, automation: d.automation }, at: Date.now(), since: known.get(d.tab)?.since }); postList(d.t === 'hello'); }
         else if (lead && d.t === 'bye') { known.delete(d.tab); postList(true); }
       };
-      if (navigator.locks?.request) navigator.locks.request('bw-live-leader', () => { leaderOpen(); return new Promise(() => {}); }).catch(() => {});
-      else { mode = 'direct'; es = new EventSource(`/api/session/live?tab=${encodeURIComponent(tab)}`); es.addEventListener('flush', () => deliver('flush', {})); } // no Web Locks: a stream of this tab's own (the old way)
+      if (navigator.locks?.request) { takeLead(false); watchLeader(); }
+      else { mode = 'direct'; es = new EventSource(`/api/session/live?tab=${encodeURIComponent(tab)}`); for (const n of ['flush', 'lease', 'rev', 'asleep', 'hello']) es.addEventListener(n, (e) => { let d = {}; try { d = e.data ? JSON.parse(e.data) : {}; } catch { d = {}; } deliver(n, d); }); } // no Web Locks: a stream of this tab's own (the old way)
       ch.postMessage({ t: 'hello', ...me() });
     }
     function shared() {
@@ -126,6 +138,93 @@ const SESS = (() => {
       get mode() { return mode; },
     };
   })();
+  /* 0.15.3 T1: one document = one owning tab. The host gives a document's lease to the first tab that lists it (engine/routes/session.mjs) and tells every tab
+   * (`lease`: who owns what; `rev`: a save was accepted). A tab on a document another tab owns is a FOLLOWER, and a tab whose copy is older than a save another tab
+   * made is STALE: both are read-only (a guard refuses every edit, a banner says why in Arabic and English, with Reload), so a stale copy can never be saved over
+   * the library. The host refuses such a save anyway (engine/routes/doc-lease.mjs: NOT_OWNER, STALE_BASE); this page adds the headers it checks. */
+  const LS = { leases: {}, revs: {}, mine: {}, stale: {}, asleep: [] };
+  const curDoc = () => (info && EXT.library?.isDoc(S.svc) ? S.svc : null);
+  const owner = (d) => LS.leases[d] || null;
+  const follows = (d) => !!d && !!owner(d) && owner(d) !== tab;
+  const MSG = {
+    follower: 'هذه الوثيقة مفتوحة للتحرير في تبويب آخر، لذلك هذا التبويب للقراءة فقط. أغلق التبويب الآخر ثم أعد التحميل. · This document is open for editing in another tab, so this tab is read-only. Close the other tab, then reload.',
+    stale: 'تغيّرت هذه الوثيقة في تبويب آخر، ونسختك أقدم. أعد التحميل قبل أي تعديل حتى لا تُحفظ نسخة قديمة فوق الأحدث. · This document changed in another tab and your copy is older. Reload before editing so an old copy is never saved over the newer one.',
+    asleep: (n) => `${n} تبويب نائم (ميزة التبويبات النائمة في Edge): اضغط عليه ليستيقظ. · ${n} tab(s) asleep (Edge sleeping tabs): click them to wake them.`,
+    reload: 'إعادة التحميل · Reload',
+  };
+  function bar(id, text, top, button) {
+    let el = document.getElementById(id);
+    if (!text) { el?.remove(); return; }
+    if (!el) {
+      el = document.createElement('div');
+      el.id = id; el.setAttribute('role', 'status');
+      Object.assign(el.style, { position: 'fixed', insetInline: '0', top: top + 'px', zIndex: '2147483000', padding: '8px 16px', background: '#3b2a00', color: '#fff', font: '600 14px/1.5 inherit', textAlign: 'center', display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' });
+      const sp = document.createElement('span'); sp.dir = 'auto'; el.appendChild(sp);
+      if (button) { const b = document.createElement('button'); b.type = 'button'; b.textContent = MSG.reload; b.onclick = () => location.reload(); Object.assign(b.style, { font: 'inherit', padding: '2px 12px', cursor: 'pointer' }); el.appendChild(b); }
+      document.body.appendChild(el);
+    }
+    el.firstChild.textContent = text;
+  }
+  function banners() {
+    const d = curDoc();
+    const why = !d ? '' : follows(d) ? MSG.follower : LS.stale[d] ? MSG.stale : '';
+    document.documentElement.dataset.bwReadonly = why ? (follows(d) ? 'follower' : 'stale') : '';
+    bar('bw-lease-banner', why, 0, true);
+    bar('bw-asleep-banner', LS.asleep.length ? MSG.asleep(LS.asleep.length) : '', why ? 44 : 0, false);
+  }
+  function leaseIn(d) {
+    if (d?.leases) LS.leases = d.leases;
+    if (d?.revs) { LS.revs = d.revs; for (const doc of Object.keys(LS.mine)) if (LS.revs[doc] > LS.mine[doc] && owner(doc) !== tab) LS.stale[doc] = true; }
+    banners();
+    const doc = curDoc();
+    if (doc && (follows(doc) || LS.stale[doc])) healFromHost(doc);
+  }
+  /** a follower or stale tab may already have written its older copy into the browser's own library (a save in the second before it learned it): the host's last accepted copy is put back */
+  const healed = {};
+  async function healFromHost(doc) {
+    if (healed[doc] === LS.revs[doc] || !EXT.library?.adopt) return;
+    healed[doc] = LS.revs[doc];
+    try {
+      const r = await fetch(`/api/library/mirror?id=${encodeURIComponent(doc)}`);
+      if (r.ok) { const e = await r.json(); if (e?.id === doc) { await EXT.library.adopt(e); LS.mine[doc] = LS.revs[doc] ?? LS.mine[doc]; if (!follows(doc)) delete LS.stale[doc]; banners(); } }
+    } catch { /* the host has no copy yet */ }
+  }
+  hub.on('lease', leaseIn);
+  hub.on('hello', (d) => { if (d?.leases) leaseIn(d); });
+  hub.on('rev', (d) => {
+    if (!d?.doc) return;
+    LS.revs[d.doc] = d.rev;
+    if (d.by === tab) LS.mine[d.doc] = d.rev;
+    else if (d.doc in LS.mine && d.rev > LS.mine[d.doc]) LS.stale[d.doc] = true;
+    banners();
+  });
+  hub.on('asleep', (d) => { LS.asleep = (d?.tabs || []).filter((x) => x.tab !== tab); banners(); });
+  /** the document this tab just showed: list it to the host now (not at the next 3 s beat), learn who owns it and at which revision */
+  async function seen() {
+    const d = curDoc();
+    if (!d || !tab) { banners(); return; }
+    hub.again();
+    if (!(d in LS.mine)) {
+      const r = await fetch('/api/session/leases').then((x) => x.json()).catch(() => null);
+      if (r) { LS.revs = r.revs || LS.revs; if (!(d in LS.mine)) LS.mine[d] = LS.revs[d] ?? 0; leaseIn({ leases: r.leases }); }
+    } else banners();
+  }
+  const _fetch = window.fetch.bind(window);
+  window.fetch = function (u, o) { // the library write of this tab carries who it is and which revision it saw (engine/routes/doc-lease.mjs)
+    if (!tab || typeof u !== 'string' || !u.startsWith('/api/library/mirror') || o?.method !== 'POST' || typeof o.body !== 'string') return _fetch(u, o);
+    const m = /"id":"(doc-[A-Za-z0-9-]{4,64})"/.exec(o.body.slice(0, 400));
+    if (!m) return _fetch(u, o);
+    const doc = m[1];
+    const headers = { ...(o.headers || {}), 'x-bw-tab': tab, 'x-bw-doc': doc };
+    if (doc in LS.mine) headers['x-bw-base'] = String(LS.mine[doc]);
+    return _fetch(u, { ...o, headers }).then((r) => {
+      const rev = Number(r.headers.get('x-bw-rev'));
+      if (r.ok && rev) LS.mine[doc] = rev;
+      else if (r.status === 409) r.clone().json().then((j) => { if (j.code === 'NOT_OWNER') LS.leases[doc] = j.owner; else if (j.code === 'STALE_BASE') LS.stale[doc] = true; if (j.rev != null) LS.revs[doc] = j.rev; banners(); healFromHost(doc); }).catch(() => {});
+      return r;
+    });
+  };
+  EXT.guards.push(() => { const d = curDoc(); if (!d) return true; return follows(d) ? MSG.follower : LS.stale[d] ? MSG.stale : true; });
   const push = () => {
     clearTimeout(timer); timer = 0;
     if (!info) return;
@@ -238,6 +337,7 @@ const SESS = (() => {
       if (last?.tabs?.length) modal(last, release); else release?.();
     }
     push();
+    seen();
     document.documentElement.dataset.bwSession = tab;
   }
   const card = () => (info ? `<p class="hint">${esc(t('wsLead'))}</p><p><code class="ws-root">${esc(info.workspace.root)}</code></p><div class="btns"><button type="button" class="b" data-ws="pick"><span class="w">${esc(t('wsChange'))}</span></button></div>` : `<p class="hint">${esc(t('wsServerOnly'))}</p>`);
@@ -245,7 +345,7 @@ const SESS = (() => {
     const r = await json('/api/workspace/pick', {});
     if (r.ok) { info.workspace = { root: r.root, chosen: true }; el.querySelector('.ws-root').textContent = r.root; }
   });
-  return { boot, push, soon, flush, ensureFolder, card, mountCard, on: hub.on, bye: hub.bye, again: hub.again, get transport() { return hub.mode; }, get automation() { return AUTO; }, get tab() { return tab; }, get info() { return info; } };
+  return { boot, push, soon, flush, ensureFolder, card, mountCard, on: hub.on, bye: hub.bye, again: hub.again, seen, get readonly() { const d = curDoc(); return d ? (follows(d) ? 'follower' : LS.stale[d] ? 'stale' : '') : ''; }, get transport() { return hub.mode; }, get automation() { return AUTO; }, get tab() { return tab; }, get info() { return info; } };
 })();
 
 bwExt({
@@ -253,6 +353,7 @@ bwExt({
   expose: { session: SESS },
   on: {
     boot: () => { SESS.boot(); },
+    open: () => { SESS.seen(); },
     commit: () => SESS.soon(),
     save: () => { SESS.ensureFolder(); SESS.soon(); },
     beforeExport: () => SESS.ensureFolder(), // the first export asks for the save folder too (once; then it is remembered)
