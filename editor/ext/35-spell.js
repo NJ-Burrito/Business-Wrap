@@ -253,7 +253,7 @@ const SP = (() => {
 
   /* ── native checker follows: ours when the engine runs, the browser's when it cannot ── */
   function native() {
-    for (const ed of eds) mainOf(ed)?.setAttribute('spellcheck', enabled(ed) && !ENG.usable() ? 'true' : 'false');
+    for (const ed of eds) mainOf(ed)?.setAttribute('spellcheck', enabled(ed) && !EXT.spell?.owns?.(ed) ? 'true' : 'false'); // owns() = enabled && the engine can run: the same rule as editor.js decorate()
   }
   function setEd(ed, on) {
     S.spell[ed] = on;
@@ -437,14 +437,23 @@ const SP = (() => {
     if (eds.some(enabled)) { if (served) eds.filter(enabled).forEach((ed) => ENG.ensure(ed).catch(() => {})); schedule(300); }
     // 'spell' was a bare toggle in editor.js: it now also brings the panel (the same hook the ribbon, the palette and the View popover call)
     for (const holder of [window, window.BW]) {
-      if (holder === window) { const o = runAction; runAction = function spellRun(a, ...r) { return a === 'spell' ? act() : o.call(this, a, ...r); }; } else if (holder?.runAction) { const o2 = holder.runAction; holder.runAction = function spellRun(a, ...r) { return a === 'spell' ? act() : o2.call(this, a, ...r); }; }
+      if (holder === window) runAction = spellWrap(runAction); else if (holder?.runAction) holder.runAction = spellWrap(holder.runAction);
     }
+  }
+  /** The `spell` command keeps core's toggle (it persists the switch and fires the `spell` event, which this module answers below); the panel comes with it: on and panel closed -> the panel only. */
+  function spellWrap(o) {
+    return function spellRun(a, ...r) {
+      if (a !== 'spell') return o.call(this, a, ...r);
+      if (enabled(S.ed) && S.drawer !== 'spell') { open(); return undefined; }
+      return Promise.resolve(o.call(this, a, ...r)).then(() => { if (enabled(S.ed)) open(); });
+    };
   }
   bwExt({
     drawers: { spell: drawer },
     settings: [{ id: 'spell', title: 'sp.title', icon: 'spell', html: settingsHtml, mount: settingsMount }],
     on: {
       boot: init,
+      spell: (ed, on) => { native(); if (on && ENG.usable()) ENG.ensure(ed).catch(() => {}); scan(); paint(); }, // core's `spell` command (toggle + remembered switch) fired: start or stop the checker
       render: () => { native(); schedule(250); },
       commit: (ops, ed, kind) => { if (kind === 'type' || kind === 'commit' || kind === 'undo' || kind === 'redo') schedule(kind === 'type' ? 600 : 250); },
       keydown: (e) => {
@@ -454,7 +463,7 @@ const SP = (() => {
         return true;
       },
     },
-    expose: { spell: { open, act, toggle, scan, enabled, next: () => step(1), prev: () => step(-1), issues: () => sp.issues.map((i) => ({ ed: i.ed, word: i.raw, lang: i.lang, path: i.path })), engine: () => ({ mode: ENG.mode, state: { ...ENG.state }, ms: { ...ENG.ms } }), ignoreCount: () => sp.ignoreAll.size } },
+    expose: { spell: { owns: (ed) => enabled(ed) && ENG.usable(), open, act, toggle, scan, enabled, next: () => step(1), prev: () => step(-1), issues: () => sp.issues.map((i) => ({ ed: i.ed, word: i.raw, lang: i.lang, path: i.path })), engine: () => ({ mode: ENG.mode, state: { ...ENG.state }, ms: { ...ENG.ms } }), ignoreCount: () => sp.ignoreAll.size } },
   });
   return { open };
 })();

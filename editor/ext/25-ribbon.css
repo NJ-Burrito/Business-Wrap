@@ -123,4 +123,6 @@
 [data-ic="zoomPct"] > * { --s: 1.18; --icm: icm-pop var(--mvt); }
 [data-ic="projExport"] > * { --y: 2px; --icm: icm-nudge var(--mvt); }
 [data-ic="projImport"] > * { --y: -2px; --icm: icm-nudge var(--mvt); }
+[data-ic="pjExport"] > * { --y: 2px; --icm: icm-nudge var(--mvt); }
+[data-ic="pjImport"] > * { --y: -2px; --icm: icm-nudge var(--mvt); }
 .rb-tab[aria-selected="true"]:hover { background: color-mix(in srgb, var(--rb-sel) 88%, var(--on-glass) 12%); }
