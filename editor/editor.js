@@ -2977,14 +2977,13 @@ const BRIDGE = (() => {
   const sha = async (s) => `sha256:${hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))}`;
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b) || (textOf(a) !== '' && textOf(a) === textOf(b));
   const wordsOf = (doc) => { try { return textLeaves(doc).map((x) => x.value).join(' ').split(/\s+/).filter(Boolean).length; } catch { return 0; } };
-  /** Run fn with the provenance actor set to the agent; its log entries are queued inside commit, so wait for the queue before the person's name returns. */
-  async function asAgent(name, fn) {
+  /** Run fn with the agent bound as the actor of the log entries it creates (PF.withActor); then wait for the queue so the reply carries a written log. */
+  async function asAgent(name, fn, hold = false) {
     if (typeof PF === 'undefined' || typeof PV === 'undefined') return fn();
     const actor = { id: `agent:${slug(name)}`, name: String(name || 'Claude').slice(0, 80) };
     try { if (typeof pvFlushTyping === 'function') pvFlushTyping(); await PV.q; } catch { /* the log is best effort */ }
-    const was = PF.actor;
-    PF.actor = () => actor;
-    try { return await fn(); } finally { try { await PV.q; } catch { /* idem */ } PF.actor = was; }
+    // no global swap: the actor is bound to the entries created inside fn (PF.withActor), so a person's edit while the queue drains stays the person's
+    try { return await PF.withActor(actor, fn, hold); } finally { try { await PV.q; } catch { /* idem */ } }
   }
   /** The document the call is about, mounted and shown: the open one, or a library entry of this browser; NO_DOC otherwise. */
   async function target(doc, locale) {
@@ -3049,7 +3048,7 @@ const BRIDGE = (() => {
       if (id === 'check') return { id, findings: validate().map(([level, message, path]) => ({ level, message, path })) };
       if (id === 'share') return shareAs(args);
       const before = cur(ed).ops.length;
-      await asAgent(args.agent || 'Claude', async () => { await runAction(id); });
+      await asAgent(args.agent || 'Claude', async () => { await runAction(id); }, true); // an action may log after an await: bound until it settles
       return { id, opsAdded: cur(ed).ops.length - before };
     },
     async new({ title, project, template } = {}) {

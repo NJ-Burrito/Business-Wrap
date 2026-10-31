@@ -108,6 +108,28 @@ try {
   check('provenance: the 12 ops are signed as the agent (name, own actor id)', !!prov && prov.ops.length === 12 && prov.ops.every((o) => o.name === 'Claude (Test)' && o.id === 'agent:claude-test'), JSON.stringify(prov));
   check('provenance: the agent id differs from the person\'s, the chain still verifies', !!prov && prov.humans.length >= 1 && !prov.humans.includes('agent:claude-test') && prov.ok === true, JSON.stringify(prov));
 
+  // 4b. a human edit landing while the agent's log queue is still draining stays the human's (withActor binds the actor at entry creation)
+  const race = await page.evaluate(async ({ doc, paths }) => {
+    const B = window.BW, e = () => B.M[B.S.svc].ar;
+    const n0 = e().ops.length;
+    const agentOps = paths.slice(0, 3).map((p, i) => ({ op: 'setText', path: p, value: `AGX${i} agent` }));
+    const pr = B.bridge('ops', doc, { ops: agentOps, locale: 'ar', agent: 'Claude (Race)', group: 'race' });
+    for (let i = 0; i < 4000 && e().ops.length === n0; i += 1) await Promise.resolve(); // the agent commit has run; its log queue is still draining
+    const stillDraining = e().ops.length > n0;
+    B.commit([{ op: 'setText', path: '/control/title', value: 'HUMX human keystroke' }], { ed: 'ar', mirror: false });
+    await pr;
+    await B.EXT.ledger.ready();
+    await new Promise((r) => setTimeout(r, 600));
+    await B.EXT.ledger.ready();
+    const L = B.EXT.ledger.log(B.S.svc);
+    const rows = L.entries.filter((x) => x.kind === 'op' && /^(AGX|HUMX)/.test(String(x.data?.op?.value || ''))).map((x) => ({ v: String(x.data.op.value).slice(0, 4), id: x.actor.id, name: x.actor.name, kid: x.actor.kid }));
+    return { stillDraining, rows, ok: L.verdict?.ok, me: B.EXT.profile.actor().id };
+  }, { doc: DOC, paths: edits });
+  check('race: the agent commit had run and its log was still draining when the human typed', race.stillDraining === true, JSON.stringify(race.rows));
+  check('race: the human keystroke is signed as the human (not the agent)', race.rows.filter((x) => x.v === 'HUMX').length === 1 && race.rows.filter((x) => x.v === 'HUMX').every((x) => x.id === race.me), JSON.stringify(race.rows));
+  check('race: the 3 agent entries are signed as agent:claude-race', race.rows.filter((x) => x.v.startsWith('AGX')).length === 3 && race.rows.filter((x) => x.v.startsWith('AGX')).every((x) => x.id === 'agent:claude-race' && x.name === 'Claude (Race)'), JSON.stringify(race.rows));
+  check('race: the chain verifies', race.ok === true, JSON.stringify(race.rows));
+
   // 5. refusals
   r = await call('editor_ops', { doc: DOC, ops: [{ op: 'setText', path: '/control/title', value: 'never', old: 'NOT THE TITLE' }], locale: 'ar' });
   const cf = data(r);
