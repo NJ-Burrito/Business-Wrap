@@ -59,6 +59,19 @@ const SESS = (() => {
       sentKey = key; sentAt = Date.now();
       fetch('/api/session/tabs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ client, tabs: l }), keepalive: true }).catch(() => {});
     };
+    /** a follower that died without a bye: its Web Lock `bw-tab:<tab>` is gone twice in a row (see editor/session-worker.js) */
+    async function sweep() {
+      if (!navigator.locks?.query) return;
+      let held;
+      try { held = new Set((await navigator.locks.query()).held.map((l) => l.name)); } catch { return; }
+      let gone = false;
+      for (const [t, k] of [...known]) {
+        if (t === tab || Date.now() - (k.since ||= Date.now()) < 4000) continue;
+        if (held.has(`bw-tab:${t}`)) k.miss = 0;
+        else if ((k.miss = (k.miss || 0) + 1) >= 2) { known.delete(t); gone = true; }
+      }
+      if (gone) postList(true);
+    }
     function leaderOpen() {
       lead = true; mode = 'leader';
       client = `l${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -73,7 +86,7 @@ const SESS = (() => {
       known.clear();
       ch.postMessage({ t: 'who' }); // a new leader: every tab announces itself again
       postList(true);
-      beatTimer = setInterval(() => { ch.postMessage({ t: 'ping' }); postList(false); }, 3000);
+      beatTimer = setInterval(() => { ch.postMessage({ t: 'ping' }); sweep(); postList(false); }, 3000);
     }
     function fallback() {
       mode = 'follower';
@@ -82,7 +95,7 @@ const SESS = (() => {
         const d = m.data || {};
         if (d.t === 'ev') deliver(d.event, d.data);
         else if (d.t === 'ping' || d.t === 'who') ch.postMessage({ t: d.t === 'who' ? 'hello' : 'beat', ...me() });
-        else if (lead && (d.t === 'hello' || d.t === 'beat')) { known.set(d.tab, { info: { tab: d.tab, svc: d.svc, docs: d.docs, automation: d.automation }, at: Date.now() }); postList(d.t === 'hello'); }
+        else if (lead && (d.t === 'hello' || d.t === 'beat')) { known.set(d.tab, { info: { tab: d.tab, svc: d.svc, docs: d.docs, automation: d.automation }, at: Date.now(), since: known.get(d.tab)?.since }); postList(d.t === 'hello'); }
         else if (lead && d.t === 'bye') { known.delete(d.tab); postList(true); }
       };
       if (navigator.locks?.request) navigator.locks.request('bw-live-leader', () => { leaderOpen(); return new Promise(() => {}); }).catch(() => {});
@@ -207,6 +220,7 @@ const SESS = (() => {
     tab ||= newId();
     try { sessionStorage.setItem('bw:tab', tab); } catch { /* no storage */ }
     if (AUTO) document.documentElement.dataset.bwAutomation = '1';
+    try { navigator.locks?.request(`bw-tab:${tab}`, { mode: 'shared' }, () => new Promise(() => {})).catch(() => {}); } catch { /* no Web Locks */ } // held while this page lives: the hub's proof that the tab is not gone
     hub.on('flush', flush);
     hub.start();
     if (resumed) await apply(resumed);
@@ -237,5 +251,6 @@ bwExt({
     pagehide: () => { SESS.flush(); SESS.bye(); },
   },
 });
+window.addEventListener('pagehide', () => SESS.bye()); // not only through the extension seam: a throwing earlier handler must not leave the tab listed
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') SESS.flush(); });
 window.addEventListener('pageshow', (e) => { if (e.persisted) SESS.again(); }); // back from the back/forward cache: the hub is told this tab is here again

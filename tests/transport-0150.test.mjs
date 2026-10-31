@@ -61,7 +61,7 @@ async function scenario(label, { fallback }) {
   }
   check(`${label}: all ${N} tabs reach bwSession (${Date.now() - t0} ms)`, reached === N, `only ${reached} of ${N} tabs booted (the 7th hangs behind 6 open event streams)`);
   if (reached < N) { for (const p of pages) await p.close().catch(() => {}); await ctx.close(); await H.stop(); return; }
-  await sleep(600);
+  await until(async () => (await health(h)).tabs.length === N, 8000); // the registry settles within a beat (3 s)
   const hl = await health(h).catch((e) => ({ err: String(e.message) }));
   check(`${label}: /api/host/health schema`, hl.ok === true && typeof hl.version === 'string' && Number.isInteger(hl.pid) && typeof hl.uptimeS === 'number' && Array.isArray(hl.clients) && Array.isArray(hl.tabs) && typeof hl.pendingRequests === 'number' && Array.isArray(hl.warnings) && 'workspace' in hl, JSON.stringify(hl).slice(0, 300));
   check(`${label}: health lists ${N} live tabs`, hl.tabs?.length === N && hl.tabs.every((t) => t.live && typeof t.lastBeatMs === 'number'), `tabs=${hl.tabs?.length}`);
@@ -126,6 +126,29 @@ async function closing() {
   await H.stop();
 }
 
+
+async function lostBye(label, { fallback }) {
+  // the bye of a closing tab is lost (the message dropped): the dead tab must still leave the registry and, as the last one, the host must still stop
+  const h = await H.start({ editor, port: await freePort(), open: false });
+  const ctx = await browser.newContext();
+  await ctx.addInitScript(() => { try { localStorage.setItem('bw:profile-prompt', '1'); } catch { /* none */ } });
+  if (fallback) await ctx.addInitScript(() => { try { Object.defineProperty(window, 'SharedWorker', { value: undefined, configurable: true }); } catch { window.SharedWorker = undefined; } });
+  const a = await open(ctx, h.url + '?tab=tablost00x');
+  await a.waitForFunction(() => ['shared', 'leader'].includes(window.BW.EXT.session.transport), null, { timeout: 8000 });
+  const b = await ctx.newPage();
+  await b.addInitScript(() => { const o = MessagePort.prototype.postMessage; MessagePort.prototype.postMessage = function (m, ...r) { if (m && m.t === 'bye') return; return o.call(this, m, ...r); }; const c = BroadcastChannel.prototype.postMessage; BroadcastChannel.prototype.postMessage = function (m, ...r) { if (m && m.t === 'bye') return; return c.call(this, m, ...r); }; });
+  await b.goto(h.url + '?tab=tablost01x');
+  await b.waitForFunction(() => window.BW?.ready && document.documentElement.dataset.bwSession, null, { timeout: 15000 });
+  await until(async () => (await health(h)).tabs.length === 2, 8000);
+  await b.close({ runBeforeUnload: true });
+  const dropped = await until(async () => (await health(h)).tabs.length === 1, 20000);
+  check(`${label}: a tab whose bye was lost still leaves the registry (Web Lock gone)`, dropped, JSON.stringify((await health(h)).tabs.map((t) => t.tab)));
+  await a.close({ runBeforeUnload: true });
+  await ctx.close();
+  check(`${label}: and the last tab closing still stops the host`, await gone(h.pid, 12000));
+  await H.stop();
+}
+
 async function automation() {
   // a stored previous run exists → a plain tab asks; an automation tab never does
   const h = await H.start({ editor, port: await freePort(), open: false });
@@ -161,6 +184,8 @@ try {
   await scenario('shared', { fallback: false });
   await scenario('fallback', { fallback: true });
   await closing();
+  await lostBye('lost bye (shared)', { fallback: false });
+  await lostBye('lost bye (fallback)', { fallback: true });
   await automation();
 } catch (e) {
   check('suite ran to the end', false, String(e.stack || e).slice(0, 500));

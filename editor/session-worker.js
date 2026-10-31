@@ -35,7 +35,7 @@ function connect() {
 }
 function start() {
   connect();
-  if (!pingTimer) pingTimer = setInterval(() => { for (const port of ports.keys()) { try { port.postMessage({ t: 'ping' }); } catch { /* gone */ } } post(false); }, 3000);
+  if (!pingTimer) pingTimer = setInterval(() => { for (const port of ports.keys()) { try { port.postMessage({ t: 'ping' }); } catch { /* gone */ } } post(false); sweep(); }, 3000);
 }
 function stop() {
   clearInterval(pingTimer); pingTimer = 0;
@@ -43,18 +43,34 @@ function stop() {
   es = null;
 }
 
+/** A lost `bye` (a page killed, the message dropped) must not keep a dead tab listed and the stream open for ever: every page holds the Web Lock
+ *  `bw-tab:<tab>` while it lives (a sleeping tab keeps it, a dead one loses it), so a port whose lock is gone twice in a row is removed. */
+function removePort(port) {
+  ports.delete(port);
+  if (!ports.size) post(true).then(() => { if (ports.size) return; stop(); self.close(); }); // the last tab: say so, close the stream, let the host's idle timer run
+  else post(true);
+}
+async function sweep() {
+  if (!self.navigator?.locks?.query) return;
+  let held;
+  try { held = new Set((await navigator.locks.query()).held.map((l) => l.name)); } catch { return; }
+  for (const [port, p] of [...ports]) {
+    if (!p.tab || Date.now() - p.since < 4000) continue;
+    if (held.has(`bw-tab:${p.tab}`)) p.miss = 0;
+    else if ((p.miss = (p.miss || 0) + 1) >= 2) removePort(port);
+  }
+}
+
 onconnect = (ev) => {
   const port = ev.ports[0];
   port.onmessage = (m) => {
     const d = m.data || {};
     if (d.t === 'bye') {
-      ports.delete(port);
-      if (!ports.size) post(true).then(() => { if (ports.size) return; stop(); self.close(); }); // the last tab: say so, close the stream, let the host's idle timer run
-      else post(true);
+      removePort(port);
       return;
     }
     if (d.t === 'hello' || d.t === 'beat') {
-      ports.set(port, { tab: d.tab, svc: d.svc, docs: Array.isArray(d.docs) ? d.docs : [], automation: !!d.automation, at: Date.now() });
+      ports.set(port, { tab: d.tab, svc: d.svc, docs: Array.isArray(d.docs) ? d.docs : [], automation: !!d.automation, at: Date.now(), since: ports.get(port)?.since || Date.now(), miss: 0 });
       start();
       if (d.t === 'hello') post(true);
     }
