@@ -2,6 +2,8 @@
  "$comment": "Shell UX strings (0.10.0): ux.* (direction), view.* (page view modes), explain.* (hover explainers). Merged into engine/i18n.json ui.<lang> by engine/build-editor.mjs.",
  "ar": {
  "zoomHeight": "ملء الارتفاع",
+ "vLegibility": "الرسم في القسم {p}: أصغر خط يُطبع {pt} نقطة (الحد {min}) وعدد التداخلات {n}",
+ "dgk_continue": "يتابع في الشكل التالي",
  "zoomPct": "النسبة",
  "projExport": "تصدير مشروع",
  "projImport": "استيراد مشروع",
@@ -265,6 +267,8 @@
  },
  "en": {
  "zoomHeight": "Fill height",
+ "vLegibility": "Diagram in section {p}: smallest text prints at {pt} pt (minimum {min}), {n} overlap(s)",
+ "dgk_continue": "Continues in the next figure",
  "zoomPct": "Zoom",
  "projExport": "Export project",
  "projImport": "Import project",

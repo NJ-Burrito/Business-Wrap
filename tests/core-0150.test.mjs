@@ -298,8 +298,8 @@ try {
 
   /* ── AC4: reduced motion and calm ─────────────────────────────────────── */
   for (const mode of ['reduced', 'calm']) {
-    const { ctx, page } = await open({ clock: true, reduced: mode === 'reduced' });
-    if (mode === 'calm') await page.evaluate(() => { document.documentElement.dataset.bwCalm = '1'; });
+    const { ctx, page } = await open({ clock: true, reduced: mode === 'reduced', store: mode === 'calm' ? { 'bw:calm': '1' } : {} });
+    if (mode === 'calm') check('AC4 (calm): the page really is in calm mode', await page.evaluate(() => window.BW.S.calm === true && document.documentElement.dataset.bwCalm === '1'));
     const adv = (ms) => page.clock.runFor(ms);
     await adv(600000);
     const rnd = await WM(page, (W) => W.stats().plays.filter((p) => /^W1[1-9]$/.test(p.id)).length);
@@ -350,6 +350,45 @@ try {
     for (let i = 0; i < 7; i += 1) { await page.keyboard.press(i % 2 ? 'Enter' : 'Space'); await adv(250); }
     await adv(200);
     check('AC5: Enter and Space on the focused mark count the same', (await eggs()) === 2, String(await eggs()));
+    await ctx.close();
+  }
+
+  /* ── the spell seam (35-spell.js plugs into it): a 'spell' event, a remembered per-edition switch, native red lines unless the extension owns the edition ── */
+  {
+    const { ctx, page } = await open();
+    const r = await page.evaluate(async () => {
+      const got = []; window.BW.EXT.on.spell.push((ed, on) => got.push([ed, on]));
+      const attr = () => document.querySelector('#bw-pair main.bw-doc').getAttribute('spellcheck');
+      const a0 = attr();
+      await window.BW.runAction('spell');
+      const a1 = attr(); const saved = localStorage.getItem(`bw:spell:${window.BW.S.ed}`);
+      window.BW.EXT.spell = { owns: () => true };
+      window.BW.render();
+      const a2 = attr();
+      window.BW.EXT.spell = undefined;
+      await window.BW.runAction('spell');
+      return { a0, a1, a2, saved, got, off: localStorage.getItem(`bw:spell:${window.BW.S.ed}`) };
+    });
+    check('spell seam: the toggle fires the spell event, switches the native attribute and is remembered per edition', r.a0 === 'false' && r.a1 === 'true' && r.saved === '1' && r.off === '0' && r.got.length === 2 && r.got[0][1] === true && r.got[1][1] === false, JSON.stringify(r));
+    check('spell seam: EXT.spell.owns(ed) turns the native red lines off', r.a2 === 'false', r.a2);
+    await ctx.close();
+  }
+
+  /* ── F5 in the Check panel: a diagram that would print too small is a warning (DIAGRAM.legibility is stubbed: the engine part is the render lane's) ── */
+  {
+    const { ctx, page } = await open();
+    const r = await page.evaluate(async () => {
+      await window.BW.runAction('addDiagram'); await new Promise((q) => setTimeout(q, 100));
+      const D = window.BW.DIAGRAM; const had = typeof D.legibility;
+      const orig = D.legibility;
+      D.legibility = () => ({ ok: false, small: ['a'], overlaps: [['a', 'b']], minPtPrinted: 5.2, minPt: 7 });
+      const bad = window.BW.validate().filter((x) => /5\.2/.test(x[1]));
+      D.legibility = () => ({ ok: true, small: [], overlaps: [], minPtPrinted: 9, minPt: 7 });
+      const fresh = window.BW.validate().filter((x) => /5\.2/.test(x[1]));
+      D.legibility = orig;
+      return { had, bad: bad.length, path: bad[0]?.[2], fresh: fresh.length };
+    });
+    check('Check panel: a diagram that prints too small gives one warning with its block path', r.bad >= 1 && r.fresh === 0 && /blocks\/\d+$/.test(r.path || ''), JSON.stringify(r));
     await ctx.close();
   }
 

@@ -34,7 +34,7 @@ const S = {
   side: false,
   both: true,
   zoom: 1,
-  spell: { ar: false, en: false },
+  spell: { ar: ls.get('bw:spell:ar') === '1', en: ls.get('bw:spell:en') === '1' }, // per edition, remembered (0.15.0)
   theme: DATA.theme,
   sel: null, // {p, b, el}
   drawer: null,
@@ -130,7 +130,8 @@ function decorate() {
     const main = mainOf(ed);
     if (!main) continue;
     const e = cur(ed);
-    main.setAttribute('spellcheck', S.spell[ed] ? 'true' : 'false');
+    // 0.15.0 seam: the spelling extension (35-spell.js) exposes EXT.spell = { owns(ed) } when its own checker is marking this edition, so the browser's red lines do not double it
+    main.setAttribute('spellcheck', S.spell[ed] && !EXT.spell?.owns?.(ed) ? 'true' : 'false');
     main.querySelectorAll('[data-p]').forEach((el) => {
       el.tabIndex = 0;
       if (e.stale.has(el.dataset.p)) { el.classList.add('bw-stale'); el.title = t('staleTip'); }
@@ -145,7 +146,7 @@ function decorate() {
 
 /* ── extension seam (0.13.0): editor/ext/*.js register through bwExt; the contract is editor/ext/README.md ── */
 const EXT = { cmds: [], sections: [], actions: {}, drawers: {}, settings: [], status: null, guards: [],
-  on: { boot: [], commit: [], render: [], save: [], saveHtml: [], beforeExport: [], export: [], pagehide: [], open: [], keydown: [] } };
+  on: { boot: [], commit: [], render: [], save: [], saveHtml: [], beforeExport: [], export: [], pagehide: [], open: [], keydown: [], spell: [] } };
 function bwExt(def = {}) {
   for (const c of def.cmds || []) { const x = { group: 'document', edit: false, ...c }; EXT.cmds.push(x); CMDS.push(x); }
   for (const x of def.sections || []) { EXT.sections.push(x); if (!GENERAL_GROUPS.includes(x.cat)) GENERAL_GROUPS.push(x.cat); }
@@ -938,8 +939,10 @@ const A = {
     render();
   },
   renumber() {
+    // 0.15.0 (render-time numbering): numbers come from position at render, so only a document that opted out (control.numbering: 'manual') has stored numbers to fix
     for (const ed of Object.keys(M[S.svc])) {
       const d = cur(ed).doc;
+      if (typeof isManualNumbering === 'function' && !isManualNumbering(d)) continue;
       const ops = [];
       d.chapters.forEach((ch, i) => {
         const n = String(i + 1);
@@ -1073,6 +1076,17 @@ function tableOverflow(main) {
   }
   return TBL.list;
 }
+/** Legibility of one diagram, cached by the model object (an edit replaces the model) and the theme / edition it was measured for. */
+const LEG = new WeakMap();
+function diagramLegibility(model, d) {
+  const key = `${S.ed}|${S.theme?.id || S.theme?.name || ''}`;
+  const hit = LEG.get(model);
+  if (hit && hit.key === key && hit.theme === S.theme && hit.fn === DIAGRAM.legibility) return hit.r;
+  let r = null;
+  try { r = DIAGRAM.legibility(model, { theme: designTheme(S.theme, d), locale: S.ed }); } catch { r = null; }
+  LEG.set(model, { key, theme: S.theme, fn: DIAGRAM.legibility, r });
+  return r;
+}
 function validate() {
   const out = [];
   const d = cur().doc;
@@ -1093,6 +1107,12 @@ function validate() {
     if (st) out.push(['warn', t('vStale', { n: st }), [...cur().stale][0]]);
   }
   for (const o of tableOverflow(mainOf(S.ed))) out.push(['warn', t('vOverflow', { x: o.x }), o.path]);
+  // 0.15.0 F5: a diagram whose lettering would print too small, or overlap, once fitted into its frame (a warning, never a block)
+  d.chapters.forEach((ch, ci) => ch.sections.forEach((sec, si) => sec.blocks.forEach((bl, bi) => {
+    if (bl.kind !== 'diagram' || !bl.model || typeof DIAGRAM.legibility !== 'function') return;
+    const r = diagramLegibility(bl.model, d);
+    if (r && !r.ok) out.push(['warn', t('vLegibility', { p: `${ci + 1}.${si + 1}`, pt: r.minPtPrinted, min: r.minPt, n: r.overlaps.length }), `/chapters/${ci}/sections/${si}/blocks/${bi}`]);
+  })));
   const fth = designTheme(S.theme, d).fonts;
   for (const f of new Set([fth.text, fth.display])) {
     const src = FONTS.sourceOf(f);
@@ -1881,7 +1901,7 @@ async function runAction(a, arg) {
       if (EXT.actions[a]) await EXT.actions[a](a);
       else { window.dispatchEvent(new CustomEvent('bw:project', { detail: { op: a === 'projExport' ? 'export' : 'import' } })); toast(t('projSoon'), 'info'); }
       break;
-    case 'spell': S.spell[S.ed] = !S.spell[S.ed]; buildUi(); render(); break;
+    case 'spell': S.spell[S.ed] = !S.spell[S.ed]; ls.set(`bw:spell:${S.ed}`, S.spell[S.ed] ? '1' : '0'); buildUi(); render(); emit('spell', S.ed, S.spell[S.ed]); break; // 'spell' event: the extension starts or stops its checker
     case 'view.continuous': viewsSet('continuous'); break;
     case 'view.single': viewsSet('single'); break;
     case 'view.spread': viewsSet('spread'); break;
