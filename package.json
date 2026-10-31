@@ -99,7 +99,8 @@
     "host:close": "node engine/cli.mjs close",
     "audit": "node tests/audit.probe.mjs",
     "test:docx-fidelity": "uv run --no-project --with pywin32 --with pymupdf python tests/docx_fidelity.py",
-    "vendor:mcp": "esbuild mcp/vendor/entry.mjs --bundle --platform=node --format=esm --minify --legal-comments=eof --outfile=mcp/vendor/sdk.mjs \"--banner:js=/* Bundled by npm run vendor:mcp from @modelcontextprotocol/sdk, zod, ajv, ajv-formats, fast-deep-equal, json-schema-traverse (MIT), zod-to-json-schema (ISC), fast-uri (BSD-3-Clause). Do not edit. */ import{createRequire as __bwCR}from'node:module';const require=__bwCR(import.meta.url);\""
+    "vendor:mcp": "esbuild mcp/vendor/entry.mjs --bundle --platform=node --format=esm --minify --legal-comments=eof --outfile=mcp/vendor/sdk.mjs \"--banner:js=/* Bundled by npm run vendor:mcp from @modelcontextprotocol/sdk, zod, ajv, ajv-formats, fast-deep-equal, json-schema-traverse (MIT), zod-to-json-schema (ISC), fast-uri (BSD-3-Clause). Do not edit. */ import{createRequire as __bwCR}from'node:module';const require=__bwCR(import.meta.url);\"",
+    "vendor:spell": "node tools/vendor-spell.mjs"
   },
   "dependencies": {
     "playwright-core": "^1.62.1"
@@ -107,7 +108,9 @@
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
     "axe-core": "^4.14.0",
+    "dictionary-en": "4.0.0",
     "esbuild": "^0.25.10",
+    "hunspell-asm": "4.0.2",
     "lucide-static": "^1.62.0",
     "zod": "^4.6.7"
   }

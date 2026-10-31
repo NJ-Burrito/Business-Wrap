@@ -54,6 +54,11 @@ keywords = ["@"]
 regexTarget = "match"
 regexes = ['''@example\.(com|org|net)$''', '''^noreply@''', '''^git@github\.com$''']
 
+[[rules.allowlists]]
+description = "editor/xpl-art.js maps explanation ids to scene icons as id@icon tokens (e.g. export.menu@export.menu); not addresses; these exact id@id shapes only, for this rule only"
+regexTarget = "match"
+regexes = ['''^(export|view)\.[a-z]+@(export|view)\.[a-z]+$''']
+
 [[rules]]
 id = "bw-jo-national-id"
 description = "A 10-digit national-number shape (starts 9 or 2)"
@@ -114,3 +119,7 @@ paths = ['''^mcp/vendor/sdk\.mjs$''']
 description = "APP_KEY_V1, the public bwlog v1 app key (engine/ledger-v1.mjs: Business-Wrap is MIT, so the key is public by design; tamper-evidence comes from the hash chain, signatures and mirror, bible/11). Only this exact value is allowed, in the module and in the built editor"
 regexTarget = "secret"
 regexes = ['''^ace2275efb605532c67c8accc166b936cd77f3bb5b6a2bd183134fae43cd4ea4$''']
+
+[[allowlists]]
+description = "Spell-check vendored data (0.15.0): unmodified dictionaries + licences, and the hunspell WebAssembly bundles; common words and numbers match hashed terms and number shapes by chance"
+paths = ['''^editor/dict/''', '''^editor/spell-worker\.js$''']
