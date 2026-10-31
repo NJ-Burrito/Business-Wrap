@@ -33,7 +33,7 @@ const editor = path.join(tmp, 'transport.editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: editor, set: 'transport', watermarkDir: null });
 const edge = H.edgePath();
 const opts = process.env.TRANSPORT_BROWSER === 'chromium' || !edge ? launchOptions() : { ...launchOptions(), executablePath: edge };
-check('browser under test is real Edge (msedge)', !!edge && /msedge/i.test(String(opts.executablePath)) || process.env.TRANSPORT_BROWSER === 'chromium', String(opts.executablePath));
+check('browser under test is real Edge (msedge)', !!edge && /msedge|microsoft-edge/i.test(String(opts.executablePath)) || process.env.TRANSPORT_BROWSER === 'chromium', String(opts.executablePath));
 const browser = await chromium.launch(opts);
 const health = async (h) => (await fetch(h.url + 'api/host/health', { signal: AbortSignal.timeout(4000) })).json();
 const emit = (h, body) => fetch(h.url + 'api/session/_emit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json());

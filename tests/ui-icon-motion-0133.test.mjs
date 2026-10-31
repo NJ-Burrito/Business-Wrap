@@ -242,6 +242,8 @@ try {
     const restBg = await r3.evaluate((e) => getComputedStyle(e).backgroundColor);
     const bb = await r3.boundingBox();
     await s.page.mouse.move(bb.x + 40, bb.y + bb.height / 2, { steps: 2 }); await s.page.waitForTimeout(250);
+    // the wash is a background-color transition: wait on the outcome (a slow runner has not painted the first frame at 250 ms), not on the clock
+    await r3.evaluate((e, rest) => new Promise((res) => { const t0 = performance.now(); const tick = () => (getComputedStyle(e).backgroundColor !== rest || e.getAttribute('aria-selected') === 'true' || performance.now() - t0 > 3000 ? res() : requestAnimationFrame(tick)); tick(); }), restBg);
     const hov = await r3.evaluate((e) => ({ bg: getComputedStyle(e).backgroundColor, sel: e.getAttribute('aria-selected'), mv: [...e.querySelectorAll('.ic > *')].filter((p) => getComputedStyle(p).animationName !== 'none').length }));
     check(`palette row hover is a visible state (${theme})`, hov.bg !== restBg || hov.sel === 'true', `${restBg} -> ${hov.bg}`);
     check(`palette row icon moves on hover (${theme})`, hov.mv > 0, `${hov.mv} parts`);
