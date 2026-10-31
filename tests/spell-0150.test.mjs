@@ -3,7 +3,7 @@
 //   - 10 Arabic + 10 English misspellings flagged, each with the right first suggestion; 25 correct words per language NOT flagged
 //   - a mixed Arabic + English paragraph: each run against its own dictionary; JSON and API (the technical list) and ids are not flagged
 //   - typing «recieve requirment» then applying a suggestion = ONE undo step; «وثيقةة المسنخدم» flagged; turning AR off leaves EN marks alone
-//   - the engine really runs: in the host (the page CSP of 0.14 has no worker-src) AND in a Worker (a page CSP that names worker-src 'self')
+//   - the engine really runs: in a Worker under the product page CSP (worker-src 'self', 0.15.0) AND in the host when that directive is stripped (the fallback)
 //   - nothing leaves 127.0.0.1; Save HTML carries no marks and no WebAssembly; file:// keeps the browser checker and says so
 //   - the Arabic dictionary loads in < 3 s and the 1,000-word document is checked without a long task over 100 ms
 //
@@ -27,11 +27,14 @@ const EN_BAD = [['recieve', 'receive'], ['definately', 'definitely'], ['seperate
 const AR_OK = 'كتاب المدرسة الحكومة والمستخدمين الوثيقة للمستخدم بالنظام المتطلبات الطلب الخدمة الإجراء المستند والمستندات بالمستخدمين الموافقة اللغة الصلاحيات النظام المشروع التقرير الخادم الملفات يكتبون والمهندسين للمؤسسة'.split(' ');
 const EN_OK = 'accommodate receive requirement document management environment necessary separate occurred definitely specification authentication validation stakeholders application approval database interface performance requirements documents managers requested configured reviewed'.split(' ');
 
-/** An editor built from the sample, optionally with the page CSP of 0.15 (worker-src 'self', the transport lane's one line). */
-function build(name, { workerSrc = false } = {}) {
+/** An editor built from the sample. The product page CSP has `worker-src 'self'` (0.15.0, build-editor.mjs); `workerSrc: false` strips it to force the host fallback. */
+function build(name, { workerSrc = true } = {}) {
   const f = path.join(tmp, `${name}.editor.html`);
   buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: f, set: 'sample' });
-  if (workerSrc) fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace("base-uri 'none'", "worker-src 'self'; base-uri 'none'"));
+  const html = fs.readFileSync(f, 'utf8');
+  const had = /worker-src 'self'/.test(html);
+  if (workerSrc && !had) throw new Error("the built page CSP has no worker-src 'self' (build-editor.mjs csp)");
+  if (!workerSrc) fs.writeFileSync(f, html.replace(/worker-src 'self';\s*/, ''));
   return f;
 }
 const browser = await launch();
@@ -72,8 +75,8 @@ const panelRows = (page) => shRoot(page, (r) => [...r.querySelectorAll('.drawer 
 const switchEd = async (page, ed) => { await shRoot(page, (r, e) => r.querySelector(`[data-a="ed"][data-ed="${e}"]`)?.click(), ed); await sleep(300); };
 
 try {
-  // ── 1. the host path (the page CSP of 0.14: no worker-src) ─────────────────────────────────────────────────────────────────────────
-  const A = await open(build('host'));
+  // ── 1. the host path (fallback, forced: the page CSP with worker-src stripped) ─────────────────────────────────────────────────────────────────────────
+  const A = await open(build('host', { workerSrc: false }));
   const pa = A.page;
   const edNow = await pa.evaluate(() => BW.S.ed);
   check(`browser is ${browserName()}; the sample opens in an edition`, !!edNow, edNow);
@@ -93,7 +96,7 @@ try {
   const firstOk = AR_BAD.filter(([w, good]) => rowsAr.find((r) => r.w === w)?.first === good).length;
   check('Arabic: the first suggestion is the right word for all 10', firstOk === 10, `${firstOk}/10 ${JSON.stringify(rowsAr.map((r) => [r.w, r.first]))}`);
   const eng = await pa.evaluate(() => BW.EXT.spell.engine());
-  check('engine mode is host while the page CSP has no worker-src; Arabic dictionary ready', eng.mode === 'host' && eng.state.ar === 'ready', JSON.stringify(eng));
+  check('engine mode is host when the page CSP is forced to have no worker-src; Arabic dictionary ready', eng.mode === 'host' && eng.state.ar === 'ready', JSON.stringify(eng));
   check('the marks are CSS highlights over the page (>= 10 ranges) and the markup is untouched', (await pa.evaluate(() => CSS.highlights.get('bw-spell')?.size)) >= 10 && (await pa.evaluate(() => !document.querySelector('main.bw-doc[data-locale="ar"] mark, main.bw-doc[data-locale="ar"] [class*="spell"]'))));
   // a tashkeel-vowelled correct word is not flagged (the dictionary is asked without the marks)
   await setLeaves(pa, 'ar', [AR_BAD.map((x) => x[0]).join(' ، '), 'الْمُسْتَنَدُ والمـــــشروع الوثيقةةة']);
@@ -214,8 +217,8 @@ try {
   check('the host check refuses an unknown language (400) and a foreign Origin (403)', bad.status === 400 && evil.status === 403, `${bad.status} ${evil.status}`);
   await A.close();
 
-  // ── 2. the Worker path (a page CSP that names worker-src 'self', the transport lane's line) ────────────────────────────────────────
-  const B = await open(build('worker', { workerSrc: true }));
+  // ── 2. the Worker path (the product page CSP: worker-src 'self') ────────────────────────────────────────
+  const B = await open(build('worker'));
   const pb = B.page;
   await switchEd(pb, 'ar');
   await setLeaves(pb, 'ar', [AR_BAD.map((x) => x[0]).join(' ، ')]);

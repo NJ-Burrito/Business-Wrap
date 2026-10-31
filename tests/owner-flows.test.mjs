@@ -431,10 +431,12 @@ try {
   await page.mouse.click(1000, 450); await wait(300);
 
   // L25 logo motion; L38 design: no horizontal overflow at 1366 and 1920
+  await page.evaluate(() => window.BW.EXT.look.idleNow()); // 0.15.0 perf booster 2: the idle nod is played from a timer, not an infinite loop; ask for it now
+  await wait(60);
   const logo = await R((r) => { const b = r.querySelector('.brand'); return b ? b.getAnimations({ subtree: true }).length : -1; });
   check(25, 'the app logo moves (≥ 4 idle animations)', logo >= 4, String(logo));
   const over = [];
-  for (const w of [1366, 1920]) { await page.setViewportSize({ width: w, height: 900 }); await wait(300); over.push(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)); }
+  for (const w of [1366, 1920]) { await page.setViewportSize({ width: w, height: 900 }); await wait(300); over.push(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)); if (over.at(-1) > 1) over.push(await page.evaluate(() => JSON.stringify({ zoom: window.BW.S.zoom, pad: document.body.style.paddingRight, drawer: window.BW.S.drawer, bodySW: document.body.scrollWidth, htmlSW: document.documentElement.scrollWidth, sx: scrollX, pair: JSON.stringify(document.querySelector('#bw-pair')?.getBoundingClientRect().toJSON()), big: [...document.querySelectorAll('main.bw-doc, main.bw-doc *')].filter((e) => e.getBoundingClientRect().width > 900).slice(0, 6).map((e) => e.tagName + '.' + e.className + ':' + Math.round(e.getBoundingClientRect().width) + '@' + Math.round(e.getBoundingClientRect().left)), mains: [...document.querySelectorAll('main.bw-doc')].map((m) => m.className + ':' + m.scrollWidth + '/' + m.offsetWidth + ' ' + getComputedStyle(m).width + ' ' + m.dataset.locale), flags: JSON.stringify([window.BW.S.side, window.BW.S.both, window.BW.S.pages, window.BW.S.ed]), left: [...document.querySelectorAll('body *')].filter((e) => !e.closest('#bw-backdrop') && e.getBoundingClientRect().left < -1).slice(0, 4).map((e) => e.tagName + '.' + e.className + ':' + Math.round(e.getBoundingClientRect().left)), dir: document.documentElement.dir, wide: [...document.querySelectorAll('body *')].filter((e) => !e.closest('#bw-backdrop') && e.getBoundingClientRect().right > document.documentElement.clientWidth + 1).slice(0, 4).map((e) => e.tagName + '.' + e.className + ':' + Math.round(e.getBoundingClientRect().right)), scrolls: [...document.querySelectorAll('body *')].filter((e) => e.scrollWidth > e.clientWidth + 1 && e.clientWidth > 0).slice(0, 4).map((e) => e.tagName + '.' + e.className + ':' + e.scrollWidth + '/' + e.clientWidth) }))); }
   await page.setViewportSize({ width: 1366, height: 900 });
   check(38, 'design: no horizontal overflow at 1366 and 1920 px', over.every((x) => x <= 1), JSON.stringify(over));
 
@@ -467,12 +469,12 @@ try {
   // review2 · 34: RTL/LTR per edition; the direction field (and View, Settings, header, footer) stays in the bar at 1024–1920
   {
     const mainDir = (l) => page.evaluate((l) => document.querySelector(`#bw-pair main.bw-doc[data-locale="${l}"]`)?.dir, l);
-    const dirBtn = async (d) => { await rbTabFor(page, 'dir', d); return R((r, d) => r.querySelector(`.ribbon .rb-panel [data-a="dir"][data-d="${d}"]`).click(), d); };
+    const dirBtn = async (d) => { await rbTabFor(page, 'dir', d); return R((r, d) => r.querySelector(`.island [data-a="dir"][data-d="${d}"]`).click(), d); };
     if ((await page.evaluate(() => window.BW.S.ed)) !== 'en') await act('uiLang');
     const onEn = await page.evaluate(() => window.BW.S.ed);
     await dirBtn('ltr'); await wait(150);
     await act('uiLang'); await wait(150);
-    const arDir = { ed: await page.evaluate(() => window.BW.S.ed), dir: await mainDir('ar'), pressed: await R((r) => r.querySelector('.ribbon .rb-panel [data-a="dir"][aria-pressed="true"]')?.dataset.d) };
+    const arDir = { ed: await page.evaluate(() => window.BW.S.ed), dir: await mainDir('ar'), pressed: await R((r) => r.querySelector('.island [data-a="dir"][aria-pressed="true"]')?.dataset.d) };
     await dirBtn('ltr'); await wait(150);
     await act('uiLang'); await wait(150);
     const enDir = await mainDir('en');
@@ -481,10 +483,10 @@ try {
     const arBack = await mainDir('ar');
     check(34, 'direction per edition: LTR in English leaves Arabic RTL; LTR in Arabic leaves English as chosen', onEn === 'en' && arDir.ed === 'ar' && arDir.dir === 'rtl' && arDir.pressed === 'rtl' && enDir === 'ltr' && arBack === 'rtl', JSON.stringify({ onEn, arDir, enDir, arBack }));
     const seen = [];
-    const inBar = async () => { await rbTabFor(page, 'dir', 'rtl'); const hf = await rbHas(page, ['hdrText', 'ftrText']); await rbTabFor(page, 'dir', 'rtl'); const o = await inBarView(); o.hdr = hf.includes('hdrText'); o.ftr = hf.includes('ftrText'); return o; };
+    const inBar = async () => { await rbTabFor(page, 'hdrText'); const hf = await rbHas(page, ['hdrText', 'ftrText']); await rbTabFor(page, 'settings'); const o = await inBarView(); o.hdr = hf.includes('hdrText'); o.ftr = hf.includes('ftrText'); return o; };
     const inBarView = () => R((r) => {
       const ok = (sel) => { const e = r.querySelector(sel); if (!e || !e.checkVisibility()) return false; const q = e.getBoundingClientRect(); const at = r.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2); return q.left >= 0 && q.right <= innerWidth && !!at && (at === e || e.contains(at)); };
-      return { rtl: ok('.ribbon .rb-panel [data-a="dir"][data-d="rtl"]'), ltr: ok('.ribbon .rb-panel [data-a="dir"][data-d="ltr"]'), view: ok('.ribbon .rb-panel [data-a="view.continuous"]'), settings: ok('.ribbon .rb-panel [data-a="settings"]') };
+      return { rtl: ok('.island [data-a="dir"][data-d="rtl"]'), ltr: ok('.island [data-a="dir"][data-d="ltr"]'), view: ok('.ribbon .rb-panel [data-a="view.continuous"]'), settings: ok('.ribbon .rb-panel [data-a="settings"]') };
     });
     for (const sel of ['none', 'text', 'table']) {
       if (sel === 'text') await clickDoc('[data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]');

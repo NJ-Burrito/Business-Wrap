@@ -65,7 +65,7 @@ const BI_MAP = [
   ['[data-w2a="all"]', 'biAllPages'], ['[data-w2a="section"]', 'biSection'], ['[data-w2a="here"]', 'biHere'],
 ];
 /** The buttons left as words on purpose (their label is the value they pick). */
-const BI_WORDS = '[data-a="ed"], [data-a="dir"], [data-k="setLang"], [data-k="setDir"], .fp-btn, [data-tl="go"]';
+const BI_WORDS = '[data-a="ed"], [data-a="dir"], [data-k="setLang"], [data-k="setDir"], .fp-btn, [data-tl="go"], [data-k="spEd"]';
 /** Give the buttons under `scope` (the whole shadow root by default) their icon. 0.15.0 perf booster 5: the mutation observer used to run all 41
  *  selectors over the whole root on every mutation microtask (1.7 ms per key, 6.5 ms per selection, 6 ms per tab switch); now it only asks
  *  the nodes that were added (a button, or the buttons under an added node) with `matches`. */

@@ -148,10 +148,10 @@ function lnSelFor(a, overlay) {
 }
 {
   const lnRun = runAction;
-  runAction = async function lnRunAction(a) {
+  runAction = async function lnRunAction(a, ...rest) {
     const at = LN.at;
     const c = CMDS.find((x) => x.id === a);
-    if (!at || !lnValid() || c?.group !== 'insert') return lnRun(a);
+    if (!at || !lnValid() || c?.group !== 'insert') return lnRun(a, ...rest);
     if (at.ed !== S.ed) { S.ed = at.ed; document.documentElement.lang = at.ed; }
     const slot = { ...at };
     const overlay = a === 'image' || a === 'logo';
@@ -171,7 +171,7 @@ function lnSelFor(a, overlay) {
         commit(ops, { mirror: true });
         S.sel = { b: `${slot.arr}/${slot.at}`, p: null, ed: S.ed };
         paintSel(); refreshUi();
-      } else await lnRun(a);
+      } else await lnRun(a, ...rest);
     } finally { LN.at = null; LN.anchor = null; lnPaint(); }
   };
 }

@@ -51,6 +51,10 @@
   --bw-sec-gaps: #b9d56a;
   --bw-sec-header: #e59ac7;
   --bw-sec-footer: #e3d36a;
+  --bw-sec-font: #8fdc8f;
+  --bw-sec-para: #9aa8f5;
+  --bw-sec-table: #d6a0f0;
+  --bw-sec-diagram: #6fd0e0;
   --bw-shadow-1: 0 1px 0 rgba(27,24,19,.05), 0 1px 3px rgba(27,24,19,.08);
   --bw-shadow-2: 0 2px 4px rgba(27,24,19,.05), 0 10px 24px -6px rgba(0,30,61,.14);
   --bw-shadow-3: 0 6px 12px rgba(27,24,19,.06), 0 28px 56px -12px rgba(0,30,61,.24);
@@ -174,6 +178,10 @@
     --bw-sec-gaps: #b9d56a;
     --bw-sec-header: #e59ac7;
     --bw-sec-footer: #e3d36a;
+    --bw-sec-font: #8fdc8f;
+    --bw-sec-para: #9aa8f5;
+    --bw-sec-table: #d6a0f0;
+    --bw-sec-diagram: #6fd0e0;
     --bw-shadow-1: 0 1px 0 rgba(0,0,0,.30), 0 1px 3px rgba(0,0,0,.40);
     --bw-shadow-2: 0 2px 4px rgba(0,0,0,.30), 0 10px 24px -6px rgba(0,0,0,.50);
     --bw-shadow-3: 0 6px 12px rgba(0,0,0,.35), 0 28px 56px -12px rgba(0,0,0,.60);
@@ -230,6 +238,10 @@
   --bw-sec-gaps: #b9d56a;
   --bw-sec-header: #e59ac7;
   --bw-sec-footer: #e3d36a;
+  --bw-sec-font: #8fdc8f;
+  --bw-sec-para: #9aa8f5;
+  --bw-sec-table: #d6a0f0;
+  --bw-sec-diagram: #6fd0e0;
   --bw-shadow-1: 0 1px 0 rgba(0,0,0,.30), 0 1px 3px rgba(0,0,0,.40);
   --bw-shadow-2: 0 2px 4px rgba(0,0,0,.30), 0 10px 24px -6px rgba(0,0,0,.50);
   --bw-shadow-3: 0 6px 12px rgba(0,0,0,.35), 0 28px 56px -12px rgba(0,0,0,.60);

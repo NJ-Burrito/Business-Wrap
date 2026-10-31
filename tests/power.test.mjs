@@ -24,7 +24,7 @@ const alive = (pid) => { if (!pid) return false; try { process.kill(pid, 0); ret
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const until = async (fn, ms = 15000) => { for (const t0 = Date.now(); Date.now() - t0 < ms; await sleep(150)) if (await fn()) return true; return false; };
 const free = () => new Promise((ok) => { const s = net.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => ok(p)); }); });
-const up = async (url) => { try { return (await fetch(url + 'api/version', { signal: AbortSignal.timeout(1500) })).ok; } catch { return false; } };
+const up = async (url) => { try { return (await fetch(new URL('api/version', url), { signal: AbortSignal.timeout(1500) })).ok; } catch { return false; } };
 const hostJson = () => { try { return JSON.parse(fs.readFileSync(path.join(env.BW_LOCAL_DIR, 'host.json'), 'utf8')); } catch { return null; } };
 /** Windows: pid → name and whether it owns a visible top-level window, for a process and all its descendants. */
 function tree(root) {
@@ -80,8 +80,8 @@ try {
   check('launch: the host\'s output goes to .system\\history\\host.log', fs.existsSync(log) && /Business-Wrap editor on/.test(fs.readFileSync(log, 'utf8')));
 
   // ── the power route refuses without the confirmation ──
-  const bad = await fetch(o.url + 'api/power/off', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
-  const foreign = await fetch(o.url + 'api/power/off', { method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://example.com' }, body: '{"confirm":true}' });
+  const bad = await fetch(new URL('api/power/off', o.url), { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+  const foreign = await fetch(new URL('api/power/off', o.url), { method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://example.com' }, body: '{"confirm":true}' });
   check('power: no confirm → 400, a foreign page → 403, and nothing stops', bad.status === 400 && foreign.status === 403 && (await up(o.url)), `${bad.status} ${foreign.status}`);
 
   // ── the button: cancel stops nothing; confirm stops the host, its server, a stray server of this install ──

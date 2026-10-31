@@ -459,7 +459,7 @@ try {
       await fig.evaluate((e) => e.scrollIntoView({ block: 'center' }));
       await page.waitForTimeout(400);
       const fb = await fig.locator('svg').first().boundingBox();
-      await page.mouse.click(fb.x + 8, fb.y + 8); // the empty drawing: diagram tools
+      await page.mouse.click(fb.x + 8, fb.y + fb.height / 2); // the empty drawing's left edge (the top corner overlaps the heading's box in a paged view; the bottom corner leaves no room to drag the new text down): diagram tools
       await page.evaluate(() => window.BW.runAction('dgText'));
       await settle(page, 300);
       const ids = await page.evaluate(() => { const f = document.querySelector('main.bw-doc figure[data-dg]'); let o = window.BW.M[window.BW.S.svc][window.BW.S.ed].doc; for (const k of f.dataset.dg.split('/').filter(Boolean)) o = o[k]; return [o.model.nodes.find((n) => n.kind !== 'text' && n.kind !== 'group')?.id, o.model.nodes.filter((n) => n.kind === 'text').at(-1)?.id]; });
@@ -468,11 +468,12 @@ try {
         if (!(await loc.count())) { res.push([kind, 'absent']); continue; }
         await loc.scrollIntoViewIfNeeded().catch(() => {});
         const a = await loc.boundingBox();
-        await dragBy(page, loc, 120, 40);
+        const [ddx, ddy] = kind === 'text' ? [60, 20] : [120, 40]; // a new text starts mid-drawing and the frame clamps it: in the smaller paged figure +120 px runs out of room
+        await dragBy(page, loc, ddx, ddy);
         const b = await page.locator(`main.bw-doc figure[data-dg] [data-dg-node="${id}"]`).first().boundingBox();
         res.push([kind, Math.round(b.x - a.x), Math.round(b.y - a.y)]);
       }
-      const bad = res.filter(([k, x, y]) => x === 'absent' || Math.abs(x - 120) > 2 || Math.abs(y - (k === 'shape' || k === 'text' ? 40 : 120)) > 2);
+      const bad = res.filter(([k, x, y]) => x === 'absent' || Math.abs(x - (k === 'text' ? 60 : 120)) > 2 || Math.abs(y - (k === 'text' ? 20 : k === 'shape' ? 40 : 120)) > 2);
       check(`move ${view} ${ui}: logo, image, diagram shape and free text follow a real drag (±2 px)`, !bad.length, JSON.stringify(res));
       // keyboard nudge
       await page.evaluate(() => window.scrollTo(0, 0));
@@ -480,6 +481,7 @@ try {
       // the drag above can leave the logo on the page edge, where a paged view clips it (nothing to click): put it well inside the cover first
       const base = await page.evaluate(() => { const o = window.BW.M[window.BW.S.svc][window.BW.S.ed].doc.overlays[0]; window.BW.commit([{ op: 'replace', path: '/overlays/0', value: { ...o, x: 90, y: 90 }, old: o }]); return 90; });
       await settle(page, 400);
+      if (view === 'continuous') { await page.locator('main.bw-doc .bw-ov[data-i="0"]').evaluate((e) => e.scrollIntoView({ block: 'center' })); await page.waitForTimeout(250); } // the taller 0.15 ribbon pushes the logo under the bottom of the window
       { const lb = await page.locator('main.bw-doc .bw-ov[data-i="0"]').boundingBox(); await page.mouse.click(lb.x + lb.width / 2, lb.y + lb.height / 2); } // a click picks it; the arrows then nudge it
       await page.keyboard.press('ArrowLeft');
       const nudged = await page.evaluate(() => window.BW.M[window.BW.S.svc][window.BW.S.ed].doc.overlays[0].x);
@@ -588,10 +590,10 @@ try {
       const opened = await page.evaluate(() => window.BW.S.drawer);
       const inside = page.locator('.drawer header h2'); await inside.click(); await page.waitForTimeout(100);
       const afterIn = await page.evaluate(() => window.BW.S.drawer);
-      await page.mouse.click(1410, 600); await page.waitForTimeout(300);
+      await page.mouse.click(760, 600); await page.waitForTimeout(300);
       const afterOut = await page.evaluate(() => window.BW.S.drawer);
       res.push(`${k}:${opened}/${afterIn}/${afterOut}`);
-      if (afterOut) await page.evaluate(() => window.BW.runAction(window.BW.S.drawer));
+      if (afterOut) await page.evaluate(() => { const d = window.BW.S.drawer; if (window.BW.hasAction(d)) window.BW.runAction(d); else document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer [data-k="close"]')?.click(); }); // 0.15.0: runAction throws on an id that is not a command (the style drawer is not one)
       await page.locator('main.bw-doc [data-p="/chapters/1/sections/0/blocks/1/rows/0/1"]').click();
     }
     check('0.13 A8: every drawer closes on a page press, stays on an inside press', res.every((x) => { const [o, i, a] = x.split(':')[1].split('/'); return o !== 'null' && i === o && a === 'null'; }), res.join(' '));

@@ -6,9 +6,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { McpServer, z } from './vendor/sdk.mjs';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { exportPdf, exportDocx, loadTheme, fontsFor, REPO } from '../engine/export.mjs';
+import { exportPdf, exportDocx, loadTheme, fontsFor, REPO, renderDiagramPng, diagramWarnings } from '../engine/export.mjs';
 import { workspace, ensure, uniquePath, outName, docTitle } from '../engine/workspace.mjs';
-import { applyOps, migrate, validateEdits } from '../engine/edits.mjs';
+import { applyOps, migrate, validateEdits, normaliseNumbers } from '../engine/edits.mjs';
 import { assertBase } from '../engine/edits-base.mjs';
 import { checkForUpdate, oneLiner, token, currentVersion } from '../update/check.mjs';
 import { applyUpdate, PLUGIN_UPDATE_HOW } from '../update/apply.mjs';
@@ -133,6 +133,7 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   }, guard(({ document, edits, out: o, force }) => {
     const { doc, ops } = loadDocument(document, edits, !!force);
+    normaliseNumbers(doc); // the JSON carries the numbers the PDF prints (a manual-numbering document is left as written)
     const f = out(o, '.json');
     fs.writeFileSync(f, JSON.stringify(doc, null, 1) + '\n', 'utf8');
     return { document: f, ops_applied: ops };
@@ -194,6 +195,25 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     throw new Error('give mermaid (code to import) or model_file (to export)');
   }));
 
+  server.registerTool('render_diagram', {
+    title: 'Render a diagram to PNG',
+    description: 'Render one diagram model (a document figure, a Mermaid import) to a PNG through the same engine and fonts as the PDF, and report whether it would print legibly (smallest printed size in points, overlaps). Warns, never blocks.',
+    inputSchema: {
+      model_file: z.string().optional().describe('Path of a diagram model JSON or a document JSON holding one diagram'),
+      model: z.record(z.any()).optional().describe('The diagram model itself (instead of model_file)'),
+      out: z.string().describe('Output .png path'),
+      locale: z.enum(['ar', 'en']).optional().describe('Edition the words belong to (default ar)'),
+      scale: z.number().min(1).max(4).optional().describe('Pixel ratio (default 2)'),
+      theme: z.string().optional().describe('Theme / design-pack JSON'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  }, guard(async ({ model_file, model, out: o, locale = 'ar', scale = 2, theme }) => {
+    if (!model_file && !model) throw new Error('give model_file or model');
+    const r = await renderDiagramPng(modelIn(model || readJson(model_file)), { theme: loadTheme(theme && path.resolve(theme)), locale, scale, pngPath: out(o, '.png') });
+    const L = r.legibility;
+    return { png: r.png, width: r.width, height: r.height, legible: !!L.ok, min_pt: L.minPtPrinted, small: L.small?.length ?? 0, overlaps: L.overlaps?.length ?? 0 };
+  }));
+
   server.registerTool('harvest_model', {
     title: 'Harvest from a process model',
     description: 'Turn a BPMN 2.0 file (Flowable, Camunda, Activiti), a monitoring-graph JSON, a draw.io diagram or a YAML/JSON step list into the Arabic and English document JSON (actors, workflow figure of the steps people do, steps, rules, user stories, statuses) and build the editor for it.',
@@ -224,7 +244,8 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   }, guard(async ({ crawl, model, out_dir, name, roles, open }) => {
     const r = await harvestMerge(path.resolve(crawl), path.resolve(model), { out: out_dir ? path.resolve(out_dir) : undefined, name, roles: roles && path.resolve(roles) });
-    return opened({ documents: r.documents, editor: r.editor, conflicts: r.conflicts, learned_rules_applied: r.learned }, open);
+    const diagram_warnings = r.documents.flatMap((f) => { try { const d = readJson(f); return diagramWarnings(d, { locale: localeOf(f, d) }).map((w) => `${path.basename(f)}: ${w}`); } catch { return []; } });
+    return opened({ documents: r.documents, editor: r.editor, conflicts: r.conflicts, learned_rules_applied: r.learned, ...(diagram_warnings.length ? { diagram_warnings } : {}) }, open);
   }));
 
   server.registerTool('harvest_crawl', {

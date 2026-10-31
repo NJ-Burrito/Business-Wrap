@@ -110,7 +110,10 @@ export async function open({ inputs = [], port = 4317, browser = true, ui } = {}
   const h = await startHost({ editor, port, browser: browser && !process.env.BW_NO_BROWSER });
   const lib = documents.length ? await libraryImport(h.url, documents) : null;
   const docId = documents.length ? JSON.parse(fs.readFileSync(documents[0], 'utf8')).control.documentId : null;
-  return { url: lib?.url || h.url, doc_id: lib?.doc_id || docId, editor, pid: h.pid, port: h.port, browser: !!h.browserPid, library: !!lib };
+  // 0.15.0: the host answers {library, queued, doc_id[], url:'/#doc=<id>', project}: the url is host-relative (made absolute here); doc_id stays the document's own id (what the editor_* tools take), library_id is the library's
+  const libUrl = lib?.url ? new URL(lib.url, h.url).href : null;
+  const libId = Array.isArray(lib?.doc_id) ? lib.doc_id[0] : lib?.doc_id;
+  return { url: libUrl || h.url, doc_id: docId || libId, ...(libId ? { library_id: libId } : {}), editor, pid: h.pid, port: h.port, browser: !!h.browserPid, library: !!lib && lib.library !== false };
 }
 
 /** A serve.mjs of THIS install (its path on the command line): another install's host never matches (other folder). */
