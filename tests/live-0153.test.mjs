@@ -102,12 +102,29 @@ try {
   check('T1: a save whose base revision is older than the library\'s is refused (409 STALE_BASE)', revNow >= 1 && sb.s === 409 && sb.j.code === 'STALE_BASE' && !(await mirror()).includes('OLD BASE'), JSON.stringify({ revNow, sb }));
   const okw = await post({ 'x-bw-tab': tabA, 'x-bw-doc': DOC, 'x-bw-base': String(revNow) }, JSON.parse(after));
   check('T1: the owner at the current revision saves (200) and the revision advances', okw.s === 200 && Number(okw.rev) === revNow + 1, JSON.stringify(okw));
+  // a tombstone (purge) is accepted from a follower tab too, a plain write from it is still refused
+  const TOMB = 'doc-tomb0155';
+  await post({ 'x-bw-tab': tabA, 'x-bw-doc': TOMB }, { id: TOMB, title: 'to purge', editions: {} });
+  const plainF = await post({ 'x-bw-tab': tabB, 'x-bw-doc': TOMB }, { id: TOMB, title: 'follower write', editions: {} });
+  const purgeF = await post({ 'x-bw-tab': tabB, 'x-bw-doc': TOMB, 'x-bw-base': '0', 'x-bw-purge': '1' }, { id: TOMB, purge: true });
+  const tombs = await (await fetch(`${base}/api/library/mirror?tombstones=1`)).json();
+  check('0.15.5: a purge from a follower tab with a stale base reaches the library (tombstone written); a plain follower write is still refused', plainF.s === 409 && purgeF.s === 200 && tombs.ids.includes(TOMB), JSON.stringify({ plainF: plainF.s, purgeF: purgeF.s, tombs: tombs.ids }));
   const nb = await callApi({ tool: 'get', doc: DOC, tab: tabB, args: { pointer: '/control/title', locale: 'ar' } });
   check('T1: a call that names the follower tab is refused (NOT_OWNER), never sent to it', nb.status === 409 && nb.body.code === 'NOT_OWNER' && nb.body.owner === tabA, JSON.stringify(nb.body).slice(0, 200));
   await A.close({ runBeforeUnload: false });
   const took = await until(async () => (await health()).leases?.[DOC] === tabB, 15000);
   const healed = await until(async () => (await ro(B)) === '' && (await title(B)).includes('OWNER EDIT'), 15000);
   check('T1: when the owner leaves, the follower takes over and holds the owner\'s edit (no loss)', took && healed, JSON.stringify({ took, ro: await ro(B), t: (await title(B)).slice(0, 60) }));
+
+  // 0.15.5: two library writes of one document sent back to back by the owner tab (a Trash move, then the purge) are both accepted: the page sends them in turn
+  const twin = await B.evaluate(async () => {
+    const doc = 'doc-twin0155'; // its own document, so the owner's real one stays as it is
+    const w = (e) => fetch('/api/library/mirror', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ entry: e }) }).then((r) => r.status);
+    const first = await w({ id: doc, title: 'one', editions: {} }); // the page learns the revision the host gave
+    const both = await Promise.all([w({ id: doc, title: 'two', editions: {}, deletedAt: new Date().toISOString() }), w({ id: doc, purge: true })]);
+    return [first, ...both];
+  });
+  check('0.15.5: two back-to-back saves of one document from the owner tab are both accepted (the second is not "stale" against the first)', twin.length === 3 && twin.every((c) => c === 200), JSON.stringify(twin));
 
   // ── T2: a frozen tab ──
   const cdp = await ctx.newCDPSession(B);

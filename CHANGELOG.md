@@ -8,6 +8,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.15.5] - 2026-10-31
+
+🩹 A small fix for deleting documents, and sturdier tests. / 🩹 إصلاح صغير لحذف الوثائق، واختبارات أمتن.
+
+### Fixed / أصلح
+- 🗑️ **Deleting a document could fail to reach the library record**: when a document was moved to the Trash and then deleted for good straight away, the second write was refused as "older than the library's", so the record could come back after a restart. The page now sends its saves of one document one after the other, and a permanent delete is accepted from any tab. / **حذف وثيقة قد لا يصل إلى سجل المكتبة**: عند نقل الوثيقة إلى سلة المحذوفات ثم حذفها نهائيًا فورًا، كان الطلب الثاني يُرفض بحجة أنه «أقدم من المكتبة»، فقد يعود السجل بعد إعادة التشغيل. الصفحة الآن ترسل حفظ الوثيقة الواحدة طلبًا بعد طلب، ويُقبل الحذف النهائي من أي تبويب.
+- 🔓 **A tab that took over a document stayed read-only until a reload** if it had already refreshed its copy while it was a follower. It now refreshes again when it takes over. / **تبويب تسلّم وثيقة من تبويب آخر ظلّ للقراءة فقط حتى إعادة التحميل** إن كان قد حدّث نسخته وهو تابع. صار يحدّثها من جديد عند التسلّم.
+- 🧪 **Tests now run the editor from a local address on Linux** (instead of a file path), so the browser keeps the remembered direction and logo position between pages; the check panel's jump ring is also caught at the moment it appears. / **الاختبارات تشغّل المحرر الآن من عنوان محلي على لينكس** (بدل مسار ملف)، فيحفظ المتصفح الاتجاه ومكان الشعار بين الصفحات؛ وتلتقط أيضًا حلقة «اذهب إليه» لحظة ظهورها.
+
 ## [0.15.4] - 2026-10-31
 
 🩹 A hotfix for two commands that 0.15.3 refused by mistake. / 🩹 إصلاح عاجل لأمرين رفضهما الإصدار 0.15.3 خطأً.

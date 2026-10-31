@@ -183,7 +183,7 @@ const SESS = (() => {
   /** a follower or stale tab may already have written its older copy into the browser's own library (a save in the second before it learned it): the host's last accepted copy is put back */
   const healed = {};
   async function healFromHost(doc) {
-    if (healed[doc] === LS.revs[doc] || !EXT.library?.adopt) return;
+    if ((healed[doc] === LS.revs[doc] && follows(doc)) || !EXT.library?.adopt) return; // a follower heals once per revision; a tab that just took over (no longer a follower) heals again, or its "stale" stays and it is read-only until a reload (0.15.5)
     healed[doc] = LS.revs[doc];
     try {
       const r = await fetch(`/api/library/mirror?id=${encodeURIComponent(doc)}`);
@@ -211,19 +211,30 @@ const SESS = (() => {
     } else banners();
   }
   const _fetch = window.fetch.bind(window);
+  const writes = new Map();
   window.fetch = function (u, o) { // the library write of this tab carries who it is and which revision it saw (engine/routes/doc-lease.mjs)
     if (!tab || typeof u !== 'string' || !u.startsWith('/api/library/mirror') || o?.method !== 'POST' || typeof o.body !== 'string') return _fetch(u, o);
     const m = /"id":"(doc-[A-Za-z0-9-]{4,64})"/.exec(o.body.slice(0, 400));
     if (!m) return _fetch(u, o);
     const doc = m[1];
-    const headers = { ...(o.headers || {}), 'x-bw-tab': tab, 'x-bw-doc': doc };
-    if (doc in LS.mine) headers['x-bw-base'] = String(LS.mine[doc]);
-    return _fetch(u, { ...o, headers }).then((r) => {
-      const rev = Number(r.headers.get('x-bw-rev'));
-      if (r.ok && rev) LS.mine[doc] = rev;
-      else if (r.status === 409) r.clone().json().then((j) => { if (j.code === 'NOT_OWNER') LS.leases[doc] = j.owner; else if (j.code === 'STALE_BASE') LS.stale[doc] = true; if (j.rev != null) LS.revs[doc] = j.rev; banners(); healFromHost(doc); }).catch(() => {});
-      return r;
-    });
+    // 0.15.5: one library write of a document at a time. Two writes sent back to back (a Trash move, then the purge) both carried the revision
+    // seen before either was answered, so the second looked stale and the host refused it (STALE_BASE): the delete never reached the library.
+    // Each write now waits for the one before it and reads its base when it is sent.
+    const send = () => {
+      const headers = { ...(o.headers || {}), 'x-bw-tab': tab, 'x-bw-doc': doc };
+      if (doc in LS.mine) headers['x-bw-base'] = String(LS.mine[doc]);
+      if (/^\{"entry":\{[^}]{0,300}"purge":true/.test(o.body.slice(0, 400))) headers['x-bw-purge'] = '1'; // a tombstone is a deliberate delete: accepted from any tab
+      return _fetch(u, { ...o, headers }).then((r) => {
+        const rev = Number(r.headers.get('x-bw-rev'));
+        if (r.ok && rev) LS.mine[doc] = rev;
+        else if (r.status === 409) r.clone().json().then((j) => { if (j.code === 'NOT_OWNER') LS.leases[doc] = j.owner; else if (j.code === 'STALE_BASE') LS.stale[doc] = true; if (j.rev != null) LS.revs[doc] = j.rev; banners(); healFromHost(doc); }).catch(() => {});
+        return r;
+      });
+    };
+    const prev = writes.get(doc) || Promise.resolve();
+    const run = prev.then(send, send);
+    writes.set(doc, run.catch(() => {}));
+    return run;
   };
   EXT.guards.push(() => { const d = curDoc(); if (!d) return true; return follows(d) ? MSG.follower : LS.stale[d] ? MSG.stale : true; });
   const push = () => {
