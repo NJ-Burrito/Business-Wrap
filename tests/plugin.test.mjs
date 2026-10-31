@@ -31,6 +31,8 @@ for (const f of files) {
   const fm = /^---\n([^]*?)\n---\n/.exec(src);
   const meta = Object.fromEntries((fm?.[1] || '').split('\n').map((l) => l.split(/:\s(.*)/s)).filter((p) => p.length > 1).map(([k, v]) => [k.trim(), v.trim()]));
   check(`${f}: front-matter description`, !!meta.description && meta.description.length > 20, meta.description);
+  // 0.15.2: the live-editor commands (tabs, edit, ...) call MCP tools, not the CLI; tests/commands-0152.test.mjs checks them
+  if (/^mcp__|^Read, /.test(meta['allowed-tools'] || '')) { check(`${f}: live-editor command (checked by commands-0152.test.mjs)`, true); continue; }
   check(`${f}: allowed-tools is node only`, meta['allowed-tools'] === 'Bash(node:*)', meta['allowed-tools']);
   const bangs = src.split('\n').filter((l) => l.startsWith('!'));
   const verbs = bangs.map((l) => LINE.exec(l)?.[1]);

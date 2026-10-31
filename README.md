@@ -99,7 +99,7 @@ Opened from disk (file://), «PDF + DOCX» downloads the edited document JSON an
 </details>
 
 <details>
-<summary>⌨️ "/" commands in Claude Code (0.13.0)</summary>
+<summary>⌨️ "/" commands in Claude Code (0.15.2)</summary>
 
 
 Installed as a plugin, Business-Wrap adds these commands; type `/` in Claude Code to see them. Each runs `engine/cli.mjs` (the same `business-wrap <verb>` you can run yourself, with no AI and no network) and says in one line what it did.
@@ -118,6 +118,14 @@ Installed as a plugin, Business-Wrap adds these commands; type `/` in Claude Cod
 | `/business-wrap:verify-history <file>` | Check the tamper-evident history |
 | `/business-wrap:report <from> <to>` | Work report for a date range |
 | `/business-wrap:update [--check\|--notes\|--apply --yes]` | Check, read what is new, or install (only after you agree) |
+| `/business-wrap:tabs [project]` | The documents open in the live editor and the host health (needs the editor open) |
+| `/business-wrap:outline [doc-id] [ar\|en]` | The outline of the open document: chapters, sections, blocks |
+| `/business-wrap:edit <instruction>` | Change the open document as ONE undoable batch signed as the agent; keeps the Arabic and English editions in step; Ctrl+Z undoes it all |
+| `/business-wrap:proofread [ar\|en\|both] [--apply]` | Proofread the open document (hamza, taa marbuta, Latin punctuation, English typos, AR/EN mismatch); fixes only with `--apply` |
+| `/business-wrap:check [doc-id]` | Run the editor's Check panel on the open document and summarise the problems |
+| `/business-wrap:diagram <description>` | Draft a diagram, render it to PNG, insert it into the open document |
+| `/business-wrap:explain <tool or feature>` | Explain an editor feature from the docs and where it is on the ribbon |
+| `/business-wrap:action <name>` | Run one editor action: `check`, `renumber`, `saveHtml`, `exportPdf`, `share` |
 
 Without Claude Code the same verbs run as `npm run cli -- <verb>` (for example `npm run cli -- open samples/event-permit`, `npm run host:close`). Every verb works offline, with no AI.
 
