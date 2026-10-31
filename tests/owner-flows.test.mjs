@@ -45,11 +45,17 @@ function check(line, name, ok, detail = '', xf = false) {
   if (xf && XF.has(line) && !STRICT) { tag = ok ? 'XPASS' : 'XFAIL'; if (ok) xpass += 1; else { xfail += 1; xfLines.add(line); } }
   else if (!ok) failed += 1;
   const s = `${tag.padEnd(5)}  L${line}${xf ? ` (xfail L${line})` : ''}: ${name}${detail && !ok ? '  — ' + String(detail).slice(0, 300) : ''}`;
-  out.push(s);
+  out.push(s); armStall();
   if (HEADED) console.log(s);
 }
-// stall bound: a hung step must never hold `npm test` (the first draft waited 49 min on a dialog)
-setTimeout(async () => { console.log(`${out.join('\n')}\nFAILED: owner-flows stalled past 8 min`); await H.stop().catch(() => {}); process.exit(1); }, 8 * 60e3).unref();
+// stall bound: a hung step must never hold `npm test` (the first draft waited 49 min on a dialog). The bound is "no new result for 5 minutes",
+// re-armed by every check(), not a fixed 8 minutes for the whole run: on a loaded machine the run is long but never stuck (measured: 3 min on CI, over 9 on
+// a machine shared with other test runs). A hard ceiling of 30 minutes still ends a run that keeps producing results and never finishes.
+let stallTimer;
+const stallBy = () => { console.log(`${out.join(String.fromCharCode(10))}${String.fromCharCode(10)}FAILED: owner-flows stalled (no result for 5 min, or 30 min in all)`); H.stop().catch(() => {}).finally(() => process.exit(1)); };
+const armStall = () => { clearTimeout(stallTimer); stallTimer = setTimeout(stallBy, 5 * 60e3); stallTimer.unref(); };
+armStall();
+setTimeout(stallBy, 30 * 60e3).unref();
 const freePort = () => new Promise((res) => { const s = net.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => res(p)); }); });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const readJ = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
@@ -116,7 +122,19 @@ try {
   const doc = () => page.evaluate(() => JSON.parse(JSON.stringify(window.BW.M[window.BW.S.svc][window.BW.S.ed].doc)));
   const opsN = () => page.evaluate(() => window.BW.M[window.BW.S.svc][window.BW.S.ed].ops.length);
   const counter = () => R((r) => Number(r.querySelector('.count .n')?.textContent));
-  const clickDoc = async (sel) => { const el = page.locator(`#bw-pair main.bw-doc[data-locale="ar"] ${sel}`).first(); await el.scrollIntoViewIfNeeded(); await el.click(); };
+  // Under load a late dialog (the share result card, a profile modal, the scope menu) can still sit over the page when the next step
+  // clicks it: a click that is intercepted says what covers the target, closes any open dialog the way a person would, and tries again.
+  const clickDoc = async (sel) => {
+    const el = page.locator(`#bw-pair main.bw-doc[data-locale="ar"] ${sel}`).first();
+    for (let n = 1; ; n += 1) {
+      try { await el.scrollIntoViewIfNeeded({ timeout: 6000 }); await el.click({ timeout: 6000 }); return; } catch (e) {
+        if (n >= 3) throw e;
+        const cover = await page.evaluate(() => { const r = document.getElementById('bw-ui-host').shadowRoot; const open = [...r.querySelectorAll('.bw-modal, .sh-done, .dialog:not([hidden])')].map((d) => d.className); r.querySelectorAll('.bw-modal [data-mk="close"], .sh-done [data-mk="close"], .bw-modal [data-mk="cancel"]').forEach((b) => b.click()); return open.join(' | '); });
+        console.log(`clickDoc ${sel}: attempt ${n} failed (${String(e.message).slice(0, 80)}); open dialogs: ${cover || 'none'}`);
+        await page.keyboard.press('Escape'); await page.waitForTimeout(500 * n);
+      }
+    }
+  };
 
   // L16 first launch: the profile card; the owner types his name
   const card = await page.waitForFunction(() => !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.bw-modal.pf-first, .pf-first'), null, { timeout: 8000 }).then(() => true, () => false);
@@ -198,7 +216,7 @@ try {
 
   // L7/L16/L20 open from the list → edit → Save HTML: the saved file carries the provenance log
   await page.evaluate(() => window.BW.setText('/chapters/0/title', 'مقدمة عدّلها المالك'));
-  await wait(300);
+  await page.waitForFunction(() => Number(document.getElementById('bw-ui-host').shadowRoot.querySelector('.count .n')?.textContent) >= 1, null, { timeout: 8000 }).catch(() => {}); // the counter repaints after the edit; a fixed 300 ms read 0 under load
   const c0 = await counter();
   const htmlDir = W.workspace().dirs.docs; // 0.13.3: Documents\<title>\<title>.html, its Exports\ and Versions\
   // every .html below the documents folder as «relative path|mtime»: a file written (new or overwritten) after a snapshot is what changed
@@ -540,10 +558,11 @@ try {
   // L15 share names the file like a save
   const htmlBefore = treeHtml();
   await fire('shShare');
-  await wait(300);
+  await page.waitForFunction(() => !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.bw-modal [data-sh="to"]'), null, { timeout: 15000 }).catch(() => {});
   await page.locator('#bw-ui-host >> css=.bw-modal [data-sh="to"]').fill('Alaa').catch(() => {});
   await R((r) => r.querySelector('.bw-modal [data-mk="ok"]')?.click());
-  await wait(1500);
+  // the share builds the file, then shows its result card: wait for the card (a fixed 1.5 s was too short under load and the card then covered the page)
+  await page.waitForFunction(() => !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.sh-done'), null, { timeout: 25000 }).catch(() => {});
   await R((r) => r.querySelectorAll(".sh-done [data-mk=\"close\"]").forEach((b) => b.click())); // H3: the share result card
   const shareName = changedSince(htmlBefore, SHARED);
   check(15, 'share writes the document\'s Exports\\«<date> <title> - العربية.shared.html» (not doc-<id>.editor.html)', shareName.length >= 1 && shareName.every((n) => n.includes(today) && / - العربية( \(\d+\))?\.shared\.html$/.test(n)), shareName.join(',') || 'no shared file', true);
@@ -563,10 +582,11 @@ try {
   const exEn = await page.evaluate(async () => { const B = window.BW, id = B.S.svc; const r = await fetch('/api/export', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ service: id, locale: 'en', doc: B.M[id].en.doc, embedFonts: false }) }); return (await r.json()).pdf || ''; });
   check(15, 'the EN export is named «<date> <title> - English.pdf» with the same title (not "New service"), in the same document folder', path.basename(exEn).endsWith(' خدمة مراجعة الإصدار - English.pdf') || / خدمة مراجعة الإصدار - English \(\d+\)\.pdf$/.test(path.basename(exEn)), path.basename(exEn));
   const hb2 = treeHtml();
-  await fire('shShare'); await wait(300);
+  await fire('shShare'); await page.waitForFunction(() => !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.bw-modal [data-sh="to"]'), null, { timeout: 15000 }).catch(() => {});
   await page.locator('#bw-ui-host >> css=.bw-modal [data-sh="to"]').fill('Alaa').catch(() => {});
   await R((r) => r.querySelector('.bw-modal [data-mk="ok"]')?.click());
-  await wait(1500);
+  // the share builds the file, then shows its result card: wait for the card (a fixed 1.5 s was too short under load and the card then covered the page)
+  await page.waitForFunction(() => !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.sh-done'), null, { timeout: 25000 }).catch(() => {});
   await R((r) => r.querySelectorAll(".sh-done [data-mk=\"close\"]").forEach((b) => b.click())); // H3: the share result card
   const share2 = changedSince(hb2, SHARED);
   check(7, 'the share file carries the edited title (not «خدمة جديدة»)', share2.length >= 1 && share2.every((n) => n.startsWith('خدمة مراجعة الإصدار/Exports/')), share2.join(',') || 'no shared file');
