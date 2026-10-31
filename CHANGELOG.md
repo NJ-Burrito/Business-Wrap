@@ -13,7 +13,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 🧭 The third owner-notes release: live-editor slash commands, a Spelling tab with a side panel, a calmer drafting-grid background, a smoother ribbon, and a true 100% zoom. / 🧭 إصدار ملاحظات المالك الثالث: أوامر مائلة داخل المحرر الحي، وتبويب للإملاء مع لوحة جانبية، وخلفية شبكة رسم أهدأ، وشريط أنعم، وتكبير 100% حقيقي.
 
 ### Added / أضيف
-- ⌨️ **8 live-editor slash commands** drive the open editor: zoom, theme, reading mode, find, save and the other safe actions. / **8 أوامر مائلة للمحرر الحي** تشغّل المحرر المفتوح: التكبير والمظهر ووضع القراءة والبحث والحفظ وبقية الإجراءات الآمنة.
+- ⌨️ **8 slash commands for the live editor** in Claude: `/business-wrap:tabs`, `outline`, `edit`, `proofread`, `check`, `diagram`, `explain` and `action`. An edit lands as one undo step, signed as the agent. / **8 أوامر مائلة للمحرر الحي** في Claude: `/business-wrap:tabs` و`outline` و`edit` و`proofread` و`check` و`diagram` و`explain` و`action`. ويصل التعديل خطوة تراجع واحدة موقّعة باسم المساعد.
 - 🔤 **A Spelling tab** in the ribbon: next and previous error, fix, fix all, ignore, ignore all, add to dictionary, language and a count. / **تبويب الإملاء** في الشريط: الخطأ التالي والسابق، والتصحيح، وتصحيح الكل، والتجاهل، وتجاهل الكل، والإضافة إلى القاموس، واللغة، وعدّاد الأخطاء.
 - 🗒️ **A spelling side panel**: click a misspelt word to see suggestions, then fix it, ignore it, ignore it everywhere, or add it to your dictionary. It floats over the pages and moves nothing. / **لوحة إملاء جانبية**: اضغط على كلمة خاطئة لترى الاقتراحات، ثم صحّحها أو تجاهلها أو تجاهلها في كل مكان أو أضفها إلى قاموسك. تظهر فوق الصفحات ولا تحرّك شيئًا.
 - 🔘 **One spelling switch** turns on Arabic and English together. / **مفتاح إملاء واحد** يشغّل العربية والإنجليزية معًا.
@@ -30,11 +30,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 ### Fixed / أصلح
 - 🔍 **100% zoom was about 42% in single and spread view**: it is now true size. / **تكبير 100% كان نحو 42% في عرض الصفحة المفردة والمزدوجة**: صار الآن بالحجم الحقيقي.
 - 📐 **Fill height now fits between the toolbar and the page buttons.** / **«ملء الارتفاع» يناسب الآن المساحة بين شريط الأدوات وأزرار الصفحات.**
-- 🌐 **The menu in Arabic closes on an outside click** on every system. / **القائمة بالعربية تُغلق عند الضغط خارجها** على كل الأنظمة.
+- 🌐 **The Arabic menu closes on a click outside it**, and the check for it now reports where the click landed. / **القائمة بالعربية تُغلق عند الضغط خارجها**، وصار فحصها يذكر موضع الضغطة.
 - 🧩 **Explanation panel races** (flicker when moving across tools) are gone. / **اختفى وميض لوحة الشرح** عند التنقل السريع بين الأدوات.
 
 ### Known limits / حدود معروفة
-- 📏 Fill height and zoom are re-fitted after a manual zoom only, not on every window resize. / **«ملء الارتفاع» والتكبير يُعاد ضبطهما بعد التكبير اليدوي فقط**، لا عند كل تغيير لحجم النافذة.
+- 📏 Fill height keeps fitting when the window or the ribbon changes, until you zoom by hand; then it stays at your zoom. / **«ملء الارتفاع» يبقى مضبوطًا عند تغيّر النافذة أو الشريط**، حتى تكبّر بيدك؛ عندها يبقى على تكبيرك.
 - 🔒 Editor actions that delete, close or stop something stay refused over MCP. / **إجراءات المحرر التي تحذف أو تغلق أو توقف شيئًا تبقى مرفوضة عبر MCP.**
 
 ## [0.15.1] - 2026-10-31
