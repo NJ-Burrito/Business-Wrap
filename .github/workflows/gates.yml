@@ -1,5 +1,9 @@
 name: gates
 
+# Four jobs run in parallel: security, checks, and the test suites split into 4 shards
+# (node tests/run.mjs --shard i/4, balanced by tests/durations.json). The last job, "gates",
+# is the single aggregate check: it keeps the old check name and is green only when all of them are.
+
 on:
   push:
     branches: ["**"]
@@ -8,15 +12,20 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: gates-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  gates:
+  security:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0 # the security gate scans the whole history
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.12"
 
@@ -42,6 +51,23 @@ jobs:
           PYTHONUTF8: "1"
         run: python security/check.py --selftest
 
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0 # the history gate reads old tags and fixtures
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          cache: npm
+
       - name: One version everywhere (package, plugin, marketplace, MCP registry, Smithery, READMEs, CHANGELOG)
         run: node update/version-sync.mjs
 
@@ -60,19 +86,39 @@ jobs:
           PYTHONUTF8: "1"
         run: python palette/check.py brand/v3/dark/tokens-v3.dark.json
 
-      - uses: actions/setup-node@v4
-        if: hashFiles('package.json') != ''
-        with:
-          node-version: "24"
-
       - name: Install
-        if: hashFiles('package-lock.json') != ''
         run: npm ci
 
       - name: History gate (a version bump needs its fixture; old saved files must open whole)
         run: node tools/release/history-gate.mjs
 
-      - uses: astral-sh/setup-uv@v5
+      - name: Skill HTML is current (the first half of npm test)
+        run: node engine/build-skill-html.mjs --check
+
+  tests:
+    name: tests (shard ${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false # a failure in one shard must not hide the others' results
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          cache: npm # keyed on package-lock.json; no Playwright download step exists (tests use the runner's own browsers)
+
+      - name: Install
+        run: npm ci
+
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
 
       - name: Test tools (poppler, an Arabic-capable fallback face, Python libs)
         run: |
@@ -80,19 +126,41 @@ jobs:
           sudo apt-get install -y -qq poppler-utils fonts-noto-core
           uv pip install --system pymupdf python-docx lxml jsonschema
 
-      - name: Editor engine tests
+      - name: Editor engine tests, shard ${{ matrix.shard }}/4
         env:
           PYTHONUTF8: "1"
           CI: "true"
-        if: hashFiles('tests/**') != ''
-        run: npm test
+        run: node tests/run.mjs --shard ${{ matrix.shard }}/4
+
+      - name: Suite times (feed them to node tests/run.mjs --merge to refresh durations.json)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: suite-times-${{ matrix.shard }}
+          path: out/suite-times.json
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Keep test outputs on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: test-outputs
+          name: test-outputs-${{ matrix.shard }}
           # everything the run wrote (PDF, DOCX, HTML, editors, harvests, screenshots, results, axe report)
           path: out/
           if-no-files-found: warn
           retention-days: 7
+
+  gates:
+    # The required-check name. One job that is green only when every part is.
+    if: always()
+    needs: [security, checks, tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: All parts passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "security/checks/tests results: $RESULTS"
+          for r in $RESULTS; do [ "$r" = "success" ] || { echo "a gate part did not succeed"; exit 1; }; done
