@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import { close } from '../cli.mjs';
 import { readJson } from '../workspace.mjs';
 import { hostFile, hostState } from '../host.mjs';
+import { emit } from './session.mjs';
 
 export const GRACE_MS = Number(process.env.BW_POWER_GRACE_MS || 1500); // the time the page has to flush and draw «stopped»
 
@@ -15,7 +16,7 @@ export default async (req, url, send, ctx) => {
   if (req.method !== 'POST') { send(405, { error: 'POST' }); return true; }
   const b = await readJson(req).catch(() => ({}));
   if (b?.confirm !== true) { send(400, { error: 'confirm' }); return true; }
-  for (const r of ctx.session?.live?.keys() || []) r.write('event: flush\ndata: {}\n\n');
+  emit(ctx, 'flush'); // every tab saves now (0.15.0: one stream per browser; ctx.session.live no longer exists)
   send(200, { ok: true, grace: GRACE_MS });
   setTimeout(async () => {
     const self = [process.pid, process.ppid]; // this server and its supervisor stop themselves, after everything else

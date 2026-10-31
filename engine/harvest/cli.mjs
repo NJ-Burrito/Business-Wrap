@@ -13,7 +13,7 @@ import { parseModel, modelToDocument } from './model.mjs';
 import { crawl } from './crawl.mjs';
 import { harvestToDocument, mergeToDocument } from './docs.mjs';
 import { applyLearned } from '../learning/store.mjs';
-import { i18n, REPO, userCwd } from '../export.mjs';
+import { i18n, REPO, userCwd, diagramWarnings } from '../export.mjs';
 import { buildEditor } from '../build-editor.mjs';
 import { sourcesDir, keepVersion, docTitle } from '../workspace.mjs';
 import { get, applyOp, applyOps, migrate } from '../edits.mjs';
@@ -143,6 +143,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     console.log(`documents  ${r.documents.join('  ')}`);
     if (r.editor) console.log(`editor     ${r.editor}`);
     for (const [ed, cs] of Object.entries(r.conflicts || {})) for (const c of cs) console.log(c.source ? `CONFLICT   ${ed} ${c.path}: kept «${c.kept}»; the ${c.source} says «${c.other}»` : `CONFLICT   ${ed} ${c.path}: kept your edit; the source now says: ${c.harvested}`);
+    if (cmd === 'merge') for (const f of r.documents) { try { for (const w of diagramWarnings(JSON.parse(fs.readFileSync(f, 'utf8')), { locale: /\.en\.json$/i.test(f) ? 'en' : 'ar' })) console.error(`WARN ${path.basename(f)}: ${w}`); } catch { /* a document that cannot be read is reported elsewhere */ } }
   } catch (e) {
     console.error(`harvest failed: ${e.message}`);
     process.exit(1);

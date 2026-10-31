@@ -91,6 +91,7 @@ async function pfFirstLaunch() {
   // ponytail: under browser automation the card waits for an explicit opt-in (bw:profile-prompt = 1), so the suites that
   // drive the toolbar and drag on the page are not covered by it; a person (navigator.webdriver false) always sees it
   if (navigator.webdriver && ls.get('bw:profile-prompt') !== '1') return;
+  if (document.documentElement.dataset.bwAutomation === '1') return; // ?automation=1 (0.15.0): no first-launch card
   let form;
   // a card in the corner, not a blocking modal: the page stays usable while it waits
   const k = await bwModal({ cls: 'pf-first', modal: false, title: t('pfWelcome'), html: `<div class="pf-form">${pfForm({})}</div>`, buttons: [['skip', t('pfSkip')], ['ok', t('pfSave'), true]], mount: (m) => { form = m.querySelector('.pf-form'); pfWire(form); } });
@@ -146,5 +147,5 @@ bwExt({
     { id: 'trust', title: 'pfTrustTitle', icon: 'info', html: () => `<p class="pf-limit">${esc(t('pfTrustLimit'))}</p><div class="btns"><button type="button" class="b" data-pf="prov"><span class="w">${esc(t('pvOpen'))}</span></button></div>`, mount: (el) => el?.querySelector('[data-pf="prov"]').addEventListener('click', () => openDrawer('provenance')) },
   ],
   expose: { profile: { get: PF.get, actor: PF.actor, recording: PF.recording, takePings: pfTakePings, pictureInSharedHtml: PF_PICTURE_IN_SHARED_HTML } },
-  on: { boot: () => { pfFirstLaunch(); } },
+  on: { boot: () => { const release = window.BW?.holdReady?.('profile'); pfFirstLaunch().finally(() => release?.()); } }, // readiness (bw:ready) waits for the first-launch decision
 });

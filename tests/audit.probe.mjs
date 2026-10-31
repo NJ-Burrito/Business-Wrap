@@ -277,14 +277,14 @@ try {
     const same = await ev(() => window.__isl === document.getElementById('bw-ui-host').shadowRoot.querySelector('.island'));
     return [same ? 'works' : 'partial', `island kept ${same}`];
   });
-  await check('Shell', 'explainer: ~900 ms, no re-show', async () => {
+  await check('Shell', 'explainer: ~400 ms rest, shown again every time (0.15.0)', async () => {
     const b = page.locator('#bw-ui-host .island .sec[data-cat="file"] .b').first();
     await b.hover(); const t0 = Date.now();
     const shown = await page.waitForFunction(() => document.getElementById('bw-ui-host').shadowRoot.querySelector('.xpl:not([hidden])'), null, { timeout: 3000 }).then(() => Date.now() - t0).catch(() => null);
-    await page.mouse.move(700, 600); await wait(400); await b.hover(); await wait(1300);
+    await page.mouse.move(40, 600); await wait(400); await b.hover(); await wait(900);
     const again = await ev(() => !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.xpl:not([hidden])'));
     if (shown == null) return ['partial', 'no card (setting may be off)'];
-    return [shown >= 800 && !again ? 'works' : 'partial', `first ${shown} ms, re-shown ${again}`];
+    return [shown >= 350 && shown <= 900 && again ? 'works' : 'partial', `first ${shown} ms, shown again ${again}`];
   });
   await check('Shell', 'side panel closes on outside click', async () => {
     let closed = 0;

@@ -60,8 +60,18 @@ function xplPanelVisible() {
 }
 /** The page makes room on the right while the panel is showing (wide screens only), so it never covers the document. */
 function xplPad() {
-  const on = xplPanelVisible() && document.documentElement.clientWidth >= XPL_PAD_MIN;
-  document.body.style.paddingRight = on ? `${(root.querySelector('.xpl-dock')?.offsetWidth || 304) + 16}px` : '';
+  const de = document.documentElement;
+  const need = (root.querySelector('.xpl-dock')?.offsetWidth || 304) + 16;
+  const on = xplPanelVisible() && de.clientWidth >= XPL_PAD_MIN;
+  document.body.style.paddingRight = on ? `${need}px` : '';
+  // room is made only while the page still fits beside the panel: a wide page (a wide table, a long unbroken line) would otherwise gain a horizontal
+  // scroll bar from the padding alone (owner-flows L38); the panel then floats over the desk's edge instead
+  if (on && de.scrollWidth > de.clientWidth + 1) document.body.style.paddingRight = '';
+  // a page whose size changes later (page setup, a re-render) is re-checked: watch the sheets
+  if (typeof ResizeObserver === 'function') {
+    xplPad.ro ||= new ResizeObserver(() => { cancelAnimationFrame(xplPad.raf); xplPad.raf = requestAnimationFrame(xplPad); });
+    for (const m of document.querySelectorAll('main.bw-doc')) xplPad.ro.observe(m);
+  }
 }
 /** The one panel (built once, kept across rebuilds by UI_RUNTIME); its words follow the UI language. */
 function xplDock() {

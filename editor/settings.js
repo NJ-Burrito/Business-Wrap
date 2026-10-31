@@ -2,8 +2,8 @@
  * A drawer («الإعدادات» / Settings), reached from the toolbar's View section and Ctrl+K, in four cards:
  * About (name, logo, version, release date, repository, licence, credits — embedded at build time, so it shows
  * from file:// too), Update (installed vs latest, last check, «تحقّق الآن», auto-check on launch) and Preferences
- * (language, word direction, page view, reduced motion, explainer cards), each written to the store it already had
- * (bw:ui, bw:dir:<ed>, bw:pages, bw:calm, bw:explainers, bw:update-auto), and Local learning («التعلّم المحلي»,
+ * (language, word direction, page view, reduced motion), each written to the store it already had
+ * (bw:ui, bw:dir:<ed>, bw:pages, bw:calm, bw:update-auto), and Local learning («التعلّم المحلي»,
  * mounted by learning-hook.js through BW_LEARNING.mount(el)). The check itself is update.js (BW_UPDATE):
  * from file:// nothing is fetched, the card says why and how to update instead.
  * Declarations only (hoisted): openDrawer('settings') calls them. */
@@ -63,8 +63,6 @@ function settingsPanel() {
 <div class="set-row"><span class="set-k">${esc(t('set.dir'))}</span>${setSeg('setDir', ['rtl', 'ltr'].map((d) => [d, t(d), uiDir() === d]), t('set.dir'))}</div>
 <div class="set-row"><span class="set-k">${esc(t('set.view'))}</span>${setSeg('setView', viewModes().map((m) => [m, t('view.' + m), viewsMode() === m]), t('set.view'))}</div>
 <label class="chk"><input type="checkbox" data-set="calm" ${S.calm ? 'checked' : ''}> ${esc(t('set.calm'))}</label>
-<label class="chk"><input type="checkbox" data-set="explain" ${ls.get('bw:explainers') !== '0' ? 'checked' : ''}> ${esc(t('set.explain'))}</label>
-<label class="chk"><input type="checkbox" data-set="explainAlways" ${ls.get('bw:explainers') === 'always' ? 'checked' : ''}${ls.get('bw:explainers') === '0' ? ' disabled' : ''}> ${esc(t('set.explainAlways'))}</label>
 </section>
 <section class="card set-lrn" aria-labelledby="set-h-lrn"><h3 id="set-h-lrn"><span class="i">${ic('learning')}</span>${esc(t('learning'))}</h3>
 <div class="set-lrn-body" data-lrn-mount></div></section>${EXT.settings.map((c) => `<section class="card set-x-${esc(c.id)}" aria-labelledby="set-h-${esc(c.id)}"><h3 id="set-h-${esc(c.id)}"><span class="i">${ic(c.icon || 'prefs')}</span>${esc(t(c.title))}</h3>${c.html()}</section>`).join('')}</div>`; // + extension cards
@@ -100,8 +98,6 @@ async function settingsClick(x) {
 function settingsChange(el) {
   const k = el.dataset.set;
   if (k === 'auto') ls.set('bw:update-auto', el.checked ? '1' : '0');
-  if (k === 'explain') { ls.set('bw:explainers', el.checked ? '1' : '0'); if (!el.checked) xplHide(); const al = root.querySelector('.drawer [data-set="explainAlways"]'); if (al) { al.disabled = !el.checked; al.checked = false; } }
-  if (k === 'explainAlways') ls.set('bw:explainers', el.checked ? 'always' : '1'); // off / once (default) / always
   if (k === 'calm') { S.calm = el.checked; ls.set('bw:calm', S.calm ? '1' : '0'); buildUi(); root.querySelector('.drawer [data-set="calm"]')?.focus(); }
 }
 

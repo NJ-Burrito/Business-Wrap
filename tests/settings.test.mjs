@@ -228,9 +228,8 @@ try {
     await page.waitForTimeout(400);
     await sh(page, (r) => { const c = r.querySelector('.drawer [data-set="calm"]'); c.click(); });
     await page.waitForTimeout(300);
-    await sh(page, (r) => { const c = r.querySelector('.drawer [data-set="explain"]'); c.click(); });
-    const prefs = await page.evaluate(() => ({ pages: localStorage.getItem('bw:pages'), calm: localStorage.getItem('bw:calm'), xpl: localStorage.getItem('bw:explainers'), mode: window.BW.S.pages }));
-    check('Preferences write the existing stores (page view, reduced motion, explainer cards)', prefs.pages === 'single' && prefs.mode === 'single' && prefs.calm === '1' && prefs.xpl === '0', JSON.stringify(prefs));
+    const prefs = await page.evaluate(() => ({ pages: localStorage.getItem('bw:pages'), calm: localStorage.getItem('bw:calm'), mode: window.BW.S.pages }));
+    check('Preferences write the existing stores (page view, reduced motion)', prefs.pages === 'single' && prefs.mode === 'single' && prefs.calm === '1', JSON.stringify(prefs));
     await sh(page, (r) => r.querySelector('.drawer [data-k="setDir"][data-v="ltr"]').click());
     await page.waitForTimeout(300);
     check('Preferences → direction LTR: words only, the shell stays right-to-left', (await page.evaluate(() => localStorage.getItem(`bw:dir:${window.BW.S.ed}`))) === 'ltr' && (await sh(page, (r) => r.querySelector('.shell').dir)) === 'rtl');

@@ -28,7 +28,7 @@ Pointers resolve against the state after all previous ops. `old` makes every op 
 ## Rules
 1. **Only through ops.** Save = write `edits.json`; Export = replay + render. A hand edit of the document JSON is lost on the next stage rebuild.
 2. **Conflict check:** a `setText` whose current value differs from `old` is a conflict; the editor shows both and asks, never overwrites silently.
-3. **Renumbering** after insert/delete/move is done by the renderer from position, not stored in ops.
+3. **Renumbering** after insert/delete/move is done by the renderer from position (TOC, headings, story captions, PDF and DOCX alike), not stored in ops. A document that sets `control.numbering: "manual"` opts out: its stored numbers are printed as written and the editor's renumber action emits ops for it.
 4. **Paste is plain text.**
 5. **Recurring edits are defects upstream.** If the same op appears on several documents, fix the source rule; the edits file is for one document's human judgement.
 6. **No secrets, no watermark:** the edits file is an output; it carries no credentials, no personal data beyond initials, and never the editor watermark.

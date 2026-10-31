@@ -36,6 +36,10 @@ const MAP = {
   'view.continuous': 'scroll-text', 'view.single': 'file', 'view.spread': 'book-open', 'view.left': 'chevron-left', 'view.right': 'chevron-right',
   // settings and updates (0.11.0)
   learning: 'brain', settings: 'settings', updCheck: 'refresh-cw', update: 'download', about: 'info', prefs: 'sliders-horizontal', link: 'external-link', updDone: 'circle-check', updStep: 'circle', updFail: 'circle-x',
+  // 0.15.0 ribbon tabs (one per tab, rbt.<id>), collapse chevron, zoom height / percent, project export / import
+  'rbt.file': 'folder-open', 'rbt.export': 'download', 'rbt.home': 'house', 'rbt.font': 'a-large-small', 'rbt.para': 'text-align-justify', 'rbt.insert': 'square-plus', 'rbt.layout': 'layout-template',
+  'rbt.hf': 'panel-top', 'rbt.design': 'palette', 'rbt.review': 'message-square-text', 'rbt.view': 'eye', 'rbt.tools': 'wrench', 'rbt.table': 'table-2', 'rbt.picture': 'image', 'rbt.diagram': 'workflow',
+  'rbt.diagram2': 'align-center-horizontal', 'rbt.collapse': 'chevron-up', zoomHeight: 'move-vertical', zoomPct: 'text-cursor-input', projExport: 'folder-down', projImport: 'folder-up',
 };
 const out = {};
 for (const [k, name] of Object.entries(MAP)) {

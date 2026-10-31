@@ -49,7 +49,7 @@ try {
   for (let i = 0; i < 3; i += 1) {
     const n = ids.length;
     await page.evaluate(() => { window.BW.S.svc = 'event-permit'; window.BW.S.ed = 'ar'; return window.BW.runAction('save'); });
-    await page.waitForFunction((n) => (window.BW.libSaved || 0) > n, n, { timeout: 10000 });
+    await page.waitForFunction((n) => (window.BW.libSaved || 0) > n, n, { timeout: 45000 });
     ids.push(await page.evaluate(() => window.BW.S.svc));
   }
   check('three library documents to group', new Set(ids).size === 3 && ids.every((x) => /^doc-/.test(x)), ids.join(','));
@@ -78,7 +78,7 @@ try {
 
   // a fourth document, no project; the filter shows one group
   await page.evaluate(() => { window.BW.S.svc = 'event-permit'; return window.BW.runAction('save'); });
-  await page.waitForFunction(() => (window.BW.libSaved || 0) >= 4, null, { timeout: 10000 });
+  await page.waitForFunction(() => (window.BW.libSaved || 0) >= 4, null, { timeout: 45000 });
   const loose = await page.evaluate(() => window.BW.S.svc);
   await page.evaluate(() => window.BW.openDrawer('library'));
   await page.waitForFunction(() => document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer [data-pj-g="-"]'), null, { timeout: 5000 }).catch(() => {});

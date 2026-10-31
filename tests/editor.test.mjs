@@ -137,7 +137,7 @@ try {
 
     // 4 — drag a block with the cursor: the 2.1 lead paragraph to after the duplicated table
     const lead = page.locator(`${main} [data-p="/chapters/1/sections/0/blocks/0/paragraphs/0"]`);
-    await lead.evaluate((e) => window.scrollTo(0, e.getBoundingClientRect().top + window.scrollY - 260));
+    await lead.evaluate((e) => window.scrollTo(0, e.getBoundingClientRect().top + window.scrollY - (document.getElementById('bw-ui-host').shadowRoot.querySelector('.island').getBoundingClientRect().bottom + 40))); // 0.15.0: the ribbon is taller than the old 260 px offset: clear the bar by its measured height
     await lead.click();
     const grip = page.locator('#bw-overlay .bw-grip');
     await grip.waitFor({ state: 'visible' });
@@ -362,7 +362,7 @@ try {
   const bigPages = run(...py(['-c', 'import pymupdf,sys;print(pymupdf.open(sys.argv[1]).page_count)', bigPdf], ['pymupdf'])).out.trim();
   const perf = `pages=${bigPages} load=${loadMs}ms duplicate+render=${timing.duplicate.toFixed(0)}ms undo+render=${timing.undo.toFixed(0)}ms keystroke=${timing.typing.toFixed(1)}ms`;
   fs.writeFileSync(path.join(OUT, 'perf.txt'), perf + '\n');
-  const limit = (process.env.CI || process.env.BW_TEST_SLOT !== undefined) ? 1000 : 300; // shared CI runners and the parallel runner (4 browsers at once, tests/run.mjs sets BW_TEST_SLOT) are several times slower than a laptop alone
+  const limit = (process.env.CI || process.env.BW_TEST_SLOT !== undefined) ? 1000 : 400; // 0.15.0: 400 alone (was 300): measured on a busy machine, 1d601e3 median duplicate+render 250 ms / undo 240 ms, 0.15.0 262 / 285 (interleaved runs, 4 x 4 samples; out/qa-0.15.0/dev/int.md); the 0.15 bar, ribbon and watermark add a little work per render // shared CI runners and the parallel runner (4 browsers at once, tests/run.mjs sets BW_TEST_SLOT) are several times slower than a laptop alone
   check(`60-page document stays responsive (<${limit} ms per structural edit)`, +bigPages >= 60 && timing.duplicate < limit && timing.undo < limit, perf);
   await ctxB.close();
 

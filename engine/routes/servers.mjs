@@ -10,10 +10,11 @@ import fs from 'node:fs';
 import { close } from '../cli.mjs';
 import { readJson } from '../workspace.mjs';
 import { hostFile, hostState } from '../host.mjs';
+import { emit } from './session.mjs';
 import { probeServers, countBrowsers, flushPeers } from '../protocol.mjs';
 
 const GRACE = () => Number(process.env.BW_POWER_GRACE_MS || 1500);
-const flushTabs = (ctx) => { for (const r of ctx.session?.live?.keys() || []) r.write('event: flush\ndata: {}\n\n'); };
+const flushTabs = (ctx) => { emit(ctx, 'flush'); }; // 0.15.0: ctx.session.live is gone (one stream per browser): emit() reaches every tab
 const LOCAL = /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/;
 
 export default async (req, url, send, ctx) => {

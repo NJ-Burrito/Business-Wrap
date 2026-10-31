@@ -70,10 +70,14 @@ async function openPage(ctx, url, ports) {
     window.__flushes = 0;
     const add = EventSource.prototype.addEventListener;
     EventSource.prototype.addEventListener = function (t, f, o) { return add.call(this, t, t === 'flush' ? (...a) => { window.__flushes++; return f(...a); } : f, o); };
+    // 0.15.0: the event stream lives in a SharedWorker, so the page has no EventSource to hook; a flush event always ends in one beacon to /api/session/flush (12-session.js flush())
+    const beacon = navigator.sendBeacon?.bind(navigator);
+    if (beacon) navigator.sendBeacon = (u, d) => { if (/\/api\/session\/flush/.test(String(u))) window.__flushes++; return beacon(u, d); };
   }, { ports });
   try { await (await ctx.newCDPSession(page)).send('Emulation.setFocusEmulationEnabled', { enabled: true }); } catch { /* not Chromium */ } // several pages at once: each behaves as focused
   await page.goto(url);
   await page.waitForFunction(() => window.BW?.ready);
+  await page.evaluate(() => { try { window.BW.EXT.session?.on?.('flush', () => { window.__flushes++; }); } catch { /* no session module (file://) */ } }); // 0.15.0: the event stream lives in a SharedWorker; the page sees a flush through the session hub
   await sleep(500);
   await page.evaluate(() => window.BW.runAction('settings'));
   await page.waitForFunction(() => window.BW.S.drawer === 'settings');
@@ -222,6 +226,7 @@ try {
   const foreign = await fetch(`http://127.0.0.1:${A.port}/api/servers/stop`, { method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://example.com' }, body: '{"confirm":true}' });
   check('stop/served: no confirm → 400, a foreign page → 403, nothing stops', badPost.status === 400 && foreign.status === 403 && (await up(A.port)) && (await up(B.port)));
   // two servers: Stop from the first page closes both; the second page's tabs were told to flush first
+  await sb.evaluate(() => { window.__flushes = 0; }); // count only what this press causes
   await sa.bringToFront(); // two pages in one window: only the front one has focus
   await press(sa, 'srvStop');
   const shown = await until(async () => { const c = await card(sa); return c.st === 'offline' && !!(await toastTexts(sa)).some((x) => /تراجع|Undo/.test(x)); }, 12000);

@@ -553,7 +553,7 @@ bwExt({
 { const plain = saveAll; saveAll = function () { if (!EXT.session?.info) return plain(); writeDraft(); S.dirty = false; emitHook('save'); emit('save'); }; }
 /* H3: File › Import is the documents list's import (HTML incl. shares, DOCX, PDF, JSON); edits files still merge;
  * File › Save HTML waits for a Save in place still capturing (LIB.queued) */
-{ const plain = runAction; runAction = async function (a) { if (a === 'import') { await LIB.importAny(await pickFile(LIB.ACCEPT)); return; } if (a === 'saveHtml') return LIB.queued(() => libSaveCopy(plain)); return plain(a); }; window.BW.runAction = runAction; }
+{ const plain = runAction; runAction = async function (a, ...rest) { if (a === 'import') { await LIB.importAny(await pickFile(LIB.ACCEPT)); return; } if (a === 'saveHtml') return LIB.queued(() => libSaveCopy(plain)); return plain(a, ...rest); }; window.BW.runAction = runAction; }
 /* 0.14.0 D4: three different saves, said plainly. Save (yellow, Ctrl+S) = in place: the document's own HTML file is overwritten
  * (the old one is kept in Versions\). «حفظ نسخة جديدة / Save as new copy» (File › Save HTML) = a NEW dated file in the document's
  * Versions\ folder; the document's own file is not touched. Export HTML = the clean copy in Exports\. Served: POST

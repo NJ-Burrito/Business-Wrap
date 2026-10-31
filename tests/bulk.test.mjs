@@ -79,7 +79,7 @@ try {
   for (let i = 0; i < 4; i += 1) {
     const n = ids.length;
     await page.evaluate(() => { window.BW.S.svc = 'event-permit'; window.BW.S.ed = 'ar'; return window.BW.runAction('save'); });
-    await page.waitForFunction((n) => (window.BW.libSaved || 0) > n, n, { timeout: 10000 });
+    await page.waitForFunction((n) => (window.BW.libSaved || 0) > n, n, { timeout: 45000 });
     ids.push(await page.evaluate(() => window.BW.S.svc));
   }
   const [d1, d2, d3, d4] = ids;

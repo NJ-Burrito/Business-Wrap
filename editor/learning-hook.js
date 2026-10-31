@@ -181,10 +181,10 @@ const LRN = (() => {
     return _pc(a);
   };
   const _run = runAction;
-  runAction = async function (a) {
+  runAction = async function (a, ...rest) {
     if (a === 'learning') { openPanel(); return; }
     if (a === 'exportEdits' || a === 'exportAll' || a === 'save') exp(a === 'save' ? 'edits' : a);
-    return _run(a);
+    return _run(a, ...rest);
   };
 
   /* «مطبّق من التعلّم»: a learned change is marked on hover; Alt+click undoes it (and teaches the reversal) */
