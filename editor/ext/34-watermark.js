@@ -364,21 +364,16 @@
       commit: (ops, ed, kind) => { if (kind === 'undo') trigger('W03'); },
     },
   });
-  { // other export paths (the Export & Print centre, PDF/DOCX, edits files): when the action finished without an error
-    const plain = runAction;
-    runAction = async function wmRunAction(a, arg) {
-      const r = await plain(a, arg);
-      if (/^export\./.test(a) || a === 'exportPdf' || a === 'exportEdits' || a === 'exportAll') trigger('W02');
-      return r;
-    };
-    if (window.BW) window.BW.runAction = runAction;
-  }
+  // W02 fires only from the success-only emit('export') (editor.js exportPdfDocx), print-center.js and the edits downloads (bw:wm on success); no runAction wrapper, so a failed export never plays it
   const welcome = () => {
     let done = false;
     try { done = sessionStorage.getItem('bw:wm-welcome') === '1'; } catch { /* storage unavailable */ }
     if (done) return;
     try { sessionStorage.setItem('bw:wm-welcome', '1'); } catch { /* storage unavailable */ }
-    setTimeout(() => trigger('W10'), 600);
+    // W10 is queued, not fired once: on a brand-new browser the first intro is playing (suppressed()) and a typing user / hidden tab drops it, so it retries every 500 ms until it plays or 60 s pass
+    const t0 = now();
+    const tryW10 = () => { if (trigger('W10') || now() - t0 > 60000) return; setTimeout(tryW10, 500); };
+    setTimeout(tryW10, 600);
   };
   if (document.documentElement.dataset.bwReady === '1') welcome();
   else window.addEventListener('bw:ready', welcome, { once: true });
