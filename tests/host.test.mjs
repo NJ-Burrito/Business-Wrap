@@ -55,6 +55,11 @@ try {
   check('three live tabs counted in host.json', H.status().tabs === 3, JSON.stringify(H.status()));
   for (let i = 0; i < 3; i++) await pages[i].evaluate((i) => window.BW.setText(`/chapters/${i}/title`, `تبويب ${i} آخر تعديل`), i);
   for (const p of pages) await p.close({ runBeforeUnload: true });
+  // The pagehide beacons are in the browser's network queue when the pages are gone; closing the context at once can cancel the slowest one on a loaded runner
+  // (Ubuntu run 41179426698: a flushed tab file without its last edit; Windows never did). Wait for the real state, each file holding its edit, then close.
+  // The edits are made and the tabs closed within milliseconds, so a file holding the edit got it from the pagehide flush, not from the 0.4 s push.
+  const landed = () => { const r = runs()[0]; if (!r) return false; const t = fs.readdirSync(path.join(sessions, r)).filter((f) => f.endsWith('.json') && f !== 'run.json').map((f) => fs.readFileSync(path.join(sessions, r, f), 'utf8')); return t.length === 3 && [0, 1, 2].every((i) => t.some((x) => x.includes(`تبويب ${i} آخر تعديل`))); };
+  for (let i = 0; i < 100 && !landed(); i++) await new Promise((r) => setTimeout(r, 100));
   await ctx.close();
   const g1 = await gone(h.pid, 8000);
   check('closing the last tab stops the host within 6 s (no process left)', g1.gone && g1.ms <= 6000, JSON.stringify(g1));
