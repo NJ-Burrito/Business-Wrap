@@ -431,7 +431,7 @@ try {
     const missing = [];
     for (const k of n.keys) {
       await n.p.locator(`#icm-probe [data-probe="${k}"]`).hover();
-      await n.p.waitForTimeout(40);
+      await n.p.waitForTimeout(170);
       if (!(await icm(n.p, `#icm-probe [data-probe="${k}"] .ic`)).length) missing.push(k);
     }
     check(`0.13 icons: every new icon has its own hover motion (${n.keys.length - missing.length}/${n.keys.length})`, n.keys.length >= 70 && missing.length === 0, missing.length ? `missing: ${missing.join(', ')}` : n.keys.join(','));

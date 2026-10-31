@@ -19,11 +19,11 @@ const file = path.join(tmp, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, set: 'ribbon-0150', watermarkDir: null });
 const browser = await chromium.launch(launchOptions());
 
-// the 11 general tabs and the colour token each one carries (UI designer §1; the VALUES are read from the shipped CSS, never typed here)
+// the 12 general tabs (0.15.2: Spelling joins, before View) and the colour token each one carries (UI designer §1; the VALUES are read from the shipped CSS, never typed here)
 const GENERAL = [['file', '--bw-sec-file'], ['export', '--bw-sec-export'], ['home', '--bw-sec-edit'], ['font', '--bw-sec-font'], ['para', '--bw-sec-para'], ['insert', '--bw-sec-insert'],
-  ['layout', '--bw-sec-gaps'], ['hf', '--bw-sec-header'], ['design', '--bw-sec-design'], ['review', '--bw-sec-document'], ['view', '--bw-sec-view']];
+  ['layout', '--bw-sec-gaps'], ['hf', '--bw-sec-header'], ['design', '--bw-sec-design'], ['review', '--bw-sec-document'], ['spelling', '--bw-sec-spell'], ['view', '--bw-sec-view']];
 // tools per tab as declared (UI designer §2; export is 19: the designer's list names 17, plus the design pack and the export-options button that keeps the page range, cover and folder fields)
-const COUNTS = { file: 7, export: 19, home: 10, font: 10, para: 16, insert: 18, layout: 17, hf: 17, design: 6, review: 11, view: 15, table: 23, picture: 11, diagram: 22, diagram2: 23 };
+const COUNTS = { file: 7, export: 19, home: 10, font: 10, para: 16, insert: 18, layout: 17, hf: 17, design: 6, review: 11, spelling: 10, view: 15, table: 23, picture: 11, diagram: 22, diagram2: 23 };
 
 async function open(ui, w, h) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h } });
@@ -59,7 +59,7 @@ try {
 
     // ── note 1 · tabs centred, own icon, own colour ──
     const tabsNow = await sh(page, (r) => [...r.querySelectorAll('.ribbon .rb-tab')].map((x) => x.dataset.tab));
-    check(`${L} note 1: the ribbon draws the 11 general tabs in order`, GENERAL.map((x) => x[0]).join() === tabsNow.join(), tabsNow.join());
+    check(`${L} note 1: the ribbon draws the 12 general tabs in order`, GENERAL.map((x) => x[0]).join() === tabsNow.join(), tabsNow.join());
     const centre = await inShell(page, `const b = r.querySelector('.rb-bar').getBoundingClientRect(), t = r.querySelector('.rb-tabs').getBoundingClientRect(); return { dx: Math.abs((b.left + b.right) / 2 - (t.left + t.right) / 2), icons: r.querySelector('.rb-tabs').classList.contains('icons') };`);
     check(`${L} note 1 AC1: the tab group is centred in the bar (within 2 px)`, centre.dx <= 2, JSON.stringify(centre));
     const icons = await inShell(page, `const out = []; for (const [id, tok] of ${JSON.stringify(GENERAL)}) { const tab = r.querySelector('#rb-tab-' + id); const svg = tab?.querySelector('svg'); const probe = document.createElement('i'); probe.style.color = 'var(' + tok + ')'; r.querySelector('.shell').appendChild(probe); const want = getComputedStyle(probe).color; probe.remove(); out.push({ id, svg: !!svg, ok: !!svg && getComputedStyle(svg).color === want, got: svg && getComputedStyle(svg).color, want }); } return out;`);
@@ -72,7 +72,7 @@ try {
     // ── note 7 · the split (raw declaration) and the budget (note 3) ──
     const bud = await page.evaluate(() => ({ raw: window.BW.EXT.ribbon.budget(true), live: window.BW.EXT.ribbon.budget(), max: window.BW.EXT.ribbon.max }));
     if (w === 1366) {
-      check(`${L} note 7 AC1: tools per tab equal the allocation table`, bud.raw.every((b) => COUNTS[b.tab] === b.tools) && bud.raw.length === 15, JSON.stringify(bud.raw.filter((b) => COUNTS[b.tab] !== b.tools)));
+      check(`${L} note 7 AC1: tools per tab equal the allocation table`, bud.raw.every((b) => COUNTS[b.tab] === b.tools) && bud.raw.length === 16, JSON.stringify(bud.raw.filter((b) => COUNTS[b.tab] !== b.tools)));
       check(`${L} note 3: no tab passes ${bud.max.tools} tools or ${bud.max.groups} groups (so the panel never needs a scroll bar)`, bud.live.every((b) => b.tools <= bud.max.tools && b.groups <= bud.max.groups) && bud.max.tools === 28 && bud.max.groups === 6, JSON.stringify(bud.live));
     }
 
@@ -179,7 +179,7 @@ try {
     await page.mouse.click(b0.x + b0.width / 2, b0.y + b0.height / 2);
     await page.waitForTimeout(500);
     const c1 = await inShell(page, `const b = r.querySelector('.rb-bar').getBoundingClientRect(), t = r.querySelector('.rb-tabs').getBoundingClientRect(); const tb = r.querySelector('#rb-tab-table'); return { has: !!tb, dx: Math.abs((b.left + b.right) / 2 - (t.left + t.right) / 2), sel: tb?.getAttribute('aria-selected'), gold: tb && getComputedStyle(tb).boxShadow.includes('inset'), icons: r.querySelector('.rb-tabs').classList.contains('icons'), n: r.querySelectorAll('.rb-tab').length, noScroll: (() => { const p = r.querySelector('.rb-panel'); return p.scrollWidth <= p.clientWidth + 1; })(), tight: r.querySelector('.rb-tabs').scrollWidth <= r.querySelector('.rb-tabs').clientWidth + 1 };`);
-    check('contextual: a cell selection adds the Table tab, selected, centred with it (within 2 px), no scroll, the tab strip fits', c1.has && c1.sel === 'true' && c1.dx <= 2 && c1.noScroll && c1.tight && c1.n === 12, JSON.stringify(c1));
+    check('contextual: a cell selection adds the Table tab, selected, centred with it (within 2 px), no scroll, the tab strip fits', c1.has && c1.sel === 'true' && c1.dx <= 2 && c1.noScroll && c1.tight && c1.n === 13, JSON.stringify(c1));
     check('contextual: the Table tab keeps the contextual gold top rule', c1.gold, '');
     await page.mouse.click(60, 700);
     await page.waitForTimeout(300);

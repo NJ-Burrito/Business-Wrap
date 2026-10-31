@@ -1,0 +1,18 @@
+/* 0.15.2 notes 5, 6 and 16 (design lane).
+ *
+ * Corners (owner, 2026-10-31): the watermark is bottom LEFT (editor.css), toasts and pop-up notes are bottom RIGHT. Both are physical corners
+ * (left / right), the same in Arabic and English: the shell is always dir=rtl, so inline-start would put them on the wrong side. The explain
+ * dock keeps its bottom 96 px free for them. A list or menu may open over the watermark.
+ * This file loads after ux.css, so a rule of equal weight here wins over the old bottom-centre toasts (0.14.0 A3). */
+.shell[dir] .toasts, .shell[dir="rtl"] .toasts { inset-inline-start: auto; left: auto; right: 16px; transform: none; justify-items: end; max-inline-size: calc(100vw - 32px); }
+.shell:has(.pager:not([hidden])) .toasts { inset-block-end: max(16px, env(safe-area-inset-bottom)); }
+@media (max-width: 860px) { .shell:has(.pager:not([hidden])) .toasts { inset-block-end: 78px; } } /* a narrow window: the page pill (centred) would meet the toast */
+.toasts .toast { transform-origin: bottom right; }
+
+/* Lists and menus open smoothly (note 16): a soft start and a soft landing, no overshoot. Their old pop-in is a spring (.36 s, overshoots); under an
+ * OS reduced-motion setting the shell's catch-all turned every animation off. Only the editor's own calm button reduces motion (root flag
+ * data-bw-calm), so the OS setting is no longer read here. The calm button still wins: the .shell[data-calm] rule of ui.css stays on for it. */
+@keyframes bw-menu-in { from { opacity: 0; transform: translateY(-6px) scale(.985); } to { opacity: 1; transform: none; } }
+.pop, .more .menu:not([hidden]) { animation: bw-menu-in 230ms cubic-bezier(.65, 0, .35, 1) both; }
+:host-context(html[data-bw-calm="0"]) .shell[data-calm] :is(.pop, .more .menu:not([hidden])) { animation: bw-menu-in 230ms cubic-bezier(.65, 0, .35, 1) both !important; }
+:host-context(html[data-bw-calm="1"]) :is(.pop, .more .menu) { animation: none !important; }

@@ -65,7 +65,7 @@
   #bw-overlay .bw-grip:focus-visible { outline: 3px solid var(--bw-sel); }
   #bw-overlay .bw-drop { position: absolute; z-index: 29; height: 0; border-top: 3px solid var(--bw-sel); pointer-events: none; }
   /* the tool's own mark: bottom-right corner (the default layout, both languages), behind the page, never over it */
-  #bw-watermark { position: fixed; bottom: 16px; right: 16px; /* the default layout's corner in both languages (0.10.0) */ z-index: 0; display: grid; justify-items: center; gap: 4px; opacity: .3; transition: opacity .3s cubic-bezier(.16,1,.3,1); pointer-events: none; }
+  #bw-watermark { position: fixed; bottom: 16px; left: 16px; /* 0.15.2 note 5/6: bottom LEFT in both languages (physical, never mirrored); toasts take the bottom right; above the sheets (z 1) so a narrow window does not hide it */ z-index: 5; display: grid; justify-items: center; gap: 4px; opacity: .3; transition: opacity .3s cubic-bezier(.16,1,.3,1); pointer-events: none; }
   #bw-watermark:hover, #bw-watermark:focus-within { opacity: 1; }
   #bw-watermark .bw-wm-stage { pointer-events: auto; width: 84px; height: 84px; perspective: 1100px; cursor: pointer; border-radius: 14px; -webkit-tap-highlight-color: transparent; }
   #bw-watermark .bw-wm-stage:focus-visible { outline: 3px solid var(--bw-sel); outline-offset: 4px; }
@@ -78,21 +78,22 @@
   #bw-watermark .bw-wm-tag i { display: block; font-style: normal; }
   #bw-watermark .bw-wm-live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   :root[data-bw-dark="1"] #bw-watermark .bw-wm-tag { color: var(--bw-ink-muted, #d5cfc3); }
-  /* 0.15.0 note 13 · the giant NJ backdrop: ext/46-backdrop.js adds #bw-backdrop (aria-hidden) as the first child of the body. It is only
-     tint on the desk (contrast 1.08 to 1.20 against it, never text), never takes a pointer event, and moves with transform and opacity only
-     (compositor: no layout, no paint). One light wash sweeps across the monogram (a gradient layer sliding under the mask) so one part of
-     the N and the J brightens while the other dims, and the whole breathes between 70 and 100 %. Still in calm mode, with reduced motion,
-     in focus mode (root flags data-bw-calm / data-bw-focus), in a hidden tab and above 200 % zoom (the script sets .bd-still). */
-  #bw-backdrop { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; contain: strict; --bd-bright: var(--bw-backdrop-bright, rgb(0 60 122 / .075)); --bd-dim: var(--bw-backdrop-dim, rgb(0 60 122 / .045)); animation: bd-breathe 28s ease-in-out infinite alternate; }
-  :root[data-bw-dark="1"] #bw-backdrop { --bd-bright: var(--bw-backdrop-bright, rgb(238 241 246 / .065)); --bd-dim: var(--bw-backdrop-dim, rgb(238 241 246 / .038)); }
-  #bw-backdrop .bd-mark { position: absolute; inset-block-start: 50%; inset-inline-start: calc(50% - 87vmin); inline-size: 150vmin; block-size: 150vmin; translate: 0 -50%; overflow: hidden;
-    -webkit-mask: var(--bd-mask) center / contain no-repeat; mask: var(--bd-mask) center / contain no-repeat; }
-  #bw-backdrop .bd-wash { position: absolute; inset: -60%; background: linear-gradient(135deg, var(--bd-dim) 0%, var(--bd-dim) 30%, var(--bd-bright) 50%, var(--bd-dim) 70%, var(--bd-dim) 100%); animation: bd-sweep 90s ease-in-out infinite alternate; will-change: transform; }
-  @keyframes bd-sweep { from { transform: translate3d(-22%, -22%, 0); } to { transform: translate3d(22%, 22%, 0); } }
-  @keyframes bd-breathe { from { opacity: .7; } to { opacity: 1; } }
-  #bw-backdrop.bd-still, #bw-backdrop.bd-still .bd-wash, :root[data-bw-calm="1"] #bw-backdrop, :root[data-bw-calm="1"] #bw-backdrop .bd-wash, :root[data-bw-focus="1"] #bw-backdrop, :root[data-bw-focus="1"] #bw-backdrop .bd-wash { animation-play-state: paused; }
+  /* 0.15.2 note 1 · the backdrop, reworked: a drafting grid (a graph-paper ruling, 32 px fine and 160 px major lines) over a soft glow, the same
+     language as the document the person is writing. It is a static layer: no animation, no mask, no script work, so it costs nothing at idle and
+     nothing while the pointer moves. It is only tint on the desk (a line is 1.1 to 1.2 contrast against the desk, never text, never behind a
+     page: the sheets are opaque), never takes a pointer event, and fades out toward the edges (hidden in print). */
+  #bw-backdrop { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; contain: strict;
+    --bd-line: var(--bw-backdrop-line, rgb(0 60 122 / .075)); --bd-fine: var(--bw-backdrop-fine, rgb(0 60 122 / .038));
+    --bd-glow-a: var(--bw-backdrop-glow-a, rgb(132 183 235 / .38)); --bd-glow-b: var(--bw-backdrop-glow-b, rgb(190 154 65 / .16));
+    background: radial-gradient(70vmax 55vmax at 6% -14%, var(--bd-glow-a), transparent 62%), radial-gradient(55vmax 45vmax at 104% 108%, var(--bd-glow-b), transparent 62%); }
+  #bw-backdrop::after { content: ""; position: absolute; inset: 0; background:
+      linear-gradient(var(--bd-line) 1px, transparent 1px) 0 0 / 160px 160px,
+      linear-gradient(90deg, var(--bd-line) 1px, transparent 1px) 0 0 / 160px 160px,
+      linear-gradient(var(--bd-fine) 1px, transparent 1px) 0 0 / 32px 32px,
+      linear-gradient(90deg, var(--bd-fine) 1px, transparent 1px) 0 0 / 32px 32px;
+    -webkit-mask: radial-gradient(ellipse 95% 85% at 50% 48%, black 38%, transparent 100%); mask: radial-gradient(ellipse 95% 85% at 50% 48%, black 38%, transparent 100%); }
+  :root[data-bw-dark="1"] #bw-backdrop { --bd-line: var(--bw-backdrop-line, rgb(159 196 242 / .08)); --bd-fine: var(--bw-backdrop-fine, rgb(159 196 242 / .036)); --bd-glow-a: var(--bw-backdrop-glow-a, rgb(64 112 190 / .26)); --bd-glow-b: var(--bw-backdrop-glow-b, rgb(190 154 65 / .09)); }
   #bw-backdrop.bd-off { display: none; }
-  @media (prefers-reduced-motion: reduce) { #bw-backdrop, #bw-backdrop .bd-wash { animation: none; } }
   #bw-ui-host { position: fixed; inset: 0 0 auto 0; z-index: 40; }
 }
 @media print {

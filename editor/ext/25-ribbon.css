@@ -56,7 +56,7 @@
   --rb-c3: color-mix(in srgb, var(--rb-base) 80%, var(--rb-hi) 20%);
   flex: 0 0 100%; min-width: 0; display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--hair); padding-top: 6px; position: relative;
 }
-.rb-bar { display: flex; align-items: flex-end; justify-content: center; block-size: 44px; padding-inline: 16px; box-sizing: border-box; position: relative; }
+.rb-bar { display: flex; align-items: flex-end; justify-content: center; block-size: 44px; padding-inline: 52px; /* 0.15.2: 12 general tabs; the same room on both sides keeps the strip centred and clear of the fold chevron (30 px at 16 px) */ box-sizing: border-box; position: relative; }
 .rb-tabs { display: flex; align-items: flex-end; gap: 4px; min-width: 0; }
 .rb-tab {
   flex: none; display: inline-flex; align-items: center; gap: 8px; block-size: 36px; padding-inline: 14px; border: 0; border-radius: 10px 10px 0 0; background: transparent; cursor: pointer;
@@ -89,6 +89,7 @@
   background: linear-gradient(var(--rb-sel) 0 8px, var(--rb-ground) 8px); border-radius: 0 0 12px 12px;
 }
 .rb-panel[hidden] { display: none; }
+.rb-panel[hidden].rb-glide { display: flex !important; } /* 0.15.2: a folding panel stays on screen for the 240 ms glide (25-ribbon.js rbGlide); `hidden` is already true */
 .rb-g { display: flex; flex-direction: column; flex: none; min-width: 0; padding-inline: 8px; border-radius: 8px; background: var(--rb-c1); }
 .rb-g:nth-child(3n+2) { background: var(--rb-c2); }
 .rb-g:nth-child(3n+3) { background: var(--rb-c3); }

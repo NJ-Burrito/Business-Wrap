@@ -11,9 +11,12 @@
    shell's own motion tokens are not touched). */
 .ic[data-ic]:not(.bw-i) { --bw-dur-page: 200ms; --bw-dur-slow: 200ms; }
 :where(.ic[data-ic]:not(.bw-i)) > * { transform-box: fill-box; transform-origin: 50% 50%; --mvt: var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
-/* the one trigger: hover, keyboard focus, press (:active, and .ic-go which icPress sets on a pressed .b), a palette row's hover and
+/* 0.15.2 hover cost (out/qa-0.15.1/perf/after.md: every animated SVG part costs a layout per frame): a HOVER plays the part moves only once the pointer has RESTED
+   on the tool (class .ic-rest, set 120 ms after the pointer entered it by 42-button-icons.js), never while it sweeps across the ribbon. Focus, press and
+   keyboard selection are intent already and play at once.
+   the one trigger: hover, keyboard focus, press (:active, and .ic-go which icPress sets on a pressed .b), a palette row's hover and
    its keyboard selection, a panel group's summary, a checkbox row, a section title */
-:is(button, summary, [role="option"], .sc, label.chk, label.set-chk, a.b):is(:hover:not(:disabled), :focus-visible, :active:not(:disabled), .ic-go, [aria-selected="true"]) .ic[data-ic]:not(.bw-i) > * { animation: var(--icm, var(--pjm, none)); }
+:is(button, summary, [role="option"], .sc, label.chk, label.set-chk, a.b):is(.ic-rest:hover:not(:disabled), :focus-visible, :active:not(:disabled), .ic-go, [aria-selected="true"]) .ic[data-ic]:not(.bw-i) > * { animation: var(--icm, var(--pjm, none)); }
 
 /* the moves (parts set --x/--y/--r/--s/--o) */
 @keyframes icm-nudge { 0%, 100% { translate: 0 0; } 45% { translate: var(--x, 0) var(--y, 0); } }
@@ -347,3 +350,7 @@
 
 /* 0.15.0: the "from this page on" button of the page-number dialog (42-button-icons.js biHere) */
 [data-ic="biHere"] > :first-child { --y: -2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+
+/* 0.15.2 note 3 · Reading mode: the open book; the spine draws up from the foot, the pages breathe once */
+[data-ic="reading"] > :nth-child(1) { transform-origin: 50% 100%; --icm: icm-grow-y var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="reading"] > :nth-child(2) { --s: 1.08; --icm: icm-pop var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }

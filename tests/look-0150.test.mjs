@@ -1,4 +1,4 @@
-// 0.15.0 lane "look" (UI/UX lane B): note 8 top-bar spacing, note 11 drawers from the top, note 13 the giant NJ backdrop, note 14 the dim navy dark
+// 0.15.0 lane "look" (UI/UX lane B): note 8 top-bar spacing, note 11 drawers from the top, note 13 the backdrop, note 14 the dim navy dark
 // mode (every pair re-measured from the shipped CSS in the real editor, R16), and the perf boosters 1, 2 and 5 (hover motion, idle mark,
 // scoped button-icon decoration). Headless Chrome, closed at the end. Every probe first asserts that it looked (R15): the ribbon, the bar and
 // the elements it measures exist before a gate may pass.
@@ -104,7 +104,7 @@ try {
     await ctx.close();
   }
 
-  // ── note 13: the giant NJ backdrop ──────────────────────────────────────────────────────────────────
+  // ── note 13 (reworked in 0.15.2, note 1): the backdrop is a static drafting-grid layer ─────────────────────
   const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
   const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
   for (const dark of [false, true]) {
@@ -112,47 +112,26 @@ try {
     const tag = dark ? 'dark' : 'light';
     const bd = await page.evaluate(() => {
       const el = document.getElementById('bw-backdrop'); if (!el) return null;
-      const cs = getComputedStyle(el); const mark = el.querySelector('.bd-mark'); const mr = mark.getBoundingClientRect();
+      const cs = getComputedStyle(el);
       const px = (c) => { const k = document.createElement('canvas'); k.width = k.height = 1; const g = k.getContext('2d'); g.clearRect(0, 0, 1, 1); g.fillStyle = c; g.fillRect(0, 0, 1, 1); return [...g.getImageData(0, 0, 1, 1).data]; };
       const desk = px(getComputedStyle(document.documentElement).backgroundColor);
-      const cx = innerWidth / 2, cy = innerHeight / 2;
-      const hit = document.elementFromPoint(cx, cy);
-      const anims = document.getAnimations().filter((a) => el.contains(a.effect?.target));
+      const hit = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
       return {
-        pe: cs.pointerEvents, z: cs.zIndex, pos: cs.position, first: document.body.firstElementChild === el, aria: el.getAttribute('aria-hidden'), size: [Math.round(mr.width), Math.round(mr.height)], vmin: Math.min(innerWidth, innerHeight),
-        bright: px(cs.getPropertyValue('--bd-bright').trim()), dim: px(cs.getPropertyValue('--bd-dim').trim()), desk, hitInside: el.contains(hit) || hit === el, hitTag: hit?.tagName + '#' + (hit?.id || ''),
-        anims: anims.map((a) => ({ name: a.animationName, state: a.playState, props: [...new Set(a.effect.getKeyframes().flatMap((f) => Object.keys(f)))].filter((p) => !['offset', 'easing', 'composite', 'computedOffset'].includes(p)), ms: a.effect.getTiming().duration })),
-        bodyBg: getComputedStyle(document.body).backgroundColor,
+        pe: cs.pointerEvents, z: cs.zIndex, pos: cs.position, first: document.body.firstElementChild === el, aria: el.getAttribute('aria-hidden'),
+        line: px(cs.getPropertyValue('--bd-line').trim()), fine: px(cs.getPropertyValue('--bd-fine').trim()), desk, hitInside: el.contains(hit) || hit === el, hitTag: hit?.tagName + '#' + (hit?.id || ''),
+        anims: document.getAnimations().filter((a) => el.contains(a.effect?.target) || a.effect?.target === el).length, name: cs.animationName, bodyBg: getComputedStyle(document.body).backgroundColor,
       };
     });
     check(`note 13 (${tag}): #bw-backdrop exists as the body's first child, aria-hidden, fixed, z-index -1, no pointer events`, !!bd && bd.first && bd.aria === 'true' && bd.pos === 'fixed' && bd.z === '-1' && bd.pe === 'none', JSON.stringify(bd));
     if (bd) {
-      check(`note 13 (${tag}): the monogram is 150 vmin`, Math.abs(bd.size[0] - bd.vmin * 1.5) <= 2, `${bd.size} vs ${bd.vmin * 1.5}`);
       check(`note 13 (${tag}): clicking the desk at its centre hits the desk, not the backdrop`, !bd.hitInside, bd.hitTag);
       check(`note 13 (${tag}): the body is transparent so the backdrop shows through`, bd.bodyBg === 'rgba(0, 0, 0, 0)', bd.bodyBg);
-      // composited over the desk, the bright and the dim state both stay decorative: contrast 1.08 to 1.20 (note 13 AC2)
       const over = (c, d) => { const a = c[3] / 255; return [0, 1, 2].map((i) => c[i] * a + d[i] * (1 - a)); };
-      const rb = ratio(over(bd.bright, bd.desk), bd.desk), rd = ratio(over(bd.dim, bd.desk), bd.desk);
-      check(`note 13 (${tag}): contrast over the desk is 1.08 to 1.20 in the bright state (${rb.toFixed(3)}) and the dim state (${rd.toFixed(3)})`, rb <= 1.2 && rb >= 1.08 && rd <= 1.2 && rd >= 1.06 && rb > rd, `${rb} ${rd}`);
-      check(`note 13 (${tag}): its motion is the sweep and the breathing, transform and opacity only, 90 s and 28 s`, bd.anims.length === 2 && bd.anims.every((a) => a.props.every((p) => ['transform', 'opacity'].includes(p))) && bd.anims.some((a) => a.ms === 90000) && bd.anims.some((a) => a.ms === 28000), JSON.stringify(bd.anims));
-      check(`note 13 (${tag}): it is running`, bd.anims.every((a) => a.state === 'running'), JSON.stringify(bd.anims.map((a) => a.state)));
+      const rl = ratio(over(bd.line, bd.desk), bd.desk), rf = ratio(over(bd.fine, bd.desk), bd.desk);
+      check(`note 13 (${tag}): the major line is decorative, contrast over the desk 1.04 to 1.25 (${rl.toFixed(3)}), the fine line quieter (${rf.toFixed(3)})`, rl <= 1.25 && rl >= 1.04 && rf >= 1.01 && rf < rl, `${rl} ${rf}`);
+      check(`note 13 (${tag}): it is static: no animation at all (idle cost nothing)`, bd.anims === 0 && bd.name === 'none', JSON.stringify({ anims: bd.anims, name: bd.name }));
     }
-    // zoom above 200 % stills it; back to 100 % runs it again
-    await page.evaluate(() => document.documentElement.style.setProperty('--bw-zoom', '2.5'));
-    await page.waitForTimeout(150);
-    const still = await page.evaluate(() => document.getAnimations().filter((a) => document.getElementById('bw-backdrop').contains(a.effect?.target)).map((a) => a.playState));
-    check(`note 13 (${tag}): zoom above 200 % pauses both animations`, still.length === 2 && still.every((s) => s === 'paused'), still.join());
-    await page.evaluate(() => document.documentElement.style.setProperty('--bw-zoom', '1'));
-    await page.waitForTimeout(150);
-    const back = await page.evaluate(() => document.getAnimations().filter((a) => document.getElementById('bw-backdrop').contains(a.effect?.target)).map((a) => a.playState));
-    check(`note 13 (${tag}): back at 100 % they run again`, back.length === 2 && back.every((s) => s === 'running'), back.join());
     check(`note 13 (${tag}): no page errors`, errors.length === 0, errors.slice(0, 2).join(' | '));
-    await ctx.close();
-  }
-  for (const [name, opts] of [['calm', { calm: true }], ['reduced motion', { reduced: true }]]) {
-    const { ctx, page } = await open({ ui: 'en', ...opts });
-    const st = await page.evaluate(() => { const el = document.getElementById('bw-backdrop'); return el ? document.getAnimations().filter((a) => el.contains(a.effect?.target)).map((a) => a.playState) : null; });
-    check(`note 13 (${name}): the backdrop exists and none of its animations runs`, st !== null && st.every((s) => s !== 'running'), JSON.stringify(st));
     await ctx.close();
   }
   { // the backdrop never reaches print or the saved document
@@ -270,7 +249,7 @@ try {
     const btn = await sh(page, (r) => { const b = r.querySelector('.island .ribbon .rb-panel button[data-a]'); if (!b) return null; const x = b.getBoundingClientRect(); return { x: x.left + x.width / 2, y: x.top + x.height / 2 }; });
     check('perf 1: a ribbon button was found to hover (the probe looked)', !!btn);
     if (btn) {
-      await page.mouse.move(5, 700); await page.mouse.move(btn.x, btn.y, { steps: 2 }); await page.waitForTimeout(40);
+      await page.mouse.move(5, 700); await page.mouse.move(btn.x, btn.y, { steps: 2 }); await page.waitForTimeout(160); // 0.15.2: the part moves play once the pointer has rested (120 ms)
       const a = await sh(page, (r) => { const b = r.querySelector('.island .ribbon .rb-panel button[data-a]:hover'); if (!b) return null; return b.getAnimations({ subtree: true }).map((x) => ({ n: x.animationName || x.transitionProperty, end: x.effect.getComputedTiming().endTime })); });
       check('perf 1: hovering a tool plays something (the probe looked)', Array.isArray(a) && a.length > 0, JSON.stringify(a));
       const long = (a || []).filter((x) => x.end > 250 && !/^(background|border|box-shadow|outline)/.test(x.n));
