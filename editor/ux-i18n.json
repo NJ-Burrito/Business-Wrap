@@ -1,6 +1,13 @@
 {
  "$comment": "Shell UX strings (0.10.0): ux.* (direction), view.* (page view modes), explain.* (hover explainers). Merged into engine/i18n.json ui.<lang> by engine/build-editor.mjs.",
  "ar": {
+ "zoomHeight": "ملء الارتفاع",
+ "vLegibility": "الرسم في القسم {p}: أصغر خط يُطبع {pt} نقطة (الحد {min}) وعدد التداخلات {n}",
+ "dgk_continue": "يتابع في الشكل التالي",
+ "zoomPct": "النسبة",
+ "projExport": "تصدير مشروع",
+ "projImport": "استيراد مشروع",
+ "projSoon": "تصدير المشاريع واستيرادها غير متاح في هذه النسخة بعد.",
   "ux.dirRtl": "الكلمات من اليمين إلى اليسار (يبقى التخطيط في مكانه، ويُحفظ اختيارك)",
   "ux.dirLtr": "الكلمات من اليسار إلى اليمين (يبقى التخطيط في مكانه، ويُحفظ اختيارك)",
   "view.mode": "الصفحات",
@@ -107,6 +114,13 @@
   "vNoAc": "قصة مستخدم بلا معايير قبول: {x}"
  },
  "en": {
+ "zoomHeight": "Fill height",
+ "vLegibility": "Diagram in section {p}: smallest text prints at {pt} pt (minimum {min}), {n} overlap(s)",
+ "dgk_continue": "Continues in the next figure",
+ "zoomPct": "Zoom",
+ "projExport": "Export project",
+ "projImport": "Import project",
+ "projSoon": "Project export and import are not available in this build yet.",
   "ux.dirRtl": "Words run right to left (the layout stays put; your choice is remembered)",
   "ux.dirLtr": "Words run left to right (the layout stays put; your choice is remembered)",
   "view.mode": "Pages",
