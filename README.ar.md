@@ -121,7 +121,7 @@ node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|e
 </details>
 
 <details>
-<summary>⌨️ أوامر «/» في Claude Code (0.13.0)</summary>
+<summary>⌨️ أوامر «/» في Claude Code (0.15.2)</summary>
 
 عند تثبيت Business-Wrap إضافةً في Claude Code تظهر هذه الأوامر؛ اكتب `/` لتراها. كل أمر يشغّل `engine/cli.mjs` (الأمر نفسه `business-wrap <verb>` الذي تستطيع تشغيله بنفسك، بلا ذكاء اصطناعي وبلا شبكة) ويقول في سطر واحد ما فعله.
 
@@ -139,6 +139,14 @@ node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|e
 | `/business-wrap:verify-history <file>` | يفحص السجل الكاشف للعبث |
 | `/business-wrap:report <from> <to>` | تقرير العمل لفترة |
 | `/business-wrap:update [--check\|--notes\|--apply --yes]` | يفحص، أو يعرض الجديد، أو يثبّت (بعد موافقتك فقط) |
+| `/business-wrap:tabs [project]` | الوثائق المفتوحة في المحرر الحي وصحة الخادم (يحتاج المحرر مفتوحًا) |
+| `/business-wrap:outline [doc-id] [ar\|en]` | مخطط الوثيقة المفتوحة: الفصول والأقسام والكتل |
+| `/business-wrap:edit <instruction>` | يغيّر الوثيقة المفتوحة في دفعة واحدة قابلة للتراجع وموقّعة باسم الوكيل؛ يبقي النسختين العربية والإنجليزية متوافقتين؛ وCtrl+Z يتراجع عنها كلها |
+| `/business-wrap:proofread [ar\|en\|both] [--apply]` | يدقق الوثيقة المفتوحة (الهمزات والتاء المربوطة وعلامات الترقيم اللاتينية وأخطاء الإنجليزية واختلاف العربي عن الإنجليزي)؛ ولا يصلح إلا مع `--apply` |
+| `/business-wrap:check [doc-id]` | يشغّل لوحة الفحص في المحرر على الوثيقة المفتوحة ويلخّص المشكلات |
+| `/business-wrap:diagram <description>` | يرسم مخططًا ويعرضه صورة PNG ثم يدرجه في الوثيقة المفتوحة |
+| `/business-wrap:explain <tool or feature>` | يشرح ميزة في المحرر من الوثائق ومكانها في الشريط |
+| `/business-wrap:action <name>` | يشغّل إجراءً واحدًا في المحرر: `check` و`renumber` و`saveHtml` و`exportPdf` و`share` |
 
 ودون Claude Code تعمل الأوامر نفسها بـ `npm run cli -- <verb>` (مثلًا `npm run cli -- open samples/event-permit` و`npm run host:close`). كل أمر يعمل دون شبكة ودون ذكاء اصطناعي.
 

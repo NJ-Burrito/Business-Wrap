@@ -17,6 +17,8 @@ cat ops.json | business-wrap editor ops --doc BW-SRS-001 --locale ar --ops-file 
 
 An op list or a pointer is never an argv value: give a file or stdin.
 
+⌨️ Claude Code slash commands over these tools (0.15.2): `/business-wrap:tabs`, `outline`, `edit`, `proofread`, `check`, `diagram`, `explain`, `action`. `edit` and `proofread --apply` send ONE `editor_ops` batch per edition (one undo step). `action` is limited to the `editor_action` allow-list.
+
 ## 🔗 The frozen contract
 
 | Piece | Shape |
@@ -101,5 +103,7 @@ business-wrap editor ops --doc BW-SRS-001 --locale ar --ops-file ops.json --agen
 ## 🩺 أخطاء يستطيع الوكيل أن يتفرع عليها
 
 `NO_HOST` (شغّل خادما: `open_in_editor`) · `NO_DOC` (استورد الوثيقة أولا) · `TAB_TIMEOUT` (اللسان معلّق: `host_health`) · `CONFLICT` · `BAD_OP` · `UNKNOWN_ACTION` · `RESTART_REQUIRED` (حُدّثت الإضافة والخادم يعمل: `/reload-plugins` أو أعد تشغيل العميل).
+
+- ⌨️ أوامر الشرطة المائلة في Claude Code فوق هذه الأدوات (0.15.2): `/business-wrap:tabs` و`outline` و`edit` و`proofread` و`check` و`diagram` و`explain` و`action`. يرسل `edit` و`proofread --apply` دفعة `editor_ops` واحدة لكل نسخة (خطوة تراجع واحدة). ويقتصر `action` على القائمة المسموحة في `editor_action`.
 
 </div>
