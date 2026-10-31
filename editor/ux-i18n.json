@@ -94,7 +94,21 @@
   "ux.deletedDoc": "نُقلت الوثيقة إلى المحذوفات",
   "vReqDup": "رمز متطلب مكرر: {x}",
   "vReqSeq": "رمز متطلب خارج التسلسل: {x} (المتوقع {y})",
-  "vNoAc": "قصة مستخدم بلا معايير قبول: {x}"
+  "vNoAc": "قصة مستخدم بلا معايير قبول: {x}",
+  "ico.title": "أيقونات الملفات",
+  "ico.lead": "اعرض ملفات PDF وDOCX وHTML بأيقونات بزنس راب داخل مستكشف ويندوز.",
+  "ico.apply": "استخدم أيقونات بزنس راب على هذا الجهاز",
+  "ico.restore": "أعِد أيقونات ويندوز",
+  "ico.note": "هذا يغيّر أيقونة كل ملف PDF وDOCX وHTML في حساب ويندوز هذا، وليس ملفات بزنس راب فقط. يمكنك التراجع في أي وقت.",
+  "ico.on": "أيقونات بزنس راب مفعّلة.",
+  "ico.off": "أيقونات ويندوز الأصلية قيد الاستخدام.",
+  "ico.unsupported": "هذه الميزة لنظام ويندوز فقط.",
+  "ico.busy": "جارٍ التنفيذ…",
+  "ico.done": "تم تطبيق الأيقونات: {ok}.",
+  "ico.partial": "تم تطبيق: {ok}. لم يُطبَّق: {bad}.",
+  "ico.none": "لم يتغيّر شيء: {bad}.",
+  "ico.restored": "عادت أيقونات ويندوز.",
+  "ico.fail": "تعذّر تغيير الأيقونات: {m}"
  },
  "en": {
  "zoomHeight": "Fill height",
@@ -190,6 +204,20 @@
   "ux.deletedDoc": "Document moved to the bin",
   "vReqDup": "Duplicate requirement code: {x}",
   "vReqSeq": "Requirement code out of sequence: {x} (expected {y})",
-  "vNoAc": "User story without acceptance criteria: {x}"
+  "vNoAc": "User story without acceptance criteria: {x}",
+  "ico.title": "File icons",
+  "ico.lead": "Show PDF, DOCX and HTML files with the Business-Wrap icons in Windows Explorer.",
+  "ico.apply": "Use Business-Wrap icons on this PC",
+  "ico.restore": "Restore Windows icons",
+  "ico.note": "This changes the icon of every .pdf, .docx and .html file on this Windows account, not only Business-Wrap ones. You can undo it any time.",
+  "ico.on": "Business-Wrap icons are on.",
+  "ico.off": "The standard Windows icons are in use.",
+  "ico.unsupported": "This feature is for Windows only.",
+  "ico.busy": "Working…",
+  "ico.done": "Icons applied: {ok}.",
+  "ico.partial": "Applied: {ok}. Not applied: {bad}.",
+  "ico.none": "Nothing changed: {bad}.",
+  "ico.restored": "The Windows icons are back.",
+  "ico.fail": "Could not change the icons: {m}"
  }
 }

@@ -35,3 +35,9 @@
 .set-srv-status[data-st="on"] { color: var(--bw-accent-strong); }
 .set-srv .btns .b[disabled] { opacity: .6; cursor: progress; }
 .set-srv .btns .b .i { inline-size: 18px; block-size: 18px; }
+
+/* File icons card (0.15.1): editor/settings.js icoInner */
+.set-ico-status[data-st="on"] { color: var(--bw-accent-strong); }
+.set-ico-status[data-st="bad"] { color: var(--bw-danger, #b3261e); }
+.set-ico .btns .b[disabled] { opacity: .6; cursor: not-allowed; }
+.set-ico .btns .b .i { inline-size: 18px; block-size: 18px; }
