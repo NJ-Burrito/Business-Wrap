@@ -212,6 +212,14 @@ try {
   server?.close(); server?.closeAllConnections?.();
   fs.rmSync(tmp, { recursive: true, force: true });
 }
-function document_ok(rv, f) { return !!rv && JSON.stringify(rv.args || []).includes(path.basename(f)) && String(rv.args?.[0] || '').includes('/select'); }
+// Windows selects the file in Explorer (/select,"<file>"); macOS reveals it (open -R <file>); Linux has no select verb, so the host opens
+// the file's folder (xdg-open <dir>): the folder is the file's own, never the documents root.
+function document_ok(rv, f) {
+  if (!rv) return false;
+  const a = JSON.stringify(rv.args || []);
+  if (process.platform === 'win32') return a.includes(path.basename(f)) && String(rv.args?.[0] || '').includes('/select');
+  if (process.platform === 'darwin') return rv.cmd === 'open' && rv.args?.[0] === '-R' && a.includes(path.basename(f));
+  return rv.cmd === 'xdg-open' && rv.args?.[0] === path.dirname(f);
+}
 if (failed) { console.log(`files-perf-0140: ${failed} FAILED`); process.exit(1); }
 console.log('files-perf-0140: all passed');

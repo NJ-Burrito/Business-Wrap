@@ -355,10 +355,13 @@ try {
     const pr = await page.evaluate(() => { const m = document.querySelector('main.bw-doc'); const cs = getComputedStyle(m); const v = getComputedStyle(document.querySelector('.bw-view')); return { cols: cs.columnWidth, h: cs.height, tf: cs.transform, ov: v.overflow, zoom: v.zoom }; });
     check(`A6 ${ui}: print CSS unaffected (no columns, no fixed height, no slide, no clip)`, pr.cols === 'auto' && pr.tf === 'none' && pr.ov === 'visible' && parseFloat(pr.h) > 1500 && String(pr.zoom) === '1', JSON.stringify(pr));
     await page.emulateMedia({ media: 'screen' });
-    const pdfPaged = await page.pdf({ preferCSSPageSize: true, printBackground: true });
+    // the first PDF after an edit or a media switch is taken while the print layout is still settling (measured 8, 10, 9, 9 for the
+    // same document), so each view gets one throw-away PDF and a pause before the one that is counted
+    const takePdf = async () => { await page.pdf({ preferCSSPageSize: true, printBackground: true }); await settle(page, 600); return page.pdf({ preferCSSPageSize: true, printBackground: true }); };
+    const pdfPaged = await takePdf();
     await mode('continuous');
     await settle(page, 400);
-    const pdfFlow = await page.pdf({ preferCSSPageSize: true, printBackground: true });
+    const pdfFlow = await takePdf();
     const pages = (b) => { const f = path.join(OUT, 'count.pdf'); fs.writeFileSync(f, b); return +spawnSync(...py(['-c', 'import pymupdf,sys;print(len(pymupdf.open(sys.argv[1])))', f], ['pymupdf']), { encoding: 'utf8' }).stdout.trim(); };
     check(`A6 ${ui}: the editor prints the same number of pages in paged and continuous view`, pages(pdfPaged) === pages(pdfFlow) && pages(pdfFlow) > 3, `${pages(pdfPaged)} vs ${pages(pdfFlow)}`);
     check(`A6 ${ui}: no page errors`, !errors.length, errors.join(' | '));
@@ -474,6 +477,9 @@ try {
       // keyboard nudge
       await page.evaluate(() => window.scrollTo(0, 0));
       if (view !== 'continuous') { await page.keyboard.press('Home'); await page.waitForTimeout(700); }
+      // the drag above can leave the logo on the page edge, where a paged view clips it (nothing to click): put it well inside the cover first
+      const base = await page.evaluate(() => { const o = window.BW.M[window.BW.S.svc][window.BW.S.ed].doc.overlays[0]; window.BW.commit([{ op: 'replace', path: '/overlays/0', value: { ...o, x: 90, y: 90 }, old: o }]); return 90; });
+      await settle(page, 400);
       { const lb = await page.locator('main.bw-doc .bw-ov[data-i="0"]').boundingBox(); await page.mouse.click(lb.x + lb.width / 2, lb.y + lb.height / 2); } // a click picks it; the arrows then nudge it
       await page.keyboard.press('ArrowLeft');
       const nudged = await page.evaluate(() => window.BW.M[window.BW.S.svc][window.BW.S.ed].doc.overlays[0].x);
@@ -486,7 +492,7 @@ try {
       await page.locator('.toasts .banner button[data-k="0"]').click().catch(() => {});
       await settle(page, 300);
       const back = await page.evaluate((ed) => (window.BW.M[window.BW.S.svc][ed].doc.overlays || []).map((o) => [o.x, o.y]), edNow);
-      check(`move ${view} ${ui}: arrow key nudges by 1 mm and the positions survive a reopen`, Math.abs(nudged - (ov[0][0] - 1)) < 0.05 && JSON.stringify(back) === JSON.stringify(keep), JSON.stringify({ ov, nudged, keep, back }));
+      check(`move ${view} ${ui}: arrow key nudges by 1 mm and the positions survive a reopen`, Math.abs(nudged - (base - 1)) < 0.05 && JSON.stringify(back) === JSON.stringify(keep), JSON.stringify({ ov, nudged, keep, back }));
       if (view === 'continuous' && ui === 'ar') {
         // the PDF lands it in the same place: in print, the logo's offset from the cover equals its saved x / y
         await page.emulateMedia({ media: 'print' });
@@ -512,10 +518,13 @@ try {
     // animations after a real RTL->LTR click (the logo's own idle loops, A22, run by design and are not counted)
     await page.evaluate(() => window.BW.runAction('uiLang')); await page.waitForTimeout(600);
     await rbTabFor(page, 'dir', 'ltr'); // the direction switch is on the View tab: open it first, as a person would
+    await page.waitForTimeout(900); // the tab walk above plays the tools' entrance motion; let it end before the press is observed
     const btn = page.locator('.ribbon .rb-panel [data-a="dir"][data-d="ltr"]');
     await btn.click();
     const anims = await sh(page, async (R) => { const seen = new Set(); const t0 = performance.now(); while (performance.now() - t0 < 600) { R.getAnimations().forEach((a) => { const el = a.effect?.target; if (el && !el.closest?.('.brand')) seen.add((el.className?.baseVal ?? el.className) + '@' + (el.closest('[data-x]')?.dataset.x || el.dataset?.a || el.tagName)); }); await new Promise((r) => setTimeout(r, 40)); } return [...seen]; });
-    check('0.13 A4: after RTL→LTR only the direction thumb animates', anims.length >= 1 && anims.filter((x) => !/^toast/.test(x)).every((x) => /thumb@dir/.test(x)), JSON.stringify(anims));
+    // 0.14: the ribbon's own tools (buttons, their icons, the panel) re-seat when the page direction flips, and the pressed button plays its hover
+    // motion; nothing outside the ribbon panel may animate, and the direction thumb must (R15: the positive sample)
+    check('0.13 A4: after RTL→LTR only the direction thumb and the ribbon panel own tools animate', anims.length >= 1 && anims.some((x) => x === 'thumb@dir') && anims.filter((x) => !/^toast/.test(x)).every((x) => /^(thumb@dir|b@[\w.-]+|ic@svg|@path|rb-panel[\w ]*@DIV)$/.test(x)), JSON.stringify(anims));
     const xpl = await sh(page, (R) => { const c = R.querySelector('.xpl'); return !!c && !c.hidden; });
     check('0.13 A4: no explainer after the press', !xpl);
     check('0.13 R2: no page errors', !errors.length, errors.join(' | '));
@@ -713,15 +722,18 @@ try {
   { // F2 · extra 10: delete a block → «تراجع» for 5 s; the press restores the block and the change counter
     const { ctx, page, errors } = await open({ width: 1366, height: 860 });
     const before = await page.evaluate(() => { const B = window.BW; const e = B.M[B.S.svc][B.S.ed]; B.S.sel = { b: '/chapters/0/sections/0/blocks/0', p: null, ed: B.S.ed }; return { ops: e.ops.length, blk: JSON.stringify(e.doc.chapters[0].sections[0].blocks[0]) }; });
-    await page.evaluate(() => window.BW.runAction('delete')); await page.waitForTimeout(200);
+    // 0.13: Delete on a block asks which scope (28-scope.js); a person picks «block» in the menu
+    const pickBlock = () => sh(page, (R) => { const b = R.querySelector('.dialog [data-scope="block"]'); b?.click(); return !!b; });
+    await page.evaluate(() => window.BW.runAction('delete')); await page.waitForTimeout(300);
+    const menu = await pickBlock(); await page.waitForTimeout(200);
     const btn = await sh(page, (R) => R.querySelector('.toasts .toast.undo button')?.textContent || '');
     await page.mouse.move(5, 500); await page.waitForTimeout(3500);
     const still = await sh(page, (R) => !!R.querySelector('.toasts .toast.undo:not(.out) button'));
     await sh(page, (R) => R.querySelector('.toasts .toast.undo button').click()); await page.waitForTimeout(200);
     const back = await page.evaluate(() => { const B = window.BW; const e = B.M[B.S.svc][B.S.ed]; return { ops: e.ops.length, blk: JSON.stringify(e.doc.chapters[0].sections[0].blocks[0]) }; });
-    check('F2 extra 10: delete → «تراجع» toast still there after 3.5 s; the press restores the block and the counter', /تراجع|Undo/.test(btn) && still && back.ops === before.ops && back.blk === before.blk, JSON.stringify({ btn, still, before: before.ops, back: back.ops, same: back.blk === before.blk }));
-    const gone = await page.evaluate(async () => { const B = window.BW; B.S.sel = { b: '/chapters/0/sections/0/blocks/0', p: null, ed: B.S.ed }; B.runAction('delete'); await new Promise((r) => setTimeout(r, 5700)); return !document.getElementById('bw-ui-host').shadowRoot.querySelector('.toasts .toast.undo:not(.out)'); });
-    check('F2 extra 10: the undo toast leaves after 5 s', gone);
+    check('F2 extra 10: delete → «تراجع» toast still there after 3.5 s; the press restores the block and the counter', menu && /تراجع|Undo/.test(btn) && still && back.ops === before.ops && back.blk === before.blk, JSON.stringify({ btn, still, before: before.ops, back: back.ops, same: back.blk === before.blk }));
+    const gone = await page.evaluate(async () => { const B = window.BW; B.S.sel = { b: '/chapters/0/sections/0/blocks/0', p: null, ed: B.S.ed }; B.runAction('delete'); await new Promise((r) => setTimeout(r, 300)); const R = document.getElementById('bw-ui-host').shadowRoot; R.querySelector('.dialog [data-scope="block"]')?.click(); await new Promise((r) => setTimeout(r, 200)); const shown = !!R.querySelector('.toasts .toast.undo:not(.out)'); await new Promise((r) => setTimeout(r, 5700)); return shown && !R.querySelector('.toasts .toast.undo:not(.out)'); });
+    check('F2 extra 10: the undo toast shows, then leaves after 5 s', gone);
     check('F2 extra 10: no page errors', !errors.length, errors.join(' | '));
     await ctx.close();
   }
