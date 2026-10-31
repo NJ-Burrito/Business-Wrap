@@ -67,6 +67,12 @@ function world() {
   r.seed(`${FE}.html\\UserChoice`, { ProgId: 'ChromeHTML' });
   r.seed(`${CL}ChromeHTML`, { '': 'Chrome HTML Document' });
   r.seed(`${CL}ChromeHTML\\DefaultIcon`, { '': { data: '%ProgramFiles%\\Chrome\\chrome.exe,0', kind: 'ExpandString' } });
+  // Windows 11 24H2+ (0.15.3, measured on the owner's PC): Explorer draws the icon of UserChoiceLatest\ProgId (a SUBKEY named ProgId),
+  // which differs from UserChoice for .pdf and .html; the ProgID may hold a space ("Opera GXStable")
+  r.seed(`${FE}.pdf\\UserChoiceLatest\\ProgId`, { ProgId: 'PdfGear.App.1' });
+  r.seed(`${CL}PdfGear.App.1\\DefaultIcon`, { '': '"C:\\Program Files\\PDFgear\\PDFgear.exe",1' });
+  r.seed(`${FE}.html\\UserChoiceLatest\\ProgId`, { ProgId: 'Opera GXStable' });
+  r.seed(`${CL}Opera GXStable\\DefaultIcon`, { '': 'C:\\Opera\\opera.exe,0' });
   return r;
 }
 const mk = (reg, o = {}) => { let n = 0; const sd = path.join(tmp, `state-${Math.random().toString(36).slice(2)}`); return { sd, n: () => n, fi: createFileIcons({ reg, refresh: async () => { n += 1; return true; }, platform: 'win32', stateDir: sd, ...o }) }; };
@@ -84,14 +90,16 @@ try {
     check('apply: DefaultIcon of each ProgID now points at our file', (await reg.ops([{ op: 'get', key: `${CL}ChromeHTML\\DefaultIcon`, name: '' }]))[0].data === `${path.join(sd, 'html.ico')},0`);
     const bk = JSON.parse(fs.readFileSync(path.join(sd, BACKUP_NAME), 'utf8'));
     check('backup: written with each ProgID\'s prior value, key presence and kind', bk.entries['AcroExch.Document.DC'].value === 'C:\\Acro\\acro.ico,0' && bk.entries['Word.Document.12'].value === null && bk.entries['Word.Document.12'].iconKey === false && bk.entries['Word.Document.12'].progKey === false && bk.entries.ChromeHTML.kind === 'ExpandString', JSON.stringify(bk));
+    check('apply (24H2): every ProgID Explorer may use is covered: pdf = UserChoice + UserChoiceLatest, html likewise (with a space in the id)', a.results.find((x) => x.ext === 'pdf').progIds.join() === 'AcroExch.Document.DC,PdfGear.App.1' && a.results.find((x) => x.ext === 'html').progIds.join() === 'ChromeHTML,Opera GXStable', JSON.stringify(a.results));
+    check('apply (24H2): the latest choice DefaultIcon is ours too, and its original is in the backup (absent key included)', (await reg.ops([{ op: 'get', key: `${CL}PdfGear.App.1\\DefaultIcon`, name: '' }, { op: 'get', key: `${CL}Opera GXStable\\DefaultIcon`, name: '' }])).every((x, i) => x.data === `${path.join(sd, i ? 'html.ico' : 'pdf.ico')},0`) && JSON.parse(fs.readFileSync(path.join(sd, BACKUP_NAME), 'utf8')).entries['PdfGear.App.1'].value === '"C:\\Program Files\\PDFgear\\PDFgear.exe",1');
     const st = await fi.status();
-    check('status: applied, every row ours', st.supported && st.applied && st.rows.length === 3 && st.rows.every((x) => x.ours), JSON.stringify(st));
+    check('status: applied, every row ours', st.supported && st.applied && st.rows.length === 5 && st.rows.every((x) => x.ours), JSON.stringify(st));
     await fi.apply(); // a second press must not back up our own icon as the "original"
     const bk2 = JSON.parse(fs.readFileSync(path.join(sd, BACKUP_NAME), 'utf8'));
     check('apply twice: the backup still holds the true originals', bk2.entries['AcroExch.Document.DC'].value === 'C:\\Acro\\acro.ico,0' && bk2.entries.ChromeHTML.value === '%ProgramFiles%\\Chrome\\chrome.exe,0');
     check('the registry really changed (the test is not vacuous)', reg.snapshot() !== before);
     const r = await fi.restore();
-    check('restore: every extension restored, Explorer told again', r.ok && r.results.length === 3 && r.results.every((x) => x.ok) && n() === 3, JSON.stringify(r));
+    check('restore: every extension restored, Explorer told again', r.ok && r.results.length === 5 && r.results.every((x) => x.ok) && n() === 3, JSON.stringify(r));
     check('restore: the registry is exactly as before (absent key and ProgID gone, ExpandString kept)', reg.snapshot() === before, reg.snapshot().slice(0, 400));
     check('restore: backup removed, status says not applied', !fs.existsSync(path.join(sd, BACKUP_NAME)) && (await fi.status()).applied === false);
     const r2 = await fi.restore();
@@ -192,6 +200,8 @@ try {
       await page.waitForFunction(() => /Business-Wrap icons are on|Standard Windows|standard Windows|مفعّلة|أيقونات ويندوز الأصلية/.test(document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer .set-ico-status')?.textContent || ''), null, { timeout: 8000 });
       const c = await card(page);
       check(`ui ${lang}: the row shows both buttons and the honest note (served)`, c.text.includes(apply) && c.text.includes(restore) && c.text.includes(note) && c.keys.join() === 'icoApply,icoRestore' && c.dis.every((d) => !d), JSON.stringify(c).slice(0, 300));
+      const fr = await page.evaluate(() => [...document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('.drawer .set-ico-folders li')].map((li) => ({ svg: !!li.querySelector('svg path'), t: li.textContent.trim() })));
+      check(`ui ${lang}: the folder-icons preview row shows four labelled folders (0.15.3)`, fr.length === 4 && fr.every((x) => x.svg && x.t) && (lang === 'en' ? fr[1].t === 'PDF files folder' : /PDF/.test(fr[1].t) && /[؀-ۿ]/.test(fr[1].t)), JSON.stringify(fr));
       if (lang === 'en') {
         await page.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer [data-k="icoApply"]').click());
         await page.waitForFunction(() => /Icons applied/.test(document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer .set-ico-status')?.textContent || ''), null, { timeout: 8000 });

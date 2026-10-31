@@ -22,7 +22,7 @@ import { fork, spawnSync } from 'node:child_process';
 import { crawl, harvestToDocument } from './harvest/crawl.mjs';
 import { learningRoute } from './learning/http.mjs';
 import { printApi } from './printers.mjs';
-import { workspace as liveWorkspace, ensure as ensureWorkspace, outName, uniquePath, docTitle, inHistory, localDir } from './workspace.mjs';
+import { workspace as liveWorkspace, ensure as ensureWorkspace, outName, uniquePath, docTitle, inHistory, localDir, noteOutput } from './workspace.mjs';
 
 
 /** Re-wraps an older file in this editor. If that cannot be done without losing history (a newer format, a failing
@@ -220,6 +220,7 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
         let docxError = null;
         let fontNotes = [];
         try { ({ docx, fontNotes } = exportDocx(body.doc, { locale, theme, docxPath, embedFonts: body.embedFonts !== false })); } catch (e) { docxError = String(e.message).slice(0, 400); }
+        if (ws) { noteOutput(pdfPath); if (docx) noteOutput(docxPath); }
         const rel = (f) => `/files/${path.relative(filesRoot(), f).split(path.sep).map(encodeURIComponent).join('/')}`;
         return send(200, { pdf: pdf.pdf, docx, docxError, fontNotes, pdfUrl: rel(pdf.pdf), docxUrl: docx && rel(docx) });
       }

@@ -18,7 +18,7 @@ import { assertBase } from './edits-base.mjs';
 import { loadManifest, resolveFonts, fontFaceCss, systemFamily, normaliseFont, ttfDataUri } from './fonts.mjs';
 import { config } from './config.mjs';
 import { DIAGRAM } from './diagram.mjs';
-import { workspace, ensure, uniquePath, outName, docTitle } from './workspace.mjs'; // the default output folder of the command line (a cycle by design: used inside functions only)
+import { workspace, ensure, uniquePath, outName, docTitle, noteOutput } from './workspace.mjs'; // the default output folder of the command line (a cycle by design: used inside functions only)
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO = path.resolve(HERE, '..');
@@ -381,11 +381,17 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const f = target('print.html');
     fs.mkdirSync(path.dirname(f), { recursive: true });
     fs.writeFileSync(f, printHtml(doc, { locale, theme }).html);
+    if (!out) noteOutput(f);
     console.log(f);
   } else {
     for (const w of diagramWarnings(doc, { theme, locale })) console.error(`WARN ${w}`);
     const r = await exportPdf(doc, { locale, theme, pdfPath: target('pdf') });
     console.log(`PDF  ${r.pdf}  (${r.post})`);
-    if (!a['no-docx']) console.log(`DOCX ${exportDocx(doc, { locale, theme, docxPath: target('docx'), embedFonts: !a['no-embed-fonts'] }).docx}`);
+    if (!a['no-docx']) {
+      const dx = exportDocx(doc, { locale, theme, docxPath: target('docx'), embedFonts: !a['no-embed-fonts'] }).docx;
+      console.log(`DOCX ${dx}`);
+      if (!out) noteOutput(dx);
+    }
+    if (!out) noteOutput(r.pdf);
   }
 }

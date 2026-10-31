@@ -18,6 +18,7 @@ import { applyOps } from './edits.mjs';
 import { hashOf } from './edits-base.mjs';
 import { exportDocx, exportPdf, launchOptions, loadPlaywright, loadTheme, printHtml, REPO } from './export.mjs';
 import { stamp, titleStem } from './workspace.mjs';
+import { ensureFolderIcon, refreshFolderIcon } from './brand-icons.mjs';
 import { writeZip } from './zip.mjs';
 
 export const PROJECTS_NAME = 'المشاريع - Projects';
@@ -162,6 +163,11 @@ export async function exportProject({ project, docs, formats = ['pdf'], locales 
   fs.writeFileSync(path.join(root, 'index.json'), JSON.stringify(index, null, 1));
   fs.writeFileSync(path.join(root, '00 فهرس - Index.html'), indexHtml(index), 'utf8');
   progress({ state: 'index' });
+  if (!stage) { // a tree Business-Wrap just made: its root is the general icon, each document folder the icon of what it holds (Windows only)
+    const sys = path.join(root, '.system');
+    ensureFolderIcon(root, { kind: 'general', systemDir: sys });
+    try { for (const e of fs.readdirSync(root, { withFileTypes: true })) if (e.isDirectory() && !e.name.startsWith('.')) refreshFolderIcon(path.join(root, e.name), { systemDir: sys }); } catch { /* cosmetic */ }
+  }
   if (!stage) return { root, zip: null, cancelled: false, index, items };
   // zip: the staged tree under its own folder name, in tree order, then the stage goes
   const entries = [];

@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { reveal } from '../host.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { sharePath, dirsOf as treeDirs, historyStem } from '../workspace.mjs';
+import { sharePath, dirsOf as treeDirs, historyStem, noteOutput } from '../workspace.mjs';
 
 const MAX = 64 * 1024 * 1024;
 /** The workspace folders: ctx.workspace (tests, the server), else WP3's engine/workspace.mjs, else a stub under Documents. */
@@ -63,6 +63,7 @@ export default async (req, url, send, ctx) => {
       fs.mkdirSync(dirs.html, { recursive: true });
       const p = sharePath(dirs.html, b.html, name); // in the document's Exports\: <date> <title> - <language>.shared.html
       fs.writeFileSync(p, b.html, 'utf8');
+      noteOutput(p);
       send(200, { path: p, dir: path.dirname(p) });
       return true;
     }

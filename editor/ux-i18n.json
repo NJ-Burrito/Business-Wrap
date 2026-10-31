@@ -108,6 +108,12 @@
   "ico.partial": "تم تطبيق: {ok}. لم يُطبَّق: {bad}.",
   "ico.none": "لم يتغيّر شيء: {bad}.",
   "ico.restored": "عادت أيقونات ويندوز.",
+  "ico.folders": "أيقونات المجلدات",
+  "ico.fGeneral": "مجلد بزنس راب",
+  "ico.fPdf": "مجلد ملفات PDF",
+  "ico.fDocx": "مجلد ملفات DOCX",
+  "ico.fHtml": "مجلد ملفات HTML",
+  "ico.foldersNote": "يضع بزنس راب هذه الأيقونات تلقائيًا على مجلداته فقط: المجلد الذي فيه ملفات PDF فقط أو DOCX فقط أو HTML فقط يأخذ أيقونته، وغيره يأخذ أيقونة بزنس راب العامة.",
   "ico.fail": "تعذّر تغيير الأيقونات: {m}"
  },
  "en": {
@@ -218,6 +224,12 @@
   "ico.partial": "Applied: {ok}. Not applied: {bad}.",
   "ico.none": "Nothing changed: {bad}.",
   "ico.restored": "The Windows icons are back.",
+  "ico.folders": "Folder icons",
+  "ico.fGeneral": "Business-Wrap folder",
+  "ico.fPdf": "PDF files folder",
+  "ico.fDocx": "DOCX files folder",
+  "ico.fHtml": "HTML files folder",
+  "ico.foldersNote": "Business-Wrap sets these automatically, on its own folders only: a folder holding only PDFs, only DOCX or only HTML files gets that icon, anything else gets the general Business-Wrap icon.",
   "ico.fail": "Could not change the icons: {m}"
  }
 }
