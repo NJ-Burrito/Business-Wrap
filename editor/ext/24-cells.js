@@ -32,13 +32,17 @@ function ceClearSel() { if (!CE.sel.size) return; CE.head = null; CE.sel.clear()
 const ceRect = (cells) => ({ r0: Math.min(...cells.map((x) => x[0])), r1: Math.max(...cells.map((x) => x[0])), c0: Math.min(...cells.map((x) => x[1])), c1: Math.max(...cells.map((x) => x[1])) });
 const ceBlk = (ed, b) => get(cur(ed).doc, b);
 /** the cells a command acts on: the selected cells, else the cell being edited */
+/** 0.15.1: a story's ID card that is not stored yet (it prints the default) is stored before a cell command reads it */
+const ceReady = (ed, ptr) => { if (/\/items\/\d+\/card$/.test(ptr || '') && get(cur(ed).doc, ptr) === undefined) EXT.actions.materialiseStoryCard?.(ptr); };
 function ceTarget() {
   if (CE.sel.size && ceTableEl()) {
     const cells = [...CE.sel].map((k) => k.split(',').map(Number));
+    ceReady(CE.ed, CE.b);
     return { ed: CE.ed, rows: CE.rows, b: CE.b, cells, el: ceTableEl(), sel: true };
   }
   const x = tableCtx();
   if (!x || !x.b || x.r < 0 || x.c < 0) return null;
+  ceReady(S.sel?.ed || S.ed, lastCell?.closest('table')?.dataset.t);
   return { ed: S.sel?.ed || S.ed, rows: x.rows, b: lastCell?.closest('table')?.dataset.t || x.b, cols: x.cols, cells: [[x.r, x.c]], el: lastCell?.closest('table') || null, sel: false };
 }
 const ceLive = (tg, cells) => { const cov = coveredOf(ceBlk(tg.ed, tg.b).merges || []); return cells.filter(([r, c]) => !cov.has(ceKey(r, c))); };

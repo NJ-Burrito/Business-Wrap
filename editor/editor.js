@@ -659,6 +659,7 @@ function tableCtx() {
 function rowsReady(x) {
   if (Array.isArray(get(cur().doc, x.rows))) return true;
   if (x.rows === '/controlTable/rows' && EXT.actions.materialiseControl) EXT.actions.materialiseControl();
+  if (/\/items\/\d+\/card\/rows$/.test(x.rows) && EXT.actions.materialiseStoryCard) EXT.actions.materialiseStoryCard(x.rows); // 0.15.1: a story's ID card is stored before its first table edit
   return Array.isArray(get(cur().doc, x.rows));
 }
 let lastCell = null;
