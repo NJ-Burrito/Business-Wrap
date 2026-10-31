@@ -188,7 +188,9 @@ async function latePush() {
   await sleep(700);
   hold = false;
   for (const r of held) await r.continue().catch(() => {}); // the older push arrives AFTER the flush
-  await sleep(900);
+  // wait on the real state, not a clock: under full-suite load the flush beacon and the released push land seconds late
+  await until(() => JSON.stringify(rec('tablate01x') || {}).includes('NEWER-FLUSH-TEXT'), 20000);
+  await sleep(1500); // the released older push has had time to land after it: it must not have replaced the newer text
   const txt = JSON.stringify(rec('tablate01x') || {});
   check('page: the older push was held in flight (positive sample)', heldOk);
   check('page: the flushed latest text survives the late older push', txt.includes('NEWER-FLUSH-TEXT') && !txt.includes('OLDER-PUSH'), txt.slice(0, 200));

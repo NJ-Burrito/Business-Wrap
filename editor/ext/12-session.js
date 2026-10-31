@@ -174,7 +174,7 @@ const SESS = (() => {
     }
     document.documentElement.dataset.bwResumed = '1';
   }
-  function modal(last) {
+  function modal(last, release) {
     const dlg = document.createElement('dialog');
     dlg.className = 'bw-resume';
     dlg.dataset.theme = S.dark ? 'dark' : 'light'; // the shell's theme tokens (build-editor brandCss) follow it here
@@ -195,6 +195,7 @@ const SESS = (() => {
       else { document.documentElement.dataset.bwResume = 'new'; if (!/[#&]doc=/.test(location.hash)) await EXT.library?.newDocument(); } // a tab opened on one document keeps it (0.15.0)
       setTimeout(() => { dlg.close(); dlg.remove(); }, k === 'resume' ? 1200 : 0);
     });
+    dlg.addEventListener('close', () => release?.(), { once: true }); // answered or dismissed (Esc): the hold goes
     dlg.showModal();
     document.documentElement.dataset.bwResume = 'asked';
   }
@@ -232,8 +233,9 @@ const SESS = (() => {
     hub.start();
     if (resumed) await apply(resumed);
     else if (!AUTO) {
+      const release = window.BW?.holdReady?.('resume'); // bw:ready / data-bw-ready wait until the resume question is settled (a tool's ?automation=1 tab never asks)
       const last = await fetch('/api/session/last').then((r) => r.json()).catch(() => null);
-      if (last?.tabs?.length) modal(last);
+      if (last?.tabs?.length) modal(last, release); else release?.();
     }
     push();
     document.documentElement.dataset.bwSession = tab;

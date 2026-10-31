@@ -40,7 +40,11 @@ try {
     const wantEntries = want.logs[svc].entries;
     const wantOps = want.services[svc].ar.ops;
     const file = path.join(tmp, `${v}.html`);
-    fs.writeFileSync(file, html);
+    // A fixture is by definition an OLDER build's file. When it carries this very version (the release not yet bumped), the
+    // server would serve its frozen code untouched (rewrapEditorHtml: same version = nothing to do), so the page under test
+    // would be the old build, not this one (0.15.0: the frozen 0.14.0 busy card threw under load). Stamp it one step older.
+    const asOlder = (txt) => { const dd = dataOf(txt); return dd.version === pkg ? withData(txt, { ...dd, version: '0.0.0-fixture' }) : txt; };
+    fs.writeFileSync(file, asOlder(html));
 
     // 1. re-wrap: unknown top-level keys and edition attributes travel on
     const marked = dataOf(html);
