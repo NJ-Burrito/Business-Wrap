@@ -146,11 +146,12 @@ const SESS = (() => {
   const curDoc = () => (info && EXT.library?.isDoc(S.svc) ? S.svc : null);
   const owner = (d) => LS.leases[d] || null;
   const follows = (d) => !!d && !!owner(d) && owner(d) !== tab;
+  const both = (k, v = {}) => `${tIn(k, 'ar').replace(/\{(\w+)\}/g, (m, x) => v[x] ?? m)} · ${tIn(k, 'en').replace(/\{(\w+)\}/g, (m, x) => v[x] ?? m)}`; // the words live in 12-session.i18n.json; a banner shows both languages
   const MSG = {
-    follower: 'هذه الوثيقة مفتوحة للتحرير في تبويب آخر، لذلك هذا التبويب للقراءة فقط. أغلق التبويب الآخر ثم أعد التحميل. · This document is open for editing in another tab, so this tab is read-only. Close the other tab, then reload.',
-    stale: 'تغيّرت هذه الوثيقة في تبويب آخر، ونسختك أقدم. أعد التحميل قبل أي تعديل حتى لا تُحفظ نسخة قديمة فوق الأحدث. · This document changed in another tab and your copy is older. Reload before editing so an old copy is never saved over the newer one.',
-    asleep: (n) => `${n} تبويب نائم (ميزة التبويبات النائمة في Edge): اضغط عليه ليستيقظ. · ${n} tab(s) asleep (Edge sleeping tabs): click them to wake them.`,
-    reload: 'إعادة التحميل · Reload',
+    get follower() { return both('leaseFollower'); },
+    get stale() { return both('leaseStale'); },
+    asleep: (n) => both('leaseAsleep', { n }),
+    get reload() { return both('leaseReload'); },
   };
   function bar(id, text, top, button) {
     let el = document.getElementById(id);

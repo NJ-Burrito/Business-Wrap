@@ -8,6 +8,42 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.15.3] - 2026-10-31
+
+🧭 The fourth owner-notes release: file icons that really change, one owning tab per document, a safer reset, single-edition documents and numbers that follow position. / 🧭 إصدار ملاحظات المالك الرابع: أيقونات ملفات تتغير فعلًا، وتبويب واحد مالك لكل وثيقة، وإعادة ضبط أكثر أمانًا، ووثائق بلغة واحدة، وأرقام تتبع الموضع.
+
+### Added / أضيف
+- 🗂️ **Settings > File icons also covers Windows 11's second app record**, so PDF and HTML files now change too. / **الإعدادات > أيقونات الملفات تشمل الآن سجل التطبيق الثاني في ويندوز 11**، فتتغير أيقونات PDF وHTML أيضًا.
+- 📁 **Folder icons per file type are set automatically.** / **أيقونة المجلد لكل نوع ملف تُضبط تلقائيًا.**
+- 🧹 **`business-wrap reset`** sends your data to the Recycle Bin (`--dry-run` shows it first, `--yes` skips the question), and **`doctor` lists every place the app keeps data.** / **الأمر `business-wrap reset`** ينقل بياناتك إلى سلة المحذوفات (`--dry-run` يعرضها أولًا و`--yes` يتخطى السؤال)، و**`doctor` يعرض كل مكان يحفظ فيه التطبيق بيانات.**
+- 🖼️ **`editor render`** saves a diagram as a PNG picture. / **الأمر `editor render`** يحفظ المخطط صورة PNG.
+- 📄 **Single-edition documents**: a document can be Arabic only or English only, with no empty second edition. / **وثائق بلغة واحدة**: يمكن أن تكون الوثيقة بالعربية فقط أو بالإنجليزية فقط، بلا نسخة ثانية فارغة.
+- ✂️ **"Split this figure" in Check** breaks a figure that is too large to read into smaller ones. / **«قسّم هذا الشكل» في الفحص** يجزّئ الشكل الكبير غير المقروء إلى أشكال أصغر.
+- 🔤 **A tashkeel warning with one-click removal**: visible text should carry no vowel marks. / **تحذير من التشكيل مع إزالة بنقرة واحدة**: النص الظاهر يجب ألا يحمل تشكيلًا.
+
+### Changed / تغير
+- 🔒 **One owning tab per document**: other tabs follow it read-only and offer Reload. / **تبويب واحد مالك لكل وثيقة**: تتبعه التبويبات الأخرى للقراءة فقط وتعرض «إعادة التحميل».
+- 😴 **Sleeping tabs are reported at once** (`TAB_ASLEEP`), and the editor's Edge is launched so that it stays awake. / **التبويبات النائمة يُبلَّغ عنها فورًا** (`TAB_ASLEEP`)، ويُشغَّل Edge الخاص بالمحرر بحيث يبقى مستيقظًا.
+- 🖥️ **One host per install**: a lock stops a second host from starting. / **مضيف واحد لكل تثبيت**: قفل يمنع تشغيل مضيف ثانٍ.
+- 🔌 **The MCP server survives errors**, and `status` and `doctor` show where it is registered. / **خادم MCP يصمد أمام الأخطاء**، ويعرض `status` و`doctor` مكان تسجيله.
+- 🔔 **The update check reads every release** and refreshes after 6 hours. / **فحص التحديثات يقرأ كل الإصدارات** ويتجدد بعد 6 ساعات.
+- 📂 **`open` reopens the newest document**, and **`--help` only prints help.** / **الأمر `open` يعيد فتح أحدث وثيقة**، و**`--help` يطبع المساعدة فقط.**
+- 🔢 **Numbers follow position everywhere**, and Renumber writes real numbers. / **الأرقام تتبع الموضع في كل مكان**، و«إعادة الترقيم» تكتب أرقامًا حقيقية.
+- 📚 **Library word counts are per edition.** / **عدد الكلمات في المكتبة لكل نسخة على حدة.**
+- 📏 **Folder names can be up to 100 characters.** / **أسماء المجلدات تصل إلى 100 حرف.**
+
+### Fixed / أصلح
+- 🧯 **Edits were lost when two tabs held one document**: the stale tab can no longer save over the newer copy. / **ضاعت تعديلات عندما كان تبويبان يحملان وثيقة واحدة**: لم يعد التبويب القديم قادرًا على الحفظ فوق النسخة الأحدث.
+- 🚪 **Two hosts could run on one port**: now only one starts. / **كان يمكن أن يعمل مضيفان على منفذ واحد**: يبدأ الآن مضيف واحد فقط.
+- 🧱 **Tables with empty columns and hand-written numbers are refused** instead of being saved. / **تُرفض الجداول ذات الأعمدة الفارغة والأرقام المكتوبة يدويًا** بدل حفظها.
+- 🔤 **The spelling icon's hover motion** works again. / **حركة أيقونة الإملاء عند المرور** تعمل من جديد.
+- 🆕 **The What's new text in the editor** shows the right release. / **نص «ما الجديد» في المحرر** يعرض الإصدار الصحيح.
+- 🧲 **The drag grip** is no longer hidden under a side panel. / **مقبض السحب** لم يعد يختفي تحت لوحة جانبية.
+
+### Known limits / حدود معروفة
+- 🧪 **The Edge sleeping-tabs settings are not verified on a real Edge build.** / **إعدادات التبويبات النائمة في Edge لم تُتحقق على نسخة Edge حقيقية.**
+- 🔄 **A folder icon in an Explorer window that is already open may need F5 to refresh.** / **قد تحتاج أيقونة المجلد في نافذة المستكشف المفتوحة إلى F5 لتتحدث.**
+
 ## [0.15.2] - 2026-10-31
 
 🧭 The third owner-notes release: live-editor slash commands, a Spelling tab with a side panel, a calmer drafting-grid background, a smoother ribbon, and a true 100% zoom. / 🧭 إصدار ملاحظات المالك الثالث: أوامر مائلة داخل المحرر الحي، وتبويب للإملاء مع لوحة جانبية، وخلفية شبكة رسم أهدأ، وشريط أنعم، وتكبير 100% حقيقي.

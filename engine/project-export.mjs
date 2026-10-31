@@ -14,7 +14,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { applyOps } from './edits.mjs';
+import { applyOps, exportEditions } from './edits.mjs';
 import { hashOf } from './edits-base.mjs';
 import { exportDocx, exportPdf, launchOptions, loadPlaywright, loadTheme, printHtml, REPO } from './export.mjs';
 import { stamp, titleStem } from './workspace.mjs';
@@ -91,7 +91,7 @@ export async function exportProject({ project, docs, formats = ['pdf'], locales 
   const th = theme || loadTheme();
   const exportedAt = new Date().toISOString();
   // units: one per file wanted: document × edition present × format (a document that lacks an edition has fewer)
-  const wanted = docs.map((d) => locs.filter((l) => d.editions?.[l]?.raw));
+  const wanted = docs.map((d) => exportEditions(d).filter((l) => locs.includes(l)));
   const total = wanted.reduce((n, ls) => n + ls.length * fmts.length, 0) || docs.length;
   let done = 0, browser = null, cancelled = false;
   const items = [];

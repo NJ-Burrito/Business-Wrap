@@ -68,9 +68,9 @@
 ```
 💬 Then say **"build the requirements document for …"** or **"open it in the editor"**.
 
-🔌 **MCP server only** (any MCP client, stdio, local; 0.15.2 from the GitHub tag; npm still serves 0.12.0):
+🔌 **MCP server only** (any MCP client, stdio, local; 0.15.3 from the GitHub tag; npm still serves 0.12.0):
 ```
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.15.2 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.15.3 business-wrap-mcp
 ```
 
 💻 **From source:** `git clone https://github.com/NJ-Burrito/Business-Wrap`, then the [Quick start](#️-quick-start).
@@ -277,7 +277,7 @@ Each gives the Arabic and English document JSON and an editor. In the editor: **
 - 📦 **Project export and import** (0.15.0).
 - 🤖 **Live editor tools and 8 slash commands** (0.15.0 and 0.15.2).
 - 🔍 **Zoom 25% to 400%** and Fill height (0.15.0); 100% is true size (0.15.2).
-- 🗂️ **File icons** (0.15.1) and **folder icons per file type**, set automatically (merged on main for 0.15.3).
+- 🗂️ **File icons** (0.15.1) and **folder icons per file type**, set automatically (0.15.3).
 - 📋 **The user-story ID card is a real table** (0.15.1).
 - ⚡ **Lighter on your PC** (0.15.2). Details: [CHANGELOG.md](CHANGELOG.md).
 

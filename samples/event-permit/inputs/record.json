@@ -26,7 +26,7 @@
    {
     "code": "EVP-02",
     "amount": {
-     "ar": "25 ديناراً",
+     "ar": "25 دينارا",
      "en": "25 dinars"
     },
     "basis": {
@@ -41,11 +41,11 @@
   ],
   "assumptions": [
    {
-    "ar": "أن يكون موقع الفعالية مرخَّصاً لاستقبال الجمهور.",
+    "ar": "أن يكون موقع الفعالية مرخصا لاستقبال الجمهور.",
     "en": "The event site is licensed to receive the public."
    },
    {
-    "ar": "أن يُقدَّم الطلب قبل موعد الفعالية بعشرة أيام عمل على الأقل.",
+    "ar": "أن يقدم الطلب قبل موعد الفعالية بعشرة أيام عمل على الأقل.",
     "en": "The request is filed at least ten working days before the event."
    }
   ],
@@ -148,7 +148,7 @@
       "en": "Licensed sites table"
      },
      "description": {
-      "ar": "المواقع المرخَّصة للفعاليات",
+      "ar": "المواقع المرخصة للفعاليات",
       "en": "Sites licensed for events"
      },
      "received": {

@@ -62,7 +62,7 @@ try {
     check('ensure: every kind writes its own icon file', ['business-wrap-folder.ico', 'business-wrap-folder-pdf.ico', 'business-wrap-folder-docx.ico', 'business-wrap-folder-html.ico'].every((f) => fs.existsSync(path.join(sys, f))));
     // a folder with a desktop.ini that is not ours is left alone
     const theirs = touch(mkdir('theirs'), 'a.pdf');
-    fs.writeFileSync(path.join(theirs, 'desktop.ini'), '[.ShellClassInfo]\r\nIconFile=C:\\x\\their.ico\r\n');
+    fs.writeFileSync(path.join(theirs, 'desktop.ini'), '[.ShellClassInfo]\r\nIconFile=C:\\x\\their.ico\r\n'); // platform-guard: ok a path written as text into a temp desktop.ini, never opened as a drive path
     check('ensure: a desktop.ini that is not ours is never overwritten (returns false)', ensureFolderIcon(theirs, { kind: 'pdf', systemDir: sys, notify: false }) === false && /their\.ico/.test(readIni(path.join(theirs, 'desktop.ini'))));
     check('ensure: a missing folder returns false, never throws', ensureFolderIcon(path.join(tmp, 'gone'), { kind: 'pdf', systemDir: sys, notify: false }) === false);
     check('ensure: an unknown kind falls back to the general icon', (() => { const z = mkdir('unk'); return ensureFolderIcon(z, { kind: 'zip', systemDir: sys, notify: false }) && readIni(path.join(z, 'desktop.ini')).includes('business-wrap-folder.ico'); })());
