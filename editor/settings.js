@@ -44,6 +44,7 @@ function setSeg(k, items, label) {
 function settingsPanel() {
   const A = DATA.about || { name: 'Business-Wrap', version: DATA.version, credits: [] };
   const repoText = String(A.repo || '').replace(/^https:\/\//, '');
+  setTimeout(icoLoad, 0); // the drawer is in the page once this returns: ask the server where the file icons stand
   return `<div class="set">
 <section class="card set-about" aria-labelledby="set-h-about"><h3 id="set-h-about"><span class="i">${ic('about')}</span>${esc(t('set.about'))}</h3>
 <div class="set-id"><span class="set-logo" aria-hidden="true">${DATA.brand?.mark || ''}</span><p><b class="set-name" dir="ltr">${esc(A.name || 'Business-Wrap')}</b> <bdi class="set-ver" dir="ltr">${esc(A.version || DATA.version || '')}</bdi></p></div>
@@ -58,6 +59,8 @@ function settingsPanel() {
 <div class="set-upd-body">${setUpdateInner()}</div></section>
 <section class="card set-srv" aria-labelledby="set-h-srv"><h3 id="set-h-srv"><span class="i">${ic('connect')}</span>${esc(t('srv.title'))}</h3>
 <div class="set-srv-body">${srvInner()}</div></section>
+<section class="card set-ico" aria-labelledby="set-h-ico"><h3 id="set-h-ico"><span class="i">${ic('image')}</span>${esc(t('ico.title'))}</h3>
+<div class="set-ico-body">${icoInner()}</div></section>
 <section class="card set-prefs" aria-labelledby="set-h-prefs"><h3 id="set-h-prefs"><span class="i">${ic('prefs')}</span>${esc(t('set.prefs'))}</h3>
 <div class="set-row"><span class="set-k">${esc(t('set.lang'))}</span>${setSeg('setLang', [['ar', 'ع العربية', S.ui === 'ar', 'ar'], ['en', 'E English', S.ui === 'en', 'en']], t('set.lang'))}</div>
 <div class="set-row"><span class="set-k">${esc(t('set.dir'))}</span>${setSeg('setDir', ['rtl', 'ltr'].map((d) => [d, t(d), uiDir() === d]), t('set.dir'))}</div>
@@ -90,6 +93,7 @@ async function settingsClick(x) {
   }
   if (k === 'updNow') { const st = updState(); if (st?.status === 'available') window.BW_UPDATE.popup(st, { manual: true }); return true; }
   if (k === 'srvPowerOff') { await runAction('powerOff'); return true; }
+  if (k === 'icoApply' || k === 'icoRestore') { await icoRun(k === 'icoApply' ? 'apply' : 'restore'); return true; }
   if (k === 'srvOpen') { location.href = `http://127.0.0.1:${Number(v)}/`; return true; }
   if (k === 'setLang') { setLang(v); return true; }
   if (k === 'setDir') { setDir(v); return true; }
@@ -177,4 +181,57 @@ async function srvSaveHere() { // the same three saves as the power button: the 
   try { writeDraft(); } catch { /* nothing to write */ }
   try { await EXT.library?.persistNow?.(); } catch { /* not a library document */ }
   try { EXT.session?.flush?.(); } catch { /* no session */ }
+}
+
+/* ── File icons (0.15.1): «use Business-Wrap icons on this PC». The server writes per-user registry keys (engine/file-icons.mjs,
+ *    engine/routes/file-icons.mjs); a file:// page cannot, so the buttons wait for the server and say so. ── */
+const ICO = { st: null, busy: false, msg: '', bad: false }; // st: the server's /status answer, null until it came
+function icoInner() {
+  const served = srvServed();
+  const off = !served || ICO.st?.supported === false;
+  const line = ICO.msg || (!served ? t('export.needsServer') : ICO.st?.supported === false ? t('ico.unsupported') : ICO.busy ? t('ico.busy') : ICO.st ? t(ICO.st.applied ? 'ico.on' : 'ico.off') : '');
+  const dis = off || ICO.busy ? ' disabled' : '';
+  return `<p>${esc(t('ico.lead'))}</p>
+<div class="btns"><button type="button" class="b primary" data-k="icoApply"${dis}><span class="i">${ic('image')}</span><span class="w">${esc(t('ico.apply'))}</span></button><button type="button" class="b" data-k="icoRestore"${dis}><span class="i">${ic('undo')}</span><span class="w">${esc(t('ico.restore'))}</span></button></div>
+<p class="set-status set-ico-status" role="status" aria-live="polite" data-st="${ICO.bad ? 'bad' : ICO.st?.applied ? 'on' : ''}">${esc(line)}</p>
+<p class="hint">${esc(t('ico.note'))}</p>`;
+}
+function icoDraw(focusKey) {
+  const body = root.querySelector('.drawer .set-ico-body');
+  if (!body) return;
+  body.innerHTML = icoInner();
+  if (focusKey) body.querySelector(`[data-k="${focusKey}"]`)?.focus();
+}
+async function icoLoad() {
+  if (!srvServed()) return;
+  ICO.msg = ''; ICO.bad = false;
+  try { ICO.st = await (await fetch('/api/file-icons/status', { cache: 'no-store' })).json(); } catch { ICO.st = null; }
+  icoDraw();
+}
+/** The toast tells, extension by extension, what took and what did not (read back from the registry, never assumed). */
+async function icoRun(act) {
+  if (ICO.busy) return;
+  ICO.busy = true; ICO.msg = ''; ICO.bad = false;
+  icoDraw(act === 'apply' ? 'icoApply' : 'icoRestore');
+  let kind = 'ok';
+  try {
+    const r = await fetch(`/api/file-icons/${act}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 501) { ICO.st = j; ICO.msg = t('ico.unsupported'); kind = 'warn'; }
+    else if (!r.ok || j.error) { ICO.msg = t('ico.fail', { m: j.error || r.status }); kind = 'err'; }
+    else {
+      const name = (x) => `.${x.ext}`;
+      const good = (j.results || []).filter((x) => x.ok).map(name).join(' ');
+      const bad = (j.results || []).filter((x) => !x.ok).map((x) => `${name(x)} (${x.reason || '?'})`).join(' ');
+      if (act === 'restore') { ICO.msg = j.ok ? t('ico.restored') : t('ico.fail', { m: bad }); kind = j.ok ? 'ok' : 'err'; }
+      else if (!good) { ICO.msg = t('ico.none', { bad }); kind = 'err'; }
+      else if (bad) { ICO.msg = t('ico.partial', { ok: good, bad }); kind = 'warn'; }
+      else ICO.msg = t('ico.done', { ok: good });
+    }
+  } catch (e) { ICO.msg = t('ico.fail', { m: String(e?.message || e) }); kind = 'err'; }
+  ICO.bad = kind === 'err';
+  toast(ICO.msg, kind);
+  ICO.busy = false;
+  try { ICO.st = await (await fetch('/api/file-icons/status', { cache: 'no-store' })).json(); } catch { /* keep the last answer */ }
+  icoDraw(act === 'apply' ? 'icoApply' : 'icoRestore');
 }
