@@ -123,6 +123,7 @@ const pvDigest = async (s) => `sha256:${BWLOG1.hex(new Uint8Array(await crypto.s
 function pvAppend(kind, data = {}, svc = S.svc) {
   const state = M[svc] ? pvState(svc) : '';
   const at = new Date().toISOString();
+  const who = PF.actor(); // bound now, at creation: a later change of actor (an agent batch still draining) cannot re-sign it
   PV.q = PV.q.then(async () => {
     await PV.ready;
     const L = PV.logs[svc];
@@ -130,7 +131,7 @@ function pvAppend(kind, data = {}, svc = S.svc) {
     const dh = state ? await pvDigest(state) : '';
     await pvRenamed(L, at, dh);
     if (kind === 'x-rename') { await pvMirror(svc); return; } // a rename on its own (Settings → profile): logged above, if any
-    await BWLOG1.append(L, { kind, data, at, actor: PF.actor(), keys: PV.keys, docHash: dh });
+    await BWLOG1.append(L, { kind, data, at, actor: who, keys: PV.keys, docHash: dh });
     if (kind === 'open') PV.openLogged.add(svc);
     await pvMirror(svc); // written before the queue moves on: a tab closed right after an edit keeps it
   }).catch((e) => console.error('bwlog', e));
@@ -153,6 +154,7 @@ function pvPings(svc = S.svc) { const p = EXT.profile?.takePings() || []; if (p.
 /** Anything that changed the document outside a logged edit (an import merge, a recovered draft) is logged as a merge. */
 function pvCatchUp(svc = S.svc) {
   const state = M[svc] ? pvState(svc) : '';
+  const who = PF.actor();
   PV.q = PV.q.then(async () => {
     await PV.ready;
     const L = PV.logs[svc];
@@ -164,7 +166,7 @@ function pvCatchUp(svc = S.svc) {
     const seen = new Set(L.entries.filter((e) => e.data?.op?.id).map((e) => e.data.op.id));
     const ops = Object.entries(M[svc]).flatMap(([ed, e]) => e.ops.filter((o) => !seen.has(o.id)).map((o) => ({ ed, op: o })));
     await pvRenamed(L, new Date().toISOString(), now);
-    await BWLOG1.append(L, { kind: 'merge', data: { ops: JSON.parse(JSON.stringify(ops)) }, actor: PF.actor(), keys: PV.keys, docHash: now });
+    await BWLOG1.append(L, { kind: 'merge', data: { ops: JSON.parse(JSON.stringify(ops)) }, actor: who, keys: PV.keys, docHash: now });
     await pvMirror(svc); // written before the queue moves on: a tab closed right after an edit keeps it
   }).catch((e) => console.error('bwlog', e));
   return PV.q;

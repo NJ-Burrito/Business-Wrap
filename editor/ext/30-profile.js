@@ -20,7 +20,17 @@ const PF = {
     if (hp.actor && !ls.get('bw:actor')) ls.set('bw:actor', hp.actor);
     return true;
   },
-  actor() { return { id: PF.id(), name: PF.get()?.name || '' }; },
+  /** Who signs now: the actor bound by withActor (an agent), else this install's person. */
+  actor() { return PF.bound || { id: PF.id(), name: PF.get()?.name || '' }; },
+  /** Run fn with `actor` bound to the log entries it creates. pvAppend/pvCatchUp read the actor when the entry is CREATED (not when the queue drains),
+   *  so the binding lasts only for fn's synchronous part (or, with hold, until its promise settles: for a multi-step action); a person's edit made while the
+   *  agent's entries are still draining is signed as the person. The agent signs with the person's key (kid) under its own actor id `agent:<name>`. */
+  withActor(actor, fn, hold = false) {
+    const was = PF.bound; PF.bound = actor;
+    let r; try { r = fn(); } catch (x) { PF.bound = was; throw x; }
+    if (hold && r && typeof r.then === 'function') return r.finally(() => { PF.bound = was; });
+    PF.bound = was; return r;
+  },
   recording() { return PF.get()?.activity !== false; },
 };
 
@@ -146,6 +156,6 @@ bwExt({
     { id: 'report', title: 'pfReport', icon: 'biReport', html: pfReportHtml, mount: pfReportMount },
     { id: 'trust', title: 'pfTrustTitle', icon: 'info', html: () => `<p class="pf-limit">${esc(t('pfTrustLimit'))}</p><div class="btns"><button type="button" class="b" data-pf="prov"><span class="w">${esc(t('pvOpen'))}</span></button></div>`, mount: (el) => el?.querySelector('[data-pf="prov"]').addEventListener('click', () => openDrawer('provenance')) },
   ],
-  expose: { profile: { get: PF.get, actor: PF.actor, recording: PF.recording, takePings: pfTakePings, pictureInSharedHtml: PF_PICTURE_IN_SHARED_HTML } },
+  expose: { profile: { get: PF.get, actor: PF.actor, withActor: PF.withActor, recording: PF.recording, takePings: pfTakePings, pictureInSharedHtml: PF_PICTURE_IN_SHARED_HTML } },
   on: { boot: () => { const release = window.BW?.holdReady?.('profile'); pfFirstLaunch().finally(() => release?.()); } }, // readiness (bw:ready) waits for the first-launch decision
 });
