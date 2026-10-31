@@ -93,6 +93,30 @@ async function open(ctx) {
   await page.waitForFunction(() => window.BW?.ready);
   return { page, errors };
 }
+// A context whose storage is proven to persist across pages before a "remembered" test relies on it (R15: a probe must show it looked).
+// On the Ubuntu runner the first context of the UI loop sometimes kept nothing between two loads (run 41177333084: bw:dir, the draft and the logo all gone,
+// the second context fine). Cause not proven; the probe retries on a fresh context and names every attempt, and a context that never holds storage fails the run with its attempts.
+async function storageContext(opts, initFn, initArg) {
+  const attempts = [];
+  for (let i = 1; i <= 3; i++) {
+    const ctx = await browser.newContext(opts);
+    await ctx.addInitScript(initFn, initArg);
+    const a = await ctx.newPage();
+    await a.goto(editorUrl, { waitUntil: 'domcontentloaded' });
+    await a.evaluate(() => localStorage.setItem('bw:probe', '1'));
+    await a.waitForTimeout(300);
+    const b = await ctx.newPage();
+    await b.goto(editorUrl, { waitUntil: 'domcontentloaded' });
+    const seen = await b.evaluate(() => { const v = localStorage.getItem('bw:probe'); localStorage.removeItem('bw:probe'); return { v, origin: location.origin, keys: Object.keys(localStorage) }; });
+    await a.close();
+    await b.close();
+    attempts.push(JSON.stringify(seen));
+    if (seen.v === '1') { if (i > 1) results.push(`NOTE  storage probe: context ${i} of 3 held storage; earlier attempts lost it  — ${attempts.slice(0, -1).join(' | ')}`); return ctx; }
+    await ctx.close();
+  }
+  check('storage persists across pages in a fresh context (probe)', false, attempts.join(' | '));
+  return browser.newContext(opts);
+}
 const ui = (page, a, extra = '') => page.locator(`button[data-a="${a}"]${extra}`);
 // An action is clicked where it is visible (island, selection bar, view menu), else run from the command palette.
 async function act(page, a, extra = '') {
@@ -427,8 +451,7 @@ try {
   const pngFile = path.join(OUT, 'logo-with-meta.png');
   fs.writeFileSync(pngFile, pngWithMeta);
   for (const uiL of ['ar', 'en']) {
-    const ctxU = await browser.newContext({ acceptDownloads: true, viewport: { width: 1366, height: 1000 } });
-    await ctxU.addInitScript((l) => { try { localStorage.setItem('bw:ui', l); } catch {} }, uiL);
+    const ctxU = await storageContext({ acceptDownloads: true, viewport: { width: 1366, height: 1000 } }, (l) => { try { localStorage.setItem('bw:ui', l); } catch {} }, uiL);
     const pu = await ctxU.newPage();
     const errU = [];
     pu.on('pageerror', (e) => errU.push(e.message));
@@ -445,14 +468,16 @@ try {
       await (await sh()).evaluate((r, d) => r.querySelector(`[data-a="dir"][data-d="${d}"]`).click(), flip);
       const st = await pu.evaluate(() => ({ ui: window.BW.S.ui, ed: window.BW.S.ed, shell: document.getElementById('bw-ui-host').shadowRoot.querySelector('.shell').dataset.tdir, doc: document.querySelector('main.bw-doc').dir, saved: localStorage.getItem(`bw:dir:${window.BW.S.ed}`) }));
       await pu.waitForFunction((d) => localStorage.getItem(`bw:dir:${window.BW.S.ed}`) === d, flip, { timeout: 5000 }).catch(() => {}); // the write is in the page's storage before the page goes away
+      const pre = await pu.evaluate(() => { let k = []; try { k = Object.keys(localStorage).map((x) => `${x}=${localStorage.getItem(x).length}`); } catch (e) { k = [String(e)]; } return { url: location.href, origin: location.origin, keys: k, nav: performance.getEntriesByType('navigation')[0]?.type }; }); // diagnostic: what storage holds before the reload
       await pu.waitForTimeout(500); // and a beat for the browser process to take it (a first context on a slow Linux runner lost it on an immediate reload)
       await pu.reload();
       await pu.waitForFunction(() => window.BW?.ready);
       // wait on the outcome (the remembered direction applied), then report what the reopened page holds
       await pu.waitForFunction((d) => document.querySelector('main.bw-doc')?.dir === d, flip, { timeout: 5000 }).catch(() => {});
       const after = await pu.evaluate(() => ({ kept: document.querySelector('main.bw-doc').dir, S: window.BW.S.dir, ls: localStorage.getItem(`bw:dir:${window.BW.S.ed}`) }));
+      const post = await pu.evaluate(() => { let k = []; try { k = Object.keys(localStorage).map((x) => `${x}=${localStorage.getItem(x).length}`); } catch (e) { k = [String(e)]; } return { url: location.href, origin: location.origin, keys: k, nav: performance.getEntriesByType('navigation')[0]?.type }; });
       const kept = after.kept;
-      check(`${uiL} UI: direction toggles independently of the language and is remembered`, st.ui === uiL && st.shell === flip && st.doc === flip && st.saved === flip && kept === flip, JSON.stringify({ ...st, ...after }));
+      check(`${uiL} UI: direction toggles independently of the language and is remembered`, st.ui === uiL && st.shell === flip && st.doc === flip && st.saved === flip && kept === flip, JSON.stringify({ ...st, ...after, pre, post }));
       await (await sh()).evaluate((r, d) => r.querySelector(`[data-a="dir"][data-d="${d}"]`).click(), natural);
     }
     // command palette: Ctrl+K, filter, Enter runs
@@ -485,7 +510,7 @@ try {
     await pu2.waitForFunction(() => window.BW?.ready);
     await pu2.locator('.banner button').first().click({ timeout: 5000 }).catch(() => {});
     const o2 = await pu2.evaluate(() => window.BW.M['event-permit'][window.BW.S.ed].doc.overlays?.[0]);
-    check(`${uiL} UI: logo position remembered after reopening`, !!o2 && o2.x === o1.x && o2.y === o1.y, JSON.stringify(o2 && { x: o2.x, y: o2.y }));
+    check(`${uiL} UI: logo position remembered after reopening`, !!o2 && o2.x === o1.x && o2.y === o1.y, JSON.stringify(o2 ? { x: o2.x, y: o2.y } : { lost: true, ...(await pu2.evaluate(() => ({ origin: location.origin, keys: Object.keys(localStorage) }))) }));
     // an inline image through the Image button
     await pu2.locator('main.bw-doc [data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]').click();
     const [chI] = await Promise.all([pu2.waitForEvent('filechooser'), act(pu2, 'image')]);
