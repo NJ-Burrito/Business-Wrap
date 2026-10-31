@@ -219,13 +219,18 @@ try {
   await waitIssues(pa, (l) => l.filter((i) => i.word === 'wronng').length >= 3, 20000);
   // fix all: the same word everywhere, ONE undo step
   const pathsNow = await pa.evaluate(() => [...document.querySelectorAll('main.bw-doc[data-locale="en"] [data-p]')].filter((el) => /wronng/.test(el.textContent) && !el.querySelector('[data-p]')).map((el) => el.dataset.p));
+  await pa.evaluate(() => localStorage.setItem('bw:xpl-panel', '1')); // the user prefers the explanation panel open
   const pt = await wordPoint(pa, 'en', pathsNow[0], 'wronng');
+  const opsN0 = await pa.evaluate(() => BW.M[BW.S.svc].en.ops.length);
   await pa.mouse.click(pt.x, pt.y);
   await until(async () => !!(await side(pa)), 3000);
+  check('opening the spelling panel does not change the stored explanation-panel preference (bw:xpl-panel stays 1)', (await pa.evaluate(() => localStorage.getItem('bw:xpl-panel'))) === '1');
   await pa.keyboard.press('Escape'); // the caret is on the word; the tool acts on it
   await tool('spellFixAll').click();
   check('Fix all replaces the word in every field of the edition', await until(async () => { const ts = await Promise.all(pathsNow.map((p) => textAt(pa, 'en', p))); return ts.every((x) => !/wronng/.test(x) && /wrong/.test(x)); }, 5000), JSON.stringify(await Promise.all(pathsNow.map((p) => textAt(pa, 'en', p)))));
   await sleep(300);
+  const grp = await pa.evaluate((n) => BW.M[BW.S.svc].en.ops.slice(n).map((o) => String(o.id)), opsN0);
+  check('Fix all made its ops as ONE real group: one group id, distinct suffixes, no relabel', grp.length >= 2 && new Set(grp.map((i) => i.split('.')[0])).size === 1 && new Set(grp).size === grp.length, JSON.stringify(grp));
   await undoOnce(pa);
   check('ONE undo brings every «wronng» back (fix all is one undo step)', await until(async () => { const ts = await Promise.all(pathsNow.map((p) => textAt(pa, 'en', p))); return ts.every((x) => /wronng/.test(x)); }, 3000), JSON.stringify(await Promise.all(pathsNow.map((p) => textAt(pa, 'en', p)))));
   // fix (first suggestion) on the caret word

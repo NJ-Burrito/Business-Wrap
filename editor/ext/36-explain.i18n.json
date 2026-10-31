@@ -284,7 +284,16 @@
   "explain.zoomPct": "يضبط التكبير على نسبة تختارها بين 25% و400%.",
   "explain.zoomHeight": "يكبّر الصفحة حتى تملأ ارتفاع النافذة.",
   "explain.projExport": "يصدّر كل وثائق المشروع معًا بالصيغة واللغة اللتين تختارهما، في مجلد أو ملف مضغوط مع فهرس.",
-  "explain.projImport": "يستورد مجلد مشروع أو ملفًا مضغوطًا أو عدة ملفات دفعة واحدة، ويضعها في المكتبة كمشروع واحد."
+  "explain.projImport": "يستورد مجلد مشروع أو ملفًا مضغوطًا أو عدة ملفات دفعة واحدة، ويضعها في المكتبة كمشروع واحد.",
+  "explain.spellNext": "ينتقل إلى الخطأ الإملائي التالي في الوثيقة.",
+  "explain.spellPrev": "يرجع إلى الخطأ الإملائي السابق.",
+  "explain.spellFix": "يصحّح الكلمة الحالية بأول اقتراح.",
+  "explain.spellFixAll": "يصحّح كل الأخطاء في الوثيقة بأول اقتراح لكل كلمة.",
+  "explain.spellIgnore": "يتجاهل هذه الكلمة هنا فقط، ويزيل الخط عنها.",
+  "explain.spellIgnoreAll": "يتجاهل هذه الكلمة في كل الوثيقة.",
+  "explain.spellAdd": "يضيف الكلمة إلى قاموسك، فلا تُعدّ خطأً بعد الآن.",
+  "explain.spellCount": "يعرض عدد الأخطاء الإملائية المتبقية.",
+  "explain.spellLang": "يختار لغة التدقيق: العربية أو الإنجليزية أو الاثنتين معاً."
  },
  "en": {
   "xpl.panel": "Explain",
@@ -571,6 +580,15 @@
   "explain.zoomPct": "Sets the zoom to a percentage you choose, from 25% to 400%.",
   "explain.zoomHeight": "Zooms the page to fill the window's height.",
   "explain.projExport": "Exports every document of the project together, in the format and language you pick, into a folder or one zip with an index.",
-  "explain.projImport": "Imports a project folder, a zip or several files at once, and files them in the library as one project."
+  "explain.projImport": "Imports a project folder, a zip or several files at once, and files them in the library as one project.",
+  "explain.spellNext": "Jumps to the next spelling mistake in the document.",
+  "explain.spellPrev": "Goes back to the previous spelling mistake.",
+  "explain.spellFix": "Corrects the current word with its first suggestion.",
+  "explain.spellFixAll": "Corrects every mistake in the document with each word's first suggestion.",
+  "explain.spellIgnore": "Ignores this word here only and removes its underline.",
+  "explain.spellIgnoreAll": "Ignores this word everywhere in the document.",
+  "explain.spellAdd": "Adds the word to your dictionary so it is no longer flagged.",
+  "explain.spellCount": "Shows how many spelling mistakes are left.",
+  "explain.spellLang": "Chooses the checking language: Arabic, English, or both."
  }
 }

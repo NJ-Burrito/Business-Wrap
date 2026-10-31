@@ -208,6 +208,24 @@ const XPL_SCENES = {
       default: return pg + side(xaLines(20, 18, 5, 40, { c: 'ln wl' }));
     }
   },
+  /* ── spelling tab (0.15.2) ── */
+  spell(v) {
+    const W = (x, y, w) => xaWord(x, y, w, 'ln');
+    const bad = (x, y, w) => xaWord(x, y, w, 'wl') + xaP('no', `M${x} ${y + 9} q2.5 -4 5 0 t5 0 t5 0 t5 0`, 'style="fill:none;stroke:var(--bw-danger);stroke-width:2"');
+    const pg = xaR('sheet', 36, 8, 88, 76, 5);
+    switch (v) {
+      case 'next': return pg + W(46, 20, 56) + bad(46, 36, 30) + W(46, 52, 48) + bad(46, 66, 26) + xaR('hi k-mv', 42, 32, 40, 16, 3, xaMv(0, 30)) + xaDown(110, 22);
+      case 'prev': return pg + W(46, 20, 56) + bad(46, 36, 30) + W(46, 52, 48) + bad(46, 66, 26) + xaR('hi k-mv', 42, 62, 40, 16, 3, xaMv(0, -30)) + xaP('acs k-mv', 'M110 44 v-18 m-7 7 l7 -7 l7 7', xaMv(0, 6));
+      case 'fix': return pg + W(46, 20, 56) + xaG('k-gone', bad(46, 36, 34)) + xaWord(46, 36, 34, 'ok k-fade') + xaP('wh', 'M52 39 l4 4 l8 -8') + xaR('side', 50, 50, 58, 14, 7) + xaLn(58, 55, 40, 'wl');
+      case 'fixall': return pg + [0, 1, 2].map((i) => xaG('k-gone', bad(46, 18 + i * 20, 30 + i * 6)) + xaWord(46, 18 + i * 20, 30 + i * 6, 'ok k-fade')).join('') + xaC('ok', 112, 70, 9) + xaP('wh', 'M107 70 l4 4 l7 -8');
+      case 'ignore': return pg + W(46, 20, 56) + xaG('k-gone', bad(46, 38, 34)) + xaWord(46, 38, 34, 'wl') + W(46, 56, 44) + xaP('prs', 'M100 34 l16 16 m0 -16 l-16 16');
+      case 'ignoreall': return pg + xaG('k-gone', bad(46, 20, 30) + bad(46, 40, 34) + bad(46, 60, 26)) + xaLn(46, 22, 30, 'wl') + xaLn(46, 42, 34, 'wl') + xaLn(46, 62, 26, 'wl') + xaP('prs', 'M100 30 l16 16 m0 -16 l-16 16 M100 52 l16 16 m0 -16 l-16 16');
+      case 'add': return xaR('sheet', 40, 10, 66, 70, 6) + xaR('ac', 40, 10, 8, 70, 3) + W(56, 24, 36) + W(56, 38, 28) + xaC('ok k-grow', 100, 62, 11, xaSc(0, 0, '100px 62px')) + xaP('wh', 'M100 56 v12 M94 62 h12');
+      case 'count': return pg + bad(46, 20, 30) + bad(46, 40, 34) + bad(46, 60, 26) + xaC('no', 112, 26, 12) + xaLn(106, 24, 12, 'wl');
+      case 'lang': return xaPage(14, 14, 56, 70, 5) + xaPage(90, 14, 56, 70, 5, { right: true }) + xaP('acs', 'M74 40 h12 M82 34 l6 6 l-6 6 M86 56 h-12 M78 50 l-6 6 l6 6');
+      default: return pg + W(46, 24, 56) + bad(46, 40, 34);
+    }
+  },
   /* ── toggles and modes ── */
   mode(v) {
     switch (v) {
@@ -549,6 +567,15 @@ mode:both both@both
 mode:lock lkToggle@close
 mode:power powerOff@close
 mode:read reading@view
+spell:next spellNext@spellNext
+spell:prev spellPrev@spellPrev
+spell:fix spellFix@spellFix
+spell:fixall spellFixAll@spellFixAll
+spell:ignore spellIgnore@spellIgnore
+spell:ignoreall spellIgnoreAll@spellIgnoreAll
+spell:add spellAdd@spellAdd
+spell:count spellCount@spellCount
+spell:lang spellLang@spellLang
 lang:ui uiLang@uiLang
 lang:ed ed@ed
 lang:dir dir@dir

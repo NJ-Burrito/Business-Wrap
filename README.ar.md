@@ -70,12 +70,12 @@
 
 💬 ثم قل: **«ابن وثيقة متطلبات …»** أو **«افتحها في المحرر»**.
 
-🔌 **خادم MCP وحده** (أي عميل MCP، stdio محلي؛ الإصدار 0.15.1 من وسم GitHub، فسجل npm ما زال على 0.12.0):
+🔌 **خادم MCP وحده** (أي عميل MCP، stdio محلي؛ الإصدار 0.15.2 من وسم GitHub، فسجل npm ما زال على 0.12.0):
 
 <div dir="ltr">
 
 ```
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.15.1 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.15.2 business-wrap-mcp
 ```
 
 </div>
