@@ -1,3 +1,4 @@
+import './_isolate.mjs';
 // Static guard: a test must not call a Windows-only thing unless it is behind a win32 check.
 // The CI runs on Linux; a Windows-only call that is not guarded fails there only (the 0.15.0 fix rounds).
 // Flags, in tests/**/*.mjs and mcp/test/**/*.mjs: powershell/pwsh, Expand-Archive, msedge.exe or an
