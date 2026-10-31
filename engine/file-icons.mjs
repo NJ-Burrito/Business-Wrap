@@ -22,7 +22,7 @@ export const ICON_DIR = path.join(REPO, 'brand', 'v3', 'file-icons');
 export const EXTS = ['pdf', 'docx', 'html'];
 export const BACKUP_NAME = 'file-icons-backup.json';
 
-const PROGID = /^[A-Za-z0-9_.\-{}]+(\\[A-Za-z0-9_.\-{}]+)?$/; // "Word.Document.12", "ChromeHTML", "Applications\foo.exe"
+const PROGID = /^[A-Za-z0-9_.\-{}]+( [A-Za-z0-9_.\-{}]+)*(\\[A-Za-z0-9_.\-{}]+( [A-Za-z0-9_.\-{}]+)*)?$/; // "Word.Document.12", "Opera GXStable" (a space), "Applications\foo.exe"
 const classes = (progId) => `HKCU\\Software\\Classes\\${progId}`;
 const iconKey = (progId) => `${classes(progId)}\\DefaultIcon`;
 
@@ -129,17 +129,23 @@ export function createFileIcons({ reg, refresh, platform = process.platform, sta
   const icoFile = (ext) => path.join(dir(), `${ext}.ico`);
   const unsupported = () => ({ supported: false, reason: 'windows-only' });
 
-  /** The ProgID each extension resolves to: UserChoice, else HKCU .<ext>, else HKCR .<ext>; null when none. */
+  /** The ProgIDs each extension resolves to. Windows 11 24H2+ keeps TWO choices: UserChoice and UserChoiceLatest\ProgId, and
+   *  Explorer draws the icon of the latest one (measured on this PC: .pdf = MSEdgePDF vs PdfGear.App.1, .html = MSEdgeHTM vs
+   *  Opera GXStable; the first press changed only .docx, where both agree). So every distinct one is covered; the .<ext>
+   *  default (HKCU, else HKCR) only when neither exists. `progId` stays the first (UserChoice) for the old callers. */
   async function resolve() {
     const list = EXTS.flatMap((e) => [
       { op: 'get', key: `HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.${e}\\UserChoice`, name: 'ProgId' },
+      { op: 'get', key: `HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.${e}\\UserChoiceLatest\\ProgId`, name: 'ProgId' }, // sic: a SUBKEY named ProgId holding the value ProgId
       { op: 'get', key: `HKCU\\Software\\Classes\\.${e}`, name: '' },
       { op: 'get', key: `HKCR\\.${e}`, name: '' },
     ]);
     const r = await R.ops(list);
     return EXTS.map((ext, i) => {
-      const pick = [r[i * 3], r[i * 3 + 1], r[i * 3 + 2]].map((x) => x?.data).find((v) => v && PROGID.test(v));
-      return { ext, progId: pick || null };
+      const v = [0, 1, 2, 3].map((j) => r[i * 4 + j]?.data).map((x) => (x && PROGID.test(x) ? x : null));
+      const chosen = [v[0], v[1]].filter(Boolean);
+      const ids = [...new Set(chosen.length ? chosen : [v[2] || v[3]].filter(Boolean))];
+      return { ext, progId: ids[0] || null, progIds: ids };
     });
   }
 
@@ -160,12 +166,14 @@ export function createFileIcons({ reg, refresh, platform = process.platform, sta
     for (const e of EXTS) fs.copyFileSync(path.join(srcDir, `${e}.ico`), icoFile(e));
     const found = await resolve();
     const bk = readBackup(backupFile());
-    const todo = []; // one entry per distinct ProgID (two extensions sharing one keep the first)
+    const todo = []; // one entry per distinct ProgID (a ProgID shared by two extensions keeps the first)
     const results = [];
     for (const f of found) {
-      if (!f.progId) { results.push({ ext: f.ext, ok: false, reason: 'no-association' }); continue; }
-      if (todo.some((x) => x.progId === f.progId)) { results.push({ ext: f.ext, progId: f.progId, ok: false, reason: 'shared-progid' }); continue; }
-      todo.push(f);
+      if (!f.progIds.length) { results.push({ ext: f.ext, ok: false, reason: 'no-association' }); continue; }
+      for (const progId of f.progIds) {
+        if (todo.some((x) => x.progId === progId)) { results.push({ ext: f.ext, progId, ok: false, reason: 'shared-progid', hidden: true }); continue; }
+        todo.push({ ext: f.ext, progId });
+      }
     }
     // 1) back up what is there now (never overwrite an earlier backup: that one is the real original)
     const need = todo.filter((f) => !bk.entries[f.progId]);
@@ -187,13 +195,15 @@ export function createFileIcons({ reg, refresh, platform = process.platform, sta
     const again = await resolve();
     const back = await R.ops(todo.map((f) => ({ op: 'get', key: iconKey(f.progId), name: '' })));
     todo.forEach((f, i) => {
-      const same = again.find((a) => a.ext === f.ext)?.progId === f.progId;
+      const same = again.find((x) => x.ext === f.ext)?.progIds.includes(f.progId);
       const took = !w[i]?.error && !!back[i]?.value && sameValue(back[i].data, icoFile(f.ext));
       results.push(took && same ? { ext: f.ext, progId: f.progId, ok: true } : { ext: f.ext, progId: f.progId, ok: false, reason: w[i]?.error ? 'write-failed' : !took ? 'not-read-back' : 'association-changed' });
     });
     const refreshed = refresh ? await refresh() : false;
     results.sort((a, b) => EXTS.indexOf(a.ext) - EXTS.indexOf(b.ext));
-    return { supported: true, ok: results.some((x) => x.ok), results, refreshed };
+    // per extension: ok when every ProgID it uses took (a hidden shared-progid duplicate is not a failure)
+    const perExt = EXTS.map((ext) => { const rs = results.filter((x) => x.ext === ext && !x.hidden); const ok = rs.length > 0 && rs.every((x) => x.ok); const bad = rs.find((x) => !x.ok); return ok ? { ext, progId: rs[0].progId, progIds: rs.map((x) => x.progId), ok: true } : { ext, ...(bad?.progId ? { progId: bad.progId } : {}), ok: false, reason: bad?.reason || 'no-association' }; });
+    return { supported: true, ok: perExt.some((x) => x.ok), results: perExt, detail: results.filter((x) => !x.hidden), refreshed };
   }
 
   async function restore() {

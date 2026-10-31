@@ -34,7 +34,7 @@ import { harvestModel, harvestCrawl } from './harvest/cli.mjs';
 import { harvestSources, MODEL_EXT, TEXT_EXT } from './harvest/sources.mjs';
 import { STATE_DIR, healPort, healStaleHosts, healWorkspace, healFont, readHealLog, alive } from './heal/index.mjs';
 import { GATES } from './heal/gates.mjs';
-import { workspace, ensure, reportPath, sourcesDir, keepVersion, docTitle, outName, uniquePath, DOCS_NAME } from './workspace.mjs';
+import { workspace, ensure, reportPath, sourcesDir, keepVersion, docTitle, outName, uniquePath, noteOutput, DOCS_NAME } from './workspace.mjs';
 import { tidy } from './tidy.mjs';
 import { migrateLocal } from './testguard.mjs';
 import { doctor as doctorInfo } from '../mcp/startup.mjs';
@@ -244,6 +244,7 @@ export async function exportDoc({ document, locale, out, edits, docx = true }) {
   const pdf = (await exportPdf(doc, { locale: ed, theme: th, pdfPath: target('pdf') })).pdf;
   const files = [pdf];
   if (docx) files.push(exportDocx(doc, { locale: ed, theme: th, docxPath: target('docx') }).docx);
+  if (!dir) for (const f of files) noteOutput(f); // the folder icon of the document's Exports\ (Windows only)
   return { locale: ed, pdf, docx: docx ? files[1] : undefined, gates: [...steps, GATES.render(pdf, { allow: Object.values(doc.design?.fonts || {}) }), GATES.export(files, { editions: [ed] })] };
 }
 

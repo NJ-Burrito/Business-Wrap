@@ -15,7 +15,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { applyOps } from './edits.mjs';
 import { REPO } from './export.mjs';
 import { localBase, isTestMode, testSandbox, isRealRoot, realParent } from './testguard.mjs';
-import { ensureFolderIcon } from './brand-icons.mjs';
+import { ensureFolderIcon, refreshFolderIcon } from './brand-icons.mjs';
 import { tidyNow } from './tidy.mjs'; // a cycle by design: used only when ensure() meets an old layout
 
 /** .local/ (gitignored); BW_LOCAL_DIR moves it (tests). */
@@ -197,8 +197,23 @@ export function docFolder(docsDir, info) {
   if (JSON.stringify(idx) !== before) writeIndex(hist, idx);
   const dir = path.join(docsDir, folder);
   fs.mkdirSync(dir, { recursive: true });
-  ensureFolderIcon(dir); // Windows only, never throws
+  ensureFolderIcon(dir, { kind: 'general' }); // the document's own folder is always the general Business-Wrap folder; Windows only, never throws
   return { folder, dir };
+}
+const docsRootOf = (p) => { let d = path.resolve(p); for (;;) { if (path.basename(d) === DOCS_NAME) return d; const up = path.dirname(d); if (up === d) return null; d = up; } };
+/** Business-Wrap just wrote `file` (an export, a version, a share, a harvest output): gives its folder the icon its content earns
+ *  (0.15.3: only PDFs -> the PDF folder, only DOCX -> DOCX, only HTML -> HTML, else the general Business-Wrap folder). Only
+ *  Exports\, Sources\, Versions\ and the document folders inside the documents folder are ever touched, never a folder Business-Wrap
+ *  did not make. Windows only; never throws. */
+export function noteOutput(file) {
+  try {
+    const dir = path.dirname(path.resolve(file));
+    const root = docsRootOf(dir);
+    if (!root || dir === root) return false;
+    const rel = path.relative(root, dir).split(path.sep);
+    const ok = rel.length === 1 ? !rel[0].startsWith('.') : rel.length === 2 && ['Exports', 'Sources', 'Versions'].includes(rel[1]) && !rel[0].startsWith('.');
+    return ok ? refreshFolderIcon(dir, { systemDir: path.join(root, SYSTEM_NAME) }) : false;
+  } catch { return false; }
 }
 const idPart = (id, n = 8) => String(id).replace(/^doc-/, '').replace(/[^\w]/g, '').slice(0, n) || 'unknown';
 /** "<title> (<first 8 of id>)", longer when another history id already has that stem. */
@@ -308,6 +323,7 @@ export function saveHtml(ws, { id, title, html }) {
     fs.mkdirSync(vdir, { recursive: true });
     version = uniquePath(vdir, `${stamp(fs.statSync(file).mtime)} ${folder}.html`);
     fs.copyFileSync(file, version);
+    noteOutput(version);
   }
   fs.writeFileSync(file, html, 'utf8');
   return { file, folder, dir, overwritten: exists, version };
@@ -326,6 +342,7 @@ export function saveCopy(ws, { id, title, html }) {
   fs.mkdirSync(vdir, { recursive: true });
   const file = uniquePath(vdir, `${stamp(new Date())} ${folder} - copy.html`);
   fs.writeFileSync(file, html, 'utf8');
+  noteOutput(file);
   return { file, folder, dir, copy: true };
 }
 
@@ -415,6 +432,7 @@ export function sourcesDir(titles, ws = workspace()) {
   const { folder, dir } = docFolder(ws.dirs.docs, { titles: list.length ? list : [''] });
   const s = path.join(dir, 'Sources');
   fs.mkdirSync(s, { recursive: true });
+  noteOutput(path.join(s, 'x')); // Sources\ starts with the general icon; harvest writes sub-folders into it
   return { dir: s, docDir: dir, folder };
 }
 /** Before a file the user may have worked on is written over: the old one is copied to Versions\ beside it (never lost). */
@@ -424,5 +442,6 @@ export function keepVersion(file) {
   fs.mkdirSync(vdir, { recursive: true });
   const to = uniquePath(vdir, `${stamp(fs.statSync(file).mtime)} ${path.basename(file)}`);
   fs.copyFileSync(file, to);
+  noteOutput(to);
   return to;
 }

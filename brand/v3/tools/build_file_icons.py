@@ -1,4 +1,4 @@
-"""Business-Wrap brand v3 file-type badges: PDF, DOCX, HTML (and the document folder icon).
+"""Business-Wrap brand v3 file-type badges: PDF, DOCX, HTML (and the document folder icon, plus folder-pdf / folder-docx / folder-html, 0.15.3).
 
 Idea (owner, 2026-10-30): a file-page icon with a solid label tab across its left edge carrying the type in bold
 capitals. Ours is built from the brand v3 "Cover" mark: a navy page with a gold folded corner, the paper text line
@@ -91,6 +91,21 @@ def folder_svg() -> str:
             f'<title>Business-Wrap</title>{body}</svg>\n')
 
 
+def typed_folder_svg(face: Face, label: str, colour: str, small: bool) -> str:
+    """The Business-Wrap folder carrying one type's label chip (same chip as the file badge): folder-pdf, folder-docx, folder-html."""
+    if small:
+        chip = (7, 27, 50, 22)
+        text = text_path(face, label, chip[0] + chip[2] / 2, chip[1] + chip[3] / 2, 40, 12.5)
+    else:
+        chip = (12, 30, 40, 19)
+        text = text_path(face, label, chip[0] + chip[2] / 2, chip[1] + chip[3] / 2, 31, 9)
+    body = (f'<path d="M6 14Q6 10 10 10H24L30 16H54Q58 16 58 20V50Q58 54 54 54H10Q6 54 6 50Z" fill="{NAVY}"/>'
+            f'<path d="M6 22H58V50Q58 54 54 54H10Q6 54 6 50Z" fill="{BAND}"/>'
+            f'<rect x="{chip[0] + 0.75}" y="{chip[1] + 0.75}" width="{chip[2] - 1.5}" height="{chip[3] - 1.5}" rx="4.5" fill="{colour}" stroke="{PAPER}" stroke-width="1.5"/>')
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Business-Wrap {label}">'
+            f'<title>Business-Wrap folder {label}</title>{body}<path d="{text}" fill="#ffffff"/></svg>\n')
+
+
 def rasterise(svgs: dict[str, str]) -> dict[tuple[str, int], bytes]:
     from PIL import Image
     from playwright.sync_api import sync_playwright
@@ -140,22 +155,25 @@ def main():
         svgs[k] = badge(face, label, colour, False)
         svgs[k + "-small"] = badge(face, label, colour, True)
     svgs["folder"] = folder_svg()
+    for k, (label, colour) in TABS.items():
+        svgs[f"folder-{k}"] = typed_folder_svg(face, label, colour, False)
+        svgs[f"folder-{k}-small"] = typed_folder_svg(face, label, colour, True)
     for k, s in svgs.items():
         (OUT / f"{k}.svg").write_text(s, encoding="utf-8")
     png = rasterise(svgs)
-    for k in ("pdf", "docx", "html", "folder"):
+    for k in ("pdf", "docx", "html", "folder", "folder-pdf", "folder-docx", "folder-html"):
         frames = []
         for s in SIZES:
             data = png.get((k, s)) or png.get((k + "-small", s))
             if data is None:
                 continue
             frames.append((s, data))
-            if not (k != "folder" and s == 16):
+            if not (k in ("pdf", "docx", "html") and s == 16):
                 (OUT / f"{k}-{s}.png").write_bytes(data)
             elif s == 16:
                 (OUT / f"{k}-{s}.png").write_bytes(data)
         (OUT / f"{k}.ico").write_bytes(ico(frames))
-        if k != "folder":  # the DOCX thumbnail part is a JPEG (Word's own format): flatten the badge onto white
+        if k in ("pdf", "docx", "html"):  # the DOCX thumbnail part is a JPEG (Word's own format): flatten the badge onto white
             from PIL import Image
             im = Image.open(io.BytesIO(png[(k, 256)])).convert("RGBA")
             flat = Image.new("RGB", im.size, "white")
@@ -167,9 +185,9 @@ def main():
 
 def preview(png: dict[tuple[str, int], bytes], dest: Path):
     from PIL import Image, ImageDraw
-    rows = ("pdf", "docx", "html", "folder")
+    rows = ("pdf", "docx", "html", "folder", "folder-pdf", "folder-docx", "folder-html")
     W = 40 + sum(s + 28 for s in SIZES)
-    sheet = Image.new("RGBA", (W, 4 * 440 + 20), "#ffffff")
+    sheet = Image.new("RGBA", (W, 7 * 440 + 20), "#ffffff")
     d = ImageDraw.Draw(sheet)
     y = 20
     for k in rows:
