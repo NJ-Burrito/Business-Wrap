@@ -8,6 +8,35 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.15.2] - 2026-10-31
+
+🧭 The third owner-notes release: live-editor slash commands, a Spelling tab with a side panel, a calmer drafting-grid background, a smoother ribbon, and a true 100% zoom. / 🧭 إصدار ملاحظات المالك الثالث: أوامر مائلة داخل المحرر الحي، وتبويب للإملاء مع لوحة جانبية، وخلفية شبكة رسم أهدأ، وشريط أنعم، وتكبير 100% حقيقي.
+
+### Added / أضيف
+- ⌨️ **8 live-editor slash commands** drive the open editor: zoom, theme, reading mode, find, save and the other safe actions. / **8 أوامر مائلة للمحرر الحي** تشغّل المحرر المفتوح: التكبير والمظهر ووضع القراءة والبحث والحفظ وبقية الإجراءات الآمنة.
+- 🔤 **A Spelling tab** in the ribbon: next and previous error, fix, fix all, ignore, ignore all, add to dictionary, language and a count. / **تبويب الإملاء** في الشريط: الخطأ التالي والسابق، والتصحيح، وتصحيح الكل، والتجاهل، وتجاهل الكل، والإضافة إلى القاموس، واللغة، وعدّاد الأخطاء.
+- 🗒️ **A spelling side panel**: click a misspelt word to see suggestions, then fix it, ignore it, ignore it everywhere, or add it to your dictionary. It floats over the pages and moves nothing. / **لوحة إملاء جانبية**: اضغط على كلمة خاطئة لترى الاقتراحات، ثم صحّحها أو تجاهلها أو تجاهلها في كل مكان أو أضفها إلى قاموسك. تظهر فوق الصفحات ولا تحرّك شيئًا.
+- 🔘 **One spelling switch** turns on Arabic and English together. / **مفتاح إملاء واحد** يشغّل العربية والإنجليزية معًا.
+
+### Changed / تغير
+- 🎨 **A new calm drafting-grid background** behind the pages, in light and dark. The watermark is at the bottom left and notes pop up at the bottom right. / **خلفية جديدة هادئة بشبكة رسم** خلف الصفحات، في الوضع الفاتح والداكن. العلامة المائية أسفل اليسار والإشعارات أسفل اليمين.
+- 💡 **The explanation panel opens after a short rest on a tool**, swaps in place as you move, and floats over the pages instead of pushing them. / **لوحة الشرح تُفتح بعد توقف قصير على الأداة**، وتتبدّل في مكانها وأنت تتنقل، وتطفو فوق الصفحات بدل دفعها.
+- 🪄 **The ribbon opens and closes with a smooth glide**, and the pages move with it. / **الشريط يُفتح ويُغلق بانزلاق ناعم**، وتتحرك الصفحات معه.
+- 📖 **Reading mode has its own icon.** / **لوضع القراءة أيقونته الخاصة.**
+- 🔌 **Turning the server off keeps the editor open** and shows a Turn on card, so you can switch it back on. / **إيقاف الخادم يُبقي المحرر مفتوحًا** ويعرض بطاقة «تشغيل» لتعيده متى شئت.
+- 🤖 **`/business-wrap:action` runs more safe actions**, and `/business-wrap:check` now counts spelling mistakes and diagram warnings. / **الأمر `/business-wrap:action` ينفّذ إجراءات آمنة أكثر**، والأمر `/business-wrap:check` يحسب الآن الأخطاء الإملائية وتحذيرات المخططات.
+- ⚡ **Much lighter on your PC**: idle CPU fell from about 316 to 17 ms per second, and a sweep across the tools from about 27 to 4 ms per tool. / **أخف بكثير على جهازك**: انخفض استهلاك المعالج في الخمول من نحو 316 إلى 17 ملّي ثانية في الثانية، ومرور المؤشر على الأدوات من نحو 27 إلى 4 ملّي ثانية للأداة.
+
+### Fixed / أصلح
+- 🔍 **100% zoom was about 42% in single and spread view**: it is now true size. / **تكبير 100% كان نحو 42% في عرض الصفحة المفردة والمزدوجة**: صار الآن بالحجم الحقيقي.
+- 📐 **Fill height now fits between the toolbar and the page buttons.** / **«ملء الارتفاع» يناسب الآن المساحة بين شريط الأدوات وأزرار الصفحات.**
+- 🌐 **The menu in Arabic closes on an outside click** on every system. / **القائمة بالعربية تُغلق عند الضغط خارجها** على كل الأنظمة.
+- 🧩 **Explanation panel races** (flicker when moving across tools) are gone. / **اختفى وميض لوحة الشرح** عند التنقل السريع بين الأدوات.
+
+### Known limits / حدود معروفة
+- 📏 Fill height and zoom are re-fitted after a manual zoom only, not on every window resize. / **«ملء الارتفاع» والتكبير يُعاد ضبطهما بعد التكبير اليدوي فقط**، لا عند كل تغيير لحجم النافذة.
+- 🔒 Editor actions that delete, close or stop something stay refused over MCP. / **إجراءات المحرر التي تحذف أو تغلق أو توقف شيئًا تبقى مرفوضة عبر MCP.**
+
 ## [0.15.1] - 2026-10-31
 
 🗂️ A small release: Business-Wrap file icons on this PC, the user-story ID card as a real table, faster GitHub checks, and a calmer toolbar. / 🗂️ إصدار صغير: أيقونات Business-Wrap لملفاتك على هذا الجهاز، وبطاقة هوية قصة المستخدم جدولًا حقيقيًا، وفحوص GitHub أسرع، وشريط أدوات أهدأ.

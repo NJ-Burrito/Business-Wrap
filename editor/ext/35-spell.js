@@ -376,17 +376,17 @@ const SP = (() => {
   }
   const isKey = (i) => `${i.key}|${i.nth}`;
   /** Types the replacement over the word, as the user would (one undo step): select it in its field, execCommand('insertText'). No toast, no rescan: the callers do that. */
-  function applyFix(is, text) {
+  function applyFix(is, text, batch = false) {
     const el = is.el.isConnected ? is.el : mainOf(is.ed)?.querySelector(`[data-p="${CSS.escape(is.path)}"]`);
     const r = is.range;
     if (!el || r.collapsed || r.toString() !== is.raw) return false;
     el.focus({ preventScroll: true }); // the editor's focusin makes the field editable and starts a fresh typing group
-    S.typingGroup = null;
+    if (!batch) S.typingGroup = null;
     const s = getSelection();
     s.removeAllRanges();
     s.addRange(r.cloneRange());
     const ok = document.execCommand('insertText', false, text);
-    S.typingGroup = null;
+    if (!batch) S.typingGroup = null;
     return ok;
   }
   const gone = (list) => { sp.issues = sp.issues.filter((i) => !list.includes(i)); marks(); summary(); paint(); };
@@ -398,17 +398,17 @@ const SP = (() => {
     schedule(80);
     return true;
   }
-  /** The same misspelling everywhere in the edition, replaced in ONE undo step: the undo groups are per edition, so the ops the replacements made share one group id. */
+  /** The same misspelling everywhere in the edition, replaced in ONE undo step: the undo groups are per edition, every edit joins one group opened in S.batchGroup (editor.js setText), no relabel afterwards. */
   function fixAll(is, text) {
-    const e = cur(is.ed);
-    const n0 = e.ops.length;
     const same = sp.issues.filter((i) => i.ed === is.ed && i.raw === is.raw && i.word === is.word);
     let n = 0;
     const done = [];
-    for (const i of [...same].reverse()) if (applyFix(i, text)) { n += 1; done.push(i); } // last to first: an earlier range is never shifted by a later edit
+    S.batchGroup = { g: newGroup(), n: 0 }; // setText (editor.js) puts every edit made while this is set into this one group
+    S.typingGroup = null;
+    try {
+      for (const i of [...same].reverse()) if (applyFix(i, text, true)) { n += 1; done.push(i); } // last to first: an earlier range is never shifted by a later edit
+    } finally { S.batchGroup = null; S.typingGroup = null; }
     if (!n) { toast(t('sp.stale'), 'info'); scan(); return false; }
-    const g = newGroup();
-    e.ops.slice(n0).forEach((op, k) => { op.id = `${g}.${k}`; });
     window.dispatchEvent(new CustomEvent('bw:wm', { detail: { id: 'W04' } }));
     toast(t('sp.fixedAll', { w: is.raw, n }), 'ok');
     sp.cur = -1;
@@ -465,7 +465,7 @@ const SP = (() => {
     }
     placeSide(el);
     el.innerHTML = sideHtml(is);
-    if (typeof xplPanelVisible === 'function' && typeof xplPanelSet === 'function' && xplPanelVisible()) xplPanelSet(false); // the explanation panel and this one are never open together
+    if (typeof xplPanelVisible === 'function' && typeof xplPanelSet === 'function' && xplPanelVisible()) xplPanelSet(false, true); // temp: the stored bw:xpl-panel preference is not changed; the explanation panel and this one are never open together
     if (!el.open) { const show = () => el.show(); if (typeof bwSidePanelOpen === 'function') bwSidePanelOpen(el, show); else show(); }
     if (is.sug == null) ENG.suggest(is.lang, is.word).then((s2) => { is.sug = s2; if (sp.sideIs === is) refreshSide(is, { first: true }); });
     sp.sideFocus = focus;
@@ -490,6 +490,7 @@ const SP = (() => {
       const gone = () => { if (el.open) el.close(); el.remove(); };
       if (typeof bwSidePanelClose === 'function') bwSidePanelClose(el, gone); else gone();
     }
+    if (typeof xplPanelRelease === 'function') xplPanelRelease();
     if (refocus && is?.el?.isConnected) {
       is.el.focus({ preventScroll: true });
       try { if (!is.range.collapsed && is.range.toString() === is.raw) { const s = getSelection(); const c = is.range.cloneRange(); c.collapse(false); s.removeAllRanges(); s.addRange(c); } } catch { /* the range is gone: the field keeps its own caret (it sits just after the word otherwise) */ }

@@ -269,8 +269,10 @@ function setText(path, value, ed = S.ed) {
     applyOp(e.doc, last);
     emit('commit', [last], ed, 'type');
   } else {
-    S.typingGroup = newGroup();
+    const bg = S.batchGroup; // a multi-edit action (spelling «fix all»): every setText of it joins ONE undo group, ops g.0, g.1 …
+    S.typingGroup = bg ? bg.g : newGroup();
     commit([{ op: 'setText', path, value, old }], { ed, rerender: false, group: S.typingGroup });
+    if (bg) e.ops.at(-1).id = `${bg.g}.${bg.n++}`;
   }
   if (hasOther()) {
     if (e.stale.has(path)) e.stale.delete(path);

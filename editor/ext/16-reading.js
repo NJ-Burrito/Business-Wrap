@@ -22,7 +22,7 @@ const RD = (() => {
     }
     b.lang = S.ui;
     b.dir = shell.dataset.tdir || 'rtl';
-    b.innerHTML = `<span class="i">${ic('view.single')}</span><span class="w">${esc(t('reading.exit'))}</span><kbd>Esc</kbd>`;
+    b.innerHTML = `<span class="i">${ic('reading')}</span><span class="w">${esc(t('reading.exit'))}</span><kbd>Esc</kbd>`;
     b.setAttribute('aria-label', `${t('reading.exit')} (Esc)`);
   }
   function enter() {

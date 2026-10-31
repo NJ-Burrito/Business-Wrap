@@ -78,7 +78,9 @@ function xplTarget(node) {
   return k && I18N.ui[S.ui][`explain.${k}`] ? el : null;
 }
 /** The panel's open/closed state ('0' = closed), remembered per browser; an old "explainers off" closes it once. */
+let XPL_FOLDED = false; // the panel is folded away for another side panel (spelling): the stored preference stays as the user set it
 function xplPanelOpen() {
+  if (XPL_FOLDED) return false;
   if (ls.get('bw:xpl-panel') == null && ls.get('bw:explainers') === '0') ls.set('bw:xpl-panel', '0');
   return ls.get('bw:xpl-panel') !== '0';
 }
@@ -128,14 +130,21 @@ function xplDock() {
   dock.querySelector('.xd-b').hidden = !open;
   return dock;
 }
-function xplPanelSet(open) {
-  ls.set('bw:xpl-panel', open ? '1' : '0');
+function xplPanelSet(open, temp = false) {
+  if (!temp) ls.set('bw:xpl-panel', open ? '1' : '0'); // temp = folded for the spelling panel: the preference is not touched
+  XPL_FOLDED = temp && !open;
   const dock = root.querySelector('.xpl-dock');
   if (!open) xplClear();
   if (!dock) { xplDock(); return; }
   if (open) bwSidePanelOpen(dock, xplDock); // slides in over the pages
   else if (xplPanelVisible()) bwSidePanelClose(dock, xplDock); // slides out, then only the edge tab stays
   else xplDock();
+}
+/** The spelling panel closed: the explanation panel returns if (and only if) it was folded for it and the user's preference is open. */
+function xplPanelRelease() {
+  if (!XPL_FOLDED) return;
+  XPL_FOLDED = false;
+  if (ls.get('bw:xpl-panel') !== '0') xplPanelSet(true, true); else xplDock();
 }
 function xplWire() {
   xplDock();

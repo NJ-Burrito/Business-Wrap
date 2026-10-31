@@ -16,7 +16,7 @@
 /* icon motion, house style as editor/ext/40-icon-motion.css: one move, once, on hover, keyboard focus and press; calm
    mode and reduced motion stop it (ui.css) */
 :where(.ic[data-ic^="pj"], .ic[data-ic="bulkEdit"], .ic[data-ic="bkPreview"]) > * { transform-box: fill-box; transform-origin: 50% 50%; }
-:is(.b:hover:not(:disabled), .b:focus-visible, .b:active:not(:disabled), .b.ic-go, [role="option"]:hover) .ic:is([data-ic="pjNew"], [data-ic="pjRename"], [data-ic="pjDelete"], [data-ic="bulkEdit"], [data-ic="bkPreview"]) > * { animation: var(--pjm, none); }
+:is(.b.ic-rest:hover:not(:disabled), .b:focus-visible, .b:active:not(:disabled), .b.ic-go, [role="option"].ic-rest:hover) .ic:is([data-ic="pjNew"], [data-ic="pjRename"], [data-ic="pjDelete"], [data-ic="bulkEdit"], [data-ic="bkPreview"]) > * { animation: var(--pjm, none); }
 @keyframes pjm-from { from { translate: var(--x, 0) var(--y, 0); opacity: 0; } 45% { opacity: 1; } to { translate: 0 0; opacity: 1; } }
 @keyframes pjm-pop { 0%, 100% { scale: 1; } 40% { scale: var(--s, 1.2); } 70% { scale: .96; } }
 @keyframes pjm-tilt { 0%, 100% { rotate: 0deg; } 40% { rotate: var(--r, 12deg); } 70% { rotate: calc(var(--r, 12deg) * -.3); } }
