@@ -59,7 +59,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 ### Known limits / حدود معروفة
 - The spell dictionaries are not stored inside a saved HTML file; a file opened from disk uses the browser's own spell checking. / قواميس التدقيق الإملائي لا تُخزَّن داخل ملف HTML المحفوظ؛ والملف المفتوح من القرص يستعمل تدقيق المتصفح نفسه.
-- The first Arabic spell-check load takes about two seconds. / أول تحميل للتدقيق الإملائي العربي يستغرق نحو ثانيتين.
+- The first Arabic spell-check load takes a few seconds. / أول تحميل للتدقيق الإملائي العربي يستغرق بضع ثوان.
 - A PDF imported into a project may bring tables in as plain paragraphs. / ملف PDF المستورد إلى مشروع قد تصل جداوله فقرات عادية.
 
 ## [0.14.0] - 2026-10-30
