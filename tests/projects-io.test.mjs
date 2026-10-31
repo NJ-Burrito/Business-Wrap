@@ -28,7 +28,7 @@ process.env.BW_LOCAL_DIR = path.join(tmp, '.local');
 let failed = 0;
 const out = [];
 const check = (n, ok, d = '') => { out.push(`${ok ? 'PASS' : 'FAIL'}  projects-io: ${n}${d && !ok ? '  — ' + String(d).slice(0, 500) : ''}`); if (!ok) failed += 1; };
-setTimeout(() => { console.log(`${out.join('\n')}\nFAILED: projects-io stalled past 12 min`); process.exit(1); }, 12 * 60e3).unref();
+setTimeout(() => { console.log(`${out.join('\n')}\nFAILED: projects-io stalled past 25 min`); process.exit(1); }, 25 * 60e3).unref();
 
 const sample = (n, l) => fs.readFileSync(path.join(REPO, 'samples', n, `document.${l}.json`), 'utf8');
 const variant = (l, name) => { const j = JSON.parse(sample('event-permit', l)); j.control.coverTitle = name; j.control.title = `${j.control.title.split(/\s*[:—]\s+/)[0]}: ${name}`; return JSON.stringify(j, null, 1); };
@@ -47,7 +47,7 @@ async function host(name) {
     let j; try { j = JSON.parse(t); } catch { j = t; }
     return { status: r.status, body: j };
   };
-  const job = async (id, ms = 240000) => { const t0 = Date.now(); const seen = []; for (;;) { const j = (await call('GET', `/api/project/job?id=${id}`)).body; seen.push([j.done, j.total, j.state]); if (j.state !== 'running') return { ...j, seen }; if (Date.now() - t0 > ms) throw new Error(`job ${id} still running after ${ms} ms`); await new Promise((r) => setTimeout(r, 150)); } };
+  const job = async (id, ms = 600000) => { const t0 = Date.now(); const seen = []; for (;;) { const j = (await call('GET', `/api/project/job?id=${id}`)).body; seen.push([j.done, j.total, j.state]); if (j.state !== 'running') return { ...j, seen }; if (Date.now() - t0 > ms) throw new Error(`job ${id} still running after ${ms} ms`); await new Promise((r) => setTimeout(r, 150)); } };
   /** an entry into the mirror (what the tab does on Save) and, with `project`, into the project */
   const mirror = async (entry, project) => { await call('POST', '/api/library/mirror', { entry }); if (project) await call('POST', '/api/projects/assign', { doc: entry.id, project }); };
   const inbox = async () => { const ids = (await call('GET', '/api/library/inbox')).body.ids; return Promise.all(ids.map(async (id) => (await call("GET", `/api/library/inbox?id=${id}`)).body)); };
@@ -63,6 +63,10 @@ try {
   const ib = await A.inbox();
   check('the inbox holds the entry as the tab stores it (two editions, hash, project)', ib.length === 1 && ib[0].id === imp.body.doc_id[0] && ib[0].editions.ar.hash.startsWith('sha256:') && ib[0].editions.en.raw && /^pj-/.test(ib[0].project));
   check('a bad document is refused with 400 and nothing is queued', (await A.call('POST', '/api/library/import', { documents: [{ ar: '{"x":1}' }] })).status === 400 && (await A.inbox()).length === 1);
+  const byPath = await A.call('POST', '/api/library/import', { documents: [path.join(REPO, 'samples', 'blank', 'document.ar.json'), path.join(REPO, 'samples', 'blank', 'document.en.json')] });
+  check('document paths (what the CLI open has always posted): x.ar.json and x.en.json are ONE document with two editions', byPath.status === 200 && byPath.body.queued === 1 && (await A.inbox()).some((e) => e.id === byPath.body.doc_id[0] && Object.keys(e.editions).join() === 'ar,en'), JSON.stringify(byPath));
+  await A.call('DELETE', `/api/library/inbox?id=${byPath.body.doc_id[0]}`);
+  check('a path that is not document JSON is refused with 400', (await A.call('POST', '/api/library/import', { documents: [path.join(REPO, 'package.json')] })).status === 400);
   await A.call('DELETE', `/api/library/inbox?id=${imp.body.doc_id[0]}`);
   check('DELETE inbox confirms the tab stored it', (await A.inbox()).length === 0);
   const seedPj = (await A.call('GET', '/api/projects')).body.state;

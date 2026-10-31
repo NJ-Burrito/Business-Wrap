@@ -14,15 +14,25 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import { REPO } from '../export.mjs';
-import { ensure, readJson, saveHtml, subdir } from '../workspace.mjs';
+import { ensure, readJson, saveHtml, subdir, systemDir } from '../workspace.mjs';
 import { importFile } from '../import/import.mjs';
 import { assignDocs, ensureProject, readState } from './projects.mjs';
 
 const ID = /^doc-[A-Za-z0-9-]{4,64}$/;
 const PJID = /^pj-[A-Za-z0-9-]{4,64}$/;
 
+/** A server-sent event to every tab (SSE `ingest`, `progress`): ctx.broadcast when the host sets one, else the session route's emit (engine/routes/session.mjs, the
+ *  transport lane), else nothing: a tab that was not told reads the inbox at its next boot, and the dialogs poll their job. Never throws. */
+let sessionMod = null;
+export function push(ctx, event, data) {
+  try {
+    if (typeof ctx.broadcast === 'function') { ctx.broadcast(event, data); return; }
+    (sessionMod ||= import('./session.mjs').catch(() => ({}))).then((m) => { try { m.emit?.(ctx, event, data); } catch { /* closing */ } });
+  } catch { /* no push channel */ }
+}
+
 const libDir = (ctx) => subdir(ensure(ctx.workspace).dirs, 'library');
-const inboxDir = (ctx) => subdir(ensure(ctx.workspace).dirs, 'inbox');
+const inboxDir = (ctx) => path.join(systemDir(ensure(ctx.workspace).dirs), 'inbox'); // <workspace>\.system\inbox
 const tombFile = (ctx) => path.join(libDir(ctx), 'purged.json');
 const readTombs = (ctx) => { try { const a = JSON.parse(fs.readFileSync(tombFile(ctx), 'utf8')); return Array.isArray(a) ? a.filter((x) => ID.test(String(x))) : []; } catch { return []; } };
 const writeTombs = (ctx, ids) => { fs.mkdirSync(libDir(ctx), { recursive: true }); fs.writeFileSync(tombFile(ctx), JSON.stringify([...new Set(ids)].slice(-5000))); };
@@ -60,10 +70,30 @@ export function makeEntry(d, { origin = 'import' } = {}) {
  * Documents into the library through the inbox. All are validated before anything is written.
  * @returns {{library: true, queued: number, doc_id: string[], url: string|null, project: string|null, entries: object[]}}
  */
+/** A string in `documents` is the path of a document JSON on this machine (what engine/cli.mjs `open` has always sent): x.ar.json and x.en.json of one
+ *  folder are the two editions of ONE document, any other name is one document by its script. Objects pass through. */
+export function normaliseDocuments(documents) {
+  if (!Array.isArray(documents)) return documents;
+  const out = [], groups = new Map();
+  for (const d of documents) {
+    if (typeof d !== 'string') { out.push(d); continue; }
+    const f = path.resolve(d);
+    let raw;
+    try { raw = fs.readFileSync(f, 'utf8'); if (raw.length > 60 * 1024 * 1024) throw new Error('too large'); JSON.parse(raw); } catch (e) { throw Object.assign(new Error(`documents: ${path.basename(f)} is not readable document JSON (${String(e.message).slice(0, 80)})`), { code: 400 }); }
+    const m = /^(.*)\.(ar|en)\.json$/i.exec(f);
+    const ed = m ? m[2].toLowerCase() : /[\u0600-\u06FF]/.test(JSON.parse(raw).control?.title || '') ? 'ar' : 'en';
+    const key = m ? m[1] : f;
+    const g = groups.get(key) || (out.push({}), groups.set(key, out.at(-1)), out.at(-1));
+    g[ed] = raw;
+  }
+  return out;
+}
+
 export function queueDocuments(ctx, documents, { project, origin = 'import' } = {}) {
   if (!ctx.workspace) throw Object.assign(new Error('no save folder: this server was started with --out'), { code: 409 });
   if (!Array.isArray(documents) || !documents.length) throw Object.assign(new Error('documents: [{ar?, en?, name?, project?}] is required'), { code: 400 });
   if (documents.length > 500) throw Object.assign(new Error('documents: at most 500 per request'), { code: 400 });
+  documents = normaliseDocuments(documents);
   const entries = documents.map((d) => makeEntry(d, { origin }));
   const dir = inboxDir(ctx);
   fs.mkdirSync(dir, { recursive: true });
@@ -81,7 +111,7 @@ export function queueDocuments(ctx, documents, { project, origin = 'import' } = 
   });
   for (const [pid, ids] of byProject) assignDocs(ctx, ids, pid);
   const ids = entries.map((e) => e.id);
-  try { ctx.broadcast?.('ingest', { ids }); } catch { /* no push channel: the next boot reads the inbox */ }
+  push(ctx, 'ingest', { ids }); // no push channel: the next boot reads the inbox
   return { library: true, queued: ids.length, doc_id: ids, url: `/#doc=${ids[0]}`, project: [...byProject.keys()][0] || null, entries };
 }
 

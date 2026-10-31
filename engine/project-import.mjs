@@ -4,7 +4,7 @@
 // importProject({inputs, project, locale, onProgress, known, onConflict, queue}) → {project, came_in, failed, skipped, warnings}
 //   inputs      paths of files, folders and .zip files
 //   project     the project's name; else index.json's, else the folder or zip name, else "Imported <date>"
-//   known       a Set of sha256 hashes of document texts already in the library (duplicates are `skipped`, the re-import is idempotent)
+//   known       a Set of editionKey(raw, ops) of the editions already in the library (duplicates are `skipped`, the re-import is idempotent)
 //   onConflict  'skip' (default: a document already in the library is skipped) | 'keep' (imported again as a new document)
 //   queue       (documents, {project}) → {doc_id: [...]}: how the documents reach the library (routes/library.mjs queueDocuments); one call, so the
 //               project exists once and every document is assigned in one request
@@ -27,6 +27,9 @@ import { importFile, words } from './import/import.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
+/** What makes a document "the same one": each edition's text AND its edits (two documents that start from one template and were edited differently are two documents). */
+export const opsKey = (ops) => sha(JSON.stringify((ops || []).map((o) => [o.op, o.path, o.value ?? null, o.from ?? null])));
+export const editionKey = (raw, ops) => `${sha(raw)}:${opsKey(ops)}`;
 const BWDATA = /<script type="application\/json" id="bw-data">([\s\S]*?)<\/script>/;
 const MAX_FILES = 5000;
 const SKIP_NAMES = /^(index\.json|00 فهرس - Index\.html|desktop\.ini|thumbs\.db|\.ds_store)$/i;
@@ -66,17 +69,28 @@ export async function importProject({ inputs, project, locale, onProgress = () =
     // 1. expand: files, folders (recursive), zips (extracted below the work folder; zip-slip and bombs refused by zip.mjs)
     const files = [];
     let guess = '';
+    const unzip = (zf, src) => {
+      const dir = path.join(work, `zip-${files.length}-${crypto.randomBytes(3).toString('hex')}`);
+      const got = extractZip(zf, dir);
+      return got.map((g) => ({ file: g.file, rel: g.name.replace(/^[^/]+\//, (m) => (got.every((x) => x.name.startsWith(m)) ? '' : m)), src }));
+    };
     for (const [src, input] of (inputs || []).entries()) {
       const p = path.resolve(String(input));
       let st;
       try { st = fs.statSync(p); } catch { failed.push({ file: String(input), reason: 'not found' }); continue; }
       try {
-        if (st.isDirectory()) { guess ||= path.basename(p); files.push(...walk(p).map((f) => ({ ...f, src }))); }
-        else if (/\.zip$/i.test(p)) {
-          const dir = path.join(work, `zip-${files.length}-${crypto.randomBytes(3).toString('hex')}`);
-          const got = extractZip(p, dir);
+        if (st.isDirectory()) {
+          const found = walk(p);
+          const zips = found.filter((f) => /\.zip$/i.test(f.rel));
+          // a folder (or an upload) holding ONE zip and nothing else is that zip; a zip among other files is opened too, its files joining the rest
+          guess ||= zips.length === 1 && found.length === 1 ? path.basename(zips[0].rel).replace(/\.zip$/i, '') : path.basename(p);
+          for (const f of found) {
+            if (!/\.zip$/i.test(f.rel)) { files.push({ ...f, src }); continue; }
+            try { files.push(...unzip(f.file, src)); } catch (e) { failed.push({ file: f.rel, reason: String(e.message || e).slice(0, 300) }); }
+          }
+        } else if (/\.zip$/i.test(p)) {
           guess ||= path.basename(p).replace(/\.zip$/i, '');
-          files.push(...got.map((g) => ({ file: g.file, rel: g.name.replace(/^[^/]+\//, (m) => (got.every((x) => x.name.startsWith(m)) ? '' : m)), src })));
+          files.push(...unzip(p, src));
         } else files.push({ file: p, rel: path.basename(p), src });
       } catch (e) { failed.push({ file: path.basename(p), reason: String(e.message || e).slice(0, 300) }); }
     }
@@ -170,7 +184,10 @@ export async function importProject({ inputs, project, locale, onProgress = () =
         const bad = validateEdits(edits).filter((x) => !/^missing (document|baseHash)$/.test(x));
         if (bad.length) throw new Error(`edits: ${bad.slice(0, 3).join('; ')}`);
         const ed = edits.locale || editionOfFile(e.rel, null) || 'ar';
-        const target = edits.baseHash ? documents.find((d) => d[ed] && hashOf(d[ed]) === edits.baseHash) : documents.find((d) => d[ed] && edits.document && d._exportId === edits.document);
+        // several documents can start from one text (a template edited three ways): the exported id says which; else the first one with no edits of this edition yet
+        const same = documents.filter((d) => d[ed] && (edits.baseHash ? hashOf(d[ed]) === edits.baseHash : edits.document && d._exportId === edits.document));
+        const target = same.find((d) => edits.document && d._exportId === edits.document) || same.find((d) => !(d.ops[ed] || []).length && !d._edited?.[ed]) || (edits.document ? null : same[0]);
+        if (target) (target._edited ||= {})[ed] = true;
         if (!target) throw new Error(`edits: base document not found (baseHash ${String(edits.baseHash || '').slice(0, 19)}…)`);
         target.ops[ed] = [...(target.ops[ed] || []), ...edits.ops];
         target._kind = `${target._kind}+edits`;
@@ -182,7 +199,7 @@ export async function importProject({ inputs, project, locale, onProgress = () =
     const fresh = [];
     const seen = new Set();
     for (const d of documents) {
-      const keys = ['ar', 'en'].filter((l) => d[l]).map((l) => sha(d[l]));
+      const keys = ['ar', 'en'].filter((l) => d[l]).map((l) => editionKey(d[l], d.ops?.[l]));
       const dup = keys.length && keys.every((k) => known.has(k) || seen.has(k));
       if (dup && onConflict !== 'keep') { skipped.push({ file: d._file, reason: 'already in the library (same content)' }); continue; }
       keys.forEach((k) => seen.add(k));
@@ -193,7 +210,7 @@ export async function importProject({ inputs, project, locale, onProgress = () =
     let docIds = [];
     if (fresh.length) {
       if (!queue) throw new Error('importProject: no way to reach the library (queue)');
-      const out = await queue(fresh.map(({ _file, _kind, _words, _exportId, ...d }) => (d)), { project: name });
+      const out = await queue(fresh.map(({ _file, _kind, _words, _exportId, _edited, ...d }) => (d)), { project: name });
       docIds = out.doc_id || [];
       fresh.forEach((d, i) => came_in.push({ file: d._file, doc_id: docIds[i], title: d.title || titleOf(d), kind: d._kind, words: d._words ?? 0, editions: ['ar', 'en'].filter((l) => d[l]) }));
     }

@@ -13,8 +13,8 @@ import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import { ensure, readJson, systemDir, subdir } from '../workspace.mjs';
 import { exportProject, PROJECTS_NAME } from '../project-export.mjs';
-import { importProject } from '../project-import.mjs';
-import { queueDocuments, mirrorEntry } from './library.mjs';
+import { importProject, editionKey } from '../project-import.mjs';
+import { queueDocuments, mirrorEntry, push } from './library.mjs';
 import { readState } from './projects.mjs';
 import { reveal } from '../host.mjs';
 
@@ -29,8 +29,7 @@ function newJob(ctx, kind) {
   jobs.set(j.id, j);
   for (const k of [...jobs.keys()].slice(0, Math.max(0, jobs.size - 30))) if (jobs.get(k).state !== 'running') jobs.delete(k);
   running = j;
-  const push = () => { try { ctx.broadcast?.('progress', { job: j.id, kind, done: j.done, total: j.total, file: j.file, state: j.state }); } catch { /* no push channel */ } };
-  j.push = push;
+  j.push = () => push(ctx, 'progress', { job: j.id, kind, done: j.done, total: j.total, file: j.file, state: j.state });
   return j;
 }
 const finish = (j, state, patch = {}) => { Object.assign(j, patch, { state }); if (running === j) running = null; j.push(); };
@@ -41,7 +40,7 @@ function knownHashes(ctx) {
   const set = new Set();
   const dir = subdir(ensure(ctx.workspace).dirs, 'library');
   for (const f of fs.existsSync(dir) ? fs.readdirSync(dir).filter((x) => x.endsWith('.json.gz')) : []) {
-    try { const e = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(dir, f))).toString('utf8')); if (e.deletedAt) continue; for (const x of Object.values(e.editions || {})) if (x.raw) set.add(crypto.createHash('sha256').update(x.raw).digest('hex')); } catch { /* skip a bad entry */ }
+    try { const e = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(dir, f))).toString('utf8')); if (e.deletedAt) continue; for (const x of Object.values(e.editions || {})) if (x.raw) set.add(editionKey(x.raw, x.ops)); } catch { /* skip a bad entry */ }
   }
   return set;
 }

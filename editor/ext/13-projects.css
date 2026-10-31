@@ -34,3 +34,35 @@
 [data-ic="bulkEdit"] > :nth-child(3) { --d: 120ms; }
 /* preview: the eye blinks */
 [data-ic="bkPreview"] > :nth-child(2) { --pjm: pjm-blink var(--bw-dur-page) var(--bw-ease-out) 0s 1; }
+
+/* 0.15.0 note 18 · project export / import dialogs */
+.px-modal .bw-modal-card { width: min(640px, 94vw); }
+.px-modal .px-body { display: grid; gap: 10px; margin-block-start: 8px; }
+.px-modal .px-fs { border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 12px; padding: 8px 12px; margin: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.px-modal .px-fs legend { padding-inline: 6px; font-weight: 700; }
+.px-modal .px-ck, .px-modal .px-rd { display: inline-flex; align-items: center; gap: 6px; }
+.px-modal .px-ck small { opacity: .75; }
+.px-modal .px-count, .px-modal .px-where { margin: 0; }
+.px-modal .px-where { overflow-wrap: anywhere; font-size: .85em; }
+.px-modal .px-drop { border: 2px dashed color-mix(in srgb, currentColor 35%, transparent); border-radius: 14px; padding: 12px; text-align: center; }
+.px-modal .px-drop p { margin: 0 0 8px; }
+.px-modal .px-drop:is(:focus-visible, :hover) { border-color: var(--gold); }
+.px-modal .px-tbl { inline-size: 100%; border-collapse: collapse; font-size: .88em; display: block; max-block-size: 220px; overflow: auto; }
+.px-modal .px-tbl :is(th, td) { padding: 3px 8px; text-align: start; border-block-end: 1px solid color-mix(in srgb, currentColor 12%, transparent); white-space: nowrap; }
+.px-modal .px-tbl td:first-child { white-space: normal; overflow-wrap: anywhere; }
+.px-modal .px-tbl .px-ign { opacity: .55; }
+.px-modal .px-bar { block-size: 10px; border-radius: 6px; background: color-mix(in srgb, currentColor 14%, transparent); overflow: hidden; }
+.px-modal .px-bar > i { display: block; block-size: 100%; background: var(--gold); transition: inline-size .25s ease; }
+.px-modal .px-now { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.px-modal .px-sum { margin: 0; font-weight: 700; }
+.px-modal .px-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.px-modal .px-t { border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 12px; padding: 8px; text-align: center; display: grid; }
+.px-modal .px-t b { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.px-modal .px-t.bad { border-color: currentColor; }
+.px-modal .px-list { max-block-size: 200px; overflow: auto; }
+.px-modal .px-list ul { margin: 4px 0; padding-inline-start: 18px; }
+.px-modal .px-list li { margin-block: 3px; overflow-wrap: anywhere; }
+.px-modal .px-open { padding: 1px 8px; font-size: .85em; }
+.px-modal .px-btns { margin-block-start: 4px; }
+@media (prefers-reduced-motion: reduce) { .px-modal .px-bar > i { transition: none; } }
+html[data-bw-calm="1"] .px-modal .px-bar > i { transition: none; }
