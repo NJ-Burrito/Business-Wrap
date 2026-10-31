@@ -109,8 +109,16 @@ const spliceOps = (old = [], d) => {
   if (from && d.prev != null && old[from - 1]?.id !== d.prev) return old; // the list was rewritten since that push: keep the push
   return [...old.slice(0, from), ...(Array.isArray(d.ops) ? d.ops : [])];
 };
+/** The page stamps every push and flush with `seq` (performance.timeOrigin + performance.now(): monotonic in a page, larger after a reload). The
+ *  requests of one tab can arrive out of order (a state push still in flight when the pagehide beacon lands); the server keeps the newest and
+ *  drops an older one, so a late push never overwrites a newer delta (a typed-just-before-close edit was lost to this). No seq = an older page: applied. */
 function writeTab(ctx, b) {
   if (!TAB.test(String(b.tab))) throw Object.assign(new Error('tab'), { code: 400 });
+  if (typeof b.seq === 'number' && Number.isFinite(b.seq)) {
+    const seqs = (state(ctx).seqs ||= new Map());
+    if (b.seq < (seqs.get(b.tab) ?? -Infinity)) return false; // older than what this tab already has on disk
+    seqs.set(b.tab, b.seq);
+  }
   const dir = runDir(ctx, state(ctx).runId);
   fs.mkdirSync(dir, { recursive: true });
   const f = path.join(dir, `${b.tab}.json`);
@@ -138,6 +146,7 @@ function writeTab(ctx, b) {
     rec = { tab: b.tab, title: String(b.title || '').slice(0, 200), svc: b.svc, ed: b.ed, at: new Date().toISOString(), entry, snap: b.snap || null };
   }
   fs.writeFileSync(f, JSON.stringify(rec));
+  return true;
 }
 
 /** The registry as GET /api/host/health reports it (engine/routes/health.mjs). */
@@ -207,6 +216,8 @@ export default async (req, url, send, ctx, res) => {
       const b = await readJson(req, 2e5);
       if (!TAB.test(String(b.client)) || !Array.isArray(b.tabs) || b.tabs.length > 400) { send(400, { error: 'tabs' }); return true; }
       const c = clientOf(s, b.client);
+      // two lists of one client can arrive out of order (the periodic one still on the wire when the list without a closed tab lands): the newest stays
+      if (typeof b.seq === 'number') { if (b.seq < (c.listSeq ?? -Infinity)) { send(200, { ok: true, stale: true }); return true; } c.listSeq = b.seq; }
       const next = new Map();
       for (const x of b.tabs) {
         const o = typeof x === 'string' ? { tab: x } : x;
@@ -227,7 +238,7 @@ export default async (req, url, send, ctx, res) => {
       send(200, { ok: true, n: emit(ctx, String(b.event), b.data || {}, b.tab || null) });
       return true;
     }
-    if (req.method === 'POST' && (p === '/api/session/state' || p === '/api/session/flush')) { s.inflight += 1; try { writeTab(ctx, await readJson(req)); } finally { s.inflight -= 1; } send(200, { ok: true }); return true; }
+    if (req.method === 'POST' && (p === '/api/session/state' || p === '/api/session/flush')) { s.inflight += 1; let kept; try { kept = writeTab(ctx, await readJson(req)); } finally { s.inflight -= 1; } send(200, kept === false ? { ok: true, stale: true } : { ok: true }); return true; }
     if (req.method === 'GET' && p === '/api/session/tab') {
       const tab = url.searchParams.get('tab');
       const f = path.join(runDir(ctx, s.runId), `${tab}.json`);
