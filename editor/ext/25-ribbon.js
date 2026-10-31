@@ -201,10 +201,12 @@ function rbSync() {
 /* ── tabs, collapse, keyboard ──────────────────────────────────────────────── */
 /** Select a tab (the programmatic and keyboard-arrow path): a collapsed ribbon opens on it. */
 function rbSetTab(tab, { focus = false } = {}) {
+  const changed = tab !== RB.tab;
   RB.tab = tab;
   if (RB.collapsed) { RB.collapsed = false; ls.set('bw:rb:c', '0'); }
   rbSync();
   if (focus) root.querySelector(`#rb-tab-${tab}`)?.focus({ preventScroll: true });
+  if (changed) { try { window.dispatchEvent(new CustomEvent('bw:wm', { detail: { id: 'W05' } })); } catch { /* no watermark */ } } // the watermark's tab tick (a real change, not a collapse, not the first paint)
 }
 function rbCollapse(on) {
   RB.collapsed = on ?? !RB.collapsed;

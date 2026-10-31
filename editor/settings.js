@@ -89,6 +89,7 @@ async function settingsClick(x) {
     return true;
   }
   if (k === 'updNow') { const st = updState(); if (st?.status === 'available') window.BW_UPDATE.popup(st, { manual: true }); return true; }
+  if (k === 'srvPowerOff') { await runAction('powerOff'); return true; }
   if (k === 'srvOpen') { location.href = `http://127.0.0.1:${Number(v)}/`; return true; }
   if (k === 'setLang') { setLang(v); return true; }
   if (k === 'setDir') { setDir(v); return true; }
@@ -138,7 +139,8 @@ function srvInner() {
   const served = srvServed();
   const on = sb?.state.mode === 'online';
   const open = !served && on && sb.state.port ? `<button type="button" class="b" data-k="srvOpen" data-v="${Number(sb.state.port)}"><span class="i">${ic('connect')}</span><span class="w">${esc(t('sv.open'))}</span></button>` : '';
-  return `<div class="set-srv-row">${sb ? sb.html('settings') : ''}${open}</div>
+  const off = served ? `<div class="set-srv-row"><button type="button" class="b danger" data-k="srvPowerOff" title="${esc(t('pwTitle'))}"><span class="i">${ic('powerOff')}</span><span class="w">${esc(t('powerOff'))}</span></button></div>` : '';
+  return `<div class="set-srv-row">${sb ? sb.html('settings') : ''}${open}</div>${off}
 <p class="set-status set-srv-status" role="status" aria-live="polite" data-st="${on ? 'on' : sb?.state.mode === 'offline' || sb?.state.mode === 'error' ? 'off' : ''}">${esc(sb ? sb.sentence() : '')}</p>
 <p class="hint">${esc(t(served ? 'sv.hintServed' : 'srv.hintFile'))}</p>`;
 }

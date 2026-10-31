@@ -95,8 +95,12 @@ try {
   await page.goto(o.url);
   await page.waitForFunction(() => window.BW?.ready);
   await sleep(600);
-  const btn = page.locator('.island [data-a="powerOff"]');
-  check('power: the toolbar has the power button (served editor)', (await btn.count()) === 1);
+  // 0.15.0 w2: no top-bar power button; Settings › Local server holds it, under the single server toggle
+  const inBar = await page.locator('.island [data-a="powerOff"]').count();
+  const openSet = async () => { await page.evaluate(() => window.BW.runAction('settings')); await page.waitForFunction(() => !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer [data-k="srvPowerOff"]')); };
+  const btn = { click: async () => { await openSet(); await page.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer [data-k="srvPowerOff"]').click()); } };
+  await openSet();
+  check('power: the top bar has no power button; Settings has it (served editor)', inBar === 0 && (await page.locator('.drawer [data-k="srvPowerOff"]').count()) === 1);
   await btn.click();
   await sleep(300);
   const asked = await page.evaluate(() => { const d = document.getElementById('bw-ui-host').shadowRoot.querySelector('.dialog'); return { open: !d.hidden, text: d.textContent, focus: d.querySelector(':focus')?.dataset.k || document.getElementById('bw-ui-host').shadowRoot.activeElement?.dataset.k }; });

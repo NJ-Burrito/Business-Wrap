@@ -1885,8 +1885,8 @@ async function runAction(a, arg) {
     case 'save': saveAll(); pop('save'); break;
     case 'saveHtml': await saveHtml(!!S.embedFonts); break;
     case 'import': { const f = await pickFile('.json,.html,application/json,text/html'); if (f) await importFile(f); break; }
-    case 'exportEdits': download(`${S.svc}.edits-bundle.json`, JSON.stringify(bundle([S.svc]), null, 1)); emitHook('edits.exported', { scope: 'service' }); break;
-    case 'exportAll': download(`all-services.edits-bundle.json`, JSON.stringify(bundle(Object.keys(M)), null, 1)); emitHook('edits.exported', { scope: 'all' }); break;
+    case 'exportEdits': download(`${S.svc}.edits-bundle.json`, JSON.stringify(bundle([S.svc]), null, 1)); emitHook('edits.exported', { scope: 'service' }); window.dispatchEvent(new CustomEvent('bw:wm', { detail: { id: 'W02' } })); break;
+    case 'exportAll': download(`all-services.edits-bundle.json`, JSON.stringify(bundle(Object.keys(M)), null, 1)); emitHook('edits.exported', { scope: 'all' }); window.dispatchEvent(new CustomEvent('bw:wm', { detail: { id: 'W02' } })); break;
     case 'exportPdf': busy(true); try { await exportPdfDocx(); } finally { busy(false); } break;
     case 'print': pcOpenPrint(); break;
     case 'both': S.both = !S.both; buildUi(); break;

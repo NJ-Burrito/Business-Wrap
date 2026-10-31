@@ -84,6 +84,7 @@ async function pcAction(a) {
       if (j.url && !o.folder) pcFetchDownload(j.url, j.file.split(/[\\/]/).pop());
       toast(t('export.saved', { x: j.file }), 'ok');
       emitHook('export', { [format]: true, locale: ed });
+      try { window.dispatchEvent(new CustomEvent('bw:wm', { detail: { id: 'W02' } })); } catch { /* no watermark */ } // after the file is written, never on a failed export
     }
   } catch (err) { flash(String(err.message || err), true); } finally { busy(false); }
 }

@@ -1,4 +1,4 @@
-/* Power off (owner request 2026-10-29). A toolbar button beside Settings, only when the editor is served by the local
+/* Power off (owner request 2026-10-29). A command (Settings › Local server, under the single server toggle; no top-bar button since 0.15.0), only when the editor is served by the local
  * host: a confirm dialog (Cancel has the focus, Esc cancels) → this tab and every other tab of this host save
  * (the draft, the library entry, the session state) → POST /api/power/off (engine/routes/power.mjs) → the «stopped»
  * page. The server then stops everything this install started, Edge windows on its own profile included, and itself.
@@ -49,11 +49,7 @@ const PW = (() => {
       stopped();
     } catch (e) { toast(t('pwFailed', { e: e.message || e }), 'warn'); document.documentElement.dataset.bwPower = 'failed'; }
   }
-  /** The button is part of the toolbar's own markup (right after Settings), so the in-place patch keeps the same element. */
-  if (served) {
-    const base = uiHtml;
-    uiHtml = function () { const html = base(), set = btn('settings'); return html.replace(set, () => set + btn('powerOff', { cls: 'ico pw-btn', tip: `${t('powerOff')}: ${t('pwTitle')}` })); };
-  }
+  /* 0.15.0 w2: no toolbar button. The command stays (the `powerOff` action) and Settings › Local server shows it under the one server toggle (settings.js). */
   return { off, confirmOff, stopped };
 })();
 
