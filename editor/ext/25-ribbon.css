@@ -13,7 +13,7 @@
 .island:has(> .ribbon) > .ctx { order: 3; }
 .island:has(> .ribbon) > .spacer { order: 4; }
 .island:has(> .ribbon) > .status { order: 5; }
-.island:has(> .ribbon) > .srv-toggle { order: 7; align-self: center; } /* 0.15.0 integration: the server toggle sits at the far end beside the power button, not between the mark and the selector */
+.island:has(> .ribbon) > .srv-toggle { order: 7; block-size: 40px; box-sizing: border-box; align-self: center; } /* 0.15.0 integration: the server toggle sits at the far end beside the power button, not between the mark and the selector */
 .island:has(> .ribbon) > .b.cmd { order: 8; }
 .island:has(> .ribbon) > .progress { order: 9; }
 .island:has(> .ribbon) > .ribbon { order: 10; }
@@ -125,4 +125,7 @@
 [data-ic="projImport"] > * { --y: -2px; --icm: icm-nudge var(--mvt); }
 [data-ic="pjExport"] > * { --y: 2px; --icm: icm-nudge var(--mvt); }
 [data-ic="pjImport"] > * { --y: -2px; --icm: icm-nudge var(--mvt); }
+[data-ic="insChapter"] > * { --s: 1.14; --icm: icm-pop var(--mvt); }
+[data-ic="biDel"] > * { --y: -1.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="fmtAlignCenter"] > * { --s: 1.12; --icm: icm-pop var(--mvt); }
 .rb-tab[aria-selected="true"]:hover { background: color-mix(in srgb, var(--rb-sel) 88%, var(--on-glass) 12%); }
