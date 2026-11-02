@@ -13,7 +13,7 @@ import { buildEditor } from '../engine/build-editor.mjs';
 import { launchOptions, REPO, loadTheme, i18n, exportDocx } from '../engine/export.mjs';
 import { renderDocument } from '../engine/render.mjs';
 
-const BASE = 'fe620a9';
+const BASE = '75178ef'; // 0.16.0 final: the renderer as merged (after the figure, views and spec lanes changed print on purpose); a doc without keepEmpty must print as it did there
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-doc0160-'));
 let failed = 0;
 const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  doc-0160: ${name}${detail && !ok ? '  — ' + String(detail).replace(/\s+/g, ' ').slice(0, 300) : ''}`); if (!ok) failed += 1; };

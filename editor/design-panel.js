@@ -5,7 +5,7 @@
  * Concatenated by engine/build-editor.mjs before editor/editor.js (uses its state and helpers at call time). */
 
 const DP_COLOURS = ['primary', 'primary-deep', 'accent', 'accent-bright', 'accent-rule', 'ink', 'muted', 'rule', 'rule-strong', 'card', 'paper', 'signal', 'th-fill', 'th-ink', 'zebra'];
-const DP_SIZES = [['title', '24pt'], ['h1', '18pt'], ['h2', '16pt'], ['h3', '14pt'], ['body', '14pt'], ['table', '12pt'], ['meta', '10pt'], ['micro', '9pt']];
+const DP_SIZES = [['title', '22pt'], ['h1', '16pt'], ['h2', '14pt'], ['h3', '12pt'], ['body', '12pt'], ['table', '10pt'], ['meta', '8pt'], ['micro', '7pt']];
 const DP_SPACING = [['line', 'line', '1.8'], ['page-side', 'space', '16mm'], ['rule-w', 'width', '1px'], ['th-rule-w', 'width', '1.2pt']];
 /** the per-element style fields (Style this element): CSS property → kind of control */
 const DP_STYLE = [['color', 'colour'], ['background-color', 'colour'], ['font-size', 'size'], ['font-weight', 'weight'], ['line-height', 'line'], ['letter-spacing', 'track'], ['text-align', 'align'], ['padding', 'text'], ['margin', 'text'], ['border', 'text'], ['border-radius', 'radius']];

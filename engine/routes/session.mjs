@@ -340,7 +340,10 @@ export default async (req, url, send, ctx, res) => {
     return true;
   }
   if (!p.startsWith('/api/session/') && p !== '/api/host/stop') return false;
-  if (!ctx.workspace) return false; // no save folder (a --out server): no sessions
+  if (!ctx.workspace) { // no save folder (a --out server): no sessions. The editor asks once at launch; 204 says «none» without a 404 in the browser console (0.16.0, L1)
+    if (req.method === 'GET' && p === '/api/session/info' && res) { res.writeHead(204, { 'cache-control': 'no-store' }); res.end(); return true; }
+    return false;
+  }
   const s = state(ctx);
   try {
     if (req.method === 'GET' && p === '/api/session/info') { send(200, { runId: s.runId, host: !!process.env.BW_HOST_TOKEN, workspace: { root: ctx.workspace.root, chosen: ctx.workspace.chosen !== false } }); return true; }

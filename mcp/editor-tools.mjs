@@ -24,7 +24,7 @@ export class BwError extends Error {
 
 /** The actions the tab runs on a document (architect §4); anything else is refused here and again by the tab. */
 // 0.15.2 note 12: the safe view actions follow the first five (zoomPct takes args {value: 25-400}; theme takes {mode: dark or light}; reading takes {on}); none edits the content
-export const EDITOR_ACTIONS = ['renumber', 'check', 'saveHtml', 'share', 'exportPdf',
+export const EDITOR_ACTIONS = ['renumber', 'check', 'autoLayout', 'saveHtml', 'share', 'exportPdf',
   'zoomPct', 'zoomHeight', 'zoomWidth', 'zoomIn', 'zoomOut', 'zoomReset', 'theme', 'reading', 'find', 'save', 'outline', 'nextPage', 'prevPage',
   // 0.16.0: dismissResume closes the «continue where you left off» popup of a tab; claim takes a document's lease for the tab that is asked (the owner is asleep or a ghost);
   // verifyHistory returns the issues list the tamper banner is based on (item 12)

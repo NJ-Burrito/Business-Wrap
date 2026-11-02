@@ -56,9 +56,9 @@
   main.bw-doc figure[data-dg] .fig-art { position: relative; }
   /* the sheet this diagram prints on (landscape for a diagram chapter) drawn behind a canvas wider than the portrait page, so its edges show where the page ends */
   main.bw-doc figure[data-dg].fr { position: relative; }
-  main.bw-doc figure[data-dg].fr::before { content: ""; position: absolute; z-index: -1; top: -6mm; bottom: -6mm; left: 50%; width: var(--shw, 100%); margin-left: calc(var(--shw, 100%) / -2); background: var(--paper, #fff); box-shadow: 0 0 0 1px var(--rule-strong, #b9c3d3), 0 8px 24px -10px rgba(10, 25, 50, .35); pointer-events: none; }
+  main.bw-doc figure[data-dg].fr::before { content: ""; position: absolute; z-index: -1; top: -6mm; bottom: -6mm; left: 50%; width: var(--shw, 100%); margin-left: calc(var(--shw, 100%) / -2); background: var(--paper, #fff); box-shadow: 0 0 0 1px var(--rule-strong, #b9c3d3), 0 8px 24px -10px rgba(10, 25, 50, .35); pointer-events: none; } /* doc-colour: the canvas frame is drawn on the page, not in the chrome */
   main.bw-doc figure[data-dg] .dg-cv { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
-  main.bw-doc figure[data-dg] .dg-cv-h { position: absolute; width: 12px; height: 12px; box-sizing: border-box; background: #fff; border: 2px solid var(--bw-focus, #005fc2); border-radius: 3px; pointer-events: auto; touch-action: none; }
+  main.bw-doc figure[data-dg] .dg-cv-h { position: absolute; width: 12px; height: 12px; box-sizing: border-box; background: #fff; border: 2px solid var(--bw-focus, #005fc2); border-radius: 3px; pointer-events: auto; touch-action: none; } /* doc-colour: the canvas frame is drawn on the page, not in the chrome */
   main.bw-doc figure[data-dg] .dg-cv-h:hover { background: var(--bw-primary-soft, #e1eaf4); }
   main.bw-doc figure[data-dg] .dg-cv-h[data-dg-cv="n"] { top: 0; left: calc(50% - 6px); cursor: ns-resize; }
   main.bw-doc figure[data-dg] .dg-cv-h[data-dg-cv="s"] { bottom: 0; left: calc(50% - 6px); cursor: ns-resize; }
@@ -68,9 +68,9 @@
   main.bw-doc figure[data-dg] .dg-cv-h[data-dg-cv="nw"] { top: 0; left: 0; cursor: nwse-resize; }
   main.bw-doc figure[data-dg] .dg-cv-h[data-dg-cv="se"] { bottom: 0; right: 0; cursor: nwse-resize; }
   main.bw-doc figure[data-dg] .dg-cv-h[data-dg-cv="sw"] { bottom: 0; left: 0; cursor: nesw-resize; }
-  main.bw-doc figure[data-dg] .dg-cv-grid { position: absolute; inset: 0; background-image: linear-gradient(to right, rgba(0, 95, 194, .16) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 95, 194, .16) 1px, transparent 1px); pointer-events: none; }
-  main.bw-doc figure[data-dg] .dg-cv-note { position: absolute; inset-inline-start: 8px; top: 8px; max-width: calc(100% - 16px); padding: 3px 9px; border-radius: 6px; border: 1px solid #8b5a05; background: #fff4d6; color: #4e3102; font-family: inherit; font-weight: 600; font-size: 12px; line-height: 1.5; pointer-events: none; }
-  main.bw-doc figure[data-dg] .dg-cv-read { position: absolute; inset-inline-end: 8px; bottom: 8px; padding: 2px 9px; border-radius: 6px; background: #14233a; color: #fff; font-family: inherit; font-weight: 600; font-size: 12px; line-height: 1.5; white-space: nowrap; pointer-events: none; }
+  main.bw-doc figure[data-dg] .dg-cv-grid { position: absolute; inset: 0; background-image: linear-gradient(to right, rgba(0, 95, 194, .16) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 95, 194, .16) 1px, transparent 1px); pointer-events: none; } /* doc-colour: the canvas frame is drawn on the page, not in the chrome */
+  main.bw-doc figure[data-dg] .dg-cv-note { position: absolute; inset-inline-start: 8px; top: 8px; max-width: calc(100% - 16px); padding: 3px 9px; border-radius: 6px; border: 1px solid #8b5a05; background: #fff4d6; color: #4e3102; font-family: inherit; font-weight: 600; font-size: 12px; line-height: 1.5; pointer-events: none; } /* doc-colour: the canvas frame is drawn on the page, not in the chrome */
+  main.bw-doc figure[data-dg] .dg-cv-read { position: absolute; inset-inline-end: 8px; bottom: 8px; padding: 2px 9px; border-radius: 6px; background: #14233a; color: #fff; font-family: inherit; font-weight: 600; font-size: 12px; line-height: 1.5; white-space: nowrap; pointer-events: none; } /* doc-colour: drawn on the page */
   @media print { main.bw-doc figure[data-dg][data-zoom] > .fig-art { height: auto; overflow: visible; display: revert; flex: revert; scrollbar-gutter: auto; } main.bw-doc figure[data-dg][data-zoom] > .fig-art svg { width: auto !important; margin: 0 auto !important; max-width: 100% !important; } main.bw-doc figure[data-dg] .dg-ui { display: none; } }
   /* in-place label editing: the text box sits on the label, in the drawing's face and size */
   .bw-dg-edit { position: absolute; z-index: 30; box-sizing: border-box; padding: 2px 6px; display: flex; align-items: center; justify-content: center; text-align: center;

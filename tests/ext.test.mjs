@@ -81,7 +81,7 @@ try {
 
   let t = await T();
   check('boot and open fire once', t.boot === 1 && t.open === 1, JSON.stringify(t));
-  check('command joins the registry and the palette groups', await page.evaluate(() => window.BW.EXT.cmds.length === 1 && window.BW.EXT.cmds[0].edit === false && window.BW.EXT.dummy.hello() === 'hi'));
+  check('command joins the registry and the palette groups', await page.evaluate(() => (() => { const mine = window.BW.EXT.cmds.filter((c) => c.id === 'dummyRun'); return mine.length === 1 && mine[0].edit === false; })() && window.BW.EXT.dummy.hello() === 'hi'));
   const secInfo = await sh((r) => { const s = r.querySelector('.island .sec[data-cat="dummy"]'); return s && { tool: !!s.querySelector('[data-a="dummyRun"]'), label: s.getAttribute('aria-label'), outline: getComputedStyle(s).outlineColor }; });
   check('toolbar section drawn after design, with its tool, label and CSS', secInfo?.tool && secInfo.label === 'تجربة' && secInfo.outline === 'rgb(1, 2, 3)', JSON.stringify(secInfo));
   check('status counter comes from the extension', (await sh((r) => r.querySelector('.count .n').textContent)) === '42');

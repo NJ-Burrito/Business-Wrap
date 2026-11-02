@@ -8,11 +8,35 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
-## [0.15.9] - 2026-11-02
+## [0.16.0] - 2026-11-02
 
-🏷️ Your logo shows in every editor, and the story fixes from the acceptance test are in. / 🏷️ شعارك يظهر في كل محرر، وإصلاحات القصص من اختبار القبول دخلت.
+🚀 Agents edit live and in view, arrows never overlap, Chrome is the standard browser, and Linux is no longer supported. / 🚀 الوكلاء يحرّرون مباشرة وأمام عينك، والأسهم لا تتداخل، وChrome هو المتصفح المعتمد، ولينكس لم يعد مدعوما.
+
+### Added / أضيف
+- 🤖 **Agents work live and in view**: an agent's edits appear one at a time with a small «agent editing» chip and an outline on the block just changed; your caret and scroll stay where they were, and a retried batch never applies twice. / **الوكلاء يعملون مباشرة وأمام عينك**: تظهر تعديلات الوكيل واحدا بعد الآخر مع شارة صغيرة «الوكيل يحرّر» وإطار على الكتلة المعدّلة، ويبقى مؤشرك وتمريرك في مكانهما، ولا تُطبَّق دفعة أعيدت مرتين.
+- 🧭 **Arrows never overlap**: parallel arrows keep an even gap, a crossing gets a small arc with a soft shadow, and one click on «Arrows never overlap» applies it. Auto layout fits the drawing to the sheet it prints on, and a diagram can have a join dot and its own type size per shape. / **الأسهم لا تتداخل**: تحافظ الأسهم المتوازية على مسافة ثابتة، وعند التقاطع قوس صغير بظل خفيف، وبنقرة واحدة على «أسهم لا تتداخل» يُطبَّق ذلك. والترتيب التلقائي يلائم الرسم مع الصفحة التي يُطبع عليها، ويمكن للمخطط نقطة وصل وحجم خط لكل شكل.
+- 🖼️ **Diagram canvas sizes**: fit to the shapes, fit to the free area of the page, or back to automatic, with handles on the canvas and a plain explanation of each tool. / **أحجام لوحة المخطط**: ملاءمة الأشكال أو ملاءمة المساحة الحرة من الصفحة أو العودة للتلقائي، مع مقابض على اللوحة وشرح بسيط لكل أداة.
+- 📁 **A folder picker an agent can drive**: choosing the save folder is a panel inside the editor, in Arabic and English, that a person and an agent see and finish together; no Windows dialog is opened behind the editor. / **منتقي مجلد يستطيع الوكيل تشغيله**: اختيار مجلد الحفظ لوحة داخل المحرر بالعربية والإنجليزية يراها الشخص والوكيل معا، ولا يُفتح مربع Windows خلف المحرر.
+- 🌐 **Google Chrome is the standard browser**: the editor and PDF export use Chrome when it is installed, then your default browser, then Edge; Settings has a browser picker. Tabs the browser puts to sleep wake up by themselves with nothing lost. / **Google Chrome هو المتصفح المعتمد**: يستعمل المحرر وتصدير PDF متصفح Chrome إن وُجد، ثم متصفحك الافتراضي، ثم Edge؛ وفي الإعدادات منتقي للمتصفح. والألسنة التي ينيمها المتصفح تستيقظ وحدها دون فقدان شيء.
+- 📄 **Every page at its own size**: each page shows at its own size in every view, a diagram chapter sits on its real landscape sheet, and the page count matches the PDF. / **كل صفحة بحجمها**: تظهر كل صفحة بحجمها في كل عرض، وفصل المخططات على ورقته الأفقية الحقيقية، ويطابق عدد الصفحات ملف PDF.
+- 🔌 **For agents and scripts**: exports return the file paths, a value can be `{"$file": path}`, the host starts from the MCP alone, there are tools for projects and the trash, document ids are stable, and the update notice is a small banner that never covers an agent's tab. / **للوكلاء والبرامج**: تعيد عمليات التصدير مسارات الملفات، ويمكن أن تكون القيمة `{"$file": path}`، ويبدأ الخادم من MCP وحده، وهناك أدوات للمشاريع والمحذوفات، ومعرّفات الوثائق ثابتة، وإشعار التحديث شريط صغير لا يغطي لسان الوكيل.
+- 🔤 **Diagrams flow left to right** in Arabic and English, a new last chapter «Outputs» describes what each service produces, a table cell can stay empty on purpose, and Check reads acceptance text nested inside a story. / **المخططات تسير من اليسار إلى اليمين** بالعربية والإنجليزية، وفصل أخير جديد «المخرجات» يصف ما تنتجه كل خدمة، ويمكن أن تبقى خلية الجدول فارغة عمدا، ويقرأ الفحص نص القبول المتداخل داخل القصة.
+
+### Changed / تغيّر
+- 🔡 **The document type scale is 2 pt smaller** everywhere; diagrams keep their sizes. / **سلّم خطوط الوثيقة أصغر بنقطتين** في كل مكان، وتحتفظ المخططات بأحجامها.
+- 🪟 **Linux is not supported**: the package refuses to install there and the test jobs run on Windows. macOS is untested. / **لينكس غير مدعوم**: تأبى الحزمة التثبيت عليه، وتعمل مهام الاختبار على Windows. ولم يجر اختبار macOS.
 
 ### Fixed / أصلح
+- 💾 **Export to a chosen folder**: saving a PDF and Word through a server started with a set output folder failed with an error; it works. / **التصدير إلى مجلد محدد**: كان حفظ PDF وWord عبر خادم له مجلد إخراج محدد يفشل برسالة خطأ؛ وهو يعمل الآن.
+- 🔁 **After Save and reload** the saved document is on screen as soon as the page says it is ready (`data-bw-ready`); nothing was lost, the older signal fired a moment before the document came back. / **بعد الحفظ وإعادة التحميل** تظهر الوثيقة المحفوظة فور أن تعلن الصفحة جاهزيتها (`data-bw-ready`)؛ لم يضع شيء، فقد كانت الإشارة الأقدم تصدر قبل عودة الوثيقة بلحظة.
+- 🛠️ **Smaller fixes**: the selection strip no longer reshuffles its tools on every key you type, and the shape and canvas tools have hover motion and plain explanations. / **إصلاحات أصغر**: لم يعد شريط التحديد يعيد ترتيب أدواته مع كل حرف تكتبه، وصار لأدوات الأشكال واللوحة حركة عند التمرير وشرح بسيط.
+
+### Not built / لم يُبنَ
+- 🗂️ **Several documents in one tab**: one editor tab still shows one document. / **عدة وثائق في لسان واحد**: ما زال اللسان الواحد يعرض وثيقة واحدة.
+
+### Also in this release (first held back as 0.15.9) / وفي هذا الإصدار أيضا (كان محجوزا للإصدار 0.15.9)
+
+#### Fixed / أصلح
 - 🏷️ **The owner's logo shows in every editor**: an editor opened or created from the command line or the MCP server now carries the logo, it sits on top of the open side panels instead of behind them, and it is clearly visible (it was nearly faded out). / **شعار المالك يظهر في كل محرر**: المحرر المفتوح أو المنشأ من سطر الأوامر أو من خادم MCP يحمل الشعار الآن، ويظهر فوق اللوحات الجانبية المفتوحة بدل أن يختفي خلفها، وهو واضح (كان شبه باهت).
 - ✍️ **Typed acceptance points are saved**: text you type in an acceptance list or a story table cell stays in the model, the print view, Word and PDF. / **نقاط القبول التي تكتبها تُحفظ**: النص الذي تكتبه في قائمة القبول أو في خلية جدول القصة يبقى في النموذج وفي الطباعة وفي Word وفي PDF.
 - 📄 **Word captions and story cards**: story cards in Word get a sand caption band with the gold section number, labelled bars, and no repeated section heading; one font throughout; the blank document is 11 pages instead of 19 in Arabic. / **عناوين Word وبطاقات القصص**: بطاقات القصص في Word بشريط عنوان رملي برقم القسم الذهبي وأشرطة بعناوين وبلا تكرار لعنوان القسم؛ وخط واحد في كل المستند؛ والمستند الفارغ 11 صفحة بدل 19 بالعربية.

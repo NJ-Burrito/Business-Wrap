@@ -325,9 +325,10 @@ try {
       await page.waitForFunction(() => JSON.stringify(window.BW.M[window.BW.S.svc].ar.doc.chapters[5]).includes('smokeaccx'), null, { timeout: 5000 }).catch(() => {});
       await page.locator('#bw-pair main.bw-doc[data-locale="ar"] h1').first().click().catch(() => {});
       await run(page, 'save');
-      await page.waitForTimeout(800);
+      // the save is finished when the library entry is written (data-bw-lib-saved, set by the product); the reloaded page is settled when the document named by #doc= is on screen (data-bw-ready), not at BW.ready (booted)
+      await page.waitForFunction(() => !!document.documentElement.dataset.bwLibSaved, null, { timeout: 15000 });
       await page.reload();
-      await page.waitForFunction(() => window.BW?.ready);
+      await page.waitForFunction(() => document.documentElement.dataset.bwReady === '1', null, { timeout: 15000 });
       const reopened = await page.evaluate(() => JSON.stringify(window.BW.M[window.BW.S.svc].ar.doc.chapters[5].sections));
       check('SMOKE: after save and reload the typed acceptance point is still in the document', reopened.includes('smokeaccx'), reopened.slice(0, 120));
       const res = await page.evaluate(async () => { const B = window.BW; const e = B.M[B.S.svc].ar; const r = await fetch('/api/export', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ service: B.S.svc, locale: 'ar', doc: e.doc, theme: B.S.theme, embedFonts: false }) }); return r.json(); });

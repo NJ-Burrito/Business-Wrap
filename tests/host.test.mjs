@@ -76,7 +76,7 @@ try {
   const listed = await p.locator('#bw-ui-host >> css=dialog.bw-resume li').count();
   check('relaunch → the popup offers resume of 3 tabs and new work', listed === 3 && (await p.locator('#bw-ui-host >> css=dialog.bw-resume [data-s="new"]').count()) === 1, String(listed));
   const before = stubLines().length;
-  await p.locator('#bw-ui-host >> css=dialog.bw-resume [data-s="resume"]').click();
+  await p.locator('#bw-ui-host >> css=dialog.bw-resume [data-s="every"]').click();
   await p.waitForFunction(() => document.documentElement.dataset.bwResume === 'resumed', null, { timeout: 8000 }).catch(() => {});
   const launch = stubLines().slice(before);
   const urls = launch[0]?.args.filter((a) => a.startsWith('http')) || [];

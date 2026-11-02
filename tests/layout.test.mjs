@@ -165,7 +165,7 @@ try {
   await exportPdf(ch2Doc, { locale: 'en', theme, pdfPath: pdf });
   const sizes = pageSizes(pdf);
   const texts = pageTexts(pdf);
-  const ch2 = texts.map((t, i) => (/Service card/.test(t) && /2\.1|2\.2|2\.3/.test(t) ? i : -1)).filter((i) => i >= 0);
+  const ch2 = texts.map((t, i) => (/Service card/.test(t) && /2\.1|2\.2|2\.3/.test(t) && !/Table of contents/.test(t) ? i : -1)).filter((i) => i >= 0);
   check('PDF: chapter 2 pages are landscape', ch2.length > 0 && ch2.every((i) => sizes[i][0] === 297), JSON.stringify(sizes));
   check('PDF: the pages before chapter 2 stay portrait', sizes.slice(0, ch2[0]).every(([w]) => w === 210));
   const ch4 = texts.findIndex((t) => /Business rules/.test(t));

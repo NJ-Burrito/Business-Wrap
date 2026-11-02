@@ -228,8 +228,8 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
           const made = uniquePath(kind, outName(title, new Date(), locale, ext));
           return wantName ? path.join(path.dirname(made), `${wantName}.${ext}`) : made;
         };
-        const pdfPath = place(ws?.dirs.pdf, 'pdf');
-        const docxPath = body.docx === false ? null : place(ws?.dirs.docx, 'docx');
+        const pdfPath = place(ws ? ws.dirs.pdf : null, 'pdf');
+        const docxPath = body.docx === false ? null : place(ws ? ws.dirs.docx : null, 'docx');
         const pdf = await exportPdf(body.doc, { locale, theme, pdfPath });
         let docx = null;
         let docxError = null;
