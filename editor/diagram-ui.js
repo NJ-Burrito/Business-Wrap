@@ -8,7 +8,13 @@
  * segment adds one: drag it, or double-click the line); the squares slide along the shape's outline or reconnect to another shape. Every change is ONE `replace` op on <block>/model, so undo/redo,
  * the edits JSON, Save HTML, the PDF and the DOCX all carry it.
  * Declarations only (hoisted): boot() in editor.js runs before this file's statements. */
-function dgClear() { S.dg = null; S.dgPick = null; }
+/** Deselect. 0.16.0: the selection's DOM (the canvas handles, the outline, the picked arrow) goes with it, in the same call: a click on a paragraph cleared S.dg and left the eight [data-dg-cv] handles until the next render. */
+function dgClear() {
+  S.dg = null; S.dgPick = null;
+  document.querySelectorAll('figure[data-dg].dg-on').forEach((f) => f.classList.remove('dg-on'));
+  document.querySelectorAll('figure[data-dg] .dg-ui').forEach((x) => x.remove());
+  document.querySelectorAll('figure[data-dg] .dg-picked').forEach((x) => x.classList.remove('dg-picked'));
+}
 function dgBlock(ptr = S.dg?.b, ed = S.dg?.ed || S.ed) { return ptr ? get(cur(ed).doc, ptr) : null; }
 function dgModel(ptr = S.dg?.b, ed = S.dg?.ed || S.ed) { return DIAGRAM.ensure(dgBlock(ptr, ed)?.model || {}); }
 function dgFig(ptr = S.dg?.b, ed = S.dg?.ed || S.ed) { return mainOf(ed)?.querySelector(`figure[data-dg="${CSS.escape(ptr)}"]`); }
@@ -42,10 +48,14 @@ function dgContext() {
     const icon = node.kind === 'symbol'
       ? pick('icon', t('dgIcon'), DIAGRAM.SYMBOLS.map((k) => opt(k, node.icon, t(`sym_${k}`))).join(''))
       : pick('badge', t('dgIcon'), [opt('', Array.isArray(node.icons) ? (node.icons[0] || '-') : '', t('dgAuto2')), opt('-', Array.isArray(node.icons) && !node.icons.length ? '-' : '', t('dgNone')), ...DIAGRAM.SYMBOLS.map((k) => opt(k, Array.isArray(node.icons) ? node.icons[0] : '', t(`sym_${k}`)))].join(''));
-    return { cat: 'shape', label: t('selShape', { x: dgNodeName(node) }), groups: [['dgLabel', kinds, colours, 'dgConnect', 'dgDel'], [icon, 'dgSub', 'dgDup', 'dgFront', 'dgBack']], keep: zoomKeep() };
+    // 0.16.0 (D4): the type size of this one shape (node.fs, 8-40 drawing units; «by kind» removes it); a join point has no text
+    const FS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 28, 32, 36, 40];
+    const curFs = Number.isFinite(+node.fs) && +node.fs >= 8 && +node.fs <= 40 ? +node.fs : 0;
+    const sizes = node.kind === 'join' ? '' : pick('fs', t('dgFs'), [opt('', curFs ? '-' : '', t('dgAuto2')), ...(curFs && !FS.includes(curFs) ? [curFs] : []).concat(FS).sort((a, b) => a - b).map((k) => opt(String(k), String(curFs), String(k)))].join(''));
+    return { cat: 'shape', label: t('selShape', { x: dgNodeName(node) }), groups: [['dgLabel', kinds, colours, 'dgConnect', 'dgDel'], [icon, ...(sizes ? [sizes] : []), 'dgSub', 'dgDup', 'dgFront', 'dgBack']], keep: zoomKeep() };
   }
   const sym = btn('dgSymbol'); // 0.14.0 · O2: a gallery with the full names (the old select was squeezed to a sliver inside the «…» menu)
-  return { cat: 'diagram', label: t('selDiagram'), groups: [['dgStaff', 'dgDecision', 'dgStart', 'dgOk', 'dgStop', sym], ['dgApplicant', 'dgPayment', 'dgRework', 'dgSystem', 'dgNote', 'dgGroup', 'dgText', 'dgAuto', 'dgReset', 'dgLegend', 'dgLgReset', 'dgZoom100', 'dgMermaidIn', 'dgMermaidOut'], ['dgCvShapes', 'dgCvPage', 'dgCvAuto']], keep: zoomKeep() };
+  return { cat: 'diagram', label: t('selDiagram'), groups: [['dgStaff', 'dgDecision', 'dgStart', 'dgOk', 'dgStop', sym], ['dgApplicant', 'dgPayment', 'dgRework', 'dgSystem', 'dgNote', 'dgGroup', 'dgText', 'dgJoin', 'dgAuto', 'dgReset', 'dgLegend', 'dgLgReset', 'dgZoom100', 'dgMermaidIn', 'dgMermaidOut'], ['dgCvShapes', 'dgCvPage', 'dgCvAuto']], keep: zoomKeep() };
 }
 /* ── selection paint: outline + resize handle, editor DOM only (never exported) ── */
 function dgPaint() {
@@ -949,7 +959,7 @@ function dgCanvasAction(a) {
     dgFrameSave({ ...DIAGRAM.frameHug(view, room.wMm, room.hMm), mode: 1 }, ptr, ed);
   }
 }
-bwExt({ cmds: ['dgCvShapes', 'dgCvPage', 'dgCvAuto', 'dgCvRoute'].map((id) => ({ id, group: 'diagram', edit: true })), on: { render: () => dgRibbonCanvas() }, expose: { diagram: { autoLayout: dgAutoLayoutAt, check: dgCheckAt } } });
+bwExt({ cmds: ['dgCvShapes', 'dgCvPage', 'dgCvAuto', 'dgCvRoute', 'dgJoin'].map((id) => ({ id, group: 'diagram', edit: true })), on: { render: () => dgRibbonCanvas() }, expose: { diagram: { autoLayout: dgAutoLayoutAt, check: dgCheckAt } } });
 /** 0.16.0 · editor_action autoLayout {pointer, aspect, maxNodes, locale}: lays the diagram out for the frame it prints in (block.frame, else the automatic figure's measured box)
  *  as ONE undoable replace, and returns the legibility result. A graph that no single sheet can hold is left as one drawing and reported (`figures` = how many legible figures
  *  it would take): the splitFigure action cuts it. */
@@ -972,6 +982,9 @@ function dgRibbonCanvas() {
   if (dgRibbonCanvas.done || typeof RB_TABS === 'undefined') return;
   dgRibbonCanvas.done = true;
   const tab = RB_TABS.find((x) => x[0] === 'diagram');
+  const nodesGroup = tab?.[1].find((g) => g[0] === 'nodes');
+  if (nodesGroup && !nodesGroup[1].includes('dgJoin')) nodesGroup[1].push('dgJoin'); // 0.16.0 (D4): the join point sits with the shapes it joins
+  RB_LISTED.add('dgJoin');
   if (!tab || tab[1].some((g) => g[0] === 'canvas')) return;
   tab[1].push(['canvas', ['dgCvShapes', 'dgCvPage']]);
   RB_LISTED.add('dgCvShapes'); RB_LISTED.add('dgCvPage'); RB_LISTED.add('dgCvAuto'); RB_LISTED.add('dgCvRoute');
@@ -988,6 +1001,8 @@ function dgDraw(model) {
 const dgSnap = (v) => (S.snap ? Math.round(v / 10) * 10 : Math.round(v));
 function dgPoint(svg, ev) { const p = svg.createSVGPoint(); p.x = ev.clientX; p.y = ev.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); }
 function dgSelect(ptr, ed, patch) {
+  // 0.16.0 (D5): a paragraph that still holds the caret gets it back at every render (holdCaret) and its focus deselects the drawing, so the first edit made from the ribbon dropped the selection
+  { const ae = document.activeElement; if (ae?.closest?.('#bw-pair [data-p]')) ae.blur(); }
   S.dg = { b: ptr, ed, nodes: [], edge: null, ...patch };
   S.sel = { p: null, b: ptr, ed };
   S.selOv = null;
@@ -1120,6 +1135,17 @@ root.addEventListener('change', (e) => {
     case 'color': if (node) { if (v) node.color = v; else delete node.color; } break;
     case 'badge': if (node) { if (!v) delete node.icons; else node.icons = v === '-' ? [] : [v]; } break;
     case 'icon': if (node) node.icon = v; break;
+    case 'fs': {
+      if (!node || node.kind === 'join') return;
+      if (v && +v >= 8 && +v <= 40) node.fs = +v; else delete node.fs;
+      if (!node.sized) { // the shape grows or shrinks around its centre, as with an edited label
+        const cx = node.x + node.w / 2;
+        const cy = node.y + node.h / 2;
+        const sz = DIAGRAM.measure(node);
+        Object.assign(node, sz, { x: Math.round(cx - sz.w / 2), y: Math.round(cy - sz.h / 2) });
+      }
+      break;
+    }
     case 'wire': if (edge) edge.kind = v; break;
     case 'symbol': if (v) dgAdd(m, 'symbol', { icon: v }); break;
     default: return;
@@ -1165,7 +1191,7 @@ function dgFinishPick(targetId) {
   dgSave(DIAGRAM.classify(m));
 }
 const ALIGN = { dgAlignL: ['x', 0], dgAlignC: ['x', 0.5], dgAlignR: ['x', 1], dgAlignT: ['y', 0], dgAlignM: ['y', 0.5], dgAlignB: ['y', 1] };
-const ADD = { dgStaff: 'staff', dgApplicant: 'applicant', dgStart: 'start', dgPayment: 'payment', dgRework: 'rework', dgSystem: 'system', dgDecision: 'decision', dgOk: 'ok', dgStop: 'stop', dgNote: 'note', dgGroup: 'group', dgText: 'text' };
+const ADD = { dgStaff: 'staff', dgApplicant: 'applicant', dgStart: 'start', dgPayment: 'payment', dgRework: 'rework', dgSystem: 'system', dgDecision: 'decision', dgOk: 'ok', dgStop: 'stop', dgNote: 'note', dgGroup: 'group', dgText: 'text', dgJoin: 'join' };
 /** 0.14.0 · O2: every symbol by its full name, on a panel of its own (never inside the toolbar's «…» menu); a pick adds it, selected. */
 function dgSymbolGallery() {
   document.querySelector('.bw-dg-gallery')?.remove();
