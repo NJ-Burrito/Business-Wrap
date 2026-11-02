@@ -109,12 +109,17 @@ async function pvLoad(svc, snap = null) {
   // edition, the <meta name="bw-ledger">, the <html data-bw-ledger>, a second CSP hash); any one left means «stripped»
   const traced = live ? ent && BWLOG1.traces({ bwlog: ent.bwlog, services: [{ id: svc, editions: ent.editions }] }, svc).length : BWLOG1.traces(DATA, svc, pvHead()).length;
   if (edited && !L.entries.length && !mir.log && (live ? ent && !traced : !traced)) { L.src = 'legacy'; L.verdict = { ok: true, issues: [], legacy: true }; L.pins = {}; return (PV.logs[svc] = L); }
+  // 0.16.0 (session S1): a LIBRARY document (it lives in the browser, not in a file someone could have cut) whose log this machine's history folder does not hold
+  // (the save folder was switched, or the history folder is new or was reset) is not «stripped»: a calm neutral message says the history is in another folder.
+  // Logged from this open on. A saved FILE that kept the mark and lost its log still warns: one opened as a file (!live) and one imported into the library (origin 'import').
+  if (edited && !L.entries.length && !mir.log && live && ent && ent.origin !== 'import') { L.src = 'elsewhere'; L.verdict = { ok: true, issues: [], elsewhere: true }; L.pins = {}; return (PV.logs[svc] = L); }
   // a log continued from this machine's mirror is newer than any file state: only its chain and head are checked
   L.verdict = await BWLOG1.verify(L, { mirror: L.from ? null : L.mirror, editions: L.src === 'mirror' ? undefined : eds, saved: L.src === 'html' || L.src === 'entry' });
   L.pins = L.verdict.pins;
   return (PV.logs[svc] = L);
 }
-const pvWarn = (L) => { if (pvBad(L)) toast(t('pvTampered'), 'warn', { persist: true, actions: [[t('pvShow'), () => openDrawer('provenance')]] }); };
+const pvWarn = (L) => { if (L?.verdict?.elsewhere && !L.told) { L.told = true; toast(t('pvElsewhere'), 'info', { actions: [[t('pvShow'), () => openDrawer('provenance')]] }); return; }
+  if (pvBad(L)) toast(t('pvTampered'), 'warn', { persist: true, actions: [[t('pvShow'), () => openDrawer('provenance')]] }); };
 
 const pvState = (svc) => BWLOG1.canonical(BWLOG1.stateOf(M[svc]));
 const pvBad = (L) => !!L && !L.verdict.ok;
@@ -270,7 +275,9 @@ function pvDrawer() {
   const met = BWLOG1.metrics(L.entries);
   const kinds = [...new Set(L.entries.map((e) => e.kind))];
   const legacy = L.verdict.ok && (L.verdict.legacy || L.entries.some((e) => e.kind === 'open' && e.data?.src === 'legacy'));
-  const status = legacy ? `<p class="pv-status pv-legacy" data-legacy="1"><span class="i">${ic('info')}</span> <b>${esc(t('pvLegacy'))}</b> · ${esc(t('pvLegacyNote', { n: L.entries.length }))}</p>`
+  const elsewhere = L.verdict.ok && (L.verdict.elsewhere || L.entries.some((e) => e.kind === 'open' && e.data?.src === 'elsewhere'));
+  const status = elsewhere ? `<p class="pv-status pv-elsewhere" data-elsewhere="1"><span class="i">${ic('info')}</span> <b>${esc(t('pvElsewhere'))}</b> · ${esc(t('pvElsewhereNote', { n: L.entries.length }))}</p>`
+    : legacy ? `<p class="pv-status pv-legacy" data-legacy="1"><span class="i">${ic('info')}</span> <b>${esc(t('pvLegacy'))}</b> · ${esc(t('pvLegacyNote', { n: L.entries.length }))}</p>`
     : L.verdict.ok ? `<p class="ok pv-status"><span class="i">${ic('ok')}</span> ${esc(t('pvChainOk', { n: L.entries.length }))}</p>`
     : `<div class="err pv-status" role="alert"><p><span class="i">${ic('err')}</span> <b>${esc(t('pvTampered'))}</b></p><ul>${L.verdict.issues.map((i) => `<li>#${i.seq} · ${esc(t('pvr_' + i.reason))}</li>`).join('')}</ul></div>`;
   const mins = (ms) => Math.round(ms / 6e4);

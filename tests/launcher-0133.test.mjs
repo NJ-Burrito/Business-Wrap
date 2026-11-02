@@ -222,9 +222,10 @@ try {
   await sa.bringToFront(); // two pages in one window: only the front one has focus
   check('stop/served: the page shows the one toggle online, no confirm dialog exists any more (note 15: stop is one press, with an Undo toast)', (await card(sa)).stop && !(await dlg(sa)).open);
   await sleep(300);
+    const dbg = { before: [await up(A.port), await up(B.port)], t0: Date.now() };
     const badPost = await fetch(`http://127.0.0.1:${A.port}/api/servers/stop`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
   const foreign = await fetch(`http://127.0.0.1:${A.port}/api/servers/stop`, { method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://example.com' }, body: '{"confirm":true}' });
-  check('stop/served: no confirm → 400, a foreign page → 403, nothing stops', badPost.status === 400 && foreign.status === 403 && (await up(A.port)) && (await up(B.port)));
+  check('stop/served: no confirm → 400, a foreign page → 403, nothing stops', badPost.status === 400 && foreign.status === 403 && (await up(A.port)) && (await up(B.port)), JSON.stringify([badPost.status, foreign.status, await up(A.port), await up(B.port), dbg, Date.now() - dbg.t0]));
   // two servers: 0.15.2 note 4: Stop from the first page stops ONLY that host; the second server's page is told to flush first and keeps running; `stop --all` (the handler) then stops it
   await sb.evaluate(() => { window.__flushes = 0; }); // count only what this press causes
   await sa.bringToFront(); // two pages in one window: only the front one has focus
