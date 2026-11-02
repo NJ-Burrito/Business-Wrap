@@ -68,7 +68,11 @@ function dgPaint() {
       const en = S.ed === 'en';
       const msg = en ? `Prints at ${lg.minPtPrinted} pt${lg.overlaps.length ? `, ${lg.overlaps.length} overlap(s)` : ''}: split the figure or enlarge the frame` : `يُطبع بحجم ${lg.minPtPrinted} نقطة${lg.overlaps.length ? `، ${lg.overlaps.length} تداخل` : ''}: قسّم الشكل أو كبّر الإطار`;
       const v = lg.view;
-      g.insertAdjacentHTML('beforeend', `<g class="dg-legib"><rect x="${v.x + 6}" y="${v.y + 6}" width="${Math.min(v.w - 12, 20 + msg.length * 6.4)}" height="24" rx="5" fill="#fff4d6" stroke="#8b5a05" stroke-width="1"/><text x="${v.x + 14}" y="${v.y + 22}" font-size="12" fill="#4e3102" direction="${en ? 'ltr' : 'rtl'}" ${en ? '' : `text-anchor="start" x="${v.x + 14}"`}>${esc(msg)}</text></g>`);
+      // 0.15.9 (L2): sized for the screen, not for the drawing's units (a drawing scaled down must not shrink the note), and right-aligned in Arabic
+      const sc0 = Math.min(2.6, Math.max(1, 1 / (svg.getScreenCTM()?.a || 1)));
+      const bw = Math.min(v.w - 12, (20 + msg.length * 6.4) * sc0);
+      const bx = en ? v.x + 6 : v.x + v.w - 6 - bw;
+      g.insertAdjacentHTML('beforeend', `<g class="dg-legib"><rect x="${bx}" y="${v.y + 6}" width="${bw}" height="${24 * sc0}" rx="5" fill="#fff4d6" stroke="#8b5a05" stroke-width="${sc0}"/><text x="${en ? bx + 8 * sc0 : bx + bw - 8 * sc0}" y="${v.y + 6 + 16 * sc0}" font-size="${12 * sc0}" fill="#4e3102" direction="${en ? 'ltr' : 'rtl'}" text-anchor="${en ? 'start' : 'end'}" textLength="${Math.min(bw - 16 * sc0, msg.length * 6 * sc0)}" lengthAdjust="spacingAndGlyphs">${esc(msg)}</text></g>`);
     }
   } catch { /* a model the check cannot read is the Check panel's business */ }
   for (const id of S.dg.nodes) {
@@ -122,6 +126,20 @@ function dgLegendBox(m, key) {
   }
   return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
 }
+/** 0.15.9 (M5): where a picker opens. The ribbon's flyout closes on the press, so the button's rectangle is read when the press starts (kept for 2 s);
+ *  else the visible button; else the middle of the window, never the corner. */
+const dgBtnPress = { a: '', r: null, t: 0 };
+document.addEventListener('pointerdown', (ev) => {
+  const b = (ev.composedPath?.() || []).find((x) => x?.dataset?.a);
+  if (!b) return;
+  const r = b.getBoundingClientRect();
+  Object.assign(dgBtnPress, { a: b.dataset.a, r: r.width > 0 ? { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height } : null, t: performance.now() });
+}, true);
+function dgAnchor(action) {
+  if (dgBtnPress.a === action && dgBtnPress.r && performance.now() - dgBtnPress.t < 2000) return dgBtnPress.r;
+  for (const b of root.querySelectorAll(`[data-a="${action}"]`)) { const r = b.getBoundingClientRect(); if (r.width > 0 && r.height > 0) return r; }
+  return null;
+}
 /** A list of choices at a ribbon button (the symbol gallery's panel). */
 function dgChoiceMenu(action, label, options, current, onPick) {
   document.querySelector('.bw-dg-gallery')?.remove();
@@ -135,10 +153,10 @@ function dgChoiceMenu(action, label, options, current, onPick) {
   el.style.fontFamily = 'inherit';
   el.innerHTML = options.map(([v, name]) => `<button type="button" data-val="${esc(v)}"${v === current ? ' aria-current="true" style="border-color:#005fc2"' : ''}>${esc(name)}</button>`).join('');
   document.body.appendChild(el);
-  const bt = root.querySelector(`[data-a="${action}"]`)?.getBoundingClientRect();
+  const bt = dgAnchor(action);
   const w = el.getBoundingClientRect().width;
   el.style.left = `${bt ? Math.max(8, Math.min(innerWidth - w - 8, bt.left + bt.width / 2 - w / 2)) : Math.max(8, (innerWidth - w) / 2)}px`;
-  el.style.top = `${Math.min(innerHeight - 120, (bt ? bt.bottom : 70) + 8)}px`;
+  el.style.top = `${Math.min(innerHeight - 120, (bt ? bt.bottom : innerHeight * 0.3) + 8)}px`;
   const close = () => { el.remove(); document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc2, true); };
   const away = (ev) => { if (!ev.composedPath().includes(el)) close(); };
   const esc2 = (ev) => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(); } };
@@ -219,6 +237,21 @@ function dgSetVia(m, eid, via) {
   if (!e) return;
   if (via.length) e.via = via; else delete e.via;
 }
+/** 0.15.9 (M2): Esc cancels any drag in flight (joint, ghost, shape, canvas): `cancel` restores the drawing; the returned function ends the watch (call it on release).
+ *  While a drag is held, Ctrl+wheel does nothing to the page (L4). */
+function dgDragEsc(cancel) {
+  S.dgDragging = true;
+  const h = (ev) => {
+    if (ev.key !== 'Escape') return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    off();
+    cancel();
+  };
+  const off = () => { S.dgDragging = false; document.removeEventListener('keydown', h, true); };
+  document.addEventListener('keydown', h, true);
+  return off;
+}
 /** Drag a joint of the selected arrow anywhere (grid snap follows S.snap; Shift locks to the previous joint). A press that does not move changes nothing. */
 function dgBendDrag(e, svg, ptr, ed, el) {
   e.preventDefault();
@@ -249,10 +282,18 @@ function dgBendDrag(e, svg, ptr, ed, el) {
     dgDraw(work);
   };
   const up = () => {
+    offEsc();
     document.removeEventListener('pointermove', move);
     document.removeEventListener('pointerup', up);
     if (moved) dgSave(work, ptr, ed);
   };
+  const offEsc = dgDragEsc(() => {
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+    S.dg.joint = [...P[k]];
+    if (moved) dgDraw(base);
+    moved = false;
+  });
   document.addEventListener('pointermove', move);
   document.addEventListener('pointerup', up);
 }
@@ -281,10 +322,18 @@ function dgGhostDrag(e, svg, ptr, ed, el) {
     dgDraw(work);
   };
   const up = () => {
+    offEsc();
     document.removeEventListener('pointermove', move);
     document.removeEventListener('pointerup', up);
     if (moved) dgSave(work, ptr, ed);
   };
+  const offEsc = dgDragEsc(() => {
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+    S.dg.joint = null;
+    if (moved) dgDraw(base);
+    moved = false;
+  });
   document.addEventListener('pointermove', move);
   document.addEventListener('pointerup', up);
 }
@@ -319,12 +368,52 @@ function dgJointDelete() {
   const type = dgEdgeType(edge);
   let via = dgJointRemove(w.route, k, type);
   let anchors = {};
-  if (type === 'elbow') ({ via, anchors } = dgCleanDelete(m, edge.id, w, via));
+  if (type === 'elbow') {
+    // 0.15.9 (H1, H2): only the chosen joint goes, plus the corner points that are left collinear or doubled back; no neighbour slides
+    const plain = dgElbowDelete(m, edge.id, w, k);
+    if (plain) via = plain;
+    else ({ via, anchors } = dgCleanDelete(m, edge.id, w, via));
+  }
   dgSetVia(m, S.dg.edge, via);
   Object.assign(edge, anchors);
   S.dg.joint = null;
   dgSave(m);
   return true;
+}
+/** Collinear, repeated and doubled-back interior points of a route removed (the ends stay). */
+function dgSimplify(Q) {
+  const R = Q.map((q) => [...q]);
+  for (let i = 1; i < R.length - 1;) {
+    const [a, b, c] = [R[i - 1], R[i], R[i + 1]];
+    const dup = Math.hypot(b[0] - a[0], b[1] - a[1]) < 0.5;
+    const colX = Math.abs(a[0] - b[0]) < 0.5 && Math.abs(b[0] - c[0]) < 0.5;
+    const colY = Math.abs(a[1] - b[1]) < 0.5 && Math.abs(b[1] - c[1]) < 0.5;
+    if (dup || colX || colY) { R.splice(i, 1); i = Math.max(1, i - 1); } else i += 1;
+  }
+  return R;
+}
+/** Delete joint k of an elbow arrow: take it out of the drawn route, drop what it leaves collinear, and give the joints back to the router when they
+ *  draw exactly what it would draw alone. Returns the new via, or null when the result would not stay orthogonal (the caller falls back). */
+function dgElbowDelete(m, eid, w, k) {
+  const drawn = (v) => {
+    const m2 = JSON.parse(JSON.stringify(m));
+    dgSetVia(m2, eid, v);
+    return dgWire(m2, eid)?.route || null;
+  };
+  // the stored joints are the user's: when the chosen circle is one of them, exactly that entry goes and every other entry stays where it is
+  const stored = m.edges.find((x) => x.id === eid)?.via;
+  const hit = Array.isArray(stored) ? stored.findIndex((q) => dgNear(q, w.route[k])) : -1;
+  const Q = dgSimplify(w.route.filter((q, i) => i !== k));
+  const viaQ = Q.slice(1, -1).map((q) => [Math.round(q[0] * 10) / 10, Math.round(q[1] * 10) / 10]);
+  const viaS = hit >= 0 ? stored.filter((q, i) => i !== hit) : null;
+  const ortho = (r0) => !!r0 && r0.every((q, i) => !i || Math.abs(q[0] - r0[i - 1][0]) < 0.6 || Math.abs(q[1] - r0[i - 1][1]) < 0.6);
+  const via = viaS && ortho(drawn(viaS)) ? viaS : viaQ;
+  const r = drawn(via);
+  if (!r || !r.every((q, i) => !i || Math.abs(q[0] - r[i - 1][0]) < 0.6 || Math.abs(q[1] - r[i - 1][1]) < 0.6)) return null;
+  if (r.length - 2 > w.route.length - 3) return null;
+  const auto = drawn([]);
+  if (auto && auto.length === r.length && auto.every((q, i) => Math.abs(q[0] - r[i][0]) < 0.6 && Math.abs(q[1] - r[i][1]) < 0.6)) return [];
+  return via;
 }
 /** E1: after a joint of an elbow arrow is deleted the path must stay clean: no jog and no extra joint where it meets a shape. When the end legs cannot both enter square,
  *  the end's anchor moves to the face the remaining leg points at (the leg stays where it is), so nothing extra appears. */
@@ -468,10 +557,10 @@ function dgEdgeMenu(key) {
   el.style.fontFamily = 'inherit';
   el.innerHTML = DG_EDGE_KEYS[key].map((v) => `<button type="button" data-val="${v}"${v === curV ? ' aria-current="true" style="border-color:#005fc2"' : ''}>${esc(t(`dgo_${key}_${v || 'auto'}`))}</button>`).join('');
   document.body.appendChild(el);
-  const bt = root.querySelector(`[data-a="dg${key[0].toUpperCase()}${key.slice(1)}"]`)?.getBoundingClientRect();
+  const bt = dgAnchor(`dg${key[0].toUpperCase()}${key.slice(1)}`);
   const w = el.getBoundingClientRect().width;
   el.style.left = `${bt ? Math.max(8, Math.min(innerWidth - w - 8, bt.left + bt.width / 2 - w / 2)) : Math.max(8, (innerWidth - w) / 2)}px`;
-  el.style.top = `${Math.min(innerHeight - 120, (bt ? bt.bottom : 70) + 8)}px`;
+  el.style.top = `${Math.min(innerHeight - 120, (bt ? bt.bottom : innerHeight * 0.3) + 8)}px`;
   const close = () => { el.remove(); document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc2, true); };
   const away = (ev) => { if (!ev.composedPath().includes(el)) close(); };
   const esc2 = (ev) => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(); } };
@@ -619,10 +708,12 @@ function dgZoomFig(fig, mode, at) {
   const art = fig.querySelector('.fig-art');
   if (!svg || !art) return;
   const z = S.dgZoom[key];
-  const natural = svg.viewBox.baseVal?.width || svg.getBoundingClientRect().width;
+  // the page zoom is a CSS `zoom` on the page: getBoundingClientRect() is in screen px, the CSS vars below are in the page's own px (0.15.9 C1)
+  const kz = art.offsetWidth ? art.getBoundingClientRect().width / art.offsetWidth || 1 : 1;
+  const natural = svg.viewBox.baseVal?.width || svg.getBoundingClientRect().width / kz;
   // the fitted size is measured unzoomed once, then kept: the frame never changes size under the reader
-  const fitW = z?.fitW || svg.getBoundingClientRect().width;
-  const fitH = z?.h || art.getBoundingClientRect().height;
+  const fitW = z?.fitW || svg.getBoundingClientRect().width / kz;
+  const fitH = z?.h || art.getBoundingClientRect().height / kz;
   const now = z?.w || fitW;
   const f = mode === 'in' ? 1.25 : mode === 'out' ? 1 / 1.25 : mode?.f || 1;
   let w;
@@ -655,8 +746,8 @@ function dgZoomFig(fig, mode, at) {
     const r1 = svg.getBoundingClientRect();
     const ex = r1.left + u * r1.width - ax;
     const ey = r1.top + v * r1.height - ay;
-    art.scrollLeft += ex;
-    art.scrollTop += ey;
+    art.scrollLeft += ex / kz;
+    art.scrollTop += ey / kz;
     const r2 = svg.getBoundingClientRect();
     const rx = r2.left + u * r2.width - ax;
     const ry = r2.top + v * r2.height - ay;
@@ -664,8 +755,8 @@ function dgZoomFig(fig, mode, at) {
       const cs = getComputedStyle(art);
       const vw = art.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
       const vh = art.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-      zz.ml = Math.min(Math.max(0, vw - r2.width), Math.max(0, (zz.ml || 0) - rx));
-      zz.mt = Math.min(Math.max(0, vh - r2.height), Math.max(0, (zz.mt || 0) - ry));
+      zz.ml = Math.min(Math.max(0, vw - r2.width / kz), Math.max(0, (zz.ml || 0) - rx / kz));
+      zz.mt = Math.min(Math.max(0, vh - r2.height / kz), Math.max(0, (zz.mt || 0) - ry / kz));
       art.style.setProperty('--dgml', `${zz.ml}px`);
       art.style.setProperty('--dgmt', `${zz.mt}px`);
     }
@@ -688,6 +779,7 @@ document.addEventListener('scroll', (e) => {
   let raf = 0;
   document.addEventListener('wheel', (e) => {
     if (!(e.ctrlKey || e.metaKey)) return;
+    if (S.dgDragging) { e.preventDefault(); return; } // a drag is held: the wheel neither zooms nor scrolls the page (L4)
     const fig = e.target.closest?.('#bw-pair figure[data-dg]');
     if (!fig) return;
     e.preventDefault();
@@ -769,10 +861,17 @@ document.addEventListener('pointerdown', (e) => {
     dgDraw(work);
   };
   const up = () => {
+    offEsc();
     document.removeEventListener('pointermove', move);
     document.removeEventListener('pointerup', up);
     if (moved) dgSave(work, ptr, ed);
   };
+  const offEsc = dgDragEsc(() => {
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+    if (moved) dgDraw(base);
+    moved = false;
+  });
   document.addEventListener('pointermove', move);
   document.addEventListener('pointerup', up);
 });
@@ -905,11 +1004,11 @@ function dgGalleryOpen() {
   el.style.fontFamily = 'inherit';
   el.innerHTML = DIAGRAM.SYMBOLS.map((k) => `<button type="button" data-sym="${k}">${esc(t(`sym_${k}`))}</button>`).join('');
   document.body.appendChild(el);
-  const bt = root.querySelector('[data-a="dgSymbol"]')?.getBoundingClientRect();
+  const bt = dgAnchor('dgSymbol');
   const w = el.getBoundingClientRect().width;
   const left = bt ? Math.max(8, Math.min(innerWidth - w - 8, bt.left + bt.width / 2 - w / 2)) : Math.max(8, (innerWidth - w) / 2);
   el.style.left = `${left}px`;
-  el.style.top = `${Math.min(innerHeight - 120, (bt ? bt.bottom : 70) + 8)}px`;
+  el.style.top = `${Math.min(innerHeight - 120, (bt ? bt.bottom : innerHeight * 0.3) + 8)}px`;
   const close = () => { el.remove(); document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc2, true); };
   const away = (ev) => { if (!ev.composedPath().includes(el)) close(); };
   const esc2 = (ev) => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(); } };
