@@ -135,11 +135,15 @@ const W2P = { maxW: 0 }; // the widest sheet (mm) of the open document's edition
 function w2fit() {
   const pair = document.getElementById('bw-pair');
   const side = !!pair?.classList.contains('bw-side');
-  const avail = (document.documentElement.clientWidth - 48) / (side ? 2 : 1);
+  // 0.16.0 perf: clientWidth is a forced layout when it is read right after a render replaced the markup (the 60-page undo paid for it every time);
+  // the window's width only changes on resize, so it is read there and kept
+  if (W2P.vw === undefined) W2P.vw = document.documentElement.clientWidth;
+  const avail = (W2P.vw - 48) / (side ? 2 : 1);
   const px = W2P.maxW * (96 / 25.4) * (S.zoom || 1) * (side ? 0.62 : 1);
-  document.documentElement.style.setProperty('--w2-fit', String(px > avail ? +(avail / px).toFixed(4) : 1));
+  const v = String(px > avail ? +(avail / px).toFixed(4) : 1);
+  if (W2P.fit !== v) { W2P.fit = v; document.documentElement.style.setProperty('--w2-fit', v); }
 }
-addEventListener('resize', w2fit);
+addEventListener('resize', () => { W2P.vw = document.documentElement.clientWidth; w2fit(); });
 function w2pageCss() {
   const rules = ['#bw-pair:not([data-pages="single"]):not([data-pages="spread"]) main.bw-doc{zoom:calc(var(--bw-zoom, 1) * var(--w2-fit, 1))}', '#bw-pair.bw-side:not([data-pages="single"]):not([data-pages="spread"]) main.bw-doc{zoom:calc(var(--bw-zoom, 1) * .62 * var(--w2-fit, 1))}'];
   W2P.maxW = 0;

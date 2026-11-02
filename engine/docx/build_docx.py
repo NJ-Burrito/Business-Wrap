@@ -21,8 +21,6 @@ _I18N = json.loads((Path(__file__).resolve().parents[1] / 'i18n.json').read_text
 LOCALE = os.environ.get('BW_LOCALE', 'ar')
 L = dict(_I18N['doc'][LOCALE])
 import theme as theme_mod
-# 0.16.0 (spec T): the document type scale is 2 pt smaller than theme.py's defaults (diagrams keep their own sizes: diagram_docx.py draws its own)
-theme_mod.SIZES.update({'title': 22, 'h1': 16, 'h2': 14, 'h3': 12, 'body': 12, 'table': 10, 'meta': 8, 'micro': 7})
 import model_docx as MD
 DEFAULT_BODY_FONT = 'thmanyah serif text'
 ARABIC = re.compile('[\u0600-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-\ufeff]')
