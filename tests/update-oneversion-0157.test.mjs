@@ -462,7 +462,7 @@ try {
     ok('U8/U9 the 0.15.7 CHANGELOG section exists in English and Arabic and says the old version is replaced', sec.length > 100 && /replace/i.test(sec) && /[؀-ۿ]/.test(sec) && /استبدال|يُستبدل|تستبدل/.test(sec));
     const s8 = cl.slice(cl.indexOf('## [0.15.8]'), cl.indexOf('## [0.15.7]'));
     ok('U8/U9 the 0.15.8 CHANGELOG section exists in English and Arabic and names the three safety rules', s8.length > 100 && /[؀-ۿ]/.test(s8) && /orphan|process|running/i.test(s8) && /moved|copy/i.test(s8) && /look-alike|name/i.test(s8));
-    ok('U9 the version is 0.15.8 where the release reads it', versionOf(REPO) === '0.15.8' && JSON.parse(read('.claude-plugin/plugin.json')).version === '0.15.8' && JSON.parse(read('mcp/server.json')).version === '0.15.8');
+    ok('U9 the version is the package version where the release reads it', versionOf(REPO) === JSON.parse(read('package.json')).version && JSON.parse(read('.claude-plugin/plugin.json')).version === JSON.parse(read('package.json')).version && JSON.parse(read('mcp/server.json')).version === JSON.parse(read('package.json')).version);
     const bible = read('bible/07-updates.md') + read('bible/07-updates.ar.md');
     ok('U8 the bible pair states the 0.15.8 rules (orphaned mark and live process, moved-aside folder, exact leftover names, contained marker paths)', /.orphaned_at/.test(bible) && /removed-files-/.test(bible) && /backup-<semver>/.test(bible) && /update-migration-/.test(bible) && /[؀-ۿ]/.test(read('bible/07-updates.ar.md')) && /removed-files-/.test(read('bible/07-updates.ar.md')));
   }
