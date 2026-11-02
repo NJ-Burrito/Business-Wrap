@@ -119,6 +119,21 @@ const pvWarn = (L) => { if (pvBad(L)) toast(t('pvTampered'), 'warn', { persist: 
 const pvState = (svc) => BWLOG1.canonical(BWLOG1.stateOf(M[svc]));
 const pvBad = (L) => !!L && !L.verdict.ok;
 const pvDigest = async (s) => `sha256:${BWLOG1.hex(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))))}`;
+/** 0.16.0 (field notes item 7) · a large string in a NEW log entry (a 300 KB logo, typed once into an op) is kept by its hash and size, not copied: {$blob, bytes, head}.
+ *  The document and its edition history still hold the value, so nothing is lost and the entry still proves what was written; older entries are never touched (additive, AGENTS.md
+ *  «File format and history»). Strings of 8 KB or less stay as they were. */
+const PV_BLOB = 8192;
+async function pvSlim(data) {
+  const walk = async (v, depth) => {
+    if (typeof v === 'string') return v.length > PV_BLOB ? { $blob: await pvDigest(v), bytes: v.length, head: v.slice(0, 40) } : v;
+    if (!v || typeof v !== 'object' || depth > 10) return v;
+    if (Array.isArray(v)) return Promise.all(v.map((x) => walk(x, depth + 1)));
+    const out = {};
+    for (const [k, x] of Object.entries(v)) out[k] = await walk(x, depth + 1);
+    return out;
+  };
+  try { return await walk(data, 0); } catch { return data; }
+}
 /** Queues one entry; the document state is taken now, hashed in the queue. Returns the queue (await it to be sure it is written). */
 function pvAppend(kind, data = {}, svc = S.svc) {
   const state = M[svc] ? pvState(svc) : '';
@@ -131,7 +146,7 @@ function pvAppend(kind, data = {}, svc = S.svc) {
     const dh = state ? await pvDigest(state) : '';
     await pvRenamed(L, at, dh);
     if (kind === 'x-rename') { await pvMirror(svc); return; } // a rename on its own (Settings → profile): logged above, if any
-    await BWLOG1.append(L, { kind, data, at, actor: who, keys: PV.keys, docHash: dh });
+    await BWLOG1.append(L, { kind, data: await pvSlim(data), at, actor: who, keys: PV.keys, docHash: dh });
     if (kind === 'open') PV.openLogged.add(svc);
     await pvMirror(svc); // written before the queue moves on: a tab closed right after an edit keeps it
   }).catch((e) => console.error('bwlog', e));
