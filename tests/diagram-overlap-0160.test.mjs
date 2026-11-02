@@ -26,6 +26,8 @@ const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}
 const NLs = String.fromCharCode(10);
 process.on('uncaughtException', (e) => { console.log(results.join(NLs)); console.error('CRASH: ' + String(e.stack || e.message).split(NLs).slice(0, 4).join(' / ')); process.exit(1); });
 const SAMPLE = path.join(REPO, 'samples', 'event-permit');
+// 0.16.1: the sample prints its workflow as two figures; this suite drives ONE whole drawing, so it reads the whole-drawing copy of the documents
+const WHOLE = path.join(REPO, 'tests', 'fixtures', 'permit-whole');
 const theme = loadTheme();
 const wf = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'workflow.json'), 'utf8'));
 const SHADOW = [1.4, 1.8];
@@ -228,7 +230,7 @@ let exercised = 0;
 
 // ── 4. every output draws the same primitives: SVG, HTML, PDF, DOCX ──
 {
-  const docEn = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'document.en.json'), 'utf8'));
+  const docEn = JSON.parse(fs.readFileSync(path.join(WHOLE, 'document.en.json'), 'utf8'));
   const blk = docEn.chapters[2].sections[0].blocks[0];
   const m = DIAGRAM.layout(blk.model, { aspect: 2 });
   blk.model = m;
@@ -264,7 +266,7 @@ let exercised = 0;
 
 // ── 5. the real editor: one click puts a stored drawing on the new arrows; the check returns the counts ──
 const file = path.join(OUT, 'editor.html');
-buildEditor({ inputs: [SAMPLE], out: file, set: 'overlap-0160', watermarkDir: '' });
+buildEditor({ inputs: [WHOLE], out: file, set: 'overlap-0160', watermarkDir: '' });
 const browser = await chromium.launch(launchOptions());
 const errors = [];
 try {

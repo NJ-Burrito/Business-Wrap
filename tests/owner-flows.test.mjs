@@ -210,13 +210,13 @@ try {
   await page.evaluate(() => window.BW.openDrawer('library')); await wait(300);
   const row = page.locator(`#bw-ui-host >> css=.drawer [data-id="${id1}"] [data-lib="open"], .drawer [data-lib="open"][data-id="${id1}"]`).first();
   if (await row.count()) await row.click(); else await page.evaluate((id) => window.BW.EXT.library.open(id), id1);
-  await page.waitForFunction((id) => window.BW.S.svc === id, id1, { timeout: 5000 }).catch(() => {});
+  await page.waitForFunction((id) => window.BW.S.svc === id, id1, { timeout: 30000 }).catch(() => {}); // 0.16.1: 5 s lost the following edit when the open finished late on a loaded run (L13 saw 0 → 0)
   const opened = await page.evaluate(() => ({ svc: window.BW.S.svc, hash: location.hash, drawer: !document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer').hidden }));
   check(7, '«افتح هنا» opens the earlier document and puts #doc=<id> in the address (a reload keeps it)', opened.svc === id1 && opened.hash.includes(`doc=${id1}`), JSON.stringify(opened), true);
 
   // L7/L16/L20 open from the list → edit → Save HTML: the saved file carries the provenance log
   await page.evaluate(() => window.BW.setText('/chapters/0/title', 'مقدمة عدّلها المالك'));
-  await page.waitForFunction(() => Number(document.getElementById('bw-ui-host').shadowRoot.querySelector('.count .n')?.textContent) >= 1, null, { timeout: 8000 }).catch(() => {}); // the counter repaints after the edit; a fixed 300 ms read 0 under load
+  await page.waitForFunction(() => Number(document.getElementById('bw-ui-host').shadowRoot.querySelector('.count .n')?.textContent) >= 1, null, { timeout: 20000 }).catch(() => {}); // the counter repaints after the edit; a fixed 300 ms read 0 under load
   const c0 = await counter();
   const htmlDir = W.workspace().dirs.docs; // 0.13.3: Documents\<title>\<title>.html, its Exports\ and Versions\
   // every .html below the documents folder as «relative path|mtime»: a file written (new or overwritten) after a snapshot is what changed

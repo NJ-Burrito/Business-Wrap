@@ -23,7 +23,7 @@ const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}
 process.on('uncaughtException', (e) => { console.log(results.join('\n')); console.error('CRASH: ' + String(e.message).split('\n').slice(0, 3).join(' / ')); process.exit(2); });
 
 const file = path.join(OUT, 'editor.html');
-buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, set: 'strip-0159', watermarkDir: '' });
+buildEditor({ inputs: [path.join(REPO, 'tests', 'fixtures', 'permit-whole')], out: file, set: 'strip-0159', watermarkDir: '' });
 const QUICK = !!process.env.BW_STRIP_QUICK;
 const WINDOWS = QUICK ? [1024, 1920] : [1024, 1366, 1920, 2560];
 const ZOOMS = QUICK ? [1, 1.5] : [0.75, 1, 1.5];
