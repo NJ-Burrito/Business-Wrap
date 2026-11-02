@@ -13,29 +13,703 @@
     "status": "Draft",
     "reviewCycle": "On every change to the service"
   },
-  "revisions": [["V0.1", "", "First draft", "—"]],
+  "revisions": [
+    [
+      "V0.1",
+      "",
+      "First draft",
+      "—"
+    ]
+  ],
   "approvals": [],
   "chapters": [
-    { "number": "1", "title": "Introduction", "sections": [
-      { "number": "1.1", "title": "Purpose of this document", "blocks": [{ "kind": "prose", "paragraphs": ["Write what this document is for."] }] },
-      { "number": "1.2", "title": "Scope", "blocks": [{ "kind": "prose", "paragraphs": ["Write what the service covers and what it does not."] }] }
-    ] },
-    { "number": "2", "title": "Service card", "sections": [
-      { "number": "2.1", "title": "Service description", "blocks": [{ "kind": "prose", "paragraphs": ["Describe the service in two or three sentences."] }] },
-      { "number": "2.2", "title": "Service identifier and coding", "blocks": [{ "kind": "table", "columns": [], "rows": [["Service code", ""], ["Request number format", ""]] }] },
-      { "number": "2.3", "title": "Users and roles", "blocks": [{ "kind": "table", "columns": ["Role", "Description", "Portal"], "rows": [["Applicant", "", "Applicant portal"]] }] }
-    ] },
-    { "number": "3", "title": "Functional requirements", "sections": [
-      { "number": "3.1", "title": "Requirements table", "blocks": [{ "kind": "table", "columns": ["Code", "Requirement", "Type"], "rows": [["FR-01", "", "System"]] }] }
-    ] },
-    { "number": "4", "title": "Business rules", "sections": [
-      { "number": "4.1", "title": "Business rules table", "blocks": [{ "kind": "table", "columns": ["Code", "Rule"], "rows": [["BR-01", ""]] }] }
-    ] },
-    { "number": "5", "title": "User stories and acceptance criteria", "sections": [
-      { "number": "5.1", "title": "Submit the request", "blocks": [{ "kind": "stories", "number": "5.1", "lead": "Story cards", "items": [
-        { "id": "US-01", "name": "Submit the request", "as": "applicant", "want": "fill in the request form and attach the documents", "so": "the request can be sent", "acceptance": ["Write the first acceptance criterion."] }
-      ] }] }
-    ] }
+    {
+      "number": "1",
+      "title": "Introduction",
+      "sections": [
+        {
+          "number": "1.1",
+          "title": "Purpose of the document",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "State the purpose of this document."
+              ]
+            }
+          ]
+        },
+        {
+          "number": "1.2",
+          "title": "Service scope",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "State what the service covers and what it leaves out."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "2",
+      "title": "Service card",
+      "sections": [
+        {
+          "number": "2.1",
+          "title": "Service description",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Describe the service in two or three sentences."
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.2",
+          "title": "Service identifier and coding",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [],
+              "rows": [
+                [
+                  "Service code",
+                  "…"
+                ],
+                [
+                  "Request serial number format",
+                  "…"
+                ],
+                [
+                  "Where the number shows",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.3",
+          "title": "Service recipient category",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Category"
+              ],
+              "rows": [
+                [
+                  "…"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.4",
+          "title": "Assumptions, constraints and conditions",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [],
+              "rows": [
+                [
+                  "1",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.5",
+          "title": "Service fees",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Fee code",
+                "Amount",
+                "Basis and collection rules",
+                "When collected"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.6",
+          "title": "Service documents",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Document",
+                "Required",
+                "Accepted formats",
+                "Maximum size",
+                "Provided by",
+                "Notes"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.7",
+          "title": "Administrative reference",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [],
+              "rows": [
+                [
+                  "Directorate",
+                  "…"
+                ],
+                [
+                  "Department",
+                  "…"
+                ],
+                [
+                  "Division",
+                  "…"
+                ],
+                [
+                  "Classification",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.8",
+          "title": "Where the service is delivered",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "State where the service is delivered (service recipient portal and staff portal)."
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.9",
+          "title": "Service outputs",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Output",
+                "Validity"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.10",
+          "title": "Governing legislation",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Number",
+                "Legislation",
+                "Year"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.11",
+          "title": "Users and roles",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Code",
+                "Role",
+                "Function",
+                "How the role uses the system",
+                "Portal / sign-in link"
+              ],
+              "rows": [
+                [
+                  "R-01",
+                  "Service recipient",
+                  "…",
+                  "…",
+                  "Service recipient portal"
+                ],
+                [
+                  "R-02",
+                  "Staff member",
+                  "…",
+                  "…",
+                  "Staff portal, back office"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.12",
+          "title": "Internal system integrations",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "System",
+                "Description",
+                "Data sent",
+                "Data retrieved",
+                "Readiness"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.13",
+          "title": "Integrations with platform services",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Service",
+                "Data sent",
+                "Data retrieved"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.14",
+          "title": "Internal data sources",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Data source",
+                "Description",
+                "Data retrieved",
+                "Readiness"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.15",
+          "title": "Service partner integrations",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Integration partner",
+                "Data sent",
+                "Data retrieved",
+                "Readiness"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.16",
+          "title": "Supported languages",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Arabic / English"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "3",
+      "title": "Functional system requirements",
+      "sections": [
+        {
+          "number": "3.1",
+          "title": "Requirements table",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Code",
+                "Requirement",
+                "Functional unit",
+                "Type"
+              ],
+              "rows": [
+                [
+                  "FR-01",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "4",
+      "title": "Service path and workflow",
+      "sections": [
+        {
+          "number": "4.1",
+          "title": "Workflow diagram",
+          "blocks": [
+            {
+              "kind": "diagram",
+              "caption": "Workflow: from submission to the result of the request",
+              "model": {
+                "kind": "bw-diagram",
+                "version": 1,
+                "flow": "ltr",
+                "nodes": [
+                  {
+                    "id": "n1",
+                    "kind": "start",
+                    "label": "Submit request",
+                    "w": 210,
+                    "h": 52,
+                    "y": 34,
+                    "x": 64
+                  },
+                  {
+                    "id": "n2",
+                    "kind": "staff",
+                    "label": "Review the request",
+                    "w": 218,
+                    "h": 52,
+                    "y": 187,
+                    "x": 64
+                  },
+                  {
+                    "id": "n3",
+                    "kind": "decision",
+                    "label": "Action",
+                    "w": 96,
+                    "h": 60,
+                    "y": 183,
+                    "x": 336
+                  },
+                  {
+                    "id": "n4",
+                    "kind": "ok",
+                    "label": "Approved",
+                    "w": 159,
+                    "h": 52,
+                    "y": 187,
+                    "x": 527
+                  },
+                  {
+                    "id": "n5",
+                    "kind": "stop",
+                    "label": "Refused",
+                    "w": 150,
+                    "h": 52,
+                    "y": 299,
+                    "x": 309
+                  }
+                ],
+                "edges": [
+                  {
+                    "id": "e1",
+                    "from": "n1",
+                    "to": "n2",
+                    "label": "",
+                    "kind": "main"
+                  },
+                  {
+                    "id": "e2",
+                    "from": "n2",
+                    "to": "n3",
+                    "label": "",
+                    "kind": "main"
+                  },
+                  {
+                    "id": "e3",
+                    "from": "n3",
+                    "to": "n4",
+                    "label": "Approve",
+                    "kind": "main"
+                  },
+                  {
+                    "id": "e4",
+                    "from": "n3",
+                    "to": "n5",
+                    "label": "Refuse",
+                    "kind": "stop"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "5",
+      "title": "Business rules",
+      "sections": [
+        {
+          "number": "5.1",
+          "title": "Business rules table",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Code",
+                "Business rule"
+              ],
+              "rows": [
+                [
+                  "BR-01",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "6",
+      "title": "User stories and acceptance criteria",
+      "sections": [
+        {
+          "number": "6.1",
+          "title": "Submit the request (service recipient portal)",
+          "blocks": [
+            {
+              "kind": "stories",
+              "number": "6.1",
+              "lead": "Story cards",
+              "items": [
+                {
+                  "id": "US-01",
+                  "name": "Submit the request",
+                  "as": "service recipient",
+                  "want": "fill in the request form and attach the documents",
+                  "so": "the request can be sent",
+                  "acceptance": [
+                    "Write the first acceptance criterion.",
+                    "Write the next acceptance criterion."
+                  ],
+                  "actions": {
+                    "columns": [
+                      "Action",
+                      "Effect on the request"
+                    ],
+                    "rows": [
+                      [
+                        "…",
+                        "…"
+                      ]
+                    ]
+                  },
+                  "dictionary": {
+                    "columns": [
+                      "Field",
+                      "Type",
+                      "Required",
+                      "Editable",
+                      "Integration",
+                      "Default",
+                      "Constraints"
+                    ],
+                    "rows": [
+                      [
+                        "…",
+                        "…",
+                        "…",
+                        "…",
+                        "…",
+                        "…",
+                        "…"
+                      ]
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "number": "6.2",
+          "title": "Review the request (staff portal, back office)",
+          "blocks": [
+            {
+              "kind": "stories",
+              "number": "6.2",
+              "items": [
+                {
+                  "id": "US-02",
+                  "name": "Review the request",
+                  "as": "staff member",
+                  "want": "review the request and decide on it",
+                  "so": "the request moves to the next stage",
+                  "acceptance": [
+                    "Write the first acceptance criterion.",
+                    "Write the next acceptance criterion."
+                  ],
+                  "actions": {
+                    "columns": [
+                      "Action",
+                      "Effect on the request"
+                    ],
+                    "rows": [
+                      [
+                        "…",
+                        "…"
+                      ]
+                    ]
+                  },
+                  "dictionary": {
+                    "columns": [
+                      "Field",
+                      "Type",
+                      "Required",
+                      "Editable",
+                      "Integration",
+                      "Default",
+                      "Constraints"
+                    ],
+                    "rows": [
+                      [
+                        "…",
+                        "…",
+                        "…",
+                        "…",
+                        "…",
+                        "…",
+                        "…"
+                      ]
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "number": "6.3",
+          "title": "Service output (service recipient portal)",
+          "blocks": [
+            {
+              "kind": "stories",
+              "number": "6.3",
+              "items": [
+                {
+                  "id": "US-03",
+                  "name": "Service output",
+                  "as": "User",
+                  "want": "receive the service output",
+                  "so": "the output is available to the service recipient",
+                  "acceptance": [
+                    "Write the first acceptance criterion."
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "Value"
+              ],
+              "rows": [
+                [
+                  "Output name",
+                  "…"
+                ],
+                [
+                  "When it is issued",
+                  "…"
+                ],
+                [
+                  "Who receives it",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    }
   ],
   "openQuestions": []
 }
