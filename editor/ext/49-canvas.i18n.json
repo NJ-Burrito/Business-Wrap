@@ -1,0 +1,18 @@
+{
+  "ar": {
+    "dgCvShapes": "ملاءمة الأشكال",
+    "dgCvPage": "ملاءمة الصفحة",
+    "dgCvAuto": "حجم تلقائي للوحة",
+    "dgCvSize": "حجم لوحة المخطط",
+    "dgCvMax": "أقصى ما تسمح به الصفحة",
+    "rb.g.canvas": "لوحة المخطط"
+  },
+  "en": {
+    "dgCvShapes": "Fit to shapes",
+    "dgCvPage": "Fit to page",
+    "dgCvAuto": "Automatic canvas size",
+    "dgCvSize": "Diagram canvas size",
+    "dgCvMax": "page maximum",
+    "rb.g.canvas": "Canvas"
+  }
+}

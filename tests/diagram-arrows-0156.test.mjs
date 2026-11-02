@@ -576,6 +576,37 @@ try {
     check('Z3 many small events are coalesced to one update per frame, scale = product of the steps', co.syncW === co.w0 && near(co.after, co.expect, co.expect * 0.02), JSON.stringify(co));
     await page.evaluate(() => window.BW.runAction('dgZoomFit'));
   }
+  for (const pz of [0.75, 1, 1.5]) {
+    // 0.15.9 (UAT C1): Z2 and Z3 hold at every page zoom, not only at 100 %: the page zoom is a CSS zoom on the page, the drawing's frame must not read it twice
+    await page.evaluate((z) => window.BW.setZoom(z), pz);
+    await page.waitForTimeout(500);
+    await fitView();
+    await U.reveal();
+    const e0 = await page.locator(`${FIG} svg`).boundingBox();
+    await page.mouse.click(e0.x + 4, e0.y + 4);
+    const q0 = await snap();
+    const qb = await page.locator(`${FIG} svg`).boundingBox();
+    const qat = [qb.x + qb.width * 0.62, qb.y + qb.height * 0.4];
+    const qpt = await U.toSvg(qat);
+    await page.mouse.move(qat[0], qat[1]);
+    await page.keyboard.down('Control');
+    for (let i = 0; i < 6; i += 1) { await page.mouse.wheel(0, -40); await page.waitForTimeout(30); }
+    await page.waitForTimeout(80);
+    const qback = await U.toScreen(qpt);
+    const qdrift = Math.hypot(qback[0] - qat[0], qback[1] - qat[1]);
+    for (let i = 0; i < 14; i += 1) { await page.mouse.wheel(0, -40); await page.waitForTimeout(30); }
+    await page.waitForTimeout(80);
+    const qin = await snap();
+    for (let i = 0; i < 20; i += 1) { await page.mouse.wheel(0, 40); await page.waitForTimeout(30); }
+    await page.waitForTimeout(80);
+    const qout = await snap();
+    await page.keyboard.up('Control');
+    check(`Z2 at page zoom ${pz * 100} %: 20 Ctrl+wheel events in and out change only the drawing (frame, scrollHeight, scrollY, ribbon, page zoom each ≤ 1 px)`, qin.svgW > q0.svgW * 1.5 && maxDelta(q0, qin) <= 1 && maxDelta(q0, qout) <= 1, JSON.stringify({ svgW: [q0.svgW, qin.svgW, qout.svgW], in: maxDelta(q0, qin), out: maxDelta(q0, qout) }));
+    check(`Z3 at page zoom ${pz * 100} %: the drawing point under the pointer stays within 2 px`, qdrift <= 2, `${Math.round(qdrift * 10) / 10} px`);
+    await page.evaluate(() => window.BW.runAction('dgZoomFit'));
+  }
+  await page.evaluate(() => window.BW.setZoom(1));
+  await page.waitForTimeout(400);
   {
     // Z4: scrollbars never resize the frame; zoom + scroll survive a drag's live redraw, a save and a full render
     await U.reveal();

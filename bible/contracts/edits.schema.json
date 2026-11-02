@@ -297,6 +297,14 @@
           "type": "boolean",
           "description": "Hidden from the PDF and DOCX, dimmed in the editor."
         },
+        "blocks/*/blankCell": {
+          "type": "string",
+          "description": "Table block option (0.16.0): what a blank cell prints. Absent = the label «none» («لا يوجد» / \"None\"); \"\" prints every blank cell empty. A string keeps every column (none is dropped for being all blank). Honoured in the editor, PDF, HTML and DOCX."
+        },
+        "blocks/*/rows/*/*/keepEmpty": {
+          "type": "boolean",
+          "description": "Table cell option (0.16.0): a cell written {\"text\":\"\",\"keepEmpty\":true} is empty on purpose. It prints empty (never «none»), and a column holding one is not dropped. Absent = the cell behaves exactly as before."
+        },
         "chapters/*/style, sections/*/style, blocks/*/style": {
           "type": "object",
           "description": "Per-instance style ({css property: value}), whitelisted properties: color, background-color, font-family, font-size, font-weight, line-height, letter-spacing, text-align, padding, margin, border, border-color, border-width, border-style, border-radius."

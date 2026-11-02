@@ -17,7 +17,6 @@ const file = path.resolve(args.find((a, i) => !a.startsWith('--') && !['--json',
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-audit-'));
 const wsRoot = path.join(tmp, 'Business-Wrap');
 const ws = { parent: tmp, root: wsRoot, chosen: true, dirs: Object.fromEntries(['PDF', 'DOCX', 'HTML', 'HISTORY'].map((d) => [d.toLowerCase(), path.join(wsRoot, d)])) };
-process.env.BW_PICK_STUB = tmp; // a folder question answers with the temp folder, never a dialog
 const server = await serve(file, 0, { workspace: ws });
 const url = `http://127.0.0.1:${server.address().port}/`;
 const ctx = await chromium.launchPersistentContext(path.join(tmp, 'profile'), { channel: 'msedge', headless: flag('--headless'), viewport: { width: 1440, height: 900 }, acceptDownloads: true });

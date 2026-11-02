@@ -35,6 +35,10 @@ IC.biCopy = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://
 // UI-CHROME-11 (0.13.3): commands that shared a glyph with another command get their own (the 27-writing.js aliases only fill a key nothing defined, so these win; they also survive a vendor-icons regeneration of icons.json)
 const BI_G = (inner) => '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + inner + '</svg>';
 const BI_DASH = '<path d="M3 17h3"/><path d="M10.5 17h3"/><path d="M18 17h3"/>';
+// 0.15.9: the canvas tools of a diagram (Lucide, ISC): fit to the shapes, fit to the page, back to the automatic size
+IC.dgCvShapes = BI_G('<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="8" height="6" x="8" y="9" rx="1"/>');
+IC.dgCvPage = BI_G('<rect width="14" height="20" x="5" y="2" rx="2"/><path d="m9 8 3-3 3 3"/><path d="m9 16 3 3 3-3"/>');
+IC.dgCvAuto = BI_G('<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>');
 // 0.15.2 note 3: Reading mode had no icon (the command id `reading` found nothing in IC). Lucide book-open (ISC), the house stroke (2 px, round caps) like every other icon; ic('reading') serves the ribbon, the menus, the palette and the exit chip
 IC.reading = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>'; // lucide book-open (ISC)
 Object.assign(IC, {

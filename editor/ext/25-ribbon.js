@@ -132,14 +132,102 @@ function rbMark(el) {
   const col = el.querySelector('.rb-col');
   if (col) { const w = t(RB.collapsed ? 'rb.expand' : 'rb.collapse'); col.setAttribute('aria-expanded', String(!RB.collapsed)); col.title = w; col.setAttribute('aria-label', w); }
 }
-/** Unselected tabs shrink to their icon (the name stays in aria-label and the right-hand explainer) when the words do not fit the bar. */
+/** Tab words: they stay while the tabs fit; first the gaps and padding tighten («tight»), only then do the unselected tabs shrink to their icon (the name stays in aria-label
+ *  and the right-hand explainer). 0.15.9: a viewport media query used to drop the words at any width under 1280 px (a 1920 px screen at 150 % zoom is 1280 px) whether or not
+ *  there was room; now only a measurement decides, and it runs again whenever the bar's own width changes (resize, zoom, a drawer, the contextual tab joining). */
 function rbFitTabs(el) {
   const tabs = el?.querySelector('.rb-tabs');
   if (!tabs) return;
-  tabs.classList.remove('icons');
-  if (tabs.scrollWidth > tabs.clientWidth + 1) tabs.classList.add('icons');
+  tabs.classList.remove('icons', 'tight');
+  const over = () => tabs.scrollWidth > tabs.clientWidth + 1;
+  if (!over()) return;
+  tabs.classList.add('tight');
+  if (over()) { tabs.classList.remove('tight'); tabs.classList.add('icons'); }
 }
-window.addEventListener('resize', () => { const el = root.querySelector('.island > .ribbon'); if (el) rbFitTabs(el); });
+const rbNarrow = () => window.matchMedia('(max-width: 1023px)').matches;
+let rbFitRaf = 0;
+const rbFitSoon = () => { if (!rbFitRaf) rbFitRaf = requestAnimationFrame(() => { rbFitRaf = 0; const el = root.querySelector('.island > .ribbon'); if (el) rbFitTabs(el); ctxFit(); }); };
+window.addEventListener('resize', rbFitSoon);
+if (document.fonts?.ready) document.fonts.ready.then(rbFitSoon); // the words measure wider once the real font is in
+
+/* ── 0.15.9 · the selection strip fits its row ─────────────────────────────────────────────────────────────────────────────────────
+ * The strip (.ctx) is one 42 px row (Z5). It holds the title, the first tools and a «More» menu. ctxFit measures the room the row gives it and chooses, from the roomiest
+ * look to the tightest: title + words, title as an icon + words, icon only; at each look as many tools as fit, the rest in «More» (a popover: never clipped).
+ * The tools are the same nodes in the strip and in the menu (moved, never rebuilt), so a click, a pressed state and a disabled state work wherever they sit. */
+function ctxMoreEl(sb) {
+  const f = sb.__fit;
+  if (!f.more) {
+    const d = document.createElement('div');
+    d.className = 'more';
+    d.innerHTML = `<button type="button" class="b" data-a="more" aria-expanded="false" aria-haspopup="true" title="${esc(t('more'))}"><span class="i">${ic('more')}</span><span class="w">${esc(t('more'))}</span></button><div class="menu" role="group" aria-label="${esc(t('more'))}" hidden></div>`;
+    f.more = d;
+  }
+  return f.more;
+}
+/** Put the first n tools in the strip (in order, before the zoom keys and «More») and the others in the menu. */
+function ctxPlace(sb, n) {
+  const f = sb.__fit;
+  const open = f.more?.querySelector('.menu[data-open="1"]');
+  if (open) return; // never rearrange under an open menu: it is re-fitted when it closes
+  const keep = sb.querySelector(':scope > .keep-tools');
+  const more = ctxMoreEl(sb);
+  const menu = more.querySelector('.menu');
+  const rest = f.all.slice(n);
+  const want = [...f.all.slice(0, n), ...(keep ? [keep] : []), ...(rest.length ? [more] : [])];
+  if (want.length !== sb.children.length || want.some((el, i) => sb.children[i] !== el)) { want.forEach((el) => sb.appendChild(el)); [...sb.children].filter((e) => !want.includes(e)).forEach((e) => e.remove()); }
+  rest.forEach((el) => { if (el.parentNode !== menu) menu.appendChild(el); });
+}
+function ctxFits(ctx) {
+  const box = ctx.getBoundingClientRect();
+  const cs = getComputedStyle(ctx);
+  const lo = box.left + (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.paddingLeft) || 0) - 0.5;
+  const hi = box.right - (parseFloat(cs.borderRightWidth) || 0) - (parseFloat(cs.paddingRight) || 0) + 0.5;
+  for (const e of ctx.querySelectorAll(':scope > .sc, .sb > *')) { const r = e.getBoundingClientRect(); if (r.width && (r.left < lo || r.right > hi)) return false; }
+  return true;
+}
+function ctxFit() {
+  const ctx = root.querySelector('.island > .ctx');
+  const sb = ctx?.querySelector('.sb');
+  if (!ctx || ctx.hidden || !sb) return;
+  const run = () => {
+    if (!sb.__fit) { // a fresh strip from buildCtx: take stock of its tools in their order (the strip's, then the menu's)
+      const menu = sb.querySelector(':scope > .more > .menu');
+      sb.__fit = { all: [...[...sb.children].filter((e) => !e.matches('.keep-tools, .more')), ...(menu ? [...menu.children] : [])], more: sb.querySelector(':scope > .more') };
+      const st = ctx.querySelector('.sc .st'); if (st) ctx.querySelector('.sc').title = st.textContent;
+    }
+    const N = sb.__fit.all.length;
+    const looks = [[''], ['nolabel'], ['nolabel nowords']];
+    let chosen = null;
+    for (let li = 0; li < looks.length && !chosen; li += 1) {
+      ctx.dataset.fit = looks[li][0];
+      ctxPlace(sb, N);
+      if (ctxFits(ctx)) { chosen = { li, n: N }; break; }
+      // widths of the tools at this look, to pick the largest n that fits; verified by a real measure below
+      for (let n = N - 1; n >= (li === looks.length - 1 ? 0 : Math.min(N, 3)); n -= 1) { ctxPlace(sb, n); if (ctxFits(ctx)) { chosen = { li, n }; break; } }
+    }
+    if (!chosen) { ctx.dataset.fit = looks[2][0]; ctxPlace(sb, 0); }
+  };
+  if (ctxRo) { ctxRo.disconnect(); ctxRo.observe(ctx); const sc = ctx.querySelector(':scope > .sc'); if (sc) ctxRo.observe(sc); } // the title's own width changes when the real font arrives
+  RB.ctxBusy = true;
+  try { run(); } finally { RB.ctxBusy = false; ctxMo?.takeRecords(); }
+}
+let ctxMo = null, ctxRo = null;
+if (typeof MutationObserver === 'function') {
+  let ctxEl = null;
+  const watch = () => {
+    const ctx = root.querySelector('.island > .ctx');
+    if (!ctx || ctx === ctxEl) return;
+    ctxEl = ctx;
+    ctxMo?.disconnect(); ctxRo?.disconnect();
+    ctxMo = new MutationObserver(() => { if (RB.ctxBusy) return; ctxFit(); ctxMo.takeRecords(); rbFitSoon(); });
+    ctxMo.observe(ctx, { childList: true, attributes: true, attributeFilter: ['hidden', 'data-key'] });
+    ctxRo = new ResizeObserver(() => rbFitSoon());
+    ctxRo.observe(ctx);
+    ctxFit();
+  };
+  new MutationObserver(watch).observe(root, { childList: true, subtree: true });
+  watch();
+}
 /** The new markup is patched into the live ribbon node by node (uiMorph), so a language or direction toggle never replaces the tools. */
 function rbPaint(el, html) {
   const tpl = document.createElement('template');
@@ -176,8 +264,16 @@ function rbSync() {
   if (now !== RB.ctx) {
     const was = RB.ctx;
     RB.ctx = now;
-    if (now) { RB.tab = now; if (RB.collapsed) { RB.collapsed = false; ls.set('bw:rb:c', '0'); } } // the contextual tab opens once, when the selection starts
+    // the contextual tab opens once, when the selection starts. 0.15.9: not under 1024 px, where its tools wrap onto a second band (360 px against 184) and selecting would push the page by 176 px: the tab still appears in the row, one press away, and the selection strip (.ctx) carries the tools
+    if (now && !rbNarrow()) { RB.tab = now; if (RB.collapsed) { RB.collapsed = false; ls.set('bw:rb:c', '0'); } }
     else if (RB.tab === was || RB.tab === 'diagram2') RB.tab = 'home';
+  }
+  // 0.15.9 (M3): inside a diagram the ribbon follows what is selected: an arrow or a shape opens the tab that holds its tools, the empty drawing the tab that adds shapes.
+  // It moves only when the KIND of selection changes (never while the person is working in a tab of their own choosing), and never under 1024 px (the page must not move).
+  const dk = now === 'diagram' ? (S.dg?.edge || S.dg?.joint || S.dg?.end || S.dg?.legend ? 'arrow' : S.dg?.nodes?.length ? 'shape' : 'empty') : '';
+  if (dk !== RB.dgKind) {
+    RB.dgKind = dk;
+    if (dk && !rbNarrow() && rbTabs().some((x) => x[0] === (dk === 'empty' ? 'diagram' : 'diagram2'))) RB.tab = dk === 'empty' ? 'diagram' : 'diagram2';
   }
   if (!rbTabs().some((x) => x[0] === RB.tab)) RB.tab = 'home';
   const base = [S.ui, uiDir(), RB.ctx, CMDS.length, rbStamp()].join('|');

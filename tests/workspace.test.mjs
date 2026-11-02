@@ -1,7 +1,7 @@
 // A11 save folder (0.13.3 tree): with a temp parent, the server's export writes
 // <parent>\Business-Wrap\المستندات - Documents\<title>\Exports\<date> <title> - العربية.pdf / - English.pdf and .docx; a second export never
 // overwrites; Save HTML lands in the document's own folder; .system exists, holds no plain .json outside its index, and is never served;
-// names with : / are sanitised; the default parent is never inside the repository; the folder dialog (stubbed) stores the choice.
+// names with : / are sanitised; the default parent is never inside the repository; the in-editor folder picker (no native dialog) stores the choice.
 //
 //   node tests/workspace.test.mjs
 import './_isolate.mjs';
@@ -35,11 +35,16 @@ check('outName: "<title>/Exports/<YYYY-MM-DD HH-MM> <title> - <language>.<ext>",
 
 const parent = path.join(tmp, 'parent');
 fs.mkdirSync(parent);
-process.env.BW_PICK_STUB = parent;
-const picked = await W.pickParent();
+const waitOpen = async () => { for (let i = 0; i < 50 && !W.pickerState().open; i++) await new Promise((r) => setTimeout(r, 10)); return W.pickerState().open; };
+const pickingA = W.pickParent();
+check('pickParent opens the picker (host state) and waits', await waitOpen() && W.pickerState().picker.by === 'save');
+W.pickerChoose(parent);
+const picked = await pickingA;
 check('pickParent stores the chosen folder in .local/workspace.json', picked === parent && W.workspace().chosen && JSON.parse(fs.readFileSync(path.join(tmp, '.local', 'workspace.json'), 'utf8')).parent === parent);
-process.env.BW_PICK_STUB = '';
-check('pickParent cancelled → null, the old choice kept', (await W.pickParent()) === null && W.workspace().parent === parent);
+const pickingB = W.pickParent();
+await waitOpen();
+W.pickerCancel();
+check('pickParent cancelled → null, the old choice kept', (await pickingB) === null && W.workspace().parent === parent && !W.pickerState().open);
 
 const editor = path.join(tmp, 'ws.editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: editor, set: 'ws', watermarkDir: null });
@@ -109,21 +114,21 @@ try {
   const notOurs = await post('/api/library/html', { id: 'doc-5ave0001', title: 'x', locale: 'ar', html: '<!doctype html><p>x</p>' });
   check('Save in place refuses anything but a Save-HTML document', notOurs.s === 400);
 
-  // review 2 row 10: the folder dialog never freezes the server, HISTORY is always hidden and never served (any case)
+  // review 2 row 10: the folder picker never freezes the server, HISTORY is always hidden and never served (any case)
   {
     const slowParent = path.join(tmp, 'slow-parent');
     fs.mkdirSync(slowParent);
-    delete process.env.BW_PICK_STUB;
-    process.env.BW_PICK_CMD = JSON.stringify([process.execPath, '-e', `setTimeout(() => console.log(${JSON.stringify(slowParent)}), 1500)`]);
     const t0 = Date.now();
     const pick = post('/api/workspace/pick', {});
     await new Promise((r) => setTimeout(r, 200));
     const v = await fetch(base + '/api/version');
     const tv = Date.now() - t0;
+    const open = await post('/api/workspace/picker/state', {});
+    setTimeout(() => { post('/api/workspace/picker/choose', { path: slowParent }); }, 600);
     const pr = await pick;
-    delete process.env.BW_PICK_CMD;
-    check('the folder dialog runs off the event loop: /api/version answers while it is open', v.status === 200 && tv < 1200 && pr.j.ok && pr.j.parent === slowParent, JSON.stringify({ tv, pick: pr.j }));
-    check('the Windows dialog script brings its owner window to the front (TopMost + SetForegroundWindow + Activate)', /TopMost = \$true/.test(W.PICK_PS) && /SetForegroundWindow/.test(W.PICK_PS) && /Activate\(\)/.test(W.PICK_PS) && /ShowDialog\(\$f\)/.test(W.PICK_PS));
+    check('the folder picker never blocks the server: /api/version answers while it is open, the old /pick route answers when it is chosen', v.status === 200 && tv < 1200 && open.j.open && pr.j.ok && pr.j.parent === slowParent, JSON.stringify({ tv, open: open.j.open, pick: pr.j }));
+    const src = fs.readFileSync(path.join(REPO, 'engine', 'workspace.mjs'), 'utf8');
+    check('no native folder dialog code remains (no PowerShell FolderBrowserDialog, osascript or zenity)', !/FolderBrowserDialog|osascript|zenity|PICK_PS|BW_PICK_CMD|BW_PICK_STUB/.test(src) && W.PICK_PS === undefined);
     W.setParent(parent);
     const pre = path.join(tmp, 'pre-parent', 'Business-Wrap', '.system');
     fs.mkdirSync(pre, { recursive: true }); // a .system made before (no hidden attribute)
