@@ -25,10 +25,19 @@ const day = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate(
  *  event stream and lists its tabs with POST /api/session/tabs; a tab is live while some connected client lists it. A page that connects
  *  directly (?tab=, an older page) is a client of one tab. clients: Map<clientId, {id, conns:Set<res>, tabs:Map<tab, info>, since, listedAt}>. */
 export function state(ctx) {
-  return (ctx.session ||= { runId: `${stamp(new Date())}-${crypto.randomBytes(3).toString('hex')}`, startedAt: new Date().toISOString(), clients: new Map(), timer: null, ended: false, inflight: 0, closing: new Map(), startedMs: Date.now(), leases: new Map(), revs: new Map(), beats: new Map(), asleepKey: '', lost: new Map() });
+  if (!ctx.session) { const t = setInterval(() => { try { reconcile(ctx); sweepAsleep(ctx); } catch { /* the next second */ } }, 1000); t.unref?.(); } // 0.16.0: leases are re-checked every second, not only when a list arrives
+  return (ctx.session ||= { runId: `${stamp(new Date())}-${crypto.randomBytes(3).toString('hex')}`, startedAt: new Date().toISOString(), clients: new Map(), timer: null, ended: false, inflight: 0, closing: new Map(), startedMs: Date.now(), leases: new Map(), revs: new Map(), beats: new Map(), asleepKey: '', lost: new Map(), direct: new Map(), closed: new Map() });
 }
 /** 0.15.3 T2: a tab not heard from for this long is ASLEEP (a browser's sleeping or snoozed tab, a frozen or discarded page): the bridge answers TAB_ASLEEP at once instead of waiting 15 s. The worker pings every 3 s. */
 export const asleepMs = () => Number(process.env.BW_ASLEEP_MS) || 9000;
+/** 0.16.0 (field notes item 5): a lease is released when its owner has not answered for this long (asleep, discarded, closed, or a ghost its frozen worker client still lists). */
+export const leaseReleaseMs = () => Number(process.env.BW_LEASE_RELEASE_MS) || 60000;
+/** How long ago this tab last proved it runs: the freshest of its own beat (/api/session/beat, a state push, a bridge reply) and any client's list. Infinity = never heard. */
+export function beatAge(s, tab, now = Date.now()) {
+  let age = s.beats.has(tab) ? now - s.beats.get(tab) : Infinity;
+  for (const c of s.clients.values()) { if (!c.conns.size) continue; const o = c.tabs.get(tab); if (o) age = Math.min(age, (o.ago || 0) + (c.listedAt ? now - c.listedAt : 0)); }
+  return age;
+}
 /** 0.15.9 A4: a tab that vanished without a goodbye (a browser discarded it, or its page was killed) is `lost`, not closed: its saved state stays in the run, a command to it gets
  *  TAB_ASLEEP, and when the LAST connection goes without a goodbye the host waits this long before it exits (a discarded last tab can come back and reload). A clean close keeps the 4 s. */
 export const discardGraceMs = () => Number(process.env.BW_DISCARD_GRACE_MS) || (process.env.BW_IDLE_MS ? IDLE_MS : 60000);
@@ -36,6 +45,7 @@ export const discardGraceMs = () => Number(process.env.BW_DISCARD_GRACE_MS) || (
 export const beat = (ctx, tab) => { if (typeof tab === 'string') state(ctx).beats.set(tab, Date.now()); };
 const awakeOf = (a) => (a && typeof a === 'object' ? { rtc: a.rtc === true, tickMs: [1000, 5000, 60000].includes(a.tickMs) ? a.tickMs : 1000, stalls: Math.min(1e6, Math.max(0, Number(a.stalls) || 0)), lagMs: Math.min(1e9, Math.max(0, Number(a.lagMs) || 0)), frozen: Math.min(1e6, Math.max(0, Number(a.frozen) || 0)), resumed: Math.min(1e6, Math.max(0, Number(a.resumed) || 0)) } : null);
 const connected = (s) => [...s.clients.values()].filter((c) => c.conns.size);
+const liveTabsExcept = (s, except, tab) => [...s.clients.values()].some((c) => c !== except && c.conns.size && c.tabs.has(tab));
 const liveTabs = (s) => new Set(connected(s).flatMap((c) => [...c.tabs.keys()]));
 const nConns = (s) => connected(s).reduce((n, c) => n + c.conns.size, 0);
 const clientOf = (s, id) => { let c = s.clients.get(id); if (!c) s.clients.set(id, c = { id, conns: new Set(), tabs: new Map(), since: Date.now(), listedAt: 0 }); return c; };
@@ -65,7 +75,9 @@ export const leaseInfo = (s) => ({ leases: Object.fromEntries([...s.leases].map(
 function reconcile(ctx) {
   const s = state(ctx);
   const live = new Map();
-  for (const c of connected(s)) for (const [tab, o] of c.tabs) if (!live.has(tab)) live.set(tab, o.docs || []);
+  const now = Date.now();
+  for (const c of connected(s)) for (const [tab, o] of c.tabs) if (!live.has(tab) && beatAge(s, tab, now) <= leaseReleaseMs()) live.set(tab, o.docs || []);
+  for (const [tab, d] of s.direct) if (!live.has(tab) && beatAge(s, tab, now) <= leaseReleaseMs()) live.set(tab, d.docs || []); // a tab known only by its own beat
   let changed = false;
   for (const [doc, l] of [...s.leases]) if (!(live.get(l.tab) || []).includes(doc)) { s.leases.delete(doc); changed = true; }
   for (const [tab, docs] of live) for (const doc of docs) if (!s.leases.has(doc)) { s.leases.set(doc, { tab, since: Date.now() }); changed = true; }
@@ -77,7 +89,7 @@ function reconcile(ctx) {
 export function acceptWrite(ctx, { tab, doc, base }) {
   const s = state(ctx);
   const owner = s.leases.get(doc)?.tab;
-  const live = owner && [...liveTabs(s)].includes(owner);
+  const live = owner && (([...liveTabs(s)].includes(owner) || s.direct.has(owner)) && beatAge(s, owner) <= leaseReleaseMs());
   if (owner && owner !== tab && live) return { ok: false, code: 'NOT_OWNER', owner, rev: s.revs.get(doc)?.rev ?? 0 };
   const rev = s.revs.get(doc)?.rev ?? 0;
   if (Number.isFinite(base) && base < rev) return { ok: false, code: 'STALE_BASE', owner: owner || null, rev };
@@ -258,10 +270,21 @@ export function registry(ctx) {
     const at = tabs.findIndex((x) => x.tab === tab);
     if (at < 0) tabs.push(rec); else if (rec.lastBeatMs < tabs[at].lastBeatMs) tabs[at] = rec;
   }
+  for (const [tab, d] of s.direct) { // a tab known only by its own beat (its worker client froze or is gone): listed live while it beats
+    if (tabs.some((x) => x.tab === tab)) continue;
+    const lastBeatMs = Math.round(beatAge(s, tab, now));
+    if (lastBeatMs > 600000) { s.direct.delete(tab); continue; }
+    tabs.push({ tab, svc: d.svc || null, docs: d.docs || [], automation: !!d.automation, live: true, lastBeatMs, asleep: lastBeatMs > asleepMs(), owns: [...s.leases].filter(([, l]) => l.tab === tab).map(([dd]) => dd) });
+  }
   for (const [tab, l] of [...s.lost]) { // a discarded or killed tab: still the run's, asleep until it reloads (it re-lists itself) or the grace is over
     if (now - l.at > Math.max(discardGraceMs(), 600000)) { s.lost.delete(tab); continue; }
     if (!tabs.some((x) => x.tab === tab)) tabs.push({ tab, svc: l.svc || null, docs: l.docs || [], automation: !!l.automation, live: false, discarded: true, lastBeatMs: now - l.at, asleep: true, owns: [] });
   }
+  for (const [tab, c] of [...s.closed]) { // closed: the tab left the list with a goodbye. Kept for ten minutes so a lease owner that vanished is named, not guessed.
+    if (now - c.at > 600000) { s.closed.delete(tab); continue; }
+    if (!tabs.some((x) => x.tab === tab)) tabs.push({ tab, svc: c.svc || null, docs: c.docs || [], automation: !!c.automation, live: false, closed: true, lastBeatMs: now - c.at, asleep: false, owns: [] });
+  }
+  for (const t of tabs) t.state = t.closed ? 'closed' : t.discarded ? 'discarded' : t.asleep ? 'frozen' : 'awake'; // 0.16.0: host_health says it per tab
   const warnings = [];
   for (const t of tabs) if (t.discarded) warnings.push({ code: 'TAB_ASLEEP', tab: t.tab, lastBeatMs: t.lastBeatMs, discarded: true, how: 'the browser discarded this tab to save memory (or its page was killed): click the tab to reload it (its work comes back), or reopen with business-wrap open' });
   for (const t of tabs) if (t.asleep && !t.discarded) warnings.push({ code: 'TAB_ASLEEP', tab: t.tab, lastBeatMs: t.lastBeatMs, how: 'the tab stopped answering (the browser put it to sleep, froze or discarded it): click the tab to wake it, or reopen with business-wrap open (the browser it starts has sleeping tabs off)' });
@@ -346,6 +369,27 @@ export default async (req, url, send, ctx, res) => {
       });
       return true;
     }
+    // 0.16.0 (item 5): a tab proves itself on its own, whatever its worker client does (one frozen SharedWorker client must not hold the other tabs)
+    if (req.method === 'POST' && p === '/api/session/beat') {
+      const b = await readJson(req, 1e5);
+      if (!TAB.test(String(b.tab))) { send(400, { error: 'tab' }); return true; }
+      beat(ctx, b.tab);
+      s.lost.delete(b.tab); s.closed.delete(b.tab);
+      s.direct.set(b.tab, { svc: typeof b.svc === 'string' ? b.svc.slice(0, 120) : undefined, docs: Array.isArray(b.docs) ? b.docs.filter((d) => typeof d === 'string').slice(0, 50).map((d) => d.slice(0, 80)) : [], automation: b.automation === true });
+      reconcile(ctx);
+      send(200, { ok: true });
+      return true;
+    }
+    // editor_action claim: this tab takes the document over now (the owner is asleep, or a ghost)
+    if (req.method === 'POST' && p === '/api/session/claim') {
+      const b = await readJson(req, 1e5);
+      const known = registry(ctx).tabs.some((t) => t.tab === b.tab && t.live);
+      if (!TAB.test(String(b.tab)) || typeof b.doc !== 'string' || !b.doc || !known) { send(known ? 400 : 404, { ok: false, code: known ? 'BAD_ARGS' : 'NO_TAB', error: known ? 'tab and doc' : 'the host does not know this tab' }); return true; }
+      s.leases.set(b.doc, { tab: b.tab, since: Date.now() });
+      emit(ctx, 'lease', leaseInfo(s));
+      send(200, { ok: true, doc: b.doc, owner: b.tab });
+      return true;
+    }
     if (req.method === 'POST' && p === '/api/session/tabs') {
       // the tab registry: {client, tabs:[tabId | {tab, svc, docs:[id], automation, ago}]}; sent by the worker (or leader tab) on every change and every 5 s
       const b = await readJson(req, 2e5);
@@ -360,9 +404,10 @@ export default async (req, url, send, ctx, res) => {
         next.set(o.tab, { tab: o.tab, svc: typeof o.svc === 'string' ? o.svc.slice(0, 120) : undefined, docs: Array.isArray(o.docs) ? o.docs.filter((d) => typeof d === 'string').slice(0, 50).map((d) => d.slice(0, 80)) : [], automation: o.automation === true, ago: Math.max(0, Number(o.ago) || 0), ...(awakeOf(o.awake) ? { awake: awakeOf(o.awake) } : {}) });
       }
       const lostNow = new Set(Array.isArray(b.lost) ? b.lost.filter((t) => TAB.test(String(t))).slice(0, 400) : []);
-      for (const t of next.keys()) s.lost.delete(t); // it is back
+      for (const t of next.keys()) { s.lost.delete(t); s.closed.delete(t); } // it is back
       for (const t of lostNow) if (!next.has(t) && !s.lost.has(t)) { const was = c.tabs.get(t) || {}; s.lost.set(t, { at: Date.now(), svc: was.svc, docs: was.docs, automation: was.automation }); }
       const left = [...c.tabs.keys()].filter((t) => !next.has(t) && !lostNow.has(t)); // a lost tab is not a closed one: no 4 s drop, its record stays
+      for (const t of left) { const was = c.tabs.get(t) || {}; if (!liveTabsExcept(s, c, t)) { s.closed.set(t, { at: Date.now(), svc: was.svc, docs: was.docs, automation: was.automation }); s.direct.delete(t); s.beats.delete(t); } }
       c.tabs = next;
       c.listedAt = Date.now();
       if (!c.conns.size && !next.size) s.clients.delete(c.id);

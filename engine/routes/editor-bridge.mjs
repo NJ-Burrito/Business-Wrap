@@ -15,10 +15,16 @@
 import crypto from 'node:crypto';
 import { readJson } from '../workspace.mjs';
 import { emit, registry, beat } from './session.mjs';
+import { launchBrowser } from '../host.mjs';
 
 export const TOOLS = ['list', 'get', 'outline', 'ops', 'action', 'new', 'import'];
 const STATUS = { NO_TAB: 404, NO_DOC: 404, CONFLICT: 409, BAD_OP: 422, BAD_ARGS: 400, UNKNOWN_ACTION: 400, REFUSED: 423, TAB_TIMEOUT: 504, TAB_ASLEEP: 503, NOT_OWNER: 409 };
 const timeoutMs = () => Number(process.env.BW_BRIDGE_TIMEOUT_MS) || 15000;
+/** 0.16.0: a call to a sleeping tab waits this long for it to wake before TAB_ASLEEP (editor_ops queues instead of failing at once). */
+const queueMs = () => Number(process.env.BW_QUEUE_MS ?? 5000);
+/** editor_new with no awake tab opens a window itself and waits this long for it. */
+const newTabWaitMs = () => Number(process.env.BW_NEW_TAB_WAIT_MS) || 25000;
+const nap = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const pendingOf = (ctx) => {
   if (!ctx.bridgePending) { ctx.bridgePending = new Map(); ctx.pendingRequests = () => ctx.bridgePending.size; } // GET /api/host/health reads it
@@ -63,7 +69,13 @@ export default async (req, url, send, ctx) => {
     const doc = b.doc ?? b.doc_id ?? undefined;
     if (!TOOLS.includes(tool)) { send(400, { ok: false, code: 'BAD_ARGS', error: `unknown tool "${tool}"`, tools: TOOLS }); return true; }
     if (doc !== undefined && typeof doc !== 'string') { send(400, { ok: false, code: 'BAD_ARGS', error: 'doc must be a string' }); return true; }
-    const target = pickTab(ctx, { doc, tab: b.tab });
+    let target = pickTab(ctx, { doc, tab: b.tab });
+    if (tool === 'new' && !b.tab && (!target || target.asleep)) { // editor_new always gets an awake tab: a window with the keep-awake launch is opened when there is none
+      try { launchBrowser([`http://${req.headers.host || `127.0.0.1:${ctx.server?.address()?.port}`}/?automation=1`]); } catch { /* no browser: the waits below end in the plain answers */ }
+      for (const t0 = Date.now(); Date.now() - t0 < newTabWaitMs();) { await nap(250); const t = pickTab(ctx, { doc, tab: b.tab }); if (t && !t.asleep) { target = t; break; } }
+    } else if (target?.asleep && !target.notOwner && !target.discarded) {
+      for (const t0 = Date.now(); Date.now() - t0 < queueMs();) { await nap(200); const t = pickTab(ctx, { doc, tab: b.tab }); if (t && !t.asleep) { target = t; break; } if (t) target = t; }
+    }
     if (target?.notOwner) { send(409, { ok: false, code: 'NOT_OWNER', error: `tab ${b.tab} is a follower of ${doc}: it is owned by tab ${target.notOwner}`, owner: target.notOwner, tab: b.tab, how: 'send the call to the owner (omit tab to let the host route it)' }); return true; }
     if (!target) { send(404, { ok: false, code: 'NO_TAB', error: b.tab ? `tab ${b.tab} is not connected` : 'no editor tab is connected to this host', how: 'open the editor (open_in_editor tool or business-wrap open) and retry' }); return true; }
     if (target.asleep) { send(503, { ok: false, code: 'TAB_ASLEEP', error: `tab ${target.tab} is asleep: it has not answered for ${target.lastBeatMs} ms (the browser put it to sleep, froze or discarded it)`, tab: target.tab, lastBeatMs: target.lastBeatMs, how: 'click the tab to wake it, or reopen the editor with business-wrap open (the browser it starts keeps tabs awake) and retry' }); return true; }
