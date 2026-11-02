@@ -21,9 +21,12 @@ const numbers = {};
 const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  | ' + detail : ''}`); if (!ok) failed += 1; };
 process.on('uncaughtException', (e) => { console.log(results.join(String.fromCharCode(10))); console.error('CRASH: ' + String(e.message).split(String.fromCharCode(10)).slice(0, 3).join(' / ')); process.exit(2); });
 const near = (a, b, tol) => Math.abs(a - b) <= tol;
-const SAMPLE = path.join(REPO, 'samples', 'event-permit');
+// 0.16.1: the sample prints its workflow as two legible figures; these suites drive the editor and the exporters on ONE whole drawing
+// (ids e1.. of the whole graph), so they read the whole-drawing copy of the sample; the real sample's own print is asserted in autolayout-0160
+const SAMPLE = path.join(REPO, 'tests', 'fixtures', 'permit-whole');
+const SAMPLE_REAL = path.join(REPO, 'samples', 'event-permit');
 const theme = loadTheme();
-const wf = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'workflow.json'), 'utf8'));
+const wf = JSON.parse(fs.readFileSync(path.join(SAMPLE_REAL, 'workflow.json'), 'utf8'));
 
 // ── A6/A7 (model level): old drawings are byte-identical; the new keys draw, export and degrade as promised ──
 {
@@ -106,7 +109,10 @@ const wf = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'workflow.json'), 'utf8'
 
   // PDF + DOCX once, with a styled diagram in the real exporters
   const docEn = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'document.en.json'), 'utf8'));
-  const blk = docEn.chapters[2].sections[0].blocks[0];
+  // 0.16.1: the sample prints its workflow as two figures; the styled whole drawing stands in for all of them (found by kind, not by position)
+  const dgSec = docEn.chapters.flatMap((c) => c.sections).find((sec) => sec.blocks.some((x) => x.kind === 'diagram'));
+  const blk = dgSec.blocks.find((x) => x.kind === 'diagram');
+  dgSec.blocks = dgSec.blocks.filter((x) => x.kind !== 'diagram' || x === blk);
   blk.model = JSON.parse(JSON.stringify(styled));
   const browser0 = await chromium.launch(launchOptions());
   try {

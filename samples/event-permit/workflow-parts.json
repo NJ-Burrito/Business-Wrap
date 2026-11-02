@@ -1,0 +1,740 @@
+{
+ "ar": [
+  {
+   "kind": "bw-diagram",
+   "version": 1,
+   "flow": "ltr",
+   "nodes": [
+    {
+     "id": "g1",
+     "kind": "group",
+     "auto": true,
+     "label": "",
+     "x": 49,
+     "y": 114,
+     "w": 525,
+     "h": 90
+    },
+    {
+     "id": "s",
+     "kind": "start",
+     "label": "تقديم الطلب",
+     "w": 169,
+     "h": 52,
+     "y": 133,
+     "x": 64
+    },
+    {
+     "id": "pay",
+     "kind": "payment",
+     "label": "دفع الرسوم",
+     "w": 136,
+     "h": 52,
+     "y": 133,
+     "x": 287
+    },
+    {
+     "id": "d1",
+     "kind": "decision",
+     "label": "إجراء",
+     "w": 82,
+     "h": 60,
+     "y": 129,
+     "x": 477
+    },
+    {
+     "id": "rev",
+     "kind": "staff",
+     "label": "التدقيق",
+     "w": 132,
+     "h": 52,
+     "y": 133,
+     "x": 663
+    },
+    {
+     "id": "d2",
+     "kind": "decision",
+     "label": "إجراء",
+     "w": 82,
+     "h": 60,
+     "y": 129,
+     "x": 849
+    },
+    {
+     "id": "head",
+     "kind": "staff",
+     "label": "رئيس القسم",
+     "w": 136,
+     "h": 52,
+     "y": 370,
+     "x": 64
+    },
+    {
+     "id": "no",
+     "kind": "stop",
+     "label": "مخرج رفض",
+     "sub": "الطلب ملغى أو مرفوض",
+     "w": 190,
+     "h": 63,
+     "y": 260,
+     "x": 609
+    },
+    {
+     "id": "fix",
+     "kind": "rework",
+     "label": "إعادة تقديم الطلب",
+     "w": 186,
+     "h": 52,
+     "y": 34,
+     "x": 717
+    },
+    {
+     "id": "cont-to-2",
+     "kind": "continue",
+     "label": "يتبع في الشكل 2",
+     "w": 172,
+     "h": 52,
+     "y": 370,
+     "x": 254
+    },
+    {
+     "id": "cont-from-2",
+     "kind": "continue",
+     "label": "تابع من الشكل 2",
+     "w": 172,
+     "h": 52,
+     "y": 370,
+     "x": 480
+    }
+   ],
+   "edges": [
+    {
+     "id": "e1",
+     "from": "s",
+     "to": "pay",
+     "label": "",
+     "kind": "main"
+    },
+    {
+     "id": "e2",
+     "from": "pay",
+     "to": "d1",
+     "label": "",
+     "kind": "main"
+    },
+    {
+     "id": "e3",
+     "from": "d1",
+     "to": "rev",
+     "label": "دفع الرسوم",
+     "kind": "main"
+    },
+    {
+     "id": "e4",
+     "from": "d1",
+     "to": "no",
+     "label": "إلغاء أو انتهاء المهلة",
+     "kind": "stop"
+    },
+    {
+     "id": "e5",
+     "from": "rev",
+     "to": "d2",
+     "label": "",
+     "kind": "main"
+    },
+    {
+     "id": "e6",
+     "from": "d2",
+     "to": "head",
+     "label": "موافقة",
+     "kind": "main"
+    },
+    {
+     "id": "e7",
+     "from": "d2",
+     "to": "fix",
+     "label": "طلب استكمال النواقص",
+     "kind": "return"
+    },
+    {
+     "id": "e8",
+     "from": "d2",
+     "to": "no",
+     "label": "رفض",
+     "kind": "stop"
+    },
+    {
+     "id": "e9",
+     "from": "fix",
+     "to": "rev",
+     "label": "إعادة الإرسال",
+     "kind": "return"
+    },
+    {
+     "id": "e10-o1",
+     "from": "head",
+     "to": "cont-to-2",
+     "label": "",
+     "kind": "main"
+    },
+    {
+     "id": "e12-i4",
+     "from": "cont-from-2",
+     "to": "rev",
+     "kind": "return"
+    },
+    {
+     "id": "e16-i6",
+     "from": "cont-from-2",
+     "to": "head",
+     "kind": "return"
+    }
+   ]
+  },
+  {
+   "kind": "bw-diagram",
+   "version": 1,
+   "flow": "ltr",
+   "nodes": [
+    {
+     "id": "d3",
+     "kind": "decision",
+     "label": "إجراء",
+     "w": 82,
+     "h": 60,
+     "y": 34,
+     "x": 290
+    },
+    {
+     "id": "mgr",
+     "kind": "staff",
+     "label": "مدير الإدارة",
+     "w": 151,
+     "h": 52,
+     "y": 38,
+     "x": 454
+    },
+    {
+     "id": "d4",
+     "kind": "decision",
+     "label": "إجراء",
+     "w": 82,
+     "h": 60,
+     "y": 34,
+     "x": 659
+    },
+    {
+     "id": "gm",
+     "kind": "staff",
+     "label": "المدير العام",
+     "w": 151,
+     "h": 52,
+     "y": 281,
+     "x": 64
+    },
+    {
+     "id": "d5",
+     "kind": "decision",
+     "label": "إجراء",
+     "w": 82,
+     "h": 60,
+     "y": 277,
+     "x": 269
+    },
+    {
+     "id": "ok",
+     "kind": "ok",
+     "label": "مخرج موافقة",
+     "sub": "تمت الموافقة على الطلب",
+     "w": 206,
+     "h": 63,
+     "y": 275,
+     "x": 631
+    },
+    {
+     "id": "no",
+     "kind": "stop",
+     "label": "مخرج رفض",
+     "sub": "الطلب ملغى أو مرفوض",
+     "w": 190,
+     "h": 63,
+     "y": 150,
+     "x": 352
+    },
+    {
+     "id": "cont-from-1",
+     "kind": "continue",
+     "label": "تابع من الشكل 1",
+     "w": 172,
+     "h": 52,
+     "y": 38,
+     "x": 64
+    },
+    {
+     "id": "cont-to-1",
+     "kind": "continue",
+     "label": "يتبع في الشكل 1",
+     "w": 172,
+     "h": 52,
+     "y": 281,
+     "x": 405
+    }
+   ],
+   "edges": [
+    {
+     "id": "e10-i2",
+     "from": "cont-from-1",
+     "to": "d3",
+     "kind": "main"
+    },
+    {
+     "id": "e11",
+     "from": "d3",
+     "to": "mgr",
+     "label": "موافقة",
+     "kind": "main"
+    },
+    {
+     "id": "e12-o3",
+     "from": "d3",
+     "to": "cont-to-1",
+     "label": "إرجاع للتدقيق",
+     "kind": "main"
+    },
+    {
+     "id": "e13",
+     "from": "d3",
+     "to": "no",
+     "label": "رفض",
+     "kind": "stop"
+    },
+    {
+     "id": "e14",
+     "from": "mgr",
+     "to": "d4",
+     "label": "",
+     "kind": "main"
+    },
+    {
+     "id": "e15",
+     "from": "d4",
+     "to": "gm",
+     "label": "موافقة",
+     "kind": "main"
+    },
+    {
+     "id": "e16-o5",
+     "from": "d4",
+     "to": "cont-to-1",
+     "label": "إرجاع لرئيس القسم",
+     "kind": "main"
+    },
+    {
+     "id": "e17",
+     "from": "d4",
+     "to": "no",
+     "label": "رفض",
+     "kind": "stop"
+    },
+    {
+     "id": "e18",
+     "from": "gm",
+     "to": "d5",
+     "label": "",
+     "kind": "main"
+    },
+    {
+     "id": "e19",
+     "from": "d5",
+     "to": "ok",
+     "label": "موافقة",
+     "kind": "main"
+    },
+    {
+     "id": "e20",
+     "from": "d5",
+     "to": "mgr",
+     "label": "إرجاع لمدير الإدارة",
+     "kind": "return"
+    },
+    {
+     "id": "e21",
+     "from": "d5",
+     "to": "no",
+     "label": "رفض",
+     "kind": "stop"
+    }
+   ]
+  }
+ ],
+ "en": [
+  {
+   "kind": "bw-diagram",
+   "version": 1,
+   "flow": "ltr",
+   "nodes": [
+    {
+     "id": "g1",
+     "kind": "group",
+     "auto": true,
+     "label": "",
+     "x": 49,
+     "y": 114,
+     "w": 602,
+     "h": 90
+    },
+    {
+     "id": "s",
+     "kind": "start",
+     "label": "Submit request",
+     "w": 210,
+     "h": 52,
+     "y": 133,
+     "x": 64
+    },
+    {
+     "id": "pay",
+     "kind": "payment",
+     "label": "Pay the fee",
+     "w": 158,
+     "h": 52,
+     "y": 133,
+     "x": 328
+    },
+    {
+     "id": "d1",
+     "kind": "decision",
+     "label": "Action",
+     "w": 96,
+     "h": 60,
+     "y": 129,
+     "x": 540
+    },
+    {
+     "id": "rev",
+     "kind": "staff",
+     "label": "Review",
+     "w": 132,
+     "h": 52,
+     "y": 133,
+     "x": 738
+    },
+    {
+     "id": "d2",
+     "kind": "decision",
+     "label": "Action",
+     "w": 96,
+     "h": 60,
+     "y": 129,
+     "x": 924
+    },
+    {
+     "id": "head",
+     "kind": "staff",
+     "label": "Head of section",
+     "w": 192,
+     "h": 52,
+     "y": 370,
+     "x": 64
+    },
+    {
+     "id": "no",
+     "kind": "stop",
+     "label": "Refused",
+     "sub": "Request cancelled or refused",
+     "w": 268,
+     "h": 63,
+     "y": 260,
+     "x": 646
+    },
+    {
+     "id": "fix",
+     "kind": "rework",
+     "label": "Resubmit the request",
+     "w": 235,
+     "h": 52,
+     "y": 34,
+     "x": 770
+    },
+    {
+     "id": "cont-to-2",
+     "kind": "continue",
+     "label": "Continued in figure 2",
+     "w": 243,
+     "h": 52,
+     "y": 370,
+     "x": 310
+    },
+    {
+     "id": "cont-from-2",
+     "kind": "continue",
+     "label": "Continued from figure 2",
+     "w": 260,
+     "h": 52,
+     "y": 370,
+     "x": 607
+    }
+   ],
+   "edges": [
+    {
+     "id": "e1",
+     "from": "s",
+     "to": "pay",
+     "label": "",
+     "kind": "main"
+    },
+    {
+     "id": "e2",
+     "from": "pay",
+     "to": "d1",
+     "label": "",
+     "kind": "main"
+    },
+    {
+     "id": "e3",
+     "from": "d1",
+     "to": "rev",
+     "label": "Fee paid",
+     "kind": "main"
+    },
+    {
+     "id": "e4",
+     "from": "d1",
+     "to": "no",
+     "label": "Cancelled or time-out",
+     "kind": "stop"
+    },
+    {
+     "id": "e5",
+     "from": "rev",
+     "to": "d2",
+     "label": "",
+     "kind": "main"
+    },
+    {
+     "id": "e6",
+     "from": "d2",
+     "to": "head",
+     "label": "Approve",
+     "kind": "main"
+    },
+    {
+     "id": "e7",
+     "from": "d2",
+     "to": "fix",
+     "label": "Complete missing items",
+     "kind": "return"
+    },
+    {
+     "id": "e8",
+     "from": "d2",
+     "to": "no",
+     "label": "Refuse",
+     "kind": "stop"
+    },
+    {
+     "id": "e9",
+     "from": "fix",
+     "to": "rev",
+     "label": "Resend",
+     "kind": "return"
+    },
+    {
+     "id": "e10-o1",
+     "from": "head",
+     "to": "cont-to-2",
+     "label": "",
+     "kind": "main"
+    },
+    {
+     "id": "e12-i4",
+     "from": "cont-from-2",
+     "to": "rev",
+     "kind": "return"
+    },
+    {
+     "id": "e16-i6",
+     "from": "cont-from-2",
+     "to": "head",
+     "kind": "return"
+    }
+   ]
+  },
+  {
+   "kind": "bw-diagram",
+   "version": 1,
+   "flow": "ltr",
+   "nodes": [
+    {
+     "id": "d3",
+     "kind": "decision",
+     "label": "Action",
+     "w": 96,
+     "h": 60,
+     "y": 34,
+     "x": 378
+    },
+    {
+     "id": "mgr",
+     "kind": "staff",
+     "label": "Department manager",
+     "w": 218,
+     "h": 52,
+     "y": 38,
+     "x": 569
+    },
+    {
+     "id": "d4",
+     "kind": "decision",
+     "label": "Action",
+     "w": 96,
+     "h": 60,
+     "y": 34,
+     "x": 841
+    },
+    {
+     "id": "gm",
+     "kind": "staff",
+     "label": "Director general",
+     "w": 201,
+     "h": 52,
+     "y": 281,
+     "x": 64
+    },
+    {
+     "id": "d5",
+     "kind": "decision",
+     "label": "Action",
+     "w": 96,
+     "h": 60,
+     "y": 277,
+     "x": 319
+    },
+    {
+     "id": "ok",
+     "kind": "ok",
+     "label": "Approved",
+     "sub": "The request is approved",
+     "w": 236,
+     "h": 63,
+     "y": 275,
+     "x": 766
+    },
+    {
+     "id": "no",
+     "kind": "stop",
+     "label": "Refused",
+     "sub": "Request cancelled or refused",
+     "w": 268,
+     "h": 63,
+     "y": 150,
+     "x": 427
+    },
+    {
+     "id": "cont-from-1",
+     "kind": "continue",
+     "label": "Continued from figure 1",
+     "w": 260,
+     "h": 52,
+     "y": 38,
+     "x": 64
+    },
+    {
+     "id": "cont-to-1",
+     "kind": "continue",
+     "label": "Continued in figure 1",
+     "w": 243,
+     "h": 52,
+     "y": 281,
+     "x": 469
+    }
+   ],
+   "edges": [
+    {
+     "id": "e10-i2",
+     "from": "cont-from-1",
+     "to": "d3",
+     "kind": "main"
+    },
+    {
+     "id": "e11",
+     "from": "d3",
+     "to": "mgr",
+     "label": "Approve",
+     "kind": "main"
+    },
+    {
+     "id": "e12-o3",
+     "from": "d3",
+     "to": "cont-to-1",
+     "label": "Back to review",
+     "kind": "main"
+    },
+    {
+     "id": "e13",
+     "from": "d3",
+     "to": "no",
+     "label": "Refuse",
+     "kind": "stop"
+    },
+    {
+     "id": "e14",
+     "from": "mgr",
+     "to": "d4",
+     "label": "",
+     "kind": "main"
+    },
+    {
+     "id": "e15",
+     "from": "d4",
+     "to": "gm",
+     "label": "Approve",
+     "kind": "main"
+    },
+    {
+     "id": "e16-o5",
+     "from": "d4",
+     "to": "cont-to-1",
+     "label": "Back to head",
+     "kind": "main"
+    },
+    {
+     "id": "e17",
+     "from": "d4",
+     "to": "no",
+     "label": "Refuse",
+     "kind": "stop"
+    },
+    {
+     "id": "e18",
+     "from": "gm",
+     "to": "d5",
+     "label": "",
+     "kind": "main"
+    },
+    {
+     "id": "e19",
+     "from": "d5",
+     "to": "ok",
+     "label": "Approve",
+     "kind": "main"
+    },
+    {
+     "id": "e20",
+     "from": "d5",
+     "to": "mgr",
+     "label": "Back to manager",
+     "kind": "return"
+    },
+    {
+     "id": "e21",
+     "from": "d5",
+     "to": "no",
+     "label": "Refuse",
+     "kind": "stop"
+    }
+   ]
+  }
+ ]
+}

@@ -12,7 +12,7 @@ import { chromium } from 'playwright-core';
 import { DIAGRAM } from '../engine/diagram.mjs';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { exportPdf, loadTheme, launchOptions, REPO } from '../engine/export.mjs';
-import { figureFrame } from '../engine/render.mjs';
+import { figureFrame, figureRoom } from '../engine/render.mjs';
 import { py } from '../engine/py.mjs';
 
 const OUT = path.join(REPO, 'out', 'autolayout-0160');
@@ -281,6 +281,35 @@ const FRAME = [DIAGRAM.PRINT.wMm, DIAGRAM.PRINT.maxHmm];
     check('undo restores the stored model exactly', (await read()) === before);
     check('editor: no page errors', errors.length === 0, errors.slice(0, 2).join(' | '));
   } finally { await browser.close(); }
+}
+
+// ── 0.16.1 · the event-permit sample prints legibly, found by kind (no fixed block pointer), in both languages, and the fit buttons' frames are the print's frame ──
+{
+  const MIN = 7;
+  for (const loc of ['ar', 'en']) {
+    const doc = JSON.parse(fs.readFileSync(path.join(SAMPLE, `document.${loc}.json`), 'utf8'));
+    const dgs = [];
+    doc.chapters.forEach((c, ci) => c.sections.forEach((sec, si) => sec.blocks.forEach((b, bi) => { if (b.kind === 'diagram') dgs.push({ b, ptr: `/chapters/${ci}/sections/${si}/blocks/${bi}` }); })));
+    const lgs = dgs.map(({ b, ptr }) => DIAGRAM.legibility(DIAGRAM.ensure(b.model), { frameMm: figureFrame(doc, ptr, theme), theme, locale: loc, minPt: MIN }));
+    check(`sample ${loc}: the workflow is ${dgs.length} figures (two), each prints at ${MIN} pt or more with no label overlap (legibility on figureFrame)`, dgs.length === 2 && lgs.every((l) => l.ok && l.minPtPrinted >= MIN && l.overlaps.length === 0), JSON.stringify(lgs.map((l) => [l.minPtPrinted, l.small.length, l.overlaps.length])));
+    // the fit buttons set the room; the print draws a saved frame as figureFrame says (one source): fit frames are not cut back
+    const room = figureRoom(doc, dgs[0].ptr, theme);
+    const fitted = structuredClone(doc);
+    const [ci, si, bi] = dgs[0].ptr.split('/').filter(Boolean).filter((x) => /^\d+$/.test(x)).map(Number);
+    fitted.chapters[ci].sections[si].blocks[bi].frame = { wMm: room.wMm, hMm: room.hMm, mode: 2 };
+    const ff = figureFrame(fitted, dgs[0].ptr, theme);
+    check(`sample ${loc}: «ملاءمة الصفحة» frame is figureRoom and figureFrame returns it unchanged (editor, legibility and print agree)`, ff[0] === room.wMm && ff[1] === room.hMm, JSON.stringify({ room: [room.wMm, room.hMm], ff }));
+    const browser = await chromium.launch(launchOptions());
+    try {
+      const pdf = path.join(OUT, `sample-${loc}.pdf`);
+      await exportPdf(doc, { locale: loc, theme, pdfPath: pdf, browser });
+      const code = 'import sys,pymupdf\nz=[]\nfor p in pymupdf.open(sys.argv[1]):\n  if p.rect.width>p.rect.height:\n    z+=[s["size"] for b in p.get_text("dict")["blocks"] for l in b.get("lines",[]) for s in l["spans"] if s["text"].strip() and abs(s["size"]-7.98)>0.02 and abs(s["size"]-7.99)>0.02]\nprint(len(z),min(z) if z else 0)';
+      const out = spawnSync(...py(['-c', code, pdf], ['pymupdf']), { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } });
+      const [n, mn] = String(out.stdout).trim().split(/\s+/).map(Number);
+      numbers[`samplePdf.${loc}`] = { spans: n, minPt: mn };
+      check(`sample ${loc}: the PDF's smallest lettering on the landscape pages is ${MIN} pt or more (measured, ${n} spans)`, n > 40 && mn >= MIN - 0.05, String(out.stdout).trim() + (out.stderr ? ' ' + String(out.stderr).slice(0, 200) : ''));
+    } finally { await browser.close(); }
+  }
 }
 
 fs.writeFileSync(path.join(OUT, 'numbers.json'), JSON.stringify(numbers, null, 1));

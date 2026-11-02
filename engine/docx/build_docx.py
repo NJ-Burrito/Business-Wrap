@@ -1021,6 +1021,11 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                     MD.add_leaf(p, block.get('text', ''), F['subhead'], add_script_runs, bold=False)
                     counters['subhead_block'] += 1
                 elif kind == 'table':
+                    prev_kind = (sec.get('blocks') or [{}] * (bi + 1))[bi - 1].get('kind') if bi else None
+                    if prev_kind == 'stories':
+                        # 0.16.1: the output table that follows a story card carries its label bar, as in the print (render.mjs: lb('outputTable'))
+                        label_bar(document, L['outputTable'], font, roles)
+                        counters['output_label'] = counters.get('output_label', 0) + 1
                     _t = add_table(document, block.get('columns', []), block.get('rows', []), font, spec=block)
                     keep_headed_table(_t)
                     counters['table_block'] += 1
