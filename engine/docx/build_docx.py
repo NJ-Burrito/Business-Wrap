@@ -1039,7 +1039,9 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                     set_para_bidi(cap)
                     cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     cap.paragraph_format.keep_with_next = True
-                    add_script_runs(cap, f"{block.get('figureLabel', '')} {counters['figure']}: {block.get('caption', '')}".strip(), font, bold=True)
+                    # the number and the colon are separate runs: one run «1: » was shown as «:1» in an Arabic line (Word reorders a Latin run as a unit)
+                    add_script_runs(cap, f"{block.get('figureLabel', '')} {counters['figure']}".strip(), font, bold=True)
+                    add_script_runs(cap, f": {block.get('caption', '')}", font, bold=True)
                     p = document.add_paragraph()
                     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     fr = block.get('frame') if isinstance(block.get('frame'), dict) else None
