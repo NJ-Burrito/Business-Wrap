@@ -2013,7 +2013,8 @@ async function runAction(a, arg) {
     case 'moveUp': case 'moveDown': {
       A.move(a === 'moveUp' ? -1 : 1);
       // R3: the focus stays on the pressed tool, so Alt+↑/↓, Ctrl+Z, Ctrl+D and Delete keep working from the toolbar
-      const keep = root.querySelector(`.ctx [data-a="${a}"]`);
+      let keep = root.querySelector(`.ctx [data-a="${a}"]:not([disabled])`); // the pressed tool is disabled once the block is last (or first): the keyboard goes to its twin, then to the first enabled tool
+      if (!keep) keep = root.querySelector(`.ctx [data-a="${a === 'moveUp' ? 'moveDown' : 'moveUp'}"]:not([disabled])`) || root.querySelector('.ctx .sb .b:not([disabled])');
       if (keep && root.activeElement !== keep && !document.activeElement?.closest?.('#bw-pair')) keep.focus({ preventScroll: true });
       break;
     }

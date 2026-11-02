@@ -416,6 +416,10 @@ const XPL_SCENES = {
       case 'node': return cv + xaNode('', 40, 62, 'bx dim') + xaP('wr dim', 'M57 62 h16') + xaG('k-in', xaNode(a, 100, a === 'group' ? 48 : 62));
       case 'auto': return cv + [[40, 28, -8, 12], [100, 34, 6, -10], [70, 66, -4, 8]].map(([x, y, dx, dy]) => xaG('k-mv', A(x, y), xaMv(dx, dy))).join('') + xaP('wr', 'M57 31 l26 2 M97 46 l-20 14');
       case 'reset': return cv + [[40, 28, 14, 10], [100, 34, -12, 14], [70, 66, 6, -14]].map(([x, y, dx, dy]) => xaG('k-mv', A(x, y), xaMv(dx, dy))).join('') + xaP('acs', 'M120 76 a8 8 0 1 0 -2 -8 m-1 -6 l1 6 l6 -1');
+      case 'cvshapes': return cv + xaR('hi', 28, 18, 104, 60, 3, 'style="fill:none;stroke-dasharray:4 3"') + xaG('k-in', xaR('sheet', 34, 24, 92, 48, 4)) + A(52, 48) + A(108, 48) + xaP('wr', 'M69 48 h22');
+      case 'cvpage': return xaPage(40, 8, 80, 80, 6) + xaR('hi', 46, 34, 68, 42, 3, 'style="fill:none;stroke-dasharray:4 3"') + xaG('k-in', xaR('bx', 52, 40, 56, 30, 4)) + xaP('acs', 'M80 30 v-8 m-4 4 l4 -4 l4 4 M80 80 v8 m-4 -4 l4 4 l4 -4');
+      case 'cvauto': return cv + xaR('hi', 24, 16, 112, 64, 3, 'style="fill:none;stroke-dasharray:4 3"') + A(52, 48) + A(108, 48) + xaP('acs', 'M120 76 a8 8 0 1 0 -2 -8 m-1 -6 l1 6 l6 -1');
+      case 'cvroute': return cv + A(34, 30) + A(118, 66) + xaP('wr', 'M51 30 h30 v36 h20') + xaP('wr', 'M51 66 h22') + xaG('k-in', xaP('wr', 'M60 56 v-34 h22 M60 56 h-9')) + xaP('acs', 'M81 36 a4 4 0 0 1 8 0');
       case 'flow': return cv + A(40, 28) + xaG('k-mv', A(86, 28), xaMv(-24, 28)) + xaG('k-mv', A(40, 66), xaMv(44, -38)) + xaP('wr', 'M57 28 h12') + xaP('acs', 'M126 34 v30 m-4 -6 l4 6 l4 -6');
       case 'legend': return cv + A(44, 30) + A(112, 30) + xaP('wr', 'M61 30 h34') + xaG('k-in', xaR('sheet', 34, 58, 92, 22, 4) + [0, 1, 2].map((i) => xaR(['pr', 'ac', 'ok'][i], 42 + i * 28, 66, 8, 6, 2) + xaLn(52 + i * 28, 67, 12)).join(''));
       case 'proute': return cv + A(34, 60) + A(118, 36) + xaG('k-gone', xaP('wr', 'M51 60 h34 v-24 h16')) + xaG('k-in', xaP('wr', 'M51 58 q30 -40 50 -22'));
@@ -699,6 +703,10 @@ dg:node.note dgNote@dgNote
 dg:node.group dgGroup@dgGroup
 dg:node.text dgText@dgText
 dg:auto dgAuto@dgAuto
+dg:cvshapes dgCvShapes@dgCvShapes
+dg:cvpage dgCvPage@dgCvPage
+dg:cvauto dgCvAuto@dgCvAuto
+dg:cvroute dgCvRoute@dgCvRoute
 dg:reset dgReset@dgReset
 dg:legend dgLegend@dgLegend
 dg:proute dgRoute@dgRoute

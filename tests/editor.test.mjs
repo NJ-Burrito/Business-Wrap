@@ -608,12 +608,14 @@ try {
     await pt.goto(`${SRV}/`);
     await pt.waitForFunction(() => window.BW?.ready);
     await act(pt, 'pages');
-    await pt.locator('.drawer .thumbs img').nth(8).waitFor({ timeout: 60000 }).catch(() => {});
+    // the sheet count is what the server printed (the sample's text is 2 pt smaller since 0.16.0, so no fixed number): the status line states it, every sheet has its picture
+    await pt.waitForFunction(() => /\d+/.test(document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer .out')?.textContent || '') && document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('.drawer .thumbs img').length > 0, null, { timeout: 60000 }).catch(() => {});
     const thumbs = await pt.locator('.drawer .thumbs img').count();
     const status = await pt.locator('.drawer .out').textContent();
-    check('page thumbnails (served): one per printed sheet', thumbs === 9, `${thumbs} thumbnails; ${status}`);
+    const sheets = +(String(status).match(/\d+/) || [0])[0];
+    check('page thumbnails (served): one per printed sheet', thumbs >= 5 && thumbs === sheets, `${thumbs} thumbnails; ${status}`);
     const y0 = await pt.evaluate(() => window.scrollY);
-    await pt.locator('.drawer .thumbs button[data-page="7"]').click();
+    await pt.locator('.drawer .thumbs button[data-page="5"]').click();
     const jumped = await pt.waitForFunction((y0) => window.scrollY > y0 + 500, y0, { timeout: 10000 }).then(() => true, () => false);
     const why = jumped ? '' : JSON.stringify(await pt.evaluate(() => ({ y: window.scrollY, first: document.getElementById('bw-ui-host').shadowRoot.querySelector('.thumbs button[data-page="7"]')?.dataset.first })));
     check('page thumbnail click jumps to that page', jumped, why);

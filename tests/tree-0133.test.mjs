@@ -101,6 +101,8 @@ const editor = path.join(tmp, 'tree.editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: editor, set: 'tree', watermarkDir: null });
 const server = await serve(editor, 0, { workspace: true });
 const base = `http://127.0.0.1:${server.address().port}`;
+// the folder-icon file (desktop.ini) is the product's own and not a saved version
+const verFiles = (d) => fs.readdirSync(d).filter((f) => !/^desktop\.ini$/i.test(f));
 const post = async (p, b) => { const r = await fetch(base + p, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) }); return { s: r.status, j: await r.json() }; };
 const get = async (p) => { const r = await fetch(base + p); return { s: r.status, j: await r.json().catch(() => null) }; };
 try {
@@ -114,9 +116,9 @@ try {
   check('Save HTML: the document\'s own file Documents\\<AR title>\\<AR title>.html', s1.s === 200 && s1.j.file === path.join(folder, `${W.titleStem(tAr)}.html`) && fs.readFileSync(s1.j.file, 'utf8') === html1 && s1.j.overwritten === false, JSON.stringify(s1.j));
   const s2 = await post('/api/library/html', { id: 'doc-evt00001', title: tEn, locale: 'en', html: saveHtmlText({ id: 'doc-evt00001', ar: tAr, en: tEn, note: 'v2' }) });
   const s3 = await post('/api/library/html', { id: 'doc-evt00001', title: tEn, locale: 'en', html: saveHtmlText({ id: 'doc-evt00001', ar: tAr, en: tEn, note: 'v2' }) });
-  const versions = fs.existsSync(path.join(folder, 'Versions')) ? fs.readdirSync(path.join(folder, 'Versions')) : [];
+  const versions = fs.existsSync(path.join(folder, 'Versions')) ? verFiles(path.join(folder, 'Versions')) : [];
   check('Save twice with a change: one .html (overwritten), the previous one kept in Versions\\<date> <title>.html', s2.j.file === s1.j.file && s2.j.overwritten === true && versions.length === 1 && /^\d{4}-\d{2}-\d{2} \d{2}-\d{2} /.test(versions[0]) && fs.readFileSync(path.join(folder, 'Versions', versions[0]), 'utf8') === html1, JSON.stringify({ s2: s2.j, versions }));
-  check('Save a third time with the same text: no new version, nothing duplicated', s3.j.file === s1.j.file && fs.readdirSync(path.join(folder, 'Versions')).length === 1 && fs.readdirSync(folder).filter((f) => /\.html$/i.test(f)).length === 1);
+  check('Save a third time with the same text: no new version, nothing duplicated', s3.j.file === s1.j.file && verFiles(path.join(folder, 'Versions')).length === 1 && fs.readdirSync(folder).filter((f) => /\.html$/i.test(f)).length === 1);
   check('the English title (saved in the other edition) lands in the same folder', !fs.existsSync(path.join(D.docs, W.titleStem(tEn))) || W.titleStem(tEn) === W.titleStem(tAr), fs.readdirSync(D.docs).join(','));
 
   const r1 = await post('/api/export', { service: 'event-permit', locale: 'ar', doc: docs.ar });
@@ -175,7 +177,7 @@ try {
   const dir = path.join(D.docs, 'Harvested permit');
   check('harvest (no --out): Documents\\<name>\\Sources\\document.*.json, the editor beside it as <name>.html (never out\\harvest or the working folder)', r.dir === path.join(dir, 'Sources') && fs.existsSync(path.join(dir, 'Sources', 'document.ar.json')) && r.editor === path.join(dir, 'Harvested permit.html') && fs.existsSync(r.editor) && !/\.editor\.html/.test(r.editor) && fs.readdirSync(cwd).length === 0, JSON.stringify({ dir: r.dir, editor: r.editor }));
   const again = await harvestModel(path.join(REPO, 'tests', 'fixtures', 'harvest', 'permit.bpmn20.xml'), { name: 'Harvested permit' });
-  check('a second harvest of the same name joins the same folder; the first editor is kept in Versions\\', again.dir === r.dir && fs.readdirSync(path.join(dir, 'Versions')).length === 1);
+  check('a second harvest of the same name joins the same folder; the first editor is kept in Versions\\', again.dir === r.dir && verFiles(path.join(dir, 'Versions')).length === 1);
   const srcs = await CLI.importSources({ inputs: [path.join(REPO, 'tests', 'fixtures', 'harvest', 'steps.yaml')], name: 'Imported steps' });
   check('import (no --out): into Documents\\<name>\\Sources', srcs.documents.length === 2 && srcs.documents.every((f) => rel(f).startsWith('المستندات - Documents/Imported steps/Sources/')), srcs.documents.join(' '));
   const lib = await CLI.library();
@@ -234,7 +236,7 @@ check('migration: every file accounted for (count before = after) and none lost 
 check('migration: PDF, DOCX, HTML and HISTORY are gone (moved, not copied)', ['PDF', 'DOCX', 'HTML', 'HISTORY'].every((n) => !fs.existsSync(path.join(OR, n))), fs.readdirSync(OR).join(','));
 const OD = oldWs.dirs;
 const docA = path.join(OD.docs, 'تصريح قديم');
-const verA = fs.existsSync(path.join(docA, 'Versions')) ? fs.readdirSync(path.join(docA, 'Versions')) : [];
+const verA = fs.existsSync(path.join(docA, 'Versions')) ? verFiles(path.join(docA, 'Versions')) : [];
 check('migration: the two saves of one document → the newer is <title>.html, the older is in Versions\\<its date> <title>.html', fs.readFileSync(path.join(docA, 'تصريح قديم.html'), 'utf8') === fs.readFileSync(path.join(docA, 'تصريح قديم.html'), 'utf8') && /newer/.test(fs.readFileSync(path.join(docA, 'تصريح قديم.html'), 'utf8')) && verA.length === 1 && verA[0] === '2026-10-28 10-00 تصريح قديم.html' && /older/.test(fs.readFileSync(path.join(docA, 'Versions', verA[0]), 'utf8')), JSON.stringify(verA));
 const exA = fs.readdirSync(path.join(docA, 'Exports')).sort();
 check('migration: its PDF/DOCX (found by either title) → Exports\\<date> <title> - <language>; the same-day duplicate gets (2)', exA.includes('2026-10-29 09-05 تصريح قديم - العربية.pdf') && exA.includes('2026-10-29 09-05 تصريح قديم - العربية.docx') && exA.includes('2026-10-29 09-05 تصريح قديم - English.pdf') && exA.includes('2026-10-29 09-05 تصريح قديم - English (2).pdf'), exA.join(' | '));
