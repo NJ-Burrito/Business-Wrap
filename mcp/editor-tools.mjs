@@ -15,7 +15,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import { validateEdits } from '../engine/edits.mjs';
 
-/** An error an agent can branch on: `code` is one of NO_HOST NO_TAB NO_DOC TAB_TIMEOUT REFUSED CONFLICT BAD_OP UNKNOWN_ACTION BAD_ARGS AUTH HOST_ERROR RESTART_REQUIRED. */
+/** An error an agent can branch on: `code` is one of NO_PICKER NO_HOST NO_TAB NO_DOC TAB_TIMEOUT REFUSED CONFLICT BAD_OP UNKNOWN_ACTION BAD_ARGS AUTH HOST_ERROR RESTART_REQUIRED. */
 export class BwError extends Error {
   constructor(code, message, data = {}) { super(message); this.bw = true; this.code = code; this.data = data; }
 }
@@ -78,6 +78,22 @@ export async function callEditor(tool, { doc, args = {} } = {}, { target } = {})
   const { status, body } = await request(t, 'POST', '/api/editor/call', { tool, ...(doc ? { doc } : {}), args });
   if (status >= 200 && status < 300 && body?.ok !== false) return { ok: true, ...flat(body && 'result' in body ? body.result : body) };
   throw failFrom(status, body);
+}
+
+/** The folder picker (0.15.9, engine/workspace.mjs pickerOpen…): host state, so it needs no editor tab. Verbs: state open go mkdir choose cancel wait.
+ *  POST /api/workspace/picker/<verb> behind the host token. → {ok, rev, open, picker:{path, listing:{entries…}, places, error}, last}; a Choose the host
+ *  refuses (inside the program folder, unreadable, not writable) throws REFUSED with the host's reason and leaves the picker open; no picker open is NO_PICKER.
+ *  `state` never starts a host; the other verbs do (a picker can be answered with no tab open). */
+export const PICKER_VERBS = ['state', 'open', 'go', 'mkdir', 'choose', 'cancel', 'wait'];
+export async function callPicker(verb, body = {}, { target } = {}) {
+  if (!PICKER_VERBS.includes(verb)) throw new BwError('BAD_ARGS', `unknown picker verb ${verb}`);
+  const t = target || await hostTarget({ start: verb !== 'state' });
+  const { status, body: res } = await request(t, 'POST', `/api/workspace/picker/${verb}`, body);
+  if (status === 409) throw new BwError('NO_PICKER', String(res?.error || 'no folder picker is open'), { how: 'call picker_open (or business-wrap picker open) first' });
+  if (status < 200 || status >= 300 || res?.ok === false) throw failFrom(status, res);
+  if (verb === 'choose' && res.open && res.picker?.error) throw new BwError('REFUSED', `the folder was not chosen: ${res.picker.error.message || res.picker.error.code}`, { reason: res.picker.error.code, picker: res.picker });
+  const { ok: _o, ...rest } = res;
+  return { ok: true, ...rest };
 }
 
 /** Refuse a malformed batch before it costs a round trip: the same op vocabulary and path syntax as the edits contract v1. */
@@ -164,6 +180,46 @@ export function registerEditorTools(server, z, guard) {
     return callEditor('import', { args: { document: doc, ...(project ? { project } : {}) } });
   }));
 
+  const PATHARG = z.string().describe('An absolute folder path (any drive; Unicode and Arabic names are fine)');
+  server.registerTool('picker_state', {
+    title: 'Read the folder picker',
+    description: 'The folder picker the person sees in the editor, read from the host (needs no editor tab, never starts a host): {open, picker:{by, since, path, listing:{path, parent, entries:[{name,path}], error?, blocked}, places, error?}, last:{outcome:"chosen"|"cancelled", parent?}}. Folders only. A picker is waiting whenever open is true; it is the save-folder question of a Save or of Settings.',
+    inputSchema: {},
+    annotations: RO,
+  }, guard(async () => {
+    try { return await callPicker('state'); } catch (e) { if (e?.code === 'NO_HOST') return { ok: true, open: false, picker: null, last: null, host: false }; throw e; }
+  }));
+  server.registerTool('picker_open', {
+    title: 'Open the folder picker',
+    description: 'Open the save-folder picker on the host (the editor shows it live to the person; with no tab open you still read and answer it here). Optional path to start in (default: the parent of the current save folder). If one is already open it is returned. Then picker_go / picker_mkdir / picker_choose / picker_cancel.',
+    inputSchema: { path: PATHARG.optional() },
+    annotations: RW,
+  }, guard(({ path }) => callPicker('open', { by: 'agent', ...(path ? { path } : {}) })));
+  server.registerTool('picker_go', {
+    title: 'Go to a folder in the folder picker',
+    description: 'Navigate the open picker to an absolute path ("" lists the drives). Returns the sub-folders of that folder (listing.entries). A path that does not exist or is not a folder comes back as picker.error and the listing stays; a folder that cannot be read is shown with listing.error. NO_PICKER when none is open.',
+    inputSchema: { path: z.string().describe('Absolute folder path, or "" for the drives') },
+    annotations: RW,
+  }, guard(({ path }) => callPicker('go', { path })));
+  server.registerTool('picker_mkdir', {
+    title: 'Create a folder in the folder picker',
+    description: 'Create a folder named `name` inside the current folder of the picker and go into it. One name only (no backslash, slash, colon, asterisk, question mark, quotes, angle brackets or pipe). picker.error is badname, exists, refused or failed.',
+    inputSchema: { name: z.string().min(1) },
+    annotations: RW,
+  }, guard(({ name }) => callPicker('mkdir', { name })));
+  server.registerTool('picker_choose', {
+    title: 'Choose the folder in the folder picker',
+    description: 'Choose the current folder of the picker (or `path`, which it goes to first) as the save folder: stored in .local/workspace.json and the picker closes ({chosen, workspace, last}). A folder inside the program folder, unreadable or not writable is REFUSED with the reason and the picker stays open; choose another.',
+    inputSchema: { path: PATHARG.optional() },
+    annotations: RW,
+  }, guard(({ path }) => callPicker('choose', path ? { path } : {})));
+  server.registerTool('picker_cancel', {
+    title: 'Cancel the folder picker',
+    description: 'Close the open picker without changing anything: the save folder stays as it was.',
+    inputSchema: {},
+    annotations: RW,
+  }, guard(() => callPicker('cancel')));
+
   server.registerTool('host_health', {
     title: 'Health of the local host and its tabs',
     description: 'GET /api/host/health: {ok, version, pid, uptimeS, clients, tabs:[{tab, docs, live, lastBeatMs}], pendingRequests, warnings}. A tab with lastBeatMs above 15000 is hung. Does not start a host.',
@@ -172,7 +228,8 @@ export function registerEditorTools(server, z, guard) {
   }, guard(async () => {
     const t = await hostTarget({ start: false });
     const { status, body } = await request(t, 'GET', '/api/host/health');
-    if (status === 200) return { ok: true, ...flat(body) };
-    throw failFrom(status, body);
+    if (status !== 200) throw failFrom(status, body);
+    const pk = await callPicker('state', {}, { target: t }).catch(() => null); // a waiting folder picker shows in the status (0.15.9 P3)
+    return { ok: true, ...flat(body), picker: pk ? { open: pk.open, ...(pk.open ? { by: pk.picker.by, since: pk.picker.since, path: pk.picker.path } : {}) } : { open: false } };
   }));
 }
