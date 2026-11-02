@@ -7,6 +7,14 @@ HERE = Path(__file__).resolve().parent
 
 
 WORKFLOW = json.loads((HERE / "workflow.json").read_text(encoding="utf-8"))
+# 0.16.1: the workflow printed whole is under 7 pt (every arrow label); workflow-parts.json is the same graph cut in two by
+# `DIAGRAM.autoLayout` for the frame the figure really prints in (figureFrame), each part at 7 pt or more in both editions
+PARTS = json.loads((HERE / "workflow-parts.json").read_text(encoding="utf-8"))
+
+
+def figures(t):
+    parts = PARTS[t["loc"]]
+    return [{"kind": "diagram", "caption": f'{t["fig"]} ({i + 1}/{len(parts)})', "model": m} for i, m in enumerate(parts)]
 
 
 def story(id_, name, as_, want, so, acc, actions=None, dictionary=None):
@@ -33,7 +41,7 @@ def doc(t):
                                                                 {"kind": "table", "columns": t["t22c"], "rows": t["t22"]}]},
                 {"number": "2.3", "title": t["s23"], "blocks": [{"kind": "table", "columns": t["t23c"], "rows": t["t23"]}]}]},
             {"number": "3", "title": t["c3"], "sections": [
-                {"number": "3.1", "title": t["c3"], "blocks": [{"kind": "diagram", "caption": t["fig"], "model": WORKFLOW[t["loc"]]}]}]},
+                {"number": "3.1", "title": t["c3"], "blocks": figures(t)}]},
             {"number": "4", "title": t["c4"], "sections": [
                 {"number": "4.1", "title": t["c4"], "blocks": [{"kind": "table", "columns": t["t4c"], "rows": t["t4"]}]}]},
             {"number": "5", "title": t["c5"], "sections": [

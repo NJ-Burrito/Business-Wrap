@@ -183,83 +183,112 @@
      "blocks": [
       {
        "kind": "diagram",
-       "caption": "Workflow diagram: from the request to its outcome",
+       "caption": "Workflow diagram: from the request to its outcome (1/2)",
        "model": {
         "kind": "bw-diagram",
         "version": 1,
         "flow": "ltr",
         "nodes": [
          {
+          "id": "g1",
+          "kind": "group",
+          "auto": true,
+          "label": "",
+          "x": 49,
+          "y": 114,
+          "w": 602,
+          "h": 90
+         },
+         {
           "id": "s",
           "kind": "start",
-          "label": "Submit request"
+          "label": "Submit request",
+          "w": 210,
+          "h": 52,
+          "y": 133,
+          "x": 64
          },
          {
           "id": "pay",
           "kind": "payment",
-          "label": "Pay the fee"
+          "label": "Pay the fee",
+          "w": 158,
+          "h": 52,
+          "y": 133,
+          "x": 328
          },
          {
           "id": "d1",
           "kind": "decision",
-          "label": "Action"
+          "label": "Action",
+          "w": 96,
+          "h": 60,
+          "y": 129,
+          "x": 540
          },
          {
           "id": "rev",
           "kind": "staff",
-          "label": "Review"
+          "label": "Review",
+          "w": 132,
+          "h": 52,
+          "y": 133,
+          "x": 738
          },
          {
           "id": "d2",
           "kind": "decision",
-          "label": "Action"
+          "label": "Action",
+          "w": 96,
+          "h": 60,
+          "y": 129,
+          "x": 924
          },
          {
           "id": "head",
           "kind": "staff",
-          "label": "Head of section"
-         },
-         {
-          "id": "d3",
-          "kind": "decision",
-          "label": "Action"
-         },
-         {
-          "id": "mgr",
-          "kind": "staff",
-          "label": "Department manager"
-         },
-         {
-          "id": "d4",
-          "kind": "decision",
-          "label": "Action"
-         },
-         {
-          "id": "gm",
-          "kind": "staff",
-          "label": "Director general"
-         },
-         {
-          "id": "d5",
-          "kind": "decision",
-          "label": "Action"
-         },
-         {
-          "id": "ok",
-          "kind": "ok",
-          "label": "Approved",
-          "sub": "The request is approved"
+          "label": "Head of section",
+          "w": 192,
+          "h": 52,
+          "y": 370,
+          "x": 64
          },
          {
           "id": "no",
           "kind": "stop",
           "label": "Refused",
-          "sub": "Request cancelled or refused"
+          "sub": "Request cancelled or refused",
+          "w": 268,
+          "h": 63,
+          "y": 260,
+          "x": 646
          },
          {
           "id": "fix",
           "kind": "rework",
-          "label": "Resubmit the request"
+          "label": "Resubmit the request",
+          "w": 235,
+          "h": 52,
+          "y": 34,
+          "x": 770
+         },
+         {
+          "id": "cont-to-2",
+          "kind": "continue",
+          "label": "Continued in figure 2",
+          "w": 243,
+          "h": 52,
+          "y": 370,
+          "x": 310
+         },
+         {
+          "id": "cont-from-2",
+          "kind": "continue",
+          "label": "Continued from figure 2",
+          "w": 260,
+          "h": 52,
+          "y": 370,
+          "x": 607
          }
         ],
         "edges": [
@@ -267,127 +296,262 @@
           "id": "e1",
           "from": "s",
           "to": "pay",
-          "label": ""
+          "label": "",
+          "kind": "main"
          },
          {
           "id": "e2",
           "from": "pay",
           "to": "d1",
-          "label": ""
+          "label": "",
+          "kind": "main"
          },
          {
           "id": "e3",
           "from": "d1",
           "to": "rev",
-          "label": "Fee paid"
+          "label": "Fee paid",
+          "kind": "main"
          },
          {
           "id": "e4",
           "from": "d1",
           "to": "no",
-          "label": "Cancelled or time-out"
+          "label": "Cancelled or time-out",
+          "kind": "stop"
          },
          {
           "id": "e5",
           "from": "rev",
           "to": "d2",
-          "label": ""
+          "label": "",
+          "kind": "main"
          },
          {
           "id": "e6",
           "from": "d2",
           "to": "head",
-          "label": "Approve"
+          "label": "Approve",
+          "kind": "main"
          },
          {
           "id": "e7",
           "from": "d2",
           "to": "fix",
-          "label": "Complete missing items"
+          "label": "Complete missing items",
+          "kind": "return"
          },
          {
           "id": "e8",
           "from": "d2",
           "to": "no",
-          "label": "Refuse"
+          "label": "Refuse",
+          "kind": "stop"
          },
          {
           "id": "e9",
           "from": "fix",
           "to": "rev",
-          "label": "Resend"
+          "label": "Resend",
+          "kind": "return"
          },
          {
-          "id": "e10",
+          "id": "e10-o1",
           "from": "head",
+          "to": "cont-to-2",
+          "label": "",
+          "kind": "main"
+         },
+         {
+          "id": "e12-i4",
+          "from": "cont-from-2",
+          "to": "rev",
+          "kind": "return"
+         },
+         {
+          "id": "e16-i6",
+          "from": "cont-from-2",
+          "to": "head",
+          "kind": "return"
+         }
+        ]
+       }
+      },
+      {
+       "kind": "diagram",
+       "caption": "Workflow diagram: from the request to its outcome (2/2)",
+       "model": {
+        "kind": "bw-diagram",
+        "version": 1,
+        "flow": "ltr",
+        "nodes": [
+         {
+          "id": "d3",
+          "kind": "decision",
+          "label": "Action",
+          "w": 96,
+          "h": 60,
+          "y": 34,
+          "x": 378
+         },
+         {
+          "id": "mgr",
+          "kind": "staff",
+          "label": "Department manager",
+          "w": 218,
+          "h": 52,
+          "y": 38,
+          "x": 569
+         },
+         {
+          "id": "d4",
+          "kind": "decision",
+          "label": "Action",
+          "w": 96,
+          "h": 60,
+          "y": 34,
+          "x": 841
+         },
+         {
+          "id": "gm",
+          "kind": "staff",
+          "label": "Director general",
+          "w": 201,
+          "h": 52,
+          "y": 281,
+          "x": 64
+         },
+         {
+          "id": "d5",
+          "kind": "decision",
+          "label": "Action",
+          "w": 96,
+          "h": 60,
+          "y": 277,
+          "x": 319
+         },
+         {
+          "id": "ok",
+          "kind": "ok",
+          "label": "Approved",
+          "sub": "The request is approved",
+          "w": 236,
+          "h": 63,
+          "y": 275,
+          "x": 766
+         },
+         {
+          "id": "no",
+          "kind": "stop",
+          "label": "Refused",
+          "sub": "Request cancelled or refused",
+          "w": 268,
+          "h": 63,
+          "y": 150,
+          "x": 427
+         },
+         {
+          "id": "cont-from-1",
+          "kind": "continue",
+          "label": "Continued from figure 1",
+          "w": 260,
+          "h": 52,
+          "y": 38,
+          "x": 64
+         },
+         {
+          "id": "cont-to-1",
+          "kind": "continue",
+          "label": "Continued in figure 1",
+          "w": 243,
+          "h": 52,
+          "y": 281,
+          "x": 469
+         }
+        ],
+        "edges": [
+         {
+          "id": "e10-i2",
+          "from": "cont-from-1",
           "to": "d3",
-          "label": ""
+          "kind": "main"
          },
          {
           "id": "e11",
           "from": "d3",
           "to": "mgr",
-          "label": "Approve"
+          "label": "Approve",
+          "kind": "main"
          },
          {
-          "id": "e12",
+          "id": "e12-o3",
           "from": "d3",
-          "to": "rev",
-          "label": "Back to review"
+          "to": "cont-to-1",
+          "label": "Back to review",
+          "kind": "main"
          },
          {
           "id": "e13",
           "from": "d3",
           "to": "no",
-          "label": "Refuse"
+          "label": "Refuse",
+          "kind": "stop"
          },
          {
           "id": "e14",
           "from": "mgr",
           "to": "d4",
-          "label": ""
+          "label": "",
+          "kind": "main"
          },
          {
           "id": "e15",
           "from": "d4",
           "to": "gm",
-          "label": "Approve"
+          "label": "Approve",
+          "kind": "main"
          },
          {
-          "id": "e16",
+          "id": "e16-o5",
           "from": "d4",
-          "to": "head",
-          "label": "Back to head"
+          "to": "cont-to-1",
+          "label": "Back to head",
+          "kind": "main"
          },
          {
           "id": "e17",
           "from": "d4",
           "to": "no",
-          "label": "Refuse"
+          "label": "Refuse",
+          "kind": "stop"
          },
          {
           "id": "e18",
           "from": "gm",
           "to": "d5",
-          "label": ""
+          "label": "",
+          "kind": "main"
          },
          {
           "id": "e19",
           "from": "d5",
           "to": "ok",
-          "label": "Approve"
+          "label": "Approve",
+          "kind": "main"
          },
          {
           "id": "e20",
           "from": "d5",
           "to": "mgr",
-          "label": "Back to manager"
+          "label": "Back to manager",
+          "kind": "return"
          },
          {
           "id": "e21",
           "from": "d5",
           "to": "no",
-          "label": "Refuse"
+          "label": "Refuse",
+          "kind": "stop"
          }
         ]
        }

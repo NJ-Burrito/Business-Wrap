@@ -24,7 +24,10 @@ const numbers = {};
 const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  | ' + detail : ''}`); if (!ok) failed += 1; };
 process.on('uncaughtException', (e) => { console.log(results.join('\n')); console.error('CRASH: ' + String(e.stack || e.message).split('\n').slice(0, 5).join(' / ')); process.exit(2); });
 const near = (a, b, tol) => Math.abs(a - b) <= tol;
-const SAMPLE = path.join(REPO, 'samples', 'event-permit');
+// 0.16.1: the sample prints its workflow as two legible figures; these suites drive the editor and the exporters on ONE whole drawing
+// (ids e1.. of the whole graph), so they read the whole-drawing copy of the sample; the real sample's own print is asserted in autolayout-0160
+const SAMPLE = path.join(REPO, 'tests', 'fixtures', 'permit-whole');
+const SAMPLE_REAL = path.join(REPO, 'samples', 'event-permit');
 const theme = loadTheme();
 const PTR = '/chapters/2/sections/0/blocks/0';
 const loadDoc = (loc) => JSON.parse(fs.readFileSync(path.join(SAMPLE, `document.${loc}.json`), 'utf8'));
@@ -33,7 +36,7 @@ const run = (code, args, deps = ['pymupdf']) => { const r = spawnSync(...py(['-c
 
 // ── model level: absent = today's drawing byte for byte; the math of the canvas ──
 {
-  const wf = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'workflow.json'), 'utf8'));
+  const wf = JSON.parse(fs.readFileSync(path.join(SAMPLE_REAL, 'workflow.json'), 'utf8'));
   let same = 0;
   let n = 0;
   const base = path.join(REPO, 'tests', 'fixtures', 'diagram-0155.mjs');
