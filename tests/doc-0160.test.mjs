@@ -90,6 +90,8 @@ try {
         story('OWN-2', { acceptance: ['معيار مكتوب'] }),
         story('NONE-3', { acceptance: [] }),
         story('EMPTYNEST-4', { acceptance: [], blocks: [{ kind: 'prose', paragraphs: ['  '] }] }),
+        // last on purpose: the prose block that follows the cards is the criteria of the LAST story (field notes 14), so the probe stories above must not be last
+        story('LAST-5', { acceptance: ['معيار مكتوب'] }),
       ] };
       const r = await B.bridge('ops', svc, { locale: 'ar', mirror: false, ops: [{ op: 'insert', path: '/chapters/0/sections/0/blocks/0', value: block }] });
       const f = (await B.bridge('action', svc, { id: 'check' })).findings;

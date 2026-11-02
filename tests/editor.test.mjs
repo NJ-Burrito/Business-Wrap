@@ -348,10 +348,10 @@ try {
     await ctx3.close();
   }
 
-  // 60-page document stays responsive
+  // 60-page document stays responsive (0.16.0: the print pagination is tighter, 10 copies of the chapters print 51 pages, so 13 copies keep the document above 60)
   const big = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'document.ar.json'), 'utf8'));
   const extra = [];
-  for (let k = 0; k < 10; k += 1) for (const ch of big.chapters.slice(1)) extra.push(JSON.parse(JSON.stringify(ch)));
+  for (let k = 0; k < 13; k += 1) for (const ch of big.chapters.slice(1)) extra.push(JSON.parse(JSON.stringify(ch)));
   big.chapters.push(...extra);
   big.chapters.forEach((ch, i) => { ch.number = String(i + 1); ch.sections.forEach((s, j) => { s.number = `${i + 1}.${j + 1}`; }); });
   big.service = 'big';

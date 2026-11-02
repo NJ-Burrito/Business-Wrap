@@ -13,6 +13,8 @@
     column-width: var(--pw); column-gap: var(--pg); column-fill: auto;
     transform: scale(var(--bw-pz, .6)) translateX(var(--shift, 0px)); transition: transform .62s cubic-bezier(.32, .72, 0, 1);
   }
+  /* the first-paint page-in (editor.css, html:not(.bw-ready)) animates transform and so overrides the scale while the first count is taken: 31 pages for 7. The paged window moves the book by transform itself. */
+  html:not(.bw-ready) #bw-pair .bw-view > main.bw-doc { animation: none; }
   #bw-pair .bw-view > main.bw-doc[dir="rtl"] { transform-origin: top right; }
   /* the open book: the cover stands alone on its own side, then pages pair up */
   #bw-pair[data-pages="spread"] .bw-view > main.bw-doc { margin-inline-start: calc((var(--pw) + var(--pg)) * var(--bw-pz, .6)); } /* main is laid out at 100 percent and scaled by a transform: an offset outside it is scaled by hand */

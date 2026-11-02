@@ -497,6 +497,8 @@ function rbShellWire() {
     RB.snap = rbSnap();
     if (e.target.closest?.(RB_PRESS) && !e.target.closest?.(RB_TEXT)) e.preventDefault();
   }, true);
+  // a pointer or key on the page itself (not in the shell) is the person choosing a new selection: pending restores stand down
+  for (const ev of ['mousedown', 'keydown']) document.addEventListener(ev, (e) => { if (!e.composedPath().includes(shell)) RB.gen = (RB.gen || 0) + 1; }, true);
   shell.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') RB.snap = rbSnap(); }, true);
   shell.addEventListener('click', () => {
     const snap = RB.snap;
@@ -505,7 +507,9 @@ function rbShellWire() {
     RB.last = snap;
     setTimeout(() => { if (RB.last === snap) RB.last = null; }, 1000);
     // the command is async and may redraw the page: look again once it has (text only; a command that selects something itself is left alone)
-    for (const ms of [30, 120, 400]) setTimeout(() => rbRestoreText(snap), ms);
+    // ...unless the person has since chosen another selection (a click or a key on the page): then the old offsets are stale and the next command must act on the new text
+    const gen = RB.gen;
+    for (const ms of [30, 120, 400]) setTimeout(() => { if (RB.gen === gen) rbRestoreText(snap); }, ms);
   }, true);
 }
 { const o = buildCtx; buildCtx = function (b, tb) { o(b, tb); rbShellWire(); rbSync(); }; } // refreshUi and every (re)build end in buildCtx

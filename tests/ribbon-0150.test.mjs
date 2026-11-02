@@ -23,7 +23,7 @@ const browser = await chromium.launch(launchOptions());
 const GENERAL = [['file', '--bw-sec-file'], ['export', '--bw-sec-export'], ['home', '--bw-sec-edit'], ['font', '--bw-sec-font'], ['para', '--bw-sec-para'], ['insert', '--bw-sec-insert'],
   ['layout', '--bw-sec-gaps'], ['hf', '--bw-sec-header'], ['design', '--bw-sec-design'], ['review', '--bw-sec-document'], ['spelling', '--bw-sec-spell'], ['view', '--bw-sec-view']];
 // tools per tab as declared (UI designer §2; export is 19: the designer's list names 17, plus the design pack and the export-options button that keeps the page range, cover and folder fields)
-const COUNTS = { file: 7, export: 19, home: 10, font: 10, para: 16, insert: 20, layout: 17, hf: 17, design: 6, review: 11, spelling: 10, view: 15, table: 23, picture: 11, diagram: 27, diagram2: 28 };
+const COUNTS = { file: 7, export: 19, home: 10, font: 10, para: 16, insert: 20, layout: 17, hf: 17, design: 6, review: 11, spelling: 10, view: 15, table: 24, picture: 11, diagram: 28, diagram2: 28 };
 
 async function open(ui, w, h) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h } });
@@ -146,6 +146,42 @@ try {
     check(`${L} note 8: the language and direction pills are disjoint, about 12 px apart`, gap.gap >= 10 && gap.gap <= 13 && gap.dy < 6, JSON.stringify(gap));
 
     check(`${L}: no page errors`, errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
+
+  // ── a click on the page within 100 ms of a ribbon press keeps the NEW selection (the delayed restores at 30/120/400 ms stand down) ──
+  {
+    const { page, ctx, errors } = await open('en', 1366, 768);
+    const words = await page.evaluate(() => {
+      const ps = [...document.querySelectorAll('#bw-pair main.bw-doc [data-p]')].filter((e) => /\/paragraphs\/\d+$/.test(e.dataset.p) && /^\S+ \S+ \S+/.test(e.textContent.trim()) && e.getBoundingClientRect().height > 0);
+      const pick = (el) => { const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); const tn = w.nextNode(); const m = /\S+/.exec(tn.data); const r = document.createRange(); r.setStart(tn, m.index); r.setEnd(tn, m.index + m[0].length); const b = r.getBoundingClientRect(); return { p: el.dataset.p, word: m[0], x: b.x + b.width / 2, y: b.y + b.height / 2 }; };
+      el0 = ps[0]; el1 = ps.find((e) => e !== ps[0] && e.dataset.p !== ps[0].dataset.p);
+      el0.scrollIntoView({ block: 'center' });
+      return ps.length > 1 ? [pick(ps[0]), pick(el1)] : null;
+    });
+    check('ribbon press then click: the page offers two paragraphs to test with (ready state seen)', !!words, '');
+    if (words) {
+      const [A, B] = await page.evaluate(() => { const g = (el) => { const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); const tn = w.nextNode(); const m = /\S+/.exec(tn.data); const r = document.createRange(); r.setStart(tn, m.index); r.setEnd(tn, m.index + m[0].length); const b = r.getBoundingClientRect(); return { p: el.dataset.p, word: m[0], x: b.x + b.width / 2, y: b.y + b.height / 2 }; }; return [el0, el1].map(g); });
+      await page.mouse.dblclick(A.x, A.y); // a real double click selects word A
+      await setTab(page, 'font'); await page.waitForTimeout(150);
+      const btn = await page.evaluate(() => { const b = document.getElementById('bw-ui-host').shadowRoot.querySelector('.ribbon [data-a="fmtItalic"], .ribbon [data-a="fmtBold"]'); const r = b.getBoundingClientRect(); return { a: b.dataset.a, x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
+      await page.mouse.click(btn.x, btn.y); // the press
+      const bb = await page.evaluate((p) => { const el = [...document.querySelectorAll('#bw-pair main.bw-doc [data-p]')].find((e) => e.dataset.p === p); el.scrollIntoView({ block: 'center' }); const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); const tn = w.nextNode(); const m = /\S+/.exec(tn.data); const r = document.createRange(); r.setStart(tn, m.index); r.setEnd(tn, m.index + m[0].length); const b = r.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; }, B.p);
+      await page.waitForTimeout(40);
+      await page.mouse.click(bb.x, bb.y); // within 100 ms of the press: a real click in B (a caret)
+      await page.waitForTimeout(700); // past the last delayed restore (400 ms)
+      const now = await page.evaluate(() => { const s = getSelection(); const el = (s.anchorNode?.nodeType === 1 ? s.anchorNode : s.anchorNode?.parentElement)?.closest('[data-p]'); return { text: s.toString().trim(), p: el?.dataset.p }; });
+      check('ribbon press then click within 100 ms: the caret stays where the person clicked (in B, not pulled back to A)', now.p === B.p, JSON.stringify({ now, B: B.p, w: B.word }));
+      await page.mouse.dblclick(bb.x, bb.y); // choose the word, then run the command on it
+      await page.waitForTimeout(200);
+      const html = (pa, pb) => page.evaluate(([x, y]) => { const q = (p) => [...document.querySelectorAll('#bw-pair main.bw-doc [data-p]')].find((e) => e.dataset.p === p)?.innerHTML; return [q(x), q(y)]; }, [pa, pb]);
+      const before = await html(A.p, B.p);
+      await page.mouse.click(btn.x, btn.y); // a command on the new selection
+      await page.waitForTimeout(500);
+      const after = await html(A.p, B.p);
+      check('ribbon press then click: the next command acts on the new selection, not the old one', after[1] !== before[1] && after[0] === before[0], JSON.stringify({ aSame: after[0] === before[0], bChanged: after[1] !== before[1] }));
+    }
+    check('ribbon press then click: no page errors', errors.length === 0, errors.join(' | '));
     await ctx.close();
   }
 
