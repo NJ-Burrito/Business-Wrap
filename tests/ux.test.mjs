@@ -484,12 +484,12 @@ try {
         if (!(await loc.count())) { res.push([kind, 'absent']); continue; }
         await loc.scrollIntoViewIfNeeded().catch(() => {});
         const a = await loc.boundingBox();
-        const [ddx, ddy] = kind === 'text' ? [60, 20] : [120, 40]; // a new text starts mid-drawing and the frame clamps it: in the smaller paged figure +120 px runs out of room
+        const [ddx, ddy] = kind === 'text' ? [60, -20] : [120, 40]; // a new text is put under the drawing, where the frame ends: the frame of a figure on its turned landscape page (0.16.0: the views draw it so) leaves no room below it, so the text is dragged up
         await dragBy(page, loc, ddx, ddy);
         const b = await page.locator(`main.bw-doc figure[data-dg] [data-dg-node="${id}"]`).first().boundingBox();
         res.push([kind, Math.round(b.x - a.x), Math.round(b.y - a.y)]);
       }
-      const bad = res.filter(([k, x, y]) => x === 'absent' || Math.abs(x - (k === 'text' ? 60 : 120)) > 2 || Math.abs(y - (k === 'text' ? 20 : k === 'shape' ? 40 : 120)) > 2);
+      const bad = res.filter(([k, x, y]) => x === 'absent' || Math.abs(x - (k === 'text' ? 60 : 120)) > 2 || Math.abs(y - (k === 'text' ? -20 : k === 'shape' ? 40 : 120)) > 2);
       check(`move ${view} ${ui}: logo, image, diagram shape and free text follow a real drag (±2 px)`, !bad.length, JSON.stringify(res));
       // keyboard nudge
       await page.evaluate(() => window.scrollTo(0, 0));

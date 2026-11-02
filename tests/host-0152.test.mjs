@@ -74,7 +74,10 @@ try {
       await page.evaluate(() => window.BW.runAction('zoomReset'));
       await sleep(500);
       const g = await geo(page);
-      const want = g.spread ? 2 * A4_W + 12 / 25.4 * 96 : A4_W;
+      // 0.16.0: a document that mixes sheet sizes (the sample's figure chapter prints on a turned sheet) draws the book from outer edge to
+      // outer edge of its sheets: the width comes from the window itself (--vw, in mm), the plain document keeps two A4 sheets and a gap
+      const vwMm = await page.evaluate(() => (document.querySelector('#bw-pair .bw-sheets') ? parseFloat(document.querySelector('#bw-pair .bw-view')?.style.getPropertyValue('--vw')) : 0));
+      const want = g.spread ? (vwMm ? vwMm / 25.4 * 96 : 2 * A4_W + 12 / 25.4 * 96) : A4_W;
       check(`zoom: «zoomReset» in the ${mode} view is 100 % true size (page ${want.toFixed(1)} px, pill 100%)`, Math.abs(g.w - want) <= 1.5 && g.pill === '100%' && g.pages === mode, JSON.stringify({ w: g.w, want, pill: g.pill }));
       // the typed field, then Ctrl+wheel up and down, then the preset buttons all land on the same real size
       await page.evaluate(() => window.BW.runAction('zoomOut'));

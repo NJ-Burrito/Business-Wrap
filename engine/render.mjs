@@ -1259,7 +1259,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
       const first = ch.sections[0];
       const opensLong = !!first?.blocks[0] && !['figure', 'diagram', 'stories', 'shots'].includes(first.blocks[0].kind);
       // page segments (A18 / A6): a container takes the segment of its first block; figure chapters keep their sheet
-      const segAt = (si) => (segOn && !hasFigure ? segOfPtr(`${cp}/sections/${si}/blocks/0`) : 0);
+      const segAt = (si) => { if (!segOn) return 0; const pt = `${cp}/sections/${si}/blocks/0`; return !hasFigure || segStarts.has(pt) ? segOfPtr(pt) : 0; }; // 0.16.0: a figure chapter keeps its turned sheet unless a page setting starts on it (then the screen draws that sheet too)
       const chSeg = segAt(0);
       const inner = single
         ? groupForPaging(ch.sections[0].blocks, `${cp}/sections/0/blocks`, opensLong ? h2 : '', segOn && !hasFigure ? chSeg : -1)

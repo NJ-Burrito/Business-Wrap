@@ -2,13 +2,13 @@
    Each page is one CSS column of an A4 sheet; the window (.bw-view) shows one or two and slides between them. */
 @media screen {
   #bw-pair[data-pages="single"], #bw-pair[data-pages="spread"] { display: flex; justify-content: center; padding: 16px 0 76px; }
-  #bw-pair .bw-view { --pw: 210mm; --pg: 12mm; --ph: 297mm; zoom: var(--bw-pz, .6); width: var(--pw); height: var(--ph); overflow: clip; overflow-clip-margin: 3mm; flex: none; position: relative; }
-  #bw-pair[data-pages="spread"] .bw-view { width: calc(var(--pw) * 2 + var(--pg)); }
+  #bw-pair .bw-view { --pw: 210mm; --pg: 12mm; --ph: 297mm; zoom: var(--bw-pz, .6); width: var(--vw, var(--pw)); height: var(--vh, var(--ph)); overflow: clip; overflow-clip-margin: 3mm; flex: none; position: relative; }
+  #bw-pair[data-pages="spread"] .bw-view { width: var(--vw, calc(var(--pw) * 2 + var(--pg))); }
   /* the edition flows into page-sized columns; the window slides along them */
   #bw-pair .bw-view > main.bw-doc {
     zoom: 1; width: var(--pw); height: var(--ph); margin: 0; border-radius: 0; box-shadow: none; background: transparent;
     column-width: var(--pw); column-gap: var(--pg); column-fill: auto;
-    transform: translateX(var(--shift, 0)); transition: transform .62s cubic-bezier(.32, .72, 0, 1);
+    transform: translateX(var(--shift, 0px)); transition: transform .62s cubic-bezier(.32, .72, 0, 1);
   }
   /* the open book: the cover stands alone on its own side, then pages pair up */
   #bw-pair[data-pages="spread"] .bw-view > main.bw-doc { margin-inline-start: calc(var(--pw) + var(--pg)); }
@@ -23,9 +23,17 @@
     background: repeating-linear-gradient(to right, var(--paper, #fafaf9) 0 var(--pw), transparent var(--pw) calc(var(--pw) + var(--pg))); /* doc-colour: the sheets are the document's paper */
     filter: drop-shadow(0 1px 1px color-mix(in srgb, var(--bw-band, #001e3d) 16%, transparent)) drop-shadow(0 4px 6px color-mix(in srgb, var(--bw-band, #001e3d) 12%, transparent));
   }
+  /* 0.16.0 a document that mixes sheet sizes: one sheet per page at its own size instead of the stripes */
+  #bw-pair .bw-view > main.bw-doc[data-bwmix]::before { display: none; }
+  #bw-pair .bw-view > main.bw-doc > .bw-sheets { position: absolute; inset-block: 0; inset-inline-start: 0; width: 0; height: var(--ph); z-index: -1; pointer-events: none; }
+  #bw-pair .bw-sheets .bw-sheet { position: absolute; top: 0; display: block; background: var(--paper, #fafaf9); /* doc-colour */ filter: drop-shadow(0 1px 1px color-mix(in srgb, var(--bw-band, #001e3d) 16%, transparent)) drop-shadow(0 4px 6px color-mix(in srgb, var(--bw-band, #001e3d) 12%, transparent)); }
+  /* a run of pages of another size: a box with its own columns, as big as that sheet less the margins the document's columns carry (18 + 16 mm
+     above and below, the side margin to each side); it starts on a column of the document's own and the slots its pages cover stay empty */
+  #bw-pair main.bw-doc[data-bwmix] .bw-frun { display: block; box-sizing: content-box; width: calc(var(--rw) - 2 * var(--page-side, 16mm)); height: calc(var(--rh) - 34mm); column-width: calc(var(--rw) - 2 * var(--page-side, 16mm)); column-gap: calc(12mm + 2 * var(--page-side, 16mm)); column-fill: auto; break-before: column; break-after: column; break-inside: avoid; }
+  #bw-pair main.bw-doc[data-bwmix] .bw-slot { display: block; height: 1px; break-after: column; }
   /* A5/A6: each page frame's own header and footer, laid on its column (views.js viewsRuns) */
   #bw-pair .bw-view > main.bw-doc > .bw-runs { position: absolute; inset-block-start: 0; inset-inline-start: 0; width: 0; height: var(--ph); pointer-events: none; }
-  #bw-pair .bw-runs .bw-run-f { position: absolute; inset-block: 0; inset-inline-start: calc(var(--k) * (var(--pw) + var(--pg))); width: var(--pw); }
+  #bw-pair .bw-runs .bw-run-f { position: absolute; inset-block-start: 0; height: var(--fh, 100%); inset-inline-start: var(--fx, calc(var(--k) * (var(--pw) + var(--pg)))); width: var(--fw, var(--pw)); }
   #bw-pair .bw-runs :is(.bw-run-h, .bw-run-b) { position: absolute; inset-inline: 16mm; font-size: 8pt; color: var(--muted); pointer-events: auto; }
   #bw-pair .bw-runs .bw-run-h { inset-block-start: 7mm; }
   #bw-pair .bw-runs .bw-run-b { inset-block-end: 6mm; }
@@ -36,7 +44,7 @@
   #bw-pair .bw-runs img { height: 5mm; }
   #bw-pair .bw-view > main.bw-doc[dir="rtl"]::before { background: repeating-linear-gradient(to left, var(--paper, #fafaf9) 0 var(--pw), transparent var(--pw) calc(var(--pw) + var(--pg))); } /* doc-colour */
 }
-@media print { .bw-runs { display: none !important; } }
+@media print { .bw-runs, .bw-sheets { display: none !important; } }
 html[data-bw-calm="1"] #bw-pair .bw-view > main.bw-doc { transition: none; }
 @media (prefers-reduced-motion: reduce) { #bw-pair .bw-view > main.bw-doc { transition: none; } }
 
