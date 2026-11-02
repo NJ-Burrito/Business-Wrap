@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://business-wrap.local/contracts/diagram.schema.json",
   "title": "Business-Wrap diagram model",
-  "description": "The model of a document block {kind:'diagram', caption, model}. engine/diagram.mjs draws it (house workflow look) as SVG shapes with real text for the editor and the PDF, and as native Word shapes for the DOCX. A node without x/y is placed by the auto layout; edges are routed from the node geometry (orthogonal, rounded corners) unless they carry hand-set bend points (via). Edits change it with the edits contract: {op:'replace', path:'<block>/model', value:<model>} or setText on <block>/model/nodes/<i>/label.",
+  "description": "The model of a document block {kind:'diagram', caption, model}. engine/diagram.mjs draws it (house workflow look) as SVG shapes with real text for the editor and the PDF, and as native Word shapes for the DOCX. A node without x/y is placed by the auto layout; edges are routed from the node geometry (orthogonal, rounded corners) unless they carry hand-set bend points (via). 0.16.0 · Auto layout (DIAGRAM.autoLayout; the editor_action autoLayout {pointer, aspect, maxNodes}; node engine/diagram-cli.mjs --auto-layout) must handle, and tests/autolayout-0160.test.mjs draws each of: a fork a few desks from the row start that reaches a join node, a rejecting fork desk (refusal and approval from one desk), a service with no output, a side excursion from a desk with no forward exit, and a return to an earlier desk together with a jump to a later one in the same row; it rates the drawing against the frame it prints in (block.frame, else DIAGRAM.PRINT) and cuts a graph that cannot print at 7 pt into the fewest figures that each can. Edits change it with the edits contract: {op:'replace', path:'<block>/model', value:<model>} or setText on <block>/model/nodes/<i>/label.",
   "type": "object",
   "required": ["nodes", "edges"],
   "$defs": {
@@ -13,6 +13,7 @@
     "frame": { "$ref": "#/$defs/blockFrame", "description": "Documentation only: the canvas lives on the block, not on the model (see $defs.blockFrame). A model never carries it." },
     "kind": { "const": "bw-diagram" },
     "version": { "const": 1 },
+    "routing": { "enum": [2], "description": "0.16.0 · 2 = arrows never lie on each other: arrows that shared a line are spaced 5 units apart, the upper one with a small shadow; where one arrow crosses another the upper jumps over it by a small arc with a small shadow under it (same in the editor, PDF, Word and HTML). A hand-set path (via, anchors) is never moved but still gets its arcs. Absent = the drawing of 0.15.x, byte for byte; auto layout sets it, and the diagram tools offer one click to set it on a stored drawing." },
     "flow": { "enum": ["ltr", "rtl"], "description": "Direction of the chain (the house reference runs left to right in both editions)." },
     "legend": { "description": "false hides the legend; an object renames entries by key (staff, applicant, rework, payment, system, stop, ok, note, wire-main, wire-return, wire-stop).", "oneOf": [{ "const": false }, { "type": "object", "additionalProperties": { "type": "string" } }] },
     "legendHide": { "type": "array", "items": { "type": "string" }, "description": "Legend entries deleted by hand, by key (staff, applicant, rework, payment, system, stop, ok, note, wire-main, wire-return, wire-stop). They stay deleted when shapes change; absent = every automatic entry shows." },
@@ -24,7 +25,8 @@
         "required": ["id", "kind"],
         "properties": {
           "id": { "type": "string" },
-          "kind": { "enum": ["staff", "applicant", "start", "payment", "rework", "system", "decision", "ok", "stop", "note", "group", "text", "symbol"] },
+          "kind": { "enum": ["staff", "applicant", "start", "payment", "rework", "system", "decision", "ok", "stop", "join", "note", "group", "text", "symbol"], "description": "join (0.16.0) = a merge point, a small filled dot (10 x 10): arrows meet on it; give an arrow into it head:none to merge lines without an arrowhead. A real shape, never a zero-size group." },
+          "fs": { "type": "number", "minimum": 8, "maximum": 40, "description": "0.16.0 · The lettering size of this shape's label, in drawing units (the kind's own: 17 for a stage, 13 for a decision). Absent = the kind's own; the shape grows to fit." },
           "label": { "type": "string" },
           "sub": { "type": "string", "description": "Caption under the label (end states)." },
           "x": { "type": "number" }, "y": { "type": "number" }, "w": { "type": "number" }, "h": { "type": "number" },

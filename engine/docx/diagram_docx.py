@@ -1,6 +1,6 @@
 """A workflow diagram as native, editable Word shapes (DrawingML, one wpg group).
 
-Reads the primitives engine/diagram.mjs `resolve()` produced (export.mjs stores them on the block
+Reads the primitives engine/diagram.mjs `resolve()` produced (0.16.0: spaced arrows, jump arcs and their shadows are among them, so Word draws exactly what the PDF draws) (export.mjs stores them on the block
 as `resolved`): rounded boxes, stadiums, diamonds, notes, circles, polylines with open arrowheads,
 and text boxes. Every shape and every label stays a shape or a text box in Word: movable,
 recolourable, retypable. No picture is embedded.
@@ -88,7 +88,7 @@ class _Canvas:
             f'<wps:spPr><a:xfrm><a:off x="{self.X(x)}" y="{self.Y(y)}"/><a:ext cx="{max(1, self.e(w))}" cy="{max(1, self.e(h))}"/></a:xfrm>'
             f'{g}{self.fill(fill)}{self.ln(line, lw, dash)}</wps:spPr><wps:bodyPr/></wps:wsp>')
 
-    def poly(self, pts, color, lw, dash='', arrow=False, closed=False, head=None, tail=None, bez=None):
+    def poly(self, pts, color, lw, dash='', arrow=False, closed=False, head=None, tail=None, bez=None, name='Line'):
         # a curved arrow: cubic Bezier segments [p0, c1, c2, p1]; the box takes in every control point
         allp = pts if not bez else [q for sg in bez for q in sg]
         xs = [p[0] for p in allp]
@@ -107,7 +107,7 @@ class _Canvas:
         nofill = '' if closed else ' fill="none"'
         geom = f'<a:custGeom><a:avLst/><a:gdLst/><a:ahLst/><a:cxnLst/><a:rect l="0" t="0" r="r" b="b"/><a:pathLst><a:path w="{W}" h="{H}"{nofill}>{path}</a:path></a:pathLst></a:custGeom>'
         self.parts.append(
-            f'<wps:wsp><wps:cNvPr id="{self.nid()}" name="Line {self.n}"/><wps:cNvSpPr/>'
+            f'<wps:wsp><wps:cNvPr id="{self.nid()}" name="{name} {self.n}"/><wps:cNvSpPr/>'
             f'<wps:spPr><a:xfrm><a:off x="{self.X(x0)}" y="{self.Y(y0)}"/><a:ext cx="{W}" cy="{H}"/></a:xfrm>'
             f'{geom}<a:noFill/>{self.ln(color, lw, dash, arrow, head, tail)}</wps:spPr><wps:bodyPr/></wps:wsp>')
 
@@ -180,8 +180,10 @@ def diagram_run(resolved, font, title='', max_w_in=10.2, max_h_in=5.5, frame_mm=
             r = it['r']
             cv.shape('ellipse', it['cx'] - r, it['cy'] - r, 2 * r, 2 * r, it.get('fill'), it['color'], it['lw'], it.get('dash', ''))
         elif t == 'line':
+            # 0.16.0: a jump arc is its points here (engine/diagram.mjs plainPts); a shadow under the upper arrow is a plain grey line, named so it can be found and removed in Word
             cv.poly(it['pts'], it['color'], it['lw'], it.get('dash', ''), bool(it.get('arrow')),
-                    head=it.get('head') if 'head' in it else None, tail=it.get('tail') if 'head' in it else None, bez=it.get('bez'))
+                    head=it.get('head') if 'head' in it else None, tail=it.get('tail') if 'head' in it else None, bez=it.get('bez'),
+                    name='Arrow shadow' if it.get('shadow') else 'Line')
         elif t == 'text':
             cv.text(it, font)
     return parse_xml(cv.xml(title))

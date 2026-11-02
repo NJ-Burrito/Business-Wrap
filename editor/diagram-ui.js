@@ -844,6 +844,8 @@ function dgCanvasPaint(fig, legMsg = '') {
   if (live && S.snap && !S.dgFrameLive.alt) ui.insertAdjacentHTML('beforeend', `<i class="dg-cv-grid" style="background-size:${DG_CV_STEP}mm ${DG_CV_STEP}mm"></i>`);
   for (const h of Object.keys(names)) ui.insertAdjacentHTML('beforeend', `<b class="dg-cv-h" data-dg-cv="${h}" role="button" aria-label="${esc(`${t('dgCvSize')}: ${names[h]}`)}" title="${esc(`${t('dgCvSize')}: ${names[h]}`)}"></b>`);
   if (legMsg) ui.insertAdjacentHTML('beforeend', `<span class="dg-cv-note" role="note">${esc(legMsg)}</span>`);
+  // 0.16.0: a stored drawing without model.routing offers its one-click apply on the sheet, top right in both languages (the ribbon's diagram tab is full: 28 tools; the bottom holds the legend, the top left corner is where a press on the empty drawing lands)
+  if (+dgBlock(fig.dataset.dg, S.dg.ed)?.model?.routing !== 2) ui.insertAdjacentHTML('beforeend', `<button type="button" class="dg-cv-route" data-dg-cv-route title="${esc(t('dgCvRoute'))}" style="position:absolute;right:8px;top:${legMsg ? 34 : 8}px;padding:2px 9px;border-radius:6px;border:1px solid #14233a;background:#fff;color:#14233a;font-family:inherit;font-weight:600;font-size:12px;line-height:1.5;cursor:pointer;pointer-events:auto">${esc(t('dgCvRoute'))}</button>`);
   if (live) {
     const f = S.dgFrameLive.frame;
     ui.insertAdjacentHTML('beforeend', `<span class="dg-cv-read" dir="ltr">${f.wMm.toFixed(1)} × ${f.hMm.toFixed(1)} mm${S.dgFrameLive.capped ? ` · ${esc(t('dgCvMax'))}` : ''}</span>`);
@@ -918,6 +920,8 @@ function dgCanvasDrag(e, handle) {
   document.addEventListener('pointerup', up);
 }
 document.addEventListener('pointerdown', (e) => {
+  const r = e.target.closest?.('[data-dg-cv-route]');
+  if (r && e.button === 0 && S.dg) { e.preventDefault(); e.stopPropagation(); dgCanvasAction('dgCvRoute'); return; }
   const h = e.target.closest?.('[data-dg-cv]');
   if (!h || e.button !== 0 || !S.dg) return;
   dgCanvasDrag(e, h);
@@ -927,6 +931,8 @@ function dgCanvasAction(a) {
   const ptr = S.dg.b;
   const ed = S.dg.ed;
   if (a === 'dgCvAuto') { dgFrameSave(null, ptr, ed); return; }
+  // 0.16.0: one click puts a stored drawing on the arrows that never lie on each other (spaced, jump arcs, small shadows); no shape moves
+  if (a === 'dgCvRoute') { dgSave(DIAGRAM.applyRouting(dgBlock(ptr, ed).model), ptr, ed); return; }
   const room = dgRoom(ptr, ed);
   if (a === 'dgCvPage') { dgFrameSave({ wMm: room.wMm, hMm: room.hMm, mode: 2 }, ptr, ed); return; }
   if (a === 'dgCvShapes') {
@@ -934,7 +940,24 @@ function dgCanvasAction(a) {
     dgFrameSave({ ...DIAGRAM.frameHug(view, room.wMm, room.hMm), mode: 1 }, ptr, ed);
   }
 }
-bwExt({ cmds: ['dgCvShapes', 'dgCvPage', 'dgCvAuto'].map((id) => ({ id, group: 'diagram', edit: true })), on: { render: () => dgRibbonCanvas() } });
+bwExt({ cmds: ['dgCvShapes', 'dgCvPage', 'dgCvAuto', 'dgCvRoute'].map((id) => ({ id, group: 'diagram', edit: true })), on: { render: () => dgRibbonCanvas() }, expose: { diagram: { autoLayout: dgAutoLayoutAt, check: dgCheckAt } } });
+/** 0.16.0 · editor_action autoLayout {pointer, aspect, maxNodes, locale}: lays the diagram out for the frame it prints in (block.frame, else the automatic figure's measured box)
+ *  as ONE undoable replace, and returns the legibility result. A graph that no single sheet can hold is left as one drawing and reported (`figures` = how many legible figures
+ *  it would take): the splitFigure action cuts it. */
+function dgAutoLayoutAt(ptr, args = {}, ed = S.ed) {
+  const blk = dgBlock(ptr, ed);
+  if (!blk || blk.kind !== 'diagram') throw new Error(`no diagram block at ${ptr}`);
+  const r = DIAGRAM.autoLayout(blk.model || {}, { aspect: +args.aspect > 0 ? +args.aspect : undefined, maxNodes: +args.maxNodes > 0 ? +args.maxNodes : 20, frame: blk.frame, theme: S.theme, locale: ed === 'en' ? 'en' : 'ar' });
+  commit([{ op: 'replace', path: `${ptr}/model`, value: r.model, old: blk.model }], { ed });
+  return { pointer: ptr, ok: r.ok, ...dgCheckSummary(r.legibility), aspect: r.aspect, figures: r.figures ? r.figures.length : 1, splitAdvised: !!r.figures && !r.legibility.ok };
+}
+/** The check for one diagram block, in the frame it prints in: legibility plus the arrow overlap and crossing counts. */
+function dgCheckAt(ptr, ed = S.ed) {
+  const blk = dgBlock(ptr, ed);
+  if (!blk || blk.kind !== 'diagram') throw new Error(`no diagram block at ${ptr}`);
+  return { pointer: ptr, ...dgCheckSummary(DIAGRAM.legibility(blk.model || {}, { frame: blk.frame, theme: S.theme, locale: ed === 'en' ? 'en' : 'ar' })) };
+}
+function dgCheckSummary(lg) { return ({ legible: lg.ok, minPtPrinted: lg.minPtPrinted, minPt: lg.minPt, frameMm: lg.frameMm, small: lg.small.length, textOverlaps: lg.overlaps.length, arrowOverlaps: lg.wireOverlaps, arrowCrossings: lg.wireCrossings, jumps: lg.wires.hops, routing: lg.wires.routing }); }
 /** The two canvas tools join the diagram tab of the ribbon (its tab list lives in 25-ribbon.js; they are added once, after it has loaded). */
 function dgRibbonCanvas() {
   if (dgRibbonCanvas.done || typeof RB_TABS === 'undefined') return;
@@ -942,7 +965,7 @@ function dgRibbonCanvas() {
   const tab = RB_TABS.find((x) => x[0] === 'diagram');
   if (!tab || tab[1].some((g) => g[0] === 'canvas')) return;
   tab[1].push(['canvas', ['dgCvShapes', 'dgCvPage']]);
-  RB_LISTED.add('dgCvShapes'); RB_LISTED.add('dgCvPage'); RB_LISTED.add('dgCvAuto');
+  RB_LISTED.add('dgCvShapes'); RB_LISTED.add('dgCvPage'); RB_LISTED.add('dgCvAuto'); RB_LISTED.add('dgCvRoute');
   if (typeof RB !== 'undefined') RB.defs = null;
 }
 /** Live redraw of one diagram while dragging (no op yet): the drawing only, then the paint. */

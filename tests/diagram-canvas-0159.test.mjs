@@ -40,6 +40,7 @@ const run = (code, args, deps = ['pymupdf']) => { const r = spawnSync(...py(['-c
   const { DIAGRAM: OLD } = await import(pathToFileURL(base).href);
   for (const loc of ['ar', 'en']) {
     const m = DIAGRAM.layout(wf[loc]);
+    delete m.routing; // 0.16.0: layout() now sets the key; this stands for a drawing stored before it
     for (const ed of [false, true]) {
       n += 1;
       const a = DIAGRAM.render(DIAGRAM.ensure(m), { theme, locale: loc, editor: ed });

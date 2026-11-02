@@ -37,7 +37,7 @@ for (const loc of ['ar', 'en']) {
   check(`${loc}: node kinds kept (5 decisions, 4 staff, 1 start, 1 payment, 1 rework, 1 ok, 1 stop)`, kinds('decision') === 5 && kinds('staff') === 4 && kinds('start') === 1 && kinds('payment') === 1 && kinds('rework') === 1 && kinds('ok') === 1 && kinds('stop') === 1);
   const wires = r.items.filter((x) => x.t === 'line' && x.wire && x.id);
   check(`${loc}: one routed wire per edge, three line classes`, wires.length === m.edges.length && ['main', 'return', 'stop'].every((k) => wires.some((w) => w.wire === k)), `${wires.length}/${m.edges.length}`);
-  check(`${loc}: every wire is orthogonal`, wires.every((w) => w.pts.every((p, i) => !i || Math.abs(p[0] - w.pts[i - 1][0]) < 0.6 || Math.abs(p[1] - w.pts[i - 1][1]) < 0.6)));
+  check(`${loc}: every wire is orthogonal`, wires.every((w) => w.route.every((p, i) => !i || Math.abs(p[0] - w.route[i - 1][0]) < 0.6 || Math.abs(p[1] - w.route[i - 1][1]) < 0.6))); // 0.16.0: the joints (route); the drawn points of a laid-out figure carry jump arcs
   const legend = r.items.filter((x) => x.t === 'text' && x.legend);
   check(`${loc}: the legend names 6 shape kinds and 3 line kinds`, legend.length === 9, String(legend.length));
   check(`${loc}: real <text>, no stroke on type, no foreignObject`, (svg.match(/<text /g) || []).length > 30 && !/<text[^>]*stroke=/.test(svg) && !svg.includes('foreignObject'));

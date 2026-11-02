@@ -4,6 +4,7 @@
     "dgCvPage": "ملاءمة الصفحة",
     "dgCvAuto": "حجم تلقائي للوحة",
     "dgCvSize": "حجم لوحة المخطط",
+    "dgCvRoute": "أسهم لا تتداخل",
     "dgCvMax": "أقصى ما تسمح به الصفحة",
     "rb.g.canvas": "لوحة المخطط"
   },
@@ -12,6 +13,7 @@
     "dgCvPage": "Fit to page",
     "dgCvAuto": "Automatic canvas size",
     "dgCvSize": "Diagram canvas size",
+    "dgCvRoute": "Arrows never overlap",
     "dgCvMax": "page maximum",
     "rb.g.canvas": "Canvas"
   }

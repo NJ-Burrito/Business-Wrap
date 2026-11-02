@@ -17,7 +17,7 @@
 // A node without x/y is placed by `layout()`; edges are always routed from the node geometry.
 export const DIAGRAM = (() => {
   /* ── vocabulary ─────────────────────────────────────────────────────── */
-  const KINDS = ['staff', 'applicant', 'start', 'payment', 'rework', 'system', 'decision', 'ok', 'stop', 'note', 'group', 'text', 'symbol'];
+  const KINDS = ['staff', 'applicant', 'start', 'payment', 'rework', 'system', 'decision', 'ok', 'stop', 'join', 'note', 'group', 'text', 'symbol'];
   const WIRE_KINDS = ['main', 'return', 'stop'];
   const COLORS = ['staff', 'applicant', 'payment', 'rework', 'system', 'ok', 'stop', 'note'];
   const SYMBOLS = ['person', 'people', 'clock', 'check', 'cross', 'cog', 'document', 'mail', 'warning', 'calendar', 'lock', 'flag', 'star'];
@@ -64,6 +64,16 @@ export const DIAGRAM = (() => {
   const LINES = { solid: '', dashed: '9 4', dotted: '1.5 4' };
   const WEIGHTS = { thin: 1, normal: null, thick: 3.4 };
   const SIDES = ['t', 'r', 'b', 'l'];
+  /* 0.16.0 (figure lane): everything below is additive. A model without the key draws exactly as before.
+   *   model.routing = 2     parallel arrows kept a few units apart, a jump arc where one arrow crosses another, a small shadow under the upper one
+   *   node.fs               the lettering size of one shape's label (units; absent = the kind's own)
+   *   kind 'join'           a real merge point (a small filled dot); arrows meet on it, no hand-made zero-size group
+   *   block.frame           the figure's print frame (mm), as before; the legibility check reads it */
+  const ROUTING = 2;
+  /** What print really gives an automatic figure (measured in a real PDF, tests/diagram-overlap-0160): the SVG's width is the text width less the figure box's 8.5 mm of padding and rule, its height is capped at 116 mm. */
+  const PRINT = { wMm: 255.9, maxHmm: 116, padMm: 8.5 };
+  const routing2 = (m) => +m?.routing >= ROUTING;
+  const fsOf = (n, d) => (Number.isFinite(+n.fs) && +n.fs >= 8 && +n.fs <= 40 ? +n.fs : d);
 
   /* legend wording; a model may rename any entry (model.legend[key]) */
   const KEY = {
@@ -100,20 +110,24 @@ export const DIAGRAM = (() => {
   /** The size a node wants for its own text (a node the user resized keeps its size). */
   function measure(n) {
     if (n.kind === 'decision') {
-      const lines = wrap(n.label, 110, FS.gate);
-      const wide = Math.max(...lines.map((l) => textW(l, FS.gate)));
+      const fg = fsOf(n, FS.gate);
+      const lines = wrap(n.label, 110, fg);
+      const wide = Math.max(...lines.map((l) => textW(l, fg)));
       const hw = Math.max(G.gate, Math.ceil(wide * 0.62) + 14);
-      const hh = Math.max(G.gate - 4, Math.ceil(lines.length * FS.gate * 0.9) + 18);
+      const hh = Math.max(G.gate - 4, Math.ceil(lines.length * fg * 0.9) + 18);
       return { w: hw * 2, h: hh * 2 };
     }
+    if (n.kind === 'join') return { w: 10, h: 10 };
     if (n.kind === 'symbol') return { w: 36, h: 36 };
     if (n.kind === 'text') return { w: Math.max(40, Math.ceil(longW(n.label, FS.text))), h: Math.max(28, String(n.label ?? '').split(NL).length * 20 + 8) };
     if (n.kind === 'group') return { w: 320, h: 120 };
     const badge = STADIUM.has(n.kind) ? 26 : 0;
-    const want = Math.max(longW(n.label, FS.title), n.sub ? longW(n.sub, FS.sub) : 0) + G.padX * 2 + badge;
+    const ft = fsOf(n, FS.title);
+    const lineH = ft === FS.title ? G.lineH : (G.lineH * ft) / FS.title;
+    const want = Math.max(longW(n.label, ft), n.sub ? longW(n.sub, FS.sub) : 0) + G.padX * 2 + badge;
     const w = Math.min(G.maxW, Math.max(G.minW, Math.ceil(want)));
-    const lines = wrap(n.label, w - G.padX * 2 - badge, FS.title);
-    const h = Math.max(G.minH, lines.length * G.lineH + (n.sub ? G.subH : 0) + 20);
+    const lines = wrap(n.label, w - G.padX * 2 - badge, ft);
+    const h = Math.max(G.minH, Math.ceil(lines.length * lineH) + (n.sub ? G.subH : 0) + 20);
     return { w, h };
   }
 
@@ -186,6 +200,8 @@ export const DIAGRAM = (() => {
       const v2 = resolve(out).view;
       if (Math.abs(Math.log(v2.w / v2.h / aspect)) > Math.abs(Math.log(ratio / aspect))) out = best.m;
     } else out = layoutOnce(input, { force });
+    // 0.16.0: a drawing that is laid out (again) takes the arrows that never lie on each other; ensure() lays out for display only and leaves the key alone
+    if (opts.routing !== false) out.routing = ROUTING;
     if (maxNodes > 0) {
       const sug = splitByPhase(out, { maxNodes, suggestOnly: true });
       if (sug.length > 1) out.split = sug;
@@ -403,31 +419,100 @@ export const DIAGRAM = (() => {
   /** 0.15.3 (T7) · the fewest figures, cut on phase / role boundaries with continuation stubs, that each print at `minPt` or more.
    *  @returns {{figures: {caption: string, nodes: string[], model: object, minPtPrinted: number}[], minPtPrinted: number, ok: boolean}|null}
    *  null when the figure already prints legibly, or is too small to cut. */
-  function splitForLegibility(modelIn, { frameMm = [269, 140], theme, locale = 'ar', minPt = 7, aspect = 1.5, maxNodes } = {}) {
+  function splitForLegibility(modelIn, { frameMm = [PRINT.wMm, PRINT.maxHmm], theme, locale = 'ar', minPt = 7, aspect = frameMm[0] / frameMm[1], maxNodes } = {}) {
     const base = ensure(modelIn);
     const count = base.nodes.filter((n) => !FREE.has(n.kind)).length;
     if (count < 6) return null;
     const lg0 = legibility(base, { frameMm, theme, locale, minPt });
     if (lg0.small.length === 0) return null;
     let best = null;
-    for (let cap = Math.min(maxNodes || 20, count - 1); cap >= 4; cap -= 2) {
+    for (let cap = Math.min(maxNodes || 20, count - 1); cap >= 4; cap -= 1) {
       const figs = splitByPhase(base, { maxNodes: cap, locale, aspect, byRole: true });
       if (figs.length < 2) continue;
-      const rated = figs.map((f) => ({ ...f, minPtPrinted: legibility(f.model, { frameMm, theme, locale, minPt }).minPtPrinted }));
+      const rated = figs.map((f) => { const lg = legibility(f.model, { frameMm, theme, locale, minPt }); return { ...f, minPtPrinted: lg.minPtPrinted, sharp: lg.small.length === 0 }; });
       const low = Math.min(...rated.map((f) => f.minPtPrinted));
-      if (!best || low > best.minPtPrinted) best = { figures: rated, minPtPrinted: low, ok: low >= minPt, cap };
-      if (low >= minPt) break;
+      const sharp = rated.every((f) => f.sharp); // none under minPt, unrounded (a 6.96 pt text prints as 7.0 and is still too small)
+      if (!best || (sharp && !best.ok) || (sharp === best.ok && low > best.minPtPrinted)) best = { figures: rated.map(({ sharp: z, ...f }) => f), minPtPrinted: low, ok: sharp, cap };
+      if (sharp) break;
     }
     return best;
+  }
+
+  /* ── 0.16.0 · autoLayout: from any model to a drawing that prints legibly, in one call ──
+   * The sheet's proportion first (the frame it prints in), then a few neighbours; the first drawing with every text at `minPt` or more, no text overlapping
+   * and no arrow lying on another wins. A graph that no proportion rescues is cut into the fewest figures that each print legibly (splitForLegibility).
+   * Forks (a desk with two exits), excursions (a side branch from a desk with no forward exit) and a return to a later desk in the same row are the
+   * graph shapes it must handle; tests/autolayout-0160.test.mjs draws each of them.
+   * @returns {{ok: boolean, model: object, legibility: object, frameMm: number[], aspect: number, figures: null|{caption: string, nodes: string[], model: object, minPtPrinted: number}[], minPtPrinted: number}} */
+  function autoLayout(modelIn, { aspect, maxNodes = 20, frame, frameMm, theme, locale = 'ar', minPt = 7 } = {}) {
+    const fr = frameNorm(frame);
+    const box0 = frameMm || (fr ? [fr.wMm, fr.hMm] : [PRINT.wMm, PRINT.maxHmm]);
+    const want = aspect > 0 ? aspect : box0[0] / box0[1];
+    const rate = (m, a) => {
+      const lg = legibility(m, { frameMm: box0, theme, locale, minPt });
+      return { m, lg, aspect: a, clean: lg.ok && lg.wireOverlaps === 0, miss: lg.small.length + lg.overlaps.length + lg.wireOverlaps };
+    };
+    const better = (t, best) => !best || (t.clean && !best.clean) || (t.clean === best.clean && (t.miss < best.miss || (t.miss === best.miss && t.lg.minPtPrinted > best.lg.minPtPrinted)));
+    /** The proportion that prints best for one model: the sheet's own first, then neighbours, only while a neighbour could still rescue it. */
+    const search = (src) => {
+      let best = null;
+      const seen = new Set();
+      for (const k of [1, 1.3, 0.77]) {
+        const a = Math.round(want * k * 100) / 100;
+        if (seen.has(a)) continue;
+        seen.add(a);
+        const t = rate(layout(src, { force: true, aspect: a }), a);
+        if (better(t, best)) best = t;
+        if (best.clean || best.lg.minPtPrinted < minPt * 0.8) break; // clean, or too far from legible for a different proportion to matter
+      }
+      return best;
+    };
+    const base = clone(modelIn || {});
+    delete base.split;
+    const best = search(base);
+    const out = { ok: best.clean, model: best.m, legibility: best.lg, frameMm: box0, aspect: best.aspect, figures: null, minPtPrinted: best.lg.minPtPrinted };
+    if (best.clean) return out;
+    // too big for one sheet: the fewest figures that each print legibly; a figure that still misses gets the proportion search, then a smaller cut is tried
+    const count = best.m.nodes.filter((n) => !FREE.has(n.kind)).length;
+    if (count < 6) return out;
+    let kept = null;
+    const consider = (figs, cap) => {
+      const rated = figs.map((f) => {
+        const t = search(f.model);
+        return { ...f, model: t.m, minPtPrinted: t.lg.minPtPrinted, wireOverlaps: t.lg.wireOverlaps, clean: t.clean };
+      });
+      const low = Math.min(...rated.map((f) => f.minPtPrinted));
+      const all = rated.every((f) => f.clean);
+      if (!kept || (all && !kept.all) || (all === kept.all && low > kept.low)) kept = { figs: rated, low, all, cap };
+      return all;
+    };
+    // the existing cut first (splitForLegibility), then smaller ones while a figure still misses
+    const sp = splitForLegibility(best.m, { frameMm: box0, theme, locale, minPt, aspect: want, maxNodes });
+    let done = sp ? consider(sp.figures, sp.cap) : false;
+    for (let cap = (sp ? sp.cap : Math.min(maxNodes || 20, count - 1)) - (sp ? 1 : 0); !done && cap >= 4; cap -= 1) {
+      const figs = splitByPhase(best.m, { maxNodes: cap, locale, aspect: want, byRole: true });
+      if (figs.length >= 2) done = consider(figs, cap);
+    }
+    if (kept) Object.assign(out, { ok: kept.all, figures: kept.figs.map(({ clean, ...f }) => f), minPtPrinted: kept.low });
+    return out;
+  }
+  /** The same drawing with the 0.16 arrows (spaced, with jump arcs and shadows); no shape moves. The one-click apply in the diagram tools. */
+  function applyRouting(modelIn) {
+    const m = clone(modelIn || {});
+    m.routing = ROUTING;
+    return m;
   }
 
   /* ── 0.15.0 · F5: is the lettering readable once the sheet is printed into its frame? ── */
   /** Printed size of every text on the sheet when the drawing is fitted into `frameMm` (the figure's frame on the page),
    *  plus the texts that overlap a neighbour or overrun their own shape. Computed from the resolved drawing, never typed.
    *  @returns {{scale: number, minPt: number, minPtPrinted: number, small: string[], overlaps: string[][], ok: boolean}}  scale = mm per drawing unit */
-  function legibility(modelIn, { frameMm = [269, 140], theme, locale = 'ar', minPt = 7 } = {}) {
-    const r = resolve(modelIn, { theme, locale });
-    const scale = Math.min(frameMm[0] / r.view.w, frameMm[1] / r.view.h);
+  function legibility(modelIn, { frameMm, frame, theme, locale = 'ar', minPt = 7 } = {}) {
+    const r = resolve(modelIn, { theme, locale, stats: true });
+    // 0.16.0: ONE frame everywhere = what print gives: the block's own canvas (block.frame) when it has one, else the automatic figure's measured box
+    const fr = frameNorm(frame);
+    const box0 = frameMm || (fr ? [fr.wMm, fr.hMm] : [PRINT.wMm, PRINT.maxHmm]);
+    const scale = Math.min(box0[0] / r.view.w, box0[1] / r.view.h, ...(fr && !frameMm ? [FRAME.cap] : []));
     const pt = (size) => size * scale * (72 / 25.4);
     const texts = r.items.filter((it) => it.t === 'text');
     const nameOf = (t) => t.id || (t.edge ? `edge:${t.edge}` : t.legend ? `legend:${t.legend}` : '?');
@@ -454,7 +539,7 @@ export const DIAGRAM = (() => {
       }
     }
     const minPtPrinted = sizes.length ? Math.round(Math.min(...sizes) * 10) / 10 : 0;
-    return { scale, view: r.view, minPt, minPtPrinted, small, overlaps, ok: small.length === 0 && overlaps.length === 0 };
+    return { scale, view: r.view, frameMm: box0, minPt, minPtPrinted, small, overlaps, wires: r.wires, wireOverlaps: r.wires.overlaps, wireCrossings: r.wires.crossings, ok: small.length === 0 && overlaps.length === 0 };
   }
 
   /** A model ready to draw: sizes and positions filled in, edge kinds settled. */
@@ -464,7 +549,7 @@ export const DIAGRAM = (() => {
     const ids = new Set(m.nodes.map((n) => n.id));
     m.edges = (m.edges || []).filter((e) => e && ids.has(e.from) && ids.has(e.to));
     m.edges.forEach((e, i) => { if (!e.id) e.id = `e${i + 1}`; });
-    if (m.nodes.some((n) => !FREE.has(n.kind) && (n.x == null || n.y == null))) return layout(m);
+    if (m.nodes.some((n) => !FREE.has(n.kind) && (n.x == null || n.y == null))) return layout(m, { routing: false });
     for (const n of m.nodes) if (n.w == null || n.h == null) Object.assign(n, measure(n));
     for (const n of m.nodes) if (n.x == null || n.y == null) { n.x = G.margin; n.y = G.margin; }
     return classify(m);
@@ -546,11 +631,12 @@ export const DIAGRAM = (() => {
     // the long corridors first, so the short hops take the lanes nearest the boxes
     const orderOf = { wrap: 0, under: 1, over: 1, down: 2, up: 2, straight: 3 };
     // 0.15.6 (A5): an end the person placed on the outline keeps that point and its face; the other end stays automatic
+    const aprec = routing2(model) ? 3 : 1;
     for (const p of plan) {
       const fa = validAnchor(p.e.fromAnchor);
       const ta = validAnchor(p.e.toAnchor);
-      if (fa) { p.a = anchorPoint(p.S.n, fa.side, fa.at); p.sides[0] = fa.side; p.fa = true; }
-      if (ta) { p.b = anchorPoint(p.T.n, ta.side, ta.at); p.sides[1] = ta.side; p.tb = true; }
+      if (fa) { p.a = anchorPoint(p.S.n, fa.side, fa.at, aprec); p.sides[0] = fa.side; p.fa = true; }
+      if (ta) { p.b = anchorPoint(p.T.n, ta.side, ta.at, aprec); p.sides[1] = ta.side; p.tb = true; }
       p.anch = !!(fa || ta);
     }
     const routed = [...plan].sort((a, b) => orderOf[a.mode] - orderOf[b.mode] || Math.abs(b.a[0] - b.b[0]) - Math.abs(a.a[0] - a.b[0]));
@@ -704,10 +790,314 @@ export const DIAGRAM = (() => {
     return pts;
   }
 
+  /* ── 0.16.0 · arrows that never lie on each other (model.routing = 2) ──────────────────────────────
+   * Three steps on the routed plan, the same for the editor, the PDF, Word and the HTML (they all draw resolve()'s primitives):
+   *  1. arrows that share a line are moved SPACE units apart, the later (upper) one carrying a small shadow;
+   *  2. where one arrow crosses another, the upper arrow jumps over it by a small arc with a small shadow under it;
+   *  3. counts of what is left (overlaps, crossings) for the check.
+   * A hand-set path (via joints, anchors, a straight or curved route) is never moved; it still gets its arcs. */
+  const SPACE = 5;
+  const HOP = 5;
+  const SHADOW = [1.4, 1.8];
+  const SHADOW_INK = '#cdccc7';
+  const flatBez = (bez) => bez.flatMap((sg, k) => Array.from({ length: k ? 16 : 17 }, (_, j) => bezAt(sg, (k ? j + 1 : j) / 16)));
+  const lenOf = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+  /** The straight pieces of every arrow, in drawing order: {p, pi, i, a, b, len, o: 'h'|'v'|'d', first, last}. A curved arrow gives its flattened line. */
+  function wireSegs(plan) {
+    const out = [];
+    plan.forEach((p, pi) => {
+      const pts = p.bez ? flatBez(p.bez) : p.pts;
+      for (let i = 1; i < pts.length; i += 1) {
+        const a = pts[i - 1];
+        const b = pts[i];
+        const len = lenOf(a, b);
+        if (len < 0.5) continue;
+        out.push({ p, pi, i, a, b, len, o: Math.abs(a[1] - b[1]) < 0.5 ? 'h' : Math.abs(a[0] - b[0]) < 0.5 ? 'v' : 'd', first: i === 1, last: i === pts.length - 1, curved: !!p.bez });
+      }
+    });
+    return out;
+  }
+  /** Pairs of pieces (of different arrows) lying on one line: parallel, closer than 1.5 units, sharing more than 2 units of length. A curve is never one of them. */
+  function lyingOn(segs) {
+    const out = [];
+    const lines = segs.filter((q) => !q.curved);
+    for (let x = 0; x < lines.length; x += 1) {
+      const s = lines[x];
+      const ux = (s.b[0] - s.a[0]) / s.len;
+      const uy = (s.b[1] - s.a[1]) / s.len;
+      for (let y = x + 1; y < lines.length; y += 1) {
+        const t = lines[y];
+        if (t.pi === s.pi) continue;
+        if (Math.abs(ux * ((t.b[1] - t.a[1]) / t.len) - uy * ((t.b[0] - t.a[0]) / t.len)) > 0.02) continue;
+        const off = (q) => Math.abs((q[0] - s.a[0]) * uy - (q[1] - s.a[1]) * ux);
+        if (off(t.a) >= 1.5 || off(t.b) >= 1.5) continue;
+        const ta = (t.a[0] - s.a[0]) * ux + (t.a[1] - s.a[1]) * uy;
+        const tb = (t.b[0] - s.a[0]) * ux + (t.b[1] - s.a[1]) * uy;
+        if (Math.min(s.len, Math.max(ta, tb)) - Math.max(0, Math.min(ta, tb)) > 2) out.push([s, t]);
+      }
+    }
+    return out;
+  }
+  /** Where two pieces of different arrows cross (a proper crossing: inside both pieces, not a junction). */
+  function crossAt(s, t) {
+    const d1 = [s.b[0] - s.a[0], s.b[1] - s.a[1]];
+    const d2 = [t.b[0] - t.a[0], t.b[1] - t.a[1]];
+    const den = d1[0] * d2[1] - d1[1] * d2[0];
+    if (Math.abs(den) < 1e-9) return null;
+    const c = [t.a[0] - s.a[0], t.a[1] - s.a[1]];
+    const u = (c[0] * d2[1] - c[1] * d2[0]) / den;
+    const v = (c[0] * d1[1] - c[1] * d1[0]) / den;
+    const es = 1.5 / s.len;
+    const et = 1.5 / t.len;
+    if (u <= es || u >= 1 - es || v <= et || v >= 1 - et) return null;
+    return { x: s.a[0] + d1[0] * u, y: s.a[1] + d1[1] * u };
+  }
+  function crossings(segs) {
+    const out = [];
+    for (let x = 0; x < segs.length; x += 1) {
+      for (let y = x + 1; y < segs.length; y += 1) {
+        const s = segs[x];
+        const t = segs[y];
+        if (s.pi === t.pi) continue;
+        const at = crossAt(s, t);
+        if (at) out.push(s.pi < t.pi ? { lo: s, up: t, ...at } : { lo: t, up: s, ...at });
+      }
+    }
+    return out;
+  }
+  /** Where the ray from `o` (inside, or just off the middle of) shape `n` along unit `u` leaves its outline, or null when the ray misses the shape. */
+  function exitPoint(n, o, u) {
+    const hw = n.w / 2;
+    const hh = n.h / 2;
+    const cx = n.x + hw;
+    const cy = n.y + hh;
+    const inside = (x, y) => {
+      const dx = Math.abs(x - cx);
+      const dy = Math.abs(y - cy);
+      if (n.kind === 'decision') return dx / hw + dy / hh <= 1;
+      if (STADIUM.has(n.kind)) { const core = Math.max(0, hw - hh); const ex = Math.max(0, dx - core); return ex * ex + dy * dy <= hh * hh; }
+      return dx <= hw && dy <= hh;
+    };
+    if (!inside(o[0], o[1])) return null;
+    let lo = 0;
+    let hi = Math.hypot(n.w, n.h);
+    for (let i = 0; i < 40; i += 1) { const m = (lo + hi) / 2; if (inside(o[0] + u[0] * m, o[1] + u[1] * m)) lo = m; else hi = m; }
+    return [r1(o[0] + u[0] * lo), r1(o[1] + u[1] * lo)];
+  }
+  /** Step 1: move arrows that share a line apart. Returns Map(plan entry → Set of segment indexes) of the pieces that lie over another arrow (they carry the shadow). */
+  function spaceWires(plan, solids) {
+    const over = new Map();
+    const note = (p, i) => { if (!over.has(p)) over.set(p, new Set()); over.get(p).add(i); };
+    const hand = (p) => !!(p.anch || (Array.isArray(p.e.via) && p.e.via.length) || (ROUTES.includes(p.e.route) && p.e.route !== 'elbow'));
+    const straightFree = (p) => p.e.route === 'straight' && !p.anch && !(Array.isArray(p.e.via) && p.e.via.length) && p.pts.length === 2;
+    const loose = (s) => straightFree(s.p) || (!hand(s.p) && !s.curved && s.i > 1 && s.i < s.p.pts.length - 1);
+    for (let pass = 0; pass < 6; pass += 1) {
+      const pairs = lyingOn(wireSegs(plan));
+      if (!pairs.length) break;
+      // groups of pieces on one line (union of the pairs)
+      const root = new Map();
+      const find = (s) => { let r = s; while (root.get(r) !== r) r = root.get(r); return r; };
+      for (const [s, t] of pairs) { if (!root.has(s)) root.set(s, s); if (!root.has(t)) root.set(t, t); root.set(find(t), find(s)); }
+      const groups = new Map();
+      for (const s of root.keys()) { const r = find(s); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(s); }
+      let moved = 0;
+      for (const list of groups.values()) {
+        list.sort((a, b) => a.pi - b.pi || a.i - b.i);
+        const base = list.find((s) => !loose(s)) || list[0];
+        let k = 0;
+        for (const s of list) {
+          if (s === base) continue;
+          note(s.p, s.i);
+          if (!loose(s)) continue;
+          k += 1;
+          const ax = s.o === 'h' ? 1 : 0; // the coordinate that changes
+          let done = false;
+          if (straightFree(s.p)) {
+            // a straight arrow between two shapes: both ends slide along their outlines so the line runs parallel, SPACE further over
+            const L0 = lenOf([s.p.S.cx, s.p.S.cy], [s.p.T.cx, s.p.T.cy]) || 1;
+            const ux = (s.p.T.cx - s.p.S.cx) / L0;
+            const uy = (s.p.T.cy - s.p.S.cy) / L0;
+            for (const sign of [1, -1]) {
+              const d = sign * k * SPACE;
+              const a2 = exitPoint(s.p.S.n, [s.p.S.cx - uy * d, s.p.S.cy + ux * d], [ux, uy]);
+              const b2 = exitPoint(s.p.T.n, [s.p.T.cx - uy * d, s.p.T.cy + ux * d], [-ux, -uy]);
+              if (a2 && b2 && (!crosses([a2, b2], s.p, solids) || crosses(s.p.pts, s.p, solids))) { s.p.pts = [a2, b2]; s.p.a = a2; s.p.b = b2; done = true; moved += 1; break; }
+            }
+            if (!done) k -= 1;
+            continue;
+          }
+          for (const sign of [1, -1]) {
+            const d = sign * k * SPACE;
+            const pts = s.p.pts.map((q) => [...q]);
+            pts[s.i - 1][ax] += d;
+            pts[s.i][ax] += d;
+            // the legs on either side stay legs: same direction, at least 6 units long
+            const ok = [[s.i - 2, s.i - 1], [s.i, s.i + 1]].every(([u, v]) => {
+              const o0 = s.p.pts[v][ax] - s.p.pts[u][ax];
+              const o1 = pts[v][ax] - pts[u][ax];
+              return Math.abs(o1) >= 6 && Math.sign(o1) === Math.sign(o0 || o1);
+            });
+            if (ok && (!crosses(pts, s.p, solids) || crosses(s.p.pts, s.p, solids))) { s.p.pts = pts; done = true; moved += 1; break; }
+          }
+          if (!done) k -= 1;
+        }
+      }
+      if (!moved) break;
+    }
+    return over;
+  }
+  /** Step 2: one jump arc for each crossing, on the upper (later) arrow; on the lower one when the upper has no room. */
+  function planHops(plan) {
+    const all = crossings(wireSegs(plan));
+    const hops = new Map(); // plan entry → [{S, r, x, y}]  (S = distance along that arrow's own line)
+    const cums = new Map();
+    const cumOf = (p) => {
+      if (!cums.has(p)) {
+        const pts = p.bez ? flatBez(p.bez) : p.pts;
+        const cum = [0];
+        for (let i = 1; i < pts.length; i += 1) cum.push(cum[i - 1] + lenOf(pts[i - 1], pts[i]));
+        cums.set(p, cum);
+      }
+      return cums.get(p);
+    };
+    const roomFor = (s, x, y, r) => {
+      const da = lenOf(s.a, [x, y]);
+      const cum = cumOf(s.p);
+      const S = cum[s.i - 1] + da;
+      if (s.curved) {
+        // a curve has no corners: only the line's own ends (the port, and the arrowhead) must stay clear
+        if (S < r + 3 || cum.at(-1) - S < r + 12) return null;
+      } else {
+        // corners are rounded up to 9 units; the line's ends keep clear of the port and of the arrowhead
+        if (da < (s.first ? r + 3 : 15) || s.len - da < (s.last ? r + 12 : 15)) return null;
+      }
+      if ((hops.get(s.p) || []).some((h) => Math.abs(h.S - S) < 2 * r + 4)) return null;
+      return S;
+    };
+    let hopped = 0;
+    for (const c of all) {
+      let placed = false;
+      for (const r of [HOP, 3.4]) {
+        for (const who of [c.up, c.lo]) {
+          const S = roomFor(who, c.x, c.y, r);
+          if (S == null) continue;
+          if (!hops.has(who.p)) hops.set(who.p, []);
+          hops.get(who.p).push({ S, r, x: c.x, y: c.y });
+          placed = true;
+          break;
+        }
+        if (placed) break;
+      }
+      if (placed) hopped += 1;
+    }
+    return { hops, crossings: all.length, hopped };
+  }
+  /** The polyline a hop-carrying arrow is drawn along: the points, with a window of length 2r cut out at each hop and marked [x, y, {r, sw, nx, ny}] / [x, y, {end}]. */
+  function withHops(pts, hops) {
+    const cum = [0];
+    for (let i = 1; i < pts.length; i += 1) cum.push(cum[i - 1] + lenOf(pts[i - 1], pts[i]));
+    const at = (S) => {
+      let i = 1;
+      while (i < pts.length - 1 && cum[i] < S) i += 1;
+      const a = pts[i - 1];
+      const b = pts[i];
+      const t = (S - cum[i - 1]) / (cum[i] - cum[i - 1] || 1);
+      return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+    };
+    const out = [];
+    const arcs = [];
+    let next = 0;
+    for (const h of [...hops].sort((a, b) => a.S - b.S)) {
+      const q1 = at(h.S - h.r);
+      const q2 = at(h.S + h.r);
+      while (next < pts.length && cum[next] < h.S - h.r - 1e-6) { out.push(pts[next]); next += 1; }
+      const L = lenOf(q1, q2) || 1;
+      const ux = (q2[0] - q1[0]) / L;
+      const uy = (q2[1] - q1[1]) / L;
+      // the bump goes up the page (to the right on a vertical line); sweep 1 bulges to the left of the way the line runs
+      let nx = uy;
+      let ny = -ux;
+      let sw = 1;
+      if (ny > 1e-6 || (Math.abs(ny) <= 1e-6 && nx < 0)) { nx = -nx; ny = -ny; sw = 0; }
+      const info = { r: L / 2, sw, nx, ny };
+      out.push([q1[0], q1[1], info], [q2[0], q2[1], { end: true }]);
+      arcs.push({ q1, q2, ...info, cx: (q1[0] + q2[0]) / 2, cy: (q1[1] + q2[1]) / 2 });
+      while (next < pts.length && cum[next] <= h.S + h.r + 1e-6) next += 1;
+    }
+    for (let i = next; i < pts.length; i += 1) out.push(pts[i]);
+    return { pts: out, arcs };
+  }
+  /** An arc as points (Word draws polylines): from q1 to q2, bulging along (nx, ny); off = the shadow's offset. */
+  const arcPts = (a, off = [0, 0]) => Array.from({ length: 9 }, (_, i) => {
+    const th = (Math.PI * i) / 8;
+    return [r1(a.cx + off[0] - (Math.cos(th) * (a.q2[0] - a.q1[0])) / 2 + Math.sin(th) * a.nx * a.r), r1(a.cy + off[1] - (Math.cos(th) * (a.q2[1] - a.q1[1])) / 2 + Math.sin(th) * a.ny * a.r)];
+  });
+  /** The hop-marked polyline as plain points: every window becomes its arc's points (what Word draws). */
+  function plainPts(vis) {
+    const out = [];
+    for (let i = 0; i < vis.length; i += 1) {
+      const q = vis[i];
+      if (q[2]?.end) continue;
+      if (q[2]) {
+        const e = vis[i + 1];
+        out.push(...arcPts({ q1: q, q2: e, cx: (q[0] + e[0]) / 2, cy: (q[1] + e[1]) / 2, ...q[2] }));
+      } else out.push([r1(q[0]), r1(q[1])]);
+    }
+    return out;
+  }
+  /** Straight pieces with jump arcs: the SVG path of a hop-marked polyline. */
+  function polyD(vis) {
+    let d = `M${r1(vis[0][0])} ${r1(vis[0][1])}`;
+    for (let i = 1; i < vis.length; i += 1) {
+      const q = vis[i];
+      const h = vis[i - 1][2];
+      d += h?.r ? `A${r1(h.r)} ${r1(h.r)} 0 0 ${h.sw} ${r1(q[0])} ${r1(q[1])}` : `L${r1(q[0])} ${r1(q[1])}`;
+    }
+    return d;
+  }
+  /** Steps 1 and 2: the spacing is applied to plan[].pts; an arrow with jump arcs gets plan[].vis (its points with the arc windows marked). */
+  function clearWires(plan, solids) {
+    const over = spaceWires(plan, solids);
+    const { hops, crossings: nCross, hopped } = planHops(plan);
+    const arcsBy = new Map();
+    for (const p of plan) {
+      const h = hops.get(p);
+      if (!h) continue;
+      const w = withHops(p.bez ? flatBez(p.bez) : p.pts, h);
+      p.vis = w.pts;
+      arcsBy.set(p, w.arcs);
+    }
+    return { over, arcsBy, crossings: nCross, hopped };
+  }
+  /** What is left on the sheet, for the check: pieces on one line, and crossings. */
+  function wireCounts(plan) {
+    const segs = wireSegs(plan);
+    return { overlaps: lyingOn(segs).length, crossings: crossings(segs).length };
+  }
+  /** The shadow pieces under one arrow: under each piece that lies over another, and under each of its jump arcs. */
+  function shadowsOf(p, clear, lw) {
+    const out = [];
+    const mk = (pts, d) => ({ t: 'line', pts, d, color: SHADOW_INK, lw: r1(lw + 1.2), dash: '', arrow: false, shadow: p.e.id });
+    for (const i of clear.over.get(p) || []) {
+      const a = p.pts[i - 1];
+      const b = p.pts[i];
+      if (!a || !b) continue;
+      const q = [[r1(a[0] + SHADOW[0]), r1(a[1] + SHADOW[1])], [r1(b[0] + SHADOW[0]), r1(b[1] + SHADOW[1])]];
+      out.push(mk(q, `M${q[0][0]} ${q[0][1]}L${q[1][0]} ${q[1][1]}`));
+    }
+    for (const a of clear.arcsBy.get(p) || []) {
+      const s0 = [r1(a.q1[0] + SHADOW[0]), r1(a.q1[1] + SHADOW[1])];
+      const s1 = [r1(a.q2[0] + SHADOW[0]), r1(a.q2[1] + SHADOW[1])];
+      out.push(mk(arcPts(a, SHADOW), `M${s0[0]} ${s0[1]}A${r1(a.r)} ${r1(a.r)} 0 0 ${a.sw} ${s1[0]} ${s1[1]}`));
+    }
+    return out;
+  }
+
   /* ── 0.15.6: anchors, free paths, curves ─────────────────────────────── */
   const validAnchor = (a) => (a && SIDES.includes(a.side) && Number.isFinite(+a.at) ? { side: a.side, at: Math.min(1, Math.max(0, +a.at)) } : null);
   /** The point of a shape's outline at (side, at): `at` runs along the face, top to bottom or left to right. */
-  function anchorPoint(n, side, at) {
+  function anchorPoint(n, side, at, prec = 1) {
+    const rp = prec === 1 ? r1 : (v) => Math.round(v * 10 ** prec) / 10 ** prec; // 0.16.0: a drawing with model.routing keeps three decimals, so a short dashed line has no kink
     const u = Math.min(1, Math.max(0, +at));
     const cx = n.x + n.w / 2;
     const cy = n.y + n.h / 2;
@@ -717,13 +1107,13 @@ export const DIAGRAM = (() => {
       let x = side === 'l' ? n.x : n.x + n.w;
       if (n.kind === 'decision') { const d = Math.abs(y - cy) / (n.h / 2); x = side === 'l' ? n.x + d * n.w / 2 : n.x + n.w - d * n.w / 2; }
       else if (STADIUM.has(n.kind)) { const dy = Math.abs(y - cy); const inset = rr - Math.sqrt(Math.max(0, rr * rr - dy * dy)); x = side === 'l' ? n.x + inset : n.x + n.w - inset; }
-      return [r1(x), r1(y)];
+      return [rp(x), rp(y)];
     }
     const x = n.x + u * n.w;
     let y = side === 't' ? n.y : n.y + n.h;
     if (n.kind === 'decision') { const d = Math.abs(x - cx) / (n.w / 2); y = side === 't' ? n.y + d * n.h / 2 : n.y + n.h - d * n.h / 2; }
     else if (STADIUM.has(n.kind)) { const ex = Math.abs(x - cx) - (n.w / 2 - rr); if (ex > 0) { const dy = rr - Math.sqrt(Math.max(0, rr * rr - ex * ex)); y = side === 't' ? n.y + dy : n.y + n.h - dy; } }
-    return [r1(x), r1(y)];
+    return [rp(x), rp(y)];
   }
   /** The anchor on a shape's outline nearest to a point (the editor's drag of an arrow end). */
   function nearestAnchor(n, pt) {
@@ -733,7 +1123,7 @@ export const DIAGRAM = (() => {
       const at = Math.min(0.96, Math.max(0.04, along));
       const q = anchorPoint(n, side, at);
       const d = Math.hypot(q[0] - pt[0], q[1] - pt[1]);
-      if (!best || d < best.d) best = { side, at: Math.round(at * 1000) / 1000, pt: q, d };
+      if (!best || d < best.d) best = { side, at: Math.round(at * 1e6) / 1e6, pt: q, d }; // six decimals (was three: a 0.1-unit offset on a short line)
     }
     return best;
   }
@@ -870,7 +1260,9 @@ export const DIAGRAM = (() => {
     let d = `M${r1(p[0][0])} ${r1(p[0][1])}`;
     for (let i = 1; i < p.length; i += 1) {
       const cur = p[i];
-      if (i === p.length - 1) { d += `L${r1(cur[0])} ${r1(cur[1])}`; continue; }
+      const hp = p[i - 1][2]; // 0.16.0: a jump arc between two marked points
+      if (hp?.r) { d += `A${r1(hp.r)} ${r1(hp.r)} 0 0 ${hp.sw} ${r1(cur[0])} ${r1(cur[1])}`; continue; }
+      if (i === p.length - 1 || cur[2]) { d += `L${r1(cur[0])} ${r1(cur[1])}`; continue; }
       const prev = p[i - 1];
       const next = p[i + 1];
       const k = Math.min(9, Math.hypot(cur[0] - prev[0], cur[1] - prev[1]) / 2, Math.hypot(next[0] - cur[0], next[1] - cur[1]) / 2);
@@ -919,7 +1311,7 @@ export const DIAGRAM = (() => {
   }
 
   /* ── resolve: model → drawing primitives (one list for SVG and DOCX) ── */
-  function resolve(modelIn, { theme, locale = 'ar' } = {}) {
+  function resolve(modelIn, { theme, locale = 'ar', stats = false } = {}) {
     const model = ensure(modelIn);
     const P = palette(theme);
     const W = { ...words(locale), ...(model.legend && typeof model.legend === 'object' ? model.legend : {}) };
@@ -953,7 +1345,13 @@ export const DIAGRAM = (() => {
       }
       if (n.kind === 'decision') {
         fore.push({ t: 'shape', geom: 'diamond', x: n.x, y: n.y, w: n.w, h: n.h, fill: P.paper, line: P.gate, lw: G.strokeGate, dash: '', id });
-        fore.push(textItem(wrap(n.label || W.action, n.w * 0.62, FS.gate), cx, cy, FS.gate, P.caption, 600, { id, node: true }));
+        const fg = fsOf(n, FS.gate);
+        fore.push(textItem(wrap(n.label || W.action, n.w * 0.62, fg), cx, cy, fg, P.caption, 600, { id, node: true }));
+        continue;
+      }
+      if (n.kind === 'join') {
+        // a merge point: a small filled dot in the main wire's ink (a real shape, never a zero-size group)
+        fore.push({ t: 'shape', geom: 'round', rx: Math.min(n.w, n.h) / 2, x: n.x, y: n.y, w: n.w, h: n.h, fill: P.wire.main, line: P.wire.main, lw: 1, dash: '', id });
         continue;
       }
       const sk = skinOf(n);
@@ -973,22 +1371,27 @@ export const DIAGRAM = (() => {
       }
       void lead;
       const tx = cx + (stadium ? badgeRoom / 2 : 0);
-      const lines = wrap(n.label, n.w - G.padX * 2 - badgeRoom, FS.title);
-      const block = lines.length * G.lineH + (n.sub ? G.subH : 0);
-      const ty = cy - block / 2 + (lines.length * G.lineH) / 2;
-      fore.push({ ...textItem(lines, tx, ty, FS.title, sk.ink, 500, { id, node: true }), lh: G.lineH });
-      if (n.sub) fore.push(textItem([n.sub], tx, ty + (lines.length * G.lineH) / 2 + G.subH / 2, FS.sub, sk.line, 400, { id, sub: true }));
+      const ft = fsOf(n, FS.title);
+      const lineH = ft === FS.title ? G.lineH : (G.lineH * ft) / FS.title;
+      const lines = wrap(n.label, n.w - G.padX * 2 - badgeRoom, ft);
+      const block = lines.length * lineH + (n.sub ? G.subH : 0);
+      const ty = cy - block / 2 + (lines.length * lineH) / 2;
+      fore.push({ ...textItem(lines, tx, ty, ft, sk.ink, 500, { id, node: true }), lh: lineH });
+      if (n.sub) fore.push(textItem([n.sub], tx, ty + (lines.length * lineH) / 2 + G.subH / 2, FS.sub, sk.line, 400, { id, sub: true }));
     }
     // wires and their captions
     const plan = route(model);
     const solids = model.nodes.filter((n) => !['group', 'text'].includes(n.kind)).map(box);
+    // 0.16.0: model.routing = 2 spaces arrows that shared a line and makes the upper one jump over the one it crosses; absent = the drawing of 0.15.x
+    const clear = routing2(model) ? clearWires(plan, solids) : null;
     const placed = [];
     const wireRects = plan.flatMap((p) => p.pts.slice(1).map((q, i) => { const a = p.pts[i]; return { l: Math.min(a[0], q[0]) - 1, r: Math.max(a[0], q[0]) + 1, t: Math.min(a[1], q[1]) - 1, b: Math.max(a[1], q[1]) + 1 }; }));
     const hits = (r, list) => list.some((o) => r.x < o.r + 2 && r.x + r.w > o.l - 2 && r.y < o.b + 2 && r.y + r.h > o.t - 2);
     for (const p of plan) {
       const k = WIRE_KINDS.includes(p.e.kind) ? p.e.kind : 'main';
+      if (clear) wires.push(...shadowsOf(p, clear, Object.hasOwn(WEIGHTS, p.e.weight) ? WEIGHTS[p.e.weight] ?? WIRE[k].w : WIRE[k].w));
       if (styled(p.e)) wires.push(...styledWire(p, k, P));
-      else wires.push({ t: 'line', pts: shortPts(p.pts), d: pathD(p.pts), color: P.wire[k], lw: WIRE[k].w, dash: WIRE[k].dash, arrow: true, wire: k, id: p.e.id, from: p.e.from, to: p.e.to, route: p.pts.map(([x, y]) => [r1(x), r1(y)]) });
+      else wires.push({ t: 'line', pts: shortPts(p.vis ? plainPts(p.vis) : p.pts), d: pathD(p.vis || p.pts), color: P.wire[k], lw: WIRE[k].w, dash: WIRE[k].dash, arrow: true, wire: k, id: p.e.id, from: p.e.from, to: p.e.to, route: p.pts.map(([x, y]) => [r1(x), r1(y)]) });
       if (!p.e.label) continue;
       const lw = textW(p.e.label, FS.edge);
       const lh = FS.edge * 1.5;
@@ -1134,7 +1537,8 @@ export const DIAGRAM = (() => {
       });
       maxY = ky0 + rows.length * pitch + G.margin / 2;
     }
-    return { model, items: [...back, ...wires, ...fore, ...caps, ...legend], view: { x: r1(minX), y: r1(minY), w: r1(maxX - minX), h: r1(maxY - minY) }, palette: P };
+    const counts = stats || clear ? wireCounts(plan) : null;
+    return { model, items: [...back, ...wires, ...fore, ...caps, ...legend], view: { x: r1(minX), y: r1(minY), w: r1(maxX - minX), h: r1(maxY - minY) }, palette: P, ...(counts ? { wires: { overlaps: counts.overlaps, crossings: counts.crossings, hops: clear ? clear.hopped : 0, routing: clear ? ROUTING : 1 } } : {}) };
   }
 
   /* ── 0.15.6: a styled arrow (route, heads, line, weight) ─────────────── */
@@ -1151,6 +1555,7 @@ export const DIAGRAM = (() => {
     const route = p.pts.map(([x, y]) => [r1(x), r1(y)]);
     const color = P.wire[k];
     let pts = p.pts.map((q) => [...q]);
+    const vis = p.vis ? p.vis.map((q) => [...q]) : null; // 0.16.0: the same line with its jump arcs cut in
     let bez = null;
     if (rt === 'curved' && p.bez) {
       bez = p.bez.map((sg) => sg.map((q) => [...q]));
@@ -1171,8 +1576,12 @@ export const DIAGRAM = (() => {
       if (mk(tail)) { const a = pts[1]; const b = pts[0]; pull(a, b, G.tip); }
       if (mk(head)) { const a = pts.at(-2); const b = pts.at(-1); pull(a, b, G.tip); }
     }
-    const d = bez ? curveD(bez) : rt === 'elbow' ? pathD(pts, false) : `M${pts.map(([x, y]) => `${r1(x)} ${r1(y)}`).join('L')}`;
-    const out = [{ t: 'line', pts: pts.map(([x, y]) => [r1(x), r1(y)]), d, ...(bez ? { bez } : {}), color, lw, dash, arrow: mk(head) || mk(tail), head, tail, wire: k, id: e.id, from: e.from, to: e.to, route, rt }];
+    if (vis) {
+      if (mk(tail)) pull(vis[1], vis[0], G.tip);
+      if (mk(head)) pull(vis.at(-2), vis.at(-1), G.tip);
+    }
+    const d = vis ? (rt === 'elbow' ? pathD(vis, false) : polyD(vis)) : bez ? curveD(bez) : rt === 'elbow' ? pathD(pts, false) : `M${pts.map(([x, y]) => `${r1(x)} ${r1(y)}`).join('L')}`;
+    const out = [{ t: 'line', pts: vis ? plainPts(vis) : pts.map(([x, y]) => [r1(x), r1(y)]), d, ...(bez && !vis ? { bez } : {}), color, lw, dash, arrow: mk(head) || mk(tail), head, tail, wire: k, id: e.id, from: e.from, to: e.to, route, rt }];
     // a bar is real geometry, square to the line at its end: SVG, PDF and Word draw the same thing
     const bar = (at, toward) => {
       const L = Math.hypot(toward[0] - at[0], toward[1] - at[1]) || 1;
@@ -1418,5 +1827,5 @@ export const DIAGRAM = (() => {
     });
   }
 
-  return { FRAME, frameNorm, frameView, frameHug, ROUTES, HEADS, LINES: Object.keys(LINES), WEIGHTS: Object.keys(WEIGHTS), anchorPoint, nearestAnchor, edgePoint, nearestOnWire, wireMid, validAnchor, splitByPhase, splitForLegibility, legibility, KINDS, WIRE_KINDS, COLORS, SYMBOLS, FS, G, palette, words, measure, wrap, textW, classify, layout, ensure, route, resolve, render, fromGraph, toMermaid, fromMermaid, starter, glyph };
+  return { PRINT, ROUTING, routing2, autoLayout, applyRouting, FRAME, frameNorm, frameView, frameHug, ROUTES, HEADS, LINES: Object.keys(LINES), WEIGHTS: Object.keys(WEIGHTS), anchorPoint, nearestAnchor, edgePoint, nearestOnWire, wireMid, validAnchor, splitByPhase, splitForLegibility, legibility, KINDS, WIRE_KINDS, COLORS, SYMBOLS, FS, G, palette, words, measure, wrap, textW, classify, layout, ensure, route, resolve, render, fromGraph, toMermaid, fromMermaid, starter, glyph };
 })();

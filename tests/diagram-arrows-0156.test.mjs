@@ -37,13 +37,13 @@ const wf = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'workflow.json'), 'utf8'
     const dir = path.join(REPO, 'samples', s);
     for (const f of fs.existsSync(dir) ? fs.readdirSync(dir) : []) {
       if (/^document\.(ar|en)\.json$/.test(f)) docs.push([s, f, JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')), f.includes('.ar.') ? 'ar' : 'en']);
-      if (f === 'workflow.json') { const w = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); for (const loc of ['ar', 'en']) if (w[loc]) docs.push([s, f, { chapters: [{ sections: [{ blocks: [{ kind: 'diagram', model: DIAGRAM.layout(w[loc]) }] }] }] }, loc]); }
+      if (f === 'workflow.json') { const w = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); for (const loc of ['ar', 'en']) if (w[loc]) docs.push([s, f, { chapters: [{ sections: [{ blocks: [{ kind: 'diagram', model: (() => { const x = DIAGRAM.layout(w[loc]); delete x.routing; return x; })() }] }] }] }, loc]); } // 0.16.0: stored before layout() set the key
     }
   }
   const models = [];
   const walk = (x, loc) => { if (Array.isArray(x)) x.forEach((y) => walk(y, loc)); else if (x && typeof x === 'object') { if (x.kind === 'diagram' && x.model) models.push([x.model, loc]); for (const v of Object.values(x)) walk(v, loc); } };
   for (const [, , d, loc] of docs) walk(d, loc);
-  { const m1 = DIAGRAM.layout(wf.en); const au = DIAGRAM.resolve(m1, { theme, locale: 'en' }).items.find((x) => x.wire && x.id === 'e8'); const mm = au.route[Math.floor(au.route.length / 2)]; m1.edges.find((e) => e.id === 'e8').via = [[mm[0] + 37, mm[1] + 43], [mm[0] + 97, mm[1] + 43]]; models.push([m1, 'en']); }
+  { const m1 = DIAGRAM.layout(wf.en); const au = DIAGRAM.resolve(m1, { theme, locale: 'en' }).items.find((x) => x.wire && x.id === 'e8'); const mm = au.route[Math.floor(au.route.length / 2)]; m1.edges.find((e) => e.id === 'e8').via = [[mm[0] + 37, mm[1] + 43], [mm[0] + 97, mm[1] + 43]]; delete m1.routing; models.push([m1, 'en']); } // 0.16.0: layout() now sets model.routing; this stands for a drawing stored before it, so the key is dropped
   for (const [m, loc] of models) {
     compared += 1;
     const a = OLD.render(OLD.ensure(m), { theme, locale: loc });
