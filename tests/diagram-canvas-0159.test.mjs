@@ -457,6 +457,32 @@ try {
     check('C9 the ribbon\'s diagram tab and the diagram context carry «ملاءمة الأشكال» and «ملاءمة الصفحة»', ribbon.includes('dgCvShapes') && ribbon.includes('dgCvPage') && ribbon.includes('ملاءمة الأشكال') && ribbon.includes('ملاءمة الصفحة') && strip >= 2, `ribbon ${ribbon.includes('dgCvShapes')} ${ribbon.includes('dgCvPage')}; buttons in the shadow root: ${strip}`);
     check('C9 each tool carries a vector icon (Lucide), no emoji, no raster', /<svg[^>]*class="ic"/.test(ribbon.slice(ribbon.indexOf('dgCvShapes') - 400, ribbon.indexOf('dgCvShapes') + 800)));
   }
+  // M5: the route, head, tail, line and weight pickers open at their own button (within 40 px), never at the corner of the window
+  {
+    await reveal();
+    const pt = await page.evaluate((FIG) => { const f = document.querySelector(FIG); const pth = f.querySelector('[data-dg-edge="e16"] path:not(.dg-hit)'); const L = pth.getTotalLength(); const q = pth.getPointAtLength(L * 0.3); const m = pth.getScreenCTM(); return [m.a * q.x + m.c * q.y + m.e, m.b * q.x + m.d * q.y + m.f]; }, FIG);
+    await page.mouse.click(pt[0], pt[1]);
+    await page.waitForTimeout(200);
+    const sel = await page.evaluate(() => window.BW.S.dg?.edge || null);
+    await page.evaluate(() => window.BW.EXT.ribbon.setTab('diagram2'));
+    await page.waitForTimeout(300);
+    const rows = [];
+    for (const k of ['dgRoute', 'dgHead', 'dgTail', 'dgLine', 'dgWeight']) {
+      const b = await page.evaluate((k) => { const h = document.getElementById('bw-ui-host'); const all = [...h.shadowRoot.querySelectorAll(`[data-a="${k}"]`)].map((x) => x.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0 && r.y > 40); return all[0] ? { x: all[0].x, y: all[0].y, w: all[0].width, h: all[0].height } : null; }, k);
+      if (!b) { rows.push({ k, err: 'no visible button' }); continue; }
+      await page.mouse.click(b.x + b.w / 2, b.y + b.h / 2);
+      await page.waitForTimeout(250);
+      const g = await page.evaluate(() => { const e = document.querySelector('.bw-dg-gallery'); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(150);
+      if (!g) { rows.push({ k, err: 'no picker' }); continue; }
+      const gapY = Math.abs(g.y - (b.y + b.h));
+      const gapX = b.x + b.w / 2 < g.x ? g.x - (b.x + b.w / 2) : b.x + b.w / 2 > g.x + g.w ? b.x + b.w / 2 - (g.x + g.w) : 0;
+      rows.push({ k, gapY: Math.round(gapY), gapX: Math.round(gapX) });
+    }
+    check('M5 the route, head, tail, line and weight pickers open within 40 px of their ribbon button (not at the window corner)', sel === 'e16' && rows.length === 5 && rows.every((r) => !r.err && r.gapY <= 40 && r.gapX <= 40), JSON.stringify({ sel, rows }));
+    await page.mouse.click(5, 5);
+  }
   // save the HTML, reopen: the canvas is there, in both editions; a saved doc without it opens as before
   {
     const [dl] = await Promise.all([page.waitForEvent('download'), page.evaluate(() => window.BW.runAction('saveHtml'))]);
