@@ -675,6 +675,12 @@ function dgInline(target) {
  * 0.15.6 (Z1-Z6). The frame (.fig-art) keeps the size it had when fitted; only the drawing inside it changes. The scale follows
  * deltaY (a pinch or a precision wheel sends many small events), is coalesced to one update per frame, and keeps the point under the
  * pointer where it was. The view (scale, offsets, scroll) lives in S.dgZoom, so a live redraw, a save or a full render puts it back. */
+/** Screen px per layout px of a figure (the page zoom, the side-by-side shrink). Read as rect.width / offsetWidth; offsetWidth is an integer, so at no zoom that ratio is 0.9996 instead of 1,
+ *  and a frame stored from it moved by 0.2 px on every re-render (0.16.0, D1/D3): a ratio within 0.15 % of 1 is 1. */
+function dgPageK(el) {
+  const k = el.offsetWidth ? el.getBoundingClientRect().width / el.offsetWidth || 1 : 1;
+  return Math.abs(k - 1) < 0.0015 ? 1 : k;
+}
 function dgZoomKey(fig) { return `${fig.closest('main.bw-doc')?.dataset.locale}|${fig.dataset.dg}`; }
 function dgZoomAll() {
   S.dgZoom ||= {};
@@ -708,7 +714,7 @@ function dgZoomFig(fig, mode, at) {
   if (!svg || !art) return;
   const z = S.dgZoom[key];
   // the page zoom is a CSS `zoom` on the page: getBoundingClientRect() is in screen px, the CSS vars below are in the page's own px (0.15.9 C1)
-  const kz = art.offsetWidth ? art.getBoundingClientRect().width / art.offsetWidth || 1 : 1;
+  const kz = dgPageK(art);
   const natural = svg.viewBox.baseVal?.width || svg.getBoundingClientRect().width / kz;
   // the fitted size is measured unzoomed once, then kept: the frame never changes size under the reader
   const fitW = z?.fitW || svg.getBoundingClientRect().width / kz;
@@ -719,17 +725,19 @@ function dgZoomFig(fig, mode, at) {
   if (mode === 'fit') w = null;
   else if (mode === '100') w = natural;
   else w = Math.min(natural * 4, Math.max(fitW * 0.5, now * f));
-  const r0 = svg.getBoundingClientRect();
   const fr = art.getBoundingClientRect();
-  // the drawing point under the pointer is pinned while the pointer stays put, so rounding never adds up over a run of steps
-  const vb = svg.viewBox.baseVal;
+  // the drawing point under the pointer is pinned while the pointer stays put, so rounding never adds up over a run of steps.
+  // 0.16.0 (D3): the point is kept in the drawing's own coordinates through the SVG's screen matrix, not as a fraction of the SVG box: at «fit» the box is wider
+  // than the drawing (preserveAspectRatio centres it), so a fraction of the box is not the point the reader pointed at and every step drifted by the letterbox (9-15 px).
   const held = S.dgHold;
   const holding = !!(held && at && held.key === key && Math.abs(at.x - held.ax) < 2.5 && Math.abs(at.y - held.ay) < 2.5 && performance.now() - held.t < 1500);
   const ax = holding ? held.ax : at?.x ?? fr.left + fr.width / 2;
   const ay = holding ? held.ay : at?.y ?? fr.top + fr.height / 2;
-  const u = holding ? (held.sx - vb.x) / vb.width : r0.width ? (ax - r0.left) / r0.width : 0.5;
-  const v = holding ? (held.sy - vb.y) / vb.height : r0.height ? (ay - r0.top) / r0.height : 0.5;
-  S.dgHold = at ? { key, ax, ay, sx: vb.x + u * vb.width, sy: vb.y + v * vb.height, t: performance.now() } : null;
+  const ctm0 = svg.getScreenCTM();
+  if (!ctm0) return;
+  const here = holding ? { x: held.sx, y: held.sy } : new DOMPoint(ax, ay).matrixTransform(ctm0.inverse());
+  const place = () => { const m = svg.getScreenCTM(); return m ? new DOMPoint(here.x, here.y).matrixTransform(m) : { x: ax, y: ay }; };
+  S.dgHold = at ? { key, ax, ay, sx: here.x, sy: here.y, t: performance.now() } : null;
   if (w == null || Math.abs(w - fitW) < 1) {
     delete S.dgZoom[key];
     dgZoomAll();
@@ -737,19 +745,20 @@ function dgZoomFig(fig, mode, at) {
     return;
   }
   // slack around the drawing (half the frame each way) so the point under the pointer can always stay under it, even next to an edge
-  S.dgZoom[key] = { w: Math.round(w), h: Math.round(fitH), fitW, pct: (w / natural) * 100, ml: 0, mt: 0, sl: 0, st: 0, sx: z?.sx ?? Math.round(art.clientWidth * 0.5), sy: z?.sy ?? Math.round(art.clientHeight * 0.5) };
+  S.dgZoom[key] = { w: Math.round(w), h: fitH, fitW, pct: (w / natural) * 100, ml: 0, mt: 0, sl: 0, st: 0, sx: z?.sx ?? Math.round(art.clientWidth * 0.5), sy: z?.sy ?? Math.round(art.clientHeight * 0.5) };
   dgZoomAll();
   // keep the drawing point that was under (ax, ay) there: scroll when the drawing overflows the frame, else slide it (never past the frame)
   const zz = S.dgZoom[key];
   for (let pass = 0; pass < 2; pass += 1) {
-    const r1 = svg.getBoundingClientRect();
-    const ex = r1.left + u * r1.width - ax;
-    const ey = r1.top + v * r1.height - ay;
+    const p1 = place();
+    const ex = p1.x - ax;
+    const ey = p1.y - ay;
     art.scrollLeft += ex / kz;
     art.scrollTop += ey / kz;
     const r2 = svg.getBoundingClientRect();
-    const rx = r2.left + u * r2.width - ax;
-    const ry = r2.top + v * r2.height - ay;
+    const p2 = place();
+    const rx = p2.x - ax;
+    const ry = p2.y - ay;
     if (Math.abs(rx) > 0.4 || Math.abs(ry) > 0.4) {
       const cs = getComputedStyle(art);
       const vw = art.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
@@ -870,7 +879,7 @@ function dgCanvasDrag(e, handle) {
   if (!art) return;
   e.preventDefault();
   e.stopPropagation();
-  const kz = art.offsetWidth ? art.getBoundingClientRect().width / art.offsetWidth || 1 : 1;
+  const kz = dgPageK(art);
   const room = dgRoom(ptr, ed);
   const f0 = dgFrameStart(fig, art);
   const had = !!dgFrameOf(ptr, ed);

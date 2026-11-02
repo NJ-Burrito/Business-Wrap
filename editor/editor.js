@@ -112,7 +112,13 @@ function giveCaret(c) {
     const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
   } catch { /* the block is gone: nothing to hold */ }
 }
+/** 0.16.0 (D1): the page is rebuilt in steps (innerHTML, then the zoom, the views, the pages), and between two steps the height above the viewport differs for a moment. Chrome's scroll anchoring answers each step by moving the scroll, and the moves do not cancel (+93 px on the sample, no change in the final heights). The page holds its place itself (keepScroll, S.dg, the agent hold), so anchoring is off while a render settles. */
+let anchorOff = 0;
 function render(keepScroll = true) {
+  const rootEl = document.documentElement;
+  const aoff = ++anchorOff;
+  rootEl.style.overflowAnchor = 'none';
+  requestAnimationFrame(() => requestAnimationFrame(() => { if (aoff === anchorOff) rootEl.style.removeProperty('overflow-anchor'); }));
   const y = window.scrollY;
   const caret = holdCaret();
   const eds = S.side && hasOther() ? ['ar', 'en'].filter((x) => M[S.svc][x]) : [S.ed];
