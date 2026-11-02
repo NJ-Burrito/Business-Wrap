@@ -160,24 +160,31 @@ def add_numbered_list_cell(cell, items: list[str], font: str, num_id: int) -> No
 _THEME_ROLES: dict | None = None
 BLANK_CELLS = {'', '—', '-', '–', 'N/A', 'n/a'}
 
-def _is_blank(cell) -> bool:
-    return MD.text_of(cell).strip() in BLANK_CELLS
+def _keeps_empty(cell) -> bool:
+    return isinstance(cell, dict) and cell.get('keepEmpty') is True
 
-def apply_render_table_rules(columns, rows):
+def _is_blank(cell) -> bool:
+    return not _keeps_empty(cell) and MD.text_of(cell).strip() in BLANK_CELLS
+
+def apply_render_table_rules(columns, rows, blank_cell=None):
     width = max([len(columns)] + [len(r) for r in rows] + [0])
-    keep = [any((not _is_blank(r[i] if i < len(r) else '') for r in rows)) for i in range(width)]
+    keep = [True if blank_cell is not None else any((not _is_blank(r[i] if i < len(r) else '') for r in rows)) for i in range(width)]
+    fill = L['none'] if blank_cell is None else blank_cell
     out_cols = [c for i, c in enumerate(columns) if i < width and keep[i]]
-    out_rows = [[L['none'] if _is_blank(r[i] if i < len(r) else '') else r[i] for i in range(width) if keep[i]] for r in rows]
+    out_rows = [[fill if _is_blank(r[i] if i < len(r) else '') else r[i] for i in range(width) if keep[i]] for r in rows]
     return (out_cols, out_rows)
 
 def add_table(document, columns, rows, font, roles=None, spec=None):
     spec = spec or {}
+    blank_cell = spec.get('blankCell') if isinstance(spec.get('blankCell'), str) else None
+    # a cell kept empty on purpose (`keepEmpty`) travels as a rich leaf with no words
+    rows = [[({'text': str(c.get('text') or ''), 'marks': [], 'keepEmpty': True} if _keeps_empty(c) and not MD.is_rich(c) else c) for c in r] for r in rows]
     merges = [m for m in (spec.get('merges') or []) if isinstance(m, dict)]
     width = max([len(columns)] + [len(r) for r in rows] + [0])
     cw = spec.get('colWidths') if isinstance(spec.get('colWidths'), list) and len(spec.get('colWidths')) == width else None
     fixed = bool(merges or cw)
     if columns and not fixed:
-        columns, rows = apply_render_table_rules(columns, rows)
+        columns, rows = apply_render_table_rules(columns, rows, blank_cell)
     elif cw:
         keepc = [i for i in range(width) if float(cw[i] or 0) > 0]
         columns = [columns[i] for i in keepc if i < len(columns)]
@@ -220,8 +227,8 @@ def add_table(document, columns, rows, font, roles=None, spec=None):
             cell.paragraphs[0].text = ''
             if (r, c) in covered:
                 continue
-            if fixed and not (header and r == 0) and not MD.text_of(cell_text).strip():
-                cell_text = L['none']
+            if fixed and not (header and r == 0) and not MD.text_of(cell_text).strip() and not _keeps_empty(cell_text):
+                cell_text = L['none'] if blank_cell is None else blank_cell
             MD.fill_cell(document, cell, cell_text if MD.is_rich(cell_text) else str(cell_text), font, add_script_runs, bold=bool(header) and r == 0)
             MD.cell_valign(cell, cell_text)
     for r, h in enumerate(heights):

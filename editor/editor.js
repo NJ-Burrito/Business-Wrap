@@ -1209,6 +1209,11 @@ function validate() {
   return out;
 }
 /** F2 · extra 9: FR- and BR- codes are unique and run 1, 2, 3 … in document order; a user story has acceptance criteria. */
+/** A story has acceptance criteria in its own field or in a nested block (prose, list, table) kept under it (0.16.0). */
+function storyHasCriteria(it) {
+  const words = (v) => (v == null ? false : Array.isArray(v) ? v.some(words) : typeof v === 'object' ? (isRich(v) ? !!v.text.trim() : Object.entries(v).some(([k, x]) => k !== 'kind' && words(x))) : typeof v === 'string' && !!v.trim());
+  return words(it.acceptance) || words(it.criteria) || words(it.blocks);
+}
 function reqIdCheck(d) {
   const out = [];
   const seen = { FR: new Map(), BR: new Map() };
@@ -1226,7 +1231,7 @@ function reqIdCheck(d) {
   for (const b of blocksInOrder(d)) {
     if (b.block?.kind !== 'stories') continue;
     (b.block.items || []).forEach((it, i) => {
-      if (!(it.acceptance || []).some((a) => textOf(a).trim())) out.push(['warn', t('vNoAc', { x: it.id || it.name || `${i + 1}` }), `${b.ptr}/items/${i}/name`]);
+      if (!storyHasCriteria(it)) out.push(['warn', t('vNoAc', { x: it.id || it.name || `${i + 1}` }), `${b.ptr}/items/${i}/name`]);
     });
   }
   return out;

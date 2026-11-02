@@ -337,9 +337,11 @@ export function storyCardDefault(s) {
   const lab = { id: 'storyId', name: 'storyName', as: 'storyUser', goal: 'storyGoalLabel', acceptance: 'acceptance' };
   return STORY_CARD_BINDS.filter((k) => has[k]).map((k) => [{ label: lab[k] }, { bind: k }]);
 }
-const blank = (c) => ['', '—', '-', '–', 'N/A', 'n/a'].includes(textOf(c ?? '').trim());
+/** A cell a person kept empty on purpose: `{"text":"","keepEmpty":true}` (0.16.0). It is never blank, so it prints as an empty cell. */
+const keepsEmpty = (c) => !!c && typeof c === 'object' && !Array.isArray(c) && c.keepEmpty === true;
+const blank = (c) => !keepsEmpty(c) && ['', '—', '-', '–', 'N/A', 'n/a'].includes(textOf(c ?? '').trim());
 /** A table cell as the renderer takes it: a rich leaf as is, anything else as its string (0.12.0). */
-const keepLeaf = (v) => (isRich(v) ? v : String(v));
+const keepLeaf = (v) => (isRich(v) ? v : keepsEmpty(v) ? { text: String(v.text ?? ''), marks: [], keepEmpty: true } : String(v));
 /** The leaf from character n on (a bullet prefix cut off), marks shifted. */
 export function sliceLeaf(leaf, n) {
   if (!isRich(leaf)) return textOf(leaf).slice(n);
@@ -763,10 +765,11 @@ export function renderParts(doc, o) {
     const cw = Array.isArray(t.colWidths) && t.colWidths.length === width ? t.colWidths : null;
     const covered = coveredOf(t.merges || []);
     const spanAt = new Map((t.merges || []).map((m) => [`${m.r},${m.c}`, m]));
-    const keep = Array.from({ length: width }, (_, i) => (cw ? +cw[i] > 0 : t.merges?.length || t.keepAll ? true : rowsIn.some((r) => !blank(r[i]))));
+    const keep = Array.from({ length: width }, (_, i) => (cw ? +cw[i] > 0 : t.merges?.length || t.keepAll || typeof t.blankCell === 'string' ? true : rowsIn.some((r) => !blank(r[i]))));
     const idx = keep.map((k, i) => (k ? i : -1)).filter((i) => i >= 0);
     const columns = columnsIn.length ? idx.map((i) => columnsIn[i] ?? '') : [];
-    const rows = rowsIn.map((r) => idx.map((i) => (blank(r[i]) ? (isRich(r[i]) ? { ...r[i], text: none } : none) : r[i])));
+    const fill = typeof t.blankCell === 'string' ? t.blankCell : none; // table option blankCell (0.16.0); absent = «لا يوجد»
+    const rows = rowsIn.map((r) => idx.map((i) => (blank(r[i]) ? (isRich(r[i]) ? { ...r[i], text: fill } : fill) : r[i])));
     const headings = columns.length ? columns : (rows[0] ?? []).map(() => '');
     const measure = headings.map((c, i) => {
       const lengths = rows.map((r) => textOf(r[i] ?? '').length).sort((a, b) => a - b);
@@ -915,6 +918,7 @@ export function renderParts(doc, o) {
       merges: block.merges,
       colWidths: block.colWidths,
       rowHeights: block.rowHeights,
+      blankCell: block.blankCell,
     });
 
   let figNo = 0;
