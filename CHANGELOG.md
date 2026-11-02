@@ -8,6 +8,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.15.6] - 2026-11-02
+
+🏹 Freer arrows in the diagram, a steady screen while you zoom, and a fuller user story. / 🏹 أسهم أطوع في المخطط، وشاشة ثابتة عند التكبير، وقصة مستخدم أكمل.
+
+### Added / أضيف
+- 🔵 **Reshape an arrow by its joints**: a square at the start and at the head, a circle at every bend. Add a joint by dragging the faint circle on a long segment, by double-clicking the line, or from the ribbon; delete one by selecting it and pressing Delete, by double-clicking it, or from the ribbon; move one anywhere (Shift keeps it level or upright). Drag an end along the shape's edge, or drop it on another shape to reconnect it. / **غيّر شكل السهم من مفاصله**: مربع عند البداية وعند الرأس، ودائرة عند كل انعطاف. أضف مفصلًا بسحب الدائرة الباهتة على المقطع الطويل أو بالنقر المزدوج على الخط أو من الشريط؛ واحذف مفصلًا بتحديده وضغط Delete أو بالنقر المزدوج عليه أو من الشريط؛ وانقله إلى أي مكان (Shift يبقيه أفقيًا أو رأسيًا). اسحب طرف السهم على حافة الشكل أو أسقطه على شكل آخر ليتصل به.
+- 🏹 **More kinds of arrow**: straight, curved or elbow; a head and a tail of arrow, triangle, diamond, circle, bar or none; solid, dashed or dotted; thin, normal or thick. One button resets an arrow to automatic. The same drawing shows in the editor, PDF, Word and the web page. Old diagrams look exactly as before. / **أنواع أكثر من الأسهم**: مستقيم أو منحنٍ أو بزوايا؛ ورأس وذيل من سهم أو مثلث أو معين أو دائرة أو شرطة أو بلا شيء؛ ومتصل أو متقطع أو منقط؛ ورفيع أو عادي أو سميك. زر واحد يعيد السهم إلى الوضع التلقائي. يظهر الرسم نفسه في المحرر وPDF وWord وصفحة الويب، وتبقى المخططات القديمة كما كانت.
+- 🗝️ **Edit the diagram's key**: select an entry, change its words or its look, delete it, or reset them all. / **حرّر مفتاح المخطط**: حدّد بندًا وغيّر كلماته أو شكله، أو احذفه، أو أعد الكل إلى الأصل.
+- 📋 **A fuller new user story**: it gets its own numbered section with a title, the ID card, an acceptance list, the actions table and the data table. A new ribbon button adds the output story (ID card, acceptance and an item and value table). The blank document now follows the house layout: six chapters, the full service card, a workflow figure and three stories. / **قصة مستخدم جديدة أكمل**: تأخذ قسمًا مرقمًا خاصًا بعنوان، وبطاقة التعريف، وقائمة معايير القبول، وجدول الإجراءات، وجدول البيانات. وزر جديد في الشريط يضيف قصة المخرج (بطاقة التعريف والقبول وجدول البند والقيمة). والوثيقة الفارغة تتبع الآن التخطيط المعتمد: ستة فصول وبطاقة الخدمة كاملة ومخطط سير وثلاث قصص.
+
+### Fixed / أصلح
+- 🔍 **Zooming a diagram no longer makes the screen jump**: the frame, the page height, the scroll position and the ribbon keep their size while you zoom, select or drag; zoom follows the pointer and the wheel's speed. A committed edit, undo and redo leave the page where it was. / **تكبير المخطط لم يعد يقفز بالشاشة**: يبقى الإطار وارتفاع الصفحة وموضع التمرير والشريط على حالها أثناء التكبير والتحديد والسحب؛ والتكبير يتبع المؤشر وسرعة العجلة. وتبقى الصفحة في مكانها بعد تثبيت تعديل أو تراجع أو إعادة.
+- 🏷️ **Words on straight and curved arrows no longer sit on a shape, a text box or another label**: they move to a free spot beside the line, with a thin dotted leader when they are further away. / **كلمات الأسهم المستقيمة والمنحنية لم تعد تقع على شكل أو مربع نص أو تسمية أخرى**: تنتقل إلى مكان فارغ بجانب الخط، مع خط منقط رفيع إذا ابتعدت.
+
 ## [0.15.5] - 2026-10-31
 
 🩹 A small fix for deleting documents, and sturdier tests. / 🩹 إصلاح صغير لحذف الوثائق، واختبارات أمتن.

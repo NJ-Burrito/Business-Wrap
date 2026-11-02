@@ -235,11 +235,11 @@ try {
   // ── bend points by hand: drag a segment handle, add a bend, auto route, undo, Save HTML ──
   const model = () => page.evaluate(() => window.BW.DIAGRAM.ensure(window.BW.M[window.BW.S.svc].ar.doc.chapters[2].sections[0].blocks[0].model));
   await page.locator('main.bw-doc [data-dg-edge="e8"] .dg-hit').first().dispatchEvent('pointerdown', { button: 0, bubbles: true });
-  const seg = page.locator('main.bw-doc figure[data-dg] [data-dg-seg]').first();
-  check('bend: a selected arrow shows segment and corner handles', (await page.locator('main.bw-doc figure[data-dg] [data-dg-seg]').count()) >= 1, String(await page.locator('main.bw-doc figure[data-dg] [data-dg-seg]').count()));
+  const seg = page.locator('main.bw-doc figure[data-dg] circle.dg-ghost').first(); // 0.15.6: a ghost on a long segment (drag it to add a joint) replaced the square on the segment
+  check('bend: a selected arrow shows ghost and corner handles', (await page.locator('main.bw-doc figure[data-dg] circle.dg-ghost').count()) >= 1 && (await page.locator('main.bw-doc figure[data-dg] circle.dg-bend').count()) >= 1, String(await page.locator('main.bw-doc figure[data-dg] circle.dg-ghost').count()));
   await seg.evaluate((el) => el.scrollIntoView({ block: 'center' }));
   const sb = await seg.boundingBox();
-  const horiz = await seg.evaluate((el) => el.style.cursor === 'ns-resize');
+  const horiz = false; // a ghost is dragged anywhere: pull it sideways
   await page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2);
   await page.mouse.down();
   await page.mouse.move(sb.x + sb.width / 2 + (horiz ? 0 : 30), sb.y + sb.height / 2 + (horiz ? 25 : 0), { steps: 6 });
@@ -250,11 +250,12 @@ try {
   const rt = await routeOf(mb);
   check('bend: dragging a segment handle stores bend points (via) on the arrow', Array.isArray(e8.via) && e8.via.length >= 1, JSON.stringify(e8.via));
   check('bend: the dragged arrow stays orthogonal', rt.every((p, i) => !i || Math.abs(p[0] - rt[i - 1][0]) < 0.6 || Math.abs(p[1] - rt[i - 1][1]) < 0.6), JSON.stringify(rt));
+  const rt0 = (await routeOf(await model())).length - 2; // the joints on screen: the hand-set ones plus the elbows the router adds
   await page.evaluate(() => window.BW.runAction('dgBendAdd'));
   const n1 = (await model()).edges.find((e) => e.id === 'e8').via.length;
-  check('bend: «add bend point» adds two corners (a step to drag)', n1 === e8.via.length + 2, `${e8.via.length} → ${n1}`);
+  check('bend: «add bend point» adds one joint (to drag anywhere)', n1 === rt0 + 1, `${rt0} → ${n1}`);
   await page.evaluate(() => window.BW.runAction('dgBendDel'));
-  check('bend: «remove bend point» removes them again', (await model()).edges.find((e) => e.id === 'e8').via.length === e8.via.length);
+  check('bend: «remove bend point» removes exactly that joint again', (await model()).edges.find((e) => e.id === 'e8').via.length === n1 - 1);
   const ops0 = await page.evaluate(() => window.BW.editsFile(window.BW.S.svc, 'ar').ops.length);
   const saved = path.join(OUT, 'saved-bend.html');
   const [dl] = await Promise.all([page.waitForEvent('download'), page.evaluate(() => window.BW.runAction('saveHtml'))]);

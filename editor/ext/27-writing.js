@@ -14,7 +14,7 @@ const W2W = { focus: null };
   IC.hdrDelete = pg('M4 8h16', ['m9.5 12.5 5 5', 'm14.5 12.5-5 5']);
   IC.ftrDelete = pg('M4 16h16', ['m9.5 6.5 5 5', 'm14.5 6.5-5 5']); }
 // icons: the house set's own glyphs, by what each tool does (tests/ux.test.mjs fails an icon-less tool)
-{ const alias = { addStory: 'addPara', storyPoint: 'rowAdd', storyCard: 'duplicate', pgBreakAdd: 'pgBreak', pgBreakDel: 'pgBreak', pgPullUp: 'moveUp', secDel: 'delete', pgEmpty: 'delete', secGaps: 'pages' };
+{ const alias = { addStory: 'addPara', addOutputStory: 'addPara', storyPoint: 'rowAdd', storyCard: 'duplicate', pgBreakAdd: 'pgBreak', pgBreakDel: 'pgBreak', pgPullUp: 'moveUp', secDel: 'delete', pgEmpty: 'delete', secGaps: 'pages' };
   for (const [k, v] of Object.entries(alias)) IC[k] = IC[k] || IC[v] || IC.pages; }
 const w2wBlank = (v) => !textOf(v ?? '').trim();
 const w2wNextId = () => [...JSON.stringify(w2doc().chapters).matchAll(/"id":"US-(\d+)"/g)].reduce((a, x) => Math.max(a, +x[1]), 0) + 1;
@@ -27,6 +27,23 @@ function w2wSplit(leaf, n, e = n) {
     { ...leaf, text: leaf.text.slice(e), marks: m.map(([a, b, ...r]) => [Math.max(0, a - e), b - e, ...r]).filter(([a, b]) => b > a) },
   ];
 }
+/** 0.15.6: the house words of the story tables (editor/ext/27-writing.i18n.json; tests/story-template-0156 compares them with templates/e-service/pack.json). */
+const w2sWords = (key, ed) => String(tIn(key, ed)).split('|');
+/** The first `actions` / `dictionary` table (with columns) that a story of this document carries: the design the document already has. */
+const w2sTables = (doc) => {
+  const out = {};
+  for (const c of doc.chapters || []) for (const sc of c.sections || []) for (const b of sc.blocks || []) {
+    if (b.kind !== 'stories') continue;
+    for (const it of b.items || []) for (const k of ['actions', 'dictionary']) if (!out[k] && Array.isArray(it[k]?.columns) && it[k].columns.length) out[k] = it[k];
+  }
+  return out;
+};
+/** A section that holds the output story: a stories block whose items have no tables, followed by a table block. */
+const w2sIsOutput = (sec) => {
+  const bl = sec?.blocks || [];
+  const i = bl.findIndex((b) => b.kind === 'stories');
+  return i >= 0 && bl.slice(i + 1).some((b) => b.kind === 'table') && bl[i].items.every((it) => !it.actions && !it.dictionary);
+};
 const W2_WRITE = {
   /** Enter inside the leaf at `path` (caret at character n): a new paragraph / acceptance point after it. `to` = {path, n}: the
    *  highlighted range ends there (same leaf, or a later leaf of the same list): the range is removed first (TW-03). The
@@ -61,17 +78,68 @@ const W2_WRITE = {
     commit([{ op: 'replace', path, value: head, old: leaf }, { op: 'insert', path: next, value: tail }], { ed, mirror: false, group });
     return true;
   },
-  /** A new `stories` block after the selection (house layout, placeholders only). */
-  addStory(where = w2after()) {
+  /** 0.15.6 (S1): a new user story is a numbered section of its own, in the user-stories chapter (the chapter that holds the document's
+   *  `stories` blocks; one is made at the end when there is none, whatever the selection). After the selected section when the selection
+   *  is inside that chapter, else at its end (ahead of a closing output story). ONE op, both editions, each in its own language.
+   *  @param build (ed, number, first) => {title, blocks}; @returns the pointer of the section's `stories` block. */
+  placeSection(build) {
     const d = w2doc();
-    let ref = null;
-    (function find(o) { if (ref || !o || typeof o !== 'object') return; if (o.kind === 'stories') { ref = o; return; } for (const k in o) find(o[k]); })(d.chapters);
-    const sec = get(d, where.arr.replace(/\/blocks$/, ''));
-    const value = { kind: 'stories', number: sec?.number || '', items: [W2_WRITE.emptyStory(ref?.items?.[0], `US-${String(w2wNextId()).padStart(2, '0')}`)] };
-    commit([{ op: 'insert', path: `${where.arr}/${where.at}`, value }], { mirror: true });
-    S.sel = { b: `${where.arr}/${where.at}`, p: null, ed: S.ed };
+    const s = w2sectionOf(S.sel?.b || S.sel?.p);
+    const selCi = s ? +s.ch.split('/')[2] : -1;
+    const selSi = s?.sec ? +s.sec.split('/')[4] : -1;
+    const has = (c) => (c.sections || []).some((x) => (x.blocks || []).some((b) => b.kind === 'stories'));
+    let ci = selCi >= 0 && d.chapters[selCi] && has(d.chapters[selCi]) ? selCi : d.chapters.findIndex(has);
+    const o = other(S.ed);
+    const pair = S.both && hasOther() && !!M[S.svc][o];
+    let op;
+    let ptr;
+    if (ci < 0) {
+      const at = d.chapters.length;
+      const mk = (ed) => ({ number: String(at + 1), title: tIn('w2s.chapter', ed), sections: [{ number: `${at + 1}.1`, ...build(ed, `${at + 1}.1`, true) }] });
+      op = { op: 'insert', path: `/chapters/${at}`, value: mk(S.ed) };
+      if (pair) op.mirrorValue = mk(o);
+      ptr = `/chapters/${at}/sections/0/blocks/0`;
+    } else {
+      const ch = d.chapters[ci];
+      const secs = ch.sections || [];
+      let at = selCi === ci && selSi >= 0 ? selSi + 1 : secs.length;
+      if (at === secs.length && at > 0 && w2sIsOutput(secs[at - 1]) && !build.output) at -= 1; // an ordinary story goes ahead of the closing output story
+      const num = `${ch.number}.${at + 1}`;
+      const mk = (ed) => ({ number: num, ...build(ed, num, false) });
+      op = { op: 'insert', path: `/chapters/${ci}/sections/${at}`, value: mk(S.ed) };
+      if (pair) op.mirrorValue = mk(o);
+      ptr = `/chapters/${ci}/sections/${at}/blocks/0`;
+    }
+    commit([op], { mirror: true });
+    S.sel = { b: ptr, p: null, ed: S.ed };
     paintSel();
-    return `${where.arr}/${where.at}`;
+    return ptr;
+  },
+  /** A new user story: ID card, acceptance list, actions table (2 house columns) and data dictionary (7), unless the document's own stories
+   *  carry other columns (S2). Placeholders only. */
+  addStory() {
+    const id = `US-${String(w2wNextId()).padStart(2, '0')}`;
+    const build = (ed, num, first) => ({
+      title: tIn('w2s.storyTitle', ed),
+      blocks: [{ kind: 'stories', number: num, ...(first ? { lead: tIn('w2s.storyLead', ed) } : {}), items: [W2_WRITE.emptyStory(null, id, ed, cur(ed).doc)] }],
+    });
+    return W2_WRITE.placeSection(build);
+  },
+  /** S3: the OUTPUT story: ID card + acceptance, then an «item | value» table (output name, when issued, who receives it); no actions, no dictionary. */
+  addOutputStory() {
+    const id = `US-${String(w2wNextId()).padStart(2, '0')}`;
+    const build = (ed, num, first) => {
+      const rows = w2sWords('w2s.outputRows', ed).map((l) => [l, '…']);
+      return {
+        title: tIn('w2s.outputTitle', ed),
+        blocks: [
+          { kind: 'stories', number: num, ...(first ? { lead: tIn('w2s.storyLead', ed) } : {}), items: [{ id, name: '…', as: '…', want: '…', so: '…', acceptance: ['…'] }] },
+          { kind: 'table', columns: w2sWords('w2s.cols.outputCard', ed), rows },
+        ],
+      };
+    };
+    build.output = true;
+    return W2_WRITE.placeSection(build);
   },
   /** 0.15.1: a story's ID card is a table. One with no `card` yet prints the default (render.mjs storyCardDefault); before its first
    *  table edit it is stored: labels as plain text, `{bind}` cells that keep reading and editing the story's own fields. One op. */
@@ -84,15 +152,16 @@ const W2_WRITE = {
     commit([{ op: 'replace', path: `${sp}/card`, value: { rows, colWidths: [22, 78] }, old: undefined }], { ed, rerender: false });
     return true;
   },
-  /** One empty story card; the tables keep the columns of `ref` (a story already in the document), rows are one placeholder row. */
-  emptyStory(ref, id) {
-    const sub = (t0) => (t0?.columns ? { columns: [...t0.columns], rows: [t0.columns.map(() => '…')] } : null);
+  /** One empty story card. Tables: the columns of `ref` (a story the caller points at) when it has them, else those of the first story of the
+   *  document that has them (S2), else the house columns, so a story never lacks a table; rows are one placeholder row (S1). */
+  emptyStory(ref, id, ed = S.ed, doc = cur(ed).doc) {
     const it = { id, name: '…', as: '…', want: '…', so: '…', acceptance: ['…'] };
-    // no story to copy from: two small tables of the document's own placeholder, so the story has tables to grow (rows, columns, merge)
-    const dflt = { columns: ['…', '…'], rows: [['…', '…']] };
-    const a = sub(ref?.actions) || (ref ? null : { ...dflt, columns: [...dflt.columns], rows: dflt.rows.map((r) => [...r]) }), dd = sub(ref?.dictionary) || (ref ? null : { ...dflt, columns: [...dflt.columns], rows: dflt.rows.map((r) => [...r]) });
-    if (a) it.actions = a;
-    if (dd) it.dictionary = dd;
+    const own = w2sTables(doc);
+    for (const k of ['actions', 'dictionary']) {
+      const c = ref?.[k]?.columns;
+      const cols = Array.isArray(c) && c.length ? c : own[k]?.columns || w2sWords(`w2s.cols.${k}`, ed);
+      it[k] = { columns: [...cols], rows: [cols.map(() => '…')] };
+    }
     return it;
   },
   /** The story item (pointer) the selection is in: from the text pointer, the selected story card, or a stories block's last item. */
@@ -123,7 +192,12 @@ const W2_WRITE = {
     const m = /^(.*\/blocks\/\d+)\/items\/(\d+)$/.exec(item || '');
     if (!m) { toast(t('w2w.pickStory'), 'info'); return false; }
     const b = get(w2doc(), m[1]);
-    commit([{ op: 'insert', path: `${m[1]}/items/${+m[2] + 1}`, value: W2_WRITE.emptyStory(b.items[+m[2]], `US-${String(w2wNextId()).padStart(2, '0')}`) }], { mirror: true });
+    const id = `US-${String(w2wNextId()).padStart(2, '0')}`;
+    const o = other(S.ed);
+    const op = { op: 'insert', path: `${m[1]}/items/${+m[2] + 1}`, value: W2_WRITE.emptyStory(b.items[+m[2]], id) };
+    // the other edition's card is its own: its words, the columns of its own document (S1)
+    if (S.both && hasOther() && M[S.svc][o]) op.mirrorValue = W2_WRITE.emptyStory(get(cur(o).doc, `${m[1]}/items/${+m[2]}`), id, o, cur(o).doc);
+    commit([op], { mirror: true });
     return true;
   },
   /** Item 4: the page break before the selected section on / off, explicitly. */
@@ -204,13 +278,14 @@ const W2_WRITE = {
     return ops.length;
   },
 };
-const W2W_CMDS = { addStory: 'insert', storyPoint: 'insert', storyCard: 'insert', pgBreakAdd: 'gaps', pgBreakDel: 'gaps', pgPullUp: 'gaps', secDel: 'gaps', pgEmpty: 'gaps' };
+const W2W_CMDS = { addStory: 'insert', addOutputStory: 'insert', storyPoint: 'insert', storyCard: 'insert', pgBreakAdd: 'gaps', pgBreakDel: 'gaps', pgPullUp: 'gaps', secDel: 'gaps', pgEmpty: 'gaps' };
 bwExt({
   sections: [{ cat: 'gaps' }],
   cmds: Object.entries(W2W_CMDS).map(([id, group]) => ({ id, group, edit: true })),
   actions: {
     materialiseStoryCard: (ptr) => W2_WRITE.materialiseCard(ptr),
     addStory: () => { W2_WRITE.addStory(); },
+    addOutputStory: () => { W2_WRITE.addOutputStory(); },
     storyPoint: () => { W2_WRITE.addPoint(); },
     storyCard: () => { W2_WRITE.addCard(); },
     pgBreakAdd: () => { W2_WRITE.setBreak(true); },

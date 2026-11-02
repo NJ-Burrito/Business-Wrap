@@ -16,7 +16,7 @@ const RB_TABS = [
   ['font', [['fontface', ['fmtFont', 'fmtSize', 'fmtColor']], ['style', ['fmtBold', 'fmtItalic', 'fmtUnderline', 'fmtStrike', 'fmtCode']], ['fother', ['fmtLink', 'fmtClear']]], null, '--bw-sec-font'],
   ['para', [['align', ['fmtAlignStart', 'fmtAlignCenter', 'fmtAlignEnd', 'fmtJustify', 'fmtTop', 'fmtMiddle', 'fmtBottom']], ['spacing', ['fmtLine', 'fmtBefore', 'fmtAfter']],
     ['lists', ['fmtQuote', 'fmtBullets', 'fmtNumbers', 'fmtShapes', 'fmtIndent', 'fmtOutdent']]], null, '--bw-sec-para'],
-  ['insert', [['content', ['image', 'logo', 'addDiagram', 'addPara', 'insTable', 'insSection', 'insChapter', 'insTextBox']], ['story', ['addStory', 'storyPoint', 'storyCard']],
+  ['insert', [['content', ['image', 'logo', 'addDiagram', 'addPara', 'insTable', 'insSection', 'insChapter', 'insTextBox']], ['story', ['addStory', 'addOutputStory', 'storyPoint', 'storyCard']],
     ['wrap', ['wrapInline', 'wrapSquare', 'wrapTight', 'wrapThrough', 'wrapTopBottom', 'wrapBehind', 'wrapFront']]], null, '--bw-sec-insert'],
   ['layout', [['page', ['pgSetup', 'pgBreak', 'breakBefore', 'keepNext', 'pages', 'renumber']], ['gaps', ['pgBreakAdd', 'pgBreakDel', 'pgPullUp', 'secDel', 'pgEmpty']],
     ['front', ['tocHide', 'tocAdd', 'fmRowAdd', 'fmRowDel', 'fmColAdd', 'fmColDel']]], null, '--bw-sec-gaps'],
@@ -29,9 +29,9 @@ const RB_TABS = [
     ['tblblock', ['duplicate', 'delete', 'moveUp', 'moveDown', 'comment', 'styleThis', 'hideBlock', 'breakBefore', 'keepNext']]], 'table', '--bw-sec-table'],
   ['picture', [['pic', ['replace', 'caption', 'every', 'ovDelete']], ['wrap', ['wrapInline', 'wrapSquare', 'wrapTight', 'wrapThrough', 'wrapTopBottom', 'wrapBehind', 'wrapFront']]], 'picture', '--bw-sec-footer'],
   ['diagram', [['nodes', ['dgStaff', 'dgApplicant', 'dgStart', 'dgPayment', 'dgRework', 'dgSystem', 'dgDecision', 'dgOk', 'dgStop', 'dgNote', 'dgGroup', 'dgText']],
-    ['dgflow', ['dgAuto', 'dgReset', 'dgFlow', 'dgLegend', 'dgMermaidIn', 'dgMermaidOut']], ['dgzoom', ['dgZoomIn', 'dgZoomOut', 'dgZoomFit', 'dgZoom100']]], 'diagram', '--bw-sec-diagram'],
+    ['dgflow', ['dgAuto', 'dgReset', 'dgFlow', 'dgLegend', 'dgMermaidIn', 'dgMermaidOut']], ['dgzoom', ['dgZoomIn', 'dgZoomOut', 'dgZoomFit', 'dgZoom100']], ['legend', ['dgLgText', 'dgLgLook', 'dgLgDel', 'dgLgReset']]], 'diagram', '--bw-sec-diagram'],
   ['diagram2', [['shape', ['dgLabel', 'dgSub', 'dgConnect', 'dgDup', 'dgDel', 'dgFront', 'dgBack']], ['arrange', ['dgAlignL', 'dgAlignC', 'dgAlignR', 'dgAlignT', 'dgAlignM', 'dgAlignB', 'dgDistH', 'dgDistV', 'dgWrap']],
-    ['arrow', ['dgEdgeLabel', 'dgBendAdd', 'dgBendDel', 'dgRouteAuto', 'dgReverse', 'dgFrom', 'dgTo']]], 'diagram', '--bw-sec-diagram'],
+    ['arrow', ['dgEdgeLabel', 'dgBendAdd', 'dgBendDel', 'dgRouteAuto', 'dgRoute', 'dgHead', 'dgTail', 'dgLine', 'dgWeight', 'dgReverse', 'dgFrom', 'dgTo']]], 'diagram', '--bw-sec-diagram'],
 ];
 const RB_ALIAS = ['exportEdits', 'exportAll']; // the old File-tab twins of export.edits / export.editsAll: one tool each now, on the Export tab
 const RB_LISTED = new Set([...RB_TABS.flatMap((x) => x[1].flatMap((g) => g[1])), ...RB_ALIAS]);
@@ -401,4 +401,5 @@ function rbShellWire() {
 }
 { const o = buildCtx; buildCtx = function (b, tb) { o(b, tb); rbShellWire(); rbSync(); }; } // refreshUi and every (re)build end in buildCtx
 
-bwExt({ on: { render: () => { if (RB.last) rbRestoreText(RB.last); } }, expose: { ribbon: { panelHtml: rbPanelInner, listed: () => [...RB_LISTED], tabs: () => rbTabs().map((x) => x[0]), budget: (raw = false) => (raw ? RB_TABS : rbDefs()).map((x) => ({ tab: x[0], tools: x[1].reduce((n, g) => n + g[1].length, 0), groups: x[1].length, ctx: x[2] })), max: { tools: RB_MAX_TOOLS, groups: RB_MAX_GROUPS }, state: RB, sync: rbSync, snap: rbSnap, restore: rbRestore, restoreText: rbRestoreText, setTab: rbSetTab, collapse: rbCollapse } } });
+// 0.15.6 (A6): the arrow's pickers (route, head, tail, line, weight) are commands of the arrow group; each opens a small list at its button
+bwExt({ cmds: ['dgRoute', 'dgHead', 'dgTail', 'dgLine', 'dgWeight', 'dgLgText', 'dgLgLook', 'dgLgDel', 'dgLgReset'].map((id) => ({ id, group: 'arrow', edit: true })), on: { render: () => { if (RB.last) rbRestoreText(RB.last); } }, expose: { ribbon: { panelHtml: rbPanelInner, listed: () => [...RB_LISTED], tabs: () => rbTabs().map((x) => x[0]), budget: (raw = false) => (raw ? RB_TABS : rbDefs()).map((x) => ({ tab: x[0], tools: x[1].reduce((n, g) => n + g[1].length, 0), groups: x[1].length, ctx: x[2] })), max: { tools: RB_MAX_TOOLS, groups: RB_MAX_GROUPS }, state: RB, sync: rbSync, snap: rbSnap, restore: rbRestore, restoreText: rbRestoreText, setTab: rbSetTab, collapse: rbCollapse } } });

@@ -1,0 +1,30 @@
+{
+ "version": "0.15.6",
+ "format": 1,
+ "bwlog": 1,
+ "services": {
+  "event-permit": {
+   "ar": {
+    "ops": 4,
+    "opIds": "gmvyx7nzw0.0,gmvyx7o251.0,gmvyx7o3v2.0,gmvyx7om03.0",
+    "marks": 2,
+    "comments": 0,
+    "versions": 0
+   },
+   "en": {
+    "ops": 0,
+    "opIds": "",
+    "marks": 2,
+    "comments": 0,
+    "versions": 0
+   }
+  }
+ },
+ "logs": {
+  "event-permit": {
+   "entries": 8,
+   "kinds": "actor-key,open,op,op,op,saveHtml,op,saveHtml",
+   "head": "6be8572cdb53e8d6d22b257e29437bb68b466e68aa042f6f663d95224d7e93be"
+  }
+ }
+}
