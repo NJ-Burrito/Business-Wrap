@@ -149,6 +149,7 @@ const LIB = (() => {
       mount(entry);
       show(entry.id);
       writeDraft();
+      document.documentElement.dataset.bwLibSaved = String(++seq); // the first Save of a template or a blank document writes its entry too: tests and agents wait on this mark
       toast(t('libCreated', { name: entry.title }), 'ok');
       return entry;
     }

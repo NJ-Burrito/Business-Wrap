@@ -432,6 +432,8 @@ const XPL_SCENES = {
       case 'lglook': return cv + xaR('sheet', 34, 58, 92, 22, 4) + xaLn(54, 67, 36) + xaG('k-gone', xaR('pr', 42, 66, 8, 6, 2)) + xaG('k-in', xaR('ok', 42, 66, 8, 6, 2));
       case 'lgdel': return cv + xaR('sheet', 34, 58, 92, 22, 4) + xaR('pr', 42, 66, 8, 6, 2) + xaLn(52, 67, 12) + xaG('k-gone', xaR('ac', 76, 66, 8, 6, 2) + xaLn(86, 67, 12));
       case 'lgreset': return cv + xaR('sheet', 34, 58, 92, 22, 4) + xaR('pr', 42, 66, 8, 6, 2) + xaLn(52, 67, 12) + xaG('k-in', xaR('ac', 76, 66, 8, 6, 2) + xaLn(86, 67, 12));
+      case 'join': return cv + A(34, 28) + A(34, 66) + A(122, 47) + xaP('wr', 'M51 28 h22 q6 0 6 6 v13 M51 66 h22 q6 0 6 -6 v-13 M79 47 h26') + xaG('k-in', xaC('ac', 79, 47, 5));
+      case 'fs': return cv + A(34, 40) + xaG('k-in', xaR('bx', 80, 24, 52, 32, 5) + xaLn(88, 36, 36, 'mk')) + xaP('wr', 'M51 40 h26') + xaP('acs', 'M96 70 h24 m-5 -4 l5 4 l-5 4');
       case 'mmdout': return xaMini() + xaG('k-in', xaR('sheet', 64, 56, 70, 26, 4) + xaLines(70, 62, 3, 56, { gap: 6, c: 'ln' }));
       case 'label': return cv + xaR('bx', 24, 30, 48, 22, 5) + xaR('caret', 52, 36, 2, 10, 1) + xaLn(30, 37, 20, 'mk k-grow', xaSc(0, 1, 'left center')) + A(112, 40);
       case 'sub': return cv + xaR('bx', 24, 24, 48, 30, 5) + xaLn(30, 30, 36) + xaLn(30, 42, 24, 'mk k-grow', xaSc(0, 1, 'left center')) + xaR('caret', 56, 40, 2, 7, 1);
@@ -720,6 +722,8 @@ dg:lgtext dgLgText@dgLgText
 dg:lglook dgLgLook@dgLgLook
 dg:lgdel dgLgDel@dgLgDel
 dg:lgreset dgLgReset@dgLgReset
+dg:join dgJoin@dgGroup
+dg:fs dgFs@dgText
 dg:mmdout dgMermaidOut@dgMermaidOut
 dg:label dgLabel@dgLabel
 dg:sub dgSub@dgSub

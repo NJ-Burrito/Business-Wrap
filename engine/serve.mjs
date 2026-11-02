@@ -207,7 +207,6 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
         if (!body.doc?.chapters || !body.doc?.control) return send(400, { error: 'no document' });
         const base = loadTheme();
         const theme = { ...base, ...body.theme, vars: { ...base.vars, ...(body.theme?.vars || {}) } };
-        const stem = `${slug(body.service)}.${locale}`;
         const dir = path.join(OUT, slug(body.service), locale);
         const ws = !out && wsOf();
         // the save folder (A11): PDF\ and DOCX\, "<title>-<date>-<AR|ENG>", a clash gets -2, -3 (never an overwrite)
@@ -224,7 +223,7 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
         }
         const place = (kind, ext) => {
           if (toDir) return wantName ? path.join(toDir, `${wantName}.${ext}`) : uniquePath(toDir, outName(title, new Date(), locale, ext));
-          if (!ws) return path.join(dir, `${stem}.${ext}`);
+          if (!ws) return wantName ? path.join(dir, `${wantName}.${ext}`) : path.join(dir, `${slug(title)}.${locale}.${ext}`);
           const made = uniquePath(kind, outName(title, new Date(), locale, ext));
           return wantName ? path.join(path.dirname(made), `${wantName}.${ext}`) : made;
         };

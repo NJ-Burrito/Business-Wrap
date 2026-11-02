@@ -1268,10 +1268,15 @@ function reqIdCheck(d) {
     if (+num !== want[pre]) out.push(['warn', t('vReqSeq', { x: code, y: `${pre}-${String(want[pre]).padStart(2, '0')}` }), path]);
     want[pre] = +num + 1;
   }
-  for (const b of blocksInOrder(d)) {
+  const all = blocksInOrder(d);
+  for (const [bn, b] of all.entries()) {
     if (b.block?.kind !== 'stories') continue;
+    // a prose or list block right after the cards, in the same section, with words, is the criteria of the last story (field notes 14)
+    const nx = all[bn + 1];
+    const nextHasWords = !!nx && nx.ci === b.ci && nx.si === b.si && (nx.block?.kind === 'prose' || nx.block?.kind === 'list') && storyHasCriteria({ blocks: [nx.block] });
+    const n = (b.block.items || []).length;
     (b.block.items || []).forEach((it, i) => {
-      if (!storyHasCriteria(it)) out.push(['warn', t('vNoAc', { x: it.id || it.name || `${i + 1}` }), `${b.ptr}/items/${i}/name`]);
+      if (!storyHasCriteria(it) && !(i === n - 1 && nextHasWords)) out.push(['warn', t('vNoAc', { x: it.id || it.name || `${i + 1}` }), `${b.ptr}/items/${i}/name`]);
     });
   }
   return out;
