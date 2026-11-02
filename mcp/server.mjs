@@ -82,6 +82,7 @@ export function updateNotice(u) {
 }
 
 export function createServer({ update = null, ready: startup = null } = {}) {
+  process.env.BW_AGENT_OPEN = '1'; // 0.16.0: every window this server opens for an agent is an automation tab (no resume popup, no blocking dialog)
   setTimeout(() => launchCleanup(REPO), 2000).unref(); // 0.15.7: finish or undo an update a crash left; a plugin install drops its older version folders
   ready = Promise.resolve(startup).catch(() => null);
   let notice = updateNotice(update);

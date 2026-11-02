@@ -183,7 +183,9 @@ export function launchBrowser(urls, { chunk = 30 } = {}) {
       for (const u of c) osOpen(u);
       continue;
     }
-    const args = [`--user-data-dir=${profileDir(id)}`, '--no-first-run', '--no-default-browser-check', ...keepAwakeArgs(), '--new-window', ...c];
+    // 0.16.0: no "restore pages" bubble after a crash or a killed window, so a relaunch never brings 18 old pages back; a tab an agent opens (BW_AGENT_OPEN, set by the MCP server) is an automation tab: no blocking dialog
+    const urls = process.env.BW_AGENT_OPEN === '1' ? c.map((u) => (/[?&]automation=/.test(u) ? u : `${u}${u.includes('?') ? '&' : '?'}automation=1`)) : c;
+    const args = [`--user-data-dir=${profileDir(id)}`, '--no-first-run', '--no-default-browser-check', '--disable-session-crashed-bubble', '--hide-crash-restore-bubble', ...keepAwakeArgs(), '--new-window', ...urls];
     if (process.env.BW_BROWSER_STUB) { fs.appendFileSync(process.env.BW_BROWSER_STUB, JSON.stringify({ args, exe: br?.exe ?? null, browser: id }) + '\n'); continue; }
     const p = spawn(br.exe, args, { detached: true, stdio: 'ignore' });
     p.on('error', () => {});

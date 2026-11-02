@@ -51,6 +51,7 @@ const SESS = (() => {
     const subs = {};
     let mode = 'none', port = null, ch = null, es = null, lead = false, client = '', beatTimer = 0, sentKey = '', sentAt = 0, listSeq = 0, lastLead = Date.now(), watchTimer = 0;
     const known = new Map(); // leader: tab → {info, at}
+    let lastPing = Date.now(); // 0.16.0: when the shared worker goes silent (frozen), the tabs move to the leader fallback
     const lostTabs = new Set(); // leader: tabs that vanished without a bye (a discarded page)
     const me = () => ({ tab, svc: S.svc, docs: EXT.library?.isDoc(S.svc) ? [S.svc] : [], automation: AUTO, awake: AWK.state() });
     const deliver = (event, data) => {
@@ -127,6 +128,7 @@ const SESS = (() => {
       port = w.port;
       port.onmessage = (m) => {
         const d = m.data || {};
+        lastPing = Date.now();
         if (d.t === 'ev') deliver(d.event, d.data);
         else if (d.t === 'ping') port.postMessage({ t: 'beat', ...me() });
       };
@@ -140,9 +142,19 @@ const SESS = (() => {
       bye() {
         try { if (port) port.postMessage({ t: 'bye', tab }); else if (ch && !lead) ch.postMessage({ t: 'bye', tab }); else if (lead) { clearInterval(beatTimer); es?.close(); } } catch { /* closing */ }
       },
+      /** the shared worker has said nothing for 15 s (it froze; every tab it serves would sleep with it): all its tabs move to the Web Locks leader, which holds ONE stream for the browser and relays
+       *  (the same fallback a browser without SharedWorker uses; one stream each would use up the six connections a browser allows per origin) */
+      rescue() {
+        if (mode !== 'shared' || !tab || Date.now() - lastPing < 15000) return;
+        try { port?.close(); } catch { /* closed */ }
+        port = null; mode = 'none';
+        fallback();
+      },
       again() { try { if (port) port.postMessage({ t: 'hello', ...me() }); else if (ch) ch.postMessage({ t: 'hello', ...me() }); } catch { /* none */ } },
       on(ev, fn) { (subs[ev] ||= []).push(fn); },
       get mode() { return mode; },
+      get silentMs() { return Date.now() - lastPing; },
+      get rescuing() { return mode === 'leader' || (mode === 'follower' && !port); },
     };
   })();
   /* 0.15.3 T1: one document = one owning tab. The host gives a document's lease to the first tab that lists it (engine/routes/session.mjs) and tells every tab
@@ -226,7 +238,14 @@ const SESS = (() => {
       if (OFF || wk || typeof Worker !== 'function') return;
       try {
         wk = new Worker('/api/session/worker.js', { name: 'bw-awake' });
-        wk.onmessage = (m) => { const lag = Date.now() - Number(m.data?.wall || Date.now()); if (lag > 3000) { st.stalls += 1; st.lagMs = lag; } };
+        let n = 0;
+        wk.onmessage = (m) => {
+          const lag = Date.now() - Number(m.data?.wall || Date.now());
+          if (lag > 3000) { st.stalls += 1; st.lagMs = lag; }
+          // 0.16.0: the tab's own beat to the host every 4 s, from this worker's message (never a page timer), so it stays awake whatever the shared worker does
+          if (tab && (n += 1) % 4 === 1) fetch('/api/session/beat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tab, svc: S.svc, docs: EXT.library?.isDoc(S.svc) ? [S.svc] : [], automation: AUTO }) }).then((r) => r.arrayBuffer()).catch(() => {});
+          hub.rescue();
+        };
         wk.onerror = () => { try { wk.terminate(); } catch { /* gone */ } wk = null; };
       } catch { wk = null; }
     }
@@ -341,8 +360,21 @@ const SESS = (() => {
   /* 0.15.9 R1-R5: the resume popup. The documents of the last session as a list (title, last-edited time, language): tick several, or press one to open it alone; a search box,
    * select all / clear (they act on what the search shows), «continue all»; «open an older document» lists the save folder's Documents (newest first, searchable); a new blank
    * document; «not now» or Esc closes it and changes nothing (the records stay for the next start). A tool's ?automation=1 tab never gets here (boot). */
+  let openDlg = null;
+  /** closes the resume popup without answering it (an agent's call, `editor_action dismissResume`, or any request from a tool): nothing is changed, the records stay */
+  function dismissResume() { const d = openDlg; if (!d) return false; openDlg = null; try { d.close(); } catch { /* closed */ } d.remove(); return true; }
+  /** the document in this tab (a library document), if any: an agent's document must keep its tab whatever the popup is answered */
+  const holdsDoc = () => !!(info && EXT.library?.isDoc(S.svc));
+  async function claim(doc) {
+    const d = doc || curDoc();
+    if (!d || !tab) return { ok: false, code: 'BAD_ARGS', error: 'no document to claim' };
+    const r = await json('/api/session/claim', { tab, doc: d });
+    if (r.ok) { LS.leases[d] = tab; delete LS.stale[d]; banners(); LS.mine[d] = LS.revs[d] ?? LS.mine[d]; }
+    return r;
+  }
   function modal(last, release) {
     const dlg = document.createElement('dialog');
+    openDlg = dlg;
     dlg.className = 'bw-resume';
     dlg.dataset.theme = S.dark ? 'dark' : 'light'; // the shell's theme tokens (build-editor brandCss) follow it here
     dlg.setAttribute('aria-labelledby', 'bw-resume-h');
@@ -389,7 +421,8 @@ const SESS = (() => {
     $('.oq').addEventListener('input', () => { clearTimeout(olderTimer); olderTimer = setTimeout(loadOlder, 180); });
     async function resume(tabs) {
       dlg.querySelectorAll('button').forEach((x) => { x.disabled = true; });
-      const r = await json('/api/session/resume', { runId: last.runId, tab, ...(tabs ? { tabs } : {}) });
+      // an agent's document keeps this tab: nothing navigates it away, every chosen document gets a window of its own
+      const r = await json('/api/session/resume', { runId: last.runId, ...(holdsDoc() ? {} : { tab }), ...(tabs ? { tabs } : {}) });
       $('.out').textContent = r.ok ? t('sessOpened', { n: r.n }) : String(r.error || t('resFailed'));
       document.documentElement.dataset.bwResume = r.ok ? 'resumed' : 'failed';
       if (!r.ok) { dlg.querySelectorAll('button').forEach((x) => { x.disabled = false; }); refresh(); return; }
@@ -424,11 +457,11 @@ const SESS = (() => {
         dlg.querySelectorAll('button').forEach((x) => { x.disabled = true; });
         await json('/api/session/new', { runId: last.runId, tab });
         document.documentElement.dataset.bwResume = 'new';
-        if (!/[#&]doc=/.test(location.hash)) await EXT.library?.newDocument(); // a tab opened on one document keeps it (0.15.0)
+        if (!/[#&]doc=/.test(location.hash) && !holdsDoc()) await EXT.library?.newDocument(); // a tab that holds a document keeps it (0.15.0, and an agent's since 0.16.0): never a blank one that owns nothing
         dlg.close(); dlg.remove();
       }
     });
-    dlg.addEventListener('close', () => release?.(), { once: true }); // answered or dismissed (Esc, «not now»): the hold goes, nothing was changed
+    dlg.addEventListener('close', () => { if (openDlg === dlg) openDlg = null; release?.(); }, { once: true }); // answered or dismissed (Esc, «not now»): the hold goes, nothing was changed
     refresh();
     dlg.showModal();
     $('.q').focus();
@@ -509,7 +542,7 @@ const SESS = (() => {
       if (r.ok) draw(r); else now.textContent = t('brFailed');
     });
   };
-  return { boot, push, soon, flush, ensureFolder, card, mountCard, brCard, brMount, on: hub.on, bye: hub.bye, again: hub.again, seen, get readonly() { const d = curDoc(); return d ? (follows(d) ? 'follower' : LS.stale[d] ? 'stale' : '') : ''; }, get transport() { return hub.mode; }, get automation() { return AUTO; }, get tab() { return tab; }, get info() { return info; } };
+  return { boot, push, soon, flush, ensureFolder, card, mountCard, brCard, brMount, dismissResume, claim, on: hub.on, bye: hub.bye, again: hub.again, seen, get readonly() { const d = curDoc(); return d ? (follows(d) ? 'follower' : LS.stale[d] ? 'stale' : '') : ''; }, get transport() { return hub.mode; }, get silentMs() { return hub.silentMs; }, get rescuing() { return hub.rescuing; }, get automation() { return AUTO; }, get tab() { return tab; }, get info() { return info; } };
 })();
 
 bwExt({
@@ -535,11 +568,16 @@ window.addEventListener('pageshow', (e) => { if (e.persisted) SESS.again(); }); 
 {
   let queue = Promise.resolve();
   const reply = (body) => fetch('/api/editor/reply', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
+  const seenReq = new Set();
   SESS.on('req', (d) => {
-    if (!d?.id) return;
+    if (!d?.id || seenReq.has(d.id)) return;
+    seenReq.add(d.id); document.documentElement.dataset.bwReqSeen = String(seenReq.size); if (seenReq.size > 200) seenReq.delete(seenReq.values().next().value);
+    const asks = d.tool === 'action' && d.args?.id === 'dismissResume'; // that action answers for itself (dismissed: true/false)
+    if (!asks) SESS.dismissResume(); // 0.16.0: a tool is talking to this tab: a popup that waits for a person never blocks it
+    window.BW.dismissBlockers?.({ keepResume: asks }); // nor does a first-launch or confirm card
     queue = queue.then(async () => {
       try {
-        await window.BW.whenReady(10000).catch(() => {}); // a tab still booting answers once it has, or after 10 s anyway
+        if (!asks) await window.BW.whenReady(10000).catch(() => {}); // a tab still booting answers once it has, or after 10 s anyway (dismissResume never waits for the very popup it closes)
         reply({ id: d.id, ok: true, result: await window.BW.bridge(d.tool, d.doc, d.args) });
       } catch (e) {
         reply({ id: d.id, ok: false, error: { code: e?.bw || 'HOST_ERROR', message: String(e?.message || e).slice(0, 400), ...(e?.extra || {}) } });
