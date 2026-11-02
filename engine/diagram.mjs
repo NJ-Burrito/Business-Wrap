@@ -12,7 +12,7 @@
 // draws the same primitives as native Word shapes.
 //
 // Model (bible/contracts/diagram.schema.json):
-//   { kind:'bw-diagram', version:1, flow:'ltr'|'rtl', nodes:[{id, kind, label, sub?, x?, y?, w?, h?,
+//   { kind:'bw-diagram', version:1, flow:'ltr' (always: a drawing runs left to right, top-left to bottom-right, in Arabic and English; a stored 'rtl' is ignored), nodes:[{id, kind, label, sub?, x?, y?, w?, h?,
 //     color?, icons?, icon?}], edges:[{id, from, to, kind?, label?}], legend?:{<key>: text}|false }
 // A node without x/y is placed by `layout()`; edges are always routed from the node geometry.
 export const DIAGRAM = (() => {
@@ -210,6 +210,7 @@ export const DIAGRAM = (() => {
   }
   function layoutOnce(input, { force = false, aspect, rowsK, stretch } = {}) {
     const model = clone(input);
+    model.flow = 'ltr';
     model.nodes = model.nodes.filter((n) => !(n.kind === 'group' && n.auto));
     for (const e of model.edges || []) { delete e.via; delete e.fromAnchor; delete e.toAnchor; } // a new layout routes every arrow afresh
     for (const n of model.nodes) {
@@ -219,7 +220,7 @@ export const DIAGRAM = (() => {
     const byId = new Map(model.nodes.map((n) => [n.id, n]));
     const spine = spineOf(model).map((id) => byId.get(id));
     if (!spine.length) return model;
-    const f = model.flow === 'rtl' ? -1 : 1;
+    const f = 1; // 0.16.0: every drawing runs left to right (only its text follows the language); a stored flow:'rtl' is ignored
     const edgeBetween = (a, b) => model.edges.find((e) => e.from === a.id && e.to === b.id);
     const gapAfter = spine.map((n, i) => {
       const e = spine[i + 1] && edgeBetween(n, spine[i + 1]);
@@ -558,7 +559,7 @@ export const DIAGRAM = (() => {
   /* ── routing: orthogonal, ports spread along a face, corridors in lanes ── */
   const box = (n) => ({ l: n.x, t: n.y, r: n.x + n.w, b: n.y + n.h, cx: n.x + n.w / 2, cy: n.y + n.h / 2, n });
   function route(model) {
-    const f = model.flow === 'rtl' ? -1 : 1;
+    const f = 1; // 0.16.0: every drawing runs left to right (only its text follows the language); a stored flow:'rtl' is ignored
     const byId = new Map(model.nodes.map((n) => [n.id, n]));
     const solids = model.nodes.filter((n) => !['group', 'text'].includes(n.kind)).map(box);
     const hSegs = [];
@@ -1683,7 +1684,7 @@ export const DIAGRAM = (() => {
   const APPLICANT = /applicant|customer|citizen|requester|requestor|client|مقدم|مُقدّم|المتقدم|العميل|المواطن|المستفيد|طالب الخدمة/i;
   const PAY = /\bpay|payment|fee|دفع|رسوم|سداد/i;
   const REFUSE = /reject|refus|cancel|declin|denied|expired|رفض|مرفوض|إلغاء|الغاء|ملغ|انتهاء/i;
-  function fromGraph(graph, { actors = [], locale = 'ar', flow = 'ltr' } = {}) {
+  function fromGraph(graph, { actors = [], locale = 'ar' } = {}) {
     const W = words(locale);
     const nodes = graph.nodes.map((n) => ({ ...n }));
     const edges = graph.edges.map((e) => ({ ...e }));
@@ -1716,7 +1717,7 @@ export const DIAGRAM = (() => {
     // short ids of our own: the source's raw ids (sid-…, expressions) never travel into the document
     const short = new Map(nodes.map((n, i) => [n.id, `n${i + 1}`]));
     const out = {
-      kind: 'bw-diagram', version: 1, flow,
+      kind: 'bw-diagram', version: 1, flow: 'ltr',
       nodes: nodes.filter((n) => n.id !== drop).map((n) => ({ id: short.get(n.id), kind: kind[n.id], label: n.name || (n.type === 'decision' ? W.action : n.type === 'start' ? W.start : n.type === 'end' ? (kind[n.id] === 'stop' ? W.stop : W.ok) : '') })),
       edges: edges.filter((e) => e.from !== drop && e.to !== drop).map((e, i) => ({ id: `e${i + 1}`, from: short.get(e.from), to: short.get(e.to), label: e.label || '' })),
     };
@@ -1729,7 +1730,7 @@ export const DIAGRAM = (() => {
   const mmId = (s) => String(s).replace(/[^\w]/g, '_') || 'n';
   function toMermaid(modelIn) {
     const model = ensure(modelIn);
-    const lines = [`flowchart ${model.flow === 'rtl' ? 'RL' : 'LR'}`];
+    const lines = ['flowchart LR'];
     const ids = new Map(model.nodes.map((n) => [n.id, mmId(n.id)]));
     for (const n of model.nodes) {
       if (n.kind === 'group' && n.auto) continue;
@@ -1751,7 +1752,7 @@ export const DIAGRAM = (() => {
     const src = String(code || '').replace(/%%.*$/gm, '');
     const head = /^\s*(flowchart|graph)\s+(\w+)?/im.exec(src);
     if (!head) throw new Error('not a Mermaid flowchart: the code must start with "flowchart" or "graph"');
-    const flow = /^(RL)$/i.test(head[2] || '') ? 'rtl' : 'ltr';
+    const flow = 'ltr'; // 0.16.0: RL code is read left to right too
     const nodes = new Map();
     const edges = [];
     const unq = (s) => String(s).trim().replace(/^"(.*)"$/s, '$1').replace(/#quot;/g, '"').replace(/<br\s*\/?>/gi, ' ');

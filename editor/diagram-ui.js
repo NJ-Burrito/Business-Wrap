@@ -45,7 +45,7 @@ function dgContext() {
     return { cat: 'shape', label: t('selShape', { x: dgNodeName(node) }), groups: [['dgLabel', kinds, colours, 'dgConnect', 'dgDel'], [icon, 'dgSub', 'dgDup', 'dgFront', 'dgBack']], keep: zoomKeep() };
   }
   const sym = btn('dgSymbol'); // 0.14.0 · O2: a gallery with the full names (the old select was squeezed to a sliver inside the «…» menu)
-  return { cat: 'diagram', label: t('selDiagram'), groups: [['dgStaff', 'dgDecision', 'dgStart', 'dgOk', 'dgStop', sym], ['dgApplicant', 'dgPayment', 'dgRework', 'dgSystem', 'dgNote', 'dgGroup', 'dgText', 'dgAuto', 'dgReset', 'dgFlow', 'dgLegend', 'dgLgReset', 'dgZoom100', 'dgMermaidIn', 'dgMermaidOut'], ['dgCvShapes', 'dgCvPage', 'dgCvAuto']], keep: zoomKeep() };
+  return { cat: 'diagram', label: t('selDiagram'), groups: [['dgStaff', 'dgDecision', 'dgStart', 'dgOk', 'dgStop', sym], ['dgApplicant', 'dgPayment', 'dgRework', 'dgSystem', 'dgNote', 'dgGroup', 'dgText', 'dgAuto', 'dgReset', 'dgLegend', 'dgLgReset', 'dgZoom100', 'dgMermaidIn', 'dgMermaidOut'], ['dgCvShapes', 'dgCvPage', 'dgCvAuto']], keep: zoomKeep() };
 }
 /* ── selection paint: outline + resize handle, editor DOM only (never exported) ── */
 function dgPaint() {
@@ -1341,7 +1341,6 @@ async function dgAction(a) {
       dgSave(baseBlk?.kind === 'diagram' ? DIAGRAM.ensure(baseBlk.model) : DIAGRAM.layout(m, { force: true }));
       return;
     }
-    case 'dgFlow': { m.flow = m.flow === 'rtl' ? 'ltr' : 'rtl'; dgSave(DIAGRAM.layout(m)); return; }
     case 'dgLegend': { S.dg.legend = null; m.legend = m.legend === false ? undefined : false; if (m.legend === undefined) delete m.legend; break; }
     case 'dgMermaidOut': download(`${S.svc}.${S.dg.ed}.diagram.mmd`, DIAGRAM.toMermaid(m), 'text/plain'); return;
     case 'dgMermaidIn': {
