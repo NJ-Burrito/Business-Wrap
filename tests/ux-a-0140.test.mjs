@@ -1,5 +1,5 @@
 // 0.14.0 lane ux-a: A1 explainer side panel, A2 waiting popup, A3 toasts clear of the page controls, A4 reading mode.
-// Headless Edge, temp profile via launchOptions, closed in finally.
+// Headless Chrome, temp profile via launchOptions, closed in finally.
 //
 //   node tests/ux-a-0140.test.mjs
 import './_isolate.mjs';

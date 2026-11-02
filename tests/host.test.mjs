@@ -173,13 +173,13 @@ try {
   await browser.close();
   if (h && H.alive(h.pid)) await H.stop();
 }
-// sweep: no node or Edge process of this test (their command lines name the temp folder)
+// sweep: no node or browser process of this test (their command lines name the temp folder)
 let left = [];
 if (process.platform === 'win32') {
   const ps = `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('${tmp.replace(/'/g, "''")}') -and -not $_.CommandLine.Contains('Get-CimInstance') -and $_.ProcessId -ne ${process.pid} } | ForEach-Object { "$($_.ProcessId) $($_.Name)" }`;
   left = String(spawnSync('powershell.exe', ['-NoProfile', '-Command', ps], { encoding: 'utf8', windowsHide: true }).stdout || '').trim().split(/\r?\n/).filter(Boolean);
 }
-check('sweep: no node or Edge process of this test is left', left.length === 0, left.join(', '));
+check('sweep: no node or browser process of this test is left', left.length === 0, left.join(', '));
 
 console.log(out.join('\n'));
 console.log(failed ? `\nFAILED: ${failed}` : `\nhost: ${out.length}/${out.length} PASS`);

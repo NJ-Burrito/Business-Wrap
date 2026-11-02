@@ -48,7 +48,7 @@ function loadDocument(file, editsFile, force = false) {
 }
 // update_available rides once per session on the first tool result, so any MCP client's model sees it.
 let decorate = (d) => d;
-const OPEN = z.boolean().optional().describe('Also open the result in the Business-Wrap editor (starts the local host, opens an Edge tab); default false');
+const OPEN = z.boolean().optional().describe('Also open the result in the Business-Wrap editor (starts the local host, opens a browser tab); default false');
 /** open: true puts the documents into the editor through the host; the answer gains opened: {url, doc_id} */
 const opened = async (r, open) => (open && r.documents?.length ? { ...r, opened: await openEditor({ inputs: r.documents }) } : r);
 // Set by createServer: the startup work (state migration) every tool waits for, and the version the process LOADED.
@@ -82,6 +82,7 @@ export function updateNotice(u) {
 }
 
 export function createServer({ update = null, ready: startup = null } = {}) {
+  process.env.BW_AGENT_OPEN = '1'; // 0.16.0: every window this server opens for an agent is an automation tab (no resume popup, no blocking dialog)
   setTimeout(() => launchCleanup(REPO), 2000).unref(); // 0.15.7: finish or undo an update a crash left; a plugin install drops its older version folders
   ready = Promise.resolve(startup).catch(() => null);
   let notice = updateNotice(update);
@@ -282,7 +283,7 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
 
   server.registerTool('open_in_editor', {
     title: 'Open in the Business-Wrap editor',
-    description: 'Start the local host in the background (no console window) if it is not running, put the documents into the editor (library import when the host has one) and open an Edge tab on it. Give documents (JSON files or folders), or editor (a built .html), or doc_id (a document already in the library). Returns {url, doc_id}.',
+    description: 'Start the local host in the background (no console window) if it is not running, put the documents into the editor (library import when the host has one) and open a browser tab on it. Give documents (JSON files or folders), or editor (a built .html), or doc_id (a document already in the library). Returns {url, doc_id}.',
     inputSchema: {
       documents: z.array(z.string()).optional().describe('Document JSON files or folders'),
       editor: z.string().optional().describe('A built editor .html'),
@@ -300,9 +301,41 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     throw new Error('give documents, editor or doc_id');
   }));
 
+  // 0.15.9 R6: the editor's «continue where you left off» list, readable and openable by an agent (the same host routes the popup uses)
+  const hostCall = async (route, body) => {
+    const { hostState, alive } = await import('../engine/host.mjs');
+    const h = hostState();
+    if (!h || !alive(h.pid)) throw Object.assign(new Error('no Business-Wrap host is running'), { bw: true, code: 'NO_HOST', data: { how: 'call open_in_editor first (it starts the host), then retry' } });
+    const r = await fetch(`http://127.0.0.1:${h.port}/${route}`, { method: body ? 'POST' : 'GET', headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(20000) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || `host answered ${r.status}`);
+    return j;
+  };
+  server.registerTool('recent_documents', {
+    title: 'Documents the Business-Wrap editor can reopen',
+    description: 'The list behind the editor\'s «continue where you left off» popup: `last.tabs` = the documents of the last session (tab id, title, last-edited time, language ar|en) and `older` = documents saved in the save folder («المستندات - Documents»), newest first, optionally filtered by name (query). Read only. Needs the local host (open_in_editor starts it). Open one with open_recent_document.',
+    inputSchema: { query: z.string().optional().describe('Filter the older documents by name'), limit: z.number().int().min(1).max(200).optional().describe('How many older documents (default 50)') },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  }, guard(async ({ query, limit }) => hostCall(`api/session/recent?q=${encodeURIComponent(query || '')}&limit=${limit || 50}`)));
+  server.registerTool('open_recent_document', {
+    title: 'Open documents from the last session or an older saved one',
+    description: 'Open in the editor: tabs = tab ids from recent_documents `last.tabs` (only those), or all: true for every document of the last session, or older = the `id` of an older document from recent_documents `older` (opens that saved file). Opens a browser tab per document; the rest of the last session stays offered. Needs the local host.',
+    inputSchema: { tabs: z.array(z.string()).optional(), all: z.boolean().optional(), older: z.string().optional() },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  }, guard(async ({ tabs, all, older }) => {
+    const list = await hostCall('api/session/recent?limit=1000');
+    if (older) {
+      const hit = (list.older || []).find((d) => d.id === older);
+      if (!hit) throw new Error(`no saved document ${older}: list them with recent_documents`);
+      return { ...(await openEditor({ inputs: [hit.file] })), opened: hit.name };
+    }
+    if (!list.last?.runId) throw new Error('the last session left no documents');
+    if (!all && !(tabs?.length)) throw new Error('give tabs (ids from recent_documents), all: true, or older');
+    return hostCall('api/session/resume', { runId: list.last.runId, ...(all ? {} : { tabs }) });
+  }));
   server.registerTool('close_editor', {
     title: 'Close the editor and its host',
-    description: 'Turn Business-Wrap off (same as `business-wrap stop --all` and the editor power button): every open tab saves first, then every local host, server and Edge window this install started stops. Never the host of another install.',
+    description: 'Turn Business-Wrap off (same as `business-wrap stop --all` and the editor power button): every open tab saves first, then every local host, server and browser window this install started stops. Never the host of another install.',
     inputSchema: {},
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   }, guard(async () => closeEditors()));

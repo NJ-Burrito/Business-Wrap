@@ -1,5 +1,5 @@
 // Lane ux-ribbon · 0.14.0 — R1 the Word-style ribbon, R2 a tool press keeps the selection, R3 language + direction side by side,
-// R4 the changes button. Real headless Chrome (msedge via launchOptions), real mouse and keyboard; closed in finally.
+// R4 the changes button. Real headless Chrome (via launchOptions), real mouse and keyboard; closed in finally.
 //   node tests/ux-ribbon-0140.test.mjs
 import './_isolate.mjs';
 import fs from 'node:fs';

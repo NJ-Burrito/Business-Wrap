@@ -31,7 +31,6 @@ const BASELINE = new Set([
   'tests/projects-io.test.mjs|backslash path',
   'tests/projects-zip.test.mjs|backslash path',
   'tests/projects-zip.test.mjs|drive path',
-  'tests/spell-helper.mjs|msedge.exe / Edge install path',
 ]);
 const GUARD = /win32|\bisWin\b|\bIS_WIN\b|IsWindows|isWindows/;
 const OK = /platform-guard:\s*ok/;

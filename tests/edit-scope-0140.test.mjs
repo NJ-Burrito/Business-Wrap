@@ -1,6 +1,6 @@
 // Lane edit-scope · 0.14.0 — E1 Delete scopes · E2 renumber lists · E3 one document id.
 // Pure model (engine/edits.mjs) and the render / DOCX / PDF in Node; the editor extensions (ext/28, 29, 33) in headless Chrome
-// (msedge, temp profile under the OS temp dir, closed at the end).
+// (Google Chrome, temp profile under the OS temp dir, closed at the end).
 //
 //   node tests/edit-scope-0140.test.mjs
 import './_isolate.mjs';

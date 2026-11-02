@@ -20,7 +20,7 @@ import { buildEditor } from '../engine/build-editor.mjs';
 import { launchOptions, REPO } from '../engine/export.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-live0153-'));
-const env = { ...process.env, BW_LOCAL_DIR: path.join(tmp, '.local'), BW_STATE_DIR: path.join(tmp, 'state'), BW_LEARNING_DIR: path.join(tmp, 'learning'), BW_WORKSPACE: path.join(tmp, 'ws'), BW_NO_BROWSER: '1', BW_NO_PROTOCOL: '1', BW_BRIDGE_TIMEOUT_MS: '8000', BW_EDITOR_TIMEOUT_MS: '30000', BW_IDLE_MS: '1500', BW_ASLEEP_MS: '7000' };
+const env = { ...process.env, BW_QUEUE_MS: '0', BW_LOCAL_DIR: path.join(tmp, '.local'), BW_STATE_DIR: path.join(tmp, 'state'), BW_LEARNING_DIR: path.join(tmp, 'learning'), BW_WORKSPACE: path.join(tmp, 'ws'), BW_NO_BROWSER: '1', BW_NO_PROTOCOL: '1', BW_BRIDGE_TIMEOUT_MS: '8000', BW_EDITOR_TIMEOUT_MS: '30000', BW_IDLE_MS: '1500', BW_ASLEEP_MS: '7000' };
 fs.mkdirSync(env.BW_WORKSPACE, { recursive: true });
 Object.assign(process.env, env);
 const H = await import('../engine/host.mjs');
@@ -162,13 +162,13 @@ try {
   check('T2: the woken old leader steps down (one stream, not two)', stepped, await tr(L));
   await D.close({ runBeforeUnload: false }); await E.close({ runBeforeUnload: false });
 
-  // Edge's launch line
+  // the editor browser's launch line (0.15.9: any Chromium, Google Chrome first)
   const stub = path.join(tmp, 'browser-stub.jsonl');
   process.env.BW_BROWSER_STUB = stub;
   H.launchBrowser(['http://127.0.0.1:1/']);
   delete process.env.BW_BROWSER_STUB;
   const argv = JSON.parse(fs.readFileSync(stub, 'utf8').trim().split('\n')[0]).args;
-  check('T2: Edge is launched with the keep-awake switches', ['--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'].every((f) => argv.includes(f)) && argv.some((a) => /^--disable-features=.*SleepingTabs/.test(a)), argv.join(' '));
+  check('T2: the browser is launched with the keep-awake switches', ['--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'].every((f) => argv.includes(f)) && argv.some((a) => /^--disable-features=.*SleepingTabs/.test(a)), argv.join(' '));
 
   // ── T10: the MCP server ──
   const { mcpRegistration } = await import('../mcp/startup.mjs');

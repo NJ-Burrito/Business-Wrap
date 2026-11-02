@@ -44,7 +44,7 @@
 
 ▶️ شغل الخادم المحلي: `npm run serve` (في المرة الأولى يبني محرر المثال)
 
-🌐 افتح العنوان الذي يطبعه `http://127.0.0.1:4317/` في Chrome أو Edge.
+🌐 افتح العنوان الذي يطبعه `http://127.0.0.1:4317/` في Google Chrome.
 
 ⚠️ افتح المحرر دائما **عبر الخادم المحلي**، لا بالنقر المزدوج على ملف HTML. التصدير والطباعة وقائمة الطابعات والتحديث تحتاج الخادم.
 
@@ -54,7 +54,7 @@
 |---|---|---|
 | 🟢 Node 20 أو أحدث | `node --version` | يشغل كل شيء |
 | 🐍 uv | `uv --version` | يشغل خطوات Python (إنهاء PDF وبناء DOCX) مع حزمها، دون تثبيت بـ pip |
-| 🌐 Chrome أو Edge | افتحه مرة | يطبع ملف PDF |
+| 🌐 Google Chrome | افتحه مرة | يطبع ملف PDF |
 | 🌱 git | `git --version` | نسخ المستودع وسوق الإضافات |
 
 📌 ليس لديك uv؟ ثبته: https://docs.astral.sh/uv/getting-started/installation/ (ودونه يعود بزنس راب إلى `python` العادي ويخبرك بالحزم التي يحتاجها).
@@ -133,8 +133,8 @@ node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|e
 
 | الأمر | ماذا يفعل |
 |---|---|
-| `/business-wrap:open [doc.json\|folder\|editor.html]` | يشغّل الخادم المحلي ويفتح المحرر في Edge (وثيقة فارغة إن لم يُعطَ ملف) |
-| `/business-wrap:close` | يوقف كل خادم ويغلق كل نافذة Edge فتحها هذا التثبيت |
+| `/business-wrap:open [doc.json\|folder\|editor.html]` | يشغّل الخادم المحلي ويفتح المحرر في المتصفح (Google Chrome أولاً) (وثيقة فارغة إن لم يُعطَ ملف) |
+| `/business-wrap:close` | يوقف كل خادم ويغلق كل نافذة متصفح فتحها هذا التثبيت |
 | `/business-wrap:status` | الإصدار، والخوادم العاملة، وعدد الخطوات التي عولجت ذاتيًا، وأي مشكلة في MCP |
 | `/business-wrap:doctor` | ما المثبّت، وأين تعيش الحالة، وآخر بدايات خادم MCP، وهل ترك تحديث الإضافة الخادم على الإصدار السابق |
 | `/business-wrap:new ["Title"]` | زوج وثيقة فارغ جديد (عربي وإنجليزي) يُفتح في المحرر |
@@ -144,7 +144,7 @@ node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|e
 | `/business-wrap:export <doc.json> [ar\|en]` | PDF وDOCX، ثم فحوص العرض والتصدير |
 | `/business-wrap:verify-history <file>` | يفحص السجل الكاشف للعبث |
 | `/business-wrap:report <from> <to>` | تقرير العمل لفترة |
-| `/business-wrap:reset [--all] [--dry-run]` | يعرض كل مكتبة وملف شخصي لـ Edge ومجلد بيانات إضافة يحتفظ بها البرنامج، وبعد موافقتك فقط (`--yes`) يرسلها إلى سلة المحذوفات حتى لا تعود مكتبة قديمة |
+| `/business-wrap:reset [--all] [--dry-run]` | يعرض كل مكتبة وملف شخصي للمتصفح ومجلد بيانات إضافة يحتفظ بها البرنامج، وبعد موافقتك فقط (`--yes`) يرسلها إلى سلة المحذوفات حتى لا تعود مكتبة قديمة |
 | `/business-wrap:update [--check\|--notes\|--apply --yes]` | يفحص، أو يعرض الجديد، أو يثبّت (بعد موافقتك فقط) |
 | `/business-wrap:tabs [project]` | الوثائق المفتوحة في المحرر الحي وصحة الخادم (يحتاج المحرر مفتوحًا) |
 | `/business-wrap:outline [doc-id] [ar\|en]` | مخطط الوثيقة المفتوحة: الفصول والأقسام والكتل |
@@ -157,7 +157,7 @@ node engine/export.mjs --doc <document.json> [--edits edits.json] [--locale ar|e
 
 الأوامر الثمانية الأخيرة (من `tabs` إلى `action`) تكلّم المحرر المفتوح وتحتاجه مفتوحًا: وبلا لسان محرر تقول ذلك بدل أن تخمّن.
 
-🧹 **إعادة ضبط (بداية نظيفة).** إزالة البرنامج لا تزيل مكتباتك: الإصدارات القديمة حفظتها خارج البرنامج (`DocumentsBusiness-Wrap` و`DownloadsBusiness-Wrap`) والتشغيل الجديد يستوردها من جديد. الأمر `business-wrap doctor` يعرض كل مجلد عمل وملف Edge شخصي ومسار بيانات إضافة معروف. الأمر `business-wrap reset --dry-run` يطبع ما سيُرسل، و`business-wrap reset --yes` يرسل حالة الجهاز (ملف Edge الشخصي ومجلدات `.system` والإعدادات المحلية) إلى سلة المحذوفات؛ و`--all` يرسل أيضا مجلدات العمل كاملة (مستنداتك وتصديراتك) وبيانات الإضافة. لا يحذف نهائيا أبدا فيمكن استعادة كل شيء من السلة، وبلا `--yes` في طرفية غير تفاعلية يرفض.
+🧹 **إعادة ضبط (بداية نظيفة).** إزالة البرنامج لا تزيل مكتباتك: الإصدارات القديمة حفظتها خارج البرنامج (`DocumentsBusiness-Wrap` و`DownloadsBusiness-Wrap`) والتشغيل الجديد يستوردها من جديد. الأمر `business-wrap doctor` يعرض كل مجلد عمل وملف المتصفح شخصي ومسار بيانات إضافة معروف. الأمر `business-wrap reset --dry-run` يطبع ما سيُرسل، و`business-wrap reset --yes` يرسل حالة الجهاز (ملف المتصفح الشخصي ومجلدات `.system` والإعدادات المحلية) إلى سلة المحذوفات؛ و`--all` يرسل أيضا مجلدات العمل كاملة (مستنداتك وتصديراتك) وبيانات الإضافة. لا يحذف نهائيا أبدا فيمكن استعادة كل شيء من السلة، وبلا `--yes` في طرفية غير تفاعلية يرفض.
 
 ودون Claude Code تعمل الأوامر نفسها بـ `npm run cli -- <verb>` (مثلًا `npm run cli -- open samples/event-permit` و`npm run host:close`). كل أمر يعمل دون شبكة ودون ذكاء اصطناعي.
 
@@ -376,11 +376,13 @@ Business-Wrap\
 |---|---|---|
 | `fontDir` | `BW_FONT_DIR` | مجلد الخطوط (يبحث فيه بعمق)، ويفضل TrueType |
 | `watermarkDir` | `BW_WATERMARK_DIR` | صور علامة الأداة، لواجهة المحرر فقط |
-| `chrome` | `BW_CHROME` | ملف تشغيل Chrome أو Edge |
+| `chrome` | `BW_CHROME` | المتصفح الذي يطبع PDF (الافتراضي: Google Chrome، ثم متصفح النظام إن كان Chromium، ثم Edge، ثم أي Chromium موجود) |
+| | `BW_BROWSER` | المتصفح الذي يفتح فيه المحرر: `default` (متصفح النظام) أو اسم (`chrome` و`edge` و`opera` و`operagx` و`brave` و`vivaldi` و`chromium`) أو مسار كامل. وتحفظ الإعدادات › المتصفح الاختيار نفسه في `.local/browser.json`. الترتيب: `BW_BROWSER` ثم الاختيار المحفوظ ثم Google Chrome ثم متصفح النظام ثم Edge ثم أي Chromium. لا يغيّر Business-Wrap متصفحك الافتراضي في النظام أبداً |
+| | `BW_EDGE` | متغير الإعدادات القديمة: مكان Edge إن لم يكن في موضعه المعتاد |
 | `poppler` | `BW_POPPLER` | مجلد `bin` في poppler (pdftotext وpdffonts في الفحوص) |
 | `brandDir` | `BW_BRAND_DIR` | مجلد شعار الأداة (الافتراضي `brand/v3/logo/`)، للواجهة فقط |
 
-المتصفحات المدعومة: Chrome وEdge، آخر إصدار مستقر (Chromium 120+).
+المتصفح المعتمد والمختبَر هو Google Chrome (آخر إصدار مستقر، Chromium 120+). المتصفحات الأخرى المبنية على Chromium (Edge وOpera وOpera GX وBrave وVivaldi) تفتح المحرر بالطريقة نفسها؛ وإن كان الافتراضي Firefox أو Safari فيُفتح بمشغّل النظام ولا يستطيع Business-Wrap إغلاق نافذته.
 
 **الفحص الأمني:**
 
@@ -472,7 +474,7 @@ git config core.hooksPath .githooks
 <details>
 <summary>💻 على أي نظام يعمل؟</summary>
 
-جرى اختباره على Windows 11 مع Node 24 وChrome. ويحتاج Node 20 أو أحدث، وChrome أو Edge، وPython مع uv لملفات DOCX. ولم يجر اختباره على macOS ولينكس.
+جرى اختباره على Windows 11 مع Node 24 وChrome. ويحتاج Node 20 أو أحدث، وGoogle Chrome، وPython مع uv لملفات DOCX. ولم يجر اختباره على macOS ولينكس.
 
 </details>
 

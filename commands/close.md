@@ -1,5 +1,5 @@
 ---
-description: Turn Business-Wrap off: save every open tab, then stop every host, server and Edge window this install started (nothing it did not start).
+description: Turn Business-Wrap off: save every open tab, then stop every host, server and browser window this install started (nothing it did not start).
 allowed-tools: Bash(node:*)
 ---
 

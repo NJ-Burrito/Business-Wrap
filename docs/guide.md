@@ -2,7 +2,7 @@
 
 ## ⚡ In 10 seconds
 
-✅ Install Node 20+, uv and Chrome or Edge. No pip installs: uv brings the Python packages.
+✅ Install Node 20+, uv and Google Chrome. No pip installs: uv brings the Python packages.
 
 🚀 `npm ci`, then `npm run serve`, then open the address it prints. Always use the editor through that server.
 
@@ -27,7 +27,7 @@
 ## 2. Quickstart (Windows, step by step)
 1. Clone the repo: `git clone https://github.com/NJ-Burrito/Business-Wrap` then `cd Business-Wrap`.
 2. Install Node packages: `npm ci`.
-3. ▶️ Start the editor: in the Business-Wrap folder run `npm run serve`, then open the address it prints (http://127.0.0.1:4317/) in Chrome or Edge. The first time it builds the sample. Use the editor through this server, not by double-clicking the HTML file: export, print, the printers list and updates need the server.
+3. ▶️ Start the editor: in the Business-Wrap folder run `npm run serve`, then open the address it prints (http://127.0.0.1:4317/) in Google Chrome. The first time it builds the sample. Use the editor through this server, not by double-clicking the HTML file: export, print, the printers list and updates need the server.
 4. Fonts (optional): the bundled Thmanyah fallback works out of the box. To use your own copy, follow `fonts/README.md`.
 5. Turn on UTF-8 for Python in this terminal: `$env:PYTHONUTF8 = "1"` (PowerShell).
 6. Install the local security hook: `git config core.hooksPath .githooks`.

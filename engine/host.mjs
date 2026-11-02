@@ -4,8 +4,8 @@
 //   start({editor, port, open}) → {pid, port, url}     spawns engine/serve.mjs detached, waits for /api/version
 //   stop()                      → {stopped, pids}      asks the server to flush and exit, then kills what is left
 //   status()                    → {running, pid, port, tabs}
-//   launchBrowser(urls)         → {chunks, pids}       Edge with its own --user-data-dir, 30 URLs per command line
-//   closeBrowsers()             → pids                 only browsers on that profile: never anyone else's
+//   launchBrowser(urls)         → {chunks, pids, browser}  the chosen browser (Google Chrome first, engine/export.mjs chooseBrowser) with its own --user-data-dir, 30 URLs per command line
+//   closeBrowsers()             → pids                 only browsers on this host's own profile folder: never anyone else's
 //
 // State: .local/host.json {pid, port, startedAt, token, editor, browserPids[], tabs}. BW_BROWSER_STUB=<file> writes
 // each launch's argv as one JSON line instead of starting a browser (tests).
@@ -16,10 +16,15 @@ import crypto from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { localDir, workspace, ensure } from './workspace.mjs';
+import { chooseBrowser, featureNames, noBrowserMessage } from './export.mjs';
 
 const SERVE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'serve.mjs');
 export const hostFile = () => path.join(localDir(), 'host.json');
-export const profileDir = () => path.join(localDir(), 'edge-profile');
+/** The browser profile folder. `edge-profile` is the name 0.15.8 and older gave it (Edge was the only browser): it stays, so reset, doctor and an owner's existing Edge data still find it.
+ *  Edge uses it directly; every other browser gets its own sub-folder (`edge-profile/chrome`, ...), never another vendor's profile: two vendors on one profile folder hand each other's
+ *  command line over (Chrome would open the URL in the running Edge) and a newer profile refuses to open in an older build. */
+export const profileDir = (id) => (id && id !== 'edge' ? path.join(localDir(), 'edge-profile', id) : path.join(localDir(), 'edge-profile'));
+const PROFILE_ROOT = () => path.join(localDir(), 'edge-profile');
 const read = () => { try { return JSON.parse(fs.readFileSync(hostFile(), 'utf8')); } catch { return null; } };
 /** host.json as written by start() (null when there is none). */
 export const hostState = read;
@@ -82,7 +87,7 @@ async function startLocked({ editor, port = 4317, open = true } = {}) {
     // reuse only a host that is really listening (a recorded pid with nothing on its port is not one)
     let up = await answers(now.url);
     for (let i = 0; !up && i < 3; i++) { await new Promise((r) => setTimeout(r, 400)); up = await answers(now.url); }
-    if (up) { const b = open ? launchBrowser([now.url]) : null; return { pid: now.pid, port: now.port, url: now.url, browserPid: b?.pids[0] ?? null, reused: true }; }
+    if (up) { const b = open ? launchBrowser([now.url]) : null; return { pid: now.pid, port: now.port, url: now.url, browserPid: b?.pids[0] ?? null, browser: b?.browser ?? null, reused: true }; }
     const h0 = read(); try { await fetch(`${now.url}api/host/stop`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: h0?.token }), signal: AbortSignal.timeout(1500) }); } catch { /* not listening: nothing to ask */ } // the recorded host answers nothing: asked to go (by its token, never killed by pid), then replaced
   }
   if (fs.existsSync(hostFile())) fs.rmSync(hostFile(), { force: true }); // stale: its server is gone
@@ -114,7 +119,7 @@ async function startLocked({ editor, port = 4317, open = true } = {}) {
   }
   if (hp?.pid) write({ ...read(), listener: hp.pid });
   const b = open ? launchBrowser([url]) : null;
-  return { pid, port: p, url, browserPid: b?.pids[0] ?? null }; // the caller can say whether Edge opened
+  return { pid, port: p, url, browserPid: b?.pids[0] ?? null, browser: b?.browser ?? null }; // the caller can say whether a browser opened, and which
 }
 
 function killTree(pid) {
@@ -138,40 +143,57 @@ export async function stop() {
   return { stopped: !alive(h.pid), pids };
 }
 
-export function edgePath() {
-  if (process.env.BW_EDGE) return process.env.BW_EDGE;
-  const c = process.platform === 'win32'
-    ? [process.env['ProgramFiles(x86)'], process.env.ProgramFiles, process.env.LOCALAPPDATA].filter(Boolean).map((d) => path.join(d, 'Microsoft', 'Edge', 'Application', 'msedge.exe'))
-    : process.platform === 'darwin' ? ['/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'] : ['/usr/bin/microsoft-edge', '/usr/bin/microsoft-edge-stable'];
-  return c.find((f) => fs.existsSync(f)) || null;
-}
+/** The executable of the browser the editor opens in (null when none): the browser-neutral successor of 0.15.8's edgePath(). */
+export const browserPath = () => chooseBrowser()?.exe ?? null;
 
-/** 0.15.3 T2: the editor's Edge must not put its tabs to sleep or throttle them: a frozen or throttled tab stops answering the host (TAB_STALE,
- *  TAB_TIMEOUT). The three throttling switches are Chromium's own; the feature names after --disable-features are Edge's/Chromium's sleeping,
- *  freezing and discarding features (a name this build does not know is ignored, never an error). [A] not measured on a real Edge build here. */
-export const KEEP_AWAKE_ARGS = [
+/** 0.15.3 T2, 0.15.9 A1: the editor's browser must not put its tabs to sleep or throttle them: a frozen or throttled tab stops answering the host (TAB_STALE, TAB_ASLEEP).
+ *  The three throttling switches are Chromium's own; after --disable-features come Chromium's freezing / discarding / occlusion features and each vendor's own sleep or snooze feature
+ *  (Chrome, Edge, Opera, Opera GX, Brave, Vivaldi). A name a build does not know is ignored, never an error. Flags only reach a browser THIS host starts: a tab opened in a
+ *  browser the user already runs ignores them, which is why the page keeps itself awake too (editor/ext/12-session.js, editor/session-worker.js). */
+export const keepAwakeArgs = () => [
   '--disable-background-timer-throttling',
   '--disable-renderer-backgrounding',
   '--disable-backgrounding-occluded-windows',
-  '--disable-features=CalculateNativeWinOcclusion,IntensiveWakeUpThrottling,SleepingTabs,msSleepingTabs,msEdgeSleepingTabs,TabFreeze,BackgroundTabFreezing,AutomaticTabDiscarding,PerformanceInterventionUI',
+  `--disable-features=${featureNames().join(',')}`  // every vendor's names go to every browser: an unknown name is ignored,
 ];
+export const KEEP_AWAKE_ARGS = keepAwakeArgs();
 
-/** All URLs on as few command lines as the Windows 32 767-character limit allows: 30 per launch. A page cannot open 100 tabs (one popup per gesture); the server can. */
+/** Open one URL with the OS opener (a default browser that is not Chromium: Firefox, Safari). The host cannot close that window. */
+function osOpen(url) {
+  const [cmd, args] = process.platform === 'win32' ? ['rundll32.exe', ['url.dll,FileProtocolHandler', url]] : process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
+  const p = spawn(cmd, args, { detached: true, stdio: 'ignore', windowsHide: true });
+  p.on('error', () => {});
+  p.unref();
+}
+
+/** All URLs on as few command lines as the Windows 32 767-character limit allows: 30 per launch. A page cannot open 100 tabs (one popup per gesture); the server can.
+ *  Returns {chunks, pids, browser:{id, name, via, closable, note?}}. BW_BROWSER_STUB=<file> logs each launch (args, exe, browser id) instead of starting anything (tests). */
 export function launchBrowser(urls, { chunk = 30 } = {}) {
   const chunks = [];
   for (let i = 0; i < urls.length; i += chunk) chunks.push(urls.slice(i, i + chunk));
   const pids = [];
+  const br = chooseBrowser();
+  if (!br && !process.env.BW_BROWSER_STUB) throw new Error(`${noBrowserMessage('en')}\n${noBrowserMessage('ar')}`);
+  const id = br?.id || 'chrome';
+  const closable = !br || br.chromium;
+  const info = { id, name: br?.name || 'Google Chrome', via: br?.via || 'stub', closable, ...(closable ? {} : { note: `${br.name} is not Chromium: it was opened with the system opener, and Business-Wrap cannot close its window. Close it yourself, or choose a Chromium browser in Settings.` }) };
   for (const c of chunks) {
-    const args = [`--user-data-dir=${profileDir()}`, '--no-first-run', '--no-default-browser-check', ...KEEP_AWAKE_ARGS, '--new-window', ...c];
-    if (process.env.BW_BROWSER_STUB) { fs.appendFileSync(process.env.BW_BROWSER_STUB, JSON.stringify({ args }) + '\n'); continue; }
-    const exe = edgePath();
-    if (!exe) throw new Error('Microsoft Edge not found (BW_EDGE names it)');
-    const p = spawn(exe, args, { detached: true, stdio: 'ignore' });
+    if (!closable) {
+      if (process.env.BW_BROWSER_STUB) { fs.appendFileSync(process.env.BW_BROWSER_STUB, JSON.stringify({ opener: true, urls: c, exe: br.exe, browser: id }) + '\n'); continue; }
+      for (const u of c) osOpen(u);
+      continue;
+    }
+    // 0.16.0: no "restore pages" bubble after a crash or a killed window, so a relaunch never brings 18 old pages back; a tab an agent opens (BW_AGENT_OPEN, set by the MCP server) is an automation tab: no blocking dialog
+    const urls = process.env.BW_AGENT_OPEN === '1' ? c.map((u) => (/[?&]automation=/.test(u) ? u : `${u}${u.includes('?') ? '&' : '?'}automation=1`)) : c;
+    const args = [`--user-data-dir=${profileDir(id)}`, '--no-first-run', '--no-default-browser-check', '--disable-session-crashed-bubble', '--hide-crash-restore-bubble', ...keepAwakeArgs(), '--new-window', ...urls];
+    if (process.env.BW_BROWSER_STUB) { fs.appendFileSync(process.env.BW_BROWSER_STUB, JSON.stringify({ args, exe: br?.exe ?? null, browser: id }) + '\n'); continue; }
+    const p = spawn(br.exe, args, { detached: true, stdio: 'ignore' });
+    p.on('error', () => {});
     p.unref();
     pids.push(p.pid);
   }
-  noteHost({ browserPids: pids });
-  return { chunks: chunks.length, pids };
+  noteHost({ browserPids: pids, browser: id });
+  return { chunks: chunks.length, pids, browser: info };
 }
 
 /** The file manager with `file` selected (H3). Windows: Explorer parses its own command line and does not accept a
@@ -185,12 +207,12 @@ export function reveal(file) {
   return { cmd, args };
 }
 
-/** Browsers on this host's own profile (their command line names it), plus pids it launched: closed, tree and all. */
+/** Browsers on this host's own profile folder (their command line names it), plus pids it launched: closed, tree and all. Any Chromium browser, whichever was used. */
 export function closeBrowsers(known = [], { scan = true } = {}) {
   const found = [];
-  if (scan && process.platform === 'win32' && fs.existsSync(profileDir())) {
-    const prof = profileDir().replace(/'/g, "''");
-    const ps = `Get-CimInstance Win32_Process -Filter "Name='msedge.exe'" | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('${prof}') } | ForEach-Object { $_.ProcessId }`;
+  if (scan && process.platform === 'win32' && fs.existsSync(PROFILE_ROOT())) {
+    const prof = PROFILE_ROOT().replace(/'/g, "''");
+    const ps = `Get-CimInstance Win32_Process -Filter "Name='msedge.exe' OR Name='chrome.exe' OR Name='opera.exe' OR Name='brave.exe' OR Name='vivaldi.exe' OR Name='chromium.exe'" | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('${prof}') } | ForEach-Object { $_.ProcessId }`;
     const r = spawnSync('powershell.exe', ['-NoProfile', '-Command', ps], { encoding: 'utf8', windowsHide: true });
     found.push(...String(r.stdout || '').split(/\s+/).filter(Boolean).map(Number));
   }

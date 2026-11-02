@@ -18,7 +18,7 @@ import { assertBase } from './edits-base.mjs';
 import { loadManifest, resolveFonts, fontFaceCss, systemFamily, normaliseFont, ttfDataUri } from './fonts.mjs';
 import { config } from './config.mjs';
 import { DIAGRAM } from './diagram.mjs';
-import { workspace, ensure, uniquePath, outName, docTitle, noteOutput } from './workspace.mjs'; // the default output folder of the command line (a cycle by design: used inside functions only)
+import { workspace, ensure, uniquePath, outName, docTitle, noteOutput, localDir } from './workspace.mjs'; // the default output folder of the command line (a cycle by design: used inside functions only)
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO = path.resolve(HERE, '..');
@@ -35,10 +35,124 @@ export function loadTheme(file) {
   return { ...base, ...t, vars: { ...base.vars, ...(t.vars || {}) }, fonts: { ...base.fonts, ...(t.fonts || {}) }, sizes: { ...base.sizes, ...(t.sizes || {}) }, brand: { ...base.brand, ...(t.brand || {}) }, logos: { ...base.logos, ...(t.logos || {}) } };
 }
 
-export function chromePath() {
-  const c = [config().chrome, 'C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', '/usr/bin/google-chrome'];
-  return c.find((p) => p && fs.existsSync(p));
+/* ── Browsers (0.15.9 B1-B6, A1) ───────────────────────────────────────────────────────────────────────────────────
+ * One place knows which browsers exist, which one is the standard and which one the OS default is. Google Chrome is the standard; the
+ * editor's window and the PDF engine both walk the same chain (below). Opera, Opera GX, Brave, Vivaldi, Chrome, Edge and Chromium are
+ * Chromium: launched with the app's own profile and the keep-awake flags. Any other default (Firefox, Safari) is opened with the OS opener. */
+const FEATURES = {
+  // Chromium's own names, then each vendor's sleep / snooze / hibernate / discard feature. A name a build does not know is ignored, never an error.
+  // [A] only the Chrome behaviour is measured here (tests/awake-0159.test.mjs); the other vendors' names are best known, unverified.
+  all: ['CalculateNativeWinOcclusion', 'IntensiveWakeUpThrottling', 'TabFreeze', 'BackgroundTabFreezing', 'AutomaticTabDiscarding', 'ProactiveTabFreezeAndDiscard', 'FreezeBackgroundTabs', 'HighEfficiencyModeAvailable', 'HighEfficiencyMultistateMode', 'MemorySaverMultistateMode', 'DiscardsUI', 'PerformanceInterventionUI', 'PerformanceControlsPerformanceSurvey'],
+  chrome: ['TabDiscarding', 'MemorySaver', 'MemorySaverModeAvailable', 'BatterySaverModeAvailable'],
+  edge: ['SleepingTabs', 'msSleepingTabs', 'msEdgeSleepingTabs', 'msPerformanceDetector', 'EdgeSleepingTabs'],
+  opera: ['OperaTabSnoozing', 'TabSnoozing', 'TabSnooze', 'OperaTabFreezing'],
+  operagx: ['GXTabSnoozing', 'GXTabSnooze', 'OperaTabSnoozing', 'TabSnoozing', 'TabSnooze', 'GXBrowserSleep', 'GXHotTabsKiller'],
+  brave: ['BraveSleepingTabs', 'BraveTabHibernation'],
+  vivaldi: ['VivaldiTabHibernation', 'TabHibernation'],
+  chromium: [],
+};
+const roots = () => [process.env.ProgramFiles, process.env['ProgramFiles(x86)'], process.env.LOCALAPPDATA].filter(Boolean);
+const winApp = (...parts) => roots().map((d) => path.join(d, ...parts));
+/** id, display name, the pattern that recognises its executable path, where it lives. Order = the order "any Chromium found" tries after Chrome and Edge. */
+export const BROWSERS = [
+  { id: 'chrome', name: 'Google Chrome', rx: /google[\\/ ]chrome|google-chrome/i, win: () => winApp('Google', 'Chrome', 'Application', 'chrome.exe'), mac: ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'], lin: ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable'], bundle: 'com.google.chrome' },
+  { id: 'edge', name: 'Microsoft Edge', rx: /msedge|microsoft[\\/ ]edge|microsoft-edge/i, win: () => winApp('Microsoft', 'Edge', 'Application', 'msedge.exe'), mac: ['/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'], lin: ['/usr/bin/microsoft-edge', '/usr/bin/microsoft-edge-stable'], bundle: 'com.microsoft.edgemac' },
+  { id: 'operagx', name: 'Opera GX', rx: /opera[ _-]?gx/i, win: () => winApp('Programs', 'Opera GX', 'opera.exe'), mac: ['/Applications/Opera GX.app/Contents/MacOS/Opera'], lin: [], bundle: 'com.operasoftware.operagx' },
+  { id: 'opera', name: 'Opera', rx: /opera/i, win: () => winApp('Programs', 'Opera', 'opera.exe').concat(winApp('Opera', 'opera.exe')), mac: ['/Applications/Opera.app/Contents/MacOS/Opera'], lin: ['/usr/bin/opera'], bundle: 'com.operasoftware.opera' },
+  { id: 'brave', name: 'Brave', rx: /brave/i, win: () => winApp('BraveSoftware', 'Brave-Browser', 'Application', 'brave.exe'), mac: ['/Applications/Brave Browser.app/Contents/MacOS/Brave Browser'], lin: ['/usr/bin/brave-browser', '/usr/bin/brave'], bundle: 'com.brave.browser' },
+  { id: 'vivaldi', name: 'Vivaldi', rx: /vivaldi/i, win: () => winApp('Vivaldi', 'Application', 'vivaldi.exe'), mac: ['/Applications/Vivaldi.app/Contents/MacOS/Vivaldi'], lin: ['/usr/bin/vivaldi', '/usr/bin/vivaldi-stable'], bundle: 'com.vivaldi.vivaldi' },
+  { id: 'chromium', name: 'Chromium', rx: /chromium/i, win: () => winApp('Chromium', 'Application', 'chrome.exe'), mac: ['/Applications/Chromium.app/Contents/MacOS/Chromium'], lin: ['/usr/bin/chromium', '/usr/bin/chromium-browser'], bundle: 'org.chromium.chromium' },
+];
+const NON_CHROMIUM = [{ id: 'firefox', name: 'Firefox', rx: /firefox/i, bundle: 'org.mozilla.firefox' }, { id: 'safari', name: 'Safari', rx: /safari/i, bundle: 'com.apple.safari' }];
+const nameOf = (id) => [...BROWSERS, ...NON_CHROMIUM].find((b) => b.id === id)?.name || id;
+/** Which browser an executable path (or a macOS bundle id) is: a BROWSERS id, a NON_CHROMIUM id, or 'other' (an unknown default is never assumed to be Chromium). */
+export function classifyBrowser(exe) {
+  const x = String(exe || '');
+  const hit = [...BROWSERS, ...NON_CHROMIUM].find((b) => b.rx.test(x) || (b.bundle && b.bundle === x.toLowerCase()));
+  return hit ? hit.id : 'other';
 }
+export const isChromium = (id) => BROWSERS.some((b) => b.id === id);
+/** The keep-awake feature names for one browser (A1): Chromium's own plus that vendor's sleep / snooze names. No id = every vendor's. */
+export const featureNames = (id) => [...new Set([...FEATURES.all, ...(id ? FEATURES[id] || [] : Object.values(FEATURES).flat())])];
+/** {id: executable} of every Chromium browser installed (BW_EDGE, an old setup's variable, still names Edge's executable). */
+export function installedBrowsers(env = process.env) {
+  const out = {};
+  const plat = process.platform === 'win32' ? 'win' : process.platform === 'darwin' ? 'mac' : 'lin';
+  for (const b of BROWSERS) {
+    const c = plat === 'win' ? b.win() : b[plat];
+    const hit = (b.id === 'edge' && env.BW_EDGE ? [env.BW_EDGE] : []).concat(c).find((f) => f && fs.existsSync(f));
+    if (hit) out[b.id] = hit;
+  }
+  return out;
+}
+function reg(key, name) {
+  const r = spawnSync('reg', ['query', key, ...(name ? ['/v', name] : ['/ve'])], { encoding: 'utf8', windowsHide: true });
+  return r.status === 0 ? (/REG_\w+\s+(.+?)\s*$/m.exec(String(r.stdout || ''))?.[1] || '') : '';
+}
+/** The OS default web browser's executable (a bundle id on macOS), or '' when it cannot be read. Windows: the http UserChoice ProgId resolved to its open command.
+ *  Read only: nothing is ever written to the registry or to an OS default. [A] the macOS and Linux branches are not tested here. */
+export function osDefaultBrowser() {
+  try {
+    if (process.platform === 'win32') {
+      const prog = reg('HKCU\\Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\http\\UserChoice', 'ProgId');
+      if (!prog) return '';
+      const m = /^"([^"]+)"|^(\S+\.exe)/i.exec(reg(`HKCR\\${prog}\\shell\\open\\command`));
+      return m ? m[1] || m[2] : prog;
+    }
+    if (process.platform === 'darwin') {
+      const r = spawnSync('defaults', ['read', 'com.apple.LaunchServices/com.apple.launchservices.secure', 'LSHandlers'], { encoding: 'utf8' });
+      const b = String(r.stdout || '').split(/\}\s*,?\s*\{?/).find((x) => /LSHandlerURLScheme\s*=\s*"?https?"?;/.test(x));
+      return /LSHandlerRoleAll\s*=\s*"?([\w.-]+)"?;/.exec(b || '')?.[1] || '';
+    }
+    return String(spawnSync('xdg-settings', ['get', 'default-web-browser'], { encoding: 'utf8' }).stdout || '').trim();
+  } catch { return ''; }
+}
+export const choiceFile = () => path.join(localDir(), 'browser.json');
+/** The Settings choice saved in .local/browser.json: 'default' (the OS default), a BROWSERS id, or '' (the standard order). */
+export function savedBrowser() { try { const b = JSON.parse(fs.readFileSync(choiceFile(), 'utf8')).browser; return typeof b === 'string' ? b : ''; } catch { return ''; } }
+export function saveBrowser(choice) {
+  if (!(choice === '' || choice === 'default' || BROWSERS.some((b) => b.id === choice))) throw Object.assign(new Error('browser'), { code: 400 });
+  fs.mkdirSync(localDir(), { recursive: true });
+  fs.writeFileSync(choiceFile(), JSON.stringify({ browser: choice }));
+  return choice;
+}
+/** BW_BROWSER_PROBE='{"installed":{"chrome":"<path>"},"defaultExe":"<path>"}' replaces the machine probe (tests only). */
+function probe() {
+  if (process.env.BW_BROWSER_PROBE) { try { const p = JSON.parse(process.env.BW_BROWSER_PROBE); return { installed: p.installed || {}, defaultExe: p.defaultExe || '' }; } catch { /* a bad probe is no probe */ } }
+  return { installed: installedBrowsers(), defaultExe: osDefaultBrowser() };
+}
+/** One browser by id, 'default' (the OS default) or an explicit path, as {id, name, exe, chromium}; null when it is not there. */
+function resolveOne(want, { installed, defaultExe }) {
+  if (!want) return null;
+  if (want === 'default') {
+    if (!defaultExe) return null;
+    const id = classifyBrowser(defaultExe);
+    if (isChromium(id)) { const exe = installed[id] || (fs.existsSync(defaultExe) ? defaultExe : ''); return exe ? { id, name: nameOf(id), exe, chromium: true } : null; }
+    return { id, name: id === 'other' ? path.basename(String(defaultExe)) : nameOf(id), exe: defaultExe, chromium: false };
+  }
+  if (isChromium(want)) return installed[want] ? { id: want, name: nameOf(want), exe: installed[want], chromium: true } : null;
+  if (/[\\/]/.test(want) && fs.existsSync(want)) { const id = classifyBrowser(want); return { id, name: nameOf(id), exe: want, chromium: isChromium(id) || id === 'other' }; } // a path the owner named: Chromium unless it is a known other engine
+  return null;
+}
+/** The browser the editor opens in, B1: BW_BROWSER, then the saved Settings choice, then Google Chrome, then the OS default, then Edge, then any Chromium.
+ *  Returns {id, name, exe, chromium, via} or null; `via` names the step that decided. Inputs can be passed in (tests). Never changes an OS default. */
+export function chooseBrowser({ env = process.env, saved = savedBrowser(), machine = probe() } = {}) {
+  for (const [via, want] of [['env', env.BW_BROWSER], ['saved', saved], ['chrome', 'chrome'], ['default', 'default'], ['edge', 'edge']]) { const r = resolveOne(want, machine); if (r) return { ...r, via }; }
+  for (const b of BROWSERS) { const r = resolveOne(b.id, machine); if (r) return { ...r, via: 'any' }; }
+  return null;
+}
+/** The Chromium that prints the PDF, B5: BW_CHROME / .local/config.json, then the editor's chain (Chrome, the default if Chromium, Edge, any Chromium). */
+export function chromePath(machine = probe()) {
+  const own = config().chrome;
+  if (own && fs.existsSync(own)) return own;
+  for (const want of ['chrome', 'default', 'edge']) { const r = resolveOne(want, machine); if (r?.chromium && r.id !== 'other') return r.exe; }
+  for (const b of BROWSERS) if (machine.installed[b.id]) return machine.installed[b.id];
+  return undefined;
+}
+/** The message when no Chromium browser exists, in the user's language (ar | en). */
+export const noBrowserMessage = (lang = 'en') => (lang === 'ar'
+  ? 'لم يُعثر على متصفح Chromium. ثبّت Google Chrome (الموصى به) أو حدّد المتصفح بالمتغير BW_CHROME.'
+  : 'No Chromium browser found. Install Google Chrome (recommended) or point BW_CHROME at one.');
 
 /** Chrome launch options. Linux CI runners forbid the user-namespace sandbox. */
 export const launchOptions = () => ({ headless: true, executablePath: chromePath(), args: process.env.CI && process.platform === 'linux' ? ['--no-sandbox'] : [] });

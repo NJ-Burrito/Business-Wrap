@@ -1,6 +1,6 @@
 # Automating the open editor (EN) · العربية أدناه
 
-> Status 0.15.0: the whole path is built and tested against a real host and a real Edge tab (`tests/bridge-0150.test.mjs`): tool, host route `engine/routes/editor-bridge.mjs`, tab handler `BW.bridge` (`editor/editor.js`, wired in `editor/ext/12-session.js`). With no editor tab open the tools answer `NO_TAB`, never a guess.
+> Status 0.15.0: the whole path is built and tested against a real host and a real Chrome tab (`tests/bridge-0150.test.mjs`): tool, host route `engine/routes/editor-bridge.mjs`, tab handler `BW.bridge` (`editor/editor.js`, wired in `editor/ext/12-session.js`). With no editor tab open the tools answer `NO_TAB`, never a guess.
 
 ## ⚡ The idea
 

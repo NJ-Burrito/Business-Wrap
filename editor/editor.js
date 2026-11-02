@@ -3026,6 +3026,19 @@ function tagDialogs() {
 }
 const dialogEls = () => [...root.querySelectorAll('[data-bw-dialog]'), ...document.querySelectorAll('[data-bw-dialog]')];
 const dialogOpen = (el) => el.isConnected && (el.tagName === 'DIALOG' ? el.open : !el.hidden);
+/** 0.16.0: a tool talking to this tab must never wait behind a question meant for a person. The resume popup is closed without an answer and a first-launch / confirm card is skipped
+ *  (its own skip or cancel button, so its hold is released the normal way). Returns how many it dismissed. */
+function dismissBlockers({ keepResume = false } = {}) {
+  tagDialogs();
+  let n = 0;
+  for (const el of dialogEls()) {
+    if (!dialogOpen(el)) continue;
+    if (el.dataset.bwDialog === 'resume') { if (!keepResume && EXT.session?.dismissResume?.()) n += 1; continue; }
+    const b = el.querySelector?.('[data-mk="skip"],[data-mk="later"],[data-mk="cancel"]');
+    if (b) { b.click(); n += 1; }
+  }
+  return n;
+}
 /* graceMs: a dialog that opens asynchronously after boot (the first-launch card waits for the stored profile, the resume dialog for the host) must
  * not be missed by a fast check, so «settled» cannot come sooner than this after boot unless a module says so; a module that knows it will ask takes a hold. */
 const BWR = { booted: false, fired: false, holds: new Set(), waiters: [], bootAt: 0, graceMs: 700 };
@@ -3130,7 +3143,7 @@ const BRIDGE = (() => {
   // 0.15.2 note 12: the allow-list adds SAFE actions (they change the view, never the content); destructive ones stay locked (REFUSED, never run)
   const SAFE = ['zoomPct', 'zoomHeight', 'zoomWidth', 'zoomIn', 'zoomOut', 'zoomReset', 'theme', 'reading', 'find', 'save', 'outline', 'nextPage', 'prevPage'];
   const FIXES = ['fixTashkeel', 'singleEdition', 'splitFigure']; // 0.15.3: the Check panel's fixes, one call each
-  const ACTIONS = ['renumber', 'check', 'saveHtml', 'share', 'exportPdf', ...FIXES, ...SAFE];
+  const ACTIONS = ['renumber', 'check', 'saveHtml', 'share', 'exportPdf', 'dismissResume', 'claim', ...FIXES, ...SAFE]; // dismissResume / claim: 0.16.0 (the session extension, editor/ext/12-session.js)
   const LOCKED = /^(delete|remove|close|stop|power|clear|purge|reset|wipe|erase|trash|quit|exit)/i;
   const tools = {
     async list({ project } = {}) {
@@ -3183,6 +3196,8 @@ const BRIDGE = (() => {
     async action({ id, args = {} } = {}, doc) {
       if (LOCKED.test(String(id || ''))) throw err('REFUSED', `"${id}" is locked: a destructive action is never run through the bridge`, { id });
       if (!ACTIONS.includes(id)) throw err('UNKNOWN_ACTION', `unknown action "${id}"`, { allowed: ACTIONS });
+      if (id === 'dismissResume') return { id, dismissed: !!EXT.session?.dismissResume?.() }; // closes the «continue where you left off» popup without answering it
+      if (id === 'claim') { const r = await EXT.session?.claim?.(doc); if (!r?.ok) throw err(r?.code || 'REFUSED', r?.error || 'claim failed'); return { id, ...r }; } // takes the document's lease for this tab now
       const ed = await target(doc, args.locale);
       if (id === 'check') return checkAll();
       if (FIXES.includes(id)) {
@@ -3284,5 +3299,5 @@ const BRIDGE = (() => {
   };
 })();
 
-window.BW = { bridge: BRIDGE, whenReady, holdReady, dialogs: () => { tagDialogs(); return dialogEls().map((el) => ({ id: el.dataset.bwDialog, open: dialogOpen(el) })); }, dialog: (id) => dialogEls().find((el) => el.dataset.bwDialog === id) || null, hasAction: actionKnown, setZoom, zoomTo: zoomFromField, automation: AUTOMATION, ic, IC, undoToast, flushDraft, S, M, commit, runAction, toast, DIAGRAM, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll, EXT, emit, bwExt, openDrawer };
+window.BW = { bridge: BRIDGE, whenReady, holdReady, dismissBlockers, dialogs: () => { tagDialogs(); return dialogEls().map((el) => ({ id: el.dataset.bwDialog, open: dialogOpen(el) })); }, dialog: (id) => dialogEls().find((el) => el.dataset.bwDialog === id) || null, hasAction: actionKnown, setZoom, zoomTo: zoomFromField, automation: AUTOMATION, ic, IC, undoToast, flushDraft, S, M, commit, runAction, toast, DIAGRAM, setText, undo, redo, render, editsFile, bundle, importFile, saveHtml, validate, applyOps, A, selectEl, sanitizePaste, snapshotState, KEY, findNext, replaceAll, EXT, emit, bwExt, openDrawer };
 // boot(): called by engine/build-editor.mjs after editor/ext/*.js (the seam)

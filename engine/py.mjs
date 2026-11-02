@@ -1,5 +1,5 @@
 // One way to run Python: through uv with the packages each step needs, so a fresh machine needs only
-// Node, uv and Chrome or Edge (no pip installs). Without uv it falls back to plain `python` and says so once.
+// Node, uv and a Chromium browser, Google Chrome first (no pip installs). Without uv it falls back to plain `python` and says so once.
 //
 //   spawnSync(...py(['script.py', 'arg'], ['pymupdf']), opts)
 import { spawnSync } from 'node:child_process';

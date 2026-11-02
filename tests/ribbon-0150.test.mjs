@@ -1,6 +1,6 @@
 // Lane ribbon · 0.15.0 — owner notes 1-7 (centred tabs with an icon and a colour each, a 64 x 72 grid, no horizontal scroll, a raised selected tab
 // and shaded categories, a name under every tool, a re-press folds the ribbon, the split into specific tabs) and perf booster 6 (the panel swap).
-// Real headless Chrome (msedge via launchOptions), real mouse and keyboard, AR (RTL) and EN at 1366 and 1920 px; closed in finally.
+// Real headless Chrome (via launchOptions), real mouse and keyboard, AR (RTL) and EN at 1366 and 1920 px; closed in finally.
 //   node tests/ribbon-0150.test.mjs
 import './_isolate.mjs';
 import fs from 'node:fs';
