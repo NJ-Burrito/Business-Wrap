@@ -134,7 +134,7 @@ async function runJob([win, zoom, ui, dark]) {
       check(`S2 ${tag} / ${kind}: selecting moves the bar by ≤ 1 px and scrollHeight by ≤ 1 px`, dH <= 1 && dSH <= 1, `bar ${before.islandH}→${m.islandH}, scrollH ${before.scrollH}→${m.scrollH}`);
       // S1
       const obj = await page.evaluate(() => {
-        const els = [...document.querySelectorAll('main.bw-doc .dg-lgsel, main.bw-doc [data-dg-node].sel, main.bw-doc [data-dg-node][aria-selected="true"], main.bw-doc .is-sel, main.bw-doc .sel, main.bw-doc [data-sel], main.bw-doc .dg-ui')];
+        const els = [...document.querySelectorAll('main.bw-doc .dg-lgsel, main.bw-doc [data-dg-node].sel, main.bw-doc [data-dg-node][aria-selected="true"], main.bw-doc .is-sel, main.bw-doc .sel, main.bw-doc [data-sel], main.bw-doc .dg-ui:not(.dg-cv)')]; // 0.16.0: .dg-cv is the canvas frame layer over the whole figure (handles), not the selected thing; a figure taller than the room under the bar must scroll under it
         return els.map((e) => { const b = e.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom }; }).filter((b) => b.r - b.l > 0 && b.b - b.t > 0);
       });
       const bad = [];
