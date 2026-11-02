@@ -82,8 +82,23 @@ let XPL_FOLDED = false; // the panel is folded away for another side panel (spel
 function xplPanelOpen() {
   if (XPL_FOLDED) return false;
   if (ls.get('bw:xpl-panel') == null && ls.get('bw:explainers') === '0') ls.set('bw:xpl-panel', '0');
+  if (ls.get('bw:xpl-panel') == null && window.innerWidth < XPL_WIDE) return false; // 0.16.0 (M4): nobody chose yet and the window is narrow: the panel waits as its edge tab, the pages are not covered
   return ls.get('bw:xpl-panel') !== '0';
 }
+const XPL_WIDE = 1280; // css px: from here the panel may open by itself (the same line as the drawer rule in ux.css)
+/** 0.16.0 (M4): the open panel never sits on a control of the page. While a diagram's canvas handles are showing under the place the panel would take, the panel steps aside
+ *  to its edge tab (data-aside, like an open drawer does); it returns when the handles go. Measured from the handles and the panel's own width, not from its current state, so it cannot flicker. */
+function xplAside() {
+  const dock = root.querySelector('.xpl-dock');
+  if (!dock) return;
+  const w = parseFloat(getComputedStyle(dock.closest('.shell') || dock).getPropertyValue('--xd-w')) || 304;
+  const left = window.innerWidth - 12 - w - 6, top = parseFloat(getComputedStyle(dock).insetBlockStart) || 0;
+  let hit = false;
+  for (const h of document.querySelectorAll('#bw-pair [data-dg-cv]')) { const r = h.getBoundingClientRect(); if (r.width && r.right > left && r.top + r.height > top) { hit = true; break; } }
+  if (hit) dock.dataset.aside = '1'; else { delete dock.dataset.aside; if (!document.querySelector('#bw-ui-host') || !root.querySelector('.drawer:not([hidden])')) delete dock.dataset.force; }
+}
+let XPL_ASIDE_RAF = 0;
+const xplAsideSoon = () => { if (!XPL_ASIDE_RAF) XPL_ASIDE_RAF = requestAnimationFrame(() => { XPL_ASIDE_RAF = 0; xplAside(); }); };
 /** True while the panel is really on screen (open, and not stepped aside for a drawer). */
 function xplPanelVisible() {
   const head = root.querySelector('.xpl-dock .xd-h'); // the header is hidden whenever the dock is only its edge tab
@@ -107,7 +122,7 @@ function xplDock() {
   }
   const tab = dock.querySelector('.xd-tab');
   const open = xplPanelOpen();
-  if (!shell.querySelector('.drawer:not([hidden])')) delete dock.dataset.force; // a stepped-aside panel returns with the next drawer-free moment
+  if (!shell.querySelector('.drawer:not([hidden])') && !dock.dataset.aside) delete dock.dataset.force; // a stepped-aside panel returns with the next drawer-free moment
   dock.dir = shell.dataset.tdir || 'rtl';
   dock.lang = S.ui;
   dock.dataset.open = open ? '1' : '0';
@@ -150,6 +165,8 @@ function xplWire() {
   xplDock();
   if (root.__xplWired) return;
   root.__xplWired = true;
+  if (typeof MutationObserver === 'function') new MutationObserver(xplAsideSoon).observe(document.body, { childList: true, subtree: true }); // the pages are drawn after the panel: watch the body, a frame at a time
+  window.addEventListener('resize', xplAsideSoon);
   // cand = the ONE tool a card is waiting for ({ el, k, src, x, y }); timer = its single rest timer; last = the previous pointer sample
   const st = { timer: 0, hold: 0, el: null, cand: null, last: null };
   xplWire.st = st;

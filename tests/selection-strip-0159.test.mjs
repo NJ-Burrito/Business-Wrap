@@ -66,12 +66,11 @@ const overlap = (a, b) => a.l < b.r - 0.5 && b.l < a.r - 0.5 && a.t < b.b - 0.5 
 
 async function openPage(win, zoom, ui, dark) {
   const ctx = await browser.newContext({ viewport: { width: Math.round(win / zoom), height: Math.round(900 / zoom) }, deviceScaleFactor: zoom });
-  await ctx.addInitScript(([u, d]) => { try { localStorage.setItem('bw:ui', u); localStorage.setItem('bw:calm', '1'); localStorage.setItem('bw:dark', d ? '1' : '0'); } catch { /* none */ } }, [ui, dark]);
+  await ctx.addInitScript(([u, d]) => { try { localStorage.setItem('bw:ui', u); localStorage.setItem('bw:calm', '1'); localStorage.setItem('bw:dark', d ? '1' : '0'); localStorage.setItem('bw:xpl-panel', '0'); /* 0.16.0: the Explain panel (M4) is judged on its own suite; closed here it sits as its 40 px edge tab and not on the page's click targets */ } catch { /* none */ } }, [ui, dark]);
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(pathToFileURL(file).href);
   await page.waitForFunction(() => window.BW?.ready);
-  await page.addStyleTag({ content: '.xpl-dock{display:none !important}' }); // the Explain panel (M4) is judged on its own; it must not sit on the page's click targets here
   return { ctx, page };
 }
 
@@ -135,7 +134,7 @@ async function runJob([win, zoom, ui, dark]) {
       check(`S2 ${tag} / ${kind}: selecting moves the bar by ≤ 1 px and scrollHeight by ≤ 1 px`, dH <= 1 && dSH <= 1, `bar ${before.islandH}→${m.islandH}, scrollH ${before.scrollH}→${m.scrollH}`);
       // S1
       const obj = await page.evaluate(() => {
-        const els = [...document.querySelectorAll('main.bw-doc .dg-lgsel, main.bw-doc [data-dg-node].sel, main.bw-doc [data-dg-node][aria-selected="true"], main.bw-doc .is-sel, main.bw-doc .sel, main.bw-doc [data-sel], main.bw-doc .dg-ui')];
+        const els = [...document.querySelectorAll('main.bw-doc .dg-lgsel, main.bw-doc [data-dg-node].sel, main.bw-doc [data-dg-node][aria-selected="true"], main.bw-doc .is-sel, main.bw-doc .sel, main.bw-doc [data-sel], main.bw-doc .dg-ui:not(.dg-cv)')]; // 0.16.0: .dg-cv is the canvas frame layer over the whole figure (handles), not the selected thing; a figure taller than the room under the bar must scroll under it
         return els.map((e) => { const b = e.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom }; }).filter((b) => b.r - b.l > 0 && b.b - b.t > 0);
       });
       const bad = [];

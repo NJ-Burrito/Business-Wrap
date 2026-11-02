@@ -278,7 +278,12 @@ try {
   {
     const { ctx, page } = await open({ width: 1100 });
     const pad = await page.evaluate(() => document.body.style.paddingRight);
-    check('at 1100 px the page is not pushed aside (the panel may cover its edge)', (await rect(page, '.xpl-dock .xd-h')).shown && pad === '', pad);
+    // 0.16.0 (M4): nobody has chosen yet and the window is under 1280 px: the panel waits as its edge tab and covers nothing; the tab opens it, and still no padding
+    check('at 1100 px the panel waits as its edge tab until the person opens it', !(await rect(page, '.xpl-dock .xd-h')).shown && pad === '', pad);
+    await sh(page, (rt) => rt.querySelector('.xpl-dock .xd-tab').click());
+    await page.waitForTimeout(400);
+    const pad2 = await page.evaluate(() => document.body.style.paddingRight);
+    check('at 1100 px the page is not pushed aside (the panel may cover its edge)', (await rect(page, '.xpl-dock .xd-h')).shown && pad2 === '', pad2);
     await ctx.close();
   }
   // the picture of a card in the panel: the real drawing code, every id of the visible ribbon tab

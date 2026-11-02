@@ -275,6 +275,13 @@
   .shell:has(.drawer:not([hidden])) .xpl-dock:not([data-force]) .xd-tab { display: flex; }
 }
 
+/* 0.16.0 (M4): the panel steps aside to its edge tab while a diagram's canvas handles are under it (explainers.js xplAside); the tab brings it back (data-force). */
+.xpl-dock[data-aside]:not([data-force]) {
+  inline-size: 40px; block-size: 96px; max-inline-size: none; max-block-size: none; inset-block-start: calc(var(--bw-bar-h, 72px) + 24px); right: 0; border-radius: 14px 0 0 14px; overflow: visible; box-shadow: var(--bw-shadow-2), 0 0 0 1px var(--panel-line);
+}
+.xpl-dock[data-aside]:not([data-force]) :is(.xd-h, .xd-b) { display: none; }
+.xpl-dock[data-aside]:not([data-force]) .xd-tab { display: flex; }
+
 /* ── 0.14.0 A3: toasts and undo prompts never cover the page controls ───────────────────────────────────────────
  * They stay bottom-centre, but centred on the room left of an open slide-over panel (its own page-range and preview
  * controls live there) and lifted clear of the page pill (pages · previous · next) whenever that is showing. */

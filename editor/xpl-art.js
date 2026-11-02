@@ -175,6 +175,7 @@ const XPL_SCENES = {
       case 'colw': return sheet + grid() + xaP('acs k-fade', 'M30 78 h68 m-6 -4 l6 4 l-6 4 M30 74 v8 M98 74 v8');
       case 'rowh': return sheet + grid('00') + xaP('acs k-fade', 'M126 18 v19 m-4 -5 l4 5 l4 -5 M122 18 h8 M122 37 h8');
       case 'clearv': return sheet + grid('11') + xaG('k-gone', xaLn(70, 48, 22, 'ln'));
+      case 'keepe': return sheet + grid('11') + xaP('acs k-fade', 'M68 48 h26', 'style="stroke-dasharray:3 3"') + xaP('acs', 'M64 40 v16 M98 40 v16');
       default: return sheet + grid('11') + xaG('k-gone', xaLn(70, 48, 22, 'ln') + xaC('ac', 90, 56, 3)) + xaP('prs', 'M112 60 l8 -8 l4 4 l-8 8 Z');
     }
   },
@@ -554,6 +555,7 @@ cells:fill cellFill@theme
 cells:colw cellColW@colAdd
 cells:rowh cellRowH@rowAdd
 cells:clearv cellClearValue@delete
+cells:keepe cellKeepEmpty@delete
 cells:clearf cellClearFormat@delete
 find:find find@find
 find:check check@check
