@@ -68,6 +68,7 @@ async function openPage(win, zoom, ui, dark) {
   const ctx = await browser.newContext({ viewport: { width: Math.round(win / zoom), height: Math.round(900 / zoom) }, deviceScaleFactor: zoom });
   await ctx.addInitScript(([u, d]) => { try { localStorage.setItem('bw:ui', u); localStorage.setItem('bw:calm', '1'); localStorage.setItem('bw:dark', d ? '1' : '0'); localStorage.setItem('bw:xpl-panel', '0'); /* 0.16.0: the Explain panel (M4) is judged on its own suite; closed here it sits as its 40 px edge tab and not on the page's click targets */ } catch { /* none */ } }, [ui, dark]);
   const page = await ctx.newPage();
+  if (process.env.BW_STRIP_THROTTLE) await (await ctx.newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate: Number(process.env.BW_STRIP_THROTTLE) });
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(pathToFileURL(file).href);
   await page.waitForFunction(() => window.BW?.ready);
@@ -86,7 +87,7 @@ async function select(page, kind, cssH) {
     case 'image': await page.evaluate(() => { const B = window.BW; const P = '/chapters/0/sections/0/blocks/0'; const IMG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='; B.commit([{ op: 'replace', path: '/overlays', value: [{ id: 'ov1', kind: 'image', src: IMG, mode: 'anchor', anchor: P, x: 10, y: 0, w: 30 }] }]); B.S.selOv = 0; B.render(); }); break;
     case 'story': await page.evaluate(() => { const B = window.BW; const d = B.M[B.S.svc][B.S.ed].doc; let ptr = null; d.chapters.forEach((c, i) => c.sections.forEach((s, j) => s.blocks.forEach((b, k) => { if (!ptr && b.kind === 'stories') ptr = `/chapters/${i}/sections/${j}/blocks/${k}`; }))); B.S.selOv = null; B.S.sel = { b: ptr, p: null, ed: B.S.ed }; B.render(); }); break;
     case 'section': await page.evaluate(() => { const B = window.BW; B.S.selOv = null; B.S.sel = { b: null, p: '/chapters/0/sections/0/title', ed: B.S.ed }; B.render(); }); break;
-    case 'diagram empty': { await place(`${FIG} svg`); const sb = await page.locator(`${FIG} svg`).boundingBox(); await page.mouse.click(sb.x + 4, sb.y + 4); break; }
+    case 'diagram empty': { await place(`${FIG} svg`); const sb = await page.locator(`${FIG} svg`).first().boundingBox(); await page.mouse.click(sb.x + 4, sb.y + 4); break; }
     case 'shape': { await place(`${FIG} svg`); await clickEl(dgNode(0)); break; }
     case 'several shapes': { await place(`${FIG} svg`); await clickEl(dgNode(0)); await page.keyboard.down('Shift'); await clickEl(dgNode(1)); await page.keyboard.up('Shift'); break; }
     case 'arrow': case 'joint': {
@@ -112,6 +113,9 @@ const sheetKeys = new Set(['1024|1|ar|false', '1366|1|ar|false', '1920|1|ar|true
 const tally = { combos: 0, kinds: 0, tools: 0, menuItems: 0, noSel: [] };
 const jobs = [];
 for (const win of WINDOWS) for (const zoom of ZOOMS) for (const ui of ['ar', 'en']) for (const dark of [false, true]) jobs.push([win, zoom, ui, dark]);
+// BW_STRIP_ONLY="2560|1|en|true" (win|zoom|ui|dark, several separated by a space) runs just those combinations; BW_STRIP_THROTTLE=4 slows the page's CPU 4x (a loaded runner), to look for a fit that measures too early
+const ONLY = process.env.BW_STRIP_ONLY ? process.env.BW_STRIP_ONLY.split(/\s+/) : null;
+if (ONLY) for (let i = jobs.length - 1; i >= 0; i -= 1) if (!ONLY.includes(`${jobs[i][0]}|${jobs[i][1]}|${jobs[i][2]}|${jobs[i][3]}`)) jobs.splice(i, 1);
 
 async function runJob([win, zoom, ui, dark]) {
   const tag = `${win}px z${Math.round(zoom * 100)} ${ui} ${dark ? 'dark' : 'light'}`;

@@ -73,11 +73,30 @@ if (!want.length) { console.log('no suites selected'); process.exit(0); }
 const jobs = flag('--serial') ? 1 : Number(process.env.BW_JOBS) || Math.min(4, Math.max(1, os.cpus().length >> 1));
 const results = [];
 const t0 = Date.now();
+// A suite that never ends must not take the whole job with it (GitHub run 41540035963: shard 3 was cancelled at the 45-minute job limit with no line saying which suite hung).
+// BW_SUITE_TIMEOUT seconds (default 900; the slowest suite takes about 5 minutes) kills the suite's process tree and reports it as a failure with the output it had written.
+// The suite is also finished when its process exits, even if a child it started (a server, a browser) still holds the output pipe open: waiting for the pipe to close would wait for that child.
+const SUITE_TIMEOUT = (Number(process.env.BW_SUITE_TIMEOUT) || 900) * 1000;
 const run = (f) => new Promise((res) => {
   const s = Date.now(); let out = '';
+  console.log(`start ${f}`);
   const p = spawn(process.execPath, [f], { cwd: ROOT, env: { ...process.env, BW_TEST_SLOT: String(results.length), BW_TEST_MODE: '1' } });
+  let done = false, timedOut = false, exitCode = null;
+  const finish = (code) => {
+    if (done) return; done = true; clearTimeout(timer);
+    const r = { f, code: timedOut ? 124 : (code ?? exitCode ?? 1), s: (Date.now() - s) / 1000, out }; results.push(r);
+    console.log(`${r.code ? 'FAIL' : 'ok  '} ${r.s.toFixed(1).padStart(6)}s ${f}${timedOut ? '  (timed out)' : ''}`); res();
+  };
+  const timer = setTimeout(() => {
+    timedOut = true; out += `
+FAIL  ${f}: no end after ${SUITE_TIMEOUT / 1000} s, its process tree was killed (BW_SUITE_TIMEOUT)
+`;
+    if (process.platform === 'win32') { try { execFileSync('taskkill', ['/PID', String(p.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* already gone */ } } else { try { p.kill('SIGKILL'); } catch { /* gone */ } }
+    setTimeout(() => finish(124), 3000);
+  }, SUITE_TIMEOUT);
   p.stdout.on('data', (d) => (out += d)); p.stderr.on('data', (d) => (out += d));
-  p.on('close', (code) => { const r = { f, code, s: (Date.now() - s) / 1000, out }; results.push(r); console.log(`${code ? 'FAIL' : 'ok  '} ${r.s.toFixed(1).padStart(6)}s ${f}`); res(); });
+  p.on('exit', (code) => { exitCode = code; setTimeout(() => finish(code), 2000); });
+  p.on('close', (code) => finish(code));
 });
 const queue = [...want];
 await Promise.all(Array.from({ length: jobs }, async () => { while (queue.length) await run(queue.shift()); }));
