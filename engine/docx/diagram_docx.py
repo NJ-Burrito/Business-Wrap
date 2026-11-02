@@ -34,6 +34,10 @@ def _dash(d):
     return '<a:prstDash val="sysDot"/>' if d.startswith(('1', '2')) else '<a:prstDash val="dash"/>'
 
 
+# the nearest native Word line-end for each head: every one but `bar` has an exact kind (the bar is drawn as a line)
+_WORD_END = {'arrow': 'arrow', 'triangle': 'triangle', 'diamond': 'diamond', 'circle': 'oval'}
+
+
 class _Canvas:
     def __init__(self, view, max_w_in, max_h_in):
         self.vx, self.vy, vw, vh = view['x'], view['y'], view['w'], view['h']
@@ -55,12 +59,22 @@ class _Canvas:
         self.n += 1
         return self.n
 
-    def ln(self, color, w, dash='', arrow=False):
+    def ln(self, color, w, dash='', arrow=False, head=None, tail=None):
         c = _hex(color)
         if not c or not w:
             return '<a:ln><a:noFill/></a:ln>'
-        tail = '<a:tailEnd type="arrow" w="med" len="med"/>' if arrow else ''
-        return f'<a:ln w="{max(3175, self.e(w))}" cap="rnd"><a:solidFill><a:srgbClr val="{c}"/></a:solidFill>{_dash(dash)}<a:round/>{tail}</a:ln>'
+        # the line ends: an arrow (open chevron) as before; a styled arrow names its own. Word has no bar end: the bar
+        # is a separate short line in the diagram (engine/diagram.mjs), so `bar` and `none` ask Word for nothing.
+        end = ''
+        start = ''
+        if head is not None or tail is not None:
+            if head in _WORD_END:
+                end = f'<a:tailEnd type="{_WORD_END[head]}" w="med" len="med"/>'
+            if tail in _WORD_END:
+                start = f'<a:headEnd type="{_WORD_END[tail]}" w="med" len="med"/>'
+        elif arrow:
+            end = '<a:tailEnd type="arrow" w="med" len="med"/>'
+        return f'<a:ln w="{max(3175, self.e(w))}" cap="rnd"><a:solidFill><a:srgbClr val="{c}"/></a:solidFill>{_dash(dash)}<a:round/>{start}{end}</a:ln>'
 
     @staticmethod
     def fill(color):
@@ -74,13 +88,20 @@ class _Canvas:
             f'<wps:spPr><a:xfrm><a:off x="{self.X(x)}" y="{self.Y(y)}"/><a:ext cx="{max(1, self.e(w))}" cy="{max(1, self.e(h))}"/></a:xfrm>'
             f'{g}{self.fill(fill)}{self.ln(line, lw, dash)}</wps:spPr><wps:bodyPr/></wps:wsp>')
 
-    def poly(self, pts, color, lw, dash='', arrow=False, closed=False):
-        xs = [p[0] for p in pts]
-        ys = [p[1] for p in pts]
+    def poly(self, pts, color, lw, dash='', arrow=False, closed=False, head=None, tail=None, bez=None):
+        # a curved arrow: cubic Bezier segments [p0, c1, c2, p1]; the box takes in every control point
+        allp = pts if not bez else [q for sg in bez for q in sg]
+        xs = [p[0] for p in allp]
+        ys = [p[1] for p in allp]
         x0, y0 = min(xs), min(ys)
         w, h = max(xs) - x0, max(ys) - y0
         W, H = max(1, self.e(w)), max(1, self.e(h))
-        path = ''.join(f'<a:{"moveTo" if i == 0 else "lnTo"}><a:pt x="{self.e(px - x0)}" y="{self.e(py - y0)}"/></a:{"moveTo" if i == 0 else "lnTo"}>' for i, (px, py) in enumerate(pts))
+        if bez:
+            def pt(q):
+                return f'<a:pt x="{self.e(q[0] - x0)}" y="{self.e(q[1] - y0)}"/>'
+            path = f'<a:moveTo>{pt(bez[0][0])}</a:moveTo>' + ''.join(f'<a:cubicBezTo>{pt(sg[1])}{pt(sg[2])}{pt(sg[3])}</a:cubicBezTo>' for sg in bez)
+        else:
+            path = ''.join(f'<a:{"moveTo" if i == 0 else "lnTo"}><a:pt x="{self.e(px - x0)}" y="{self.e(py - y0)}"/></a:{"moveTo" if i == 0 else "lnTo"}>' for i, (px, py) in enumerate(pts))
         if closed:
             path += '<a:close/>'
         nofill = '' if closed else ' fill="none"'
@@ -88,7 +109,7 @@ class _Canvas:
         self.parts.append(
             f'<wps:wsp><wps:cNvPr id="{self.nid()}" name="Line {self.n}"/><wps:cNvSpPr/>'
             f'<wps:spPr><a:xfrm><a:off x="{self.X(x0)}" y="{self.Y(y0)}"/><a:ext cx="{W}" cy="{H}"/></a:xfrm>'
-            f'{geom}<a:noFill/>{self.ln(color, lw, dash, arrow)}</wps:spPr><wps:bodyPr/></wps:wsp>')
+            f'{geom}<a:noFill/>{self.ln(color, lw, dash, arrow, head, tail)}</wps:spPr><wps:bodyPr/></wps:wsp>')
 
     def text(self, t, font):
         b = t['box']
@@ -145,7 +166,8 @@ def diagram_run(resolved, font, title='', max_w_in=10.2, max_h_in=5.5):
             r = it['r']
             cv.shape('ellipse', it['cx'] - r, it['cy'] - r, 2 * r, 2 * r, it.get('fill'), it['color'], it['lw'], it.get('dash', ''))
         elif t == 'line':
-            cv.poly(it['pts'], it['color'], it['lw'], it.get('dash', ''), bool(it.get('arrow')))
+            cv.poly(it['pts'], it['color'], it['lw'], it.get('dash', ''), bool(it.get('arrow')),
+                    head=it.get('head') if 'head' in it else None, tail=it.get('tail') if 'head' in it else None, bez=it.get('bez'))
         elif t == 'text':
             cv.text(it, font)
     return parse_xml(cv.xml(title))

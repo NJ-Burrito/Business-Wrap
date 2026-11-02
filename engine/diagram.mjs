@@ -54,6 +54,16 @@ export const DIAGRAM = (() => {
     };
   }
   const WIRE = { main: { w: 2.1, dash: '' }, return: { w: 1.4, dash: '9 4' }, stop: { w: 1.4, dash: '' } };
+  /* 0.15.6 (A6): optional, additive per-arrow keys. Absent = exactly the drawing of 0.15.5.
+   *   route   elbow | straight | curved        (absent = elbow)
+   *   head    arrow | triangle | diamond | circle | bar | none   (absent = arrow);  tail: same list (absent = none)
+   *   line    solid | dashed | dotted           (absent = the kind's own);  weight: thin | normal | thick (absent = the kind's own)
+   *   fromAnchor / toAnchor  { side: t|r|b|l, at: 0..1 }  an end that sits at a chosen point of its shape's outline */
+  const ROUTES = ['elbow', 'straight', 'curved'];
+  const HEADS = ['arrow', 'triangle', 'diamond', 'circle', 'bar', 'none'];
+  const LINES = { solid: '', dashed: '9 4', dotted: '1.5 4' };
+  const WEIGHTS = { thin: 1, normal: null, thick: 3.4 };
+  const SIDES = ['t', 'r', 'b', 'l'];
 
   /* legend wording; a model may rename any entry (model.legend[key]) */
   const KEY = {
@@ -185,7 +195,7 @@ export const DIAGRAM = (() => {
   function layoutOnce(input, { force = false, aspect, rowsK, stretch } = {}) {
     const model = clone(input);
     model.nodes = model.nodes.filter((n) => !(n.kind === 'group' && n.auto));
-    for (const e of model.edges || []) delete e.via; // a new layout routes every arrow afresh
+    for (const e of model.edges || []) { delete e.via; delete e.fromAnchor; delete e.toAnchor; } // a new layout routes every arrow afresh
     for (const n of model.nodes) {
       if (force || n.w == null || n.h == null) Object.assign(n, measure(n));
     }
@@ -535,6 +545,14 @@ export const DIAGRAM = (() => {
     const spanSolids = (lo, hi) => solids.filter((o) => o.r > lo - 6 && o.l < hi + 6);
     // the long corridors first, so the short hops take the lanes nearest the boxes
     const orderOf = { wrap: 0, under: 1, over: 1, down: 2, up: 2, straight: 3 };
+    // 0.15.6 (A5): an end the person placed on the outline keeps that point and its face; the other end stays automatic
+    for (const p of plan) {
+      const fa = validAnchor(p.e.fromAnchor);
+      const ta = validAnchor(p.e.toAnchor);
+      if (fa) { p.a = anchorPoint(p.S.n, fa.side, fa.at); p.sides[0] = fa.side; p.fa = true; }
+      if (ta) { p.b = anchorPoint(p.T.n, ta.side, ta.at); p.sides[1] = ta.side; p.tb = true; }
+      p.anch = !!(fa || ta);
+    }
     const routed = [...plan].sort((a, b) => orderOf[a.mode] - orderOf[b.mode] || Math.abs(b.a[0] - b.b[0]) - Math.abs(a.a[0] - a.b[0]));
     for (const p of routed) {
       const [ax, ay] = p.a;
@@ -542,7 +560,11 @@ export const DIAGRAM = (() => {
       const lo = Math.min(ax, bx);
       const hi = Math.max(ax, bx);
       let pts;
-      if (p.mode === 'straight') {
+      const rt = ROUTES.includes(p.e.route) ? p.e.route : 'elbow';
+      if (rt !== 'elbow') {
+        pts = freePath(p);
+        if (rt === 'curved') p.bez = curveBez(pts, p.nA, p.nB);
+      } else if (p.mode === 'straight') {
         if (Math.abs(ay - by) < 1) pts = [[ax, ay], [bx, ay]];
         else { const mx = (ax + bx) / 2; pts = [[ax, ay], [mx, ay], [mx, by], [bx, by]]; }
       } else if (p.mode === 'under') {
@@ -576,7 +598,9 @@ export const DIAGRAM = (() => {
         const xi = f > 0 ? lanePick(vSegs, L - 24, -1, Math.min(y, by), Math.max(y, by)) : lanePick(vSegs, R + 24, 1, Math.min(y, by), Math.max(y, by));
         pts = [[ax, ay], [xo, ay], [xo, y], [xi, y], [xi, by], [bx, by]];
       }
-      if (Array.isArray(p.e.via) && p.e.via.length) pts = viaPath(p.a, p.b, p.e.via, p.sides[0], p.sides[1]);
+      if (rt !== 'elbow') { /* a straight or curved arrow is the points it was given */ }
+      else if (Array.isArray(p.e.via) && p.e.via.length) pts = viaPath(p.a, p.b, p.e.via, p.sides[0], p.sides[1]);
+      else if (p.anch) pts = detour(p, solids, hSegs, vSegs) || viaPath(p.a, p.b, [], p.sides[0], p.sides[1]);
       // the corridor shapes above assume the legs they draw are clear; one that runs through a shape
       // that is not its own end is rerouted round every shape on the sheet (a hand-set path is kept)
       else if (crosses(pts, p, solids)) pts = detour(p, solids, hSegs, vSegs) || pts;
@@ -680,6 +704,134 @@ export const DIAGRAM = (() => {
     return pts;
   }
 
+  /* ── 0.15.6: anchors, free paths, curves ─────────────────────────────── */
+  const validAnchor = (a) => (a && SIDES.includes(a.side) && Number.isFinite(+a.at) ? { side: a.side, at: Math.min(1, Math.max(0, +a.at)) } : null);
+  /** The point of a shape's outline at (side, at): `at` runs along the face, top to bottom or left to right. */
+  function anchorPoint(n, side, at) {
+    const u = Math.min(1, Math.max(0, +at));
+    const cx = n.x + n.w / 2;
+    const cy = n.y + n.h / 2;
+    const rr = n.h / 2;
+    if (side === 'l' || side === 'r') {
+      const y = n.y + u * n.h;
+      let x = side === 'l' ? n.x : n.x + n.w;
+      if (n.kind === 'decision') { const d = Math.abs(y - cy) / (n.h / 2); x = side === 'l' ? n.x + d * n.w / 2 : n.x + n.w - d * n.w / 2; }
+      else if (STADIUM.has(n.kind)) { const dy = Math.abs(y - cy); const inset = rr - Math.sqrt(Math.max(0, rr * rr - dy * dy)); x = side === 'l' ? n.x + inset : n.x + n.w - inset; }
+      return [r1(x), r1(y)];
+    }
+    const x = n.x + u * n.w;
+    let y = side === 't' ? n.y : n.y + n.h;
+    if (n.kind === 'decision') { const d = Math.abs(x - cx) / (n.w / 2); y = side === 't' ? n.y + d * n.h / 2 : n.y + n.h - d * n.h / 2; }
+    else if (STADIUM.has(n.kind)) { const ex = Math.abs(x - cx) - (n.w / 2 - rr); if (ex > 0) { const dy = rr - Math.sqrt(Math.max(0, rr * rr - ex * ex)); y = side === 't' ? n.y + dy : n.y + n.h - dy; } }
+    return [r1(x), r1(y)];
+  }
+  /** The anchor on a shape's outline nearest to a point (the editor's drag of an arrow end). */
+  function nearestAnchor(n, pt) {
+    let best = null;
+    for (const side of SIDES) {
+      const along = side === 'l' || side === 'r' ? (pt[1] - n.y) / n.h : (pt[0] - n.x) / n.w;
+      const at = Math.min(0.96, Math.max(0.04, along));
+      const q = anchorPoint(n, side, at);
+      const d = Math.hypot(q[0] - pt[0], q[1] - pt[1]);
+      if (!best || d < best.d) best = { side, at: Math.round(at * 1000) / 1000, pt: q, d };
+    }
+    return best;
+  }
+  /** Where a ray from a shape's centre towards a point leaves the shape. */
+  function edgePoint(n, toward) {
+    const cx = n.x + n.w / 2;
+    const cy = n.y + n.h / 2;
+    let dx = toward[0] - cx;
+    let dy = toward[1] - cy;
+    if (Math.hypot(dx, dy) < 0.5) { dx = 1; dy = 0; }
+    const hw = n.w / 2;
+    const hh = n.h / 2;
+    let t;
+    if (n.kind === 'decision') t = 1 / (Math.abs(dx) / hw + Math.abs(dy) / hh);
+    else {
+      t = Math.min(Math.abs(dx) > 1e-9 ? hw / Math.abs(dx) : Infinity, Math.abs(dy) > 1e-9 ? hh / Math.abs(dy) : Infinity);
+      if (STADIUM.has(n.kind)) {
+        const core = hw - hh;
+        if (Math.abs(dx * t) > core) {
+          const sx = Math.sign(dx) * core; // the cap's centre
+          const a = dx * dx + dy * dy;
+          const b = -2 * (dx * sx);
+          const c = sx * sx - hh * hh;
+          t = (-b + Math.sqrt(Math.max(0, b * b - 4 * a * c))) / (2 * a);
+        }
+      }
+    }
+    return [r1(cx + dx * t), r1(cy + dy * t)];
+  }
+  /** A straight or curved arrow: its two ends (an anchor, else where the line towards its next point leaves the shape) and its joints. */
+  function freePath(p) {
+    const via = (Array.isArray(p.e.via) ? p.e.via : []).filter((q) => Array.isArray(q) && q.length === 2 && q.every(Number.isFinite)).map((q) => [+q[0], +q[1]]);
+    const A = p.fa ? p.a : edgePoint(p.S.n, via[0] || (p.tb ? p.b : [p.T.cx, p.T.cy]));
+    const B = p.tb ? p.b : edgePoint(p.T.n, via.at(-1) || A);
+    const out = (pt, c, side) => {
+      if (side) return { t: [0, -1], r: [1, 0], b: [0, 1], l: [-1, 0] }[side];
+      const dx = pt[0] - c.cx;
+      const dy = pt[1] - c.cy;
+      const L = Math.hypot(dx, dy) || 1;
+      return [dx / L, dy / L];
+    };
+    p.nA = out(A, p.S, p.fa ? p.sides[0] : null);
+    p.nB = out(B, p.T, p.tb ? p.sides[1] : null);
+    return [A, ...via, B];
+  }
+  /** Cubic segments [p0, c1, c2, p1] through the joints: smooth in the middle, leaving and entering along the face normals. */
+  function curveBez(pts, nA, nB) {
+    const P = pts.map((q) => [+q[0], +q[1]]);
+    const segs = [];
+    for (let i = 0; i + 1 < P.length; i += 1) {
+      const p1 = P[i];
+      const p2 = P[i + 1];
+      const p0 = P[i - 1] || null;
+      const p3 = P[i + 2] || null;
+      const L = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+      const k = Math.min(0.45 * L, 90);
+      const c1 = p0 ? [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6] : nA ? [p1[0] + nA[0] * k, p1[1] + nA[1] * k] : [p1[0] + (p2[0] - p1[0]) / 3, p1[1] + (p2[1] - p1[1]) / 3];
+      const c2 = p3 ? [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6] : nB ? [p2[0] + nB[0] * k, p2[1] + nB[1] * k] : [p2[0] - (p2[0] - p1[0]) / 3, p2[1] - (p2[1] - p1[1]) / 3];
+      segs.push([p1.map(r1), c1.map(r1), c2.map(r1), p2.map(r1)]);
+    }
+    return segs;
+  }
+  const bezAt = (s, t) => {
+    const u = 1 - t;
+    const f = (k) => u * u * u * s[0][k] + 3 * u * u * t * s[1][k] + 3 * u * t * t * s[2][k] + t * t * t * s[3][k];
+    return [f(0), f(1)];
+  };
+  const curveD = (bez) => `M${r1(bez[0][0][0])} ${r1(bez[0][0][1])}${bez.map((s) => `C${s[1][0]} ${s[1][1]} ${s[2][0]} ${s[2][1]} ${s[3][0]} ${s[3][1]}`).join('')}`;
+  /** Move the end `b` of a leg back towards `a` by `len` (any direction; the old orthogonal arithmetic is the special case). */
+  function pull(a, b, len) {
+    if (Math.abs(a[0] - b[0]) < 0.5) b[1] += b[1] > a[1] ? -len : len;
+    else if (Math.abs(a[1] - b[1]) < 0.5) b[0] += b[0] > a[0] ? -len : len;
+    else { const L = Math.hypot(b[0] - a[0], b[1] - a[1]); b[0] -= ((b[0] - a[0]) / L) * len; b[1] -= ((b[1] - a[1]) / L) * len; }
+  }
+  /** The pieces of a resolved wire as small straight steps (a curve is sampled), each tagged with the joint segment it belongs to. */
+  function wireSteps(it, n = 14) {
+    const steps = [];
+    if (it.bez) it.bez.forEach((s, i) => { let prev = bezAt(s, 0); for (let j = 1; j <= n; j += 1) { const q = bezAt(s, j / n); steps.push({ a: prev, b: q, seg: i }); prev = q; } });
+    else for (let i = 0; i + 1 < it.route.length; i += 1) steps.push({ a: it.route[i], b: it.route[i + 1], seg: i });
+    return steps;
+  }
+  /** The point of a resolved wire nearest to `pt`: { x, y, seg (the joint segment it lies on), d }. */
+  function nearestOnWire(it, pt) {
+    let best = null;
+    for (const { a, b, seg } of wireSteps(it)) {
+      const vx = b[0] - a[0];
+      const vy = b[1] - a[1];
+      const L2 = vx * vx + vy * vy;
+      const u = L2 ? Math.min(1, Math.max(0, ((pt[0] - a[0]) * vx + (pt[1] - a[1]) * vy) / L2)) : 0;
+      const q = [a[0] + vx * u, a[1] + vy * u];
+      const d = Math.hypot(q[0] - pt[0], q[1] - pt[1]);
+      if (!best || d < best.d) best = { x: Math.round(q[0]), y: Math.round(q[1]), seg, d };
+    }
+    return best;
+  }
+  /** The middle of joint segment i of a resolved wire (on the curve for a curved arrow). */
+  const wireMid = (it, i) => (it.bez ? bezAt(it.bez[i], 0.5) : [(it.route[i][0] + it.route[i + 1][0]) / 2, (it.route[i][1] + it.route[i + 1][1]) / 2]);
+
   /** Hand-set bend points between the two ports, kept orthogonal: where an end (or a point) moved off a
    *  common line an elbow is added — out of a port along its face's normal, into the target along its own. */
   function viaPath(a, b, via, sa, sb) {
@@ -710,12 +862,11 @@ export const DIAGRAM = (() => {
   }
 
   /** Rounded orthogonal path; the last leg stops short so the open chevron lands on the outline. */
-  function pathD(ptsIn) {
+  function pathD(ptsIn, short = true) {
     const p = ptsIn.map((q) => [...q]);
     const a = p[p.length - 2];
     const b = p[p.length - 1];
-    if (Math.abs(a[0] - b[0]) < 0.5) b[1] += b[1] > a[1] ? -G.tip : G.tip;
-    else if (Math.abs(a[1] - b[1]) < 0.5) b[0] += b[0] > a[0] ? -G.tip : G.tip;
+    if (short) pull(a, b, G.tip);
     let d = `M${r1(p[0][0])} ${r1(p[0][1])}`;
     for (let i = 1; i < p.length; i += 1) {
       const cur = p[i];
@@ -737,8 +888,7 @@ export const DIAGRAM = (() => {
     const p = ptsIn.map((q) => [...q]);
     const a = p[p.length - 2];
     const b = p[p.length - 1];
-    if (Math.abs(a[0] - b[0]) < 0.5) b[1] += b[1] > a[1] ? -G.tip : G.tip;
-    else if (Math.abs(a[1] - b[1]) < 0.5) b[0] += b[0] > a[0] ? -G.tip : G.tip;
+    pull(a, b, G.tip);
     return p.map(([x, y]) => [r1(x), r1(y)]);
   }
 
@@ -837,7 +987,8 @@ export const DIAGRAM = (() => {
     const hits = (r, list) => list.some((o) => r.x < o.r + 2 && r.x + r.w > o.l - 2 && r.y < o.b + 2 && r.y + r.h > o.t - 2);
     for (const p of plan) {
       const k = WIRE_KINDS.includes(p.e.kind) ? p.e.kind : 'main';
-      wires.push({ t: 'line', pts: shortPts(p.pts), d: pathD(p.pts), color: P.wire[k], lw: WIRE[k].w, dash: WIRE[k].dash, arrow: true, wire: k, id: p.e.id, from: p.e.from, to: p.e.to, route: p.pts.map(([x, y]) => [r1(x), r1(y)]) });
+      if (styled(p.e)) wires.push(...styledWire(p, k, P));
+      else wires.push({ t: 'line', pts: shortPts(p.pts), d: pathD(p.pts), color: P.wire[k], lw: WIRE[k].w, dash: WIRE[k].dash, arrow: true, wire: k, id: p.e.id, from: p.e.from, to: p.e.to, route: p.pts.map(([x, y]) => [r1(x), r1(y)]) });
       if (!p.e.label) continue;
       const lw = textW(p.e.label, FS.edge);
       const lh = FS.edge * 1.5;
@@ -849,6 +1000,22 @@ export const DIAGRAM = (() => {
         else segs.push({ h: false, y1, y2, x: x1, len: Math.abs(y2 - y1), i });
       }
       const cands = [];
+      const freeWire = ROUTES.includes(p.e.route) && p.e.route !== 'elbow';
+      if (freeWire) {
+        // a straight or curved arrow has no horizontal leg to sit beside: seats along the line, on both sides of it
+        segs.length = 0;
+        const D = p.bez ? p.bez.flatMap((sg) => Array.from({ length: 9 }, (_, j) => bezAt(sg, j / 8))) : p.pts;
+        const seat = [];
+        for (let i = 1; i < D.length; i += 1) seat.push([D[i - 1], D[i]]);
+        for (const at of [0.5, 0.3, 0.7, 0.15, 0.85]) {
+          const [a, b] = seat[Math.min(seat.length - 1, Math.floor(at * seat.length))];
+          const L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+          const nx = -(b[1] - a[1]) / L;
+          const ny = (b[0] - a[0]) / L;
+          const off = Math.abs(nx) * (lw / 2 + 6) + Math.abs(ny) * (lh / 2 + 2);
+          for (const sg of [1, -1]) cands.push({ x: (a[0] + b[0]) / 2 + nx * off * sg, y: (a[1] + b[1]) / 2 + ny * off * sg });
+        }
+      }
       const hs = segs.filter((s) => s.h).sort((a, b) => b.len - a.len);
       for (const s of hs) for (const at of [0.5, 0.3, 0.7, 0.15, 0.85]) for (const dy of [-(lh / 2 + 2), lh / 2 + 2]) cands.push({ x: s.x1 + (s.x2 - s.x1) * at, y: s.y + dy });
       for (const s of segs.filter((q) => !q.h)) for (const at of [0.5, 0.25, 0.75]) for (const side of [1, -1]) cands.push({ x: s.x + side * (lw / 2 + 6), y: s.y1 + (s.y2 - s.y1) * at });
@@ -878,7 +1045,7 @@ export const DIAGRAM = (() => {
     const ys = [];
     for (const it of [...back, ...wires, ...fore, ...caps]) {
       if (it.t === 'shape') { xs.push(it.x, it.x + it.w); ys.push(it.y, it.y + it.h); }
-      else if (it.t === 'line') for (const [x, y] of it.pts) { xs.push(x); ys.push(y); }
+      else if (it.t === 'line') { for (const [x, y] of it.pts) { xs.push(x); ys.push(y); } if (it.bez) for (const sg of it.bez) for (const [x, y] of sg) { xs.push(x); ys.push(y); } }
       else if (it.t === 'circle') { xs.push(it.cx - it.r, it.cx + it.r); ys.push(it.cy - it.r, it.cy + it.r); }
       else if (it.t === 'text') { xs.push(it.box.x, it.box.x + it.box.w); ys.push(it.box.y, it.box.y + it.box.h); }
     }
@@ -940,6 +1107,56 @@ export const DIAGRAM = (() => {
     return { model, items: [...back, ...wires, ...fore, ...caps, ...legend], view: { x: r1(minX), y: r1(minY), w: r1(maxX - minX), h: r1(maxY - minY) }, palette: P };
   }
 
+  /* ── 0.15.6: a styled arrow (route, heads, line, weight) ─────────────── */
+  const styled = (e) => (ROUTES.includes(e.route) && e.route !== 'elbow') || (HEADS.includes(e.head) && e.head !== 'arrow') || (HEADS.includes(e.tail) && e.tail !== 'none') || Object.hasOwn(LINES, e.line) || Object.hasOwn(WEIGHTS, e.weight);
+  /** The line itself, plus a bar at an end that asks for one. Pieces: the wire (with `head` and `tail` for the marker), then decorations. */
+  function styledWire(p, k, P) {
+    const e = p.e;
+    const head = HEADS.includes(e.head) ? e.head : 'arrow';
+    const tail = HEADS.includes(e.tail) ? e.tail : 'none';
+    const lw = (Object.hasOwn(WEIGHTS, e.weight) ? WEIGHTS[e.weight] : null) ?? WIRE[k].w;
+    const dash = Object.hasOwn(LINES, e.line) ? LINES[e.line] : WIRE[k].dash;
+    const mk = (h) => h !== 'none' && h !== 'bar';
+    const rt = ROUTES.includes(e.route) ? e.route : 'elbow';
+    const route = p.pts.map(([x, y]) => [r1(x), r1(y)]);
+    const color = P.wire[k];
+    let pts = p.pts.map((q) => [...q]);
+    let bez = null;
+    if (rt === 'curved' && p.bez) {
+      bez = p.bez.map((sg) => sg.map((q) => [...q]));
+      const tipAt = (end, tipLen) => {
+        const first = end === 0;
+        const sg = bez[first ? 0 : bez.length - 1];
+        const pt = first ? sg[0] : sg[3];
+        const ctl = first ? sg[1] : sg[2];
+        const L = Math.hypot(ctl[0] - pt[0], ctl[1] - pt[1]) || 1;
+        pt[0] = r1(pt[0] + ((ctl[0] - pt[0]) / L) * tipLen);
+        pt[1] = r1(pt[1] + ((ctl[1] - pt[1]) / L) * tipLen);
+        if (bez.length > 1) { const nb = bez[first ? 1 : bez.length - 2]; const q = first ? nb[0] : nb[3]; q[0] = pt[0]; q[1] = pt[1]; }
+      };
+      if (mk(head)) tipAt(1, G.tip);
+      if (mk(tail)) tipAt(0, G.tip);
+      pts = [bez[0][0], ...bez.map((sg) => sg[3])];
+    } else {
+      if (mk(tail)) { const a = pts[1]; const b = pts[0]; pull(a, b, G.tip); }
+      if (mk(head)) { const a = pts.at(-2); const b = pts.at(-1); pull(a, b, G.tip); }
+    }
+    const d = bez ? curveD(bez) : rt === 'elbow' ? pathD(pts, false) : `M${pts.map(([x, y]) => `${r1(x)} ${r1(y)}`).join('L')}`;
+    const out = [{ t: 'line', pts: pts.map(([x, y]) => [r1(x), r1(y)]), d, ...(bez ? { bez } : {}), color, lw, dash, arrow: mk(head) || mk(tail), head, tail, wire: k, id: e.id, from: e.from, to: e.to, route, rt }];
+    // a bar is real geometry, square to the line at its end: SVG, PDF and Word draw the same thing
+    const bar = (at, toward) => {
+      const L = Math.hypot(toward[0] - at[0], toward[1] - at[1]) || 1;
+      const ux = (toward[0] - at[0]) / L;
+      const uy = (toward[1] - at[1]) / L;
+      const half = 5 + lw;
+      return { t: 'line', pts: [[r1(at[0] - uy * half), r1(at[1] + ux * half)], [r1(at[0] + uy * half), r1(at[1] - ux * half)]], d: '', color, lw: Math.max(lw, 1.6), dash: '', arrow: false, deco: e.id };
+    };
+    const ends = bez ? [bez[0][1], bez.at(-1)[2]] : [route[1], route.at(-2)];
+    if (head === 'bar') out.push(bar(route.at(-1), ends[1]));
+    if (tail === 'bar') out.push(bar(route[0], ends[0]));
+    return out;
+  }
+
   /* ── SVG ──────────────────────────────────────────────────────────────── */
   function shapeSvg(s) {
     // a symbol's hit area has no paint: pointer-events="all" lets the editor pick and drag it (nothing prints from it)
@@ -952,25 +1169,38 @@ export const DIAGRAM = (() => {
   function textSvg(t, editor = false) {
     const first = t.y - ((t.lines.length - 1) * t.lh) / 2;
     const plate = t.plate ? `<rect x="${r1(t.box.x - 3)}" y="${r1(t.box.y + 1)}" width="${r1(t.box.w + 6)}" height="${r1(t.box.h - 2)}" fill="${t.plate}"/>` : '';
-    return plate + t.lines.map((l, i) => `<text x="${t.x}" y="${r1(first + i * t.lh + t.size * 0.34)}" text-anchor="middle" font-size="${t.size}"${t.weight && t.weight !== 400 ? ` font-weight="${t.weight}"` : ''} fill="${t.color}"${arabic(l) ? ' direction="rtl"' : ''}${editor && t.legend ? ` data-dg-legend="${esc(t.legend)}"` : ''}>${esc(l)}</text>`).join('');
+    return plate + t.lines.map((l, i) => `<text x="${t.x}" y="${r1(first + i * t.lh + t.size * 0.34)}" text-anchor="middle" font-size="${t.size}"${t.weight && t.weight !== 400 ? ` font-weight="${t.weight}"` : ''} fill="${t.color}"${arabic(l) ? ' direction="rtl"' : ''}${editor && t.legend ? ` data-dg-legend="${esc(t.legend)}"` : ''}${editor && t.edge ? ` data-dg-cap="${esc(t.edge)}"` : ''}>${esc(l)}</text>`).join('');
   }
   function render(model, { theme, locale = 'ar', title = '', editor = false } = {}) {
     const r = resolve(model, { theme, locale });
     const fam = [theme?.fonts?.text, 'serif'].filter(Boolean).map((x) => (x === 'serif' ? x : `'${String(x).replace(/[^\w\s-]/g, '')}'`)).join(', ');
-    const tips = WIRE_KINDS.map((k) => `<marker id="bwdg-tip-${k}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.6" markerHeight="6.6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="${r.palette.wire[k]}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></marker>`).join('');
+    let tips = WIRE_KINDS.map((k) => `<marker id="bwdg-tip-${k}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.6" markerHeight="6.6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="${r.palette.wire[k]}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></marker>`).join('');
+    // 0.15.6: the other head shapes, only the ones this drawing uses (tip at the same place as the chevron's)
+    const HEAD_SHAPE = { triangle: 'M1 1L8 5L1 9Z', diamond: 'M0 5L4 1.2L8 5L4 8.8Z', circle: '' };
+    const extra = new Set();
+    for (const it of r.items) if (it.t === 'line' && it.wire && it.id) for (const h of [it.head, it.tail]) if (h && HEAD_SHAPE[h] !== undefined) extra.add(`${h}|${it.wire}`);
+    for (const key of [...extra].sort()) {
+      const [h, k] = key.split('|');
+      const shape = h === 'circle' ? `<circle cx="4.6" cy="5" r="3.4" fill="${r.palette.wire[k]}"/>` : `<path d="${HEAD_SHAPE[h]}" fill="${r.palette.wire[k]}" stroke="${r.palette.wire[k]}" stroke-width="0.8" stroke-linejoin="round"/>`;
+      tips += `<marker id="bwdg-h-${h}-${k}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.6" markerHeight="6.6" orient="auto-start-reverse">${shape}</marker>`;
+    }
+    const markerOf = (name, h, k) => (h === 'arrow' ? `bwdg-tip-${k}` : `bwdg-h-${h}-${k}`);
     const groups = new Map();
     const out = [];
     const open = (key, attrs) => { if (!groups.has(key)) { groups.set(key, true); return `<g ${attrs}>`; } return ''; };
     let cur = null;
     const close = () => { const s = cur ? '</g>' : ''; cur = null; return s; };
     for (const it of r.items) {
-      const key = editor ? (it.id && !it.wire ? `n:${it.id}` : it.wire && it.id ? `e:${it.id}` : null) : null;
+      const key = editor ? (it.deco ? `e:${it.deco}` : it.id && !it.wire ? `n:${it.id}` : it.wire && it.id ? `e:${it.id}` : null) : null;
       if (key !== cur) { out.push(close()); if (key) { cur = key; out.push(key.startsWith('n:') ? `<g data-dg-node="${esc(it.id)}">` : `<g data-dg-edge="${esc(it.id)}">`); } }
       if (it.t === 'shape') out.push(it.fill === 'none' && !editor ? '' : shapeSvg(it));
       else if (it.t === 'circle') out.push(`<circle cx="${it.cx}" cy="${it.cy}" r="${it.r}" fill="${it.fill || 'none'}" stroke="${it.color}" stroke-width="${r1(it.lw)}"${it.dash ? ` stroke-dasharray="${it.dash}"` : ''}/>`);
       else if (it.t === 'line') {
         const d = it.d || `M${it.pts.map(([x, y]) => `${x} ${y}`).join('L')}`;
-        out.push(`<path d="${d}" fill="none" stroke="${it.color}" stroke-width="${r1(it.lw)}"${it.dash ? ` stroke-dasharray="${it.dash}"` : ''} stroke-linecap="round" stroke-linejoin="round"${it.arrow ? ` marker-end="url(#bwdg-tip-${it.wire || 'main'})"` : ''}/>`);
+        const styledEnds = it.head !== undefined;
+        const mEnd = styledEnds ? (it.head !== 'none' && it.head !== 'bar' ? ` marker-end="url(#${markerOf('end', it.head, it.wire)})"` : '') : it.arrow ? ` marker-end="url(#bwdg-tip-${it.wire || 'main'})"` : '';
+        const mStart = styledEnds && it.tail !== 'none' && it.tail !== 'bar' ? ` marker-start="url(#${markerOf('start', it.tail, it.wire)})"` : '';
+        out.push(`<path d="${d}" fill="none" stroke="${it.color}" stroke-width="${r1(it.lw)}"${it.dash ? ` stroke-dasharray="${it.dash}"` : ''} stroke-linecap="round" stroke-linejoin="round"${mStart}${mEnd}/>`);
         if (editor && it.wire && it.id) out.push(`<path d="${d}" fill="none" stroke="transparent" stroke-width="12" class="dg-hit"/>`);
       } else if (it.t === 'text') out.push(textSvg(it, editor));
     }
@@ -1128,5 +1358,5 @@ export const DIAGRAM = (() => {
     });
   }
 
-  return { splitByPhase, splitForLegibility, legibility, KINDS, WIRE_KINDS, COLORS, SYMBOLS, FS, G, palette, words, measure, wrap, textW, classify, layout, ensure, route, resolve, render, fromGraph, toMermaid, fromMermaid, starter, glyph };
+  return { ROUTES, HEADS, LINES: Object.keys(LINES), WEIGHTS: Object.keys(WEIGHTS), anchorPoint, nearestAnchor, edgePoint, nearestOnWire, wireMid, validAnchor, splitByPhase, splitForLegibility, legibility, KINDS, WIRE_KINDS, COLORS, SYMBOLS, FS, G, palette, words, measure, wrap, textW, classify, layout, ensure, route, resolve, render, fromGraph, toMermaid, fromMermaid, starter, glyph };
 })();

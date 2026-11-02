@@ -3,7 +3,9 @@
  * selection section; click an arrow → arrow tools; click the empty drawing → diagram tools (add shapes,
  * symbols, layout, Mermaid). Drag to move (grid snap), drag the corner handle to resize, arrow keys
  * nudge, double-click (or Enter) edits a label in place; a selected arrow shows bend handles (drag a segment
- * across, drag a corner, add/remove a bend, auto route); Ctrl+wheel or the zoom tools zoom the drawing. Every change is ONE `replace` op on <block>/model, so undo/redo,
+ * across, drag a corner, add/remove a bend, auto route); Ctrl+wheel or the zoom tools zoom the drawing.
+ * 0.15.6: a selected arrow shows ONE square at its start, ONE at its head and a circle at every bend (a faint ghost circle on each long
+ * segment adds one: drag it, or double-click the line); the squares slide along the shape's outline or reconnect to another shape. Every change is ONE `replace` op on <block>/model, so undo/redo,
  * the edits JSON, Save HTML, the PDF and the DOCX all carry it.
  * Declarations only (hoisted): boot() in editor.js runs before this file's statements. */
 function dgClear() { S.dg = null; S.dgPick = null; }
@@ -26,7 +28,7 @@ function dgContext() {
   const pick = (name, label, opts) => `<label class="pick"><span class="vh">${esc(label)}</span><select data-dg="${name}" aria-label="${esc(label)}" title="${esc(label)}">${opts}</select></label>`;
   if (edge) {
     const sel = pick('wire', t('dgWire'), DIAGRAM.WIRE_KINDS.map((k) => opt(k, edge.kind, t(`dgw_${k}`))).join(''));
-    return { cat: 'arrow', label: t('selArrow', { x: t(`dgw_${edge.kind}`) }), groups: [[sel, 'dgEdgeLabel', 'dgBendAdd', 'dgRouteAuto'], ['dgBendDel', 'dgReverse', 'dgFrom', 'dgTo', 'dgDel']], keep: zoomKeep() };
+    return { cat: 'arrow', label: t('selArrow', { x: t(`dgw_${edge.kind}`) }), groups: [[sel, 'dgEdgeLabel', 'dgBendAdd', 'dgBendDel'], ['dgRoute', 'dgHead', 'dgTail', 'dgLine', 'dgWeight', 'dgRouteAuto', 'dgReverse', 'dgFrom', 'dgTo', 'dgDel']], keep: zoomKeep() };
   }
   if (d.nodes.length > 1) return { cat: 'arrange', label: t('selMulti', { n: d.nodes.length }), groups: [['dgAlignL', 'dgAlignC', 'dgAlignR', 'dgDistH', 'dgDup', 'dgDel'], ['dgAlignT', 'dgAlignM', 'dgAlignB', 'dgDistV', 'dgWrap', 'dgFront', 'dgBack']], keep: zoomKeep() };
   if (node) {
@@ -72,77 +74,330 @@ function dgPaint() {
   }
   if (S.dg.edge) {
     svg.querySelector(`[data-dg-edge="${CSS.escape(S.dg.edge)}"]`)?.classList.add('dg-picked');
-    // bend handles: a square on every segment (drag it across), a dot on every corner (drag it; Delete removes the bend)
-    const P = dgRoute(m, S.dg.edge) || [];
+    const w = dgWire(m, S.dg.edge);
+    const P = w ? w.route : [];
+    // the handles keep a usable size on screen when the drawing is scaled down to fit (never smaller than their drawn size)
+    const sc = Math.min(2.6, Math.max(1, 1 / (svg.getScreenCTM()?.a || 1)));
+    const q1 = (v) => Math.round(v * 10) / 10;
+    // ghosts (a faint, small circle on the middle of every long segment: drag one to add a joint), then a circle on every bend, then the two squares
     for (let i = 0; i + 1 < P.length; i += 1) {
-      const [a, b] = [P[i], P[i + 1]];
-      if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 18) continue;
-      const horiz = Math.abs(a[1] - b[1]) < 0.5;
-      g.insertAdjacentHTML('beforeend', `<rect class="dg-seg" data-dg-seg="${i}" x="${(a[0] + b[0]) / 2 - 5}" y="${(a[1] + b[1]) / 2 - 5}" width="10" height="10" rx="2" fill="#fff" stroke="#005fc2" stroke-width="1.5" style="cursor:${horiz ? 'ns-resize' : 'ew-resize'}"/>`);
+      if (Math.hypot(P[i + 1][0] - P[i][0], P[i + 1][1] - P[i][1]) < 44) continue;
+      const [mx, my] = DIAGRAM.wireMid(w, i);
+      g.insertAdjacentHTML('beforeend', `<circle class="dg-ghost" data-dg-ghost="${i}" cx="${Math.round(mx * 10) / 10}" cy="${Math.round(my * 10) / 10}" r="${q1(3.2 * sc)}" fill="#fff" fill-opacity=".55" stroke="#005fc2" stroke-opacity=".45" stroke-width="${q1(sc)}" style="cursor:copy"/>`);
     }
     for (let k = 1; k + 1 < P.length; k += 1) {
-      const on = S.dg.bend === k - 1;
-      g.insertAdjacentHTML('beforeend', `<circle class="dg-bend" data-dg-bend="${k}" cx="${P[k][0]}" cy="${P[k][1]}" r="${on ? 6 : 5}" fill="${on ? '#005fc2' : '#fff'}" stroke="#005fc2" stroke-width="1.5" style="cursor:move"/>`);
+      const on = dgNear(P[k], S.dg.joint);
+      g.insertAdjacentHTML('beforeend', `<circle class="dg-bend" data-dg-bend="${k}" data-r0="${q1(5 * sc)}" cx="${P[k][0]}" cy="${P[k][1]}" r="${q1((on ? 6 : 5) * sc)}" fill="${on ? '#005fc2' : '#fff'}" stroke="#005fc2" stroke-width="${q1(1.5 * sc)}" style="cursor:move"/>`);
     }
+    if (P.length > 1) {
+      for (const [which, q] of [['from', P[0]], ['to', P.at(-1)]]) {
+        const on = S.dg.end === which;
+        g.insertAdjacentHTML('beforeend', `<rect class="dg-end" data-dg-end="${which}" x="${q1(q[0] - 5 * sc)}" y="${q1(q[1] - 5 * sc)}" width="${q1(10 * sc)}" height="${q1(10 * sc)}" fill="${on ? '#005fc2' : '#fff'}" stroke="#005fc2" stroke-width="${q1(1.5 * sc)}" style="cursor:crosshair"/>`);
+      }
+    }
+  }
+  if (S.dgCand) {
+    const c = m.nodes.find((x) => x.id === S.dgCand);
+    if (c) g.insertAdjacentHTML('beforeend', `<rect class="dg-cand" x="${c.x - 5}" y="${c.y - 5}" width="${c.w + 10}" height="${c.h + 10}" rx="8" fill="#005fc2" fill-opacity=".10" stroke="#005fc2" stroke-width="2.5" pointer-events="none"/>`);
   }
   svg.appendChild(g);
 }
-/** The routed points of one arrow (ports included, before the arrowhead is drawn short). */
+/** Show which joint / end is selected without replacing any element (a press must not swap the element under a double-click). */
+function dgMark() {
+  const fig = dgFig();
+  if (!fig || !S.dg?.edge) return;
+  const w = dgWire(dgModel(), S.dg.edge);
+  if (!w) return;
+  fig.querySelectorAll('.dg-ui circle.dg-bend').forEach((c) => {
+    const on = dgNear(w.route[+c.dataset.dgBend], S.dg.joint);
+    const r0 = +c.dataset.r0 || 5;
+    c.setAttribute('r', String(Math.round(r0 * (on ? 1.2 : 1) * 10) / 10));
+    c.setAttribute('fill', on ? '#005fc2' : '#fff');
+  });
+  fig.querySelectorAll('.dg-ui rect.dg-end').forEach((r) => r.setAttribute('fill', S.dg.end === r.dataset.dgEnd ? '#005fc2' : '#fff'));
+}
+/** The resolved wire of one arrow (route, curve, head, tail), or null. */
+function dgWire(m, eid) {
+  return DIAGRAM.resolve(m, { theme: S.theme, locale: S.dg?.ed || S.ed }).items.find((it) => it.t === 'line' && it.wire && it.id === eid && !it.deco) || null;
+}
+/** The routed points of one arrow: its start, every joint (bend), its head. */
 function dgRoute(m, eid) {
-  const w = DIAGRAM.resolve(m, { theme: S.theme, locale: S.dg?.ed || S.ed }).items.find((it) => it.t === 'line' && it.wire && it.id === eid);
+  const w = dgWire(m, eid);
   return w ? w.route.map((q) => [...q]) : null;
 }
-/** Drag a segment across (orthogonal stays orthogonal) or a corner (its neighbours follow); the ports never move. */
+function dgNear(a, b) { return !!a && !!b && Math.abs(a[0] - b[0]) < 1.5 && Math.abs(a[1] - b[1]) < 1.5; }
+function dgEdgeType(e) { return DIAGRAM.ROUTES.includes(e?.route) ? e.route : 'elbow'; }
+/** Pure edits of an arrow's joints (the model's `via`), shared by the pointer, the keyboard, the ribbon and the tests. Each returns the new via. */
+function dgJointInsert(P, seg, pt) {
+  const via = P.slice(1, -1).map((q) => [...q]);
+  via.splice(seg, 0, [Math.round(pt[0]), Math.round(pt[1])]);
+  return via;
+}
+/** Remove exactly joint k (an index into the route, 1..n-2). On an elbow route, a neighbour that would be left on a diagonal slides along its own line so the path stays orthogonal; none is removed. */
+function dgJointRemove(P, k, type) {
+  const Q = P.map((q) => [...q]);
+  Q.splice(k, 1);
+  if (type === 'elbow') {
+    const i = k - 1;
+    const j = k;
+    const aligned = (a, b) => Math.abs(a[0] - b[0]) < 0.5 || Math.abs(a[1] - b[1]) < 0.5;
+    if (!aligned(Q[i], Q[j])) {
+      const slide = (idx, ref, other) => { // idx slides along the line of its other leg until it is level with ref
+        const horiz = Math.abs(Q[idx][1] - other[1]) < 0.5;
+        if (horiz) Q[idx][0] = ref[0]; else Q[idx][1] = ref[1];
+      };
+      if (j < Q.length - 1) slide(j, Q[i], Q[j + 1]);
+      else if (i >= 1) slide(i, Q[j], Q[i - 1]);
+    }
+  }
+  return Q.slice(1, -1);
+}
+/** Free placement of joint k at (nx, ny); on an elbow route the neighbours that shared its line follow, so the path stays orthogonal. */
+function dgJointMove(P, k, nx, ny, type) {
+  const Q = P.map((q) => [...q]);
+  if (type === 'elbow') {
+    for (const j of [k - 1, k + 1]) {
+      if (j <= 0 || j >= P.length - 1) continue;
+      if (Math.abs(P[j][1] - P[k][1]) < 0.5) Q[j][1] = ny;
+      else if (Math.abs(P[j][0] - P[k][0]) < 0.5) Q[j][0] = nx;
+    }
+  }
+  Q[k] = [nx, ny];
+  return Q.slice(1, -1);
+}
+/** Shift locks a point to the horizontal or the vertical of the joint before it. */
+function dgLock(pt, prev) {
+  return Math.abs(pt[0] - prev[0]) >= Math.abs(pt[1] - prev[1]) ? [pt[0], prev[1]] : [prev[0], pt[1]];
+}
+function dgSetVia(m, eid, via) {
+  const e = m.edges.find((x) => x.id === eid);
+  if (!e) return;
+  if (via.length) e.via = via; else delete e.via;
+}
+/** Drag a joint of the selected arrow anywhere (grid snap follows S.snap; Shift locks to the previous joint). A press that does not move changes nothing. */
 function dgBendDrag(e, svg, ptr, ed, el) {
   e.preventDefault();
   const base = dgModel(ptr, ed);
   const eid = S.dg.edge;
   const P = dgRoute(base, eid);
   if (!P) return;
-  const isSeg = el.hasAttribute('data-dg-seg');
-  let k = +(isSeg ? el.dataset.dgSeg : el.dataset.dgBend);
-  if (isSeg) {
-    // a segment that starts or ends on a port gets its own corner there, so the port stays put
-    if (k === 0) { P.unshift([...P[0]]); k = 1; }
-    if (k + 1 === P.length - 1) P.push([...P.at(-1)]);
-  }
-  const horiz = isSeg && Math.abs(P[k][1] - P[k + 1][1]) < 0.5;
+  const k = +el.dataset.dgBend;
+  const type = dgEdgeType(base.edges.find((x) => x.id === eid));
+  S.dg.joint = [...P[k]];
+  S.dg.end = null;
+  dgMark();
   const start = dgPoint(svg, e);
   let moved = false;
   let work = base;
+  let at = null;
   const move = (ev) => {
     const p = dgPoint(dgFig(ptr, ed)?.querySelector('svg') || svg, ev);
     const dx = p.x - start.x;
     const dy = p.y - start.y;
     if (!moved && Math.hypot(dx, dy) < 3) return;
     moved = true;
-    const Q = P.map((q) => [...q]);
-    if (isSeg) {
-      if (horiz) Q[k][1] = Q[k + 1][1] = dgSnap(P[k][1] + dy);
-      else Q[k][0] = Q[k + 1][0] = dgSnap(P[k][0] + dx);
-    } else {
-      const nx = dgSnap(P[k][0] + dx);
-      const ny = dgSnap(P[k][1] + dy);
-      for (const j of [k - 1, k + 1]) {
-        if (j <= 0 || j >= P.length - 1) continue;
-        if (Math.abs(P[j][1] - P[k][1]) < 0.5) Q[j][1] = ny;
-        else if (Math.abs(P[j][0] - P[k][0]) < 0.5) Q[j][0] = nx;
-      }
-      Q[k] = [nx, ny];
-    }
+    at = [dgSnap(P[k][0] + dx), dgSnap(P[k][1] + dy)];
+    if (ev.shiftKey) at = dgLock(at, P[k - 1]);
     work = JSON.parse(JSON.stringify(base));
-    work.edges.find((x) => x.id === eid).via = Q.slice(1, -1);
+    dgSetVia(work, eid, dgJointMove(P, k, at[0], at[1], type));
+    S.dg.joint = [...at];
     dgDraw(work);
   };
   const up = () => {
     document.removeEventListener('pointermove', move);
     document.removeEventListener('pointerup', up);
-    if (!isSeg) S.dg.bend = k - 1;
     if (moved) dgSave(work, ptr, ed);
-    else dgPaint();
   };
   document.addEventListener('pointermove', move);
   document.addEventListener('pointerup', up);
+}
+/** Drag a ghost (the faint circle on a long segment): a new joint lands at the pointer. A press with no movement adds nothing. */
+function dgGhostDrag(e, svg, ptr, ed, el) {
+  e.preventDefault();
+  const base = dgModel(ptr, ed);
+  const eid = S.dg.edge;
+  const w = dgWire(base, eid);
+  if (!w) return;
+  const P = w.route.map((q) => [...q]);
+  const seg = +el.dataset.dgGhost;
+  const start = dgPoint(svg, e);
+  let moved = false;
+  let work = base;
+  let at = null;
+  const move = (ev) => {
+    const p = dgPoint(dgFig(ptr, ed)?.querySelector('svg') || svg, ev);
+    if (!moved && Math.hypot(p.x - start.x, p.y - start.y) < 3) return;
+    moved = true;
+    at = [dgSnap(p.x), dgSnap(p.y)];
+    if (ev.shiftKey) at = dgLock(at, P[seg]);
+    work = JSON.parse(JSON.stringify(base));
+    dgSetVia(work, eid, dgJointInsert(P, seg, at));
+    S.dg.joint = [...at];
+    dgDraw(work);
+  };
+  const up = () => {
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+    if (moved) dgSave(work, ptr, ed);
+  };
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', up);
+}
+/** Add a joint to the selected arrow at a point of its line (double-click, the ribbon). Returns true when one was added. */
+function dgJointAddAt(pt, segHint) {
+  if (!S.dg?.edge || !dgBlock()) return false;
+  const m = dgModel();
+  const w = dgWire(m, S.dg.edge);
+  if (!w) return false;
+  let seg = segHint;
+  let at = pt;
+  if (seg == null) {
+    const nb = DIAGRAM.nearestOnWire(w, pt);
+    if (!nb) return false;
+    seg = nb.seg;
+    at = [nb.x, nb.y];
+  }
+  dgSetVia(m, S.dg.edge, dgJointInsert(w.route, seg, at));
+  S.dg.joint = [Math.round(at[0]), Math.round(at[1])];
+  dgSave(m);
+  return true;
+}
+/** Remove the selected joint of the selected arrow (else the last one): exactly that joint, on every route type. */
+function dgJointDelete() {
+  if (!S.dg?.edge || !dgBlock()) return false;
+  const m = dgModel();
+  const w = dgWire(m, S.dg.edge);
+  if (!w || w.route.length < 3) return false;
+  let k = S.dg.joint ? w.route.findIndex((q, i) => i > 0 && i < w.route.length - 1 && dgNear(q, S.dg.joint)) : -1;
+  if (k < 0) k = w.route.length - 2;
+  const edge = m.edges.find((x) => x.id === S.dg.edge);
+  dgSetVia(m, S.dg.edge, dgJointRemove(w.route, k, dgEdgeType(edge)));
+  S.dg.joint = null;
+  dgSave(m);
+  return true;
+}
+/** The shape under a point of the drawing (the topmost one; bands do not count), with a little room around it. */
+function dgNodeAt(m, p, pad = 6) {
+  for (let i = m.nodes.length - 1; i >= 0; i -= 1) {
+    const n = m.nodes[i];
+    if (n.kind === 'group') continue;
+    if (p.x >= n.x - pad && p.x <= n.x + n.w + pad && p.y >= n.y - pad && p.y <= n.y + n.h + pad) return n;
+  }
+  return null;
+}
+/** Drag one end (a square) of the selected arrow: along its own shape's outline to any point, or onto another shape to reconnect (the candidate lights up). Drop on empty space, or Esc, restores. */
+function dgEndDrag(e, svg, ptr, ed, el) {
+  e.preventDefault();
+  const which = el.dataset.dgEnd; // 'from' | 'to'
+  const base = dgModel(ptr, ed);
+  const eid = S.dg.edge;
+  const edge0 = base.edges.find((x) => x.id === eid);
+  if (!edge0) return;
+  const other = which === 'from' ? edge0.to : edge0.from;
+  const own = base.nodes.find((n) => n.id === edge0[which]);
+  const key = which === 'from' ? 'fromAnchor' : 'toAnchor';
+  S.dg.end = which;
+  S.dg.joint = null;
+  dgMark();
+  const start = dgPoint(svg, e);
+  let moved = false;
+  let work = base;
+  let valid = false;
+  let done = false;
+  const restore = () => { S.dgCand = null; if (moved) dgDraw(base); };
+  const finish = () => {
+    done = true;
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+    document.removeEventListener('keydown', esc, true);
+  };
+  const move = (ev) => {
+    const p = dgPoint(dgFig(ptr, ed)?.querySelector('svg') || svg, ev);
+    if (!moved && Math.hypot(p.x - start.x, p.y - start.y) < 3) return;
+    moved = true;
+    const hit = dgNodeAt(base, p);
+    work = JSON.parse(JSON.stringify(base));
+    const w = work.edges.find((x) => x.id === eid);
+    valid = false;
+    S.dgCand = null;
+    if (hit && hit.id !== own.id && hit.id !== other) {
+      const na = DIAGRAM.nearestAnchor(hit, [p.x, p.y]);
+      w[which] = hit.id;
+      w[key] = { side: na.side, at: na.at };
+      delete w.via;
+      S.dgCand = hit.id;
+      valid = true;
+    } else if (!(hit && hit.id === other)) {
+      const gap = Math.max(own.x - p.x, p.x - (own.x + own.w), own.y - p.y, p.y - (own.y + own.h), 0);
+      if (gap <= 48) {
+        const na = DIAGRAM.nearestAnchor(own, [p.x, p.y]);
+        w[key] = { side: na.side, at: na.at };
+        valid = true;
+      }
+    }
+    dgDraw(valid ? work : base);
+  };
+  const up = () => {
+    finish();
+    S.dgCand = null;
+    if (!moved) return;
+    if (valid && JSON.stringify(work) !== JSON.stringify(base)) dgSave(work, ptr, ed);
+    else dgDraw(base);
+  };
+  const esc = (ev) => {
+    if (ev.key !== 'Escape' || done) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    finish();
+    restore();
+  };
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', up);
+  document.addEventListener('keydown', esc, true);
+}
+/** One property of the selected arrow (route, head, tail, line, weight); '' or the default clears the key, so the old drawing is exactly what remains. */
+const DG_EDGE_KEYS = { route: ['elbow', 'straight', 'curved'], head: ['arrow', 'triangle', 'diamond', 'circle', 'bar', 'none'], tail: ['none', 'arrow', 'triangle', 'diamond', 'circle', 'bar'], line: ['', 'solid', 'dashed', 'dotted'], weight: ['thin', 'normal', 'thick'] };
+const DG_EDGE_DEFAULT = { route: 'elbow', head: 'arrow', tail: 'none', line: '', weight: 'normal' };
+function dgEdgeSet(key, v) {
+  if (!S.dg?.edge || !dgBlock()) return;
+  const m = dgModel();
+  const edge = m.edges.find((x) => x.id === S.dg.edge);
+  if (!edge) return;
+  if (v === DG_EDGE_DEFAULT[key]) delete edge[key]; else edge[key] = v;
+  dgSave(m);
+}
+/** A small list of the values of one arrow property, at its ribbon button (the same panel as the symbol gallery). */
+function dgEdgeMenu(key) {
+  document.querySelector('.bw-dg-gallery')?.remove();
+  dgGalleryCss();
+  const edge = S.dg?.edge ? dgModel().edges.find((x) => x.id === S.dg.edge) : null;
+  if (!edge) return;
+  const curV = edge[key] ?? DG_EDGE_DEFAULT[key];
+  const el = document.createElement('div');
+  el.className = 'bw-dg-gallery';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-label', t(`dg${key[0].toUpperCase()}${key.slice(1)}`));
+  el.dir = uiDir();
+  el.lang = S.ui;
+  el.style.fontFamily = 'inherit';
+  el.innerHTML = DG_EDGE_KEYS[key].map((v) => `<button type="button" data-val="${v}"${v === curV ? ' aria-current="true" style="border-color:#005fc2"' : ''}>${esc(t(`dgo_${key}_${v || 'auto'}`))}</button>`).join('');
+  document.body.appendChild(el);
+  const bt = root.querySelector(`[data-a="dg${key[0].toUpperCase()}${key.slice(1)}"]`)?.getBoundingClientRect();
+  const w = el.getBoundingClientRect().width;
+  el.style.left = `${bt ? Math.max(8, Math.min(innerWidth - w - 8, bt.left + bt.width / 2 - w / 2)) : Math.max(8, (innerWidth - w) / 2)}px`;
+  el.style.top = `${Math.min(innerHeight - 120, (bt ? bt.bottom : 70) + 8)}px`;
+  const close = () => { el.remove(); document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc2, true); };
+  const away = (ev) => { if (!ev.composedPath().includes(el)) close(); };
+  const esc2 = (ev) => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(); } };
+  document.addEventListener('pointerdown', away, true);
+  document.addEventListener('keydown', esc2, true);
+  el.addEventListener('click', (ev) => {
+    const b = ev.target.closest('button[data-val]');
+    if (!b) return;
+    close();
+    dgEdgeSet(key, b.dataset.val);
+  });
+  el.querySelector('button')?.focus();
 }
 /* ── in-place label editing: a text box over the label itself, in the drawing's own type and size ── */
 function dgInline(target) {
@@ -242,7 +497,10 @@ function dgInline(target) {
   el.addEventListener('blur', () => finish(true));
   el.addEventListener('pointerdown', (ev) => ev.stopPropagation());
 }
-/* ── zoom: the drawing only; view state, never in the model, the PDF or the DOCX ── */
+/* ── zoom: the drawing only; view state, never in the model, the PDF or the DOCX ──
+ * 0.15.6 (Z1-Z6). The frame (.fig-art) keeps the size it had when fitted; only the drawing inside it changes. The scale follows
+ * deltaY (a pinch or a precision wheel sends many small events), is coalesced to one update per frame, and keeps the point under the
+ * pointer where it was. The view (scale, offsets, scroll) lives in S.dgZoom, so a live redraw, a save or a full render puts it back. */
 function dgZoomKey(fig) { return `${fig.closest('main.bw-doc')?.dataset.locale}|${fig.dataset.dg}`; }
 function dgZoomAll() {
   S.dgZoom ||= {};
@@ -254,14 +512,20 @@ function dgZoomAll() {
       fig.dataset.zoom = String(Math.round(z.pct));
       art.style.setProperty('--dgz', `${z.w}px`);
       art.style.setProperty('--dgh', `${z.h}px`);
+      art.style.setProperty('--dgml', `${z.ml || 0}px`);
+      art.style.setProperty('--dgmt', `${z.mt || 0}px`);
+      art.style.setProperty('--dgsx', `${z.sx || 0}px`);
+      art.style.setProperty('--dgsy', `${z.sy || 0}px`);
+      if (art.scrollLeft !== (z.sl || 0)) art.scrollLeft = z.sl || 0;
+      if (art.scrollTop !== (z.st || 0)) art.scrollTop = z.st || 0;
     } else {
       delete fig.dataset.zoom;
-      art.style.removeProperty('--dgz');
-      art.style.removeProperty('--dgh');
+      for (const v of ['--dgz', '--dgh', '--dgml', '--dgmt', '--dgsx', '--dgsy']) art.style.removeProperty(v);
     }
   });
 }
-function dgZoomFig(fig, mode) {
+/** Scale the drawing of one figure. mode: 'in' | 'out' | 'fit' | '100' | { f: factor }. at: the pointer {x, y} in client pixels (else the frame's centre). */
+function dgZoomFig(fig, mode, at) {
   if (!fig) return;
   S.dgZoom ||= {};
   const key = dgZoomKey(fig);
@@ -270,26 +534,85 @@ function dgZoomFig(fig, mode) {
   if (!svg || !art) return;
   const z = S.dgZoom[key];
   const natural = svg.viewBox.baseVal?.width || svg.getBoundingClientRect().width;
-  // the fitted size is measured unzoomed once, then kept: the frame never changes height under the reader
+  // the fitted size is measured unzoomed once, then kept: the frame never changes size under the reader
   const fitW = z?.fitW || svg.getBoundingClientRect().width;
   const fitH = z?.h || art.getBoundingClientRect().height;
   const now = z?.w || fitW;
+  const f = mode === 'in' ? 1.25 : mode === 'out' ? 1 / 1.25 : mode?.f || 1;
   let w;
   if (mode === 'fit') w = null;
   else if (mode === '100') w = natural;
-  else w = Math.min(natural * 4, Math.max(fitW * 0.5, mode === 'in' ? now * 1.25 : now / 1.25));
-  if (w == null || Math.abs(w - fitW) < 1) delete S.dgZoom[key];
-  else S.dgZoom[key] = { w: Math.round(w), h: Math.round(fitH), fitW, pct: (w / natural) * 100 };
+  else w = Math.min(natural * 4, Math.max(fitW * 0.5, now * f));
+  const r0 = svg.getBoundingClientRect();
+  const fr = art.getBoundingClientRect();
+  // the drawing point under the pointer is pinned while the pointer stays put, so rounding never adds up over a run of steps
+  const vb = svg.viewBox.baseVal;
+  const held = S.dgHold;
+  const holding = !!(held && at && held.key === key && Math.abs(at.x - held.ax) < 2.5 && Math.abs(at.y - held.ay) < 2.5 && performance.now() - held.t < 1500);
+  const ax = holding ? held.ax : at?.x ?? fr.left + fr.width / 2;
+  const ay = holding ? held.ay : at?.y ?? fr.top + fr.height / 2;
+  const u = holding ? (held.sx - vb.x) / vb.width : r0.width ? (ax - r0.left) / r0.width : 0.5;
+  const v = holding ? (held.sy - vb.y) / vb.height : r0.height ? (ay - r0.top) / r0.height : 0.5;
+  S.dgHold = at ? { key, ax, ay, sx: vb.x + u * vb.width, sy: vb.y + v * vb.height, t: performance.now() } : null;
+  if (w == null || Math.abs(w - fitW) < 1) {
+    delete S.dgZoom[key];
+    dgZoomAll();
+    if (S.dg) dgPaint();
+    return;
+  }
+  // slack around the drawing (half the frame each way) so the point under the pointer can always stay under it, even next to an edge
+  S.dgZoom[key] = { w: Math.round(w), h: Math.round(fitH), fitW, pct: (w / natural) * 100, ml: 0, mt: 0, sl: 0, st: 0, sx: z?.sx ?? Math.round(art.clientWidth * 0.5), sy: z?.sy ?? Math.round(art.clientHeight * 0.5) };
   dgZoomAll();
+  // keep the drawing point that was under (ax, ay) there: scroll when the drawing overflows the frame, else slide it (never past the frame)
+  const zz = S.dgZoom[key];
+  for (let pass = 0; pass < 2; pass += 1) {
+    const r1 = svg.getBoundingClientRect();
+    const ex = r1.left + u * r1.width - ax;
+    const ey = r1.top + v * r1.height - ay;
+    art.scrollLeft += ex;
+    art.scrollTop += ey;
+    const r2 = svg.getBoundingClientRect();
+    const rx = r2.left + u * r2.width - ax;
+    const ry = r2.top + v * r2.height - ay;
+    if (Math.abs(rx) > 0.4 || Math.abs(ry) > 0.4) {
+      const cs = getComputedStyle(art);
+      const vw = art.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const vh = art.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      zz.ml = Math.min(Math.max(0, vw - r2.width), Math.max(0, (zz.ml || 0) - rx));
+      zz.mt = Math.min(Math.max(0, vh - r2.height), Math.max(0, (zz.mt || 0) - ry));
+      art.style.setProperty('--dgml', `${zz.ml}px`);
+      art.style.setProperty('--dgmt', `${zz.mt}px`);
+    }
+  }
+  zz.sl = art.scrollLeft;
+  zz.st = art.scrollTop;
   if (S.dg) dgPaint();
 }
-document.addEventListener('wheel', (e) => {
-  if (!(e.ctrlKey || e.metaKey)) return;
-  const fig = e.target.closest?.('#bw-pair figure[data-dg]');
-  if (!fig) return;
-  e.preventDefault();
-  dgZoomFig(fig, e.deltaY < 0 ? 'in' : 'out');
-}, { passive: false });
+// the view's scroll is remembered per figure, so a redraw or a render puts it back
+document.addEventListener('scroll', (e) => {
+  const art = e.target;
+  if (!art?.classList?.contains?.('fig-art')) return;
+  const fig = art.closest('figure[data-dg]');
+  const z = fig && S.dgZoom?.[dgZoomKey(fig)];
+  if (z) { z.sl = art.scrollLeft; z.st = art.scrollTop; }
+}, true);
+// Ctrl + wheel over a figure scales the drawing: by deltaY (2^(-dy/300): a mouse notch is about x1.26, a pinch's small events add up smoothly), one update per frame
+{
+  let pend = null;
+  let raf = 0;
+  document.addEventListener('wheel', (e) => {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    const fig = e.target.closest?.('#bw-pair figure[data-dg]');
+    if (!fig) return;
+    e.preventDefault();
+    const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
+    if (!pend || pend.fig !== fig) pend = { fig, f: 1 };
+    pend.f = Math.min(1.5, Math.max(1 / 1.5, pend.f * 2 ** (-Math.max(-300, Math.min(300, dy)) / 300)));
+    pend.x = e.clientX;
+    pend.y = e.clientY;
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; const p = pend; pend = null; if (p && document.contains(p.fig)) dgZoomFig(p.fig, { f: p.f }, { x: p.x, y: p.y }); });
+  }, { passive: false });
+}
 
 /** Live redraw of one diagram while dragging (no op yet): the drawing only, then the paint. */
 function dgDraw(model) {
@@ -317,8 +640,14 @@ document.addEventListener('pointerdown', (e) => {
   const ptr = fig.dataset.dg;
   S.dgPickedAt = performance.now(); // the click that follows may land on the page wrapper if this press re-laid the page out: not an empty-space click
   const ed = fig.closest('main.bw-doc').dataset.locale;
-  const bendEl = e.target.closest('[data-dg-bend], [data-dg-seg]');
-  if (bendEl && S.dg?.edge && S.dg.b === ptr) { dgBendDrag(e, svg, ptr, ed, bendEl); return; }
+  const bendEl = e.target.closest('[data-dg-bend]');
+  const ghostEl = e.target.closest('[data-dg-ghost]');
+  const endEl = e.target.closest('[data-dg-end]');
+  if (S.dg?.edge && S.dg.b === ptr && S.dg.ed === ed) {
+    if (bendEl) { dgBendDrag(e, svg, ptr, ed, bendEl); return; }
+    if (ghostEl) { dgGhostDrag(e, svg, ptr, ed, ghostEl); return; }
+    if (endEl) { dgEndDrag(e, svg, ptr, ed, endEl); return; }
+  }
   const handle = e.target.closest('[data-dg-handle]');
   const nodeEl = e.target.closest('[data-dg-node]');
   const edgeEl = e.target.closest('[data-dg-edge]');
@@ -366,12 +695,23 @@ document.addEventListener('dblclick', (e) => {
   const edEl = e.target.closest('[data-dg-edge]');
   const lgEl = e.target.closest('[data-dg-legend]');
   if (lgEl && !n) { dgInline({ legend: lgEl.dataset.dgLegend }); return; }
+  // 0.15.6: on a selected arrow, a double-click on a joint removes it; on the line (or a ghost) it adds one right there; on the arrow's caption it edits the words
+  const capEl = e.target.closest('[data-dg-cap]');
+  if (capEl && !n) { dgInline({ edge: capEl.dataset.dgCap }); return; }
+  if (S.dg.edge && !n) {
+    const jEl = e.target.closest('[data-dg-bend]');
+    if (jEl) { S.dg.joint = dgRoute(dgModel(), S.dg.edge)?.[+jEl.dataset.dgBend] || null; dgJointDelete(); return; }
+    const gEl = e.target.closest('[data-dg-ghost]');
+    if (gEl) { dgJointAddAt([+gEl.getAttribute('cx'), +gEl.getAttribute('cy')], +gEl.dataset.dgGhost); return; }
+    if (e.target.closest('[data-dg-end]')) return;
+    if (edEl) { const svg2 = fig.querySelector('svg'); const p = dgPoint(svg2, e); dgJointAddAt([p.x, p.y]); return; }
+  }
   if (n) {
     const node = dgModel().nodes.find((x) => x.id === n.dataset.dgNode);
     const onSub = !!(node?.sub && e.target.closest('text')?.textContent === node.sub);
     S.dg.nodes = [n.dataset.dgNode];
     dgInline({ node: n.dataset.dgNode, field: onSub ? 'sub' : 'label' });
-  } else if (edEl) dgInline({ edge: edEl.dataset.dgEdge });
+  }
 });
 document.addEventListener('keydown', (e) => {
   if (!S.dg || e.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName || '') || e.composedPath?.().some((x) => x === host)) return;
@@ -389,7 +729,8 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   if ((e.key === 'Enter' || e.key === 'F2') && (S.dg.nodes.length === 1 || S.dg.edge)) { e.preventDefault(); e.stopImmediatePropagation(); dgInline(S.dg.edge ? { edge: S.dg.edge } : { node: S.dg.nodes[0] }); return; }
-  if ((e.key === 'Delete' || e.key === 'Backspace') && S.dg.edge && S.dg.bend != null) { e.preventDefault(); e.stopImmediatePropagation(); dgAction('dgBendDel'); return; }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && S.dg.edge && S.dg.joint) { e.preventDefault(); e.stopImmediatePropagation(); dgAction('dgBendDel'); return; }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && S.dg.edge && S.dg.end) { e.preventDefault(); e.stopImmediatePropagation(); return; } // an arrow never dangles: an end is moved, not deleted
   if ((e.key === 'Delete' || e.key === 'Backspace') && (S.dg.nodes.length || S.dg.edge)) { e.preventDefault(); e.stopImmediatePropagation(); dgAction('dgDel'); }
 }, true);
 root.addEventListener('change', (e) => {
@@ -442,7 +783,7 @@ function dgFinishPick(targetId) {
     if (pk.from !== targetId) m.edges.push({ id: `e${Date.now().toString(36)}`, from: pk.from, to: targetId, label: '' });
   } else {
     const e = m.edges.find((x) => x.id === pk.edge);
-    if (e) e[pk.mode] = targetId;
+    if (e) { e[pk.mode] = targetId; delete e[pk.mode === 'from' ? 'fromAnchor' : 'toAnchor']; delete e.via; }
   }
   // a new arrow's meaning is settled by the same rules as the harvest (to a refusal = red, backwards = dashed)
   for (const e of m.edges) if (e.id.startsWith('e') && !e.label && e.kind === undefined) delete e.kind;
@@ -453,12 +794,18 @@ const ADD = { dgStaff: 'staff', dgApplicant: 'applicant', dgStart: 'start', dgPa
 /** 0.14.0 · O2: every symbol by its full name, on a panel of its own (never inside the toolbar's «…» menu); a pick adds it, selected. */
 function dgSymbolGallery() {
   document.querySelector('.bw-dg-gallery')?.remove();
+  dgGalleryCss();
+  dgGalleryOpen();
+}
+function dgGalleryCss() {
   if (!document.getElementById('bw-dg-gallery-css')) {
     const st = document.createElement('style');
     st.id = 'bw-dg-gallery-css';
     st.textContent = '.bw-dg-gallery{position:fixed;z-index:calc(2147483*1000);box-sizing:border-box;width:min(480px,92vw);max-height:min(62vh,440px);overflow:auto;padding:10px;background:#fff;color:#14233a;border:1px solid #b9c3d3;border-radius:12px;box-shadow:0 12px 32px rgba(10,25,50,.28);display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;font:600 15px/1.35 inherit}.bw-dg-gallery button{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:8px;padding:9px 12px;min-height:40px;border-radius:8px;border:1px solid #d3dae6;white-space:normal;overflow-wrap:anywhere}.bw-dg-gallery button:hover,.bw-dg-gallery button:focus-visible{background:#e1eaf4;border-color:#005fc2}';
     document.head.appendChild(st);
   }
+}
+function dgGalleryOpen() {
   const el = document.createElement('div');
   el.className = 'bw-dg-gallery';
   el.setAttribute('role', 'dialog');
@@ -538,34 +885,41 @@ async function dgAction(a) {
     case 'dgEdgeLabel': if (edge) dgInline({ edge: edge.id }); return;
     case 'dgBendAdd': {
       if (!edge) return;
-      const P = dgRoute(m, edge.id);
-      if (!P) return;
-      // split the segment after the selected bend (else the longest) into thirds: its middle third can then be dragged across
-      const len = (i) => Math.hypot(P[i + 1][0] - P[i][0], P[i + 1][1] - P[i][1]);
-      let i = S.dg.bend != null && S.dg.bend + 1 < P.length - 1 ? S.dg.bend + 1 : 0;
-      if (S.dg.bend == null) for (let j = 1; j + 1 < P.length; j += 1) if (len(j) > len(i)) i = j;
-      const [p, q] = [P[i], P[i + 1]];
-      const at = (u) => [Math.round(p[0] + (q[0] - p[0]) * u), Math.round(p[1] + (q[1] - p[1]) * u)];
-      P.splice(i + 1, 0, at(1 / 3), at(2 / 3));
-      edge.via = P.slice(1, -1);
-      S.dg.bend = i;
+      const w = dgWire(m, edge.id);
+      if (!w) return;
+      // one joint at the middle of the segment after the selected joint (else the longest segment)
+      const len = (i) => Math.hypot(w.route[i + 1][0] - w.route[i][0], w.route[i + 1][1] - w.route[i][1]);
+      let i = 0;
+      const sk = S.dg.joint ? w.route.findIndex((q) => dgNear(q, S.dg.joint)) : -1;
+      if (sk >= 0 && sk < w.route.length - 1) i = sk;
+      else for (let j = 1; j + 1 < w.route.length; j += 1) if (len(j) > len(i)) i = j;
+      const mid = DIAGRAM.wireMid(w, i);
+      dgJointAddAt(mid, i);
+      return;
+    }
+    case 'dgBendDel': dgJointDelete(); return;
+    case 'dgRoute': case 'dgHead': case 'dgTail': case 'dgLine': case 'dgWeight': if (edge) dgEdgeMenu(a.slice(2).toLowerCase()); return;
+    case 'dgRouteAuto': {
+      // «reset to automatic»: the joints and the anchors go, the arrow finds its own path again (its style stays)
+      if (!edge || !(edge.via || edge.fromAnchor || edge.toAnchor)) return;
+      delete edge.via; delete edge.fromAnchor; delete edge.toAnchor;
+      S.dg.joint = null; S.dg.end = null;
       break;
     }
-    case 'dgBendDel': {
-      if (!edge?.via?.length) return;
-      // a corner goes with its neighbour corner, so the step between them closes (one corner alone would come back as an elbow)
-      const k = S.dg.bend != null && S.dg.bend < edge.via.length ? S.dg.bend : edge.via.length - 1;
-      edge.via.splice(k + 1 < edge.via.length ? k : Math.max(0, k - 1), 2);
-      if (!edge.via.length) delete edge.via;
-      S.dg.bend = null;
-      break;
-    }
-    case 'dgRouteAuto': if (!edge?.via) return; delete edge.via; S.dg.bend = null; break;
     case 'dgZoomIn': dgZoomFig(dgFig(), 'in'); return;
     case 'dgZoomOut': dgZoomFig(dgFig(), 'out'); return;
     case 'dgZoomFit': dgZoomFig(dgFig(), 'fit'); return;
     case 'dgZoom100': dgZoomFig(dgFig(), '100'); return;
-    case 'dgReverse': { if (!edge) return; [edge.from, edge.to] = [edge.to, edge.from]; break; }
+    case 'dgReverse': {
+      if (!edge) return;
+      [edge.from, edge.to] = [edge.to, edge.from];
+      const fa = edge.fromAnchor; const ta = edge.toAnchor;
+      delete edge.fromAnchor; delete edge.toAnchor;
+      if (ta) edge.fromAnchor = ta;
+      if (fa) edge.toAnchor = fa;
+      if (edge.via) edge.via = [...edge.via].reverse();
+      break;
+    }
     case 'dgFrom': case 'dgTo': if (edge) { S.dgPick = { mode: a === 'dgFrom' ? 'from' : 'to', edge: edge.id }; toast(t('dgPickTarget'), 'info'); } return;
     case 'dgConnect': if (sel[0]) { S.dgPick = { mode: 'connect', from: sel[0].id }; toast(t('dgPickTarget'), 'info'); } return;
     case 'dgDup': {

@@ -5,6 +5,9 @@
   "description": "The model of a document block {kind:'diagram', caption, model}. engine/diagram.mjs draws it (house workflow look) as SVG shapes with real text for the editor and the PDF, and as native Word shapes for the DOCX. A node without x/y is placed by the auto layout; edges are routed from the node geometry (orthogonal, rounded corners) unless they carry hand-set bend points (via). Edits change it with the edits contract: {op:'replace', path:'<block>/model', value:<model>} or setText on <block>/model/nodes/<i>/label.",
   "type": "object",
   "required": ["nodes", "edges"],
+  "$defs": {
+    "anchor": { "type": "object", "required": ["side", "at"], "properties": { "side": { "enum": ["t", "r", "b", "l"], "description": "The face: top, right, bottom or left." }, "at": { "type": "number", "minimum": 0, "maximum": 1, "description": "How far along the face: top to bottom for l and r, left to right for t and b. Kept as a fraction, so it survives moving and resizing the shape." } }, "additionalProperties": false }
+  },
   "properties": {
     "kind": { "const": "bw-diagram" },
     "version": { "const": 1 },
@@ -38,7 +41,14 @@
           "from": { "type": "string" }, "to": { "type": "string" },
           "kind": { "enum": ["main", "return", "stop"], "description": "main = solid forward path, return = dashed brown, stop = thin red refusal. Absent = derived (to a refusal end = stop; backwards or via rework = return)." },
           "label": { "type": "string", "description": "May hold a line feed (Shift+Enter in the editor) for a hand-made line break." },
-          "via": { "type": "array", "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }, "description": "Bend points [x, y] set by hand between the two ends; the router keeps every segment orthogonal (an elbow is added where an end moved). Absent = automatic routing." }
+          "via": { "type": "array", "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }, "description": "Bend points [x, y] set by hand between the two ends; the router keeps every segment orthogonal (an elbow is added where an end moved). Absent = automatic routing." },
+          "route": { "enum": ["elbow", "straight", "curved"], "description": "How the line runs between its joints. Absent = elbow (orthogonal, rounded corners). straight = straight legs through the joints; curved = a smooth curve through the joints." },
+          "head": { "enum": ["arrow", "triangle", "diamond", "circle", "bar", "none"], "description": "The end at `to`. Absent = arrow (the open chevron)." },
+          "tail": { "enum": ["arrow", "triangle", "diamond", "circle", "bar", "none"], "description": "The end at `from`. Absent = none." },
+          "line": { "enum": ["solid", "dashed", "dotted"], "description": "The stroke pattern. Absent = the kind's own (return is dashed)." },
+          "weight": { "enum": ["thin", "normal", "thick"], "description": "The stroke width. Absent = the kind's own." },
+          "fromAnchor": { "$ref": "#/$defs/anchor", "description": "Where the arrow leaves the `from` shape: a point on its outline. Absent = automatic." },
+          "toAnchor": { "$ref": "#/$defs/anchor", "description": "Where the arrow enters the `to` shape. Absent = automatic." }
         }
       }
     }
