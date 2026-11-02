@@ -32,7 +32,7 @@ export function leadWithTenSeconds(notes) {
   return bullets.length ? `${HEAD}\n${bullets.join('\n')}\n\n${notes}` : notes;
 }
 
-const footer = '\n\n---\nUpdate / التحديث: `node update/cli.mjs update --apply --yes` in your install (keeps .local, design/custom, logos, fonts/custom, drafts)'
+const footer = '\n\n---\nUpdate / التحديث: `node update/cli.mjs update --apply --yes` in your install (the old version is replaced, one version remains; keeps .local, design/custom, logos, fonts/custom, drafts) / الإصدار القديم يُستبدل ويبقى إصدار واحد'
   + ' · Claude Code: `/plugin marketplace update business-wrap`, then `/plugin update business-wrap`, then `/reload-plugins` (after an update the running MCP server keeps the previous version folder until you reload; a stale "not connected" can stay cached for 15 minutes)'
   + ` · MCP: \`${MCP}\`\n`;
 

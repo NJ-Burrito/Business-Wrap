@@ -125,7 +125,7 @@ const sw = await swapInstall(inst, fresh, CUR);
 const read = (rel) => (fs.existsSync(path.join(inst, rel)) ? fs.readFileSync(path.join(inst, rel), 'utf8') : null);
 ok('swap: product files replaced, removed files gone', sw.ok && read('SKILL.md') === 'new skill' && read('engine/old-only.mjs') === null);
 ok('swap: settings, design packs, logos, drafts kept', read('.local/config.json') && read('design/custom/mine/pack.json') && read('logos/mine.svg') && read('drafts/a.edits.json'));
-ok('swap: one backup of the old version kept', fs.existsSync(path.join(inst, '..', `install.backup-${CUR}`, 'SKILL.md')));
+ok('swap: the old version is replaced, not kept (0.15.7): no rollback copy remains beside the install, one folder holds the version', !fs.readdirSync(path.join(inst, '..')).some((n) => n.startsWith('install.backup-')) && fs.existsSync(path.join(inst, 'SKILL.md')));
 const mig = await migrateUserData(inst);
 const migrated = JSON.parse(read('drafts/a.edits.json'));
 ok('migration: v0 edits draft upgraded to v1 by the new engine', mig.length === 1 && migrated.version === 1 && Array.isArray(migrated.ops) && !('migratedFrom' in migrated));

@@ -11,7 +11,7 @@ import { workspace, ensure, uniquePath, outName, docTitle } from '../engine/work
 import { applyOps, migrate, validateEdits, normaliseNumbers } from '../engine/edits.mjs';
 import { assertBase } from '../engine/edits-base.mjs';
 import { checkForUpdate, oneLiner, token, currentVersion } from '../update/check.mjs';
-import { applyUpdate, PLUGIN_UPDATE_HOW } from '../update/apply.mjs';
+import { applyUpdate, PLUGIN_UPDATE_HOW, launchCleanup } from '../update/apply.mjs';
 import { isPluginInstall } from '../engine/testguard.mjs';
 import { BwError, registerEditorTools } from './editor-tools.mjs';
 import { harvestModel, harvestCrawl, harvestMerge } from '../engine/harvest/cli.mjs';
@@ -82,6 +82,7 @@ export function updateNotice(u) {
 }
 
 export function createServer({ update = null, ready: startup = null } = {}) {
+  setTimeout(() => launchCleanup(REPO), 2000).unref(); // 0.15.7: finish or undo an update a crash left; a plugin install drops its older version folders
   ready = Promise.resolve(startup).catch(() => null);
   let notice = updateNotice(update);
   const instructions = notice
@@ -335,7 +336,7 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
 
   server.registerTool('apply_update', {
     title: 'Install the Business-Wrap update',
-    description: "Install the newer release into this Business-Wrap folder, keeping the user's settings, design packs, logos, fonts and drafts; one backup is kept and restored on failure. Ask the user first: without confirm: true it only describes what would happen.",
+    description: "Install the newer release into this Business-Wrap folder, replacing the old version (one version remains) and keeping the user's settings, design packs, logos, fonts, drafts and all work; a rollback copy exists only during the update and restores everything on failure. Ask the user first: without confirm: true it only describes what would happen.",
     inputSchema: { confirm: z.boolean().optional().describe('true only after the user agreed to update') },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
   }, guard(async ({ confirm }) => {

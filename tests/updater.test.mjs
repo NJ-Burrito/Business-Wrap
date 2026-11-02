@@ -102,8 +102,8 @@ try {
   ok('apply: every user file byte-identical (settings, drafts, design packs, logos, fonts, out/, exports, root and samples documents)', dataSame, A.user.filter((f) => before[f] !== after[f]).join(', '));
   ok('apply: the release never writes into logos/ (its README is not copied over the user\'s folder)', !after['logos/README.md'] || after['logos/README.md'] === before['logos/README.md']);
   const mig = JSON.parse(fs.readFileSync(path.join(A.dir, '.local/drafts/old.edits.json'), 'utf8'));
-  ok('apply: a v0 edits draft is migrated by the NEW engine, its op kept; the backup holds the original', res.migrated?.length === 1 && mig.version === 1 && mig.ops[0].value === 'v0 draft' && fs.readFileSync(path.join(`${A.dir}.backup-${CUR}`, '.local/drafts/old.edits.json'), 'utf8').startsWith('['));
-  ok('apply: one backup of the previous version, user data included', fs.existsSync(path.join(`${A.dir}.backup-${CUR}`, 'package.json')) && fs.existsSync(path.join(`${A.dir}.backup-${CUR}`, 'fonts/custom/MyFace.ttf')));
+  ok('apply: a v0 edits draft is migrated by the NEW engine, its op kept; the one data copy under .local/backups/ holds the original', res.migrated?.length === 1 && mig.version === 1 && mig.ops[0].value === 'v0 draft' && fs.readFileSync(path.join(A.dir, '.local', 'backups', `update-migration-${CUR}`, '.local/drafts/old.edits.json'), 'utf8').startsWith('['));
+  ok('apply: one version only (0.15.7): nothing named backup beside the install, the user data is still in the install', fs.readdirSync(path.dirname(A.dir)).join(',') === 'business-wrap' && fs.existsSync(path.join(A.dir, 'fonts/custom/MyFace.ttf')) && !fs.existsSync(`${A.dir}.backup-${CUR}`));
 
   /* ── forced failures and a broken release: the exact previous tree comes back ── */
   for (const failAt of ['replace', 'verify']) {
