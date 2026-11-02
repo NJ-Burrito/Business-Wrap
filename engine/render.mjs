@@ -609,6 +609,8 @@ section.chapter.wide + section.chapter > h2{margin-top:0}
 .fig.sheet.hug{height:auto;max-height:${PAGE_ART_MM}mm}
 .fig.sheet.hug > .fig-art{flex:0 0 auto;display:block}
 .fig.sheet.hug > .fig-art svg{width:100%;height:auto;max-height:${PAGE_ART_MM - 24}mm;margin:0}
+/* the automatic drawing, capped to the room its page leaves it */
+.fig.sheet.hug.dg.cap > .fig-art svg{max-height:var(--arth)}
 /* an inline-block, as .whole: Chrome keeps the whole figure (its title, the canvas, the note) on one page; a flex or block figure was cut between its title and the canvas */
 .fig.sheet.hug.dg.fr{display:inline-block;width:100%;vertical-align:top;height:auto;max-height:none}
 .fig.dg.fr > .fig-art{box-sizing:border-box;width:calc(var(--frw) + 2px);height:calc(var(--frh) + 2px);max-width:none;padding:0;margin-inline:calc((100% - var(--frw) - 2px) / 2);display:block;overflow:hidden}
@@ -998,9 +1000,22 @@ export function renderParts(doc, o) {
           room0 = room;
           fr = { ...fr0, wMm: Math.min(fr0.wMm, room.wMm), hMm: Math.min(fr0.hMm, room.hMm) };
         }
-        return `<figure class="fig sheet hug dg${fr ? ' fr' : ''}" data-b="${attr(b)}" data-dg="${attr(b)}"${fr ? ` data-frame="${fr.mode}" style="--frw:${fr.wMm}mm;--frh:${fr.hMm}mm;--shw:${room0.sheetW}mm"` : ''}>
+        const art = DIAGRAM.render(block.model || {}, { theme: o.theme, locale, title: block.caption, editor: !!o.editor, ...(fr ? { frame: fr } : {}) });
+        // 0.15.9 (owner, one-page landscape view): the automatic drawing's height rule (a flat 116 mm) ignores what shares its page: the chapter title, the section title,
+        // the figure title. When the drawing would not fit the room the page leaves it, its height is capped to that room, so its frame never runs over the footer.
+        // A drawing that fits is untouched (same markup as before).
+        let cap = 0;
+        if (!fr) {
+          const vb = /viewBox="(-?[\d.]+) (-?[\d.]+) ([\d.]+) ([\d.]+)"/.exec(art);
+          if (vb) {
+            const room = figureRoom(doc, b, o.theme);
+            const natural = Math.min(116, ((room.wMm - 8.5) * +vb[4]) / +vb[3]);
+            if (natural + 8.5 > room.hMm) cap = Math.max(30, Math.floor((room.hMm - 8.5) * 10) / 10);
+          }
+        }
+        return `<figure class="fig sheet hug dg${fr ? ' fr' : ''}${cap ? ' cap' : ''}" data-b="${attr(b)}" data-dg="${attr(b)}"${cap ? ` style="--arth:${cap}mm"` : ''}${fr ? ` data-frame="${fr.mode}" style="--frw:${fr.wMm}mm;--frh:${fr.hMm}mm;--shw:${room0.sheetW}mm"` : ''}>
   <figcaption><span class="fig-no">${esc(L.figureNo || L.figure)} ${figNo}: </span><span${dp(b + '/caption')}>${bidi(block.caption)}</span></figcaption>
-  <div class="fig-art">${DIAGRAM.render(block.model || {}, { theme: o.theme, locale, title: block.caption, editor: !!o.editor, ...(fr ? { frame: fr } : {}) })}</div>
+  <div class="fig-art">${art}</div>
   ${block.note ? `<p class="fig-note"${dp(b + '/note')}>${bidi(block.note)}</p>` : ''}
 </figure>`;
       }

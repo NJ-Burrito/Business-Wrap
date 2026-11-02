@@ -78,7 +78,7 @@ hits = []
 for i, p in enumerate(d):
     for dr in p.get_drawings():
         r = dr['rect']
-        if abs(r.width - W) < 3 and abs(r.height - H) < 3 and dr.get('fill') is not None:
+        if abs(r.width - W) < 3 and (H <= 0 or abs(r.height - H) < 3) and dr.get('fill') is not None and (H > 0 or dr.get('color') is not None):
             pieces = [[q['rect'].x0, q['rect'].y0, q['rect'].x1, q['rect'].y1] for q in p.get_drawings() if q['rect'].width < p.rect.width * 0.9 and q['rect'].height < p.rect.height * 0.9]
             hits.append({'page': i, 'rect': [r.x0, r.y0, r.x1, r.y1], 'size': [p.rect.width, p.rect.height], 'words': [list(w[:5]) for w in p.get_text('words')], 'pieces': pieces})
             break
@@ -205,6 +205,23 @@ try {
     const pdf = await exportOne(withFrame(doc0, f), 'en', 'c-over');
     const r = scanPdf(pdf, rm.wMm, rm.hMm, wideMargin);
     check('C5 PDF: a saved size beyond the page is cut back to the room (no leak over the margin or the footer)', !r.err && r.bad.length === 0 && r.above >= 3, r.err || JSON.stringify({ room: rm, scan: r }));
+  }
+  // the owner's one-page landscape view: an automatic (no canvas) drawing whose page also holds the chapter title, a section title and the figure title: its frame must not run over the footer
+  if (!SKIP) {
+    for (const loc of ['en', 'ar']) {
+      const doc0 = loadDoc(loc);
+      const d1 = structuredClone(doc0);
+      d1.chapters[2].sections.push({ number: '3.2', title: loc === 'ar' ? 'قسم ثان' : 'Second section', blocks: [{ kind: 'prose', paragraphs: ['text'] }] });
+      const rm = figureRoom(d1, PTR, theme);
+      const pdf = await exportOne(d1, loc, 'c-auto-tight');
+      const r = scanPdf(pdf, rm.wMm + 0.6, -1, wideMargin);
+      const rect = r.rect || [0, 0, 0, 0];
+      const hMm = (rect[3] - rect[1]) / MM;
+      const html = (await import('../engine/export.mjs')).printHtml(d1, { locale: loc, theme, embed: false }).html;
+      const plain = (await import('../engine/export.mjs')).printHtml(doc0, { locale: loc, theme, embed: false }).html;
+      check(`C5 PDF ${loc}: an automatic drawing on a page that also holds the chapter and section titles is capped to its room, its frame stays above the footer (owner landscape page)`, !r.err && r.bad.length === 0 && hMm <= rm.hMm + 0.8 && /class="fig sheet hug dg cap"/.test(html) && r.above >= 3 && r.below >= 1, r.err || JSON.stringify({ rect: r.rect, hMm: Math.round(hMm * 10) / 10, room: rm.hMm, bad: r.bad.slice(0, 3), above: r.above, below: r.below }));
+      check(`C7 ${loc}: a drawing that fits its room keeps today's figure markup (no cap class, no style)`, /<figure class="fig sheet hug dg" data-b="[^"]*" data-dg="[^"]*">/.test(plain) && !/<figure class="fig sheet hug dg cap"/.test(plain));
+    }
   }
   // an old file (no frame) prints exactly as before
   if (!SKIP) {
@@ -456,6 +473,23 @@ try {
     const strip = await page.evaluate(() => { const h = document.getElementById('bw-ui-host'); return h?.shadowRoot ? [...h.shadowRoot.querySelectorAll('[data-a="dgCvShapes"],[data-a="dgCvPage"]')].length : -1; });
     check('C9 the ribbon\'s diagram tab and the diagram context carry «ملاءمة الأشكال» and «ملاءمة الصفحة»', ribbon.includes('dgCvShapes') && ribbon.includes('dgCvPage') && ribbon.includes('ملاءمة الأشكال') && ribbon.includes('ملاءمة الصفحة') && strip >= 2, `ribbon ${ribbon.includes('dgCvShapes')} ${ribbon.includes('dgCvPage')}; buttons in the shadow root: ${strip}`);
     check('C9 each tool carries a vector icon (Lucide), no emoji, no raster', /<svg[^>]*class="ic"/.test(ribbon.slice(ribbon.indexOf('dgCvShapes') - 400, ribbon.indexOf('dgCvShapes') + 800)));
+  }
+  // the owner's one-page landscape page in the editor: a chapter that also prints a section title; the automatic drawing is capped to the room, so its frame ends above the footer
+  {
+    const dir2 = path.join(OUT, 'tight');
+    fs.mkdirSync(dir2, { recursive: true });
+    for (const l of ['ar', 'en']) {
+      const d = loadDoc(l);
+      d.chapters[2].sections.push({ number: '3.2', title: l === 'ar' ? 'قسم ثان' : 'Second section', blocks: [{ kind: 'prose', paragraphs: ['text'] }] });
+      fs.writeFileSync(path.join(dir2, `document.${l}.json`), JSON.stringify(d));
+    }
+    const f2 = path.join(dir2, 'editor.html');
+    buildEditor({ inputs: [dir2], out: f2, set: 'canvas-tight', watermarkDir: '' });
+    const { ctx: c4, page: p4 } = await open('ar', { width: 1500, height: 900 }, pathToFileURL(f2).href);
+    const rm = figureRoom(JSON.parse(fs.readFileSync(path.join(dir2, 'document.ar.json'), 'utf8')), PTR, theme);
+    const m = await p4.evaluate((FIG) => { const f = document.querySelector(FIG); const a = f.querySelector('.fig-art'); return { cls: f.className, mm: (a.offsetHeight * 25.4) / 96 }; }, FIG);
+    check('C5 editor: the same page (chapter title, section title, figure title, automatic drawing) keeps the drawing\'s frame inside the room above the footer', /\bcap\b/.test(m.cls) && m.mm <= rm.hMm + 0.8 && m.mm > 40, JSON.stringify({ cls: m.cls, mm: Math.round(m.mm * 10) / 10, room: rm.hMm }));
+    await c4.close();
   }
   // M5: the route, head, tail, line and weight pickers open at their own button (within 40 px), never at the corner of the window
   {
