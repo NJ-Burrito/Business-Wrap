@@ -35,7 +35,8 @@ const exe = H.browserPath();
 const opts = process.env.TRANSPORT_BROWSER === 'chromium' || !exe ? launchOptions() : { ...launchOptions(), executablePath: exe };
 check('browser under test is real Google Chrome (0.15.9 B9)', !!exe && /chrome/i.test(String(opts.executablePath)) && !/msedge|opera|brave/i.test(String(opts.executablePath)) || process.env.TRANSPORT_BROWSER === 'chromium', String(opts.executablePath));
 const browser = await chromium.launch(opts);
-const health = async (h) => (await fetch(h.url + 'api/host/health', { signal: AbortSignal.timeout(4000) })).json();
+// 0.16.0: health also names tabs that are gone (state closed / discarded, live:false); these checks count the tabs that are live
+const health = async (h) => { const j = await (await fetch(h.url + 'api/host/health', { signal: AbortSignal.timeout(4000) })).json(); return { ...j, tabs: j.tabs.filter((t) => t.live !== false) }; };
 const emit = (h, body) => fetch(h.url + 'api/session/_emit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json());
 const INIT = () => { window.__srv = []; window.addEventListener('bw:srv', (e) => window.__srv.push({ event: e.detail.event, data: e.detail.data })); };
 const open = async (ctx, url) => {
@@ -171,7 +172,6 @@ async function latePush() {
   const lateList = await post('api/session/tabs', { client: 'cseqtest0', seq: 6, tabs: ['tabseq00x', 'tabseq01x'] });
   const hl2 = await health(h);
   check('server: a late older tab list is dropped (the closed tab stays gone)', lateList.stale === true && hl2.tabs.filter((t) => t.tab.startsWith('tabseq')).length === 1, JSON.stringify({ lateList, tabs: hl2.tabs.map((t) => t.tab) }));
-  await sse.body.cancel().catch(() => {});
   // real page: hold the 0.4 s state push in flight, type more, flush (the pagehide path), then let the older push land
   const ctx = await browser.newContext();
   await ctx.addInitScript(() => { try { localStorage.setItem('bw:profile-prompt', '1'); } catch { /* none */ } });
@@ -179,6 +179,7 @@ async function latePush() {
   const held = [];
   await ctx.route('**/api/session/state', (route) => { if (hold) held.push(route); else route.continue(); });
   const pg = await open(ctx, h.url + '?tab=tablate01x');
+  await sse.body.cancel().catch(() => {}); // the stand-in client stays until the page is connected: with BW_IDLE_MS=1500 the host would otherwise stop while a slower page is still loading
   await sleep(700);
   hold = true;
   await pg.evaluate(() => window.BW.setText('/chapters/0/title', 'OLDER-PUSH'));
@@ -193,7 +194,7 @@ async function latePush() {
   await sleep(1500); // the released older push has had time to land after it: it must not have replaced the newer text
   const txt = JSON.stringify(rec('tablate01x') || {});
   check('page: the older push was held in flight (positive sample)', heldOk);
-  check('page: the flushed latest text survives the late older push', txt.includes('NEWER-FLUSH-TEXT') && !txt.includes('OLDER-PUSH'), txt.slice(0, 200));
+  check('page: the flushed latest text survives the late older push', txt.includes('NEWER-FLUSH-TEXT') && !txt.includes('OLDER-PUSH'), txt.slice(0, 200) + ' runs=' + JSON.stringify(fs.readdirSync(sess).map((r) => [r, fs.existsSync(path.join(sess, r)) && fs.statSync(path.join(sess, r)).isDirectory() ? fs.readdirSync(path.join(sess, r)) : 0])).slice(0, 300) + ' held=' + held.length + ' LOG=' + (() => { const out = []; const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const f = path.join(d, e.name); if (e.isDirectory()) walk(f); else if (e.name === 'host.log') out.push(fs.readFileSync(f, 'utf8').slice(-400)); } }; try { walk(path.join(tmp, 'ws')); } catch { /* none */ } return out.join(' | '); })());
   await pg.close().catch(() => {});
   await ctx.close();
   await H.stop();

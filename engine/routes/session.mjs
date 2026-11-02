@@ -273,7 +273,7 @@ export function registry(ctx) {
   for (const [tab, d] of s.direct) { // a tab known only by its own beat (its worker client froze or is gone): listed live while it beats
     if (tabs.some((x) => x.tab === tab)) continue;
     const lastBeatMs = Math.round(beatAge(s, tab, now));
-    if (lastBeatMs > 600000) { s.direct.delete(tab); continue; }
+    if (lastBeatMs > asleepMs()) { s.closed.set(tab, { at: now - lastBeatMs, svc: d.svc, docs: d.docs, automation: d.automation }); s.direct.delete(tab); continue; } // known only by its beat and the beat stopped: it is gone (closed), not asleep
     tabs.push({ tab, svc: d.svc || null, docs: d.docs || [], automation: !!d.automation, live: true, lastBeatMs, asleep: lastBeatMs > asleepMs(), owns: [...s.leases].filter(([, l]) => l.tab === tab).map(([dd]) => dd) });
   }
   for (const [tab, l] of [...s.lost]) { // a discarded or killed tab: still the run's, asleep until it reloads (it re-lists itself) or the grace is over

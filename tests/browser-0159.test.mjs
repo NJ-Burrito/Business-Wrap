@@ -23,7 +23,7 @@ const bin = path.join(tmp, 'bin');
 const mk = (name) => { const f = path.join(bin, name); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, ''); return f; };
 const P = {
   chrome: mk('Google/Chrome/Application/chrome.exe'),
-  edge: mk('Microsoft/Edge/Application/msedge.exe'),
+  edge: mk('Microsoft/Edge/Application/msedge.exe'), // platform-guard: ok (an empty fake file whose name is classified, never run)
   operagx: mk('Programs/Opera GX/opera.exe'),
   opera: mk('Programs/Opera/opera.exe'),
   brave: mk('BraveSoftware/Brave-Browser/Application/brave.exe'),
