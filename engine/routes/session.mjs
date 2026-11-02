@@ -420,10 +420,10 @@ export default async (req, url, send, ctx, res) => {
       }
       // the tab that asked is not a tab of the run: it becomes the first resumed tab (the page navigates itself there),
       // so a resume never adds a tab, and its own fresh record leaves this run
-      if (TAB.test(String(asker)) && !tabs.some((x) => x.tab === asker)) fs.rmSync(path.join(dir, `${asker}.json`), { force: true });
+      if (typeof asker === 'string' && TAB.test(asker) && !tabs.some((x) => x.tab === asker)) fs.rmSync(path.join(dir, `${asker}.json`), { force: true });
       const origin = `http://${req.headers.host || `127.0.0.1:${ctx.server?.address()?.port}`}`;
       const urls = tabs.map((x) => `${origin}/?session=${s.runId}&tab=${encodeURIComponent(x.tab)}`);
-      const here = TAB.test(String(asker)) ? urls.shift() : null;
+      const here = typeof asker === 'string' && TAB.test(asker) ? urls.shift() : null; // no asking tab (an agent): every document gets its own window
       const r = urls.length ? launchBrowser(urls) : { chunks: 0 };
       send(200, { ok: true, n: urls.length + (here ? 1 : 0), here, chunks: r.chunks });
       return true;

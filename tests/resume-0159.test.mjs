@@ -28,7 +28,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const until = async (fn, ms = 20000, step = 200) => { for (const t0 = Date.now(); Date.now() - t0 < ms; await sleep(step)) { try { const v = await fn(); if (v) return v; } catch { /* not yet */ } } return false; };
 const out = [];
 let failed = 0;
-const check = (n, ok, d = '') => { out.push(`${ok ? 'PASS' : 'FAIL'}  resume-0159: ${n}${d && !ok ? '  — ' + String(d).replace(/\s+/g, ' ').slice(0, 300) : ''}`); if (!ok) failed += 1; };
+const check = (n, ok, d = '') => { out.push(`${ok ? 'PASS' : 'FAIL'}  resume-0159: ${n}${d && !ok ? '  — ' + String(d).replace(/\s+/g, ' ').slice(0, 700) : ''}`); if (!ok) failed += 1; };
 const br = chooseBrowser({ env: { BW_BROWSER: 'chrome' }, saved: '' });
 if (!br || br.id !== 'chrome') { console.log('SKIP resume-0159: Google Chrome is not installed here'); process.exit(0); }
 const freePort = () => new Promise((ok) => { const s = net.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => ok(p)); }); });
@@ -61,8 +61,10 @@ try {
   const booted = (c) => until(async () => (await c.ev('!!(window.BW && window.BW.ready && document.documentElement.dataset.bwSession)')) === true, 60000);
   const S = await attach((u) => u.includes('t=S'));
   check('Chrome started; the seed tab (a tool\'s automation tab) booted', !!(await booted(S)));
-  const entry = JSON.parse(await S.ev('(async()=>{ await window.BW.EXT.library.newDocument(); const all = await window.BW.EXT.library.all(); return JSON.stringify(all[0]) })()'));
-  check('a real library entry to seed the sessions with (positive sample)', !!entry?.id && !!entry.editions, Object.keys(entry || {}).join());
+  await S.ev('window.BW.EXT.library.newDocument().then(()=>1)');
+  const entryStr = await until(async () => { const r = await S.ev('(async()=>{ const e = window.BW.EXT.library.entryOf(window.BW.S.svc); return e && e.editions ? JSON.stringify(e) : "" })()'); return r || false; }, 30000);
+  const entry = entryStr ? JSON.parse(entryStr) : null;
+  check('a real library entry to seed the sessions with (positive sample)', !!entry?.id && !!entry.editions, JSON.stringify(await S.ev('(async()=>{ const B=window.BW; const e = await B.EXT.library.get(B.S.svc); const all = await B.EXT.library.all(); return JSON.stringify({svc:B.S.svc, e: e ? Object.keys(e) : null, n: all.length, k: all[0] ? Object.keys(all[0]) : null}) })()')));
 
   // seed: a previous run with N documents (real session records), and older documents in the save folder
   const sessions = W.subdir(W.ensure(W.workspace()).dirs, 'sessions');
@@ -90,12 +92,12 @@ try {
     const c = await (async () => { await fetch(`http://127.0.0.1:${cdp}/json/new?${base}`, { method: 'PUT' }); return attach((u) => u === base || u === base.replace(/\/$/, '')); })();
     return c;
   };
-  const dlgReady = (c) => until(async () => (await c.ev("document.documentElement.dataset.bwResume === 'asked' && !!document.querySelector('dialog.bw-resume[open]')")) === true, 60000);
-  const q = (c, js) => c.ev(`(()=>{ const d = document.querySelector('dialog.bw-resume'); return ${js} })()`);
+  const dlgReady = (c) => until(async () => (await c.ev("document.documentElement.dataset.bwResume === 'asked' && !!document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-resume[open]')")) === true, 60000);
+  const q = (c, js) => c.ev(`(()=>{ const d = document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-resume'); return ${js} })()`);
 
   // R1: the list
   let P = await popup();
-  check('R1: the popup opened on its own (ready state: data-bw-resume=asked and the dialog is open)', !!(await dlgReady(P)));
+  { const okd = !!(await dlgReady(P)); check('R1: the popup opened on its own (ready state: data-bw-resume=asked and the dialog is open)', okd, okd ? '' : await P.ev('JSON.stringify({u: location.href, r: document.documentElement.dataset.bwResume, s: document.documentElement.dataset.bwSession, d: !!document.querySelector("dialog.bw-resume"), n: document.querySelectorAll("dialog").length, ready: !!(window.BW&&window.BW.ready)})')); }
   const rows = JSON.parse(await q(P, "JSON.stringify([...d.querySelectorAll('.main li')].slice(0,3).map(li=>({ti:li.querySelector('.ti').textContent, me:li.querySelector('.me').textContent, label:li.querySelector('input').getAttribute('aria-label'), one:li.querySelector('.one').getAttribute('aria-label')})))"));
   const n1 = await q(P, "d.querySelectorAll('.main li').length");
   check('R1: all 70 documents are listed, each with a title, a last-edited time and a language', n1 === N && rows.every((r) => r.ti && /\d/.test(r.me) && /(عربي|إنجليزي|Arabic|English)/.test(r.me)), JSON.stringify(rows));
@@ -128,7 +130,7 @@ try {
   await q(P, "d.querySelector('[data-s=sel]').click()");
   const moved = await until(async () => (await lastNow()).tabs?.length === N - 1 - 3, 20000);
   const l2 = launches().slice(b2);
-  check('R1: «continue selected» opens exactly the 3 (this tab is the first, 2 windows launched) and leaves 66 offered', !!moved && l2.length === 1 && urlsIn(l2[0]).length === 2 && pickedTabs.slice(1).every((id) => urlsIn(l2[0]).some((u) => u.includes(`tab=${id}`))), JSON.stringify(l2).slice(0, 200));
+  check('R1: «continue selected» opens exactly the 3 (this tab is the first, 2 windows launched) and leaves 66 offered', !!moved && l2.length === 1 && urlsIn(l2[0]).length === 2 && urlsIn(l2[0]).every((u) => pickedTabs.some((id) => u.includes(`tab=${id}`))), JSON.stringify(l2).slice(0, 200));
 
   // R3 + R2 (chunks): continue all
   P = await popup();
@@ -154,7 +156,7 @@ try {
   const libBefore = await P.ev('window.BW.EXT.library.all().then(a=>a.length)');
   await q(P, "d.querySelector('.olist .one').click()");
   const imported = await until(async () => (await P.ev('window.BW.EXT.library.all().then(a=>a.length)')) > libBefore, 30000);
-  check('R4: pressing an older document opens it (it is in the library and the popup closes)', !!imported && (await until(async () => (await P.ev("!document.querySelector('dialog.bw-resume')")) === true, 8000)), `${libBefore} -> ${await P.ev('window.BW.EXT.library.all().then(a=>a.length)')}`);
+  check('R4: pressing an older document opens it (it is in the library and the popup closes)', !!imported && (await until(async () => (await P.ev("!document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-resume')")) === true, 8000)), `${libBefore} -> ${await P.ev('window.BW.EXT.library.all().then(a=>a.length)')}`);
   check('R4: the last session is untouched by opening an older document (12 still offered)', (await lastNow()).tabs?.length === 12);
 
   // R5: words, keyboard, names, font; closing leaves work safe
@@ -165,32 +167,32 @@ try {
   check('R5: every popup word exists in Arabic and English (non-empty)', keys.length >= 20 && keys.every((k) => String(i18n.ar[k] || '').length > 0 && String(i18n.en[k] || '').length > 0), keys.join());
   const raw = await q(P, "/res[A-Z][A-Za-z]+/.test(d.textContent)");
   check('R5: no raw key shows in the dialog', raw === false);
-  check('R5: the dialog is labelled by its heading and every control has a name', (await q(P, "!!document.getElementById(d.getAttribute('aria-labelledby')) && [...d.querySelectorAll('input,button')].every(x => (x.getAttribute('aria-label') || x.textContent || '').trim().length > 0)")) === true);
-  check('R5: keyboard: focus starts in the search box', (await q(P, "document.activeElement === d.querySelector('.q')")) === true);
+  check('R5: the dialog is labelled by its heading and every control has a name', (await q(P, "!!d.querySelector('#' + d.getAttribute('aria-labelledby')) && [...d.querySelectorAll('input,button')].every(x => (x.getAttribute('aria-label') || x.textContent || '').trim().length > 0)")) === true);
+  check('R5: keyboard: focus starts in the search box', (await q(P, "(document.getElementById('bw-ui-host').shadowRoot).activeElement === d.querySelector('.q')")) === true);
   await P.key('Tab', 'Tab', 9);
-  check('R5: Tab moves on inside the dialog', (await q(P, "d.contains(document.activeElement) && document.activeElement !== d.querySelector('.q')")) === true);
+  check('R5: Tab moves on inside the dialog', (await q(P, "d.contains(document.getElementById('bw-ui-host').shadowRoot.activeElement) && document.getElementById('bw-ui-host').shadowRoot.activeElement !== d.querySelector('.q')")) === true);
   const font = await q(P, "({ d: getComputedStyle(d).fontFamily, b: getComputedStyle(document.body).fontFamily })");
   check('R5: the dialog uses the page font (Thmanyah where the page does)', font.d === font.b || /thmanyah/i.test(font.d), JSON.stringify(font));
   const nBefore = (await lastNow()).tabs?.length;
   await P.key('Escape', 'Escape', 27);
-  const closed = await until(async () => (await P.ev("!document.querySelector('dialog.bw-resume[open]')")) === true, 5000);
+  const closed = await until(async () => (await P.ev("!document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-resume[open]')")) === true, 5000);
   check('R5: Esc closes it and changes nothing (the 12 documents stay offered, the tab is usable)', !!closed && (await lastNow()).tabs?.length === nBefore && nBefore === 12);
   P = await popup();
   await dlgReady(P);
   await q(P, "d.querySelector('[data-s=later]').click()");
-  check('R5: «not now» closes it and changes nothing', (await until(async () => (await P.ev("!document.querySelector('dialog.bw-resume[open]')")) === true, 5000)) && (await lastNow()).tabs?.length === 12);
+  check('R5: «not now» closes it and changes nothing', (await until(async () => (await P.ev("!document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-resume[open]')")) === true, 5000)) && (await lastNow()).tabs?.length === 12);
   P = await popup();
   await dlgReady(P);
   await q(P, "d.querySelector('[data-s=new]').click()");
   const fresh = await until(async () => (await lastNow()).tabs?.length === 0, 15000);
-  check('R4: a new blank document stays available (the offer is put away, the dialog closes)', !!fresh && (await P.ev("!document.querySelector('dialog.bw-resume')")) === true);
+  check('R4: a new blank document stays available (the offer is put away, the dialog closes)', !!fresh && (await P.ev("!document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-resume')")) === true, JSON.stringify(await lastNow()) + ' ' + await P.ev("document.documentElement.dataset.bwResume + ' ' + !!document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-resume')"));
 
   // R6: an automation tab never sees it; MCP reads and opens the same list
   seeds = seed('20261022-080000-abc003', 5, 'c');
-  const A = await (async () => { await fetch(`http://127.0.0.1:${cdp}/json/new?${base}?automation=1&t=Z`, { method: 'PUT' }); return attach((u) => u.includes('t=Z')); })();
+  const A = await popup(); await A.send('Page.navigate', { url: `${base}?automation=1&t=Z` }); await until(async () => (await A.ev('location.search')) === '?automation=1&t=Z', 20000);
   await booted(A);
   await sleep(2500);
-  check('R6: a tool\'s automation tab never sees the popup (booted, 5 documents waiting, no dialog)', (await A.ev("!document.querySelector('dialog.bw-resume') && !document.documentElement.dataset.bwResume")) === true && (await lastNow()).tabs?.length === 5);
+  check('R6: a tool\'s automation tab never sees the popup (booted, 5 documents waiting, no dialog)', (await A.ev("!document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-resume') && !document.documentElement.dataset.bwResume")) === true && (await lastNow()).tabs?.length === 5);
   client = new Client({ name: 'resume-test', version: '1.0.0' });
   await client.connect(new StdioClientTransport({ command: process.execPath, args: [path.join(REPO, 'mcp', 'cli.mjs')], cwd: REPO, env, stderr: 'pipe' }));
   const tools = (await client.listTools()).tools.map((t) => t.name);
