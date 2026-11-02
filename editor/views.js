@@ -35,11 +35,135 @@ function viewsFirstPage() {
   return 0;
 }
 
-/* geometry: one slot = one page + the gap (12 mm, as in views.css), in CSS px before the view's zoom */
+/* geometry: one slot = one column of the widest page + the gap (12 mm, as in views.css), in CSS px before the view's zoom.
+ * 0.16.0: a document may mix sheet sizes (a landscape section, a figure chapter that prints on its own turned sheet). The columns are
+ * as wide and as high as the biggest sheet; each page is drawn at its own size, centred in its column (viewsSizes), and the window
+ * shows exactly that sheet. */
+const VIEWS_MM = 96 / 25.4;
+/** The turned sheet every figure chapter prints on (engine/render.mjs @page wide): the widest figure sheet, else A4 landscape. */
+function viewsWide(d) {
+  let s = null;
+  for (const c of d?.chapters || []) for (const sec of c.sections || []) for (const b of sec.blocks || []) if (b.kind === 'figure' && b.sheet && (!s || b.sheet.widthMm > s.widthMm)) s = b.sheet;
+  return { w: s?.widthMm ?? 297, h: s?.heightMm ?? 210 };
+}
 function viewsGeo() {
-  const mm = 96 / 25.4;
-  const p = pageSpec(cur()?.doc?.layout?.page); // A18: the document's own paper (A4 portrait unless set)
-  return { W: p.w * mm, H: p.h * mm, GAP: 12 * mm, SLOT: (p.w + 12) * mm };
+  const mm = VIEWS_MM;
+  const d = cur()?.doc;
+  const base = pageSpec(d?.layout?.page); // A18: the document's own paper (A4 portrait unless set)
+  let W = base.w;
+  let H = base.h;
+  let mixed = false;
+  const take = (w, h) => { if (w !== base.w || h !== base.h) mixed = true; W = Math.max(W, w); H = Math.max(H, h); };
+  if (d?.chapters) for (const x of pageModel(d).segments) take(x.page.w, x.page.h);
+  const wide = viewsWide(d);
+  if (d?.chapters && mainOf(S.ed)?.querySelector('.chapter.wide')) take(wide.w, wide.h);
+  return { W: W * mm, H: H * mm, GAP: 12 * mm, SLOT: (W + 12) * mm, Wmm: W, Hmm: H, base: { w: base.w, h: base.h }, wide, mixed };
+}
+/** The id of the page segment an element prints on: its own `page:bw-seg-N` style, a figure chapter's turned sheet ('w'), else the
+ *  nearest container's, else the document's own page ('0'). */
+function viewsSegOf(el) {
+  for (let x = el; x && x.nodeType === 1; x = x.parentElement) {
+    const m = /^page:bw-seg-(\d+)/.exec(x.getAttribute('style') || '');
+    if (m) return m[1];
+    if (x.matches?.('.chapter.wide')) return 'w';
+    if (x.matches?.('main.bw-doc')) break;
+  }
+  return '0';
+}
+/** The id the last thing inside `el` prints on (a nested section can turn the end of a chapter). */
+function viewsLastSeg(el) {
+  let id = viewsSegOf(el);
+  for (let c = el.lastElementChild; c; c = c.lastElementChild) {
+    const m = /^page:bw-seg-(\d+)/.exec(c.getAttribute('style') || '');
+    if (m) id = m[1];
+  }
+  return id;
+}
+/** Mixed sizes: tag the containers that start a page of another size (a column break before them) and the ones that sit inside a
+ *  container of another size (a margin that centres them on their own sheet); write the rules for the sizes in use. */
+function viewsMix(main, g) {
+  delete main.dataset.bwmix;
+  main.querySelectorAll('[data-bw-brk],[data-bw-own]').forEach((x) => { delete x.dataset.bwBrk; delete x.dataset.bwOwn; delete x.dataset.bwPp; });
+  let st = document.getElementById('bw-views-mix');
+  if (!g.mixed) { st?.remove(); return; }
+  if (!st) { st = document.createElement('style'); st.id = 'bw-views-mix'; document.head.appendChild(st); }
+  main.dataset.bwmix = '1';
+  const d = cur().doc;
+  const segs = new Map(pageModel(d).segments.map((x) => [String(x.n), x.page]));
+  const sheet = (id) => (id === 'w' ? { w: g.wide.w, h: g.wide.h } : segs.get(id) || g.base);
+  const ind = (id) => (g.Wmm - sheet(id).w) / 2;
+  const pairs = new Set();
+  for (const el of main.querySelectorAll('.chapter, .sec, .bw-pg')) {
+    const own = viewsSegOf(el);
+    const par = el.parentElement ? viewsSegOf(el.parentElement) : '0';
+    const prev = el.previousElementSibling;
+    const before = prev ? viewsLastSeg(prev) : par;
+    if (own !== before) el.dataset.bwBrk = '1';
+    if (own !== par) { el.dataset.bwOwn = own; el.dataset.bwPp = par; pairs.add(`${par}|${own}`); }
+  }
+  const i0 = ind('0');
+  const sel = '@media screen{#bw-pair main.bw-doc[data-bwmix]';
+  const rules = [`${sel} .wrap{padding-inline:calc(var(--page-side,16mm) + ${i0}mm)}`,
+    `${sel} .cover{margin-inline:${i0}mm;width:${g.base.w}mm;height:${g.base.h}mm}`,
+    `${sel} [data-bw-brk]{break-before:column}`];
+  for (const k of pairs) { const [par, own] = k.split('|'); rules.push(`${sel} [data-bw-pp="${par}"][data-bw-own="${own}"]{margin-inline:${+(ind(own) - ind(par)).toFixed(3)}mm}`); }
+  st.textContent = rules.join('}') + '}}';
+}
+/** The sheet each page is printed on, by column: the document's own page unless a segment marker or a figure chapter says another. */
+function viewsSizes(main, n, g) {
+  const d = cur().doc;
+  const segs = new Map(pageModel(d).segments.map((x) => [String(x.n), x.page]));
+  const out = Array.from({ length: n }, () => ({ w: g.base.w, h: g.base.h }));
+  if (!g.mixed) return out;
+  const starts = [...main.querySelectorAll('a.bw-seg[data-seg]')].map((a) => [viewsPageOf(a), String(a.dataset.seg)]).sort((x, y) => x[0] - y[0]);
+  for (let k = 0; k < n; k += 1) {
+    const id = starts.reduce((s, [p, i]) => (p <= k ? i : s), '0');
+    const pg = segs.get(id) || g.base;
+    out[k] = { w: pg.w, h: pg.h };
+  }
+  for (const ch of main.querySelectorAll('.chapter.wide:not([style^="page:"])')) {
+    const rs = [...ch.getClientRects()].filter((r) => r.width || r.height);
+    if (!rs.length) continue;
+    const pages = rs.map((r) => viewsPageAt(main, r));
+    for (let k = Math.min(...pages); k <= Math.max(...pages) && k < n; k += 1) out[k] = { w: g.wide.w, h: g.wide.h };
+  }
+  return out;
+}
+function viewsPageAt(main, q) {
+  const z = parseFloat(getComputedStyle(main.parentElement).zoom) || 1;
+  const r = main.getBoundingClientRect();
+  const off = main.dir === 'rtl' ? r.right - q.right : q.left - r.left;
+  return Math.max(0, Math.floor((off + 2) / z / viewsGeo().SLOT));
+}
+/** One sheet of paper per page, at its own size, centred in its column (a mixed document only: otherwise the stripes of views.css). */
+function viewsSheets(main, g) {
+  main.querySelector(':scope > .bw-sheets')?.remove();
+  if (!g.mixed) return;
+  const lay = document.createElement('div');
+  lay.className = 'bw-sheets';
+  lay.setAttribute('contenteditable', 'false');
+  lay.setAttribute('aria-hidden', 'true');
+  lay.innerHTML = (S.pageSizes || []).map((s, k) => `<i class="bw-sheet" data-page="${k}" style="inset-inline-start:calc(${k} * (var(--pw) + var(--pg)) + ${+((g.Wmm - s.w) / 2).toFixed(3)}mm);width:${s.w}mm;height:${s.h}mm"></i>`).join('');
+  main.appendChild(lay);
+}
+/** A page of a smaller sheet whose text runs below its sheet's end is cut by the window: say so. */
+function viewsOverflow(main, g) {
+  if (!g.mixed) return;
+  const z = parseFloat(getComputedStyle(main.parentElement).zoom) || 1;
+  const top = main.getBoundingClientRect().top;
+  const bad = new Set();
+  for (const el of main.querySelectorAll('p,li,tr,h2,h3,figure,.fig')) {
+    if (el.closest('.bw-runs')) continue;
+    for (const q of el.getClientRects()) {
+      const k = viewsPageAt(main, q);
+      const sz = S.pageSizes?.[k];
+      if (sz && sz.h < g.Hmm && (q.bottom - top) / z > sz.h * VIEWS_MM + 2) bad.add(k + 1);
+    }
+  }
+  if (bad.size && S.viewsWarned !== [...bad].join()) {
+    S.viewsWarned = [...bad].join();
+    toast(S.ui === 'ar' ? `النص يتجاوز حدّ الصفحة المعروضة في الصفحات: ${[...bad].join('، ')}. ملف PDF يقسمه على صفحات إضافية.` : `Text runs past the end of the shorter sheet on page ${[...bad].join(', ')}; the screen cuts it, the PDF paginates it.`, 'warn');
+  }
 }
 
 /** After every render(): wrap the edition in the paged window, count its pages, fit it, show the current page. */
@@ -58,11 +182,16 @@ function viewsApply() {
     box.appendChild(main);
   }
   box.dir = main.dir; // the book opens in the document's reading direction
-  { const p = pageSpec(cur()?.doc?.layout?.page); box.style.setProperty('--pw', `${p.w}mm`); box.style.setProperty('--ph', `${p.h}mm`); } // A18: the sheets as set
+  { const g0 = viewsGeo(); box.style.setProperty('--pw', `${g0.Wmm}mm`); box.style.setProperty('--ph', `${g0.Hmm}mm`); } // A18: the columns are as big as the biggest sheet
   viewsFit();
+  const g = viewsGeo();
+  viewsMix(main, g);
   S.pageN = viewsCount(main);
+  S.pageSizes = viewsSizes(main, S.pageN, g);
   main.style.setProperty('--pages', String(S.pageN));
+  viewsSheets(main, g);
   viewsRuns(main);
+  viewsOverflow(main, g);
   viewsGo(0, true);
 }
 /** A5/A6 on screen: every page frame after the cover carries its own header and footer, editable in place (the
@@ -87,7 +216,10 @@ function viewsRuns(main) {
   let html = '';
   for (let k = first; k < n; k += 1) {
     const seg = segOf(k);
-    html += `<div class="bw-run-f" data-page="${k}" data-seg="${seg}" style="--k:${k}"><div class="bw-run-h">${band(seg, 'header')}</div><div class="bw-run-b">${band(seg, 'footer')}</div></div>`;
+    const sz = S.pageSizes?.[k];
+    const G = viewsGeo();
+    const own = (sz && sz.w !== G.Wmm ? `;--fo:${+((G.Wmm - sz.w) / 2).toFixed(3)}mm;--fw:${sz.w}mm` : '') + (sz && sz.h !== G.Hmm ? `;--fh:${sz.h}mm` : '');
+    html += `<div class="bw-run-f" data-page="${k}" data-seg="${seg}" style="--k:${k}${own}"><div class="bw-run-h">${band(seg, 'header')}</div><div class="bw-run-b">${band(seg, 'footer')}</div></div>`;
   }
   lay.innerHTML = html;
   lay.querySelectorAll('.bw-run-f').forEach((f) => {
@@ -104,19 +236,33 @@ function viewsCount(main) {
   const r = main.getBoundingClientRect();
   let far = 0;
   for (const el of main.children) {
-    if (el.classList.contains('bw-runs')) continue; // the header/footer layer is placed on the pages, it is not content
+    if (el.classList.contains('bw-runs') || el.classList.contains('bw-sheets')) continue; // the header/footer layer is placed on the pages, it is not content
     for (const q of el.getClientRects()) far = Math.max(far, main.dir === 'rtl' ? r.right - q.left : q.right - r.left);
   }
   return Math.max(1, Math.round(far / z / viewsGeo().SLOT + 0.25));
 }
+/** The window of page `at` (or the book whose left page is `at`): its width and height in mm, and how far in from its column's start edge
+ *  it begins. One page of a mixed document: exactly its sheet. A book: the two sheets from outer edge to outer edge (the cover alone: its
+ *  column and the empty one beside it, as in a plain document). */
+function viewsWindow(g, at, spread) {
+  const sz = g.mixed ? S.pageSizes : null;
+  if (!spread) { const s = sz?.[at]; return s ? { w: s.w, h: s.h, off: (g.Wmm - s.w) / 2 } : { w: g.Wmm, h: g.Hmm, off: 0 }; }
+  if (!sz || !sz[at]) return { w: 2 * g.Wmm + 12, h: g.Hmm, off: 0 };
+  if (at === 0) { const c = sz[0]; return { w: 2 * g.Wmm + 12 - (g.Wmm - g.base.w) - (g.Wmm - c.w) / 2, h: g.Hmm, off: g.Wmm - g.base.w }; } // the cover alone: an empty page of the document's size beside it
+  const a = sz[at];
+  const b = sz[at + 1];
+  const offA = (g.Wmm - a.w) / 2;
+  const offB = b ? (g.Wmm - b.w) / 2 : 0;
+  return { w: 2 * g.Wmm + 12 - offA - offB, h: Math.max(a.h, b?.h || 0), off: offA };
+}
 /** Fit one page (single) or the open book (spread) to the window, times the person's zoom. */
 function viewsFit() {
   const spread = viewsMode() === 'spread';
-  const { W: PAGE_W, H: PAGE_H, GAP: PAGE_GAP } = viewsGeo();
-  const w = spread ? 2 * PAGE_W + PAGE_GAP : PAGE_W;
-  const availH = Math.max(240, innerHeight - (S.focus ? 24 : barH || 90) - 84);
+  const g = viewsGeo();
+  const win = viewsWindow(g, S.pageAt || 0, spread);
+  const availH = Math.max(240, innerHeight - (S.focus ? 24 : barH || 90) - 92); // 92 = the pager's room below (76) and the gap above (16) of views.css: 84 left the page 8 px taller than the window, so the wheel never turned it
   const availW = Math.max(240, document.documentElement.clientWidth - 32);
-  const fit = Math.min(availH / PAGE_H, availW / w, 1.4);
+  const fit = Math.min(availH / (win.h * VIEWS_MM), availW / (win.w * VIEWS_MM), 1.4);
   document.documentElement.style.setProperty('--bw-pz', String(+(fit * S.zoom).toFixed(4)));
 }
 /** Move by `delta` pages (single) or spreads (spread); `instant` skips the slide. */
@@ -137,8 +283,16 @@ function viewsGo(delta, instant = false) {
     at = Math.min(n - 1, Math.max(0, at + delta));
     main.style.setProperty('--shift', `${at * SLOT * (main.dir === 'rtl' ? 1 : -1)}px`);
   }
+  // the window is the page's own sheet (a mixed document), centred in its column; a plain document: the whole column
+  const g = viewsGeo();
+  const win = viewsWindow(g, at, spread);
+  const box = main.parentElement;
+  box.style.setProperty('--vw', `${win.w}mm`);
+  box.style.setProperty('--vh', `${win.h}mm`);
+  main.style.setProperty('--off', `${(main.dir === 'rtl' ? 1 : -1) * win.off * VIEWS_MM}px`);
   if (instant) { main.style.transition = 'none'; void main.offsetWidth; main.style.transition = ''; }
   S.pageAt = at;
+  if (g.mixed) viewsFit();
   viewsPager();
 }
 /** The page under a document element (for keyboard focus and Find in a paged view). */

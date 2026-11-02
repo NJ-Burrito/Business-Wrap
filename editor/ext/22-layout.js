@@ -151,6 +151,17 @@ function w2pageCss() {
     W2P.maxW = Math.max(W2P.maxW, ...segs.map((x) => x.page.w));
     const m = `#bw-pair main.bw-doc[data-locale="${ed}"]`;
     if (d.layout?.page) rules.push(`${m}{width:${base.w}mm}`);
+    // 0.16.0: a figure chapter prints on its own turned sheet (engine/render.mjs @page wide): the same drawing on the canvas
+    if (d.chapters && viewsWide) {
+      const wd = viewsWide(d);
+      W2P.maxW = Math.max(W2P.maxW, wd.w);
+      if (wd.w !== base.w) {
+        const sel = `#bw-pair:not([data-pages="single"]):not([data-pages="spread"]) main.bw-doc[data-locale="${ed}"] .chapter.wide:not([style^="page:"])`;
+        const nm = `${wd.w}×${wd.h} mm · ${t(wd.w > wd.h ? 'w2.landscape' : 'w2.portrait')}`;
+        rules.push(`${sel}{box-sizing:border-box;width:${wd.w}mm;margin-inline:calc((100% - ${wd.w}mm) / 2);padding-inline:var(--page-side,16mm);padding-block:6mm 4mm;background:var(--paper,#fff);box-shadow:0 0 0 1px var(--rule-strong),0 12px 30px -18px rgba(0,30,61,.45);position:relative}`,
+          `${sel}::after{content:${JSON.stringify(nm)};position:absolute;top:1mm;inset-inline-end:3mm;font-size:7.5pt;color:var(--muted)}`);
+      }
+    }
     for (const x of segs.slice(1)) {
       if (x.page.w === base.w && x.page.h === base.h) continue;
       const sel = `#bw-pair:not([data-pages="single"]):not([data-pages="spread"]) main.bw-doc[data-locale="${ed}"] [style="page:bw-seg-${x.n}"]`;
