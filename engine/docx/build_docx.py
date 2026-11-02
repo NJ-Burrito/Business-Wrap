@@ -474,6 +474,51 @@ def keep_header_with_next(table):
             for pp in cell.paragraphs:
                 pp.paragraph_format.keep_with_next = True
 
+GROUPABLE_ROWS = 12  # render.mjs GROUPABLE_ROWS
+
+
+def keep_headed_table(table) -> None:
+    """0.16.1 (fault 3): a short table (up to GROUPABLE_ROWS rows) right under a heading prints whole with it (render.mjs `hold head whole`);
+    a longer one keeps its first and last three rows. Word: `keep with next` through the rows."""
+    prev = table._tbl.getprevious()
+    if prev is not None and prev.tag == qn('w:p') and ''.join(prev.itertext()).strip():
+        # a lead-in sentence stays with its table (render.mjs `.lead-in{break-after:avoid}`); the heading above it already keeps with it
+        pp_ = prev.find(qn('w:pPr'))
+        if pp_ is None or pp_.find(qn('w:pStyle')) is None:
+            from docx.text.paragraph import Paragraph
+            Paragraph(prev, table._parent).paragraph_format.keep_with_next = True
+            prev = prev.getprevious()
+    ps = prev.find(qn('w:pPr')) if prev is not None and prev.tag == qn('w:p') else None
+    st = ps.find(qn('w:pStyle')) if ps is not None else None
+    if st is None or not str(st.get(qn('w:val')) or '').startswith('Heading'):
+        return
+    if len(table.rows) <= GROUPABLE_ROWS:
+        for row in table.rows[:-1]:
+            for cell in row.cells:
+                for pp in cell.paragraphs:
+                    pp.paragraph_format.keep_with_next = True
+    else:
+        keep_rows_together(table)
+
+
+KEEP_ROWS = 3  # render.mjs KEEP_ROWS: the first and the last three rows of a table never part from its heading or from each other
+
+
+def keep_rows_together(table, head_p=None) -> None:
+    """0.16.1 (fault 3): the print keeps a story card's caption with its first three rows and its last three rows together (render.mjs
+    KEEP_ROWS, `hold`); a card may still break in the middle. Word gets the same: `keep with next` on the caption and on every paragraph of
+    rows 1..KEEP_ROWS-1 and of the rows before the last, so the first three and the last three rows each stay on one page."""
+    rows = table.rows
+    n = len(rows)
+    if head_p is not None:
+        head_p.paragraph_format.keep_with_next = True
+    pick = set(range(0, min(KEEP_ROWS - 1, n - 1))) | set(range(max(n - KEEP_ROWS, 0), n - 1))
+    for ri in pick:
+        for cell in rows[ri].cells:
+            for p in cell.paragraphs:
+                p.paragraph_format.keep_with_next = True
+
+
 def add_stories(document, block, font, counters, chapter_number, story_seq):
     for item_no, item in enumerate(block.get('items', [])):
         story_seq[0] += 1
@@ -527,6 +572,7 @@ def add_stories(document, block, font, counters, chapter_number, story_seq):
                 cell.paragraphs[0].text = ''
                 add_numbered_list_cell(cell, acceptance_items, font, new_criteria_num_id(document))
         theme_mod.style_story_card(story_tbl, _THEME_ROLES)
+        keep_rows_together(story_tbl, cap)
         has_more = bool((item.get('actions') or {}).get('rows')) or bool((item.get('dictionary') or {}).get('rows'))
         card_gap(document, roles, closing=not has_more)
         counters['stories_table'] = counters.get('stories_table', 0) + 1
@@ -961,6 +1007,9 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                 if kind == 'prose':
                     for para_text in block.get('paragraphs', []):
                         p = document.add_paragraph()
+                        p.paragraph_format.space_after = Pt(theme_mod.PROSE_AFTER_PT)
+                        p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
+                        p.paragraph_format.line_spacing = Pt(round(theme_mod.SIZES['body'] * theme_mod.LINE, 1))
                         MD.add_leaf(p, para_text, font, add_script_runs)
                         info = MD.list_info(para_text)
                         if info:
@@ -972,7 +1021,8 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                     MD.add_leaf(p, block.get('text', ''), F['subhead'], add_script_runs, bold=False)
                     counters['subhead_block'] += 1
                 elif kind == 'table':
-                    add_table(document, block.get('columns', []), block.get('rows', []), font, spec=block)
+                    _t = add_table(document, block.get('columns', []), block.get('rows', []), font, spec=block)
+                    keep_headed_table(_t)
                     counters['table_block'] += 1
                 elif kind == 'figure':
                     svg_src = block.get('svg', '')
@@ -989,7 +1039,9 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                     set_para_bidi(cap)
                     cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     cap.paragraph_format.keep_with_next = True
-                    add_script_runs(cap, f"{block.get('figureLabel', '')} {counters['figure']}: {block.get('caption', '')}".strip(), font, bold=True)
+                    # the number and the colon are separate runs: one run «1: » was shown as «:1» in an Arabic line (Word reorders a Latin run as a unit)
+                    add_script_runs(cap, f"{block.get('figureLabel', '')} {counters['figure']}".strip(), font, bold=True)
+                    add_script_runs(cap, f": {block.get('caption', '')}", font, bold=True)
                     p = document.add_paragraph()
                     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     fr = block.get('frame') if isinstance(block.get('frame'), dict) else None
