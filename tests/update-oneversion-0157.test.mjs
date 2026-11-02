@@ -424,7 +424,7 @@ try {
     const bads = [victim, path.join(S.dir, '.local', 'backups', 'update-migration-x', '..', '..', '..', 'victim'), path.join(S.dir, '.local', 'backups', 'other-name'), path.join(S.dir, '.local'), path.join(S.dir, 'drafts'), nested, S.dir];
     for (const [i, bad] of bads.entries()) {
       put(S.parent, 'business-wrap.backup-' + CUR + '/package.json', JSON.stringify({ name: 'business-wrap', version: CUR }));
-      fs.writeFileSync(path.join(bak, '.bw-rollback.json'), JSON.stringify({ phase: 'replacing', from: CUR, pid: 0, incoming: ['../victim/precious.txt', '/etc/passwd', 'C:/Windows/x', '.local/config.json'], dataBackup: bad, backupsExisted: true }));
+      fs.writeFileSync(path.join(bak, '.bw-rollback.json'), JSON.stringify({ phase: 'replacing', from: CUR, pid: 0, incoming: ['../victim/precious.txt', '/etc/passwd', 'C:/Windows/x', '.local/config.json'], dataBackup: bad, backupsExisted: true })); // platform-guard: ok literal inside a tampered marker, never used as a real path
       if (!bad.includes('..')) fs.mkdirSync(bad, { recursive: true });
       const before = tree(S.dir);
       const rec = recoverUpdateLeftovers(S.dir);
