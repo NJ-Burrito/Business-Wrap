@@ -162,11 +162,10 @@ try {
     await page.evaluate(() => window.BW.runAction('view.single'));
     await page.waitForFunction(() => window.BW.S.pageN > 1);
     const got = (await sizes()).map((s) => (s.w > s.h ? 'L' : 'P')).join('');
-    // the page count itself can differ (item 3 of the 0.16.0 brief, not met: the sample has 10 pages here and 9 in the PDF from page 3 on, a
-    // column layout against a print layout around blocks that must stay whole); the turned sheets must come in the same order, and the view says so
+    // 0.16.0: the page count is the PDF's too (tests/pages-0160.test.mjs measures it on every sample); the turned sheets come in the same order
     const runs = (x) => x.replace(/(.)\1+/g, '$1');
     check(`${label}: the PDF's turned sheets come in the view in the same order (pdf ${want} / view ${got})`, runs(want) === runs(got) && want.split('L').length === got.split('L').length, `pdf ${want} / view ${got}`);
-    check(`${label}: the view tells the person its page numbers can differ from the PDF's`, !!(await page.evaluate(() => window.BW.S.viewsNoted)));
+    check(`${label}: the view has the PDF's page count and no note that they may differ (pdf ${want.length} / view ${got.length})`, want.length === got.length && !(await page.evaluate(() => window.BW.S.viewsNoted)), `pdf ${want} / view ${got}`);
     // the page drawer's thumbnails and the print preview are the printed pages themselves: the same pages, each in its own orientation
     const th = (await pageThumbs(doc, { locale: ed, theme: loadTheme() })).map((x) => (x.wide ? 'L' : 'P')).join('');
     check(`${label}: the page drawer and print preview show the PDF's pages in the PDF's orientation (${th})`, th === want && th.includes('L') && th.includes('P'), `thumbs ${th} / pdf ${want}`);

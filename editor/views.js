@@ -92,6 +92,7 @@ function viewsForeign(main, g) {
       box.className = 'bw-frun';
       box.dataset.w = w;
       box.dataset.h = h;
+      if (items.slice(i, j + 1).some((x) => viewsSegOf(x.el) === 'w')) box.dataset.wide = '1'; // a figure chapter prints on `@page wide`: margins 14 mm above and 12 mm below, not 18 and 16
       box.style.setProperty('--rw', `${w}mm`);
       box.style.setProperty('--rh', `${h}mm`);
       it.el.before(box);
@@ -152,13 +153,58 @@ function viewsSheets(main, g) {
   lay.innerHTML = (S.pageTab || []).map((s, k) => `<i class="bw-sheet" data-page="${k}" style="inset-inline-start:${+s.x.toFixed(3)}mm;width:${s.w}mm;height:${s.h}mm"></i>`).join('');
   main.appendChild(lay);
 }
-/** The pages here are laid out on screen by the browser's column layout; the PDF is paginated by its print layout. Where a block that must
- *  stay whole sits near the end of a page, the two can part by a block (measured on the sample: 10 pages here, 9 in the PDF, from page 3 on),
- *  so the first paged view of a document says so, once. */
-function viewsPrintNote() {
-  if (S.viewsNoted === S.svc) return;
-  S.viewsNoted = S.svc;
-  toast(S.ui === 'ar' ? 'الصفحات هنا مرتّبة على الشاشة؛ قد يختلف ترقيم الصفحات عن ملف PDF بصفحة أو اثنتين.' : 'Pages here are laid out on screen; the page numbers can differ from the PDF by a page or two.', 'info');
+/** 0.16.0 · The page count equals the PDF's. The cause of the old gap (10 pages here, 9 in the PDF, a chapter that fits pushed to the next
+ *  column): the PDF is not printed from the plain markup. Before printing, engine/render.mjs `relaxTallGroups` turns each keep-together
+ *  group into an atomic block (`.whole`), frees the ones taller than a page and splits a long held table into its first rows, a free
+ *  middle and its last rows. The paged view laid the plain markup out, where a chain of `break-after: avoid` headings and lists pulled a
+ *  whole chapter to the next column. So the same pass runs here, on a copy of the sheet laid out the way the print pass sees it (a hidden
+ *  frame of the print measure), and its verdicts are written back as classes and attributes only (the editable markup is never cloned or
+ *  split). The markers (`data-rlx`, `data-rlr`) are screen-only and cleared on the next pass. */
+function viewsRelax(main) {
+  // the last pass's verdicts go back to what the markup came with (class and style as rendered), then the pass is made again
+  main.querySelectorAll('[data-rlx]').forEach((e) => {
+    if (e.dataset.rlc === undefined) return;
+    if (e.dataset.rlc) e.setAttribute('class', e.dataset.rlc); else e.removeAttribute('class');
+    if (e.dataset.rls) e.setAttribute('style', e.dataset.rls); else e.removeAttribute('style');
+    delete e.dataset.rlc; delete e.dataset.rls; e.removeAttribute('data-rlx');
+  });
+  main.querySelectorAll('[data-rlr]').forEach((e) => e.removeAttribute('data-rlr'));
+  const pair = document.getElementById('bw-pair');
+  const doc = cur().doc;
+  const live = [...main.querySelectorAll('.keep,.card,.hold,.fig')].filter((e) => !e.closest('.bw-runs'));
+  if (!pair || !doc || !live.length) return;
+  live.forEach((e, i) => { e.dataset.rlx = String(i); e.dataset.rlc = e.getAttribute('class') || ''; e.dataset.rls = e.getAttribute('style') || ''; });
+  const geo = doc.layout?.page ? pageGeom(doc) : PAGE;
+  const probe = document.createElement('div');
+  probe.className = 'bw-probe';
+  probe.setAttribute('aria-hidden', 'true');
+  probe.style.cssText = `position:absolute;left:-30000px;top:0;visibility:hidden;pointer-events:none;width:${geo.measurePx}px;zoom:1`;
+  const copy = main.cloneNode(true);
+  copy.querySelectorAll('.bw-runs,.bw-sheets,.bw-slot').forEach((x) => x.remove());
+  copy.querySelectorAll('[id]').forEach((x) => x.removeAttribute('id'));
+  copy.removeAttribute('id');
+  copy.style.cssText = 'zoom:1;width:100%;margin:0;transform:none;box-shadow:none;height:auto';
+  probe.appendChild(copy);
+  pair.appendChild(probe);
+  try {
+    relaxTallGroups([...(doc.layout?.page ? relaxArgs(doc) : relaxArgs()), copy]);
+    const by = new Map();
+    copy.querySelectorAll('[data-rlx]').forEach((e) => { const l = by.get(e.dataset.rlx); if (l) l.push(e); else by.set(e.dataset.rlx, [e]); });
+    live.forEach((el, i) => {
+      const g = by.get(String(i));
+      if (!g) return;
+      if (g.length > 1) { // a long held table or list: its first rows and its last rows stay together, the middle flows
+        const rows = [...el.children];
+        rows.slice(0, Math.max(0, g[0].children.length - 1)).forEach((r) => { r.dataset.rlr = 'a'; });
+        rows.slice(Math.max(0, rows.length - g[g.length - 1].children.length + 1)).forEach((r) => { r.dataset.rlr = 'b'; });
+        el.style.breakInside = 'auto';
+        el.classList.remove('whole');
+      } else {
+        if (g[0].style.breakInside === 'auto') el.style.breakInside = 'auto';
+        el.classList.toggle('whole', g[0].classList.contains('whole'));
+      }
+    });
+  } finally { probe.remove(); }
 }
 /** A box taller than the document's own page cannot be shown whole in its columns: say so. */
 function viewsOverflow() {
@@ -187,6 +233,7 @@ function viewsApply() {
   box.dir = main.dir; // the book opens in the document's reading direction
   { const p = viewsGeo(); box.style.setProperty('--pw', `${p.Wmm}mm`); box.style.setProperty('--ph', `${p.Hmm}mm`); } // A18: the sheets as set
   viewsUnwrap(main);
+  viewsRelax(main);
   viewsFit();
   const g0 = viewsGeo();
   const made = viewsForeign(main, g0);
@@ -201,7 +248,6 @@ function viewsApply() {
   viewsSheets(main, g);
   viewsRuns(main);
   viewsOverflow();
-  viewsPrintNote();
   viewsGo(0, true);
 }
 /** A5/A6 on screen: every page frame after the cover carries its own header and footer, editable in place (the

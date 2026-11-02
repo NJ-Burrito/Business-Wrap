@@ -1362,11 +1362,14 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
  * too tall or would strand a near-empty page. Port of render.ts `relaxTallGroups`.
  * Serialisable — pass it to page.evaluate, or call it in the browser.
  */
-export function relaxTallGroups([limit, keepRows, pageH, floor]) {
+export function relaxTallGroups([limit, keepRows, pageH, floor, root]) {
   let n = 0;
   let waste = 0;
-  document.querySelectorAll('.keep,.card,.hold,.fig').forEach((el) => {
-    const top0 = el.getBoundingClientRect().top + window.scrollY + waste;
+  // 0.16.0: `root` (optional) is a copy of the document laid out in the editor's probe frame (editor/views.js viewsRelax): its blocks are
+  // measured from the root's own top and only its groups are looked at; without it the whole page is the scope, as before
+  const base = root ? root.getBoundingClientRect().top : -window.scrollY;
+  (root || document).querySelectorAll('.keep,.card,.hold,.fig').forEach((el) => {
+    const top0 = el.getBoundingClientRect().top - base + waste;
     const usedFraction = (((top0 % pageH) + pageH) % pageH) / pageH;
     if (el.classList.contains('fig')) {
       waste += pageH - usedFraction * pageH;

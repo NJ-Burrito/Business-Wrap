@@ -35,7 +35,20 @@ def all_theme_hexes(roles: dict[str, str]) -> set[str]:
         for v in ramp.values():
             hexes.add(v.lstrip('#').upper())
     return hexes
-SIZES = {'title': 24, 'h1': 18, 'h2': 16, 'h3': 14, 'body': 14, 'table': 12, 'meta': 10, 'micro': 9}
+# 0.16.0 (spec T): the document type scale is 2 pt smaller (22 / 16 / 14 / 12 / 12 / 10 / 8 / 7 pt). The DOCX reads it from the design pack's theme
+# (the same "sizes" the PDF prints with), so the two never part; these are the pack-less defaults.
+SIZES = {'title': 22, 'h1': 16, 'h2': 14, 'h3': 12, 'body': 12, 'table': 10, 'meta': 8, 'micro': 7}
+
+def _load_sizes() -> None:
+    try:
+        given = json.loads(THEME_JSON.read_text(encoding='utf-8')).get('sizes') or {}
+    except (OSError, ValueError):
+        return
+    for key, val in given.items():
+        m = re.fullmatch(r'\s*(\d+(?:\.\d+)?)\s*pt\s*', str(val))
+        if key in SIZES and m:
+            SIZES[key] = float(m.group(1)) if '.' in m.group(1) else int(m.group(1))
+_load_sizes()
 COVER_BREAK_RESERVE_TWIPS = 700
 COVER_FOOTER_LIFT_TWIPS = 94
 _TCPR_AFTER_BORDERS = ('w:shd', 'w:noWrap', 'w:tcMar', 'w:textDirection', 'w:tcFitText', 'w:vAlign', 'w:hideMark', 'w:tcPrChange')
