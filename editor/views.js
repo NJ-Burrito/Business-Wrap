@@ -102,12 +102,12 @@ function viewsMix(main, g) {
     if (own !== par) { el.dataset.bwOwn = own; el.dataset.bwPp = par; pairs.add(`${par}|${own}`); }
   }
   const i0 = ind('0');
-  const sel = '@media screen{#bw-pair main.bw-doc[data-bwmix]';
+  const sel = '#bw-pair main.bw-doc[data-bwmix]';
   const rules = [`${sel} .wrap{padding-inline:calc(var(--page-side,16mm) + ${i0}mm)}`,
     `${sel} .cover{margin-inline:${i0}mm;width:${g.base.w}mm;height:${g.base.h}mm}`,
     `${sel} [data-bw-brk]{break-before:column}`];
   for (const k of pairs) { const [par, own] = k.split('|'); rules.push(`${sel} [data-bw-pp="${par}"][data-bw-own="${own}"]{margin-inline:${+(ind(own) - ind(par)).toFixed(3)}mm}`); }
-  st.textContent = rules.join('}') + '}}';
+  st.textContent = `@media screen{${rules.map((r) => `${r}`).join('')}}`;
 }
 /** The sheet each page is printed on, by column: the document's own page unless a segment marker or a figure chapter says another. */
 function viewsSizes(main, n, g) {
@@ -260,7 +260,7 @@ function viewsFit() {
   const spread = viewsMode() === 'spread';
   const g = viewsGeo();
   const win = viewsWindow(g, S.pageAt || 0, spread);
-  const availH = Math.max(240, innerHeight - (S.focus ? 24 : barH || 90) - 92); // 92 = the pager's room below (76) and the gap above (16) of views.css: 84 left the page 8 px taller than the window, so the wheel never turned it
+  const availH = Math.max(240, innerHeight - (S.focus ? 24 : barH || 90) - 84);
   const availW = Math.max(240, document.documentElement.clientWidth - 32);
   const fit = Math.min(availH / (win.h * VIEWS_MM), availW / (win.w * VIEWS_MM), 1.4);
   document.documentElement.style.setProperty('--bw-pz', String(+(fit * S.zoom).toFixed(4)));
@@ -314,6 +314,7 @@ function viewsUnpage() {
   const pair = document.getElementById('bw-pair');
   if (!pair || pair.dataset.pages === 'continuous') return;
   pair.dataset.pages = 'continuous';
+  pair.querySelectorAll('.bw-sheets').forEach((x) => x.remove());
   pair.querySelectorAll('.bw-view').forEach((v) => { const m = v.firstElementChild; if (m) { m.style.removeProperty('--shift'); v.before(m); } v.remove(); });
 }
 /** The page pill under the book: previous · «pages / total» · next, in the document's reading direction. */
@@ -362,7 +363,7 @@ let viewsWheelAt = 0;
 let viewsWheelSum = 0;
 document.addEventListener('wheel', (e) => {
   if (!viewsActive() || e.ctrlKey || !e.target.closest?.('#bw-pair')) return;
-  if (document.documentElement.scrollHeight > innerHeight + 4) return; // zoomed past the window: let it scroll
+  if (document.documentElement.scrollHeight > innerHeight + 12) return; // zoomed past the window: let it scroll (the fit leaves the page 8 px over the window: views.css pads 92, the fit reserves 84; that never counted as zoomed)
   e.preventDefault();
   const now = performance.now();
   if (now - viewsWheelAt < 420) return;

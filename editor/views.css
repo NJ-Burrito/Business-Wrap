@@ -40,7 +40,7 @@
   #bw-pair .bw-runs img { height: 5mm; }
   #bw-pair .bw-view > main.bw-doc[dir="rtl"]::before { background: repeating-linear-gradient(to left, var(--paper, #fafaf9) 0 var(--pw), transparent var(--pw) calc(var(--pw) + var(--pg))); } /* doc-colour */
 }
-@media print { .bw-runs { display: none !important; } }
+@media print { .bw-runs, .bw-sheets { display: none !important; } }
 html[data-bw-calm="1"] #bw-pair .bw-view > main.bw-doc { transition: none; }
 @media (prefers-reduced-motion: reduce) { #bw-pair .bw-view > main.bw-doc { transition: none; } }
 
