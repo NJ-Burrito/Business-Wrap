@@ -20,7 +20,7 @@ import { buildEditor } from '../engine/build-editor.mjs';
 import { launchOptions, REPO } from '../engine/export.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-live0153-'));
-const env = { ...process.env, BW_LOCAL_DIR: path.join(tmp, '.local'), BW_STATE_DIR: path.join(tmp, 'state'), BW_LEARNING_DIR: path.join(tmp, 'learning'), BW_WORKSPACE: path.join(tmp, 'ws'), BW_NO_BROWSER: '1', BW_NO_PROTOCOL: '1', BW_BRIDGE_TIMEOUT_MS: '8000', BW_EDITOR_TIMEOUT_MS: '30000', BW_IDLE_MS: '1500', BW_ASLEEP_MS: '7000' };
+const env = { ...process.env, BW_QUEUE_MS: '0', BW_LOCAL_DIR: path.join(tmp, '.local'), BW_STATE_DIR: path.join(tmp, 'state'), BW_LEARNING_DIR: path.join(tmp, 'learning'), BW_WORKSPACE: path.join(tmp, 'ws'), BW_NO_BROWSER: '1', BW_NO_PROTOCOL: '1', BW_BRIDGE_TIMEOUT_MS: '8000', BW_EDITOR_TIMEOUT_MS: '30000', BW_IDLE_MS: '1500', BW_ASLEEP_MS: '7000' };
 fs.mkdirSync(env.BW_WORKSPACE, { recursive: true });
 Object.assign(process.env, env);
 const H = await import('../engine/host.mjs');

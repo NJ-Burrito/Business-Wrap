@@ -20,7 +20,7 @@ const WANT = process.env.AWAKE_BROWSER || 'chrome'; // AWAKE_BROWSER=operagx rep
 
 const MIN = Number(process.env.AWAKE_MINUTES || 6.5);
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-awake0159-'));
-Object.assign(process.env, { BW_LOCAL_DIR: path.join(tmp, '.local'), BW_STATE_DIR: path.join(tmp, 'state'), BW_LEARNING_DIR: path.join(tmp, 'learning'), BW_WORKSPACE: path.join(tmp, 'ws'), BW_NO_BROWSER: '1', BW_ASLEEP_MS: '6000', BW_BRIDGE_TIMEOUT_MS: '20000', BW_DISCARD_GRACE_MS: '120000' });
+Object.assign(process.env, { BW_LOCAL_DIR: path.join(tmp, '.local'), BW_STATE_DIR: path.join(tmp, 'state'), BW_LEARNING_DIR: path.join(tmp, 'learning'), BW_WORKSPACE: path.join(tmp, 'ws'), BW_NO_BROWSER: '1', BW_ASLEEP_MS: '6000', BW_BRIDGE_TIMEOUT_MS: '20000', BW_QUEUE_MS: '2000', BW_DISCARD_GRACE_MS: '120000' });
 fs.mkdirSync(process.env.BW_WORKSPACE, { recursive: true });
 const H = await import('../engine/host.mjs');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -91,7 +91,7 @@ try {
   for (const k of ['F', 'A', 'B']) { const r = await prep(k); try { info[k] = JSON.parse(r); } catch { info[k] = { err: String(r) }; } }
   check('each tab has its own document and the unsaved edit is in it', ['F', 'A', 'B'].every((k) => info[k].svc && info[k].title === `AWAKE-${k}-MARK`), JSON.stringify(info));
   const vis = {};
-  for (let i = 0; i < 12; i++) { await fetch(`http://127.0.0.1:${cdp}/json/activate/${tabs.F.id}`); await sleep(1500); for (const k of ['F', 'A', 'B']) vis[k] = await tabs[k].ev('document.visibilityState'); if (vis.F === 'visible' && vis.A === 'hidden' && vis.B === 'hidden') break; } // Chrome may hand the focus to the tab that finished loading last: ask again until F is the visible one
+  for (let i = 0; i < 12; i++) { await fetch(`http://127.0.0.1:${cdp}/json/activate/${tabs.F.id}`); await tabs.F.send('Page.bringToFront'); await sleep(1500); for (const k of ['F', 'A', 'B']) vis[k] = await tabs[k].ev('document.visibilityState'); if (vis.F === 'visible' && vis.A === 'hidden' && vis.B === 'hidden') break; } // Chrome may hand the focus to the tab that finished loading last: ask again until F is the visible one
   check('ready state: A and B are hidden, F is visible (the probe saw it)', vis.A === 'hidden' && vis.B === 'hidden' && vis.F === 'visible', JSON.stringify(vis));
   // page-timer probe in A and B (a 100 ms setInterval, counted) and a dedicated-worker probe: both measured from inside the very page the editor runs in
   const probe = `(()=>{ window.__pr={n:0,w:0,t:Date.now()}; setInterval(()=>window.__pr.n++,100); const w=new Worker('/api/session/worker.js',{name:'probe'}); w.onmessage=()=>window.__pr.w++; return 1 })()`;
@@ -174,7 +174,7 @@ try {
   check('A3: a frozen tab is marked asleep by the host (heartbeats against the worker clock)', !!asleep, JSON.stringify(row(await health(), 'A')));
   const fz = await call('get', info.A.tab, info.A.svc, { pointer: '/control/title', locale: info.A.ed });
   say(`frozen A: bridge HTTP ${fz.status} ${fz.j?.code} in ${fz.ms} ms`);
-  check('A3: a command to the frozen tab gets TAB_ASLEEP at once (< 2 s) with what to do', fz.status === 503 && fz.j?.code === 'TAB_ASLEEP' && /click the tab|reopen/i.test(fz.j?.how || '') && fz.ms < 2000, JSON.stringify(fz).slice(0, 300));
+  check('A3: a command to the frozen tab waits the short queue (2 s here, 5 s by default), then gets TAB_ASLEEP with what to do', fz.status === 503 && fz.j?.code === 'TAB_ASLEEP' && /click the tab|reopen/i.test(fz.j?.how || '') && fz.ms >= 1500 && fz.ms < 6000, JSON.stringify(fz).slice(0, 300));
   await tabs.A.send('Page.setWebLifecycleState', { state: 'active' });
   const woke = await until(async () => { const r = row(await health(), 'A'); return r && r.asleep === false && r.awake?.resumed >= 1; }, 30000, 500);
   check('A3: thawed (active), the tab wakes by itself: awake again, the page counted a freeze and a resume', !!woke, JSON.stringify(row(await health(), 'A')));
