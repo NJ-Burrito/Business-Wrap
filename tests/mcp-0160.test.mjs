@@ -278,7 +278,7 @@ try {
   try {
     const P3 = await attach(C1, (u) => u.startsWith('http://127.0.0.1'));
     const up = await booted(P3);
-    const listed = await until(async () => { const x = await call('editor_list_documents', {}); m9 = text(x).slice(0, 200); return x.isError === false && data(x).documents.some((d) => d.id === DOC); }, 40000, 500);
+    const listed = await until(async () => { const x = await call('editor_list_documents', {}); m9 = text(x).slice(0, 200); return !x.isError && data(x).documents.some((d) => d.id === DOC); }, 40000, 500);
     check('M9: a new window attaches to the same host and the library is as it was (positive sample)', !!up && !!listed, `up ${up}; ${m9}`);
   } catch (e) { check('M9: a new window attaches to the same host and the library is as it was (positive sample)', false, `${e.message}; old chrome ${oldC1.cdp}`); }
   /* M10 a busy host is not a dead host: a recorded host whose port accepts but does not answer in time is reused, never asked to stop */
