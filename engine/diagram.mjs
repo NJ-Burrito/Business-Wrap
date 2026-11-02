@@ -1201,7 +1201,34 @@ export const DIAGRAM = (() => {
     const plate = t.plate ? `<rect x="${r1(t.box.x - 3)}" y="${r1(t.box.y + 1)}" width="${r1(t.box.w + 6)}" height="${r1(t.box.h - 2)}" fill="${t.plate}"/>` : '';
     return plate + t.lines.map((l, i) => `<text x="${t.x}" y="${r1(first + i * t.lh + t.size * 0.34)}" text-anchor="middle" font-size="${t.size}"${t.weight && t.weight !== 400 ? ` font-weight="${t.weight}"` : ''} fill="${t.color}"${arabic(l) ? ' direction="rtl"' : ''}${editor && t.legend ? ` data-dg-legend="${esc(t.legend)}"` : ''}${editor && t.edge ? ` data-dg-cap="${esc(t.edge)}"` : ''}>${esc(l)}</text>`).join('');
   }
-  function render(model, { theme, locale = 'ar', title = '', editor = false } = {}) {
+  /* ── 0.15.9: the canvas (block.frame = { wMm, hMm, mode }) ──
+   * The block keeps a canvas size in millimetres. The drawing inside keeps its proportions and is centred; it is scaled to fit the canvas (never stretched,
+   * never cut: a shape moved outside shrinks the drawing instead), and never blown up past FRAME.cap mm per drawing unit (lettering then stays near body size).
+   * mode: 0 = sized by hand, 1 = «fit to shapes», 2 = «fit to page» (a number, not a word: a string under a block would be read as editable text). */
+  const FRAME = { cap: 0.4, min: 20, max: 1200 };
+  const q2 = (v) => Math.round(v * 100) / 100;
+  /** A saved frame as the engine uses it, or null (absent or unusable = the drawing as before). */
+  function frameNorm(f) {
+    if (!f || typeof f !== 'object') return null;
+    const w = +f.wMm;
+    const h = +f.hMm;
+    if (!(w > 0) || !(h > 0) || !Number.isFinite(w) || !Number.isFinite(h)) return null;
+    const c = (v) => q2(Math.min(FRAME.max, Math.max(FRAME.min, v)));
+    return { wMm: c(w), hMm: c(h), mode: [0, 1, 2].includes(+f.mode) ? +f.mode : 0 };
+  }
+  /** The drawing's view grown (never shrunk) to the canvas' proportions, centred, and the scale in mm per unit. */
+  function frameView(view, wMm, hMm) {
+    const sc = Math.min(wMm / view.w, hMm / view.h, FRAME.cap);
+    const w = wMm / sc;
+    const h = hMm / sc;
+    return { x: q2(view.x - (w - view.w) / 2), y: q2(view.y - (h - view.h) / 2), w: q2(w), h: q2(h), sc };
+  }
+  /** «Fit to shapes»: the canvas that hugs the drawing (shapes, labels and legend with the drawing's own even margin) at the biggest scale the limits allow. */
+  function frameHug(view, maxW, maxH) {
+    const sc = Math.min(maxW / view.w, maxH / view.h, FRAME.cap);
+    return { wMm: Math.max(FRAME.min, Math.floor(view.w * sc * 10) / 10), hMm: Math.max(FRAME.min, Math.floor(view.h * sc * 10) / 10) };
+  }
+  function render(model, { theme, locale = 'ar', title = '', editor = false, frame = null } = {}) {
     const r = resolve(model, { theme, locale });
     const fam = [theme?.fonts?.text, 'serif'].filter(Boolean).map((x) => (x === 'serif' ? x : `'${String(x).replace(/[^\w\s-]/g, '')}'`)).join(', ');
     let tips = WIRE_KINDS.map((k) => `<marker id="bwdg-tip-${k}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.6" markerHeight="6.6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="${r.palette.wire[k]}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></marker>`).join('');
@@ -1237,8 +1264,10 @@ export const DIAGRAM = (() => {
     }
     out.push(close());
     void open;
-    const v = r.view;
-    return `<svg xmlns="http://www.w3.org/2000/svg" class="bw-dg" viewBox="${v.x} ${v.y} ${v.w} ${v.h}" width="${v.w}" height="${v.h}" role="img" aria-label="${esc(title)}" font-family="${esc(fam)}" direction="ltr" style="direction:ltr"><defs>${tips}</defs><rect x="${v.x}" y="${v.y}" width="${v.w}" height="${v.h}" fill="${r.palette.paper}"/>${out.join('')}</svg>`;
+    const v = frame ? frameView(r.view, frame.wMm, frame.hMm) : r.view;
+    const wAttr = frame ? `${frame.wMm}mm` : v.w;
+    const hAttr = frame ? `${frame.hMm}mm` : v.h;
+    return `<svg xmlns="http://www.w3.org/2000/svg" class="bw-dg" viewBox="${v.x} ${v.y} ${v.w} ${v.h}" width="${wAttr}" height="${hAttr}" role="img" aria-label="${esc(title)}" font-family="${esc(fam)}" direction="ltr" style="direction:ltr"><defs>${tips}</defs><rect x="${v.x}" y="${v.y}" width="${v.w}" height="${v.h}" fill="${r.palette.paper}"/>${out.join('')}</svg>`;
   }
 
   /* ── from a harvested process graph (humanGraph) ───────────────────────── */
@@ -1389,5 +1418,5 @@ export const DIAGRAM = (() => {
     });
   }
 
-  return { ROUTES, HEADS, LINES: Object.keys(LINES), WEIGHTS: Object.keys(WEIGHTS), anchorPoint, nearestAnchor, edgePoint, nearestOnWire, wireMid, validAnchor, splitByPhase, splitForLegibility, legibility, KINDS, WIRE_KINDS, COLORS, SYMBOLS, FS, G, palette, words, measure, wrap, textW, classify, layout, ensure, route, resolve, render, fromGraph, toMermaid, fromMermaid, starter, glyph };
+  return { FRAME, frameNorm, frameView, frameHug, ROUTES, HEADS, LINES: Object.keys(LINES), WEIGHTS: Object.keys(WEIGHTS), anchorPoint, nearestAnchor, edgePoint, nearestOnWire, wireMid, validAnchor, splitByPhase, splitForLegibility, legibility, KINDS, WIRE_KINDS, COLORS, SYMBOLS, FS, G, palette, words, measure, wrap, textW, classify, layout, ensure, route, resolve, render, fromGraph, toMermaid, fromMermaid, starter, glyph };
 })();

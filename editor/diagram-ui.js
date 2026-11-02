@@ -45,7 +45,7 @@ function dgContext() {
     return { cat: 'shape', label: t('selShape', { x: dgNodeName(node) }), groups: [['dgLabel', kinds, colours, 'dgConnect', 'dgDel'], [icon, 'dgSub', 'dgDup', 'dgFront', 'dgBack']], keep: zoomKeep() };
   }
   const sym = btn('dgSymbol'); // 0.14.0 · O2: a gallery with the full names (the old select was squeezed to a sliver inside the «…» menu)
-  return { cat: 'diagram', label: t('selDiagram'), groups: [['dgStaff', 'dgDecision', 'dgStart', 'dgOk', 'dgStop', sym], ['dgApplicant', 'dgPayment', 'dgRework', 'dgSystem', 'dgNote', 'dgGroup', 'dgText', 'dgAuto', 'dgReset', 'dgFlow', 'dgLegend', 'dgLgReset', 'dgZoom100', 'dgMermaidIn', 'dgMermaidOut']], keep: zoomKeep() };
+  return { cat: 'diagram', label: t('selDiagram'), groups: [['dgStaff', 'dgDecision', 'dgStart', 'dgOk', 'dgStop', sym], ['dgApplicant', 'dgPayment', 'dgRework', 'dgSystem', 'dgNote', 'dgGroup', 'dgText', 'dgAuto', 'dgReset', 'dgFlow', 'dgLegend', 'dgLgReset', 'dgZoom100', 'dgMermaidIn', 'dgMermaidOut'], ['dgCvShapes', 'dgCvPage', 'dgCvAuto']], keep: zoomKeep() };
 }
 /* ── selection paint: outline + resize handle, editor DOM only (never exported) ── */
 function dgPaint() {
@@ -62,17 +62,15 @@ function dgPaint() {
   const g = document.createElementNS(ns, 'g');
   g.setAttribute('class', 'dg-ui');
   // 0.15.0 (F5): lettering that would print too small, or text that overlaps, is a warning on the sheet (editor only, never blocks)
+  let legMsg = '';
   try {
-    const lg = DIAGRAM.legibility(m, { locale: S.ed === 'en' ? 'en' : 'ar' });
+    const fr0 = dgFrameNow();
+    const lg = DIAGRAM.legibility(m, { locale: S.ed === 'en' ? 'en' : 'ar', ...(fr0 ? { frameMm: [fr0.wMm, fr0.hMm] } : {}) });
     if (!lg.ok) {
       const en = S.ed === 'en';
       const msg = en ? `Prints at ${lg.minPtPrinted} pt${lg.overlaps.length ? `, ${lg.overlaps.length} overlap(s)` : ''}: split the figure or enlarge the frame` : `يُطبع بحجم ${lg.minPtPrinted} نقطة${lg.overlaps.length ? `، ${lg.overlaps.length} تداخل` : ''}: قسّم الشكل أو كبّر الإطار`;
-      const v = lg.view;
-      // 0.15.9 (L2): sized for the screen, not for the drawing's units (a drawing scaled down must not shrink the note), and right-aligned in Arabic
-      const sc0 = Math.min(2.6, Math.max(1, 1 / (svg.getScreenCTM()?.a || 1)));
-      const bw = Math.min(v.w - 12, (20 + msg.length * 6.4) * sc0);
-      const bx = en ? v.x + 6 : v.x + v.w - 6 - bw;
-      g.insertAdjacentHTML('beforeend', `<g class="dg-legib"><rect x="${bx}" y="${v.y + 6}" width="${bw}" height="${24 * sc0}" rx="5" fill="#fff4d6" stroke="#8b5a05" stroke-width="${sc0}"/><text x="${en ? bx + 8 * sc0 : bx + bw - 8 * sc0}" y="${v.y + 6 + 16 * sc0}" font-size="${12 * sc0}" fill="#4e3102" direction="${en ? 'ltr' : 'rtl'}" text-anchor="${en ? 'start' : 'end'}" textLength="${Math.min(bw - 16 * sc0, msg.length * 6 * sc0)}" lengthAdjust="spacingAndGlyphs">${esc(msg)}</text></g>`);
+      // 0.15.9 (L2): the note is a readable label on the canvas (HTML at screen size, set in dgCanvasPaint), not a bar drawn in the drawing's own units
+      legMsg = msg;
     }
   } catch { /* a model the check cannot read is the Check panel's business */ }
   for (const id of S.dg.nodes) {
@@ -114,6 +112,7 @@ function dgPaint() {
     if (c) g.insertAdjacentHTML('beforeend', `<rect class="dg-cand" x="${c.x - 5}" y="${c.y - 5}" width="${c.w + 10}" height="${c.h + 10}" rx="8" fill="#005fc2" fill-opacity=".10" stroke="#005fc2" stroke-width="2.5" pointer-events="none"/>`);
   }
   svg.appendChild(g);
+  dgCanvasPaint(fig, legMsg);
 }
 /** The box round one legend entry (its swatch and its words), or null when that entry is not drawn. */
 function dgLegendBox(m, key) {
@@ -792,11 +791,166 @@ document.addEventListener('scroll', (e) => {
   }, { passive: false });
 }
 
+/* ── 0.15.9 · the canvas (block.frame = { wMm, hMm, mode }) ────────────────────────────────────────────────────────
+ * A selected diagram shows eight handles on its canvas. Dragging an edge sizes one dimension, a corner both; a width change is symmetric about the
+ * centre (the canvas stays centred on the page, so the grabbed edge follows the pointer); a height change grows downward (the canvas stays under its title).
+ * The size snaps to a 5 mm grid that is drawn while dragging and follows the Snap switch (S.snap); Alt drags free (0.1 mm). A readout shows the size in mm,
+ * Esc cancels, one drag is one undo step. The size is limited by the room the page leaves (figureRoom): never over a title, the note, the header,
+ * the footer, another page or the margin. «Fit to shapes» hugs the drawing; «Fit to page» fills the room. Both editions get the same canvas (the pair is the unit):
+ * the same op lands in the other edition in the same undo group (a plain `replace` of <block>/frame; `delete` to go back to the automatic size). */
+const DG_CV_STEP = 5;
+function dgFrameOf(ptr = S.dg?.b, ed = S.dg?.ed || S.ed) { return DIAGRAM.frameNorm(dgBlock(ptr, ed)?.frame); }
+/** The canvas being dragged right now, else the saved one (null = the automatic size). */
+function dgFrameNow(ptr = S.dg?.b, ed = S.dg?.ed || S.ed) {
+  const l = S.dgFrameLive;
+  return l && l.ptr === ptr && l.ed === ed ? l.frame : dgFrameOf(ptr, ed);
+}
+function dgRoom(ptr = S.dg?.b, ed = S.dg?.ed || S.ed) { return figureRoom(cur(ed).doc, ptr, S.theme); }
+/** Put a canvas on the figure's element (class, size variables) without a render; null removes it. */
+function dgFrameApply(fig, frame) {
+  fig.classList.toggle('fr', !!frame);
+  if (frame) {
+    fig.dataset.frame = String(frame.mode ?? 0);
+    fig.style.setProperty('--frw', `${frame.wMm}mm`);
+    fig.style.setProperty('--frh', `${frame.hMm}mm`);
+    fig.style.setProperty('--shw', `${dgRoom(fig.dataset.dg, fig.closest('main.bw-doc')?.dataset.locale || S.ed).sheetW}mm`);
+  } else {
+    fig.style.removeProperty('--shw');
+    delete fig.dataset.frame;
+    fig.style.removeProperty('--frw');
+    fig.style.removeProperty('--frh');
+  }
+}
+/** Save a canvas (or null = automatic) in both editions as one undo step. */
+function dgFrameSave(frame, ptr = S.dg.b, ed = S.dg.ed) {
+  const g = newGroup();
+  const ops = (e) => (frame ? [{ op: 'replace', path: `${ptr}/frame`, value: { wMm: frame.wMm, hMm: frame.hMm, mode: frame.mode ?? 0 } }] : dgBlock(ptr, e)?.frame !== undefined ? [{ op: 'delete', path: `${ptr}/frame` }] : []);
+  const mine = ops(ed);
+  const o = other(ed);
+  const twin = S.both && hasOther() && dgBlock(ptr, o)?.kind === 'diagram' ? ops(o) : [];
+  S.dgFrameLive = null;
+  if (mine.length) commit(mine, { ed, mirror: false, group: g, rerender: !twin.length });
+  if (twin.length) commit(twin, { ed: o, mirror: false, group: g });
+}
+const dgMm = (px, k = 1) => (px / k) * (25.4 / 96);
+function dgCanvasPaint(fig, legMsg = '') {
+  const art = fig?.querySelector('.fig-art');
+  if (!art || !S.dg || S.dg.b !== fig.dataset.dg) return;
+  const en = S.ui === 'en';
+  const names = { n: en ? 'top edge' : 'الحافة العليا', s: en ? 'bottom edge' : 'الحافة السفلى', e: en ? 'right edge' : 'الحافة اليمنى', w: en ? 'left edge' : 'الحافة اليسرى', ne: en ? 'top right corner' : 'الزاوية العليا اليمنى', nw: en ? 'top left corner' : 'الزاوية العليا اليسرى', se: en ? 'bottom right corner' : 'الزاوية السفلى اليمنى', sw: en ? 'bottom left corner' : 'الزاوية السفلى اليسرى' };
+  const ui = document.createElement('div');
+  ui.className = 'dg-ui dg-cv';
+  const live = S.dgFrameLive && S.dgFrameLive.ptr === S.dg.b;
+  if (live && S.snap && !S.dgFrameLive.alt) ui.insertAdjacentHTML('beforeend', `<i class="dg-cv-grid" style="background-size:${DG_CV_STEP}mm ${DG_CV_STEP}mm"></i>`);
+  for (const h of Object.keys(names)) ui.insertAdjacentHTML('beforeend', `<b class="dg-cv-h" data-dg-cv="${h}" role="button" aria-label="${esc(`${t('dgCvSize')}: ${names[h]}`)}" title="${esc(`${t('dgCvSize')}: ${names[h]}`)}"></b>`);
+  if (legMsg) ui.insertAdjacentHTML('beforeend', `<span class="dg-cv-note" role="note">${esc(legMsg)}</span>`);
+  if (live) {
+    const f = S.dgFrameLive.frame;
+    ui.insertAdjacentHTML('beforeend', `<span class="dg-cv-read" dir="ltr">${f.wMm.toFixed(1)} × ${f.hMm.toFixed(1)} mm${S.dgFrameLive.capped ? ` · ${esc(t('dgCvMax'))}` : ''}</span>`);
+  }
+  art.appendChild(ui);
+}
+/** The canvas as it is on screen now, in mm (a figure that has no saved canvas is measured). */
+function dgFrameStart(fig, art) {
+  const saved = dgFrameOf();
+  if (saved) return saved;
+  const cs = getComputedStyle(art);
+  const w = art.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const h = art.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  const room = dgRoom();
+  return { wMm: Math.min(room.wMm, Math.max(20, Math.round(dgMm(w) * 10) / 10)), hMm: Math.min(room.hMm, Math.max(20, Math.round(dgMm(h) * 10) / 10)), mode: 0 };
+}
+function dgCanvasDrag(e, handle) {
+  const ptr = S.dg.b;
+  const ed = S.dg.ed;
+  const fig = dgFig(ptr, ed);
+  const art = fig?.querySelector('.fig-art');
+  if (!art) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const kz = art.offsetWidth ? art.getBoundingClientRect().width / art.offsetWidth || 1 : 1;
+  const room = dgRoom(ptr, ed);
+  const f0 = dgFrameStart(fig, art);
+  const had = !!dgFrameOf(ptr, ed);
+  const model = dgModel(ptr, ed);
+  const sx = e.clientX;
+  const sy = e.clientY;
+  const side = handle.dataset.dgCv;
+  let moved = false;
+  const snap = (v, alt) => (S.snap && !alt ? Math.round(v / DG_CV_STEP) * DG_CV_STEP : Math.round(v * 10) / 10);
+  const move = (ev) => {
+    if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 3) return;
+    moved = true;
+    const dx = dgMm(ev.clientX - sx, kz);
+    const dy = dgMm(ev.clientY - sy, kz);
+    let w = f0.wMm;
+    let h = f0.hMm;
+    if (side.includes('e')) w = f0.wMm + 2 * dx;
+    if (side.includes('w')) w = f0.wMm - 2 * dx;
+    if (side.includes('s')) h = f0.hMm + dy;
+    if (side.includes('n')) h = f0.hMm - dy;
+    w = snap(w, ev.altKey);
+    h = snap(h, ev.altKey);
+    const capped = w > room.wMm || h > room.hMm;
+    const frame = { wMm: Math.round(Math.min(room.wMm, Math.max(20, w)) * 10) / 10, hMm: Math.round(Math.min(room.hMm, Math.max(20, h)) * 10) / 10, mode: 0 };
+    S.dgFrameLive = { ptr, ed, frame, capped, alt: ev.altKey };
+    dgFrameApply(fig, frame);
+    dgDraw(model);
+  };
+  const up = () => {
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+    offEsc();
+    const live = S.dgFrameLive;
+    S.dgFrameLive = null;
+    if (!moved || !live) return;
+    if (had && live.frame.wMm === f0.wMm && live.frame.hMm === f0.hMm) { dgDraw(model); return; }
+    dgFrameSave(live.frame, ptr, ed);
+  };
+  const offEsc = dgDragEsc(() => {
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+    S.dgFrameLive = null;
+    if (moved) { dgFrameApply(fig, had ? dgFrameOf(ptr, ed) : null); dgDraw(model); }
+    moved = false;
+  });
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', up);
+}
+document.addEventListener('pointerdown', (e) => {
+  const h = e.target.closest?.('[data-dg-cv]');
+  if (!h || e.button !== 0 || !S.dg) return;
+  dgCanvasDrag(e, h);
+}, true);
+function dgCanvasAction(a) {
+  if (!S.dg?.b || !dgBlock()) return;
+  const ptr = S.dg.b;
+  const ed = S.dg.ed;
+  if (a === 'dgCvAuto') { dgFrameSave(null, ptr, ed); return; }
+  const room = dgRoom(ptr, ed);
+  if (a === 'dgCvPage') { dgFrameSave({ wMm: room.wMm, hMm: room.hMm, mode: 2 }, ptr, ed); return; }
+  if (a === 'dgCvShapes') {
+    const view = DIAGRAM.resolve(dgModel(ptr, ed), { theme: S.theme, locale: ed }).view;
+    dgFrameSave({ ...DIAGRAM.frameHug(view, room.wMm, room.hMm), mode: 1 }, ptr, ed);
+  }
+}
+bwExt({ cmds: ['dgCvShapes', 'dgCvPage', 'dgCvAuto'].map((id) => ({ id, group: 'diagram', edit: true })), on: { render: () => dgRibbonCanvas() } });
+/** The two canvas tools join the diagram tab of the ribbon (its tab list lives in 25-ribbon.js; they are added once, after it has loaded). */
+function dgRibbonCanvas() {
+  if (dgRibbonCanvas.done || typeof RB_TABS === 'undefined') return;
+  dgRibbonCanvas.done = true;
+  const tab = RB_TABS.find((x) => x[0] === 'diagram');
+  if (!tab || tab[1].some((g) => g[0] === 'canvas')) return;
+  tab[1].push(['canvas', ['dgCvShapes', 'dgCvPage']]);
+  RB_LISTED.add('dgCvShapes'); RB_LISTED.add('dgCvPage'); RB_LISTED.add('dgCvAuto');
+  if (typeof RB !== 'undefined') RB.defs = null;
+}
 /** Live redraw of one diagram while dragging (no op yet): the drawing only, then the paint. */
 function dgDraw(model) {
   const fig = dgFig();
   if (!fig) return;
-  fig.querySelector('.fig-art').innerHTML = DIAGRAM.render(model, { theme: S.theme, locale: S.dg.ed, editor: true });
+  const frame = dgFrameNow();
+  fig.querySelector('.fig-art').innerHTML = DIAGRAM.render(model, { theme: S.theme, locale: S.dg.ed, editor: true, ...(frame ? { frame } : {}) });
   dgPaint();
 }
 const dgSnap = (v) => (S.snap ? Math.round(v / 10) * 10 : Math.round(v));
@@ -1028,6 +1182,7 @@ function dgGalleryOpen() {
 }
 async function dgAction(a) {
   if (a === 'dgSymbol') { dgSymbolGallery(); return; }
+  if (/^dgCv/.test(a)) { dgCanvasAction(a); return; }
   if (a === 'addDiagram') {
     const b = blockOf(S.sel?.b);
     const arr = b ? b.arr : '/chapters/0/sections/0/blocks';
