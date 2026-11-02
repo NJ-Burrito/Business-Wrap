@@ -8,7 +8,7 @@
   #bw-pair .bw-view > main.bw-doc {
     zoom: 1; width: var(--pw); height: var(--ph); margin: 0; border-radius: 0; box-shadow: none; background: transparent;
     column-width: var(--pw); column-gap: var(--pg); column-fill: auto;
-    transform: translateX(calc(var(--shift, 0px) + var(--off, 0px))); transition: transform .62s cubic-bezier(.32, .72, 0, 1);
+    transform: translateX(var(--shift, 0px)); transition: transform .62s cubic-bezier(.32, .72, 0, 1);
   }
   /* the open book: the cover stands alone on its own side, then pages pair up */
   #bw-pair[data-pages="spread"] .bw-view > main.bw-doc { margin-inline-start: calc(var(--pw) + var(--pg)); }
@@ -27,9 +27,13 @@
   #bw-pair .bw-view > main.bw-doc[data-bwmix]::before { display: none; }
   #bw-pair .bw-view > main.bw-doc > .bw-sheets { position: absolute; inset-block: 0; inset-inline-start: 0; width: 0; height: var(--ph); z-index: -1; pointer-events: none; }
   #bw-pair .bw-sheets .bw-sheet { position: absolute; top: 0; display: block; background: var(--paper, #fafaf9); /* doc-colour */ filter: drop-shadow(0 1px 1px color-mix(in srgb, var(--bw-band, #001e3d) 16%, transparent)) drop-shadow(0 4px 6px color-mix(in srgb, var(--bw-band, #001e3d) 12%, transparent)); }
+  /* a run of pages of another size: a box with its own columns, as big as that sheet less the margins the document's columns carry (18 + 16 mm
+     above and below, the side margin to each side); it starts on a column of the document's own and the slots its pages cover stay empty */
+  #bw-pair main.bw-doc[data-bwmix] .bw-frun { display: block; box-sizing: content-box; width: calc(var(--rw) - 2 * var(--page-side, 16mm)); height: calc(var(--rh) - 34mm); column-width: calc(var(--rw) - 2 * var(--page-side, 16mm)); column-gap: calc(12mm + 2 * var(--page-side, 16mm)); column-fill: auto; break-before: column; break-after: column; break-inside: avoid; }
+  #bw-pair main.bw-doc[data-bwmix] .bw-slot { display: block; height: 1px; break-after: column; }
   /* A5/A6: each page frame's own header and footer, laid on its column (views.js viewsRuns) */
   #bw-pair .bw-view > main.bw-doc > .bw-runs { position: absolute; inset-block-start: 0; inset-inline-start: 0; width: 0; height: var(--ph); pointer-events: none; }
-  #bw-pair .bw-runs .bw-run-f { position: absolute; inset-block-start: 0; height: var(--fh, 100%); inset-inline-start: calc(var(--k) * (var(--pw) + var(--pg)) + var(--fo, 0mm)); width: var(--fw, var(--pw)); }
+  #bw-pair .bw-runs .bw-run-f { position: absolute; inset-block-start: 0; height: var(--fh, 100%); inset-inline-start: var(--fx, calc(var(--k) * (var(--pw) + var(--pg)))); width: var(--fw, var(--pw)); }
   #bw-pair .bw-runs :is(.bw-run-h, .bw-run-b) { position: absolute; inset-inline: 16mm; font-size: 8pt; color: var(--muted); pointer-events: auto; }
   #bw-pair .bw-runs .bw-run-h { inset-block-start: 7mm; }
   #bw-pair .bw-runs .bw-run-b { inset-block-end: 6mm; }

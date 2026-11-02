@@ -13,7 +13,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO, exportPdf, loadTheme } from '../engine/export.mjs';
+import { launchOptions, REPO, exportPdf, loadTheme, pageThumbs } from '../engine/export.mjs';
 import { pageSizes } from './fixtures/doc-model/util.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-views0159-'));
@@ -58,6 +58,25 @@ try {
     const pn = document.getElementById('bw-ui-host').shadowRoot.querySelector('.pager .pn')?.textContent || '';
     return { bad, k, n: B.S.pageN, w: r.width / z / mm, h: r.height / z / mm, sz, cx: (r.left + r.right) / 2 - vw / 2, inside, seen, others, mineOk: !mine || (Math.abs(mine.width - r.width) < 1.5 && Math.abs(mine.height - r.height) < 1.5), pn, ratioOk: Math.abs(r.width / r.height - sz.w / sz.h) < 0.01 };
   });
+  /** Every line of text and every free object stands on a sheet (nothing is cut), and the free objects sit where they do in a plain document:
+   *  the same place inside their column of the document's own page. */
+  const onSheets = () => page.evaluate(() => {
+    const main = document.querySelector('#bw-pair main.bw-doc[data-locale="' + window.BW.S.ed + '"]');
+    const sheets = [...main.querySelectorAll('.bw-sheet')].map((e) => e.getBoundingClientRect());
+    const off = [];
+    for (const e of main.querySelectorAll('p,li,tr,h2,h3,.bw-ov')) {
+      if (e.closest('.bw-runs')) continue;
+      for (const q of e.getClientRects()) {
+        if (!q.width || !q.height) continue;
+        if (!sheets.some((r) => q.left >= r.left - 2 && q.right <= r.right + 2 && q.top >= r.top - 2 && q.bottom <= r.bottom + 2)) off.push(`${e.tagName}.${e.className}`);
+      }
+    }
+    const mr = main.getBoundingClientRect();
+    const z = parseFloat(getComputedStyle(main.parentElement).zoom) || 1;
+    const slot = (210 + 12) * 96 / 25.4;
+    const ovs = [...main.querySelectorAll('.bw-ov')].filter((e) => !e.closest('.bw-frun')).map((e) => { const q = e.getBoundingClientRect(); const x = (main.dir === 'rtl' ? mr.right - q.right : q.left - mr.left) / z; return [e.dataset.i, +(x % slot).toFixed(1), +((q.top - mr.top) / z).toFixed(1)]; });
+    return { off: off.slice(0, 3), n: off.length, ovs, boxes: main.querySelectorAll('.bw-frun').length };
+  });
   const walk = async (label, dir) => {
     const bad = [];
     const seenSizes = new Set();
@@ -78,6 +97,8 @@ try {
       await page.waitForTimeout(40);
     }
     check(`${label}: ${n} pages, each whole, alone, centred, at its own size`, !bad.length && n > 3, bad.slice(0, 2).join(' | '));
+    const os = await onSheets();
+    check(`${label}: no line of text and no free object lies off its sheet (nothing cut)`, os.n === 0 && os.boxes > 0, JSON.stringify(os.off));
     check(`${label}: both a landscape and a portrait sheet were seen (positive sample)`, [...seenSizes].some((s) => { const [w, h] = s.split('x'); return +w > +h; }) && [...seenSizes].some((s) => { const [w, h] = s.split('x'); return +w < +h; }), [...seenSizes].join(','));
     if (/figure/.test(label)) check(`${label}: the figure sheet holds its content (no text past the sheet)`, !(await page.evaluate(() => window.BW.S.viewsWarned)), await page.evaluate(() => String(window.BW.S.viewsWarned)));
     // and back: previous steps one real page; the wheel steps one page too
@@ -106,8 +127,11 @@ try {
         const sheets = [...view.querySelectorAll('.bw-sheet')].filter((s) => show.includes(+s.dataset.page)).map((s) => s.getBoundingClientRect());
         const cut = sheets.some((a) => a.left < q.left - 1 || a.right > q.right + 1 || a.top < q.top - 1 || a.bottom > q.bottom + 1);
         const vw = document.documentElement.clientWidth;
-        return { k, n: window.BW.S.pageN, vis, show: show.filter((x) => x < window.BW.S.pageN), cut, inside: q.left >= -0.5 && q.right <= vw + 0.5 };
+        const mmw = q.width / (parseFloat(getComputedStyle(view).zoom) || 1) / (96 / 25.4);
+        const T = window.BW.S.pageTab;
+        return { pw: 1, vw: mmw, sz: [T[k], T[k + 1] || {}], k, n: window.BW.S.pageN, vis, show: show.filter((x) => x < window.BW.S.pageN), cut, inside: q.left >= -0.5 && q.right <= vw + 0.5 };
       });
+      if (r.k > 0 && r.k + 1 < r.n && r.pw !== undefined && r.sz && r.sz[0].w === 210 && r.sz[1].w === 210 && Math.abs(r.vw - 432) > 0.6) bad.push(`gap ${JSON.stringify(r)}`);
       if (!(JSON.stringify(r.vis.filter((x) => r.show.includes(x))) === JSON.stringify(r.show) && r.vis.every((x) => r.show.includes(x)) && !r.cut && r.inside)) bad.push(JSON.stringify(r));
       if (r.k + 2 >= r.n) break;
       await page.keyboard.press('PageDown');
@@ -138,10 +162,14 @@ try {
     await page.evaluate(() => window.BW.runAction('view.single'));
     await page.waitForFunction(() => window.BW.S.pageN > 1);
     const got = (await sizes()).map((s) => (s.w > s.h ? 'L' : 'P')).join('');
-    // the text of one page can differ by a column from the PDF's pagination (the front matter flows differently in CSS columns: measured
-    // 10 against 9 pages in the sample, with or without a turned sheet); the sheets themselves must come in the same order and orientation
+    // the page count itself can differ (item 3 of the 0.16.0 brief, not met: the sample has 10 pages here and 9 in the PDF from page 3 on, a
+    // column layout against a print layout around blocks that must stay whole); the turned sheets must come in the same order, and the view says so
     const runs = (x) => x.replace(/(.)\1+/g, '$1');
-    check(`${label}: the PDF's turned sheets come in the view in the same order (${want} / ${got})`, runs(want) === runs(got) && want.split('L').length === got.split('L').length, `pdf ${want} / view ${got}`);
+    check(`${label}: the PDF's turned sheets come in the view in the same order (pdf ${want} / view ${got})`, runs(want) === runs(got) && want.split('L').length === got.split('L').length, `pdf ${want} / view ${got}`);
+    check(`${label}: the view tells the person its page numbers can differ from the PDF's`, !!(await page.evaluate(() => window.BW.S.viewsNoted)));
+    // the page drawer's thumbnails and the print preview are the printed pages themselves: the same pages, each in its own orientation
+    const th = (await pageThumbs(doc, { locale: ed, theme: loadTheme() })).map((x) => (x.wide ? 'L' : 'P')).join('');
+    check(`${label}: the page drawer and print preview show the PDF's pages in the PDF's orientation (${th})`, th === want && th.includes('L') && th.includes('P'), `thumbs ${th} / pdf ${want}`);
     await page.evaluate(() => window.BW.runAction('view.continuous'));
   };
   await edit('en');
@@ -153,6 +181,18 @@ try {
     await edit(ed);
     const dir = await page.evaluate(() => document.querySelector('#bw-pair main.bw-doc[data-locale="' + window.BW.S.ed + '"]').dir);
     // the sample's own figure chapter prints on a turned sheet: portrait, landscape, portrait
+    await page.evaluate(() => window.BW.commit([{ op: 'replace', path: '/overlays', value: [{ id: 'tb-a', kind: 'text', text: 'PLACEHOLDER A', x: 40, y: 150, w: 50, h: 20 }, { id: 'tb-b', kind: 'text', text: 'PLACEHOLDER B', mode: 'anchor', anchor: '/chapters/3/sections/0/blocks/0', x: 30, y: 10, w: 50, h: 20 }], old: [] }]));
+    await page.evaluate(() => window.BW.runAction('view.single'));
+    await page.waitForFunction(() => document.querySelector('#bw-pair .bw-view'));
+    const mixedOv = (await onSheets()).ovs;
+    await page.evaluate(() => window.BW.runAction('view.continuous'));
+    await turn('/chapters/1/sections/0/blocks/0');
+    await page.evaluate(() => window.BW.runAction('view.single'));
+    await page.waitForFunction(() => document.querySelector('#bw-pair .bw-view'));
+    const turnedOv = (await onSheets()).ovs;
+    await page.evaluate(() => window.BW.runAction('view.continuous'));
+    await undoAll();
+    check(`${ed}: free logos, images and text boxes sit in the same place whether or not a page is turned`, mixedOv.length > 0 && mixedOv.length === turnedOv.length && mixedOv.every((o, i) => Math.abs(o[1] - turnedOv[i][1]) < 0.6 && Math.abs(o[2] - turnedOv[i][2]) < 0.6) && (dir === 'rtl' || mixedOv.every((o) => Math.abs(o[1] - (16 + 30) * 96 / 25.4) < 1.5)), JSON.stringify({ mixedOv, turnedOv }));
     await walk(`${ed} figure chapter`, dir);
     await continuous(`${ed} figure chapter, continuous`);
     // a landscape section in the middle, then the first, then the last chapter
