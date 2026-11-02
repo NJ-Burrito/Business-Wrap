@@ -889,8 +889,8 @@ function dgCanvasDrag(e, handle) {
     if (side.includes('w')) w = f0.wMm - 2 * dx;
     if (side.includes('s')) h = f0.hMm + dy;
     if (side.includes('n')) h = f0.hMm - dy;
-    w = snap(w, ev.altKey);
-    h = snap(h, ev.altKey);
+    if (/[ew]/.test(side)) w = snap(w, ev.altKey);
+    if (/[ns]/.test(side)) h = snap(h, ev.altKey);
     const capped = w > room.wMm || h > room.hMm;
     const frame = { wMm: Math.round(Math.min(room.wMm, Math.max(20, w)) * 10) / 10, hMm: Math.round(Math.min(room.hMm, Math.max(20, h)) * 10) / 10, mode: 0 };
     S.dgFrameLive = { ptr, ed, frame, capped, alt: ev.altKey };

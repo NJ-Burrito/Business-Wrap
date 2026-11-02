@@ -609,8 +609,9 @@ section.chapter.wide + section.chapter > h2{margin-top:0}
 .fig.sheet.hug{height:auto;max-height:${PAGE_ART_MM}mm}
 .fig.sheet.hug > .fig-art{flex:0 0 auto;display:block}
 .fig.sheet.hug > .fig-art svg{width:100%;height:auto;max-height:${PAGE_ART_MM - 24}mm;margin:0}
-.fig.sheet.hug.dg.fr{height:auto;max-height:none}
-.fig.dg.fr > .fig-art{box-sizing:content-box;width:var(--frw);height:var(--frh);max-width:none;padding:0;margin-inline:calc((100% - var(--frw)) / 2);display:block;overflow:hidden}
+/* an inline-block, as .whole: Chrome keeps the whole figure (its title, the canvas, the note) on one page; a flex or block figure was cut between its title and the canvas */
+.fig.sheet.hug.dg.fr{display:inline-block;width:100%;vertical-align:top;height:auto;max-height:none}
+.fig.dg.fr > .fig-art{box-sizing:border-box;width:calc(var(--frw) + 2px);height:calc(var(--frh) + 2px);max-width:none;padding:0;margin-inline:calc((100% - var(--frw) - 2px) / 2);display:block;overflow:hidden}
 .fig.sheet.hug.dg.fr > .fig-art svg{width:100%;height:100%;max-width:none;max-height:none;margin:0;display:block}
 figcaption{font-size:var(--t-table);color:var(--primary);margin:0 0 5px;font-weight:700}
 .fig.dg > figcaption{font-family:${display},${text},serif;font-size:var(--t-h3);margin:0 0 2.5mm}
