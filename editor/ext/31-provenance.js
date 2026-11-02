@@ -108,9 +108,7 @@ async function pvLoad(svc, snap = null) {
   // review2 #17: the `bwlog` mark is one of several independent 0.13 traces (BWLOG1.traces: the timeline's marks in each
   // edition, the <meta name="bw-ledger">, the <html data-bw-ledger>, a second CSP hash); any one left means «stripped»
   const traced = live ? ent && BWLOG1.traces({ bwlog: ent.bwlog, services: [{ id: svc, editions: ent.editions }] }, svc).length : BWLOG1.traces(DATA, svc, pvHead()).length;
-  // 0.16.0: a library document (live) whose history this machine's save folder does not hold (the folder was switched, or the history folder is new or was reset) is not «stripped»:
-  // the entry lives in the browser, not in a file someone could have cut. It is neutral and logged from this open on (tamper tests F5 stay for files: !live).
-  if (edited && !L.entries.length && !mir.log && (live ? !!ent : !traced)) { L.src = 'legacy'; L.verdict = { ok: true, issues: [], legacy: true }; L.pins = {}; return (PV.logs[svc] = L); }
+  if (edited && !L.entries.length && !mir.log && (live ? ent && !traced : !traced)) { L.src = 'legacy'; L.verdict = { ok: true, issues: [], legacy: true }; L.pins = {}; return (PV.logs[svc] = L); }
   // a log continued from this machine's mirror is newer than any file state: only its chain and head are checked
   L.verdict = await BWLOG1.verify(L, { mirror: L.from ? null : L.mirror, editions: L.src === 'mirror' ? undefined : eds, saved: L.src === 'html' || L.src === 'entry' });
   L.pins = L.verdict.pins;
