@@ -207,9 +207,15 @@ function ctxFit() {
     }
     if (!chosen) { ctx.dataset.fit = looks[2][0]; ctxPlace(sb, 0); }
   };
+  // 0.16.0: the same strip in the same room is not re-fitted: the loop below moves tools in and out of «More» to measure, which is hundreds of DOM changes per key
+  // (tests/files-perf D1). The room is the strip's width, its title's width, its tool count and language; any of them changing fits again.
+  const sc0 = ctx.querySelector(':scope > .sc');
+  const sig = [ctx.getBoundingClientRect().width.toFixed(1), sc0 ? sc0.getBoundingClientRect().width.toFixed(1) : 0, sb.getBoundingClientRect().left.toFixed(1), ctx.dataset.fit || '', sb.__fit ? sb.__fit.all.length : sb.children.length, ctx.dataset.key || '', document.documentElement.lang, document.fonts?.status || ''].join('|');
+  if (sb.__fit && sb.__fitSig === sig && !ctxFit.force) return;
   if (ctxRo) { ctxRo.disconnect(); ctxRo.observe(ctx); const sc = ctx.querySelector(':scope > .sc'); if (sc) ctxRo.observe(sc); } // the title's own width changes when the real font arrives
   RB.ctxBusy = true;
   try { run(); } finally { RB.ctxBusy = false; ctxMo?.takeRecords(); }
+  sb.__fitSig = sb.__fit?.more?.querySelector('.menu[data-open="1"]') ? '' : sig;
 }
 let ctxMo = null, ctxRo = null;
 if (typeof MutationObserver === 'function') {

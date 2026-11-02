@@ -1015,7 +1015,7 @@ const DOC153 = {
     const bl = m && get(cur().doc, ptr);
     if (!bl || bl.kind !== 'diagram' || !bl.model) return { figures: 0, reason: 'not a diagram' };
     const mk = (ed) => ({ theme: designTheme(S.theme, cur(ed).doc), locale: ed === 'en' ? 'en' : 'ar' });
-    const res = DIAGRAM.splitForLegibility(bl.model, mk(S.ed));
+    const res = DIAGRAM.splitForLegibility(bl.model, { ...mk(S.ed), ...(bl.frame?.wMm > 0 && bl.frame?.hMm > 0 ? { frameMm: [bl.frame.wMm, bl.frame.hMm] } : {}) });
     if (!res || res.figures.length < 2) return { figures: 1, reason: 'already legible or too small to cut' };
     const group = newGroup();
     const cap = res.cap;
@@ -1179,12 +1179,12 @@ function tableOverflow(main) {
 }
 /** Legibility of one diagram, cached by the model object (an edit replaces the model) and the theme / edition it was measured for. */
 const LEG = new WeakMap();
-function diagramLegibility(model, d) {
-  const key = `${S.ed}|${S.theme?.id || S.theme?.name || ''}`;
+function diagramLegibility(model, d, frame) {
+  const key = `${S.ed}|${S.theme?.id || S.theme?.name || ''}|${frame ? JSON.stringify(frame) : ''}`;
   const hit = LEG.get(model);
   if (hit && hit.key === key && hit.theme === S.theme && hit.fn === DIAGRAM.legibility) return hit.r;
   let r = null;
-  try { r = DIAGRAM.legibility(model, { theme: designTheme(S.theme, d), locale: S.ed }); } catch { r = null; }
+  try { r = DIAGRAM.legibility(model, { theme: designTheme(S.theme, d), locale: S.ed, ...(frame ? { frame } : {}) }); } catch { r = null; }
   LEG.set(model, { key, theme: S.theme, fn: DIAGRAM.legibility, r });
   return r;
 }
@@ -1313,7 +1313,7 @@ const CMDS = [
   ['duplicate', 'text', 'Ctrl+D'], ['delete', 'text', 'Del'], ['moveUp', 'text', 'Alt+↑'], ['moveDown', 'text', 'Alt+↓'], ['comment', 'text'], ['breakBefore', 'text'], ['keepNext', 'text'],
   ['rowAdd', 'table'], ['rowDel', 'table'], ['colAdd', 'table'], ['colDel', 'table'],
   ['dgStaff', 'diagram'], ['dgApplicant', 'diagram'], ['dgStart', 'diagram'], ['dgPayment', 'diagram'], ['dgRework', 'diagram'], ['dgSystem', 'diagram'], ['dgDecision', 'diagram'], ['dgOk', 'diagram'], ['dgStop', 'diagram'],
-  ['dgNote', 'diagram'], ['dgGroup', 'diagram'], ['dgText', 'diagram'], ['dgAuto', 'diagram'], ['dgReset', 'diagram'], ['dgFlow', 'diagram'], ['dgLegend', 'diagram'], ['dgMermaidIn', 'diagram'], ['dgMermaidOut', 'diagram'],
+  ['dgNote', 'diagram'], ['dgGroup', 'diagram'], ['dgText', 'diagram'], ['dgAuto', 'diagram'], ['dgReset', 'diagram'], ['dgLegend', 'diagram'], ['dgMermaidIn', 'diagram'], ['dgMermaidOut', 'diagram'],
   ['dgLabel', 'shape'], ['dgSub', 'shape'], ['dgConnect', 'shape'], ['dgDup', 'shape'], ['dgDel', 'shape', 'Del'], ['dgFront', 'shape'], ['dgBack', 'shape'],
   ['dgAlignL', 'arrange'], ['dgAlignC', 'arrange'], ['dgAlignR', 'arrange'], ['dgAlignT', 'arrange'], ['dgAlignM', 'arrange'], ['dgAlignB', 'arrange'], ['dgDistH', 'arrange'], ['dgDistV', 'arrange'], ['dgWrap', 'arrange'],
   ['dgEdgeLabel', 'arrow'], ['dgBendAdd', 'arrow'], ['dgBendDel', 'arrow'], ['dgRouteAuto', 'arrow'], ['dgReverse', 'arrow'], ['dgFrom', 'arrow'], ['dgTo', 'arrow'],
@@ -1634,8 +1634,10 @@ function buildCtx(b, tb) {
     // kept tools (the diagram's zoom) stay in view as icons, after the first four
     const kept = (m.keep || []).map((id) => btn(id, { cls: 'ico' })).join('');
     const ui0 = S.ui; S.ui = other(ui0); const altLabel = ctxModel(b, tb)?.label || ''; S.ui = ui0; // the other language's title, for the parity measure
+    const focusedTool = ctx.contains(root.activeElement) ? root.activeElement.dataset?.a || '' : null; // a tool pressed by keyboard or mouse keeps the keyboard when the strip is rebuilt under it
     ctx.innerHTML = `<span class="sc"><span class="i" aria-hidden="true">${ic('secSel')}</span><span class="st" data-alt="${esc(altLabel)}">${esc(m.label)}</span></span><div class="sb">${first.map((id) => ctxTool(id, ov)).join('')}${kept ? `<span class="keep-tools" role="group" aria-label="${esc(t('zoom'))}">${kept}</span>` : ''}${more.length ? `<div class="more"><button type="button" class="b" data-a="more" aria-expanded="false" aria-haspopup="true" title="${esc(t('more'))}"><span class="i">${ic('more')}</span><span class="w">${esc(t('more'))}</span></button><div class="menu" role="group" aria-label="${esc(t('more'))}" hidden>${more.map((id) => ctxTool(id, ov)).join('')}</div></div>` : ''}</div>`;
     if (!isCalm()) { ctx.classList.remove('swap'); void ctx.offsetWidth; ctx.classList.add('swap'); }
+    if (focusedTool != null) { const again = focusedTool && [...ctx.querySelectorAll('[data-a]')].find((x) => x.dataset.a === focusedTool && !x.disabled); (again || ctx.querySelector('.sb .b:not([disabled])'))?.focus({ preventScroll: true }); }
   }
   ctx.hidden = false;
 }
@@ -3251,7 +3253,7 @@ const BRIDGE = (() => {
   // 0.15.2 note 12: the allow-list adds SAFE actions (they change the view, never the content); destructive ones stay locked (REFUSED, never run)
   const SAFE = ['zoomPct', 'zoomHeight', 'zoomWidth', 'zoomIn', 'zoomOut', 'zoomReset', 'theme', 'reading', 'find', 'save', 'outline', 'nextPage', 'prevPage'];
   const FIXES = ['fixTashkeel', 'singleEdition', 'splitFigure']; // 0.15.3: the Check panel's fixes, one call each
-  const ACTIONS = ['renumber', 'check', 'saveHtml', 'share', 'exportPdf', 'dismissResume', 'claim', 'verifyHistory', ...FIXES, ...SAFE]; // dismissResume / claim: 0.16.0 (the session extension, editor/ext/12-session.js)
+  const ACTIONS = ['renumber', 'check', 'autoLayout', 'saveHtml', 'share', 'exportPdf', 'dismissResume', 'claim', 'verifyHistory', ...FIXES, ...SAFE]; // dismissResume / claim: 0.16.0 (the session extension, editor/ext/12-session.js)
   const LOCKED = /^(delete|remove|close|stop|power|clear|purge|reset|wipe|erase|trash|quit|exit)/i;
   const tools = {
     async list({ project, include_trashed } = {}) {
@@ -3338,6 +3340,7 @@ const BRIDGE = (() => {
       if (id === 'claim') { const r = await EXT.session?.claim?.(doc); if (!r?.ok) throw err(r?.code || 'REFUSED', r?.error || 'claim failed'); return { id, ...r }; } // takes the document's lease for this tab now
       const ed = await target(doc, args.locale);
       if (id === 'check') return checkAll();
+      if (id === 'autoLayout') { let r; await asAgent(args.agent || 'Claude', async () => { r = EXT.diagram.autoLayout(args.pointer, args, ed); }, true); await EXT.library?.persist?.(S.svc); return { id, ...r }; } // 0.16.0: one undoable replace of the diagram's model
       if (id === 'verifyHistory') return verifyHistoryNow();
       if (id === 'exportPdf') return exportViaHost(args, ed);
       if (FIXES.includes(id)) {
@@ -3429,13 +3432,15 @@ const BRIDGE = (() => {
       spelling = { enabled: true, ar: list.filter((i) => i.lang === 'ar').length, en: list.filter((i) => i.lang === 'en').length, total: list.length };
     }
     const d = cur().doc;
-    const diagramWarnings = [];
+    const diagramWarnings = [], diagramChecks = [];
     (d.chapters || []).forEach((ch, ci) => (ch.sections || []).forEach((sec, si) => (sec.blocks || []).forEach((bl, bi) => {
       if (bl.kind !== 'diagram' || !bl.model || typeof DIAGRAM.legibility !== 'function') return;
-      const r = diagramLegibility(bl.model, d);
-      if (r && !r.ok) diagramWarnings.push({ path: `/chapters/${ci}/sections/${si}/blocks/${bi}`, minPtPrinted: r.minPtPrinted, minPt: r.minPt, small: (r.small || []).length, overlaps: (r.overlaps || []).length });
+      const r = diagramLegibility(bl.model, d, bl.frame);
+      const path = `/chapters/${ci}/sections/${si}/blocks/${bi}`;
+      if (r) diagramChecks.push({ path, legible: !!r.ok, minPtPrinted: r.minPtPrinted, arrowOverlaps: r.wireOverlaps, arrowCrossings: r.wireCrossings });
+      if (r && !r.ok) diagramWarnings.push({ path, minPtPrinted: r.minPtPrinted, minPt: r.minPt, small: (r.small || []).length, overlaps: (r.overlaps || []).length, arrowOverlaps: r.wireOverlaps, arrowCrossings: r.wireCrossings });
     })));
-    return { id: 'check', findings, spelling, diagramWarnings };
+    return { id: 'check', findings, spelling, diagramWarnings, diagramChecks };
   }
   /** The safe view actions: zoom, theme, reading mode, find, save, outline, page turns. None adds an op to the document. */
   async function safeAction(id, args) {

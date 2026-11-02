@@ -76,12 +76,12 @@
 
 💬 ثم قل: **«ابن وثيقة متطلبات …»** أو **«افتحها في المحرر»**.
 
-🔌 **خادم MCP وحده** (أي عميل MCP، stdio محلي؛ الإصدار 0.15.9 من وسم GitHub، فسجل npm ما زال على 0.12.0):
+🔌 **خادم MCP وحده** (أي عميل MCP، stdio محلي؛ الإصدار 0.16.0 من وسم GitHub، فسجل npm ما زال على 0.12.0):
 
 <div dir="ltr">
 
 ```
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.15.9 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.16.0 business-wrap-mcp
 ```
 
 </div>
@@ -474,7 +474,7 @@ git config core.hooksPath .githooks
 <details>
 <summary>💻 على أي نظام يعمل؟</summary>
 
-جرى اختباره على Windows 11 مع Node 24 وChrome. ويحتاج Node 20 أو أحدث، وGoogle Chrome، وPython مع uv لملفات DOCX. ولم يجر اختباره على macOS ولينكس.
+جرى اختباره على Windows 11 مع Node 24 وChrome. ويحتاج Node 20 أو أحدث، وGoogle Chrome، وPython مع uv لملفات DOCX. **لينكس غير مدعوم** (حزمة npm ترفض التثبيت عليه)، ولم يجر اختباره على macOS.
 
 </details>
 

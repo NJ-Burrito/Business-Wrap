@@ -52,8 +52,11 @@ jobs:
         run: python security/check.py --selftest
 
   checks:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    runs-on: windows-latest # Windows is the one supported platform (Linux is unsupported since 0.16.0); the history gate opens old saved files
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -97,8 +100,11 @@ jobs:
 
   tests:
     name: tests (shard ${{ matrix.shard }}/4)
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    runs-on: windows-latest # Windows is the one supported platform (Linux is unsupported since 0.16.0)
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false # a failure in one shard must not hide the others' results
       matrix:
@@ -120,16 +126,16 @@ jobs:
 
       - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
 
-      - name: Test tools (poppler, an Arabic-capable fallback face, Python libs)
+      - name: Test tools (poppler, Python libs; Google Chrome is on the runner)
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq poppler-utils fonts-noto-core
+          choco install poppler -y --no-progress
           uv pip install --system pymupdf python-docx lxml jsonschema
 
       - name: Editor engine tests, shard ${{ matrix.shard }}/4
         env:
           PYTHONUTF8: "1"
           CI: "true"
+          BW_CHROME: C:\Program Files\Google\Chrome\Application\chrome.exe
         run: node tests/run.mjs --shard ${{ matrix.shard }}/4
 
       - name: Suite times (feed them to node tests/run.mjs --merge to refresh durations.json)

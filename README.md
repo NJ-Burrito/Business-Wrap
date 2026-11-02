@@ -67,9 +67,9 @@
 ```
 💬 Then say **"build the requirements document for …"** or **"open it in the editor"**.
 
-🔌 **MCP server only** (any MCP client, stdio, local; 0.15.9 from the GitHub tag; npm still serves 0.12.0):
+🔌 **MCP server only** (any MCP client, stdio, local; 0.16.0 from the GitHub tag; npm still serves 0.12.0):
 ```
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.15.9 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.16.0 business-wrap-mcp
 ```
 
 💻 **From source:** `git clone https://github.com/NJ-Burrito/Business-Wrap`, then the [Quick start](#️-quick-start).
@@ -442,7 +442,7 @@ Thmanyah by default: your own copy wins, and a bundled fallback (under the Thman
 <details>
 <summary>💻 What does it run on?</summary>
 
-Tested on Windows 11 with Node 24 and Chrome. It needs Node 20+, Google Chrome (or another Chromium browser), and Python with uv for DOCX. macOS and Linux are untested.
+Tested on Windows 11 with Node 24 and Chrome. It needs Node 20+, Google Chrome (or another Chromium browser), and Python with uv for DOCX. **Linux is not supported** (the package refuses to install there); macOS is untested.
 
 </details>
 

@@ -303,7 +303,11 @@
   "explain.spellIgnoreAll": "يتجاهل هذه الكلمة في كل الوثيقة.",
   "explain.spellAdd": "يضيف الكلمة إلى قاموسك، فلا تُعدّ خطأً بعد الآن.",
   "explain.spellCount": "يعرض عدد الأخطاء الإملائية المتبقية.",
-  "explain.spellLang": "يختار لغة التدقيق: العربية أو الإنجليزية أو الاثنتين معاً."
+  "explain.spellLang": "يختار لغة التدقيق: العربية أو الإنجليزية أو الاثنتين معاً.",
+  "explain.dgCvShapes": "يضبط حجم لوحة المخطط على أشكاله فقط، بهامش صغير متساوٍ حولها.",
+  "explain.dgCvPage": "يملأ لوحة المخطط المساحة الحرة من الصفحة تحت عنوان القسم وعنوان الشكل وفوق الملاحظة والتذييل، دون أن يتجاوزها.",
+  "explain.dgCvAuto": "يعيد لوحة المخطط إلى حجمها التلقائي.",
+  "explain.dgCvRoute": "يرتّب الأسهم بحيث لا يعلو سهم سهماً: قوس صغير عند التقاطع ومسافة ثابتة بين المتوازية."
  },
  "en": {
   "xpl.panel": "Explain",
@@ -609,6 +613,10 @@
   "explain.spellIgnoreAll": "Ignores this word everywhere in the document.",
   "explain.spellAdd": "Adds the word to your dictionary so it is no longer flagged.",
   "explain.spellCount": "Shows how many spelling mistakes are left.",
-  "explain.spellLang": "Chooses the checking language: Arabic, English, or both."
+  "explain.spellLang": "Chooses the checking language: Arabic, English, or both.",
+  "explain.dgCvShapes": "Sizes the canvas to the shapes only, with a small even margin around them.",
+  "explain.dgCvPage": "Fills the free area of the page below the section title and the figure title and above the note and footer, never past it.",
+  "explain.dgCvAuto": "Returns the canvas to its automatic size.",
+  "explain.dgCvRoute": "Arranges the arrows so none lies over another: a small arc at each crossing and an even gap between parallel ones."
  }
 }

@@ -332,7 +332,10 @@
 [data-ic="dgWrap"] > * { --r:8deg; --icm: icm-tilt var(--mvt); }
 [data-ic="dgAuto"] > * { --r:180deg; --icm: icm-spin var(--mvt); }
 [data-ic="dgReset"] > * { --r:-360deg; --icm: icm-spin var(--mvt); }
-[data-ic="dgFlow"] > * { --icm: icm-draw var(--mvt); }
+[data-ic="dgCvShapes"] > * { --icm: icm-recede var(--mvt); }
+[data-ic="dgCvPage"] > * { --icm: icm-grow-y var(--mvt); }
+[data-ic="dgCvAuto"] > * { --r:180deg; --icm: icm-spin var(--mvt); }
+[data-ic="dgCvRoute"] > * { --icm: icm-draw var(--mvt); }
 [data-ic="dgMermaidIn"] > * { --y:-3px; --icm: icm-from var(--mvt); }
 [data-ic="dgMermaidOut"] > * { --y:-3px; --icm: icm-nudge var(--mvt); }
 [data-ic="dgReverse"] > * { --icm: icm-flip var(--mvt); }

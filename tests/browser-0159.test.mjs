@@ -58,11 +58,12 @@ check('B1: a launcher default resolves to the installed executable of its browse
 
 // B5 PDF engine: BW_CHROME / config first, then the same chain
 const cfgBefore = process.env.BW_CHROME;
+delete process.env.BW_CHROME; // B5 tests the search order; a BW_CHROME set for the run (the tested browser) would answer first
 check('B5: PDF engine = Chrome when present, whatever the default', X.chromePath({ installed: everything, defaultExe: P.operagx }) === P.chrome);
 check('B5: Chrome absent -> the Chromium default, then Edge, then any', X.chromePath({ installed: pick('edge', 'operagx'), defaultExe: P.operagx }) === P.operagx && X.chromePath({ installed: pick('edge', 'brave'), defaultExe: P.firefox }) === P.edge && X.chromePath({ installed: pick('brave'), defaultExe: '' }) === P.brave);
 check('B5: a Firefox default never prints a PDF', X.chromePath({ installed: {}, defaultExe: P.firefox }) === undefined);
 check('B5: none found: a clear message in both languages', /Chromium/.test(X.noBrowserMessage('en')) && /Chrome/.test(X.noBrowserMessage('en')) && /[\u0600-\u06FF]/.test(X.noBrowserMessage('ar')) && /BW_CHROME/.test(X.noBrowserMessage('ar')));
-void cfgBefore;
+if (cfgBefore !== undefined) process.env.BW_CHROME = cfgBefore;
 
 // B6 BW_EDGE keeps naming Edge; the keep-awake flags cover every vendor
 check('B6: BW_EDGE names Edge (an old setup)', X.installedBrowsers({ BW_EDGE: P.edge }).edge === P.edge);

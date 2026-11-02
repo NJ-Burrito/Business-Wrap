@@ -1,6 +1,6 @@
 {
   "name": "business-wrap",
-  "version": "0.15.9",
+  "version": "0.16.0",
   "description": "Bilingual (Arabic RTL / English LTR) requirements documents from evidence: an interactive HTML editor that is the print layout, PDF + DOCX export, design packs and security gates.",
   "license": "MIT",
   "mcpName": "io.github.NJ-Burrito/business-wrap",
@@ -74,6 +74,9 @@
   "engines": {
     "node": ">=20"
   },
+  "os": [
+    "!linux"
+  ],
   "scripts": {
     "test": "node engine/build-skill-html.mjs --check && node tests/run.mjs",
     "test:serial": "node engine/build-skill-html.mjs --check && node tests/run.mjs --serial",

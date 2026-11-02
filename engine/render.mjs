@@ -275,7 +275,7 @@ export function docSheet(doc) {
 }
 /** mm of a CSS length written as the theme writes sizes (pt, px, mm, cm, em). */
 const cssMm = (v, d) => {
-  const m = /^(\d+(?:\.\d+)?)(pt|px|mm|cm|em)$/.exec(String(v));
+  const m = /^(\d+(?:\.\d+)?)(pt|px|mm|cm|em)$/.exec(String(v)); // leaf-ok: a CSS length from the theme, not a text leaf
   if (!m) return d;
   const n = +m[1];
   return { pt: (n * 25.4) / 72, px: (n * 25.4) / 96, mm: n, cm: n * 10, em: n * 4.9 }[m[2]];
