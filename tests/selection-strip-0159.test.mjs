@@ -244,13 +244,13 @@ async function runJob([win, zoom, ui, dark]) {
   await deselect(page, cssH);
   await select(page, 'diagram empty', cssH);
   const z0 = await page.evaluate(() => document.querySelector('main.bw-doc figure[data-dg]').dataset.zoom || '');
-  const kt = page.locator(HOST).locator('.island > .ctx .keep-tools button').first();
+  const kt = page.locator(HOST).locator('.island > .ctx .keep-tools button[data-a="dgZoomIn"]').first();
   const kbox = await kt.boundingBox();
   const kkey = await kt.evaluate((e) => e.dataset.a);
   await kt.click();
   await page.waitForTimeout(150);
   const z1 = await page.evaluate(() => document.querySelector('main.bw-doc figure[data-dg]').dataset.zoom || '');
-  check('ENTRY_SMOKE a press on a strip tool runs it (diagram zoom key)', !!kbox && (z0 !== z1 || kkey === 'dgZoomFit'), JSON.stringify({ kkey, z0, z1 }));
+  check('ENTRY_SMOKE a press on a strip tool runs it (diagram zoom in key; zoom out at the fitted size has nothing left to shrink since 0.16.1)', !!kbox && (z0 !== z1), JSON.stringify({ kkey, z0, z1 }));
   const reach = await page.evaluate(async () => {
     const R = document.getElementById('bw-ui-host').shadowRoot;
     const ctx = R.querySelector('.island > .ctx');

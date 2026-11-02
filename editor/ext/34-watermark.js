@@ -221,6 +221,38 @@
       + '<div class="bw-wm-fx" aria-hidden="true"><i class="fx-shadow"></i><i class="fx-star"></i><i class="fx-ring"></i><i class="fx-ring"></i><i class="fx-ring"></i></div></div>'
       + '<span class="bw-wm-tag" aria-hidden="true"></span><span class="bw-wm-live" aria-live="polite"></span>';
     document.body.appendChild(wm);
+    /* 0.16.1 (fault 4): the mark stays visible and never hides a panel's text. It sits bottom left; while an open panel (Settings and the other drawers, the spelling panel, a dialog)
+       would lie under it, it takes the opposite bottom corner, and goes back when the panel closes. Read from the panels' real boxes, not from a language. */
+    const wmAvoid = (() => {
+      let raf = 0;
+      const run = () => {
+        raf = 0;
+        const sr = document.getElementById('bw-ui-host')?.shadowRoot;
+        if (!sr) return;
+        const vw = document.documentElement.clientWidth;
+        const w = wm.offsetWidth || 84, h = wm.offsetHeight || 100;
+        const live = (sel) => [...sr.querySelectorAll(sel)].filter((p) => {
+          if (p.hidden || p.closest('[hidden]')) return false;
+          const cs = getComputedStyle(p);
+          return cs.display !== 'none' && cs.visibility !== 'hidden';
+        }).map((p) => p.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0);
+        const panels = live('.drawer:not(.closing), .sp-side, [role="dialog"]');
+        const toasts = live('.toasts .toast');
+        const over = (rs, left, lift) => rs.some((r) => r.left < left + w + 8 && r.right > left - 8 && r.top < innerHeight - 16 - lift && r.bottom > innerHeight - 16 - lift - h - 8);
+        const lift = Math.max(0, Math.round(innerHeight - 16 - Math.min(...toasts.map((r) => r.top), innerHeight) + 8));
+        // home first; else the other corner; else the other corner above the toasts; else home
+        const tries = [['left', 0], ['right', 0], ['right', lift]];
+        const pick = tries.find(([side, lf]) => { const left = side === 'left' ? 16 : vw - 16 - w; return !over(panels, left, lf) && (side === 'left' || !over(toasts, left, lf)); }) || tries.find(([side, lf]) => { const left = side === 'left' ? 16 : vw - 16 - w; return !over(panels, left, lf); }) || tries[0];
+        if (wm.dataset.wmSide !== pick[0]) wm.dataset.wmSide = pick[0];
+        wm.style.setProperty('--bw-wm-lift', pick[1] ? `${pick[1]}px` : '0px');
+      };
+      const soon = () => { if (!raf) raf = requestAnimationFrame(run); };
+      const sr = document.getElementById('bw-ui-host')?.shadowRoot;
+      if (sr) new MutationObserver(soon).observe(sr, { subtree: true, childList: true, attributes: true, attributeFilter: ['hidden', 'class', 'open'] });
+      window.addEventListener('resize', soon);
+      soon();
+      return soon;
+    })();
     const stage = wm.querySelector('.bw-wm-stage');
     const mark = wm.querySelector('.bw-wm-mark');
     const imgs = [...mark.querySelectorAll('img')];

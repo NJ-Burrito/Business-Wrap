@@ -26,7 +26,10 @@ function viewsSet(mode) {
   S.pageAt = first;
   S.view = false; // a page mode is a choice: the View menu closes and shows the pages
   buildUi();
-  render();
+  // 0.16.1 (fault 1): a page view shows ONE sheet at the top of the stage. The scroll place of the long continuous page (render() would put it back) is
+  // meaningless there: kept, it leaves the sheet above the window and the stage empty. The page the reader was on is kept through S.pageAt.
+  render(mode === 'continuous');
+  if (mode !== 'continuous') window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   if (mode === 'continuous') viewsReveal(first);
 }
 /** The page the reader is on (for keeping the place across a mode change). */

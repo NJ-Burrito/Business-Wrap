@@ -106,7 +106,9 @@ const rbTabWord = (tab) => t(`rb.tab.${tab}`);
 /** One tab's groups as markup; a group whose commands are all absent is left out. */
 function rbPanelInner(tab) {
   const def = rbDefs().find((x) => x[0] === tab);
-  return (def ? def[1] : []).map(([g, ids]) => ({ g, items: ids.map(rbItem).filter(Boolean) })).filter((x) => x.items.length)
+  // 0.16.1 (fault 6): the shape-and-arrow tab follows what is selected, as the floating bar does: a shape shows its own tools and arrangement, an arrow its tools
+  const hide = tab === 'diagram2' ? (RB.dgKind === 'shape' ? ['arrow'] : RB.dgKind === 'arrow' ? ['shape', 'arrange'] : []) : [];
+  return (def ? def[1] : []).filter((x) => !hide.includes(x[0])).map(([g, ids]) => ({ g, items: ids.map(rbItem).filter(Boolean) })).filter((x) => x.items.length)
     .map(({ g, items }) => `<div class="rb-g" role="group" aria-label="${esc(t(`rb.g.${g}`))}"><div class="rb-tools">${items.join('')}</div><span class="rb-gl" aria-hidden="true">${esc(t(`rb.g.${g}`))}</span></div>`).join('');
 }
 /** What the Export tab's tools depend on besides the language: the service and its editions, a diagram in the document, a server. */
@@ -259,8 +261,8 @@ function rbSwap(el) {
   pn.hidden = RB.collapsed;
   pn.setAttribute('aria-labelledby', `rb-tab-${RB.tab}`);
   if (RB.collapsed || (pn.dataset.tab === RB.tab && pn.firstElementChild)) return;
-  let tpl = RB.cache.get(RB.tab);
-  if (!tpl) { tpl = document.createElement('template'); tpl.innerHTML = rbPanelInner(RB.tab); if (RB.tab !== 'export') RB.cache.set(RB.tab, tpl); } // Export holds live option fields: drawn fresh, never cached
+  let tpl = RB.cache.get(`${RB.tab}|${RB.dgKind}`);
+  if (!tpl) { tpl = document.createElement('template'); tpl.innerHTML = rbPanelInner(RB.tab); if (RB.tab !== 'export') RB.cache.set(`${RB.tab}|${RB.dgKind}`, tpl); } // Export holds live option fields: drawn fresh, never cached
   pn.replaceChildren(tpl.content.cloneNode(true));
   pn.dataset.tab = RB.tab;
   syncUndoState();
@@ -283,14 +285,16 @@ function rbSync() {
   }
   // 0.15.9 (M3): inside a diagram the ribbon follows what is selected: an arrow or a shape opens the tab that holds its tools, the empty drawing the tab that adds shapes.
   // It moves only when the KIND of selection changes (never while the person is working in a tab of their own choosing), and never under 1024 px (the page must not move).
-  const dk = now === 'diagram' ? (S.dg?.edge || S.dg?.joint || S.dg?.end || S.dg?.legend ? 'arrow' : S.dg?.nodes?.length ? 'shape' : 'empty') : '';
+  // 0.16.1 (fault 6): a legend entry is neither an arrow nor a shape: its tools (text, look, delete, reset) sit in the «diagram» tab, so the ribbon goes there
+  const dk = now === 'diagram' ? (S.dg?.edge || S.dg?.joint || S.dg?.end ? 'arrow' : S.dg?.legend ? 'legend' : S.dg?.nodes?.length ? 'shape' : 'empty') : '';
   if (dk !== RB.dgKind) {
     RB.dgKind = dk;
-    if (dk && !rbNarrow() && rbTabs().some((x) => x[0] === (dk === 'empty' ? 'diagram' : 'diagram2'))) RB.tab = dk === 'empty' ? 'diagram' : 'diagram2';
+    const to = dk === 'empty' || dk === 'legend' ? 'diagram' : 'diagram2';
+    if (dk && !rbNarrow() && rbTabs().some((x) => x[0] === to)) RB.tab = to;
   }
   if (!rbTabs().some((x) => x[0] === RB.tab)) RB.tab = 'home';
   const base = [S.ui, uiDir(), RB.ctx, CMDS.length, rbStamp()].join('|');
-  const key = `${base}|${RB.tab}|${RB.collapsed}`;
+  const key = `${base}|${RB.tab}|${RB.collapsed}|${RB.dgKind || ''}`;
   // 0.15.2 note 16: the panel is about to open or fold → measure first (one layout read, only on that transition), glide after the swap
   const pn0 = el.querySelector('.rb-panel');
   const turning = !S.focus && !!pn0 && (RB.glide ? RB.glide.target !== RB.collapsed : pn0.hidden !== RB.collapsed);

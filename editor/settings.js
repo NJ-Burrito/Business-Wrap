@@ -53,7 +53,7 @@ function settingsPanel() {
 <dt>${esc(t('set.date'))}</dt><dd><bdi dir="ltr">${esc(A.date || '—')}</bdi></dd>
 <dt>${esc(t('set.repo'))}</dt><dd>${A.repo ? `<a href="${esc(A.repo)}" target="_blank" rel="noopener noreferrer" dir="ltr">${esc(repoText)}</a>` : '—'}</dd>
 <dt>${esc(t('set.license'))}</dt><dd>${esc(A.license || '—')}</dd>
-<dt>${esc(t('set.credits'))}</dt><dd>${esc((A.credits || []).join(' · '))}</dd>
+<dt>${esc(t('set.credits'))}</dt><dd>${esc((A.credits || []).map((c) => (S.ui === 'ar' ? c : c.replace(/\s*\([؀-ۿ ]+\)/, ''))).join(' · '))}</dd>
 </dl>${t('pfTrustLimit') !== 'pfTrustLimit' ? `<p class="hint set-limit">${esc(t('pfTrustLimit'))}</p>` : ''}</section>
 <section class="card set-upd" aria-labelledby="set-h-upd"><h3 id="set-h-upd"><span class="i">${ic('update')}</span>${esc(t('set.update'))}</h3>
 <div class="set-upd-body">${setUpdateInner()}</div></section>

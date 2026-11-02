@@ -224,10 +224,31 @@ function dgJointRemove(P, k, type) {
   }
   return Q.slice(1, -1);
 }
+/** 0.16.1 (fault 12): the only joint of a short straight elbow arrow, pulled off the arrow's line. The two legs through it would run on the same vertical (or horizontal) and
+ *  double back, a spike with 3 bends. The path is a step instead: out of the start a short stub, across at the joint's level, and into the head, the joint on the top run.
+ *  Returns the via, or null when the joint is not in that situation. */
+function dgStepVia(P, k, nx, ny) {
+  if (P.length !== 3 || k !== 1) return null;
+  const S = P[0], E = P[2];
+  for (const [a, b] of [[0, 1], [1, 0]]) { // a: the axis the arrow runs along, b: across it
+    if (Math.abs(S[b] - E[b]) >= 0.5 || Math.abs(S[a] - E[a]) < 0.5) continue;
+    const p = [nx, ny];
+    if (Math.abs(p[b] - S[b]) < 0.5) return null;
+    const dir = Math.sign(E[a] - S[a]);
+    const stub = Math.min(12, Math.abs(E[a] - S[a]) / 3);
+    const ja = S[a] + dir * stub, jb = E[a] - dir * stub;
+    const c = Math.min(Math.max(ja, jb), Math.max(Math.min(ja, jb), p[a]));
+    const mk = (v) => { const q = [0, 0]; q[a] = Math.round(v); q[b] = Math.round(p[b]); return q; };
+    return Math.abs(c - ja) < 0.5 || Math.abs(c - jb) < 0.5 ? [mk(ja), mk(jb)] : [mk(ja), mk(c), mk(jb)];
+  }
+  return null;
+}
 /** Free placement of joint k at (nx, ny); on an elbow route the neighbours that shared its line follow, so the path stays orthogonal. */
 function dgJointMove(P, k, nx, ny, type) {
   const Q = P.map((q) => [...q]);
   if (type === 'elbow') {
+    const step = dgStepVia(P, k, nx, ny);
+    if (step) return step;
     for (const j of [k - 1, k + 1]) {
       if (j <= 0 || j >= P.length - 1) continue;
       if (Math.abs(P[j][1] - P[k][1]) < 0.5) Q[j][1] = ny;
@@ -734,7 +755,7 @@ function dgZoomFig(fig, mode, at) {
   let w;
   if (mode === 'fit') w = null;
   else if (mode === '100') w = natural;
-  else w = Math.min(natural * 4, Math.max(fitW * 0.5, now * f));
+  else w = Math.min(natural * 4, Math.max(fitW, now * f)); // 0.16.1 (fault 7): the drawing never goes smaller than its fitted frame, so in x N and out x N ends where it began
   const fr = art.getBoundingClientRect();
   // the drawing point under the pointer is pinned while the pointer stays put, so rounding never adds up over a run of steps.
   // 0.16.0 (D3): the point is kept in the drawing's own coordinates through the SVG's screen matrix, not as a fraction of the SVG box: at «fit» the box is wider
@@ -791,6 +812,25 @@ document.addEventListener('scroll', (e) => {
   const z = fig && S.dgZoom?.[dgZoomKey(fig)];
   if (z) { z.sl = art.scrollLeft; z.st = art.scrollTop; }
 }, true);
+/** 0.16.1 (fault 2): who gets a Ctrl+wheel that lands on a figure. The drawing, as before, except one case: a gesture that STARTS going out while the drawing is
+ *  at its fitted size has nothing left to shrink, so the page zooms out (at page zoom 161 % a figure covers most of the window and held the wheel for ever).
+ *  A gesture is the run of events less than 450 ms apart: it keeps its owner, so zooming a drawing out all the way never rolls on into the page. */
+let dgWheelG = null;
+const dgWheelOwn = new WeakMap();
+function dgWheelPage(e) {
+  if (dgWheelOwn.has(e)) return dgWheelOwn.get(e);
+  const fig = e.target.closest?.('#bw-pair figure[data-dg]');
+  let page = false;
+  if (fig && !S.dgDragging) {
+    const key = dgZoomKey(fig);
+    const g = dgWheelG;
+    if (g && g.key === key && e.timeStamp - g.t < 450) page = g.page;
+    else { const z = S.dgZoom?.[key]; page = e.deltaY > 0 && (!z || z.w <= z.fitW + 1); }
+    dgWheelG = { key, page, t: e.timeStamp };
+  } else dgWheelG = null;
+  dgWheelOwn.set(e, page);
+  return page;
+}
 // Ctrl + wheel over a figure scales the drawing: by deltaY (2^(-dy/300): a mouse notch is about x1.26, a pinch's small events add up smoothly), one update per frame
 {
   let pend = null;
@@ -799,7 +839,7 @@ document.addEventListener('scroll', (e) => {
     if (!(e.ctrlKey || e.metaKey)) return;
     if (S.dgDragging) { e.preventDefault(); return; } // a drag is held: the wheel neither zooms nor scrolls the page (L4)
     const fig = e.target.closest?.('#bw-pair figure[data-dg]');
-    if (!fig) return;
+    if (!fig || dgWheelPage(e)) return;
     e.preventDefault();
     const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
     if (!pend || pend.fig !== fig) pend = { fig, f: 1 };

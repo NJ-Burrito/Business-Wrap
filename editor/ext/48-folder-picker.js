@@ -49,11 +49,11 @@ const FPK = (() => {
     dlg.setAttribute('aria-labelledby', 'bw-fp-h');
     dlg.innerHTML = `<h2 id="bw-fp-h">${esc(t('fpTitle'))}</h2><p class="fp-lead">${esc(t('fpLead'))}</p><p class="fp-by" hidden></p>
 <form class="fp-pathrow" autocomplete="off"><label for="bw-fp-path">${esc(t('fpPath'))}</label><input id="bw-fp-path" type="text" dir="ltr" spellcheck="false" /><button type="submit" class="b"><span class="w">${esc(t('fpGo'))}</span></button></form>
+<p class="fp-msg" role="status" aria-live="polite"></p>
 <nav class="fp-crumbs" aria-label="${esc(t('fpCrumbs'))}"><ol></ol></nav>
 <div class="fp-body"><div class="fp-places" role="group" aria-label="${esc(t('fpPlaces'))}"></div><div class="fp-main"><div class="fp-tools"><button type="button" class="b fp-up"><span class="i">${icon('up')}</span><span class="w">${esc(t('fpUp'))}</span></button><button type="button" class="b fp-new"><span class="i">${icon('folderPlus')}</span><span class="w">${esc(t('fpNew'))}</span></button></div>
 <form class="fp-newrow" hidden autocomplete="off"><label for="bw-fp-name">${esc(t('fpNewName'))}</label><input id="bw-fp-name" type="text" maxlength="120" spellcheck="false" /><button type="submit" class="b"><span class="w">${esc(t('fpCreate'))}</span></button></form>
 <ul class="fp-list" aria-label="${esc(t('fpList'))}" tabindex="-1"></ul></div></div>
-<p class="fp-msg" role="status" aria-live="polite"></p>
 <div class="btns"><button type="button" class="b primary fp-choose"><span class="i">${icon('check')}</span><span class="w">${esc(t('fpChoose'))}</span></button><button type="button" class="b fp-cancel"><span class="i">${icon('x')}</span><span class="w">${esc(t('fpCancel'))}</span></button></div>`;
     root.appendChild(dlg);
     const q = (s) => dlg.querySelector(s);
