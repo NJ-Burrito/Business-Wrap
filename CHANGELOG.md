@@ -8,6 +8,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.15.9] - 2026-11-02
+
+🏷️ Your logo shows in every editor, and the story fixes from the acceptance test are in. / 🏷️ شعارك يظهر في كل محرر، وإصلاحات القصص من اختبار القبول دخلت.
+
+### Fixed / أصلح
+- 🏷️ **The owner's logo shows in every editor**: an editor opened or created from the command line or the MCP server now carries the logo, it sits on top of the open side panels instead of behind them, and it is clearly visible (it was nearly faded out). / **شعار المالك يظهر في كل محرر**: المحرر المفتوح أو المنشأ من سطر الأوامر أو من خادم MCP يحمل الشعار الآن، ويظهر فوق اللوحات الجانبية المفتوحة بدل أن يختفي خلفها، وهو واضح (كان شبه باهت).
+- ✍️ **Typed acceptance points are saved**: text you type in an acceptance list or a story table cell stays in the model, the print view, Word and PDF. / **نقاط القبول التي تكتبها تُحفظ**: النص الذي تكتبه في قائمة القبول أو في خلية جدول القصة يبقى في النموذج وفي الطباعة وفي Word وفي PDF.
+- 📄 **Word captions and story cards**: story cards in Word get a sand caption band with the gold section number, labelled bars, and no repeated section heading; one font throughout; the blank document is 11 pages instead of 19 in Arabic. / **عناوين Word وبطاقات القصص**: بطاقات القصص في Word بشريط عنوان رملي برقم القسم الذهبي وأشرطة بعناوين وبلا تكرار لعنوان القسم؛ وخط واحد في كل المستند؛ والمستند الفارغ 11 صفحة بدل 19 بالعربية.
+- 📊 **Dictionary columns**: the seven-column dictionary and the actions table have set column widths, so a long sentence no longer becomes a tall tower. / **أعمدة القاموس**: لجدول القاموس ذي الأعمدة السبعة ولجدول الإجراءات عروض ثابتة، فلم تعد الجملة الطويلة تتحول إلى برج طويل.
+- 📅 **Blank revisions date**: the empty date cell in the revisions table can be typed into, and the blank document starts with a date hint. / **تاريخ المراجعات الفارغ**: يمكن الكتابة في خلية التاريخ الفارغة في جدول المراجعات، والمستند الفارغ يبدأ بتلميح للتاريخ.
+- 🔢 New stories and sections renumber in print order, "another story" adds a story in the right place, and the delete menu explains its scope and closes when you press outside. / القصص والأقسام الجديدة تُرقَّم بترتيب الطباعة، و«قصة أخرى» تضيف قصة في مكانها الصحيح، وقائمة الحذف تشرح نطاقها وتُغلق بالضغط خارجها.
+
 ## [0.15.8] - 2026-11-02
 
 🛡️ An update or a launch now deletes only what is proven to be Business-Wrap's own and unused. / 🛡️ التحديث والتشغيل لا يحذفان الآن إلا ما ثبت أنه من Business-Wrap نفسه وغير مستعمل.

@@ -1,6 +1,7 @@
 {
  "ar": {
   "scope.title": "ماذا تريد أن تحذف؟",
+  "scope.hint": "اختر نطاقاً، أو اضغط خارج القائمة (أو Esc) لإغلاقها ومتابعة العمل.",
   "scope.pick": "حدّد نصاً أو عنصراً أولاً",
   "scope.line": "هذا السطر أو الفقرة فقط",
   "scope.cell": "محتوى هذه الخلية فقط",
@@ -14,6 +15,7 @@
  },
  "en": {
   "scope.title": "What do you want to delete?",
+  "scope.hint": "Pick one, or press outside the menu (or Esc) to close it and carry on.",
   "scope.pick": "Select some text or an element first",
   "scope.line": "This line or paragraph only",
   "scope.cell": "This cell's content only",

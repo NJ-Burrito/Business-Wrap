@@ -17,6 +17,42 @@ const W2W = { focus: null };
 { const alias = { addStory: 'addPara', addOutputStory: 'addPara', storyPoint: 'rowAdd', storyCard: 'duplicate', pgBreakAdd: 'pgBreak', pgBreakDel: 'pgBreak', pgPullUp: 'moveUp', secDel: 'delete', pgEmpty: 'delete', secGaps: 'pages' };
   for (const [k, v] of Object.entries(alias)) IC[k] = IC[k] || IC[v] || IC.pages; }
 const w2wBlank = (v) => !textOf(v ?? '').trim();
+/** The widths (percent, summing to 100) of the house data dictionary (7 columns) and actions table (2): the constraints column is the widest and no
+ *  column is narrower than its longest header word, so a typed sentence never turns into a one-word-per-line tower (UAT H2). Any other
+ *  column count shares the width equally (the document's own design wins, S2). */
+const W2S_WIDTHS = { 7: [16, 8.5, 14, 12.5, 16.5, 12, 20.5], 2: [34, 66] };
+const w2sWidths = (n) => (W2S_WIDTHS[n] ? [...W2S_WIDTHS[n]] : null);
+/** Print-order ids: when every story id of the document follows the house pattern US-nn, they read 01, 02, 03 … in print order (UAT M1). */
+function w2sIdOps(doc) {
+  const items = [];
+  (doc.chapters || []).forEach((c, ci) => (c.sections || []).forEach((sc, si) => (sc.blocks || []).forEach((b, bi) => {
+    if (b.kind === 'stories') (b.items || []).forEach((it, k) => items.push({ path: `/chapters/${ci}/sections/${si}/blocks/${bi}/items/${k}/id`, id: it.id }));
+  })));
+  if (!items.length || !items.every((x) => /^US-\d+$/.test(String(x.id)))) return [];
+  const w = Math.max(2, String(items.length).length);
+  return items.map((x, k) => ({ path: x.path, id: x.id, want: `US-${String(k + 1).padStart(w, '0')}` })).filter((x) => x.id !== x.want)
+    .map((x) => ({ op: 'replace', path: x.path, value: x.want, old: x.id }));
+}
+/** After a structural add: the stored section numbers (an auto-numbered document) and the story ids follow the print order, in every edition,
+ *  and join the add's undo step (UAT L3, M1). */
+function w2sFollow(group) {
+  for (const ed of Object.keys(M[S.svc])) {
+    const d = cur(ed).doc;
+    const ops = [...(isManualNumbering(d) ? [] : numberingOps(d)), ...w2sIdOps(d)];
+    if (!ops.length) continue;
+    const n0 = cur(ed).ops.length;
+    commit(ops, { ed, group, mirror: false, rerender: false });
+    cur(ed).ops.slice(n0).forEach((o, k) => { o.id = `${group}.n${k}`; });
+  }
+}
+/** A placeholder title no section of this edition already has: the second one reads «… 2», the third «… 3» (UAT L4). */
+function w2sFreshTitle(base, ed) {
+  const have = new Set((cur(ed).doc.chapters || []).flatMap((c) => (c.sections || []).map((x) => textOf(x.title))));
+  let n = 1;
+  let title = base;
+  while (have.has(title)) { n += 1; title = `${base} ${n}`; }
+  return title;
+}
 const w2wNextId = () => [...JSON.stringify(w2doc().chapters).matchAll(/"id":"US-(\d+)"/g)].reduce((a, x) => Math.max(a, +x[1]), 0) + 1;
 /** A leaf cut at n: head keeps marks up to n, tail the rest from e (default n; e > n drops the characters between), shifted; a string is just sliced. */
 function w2wSplit(leaf, n, e = n) {
@@ -74,7 +110,8 @@ const W2_WRITE = {
       return true;
     }
     // the other edition keeps the same shape: an empty placeholder of its own language (silently; the render below shows both)
-    if (both) commit([{ op: 'insert', path: next, value: I18N.doc[o].newParagraph }], { ed: o, mirror: false, rerender: false, group });
+    // an acceptance point gets the house placeholder (…), never the prose default «New paragraph» (UAT M3)
+    if (both) commit([{ op: 'insert', path: next, value: /\/acceptance\/\d+$/.test(path) ? '…' : I18N.doc[o].newParagraph }], { ed: o, mirror: false, rerender: false, group });
     commit([{ op: 'replace', path, value: head, old: leaf }, { op: 'insert', path: next, value: tail }], { ed, mirror: false, group });
     return true;
   },
@@ -110,7 +147,10 @@ const W2_WRITE = {
       if (pair) op.mirrorValue = mk(o);
       ptr = `/chapters/${ci}/sections/${at}/blocks/0`;
     }
-    commit([op], { mirror: true });
+    const group = newGroup();
+    commit([op], { mirror: true, group, rerender: false });
+    w2sFollow(group);
+    render();
     S.sel = { b: ptr, p: null, ed: S.ed };
     paintSel();
     return ptr;
@@ -120,7 +160,7 @@ const W2_WRITE = {
   addStory() {
     const id = `US-${String(w2wNextId()).padStart(2, '0')}`;
     const build = (ed, num, first) => ({
-      title: tIn('w2s.storyTitle', ed),
+      title: w2sFreshTitle(tIn('w2s.storyTitle', ed), ed),
       blocks: [{ kind: 'stories', number: num, ...(first ? { lead: tIn('w2s.storyLead', ed) } : {}), items: [W2_WRITE.emptyStory(null, id, ed, cur(ed).doc)] }],
     });
     return W2_WRITE.placeSection(build);
@@ -131,7 +171,7 @@ const W2_WRITE = {
     const build = (ed, num, first) => {
       const rows = w2sWords('w2s.outputRows', ed).map((l) => [l, '…']);
       return {
-        title: tIn('w2s.outputTitle', ed),
+        title: w2sFreshTitle(tIn('w2s.outputTitle', ed), ed),
         blocks: [
           { kind: 'stories', number: num, ...(first ? { lead: tIn('w2s.storyLead', ed) } : {}), items: [{ id, name: '…', as: '…', want: '…', so: '…', acceptance: ['…'] }] },
           { kind: 'table', columns: w2sWords('w2s.cols.outputCard', ed), rows },
@@ -160,7 +200,7 @@ const W2_WRITE = {
     for (const k of ['actions', 'dictionary']) {
       const c = ref?.[k]?.columns;
       const cols = Array.isArray(c) && c.length ? c : own[k]?.columns || w2sWords(`w2s.cols.${k}`, ed);
-      it[k] = { columns: [...cols], rows: [cols.map(() => '…')] };
+      it[k] = { columns: [...cols], rows: [cols.map(() => '…')], ...(w2sWidths(cols.length) ? { colWidths: w2sWidths(cols.length) } : {}) };
     }
     return it;
   },
@@ -192,6 +232,9 @@ const W2_WRITE = {
     const m = /^(.*\/blocks\/\d+)\/items\/(\d+)$/.exec(item || '');
     if (!m) { toast(t('w2w.pickStory'), 'info'); return false; }
     const b = get(w2doc(), m[1]);
+    // the output story has no tables and its item/value table follows it: an ordinary story never goes INSIDE it; it is a section of its own ahead of it (UAT M2)
+    const secPtr = m[1].replace(/\/blocks\/\d+$/, '');
+    if (w2sIsOutput(get(w2doc(), secPtr))) { S.sel = { b: m[1], p: null, ed: S.ed }; return W2_WRITE.addStory(); }
     const id = `US-${String(w2wNextId()).padStart(2, '0')}`;
     const o = other(S.ed);
     const op = { op: 'insert', path: `${m[1]}/items/${+m[2] + 1}`, value: W2_WRITE.emptyStory(b.items[+m[2]], id) };

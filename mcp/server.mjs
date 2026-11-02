@@ -107,7 +107,7 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   }, guard(({ documents, out: o, theme, embed_fonts, ui }) => {
-    const r = buildEditor({ inputs: documents.map((d) => path.resolve(d)), out: out(o, '.html'), themeFile: theme && path.resolve(theme), embedFonts: !!embed_fonts, watermarkDir: null, ui });
+    const r = buildEditor({ inputs: documents.map((d) => path.resolve(d)), out: out(o, '.html'), themeFile: theme && path.resolve(theme), embedFonts: !!embed_fonts, ui });
     return { editor: r.out, services: r.services, fonts: r.fonts, kb: Math.round(r.bytes / 1024) };
   }));
 

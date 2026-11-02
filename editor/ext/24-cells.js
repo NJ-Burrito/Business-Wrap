@@ -346,7 +346,9 @@ document.addEventListener('focusout', (e) => {
 /* a cell with lines (a list, or Alt+Enter) keeps its line breaks; everything else takes the core path */
 document.addEventListener('input', (e) => {
   const td = ceCellEl(e.target);
-  if (!td) return;
+  // a cell that holds its own list items (the story card's acceptance points) has no pointer of its own: each li carries one
+  // and the core input path writes it. Without this guard setText(undefined) threw and the typed point was lost (UAT C1).
+  if (!td || !td.dataset.p) return;
   CE.dirty = td.dataset.p;
   const raw = td.innerText.replace(/ /g, ' ').replace(/\n+$/, '');
   if (!raw.includes('\n') && !td.querySelector('li')) return;

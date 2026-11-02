@@ -7,8 +7,8 @@
     "preparedBy": "Your name",
     "documentType": "Requirements document",
     "classification": "Internal",
-    "owner": "Owning authority",
-    "issuedOn": "",
+    "owner": "Authority name",
+    "issuedOn": "YYYY-MM-DD",
     "version": "V0.1",
     "status": "Draft",
     "reviewCycle": "On every change to the service"
@@ -16,7 +16,7 @@
   "revisions": [
     [
       "V0.1",
-      "",
+      "YYYY-MM-DD",
       "First draft",
       "—"
     ]
@@ -579,6 +579,10 @@
                         "…",
                         "…"
                       ]
+                    ],
+                    "colWidths": [
+                      34,
+                      66
                     ]
                   },
                   "dictionary": {
@@ -601,6 +605,15 @@
                         "…",
                         "…"
                       ]
+                    ],
+                    "colWidths": [
+                      16,
+                      8.5,
+                      14,
+                      12.5,
+                      16.5,
+                      12,
+                      20.5
                     ]
                   }
                 }
@@ -636,6 +649,10 @@
                         "…",
                         "…"
                       ]
+                    ],
+                    "colWidths": [
+                      34,
+                      66
                     ]
                   },
                   "dictionary": {
@@ -658,6 +675,15 @@
                         "…",
                         "…"
                       ]
+                    ],
+                    "colWidths": [
+                      16,
+                      8.5,
+                      14,
+                      12.5,
+                      16.5,
+                      12,
+                      20.5
                     ]
                   }
                 }

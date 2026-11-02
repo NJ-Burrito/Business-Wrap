@@ -17,8 +17,8 @@
  * file plays reactions. Tests: BW_WM.play(id) plays one directly (no rate rules), BW_WM.trigger(id) goes through the rules. */
 (() => {
   const EASE = 'cubic-bezier(.16,1,.3,1)'; // --bw-ease-out
-  const IDLE = 0.3; // the mark's resting opacity
-  const UP = 0.85; // while it reacts
+  const IDLE = 0.9; // the mark's resting opacity (0.15.9: was 0.3, which read as invisible on the drafting grid; editor.css #bw-watermark carries the same value)
+  const UP = 1; // while it reacts
   const RMq = matchMedia('(prefers-reduced-motion: reduce)');
   const calm = () => RMq.matches || document.documentElement.dataset.bwCalm === '1' || (typeof S !== 'undefined' && S.calm === true);
   const now = () => Date.now();
@@ -110,7 +110,7 @@
     let list;
     if (reduced) {
       if (kind === 'random') return null;
-      // an action reaction is a 240 ms opacity pulse, the easter egg a still (the role image advances, the mark holds at .85)
+      // an action reaction is a 240 ms opacity pulse, the easter egg a still (the role image advances, the mark holds at full opacity)
       list = kind === 'egg' ? [op(1500, [UP, UP])] : [op(240, [IDLE, UP, IDLE], 'linear')];
       if (kind === 'egg') M0.flip(true);
     } else list = BUILD[id](ms, detail);
