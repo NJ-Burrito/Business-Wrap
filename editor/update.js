@@ -7,7 +7,7 @@
      per 24 h (bw:update-last) unless «تحقّق الآن» is pressed; silent on any failure, the reason kept for Settings.
    - A newer release → a calm popup: version, release notes (Added / Changed / Fixed, AR+EN headings),
      «حدّث الآن» / «لاحقاً» / «تخطَّ هذا الإصدار» (bw:update-skip).
-   - «حدّث الآن»: POST /api/update/apply {confirm:true}; the server runs update/apply.mjs (backup first, program
+   - «حدّث الآن»: POST /api/update/apply {confirm:true}; the server runs update/apply.mjs (a rollback copy during the update only, program
      files only, verify, rollback on any failure) while the popup shows the steps (GET /api/update/progress);
      the server restarts on the new code, and the editor reloads itself with the draft saved and the document
      reopened where the user was (bw:resume → resumeAfterUpdate, no question asked).

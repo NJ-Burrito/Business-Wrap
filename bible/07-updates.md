@@ -25,7 +25,7 @@ Public repo: the check and the download need no token and no sign-in. An optiona
 
 ## Applying an update
 - Git checkout: refuses on local changes to tracked files, then fetches and fast-forwards; user files are gitignored.
-- Zip install: downloads the release zip (no token needed), verifies SHA-256 (GitHub digest or the `.sha256` asset), keeps ONE backup `<folder>.backup-<old>`, swaps product files, rolls back on failure.
+- Zip install: downloads the release zip (no token needed), verifies SHA-256 (GitHub digest or the `.sha256` asset), swaps product files in place (the old version is replaced: one version remains), rolls back on failure. A rollback copy exists only during the update; it is deleted once verify passes, and the next launch or update removes one a crash left (rolling back first).
 - Never touched: `.local`, `design/custom`, `logos`, `fonts/custom`, `drafts`, `out`, `.git`, `node_modules`.
 - Then user data is migrated by the NEW engine (`*.edits.json` v0 → v1).
 - **Never a downgrade** (0.13.1): the source is GitHub's releases for the repo in `update/source.json` (never npm), and `applyUpdate` refuses a release that is not strictly newer than the installed version, whoever offered it. Gate: `tests/update.test.mjs`.
@@ -42,12 +42,12 @@ The page is a self-contained HTML, often opened from `file://`: the page never h
 
 The update, step by step:
 1. **download**: the release zip (no token needed), SHA-256 checked; refused before anything changes on a mismatch.
-2. **backup**: one full copy `<folder>.backup-<old>`, user data included (not `node_modules`, not `.git`).
-3. **replace**: every release file is written except into user folders; a file the release dropped is removed only inside the program folders (`CODE_ROOTS`: engine, editor, mcp, update, hooks, bible, assets, tests, security, evals, .claude-plugin, .github, .githooks). Anything else the release does not carry (a document saved at the root, `samples/<yours>`) stays byte-identical.
+2. **backup**: the rollback copy `<folder>.backup-<old>` of the program files (user folders are never touched, so they need no copy). It lives only for the update.
+3. **replace**: every release file is written except into user folders; a file the release dropped is removed only inside the program folders (`CODE_ROOTS`: engine, editor, mcp, update, hooks, bible, assets, tests, security, evals, .claude-plugin, .github, .githooks). Every update writes `.shipped-files.json`, the list of files it shipped: the next update also removes anywhere a file that list names and the new release dropped. Anything no release shipped (a document saved at the root, `samples/<yours>`) stays byte-identical. A first update has no list yet: it uses the old release's zip listing when it can get it, else only `CODE_ROOTS`.
 4. **verify**: the folder says the new version and its engine loads; user edits files are migrated by the new engine.
 5. **done**: the server exits with code 75 and its supervisor (`npm run serve`) starts it again on the new code; the editor waits for `/api/version` to report the new version, saves the draft and its place (`bw:resume`: service, edition, page, scroll) and reloads; the draft loads without a restore question.
 
-Any failure in replace or verify restores the backup exactly: the release's new files are removed and every backed-up file, program and data, is copied back. A Git checkout fast-forwards instead and resets to the previous commit if the new one does not load.
+Any failure in replace or verify restores the rollback copy exactly (the release's new files are removed, every copied program file returns, a migrated edits file returns from the data copy) and then removes the copy; if the restore itself fails the copy is kept and its path is reported. The one copy that stays is a migration's copy of the original edits files, the latest only, under `.local/backups/update-migration-<old>/`. In a Claude Code plugin install, once the new version runs, the older Business-Wrap version folders of the plugin cache are removed (never the running one, never another plugin). A Git checkout fast-forwards instead and resets to the previous commit if the new one does not load.
 
 Never touched: documents, `*.edits.json`, the browser stores (draft, history, preferences, uploaded fonts), design packs, uploaded fonts, logos, `out/`, `exports/`, `harvest/`, `drafts/`, `.local/`.
 

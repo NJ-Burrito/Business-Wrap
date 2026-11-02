@@ -3,7 +3,7 @@
 // business-wrap <verb> … — any other verb runs engine/cli.mjs (business-wrap help lists them).
 //
 //   business-wrap update --check [--json] [--lang ar|en] [--force]   one line when an update exists (cached, at most one request a day)
-//   business-wrap update --apply --yes                                update this install, keeping .local, design/custom, logos, fonts/custom, drafts, out
+//   business-wrap update --apply --yes                                update this install: the old version is replaced (one version remains), keeping .local, design/custom, logos, fonts/custom, drafts, out
 //   business-wrap update --notes [--json]                             what's new in the installed version (human summary + migration notes)
 //   business-wrap update --hook                                       for the optional SessionStart hook: prints only when enabled and an update exists
 //   business-wrap update --enable-hook | --disable-hook | --off | --on
@@ -23,7 +23,7 @@ const FLAGS = new Set(['--check', '--apply', '--notes', '--hook', '--enable-hook
 const USAGE = `business-wrap update — the version check and the update
 
   business-wrap update --check [--json] [--lang ar|en] [--force]   one line when an update exists (the answer is cached up to 6 hours and its age is shown)
-  business-wrap update --apply --yes                                update this install (keeps .local, design/custom, logos, fonts/custom, drafts, out)
+  business-wrap update --apply --yes                                update this install: the old version is replaced, not kept (keeps .local, design/custom, logos, fonts/custom, drafts, out)
   business-wrap update --notes [--json]                             what's new in the installed version
   business-wrap update --hook                                       for the SessionStart hook: prints only when enabled and an update exists
   business-wrap update --enable-hook | --disable-hook | --off | --on
@@ -67,7 +67,7 @@ async function main() {
     if (r.status !== 'available') { console.log(r.status === 'current' ? `Business-Wrap ${r.current} is the latest.` : 'Cannot check for updates now (offline, no release published yet, or the GitHub rate limit).'); return 0; }
     if (!isNewer(r.latest, currentVersion())) { console.log(`Business-Wrap ${currentVersion()} is the latest (never a downgrade).`); return 0; }
     if (!has('--yes')) {
-      console.log(`${oneLiner(r, lang)}\nRun again with --yes to update (${updateCommand()}). Kept: .local, design/custom, logos, fonts/custom, drafts, out.`);
+      console.log(`${oneLiner(r, lang)}\nRun again with --yes to update (${updateCommand()}). The old version is replaced (no copy of it stays). Kept: .local, design/custom, logos, fonts/custom, drafts, out.`);
       return 0;
     }
     const res = await applyUpdate({ dir: ROOT, release: { version: r.latest, zip: r.zip, zipApi: r.zipApi, sha256: r.sha256 }, repo: JSON.parse(fs.readFileSync(path.join(ROOT, 'update', 'source.json'), 'utf8')).repo, token: token(), current: currentVersion() });

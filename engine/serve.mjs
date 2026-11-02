@@ -16,7 +16,7 @@ import { fileURLToPath as toPath, pathToFileURL } from 'node:url';
 import { registerServer, unregisterServer } from './server-registry.mjs';
 import { exportPdf, exportDocx, pageThumbs, loadTheme, fontsFor, REPO, i18n, fileStem, userCwd } from './export.mjs';
 import { checkForUpdate, token, settings as updateSettings } from '../update/check.mjs';
-import { applyUpdate, STAGES } from '../update/apply.mjs';
+import { applyUpdate, STAGES, launchCleanup } from '../update/apply.mjs';
 import { rewrapEditorHtml, aboutInfo } from './build-editor.mjs';
 import { fork, spawnSync } from 'node:child_process';
 import { crawl, harvestToDocument } from './harvest/crawl.mjs';
@@ -270,6 +270,8 @@ usage: node engine/serve.mjs <editor.html> [--port 4317] [--out <exports folder>
     };
     start();
   } else {
+    // 0.15.7: every launch finishes or undoes an update a crash left, and a plugin install drops its older version folders
+    launchCleanup(REPO);
     try {
       const server = await serve(editor, Number.isFinite(port) ? port : 4317, {
         out: opt('out') && path.resolve(userCwd(), opt('out')),

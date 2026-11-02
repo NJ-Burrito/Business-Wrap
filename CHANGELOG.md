@@ -8,6 +8,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.15.7] - 2026-11-02
+
+🧹 After an update, one version of Business-Wrap stays on your machine, and all your work stays with it. / 🧹 بعد التحديث تبقى نسخة واحدة من Business-Wrap على جهازك، ويبقى عملك كله معها.
+
+### Changed / تغيّر
+- 🔄 **The old version is replaced, not kept**: an update swaps the program files in place. The rollback copy exists only while the update runs; it is deleted once the new version is checked, and a failed update restores everything first and then deletes it. If the restore itself fails, the copy stays and its path is shown. / **الإصدار القديم يُستبدل ولا يُحفظ**: يستبدل التحديث ملفات البرنامج في مكانها، ونسخة الاسترجاع تعيش أثناء التحديث فقط وتُحذف بعد فحص الإصدار الجديد؛ وعند فشل التحديث يعود كل شيء ثم تُحذف النسخة، وإن فشل الاسترجاع نفسه بقيت النسخة وظهر مكانها.
+- 🗑️ **Nothing is left beside the install**: if a crash left a rollback copy, the next launch or update rolls it back first (your files come first) and then removes it; older `.backup-*` folders from earlier updates are removed too. / **لا يبقى شيء بجانب التثبيت**: إن ترك انقطاعٌ نسخة استرجاع فإن التشغيل أو التحديث التالي يعيدها أولاً (ملفاتك أولاً) ثم يحذفها، وتُحذف أيضاً مجلدات `.backup-*` القديمة من تحديثات سابقة.
+- 📋 **A file the old version shipped and the new one dropped is deleted wherever it was**, using the list of shipped files each update now writes (`.shipped-files.json`); a file no release ever shipped is yours and stays byte for byte. A first update has no list yet, so it uses the old release's zip listing when it can and otherwise only the program folders. / **الملف الذي شحنه الإصدار القديم وأسقطه الجديد يُحذف أينما كان** بقائمة الملفات المشحونة التي يكتبها كل تحديث؛ وأي ملف لم يشحنه أي إصدار هو ملفك ويبقى بايتاً ببايت.
+- 💾 **The one copy that stays** is the safety copy of your edits files that a data migration rewrites: only the latest, inside `.local/backups/`, never beside the install. / **النسخة الوحيدة التي تبقى** هي نسخة أمان لملفات التعديلات التي يعيد الترحيل كتابتها: الأحدث فقط، داخل `.local/backups/` لا بجانب التثبيت.
+- 🔌 **Claude Code plugin**: once the new version runs, the older Business-Wrap version folders in the plugin cache are removed (only this plugin's own, never the running one, never one Claude Code still lists). / **إضافة Claude Code**: بعد تشغيل الإصدار الجديد تُحذف مجلدات إصدارات Business-Wrap الأقدم من ذاكرة الإضافة (التي تخص هذه الإضافة فقط، لا الجاري ولا ما زال Claude Code يسجله).
+- 💬 The update messages (command line, MCP tool, editor, release notes) now say the old version is replaced. / رسائل التحديث (سطر الأوامر وأداة MCP والمحرر وملاحظات الإصدار) تقول الآن إن الإصدار القديم يُستبدل.
+
+### Fixed / أصلح
+- 🧪 One test no longer needs git history (the frozen 0.15.5 diagram engine is a fixture), so it runs on a shallow clone. / اختبار لم يعد يحتاج سجل git (محرك مخططات 0.15.5 المجمَّد صار ملفاً ثابتاً)، فيعمل على نسخة سطحية.
+
+### Migration notes / ملاحظات الترحيل
+- A rollback copy beside the install (`<folder>.backup-<version>`) no longer exists after an update; the result of `update --apply` and of the MCP `apply_update` has no `backup` field any more, and may carry `rollbackFailed` and `backup` only when a restore failed. / لم تعد نسخة الاسترجاع بجانب التثبيت موجودة بعد التحديث، ولم يعد في نتيجة `update --apply` وأداة `apply_update` حقل `backup` إلا عند فشل الاسترجاع.
+
 ## [0.15.6] - 2026-11-02
 
 🏹 Freer arrows in the diagram, a steady screen while you zoom, and a fuller user story. / 🏹 أسهم أطوع في المخطط، وشاشة ثابتة عند التكبير، وقصة مستخدم أكمل.
