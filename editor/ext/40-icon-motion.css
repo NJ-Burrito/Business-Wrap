@@ -194,6 +194,7 @@
 [data-ic="cellClearFormat"] > * { --s: 1.15; --r: 10deg; --icm: icm-spin var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 [data-ic="addStory"] > * { --s: 1.15; --r: 10deg; --icm: icm-pop var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 [data-ic="storyPoint"] > * { --s: 1.15; --r: 10deg; --icm: icm-pop var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="addOutputStory"] > * { --s: 1.15; --r: -10deg; --icm: icm-pop var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 [data-ic="storyCard"] > * { --s: 1.15; --r: 10deg; --icm: icm-lift var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 [data-ic="pgBreakAdd"] > * { --s: 1.15; --r: 10deg; --icm: icm-pop var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 [data-ic="pgBreakDel"] > * { --s: 1.15; --r: 10deg; --icm: icm-recede var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
@@ -341,6 +342,15 @@
 [data-ic="dgEdgeLabel"] > * { --r:-9deg; --icm: icm-tilt var(--mvt); }
 [data-ic="dgBendAdd"] > * { --s:1.2; --icm: icm-pop var(--mvt); }
 [data-ic="dgBendDel"] > * { --s:.8; --icm: icm-recede var(--mvt); }
+[data-ic="dgRoute"] > * { --icm: icm-draw var(--mvt); }
+[data-ic="dgHead"] > * { --x:2.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="dgTail"] > * { --x:-2.5px; --icm: icm-nudge var(--mvt); }
+[data-ic="dgLine"] > * { --icm: icm-grow-x var(--mvt); }
+[data-ic="dgWeight"] > * { --icm: icm-bold var(--mvt); }
+[data-ic="dgLgText"] > * { --r:-9deg; --icm: icm-tilt var(--mvt); }
+[data-ic="dgLgLook"] > * { --s:1.2; --icm: icm-pop var(--mvt); }
+[data-ic="dgLgDel"] > * { --s:.8; --icm: icm-recede var(--mvt); }
+[data-ic="dgLgReset"] > * { --r:-360deg; --icm: icm-spin var(--mvt); }
 [data-ic="dgRouteAuto"] > * { --icm: icm-draw var(--mvt); }
 [data-ic="dgZoomIn"] > * { --s:1.2; --icm: icm-pop var(--mvt); }
 [data-ic="dgZoomOut"] > * { --s:.8; --icm: icm-recede var(--mvt); }

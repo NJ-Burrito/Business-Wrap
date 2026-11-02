@@ -1000,6 +1000,7 @@ export const DIAGRAM = (() => {
         else segs.push({ h: false, y1, y2, x: x1, len: Math.abs(y2 - y1), i });
       }
       const cands = [];
+      const freeFar = [];
       const freeWire = ROUTES.includes(p.e.route) && p.e.route !== 'elbow';
       if (freeWire) {
         // a straight or curved arrow has no horizontal leg to sit beside: seats along the line, on both sides of it
@@ -1007,14 +1008,19 @@ export const DIAGRAM = (() => {
         const D = p.bez ? p.bez.flatMap((sg) => Array.from({ length: 9 }, (_, j) => bezAt(sg, j / 8))) : p.pts;
         const seat = [];
         for (let i = 1; i < D.length; i += 1) seat.push([D[i - 1], D[i]]);
-        for (const at of [0.5, 0.3, 0.7, 0.15, 0.85]) {
+        const seatAt = (at, ring) => {
           const [a, b] = seat[Math.min(seat.length - 1, Math.floor(at * seat.length))];
           const L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
           const nx = -(b[1] - a[1]) / L;
           const ny = (b[0] - a[0]) / L;
-          const off = Math.abs(nx) * (lw / 2 + 6) + Math.abs(ny) * (lh / 2 + 2);
-          for (const sg of [1, -1]) cands.push({ x: (a[0] + b[0]) / 2 + nx * off * sg, y: (a[1] + b[1]) / 2 + ny * off * sg });
-        }
+          const off = Math.abs(nx) * (lw / 2 + 6) + Math.abs(ny) * (lh / 2 + 2) + ring * (Math.abs(nx) * lw * 0.5 + Math.abs(ny) * lh);
+          const mx = (a[0] + b[0]) / 2;
+          const my = (a[1] + b[1]) / 2;
+          return [1, -1].map((sg) => ({ x: mx + nx * off * sg, y: my + ny * off * sg, ax: mx, ay: my }));
+        };
+        for (const at of [0.5, 0.3, 0.7, 0.15, 0.85, 0.4, 0.6, 0.22, 0.78, 0.08, 0.92]) for (const c of seatAt(at, 0)) cands.push({ x: c.x, y: c.y });
+        // no free seat beside the line: seats further out, tied back to the line by a leader (as an elbow's far seats are)
+        for (const ring of [1, 2, 3, 4]) for (const at of [0.5, 0.3, 0.7, 0.15, 0.85, 0.4, 0.6]) freeFar.push(...seatAt(at, ring));
       }
       const hs = segs.filter((s) => s.h).sort((a, b) => b.len - a.len);
       for (const s of hs) for (const at of [0.5, 0.3, 0.7, 0.15, 0.85]) for (const dy of [-(lh / 2 + 2), lh / 2 + 2]) cands.push({ x: s.x1 + (s.x2 - s.x1) * at, y: s.y + dy });
@@ -1026,18 +1032,30 @@ export const DIAGRAM = (() => {
         for (const s of hs) for (const at of [0.5, 0.3, 0.7, 0.15, 0.85]) for (const sg of [-1, 1]) { const ax = s.x1 + (s.x2 - s.x1) * at; far.push({ x: ax, y: s.y + sg * (lh * (ring - 0.5) + 2), ax, ay: s.y }); }
         for (const s of segs.filter((q) => !q.h)) for (const at of [0.5, 0.25, 0.75]) for (const sg of [1, -1]) { const ay = s.y1 + (s.y2 - s.y1) * at; far.push({ x: s.x + sg * (lw / 2 + 6 + (ring - 1) * 24), y: ay, ax: s.x, ay }); }
       }
-      const rectOf = (c) => ({ x: c.x - lw / 2, y: c.y - lh / 2 + 3, w: lw, h: lh - 6 });
-      const leaderClear = (c) => { const l = { l: Math.min(c.x, c.ax) - 0.5, r: Math.max(c.x, c.ax) + 0.5, t: Math.min(c.y, c.ay) - 0.5, b: Math.max(c.y, c.ay) + 0.5 }; return !solids.some((o) => l.l < o.r && l.r > o.l && l.t < o.b && l.b > o.t); };
+      if (freeWire) far.push(...freeFar);
+      const rectOf = freeWire ? (c) => ({ x: c.x - lw / 2, y: c.y - FS.edge * 0.65, w: lw, h: FS.edge * 1.3 }) : (c) => ({ x: c.x - lw / 2, y: c.y - lh / 2 + 3, w: lw, h: lh - 6 });
+      // a text box on the page is a thing a straight or curved caption must keep off, too (an elbow route never sees it, so its drawing is unchanged)
+      const blockers = freeWire ? solids.concat(model.nodes.filter((n) => n.kind === 'text').map(box)) : solids;
+      // a slanted leader is tested as a segment, not by its bounding box (the box of a diagonal always touches the shape the wire starts on)
+      const segHits = (c, o) => { const x1 = c.ax; const y1 = c.ay; const dx = c.x - x1; const dy = c.y - y1; let t0 = 0; let t1 = 1; for (const [pp, qq] of [[-dx, x1 - o.l - 1], [dx, o.r - 1 - x1], [-dy, y1 - o.t - 1], [dy, o.b - 1 - y1]]) { if (pp === 0) { if (qq < 0) return false; } else { const t = qq / pp; if (pp < 0) { if (t > t1) return false; t0 = Math.max(t0, t); } else { if (t < t0) return false; t1 = Math.min(t1, t); } } } return t0 <= t1; };
+      const leaderClear = freeWire ? (c) => !blockers.some((o) => segHits(c, o)) : (c) => { const l = { l: Math.min(c.x, c.ax) - 0.5, r: Math.max(c.x, c.ax) + 0.5, t: Math.min(c.y, c.ay) - 0.5, b: Math.max(c.y, c.ay) + 0.5 }; return !solids.some((o) => l.l < o.r && l.r > o.l && l.t < o.b && l.b > o.t); };
       let pick = null;
       for (const [list, strict] of [[cands, true], [cands, false], [far, true], [far, false]]) {
         for (const c of list) {
           const r = rectOf(c);
-          if (!hits(r, solids) && !hits(r, placed) && (!strict || !hits(r, wireRects)) && (c.ax == null || leaderClear(c))) { pick = c; placed.push({ l: r.x, t: r.y, r: r.x + r.w, b: r.y + r.h }); break; }
+          if (!hits(r, blockers) && !hits(r, placed) && (!strict || !hits(r, wireRects)) && (c.ax == null || leaderClear(c))) { pick = c; placed.push({ l: r.x, t: r.y, r: r.x + r.w, b: r.y + r.h }); break; }
         }
         if (pick) break;
       }
+      if (!pick && freeWire) { // nothing is free: the seat that covers least (never the first one blindly)
+        const area = (r) => blockers.concat(placed.map((q) => ({ l: q.l, r: q.r, t: q.t, b: q.b }))).reduce((a, o) => a + Math.max(0, Math.min(r.x + r.w, o.r) - Math.max(r.x, o.l)) * Math.max(0, Math.min(r.y + r.h, o.b) - Math.max(r.y, o.t)), 0);
+        let best = Infinity;
+        for (const c of cands.concat(far)) { const a = area(rectOf(c)); if (a < best) { best = a; pick = c; } }
+        if (pick) { const r = rectOf(pick); placed.push({ l: r.x, t: r.y, r: r.x + r.w, b: r.y + r.h }); }
+      }
       pick ||= cands[0] || { x: p.pts[0][0], y: p.pts[0][1] };
-      if (pick.ax != null) wires.push({ t: 'line', pts: [[pick.ax, pick.ay], pick.ay === pick.y ? [pick.x - Math.sign(pick.x - pick.ax) * (lw / 2), pick.y] : [pick.x, pick.y - Math.sign(pick.y - pick.ay) * (lh / 2 - 3)]], d: '', color: P.caption, lw: 0.6, dash: '2 2', arrow: false, leader: p.e.id });
+      if (pick.ax != null && freeWire) wires.push({ t: 'line', pts: [[pick.ax, pick.ay], [pick.x, pick.y]], d: '', color: P.caption, lw: 0.6, dash: '2 2', arrow: false, leader: p.e.id });
+      else if (pick.ax != null) wires.push({ t: 'line', pts: [[pick.ax, pick.ay], pick.ay === pick.y ? [pick.x - Math.sign(pick.x - pick.ax) * (lw / 2), pick.y] : [pick.x, pick.y - Math.sign(pick.y - pick.ay) * (lh / 2 - 3)]], d: '', color: P.caption, lw: 0.6, dash: '2 2', arrow: false, leader: p.e.id });
       caps.push(textItem([p.e.label], pick.x, pick.y, FS.edge, P.caption, 400, { plate: P.paper, edge: p.e.id }));
     }
     // extent of the drawing, then the legend under it

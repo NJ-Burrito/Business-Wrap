@@ -58,6 +58,33 @@ const wf = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'workflow.json'), 'utf8'
   check('A6 old samples draw byte-identical SVG (print and editor) with no new key set', compared >= 5 && same === compared, `${same}/${compared} diagrams from ${docs.length} documents`);
   check('A6 the schema names the new keys', ['route', 'head', 'tail', 'line', 'weight', 'fromAnchor', 'toAnchor'].every((k) => JSON.parse(fs.readFileSync(path.join(REPO, 'bible/contracts/diagram.schema.json'), 'utf8')).properties.edges.items.properties[k]));
 
+  { // A6 captions: on a straight or curved route no caption sits on a shape, a text box or another caption (every sample, both editions)
+    const ov = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    let seen = 0;
+    const bad = [];
+    for (const s of fs.readdirSync(path.join(REPO, 'samples'))) {
+      const f = path.join(REPO, 'samples', s, 'workflow.json');
+      if (!fs.existsSync(f)) continue;
+      const w = JSON.parse(fs.readFileSync(f, 'utf8'));
+      for (const loc of ['ar', 'en']) {
+        if (!w[loc]) continue;
+        for (const route of ['straight', 'curved']) {
+          const m = DIAGRAM.layout(w[loc]);
+          m.edges.forEach((e) => { e.route = route; });
+          const items = DIAGRAM.resolve(m, { theme, locale: loc }).items;
+          const caps = items.filter((i) => i.t === 'text' && i.edge);
+          const texts = items.filter((i) => i.t === 'text' && !i.edge && i.box);
+          seen += caps.length;
+          for (const c of caps) {
+            for (const o of caps) if (c.edge < o.edge && ov(c.box, o.box)) bad.push(`${s}/${loc}/${route} ${c.edge}~${o.edge}`);
+            for (const t of texts) if (ov(c.box, t.box)) bad.push(`${s}/${loc}/${route} ${c.edge}~text`);
+            for (const n of m.nodes.filter((q) => q.kind !== 'group')) if (ov(c.box, { x: n.x, y: n.y, w: n.w, h: n.h })) bad.push(`${s}/${loc}/${route} ${c.edge}~${n.id}`);
+          }
+        }
+      }
+    }
+    check('A6 straight and curved captions never overlap a shape, a text box or another caption (all samples, AR and EN)', seen >= 40 && bad.length === 0, `${seen} captions seen; ${bad.slice(0, 4).join(', ')}`);
+  }
   const m0 = DIAGRAM.layout(wf.en);
   const styled = JSON.parse(JSON.stringify(m0));
   const E = (id) => styled.edges.find((e) => e.id === id);
@@ -604,6 +631,36 @@ try {
     const dd = seen.map((s) => maxDelta(a0, s));
     numbers.Z5 = { ribbonH: seen.map((s) => s.ribbonH), scrollY: seen.map((s) => s.scrollY), scrollH: seen.map((s) => s.scrollH), maxDelta: dd };
     check('Z5 selecting empty drawing, shape and arrow: ribbon height, scrollHeight, scrollY, figure all move ≤ 1 px', seen.length === 4 && Math.max(...dd) <= 1 && a0.ribbonH > 100, JSON.stringify(numbers.Z5));
+  }
+  {
+    // Z7: a committed diagram edit, its undo and its redo never move the page: scrollY and scrollHeight stay within 1 px (the owner's complaint is the screen jumping)
+    await U.reveal();
+    await page.keyboard.press('Escape');
+    await page.mouse.click(5, 5);
+    await page.waitForTimeout(80);
+    const b0 = await snap();
+    const nb = await page.locator(`${FIG} [data-dg-node="rev"]`).first().boundingBox();
+    check('Z7 ready: the figure and its node are on screen before the edit', !!nb && nb.width > 10 && b0.scrollH > 1000, JSON.stringify({ nb, scrollH: b0.scrollH }));
+    await page.mouse.move(nb.x + nb.width / 2, nb.y + nb.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(nb.x + nb.width / 2 + 40, nb.y + nb.height / 2 + 24, { steps: 6 });
+    await page.mouse.up();
+    await page.waitForTimeout(250);
+    const afterDrag = await page.locator(`${FIG} [data-dg-node="rev"]`).first().boundingBox();
+    const b1 = await snap();
+    await page.evaluate(() => window.BW.runAction('undo'));
+    await page.waitForTimeout(250);
+    const b2 = await snap();
+    await page.evaluate(() => window.BW.runAction('redo'));
+    await page.waitForTimeout(250);
+    const b3 = await snap();
+    await page.evaluate(() => window.BW.runAction('undo'));
+    await page.waitForTimeout(250);
+    const moved = await page.locator(`${FIG} [data-dg-node="rev"]`).first().boundingBox();
+    const sh = (a, b) => Math.max(Math.abs(a.scrollY - b.scrollY), Math.abs(a.scrollH - b.scrollH));
+    numbers.Z7 = { before: b0, commit: b1, undo: b2, redo: b3, shift: [sh(b0, b1), sh(b0, b2), sh(b0, b3)] };
+    check('Z7 the edit really committed (the node left its place, undo brought it back)', !!afterDrag && Math.hypot(afterDrag.x - nb.x, afterDrag.y - nb.y) > 10 && !!moved && Math.abs(moved.x - nb.x) < 2 && Math.abs(moved.y - nb.y) < 2, JSON.stringify({ nb, moved }));
+    check('Z7 scrollY and scrollHeight move ≤ 1 px after a committed diagram edit, after undo and after redo', Math.max(...numbers.Z7.shift) <= 1, JSON.stringify(numbers.Z7.shift) + ' ' + JSON.stringify([b0.scrollY, b1.scrollY, b2.scrollY, b3.scrollY]));
   }
   {
     // Z6: Ctrl+wheel outside a figure still zooms the page; printing ignores the diagram zoom
