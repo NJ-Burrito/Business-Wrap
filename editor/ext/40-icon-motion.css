@@ -337,6 +337,7 @@
 [data-ic="dgCvPage"] > * { --icm: icm-grow-y var(--mvt); }
 [data-ic="dgCvAuto"] > * { --r:180deg; --icm: icm-spin var(--mvt); }
 [data-ic="dgCvRoute"] > * { --icm: icm-draw var(--mvt); }
+[data-ic="dgJoin"] > * { --s:1.2; --icm: icm-pop var(--mvt); }
 [data-ic="dgMermaidIn"] > * { --y:-3px; --icm: icm-from var(--mvt); }
 [data-ic="dgMermaidOut"] > * { --y:-3px; --icm: icm-nudge var(--mvt); }
 [data-ic="dgReverse"] > * { --icm: icm-flip var(--mvt); }

@@ -227,6 +227,7 @@ function viewsApply() {
   if (!box.classList.contains('bw-view')) {
     box = document.createElement('div');
     box.className = 'bw-view';
+    main.style.transition = 'none'; // no slide into the first scale: a count taken mid-transition sees the wrong scale (viewsGo(0, true) at the end gives the transition back)
     main.before(box);
     box.appendChild(main);
   }
