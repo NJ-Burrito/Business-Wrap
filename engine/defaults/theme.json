@@ -6,14 +6,14 @@
     "display": "Thmanyah Serif Display"
   },
   "sizes": {
-    "title": "24pt",
-    "h1": "18pt",
-    "h2": "16pt",
-    "h3": "14pt",
-    "body": "14pt",
-    "table": "12pt",
-    "meta": "10pt",
-    "micro": "9pt"
+    "title": "22pt",
+    "h1": "16pt",
+    "h2": "14pt",
+    "h3": "12pt",
+    "body": "12pt",
+    "table": "10pt",
+    "meta": "8pt",
+    "micro": "7pt"
   },
   "brand": {
     "producer": "",

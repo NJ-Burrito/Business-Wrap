@@ -493,14 +493,14 @@ ${modelCss(doc)}${sanitizeCss(doc.design?.css).css}
 *{box-sizing:border-box}
 :root{
 ${vars}
-  --t-title:${sz(theme.sizes?.title, '24pt')};
-  --t-h1:${sz(theme.sizes?.h1, '18pt')};
-  --t-h2:${sz(theme.sizes?.h2, '16pt')};
-  --t-h3:${sz(theme.sizes?.h3, '14pt')};
-  --t-body:${sz(theme.sizes?.body, '14pt')};
-  --t-table:${sz(theme.sizes?.table, '12pt')};
-  --t-meta:${sz(theme.sizes?.meta, '10pt')};
-  --t-micro:${sz(theme.sizes?.micro, '9pt')};
+  --t-title:${sz(theme.sizes?.title, '22pt')};
+  --t-h1:${sz(theme.sizes?.h1, '16pt')};
+  --t-h2:${sz(theme.sizes?.h2, '14pt')};
+  --t-h3:${sz(theme.sizes?.h3, '12pt')};
+  --t-body:${sz(theme.sizes?.body, '12pt')};
+  --t-table:${sz(theme.sizes?.table, '10pt')};
+  --t-meta:${sz(theme.sizes?.meta, '8pt')};
+  --t-micro:${sz(theme.sizes?.micro, '7pt')};
   --page-side:${sz(theme.vars['page-side'], '16mm')};
 }
 body{font-family:${text},system-ui,sans-serif;
