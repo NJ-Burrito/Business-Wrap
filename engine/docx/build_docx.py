@@ -235,6 +235,8 @@ def add_table(document, columns, rows, font, roles=None, spec=None):
             table.cell(r0, c0).merge(table.cell(r1, c1))
     if roles is not None:
         theme_mod.style_table_theme(table, roles, has_header=bool(header))
+    if header:
+        keep_header_with_next(table)
     return table
 
 def rasterize_svg(svg: str, out_png: Path, scale: int=3) -> None:
@@ -366,12 +368,129 @@ def add_shots_block(document, block, font, counters):
             r.font.size = Pt(theme_mod.SIZES['meta'])
     counters['shots_block'] = counters.get('shots_block', 0) + 1
 
+_PPR_AFTER_BDR = ('w:shd', 'w:tabs', 'w:suppressAutoHyphens', 'w:kinsoku', 'w:wordWrap', 'w:overflowPunct', 'w:topLinePunct', 'w:autoSpaceDE', 'w:autoSpaceDN', 'w:bidi', 'w:adjustRightInd', 'w:snapToGrid', 'w:spacing', 'w:ind', 'w:contextualSpacing', 'w:mirrorIndents', 'w:suppressOverlap', 'w:jc', 'w:textDirection', 'w:textAlignment', 'w:textboxTightWrap', 'w:outlineLvl', 'w:divId', 'w:cnfStyle', 'w:rPr', 'w:sectPr', 'w:pPrChange')
+
+def _hex(v):
+    return str(v).lstrip('#').upper()
+
+def _font_el(font):
+    rFonts = OxmlElement('w:rFonts')
+    for a in ('w:ascii', 'w:hAnsi', 'w:cs', 'w:eastAsia'):
+        rFonts.set(qn(a), font)
+    return rFonts
+
+def card_paragraph(paragraph, roles, edges=('left', 'right'), start_edge=None, fill=True):
+    """A paragraph that is a band of the sand story card (the print's .story): sand fill and the card's strong rule on the
+    sides it asks for; `start_edge` (the side the text starts on) gets the gold label rule instead (the print's .run-in)."""
+    pPr = paragraph._p.get_or_add_pPr()
+    for old in pPr.findall(qn('w:pBdr')) + pPr.findall(qn('w:shd')):
+        pPr.remove(old)
+    bdr = OxmlElement('w:pBdr')
+    for edge in ('top', 'left', 'bottom', 'right'):
+        if edge not in edges and edge != start_edge:
+            continue
+        el = OxmlElement(f'w:{edge}')
+        el.set(qn('w:val'), 'single')
+        gold = edge == start_edge
+        el.set(qn('w:sz'), '16' if gold else '6')
+        el.set(qn('w:space'), '4' if edge in ('left', 'right') else '1')
+        el.set(qn('w:color'), _hex(roles['accent-rule'] if gold else roles['rule-strong']))
+        bdr.append(el)
+    if len(bdr):
+        pPr.insert_element_before(bdr, *_PPR_AFTER_BDR)
+    if fill:
+        shd = OxmlElement('w:shd')
+        shd.set(qn('w:val'), 'clear')
+        shd.set(qn('w:color'), 'auto')
+        shd.set(qn('w:fill'), _hex(roles['card']))
+        pPr.insert_element_before(shd, *_PPR_AFTER_BDR[1:])
+
+def card_gap(document, roles, closing=False):
+    """The sand strip between the parts of a story card (and its closing edge): a 4 pt shaded paragraph, not an empty body line."""
+    p = document.add_paragraph()
+    set_para_bidi(p)
+    p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(0)
+    pPr = p._p.get_or_add_pPr()
+    rPr = OxmlElement('w:rPr')
+    for tag in ('w:sz', 'w:szCs'):
+        sz = OxmlElement(tag)
+        sz.set(qn('w:val'), '8')
+        rPr.append(sz)
+    pPr.append(rPr)
+    card_paragraph(p, roles, edges=('left', 'right', 'bottom') if closing else ('left', 'right'))
+    return p
+
+def label_bar(document, text, font, roles):
+    """The print's run-in label («جدول الإجراءات», «قاموس البيانات والمصطلحات», «بطاقات القصص»): bold in the primary colour with a gold rule on the starting side."""
+    p = document.add_paragraph()
+    set_para_bidi(p)
+    p.paragraph_format.keep_with_next = True
+    p.paragraph_format.space_before = Pt(2)
+    p.paragraph_format.space_after = Pt(2)
+    add_script_runs(p, text, font, bold=True)
+    for run in p.runs:
+        run.font.size = Pt(theme_mod.SIZES['table'])
+        run.font.color.rgb = theme_mod.rgb(roles['primary'])
+    card_paragraph(p, roles, edges=(), start_edge='right' if LOCALE == 'ar' else 'left', fill=False)
+    return p
+
+def thmanyah_only(document, font):
+    """Thmanyah only, in Word too: the template's defaults (theme fonts: Calibri, Cambria Math for equations) would draw every space and
+    paragraph mark that carries no run font in Calibri, Cambria Math or Arial. docDefaults, every style and the equation font name the
+    document font instead, so the exported PDF holds no other face (UAT: Word font line)."""
+    styles_el = document.styles.element
+    rpr_nodes = [n for n in styles_el.iter(qn('w:rFonts'))]
+    for rf in rpr_nodes:
+        for a in list(rf.attrib):
+            if a.endswith('Theme'):
+                del rf.attrib[a]
+        for a in ('w:ascii', 'w:hAnsi', 'w:cs', 'w:eastAsia'):
+            if rf.get(qn(a)) is None:
+                rf.set(qn(a), font)
+    defaults = styles_el.find(qn('w:docDefaults'))
+    if defaults is not None:
+        rpr = defaults.find(qn('w:rPrDefault') + '/' + qn('w:rPr'))
+        if rpr is not None and rpr.find(qn('w:rFonts')) is None:
+            rpr.insert(0, _font_el(font))
+    try:
+        settings = document.settings.element
+        for mf in settings.iter('{http://schemas.openxmlformats.org/officeDocument/2006/math}mathFont'):
+            mf.set('{http://schemas.openxmlformats.org/officeDocument/2006/math}val', font)
+    except Exception:
+        pass
+
+def keep_header_with_next(table):
+    """A table's header row never sits alone at the foot of a page: its paragraphs keep with the first row."""
+    if table.rows:
+        for cell in table.rows[0].cells:
+            for pp in cell.paragraphs:
+                pp.paragraph_format.keep_with_next = True
+
 def add_stories(document, block, font, counters, chapter_number, story_seq):
-    for item in block.get('items', []):
+    for item_no, item in enumerate(block.get('items', [])):
         story_seq[0] += 1
+        roles = _THEME_ROLES
+        if block.get('lead') and item_no == 0:
+            lead = label_bar(document, block['lead'], font, roles)  # «بطاقات القصص»: the print's cards label, once per block
+            lead.paragraph_format.space_before = Pt(0)
         cap = document.add_paragraph()
+        set_para_bidi(cap)
         cap.paragraph_format.keep_with_next = True
-        add_script_runs(cap, f"{chapter_number}.{story_seq[0]} {L['userStory']}", font, bold=True)
+        cap.paragraph_format.space_before = Pt(6)
+        cap.paragraph_format.space_after = Pt(0)
+        # the print's story-head: the SECTION's number (gold) then «قصة مستخدم» in the primary colour, on the top band of the sand card
+        sn = str(block.get('number') or f"{chapter_number}.{story_seq[0]}")
+        nrun = cap.add_run(f"{sn}    ")
+        nrun.bold = True
+        nrun.font.size = Pt(theme_mod.SIZES['h2'])
+        nrun.font.color.rgb = theme_mod.rgb(roles['accent'])
+        nrun._element.get_or_add_rPr().insert(0, _font_el(font))
+        add_script_runs(cap, L['userStory'], font, bold=True)
+        for run in cap.runs[1:]:
+            run.font.size = Pt(theme_mod.SIZES['h2'])
+            run.font.color.rgb = theme_mod.rgb(roles['primary'])
+        card_paragraph(cap, roles, edges=('top', 'left', 'right'))
         as_, want, so = (item.get('as', ''), item.get('want', ''), item.get('so', ''))
         goal_text = item['goal'] if item.get('goal') else (L['storyGoal'].replace('{as}', as_).replace('{want}', want).replace('{so}', so) if as_ and want and so else '')
         acceptance_items = item.get('acceptance', [])
@@ -401,22 +520,23 @@ def add_stories(document, block, font, counters, chapter_number, story_seq):
                 cell.paragraphs[0].text = ''
                 add_numbered_list_cell(cell, acceptance_items, font, new_criteria_num_id(document))
         theme_mod.style_story_card(story_tbl, _THEME_ROLES)
-        document.add_paragraph()
+        has_more = bool((item.get('actions') or {}).get('rows')) or bool((item.get('dictionary') or {}).get('rows'))
+        card_gap(document, roles, closing=not has_more)
         counters['stories_table'] = counters.get('stories_table', 0) + 1
         actions = item.get('actions')
         if actions and actions.get('rows'):
-            p = document.add_paragraph()
-            add_script_runs(p, L['actionsTable'], font, bold=True)
-            add_table(document, actions.get('columns', []), actions.get('rows', []), font, spec=actions)
-            document.add_paragraph()
+            label_bar(document, L['actionsTable'], font, roles)
+            act_tbl = add_table(document, actions.get('columns', []), actions.get('rows', []), font, spec=actions)
+            keep_header_with_next(act_tbl)
+            card_gap(document, roles, closing=not (item.get('dictionary') or {}).get('rows'))
             counters['stories_actions_table'] = counters.get('stories_actions_table', 0) + 1
         dictionary = item.get('dictionary')
         if dictionary and dictionary.get('rows'):
-            p = document.add_paragraph()
-            add_script_runs(p, L['dictionary'], font, bold=True)
+            label_bar(document, L['dictionary'], font, roles)
             dict_tbl = add_table(document, dictionary.get('columns', []), dictionary.get('rows', []), font, spec=dictionary)
             theme_mod.style_dictionary_table(dict_tbl, _THEME_ROLES)
-            document.add_paragraph()
+            keep_header_with_next(dict_tbl)
+            card_gap(document, roles, closing=True)
             counters['stories_dictionary_table'] = counters.get('stories_dictionary_table', 0) + 1
 CONTROL_LABELS = [('documentId', L['control']['documentId']), ('title', L['control']['title']), ('preparedBy', L['control']['preparedBy']), ('documentType', L['control']['documentType']), ('classification', L['control']['classification']), ('owner', L['control']['owner']), ('issuedOn', L['control']['issuedOn']), ('version', L['control']['version']), ('status', L['control']['status']), ('reviewCycle', L['control']['reviewCycle'])]
 REVISIONS_COLUMNS = [L['revVersion'], L['revDate']]
@@ -474,6 +594,8 @@ def contents_rows(data: dict) -> list[tuple[str, str, str]]:
         rows.append((str(ch.get('number', '')), ch.get('title', ''), 'chapter'))
         secs = ch.get('sections', [])
         if len(secs) == 1:
+            if (secs[0].get('blocks') or [{}])[0].get('kind') == 'stories' and not secs[0].get('tocHidden'):
+                rows.append((str(secs[0].get('number', '')), secs[0].get('title', ''), 'section'))
             for b in secs[0].get('blocks', []):
                 if b.get('kind') == 'subhead' and not b.get('tocHidden'):
                     rows.append(('', MD.text_of(b.get('text', '')), 'card'))
@@ -712,6 +834,7 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     roles = theme_mod.load_roles()
     _THEME_ROLES = roles
     theme_mod.apply_style_scale(document, roles, font)
+    thmanyah_only(document, F['body'])
     if toc:
         theme_mod.apply_cs_font_to_styles(document, font)
     counters = {'table_block': 0, 'figure': 0, 'stories_block': 0, 'prose_block': 0, 'subhead_block': 0}
@@ -794,6 +917,7 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
         h1 = document.add_heading(level=1)
         set_para_bidi(h1)
         theme_mod.add_chapter_chip(h1, ch['number'], F['display'], roles)
+        h1.runs[-1].text = '    '  # the chip's own gap is two spaces: in an RTL line the number box sat glued to the title (UAT H1)
         add_script_runs(h1, ch['title'], F['display'], bold=True)
         story_seq = [0]
         for si, sec in enumerate(ch['sections']):
@@ -806,12 +930,15 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
             elif si and ((sec.get('layout') or {}).get('breakBefore') or (((sec.get('blocks') or [{}])[0].get('layout') or {}).get('breakBefore'))):
                 MD.page_break(document)
                 counters['page_breaks'] = counters.get('page_breaks', 0) + 1
-            if len(ch['sections']) > 1:
+            first_kind = ((sec.get('blocks') or [{}])[0] or {}).get('kind')
+            if len(ch['sections']) > 1 and not (first_kind == 'stories' and not toc):
+                # a story section prints no heading of its own (the card's caption carries its number, as in the PDF); the Word contents field keeps it
                 h2 = document.add_heading(level=2)
                 set_para_bidi(h2)
-                num = h2.add_run(f"{sec.get('number', '')}  ")
+                num = h2.add_run(f"{sec.get('number', '')}    ")
                 num.bold = True
                 num.font.color.rgb = theme_mod.rgb(roles['gold'])
+                num._element.get_or_add_rPr().insert(0, _font_el(F['display']))
                 add_script_runs(h2, sec['title'], F['display'], bold=True)
             for bi, block in enumerate(sec.get('blocks', [])):
                 if block.get('hidden'):
@@ -860,10 +987,6 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     p._p.append(diagram_run(block['resolved'], font, block.get('caption', '')))
                 elif kind == 'stories':
-                    if block.get('lead'):
-                        p = document.add_paragraph()
-                        p.paragraph_format.keep_with_next = True
-                        add_script_runs(p, block['lead'], font, bold=True)
                     add_stories(document, block, font, counters, ch['number'], story_seq)
                     counters['stories_block'] += 1
                 elif kind == 'gap':

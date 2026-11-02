@@ -26,11 +26,11 @@ function scopeMenu(items) {
   arriveEl(d);
   d.hidden = false;
   d.setAttribute('aria-label', t('scope.title'));
-  d.innerHTML = `<div class="scope-menu" role="menu" aria-label="${esc(t('scope.title'))}" style="display:flex;flex-direction:column;gap:6px;min-width:260px"><strong>${esc(t('scope.title'))}</strong>${items.map((x) => `<button type="button" class="b" role="menuitem" data-scope="${x.scope}"><span class="i" aria-hidden="true">${ic(SCOPE_IC[x.scope] || 'delete')}</span><span class="w">${esc(t('scope.' + x.scope))}</span></button>`).join('')}</div><div class="btns"><button type="button" class="b" data-k="no"><span class="w">${esc(t('close'))}</span></button></div>`;
+  d.innerHTML = `<div class="scope-menu" role="menu" aria-label="${esc(t('scope.title'))}" style="display:flex;flex-direction:column;gap:6px;min-width:260px"><strong>${esc(t('scope.title'))}</strong><small class="scope-hint" style="opacity:.75">${esc(t('scope.hint'))}</small>${items.map((x) => `<button type="button" class="b" role="menuitem" data-scope="${x.scope}"><span class="i" aria-hidden="true">${ic(SCOPE_IC[x.scope] || 'delete')}</span><span class="w">${esc(t('scope.' + x.scope))}</span></button>`).join('')}</div><div class="btns"><button type="button" class="b" data-k="no"><span class="w">${esc(t('close'))}</span></button></div>`;
   const btns = [...d.querySelectorAll('[data-scope]')];
   btns[0]?.focus();
   return new Promise((res) => {
-    const done = (v) => { d.bwDirty = null; d.bwCancel = null; leaveEl(d, () => { d.hidden = true; }); SCOPE.open = null; res(v); };
+    const done = (v) => { document.removeEventListener('pointerdown', away, true); root.removeEventListener('pointerdown', away, true); d.bwDirty = null; d.bwCancel = null; leaveEl(d, () => { d.hidden = true; }); SCOPE.open = null; res(v); };
     d.bwCancel = () => done('');
     SCOPE.open = items.map((x) => x.scope);
     d.onclick = (e) => {
@@ -38,6 +38,10 @@ function scopeMenu(items) {
       if (!b) return;
       done(b.dataset.scope || '');
     };
+    // a press anywhere outside the menu closes it, so the ribbon (undo, redo) is never left silently blocked behind it (UAT M8)
+    const away = (e) => { if (!e.composedPath().includes(d) && !d.hidden) done(''); };
+    document.addEventListener('pointerdown', away, true);
+    root.addEventListener('pointerdown', away, true);
     d.onkeydown = (e) => {
       if (e.key === 'Escape') { e.preventDefault(); done(''); return; }
       const i = btns.indexOf(document.activeElement) >= 0 ? btns.indexOf(document.activeElement) : btns.indexOf(root.activeElement);
@@ -55,6 +59,14 @@ function scopeRun(scope) {
   if (scope === 'row') { const n = cur().ops.length; A.rowDel(); return cur().ops.length > n; }
   if (scope === 'column') { const n = cur().ops.length; A.colDel(); return cur().ops.length > n; }
   if (scope === 'section') return !!EXT.w2write?.delSection(hit.path);
+  // the whole block of a story card that is the only thing in its numbered section: the section goes with it, never an empty «6.3 title» left in the
+  // document and the contents (UAT M4); a chapter's last section keeps its heading (a section cannot be the chapter's last one to go)
+  if (scope === 'block') {
+    const m = /^(\/chapters\/\d+)\/sections\/\d+\/blocks\/\d+$/.exec(String(hit.path || ''));
+    const blk = m && get(cur().doc, hit.path);
+    const secPtr = m && hit.path.replace(/\/blocks\/\d+$/, '');
+    if (blk?.kind === 'stories' && get(cur().doc, secPtr).blocks.length === 1 && get(cur().doc, m[1]).sections.length > 1) return !!EXT.w2write?.delSection(secPtr);
+  }
   if (scope === 'element' && hit.overlay) { OVL.remove(); return true; }
   const ops = deleteOps(cur().doc, scope, sel);
   if (!ops?.length) return false;
