@@ -844,6 +844,7 @@ const A = {
     const doc = cur().doc;
     const b = blockOf(S.sel?.b);
     const sec = !b && /^\/chapters\/(\d+)\/sections\/(\d+)\/(title|number)$/.exec(S.sel?.p || '');
+    const chap = !b && !sec && /^\/chapters\/(\d+)\/(title|number)$/.exec(S.sel?.p || '');
     let from = null;
     let to = null;
     if (b) {
@@ -866,6 +867,11 @@ const A = {
       if (j < 0 || j >= n) return;
       from = `/chapters/${sec[1]}/sections/${sec[2]}`;
       to = `/chapters/${sec[1]}/sections/${j}`;
+    } else if (chap) {
+      const j = +chap[1] + d;
+      if (j < 0 || j >= doc.chapters.length) return;
+      from = `/chapters/${chap[1]}`;
+      to = `/chapters/${j}`;
     } else return;
     const was = S.sel && { ...S.sel };
     commit([{ op: 'move', from, path: to }], { mirror: true });
@@ -1601,6 +1607,7 @@ function ctxModel(b, tb) {
   }
   if (!b) {
     if (/^\/chapters\/\d+\/sections\/\d+\/(title|number)$/.test(S.sel?.p || '')) return { cat: 'text', label: t('ux.selSection'), groups: [['moveUp', 'moveDown', 'comment']] };
+    if (/^\/chapters\/\d+\/(title|number)$/.test(S.sel?.p || '')) return { cat: 'text', label: t('ux.selChapter'), groups: [['moveUp', 'moveDown', 'comment']] }; // 0.16.0 (L7): a chapter heading has its strip too
     return null;
   }
   const blk = get(cur().doc, b.ptr);

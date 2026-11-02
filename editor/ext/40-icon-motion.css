@@ -191,6 +191,7 @@
 [data-ic="cellColW"] > * { --s: 1.15; --r: 10deg; --icm: icm-grow-x var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 [data-ic="cellRowH"] > * { --s: 1.15; --r: 10deg; --icm: icm-grow-y var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 [data-ic="cellClearValue"] > * { --s: 1.15; --r: 10deg; --icm: icm-blink var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+[data-ic="cellKeepEmpty"] > * { --s: 1.15; --r: 10deg; --icm: icm-blink var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 [data-ic="cellClearFormat"] > * { --s: 1.15; --r: 10deg; --icm: icm-spin var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 [data-ic="addStory"] > * { --s: 1.15; --r: 10deg; --icm: icm-pop var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 [data-ic="storyPoint"] > * { --s: 1.15; --r: 10deg; --icm: icm-pop var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }

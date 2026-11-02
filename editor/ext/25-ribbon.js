@@ -25,7 +25,7 @@ const RB_TABS = [
   ['review', [['check', ['check', 'history', 'outline', 'find', 'comment']], ['flow', ['timeline', 'bulkEdit', 'webhooks']], ['sign', ['pvOpen', 'pvSign', 'lkToggle']]], null, '--bw-sec-document'],
   ['spelling', [['spOn', ['spell', 'spellCount', 'spellLang']], ['spMove', ['spellPrev', 'spellNext']], ['spFix', ['spellFix', 'spellFixAll']], ['spDict', ['spellIgnore', 'spellIgnoreAll', 'spellAdd']]], null, '--bw-sec-spell'],
   ['view', [['view', ['view', 'side', 'both', 'spell', 'snap', 'settings']], ['zoom', ['zoomOut', 'zoomPct', 'zoomIn', 'zoomReset', 'zoomFit', 'zoomHeight']], ['pages', ['view.continuous', 'view.single', 'view.spread']]], null, '--bw-sec-view'],
-  ['table', [['rows', ['rowAdd', 'rowDel', 'rowUp', 'rowDown']], ['cols', ['colAdd', 'colDel']], ['cells', ['cellMerge', 'cellSplit', 'cellWrap', 'cellFill', 'cellColW', 'cellRowH', 'cellClearValue', 'cellClearFormat']],
+  ['table', [['rows', ['rowAdd', 'rowDel', 'rowUp', 'rowDown']], ['cols', ['colAdd', 'colDel']], ['cells', ['cellMerge', 'cellSplit', 'cellWrap', 'cellFill', 'cellColW', 'cellRowH', 'cellClearValue', 'cellKeepEmpty', 'cellClearFormat']],
     ['tblblock', ['duplicate', 'delete', 'moveUp', 'moveDown', 'comment', 'styleThis', 'hideBlock', 'breakBefore', 'keepNext']]], 'table', '--bw-sec-table'],
   ['picture', [['pic', ['replace', 'caption', 'every', 'ovDelete']], ['wrap', ['wrapInline', 'wrapSquare', 'wrapTight', 'wrapThrough', 'wrapTopBottom', 'wrapBehind', 'wrapFront']]], 'picture', '--bw-sec-footer'],
   ['diagram', [['nodes', ['dgStaff', 'dgApplicant', 'dgStart', 'dgPayment', 'dgRework', 'dgSystem', 'dgDecision', 'dgOk', 'dgStop', 'dgNote', 'dgGroup', 'dgText']],
@@ -214,7 +214,14 @@ function ctxFit() {
   if (sb.__fit && sb.__fitSig === sig && !ctxFit.force) return;
   if (ctxRo) { ctxRo.disconnect(); ctxRo.observe(ctx); const sc = ctx.querySelector(':scope > .sc'); if (sc) ctxRo.observe(sc); } // the title's own width changes when the real font arrives
   RB.ctxBusy = true;
+  // 0.16.0 (U1): moving a node from the strip into «More» (or back) blurs it. A tool that held the keyboard keeps it: the same node is focused again after the fit,
+  // and when it now sits in the closed menu, the «More» button takes the keyboard (never the page).
+  const held = ctx.contains(root.activeElement) ? root.activeElement : null;
   try { run(); } finally { RB.ctxBusy = false; ctxMo?.takeRecords(); }
+  if (held && root.activeElement !== held) {
+    const target = held.isConnected && !held.closest('.menu[hidden]') && !held.disabled ? held : ctx.querySelector('.sb > .more > [data-a="more"]') || ctx.querySelector('.sb .b:not([disabled])');
+    target?.focus({ preventScroll: true });
+  }
   sb.__fitSig = sb.__fit?.more?.querySelector('.menu[data-open="1"]') ? '' : sig;
 }
 let ctxMo = null, ctxRo = null;

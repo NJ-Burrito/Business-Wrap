@@ -98,6 +98,21 @@ const CE_ACT = {
     if (!tg) return false;
     return cePut(tg, ceMap(tg, tg.cells, clearValue));
   },
+  /** 0.16.0 (U8): a cell empty on purpose, `{"text":"","keepEmpty":true}`: it prints empty and never «none». Pressed again on cells that are all kept empty, it gives them back as plain blank cells. */
+  keepEmpty() {
+    const tg = ceTarget();
+    if (!tg) return false;
+    const blk = ceBlk(tg.ed, tg.b);
+    const live = ceLive(tg, tg.cells);
+    if (!live.length) return false;
+    const kept = (l) => !!l && typeof l === 'object' && !Array.isArray(l) && l.keepEmpty === true;
+    const undo = live.every(([r, c]) => kept(blk.rows[r][c]));
+    return cePut(tg, ceMap(tg, tg.cells, (l) => {
+      if (undo) { const { keepEmpty, ...rest } = l; return isRich(rest) && rest.style ? rest : ''; }
+      const next = clearValue(l); // the words and the formula go, the cell's own look stays
+      return isRich(next) ? { ...next, keepEmpty: true } : { text: '', keepEmpty: true };
+    }));
+  },
   clearFormat() {
     const tg = ceTarget();
     if (!tg) return false;
@@ -201,8 +216,8 @@ const ceAsk = async (id) => {
   if (id === 'cellColW') { const v = +(await ask(t('ce.colWPrompt'), String(Math.round(ceWidths(tg)[tg.cells[0][1]])), { type: 'number', min: 4, max: 90, step: 1 })); if (v >= 4 && v <= 90) CE_ACT.colWidth(v); return; }
   if (id === 'cellRowH') { const v = +(await ask(t('ce.rowHPrompt'), '12', { type: 'number', min: 4, max: 400, step: 1 })); if (v >= 4 && v <= 400) CE_ACT.rowHeight(v); }
 };
-const CE_IDS = ['cellMerge', 'cellSplit', 'cellWrap', 'cellFill', 'cellColW', 'cellRowH', 'cellClearValue', 'cellClearFormat'];
-const CE_RUN = { cellMerge: () => CE_ACT.merge(), cellSplit: () => CE_ACT.split(), cellWrap: () => CE_ACT.wrap(), cellClearValue: () => CE_ACT.clearValue(), cellClearFormat: () => { CE_ACT.clearMarks(); CE_ACT.clearFormat(); }, cellFill: ceAsk, cellColW: ceAsk, cellRowH: ceAsk };
+const CE_IDS = ['cellMerge', 'cellSplit', 'cellWrap', 'cellFill', 'cellColW', 'cellRowH', 'cellClearValue', 'cellKeepEmpty', 'cellClearFormat'];
+const CE_RUN = { cellMerge: () => CE_ACT.merge(), cellSplit: () => CE_ACT.split(), cellWrap: () => CE_ACT.wrap(), cellClearValue: () => CE_ACT.clearValue(), cellKeepEmpty: () => CE_ACT.keepEmpty(), cellClearFormat: () => { CE_ACT.clearMarks(); CE_ACT.clearFormat(); }, cellFill: ceAsk, cellColW: ceAsk, cellRowH: ceAsk };
 /* the format bar acts on the selected cells (all of them, whole words) while a cell selection exists */
 const CE_FMT = {
   fmtBold: () => CE_ACT.mark('b'), fmtItalic: () => CE_ACT.mark('i'), fmtUnderline: () => CE_ACT.mark('u'), fmtStrike: () => CE_ACT.mark('s'), fmtCode: () => CE_ACT.mark('code'),
@@ -618,6 +633,7 @@ Object.assign(IC, {
   cellColW: CE_ICON('<path d="M3 5v14M21 5v14M7 12h10M10 9l-3 3 3 3M14 9l3 3-3 3"/>'),
   cellRowH: CE_ICON('<path d="M5 3h14M5 21h14M12 7v10M9 10l3-3 3 3M9 14l3 3 3-3"/>'),
   cellClearValue: CE_ICON('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 9 6 6M15 9l-6 6"/>'),
+  cellKeepEmpty: CE_ICON('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8" stroke-dasharray="2 2.5"/>'),
   cellClearFormat: CE_ICON('<path d="M4 7V4h16v3M5 20h6M13 4 8 20M15 15l5 5M20 15l-5 5"/>'),
 });
 bwExt({

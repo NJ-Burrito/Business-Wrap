@@ -554,6 +554,7 @@ cells:fill cellFill@theme
 cells:colw cellColW@colAdd
 cells:rowh cellRowH@rowAdd
 cells:clearv cellClearValue@delete
+cells:keepe cellKeepEmpty@delete
 cells:clearf cellClearFormat@delete
 find:find find@find
 find:check check@check
