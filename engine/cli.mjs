@@ -119,7 +119,7 @@ export async function open({ inputs = [], port = 4317, browser = true, ui } = {}
     const first = JSON.parse(fs.readFileSync(documents[0], 'utf8'));
     healWorkspace(EDITORS());
     editor = path.join(EDITORS(), `${fileStem(first.service || first.control.documentId)}.editor.html`);
-    buildEditor({ inputs: documents, out: editor, set: first.service, watermarkDir: null, ui });
+    buildEditor({ inputs: documents, out: editor, set: first.service, ui });
   }
   const h = await startHost({ editor, port, browser: browser && !process.env.BW_NO_BROWSER });
   const lib = documents.length ? await libraryImport(h.url, documents) : null;
@@ -186,13 +186,13 @@ export async function newDoc({ title, out, browser = true, openIt = true } = {})
   }
   const editorFile = tree ? path.join(tree.docDir, `${tree.folder}.html`) : path.join(dir, `${slug}.editor.html`);
   if (tree) keepVersion(editorFile);
-  const editor = buildEditor({ inputs: documents, out: editorFile, set: slug, watermarkDir: null }).out;
+  const editor = buildEditor({ inputs: documents, out: editorFile, set: slug }).out;
   return { documents, editor, ...(openIt ? { opened: await open({ inputs: [editor], browser }) } : {}) };
 }
 
 export function build({ inputs, out, ui }) {
   if (!inputs?.length || !out) throw Object.assign(new Error('build <doc.json|folder ...> --out <editor.html>'), { code: 2 });
-  const r = buildEditor({ inputs: inputs.map((i) => path.resolve(i)), out: path.resolve(out), watermarkDir: null, ui });
+  const r = buildEditor({ inputs: inputs.map((i) => path.resolve(i)), out: path.resolve(out), ui });
   return { editor: r.out, services: r.services, kb: Math.round(r.bytes / 1024) };
 }
 
