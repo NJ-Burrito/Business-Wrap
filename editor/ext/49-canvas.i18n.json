@@ -5,6 +5,9 @@
     "dgCvAuto": "حجم تلقائي للوحة",
     "dgCvSize": "حجم لوحة المخطط",
     "dgCvRoute": "أسهم لا تتداخل",
+    "dgJoin": "نقطة التقاء",
+    "dgk_join": "نقطة التقاء",
+    "dgFs": "حجم الخط",
     "dgCvMax": "أقصى ما تسمح به الصفحة",
     "rb.g.canvas": "لوحة المخطط"
   },
@@ -14,6 +17,9 @@
     "dgCvAuto": "Automatic canvas size",
     "dgCvSize": "Diagram canvas size",
     "dgCvRoute": "Arrows never overlap",
+    "dgJoin": "Join point",
+    "dgk_join": "join point",
+    "dgFs": "Text size",
     "dgCvMax": "page maximum",
     "rb.g.canvas": "Canvas"
   }

@@ -325,7 +325,8 @@ try {
 
   // first drag: from the automatic size; the edge follows the pointer; snapped; readout and grid while dragging
   const a0 = await artBox();
-  const d1 = await dragH('e', 61, 0, { hold: true });
+  // 0.16.0 (D2): the figure sits on its true landscape sheet, where the automatic canvas is already as wide as the room; the first drag is a small one outward, so it lands on a grid step inside the room and nothing is clamped
+  const d1 = await dragH('e', Math.round((1.5 * a0.k * 96) / 25.4), 0, { hold: true }); // 1.5 mm outward on each side: the canvas (256.6 mm) grows to 260 mm, a grid step and inside the room (264.4 mm)
   const f1 = await blockFrame('ar');
   const a1 = await artBox();
   check('C1 drag the right edge: only the width changes, snapped to the 5 mm grid, saved in the block', !!f1 && f1.wMm % 5 === 0 && near(f1.hMm, a0.mmH - 8.5, 0.4) && near(a1.mmH, f1.hMm, 0.7) && f1.wMm > a0.mmW - 8.5, JSON.stringify({ f1, start: [a0.mmW, a0.mmH] }));

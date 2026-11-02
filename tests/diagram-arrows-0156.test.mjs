@@ -615,13 +615,16 @@ try {
     await page.evaluate(() => { for (let i = 0; i < 3; i += 1) window.BW.runAction('dgZoomIn'); });
     await page.waitForTimeout(60);
     const art = FIG + ' .fig-art';
-    await page.locator(art).evaluate((a) => { a.scrollLeft = getComputedStyle(a).direction === 'rtl' ? -120 : 120; a.scrollTop = 40; });
+    // 0.16.0 (D3): scroll so that the shape «rev» is in the middle of the frame (the old fixed offset of 120/40 px showed only the empty slack around the drawing, so the drag below never ran)
+    await page.locator(art).evaluate((a) => { const n = a.querySelector('[data-dg-node="rev"]'); const fb = a.getBoundingClientRect(); const nbx = n.getBoundingClientRect(); a.scrollLeft += nbx.left + nbx.width / 2 - (fb.left + fb.width / 2); a.scrollTop += nbx.top + nbx.height / 2 - (fb.top + fb.height / 2); });
     await page.waitForTimeout(60);
     const z1 = await snap();
     const gutter = await page.locator(art).evaluate((a) => getComputedStyle(a).scrollbarGutter);
     check('Z4 scrollbars never change the frame\'s size (stable gutter)', /stable/.test(gutter) && maxDelta(z0, z1) <= 1 && Math.abs(z1.sl) > 0, JSON.stringify({ gutter, delta: maxDelta(z0, z1), sl: z1.sl, st: z1.st }));
     // a drag: live redraw replaces innerHTML
     const nodeId = 'rev';
+    const inFrame = await page.evaluate((FIG) => { const r = document.querySelector(`${FIG} .fig-art`).getBoundingClientRect(); const b = document.querySelector(`${FIG} [data-dg-node="rev"]`).getBoundingClientRect(); const cx = b.left + b.width / 2; const cy = b.top + b.height / 2; return cx > r.left + 60 && cx < r.right - 60 && cy > r.top + 40 && cy < r.bottom - 40 && !!document.elementFromPoint(cx, cy)?.closest('[data-dg-node]'); }, FIG);
+    check('Z4 ready: the shape is inside the zoomed frame and under the pointer, so the drag below really runs', inFrame);
     const nb = await page.locator(`${FIG} [data-dg-node="${nodeId}"]`).first().boundingBox();
     let mid = null;
     if (nb && nb.x > 0) {

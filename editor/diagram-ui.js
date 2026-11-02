@@ -8,7 +8,13 @@
  * segment adds one: drag it, or double-click the line); the squares slide along the shape's outline or reconnect to another shape. Every change is ONE `replace` op on <block>/model, so undo/redo,
  * the edits JSON, Save HTML, the PDF and the DOCX all carry it.
  * Declarations only (hoisted): boot() in editor.js runs before this file's statements. */
-function dgClear() { S.dg = null; S.dgPick = null; }
+/** Deselect. 0.16.0: the selection's DOM (the canvas handles, the outline, the picked arrow) goes with it, in the same call: a click on a paragraph cleared S.dg and left the eight [data-dg-cv] handles until the next render. */
+function dgClear() {
+  S.dg = null; S.dgPick = null;
+  document.querySelectorAll('figure[data-dg].dg-on').forEach((f) => f.classList.remove('dg-on'));
+  document.querySelectorAll('figure[data-dg] .dg-ui').forEach((x) => x.remove());
+  document.querySelectorAll('figure[data-dg] .dg-picked').forEach((x) => x.classList.remove('dg-picked'));
+}
 function dgBlock(ptr = S.dg?.b, ed = S.dg?.ed || S.ed) { return ptr ? get(cur(ed).doc, ptr) : null; }
 function dgModel(ptr = S.dg?.b, ed = S.dg?.ed || S.ed) { return DIAGRAM.ensure(dgBlock(ptr, ed)?.model || {}); }
 function dgFig(ptr = S.dg?.b, ed = S.dg?.ed || S.ed) { return mainOf(ed)?.querySelector(`figure[data-dg="${CSS.escape(ptr)}"]`); }
@@ -42,10 +48,14 @@ function dgContext() {
     const icon = node.kind === 'symbol'
       ? pick('icon', t('dgIcon'), DIAGRAM.SYMBOLS.map((k) => opt(k, node.icon, t(`sym_${k}`))).join(''))
       : pick('badge', t('dgIcon'), [opt('', Array.isArray(node.icons) ? (node.icons[0] || '-') : '', t('dgAuto2')), opt('-', Array.isArray(node.icons) && !node.icons.length ? '-' : '', t('dgNone')), ...DIAGRAM.SYMBOLS.map((k) => opt(k, Array.isArray(node.icons) ? node.icons[0] : '', t(`sym_${k}`)))].join(''));
-    return { cat: 'shape', label: t('selShape', { x: dgNodeName(node) }), groups: [['dgLabel', kinds, colours, 'dgConnect', 'dgDel'], [icon, 'dgSub', 'dgDup', 'dgFront', 'dgBack']], keep: zoomKeep() };
+    // 0.16.0 (D4): the type size of this one shape (node.fs, 8-40 drawing units; «by kind» removes it); a join point has no text
+    const FS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 28, 32, 36, 40];
+    const curFs = Number.isFinite(+node.fs) && +node.fs >= 8 && +node.fs <= 40 ? +node.fs : 0;
+    const sizes = node.kind === 'join' ? '' : pick('fs', t('dgFs'), [opt('', curFs ? '-' : '', t('dgAuto2')), ...(curFs && !FS.includes(curFs) ? [curFs] : []).concat(FS).sort((a, b) => a - b).map((k) => opt(String(k), String(curFs), String(k)))].join(''));
+    return { cat: 'shape', label: t('selShape', { x: dgNodeName(node) }), groups: [['dgLabel', kinds, colours, 'dgConnect', 'dgDel'], [icon, ...(sizes ? [sizes] : []), 'dgSub', 'dgDup', 'dgFront', 'dgBack']], keep: zoomKeep() };
   }
   const sym = btn('dgSymbol'); // 0.14.0 · O2: a gallery with the full names (the old select was squeezed to a sliver inside the «…» menu)
-  return { cat: 'diagram', label: t('selDiagram'), groups: [['dgStaff', 'dgDecision', 'dgStart', 'dgOk', 'dgStop', sym], ['dgApplicant', 'dgPayment', 'dgRework', 'dgSystem', 'dgNote', 'dgGroup', 'dgText', 'dgAuto', 'dgReset', 'dgLegend', 'dgLgReset', 'dgZoom100', 'dgMermaidIn', 'dgMermaidOut'], ['dgCvShapes', 'dgCvPage', 'dgCvAuto']], keep: zoomKeep() };
+  return { cat: 'diagram', label: t('selDiagram'), groups: [['dgStaff', 'dgDecision', 'dgStart', 'dgOk', 'dgStop', sym], ['dgApplicant', 'dgPayment', 'dgRework', 'dgSystem', 'dgNote', 'dgGroup', 'dgText', 'dgJoin', 'dgAuto', 'dgReset', 'dgLegend', 'dgLgReset', 'dgZoom100', 'dgMermaidIn', 'dgMermaidOut'], ['dgCvShapes', 'dgCvPage', 'dgCvAuto']], keep: zoomKeep() };
 }
 /* ── selection paint: outline + resize handle, editor DOM only (never exported) ── */
 function dgPaint() {
@@ -675,6 +685,12 @@ function dgInline(target) {
  * 0.15.6 (Z1-Z6). The frame (.fig-art) keeps the size it had when fitted; only the drawing inside it changes. The scale follows
  * deltaY (a pinch or a precision wheel sends many small events), is coalesced to one update per frame, and keeps the point under the
  * pointer where it was. The view (scale, offsets, scroll) lives in S.dgZoom, so a live redraw, a save or a full render puts it back. */
+/** Screen px per layout px of a figure (the page zoom, the side-by-side shrink). Read as rect.width / offsetWidth; offsetWidth is an integer, so at no zoom that ratio is 0.9996 instead of 1,
+ *  and a frame stored from it moved by 0.2 px on every re-render (0.16.0, D1/D3): a ratio within 0.15 % of 1 is 1. */
+function dgPageK(el) {
+  const k = el.offsetWidth ? el.getBoundingClientRect().width / el.offsetWidth || 1 : 1;
+  return Math.abs(k - 1) < 0.0015 ? 1 : k;
+}
 function dgZoomKey(fig) { return `${fig.closest('main.bw-doc')?.dataset.locale}|${fig.dataset.dg}`; }
 function dgZoomAll() {
   S.dgZoom ||= {};
@@ -708,7 +724,7 @@ function dgZoomFig(fig, mode, at) {
   if (!svg || !art) return;
   const z = S.dgZoom[key];
   // the page zoom is a CSS `zoom` on the page: getBoundingClientRect() is in screen px, the CSS vars below are in the page's own px (0.15.9 C1)
-  const kz = art.offsetWidth ? art.getBoundingClientRect().width / art.offsetWidth || 1 : 1;
+  const kz = dgPageK(art);
   const natural = svg.viewBox.baseVal?.width || svg.getBoundingClientRect().width / kz;
   // the fitted size is measured unzoomed once, then kept: the frame never changes size under the reader
   const fitW = z?.fitW || svg.getBoundingClientRect().width / kz;
@@ -719,17 +735,19 @@ function dgZoomFig(fig, mode, at) {
   if (mode === 'fit') w = null;
   else if (mode === '100') w = natural;
   else w = Math.min(natural * 4, Math.max(fitW * 0.5, now * f));
-  const r0 = svg.getBoundingClientRect();
   const fr = art.getBoundingClientRect();
-  // the drawing point under the pointer is pinned while the pointer stays put, so rounding never adds up over a run of steps
-  const vb = svg.viewBox.baseVal;
+  // the drawing point under the pointer is pinned while the pointer stays put, so rounding never adds up over a run of steps.
+  // 0.16.0 (D3): the point is kept in the drawing's own coordinates through the SVG's screen matrix, not as a fraction of the SVG box: at «fit» the box is wider
+  // than the drawing (preserveAspectRatio centres it), so a fraction of the box is not the point the reader pointed at and every step drifted by the letterbox (9-15 px).
   const held = S.dgHold;
   const holding = !!(held && at && held.key === key && Math.abs(at.x - held.ax) < 2.5 && Math.abs(at.y - held.ay) < 2.5 && performance.now() - held.t < 1500);
   const ax = holding ? held.ax : at?.x ?? fr.left + fr.width / 2;
   const ay = holding ? held.ay : at?.y ?? fr.top + fr.height / 2;
-  const u = holding ? (held.sx - vb.x) / vb.width : r0.width ? (ax - r0.left) / r0.width : 0.5;
-  const v = holding ? (held.sy - vb.y) / vb.height : r0.height ? (ay - r0.top) / r0.height : 0.5;
-  S.dgHold = at ? { key, ax, ay, sx: vb.x + u * vb.width, sy: vb.y + v * vb.height, t: performance.now() } : null;
+  const ctm0 = svg.getScreenCTM();
+  if (!ctm0) return;
+  const here = holding ? { x: held.sx, y: held.sy } : new DOMPoint(ax, ay).matrixTransform(ctm0.inverse());
+  const place = () => { const m = svg.getScreenCTM(); return m ? new DOMPoint(here.x, here.y).matrixTransform(m) : { x: ax, y: ay }; };
+  S.dgHold = at ? { key, ax, ay, sx: here.x, sy: here.y, t: performance.now() } : null;
   if (w == null || Math.abs(w - fitW) < 1) {
     delete S.dgZoom[key];
     dgZoomAll();
@@ -737,19 +755,20 @@ function dgZoomFig(fig, mode, at) {
     return;
   }
   // slack around the drawing (half the frame each way) so the point under the pointer can always stay under it, even next to an edge
-  S.dgZoom[key] = { w: Math.round(w), h: Math.round(fitH), fitW, pct: (w / natural) * 100, ml: 0, mt: 0, sl: 0, st: 0, sx: z?.sx ?? Math.round(art.clientWidth * 0.5), sy: z?.sy ?? Math.round(art.clientHeight * 0.5) };
+  S.dgZoom[key] = { w: Math.round(w), h: fitH, fitW, pct: (w / natural) * 100, ml: 0, mt: 0, sl: 0, st: 0, sx: z?.sx ?? Math.round(art.clientWidth * 0.5), sy: z?.sy ?? Math.round(art.clientHeight * 0.5) };
   dgZoomAll();
   // keep the drawing point that was under (ax, ay) there: scroll when the drawing overflows the frame, else slide it (never past the frame)
   const zz = S.dgZoom[key];
   for (let pass = 0; pass < 2; pass += 1) {
-    const r1 = svg.getBoundingClientRect();
-    const ex = r1.left + u * r1.width - ax;
-    const ey = r1.top + v * r1.height - ay;
+    const p1 = place();
+    const ex = p1.x - ax;
+    const ey = p1.y - ay;
     art.scrollLeft += ex / kz;
     art.scrollTop += ey / kz;
     const r2 = svg.getBoundingClientRect();
-    const rx = r2.left + u * r2.width - ax;
-    const ry = r2.top + v * r2.height - ay;
+    const p2 = place();
+    const rx = p2.x - ax;
+    const ry = p2.y - ay;
     if (Math.abs(rx) > 0.4 || Math.abs(ry) > 0.4) {
       const cs = getComputedStyle(art);
       const vw = art.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
@@ -870,7 +889,7 @@ function dgCanvasDrag(e, handle) {
   if (!art) return;
   e.preventDefault();
   e.stopPropagation();
-  const kz = art.offsetWidth ? art.getBoundingClientRect().width / art.offsetWidth || 1 : 1;
+  const kz = dgPageK(art);
   const room = dgRoom(ptr, ed);
   const f0 = dgFrameStart(fig, art);
   const had = !!dgFrameOf(ptr, ed);
@@ -940,7 +959,7 @@ function dgCanvasAction(a) {
     dgFrameSave({ ...DIAGRAM.frameHug(view, room.wMm, room.hMm), mode: 1 }, ptr, ed);
   }
 }
-bwExt({ cmds: ['dgCvShapes', 'dgCvPage', 'dgCvAuto', 'dgCvRoute'].map((id) => ({ id, group: 'diagram', edit: true })), on: { render: () => dgRibbonCanvas() }, expose: { diagram: { autoLayout: dgAutoLayoutAt, check: dgCheckAt } } });
+bwExt({ cmds: ['dgCvShapes', 'dgCvPage', 'dgCvAuto', 'dgCvRoute', 'dgJoin'].map((id) => ({ id, group: 'diagram', edit: true })), on: { render: () => dgRibbonCanvas() }, expose: { diagram: { autoLayout: dgAutoLayoutAt, check: dgCheckAt } } });
 /** 0.16.0 · editor_action autoLayout {pointer, aspect, maxNodes, locale}: lays the diagram out for the frame it prints in (block.frame, else the automatic figure's measured box)
  *  as ONE undoable replace, and returns the legibility result. A graph that no single sheet can hold is left as one drawing and reported (`figures` = how many legible figures
  *  it would take): the splitFigure action cuts it. */
@@ -963,6 +982,9 @@ function dgRibbonCanvas() {
   if (dgRibbonCanvas.done || typeof RB_TABS === 'undefined') return;
   dgRibbonCanvas.done = true;
   const tab = RB_TABS.find((x) => x[0] === 'diagram');
+  const nodesGroup = tab?.[1].find((g) => g[0] === 'nodes');
+  if (nodesGroup && !nodesGroup[1].includes('dgJoin')) nodesGroup[1].push('dgJoin'); // 0.16.0 (D4): the join point sits with the shapes it joins
+  RB_LISTED.add('dgJoin');
   if (!tab || tab[1].some((g) => g[0] === 'canvas')) return;
   tab[1].push(['canvas', ['dgCvShapes', 'dgCvPage']]);
   RB_LISTED.add('dgCvShapes'); RB_LISTED.add('dgCvPage'); RB_LISTED.add('dgCvAuto'); RB_LISTED.add('dgCvRoute');
@@ -979,6 +1001,8 @@ function dgDraw(model) {
 const dgSnap = (v) => (S.snap ? Math.round(v / 10) * 10 : Math.round(v));
 function dgPoint(svg, ev) { const p = svg.createSVGPoint(); p.x = ev.clientX; p.y = ev.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); }
 function dgSelect(ptr, ed, patch) {
+  // 0.16.0 (D5): a paragraph that still holds the caret gets it back at every render (holdCaret) and its focus deselects the drawing, so the first edit made from the ribbon dropped the selection
+  { const ae = document.activeElement; if (ae?.closest?.('#bw-pair [data-p]')) ae.blur(); }
   S.dg = { b: ptr, ed, nodes: [], edge: null, ...patch };
   S.sel = { p: null, b: ptr, ed };
   S.selOv = null;
@@ -1111,6 +1135,17 @@ root.addEventListener('change', (e) => {
     case 'color': if (node) { if (v) node.color = v; else delete node.color; } break;
     case 'badge': if (node) { if (!v) delete node.icons; else node.icons = v === '-' ? [] : [v]; } break;
     case 'icon': if (node) node.icon = v; break;
+    case 'fs': {
+      if (!node || node.kind === 'join') return;
+      if (v && +v >= 8 && +v <= 40) node.fs = +v; else delete node.fs;
+      if (!node.sized) { // the shape grows or shrinks around its centre, as with an edited label
+        const cx = node.x + node.w / 2;
+        const cy = node.y + node.h / 2;
+        const sz = DIAGRAM.measure(node);
+        Object.assign(node, sz, { x: Math.round(cx - sz.w / 2), y: Math.round(cy - sz.h / 2) });
+      }
+      break;
+    }
     case 'wire': if (edge) edge.kind = v; break;
     case 'symbol': if (v) dgAdd(m, 'symbol', { icon: v }); break;
     default: return;
@@ -1156,7 +1191,7 @@ function dgFinishPick(targetId) {
   dgSave(DIAGRAM.classify(m));
 }
 const ALIGN = { dgAlignL: ['x', 0], dgAlignC: ['x', 0.5], dgAlignR: ['x', 1], dgAlignT: ['y', 0], dgAlignM: ['y', 0.5], dgAlignB: ['y', 1] };
-const ADD = { dgStaff: 'staff', dgApplicant: 'applicant', dgStart: 'start', dgPayment: 'payment', dgRework: 'rework', dgSystem: 'system', dgDecision: 'decision', dgOk: 'ok', dgStop: 'stop', dgNote: 'note', dgGroup: 'group', dgText: 'text' };
+const ADD = { dgStaff: 'staff', dgApplicant: 'applicant', dgStart: 'start', dgPayment: 'payment', dgRework: 'rework', dgSystem: 'system', dgDecision: 'decision', dgOk: 'ok', dgStop: 'stop', dgNote: 'note', dgGroup: 'group', dgText: 'text', dgJoin: 'join' };
 /** 0.14.0 · O2: every symbol by its full name, on a panel of its own (never inside the toolbar's «…» menu); a pick adds it, selected. */
 function dgSymbolGallery() {
   document.querySelector('.bw-dg-gallery')?.remove();
