@@ -33,7 +33,7 @@ const ceRect = (cells) => ({ r0: Math.min(...cells.map((x) => x[0])), r1: Math.m
 const ceBlk = (ed, b) => get(cur(ed).doc, b);
 /** the cells a command acts on: the selected cells, else the cell being edited */
 /** 0.15.1: a story's ID card that is not stored yet (it prints the default) is stored before a cell command reads it */
-const ceReady = (ed, ptr) => { if (/\/items\/\d+\/card$/.test(ptr || '') && get(cur(ed).doc, ptr) === undefined) EXT.actions.materialiseStoryCard?.(ptr); };
+const ceReady = (ed, ptr) => /\/items\/\d+\/card$/.test(ptr || '') && get(cur(ed).doc, ptr) === undefined && !!EXT.actions.materialiseStoryCard?.(ptr);
 function ceTarget() {
   if (CE.sel.size && ceTableEl()) {
     const cells = [...CE.sel].map((k) => k.split(',').map(Number));
@@ -540,10 +540,11 @@ function ceResizeStart(e, td, tbl) {
     const cols = sel.some((x) => x[1] === hv.c) ? [...new Set(sel.map((x) => x[1]))] : [hv.c];
     CE.rz = { active: true, hover: hv, tg, widths, cols, x0: e.clientX, w0: widths[hv.c], scale, tw: tbl.el.offsetWidth };
   } else {
-    const blk = ceBlk(tbl.ed, tbl.b);
+    const blk = ceBlk(tbl.ed, tbl.b); // undefined for a story's ID card that is not stored yet (it prints the default): its rows come from the page, it is stored when the drag ends
+    const nRows = blk?.rows?.length ?? tbl.el.querySelectorAll('tbody tr[data-r]').length;
     const rows = sel.some((x) => x[0] === hv.r) ? [...new Set(sel.map((x) => x[0]))] : [hv.r];
     const tr = tbl.el.querySelector(`tbody tr[data-r="${hv.r}"]`);
-    CE.rz = { active: true, hover: hv, tg, rows, y0: e.clientY, h0: (tr.offsetHeight * 25.4) / 96, scale, heights: Array.from({ length: blk.rows.length }, (_, i) => blk.rowHeights?.[i] ?? null) };
+    CE.rz = { active: true, hover: hv, tg, rows, y0: e.clientY, h0: (tr.offsetHeight * 25.4) / 96, scale, heights: Array.from({ length: nRows }, (_, i) => blk?.rowHeights?.[i] ?? null) };
   }
 }
 function ceResizeMove(e) {
@@ -567,8 +568,13 @@ function ceResizeEnd() {
   CE.rz = null;
   document.documentElement.classList.remove('bw-rz-col', 'bw-rz-row');
   if (!z.next) return;
+  let group, k0 = 0;
+  if (ceBlk(z.tg.ed, z.tg.b) === undefined && ceReady(z.tg.ed, z.tg.b)) { // storing the ID card and the new size are ONE undo step: the size joins the card's group
+    group = cur(z.tg.ed).ops.at(-1)?.id.split('.')[0]; k0 = 1;
+  }
   const blk = ceBlk(z.tg.ed, z.tg.b);
-  commit([ceMember(blk, z.tg.b, z.hover.kind === 'col' ? 'colWidths' : 'rowHeights', z.next)], { ed: z.tg.ed, mirror: true });
+  if (!blk) return;
+  commit([ceMember(blk, z.tg.b, z.hover.kind === 'col' ? 'colWidths' : 'rowHeights', z.next)], { ed: z.tg.ed, mirror: true, ...(group ? { group, k0 } : {}) });
 }
 
 /* ── the keyboard ───────────────────────────────────────────────────────── */
