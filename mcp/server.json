@@ -20,7 +20,7 @@
         "requires": "Node.js 20 or newer; npm install in the clone for playwright-core.",
         "environmentVariables": [
           { "name": "BW_FONT_DIR", "description": "Folder holding the TrueType font cuts (searched recursively).", "isRequired": false },
-          { "name": "BW_CHROME", "description": "Chrome or Edge executable used to print the PDF.", "isRequired": false }
+          { "name": "BW_CHROME", "description": "Chromium-based browser (Google Chrome first) used to print the PDF.", "isRequired": false }
         ]
       }
     }

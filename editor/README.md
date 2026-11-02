@@ -37,7 +37,7 @@ through `npm run serve`, it exports in one click.
 |---|---|---|
 | `fontDir` | `BW_FONT_DIR` | folder holding the Thmanyah cuts (searched recursively) |
 | `watermarkDir` | `BW_WATERMARK_DIR` | the tool's own watermark images (svg/png), UI only |
-| `chrome` | `BW_CHROME` | Chrome or Edge executable |
+| `chrome` | `BW_CHROME` | Chromium-based browser executable (Google Chrome first) |
 | `poppler` | `BW_POPPLER` | poppler `bin` folder, for the test's pdftotext/pdffonts |
 
 Fonts: TrueType (`.ttf`) is preferred over `.woff2`/`.otf` because Chrome's PDF
@@ -46,7 +46,7 @@ copied into the repo; the per-user Windows font folder is searched as a fallback
 
 ## Browser support
 
-Chrome and Edge, latest stable (Chromium 120+). The editor relies on
+Google Chrome (recommended) and other Chromium browsers, latest stable (Chromium 120+). The editor relies on
 `contenteditable="plaintext-only"`, Shadow DOM, `:has()`, CSS logical
 properties, `@page` named pages. Firefox and
 Safari are not supported (no `plaintext-only` contenteditable in Firefox; the

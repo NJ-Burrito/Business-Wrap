@@ -213,16 +213,32 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
         // the save folder (A11): PDF\ and DOCX\, "<title>-<date>-<AR|ENG>", a clash gets -2, -3 (never an overwrite)
         if (ws) ensureWorkspace(ws);
         const title = docTitle(body.doc, body.service);
-        const pdfPath = ws ? uniquePath(ws.dirs.pdf, outName(title, new Date(), locale, 'pdf')) : path.join(dir, `${stem}.pdf`);
-        const docxPath = ws ? uniquePath(ws.dirs.docx, outName(title, new Date(), locale, 'docx')) : path.join(dir, `${stem}.docx`);
+        // 0.16.0 (field notes item 8): `name` (a file name without folder), `destination` (an absolute folder) and `docx: false` come from the editor's bridge (editor_action exportPdf args);
+        // the answer names the file AND its folder, so an agent never searches for it, and the PDF is written whole (exportPdf writes a temp file and renames it)
+        const wantName = typeof body.name === 'string' ? body.name.replace(/\.(pdf|docx)$/i, '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, ' ').trim().slice(0, 150) : '';
+        let toDir = null;
+        if (typeof body.destination === 'string' && body.destination) {
+          if (!path.isAbsolute(body.destination) || /[\u0000-\u001f]/.test(body.destination)) return send(400, { error: 'destination must be an absolute folder path' });
+          toDir = path.resolve(body.destination);
+          fs.mkdirSync(toDir, { recursive: true });
+        }
+        const place = (kind, ext) => {
+          if (toDir) return wantName ? path.join(toDir, `${wantName}.${ext}`) : uniquePath(toDir, outName(title, new Date(), locale, ext));
+          if (!ws) return path.join(dir, `${stem}.${ext}`);
+          const made = uniquePath(kind, outName(title, new Date(), locale, ext));
+          return wantName ? path.join(path.dirname(made), `${wantName}.${ext}`) : made;
+        };
+        const pdfPath = place(ws?.dirs.pdf, 'pdf');
+        const docxPath = body.docx === false ? null : place(ws?.dirs.docx, 'docx');
         const pdf = await exportPdf(body.doc, { locale, theme, pdfPath });
         let docx = null;
         let docxError = null;
         let fontNotes = [];
-        try { ({ docx, fontNotes } = exportDocx(body.doc, { locale, theme, docxPath, embedFonts: body.embedFonts !== false })); } catch (e) { docxError = String(e.message).slice(0, 400); }
-        if (ws) { noteOutput(pdfPath); if (docx) noteOutput(docxPath); }
+        if (docxPath) { try { ({ docx, fontNotes } = exportDocx(body.doc, { locale, theme, docxPath, embedFonts: body.embedFonts !== false })); } catch (e) { docxError = String(e.message).slice(0, 400); } }
+        if (ws && !toDir) { noteOutput(pdfPath); if (docx) noteOutput(docxPath); }
         const rel = (f) => `/files/${path.relative(filesRoot(), f).split(path.sep).map(encodeURIComponent).join('/')}`;
-        return send(200, { pdf: pdf.pdf, docx, docxError, fontNotes, pdfUrl: rel(pdf.pdf), docxUrl: docx && rel(docx) });
+        const inRoot = (f) => !path.relative(filesRoot(), f).startsWith('..') && !path.isAbsolute(path.relative(filesRoot(), f));
+        return send(200, { pdf: pdf.pdf, docx, docxError, fontNotes, folder: path.dirname(pdf.pdf), pdfUrl: inRoot(pdf.pdf) ? rel(pdf.pdf) : null, docxUrl: docx && inRoot(docx) ? rel(docx) : null });
       }
       // extension routes: a request that changes anything must come from this server's own page
       if (req.method !== 'GET' && req.method !== 'HEAD' && req.headers.origin && !LOCAL_ORIGIN.test(req.headers.origin)) return send(403, { error: 'origin' });

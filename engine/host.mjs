@@ -73,6 +73,8 @@ async function acquire(ms = 40000) {
 }
 const release = () => { try { const l = JSON.parse(fs.readFileSync(lockFile(), 'utf8')); if (l.pid === process.pid) fs.rmSync(lockFile(), { force: true }); } catch { /* none */ } };
 /** The server really answers on that url (its own /api/version). */
+/** Something accepts a TCP connection on this local port (a busy server still does; a gone one refuses). */
+const accepts = (port, ms = 1500) => new Promise((ok) => { const s = net.connect({ port, host: '127.0.0.1' }); const done = (v) => { s.destroy(); ok(v); }; s.setTimeout(ms, () => done(false)); s.once('connect', () => done(true)); s.once('error', () => done(false)); });
 const answers = async (url, ms = 1000) => { try { return (await fetch(`${url}api/version`, { signal: AbortSignal.timeout(ms) })).ok; } catch { return false; } };
 
 export function start(opts = {}) {
@@ -87,6 +89,9 @@ async function startLocked({ editor, port = 4317, open = true } = {}) {
     // reuse only a host that is really listening (a recorded pid with nothing on its port is not one)
     let up = await answers(now.url);
     for (let i = 0; !up && i < 3; i++) { await new Promise((r) => setTimeout(r, 400)); up = await answers(now.url); }
+    // 0.16.0 (owner's host stopped twice with no cause): a live process whose port still ACCEPTS connections is busy, not dead (a PDF export, a big batch): it is reused, never asked to stop.
+    // Only a recorded host whose port refuses every connection is replaced.
+    if (!up && (await accepts(now.port))) up = true;
     if (up) { const b = open ? launchBrowser([now.url]) : null; return { pid: now.pid, port: now.port, url: now.url, browserPid: b?.pids[0] ?? null, browser: b?.browser ?? null, reused: true }; }
     const h0 = read(); try { await fetch(`${now.url}api/host/stop`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: h0?.token }), signal: AbortSignal.timeout(1500) }); } catch { /* not listening: nothing to ask */ } // the recorded host answers nothing: asked to go (by its token, never killed by pid), then replaced
   }
@@ -98,7 +103,7 @@ async function startLocked({ editor, port = 4317, open = true } = {}) {
   const child = spawn(process.execPath, [SERVE, path.resolve(editor), '--port', String(p)], { detached: true, stdio: ['ignore', log, log], windowsHide: true, env: { ...process.env, BW_HOST_TOKEN: token } });
   fs.closeSync(log);
   child.unref();
-  write({ pid: child.pid, port: p, startedAt: new Date().toISOString(), token, editor: path.resolve(editor), browserPids: [], tabs: 0 });
+  write({ pid: child.pid, port: p, startedAt: new Date().toISOString(), token, editor: path.resolve(editor), browserPids: [], tabs: 0, ...(process.env.BW_AGENT_OPEN === '1' ? { startedBy: `mcp:${process.pid}` } : {}) });
   const url = `http://127.0.0.1:${p}/`;
   const t0 = Date.now();
   for (;;) { // the server's own answer is the trigger; 20 s is only the ceiling

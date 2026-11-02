@@ -31,7 +31,7 @@ export default async (req, url, send, ctx) => {
       send(200, { ok: !!p, ...(p ? workspace() : {}) });
       return true;
     }
-    if (req.method === 'POST' && url.pathname === '/api/workspace/parent') { send(200, { ok: true, ...setParent((await readJson(req)).parent) }); return true; }
+    if (req.method === 'POST' && url.pathname === '/api/workspace/parent') { send(200, { ok: true, ...setParent((await readJson(req)).parent, { by: req.headers['x-bw-token'] ? 'tool' : 'page' }) }); return true; }
     // Settings «افتح المجلد / Open folder»: the file manager on the tree root (its README selected, so the folder itself opens)
     if (req.method === 'POST' && url.pathname === '/api/workspace/open') {
       const w = ensure(live());

@@ -9,7 +9,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { py } from './py.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { renderDocument, chromeTemplates, relaxTallGroups, relaxArgs, PAGE, pageGeom, pageModel, folioOf, designTheme, confidentialText, uploadedFontCss, faceWeights } from './render.mjs';
@@ -281,8 +281,19 @@ export function diagramWarnings(doc, { theme, locale = 'ar', frameMm, minPt } = 
   return out;
 }
 
-/** Prints doc → pdfPath. Returns {pdf, pages}. A tagged, header/footer PDF like the source. */
+/** Prints doc → pdfPath. Returns {pdf, pages}. A tagged, header/footer PDF like the source.
+ *  0.16.0 (field notes item 8): the file is written under a temporary name in the same folder and renamed to pdfPath only when it is final (printed, spliced, post-processed),
+ *  so no half-finished file (a header on the cover) is ever seen under the real name, and a failed run leaves nothing behind. */
 export async function exportPdf(doc, { locale, theme, pdfPath, browser: shared }) {
+  fs.mkdirSync(path.dirname(pdfPath), { recursive: true });
+  const work = path.join(path.dirname(pdfPath), `.${path.basename(pdfPath, '.pdf')}.${process.pid}.${Date.now().toString(36)}.part.pdf`);
+  try {
+    const r = await exportPdfWork(doc, { locale, theme, pdfPath: work, browser: shared });
+    fs.renameSync(work, pdfPath);
+    return { ...r, pdf: pdfPath };
+  } catch (e) { fs.rmSync(work, { force: true }); throw e; }
+}
+async function exportPdfWork(doc, { locale, theme, pdfPath, browser: shared }) {
   const { html, fontCss, labels, used, chosen } = printHtml(doc, { locale, theme, embed: true });
   // the print page carries the normalised font copies: it lives in the gitignored out/ and is removed after
   fs.mkdirSync(outTmp(), { recursive: true });
@@ -324,8 +335,8 @@ export async function exportPdf(doc, { locale, theme, pdfPath, browser: shared }
   const folioFace = used.find((c) => c.family === display && c.weight === 700 && c.format === 'truetype') || (folioTmp && { file: folioTmp }) || used.find((c) => c.format === 'truetype');
   const anchor = confidentialText(doc, theme, labels, locale);
   const folio = folioOf(doc, locale);
-  const r = spawnSync(...py([path.join(HERE, 'pdf_post.py'), pdfPath, folioFace?.file || '', anchor, locale === 'ar' ? 'rtl' : 'ltr', ...(doc.chrome ? [folio ? `${folio.side}:${folio.format}` : 'none'] : [])]), {
-    encoding: 'utf8',
+  // 0.16.0: asynchronous, so the host keeps answering its health route and its tabs while the post-processing runs (a blocked event loop made a busy host look dead)
+  const r = await spawnAsync(...py([path.join(HERE, 'pdf_post.py'), pdfPath, folioFace?.file || '', anchor, locale === 'ar' ? 'rtl' : 'ltr', ...(doc.chrome ? [folio ? `${folio.side}:${folio.format}` : 'none'] : [])]), {
     env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
   });
   if (folioTmp) fs.rmSync(folioTmp, { force: true });
@@ -333,6 +344,17 @@ export async function exportPdf(doc, { locale, theme, pdfPath, browser: shared }
   return { pdf: pdfPath, post: r.stdout.trim() };
 }
 
+/** spawn that resolves {status, stdout, stderr} like spawnSync, without blocking the event loop. */
+function spawnAsync(cmd, args, opts = {}) {
+  return new Promise((resolve) => {
+    const c = spawn(cmd, args, { ...opts, windowsHide: true });
+    let stdout = '', stderr = '';
+    c.stdout?.on('data', (d) => { stdout += d; });
+    c.stderr?.on('data', (d) => { stderr += d; });
+    c.on('error', (e) => resolve({ status: 1, stdout, stderr: stderr || String(e.message) }));
+    c.on('close', (status) => resolve({ status: status ?? 1, stdout, stderr }));
+  });
+}
 const postPy = (args) => {
   const r = spawnSync(...py([path.join(HERE, 'pdf_post.py'), ...args]), { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' } });
   if (r.status !== 0) throw new Error(`pdf_post ${args[0]} failed: ${r.stderr || r.stdout}`);

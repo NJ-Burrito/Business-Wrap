@@ -64,12 +64,23 @@ export const subdir = (dirs, key) => dirs[key] || path.join(dirs.history, key);
 export const systemDir = (dirs) => dirs.system || dirs.history;
 
 /** Remember a parent folder; refuses one inside the repository. */
-export function setParent(p) {
+export function setParent(p, { by = 'api' } = {}) {
   const abs = validParent(p);
   if (!abs) throw Object.assign(new Error('folder: an absolute path outside the Business-Wrap folder'), { code: 400 });
+  const prev = workspace().parent;
   fs.mkdirSync(localDir(), { recursive: true });
-  fs.writeFileSync(store(), JSON.stringify({ parent: abs, at: new Date().toISOString() }, null, 1));
+  // 0.16.0 (field notes item 8): the move is recorded (additive keys: prev, by) so every reply and host_health can say that the save folder changed, from where and who asked
+  fs.writeFileSync(store(), JSON.stringify({ parent: abs, at: new Date().toISOString(), ...(sameFolder(prev, abs) ? {} : { prev, by }) }, null, 1));
   return workspace();
+}
+const sameFolder = (a, b) => path.resolve(String(a || '')).toLowerCase() === path.resolve(String(b || '')).toLowerCase();
+/** The last change of the save folder this machine recorded: {from, to, at, by} (null when it never changed). `since` (ms epoch): only a change after it. */
+export function parentChange(since = 0) {
+  try {
+    const j = JSON.parse(fs.readFileSync(store(), 'utf8'));
+    if (!j.prev || !j.parent || !(Date.parse(j.at) > since)) return null;
+    return { from: path.join(j.prev, 'Business-Wrap'), to: path.join(j.parent, 'Business-Wrap'), at: j.at, by: j.by || 'api' };
+  } catch { return null; }
 }
 
 /** Create the folders; .system carries the hidden attribute on Windows (dot-folder elsewhere), the README of the tree is written once, and an
@@ -484,7 +495,7 @@ export function pickerChoose(p) {
   else if (!validParent(l.path)) err = { code: 'refused', message: 'a folder inside the program folder cannot be a save folder' };
   else { try { fs.accessSync(l.path, fs.constants.W_OK); } catch { err = { code: 'notwritable', message: 'this folder cannot be written to' }; } }
   if (err) { PK.p.error = { ...err, path: l.path }; bump(); return view(); }
-  const parent = setParent(l.path).parent;
+  const parent = setParent(l.path, { by: `picker:${PK.p.by || 'panel'}` }).parent;
   PK.p = null;
   PK.last = { outcome: 'chosen', parent, at: new Date().toISOString() };
   bump();

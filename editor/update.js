@@ -5,8 +5,9 @@
    - Auto-check on launch: only when served by engine/serve.mjs (GET /api/update/check, which asks the public
      GitHub release list, no token needed: the page never holds a token and never calls GitHub). Non-blocking, at most once
      per 24 h (bw:update-last) unless «تحقّق الآن» is pressed; silent on any failure, the reason kept for Settings.
-   - A newer release → a calm popup: version, release notes (Added / Changed / Fixed, AR+EN headings),
-     «حدّث الآن» / «لاحقاً» / «تخطَّ هذا الإصدار» (bw:update-skip).
+   - A newer release → (0.16.0) a small banner, never a dialog: «version available» with «التفاصيل» (the notes popup), «حدّث الآن», «لاحقاً», «تخطَّ هذا الإصدار» (bw:update-skip).
+     It does not cover the document and is never shown in a tab an agent works in (?automation=1): an agent tab gets no notice at all (AGENTS.md tells the agent to check and tell the person).
+     The popup with the release notes (Added / Changed / Fixed, AR+EN headings) opens only when the person asks for it («التفاصيل», or Settings → Update).
    - «حدّث الآن»: POST /api/update/apply {confirm:true}; the server runs update/apply.mjs (a rollback copy during the update only, program
      files only, verify, rollback on any failure) while the popup shows the steps (GET /api/update/progress);
      the server restarts on the new code, and the editor reloads itself with the draft saved and the document
@@ -63,6 +64,9 @@ function resumeAfterUpdate(d) {
   border:1px solid var(--line);border-inline-start:6px solid var(--deep);border-radius:14px;box-shadow:var(--bw-shadow-3,0 6px 12px rgba(27,24,19,.06),0 28px 56px -12px rgba(0,30,61,.24));padding:16px 18px;
   transform:translateY(12px);opacity:0;transition:transform 240ms var(--e-out),opacity 240ms var(--e-out)}
 .card.in{transform:none;opacity:1;transition-duration:360ms}
+.bar{position:fixed;inset-block-end:16px;inset-inline:16px;margin-inline:auto;inline-size:fit-content;max-inline-size:min(640px,calc(100vw - 32px));z-index:99989;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:6px 8px 6px 14px;background:var(--paper);
+  border:1px solid var(--line);border-inline-start:5px solid var(--gold);border-radius:12px;box-shadow:var(--bw-shadow-2,0 4px 14px rgba(27,24,19,.14));font-size:13px;transform:translateY(8px);opacity:0;transition:transform 220ms var(--e-out),opacity 220ms var(--e-out)}
+.bar.in{transform:none;opacity:1}.bar .t{font-weight:700;color:var(--navy)}.bar button{min-block-size:32px;padding:3px 12px;border-radius:9px;font-size:13px}
 .scrim{position:fixed;inset:0;z-index:99991;display:grid;place-items:center;padding:16px;background:color-mix(in srgb,var(--bw-band,#001e3d) 42%,transparent);backdrop-filter:blur(3px);opacity:0;transition:opacity 240ms var(--e-out)}
 .scrim.in{opacity:1}
 .dlg{inline-size:min(560px,100%);max-block-size:min(86vh,720px);display:flex;flex-direction:column;background:var(--paper);border-radius:20px;
@@ -99,9 +103,12 @@ button:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 @keyframes spin{to{transform:rotate(1turn)}}@keyframes pop{0%{transform:scale(.6)}100%{transform:scale(1)}}
 :host([data-calm="1"]) *{transition:none!important;animation:none!important}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
-</style><div class="card" role="status" aria-live="polite" hidden></div><div class="scrim" hidden><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="upd-h" aria-label="Business-Wrap" tabindex="-1"></div></div>`;
+</style><div class="card" role="status" aria-live="polite" hidden></div><div class="bar" role="status" aria-live="polite" hidden></div><div class="scrim" hidden><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="upd-h" aria-label="Business-Wrap" tabindex="-1"></div></div>`;
   document.body.appendChild(host);
   const card = ur.querySelector('.card');
+  const bar = ur.querySelector('.bar');
+  /** An agent works in this tab (?automation=1): no update notice of any kind is drawn over it. */
+  const agentTab = () => document.documentElement.dataset.bwAutomation === '1';
   const scrim = ur.querySelector('.scrim');
   const dlg = ur.querySelector('.dlg');
   const el = (tag, text, attrs = {}) => {
@@ -128,6 +135,23 @@ button:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
     requestAnimationFrame(() => card.classList.add('in'));
   }
   function hide() { card.classList.remove('in'); setTimeout(() => { card.hidden = true; }, 240); }
+
+  /* the small notice for a newer release: one slim line with four buttons, no scrim, no focus taken */
+  function hideBar() { bar.classList.remove('in'); setTimeout(() => { bar.hidden = true; if (host.dataset.open === 'banner') host.dataset.open = ''; }, 220); }
+  function banner(u) {
+    if (!u || u.status !== 'available' || agentTab()) return;
+    paint();
+    bar.dir = tdir();
+    bar.lang = lang();
+    bar.replaceChildren(el('span', t('upd.title', { v: u.latest }), { class: 't' }),
+      button(t('upd.whatsNew'), '', () => { hideBar(); popup(u); }),
+      button(t('upd.now'), 'primary', () => { hideBar(); apply(u); }),
+      button(t('upd.later'), '', hideBar),
+      button(t('upd.skip'), 'ghost', () => { ls.set('bw:update-skip', u.latest); hideBar(); }));
+    bar.hidden = false;
+    host.dataset.open = 'banner';
+    requestAnimationFrame(() => bar.classList.add('in'));
+  }
 
   /* the modal */
   let lastFocus = null;
@@ -257,6 +281,7 @@ button:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
   // (on boot: the editor boots after every file has loaded, and boot is what reopens the document after an update)
   bwExt({ on: { boot: () => {
     const seen = ls.get('bw:seen-version');
+    if (agentTab()) { if (V) ls.set('bw:seen-version', V); return; } // never over an agent tab
     if (resumeAfterUpdate.done) show(t('upd.updated', { v: V }), NEW.human);
     else if (V && seen && seen !== V && NEW.human.length) show(`${t('upd.whatsNew')} · ${V}`, NEW.human);
     if (V) ls.set('bw:seen-version', V);
@@ -266,8 +291,8 @@ button:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
   const last = Number(ls.get('bw:update-last')) || 0;
   if (updServed() && updAuto() && (Date.now() - last >= DAY || (st && st.current !== V))) {
     setTimeout(() => {
-      check(false).then((u) => { if (u?.status === 'available' && u.current === V && ls.get('bw:update-skip') !== u.latest && scrim.hidden) popup(u); });
+      check(false).then((u) => { if (u?.status === 'available' && u.current === V && ls.get('bw:update-skip') !== u.latest && scrim.hidden) banner(u); });
     }, 1200);
   }
-  window.BW_UPDATE = { show, hide, popup, check, apply, state: updState, served: updServed, auto: updAuto, close: closeModal, version: V };
+  window.BW_UPDATE = { show, hide, banner, hideBar, popup, check, apply, state: updState, served: updServed, auto: updAuto, close: closeModal, version: V };
 })();

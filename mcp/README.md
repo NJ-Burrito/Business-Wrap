@@ -8,7 +8,7 @@
 claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.15.9 business-wrap-mcp
 ```
 
-✅ Needs Node 20+, uv, and Chrome or Edge for the PDF.
+✅ Needs Node 20+, uv, and Google Chrome (or another Chromium browser) for the PDF.
 
 🔒 Local only: no network port, it reads and writes only the paths you give it.
 
@@ -32,14 +32,16 @@ A stdio MCP server over the Business-Wrap engine, with 23 tools (plus the local-
 | `harvest_merge` | crawl, model, out_dir, name?, roles? | a crawl harvest and a process model joined into one document, both editions |
 | `harvest_crawl` | config, out_dir, open? | walk a live service (headed Chrome, OTP pause, never submits) → both editions + the editor |
 | `harvest_sources` | sources[], out_dir, name?, roles?, open? | your own files or folders: BPMN, draw.io, YAML/JSON steps, PDF, DOCX, HTML, TXT, MD → documents; unreadable files listed as skipped |
-| `open_in_editor` | documents[]? \| editor? \| doc_id? | starts the local host if needed and opens an Edge tab on the editor; returns `{url, doc_id}` |
-| `close_editor` | (none) | stops every host and Edge window this install started |
+| `open_in_editor` | documents[]? \| editor? \| doc_id? | starts the local host if needed and opens a browser tab on the editor; returns `{url, doc_id}`. No arguments = a blank tab (no document made). `doc_id` is looked up in the editor library first (the tab that holds it is named, else one is added). The same files give the same library id after a restart |
+| `close_editor` | (none) | stops every host and browser window this install started; a host another running MCP server (another agent) started is left alone and named under `skipped` |
 | `editor_list_documents` | project? | the documents in the editor library of the running host (starts the host if none runs) |
 | `editor_outline` | doc, locale? | chapters, sections, block kinds and ids with the JSON pointer of each, from the live editor |
 | `editor_get` | doc, pointer?, locale? | the value at a pointer of the document as the editor holds it now (unsaved edits included) |
 | `editor_ops` | doc, ops[], locale, mirror?, agent?, group? | applies a batch of edit ops to the document OPEN in the editor as one undo step, saved and signed as the agent; a wrong `old` returns `CONFLICT` and applies nothing |
-| `editor_action` | doc, id, args? | renumber, check, saveHtml, share {to, note}, exportPdf on a document in the editor |
-| `editor_new` | title, project?, template? | a new blank document in the editor library |
+| `editor_action` | doc, id, args?, request_id? | renumber, check, saveHtml, share {to, note}, exportPdf {name?, destination?, docx?} (answers the file and its folder), verifyHistory (the issues the tamper banner is based on), dismissResume, claim, and the safe view actions, on a document in the editor |
+| `editor_new` | title, project?, template?, request_id? | a new blank document in the editor library; with no host or no tab it starts the host and opens a window itself |
+| `editor_assign_project` | doc, project | puts a document in a library project (a name makes it); empty = out of every project |
+| `editor_trash` | doc, restore? | moves a document to the editor's Trash, or brings it back; listings show `deletedAt` (`editor_list_documents` with `include_trashed`) |
 | `editor_import` | document? | file?, project? | puts a document into the editor library (and a project) |
 | `host_health` | (none) | the host, its tabs and any hung tab (`lastBeatMs` above 15000) |
 | `check_fonts` | theme? | which faces resolve and whether any would print as Type 3 |
@@ -56,7 +58,7 @@ The `editor_*` tools act on the document the user has open, through the local ho
 
 🩺 `business-wrap doctor` (or `/business-wrap:doctor`) prints the version on disk, where state lives, the last server starts with their time to `initialize`, and any drift. The log is `mcp.log` in the state folder.
 
-💾 In a Claude Code plugin the state (host.json, the Edge profile, workspace.json, settings) lives in the plugin data folder, which survives updates; the first start after an update copies it over from the previous version folder.
+💾 In a Claude Code plugin the state (host.json, the browser profile, workspace.json, settings) lives in the plugin data folder, which survives updates; the first start after an update copies it over from the previous version folder.
 
 ## ▶️ Run
 
@@ -72,7 +74,7 @@ node mcp/cli.mjs
 From the environment or the gitignored `.local/config.json`:
 
 - `BW_FONT_DIR`: your own TrueType cuts
-- `BW_CHROME`: the Chrome or Edge to print with
+- `BW_CHROME`: the Chromium-based browser to print with
 - `BW_POPPLER`: the poppler folder (`pdftotext`, `pdffonts`) the tests read PDFs with
 
 </details>
