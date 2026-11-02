@@ -253,7 +253,11 @@ finally:
     w.Quit()
 `;
   const have = spawnSync('uv', ['--version'], { encoding: 'utf8' }).status === 0 && process.platform === 'win32';
-  for (const loc of ['en', 'ar']) {
+  // A machine without Microsoft Word (the GitHub Windows runner has none) cannot run C6: say so and skip it, as tests/docx-pages-0161 does. Where Word exists (uv present, a Word.Application starts) C6 runs in full and fails as before.
+  const wordProbe = have ? spawnSync('uv', ['run', '--no-project', '--quiet', '--with', 'pywin32', 'python', '-c', "import win32com.client as w; a=w.DispatchEx('Word.Application'); a.Quit(); print('word-ok')"], { encoding: 'utf8', timeout: 120000, env: { ...process.env, PYTHONUTF8: '1' } }) : null;
+  const noWord = !!wordProbe && !/word-ok/.test(wordProbe.stdout || '');
+  if (noWord) console.log('NOTE  diagram-canvas-0159: Microsoft Word is not available here, C6 (the DOCX opened in Word) is skipped');
+  for (const loc of noWord ? [] : ['en', 'ar']) {
     const doc0 = loadDoc(loc);
     const room = figureRoom(doc0, PTR, theme);
     const f = { wMm: Math.min(room.wMm, 200), hMm: Math.min(room.hMm, 90), mode: 0 };

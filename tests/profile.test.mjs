@@ -55,8 +55,13 @@ try {
   check('Skip stores a profile and closes the modal', stored?.skipped === true && !(await sh(p, (r) => !!r.querySelector('.bw-modal'))));
   await p.reload();
   await p.waitForFunction(() => window.BW?.ready);
+  // settled, not just booted: BW.ready only means «booted», a card that asks is opened a moment later, so a fast look can miss it (or, on a slow machine, meet a card that is still closing).
+  // whenReady resolves once no hold and no dialog is left; a card that stays open keeps it from resolving, so the wait is capped and the check below names what is on screen.
+  await p.evaluate(() => Promise.race([window.BW.whenReady?.(), new Promise((r) => setTimeout(r, 6000))]));
   await p.waitForTimeout(500);
-  check('the modal is shown once (not after a reload)', !(await sh(p, (r) => !!r.querySelector('.bw-modal'))));
+  const again = await sh(p, (r) => [...r.querySelectorAll('.bw-modal')].map((m) => `${m.className} «${(m.querySelector('h2')?.textContent || '').trim()}»`));
+  const kept = await p.evaluate(() => localStorage.getItem('bw:profile'));
+  check('the modal is shown once (not after a reload)', again.length === 0 && !!kept, `modals ${JSON.stringify(again)}, stored profile ${kept}`);
   await ctx.close();
 
   // a named profile; a scripted session of 10 edits, 20 s apart, on a faked clock

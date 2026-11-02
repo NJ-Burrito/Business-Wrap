@@ -151,6 +151,7 @@ let rbFitRaf = 0;
 const rbFitSoon = () => { if (!rbFitRaf) rbFitRaf = requestAnimationFrame(() => { rbFitRaf = 0; const el = root.querySelector('.island > .ribbon'); if (el) rbFitTabs(el); ctxFit(); }); };
 window.addEventListener('resize', rbFitSoon);
 if (document.fonts?.ready) document.fonts.ready.then(rbFitSoon); // the words measure wider once the real font is in
+document.fonts?.addEventListener?.('loadingdone', () => { const c = root.querySelector('.island > .ctx'); if (c && !c.hidden && !ctxFits(c)) ctxFit.force = true; rbFitSoon(); }); // a font file arriving later (the first time its weight is drawn) changes the words' widths again
 
 /* ── 0.15.9 · the selection strip fits its row ─────────────────────────────────────────────────────────────────────────────────────
  * The strip (.ctx) is one 42 px row (Z5). It holds the title, the first tools and a «More» menu. ctxFit measures the room the row gives it and chooses, from the roomiest
@@ -214,7 +215,10 @@ function ctxFit() {
   const sc0 = ctx.querySelector(':scope > .sc');
   const sig = [ctx.getBoundingClientRect().width.toFixed(1), sc0 ? sc0.getBoundingClientRect().width.toFixed(1) : 0, sb.getBoundingClientRect().left.toFixed(1), ctx.dataset.fit || '', sb.__fit ? sb.__fit.all.length : sb.children.length, ctx.dataset.key || '', document.documentElement.lang, document.fonts?.status || ''].join('|');
   if (sb.__fit && sb.__fitSig === sig && !ctxFit.force) return;
-  if (ctxRo) { ctxRo.disconnect(); ctxRo.observe(ctx); const sc = ctx.querySelector(':scope > .sc'); if (sc) ctxRo.observe(sc); } // the title's own width changes when the real font arrives
+  ctxFit.force = false;
+  // the title's own width changes when the real font arrives, and so does a tool's (a font file is loaded the first time its weight is drawn, a picker shows another value):
+  // every part of the row is watched, and a part that grew past the row fits it again even though the row's own width did not change
+  if (ctxRo) { ctxRo.disconnect(); ctxRo.observe(ctx); for (const e of ctx.querySelectorAll(':scope > .sc, .sb > *')) ctxRo.observe(e); }
   RB.ctxBusy = true;
   // 0.16.0 (U1): moving a node from the strip into «More» (or back) blurs it. A tool that held the keyboard keeps it: the same node is focused again after the fit,
   // and when it now sits in the closed menu, the «More» button takes the keyboard (never the page).
@@ -236,7 +240,7 @@ if (typeof MutationObserver === 'function') {
     ctxMo?.disconnect(); ctxRo?.disconnect();
     ctxMo = new MutationObserver(() => { if (RB.ctxBusy) return; ctxFit(); ctxMo.takeRecords(); rbFitSoon(); });
     ctxMo.observe(ctx, { childList: true, attributes: true, attributeFilter: ['hidden', 'data-key'] });
-    ctxRo = new ResizeObserver(() => rbFitSoon());
+    ctxRo = new ResizeObserver(() => { if (!RB.ctxBusy && !ctxFits(ctx)) ctxFit.force = true; rbFitSoon(); });
     ctxRo.observe(ctx);
     ctxFit();
   };
