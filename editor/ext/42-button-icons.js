@@ -52,6 +52,16 @@ Object.assign(IC, {
   biHere: BI_G('<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>'), // lucide map-pin (ISC): from this page on
   pfUser: BI_G('<path d="M18 20a6 6 0 0 0-12 0"/><circle cx="12" cy="10" r="4"/><circle cx="12" cy="12" r="10"/>'), // lucide circle-user-round (ISC): the profile card
   both: BI_G('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 3v18"/>'), // the two editions side by side (was the keep-with-next glyph)
+  // 0.15.6 (A6): the arrow pickers, house stroke; the route glyph is lucide spline (ISC), the rest are drawn here
+  dgRoute: BI_G('<circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><path d="M5 17A12 12 0 0 1 17 5"/>'),
+  dgHead: BI_G('<path d="M4 12h15"/><path d="m13 6 6 6-6 6"/>'),
+  dgTail: BI_G('<circle cx="5" cy="12" r="2.2"/><path d="M8 12h13"/>'),
+  dgLine: BI_G('<path d="M3 12h3"/><path d="M10.5 12h3"/><path d="M18 12h3"/>'),
+  dgWeight: BI_G('<path d="M3 6h18" stroke-width="1"/><path d="M3 12h18" stroke-width="2.5"/><path d="M3 18h18" stroke-width="4.5"/>'),
+  dgLgText: BI_G('<path d="M4 7h16"/><path d="M4 12h10"/><path d="M4 17h6"/>'),
+  dgLgLook: BI_G('<rect x="3" y="5" width="8" height="6" rx="1.5"/><path d="M14 8h7"/><path d="M3 17h18"/>'),
+  dgLgDel: BI_G('<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/>'),
+  dgLgReset: BI_G('<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>'),
 });
 const BI_MAP = [
   ['[data-go][data-ring]', 'biJump'],

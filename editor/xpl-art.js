@@ -416,6 +416,15 @@ const XPL_SCENES = {
       case 'reset': return cv + [[40, 28, 14, 10], [100, 34, -12, 14], [70, 66, 6, -14]].map(([x, y, dx, dy]) => xaG('k-mv', A(x, y), xaMv(dx, dy))).join('') + xaP('acs', 'M120 76 a8 8 0 1 0 -2 -8 m-1 -6 l1 6 l6 -1');
       case 'flow': return cv + A(40, 28) + xaG('k-mv', A(86, 28), xaMv(-24, 28)) + xaG('k-mv', A(40, 66), xaMv(44, -38)) + xaP('wr', 'M57 28 h12') + xaP('acs', 'M126 34 v30 m-4 -6 l4 6 l4 -6');
       case 'legend': return cv + A(44, 30) + A(112, 30) + xaP('wr', 'M61 30 h34') + xaG('k-in', xaR('sheet', 34, 58, 92, 22, 4) + [0, 1, 2].map((i) => xaR(['pr', 'ac', 'ok'][i], 42 + i * 28, 66, 8, 6, 2) + xaLn(52 + i * 28, 67, 12)).join(''));
+      case 'proute': return cv + A(34, 60) + A(118, 36) + xaG('k-gone', xaP('wr', 'M51 60 h34 v-24 h16')) + xaG('k-in', xaP('wr', 'M51 58 q30 -40 50 -22'));
+      case 'phead': return cv + A(34, 40) + A(118, 40) + xaP('wr', 'M51 40 h46') + xaG('k-in', xaP('wr', 'M92 33 l12 7 l-12 7 z'));
+      case 'ptail': return cv + A(34, 40) + A(118, 40) + xaP('wr', 'M51 40 h50') + xaG('k-in', xaC('ac', 54, 40, 5));
+      case 'pline': return cv + A(34, 40) + A(118, 40) + xaG('k-gone', xaP('wr', 'M51 40 h50')) + xaG('k-in', xaP('wr', 'M51 40 h50', 'style="stroke-dasharray:3 4"'));
+      case 'pweight': return cv + A(34, 40) + A(118, 40) + xaG('k-gone', xaP('wr', 'M51 40 h50')) + xaG('k-in', xaP('wr', 'M51 40 h50', 'style="stroke-width:5"'));
+      case 'lgtext': return cv + xaG('k-in', xaR('sheet', 34, 58, 92, 22, 4) + xaR('pr', 42, 66, 8, 6, 2) + xaLn(54, 67, 36) + xaR('caret', 92, 64, 2, 10, 1));
+      case 'lglook': return cv + xaR('sheet', 34, 58, 92, 22, 4) + xaLn(54, 67, 36) + xaG('k-gone', xaR('pr', 42, 66, 8, 6, 2)) + xaG('k-in', xaR('ok', 42, 66, 8, 6, 2));
+      case 'lgdel': return cv + xaR('sheet', 34, 58, 92, 22, 4) + xaR('pr', 42, 66, 8, 6, 2) + xaLn(52, 67, 12) + xaG('k-gone', xaR('ac', 76, 66, 8, 6, 2) + xaLn(86, 67, 12));
+      case 'lgreset': return cv + xaR('sheet', 34, 58, 92, 22, 4) + xaR('pr', 42, 66, 8, 6, 2) + xaLn(52, 67, 12) + xaG('k-in', xaR('ac', 76, 66, 8, 6, 2) + xaLn(86, 67, 12));
       case 'mmdout': return xaMini() + xaG('k-in', xaR('sheet', 64, 56, 70, 26, 4) + xaLines(70, 62, 3, 56, { gap: 6, c: 'ln' }));
       case 'label': return cv + xaR('bx', 24, 30, 48, 22, 5) + xaR('caret', 52, 36, 2, 10, 1) + xaLn(30, 37, 20, 'mk k-grow', xaSc(0, 1, 'left center')) + A(112, 40);
       case 'sub': return cv + xaR('bx', 24, 24, 48, 30, 5) + xaLn(30, 30, 36) + xaLn(30, 42, 24, 'mk k-grow', xaSc(0, 1, 'left center')) + xaR('caret', 56, 40, 2, 7, 1);
@@ -689,6 +698,15 @@ dg:auto dgAuto@dgAuto
 dg:reset dgReset@dgReset
 dg:flow dgFlow@dgFlow
 dg:legend dgLegend@dgLegend
+dg:proute dgRoute@dgRoute
+dg:phead dgHead@dgHead
+dg:ptail dgTail@dgTail
+dg:pline dgLine@dgLine
+dg:pweight dgWeight@dgWeight
+dg:lgtext dgLgText@dgLgText
+dg:lglook dgLgLook@dgLgLook
+dg:lgdel dgLgDel@dgLgDel
+dg:lgreset dgLgReset@dgLgReset
 dg:mmdout dgMermaidOut@dgMermaidOut
 dg:label dgLabel@dgLabel
 dg:sub dgSub@dgSub

@@ -11,6 +11,14 @@
 .island:has(> .ribbon) > .brand { order: 0; }
 .island:has(> .ribbon) > .grp.doc { order: 1; border-inline-end: 0; padding-inline-end: 0; }
 .island:has(> .ribbon) > .ctx { order: 3; }
+/* 0.15.6 (Z5): the selection strip is one row, the height of the row it sits in, whether or not anything is selected, so picking a shape, an arrow or the
+ * empty drawing can no longer change the bar's height (the page used to be pushed by 17 to 44 px each time). It takes the free room of that row and never wraps
+ * (its extra tools fold into «More», which opens in the top layer and is not clipped). */
+.island:has(> .ribbon) > .ctx { box-sizing: border-box; block-size: 42px; min-block-size: 42px; max-block-size: 42px; flex: 1 1 0; min-inline-size: 0; overflow: hidden; flex-wrap: nowrap; }
+.island:has(> .ribbon) > .ctx .sb { flex-wrap: nowrap; }
+.island:has(> .ribbon) > .ctx[hidden] { display: flex !important; visibility: hidden; }
+.island:has(> .ribbon) > .ctx[hidden], .island:has(> .ribbon) > .ctx[hidden] * { animation: none !important; transition: none !important; }
+.island:has(> .ribbon) > .ctx[hidden]::after { content: none !important; }
 .island:has(> .ribbon) > .spacer { order: 4; }
 .island:has(> .ribbon) > .status { order: 5; }
 .island:has(> .ribbon) > .srv-toggle { order: 7; block-size: 40px; box-sizing: border-box; align-self: center; } /* 0.15.0 integration: the server toggle sits at the far end beside the power button, not between the mark and the selector */
