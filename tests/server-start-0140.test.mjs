@@ -19,7 +19,8 @@ import { buildEditor } from '../engine/build-editor.mjs';
 const results = [];
 let failed = 0;
 const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  server-start: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-srvstart-'));
+// the long form of the folder: the server and Chrome report the account's real folder name, os.tmpdir() gives its 8.3 short name (RUNNER~1) on the CI runner
+const tmp = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'bw-srvstart-')));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const until = async (fn, ms = 20000) => { for (const t0 = Date.now(); Date.now() - t0 < ms; await sleep(150)) if (await fn()) return true; return false; };
 const free = () => new Promise((ok) => { const s = net.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => ok(p)); }); });

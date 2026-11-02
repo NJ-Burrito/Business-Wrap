@@ -82,7 +82,8 @@ const run = (f) => new Promise((res) => {
 const queue = [...want];
 await Promise.all(Array.from({ length: jobs }, async () => { while (queue.length) await run(queue.shift()); }));
 const bad = results.filter((r) => r.code);
-for (const r of bad) console.log(`\n===== ${r.f} (exit ${r.code}) =====\n${r.out.slice(-6000)}`);
+// every line that is not a PASS (the failing checks with their detail), not the last 6000 characters: a suite that prints many PASS lines after its FAIL hid the FAIL in the CI log
+for (const r of bad) console.log(`\n===== ${r.f} (exit ${r.code}) =====\n${r.out.split('\n').filter((l) => !/^\s*PASS\b/.test(l)).join('\n').slice(-30000)}`);
 const total = (Date.now() - t0) / 1000;
 console.log(`\n${results.length - bad.length}/${results.length} suites ok, wall ${total.toFixed(1)}s, sum ${results.reduce((a, r) => a + r.s, 0).toFixed(1)}s, jobs ${jobs}`);
 const times = Object.fromEntries(results.map((r) => [r.f, r.s]));
