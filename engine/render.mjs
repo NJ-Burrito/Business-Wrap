@@ -315,6 +315,19 @@ export function figureRoom(doc, ptr, themeIn) {
   const hMm = Math.max(40, Math.floor((sheet.heightMm - 14 - 12 - chain - capH - noteH - 2.7 - 0.6 - 5) * 10) / 10);
   return { wMm, hMm, sheetW: sheet.widthMm, sheetH: sheet.heightMm, sideMm: side, chainMm: Math.round(chain * 10) / 10, captionMm: Math.round(capH * 10) / 10, noteMm: Math.round(noteH * 10) / 10 };
 }
+/**
+ * 0.16.0 · The frame, in mm, a diagram block really prints in: its own canvas (block.frame) kept inside the room the page leaves it, else the automatic figure's
+ * box (the room's width less the figure box's padding and rule, the height capped at DIAGRAM.PRINT.maxHmm). The legibility check measures against this, so the
+ * editor, the check and the PDF agree; with no document it is DIAGRAM.PRINT.
+ */
+export function figureFrame(doc, ptr, themeIn) {
+  const m = /^\/chapters\/(\d+)\/sections\/(\d+)\/blocks\/(\d+)$/.exec(ptr || '');
+  const block = m ? doc?.chapters?.[+m[1]]?.sections?.[+m[2]]?.blocks?.[+m[3]] : null;
+  const room = figureRoom(doc, ptr, themeIn);
+  const fr = DIAGRAM.frameNorm(block?.frame);
+  if (fr) return [Math.min(fr.wMm, room.wMm), Math.min(fr.hMm, room.hMm)];
+  return [Math.round((room.wMm - DIAGRAM.PRINT.padMm) * 10) / 10, Math.round(Math.min(DIAGRAM.PRINT.maxHmm, room.hMm - DIAGRAM.PRINT.padMm) * 10) / 10];
+}
 /** Print geometry of the document's own page (segment 0): CSS px of the content box. */
 export function pageGeom(doc) {
   const sp = pageSpec(doc?.layout?.page);
@@ -1013,8 +1026,8 @@ export function renderParts(doc, o) {
           const vb = /viewBox="(-?[\d.]+) (-?[\d.]+) ([\d.]+) ([\d.]+)"/.exec(art);
           if (vb) {
             const room = figureRoom(doc, b, o.theme);
-            const natural = Math.min(116, ((room.wMm - 8.5) * +vb[4]) / +vb[3]);
-            if (natural + 8.5 > room.hMm) cap = Math.max(30, Math.floor((room.hMm - 8.5) * 10) / 10);
+            const natural = Math.min(DIAGRAM.PRINT.maxHmm, ((room.wMm - DIAGRAM.PRINT.padMm) * +vb[4]) / +vb[3]);
+            if (natural + DIAGRAM.PRINT.padMm > room.hMm) cap = Math.max(30, Math.floor((room.hMm - DIAGRAM.PRINT.padMm) * 10) / 10);
           }
         }
         return `<figure class="fig sheet hug dg${fr ? ' fr' : ''}${cap ? ' cap' : ''}" data-b="${attr(b)}" data-dg="${attr(b)}"${cap ? ` style="--arth:${cap}mm"` : ''}${fr ? ` data-frame="${fr.mode}" style="--frw:${fr.wMm}mm;--frh:${fr.hMm}mm;--shw:${room0.sheetW}mm"` : ''}>
