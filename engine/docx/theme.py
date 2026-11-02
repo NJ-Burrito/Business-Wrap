@@ -37,6 +37,8 @@ def all_theme_hexes(roles: dict[str, str]) -> set[str]:
     return hexes
 # 0.16.0 (spec T): the document type scale is 2 pt smaller (22 / 16 / 14 / 12 / 12 / 10 / 8 / 7 pt). The DOCX reads it from the design pack's theme
 # (the same "sizes" the PDF prints with), so the two never part; these are the pack-less defaults.
+LINE = 1.8  # render.mjs --line
+PROSE_AFTER_PT = round(3.5 * 72 / 25.4, 1)  # render.mjs p{margin:0 0 3.5mm}
 SIZES = {'title': 22, 'h1': 16, 'h2': 14, 'h3': 12, 'body': 12, 'table': 10, 'meta': 8, 'micro': 7}
 
 def _load_sizes() -> None:
@@ -165,6 +167,18 @@ def apply_style_scale(document, roles: dict[str, str], font: str) -> None:
         pf = style.paragraph_format
         pf.keep_with_next = True
         pf.keep_together = True
+    # 0.16.1 (fault 3): the print's vertical rhythm (render.mjs: line-height 1.8, h3 margin 7mm 0 3mm, p margin-bottom 3.5mm, h2 margin-bottom 7mm),
+    # so a page holds the same lines in Word as in the PDF. Word adds before to after (CSS collapses them), hence the maximum is used for h2 above.
+    from docx.enum.text import WD_LINE_SPACING
+    MM = 72 / 25.4
+    for style, size, before, after in ((h2, SIZES['h2'], 7 * MM, 3 * MM), (h3, SIZES['h3'], 9 * MM, 0)):
+        pf = style.paragraph_format
+        pf.space_before = Pt(round(before, 1))
+        pf.space_after = Pt(round(after, 1))
+        pf.line_spacing_rule = WD_LINE_SPACING.EXACTLY
+        pf.line_spacing = Pt(round(size * LINE, 1))
+    h1.paragraph_format.space_before = Pt(0)
+    h1.paragraph_format.space_after = Pt(round(7 * MM, 1))
     _set_style_cs_font(normal, F['body'], SIZES['body'])
     for style, size in ((title, SIZES['title']), (h1, SIZES['h1']), (h2, SIZES['h2']), (h3, SIZES['h3'])):
         _set_style_cs_font(style, F['display'], size)
