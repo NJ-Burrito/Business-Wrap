@@ -68,6 +68,7 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
   const ctx = { OUT, editorFile, get workspace() { return wsOf(); }, onIdle, server: null };
   const versionOf = () => JSON.parse(fs.readFileSync(path.join(installDir, 'package.json'), 'utf8')).version;
   let job = null; // the one update that may run: {stage, stages, ok, error, from, to}
+  let doneServedAt = 0; // when the page first read the finished progress: the host restarts only after that (or a 20 s cap)
   let last = null; // the last check's answer, for /api/version
   const fontFiles = new Set(fontsFor(loadTheme()).cuts.map((c) => path.resolve(c.file)));
   const server = http.createServer(async (req, res) => {
@@ -125,7 +126,7 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
           last = { status: r.status, latest: r.latest, reason: r.reason, checkedAt: r.checkedAt || Date.now() };
           return send(200, pub);
         }
-        if (req.method === 'GET' && url.pathname === '/api/update/progress') return send(200, job || { stage: '', stages: STAGES });
+        if (req.method === 'GET' && url.pathname === '/api/update/progress') { if (job && job.finished) doneServedAt = doneServedAt || Date.now(); return send(200, job || { stage: '', stages: STAGES }); }
         if (req.method === 'POST' && url.pathname === '/api/update/apply') {
           const chunks = [];
           for await (const c of req) chunks.push(c);
@@ -140,7 +141,7 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
           job = { stage: 'download', stages: STAGES, from, to: u.latest, finished: false };
           // runs on after the answer: the page follows /api/update/progress
           applyUpdate({ dir: installDir, release: { version: u.latest, zip: u.zip, zipApi: u.zipApi, sha256: u.sha256 }, repo, token: token(), current: from, onStage: (st) => { job.stage = st; }, failAt: process.env.BW_UPDATE_FAIL_AT || '' })
-            .then((r) => { Object.assign(job, { ok: !!r.ok, error: r.ok ? '' : String(r.error || 'failed').slice(0, 300), rolledBack: !!r.rolledBack, finished: true }); if (r.ok) setTimeout(() => onUpdated(r), 1500); })
+            .then((r) => { Object.assign(job, { ok: !!r.ok, error: r.ok ? '' : String(r.error || 'failed').slice(0, 300), rolledBack: !!r.rolledBack, finished: true }); if (r.ok) { const t0 = Date.now(); const wait = () => { if ((doneServedAt && Date.now() - doneServedAt >= 800) || Date.now() - t0 >= 20000) onUpdated(r); else setTimeout(wait, 100); }; setTimeout(wait, 1500); } })
             .catch((e) => { Object.assign(job, { ok: false, error: String(e.message || e).slice(0, 300), finished: true }); });
           return send(202, { ok: true, started: true, from, to: u.latest, stages: STAGES });
         }
