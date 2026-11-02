@@ -10,7 +10,7 @@
 claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.15.9 business-wrap-mcp
 ```
 
-✅ يحتاج Node 20 فأحدث وuv، وChrome أو Edge لملف PDF.
+✅ يحتاج Node 20 فأحدث وuv، وGoogle Chrome (أو متصفحاً آخر مبنياً على Chromium) لملف PDF.
 
 🔒 محلي فقط: لا منفذ شبكة، ويقرأ ويكتب المسارات التي تعطيه إياها فقط.
 
@@ -34,8 +34,8 @@ claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.15.
 | `harvest_merge` | crawl, model, out_dir, name?, roles? | دمج ما جمع من الخدمة الفعلية مع نموذج العملية في وثيقة واحدة بنسختيها |
 | `harvest_crawl` | config, out_dir, open? | المرور على خدمة فعلية (Chrome ظاهر وتوقف للرمز المؤقت، ولا يرسل طلباً أبداً) ← النسختان والمحرر |
 | `harvest_sources` | sources[], out_dir, name?, roles?, open? | ملفاتك أو مجلداتك: BPMN وdraw.io وخطوات YAML/JSON وPDF وDOCX وHTML وTXT وMD ← وثائق، وما لا يُقرأ يُذكر في المتروك |
-| `open_in_editor` | documents[]? \| editor? \| doc_id? | يشغّل الخادم المحلي عند الحاجة ويفتح المحرر في Edge، ويعيد `{url, doc_id}` |
-| `close_editor` | (لا شيء) | يوقف كل خادم ونافذة Edge شغّلها هذا التثبيت |
+| `open_in_editor` | documents[]? \| editor? \| doc_id? | يشغّل الخادم المحلي عند الحاجة ويفتح المحرر في المتصفح، ويعيد `{url, doc_id}`. بلا معاملات = تبويب فارغ (لا تُنشأ وثيقة). `doc_id` يُبحث عنه في مكتبة المحرر أولاً. الملفات نفسها تعطي معرّف المكتبة نفسه بعد إعادة التشغيل |
+| `close_editor` | (لا شيء) | يوقف كل خادم ونافذة متصفح شغّلها هذا التثبيت؛ والخادم الذي شغّله خادم MCP آخر (وكيل آخر) يُترك ويُذكر تحت `skipped` |
 | `editor_list_documents` | project? | الوثائق في مكتبة المحرر عند الخادم العامل (ويشغّل الخادم إن لم يكن يعمل) |
 | `editor_outline` | doc, locale? | الفصول والأقسام وأنواع الكتل ومعرّفاتها مع مؤشر JSON لكل عقدة، من المحرر الحي |
 | `editor_get` | doc, pointer?, locale? | القيمة عند مؤشر في الوثيقة كما يحملها المحرر الآن (بما فيها التعديلات غير المحفوظة) |
@@ -58,7 +58,7 @@ claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.15.
 
 🩺 `business-wrap doctor` (أو `/business-wrap:doctor`) يطبع الإصدار على القرص ومكان الحالة وآخر بدايات الخادم مع زمن `initialize` وأي انحراف. والسجل `mcp.log` في مجلد الحالة.
 
-💾 في إضافة Claude Code تعيش الحالة (host.json وملف Edge وworkspace.json والإعدادات) في مجلد بيانات الإضافة الذي ينجو من التحديثات، وأول تشغيل بعد التحديث ينسخها من مجلد الإصدار السابق.
+💾 في إضافة Claude Code تعيش الحالة (host.json وملف المتصفح وworkspace.json والإعدادات) في مجلد بيانات الإضافة الذي ينجو من التحديثات، وأول تشغيل بعد التحديث ينسخها من مجلد الإصدار السابق.
 
 ## ▶️ التشغيل
 
@@ -74,7 +74,7 @@ node mcp/cli.mjs
 من متغيرات البيئة أو من الملف المستثنى من git `.local/config.json`:
 
 - `BW_FONT_DIR`: ملفات خطك بصيغة TrueType
-- `BW_CHROME`: نسخة Chrome أو Edge التي تطبع بها
+- `BW_CHROME`: المتصفح المبني على Chromium الذي تطبع به
 - `BW_POPPLER`: مجلد poppler (`pdftotext` و`pdffonts`) الذي تقرأ به الاختبارات ملفات PDF
 
 </details>

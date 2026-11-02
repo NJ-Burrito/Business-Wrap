@@ -143,9 +143,73 @@ export function applyOps(base, ops) {
 /** 0.15.3 (T16) · shape rules an op must keep, whoever wrote it (the host validator and the editor bridge both call this):
  *  a table is never written with `columns: []` (it would print as label/value rows with no header: give it its header texts, or leave `columns` out);
  *  a `stories` block's number comes from its section, never from an op. */
+/** 0.16.0 (field notes item 7) · a data URI that does not decode is refused (BAD_OP), not stored: a logo typed by hand was truncated twice and accepted as applied,
+ *  a third carried a bad PNG chunk checksum and printed nothing. Pure (no Buffer, no atob): this file is also inlined into the editor. Returns '' when the string is fine
+ *  (or is not a base64 data URI), else the reason. */
+const duCrcTable = (() => { const t = []; for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const duCrc = (b, from, to) => { let c = 0xffffffff; for (let i = from; i < to; i++) c = duCrcTable[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+const DU_B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+function duDecode(s) {
+  const pad = s.endsWith('==') ? 2 : s.endsWith('=') ? 1 : 0;
+  const out = new Uint8Array((s.length / 4) * 3 - pad);
+  let o = 0;
+  for (let i = 0; i < s.length; i += 4) {
+    const a = DU_B64.indexOf(s[i]), b = DU_B64.indexOf(s[i + 1]), c = s[i + 2] === '=' ? 0 : DU_B64.indexOf(s[i + 2]), d = s[i + 3] === '=' ? 0 : DU_B64.indexOf(s[i + 3]);
+    const n = (a << 18) | (b << 12) | (c << 6) | d;
+    if (o < out.length) out[o++] = (n >> 16) & 255;
+    if (o < out.length) out[o++] = (n >> 8) & 255;
+    if (o < out.length) out[o++] = n & 255;
+  }
+  return out;
+}
+export function dataUriProblem(str) {
+  if (typeof str !== 'string' || !/^data:/i.test(str)) return '';
+  const m = /^data:([^,;]*)((?:;[^,;]*)*?);base64,([\s\S]*)$/i.exec(str);
+  if (!m) return '';
+  const mime = m[1].toLowerCase();
+  const body = m[3];
+  if (!body.length) return 'the data URI is empty';
+  if (body.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(body)) return `the data URI does not decode (${body.length} base64 characters: truncated, or not base64)`;
+  let b;
+  try { b = duDecode(body); } catch { return 'the data URI does not decode'; }
+  if (mime === 'image/png') {
+    const sig = [137, 80, 78, 71, 13, 10, 26, 10];
+    if (b.length < 33 || sig.some((x, i) => b[i] !== x)) return 'the PNG signature is wrong (not a PNG, or truncated)';
+    let p = 8, iend = false;
+    while (p + 12 <= b.length) {
+      const len = ((b[p] << 24) | (b[p + 1] << 16) | (b[p + 2] << 8) | b[p + 3]) >>> 0;
+      const type = String.fromCharCode(b[p + 4], b[p + 5], b[p + 6], b[p + 7]);
+      if (p + 12 + len > b.length) return `the PNG is truncated inside its ${type} chunk`;
+      const want = ((b[p + 8 + len] << 24) | (b[p + 9 + len] << 16) | (b[p + 10 + len] << 8) | b[p + 11 + len]) >>> 0;
+      if (duCrc(b, p + 4, p + 8 + len) !== want) return `the PNG has a bad checksum in its ${type} chunk (a corrupt or hand-typed copy)`;
+      p += 12 + len;
+      if (type === 'IEND') { iend = true; break; }
+    }
+    if (!iend) return 'the PNG has no IEND chunk (truncated)';
+  } else if (mime === 'image/jpeg' || mime === 'image/jpg') {
+    if (b.length < 4 || b[0] !== 0xff || b[1] !== 0xd8) return 'the JPEG signature is wrong';
+    if (b[b.length - 2] !== 0xff || b[b.length - 1] !== 0xd9) return 'the JPEG is truncated (no end marker)';
+  } else if (mime === 'image/gif') {
+    if (b.length < 7 || String.fromCharCode(b[0], b[1], b[2], b[3]) !== 'GIF8') return 'the GIF signature is wrong';
+    if (b[b.length - 1] !== 0x3b) return 'the GIF is truncated (no trailer)';
+  } else if (mime === 'image/webp') {
+    if (b.length < 12 || String.fromCharCode(b[0], b[1], b[2], b[3]) !== 'RIFF' || String.fromCharCode(b[8], b[9], b[10], b[11]) !== 'WEBP') return 'the WebP signature is wrong';
+    if ((b[4] | (b[5] << 8) | (b[6] << 16) | (b[7] << 24)) + 8 !== b.length) return 'the WebP is truncated (its length does not match)';
+  }
+  return '';
+}
+/** The first broken data URI anywhere inside a value (an op's `value`), as `path: reason`, else ''. */
+export function dataUriIn(v, at = '', depth = 0) {
+  if (typeof v === 'string') { const r = dataUriProblem(v); return r ? `${at || 'value'}: ${r}` : ''; }
+  if (!v || typeof v !== 'object' || depth > 8) return '';
+  for (const [k, x] of Object.entries(v)) { const r = dataUriIn(x, `${at}/${k}`, depth + 1); if (r) return r; }
+  return '';
+}
+
 export function opShapeErrors(op) {
   const out = [];
   if (!op || typeof op !== 'object') return out;
+  if (['replace', 'insert', 'setText'].includes(op.op)) { const bad = dataUriIn(op.value); if (bad) out.push(`a data URI in the value does not decode: ${bad}`); }
   const emptyCols = (b) => b && typeof b === 'object' && b.kind === 'table' && Array.isArray(b.columns) && b.columns.length === 0;
   if (['replace', 'insert', 'setText'].includes(op.op)) {
     if (emptyCols(op.value)) out.push('a table needs at least one column header: columns: [] is refused (omit `columns` for a headerless table)');

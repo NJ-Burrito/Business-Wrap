@@ -41,6 +41,12 @@ export function beatAge(s, tab, now = Date.now()) {
 /** 0.15.9 A4: a tab that vanished without a goodbye (a browser discarded it, or its page was killed) is `lost`, not closed: its saved state stays in the run, a command to it gets
  *  TAB_ASLEEP, and when the LAST connection goes without a goodbye the host waits this long before it exits (a discarded last tab can come back and reload). A clean close keeps the 4 s. */
 export const discardGraceMs = () => Number(process.env.BW_DISCARD_GRACE_MS) || (process.env.BW_IDLE_MS ? IDLE_MS : 60000);
+/** 0.16.0 (the owner's host stopped twice with no cause; item 11 «the host keeps its editor across a window close»): a host an agent has used within this long does not exit when its last
+ *  tab goes (a closed window, a crashed or restarted browser): it waits for a tab to come back. A host only a person used keeps the 4 s / 60 s of before. 0 turns it off. */
+export const agentKeepMs = (ctx) => {
+  const keep = process.env.BW_AGENT_KEEP_MS !== undefined ? Number(process.env.BW_AGENT_KEEP_MS) : 30 * 60 * 1000;
+  return ctx?.agentAt && keep > 0 ? Math.max(0, ctx.agentAt + keep - Date.now()) : 0;
+};
 /** Any proof that a tab's page runs (a state push, a flush, a bridge reply) counts as a beat, whatever the last tab list said. */
 export const beat = (ctx, tab) => { if (typeof tab === 'string') state(ctx).beats.set(tab, Date.now()); };
 const awakeOf = (a) => (a && typeof a === 'object' ? { rtc: a.rtc === true, tickMs: [1000, 5000, 60000].includes(a.tickMs) ? a.tickMs : 1000, stalls: Math.min(1e6, Math.max(0, Number(a.stalls) || 0)), lagMs: Math.min(1e9, Math.max(0, Number(a.lagMs) || 0)), frozen: Math.min(1e6, Math.max(0, Number(a.frozen) || 0)), resumed: Math.min(1e6, Math.max(0, Number(a.resumed) || 0)) } : null);
@@ -364,7 +370,7 @@ export default async (req, url, send, ctx, res) => {
           // 0.15.9 A4: connections gone while tabs were still listed = no goodbye (a discarded last tab, a killed browser): those tabs are lost, and the host waits before it exits
           const abrupt = [...c.tabs].filter(([t]) => !liveTabs(s).has(t));
           for (const [t, o] of abrupt) if (!s.lost.has(t)) s.lost.set(t, { at: Date.now(), svc: o.svc, docs: o.docs, automation: o.automation });
-          clearTimeout(s.timer); s.timer = setTimeout(() => { if (!connected(s).length) finish(ctx); }, abrupt.length ? discardGraceMs() : IDLE_MS);
+          clearTimeout(s.timer); s.timer = setTimeout(() => { if (!connected(s).length) finish(ctx); }, Math.max(abrupt.length ? discardGraceMs() : IDLE_MS, agentKeepMs(ctx)));
         } else settle(ctx, gone);
       });
       return true;

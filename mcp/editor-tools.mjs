@@ -10,10 +10,12 @@
 //   POST /api/editor/reply  {id, ok, result | error:{code, message}}   (the tab's answer; never called by a tool)
 //   GET  /api/host/health                                    the frozen health schema (architect.md §2)
 //
-// docs/automation.md states the contract; tests: mcp-editor-tools.test.mjs (mock host) and bridge-0150.test.mjs (real host + real Edge tab).
+// docs/automation.md states the contract; tests: mcp-editor-tools.test.mjs (mock host) and bridge-0150.test.mjs (real host + real Chrome tab).
 import fs from 'node:fs';
 import http from 'node:http';
+import crypto from 'node:crypto';
 import { validateEdits } from '../engine/edits.mjs';
+import { resolveFileValues } from './ops-values.mjs';
 
 /** An error an agent can branch on: `code` is one of NO_PICKER NO_HOST NO_TAB NO_DOC TAB_TIMEOUT REFUSED CONFLICT BAD_OP UNKNOWN_ACTION BAD_ARGS AUTH HOST_ERROR RESTART_REQUIRED. */
 export class BwError extends Error {
@@ -23,10 +25,16 @@ export class BwError extends Error {
 /** The actions the tab runs on a document (architect §4); anything else is refused here and again by the tab. */
 // 0.15.2 note 12: the safe view actions follow the first five (zoomPct takes args {value: 25-400}; theme takes {mode: dark or light}; reading takes {on}); none edits the content
 export const EDITOR_ACTIONS = ['renumber', 'check', 'saveHtml', 'share', 'exportPdf',
-  'zoomPct', 'zoomHeight', 'zoomWidth', 'zoomIn', 'zoomOut', 'zoomReset', 'theme', 'reading', 'find', 'save', 'outline', 'nextPage', 'prevPage'];
+  'zoomPct', 'zoomHeight', 'zoomWidth', 'zoomIn', 'zoomOut', 'zoomReset', 'theme', 'reading', 'find', 'save', 'outline', 'nextPage', 'prevPage',
+  // 0.16.0: dismissResume closes the «continue where you left off» popup of a tab; claim takes a document's lease for the tab that is asked (the owner is asleep or a ghost);
+  // verifyHistory returns the issues list the tamper banner is based on (item 12)
+  'dismissResume', 'claim', 'verifyHistory'];
 /** Destructive names are LOCKED: refused here (REFUSED) and again by the tab; they are never run through this tool. */
 export const LOCKED_ACTIONS = /^(delete|remove|close|stop|power|clear|purge|reset|wipe|erase|trash|quit|exit)/i;
-const TOOLS = ['list', 'get', 'outline', 'ops', 'action', 'new', 'import'];
+const TOOLS = ['list', 'get', 'outline', 'ops', 'action', 'new', 'import', 'assign', 'trash'];
+const READS = new Set(['list', 'get', 'outline']);
+/** A request id the host and the tab remember: the same id twice is applied once (item 9). */
+export const newRequestId = () => `r-${crypto.randomUUID()}`;
 export const callTimeoutMs = () => Number(process.env.BW_EDITOR_TIMEOUT_MS) || 45000;
 
 /** Where the host is and the token that authorises a call: BW_HOST_URL + BW_HOST_TOKEN (tests, a remote debug host), else host.json
@@ -44,7 +52,7 @@ export async function hostTarget({ start = true } = {}) {
 }
 
 /** One JSON request to the host. Resolves {status, body}; a refused or reset connection is NO_HOST, no answer in time is TAB_TIMEOUT. */
-function request(target, method, route, payload) {
+function request(target, method, route, payload, limitMs = callTimeoutMs()) {
   return new Promise((resolve, reject) => {
     const data = payload === undefined ? null : Buffer.from(JSON.stringify(payload));
     const req = http.request(new URL(route, target.url), { method, headers: { 'x-bw-token': target.token, ...(data ? { 'content-type': 'application/json', 'content-length': data.length } : {}) } }, (res) => {
@@ -56,8 +64,8 @@ function request(target, method, route, payload) {
         resolve({ status: res.statusCode, body });
       });
     });
-    req.setTimeout(callTimeoutMs(), () => req.destroy(Object.assign(new Error('timeout'), { bwTimeout: true })));
-    req.on('error', (e) => reject(e.bwTimeout ? new BwError('TAB_TIMEOUT', `the host did not answer within ${callTimeoutMs()} ms`, { client_side: true }) : new BwError('NO_HOST', `the host at ${target.url} is not reachable (${e.code || e.message})`, { how: 'run the open_in_editor tool (or business-wrap open) and retry' })));
+    req.setTimeout(limitMs, () => req.destroy(Object.assign(new Error('timeout'), { bwTimeout: true })));
+    req.on('error', (e) => reject(e.bwTimeout ? new BwError('TAB_TIMEOUT', `the host did not answer within ${limitMs} ms`, { client_side: true }) : new BwError('NO_HOST', `the host at ${target.url} is not reachable (${e.code || e.message})`, { how: 'run the open_in_editor tool (or business-wrap open) and retry' })));
     if (data) req.write(data);
     req.end();
   });
@@ -71,13 +79,22 @@ function failFrom(status, body) {
 }
 const flat = (r) => (r && typeof r === 'object' && !Array.isArray(r) ? r : { result: r });
 
-/** Call one tab verb through the host. Returns the tab's result as an object (always with ok:true); throws BwError otherwise. */
-export async function callEditor(tool, { doc, args = {} } = {}, { target } = {}) {
+/** Call one tab verb through the host. Returns the tab's result as an object (always with ok:true); throws BwError otherwise.
+ *  0.16.0 (item 9, 15): a read that times out is asked once more (the tab may have been busy for a moment); a call that carries a request_id is retried once too, because the same
+ *  request_id is applied once however many times it arrives, so the retry can never double an insert or an export. */
+export async function callEditor(tool, { doc, args = {} } = {}, { target, retry = true } = {}) {
   if (!TOOLS.includes(tool)) throw new BwError('BAD_ARGS', `unknown editor tool ${tool}`);
   const t = target || await hostTarget();
-  const { status, body } = await request(t, 'POST', '/api/editor/call', { tool, ...(doc ? { doc } : {}), args });
-  if (status >= 200 && status < 300 && body?.ok !== false) return { ok: true, ...flat(body && 'result' in body ? body.result : body) };
-  throw failFrom(status, body);
+  const once = async () => {
+    const slow = tool === 'action' && ['exportPdf', 'share', 'saveHtml'].includes(args?.id);
+    const { status, body } = await request(t, 'POST', '/api/editor/call', { tool, ...(doc ? { doc } : {}), args }, slow ? Math.max(callTimeoutMs(), (Number(process.env.BW_EXPORT_TIMEOUT_MS) || 120000) + 20000) : tool === 'ops' ? callTimeoutMs() + (args?.ops?.length || 0) * 400 : callTimeoutMs());
+    if (status >= 200 && status < 300 && body?.ok !== false) return { ok: true, ...flat(body && 'result' in body ? body.result : body) };
+    throw failFrom(status, body);
+  };
+  try { return await once(); } catch (e) {
+    if (retry && e?.code === 'TAB_TIMEOUT' && (READS.has(tool) || args.request_id)) { try { const r = await once(); return { ...r, retried: true }; } catch (e2) { e2.data = { ...e2.data, retried: true }; throw e2; } }
+    throw e;
+  }
 }
 
 /** The folder picker (0.15.9, engine/workspace.mjs pickerOpen…): host state, so it needs no editor tab. Verbs: state open go mkdir choose cancel wait.
@@ -103,6 +120,14 @@ export function checkOps(ops, locale) {
   if (errs.length) throw new BwError('BAD_OP', `invalid ops: ${errs.join('; ')}`, { problems: errs });
 }
 
+/** The ops ready to send: every {"$file"} value read from disk (item 7), then the same check as the host's (BAD_OP before a round trip). Used by editor_ops and the CLI. */
+export function prepareOps(ops, locale) {
+  let resolved;
+  try { resolved = resolveFileValues(ops); } catch (e) { throw new BwError('BAD_OP', e.message, { index: e.opIndex }); }
+  checkOps(resolved, locale);
+  return resolved;
+}
+
 /** Register the family on an McpServer. `z` is the bundled zod, `guard` the server's error/decorate wrapper. */
 export function registerEditorTools(server, z, guard) {
   const DOC = z.string().describe('Document id: the control.documentId / service code shown by editor_list_documents');
@@ -112,10 +137,10 @@ export function registerEditorTools(server, z, guard) {
 
   server.registerTool('editor_list_documents', {
     title: 'List the documents in the open editor',
-    description: 'The documents in the editor library of the running host: {documents:[{id, title, project, editions, savedAt, words}]}. Optional project filter. Use these ids with the other editor_* tools. Starts the host if none runs.',
-    inputSchema: { project: z.string().optional().describe('Only the documents of this project') },
+    description: 'The documents in the editor library of the running host: {documents:[{id, title, project, editions, savedAt, words, deletedAt?}]}. A document in the Trash has deletedAt and is listed only with include_trashed: true. Optional project filter. Use these ids with the other editor_* tools. Starts the host if none runs.',
+    inputSchema: { project: z.string().optional().describe('Only the documents of this project'), include_trashed: z.boolean().optional().describe('Also list the documents in the Trash (they carry deletedAt)') },
     annotations: RO,
-  }, guard(({ project }) => callEditor('list', { args: project ? { project } : {} })));
+  }, guard(({ project, include_trashed }) => callEditor('list', { args: { ...(project ? { project } : {}), ...(include_trashed ? { include_trashed: true } : {}) } })));
 
   server.registerTool('editor_get', {
     title: 'Read a document from the open editor',
@@ -133,7 +158,7 @@ export function registerEditorTools(server, z, guard) {
 
   server.registerTool('editor_ops', {
     title: 'Edit the open document (one undo step)',
-    description: 'Apply a batch of edit ops (setText, replace, insert, delete, move, duplicate; same vocabulary and JSON-pointer paths as the edits contract v1) to the document OPEN in the editor. The batch is validated on a copy first and applied as ONE undo group, saved to the library and signed in the provenance log as the agent. An op may carry old (the value it expects): a mismatch returns CONFLICT with the live value and applies nothing. Use this, not apply_edits, to change what the user is looking at.',
+    description: 'Apply a batch of edit ops (setText, replace, insert, delete, move, duplicate; same vocabulary and JSON-pointer paths as the edits contract v1) to the document OPEN in the editor. The ops are applied one at a time, in order, and the person watching sees each block change (a small «agent editing» indicator names the section); the whole batch is still ONE undo group, saved to the library and signed in the provenance log as the agent. An op may carry old (the value it expects): a mismatch returns CONFLICT with the live value and applies nothing. A value may be {"$file": "<absolute path>"}: an image file becomes a checked base64 data URI, a .json file its parsed value, any other file its text (never type a logo as base64). A data URI that does not decode is BAD_OP. The reply has applied, revision (the length of the document history), doc (the id written to) and replayed:true when request_id was already applied (a retry never doubles an insert). Use this, not apply_edits, to change what the user is looking at.',
     inputSchema: {
       doc: DOC,
       ops: z.array(z.object({ op: z.enum(['setText', 'replace', 'insert', 'delete', 'move', 'duplicate']), path: z.string() }).passthrough()).min(1).describe('The ops, in order'),
@@ -141,30 +166,31 @@ export function registerEditorTools(server, z, guard) {
       mirror: z.union([z.boolean(), z.literal('auto')]).optional().describe('Also apply to the other edition (default false)'),
       agent: z.string().optional().describe('The agent name shown in the provenance panel, e.g. "Claude (Opus 5.5)"'),
       group: z.string().optional().describe('A label for the one undo group'),
+      request_id: z.string().max(80).optional().describe('Makes a retry safe: the same request_id is applied once (default: a fresh one per call, reused by the automatic retry)'),
     },
     annotations: RW,
-  }, guard(({ doc, ops, locale, mirror, agent, group }) => {
-    checkOps(ops, locale);
-    return callEditor('ops', { doc, args: { ops, locale, mirror: mirror ?? false, ...(agent ? { agent } : {}), ...(group ? { group } : {}) } });
+  }, guard(({ doc, ops, locale, mirror, agent, group, request_id }) => {
+    const resolved = prepareOps(ops, locale);
+    return callEditor('ops', { doc, args: { ops: resolved, locale, mirror: mirror ?? false, request_id: request_id || newRequestId(), ...(agent ? { agent } : {}), ...(group ? { group } : {}) } });
   }));
 
   server.registerTool('editor_action', {
     title: 'Run an editor action on a document',
-    description: `Run one allow-listed action on a document in the open editor: ${EDITOR_ACTIONS.join(', ')}. share takes args {to, note} (the coworker-share dialog, recipient may be empty); zoomPct takes args {value} (25 to 400); theme takes {mode:'dark'|'light'} (else toggles); reading takes {on}; check also answers spelling counts and diagramWarnings. A destructive action (delete, close, stop the server, clear) is locked: REFUSED. Anything else returns UNKNOWN_ACTION.`,
-    inputSchema: { doc: DOC, id: z.string().describe(`One of ${EDITOR_ACTIONS.join(', ')}`), args: z.record(z.any()).optional().describe('Action arguments, e.g. {to, note} for share') },
+    description: `Run one allow-listed action on a document in the open editor: ${EDITOR_ACTIONS.join(', ')}. share takes args {to, note} (the coworker-share dialog, recipient may be empty); exportPdf takes args {name?, destination?, docx?} and answers {pdf, folder, docx?, docxError?, workspace} (the file and its folder; name is a file name without folder, destination an absolute folder, docx:false skips the DOCX; the file appears whole under its final name, and a retry with the same request_id writes nothing twice); saveHtml answers {file, folder}; zoomPct takes args {value} (25 to 400); theme takes {mode:'dark'|'light'} (else toggles); reading takes {on}; check also answers spelling counts and diagramWarnings; verifyHistory answers {ok, issues[]} (what the tamper banner is based on); dismissResume closes the «continue where you left off» popup; claim takes the document's lease for the tab. Every reply names the save folder (workspace) and says when it changed. A destructive action (delete, close, stop the server, clear) is locked: REFUSED. Anything else returns UNKNOWN_ACTION.`,
+    inputSchema: { doc: DOC, id: z.string().describe(`One of ${EDITOR_ACTIONS.join(', ')}`), args: z.record(z.any()).optional().describe('Action arguments, e.g. {to, note} for share, {name, destination, docx} for exportPdf'), request_id: z.string().max(80).optional().describe('Makes a retry safe (default: a fresh one per call, reused by the automatic retry)') },
     annotations: RW,
-  }, guard(({ doc, id, args }) => {
+  }, guard(({ doc, id, args, request_id }) => {
     if (LOCKED_ACTIONS.test(String(id))) throw new BwError('REFUSED', `"${id}" is locked: a destructive action is never run through editor_action`, { id });
     if (!EDITOR_ACTIONS.includes(id)) throw new BwError('UNKNOWN_ACTION', `unknown action "${id}"`, { allowed: EDITOR_ACTIONS });
-    return callEditor('action', { doc, args: { id, ...(args ? { args } : {}) } });
+    return callEditor('action', { doc, args: { id, ...(args ? { args } : {}), ...(['exportPdf', 'saveHtml', 'share'].includes(id) ? { request_id: request_id || newRequestId() } : request_id ? { request_id } : {}) } });
   }));
 
   server.registerTool('editor_new', {
     title: 'Create a document in the open editor',
-    description: 'Create a new blank document in the editor library, optionally inside a project: {id, title, project}.',
-    inputSchema: { title: z.string().min(1), project: z.string().optional(), template: z.string().optional().describe('A template id (default: the blank structure)') },
+    description: 'Create a new blank document in the editor library, optionally inside a project: {id, title, project}. With no host or no tab it starts the host and opens a window itself (an automation tab that never sleeps). The same request_id creates one document.',
+    inputSchema: { title: z.string().min(1), project: z.string().optional(), template: z.string().optional().describe('A template id (default: the blank structure)'), request_id: z.string().max(80).optional() },
     annotations: RW,
-  }, guard(({ title, project, template }) => callEditor('new', { args: { title, ...(project ? { project } : {}), ...(template ? { template } : {}) } })));
+  }, guard(({ title, project, template, request_id }) => callEditor('new', { args: { title, request_id: request_id || newRequestId(), ...(project ? { project } : {}), ...(template ? { template } : {}) } })));
 
   server.registerTool('editor_import', {
     title: 'Import a document into the open editor',
@@ -179,6 +205,19 @@ export function registerEditorTools(server, z, guard) {
     }
     return callEditor('import', { args: { document: doc, ...(project ? { project } : {}) } });
   }));
+
+  server.registerTool('editor_assign_project', {
+    title: 'Put a document in a library project',
+    description: 'Assign an existing document to a library project (a name creates the project when it does not exist); project "" or null takes it out of its project. Answers {doc, project}.',
+    inputSchema: { doc: DOC, project: z.string().nullable().describe('Project name or id; empty or null = no project'), request_id: z.string().max(80).optional() },
+    annotations: RW,
+  }, guard(({ doc, project, request_id }) => callEditor('assign', { doc, args: { project: project || '', request_id: request_id || newRequestId() } })));
+  server.registerTool('editor_trash', {
+    title: 'Move a document to the Trash, or bring it back',
+    description: "Move a library document to the editor's Trash (restore: false, the default) or bring it back (restore: true). Nothing is deleted for good: the Trash keeps it, and listings show deletedAt (editor_list_documents include_trashed). Answers {doc, deletedAt|null}.",
+    inputSchema: { doc: DOC, restore: z.boolean().optional(), request_id: z.string().max(80).optional() },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  }, guard(({ doc, restore, request_id }) => callEditor('trash', { doc, args: { restore: !!restore, request_id: request_id || newRequestId() } })));
 
   const PATHARG = z.string().describe('An absolute folder path (any drive; Unicode and Arabic names are fine)');
   server.registerTool('picker_state', {

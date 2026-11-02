@@ -3,7 +3,7 @@
 // The editor, the MCP tools and the Claude Code /business-wrap:* commands are thin layers over these functions.
 //
 //   business-wrap open [doc.json|folder|editor.html ...] [--port 4317] [--no-browser]   start the host + the editor
-//   business-wrap stop --all                               stop every host, server and Edge window this install started (tabs saved first)
+//   business-wrap stop --all                               stop every host, server and browser window this install started (tabs saved first)
 //   business-wrap close                                    the same as stop --all
 //   business-wrap status                                   version, running hosts, heal count
 //   business-wrap new [--title "…"] [--out dir] [--no-open]  a blank document pair + its editor (default: Documents\<title>\ in the save folder)
@@ -18,9 +18,9 @@
 //   business-wrap tidy [--dry-run]                          moves an old save folder (PDF, DOCX, HTML, HISTORY) into the document tree
 //   business-wrap report <from> <to>                       the work report (WP4)
 //   business-wrap update [--check|--apply --yes|--notes]   the updater (update/cli.mjs; a Claude Code plugin is updated by the client, never in place)
-//   business-wrap doctor                                   what is installed, where state lives, the last MCP server starts, version drift, EVERY known workspace / Edge profile / plugin-data path
-//   business-wrap reset [--all] [--dry-run] [--yes]        send the machine state (Edge profile, .system, local state; --all: whole workspaces + plugin data) to the Recycle Bin; --dry-run lists only
-//   business-wrap editor <list|get|outline|ops|action|new|import|health|render> [--doc id] [--pointer p] [--locale ar|en] [--ops-file f.json|-] [--mirror] [--agent name] [--id action] [--args-file f.json|-] [--project p] [--title t] [--file f] [--tab id] [--pointer-file f|-] [--out x.png]   drive the document OPEN in the editor, through the host (always JSON)
+//   business-wrap doctor                                   what is installed, where state lives, the last MCP server starts, version drift, EVERY known workspace / browser profile / plugin-data path
+//   business-wrap reset [--all] [--dry-run] [--yes]        send the machine state (browser profile, .system, local state; --all: whole workspaces + plugin data) to the Recycle Bin; --dry-run lists only
+//   business-wrap editor <list|get|outline|ops|action|new|import|assign|trash|health|render> [--request-id r] [--destination dir] [--name n] [--no-docx] [--restore] [--include-trashed] [--doc id] [--pointer p] [--locale ar|en] [--ops-file f.json|-] [--mirror] [--agent name] [--id action] [--args-file f.json|-] [--project p] [--title t] [--file f] [--tab id] [--pointer-file f|-] [--out x.png]   drive the document OPEN in the editor, through the host (always JSON)
 //   business-wrap picker <state|open|go|mkdir|choose|cancel> [--path p] [--name n]   the save-folder picker (host state, the same one the editor panel shows; needs no editor tab). state never starts a host; choose refuses a folder inside the program
 // Add --json for machine output. Exit 0 done · 1 failed · 2 usage · 3 needs a module that is not in this build yet.
 import fs from 'node:fs';
@@ -43,6 +43,7 @@ import { tidy } from './tidy.mjs';
 import { migrateLocal, pluginData, realParent, isTestMode } from './testguard.mjs';
 import { doctor as doctorInfo } from '../mcp/startup.mjs';
 import { KEEP_AWAKE_ARGS } from './host.mjs';
+import { chooseBrowser } from './export.mjs';
 
 const pkg = () => JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8'));
 const HOSTS = () => path.join(STATE_DIR(), 'cli-hosts.json');
@@ -59,12 +60,13 @@ const record = (fn) => { const f = HOSTS(); const { hosts } = healStaleHosts(f);
 const answers = (url) => new Promise((ok) => { const r = http.get(url, (res) => { res.resume(); ok(res.statusCode === 200); }); r.on('error', () => ok(false)); r.setTimeout(1500, () => { r.destroy(); ok(false); }); });
 async function waitUp(url, ms = 15000) { for (const t0 = Date.now(); Date.now() - t0 < ms;) { if (await answers(url)) return true; await new Promise((r) => setTimeout(r, 200)); } return false; }
 const killTree = (pid) => { if (!alive(pid)) return false; if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true }); else { try { process.kill(-pid); } catch { try { process.kill(pid); } catch { /* gone */ } } } return true; };
-export function edgePath() {
-  return [process.env.BW_EDGE, 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Microsoft/Edge/Application/msedge.exe', '/usr/bin/microsoft-edge'].find((p) => p && fs.existsSync(p));
+/** The editor's browser (Google Chrome first, then the system default, Edge, any Chromium: engine/export.mjs chooseBrowser); null when none is installed. */
+export function browserExe() {
+  try { return chooseBrowser()?.exe ?? null; } catch { return null; }
 }
-/** Edge in its own profile (so its pid is this window's and close can end it). */
-function openEdge(url) {
-  const exe = edgePath();
+/** The editor's browser in its own profile (so its pid is this window's and close can end it). Only the fallback host path below uses it. */
+function openBrowser(url) {
+  const exe = browserExe();
   if (!exe) return null;
   const c = spawn(exe, [`--user-data-dir=${path.join(STATE_DIR(), 'edge-profile')}`, '--no-first-run', ...KEEP_AWAKE_ARGS, '--new-window', url], { detached: true, stdio: 'ignore', windowsHide: true });
   c.unref();
@@ -83,7 +85,7 @@ export async function startHost({ editor, port = 4317, browser = true } = {}) {
   child.unref();
   const url = `http://127.0.0.1:${p}/`;
   if (!(await waitUp(url))) { killTree(child.pid); throw new Error(`the host did not answer on ${url}`); }
-  const browserPid = browser ? openEdge(url) : null;
+  const browserPid = browser ? openBrowser(url) : null;
   const h = { pid: child.pid, port: p, url, editor, browserPid, by: 'cli', at: new Date().toISOString() };
   record((hs) => [...hs, h]);
   return h;
@@ -109,8 +111,18 @@ export function libraryDocs() {
 /** T13: `open` with no file opens the last document of the library; a blank one is made only when the library is empty. */
 export const lastDocument = () => libraryDocs()[0] || null;
 
-export async function open({ inputs = [], port = 4317, browser = true, ui } = {}) {
-  if (!inputs.length) { const last = lastDocument(); if (last) inputs = [last.file]; }
+/** Something that is a Business-Wrap host answers on this port (its health route carries a hostKey): {pid, version} or null. */
+async function hostOn(port) {
+  try {
+    const r = await fetch(`http://127.0.0.1:${port}/api/host/health`, { signal: AbortSignal.timeout(2000) });
+    const j = r.ok ? await r.json() : null;
+    return j?.hostKey ? { pid: j.pid, version: j.version, port } : null;
+  } catch { return null; }
+}
+
+export async function open({ inputs = [], port = 4317, browser = true, ui, blank = false } = {}) {
+  if (!inputs.length && !blank) { const last = lastDocument(); if (last) inputs = [last.file]; }
+  const implicitBlank = !inputs.length; // 0.16.0 (item 11): no document asked for, none in the library: the editor opens on its blank structure, and NO library document is made for it
   let editor;
   let documents = [];
   if (inputs.length === 1 && /\.html?$/i.test(inputs[0])) editor = path.resolve(inputs[0]);
@@ -122,9 +134,18 @@ export async function open({ inputs = [], port = 4317, browser = true, ui } = {}
     editor = path.join(EDITORS(), `${fileStem(first.service || first.control.documentId)}.editor.html`);
     buildEditor({ inputs: documents, out: editor, set: first.service, ui });
   }
+  // 0.16.0 (item 10): this state folder has no host of its own, yet a Business-Wrap host already answers on the port (another install, another state folder): a second host is refused, not
+  // started on the next port (the second host on 4318 that the first could not see). Reuse that host from the install that owns it, or stop it there.
+  if (!isTestMode()) {
+    const mine = (await hostModule())?.status?.();
+    if (!mine?.running) {
+      const other = await hostOn(port);
+      if (other) throw Object.assign(new Error(`a Business-Wrap host (pid ${other.pid}, version ${other.version}) already runs on port ${port} but this install does not own it (a different state folder): refused to start a second one. Use that host from the install that started it, or stop it there.`), { code: 'HOST_FOREIGN', data: { pid: other.pid, port } });
+    }
+  }
   const h = await startHost({ editor, port, browser: browser && !process.env.BW_NO_BROWSER });
-  const lib = documents.length ? await libraryImport(h.url, documents) : null;
-  const docId = documents.length ? JSON.parse(fs.readFileSync(documents[0], 'utf8')).control.documentId : null;
+  const lib = documents.length && !implicitBlank ? await libraryImport(h.url, documents) : null;
+  const docId = documents.length && !implicitBlank ? JSON.parse(fs.readFileSync(documents[0], 'utf8')).control.documentId : null;
   // 0.15.0: the host answers {library, queued, doc_id[], url:'/#doc=<id>', project}: the url is host-relative (made absolute here); doc_id stays the document's own id (what the editor_* tools take), library_id is the library's
   const libUrl = lib?.url ? new URL(lib.url, h.url).href : null;
   const libId = Array.isArray(lib?.doc_id) ? lib.doc_id[0] : lib?.doc_id;
@@ -143,13 +164,16 @@ function ownServers() {
 }
 
 /** close = stop --all (owner request 2026-10-29): the background host (every tab flushed first), the hosts this CLI
- *  started, any other serve.mjs of this install still running, and Edge on this install's profile. `keep`: pids left
+ *  started, any other serve.mjs of this install still running, and the browser on this install's profile. `keep`: pids left
  *  alone (the power route keeps its own server and supervisor, then exits by itself). */
-export async function close({ keep = [] } = {}) {
+export async function close({ keep = [], caller = '', force = false } = {}) {
   const real = await hostModule();
   const pids = [];
   let stopped = 0; // hosts and servers: the background host, each record this CLI kept, each stray server
   const h = real?.hostState?.();
+  // 0.16.0 (item 10): an MCP server asked to stop, and the host was started by ANOTHER live MCP server (another agent's session): that is not its to stop. The reply names what was left alone.
+  const by = String(h?.startedBy || '');
+  if (caller && !force && /^mcp:\d+$/.test(by) && by !== caller && real?.alive?.(Number(by.slice(4)))) return { stopped: 0, pids: [], skipped: [{ pid: h.pid, port: h.port, startedBy: by, why: 'started by another running MCP server (another agent); pass force to stop it anyway' }] };
   if (real && !(h && keep.includes(h.pid))) { try { const r = await real.stop(); if (r.pids?.length) stopped++; pids.push(...(r.pids || [])); } catch { /* none */ } }
   const f = HOSTS();
   const hosts = (fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')).hosts || [] : []).filter((x) => !keep.includes(x.pid));
@@ -158,7 +182,7 @@ export async function close({ keep = [] } = {}) {
   if (fs.existsSync(f)) fs.writeFileSync(f, JSON.stringify({ hosts: [] }, null, 1));
   for (const pid of ownServers()) if (!keep.includes(pid) && killTree(pid)) { pids.push(pid); stopped++; }
   try { pids.push(...(real?.closeBrowsers?.([]) || [])); } catch { /* none */ }
-  return { stopped, pids: [...new Set(pids)] };
+  return { stopped, pids: [...new Set(pids)], ...(h ? { host: { pid: h.pid, port: h.port, startedBy: by || 'person' } } : {}) };
 }
 
 export async function status() {
@@ -307,7 +331,7 @@ const homeDir = () => (process.env.BW_HOME_DIR ? path.resolve(process.env.BW_HOM
 const sameP = (a, b) => path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
 const within = (p, dir) => { const r = path.relative(path.resolve(dir), path.resolve(p)); return !!r && !r.startsWith('..') && !path.isAbsolute(r); };
 const entriesOf = (p) => { try { return fs.statSync(p).isDirectory() ? fs.readdirSync(p).length : 1; } catch { return 0; } };
-/** Every known workspace root (a library the editor syncs back in), workspace state, Edge profile, local state and plugin-data path.
+/** Every known workspace root (a library the editor syncs back in), workspace state, browser profile, local state and plugin-data path.
  *  kind: workspace | workspace-state | edge-profile | state | plugin-data. Only the paths that exist carry exists:true. */
 export function knownRoots() {
   const items = [];
@@ -322,7 +346,7 @@ export function knownRoots() {
   try { saved = JSON.parse(fs.readFileSync(path.join(localDir(), 'workspace.json'), 'utf8')).parent; } catch { /* none */ }
   const roots = [[workspace().root, 'the folder in use now'], [path.join(docs, 'Business-Wrap'), 'default (0.13.3 and later)'], [path.join(home, 'Downloads', 'Business-Wrap'), 'older 0.13.x save folder'], [path.join(home, 'OneDrive', 'Documents', 'Business-Wrap'), 'Documents redirected to OneDrive'], [path.join(home, 'Desktop', 'Business-Wrap'), ''], [path.join(home, 'Business-Wrap'), ''], [saved && path.join(saved, 'Business-Wrap'), 'the folder chosen in Settings']];
   for (const [r, note] of roots) { add('workspace', r, note); if (r) add('workspace-state', path.join(r, '.system'), 'history, library sync, sessions'); }
-  add('edge-profile', path.join(STATE_DIR(), 'edge-profile'), 'the editor\'s Edge profile (its IndexedDB library)');
+  add('edge-profile', path.join(STATE_DIR(), 'edge-profile'), 'the editor\'s browser profile (its IndexedDB library)');
   add('edge-profile', path.join(localDir(), 'edge-profile'));
   add('state', STATE_DIR(), 'local state: host.json, workspace.json, update cache');
   if (!isTestMode()) add('state', path.join(REPO, '.local'), 'state of a clone or an older plugin folder');
@@ -330,7 +354,7 @@ export function knownRoots() {
   if (pd && !isTestMode()) add('plugin-data', pd, 'Claude Code plugin data (kept across updates)');
   return items;
 }
-/** What a reset sends away: the machine state by default (the Edge profile, every .system, the local state: nothing a user wrote);
+/** What a reset sends away: the machine state by default (the browser profile, every .system, the local state: nothing a user wrote);
  *  with all, also every whole workspace (documents and exports) and the plugin data. Nested paths are folded into their parent. */
 export function resetPlan({ all = false } = {}) {
   const kinds = new Set(['edge-profile', 'workspace-state', 'state', ...(all ? ['workspace', 'plugin-data'] : [])]);
@@ -357,7 +381,7 @@ export async function reset({ all = false, dryRun = false, yes = false } = {}) {
     process.stderr.write(`${plan.map((i) => `  ${i.kind.padEnd(16)} ${i.path}`).join('\n')}\n`);
     if (!(await ask(`Send these ${plan.length} item(s) to the Recycle Bin? [y/N] `))) return { ...base, recycled: 0, failed: 0, cancelled: true };
   }
-  if (!process.env.BW_RESET_KEEP_HOSTS) await close().catch(() => {}); // a running host or Edge window holds the profile open
+  if (!process.env.BW_RESET_KEEP_HOSTS) await close().catch(() => {}); // a running host or browser window holds the profile open
   const done = plan.map((i) => ({ kind: i.kind, path: i.path, recycled: recycle(i.path) }));
   return { ...base, items: done, recycled: done.filter((d) => d.recycled).length, failed: done.filter((d) => !d.recycled).length };
 }
@@ -371,7 +395,7 @@ export function update(args) {
 const readJsonArg = (f) => JSON.parse(f === '-' ? fs.readFileSync(0, 'utf8') : fs.readFileSync(path.resolve(f), 'utf8'));
 /** business-wrap editor <verb>: the same verbs as the MCP editor_* tools, against the document OPEN in the editor (mcp/editor-tools.mjs). */
 async function editorCmd(pos, val, flags) {
-  const { callEditor: callAny, checkOps, hostTarget, BwError, EDITOR_ACTIONS } = await import('../mcp/editor-tools.mjs');
+  const { callEditor: callAny, prepareOps, hostTarget, BwError, EDITOR_ACTIONS, newRequestId } = await import('../mcp/editor-tools.mjs');
   const [verb] = pos;
   const doc = val('doc');
   const tab = val('tab');
@@ -399,7 +423,7 @@ async function editorCmd(pos, val, flags) {
     return val('pointer');
   };
   switch (verb) {
-    case 'list': return callEditor('list', { args: val('project') ? { project: val('project') } : {} });
+    case 'list': return callEditor('list', { args: { ...(val('project') ? { project: val('project') } : {}), ...(flags.has('--include-trashed') ? { include_trashed: true } : {}) } });
     case 'get': { const p = pointerOf(); return callEditor('get', { doc: await docOrSole(), args: { ...(p ? { pointer: p } : {}), ...(val('locale') ? { locale: val('locale') } : {}) } }); }
     case 'outline': return callEditor('outline', { doc: await docOrSole(), args: val('locale') ? { locale: val('locale') } : {} });
     case 'render': {
@@ -417,16 +441,19 @@ async function editorCmd(pos, val, flags) {
       const raw = readJsonArg(need(val('ops-file'), '--ops-file (a file, or - for stdin)'));
       const ops = Array.isArray(raw) ? raw : raw.ops;
       const locale = need(val('locale') || raw.locale, '--locale ar|en');
-      checkOps(ops, locale);
-      const r = await callEditor('ops', { doc: need(doc, '--doc'), args: { ops, locale, mirror: flags.has('--mirror'), ...(val('agent') ? { agent: val('agent') } : {}), ...(val('group') ? { group: val('group') } : {}) } });
+      const resolved = prepareOps(ops, locale); // {"$file": path} values are read from disk; a data URI that does not decode is BAD_OP
+      const r = await callEditor('ops', { doc: need(doc, '--doc'), args: { ops: resolved, locale, request_id: val('request-id') || newRequestId(), mirror: flags.has('--mirror'), ...(val('agent') ? { agent: val('agent') } : {}), ...(val('group') ? { group: val('group') } : {}) } });
       // T14: opsLen is the length of the undo stack, not the batch: say how many ops were sent and applied
       return { ...r, batch: ops.length, applied: r.applied ?? ops.length, undo_depth: r.opsLen };
     }
     case 'action': {
       const id = need(val('id'), '--id');
       if (!EDITOR_ACTIONS.includes(id)) throw new BwError('UNKNOWN_ACTION', `unknown action "${id}"`, { allowed: EDITOR_ACTIONS });
-      return callEditor('action', { doc: need(doc, '--doc'), args: { id, ...(val('args-file') ? { args: readJsonArg(val('args-file')) } : {}) } });
+      const extra = { ...(val('args-file') ? readJsonArg(val('args-file')) : {}), ...(val('name') ? { name: val('name') } : {}), ...(val('destination') ? { destination: val('destination') } : {}), ...(flags.has('--no-docx') ? { docx: false } : {}) };
+      return callEditor('action', { doc: need(doc, '--doc'), args: { id, ...(Object.keys(extra).length ? { args: extra } : {}), ...(['exportPdf', 'saveHtml', 'share'].includes(id) || val('request-id') ? { request_id: val('request-id') || newRequestId() } : {}) } });
     }
+    case 'assign': return callEditor('assign', { doc: need(doc, '--doc'), args: { project: val('project') || '', request_id: val('request-id') || newRequestId() } });
+    case 'trash': return callEditor('trash', { doc: need(doc, '--doc'), args: { restore: flags.has('--restore'), request_id: val('request-id') || newRequestId() } });
     case 'new': return callEditor('new', { args: { title: need(val('title'), '--title'), ...(val('project') ? { project: val('project') } : {}) } });
     case 'import': {
       if (!val('file') && !val('args-file')) throw new BwError('BAD_ARGS', 'editor import: --file (a document JSON path) or --args-file (a document, or - for stdin) is required');
@@ -437,7 +464,7 @@ async function editorCmd(pos, val, flags) {
       const res = await fetch(new URL('/api/host/health', t.url), { headers: { 'x-bw-token': t.token } });
       return res.json();
     }
-    default: throw Object.assign(new Error(`editor: unknown verb ${verb || ''} (list|get|outline|ops|action|new|import|health|render)`), { code: 2 });
+    default: throw Object.assign(new Error(`editor: unknown verb ${verb || ''} (list|get|outline|ops|action|new|import|assign|trash|health|render)`), { code: 2 });
   }
 }
 
@@ -468,10 +495,10 @@ const KNOWN_FLAGS = {
   harvest: ['--out', '--name', '--roles', '--no-open', '--no-browser'], import: ['--out', '--name', '--roles', '--no-open', '--no-browser'],
   export: ['--out', '--edits', '--no-docx'], gate: [], 'heal-log': [], 'verify-history': ['--history'], library: [], report: [], doctor: [], reset: ['--all', '--dry-run', '--yes'],
   picker: ['--path', '--name'],
-  editor: ['--doc', '--pointer', '--pointer-file', '--locale', '--ops-file', '--mirror', '--agent', '--group', '--id', '--args-file', '--project', '--title', '--file', '--tab', '--out', '--scale'],
+  editor: ['--doc', '--pointer', '--pointer-file', '--locale', '--ops-file', '--mirror', '--agent', '--group', '--id', '--args-file', '--project', '--title', '--file', '--tab', '--out', '--scale', '--request-id', '--destination', '--name', '--no-docx', '--restore', '--include-trashed'],
 };
 /** Flags that take a value: whatever follows one is its value, even a lone - (stdin) or a dash-led name. */
-const VALUED = new Set(['--path', '--pointer-file', '--tab', '--scale', '--out', '--port', '--name', '--roles', '--edits', '--title', '--ui', '--history', '--doc', '--pointer', '--locale', '--ops-file', '--agent', '--group', '--id', '--args-file', '--project', '--file']);
+const VALUED = new Set(['--path', '--pointer-file', '--tab', '--scale', '--out', '--port', '--name', '--roles', '--edits', '--title', '--ui', '--history', '--doc', '--pointer', '--locale', '--ops-file', '--agent', '--group', '--id', '--args-file', '--project', '--file', '--request-id', '--destination']);
 const HELP = ['--help', '-h', 'help', '-?'];
 /** T11: an unknown flag is an error. A lone - and anything right after a valued flag is a VALUE (stdin, a dash-led name), never a flag. Exported for tests/cli-0154. */
 export function checkFlags(verb, rest) {
@@ -483,7 +510,7 @@ ${USAGE}`), { code: 2 });
 }
 export async function run(argv) {
   const [verb, ...rest] = argv;
-  // T13: --help of ANY verb prints usage and does nothing else: no host, no Edge, no file (the check comes before every other step)
+  // T13: --help of ANY verb prints usage and does nothing else: no host, no browser, no file (the check comes before every other step)
   if (rest.some((a) => HELP.includes(a)) && verb && !HELP.includes(verb)) return { usage: USAGE };
   checkFlags(verb, rest);
   const flags = new Set(rest.filter((a) => a.startsWith('--')));

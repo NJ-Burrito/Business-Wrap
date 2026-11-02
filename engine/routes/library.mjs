@@ -64,7 +64,7 @@ export function makeEntry(d, { origin = 'import' } = {}) {
   const now = new Date().toISOString(), id = `doc-${crypto.randomUUID()}`;
   let title = String(d.title || '').trim();
   if (!title) { const names = Object.values(editions).map((e) => titleOfRaw(e.raw, id)); title = names.find((n) => n && !PLACEHOLDER.has(n)) || names[0]; }
-  return { id, title, service: JSON.parse(first).service || 'document', origin, createdAt: now, savedAt: now, editions, words: entryWords({ editions }), bwlog: 1 }; // words per built edition (0.15.3)
+  return { id, title, service: JSON.parse(first).service || 'document', origin, createdAt: now, savedAt: now, editions, words: entryWords({ editions }), bwlog: 1, ...(d.srcKey ? { src: { key: String(d.srcKey).toLowerCase(), hash: d.srcHash } } : {}) }; // words per built edition (0.15.3); src: additive (0.16.0)
 }
 
 /**
@@ -86,7 +86,9 @@ export function normaliseDocuments(documents) {
     const key = m ? m[1] : f;
     const g = groups.get(key) || (out.push({}), groups.set(key, out.at(-1)), out.at(-1));
     g[ed] = raw;
+    g.srcKey = key; // 0.16.0 (item 9): where the document came from: the same files opened again are the same library document (stable id)
   }
+  for (const g of out) if (g.srcKey) g.srcHash = sha(`${g.ar || ''}\n${g.en || ''}`);
   return out;
 }
 
@@ -96,6 +98,24 @@ export function queueDocuments(ctx, documents, { project, origin = 'import' } = 
   if (documents.length > 500) throw Object.assign(new Error('documents: at most 500 per request'), { code: 400 });
   documents = normaliseDocuments(documents);
   const entries = documents.map((d) => makeEntry(d, { origin }));
+  // 0.16.0 (field notes item 9): a document opened from files keeps ONE id across host restarts: the id is derived from where the files are. The same files again, unchanged, are the library
+  // document that is already there (its edits are never overwritten); changed files, or a purged id, get a fresh id as before, so nothing is ever overwritten.
+  // The host keeps its own record of where each document came from (library/sources.json: {key: {id, hash}}): the browser may rewrite the entry it stores, this record it cannot lose.
+  const tombs = new Set(readTombs(ctx));
+  const reused = new Set();
+  const srcFile = path.join(libDir(ctx), 'sources.json');
+  let srcs = {};
+  try { srcs = JSON.parse(fs.readFileSync(srcFile, 'utf8')) || {}; } catch { srcs = {}; }
+  const here = (id) => fs.existsSync(path.join(libDir(ctx), `${id}.json.gz`)) || fs.existsSync(path.join(inboxDir(ctx), `${id}.json.gz`));
+  entries.forEach((e) => {
+    const key = e.src?.key;
+    if (!key) return;
+    const known = srcs[key];
+    if (known && known.hash === e.src.hash && ID.test(String(known.id)) && !tombs.has(known.id)) { e.id = known.id; if (here(known.id)) reused.add(known.id); return; }
+    if (!known) { const sid = `doc-${crypto.createHash('sha256').update(key).digest('hex').slice(0, 16)}`; if (!tombs.has(sid) && !here(sid)) e.id = sid; }
+    srcs[key] = { id: e.id, hash: e.src.hash }; // first sight (stable id) or changed source / purged id (a fresh id, remembered from now on)
+  });
+  try { fs.mkdirSync(libDir(ctx), { recursive: true }); fs.writeFileSync(srcFile, JSON.stringify(srcs)); } catch { /* the record is best effort: the id is then fresh next time */ }
   const dir = inboxDir(ctx);
   fs.mkdirSync(dir, { recursive: true });
   const pidOf = (d) => {
@@ -108,12 +128,12 @@ export function queueDocuments(ctx, documents, { project, origin = 'import' } = 
   entries.forEach((e, i) => {
     const pid = pidOf(documents[i]);
     if (pid) { byProject.set(pid, [...(byProject.get(pid) || []), e.id]); e.project = pid; }
-    fs.writeFileSync(path.join(dir, `${e.id}.json.gz`), zlib.gzipSync(JSON.stringify(e)));
+    if (!reused.has(e.id)) fs.writeFileSync(path.join(dir, `${e.id}.json.gz`), zlib.gzipSync(JSON.stringify(e)));
   });
   for (const [pid, ids] of byProject) assignDocs(ctx, ids, pid);
   const ids = entries.map((e) => e.id);
-  push(ctx, 'ingest', { ids }); // no push channel: the next boot reads the inbox
-  return { library: true, queued: ids.length, doc_id: ids, url: `/#doc=${ids[0]}`, project: [...byProject.keys()][0] || null, entries };
+  push(ctx, 'ingest', { ids: ids.filter((i) => !reused.has(i)) }); // no push channel: the next boot reads the inbox
+  return { library: true, queued: ids.length - reused.size, existing: [...reused], doc_id: ids, url: `/#doc=${ids[0]}`, project: [...byProject.keys()][0] || null, entries };
 }
 
 const listCache = new Map(); // file → {mtimeMs, size, row}

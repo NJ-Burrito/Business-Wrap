@@ -283,7 +283,7 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
 
   server.registerTool('open_in_editor', {
     title: 'Open in the Business-Wrap editor',
-    description: 'Start the local host in the background (no console window) if it is not running, put the documents into the editor (library import when the host has one) and open a browser tab on it. Give documents (JSON files or folders), or editor (a built .html), or doc_id (a document already in the library). Returns {url, doc_id}.',
+    description: 'Start the local host in the background (no console window) if it is not running, put the documents into the editor (library import when the host has one) and open a browser tab on it. Give documents (JSON files or folders), or editor (a built .html), or doc_id (a document of the editor library: the tab that holds it is reported, else one is added; a document of the save folder is found too). With NO arguments it opens a blank tab (the host starts if needed; no document is created). Opening the same files again gives the same library id. Returns {url, doc_id}.',
     inputSchema: {
       documents: z.array(z.string()).optional().describe('Document JSON files or folders'),
       editor: z.string().optional().describe('A built editor .html'),
@@ -294,12 +294,35 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     if (documents?.length) return openEditor({ inputs: documents });
     if (editor) return openEditor({ inputs: [editor] });
     if (doc_id) {
+      // 0.16.0 (item 9, 15): the editor LIBRARY first (what editor_list_documents lists), then the save folder's files. A tab that already holds the document is "already open", not "not in the library".
+      const lib = await libraryHit(doc_id);
+      if (lib) return lib;
       const hit = (await library()).documents.find((d) => d.name.includes(doc_id) || fs.readFileSync(d.file, 'utf8').includes(doc_id));
-      if (!hit) throw new Error(`no document ${doc_id} in the library`);
+      if (!hit) throw new Error(`no document ${doc_id} in the editor library or in the save folder (editor_list_documents lists the library)`);
       return { ...(await openEditor({ inputs: [hit.file] })), doc_id };
     }
-    throw new Error('give documents, editor or doc_id');
+    // no arguments: a blank tab. The host is started when none runs; the window is an automation tab (never asleep, no blocking dialog); no library document is made.
+    const r = await openEditor({ inputs: [], blank: true });
+    return { ...r, blank: true };
   }));
+
+  /** open_in_editor {doc_id}: the library of the running host (started blank when none runs). → the answer, or null when the library has no such document. */
+  const libraryHit = async (docId) => {
+    const hm = await import('../engine/host.mjs');
+    let h = hm.hostState();
+    if (!(h && hm.alive(h.pid))) { await openEditor({ inputs: [], blank: true, browser: false }); h = hm.hostState(); }
+    if (!(h && hm.alive(h.pid))) return null;
+    const base = `http://127.0.0.1:${h.port}`;
+    const list = await fetch(`${base}/api/library/list`, { signal: AbortSignal.timeout(8000) }).then((r) => r.json()).catch(() => []);
+    const row = (Array.isArray(list) ? list : []).find((d) => d.id === docId);
+    const health = await fetch(`${base}/api/host/health`, { headers: { 'x-bw-token': h.token || '' }, signal: AbortSignal.timeout(5000) }).then((r) => r.json()).catch(() => null);
+    const holder = health?.tabs?.find((t) => (t.docs || []).includes(docId) || t.svc === docId);
+    if (!row && !holder) return null;
+    if (holder) return { url: `${base}/#doc=${docId}`, doc_id: docId, library: true, already_open: true, tab: holder.tab, asleep: !!holder.asleep, ...(row?.deletedAt ? { deletedAt: row.deletedAt } : {}), note: 'a tab already holds this document: use it (editor_get / editor_ops)' };
+    const { launchBrowser } = await import('../engine/host.mjs');
+    launchBrowser([`${base}/?automation=1#doc=${encodeURIComponent(docId)}`]);
+    return { url: `${base}/#doc=${docId}`, doc_id: docId, library: true, already_open: false, opened: 'new tab', ...(row?.deletedAt ? { deletedAt: row.deletedAt, note: 'this document is in the Trash' } : {}) };
+  };
 
   // 0.15.9 R6: the editor's «continue where you left off» list, readable and openable by an agent (the same host routes the popup uses)
   const hostCall = async (route, body) => {
@@ -335,10 +358,10 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
   }));
   server.registerTool('close_editor', {
     title: 'Close the editor and its host',
-    description: 'Turn Business-Wrap off (same as `business-wrap stop --all` and the editor power button): every open tab saves first, then every local host, server and browser window this install started stops. Never the host of another install.',
+    description: 'Turn Business-Wrap off (same as `business-wrap stop --all` and the editor power button): every open tab saves first, then every local host, server and browser window this install started stops. Never the host of another install, and not a host that another running MCP server (another agent) started: that one is named under skipped and left running. The reply names the host it stopped.',
     inputSchema: {},
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-  }, guard(async () => closeEditors()));
+  }, guard(async () => closeEditors({ caller: `mcp:${process.pid}` })));
 
   server.registerTool('check_fonts', {
     title: 'Check the fonts',
