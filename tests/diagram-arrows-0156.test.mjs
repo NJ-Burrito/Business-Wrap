@@ -27,9 +27,8 @@ const wf = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'workflow.json'), 'utf8'
 
 // ── A6/A7 (model level): old drawings are byte-identical; the new keys draw, export and degrade as promised ──
 {
-  const base = path.join(OUT, 'diagram-base.mjs');
-  const src = spawnSync('git', ['show', '9192ff5:engine/diagram.mjs'], { cwd: REPO, encoding: 'utf8', maxBuffer: 1 << 26 });
-  fs.writeFileSync(base, src.stdout);
+  // engine/diagram.mjs as of 0.15.5 (9192ff5), frozen as a fixture: a shallow CI clone has no such commit
+  const base = path.join(REPO, 'tests', 'fixtures', 'diagram-0155.mjs');
   const { DIAGRAM: OLD } = await import(pathToFileURL(base).href);
   let compared = 0;
   let same = 0;
