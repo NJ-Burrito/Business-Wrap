@@ -1200,6 +1200,13 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
         pending = '';
         return i + 1;
       }
+      if (!pending && block.kind === 'table' && blocks[i - 1]?.kind === 'stories') {
+        // 0.16.1 (fault 7): the output card table that follows a story card carries its label bar, as every other table under a heading does
+        const short = (block.rows?.length ?? 0) <= GROUPABLE_ROWS;
+        const headed = tableOf(block, b, 'headed', lb('outputTable'));
+        out.push(short ? `<div class="hold head whole">${headed}</div>` : headed);
+        return i;
+      }
       if (pending && block.kind === 'table') {
         const short = (block.rows?.length ?? 0) <= GROUPABLE_ROWS;
         const headed = tableOf(block, b, 'headed', pending);

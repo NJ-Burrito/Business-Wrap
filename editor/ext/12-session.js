@@ -379,11 +379,21 @@ const SESS = (() => {
     dlg.dataset.theme = S.dark ? 'dark' : 'light'; // the shell's theme tokens (build-editor brandCss) follow it here
     dlg.setAttribute('aria-labelledby', 'bw-resume-h');
     const loc = S.ui === 'ar' ? 'ar' : 'en';
-    const when = (iso) => { try { return new Date(iso).toLocaleString(loc, { dateStyle: 'medium', timeStyle: 'short', hour12: false }); } catch { return ''; } };
+    // 0.16.1 (fault 10): in an Arabic line the date and the time came out in a jumbled order («00:31.2026/11/03»). The Arabic edition writes year/month/day and the 24 h time in Latin digits itself, and every date sits in its own left-to-right isolate.
+    const when = (iso) => {
+      try {
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return '';
+        const p2 = (n) => String(n).padStart(2, '0');
+        if (loc === 'ar') return `${d.getFullYear()}/${p2(d.getMonth() + 1)}/${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+        return d.toLocaleString(loc, { dateStyle: 'medium', timeStyle: 'short', hour12: false });
+      } catch { return ''; }
+    };
+    const whenH = (iso) => { const w = when(iso); return w ? `<bdi dir="ltr">${esc(w)}</bdi>` : ''; };
     const langOf = (ed) => (ed === 'ar' ? t('resLangAr') : ed === 'en' ? t('resLangEn') : '');
     const rows = last.tabs.map((x) => {
       const title = String(x.title || x.tab);
-      return `<li data-tab="${esc(x.tab)}" data-q="${esc(title.normalize('NFC').toLowerCase())}"><label class="pick"><input type="checkbox" aria-label="${esc(t('resPick', { title }))}"><span class="box" aria-hidden="true"></span></label><button type="button" class="one" data-s="one" aria-label="${esc(t('resOpenOne', { title }))}"><span class="ti">${esc(title)}</span><span class="me">${esc([when(x.at), langOf(x.ed)].filter(Boolean).join(' · '))}</span></button></li>`;
+      return `<li data-tab="${esc(x.tab)}" data-q="${esc(title.normalize('NFC').toLowerCase())}"><label class="pick"><input type="checkbox" aria-label="${esc(t('resPick', { title }))}"><span class="box" aria-hidden="true"></span></label><button type="button" class="one" data-s="one" aria-label="${esc(t('resOpenOne', { title }))}"><span class="ti">${esc(title)}</span><span class="me">${[whenH(x.at), esc(langOf(x.ed))].filter(Boolean).join(' · ')}</span></button></li>`;
     }).join('');
     dlg.innerHTML = `<h2 id="bw-resume-h">${esc(t('sessTitle'))}</h2><p class="lead">${esc(t('resLead', { n: last.tabs.length }))}</p>
 <div class="main"><div class="tools"><input type="search" class="q" aria-label="${esc(t('resSearch'))}" placeholder="${esc(t('resSearch'))}"><button type="button" class="b" data-s="all">${esc(t('resAll'))}</button><button type="button" class="b" data-s="none">${esc(t('resNone'))}</button></div>
@@ -398,7 +408,7 @@ const SESS = (() => {
     const picked = () => lis().filter((li) => li.querySelector('input').checked).map((li) => li.dataset.tab);
     function refresh() {
       const sel = picked().length;
-      $('.cnt').textContent = t('resCount', { shown: shown().length, n: last.tabs.length, sel });
+      $('.cnt').textContent = !shown().length && $('.q').value.trim() ? t('resNoMatch') : t('resCount', { shown: shown().length, n: last.tabs.length, sel }); // 0.16.1 (fault 9): a search with no match says so
       const b = $('[data-s="sel"]');
       b.disabled = !sel;
       b.textContent = t('resOpenSel', { n: sel });
@@ -415,8 +425,9 @@ const SESS = (() => {
       let docs = [];
       try { docs = (await fetch(`/api/session/documents?q=${encodeURIComponent($('.oq').value)}&limit=200`).then((r) => r.json())).docs || []; } catch { /* none */ }
       if (seq !== olderSeq) return;
-      $('.olist').innerHTML = docs.map((d) => `<li><button type="button" class="one" data-s="doc" data-id="${esc(d.id)}" data-name="${esc(d.name)}"><span class="ti">${esc(d.name)}</span><span class="me">${esc(when(d.at))}</span></button></li>`).join('');
-      $('.ocnt').textContent = docs.length ? t('resOlderCount', { n: docs.length }) : t('resOlderEmpty');
+      $('.olist').innerHTML = docs.map((d) => `<li><button type="button" class="one" data-s="doc" data-id="${esc(d.id)}" data-name="${esc(d.name)}"><span class="ti">${esc(d.name)}</span><span class="me">${whenH(d.at)}</span></button></li>`).join('');
+      // 0.16.1 (fault 9): no search typed and nothing saved is «nothing saved yet», not «nothing matches your search»
+      $('.ocnt').textContent = docs.length ? t('resOlderCount', { n: docs.length }) : $('.oq').value.trim() ? t('resOlderEmpty') : t('resOlderNone');
     }
     $('.oq').addEventListener('input', () => { clearTimeout(olderTimer); olderTimer = setTimeout(loadOlder, 180); });
     async function resume(tabs) {

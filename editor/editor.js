@@ -2003,7 +2003,7 @@ function zoomFromField(v) {
 {
   let acc = 1, raf = 0;
   document.addEventListener('wheel', (e) => {
-    if (!(e.ctrlKey || e.metaKey) || e.target.closest?.('#bw-pair figure[data-dg]')) return;
+    if (!(e.ctrlKey || e.metaKey) || (e.target.closest?.('#bw-pair figure[data-dg]') && !dgWheelPage(e))) return;
     if (e.composedPath?.().some((x) => x === document.getElementById('bw-ui-host'))) return;
     e.preventDefault();
     acc *= e.deltaY < 0 ? 1.1 : 1 / 1.1;

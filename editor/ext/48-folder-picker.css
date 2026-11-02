@@ -22,7 +22,7 @@ dialog.bw-fp .fp-main { display: grid; gap: 8px; min-inline-size: 0; align-conte
 dialog.bw-fp .fp-tools { display: flex; flex-wrap: wrap; gap: 8px; }
 dialog.bw-fp .fp-list { list-style: none; margin: 0; padding: 4px; border: 1px solid var(--panel-line); border-radius: 12px; overflow: auto; max-block-size: 40vh; min-block-size: 140px; }
 dialog.bw-fp .fp-item { inline-size: 100%; }
-dialog.bw-fp .fp-item .w, dialog.bw-fp .fp-place .w { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+dialog.bw-fp .fp-item .w, dialog.bw-fp .fp-place .w { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; unicode-bidi: plaintext; text-align: start; } /* 0.16.1 (fault 11): a name reads in its own first strong letter's direction (".claude-plugin" stays left to right) */
 dialog.bw-fp .fp-crumb:hover, dialog.bw-fp .fp-place:hover, dialog.bw-fp .fp-item:hover { background: var(--wash, rgba(127, 127, 127, .15)); }
 dialog.bw-fp :is(button, input, ul):focus-visible { outline: 2px solid var(--bw-accent, Highlight); outline-offset: 2px; }
 dialog.bw-fp .fp-empty { padding: 14px; color: var(--panel-soft, inherit); }

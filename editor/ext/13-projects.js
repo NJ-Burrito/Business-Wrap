@@ -471,8 +471,8 @@ ${picked.length ? `<table class="px-tbl"><thead><tr><th>${esc(t('pxFile'))}</th>
 })();
 /* 0.13.3 the tree: a Settings card shows the save folder's root and opens it (the file manager) with «افتح المجلد / Open folder». */
 const TREE_CARD = {
-  id: 'tree', title: 'مجلد الملفات · Files folder', icon: 'prefs',
-  html: () => `<p class="hint">المستندات - Documents · كل مستند في مجلده: Exports · Sources · Versions<br dir="ltr">Documents · one folder per document: Exports · Sources · Versions</p><p><code class="tree-root" dir="ltr">…</code></p><div class="btns"><button type="button" class="b" data-tree="open"><span class="i">${ic('secFile')}</span><span class="w">افتح المجلد / Open folder</span></button></div>`,
+  id: 'tree', get title() { return S.ui === 'ar' ? 'مجلد الملفات' : 'Files folder'; }, icon: 'prefs', // 0.16.1: each language shows only its own words
+  html: () => `<p class="hint">${S.ui === 'ar' ? 'المستندات · لكل مستند مجلده، وفيه: Exports · Sources · Versions' : 'Documents · one folder per document: Exports · Sources · Versions'}</p><p><code class="tree-root" dir="ltr">…</code></p><div class="btns"><button type="button" class="b" data-tree="open"><span class="i">${ic('secFile')}</span><span class="w">${S.ui === 'ar' ? 'افتح المجلد' : 'Open folder'}</span></button></div>`,
   mount: (el) => {
     if (!el || !location.protocol.startsWith('http')) { el?.querySelector('[data-tree]')?.setAttribute('hidden', ''); return; }
     fetch('/api/workspace').then((r) => r.json()).then((w) => { const c = el.querySelector('.tree-root'); if (c) c.textContent = w.root || ''; }).catch(() => {});
