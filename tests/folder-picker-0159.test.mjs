@@ -82,7 +82,14 @@ try {
   if (process.platform === 'win32') {
     const deny = path.join(AREA, 'no-access'); fs.mkdirSync(path.join(deny, 'x'), { recursive: true });
     const ic = spawnSync('icacls', [deny, '/deny', '*S-1-1-0:(RD)'], { encoding: 'utf8', windowsHide: true });
-    if (ic.status === 0) {
+    // R15: the deny must be seen to take effect. The Windows runner's account is an administrator and reads a folder denied to Everyone, so there a
+    // folder cannot be made unreadable: the case is skipped there with a stated reason and still runs on any ordinary account.
+    let denied = false;
+    if (ic.status === 0) { try { fs.readdirSync(deny); } catch { denied = true; } }
+    if (ic.status === 0 && !denied) {
+      spawnSync('icacls', [deny, '/remove:d', '*S-1-1-0'], { windowsHide: true });
+      out.push('NOTE  folder-picker: this account reads a folder denied to Everyone (an administrator); the unreadable-folder checks were skipped here');
+    } else if (ic.status === 0) {
       r = await call('picker_go', { path: deny });
       d = data(r);
       check('an unreadable folder is shown plainly (listing.error unreadable), nothing crashes, Choose is refused', !r.isError && d.picker.listing.error?.code === 'unreadable' && d.picker.listing.entries.length === 0, text(r).slice(0, 300));

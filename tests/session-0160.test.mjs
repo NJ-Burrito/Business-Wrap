@@ -25,7 +25,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const free = () => new Promise((ok) => { const s = net.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => ok(p)); }); });
 const out = [];
 let failed = 0;
-const check = (n, ok, d = '') => { out.push(`${ok ? 'PASS' : 'FAIL'}  session-0160: ${n}${d && !ok ? '  — ' + String(d).replace(/\s+/g, ' ').slice(0, 400) : ''}`); if (!ok) failed += 1; };
+const check = (n, ok, d = '') => { out.push(`${ok ? 'PASS' : 'FAIL'}  session-0160: ${n}${d && !ok ? '  — ' + String(d).replace(/\s+/g, ' ').slice(0, 1600) : ''}`); if (!ok) failed += 1; };
 const editor = path.join(tmp, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'blank')], out: editor, set: 'session-0160', watermarkDir: null });
 const browser = await chromium.launch(launchOptions());
@@ -92,7 +92,13 @@ try {
   // the first page was just closed: its document lease is released a moment later; the second tab edits as soon as it is the writer
   let typed = false, typeErr = '';
   for (let i = 0; i < 60 && !typed; i++) { try { await setTitle(page2, 'S1 typed then closed'); typed = true; } catch (e) { typeErr = e.message.slice(0, 120); await sleep(250); } }
-  check('the second page became the writer and typed', typed, typeErr);
+  // when it fails, say WHY in the log: who holds the lease, which tabs the host lists, and whether the host still answers (CI had only the page's error text)
+  let why = typeErr;
+  if (!typed) {
+    const get = async (p) => { try { return await (await fetch(h.url + p, { signal: AbortSignal.timeout(3000) })).text(); } catch (e) { return `unreachable: ${e.message}`; } };
+    why = `${typeErr} | leases ${(await get('api/session/leases')).slice(0, 300)} | live ${(await get('api/session/live')).slice(0, 900)}`;
+  }
+  check('the second page became the writer and typed', typed, why);
   await page2.evaluate(async () => { await window.BW.EXT.ledger.ready(); });
   const ents = await page2.evaluate(() => window.BW.EXT.ledger.log().entries.map((e) => `${e.kind}:${e.data?.src || ''}`));
   check('S1: edits from this open on are logged (an «open» entry with src elsewhere, then the op)', ents.some((e) => e === 'open:elsewhere') && ents.some((e) => e.startsWith('op')), ents.join(','));

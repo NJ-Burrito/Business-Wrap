@@ -162,10 +162,14 @@ try {
   const longTitle = 'عنوان طويل جدا لمستند يختبر قص المسارات الطويلة على نظام ويندوز '.repeat(5);
   const eL = mk({ ar: sample('blank', 'ar'), title: longTitle });
   const prog = [];
-  const deep = path.join(tmp, 'deep', 'x'.repeat(60), 'y'.repeat(60));
+  // The parent is padded to a FIXED total length whatever the temp folder is (a short one here, about 36 characters on the Windows runner):
+  // with the old fixed 120 extra characters the runner's root came out 21 longer, the export's 12-character stem floor engaged
+  // and the longest path was 270. 130 in all leaves room for the stems to shrink, which is the case this check is about.
+  const deepBase = path.join(tmp, 'deep');
+  const deep = path.join(deepBase, 'x'.repeat(Math.min(250, Math.max(1, 130 - deepBase.length - 1))));
   const rL = await exportProject({ project: 'مشروع بعيد', docs: [eL], formats: ['html', 'edits'], locales: 'ar', layout: 'folder', outParent: deep, onProgress: (o) => prog.push(o.done) });
   const longest = Math.max(...fs.readdirSync(rL.root, { recursive: true }).map((f) => path.join(rL.root, String(f)).length));
-  check('a 300-character Arabic title: the folder and file names are shortened with a stable suffix and every path stays under 260', longest < 260 && fitStem('ا'.repeat(200), 40) === fitStem('ا'.repeat(200), 40) && /-[0-9a-f]{6}$/.test(fitStem('ا'.repeat(200), 40)) && fs.existsSync(path.join(rL.root, 'index.json')), `longest ${longest}`);
+  check('a 300-character Arabic title: the folder and file names are shortened with a stable suffix and every path stays under 260', longest < 260 && fs.readdirSync(rL.root).some((n) => /-[0-9a-f]{6}$/.test(n)) && fitStem('ا'.repeat(200), 40) === fitStem('ا'.repeat(200), 40) && /-[0-9a-f]{6}$/.test(fitStem('ا'.repeat(200), 40)) && fs.existsSync(path.join(rL.root, 'index.json')), `longest ${longest}`);
   check('onProgress: done counts the files, never decreases', prog.length >= 4 && prog.every((v, i) => i === 0 || v >= prog[i - 1]) && prog.at(-1) === 2, JSON.stringify(prog));
   // cancel removes everything it wrote
   let n = 0;
