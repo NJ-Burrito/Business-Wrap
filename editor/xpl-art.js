@@ -115,6 +115,7 @@ const XPL_SCENES = {
       case 'section': return pg + xaG('k-in', xaR('side', 46, 30, 58, 8, 3) + xaLines(48, 44, 3, 52));
       case 'chapter': return pg + xaG('k-in', xaR('pr', 46, 26, 58, 12, 3) + xaLn(52, 31, 30, 'wh') + xaLines(48, 46, 3, 52));
       case 'story': return pg + xaG('k-in', xaR('sheet', 46, 28, 58, 40, 4) + xaR('ac', 46, 28, 5, 40, 2) + xaLn(56, 34, 36, 'sf') + xaLines(56, 44, 3, 40, { gap: 8 }));
+      case 'outchapter': return pg + xaG('k-in', xaR('pr', 46, 24, 58, 10, 3) + xaLn(52, 28, 30, 'wh') + xaR('sheet', 46, 38, 58, 30, 4) + [0, 1, 2].map((r) => xaR(r ? 'cell' : 'sf', 52, 43 + r * 8, 22, 6, 2) + xaR(r ? 'cell' : 'sf', 78, 43 + r * 8, 22, 6, 2)).join(''));
       case 'outstory': return pg + xaG('k-in', xaR('sheet', 46, 28, 58, 40, 4) + xaR('ac', 46, 28, 5, 40, 2) + xaLn(56, 34, 36, 'sf') + [0, 1, 2].map((r) => xaR(r ? 'cell' : 'sf', 56, 42 + r * 8, 22, 7, 2) + xaR(r ? 'cell' : 'sf', 80, 42 + r * 8, 22, 7, 2)).join(''));
       case 'point': return pg + xaR('sheet', 46, 28, 58, 40, 4) + xaR('ac', 46, 28, 5, 40, 2) + xaLn(56, 34, 36, 'sf') + xaG('k-in', xaC('ok', 59, 47, 3.4) + xaLn(66, 45, 30) + xaC('ok', 59, 57, 3.4) + xaLn(66, 55, 24));
       case 'card': return pg + xaR('sheet', 46, 28, 28, 40, 4) + xaR('ac', 46, 28, 28, 5, 2) + xaG('k-in', xaR('sheet', 78, 28, 28, 40, 4) + xaR('ac', 78, 28, 28, 5, 2) + xaLines(82, 40, 3, 20));
@@ -516,6 +517,7 @@ pop:section insSection@addPara k_addSection@addPara
 pop:chapter insChapter@addPara
 pop:story addStory@addPara
 pop:outstory addOutputStory@addPara
+pop:outchapter addOutputsChapter@addPara
 pop:point storyPoint@add
 pop:card storyCard@add
 pop:toc tocAdd@pages
@@ -698,7 +700,6 @@ dg:node.group dgGroup@dgGroup
 dg:node.text dgText@dgText
 dg:auto dgAuto@dgAuto
 dg:reset dgReset@dgReset
-dg:flow dgFlow@dgFlow
 dg:legend dgLegend@dgLegend
 dg:proute dgRoute@dgRoute
 dg:phead dgHead@dgHead

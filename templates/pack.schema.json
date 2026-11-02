@@ -13,7 +13,7 @@
    "required": ["title", "gen"],
    "properties": {
     "title": { "$ref": "#/$defs/bi" },
-    "gen": { "enum": ["prose", "description", "identifier", "recipients", "assumptions", "fees", "documents", "adminRef", "channels", "outputs", "legislation", "roles", "integrations", "languages", "requirements", "workflow", "rules", "statuses", "glossary", "kpis", "slas", "notifications", "dataDictionary", "questions", "stories"], "description": "The generator that fills the section from the model. «stories» expands into one section per people's stage (plus the output story)." },
+    "gen": { "enum": ["prose", "description", "identifier", "recipients", "assumptions", "fees", "documents", "adminRef", "channels", "outputs", "legislation", "roles", "integrations", "languages", "requirements", "workflow", "rules", "statuses", "glossary", "kpis", "slas", "notifications", "dataDictionary", "questions", "stories", "outputDesc", "outputTypes", "outputVariants"], "description": "The generator that fills the section from the model. «stories» expands into one section per people's stage (plus the output story)." },
     "of": { "enum": ["internal", "services", "dataSources", "partners"], "description": "integrations only: which list" },
     "cols": { "type": "array", "items": { "enum": ["name", "description", "sent", "received", "readiness"] }, "description": "integrations only: the fields printed, in order" },
     "columns": { "type": "string", "description": "integrations only: the columns key (default: the value of `of`)" },

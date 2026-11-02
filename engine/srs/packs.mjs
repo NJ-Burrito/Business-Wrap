@@ -1,7 +1,7 @@
 // Pack validator and per-document corrections (matched by text, replayed after every rebuild).
 import { pick } from './model.mjs';
 
-export const GENS = ['prose', 'description', 'identifier', 'recipients', 'assumptions', 'fees', 'documents', 'adminRef', 'channels', 'outputs', 'legislation', 'roles', 'integrations', 'languages', 'requirements', 'workflow', 'rules', 'statuses', 'glossary', 'kpis', 'slas', 'notifications', 'dataDictionary', 'questions', 'stories'];
+export const GENS = ['prose', 'description', 'identifier', 'recipients', 'assumptions', 'fees', 'documents', 'adminRef', 'channels', 'outputs', 'legislation', 'roles', 'integrations', 'languages', 'requirements', 'workflow', 'rules', 'statuses', 'glossary', 'kpis', 'slas', 'notifications', 'dataDictionary', 'questions', 'stories', 'outputDesc', 'outputTypes', 'outputVariants'];
 const COLS_OF = { recipients: 'recipients', fees: 'fees', documents: 'documents', outputs: 'outputs', legislation: 'legislation', roles: 'roles', requirements: 'requirements', rules: 'rules', statuses: 'statuses', glossary: 'glossary', kpis: 'kpis', slas: 'slas', notifications: 'notifications', dataDictionary: 'dictionary', questions: 'questions', stories: 'dictionary' };
 const bothLangs = (v) => v && typeof v === 'object' && typeof v.ar === 'string' && typeof v.en === 'string' && v.ar.trim() && v.en.trim();
 

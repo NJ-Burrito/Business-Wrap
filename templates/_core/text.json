@@ -230,6 +230,47 @@
    "actions": "جدول الإجراءات",
    "fromPartner": "تُسترجع من «{p}»: {data}.",
    "panels": "تُعرض للاطلاع: {list}، كما أُدخلت عند تقديم الطلب."
+  },
+  "od": {
+   "oneStyle": "نمط واحد لا يختلف",
+   "whole": "المخرج كله",
+   "q": {
+    "fixed": "ما الأقسام والجمل الثابتة في مخرج «{o}»، أي ما يظهر كما هو في كل نسخة صادرة؟",
+    "changing": "ما الحقول والجمل التي تتغير من نسخة إلى أخرى في مخرج «{o}»، وما الذي يغيرها ومن أين تأتي؟",
+    "differs": "ما الذي يختلف بين أنواع المخرج وحالاته؟"
+   },
+   "desc": "تُصدر الخدمة «{o}».",
+   "descWhen": "يصدر {w}.",
+   "descTo": "يستلمه {t}.",
+   "descValidity": "مدة صلاحيته: {v}.",
+   "titleFixed": "الجزء الثابت",
+   "titleChanging": "الجزء المتغير",
+   "titleOf": "{title}: {o}",
+   "serial": "الرقم المتسلسل",
+   "serialBy": "كل مخرج يصدر",
+   "serialSrc": "{sec}",
+   "validity": "تاريخ انتهاء الصلاحية",
+   "validityBy": "تاريخ الإصدار ومدة الصلاحية ({v})",
+   "validitySrc": "سجل الخدمة",
+   "example": "[مثال]",
+   "cols": {
+    "types": [
+     "النوع أو الحالة",
+     "متى يصدر",
+     "من يستلمه",
+     "ما الذي يختلف"
+    ],
+    "fixed": [
+     "القسم",
+     "الجملة الثابتة"
+    ],
+    "changing": [
+     "الحقل أو الجملة",
+     "ما الذي يغيره",
+     "المصدر",
+     "مثال"
+    ]
+   }
   }
  },
  "en": {
@@ -462,6 +503,47 @@
    "actions": "Actions table",
    "fromPartner": "Retrieved from «{p}»: {data}.",
    "panels": "Shown for reference: {list}, as entered on submission."
+  },
+  "od": {
+   "oneStyle": "One style, no differences",
+   "whole": "The whole output",
+   "q": {
+    "fixed": "Which sections and sentences are fixed in the output «{o}», that is, appear as they are in every copy issued?",
+    "changing": "Which fields and sentences change from one copy to the next in the output «{o}», what changes them and where do they come from?",
+    "differs": "What differs between the types and cases of the output?"
+   },
+   "desc": "The service issues «{o}».",
+   "descWhen": "It is issued {w}.",
+   "descTo": "It goes to {t}.",
+   "descValidity": "Its validity: {v}.",
+   "titleFixed": "The fixed part",
+   "titleChanging": "The changing part",
+   "titleOf": "{title}: {o}",
+   "serial": "Serial number",
+   "serialBy": "Each output issued",
+   "serialSrc": "{sec}",
+   "validity": "Expiry date",
+   "validityBy": "The date of issue and the validity ({v})",
+   "validitySrc": "The service record",
+   "example": "[example]",
+   "cols": {
+    "types": [
+     "Type or case",
+     "When issued",
+     "Who receives it",
+     "What differs"
+    ],
+    "fixed": [
+     "Section",
+     "Fixed sentence"
+    ],
+    "changing": [
+     "Field or sentence",
+     "What changes it",
+     "Source",
+     "Example"
+    ]
+   }
   }
  }
 }

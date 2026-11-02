@@ -196,7 +196,7 @@ try {
     if (dg) {
       await pg.page.evaluate(() => { const el = document.querySelector('#bw-pair [data-dg], #bw-pair .bw-dg, #bw-pair svg.dg'); el.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true })); });
     }
-    check('R1 contextual: the Diagram tab lists all dg* tools (selection path covered by diagram.test.mjs; the list is checked here)', await pg.page.evaluate(() => { const l = window.BW.EXT.ribbon.listed(); return window.BW.EXT.cmds.filter((c) => /^dg/.test(c.id)).length >= 0 && ['dgAlignL', 'dgFlow', 'dgBendAdd', 'dgZoomFit'].every((id) => l.includes(id)); }));
+    check('R1 contextual: the Diagram tab lists all dg* tools (selection path covered by diagram.test.mjs; the list is checked here)', await pg.page.evaluate(() => { const l = window.BW.EXT.ribbon.listed(); return window.BW.EXT.cmds.filter((c) => /^dg/.test(c.id)).length >= 0 && ['dgAlignL', 'dgBendAdd', 'dgZoomFit'].every((id) => l.includes(id)) && !l.includes('dgFlow') /* 0.16.0: the flow-direction toggle is gone, a drawing always runs left to right */; }));
     await pg.page.context().close();
   }
 

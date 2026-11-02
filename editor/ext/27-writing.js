@@ -14,7 +14,7 @@ const W2W = { focus: null };
   IC.hdrDelete = pg('M4 8h16', ['m9.5 12.5 5 5', 'm14.5 12.5-5 5']);
   IC.ftrDelete = pg('M4 16h16', ['m9.5 6.5 5 5', 'm14.5 6.5-5 5']); }
 // icons: the house set's own glyphs, by what each tool does (tests/ux.test.mjs fails an icon-less tool)
-{ const alias = { addStory: 'addPara', addOutputStory: 'addPara', storyPoint: 'rowAdd', storyCard: 'duplicate', pgBreakAdd: 'pgBreak', pgBreakDel: 'pgBreak', pgPullUp: 'moveUp', secDel: 'delete', pgEmpty: 'delete', secGaps: 'pages' };
+{ const alias = { addStory: 'addPara', addOutputStory: 'addPara', addOutputsChapter: 'insChapter', storyPoint: 'rowAdd', storyCard: 'duplicate', pgBreakAdd: 'pgBreak', pgBreakDel: 'pgBreak', pgPullUp: 'moveUp', secDel: 'delete', pgEmpty: 'delete', secGaps: 'pages' };
   for (const [k, v] of Object.entries(alias)) IC[k] = IC[k] || IC[v] || IC.pages; }
 const w2wBlank = (v) => !textOf(v ?? '').trim();
 /** The widths (percent, summing to 100) of the house data dictionary (7 columns) and actions table (2): the constraints column is the widest and no
@@ -181,6 +181,41 @@ const W2_WRITE = {
     build.output = true;
     return W2_WRITE.placeSection(build);
   },
+  /** 0.16.0 (spec O): the «المخرجات» / Outputs chapter, added to an older document in ONE undo step (the insert, the renumbering of any annex after it, both
+   *  editions): a description, the types and cases (one row), then the fixed and the changing part. Placeholders only; an existing chapter of that title is left alone.
+   *  It goes last, ahead of a closing annex. */
+  addOutputsChapter() {
+    const d = w2doc();
+    const head = (ed) => tIn('w2o.chapter', ed);
+    if ((d.chapters || []).some((c) => textOf(c.title) === head(S.ed))) { toast(t('w2o.exists'), 'info'); return null; }
+    const isAnnex = (c) => /^\s*(annex|appendix|ملحق)/i.test(textOf(c.title));
+    let at = d.chapters.length;
+    if (!isManualNumbering(d)) while (at > 0 && isAnnex(d.chapters[at - 1])) at -= 1;
+    const mk = (ed) => {
+      const n = at + 1;
+      const row = (cells) => cells.map((c) => (c === null ? '…' : c));
+      return {
+        number: String(n),
+        title: head(ed),
+        sections: [
+          { number: `${n}.1`, title: tIn('w2o.desc', ed), blocks: [{ kind: 'prose', paragraphs: [tIn('w2o.descText', ed)] }] },
+          { number: `${n}.2`, title: tIn('w2o.types', ed), blocks: [{ kind: 'table', columns: w2sWords('w2o.cols.types', ed), rows: [row([null, null, null, tIn('w2o.oneStyle', ed)])] }] },
+          { number: `${n}.3`, title: tIn('w2o.fixed', ed), blocks: [{ kind: 'table', columns: w2sWords('w2o.cols.fixed', ed), rows: [row([null, null])] }] },
+          { number: `${n}.4`, title: tIn('w2o.changing', ed), blocks: [{ kind: 'table', columns: w2sWords('w2o.cols.changing', ed), rows: [row([null, null, null, tIn('w2o.example', ed)])] }] },
+        ],
+      };
+    };
+    const o = other(S.ed);
+    const pair = S.both && hasOther() && !!M[S.svc][o];
+    const op = { op: 'insert', path: `/chapters/${at}`, value: mk(S.ed) };
+    if (pair) op.mirrorValue = mk(o);
+    const group = newGroup();
+    commit([op], { mirror: true, group, rerender: false });
+    w2sFollow(group);
+    render();
+    toast(t('w2o.added'), 'ok');
+    return `/chapters/${at}`;
+  },
   /** 0.15.1: a story's ID card is a table. One with no `card` yet prints the default (render.mjs storyCardDefault); before its first
    *  table edit it is stored: labels as plain text, `{bind}` cells that keep reading and editing the story's own fields. One op. */
   materialiseCard(ptr, ed = S.ed) {
@@ -321,7 +356,7 @@ const W2_WRITE = {
     return ops.length;
   },
 };
-const W2W_CMDS = { addStory: 'insert', addOutputStory: 'insert', storyPoint: 'insert', storyCard: 'insert', pgBreakAdd: 'gaps', pgBreakDel: 'gaps', pgPullUp: 'gaps', secDel: 'gaps', pgEmpty: 'gaps' };
+const W2W_CMDS = { addStory: 'insert', addOutputStory: 'insert', addOutputsChapter: 'insert', storyPoint: 'insert', storyCard: 'insert', pgBreakAdd: 'gaps', pgBreakDel: 'gaps', pgPullUp: 'gaps', secDel: 'gaps', pgEmpty: 'gaps' };
 bwExt({
   sections: [{ cat: 'gaps' }],
   cmds: Object.entries(W2W_CMDS).map(([id, group]) => ({ id, group, edit: true })),
@@ -329,6 +364,7 @@ bwExt({
     materialiseStoryCard: (ptr) => W2_WRITE.materialiseCard(ptr),
     addStory: () => { W2_WRITE.addStory(); },
     addOutputStory: () => { W2_WRITE.addOutputStory(); },
+    addOutputsChapter: () => { W2_WRITE.addOutputsChapter(); },
     storyPoint: () => { W2_WRITE.addPoint(); },
     storyCard: () => { W2_WRITE.addCard(); },
     pgBreakAdd: () => { W2_WRITE.setBreak(true); },

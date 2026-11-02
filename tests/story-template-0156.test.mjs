@@ -32,10 +32,10 @@ const storiesOf = (doc) => doc.chapters.flatMap((c) => c.sections.flatMap((s) =>
 // ── 1 · the blank sample (files): chapters, 16 subsections, columns from the pack, three stories ─────────────────────────────
 const CARD = ['description', 'identifier', 'recipients', 'assumptions', 'fees', 'documents', 'adminRef', 'channels', 'outputs', 'legislation', 'roles', 'internal', 'services', 'dataSources', 'partners', 'languages'];
 const packChapters = pack.chapters;
-check('the pack has 6 chapters and 16 service-card subsections (the source this test reads)', packChapters.length === 6 && packChapters[1].sections.length === 16);
+check('the pack has 7 chapters (the last is the 0.16.0 Outputs chapter) and 16 service-card subsections (the source this test reads)', packChapters.length === 7 && packChapters[1].sections.length === 16);
 for (const l of LOCS) {
   const d = sampleDoc(l);
-  check(`${l}: blank has the pack's 6 chapters`, d.chapters.length === 6, String(d.chapters.length));
+  check(`${l}: blank has the pack's 7 chapters`, d.chapters.length === 7, String(d.chapters.length));
   check(`${l}: chapter titles are the pack's`, d.chapters.every((c, i) => c.title === packChapters[i].title[l]), d.chapters.map((c) => c.title).join(' | '));
   check(`${l}: service card has 16 subsections titled as the pack`, secs(d, 1).length === 16 && secs(d, 1).every((s, i) => s.title === packChapters[1].sections[i].title[l]), String(secs(d, 1).length));
   // each pack column set appears once in the right section, with its column count and headers
@@ -99,7 +99,7 @@ try {
   await page.goto(pathToFileURL(file).href);
   await page.waitForFunction(() => window.BW?.ready);
   const ready = await page.evaluate(() => ({ svc: window.BW.S.svc, ar: window.BW.M[window.BW.S.svc].ar.doc.chapters.length, en: window.BW.M[window.BW.S.svc].en.doc.chapters.length, both: window.BW.S.both }));
-  check('ready state seen: the blank document is open, both editions loaded, pair view on', ready.svc === 'blank' && ready.ar === 6 && ready.en === 6 && ready.both === true, JSON.stringify(ready));
+  check('ready state seen: the blank document is open, both editions loaded, pair view on', ready.svc === 'blank' && ready.ar === 7 && ready.en === 7 && ready.both === true, JSON.stringify(ready));
 
   const docs = () => page.evaluate(() => { const B = window.BW; return { ar: JSON.parse(JSON.stringify(B.M[B.S.svc].ar.doc)), en: JSON.parse(JSON.stringify(B.M[B.S.svc].en.doc)) }; });
   const run = (id) => page.evaluate((id) => window.BW.runAction(id), id);
@@ -200,7 +200,7 @@ try {
   check('S3/S6: one undo removes it from both editions', j(await docs()) === j(again));
 
   // no stories chapter at all: it is created at the end, whatever the selection is
-  await page.evaluate(() => { const B = window.BW; for (const ed of ['ar', 'en']) B.commit([{ op: 'delete', path: '/chapters/5' }], { ed, mirror: false, rerender: false }); B.render(); });
+  await page.evaluate(() => { const B = window.BW; for (const ed of ['ar', 'en']) for (const at of [6, 5]) B.commit([{ op: 'delete', path: `/chapters/${at}` }], { ed, mirror: false, rerender: false }); B.render(); }); // the Outputs chapter (7) and the stories chapter (6) both go: the document is the five-chapter one this step is about
   await select('/chapters/1/sections/1/blocks/0');
   await run('addStory');
   d = await docs();

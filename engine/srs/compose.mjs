@@ -364,6 +364,67 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
     return { sections };
   };
 
+  /* 0.16.0 (spec O): the last chapter «المخرجات» / Outputs. Description, types and cases (one row per variation), then the fixed part and the changing
+   * part of each variation. Filled from the record (a variation's name, when, to, validity, differs, fixed[], changing[]) and from what the pack and
+   * the model state (the pack's output rules, the serial number); where nothing states a part, a named open question - never an invented sentence. */
+  const OD = T.od || {};
+  const variants = () => (model.outputs.length ? model.outputs : [{ name: { ar: out, en: out } }]);
+  const oName = (o) => pick(o.name, locale) || out;
+  GEN.outputDesc = () => {
+    const vs = variants();
+    const parts = vs.map((o) => {
+      const d = pick(o.description, locale);
+      if (d) return d;
+      const w = pick(o.when, locale);
+      const to = pick(o.to, locale);
+      const v = pick(o.validity, locale);
+      return [fill(OD.desc, { o: oName(o) }), w ? fill(OD.descWhen, { w }) : '', to ? fill(OD.descTo, { t: to }) : '', v ? fill(OD.descValidity, { v }) : ''].filter(Boolean).join(' ');
+    });
+    return { blocks: [prose(parts)], fill: model.outputs.length ? 'evidence' : 'derived', source: srcOf('outputs') || (approvedOutput ? { kind: 'model', ref: 'approved end' } : null) };
+  };
+  GEN.outputTypes = (s, number) => {
+    const vs = variants();
+    const unresolved = [];
+    const rows = vs.map((o) => {
+      const differs = pick(o.differs, locale) || (vs.length === 1 ? OD.oneStyle : '');
+      if (!differs) unresolved.push(ask(fill(OD.q.differs, {}), number));
+      return [oName(o), pick(o.when, locale) || (signed ? G.outputWhenSigned || G.outputWhenDefault : G.outputWhenDefault) || T.unknown, pick(o.to, locale) || G.outputToDefault || T.unknown, differs || T.unknown];
+    });
+    return { blocks: [table(OD.cols.types, rows)], fill: model.outputs.length ? 'evidence' : 'derived', source: srcOf('outputs') || null, unresolved };
+  };
+  GEN.outputVariants = (s, number) => {
+    const vs = variants();
+    const sections = [];
+    const n0 = number.split('.')[0];
+    vs.forEach((o, i) => {
+      const nm = oName(o);
+      const many = vs.length > 1;
+      const secNo = () => `${n0}.${Number(number.split('.')[1]) + sections.length}`;
+      // fixed: stated rows, else the pack's own output rules (what every copy carries)
+      const fixedRows = [...(o.fixed || []).map((r) => [pick(r.section, locale), pick(r.text, locale)])];
+      const stated = fixedRows.length > 0;
+      if (!stated) for (const x of pack.outputAcceptance?.[locale] || []) fixedRows.push([OD.whole, tx(x)]);
+      const fq = [];
+      let fixedBlock;
+      if (fixedRows.length) fixedBlock = table(OD.cols.fixed, fixedRows);
+      else { fq.push(ask(fill(OD.q.fixed, { o: nm }), secNo())); fixedBlock = prose(qInDoc ? `${T.none} — ${fq[0]}` : T.none); }
+      sections.push({ title: many ? fill(OD.titleOf, { title: OD.titleFixed, o: nm }) : OD.titleFixed, blocks: [fixedBlock], fill: stated ? 'evidence' : fixedRows.length ? 'derived' : 'question', source: stated ? srcOf('outputs') : null, unresolved: fq });
+      // changing: stated rows, plus what the model states (a serial number, a validity)
+      const chRows = (o.changing || []).map((r) => [pick(r.field, locale), pick(r.changedBy, locale), pick(r.source, locale), pick(r.example, locale) || OD.example]);
+      const chStated = chRows.length > 0;
+      if (!chStated) {
+        if (model.serial) chRows.push([OD.serial, OD.serialBy, fill(OD.serialSrc, { sec: secTitle.identifier || '' }), OD.example]);
+        if (pick(o.validity, locale)) chRows.push([OD.validity, fill(OD.validityBy, { v: pick(o.validity, locale) }), OD.validitySrc, OD.example]);
+      }
+      const cq = [];
+      let chBlock;
+      if (chRows.length) chBlock = table(OD.cols.changing, chRows);
+      else { cq.push(ask(fill(OD.q.changing, { o: nm }), secNo())); chBlock = prose(qInDoc ? `${T.none} — ${cq[0]}` : T.none); }
+      sections.push({ title: many ? fill(OD.titleOf, { title: OD.titleChanging, o: nm }) : OD.titleChanging, blocks: [chBlock], fill: chStated ? 'evidence' : chRows.length ? 'derived' : 'question', source: chStated ? srcOf('outputs') : null, unresolved: cq });
+    });
+    return { sections };
+  };
+
   /* lay the pack out; numbers from position */
   // first pass: section numbers by gen (cross references such as «2.15 …» need them before the text is written)
   pack.chapters.forEach((c, ci) => (c.sections || []).forEach((s, si) => { const t = pick(s.title, locale); const num = `${ci + 1}.${si + 1}`; if (s.gen === 'integrations') secTitle[s.of] = `${num} ${t}`; else secTitle[s.gen] = `${num} ${t}`; }));
@@ -374,6 +435,7 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
       const title = pick(s.title, locale);
       const gen = GEN[s.gen];
       if (s.gen === 'questions' && profile.questionsInDocument !== true && pack.questionsInDocument !== true) continue;
+      if (['outputDesc', 'outputTypes', 'outputVariants'].includes(s.gen) && !hasOutput) continue; // no output, no chapter (the empty chapter is dropped)
       if (!gen) throw new Error(`pack ${pack.id}: section «${title}» names an unknown generator «${s.gen}»`);
       const r = gen(s, num);
       if (r?.sections) {

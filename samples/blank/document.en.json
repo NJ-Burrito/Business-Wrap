@@ -735,6 +735,89 @@
           ]
         }
       ]
+    },
+    {
+      "number": "7",
+      "title": "Outputs",
+      "sections": [
+        {
+          "number": "7.1",
+          "title": "Description of the output",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Describe what the service issues: what it is, for whom, and what it proves."
+              ]
+            }
+          ]
+        },
+        {
+          "number": "7.2",
+          "title": "Types and cases",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Type or case",
+                "When issued",
+                "Who receives it",
+                "What differs"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "One style, no differences"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "7.3",
+          "title": "The fixed part",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Section",
+                "Fixed sentence"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "7.4",
+          "title": "The changing part",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Field or sentence",
+                "What changes it",
+                "Source",
+                "Example"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "[example]"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "openQuestions": []

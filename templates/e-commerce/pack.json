@@ -644,6 +644,35 @@
   },
   {
    "title": {
+    "ar": "المخرجات",
+    "en": "Outputs"
+   },
+   "sections": [
+    {
+     "title": {
+      "ar": "وصف المخرج",
+      "en": "Description of the output"
+     },
+     "gen": "outputDesc"
+    },
+    {
+     "title": {
+      "ar": "الأنواع والحالات",
+      "en": "Types and cases"
+     },
+     "gen": "outputTypes"
+    },
+    {
+     "title": {
+      "ar": "الجزء الثابت والجزء المتغير",
+      "en": "The fixed and the changing part"
+     },
+     "gen": "outputVariants"
+    }
+   ]
+  },
+  {
+   "title": {
     "ar": "الملاحق: الأسئلة المفتوحة",
     "en": "Annex: open questions"
    },

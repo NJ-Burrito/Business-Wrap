@@ -27,7 +27,21 @@
   "w2s.chapter": "قصص المستخدمين ومعايير القبول",
   "w2s.storyLead": "بطاقات القصص",
   "w2s.storyTitle": "عنوان القصة (البوابة)",
-  "w2s.outputTitle": "مخرج الخدمة (بوابة متلقي الخدمة)"
+  "w2s.outputTitle": "مخرج الخدمة (بوابة متلقي الخدمة)",
+  "addOutputsChapter": "فصل المخرجات",
+  "w2o.exists": "فصل «المخرجات» موجود في الوثيقة.",
+  "w2o.added": "أُضيف فصل «المخرجات» في آخر الوثيقة.",
+  "w2o.chapter": "المخرجات",
+  "w2o.desc": "وصف المخرج",
+  "w2o.descText": "صف المخرج الذي تصدره الخدمة: ما هو، ولمن، وماذا يثبت.",
+  "w2o.types": "الأنواع والحالات",
+  "w2o.oneStyle": "نمط واحد لا يختلف",
+  "w2o.fixed": "الجزء الثابت",
+  "w2o.changing": "الجزء المتغير",
+  "w2o.example": "[مثال]",
+  "w2o.cols.types": "النوع أو الحالة|متى يصدر|من يستلمه|ما الذي يختلف",
+  "w2o.cols.fixed": "القسم|الجملة الثابتة",
+  "w2o.cols.changing": "الحقل أو الجملة|ما الذي يغيره|المصدر|مثال"
  },
  "en": {
   "addStory": "User story",
@@ -57,6 +71,20 @@
   "w2s.chapter": "User stories and acceptance criteria",
   "w2s.storyLead": "Story cards",
   "w2s.storyTitle": "Story title (portal)",
-  "w2s.outputTitle": "Service output (service recipient portal)"
+  "w2s.outputTitle": "Service output (service recipient portal)",
+  "addOutputsChapter": "Outputs chapter",
+  "w2o.exists": "The «Outputs» chapter is already in the document.",
+  "w2o.added": "The «Outputs» chapter was added at the end of the document.",
+  "w2o.chapter": "Outputs",
+  "w2o.desc": "Description of the output",
+  "w2o.descText": "Describe what the service issues: what it is, for whom, and what it proves.",
+  "w2o.types": "Types and cases",
+  "w2o.oneStyle": "One style, no differences",
+  "w2o.fixed": "The fixed part",
+  "w2o.changing": "The changing part",
+  "w2o.example": "[example]",
+  "w2o.cols.types": "Type or case|When issued|Who receives it|What differs",
+  "w2o.cols.fixed": "Section|Fixed sentence",
+  "w2o.cols.changing": "Field or sentence|What changes it|Source|Example"
  }
 }
