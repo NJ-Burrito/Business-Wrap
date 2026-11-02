@@ -3,6 +3,7 @@
   "addStory": "قصة مستخدم",
   "storyPoint": "نقطة قبول",
   "storyCard": "قصة أخرى",
+  "addOutputStory": "قصة المخرج",
   "pgBreakAdd": "أدرج فاصل صفحة",
   "pgBreakDel": "أزل فاصل الصفحة",
   "pgPullUp": "اسحب ما بعده لأعلى",
@@ -18,12 +19,21 @@
   "w2w.noEmpty": "لا توجد فقرات فارغة ولا صفحات فارغة.",
   "w2w.emptyDone": "أُزيل {n} من العناصر الفارغة.",
   "secGaps": "الفراغات والصفحات",
-  "grp_gaps": "الفراغات والصفحات"
+  "grp_gaps": "الفراغات والصفحات",
+  "w2s.cols.actions": "الإجراء|أثره على الطلب",
+  "w2s.cols.dictionary": "اسم الحقل|النوع|اجبارية الحقل|امكانية التعديل|جهة التكامل|القيمة الافتراضية|قيود الحقل",
+  "w2s.cols.outputCard": "البند|القيمة",
+  "w2s.outputRows": "اسم المخرج|متى يصدر|من يستلمه",
+  "w2s.chapter": "قصص المستخدمين ومعايير القبول",
+  "w2s.storyLead": "بطاقات القصص",
+  "w2s.storyTitle": "عنوان القصة (البوابة)",
+  "w2s.outputTitle": "مخرج الخدمة (بوابة متلقي الخدمة)"
  },
  "en": {
   "addStory": "User story",
   "storyPoint": "Acceptance point",
   "storyCard": "Another story",
+  "addOutputStory": "Output story",
   "pgBreakAdd": "Insert page break",
   "pgBreakDel": "Remove page break",
   "pgPullUp": "Pull next content up",
@@ -39,6 +49,14 @@
   "w2w.noEmpty": "No empty paragraphs or empty pages.",
   "w2w.emptyDone": "{n} empty items removed.",
   "secGaps": "Gaps and pages",
-  "grp_gaps": "Gaps and pages"
+  "grp_gaps": "Gaps and pages",
+  "w2s.cols.actions": "Action|Effect on the request",
+  "w2s.cols.dictionary": "Field|Type|Required|Editable|Integration|Default|Constraints",
+  "w2s.cols.outputCard": "Item|Value",
+  "w2s.outputRows": "Output name|When it is issued|Who receives it",
+  "w2s.chapter": "User stories and acceptance criteria",
+  "w2s.storyLead": "Story cards",
+  "w2s.storyTitle": "Story title (portal)",
+  "w2s.outputTitle": "Service output (service recipient portal)"
  }
 }
