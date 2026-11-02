@@ -272,17 +272,17 @@
               "rows": [
                 [
                   "R-01",
-                  "Service recipient",
                   "…",
                   "…",
-                  "Service recipient portal"
+                  "…",
+                  "…"
                 ],
                 [
                   "R-02",
-                  "Staff member",
                   "…",
                   "…",
-                  "Staff portal, back office"
+                  "…",
+                  "…"
                 ]
               ]
             }
@@ -561,10 +561,10 @@
               "items": [
                 {
                   "id": "US-01",
-                  "name": "Submit the request",
-                  "as": "service recipient",
-                  "want": "fill in the request form and attach the documents",
-                  "so": "the request can be sent",
+                  "name": "…",
+                  "as": "…",
+                  "want": "…",
+                  "so": "…",
                   "acceptance": [
                     "Write the first acceptance criterion.",
                     "Write the next acceptance criterion."
@@ -618,10 +618,10 @@
               "items": [
                 {
                   "id": "US-02",
-                  "name": "Review the request",
-                  "as": "staff member",
-                  "want": "review the request and decide on it",
-                  "so": "the request moves to the next stage",
+                  "name": "…",
+                  "as": "…",
+                  "want": "…",
+                  "so": "…",
                   "acceptance": [
                     "Write the first acceptance criterion.",
                     "Write the next acceptance criterion."
@@ -675,10 +675,10 @@
               "items": [
                 {
                   "id": "US-03",
-                  "name": "Service output",
-                  "as": "User",
-                  "want": "receive the service output",
-                  "so": "the output is available to the service recipient",
+                  "name": "…",
+                  "as": "…",
+                  "want": "…",
+                  "so": "…",
                   "acceptance": [
                     "Write the first acceptance criterion."
                   ]

@@ -65,6 +65,27 @@ for (const l of LOCS) {
 }
 function shape(d) { return d.chapters.map((c) => c.sections.map((s) => s.blocks.map((b) => [b.kind, b.columns?.length, b.rows?.length, b.items?.map((i) => [!!i.actions, !!i.dictionary, i.acceptance.length])]))); }
 
+// ── 1b · the blank carries structure only: no fact of the reference SRS (the owner's reference is for design and layout, never data) ──
+// The distinctive terms are read from the reference PDF at run time (never stored here): words of the PDF that neither the pack nor the
+// house words know. Skipped when the PDF is absent (CI, other machines).
+{
+  const cands = [path.join(REPO, 'out', 'qa-0.15.6', 'reference-srs.pdf'), path.join(REPO, '..', 'Business-Wrap', 'out', 'qa-0.15.6', 'reference-srs.pdf')];
+  const pdf = cands.find((p) => fs.existsSync(p));
+  const bin0 = config().poppler ? path.join(config().poppler, 'pdftotext') : 'pdftotext';
+  const raw = pdf ? spawnSync(bin0, ['-enc', 'UTF-8', pdf, '-'], { encoding: 'utf8' }) : null;
+  if (!pdf || !raw || raw.status !== 0 || !raw.stdout) console.log('SKIP  story-0156: no reference PDF here: the no-reference-facts check is skipped');
+  else {
+    const known = (fs.readFileSync(path.join(REPO, 'templates', 'e-service', 'pack.json'), 'utf8') + fs.readFileSync(path.join(REPO, 'engine', 'i18n.json'), 'utf8') + fs.readFileSync(path.join(REPO, 'editor', 'ext', '27-writing.i18n.json'), 'utf8') + fs.readFileSync(path.join(REPO, 'engine', 'diagram.mjs'), 'utf8') + 'المديرية').normalize('NFKC'); // + the diagram starter words and the generic «directorate» label of 2.7
+    const words = raw.stdout.normalize('NFKC').replace(/[ً-ْ‎‏‪-‮]/g, '').match(/[ء-ي]{5,}/g) || [];
+    const freq = new Map(); for (const w of words) freq.set(w, (freq.get(w) || 0) + 1);
+    const terms = [...freq].filter(([w]) => !known.includes(w)).sort((a, b) => b[1] - a[1]).slice(0, 40).map(([w]) => w);
+    check(`reference check saw the PDF: ${words.length} Arabic words, ${terms.length} distinctive terms picked at run time`, words.length > 500 && terms.length >= 10, String(words.length));
+    const blank = LOCS.map((l) => JSON.stringify(sampleDoc(l))).join(' ').normalize('NFKC');
+    const hit = terms.filter((w) => blank.includes(w));
+    check('samples/blank holds none of the reference PDF distinctive terms (count only; the terms are not printed)', hit.length === 0, `${hit.length} hits`);
+  }
+}
+
 // ── 2 · the editor: real commands on the blank sample ─────────────────────────────────────────────────────────────────────────
 const file = path.join(tmp, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'blank')], out: file, set: 'story156', watermarkDir: null });

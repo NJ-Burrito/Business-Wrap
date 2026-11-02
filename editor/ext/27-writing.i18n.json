@@ -27,8 +27,7 @@
   "w2s.chapter": "قصص المستخدمين ومعايير القبول",
   "w2s.storyLead": "بطاقات القصص",
   "w2s.storyTitle": "عنوان القصة (البوابة)",
-  "w2s.outputTitle": "مخرج الخدمة (بوابة متلقي الخدمة)",
-  "explain.addOutputStory": "يضيف قسماً جديداً لقصة المخرج: بطاقة التعريف ومعايير القبول وجدول البند والقيمة، بلا جدول إجراءات ولا قاموس بيانات."
+  "w2s.outputTitle": "مخرج الخدمة (بوابة متلقي الخدمة)"
  },
  "en": {
   "addStory": "User story",
@@ -58,7 +57,6 @@
   "w2s.chapter": "User stories and acceptance criteria",
   "w2s.storyLead": "Story cards",
   "w2s.storyTitle": "Story title (portal)",
-  "w2s.outputTitle": "Service output (service recipient portal)",
-  "explain.addOutputStory": "Adds a new section for the output story: the ID card, acceptance criteria and an item and value table, with no actions table and no data dictionary."
+  "w2s.outputTitle": "Service output (service recipient portal)"
  }
 }
