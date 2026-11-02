@@ -501,6 +501,8 @@ try {
       const ver = await (await fetch(`${base}/api/version`)).json();
       ok('smoke serve: ready state observed (the old version answers /api/version)', ver.version === CUR && ver.served === true, JSON.stringify(ver).slice(0, 200));
       const st = await fetch(`${base}/api/update/apply`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"confirm":true}' });
+      // a slow or throttled page (a background tab, a loaded machine) starts reading progress late: the host must wait for it
+      await new Promise((r2) => setTimeout(r2, 2500));
       let p = {};
       for (let i = 0; i < 300 && !p.finished; i++) { await new Promise((r2) => setTimeout(r2, 100)); try { p = await (await fetch(`${base}/api/update/progress`)).json(); } catch { break; } }
       const code = await Promise.race([exited, new Promise((r2) => setTimeout(() => r2('still running'), 8000))]);
