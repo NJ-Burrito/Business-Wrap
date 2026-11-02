@@ -1,0 +1,42 @@
+/* 0.15.9 the folder picker panel (editor/ext/48-folder-picker.js). Brand tokens only; logical properties so RTL mirrors it. */
+dialog.bw-fp { inline-size: min(780px, 94vw); max-block-size: 90vh; padding: 20px 22px; border: 1px solid var(--panel-line, currentColor); border-radius: 20px; background: var(--panel, Canvas); color: var(--panel-ink, CanvasText); box-shadow: var(--bw-shadow-3, 0 12px 40px rgba(0, 0, 0, .35)); overflow: auto; }
+dialog.bw-fp::backdrop { background: rgba(10, 16, 30, .5); }
+dialog.bw-fp[open] { display: grid; gap: 10px; }
+dialog.bw-fp [hidden] { display: none !important; }
+dialog.bw-fp h2 { margin: 0; font-size: 1.2em; }
+dialog.bw-fp .fp-lead, dialog.bw-fp .fp-by { margin: 0; font-size: .92em; color: var(--panel-soft, inherit); }
+dialog.bw-fp .fp-by { padding: 6px 10px; border-radius: 10px; background: var(--wash-2, transparent); }
+dialog.bw-fp .fp-pathrow, dialog.bw-fp .fp-newrow { display: flex; align-items: center; gap: 8px; }
+dialog.bw-fp .fp-pathrow label, dialog.bw-fp .fp-newrow label { flex: none; font-size: .9em; }
+dialog.bw-fp input[type="text"] { flex: 1 1 auto; min-inline-size: 0; font: inherit; color: var(--panel-ink); background: var(--panel); border: 1px solid var(--panel-line); border-radius: 10px; padding: 10px 12px; min-block-size: 44px; box-sizing: border-box; }
+dialog.bw-fp .fp-crumbs ol { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; list-style: none; margin: 0; padding: 0; }
+dialog.bw-fp .fp-crumbs li { display: inline-flex; align-items: center; }
+dialog.bw-fp .fp-sep { display: inline-flex; opacity: .55; }
+dialog.bw-fp[dir="rtl"] .fp-sep .ic { transform: scaleX(-1); }
+dialog.bw-fp .fp-crumb, dialog.bw-fp .fp-place, dialog.bw-fp .fp-item { font: inherit; color: inherit; background: transparent; border: 0; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; min-block-size: 44px; padding-inline: 10px; text-align: start; }
+dialog.bw-fp .fp-crumb[aria-current="page"] { font-weight: 700; }
+dialog.bw-fp .fp-body { display: grid; grid-template-columns: minmax(150px, 210px) 1fr; gap: 12px; min-block-size: 0; }
+dialog.bw-fp .fp-places { display: flex; flex-direction: column; gap: 2px; padding-inline-end: 12px; border-inline-end: 1px solid var(--panel-line); overflow: auto; max-block-size: 44vh; }
+dialog.bw-fp .fp-place { inline-size: 100%; }
+dialog.bw-fp .fp-main { display: grid; gap: 8px; min-inline-size: 0; align-content: start; }
+dialog.bw-fp .fp-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+dialog.bw-fp .fp-list { list-style: none; margin: 0; padding: 4px; border: 1px solid var(--panel-line); border-radius: 12px; overflow: auto; max-block-size: 40vh; min-block-size: 140px; }
+dialog.bw-fp .fp-item { inline-size: 100%; }
+dialog.bw-fp .fp-item .w, dialog.bw-fp .fp-place .w { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+dialog.bw-fp .fp-crumb:hover, dialog.bw-fp .fp-place:hover, dialog.bw-fp .fp-item:hover { background: var(--wash, rgba(127, 127, 127, .15)); }
+dialog.bw-fp :is(button, input, ul):focus-visible { outline: 2px solid var(--bw-accent, Highlight); outline-offset: 2px; }
+dialog.bw-fp .fp-empty { padding: 14px; color: var(--panel-soft, inherit); }
+dialog.bw-fp .fp-msg { margin: 0; min-block-size: 1.4em; font-size: .94em; }
+dialog.bw-fp .fp-msg.bad { color: var(--signal, #b3261e); font-weight: 600; }
+dialog.bw-fp .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+dialog.bw-fp .b { color: var(--panel-ink); background: var(--wash-2); min-block-size: 44px; padding-inline: 16px; gap: 8px; }
+dialog.bw-fp .b.primary { background: var(--navy); color: var(--on-primary) !important; font-weight: 700; }
+dialog.bw-fp .b.primary:hover:not(:disabled) { background: var(--bw-primary-hover) !important; }
+dialog.bw-fp .b:disabled { opacity: .5; cursor: not-allowed; }
+dialog.bw-fp .i { display: inline-flex; }
+dialog.bw-fp .ic { inline-size: 20px; block-size: 20px; flex: none; }
+@media (max-width: 640px) {
+  dialog.bw-fp .fp-body { grid-template-columns: 1fr; }
+  dialog.bw-fp .fp-places { flex-direction: row; flex-wrap: wrap; border-inline-end: 0; padding-inline-end: 0; max-block-size: none; }
+  dialog.bw-fp .fp-place { inline-size: auto; }
+}

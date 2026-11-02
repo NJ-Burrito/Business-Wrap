@@ -2,16 +2,16 @@
 //   اقرأني - README.txt
 //   المستندات - Documents\<Document title>\{<title>.html, Exports\, Sources\, Versions\}   (one folder per document)
 //   .system\{history\, backups\, sessions\, library\, cache\, index in history\index.json}      (machine state, hidden)
-// The parent is chosen once (pickParent: the OS folder dialog) and kept in .local/workspace.json; the default is the
+// The parent is chosen once (pickParent: the in-editor folder picker, no native dialog) and kept in .local/workspace.json; the default is the
 // user's Documents folder (else home), never inside this repository.
 //
 //   workspace()                        → {parent, root, dirs: {docs, pdf=docs, docx=docs, html=docs, system, history, backups, sessions, library, cache}}
 //   outName(title, date, locale, ext)  → "<title>/Exports/<YYYY-MM-DD HH-MM> <title> - <العربية|English|both>.<ext>" (a path below the documents folder)
-//   pickParent()                       → the chosen folder (stored) or null when cancelled
+//   pickParent()                       → the chosen folder (stored) or null when cancelled (the picker panel; pickerOpen/Go/Mkdir/Choose/Cancel below)
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { applyOps } from './edits.mjs';
 import { REPO } from './export.mjs';
 import { localBase, isTestMode, testSandbox, isRealRoot, realParent } from './testguard.mjs';
@@ -371,37 +371,143 @@ export function revealable(ws, file) {
   return inside && fs.existsSync(p) ? p : null;
 }
 
-/** The dialog's command per platform. Windows: FolderBrowserDialog owned by a 1-px TopMost form that is shown and
- *  brought to the front (an Alt tap lifts the foreground lock a background process has), so it opens in front. */
-export const PICK_PS = [
-  'Add-Type -AssemblyName System.Windows.Forms',
-  "Add-Type -Namespace BW -Name Win -MemberDefinition '[DllImport(\"user32.dll\")] public static extern bool SetForegroundWindow(System.IntPtr h); [DllImport(\"user32.dll\")] public static extern void keybd_event(byte k, byte s, uint f, System.UIntPtr e);'",
-  '$f = New-Object System.Windows.Forms.Form -Property @{TopMost = $true; ShowInTaskbar = $false; FormBorderStyle = "None"; Opacity = 0; StartPosition = "CenterScreen"; Width = 1; Height = 1}',
-  '$f.Show(); [BW.Win]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero); [BW.Win]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero); [void][BW.Win]::SetForegroundWindow($f.Handle); $f.Activate()',
-  '$d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description = "Business-Wrap"; $d.ShowNewFolderButton = $true',
-  'if ($d.ShowDialog($f) -eq "OK") { [Console]::OutputEncoding = [Text.Encoding]::UTF8; $d.SelectedPath }',
-  '$f.Close()',
-].join('; ');
-function pickCmd() {
-  if (process.env.BW_PICK_CMD) return JSON.parse(process.env.BW_PICK_CMD); // [exe, ...args]: tests
-  if (process.platform === 'win32') return ['powershell.exe', '-NoProfile', '-STA', '-Command', PICK_PS];
-  if (process.platform === 'darwin') return ['osascript', '-e', 'POSIX path of (choose folder)'];
-  return ['zenity', '--file-selection', '--directory'];
+/* The folder picker (0.15.9, P1-P6). There is no native dialog: choosing the save folder is an in-editor panel whose whole state is HOST state,
+ * so a person (the panel) and an agent (the MCP tools, the CLI) see the same picker and either can finish it, with no tab open at all.
+ *
+ *   pickerOpen({path?, by?})   → state      open the picker (the one that is open is reused)
+ *   pickerState()              → {rev, open, picker, last}   picker = {id, by, since, path, selected, listing, places, error}
+ *   pickerGo(path)             → state      go to a folder (a missing / not-a-folder path is an `error`, the listing stays)
+ *   pickerMkdir(name)          → state      create a folder inside the current one and go into it
+ *   pickerChoose(path?)        → state      setParent() (its checks apply: a folder inside the program is refused, the picker stays open)
+ *   pickerCancel()             → state      close it; nothing is changed
+ *   pickerWait(rev, ms)        → state      resolves when rev moves on (long-poll for the panel), or after ms
+ *   pickParent()               → Promise<string|null>   the old entry point: opens the picker and waits for Choose (the parent) or Cancel (null)
+ * Folders only, never file contents. A folder that cannot be read is shown plainly (listing.error), never thrown. */
+const isDir = (p) => { try { return fs.statSync(p).isDirectory(); } catch { return false; } };
+const parentOf = (abs) => { const d = path.dirname(abs); return d === abs ? '' : d; };
+const PK = { rev: 0, p: null, last: null, waiters: [], watchers: new Set() };
+const bump = () => { PK.rev += 1; for (const w of [...PK.watchers]) w(); };
+
+/** Quick places: Documents, Desktop, Downloads, home, then the drives (Windows letters, macOS /Volumes, else /). */
+export function quickPlaces() {
+  const home = os.homedir();
+  const out = [];
+  const add = (id, ...cands) => { const p = cands.find((c) => c && isDir(c)); if (p && !out.some((o) => o.path === p)) out.push({ id, path: p }); };
+  add('documents', realParent(), path.join(home, 'OneDrive', 'Documents'));
+  add('desktop', path.join(home, 'Desktop'), path.join(home, 'OneDrive', 'Desktop'));
+  add('downloads', path.join(home, 'Downloads'));
+  add('home', home);
+  if (process.platform === 'win32') for (let c = 67; c <= 90; c++) { const d = `${String.fromCharCode(c)}:\\`; if (isDir(d)) out.push({ id: 'drive', path: d, label: d.slice(0, 2) }); }
+  else if (process.platform === 'darwin') { try { for (const n of fs.readdirSync('/Volumes')) if (isDir(path.join('/Volumes', n))) out.push({ id: 'drive', path: path.join('/Volumes', n), label: n }); } catch { /* none */ } }
+  else out.push({ id: 'drive', path: '/', label: '/' });
+  return out;
 }
-let picking = null;
-/** The OS folder dialog (Windows FolderBrowserDialog through PowerShell; macOS osascript; Linux zenity), run with an
- *  async spawn so the server keeps answering while it is open; one dialog at a time (a second call joins the first).
- *  BW_PICK_STUB answers at once, BW_PICK_CMD replaces the command (tests). → the chosen parent, or null. */
+
+/** The sub-folders of a folder (folders only, sorted, at most 3000). '' = the places themselves (the drives). Never throws:
+ *  → {path, parent, entries:[{name, path}], truncated, blocked, error?:{code, message}}  (codes: relative missing notfolder unreadable). */
+export function listFolders(p) {
+  if (p === undefined || p === null || p === '') return { path: '', parent: null, entries: quickPlaces().filter((x) => x.id === 'drive').map((x) => ({ name: x.label, path: x.path })), truncated: false, blocked: false };
+  const s = String(p);
+  if (/[\u0000-\u001f]/.test(s) || !path.isAbsolute(s)) return { path: s, parent: null, entries: [], truncated: false, blocked: false, error: { code: 'relative', message: 'not an absolute path' } };
+  const abs = path.resolve(s);
+  const base = { path: abs, parent: parentOf(abs), entries: [], truncated: false, blocked: !validParent(abs) };
+  let st;
+  try { st = fs.statSync(abs); } catch (e) { return { ...base, error: { code: e.code === 'ENOENT' || e.code === 'ENOTDIR' ? 'missing' : 'unreadable', message: String(e.message || e).slice(0, 200) } }; }
+  if (!st.isDirectory()) return { ...base, error: { code: 'notfolder', message: 'not a folder' } };
+  let ds;
+  try { ds = fs.readdirSync(abs, { withFileTypes: true }); } catch (e) { return { ...base, error: { code: 'unreadable', message: String(e.message || e).slice(0, 200) } }; }
+  const names = ds.filter((d) => d.isDirectory() || (d.isSymbolicLink() && isDir(path.join(abs, d.name)))).map((d) => d.name);
+  names.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+  return { ...base, entries: names.slice(0, 3000).map((name) => ({ name, path: path.join(abs, name) })), truncated: names.length > 3000 };
+}
+
+const fail = (code, message) => Object.assign(new Error(message), { code: 400, pickerCode: code });
+/** A folder name is one path segment: no separators, no `.` or `..`, none of the characters Windows refuses, no trailing dot or space. */
+export function cleanFolderName(n) {
+  const s = String(n ?? '').trim();
+  if (!s || s.length > 120 || s === '.' || s === '..' || /[\\/:*?"<>|\u0000-\u001f]/.test(s) || /[. ]$/.test(s) || /^(con|prn|aux|nul|com\d|lpt\d)(\..*)?$/i.test(s)) return null;
+  return s;
+}
+/** Create a folder named `name` inside `parent` (which must be an existing folder). → its path. */
+export function makeFolder(parent, name) {
+  const clean = cleanFolderName(name);
+  if (!clean) throw fail('badname', 'folder name: one name, no \\ / : * ? " < > |');
+  if (!path.isAbsolute(String(parent || '')) || !isDir(parent)) throw fail('missing', 'the folder to create in does not exist');
+  const dir = path.join(path.resolve(parent), clean);
+  if (!validParent(dir)) throw fail('refused', 'a folder inside the program folder cannot be a save folder');
+  if (fs.existsSync(dir)) throw fail('exists', 'a folder with that name exists');
+  try { fs.mkdirSync(dir); } catch (e) { throw fail('failed', String(e.message || e).slice(0, 200)); }
+  return dir;
+}
+
+const view = () => {
+  const p = PK.p;
+  return { rev: PK.rev, open: !!p, picker: p ? { id: p.id, by: p.by, since: p.since, path: p.listing.path, selected: p.listing.path, listing: p.listing, places: p.places, error: p.error } : null, last: PK.last };
+};
+export const pickerState = view;
+const settle = (value) => { const ws = PK.waiters; PK.waiters = []; for (const w of ws) w(value); };
+
+export function pickerOpen({ path: start, by = 'user' } = {}) {
+  if (!PK.p) {
+    const ws = workspace();
+    const at = start && path.isAbsolute(String(start)) && isDir(start) ? path.resolve(start) : isDir(ws.parent) ? ws.parent : os.homedir();
+    PK.p = { id: `pk${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, by: String(by).slice(0, 40), since: new Date().toISOString(), listing: listFolders(at), places: quickPlaces(), error: null };
+    PK.last = null;
+    bump();
+  }
+  return view();
+}
+export function pickerGo(p) {
+  if (!PK.p) throw fail('closed', 'no folder picker is open');
+  const l = listFolders(p);
+  if (['relative', 'missing', 'notfolder'].includes(l.error?.code)) PK.p.error = { code: l.error.code, message: l.error.message, path: String(p) };
+  else { PK.p.listing = l; PK.p.error = null; if (l.path === '') PK.p.places = quickPlaces(); }
+  bump();
+  return view();
+}
+export function pickerMkdir(name) {
+  if (!PK.p) throw fail('closed', 'no folder picker is open');
+  try { const dir = makeFolder(PK.p.listing.path, name); PK.p.listing = listFolders(dir); PK.p.error = null; }
+  catch (e) { if (!e.pickerCode) throw e; PK.p.error = { code: e.pickerCode, message: e.message, name: String(name ?? '') }; }
+  bump();
+  return view();
+}
+export function pickerChoose(p) {
+  if (!PK.p) throw fail('closed', 'no folder picker is open');
+  if (p !== undefined && p !== null && p !== '') pickerGo(p);
+  if (!PK.p) throw fail('closed', 'no folder picker is open');
+  const l = PK.p.listing;
+  let err = null;
+  if (PK.p.error) err = PK.p.error;
+  else if (!l.path) err = { code: 'nofolder', message: 'choose a folder, not the list of drives' };
+  else if (l.error) err = l.error;
+  else if (!validParent(l.path)) err = { code: 'refused', message: 'a folder inside the program folder cannot be a save folder' };
+  else { try { fs.accessSync(l.path, fs.constants.W_OK); } catch { err = { code: 'notwritable', message: 'this folder cannot be written to' }; } }
+  if (err) { PK.p.error = { ...err, path: l.path }; bump(); return view(); }
+  const parent = setParent(l.path).parent;
+  PK.p = null;
+  PK.last = { outcome: 'chosen', parent, at: new Date().toISOString() };
+  bump();
+  settle(parent);
+  return view();
+}
+export function pickerCancel() {
+  if (PK.p) { PK.p = null; PK.last = { outcome: 'cancelled', at: new Date().toISOString() }; bump(); settle(null); }
+  return view();
+}
+/** Long-poll: the state as soon as rev differs from `since`, else after `ms`. */
+export function pickerWait(since, ms = 20000) {
+  if (PK.rev !== Number(since)) return Promise.resolve(view());
+  return new Promise((ok) => {
+    const done = () => { clearTimeout(t); PK.watchers.delete(done); ok(view()); };
+    const t = setTimeout(done, Math.max(0, Math.min(Number(ms) || 0, 60000)));
+    PK.watchers.add(done);
+  });
+}
+/** The old entry point (the `/api/workspace/pick` route, callers that await one answer): opens the picker for the editor panel and waits for
+ *  Choose (→ the parent, stored in .local/workspace.json) or Cancel (→ null). A second call joins the first. */
 export function pickParent() {
-  if (process.env.BW_PICK_STUB !== undefined) { const s = process.env.BW_PICK_STUB.trim(); return Promise.resolve(s ? setParent(s).parent : null); }
-  return (picking ||= new Promise((ok) => {
-    const [exe, ...args] = pickCmd();
-    let out = '';
-    const cp = spawn(exe, args, { windowsHide: false, stdio: ['ignore', 'pipe', 'ignore'] });
-    cp.stdout.setEncoding('utf8').on('data', (d) => { out += d; });
-    cp.on('error', () => ok(''));
-    cp.on('close', () => ok(out));
-  }).then((out) => { picking = null; const s = String(out).trim(); return s ? setParent(s).parent : null; }, () => { picking = null; return null; }));
+  return new Promise((ok) => { PK.waiters.push(ok); pickerOpen({ by: 'save' }); });
 }
 
 /** The document's title for file names: control.coverTitle, else the service-name part of control.title. */

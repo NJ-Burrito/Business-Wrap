@@ -21,6 +21,7 @@
 //   business-wrap doctor                                   what is installed, where state lives, the last MCP server starts, version drift, EVERY known workspace / Edge profile / plugin-data path
 //   business-wrap reset [--all] [--dry-run] [--yes]        send the machine state (Edge profile, .system, local state; --all: whole workspaces + plugin data) to the Recycle Bin; --dry-run lists only
 //   business-wrap editor <list|get|outline|ops|action|new|import|health|render> [--doc id] [--pointer p] [--locale ar|en] [--ops-file f.json|-] [--mirror] [--agent name] [--id action] [--args-file f.json|-] [--project p] [--title t] [--file f] [--tab id] [--pointer-file f|-] [--out x.png]   drive the document OPEN in the editor, through the host (always JSON)
+//   business-wrap picker <state|open|go|mkdir|choose|cancel> [--path p] [--name n]   the save-folder picker (host state, the same one the editor panel shows; needs no editor tab). state never starts a host; choose refuses a folder inside the program
 // Add --json for machine output. Exit 0 done · 1 failed · 2 usage · 3 needs a module that is not in this build yet.
 import fs from 'node:fs';
 import os from 'node:os';
@@ -440,8 +441,24 @@ async function editorCmd(pos, val, flags) {
   }
 }
 
+/** business-wrap picker <verb>: the save-folder picker on the host (mcp/editor-tools.mjs callPicker), the same state the editor panel and the MCP picker_* tools use. */
+async function pickerCmd(pos, val) {
+  const { callPicker, PICKER_VERBS, BwError } = await import('../mcp/editor-tools.mjs');
+  const [verb = 'state'] = pos;
+  if (!PICKER_VERBS.includes(verb) || verb === 'wait') throw Object.assign(new Error(`picker: unknown verb ${verb} (state|open|go|mkdir|choose|cancel)`), { code: 2 });
+  const need = (v, what) => { if (v === undefined) throw new BwError('BAD_ARGS', `picker ${verb}: ${what} is required`); return v; };
+  try {
+    if (verb === 'state') return await callPicker('state');
+    if (verb === 'open') return await callPicker('open', { by: 'agent', ...(val('path') ? { path: val('path') } : {}) });
+    if (verb === 'go') return await callPicker('go', { path: need(val('path'), '--path') });
+    if (verb === 'mkdir') return await callPicker('mkdir', { name: need(val('name'), '--name') });
+    if (verb === 'choose') return await callPicker('choose', val('path') ? { path: val('path') } : {});
+    return await callPicker('cancel');
+  } catch (e) { if (e?.code === 'NO_HOST' && verb === 'state') return { ok: true, open: false, picker: null, last: null, host: false }; throw e; }
+}
+
 /** Every verb this CLI answers (the plugin commands may only call these). */
-export const VERBS = ['open', 'close', 'stop', 'status', 'new', 'build', 'harvest', 'import', 'export', 'gate', 'heal-log', 'verify-history', 'library', 'tidy', 'report', 'update', 'doctor', 'reset', 'editor', 'help'];
+export const VERBS = ['open', 'close', 'stop', 'status', 'new', 'build', 'harvest', 'import', 'export', 'gate', 'heal-log', 'verify-history', 'library', 'tidy', 'report', 'update', 'doctor', 'reset', 'editor', 'picker', 'help'];
 
 const USAGE = fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').filter((l) => l.startsWith('//   business-wrap')).map((l) => l.slice(5)).join('\n');
 /** The flags each verb knows (T11: an unknown flag is an error, never silently ignored). */
@@ -450,10 +467,11 @@ const KNOWN_FLAGS = {
   open: ['--port', '--no-browser', '--ui'], close: ['--all'], stop: ['--all'], status: [], new: ['--title', '--out', '--no-browser', '--no-open'], build: ['--out', '--ui'],
   harvest: ['--out', '--name', '--roles', '--no-open', '--no-browser'], import: ['--out', '--name', '--roles', '--no-open', '--no-browser'],
   export: ['--out', '--edits', '--no-docx'], gate: [], 'heal-log': [], 'verify-history': ['--history'], library: [], report: [], doctor: [], reset: ['--all', '--dry-run', '--yes'],
+  picker: ['--path', '--name'],
   editor: ['--doc', '--pointer', '--pointer-file', '--locale', '--ops-file', '--mirror', '--agent', '--group', '--id', '--args-file', '--project', '--title', '--file', '--tab', '--out', '--scale'],
 };
 /** Flags that take a value: whatever follows one is its value, even a lone - (stdin) or a dash-led name. */
-const VALUED = new Set(['--pointer-file', '--tab', '--scale', '--out', '--port', '--name', '--roles', '--edits', '--title', '--ui', '--history', '--doc', '--pointer', '--locale', '--ops-file', '--agent', '--group', '--id', '--args-file', '--project', '--file']);
+const VALUED = new Set(['--path', '--pointer-file', '--tab', '--scale', '--out', '--port', '--name', '--roles', '--edits', '--title', '--ui', '--history', '--doc', '--pointer', '--locale', '--ops-file', '--agent', '--group', '--id', '--args-file', '--project', '--file']);
 const HELP = ['--help', '-h', 'help', '-?'];
 /** T11: an unknown flag is an error. A lone - and anything right after a valued flag is a VALUE (stdin, a dash-led name), never a flag. Exported for tests/cli-0154. */
 export function checkFlags(verb, rest) {
@@ -497,6 +515,7 @@ export async function run(argv) {
     case 'doctor': return { ...(await doctorInfo()), roots: knownRoots() };
     case 'reset': return reset({ all: flags.has('--all'), dryRun: flags.has('--dry-run'), yes: flags.has('--yes') });
     case 'editor': return editorCmd(pos, val, flags);
+    case 'picker': return pickerCmd(pos, val);
     case undefined: case 'help': case '--help': case '-h': return { usage: USAGE };
     default: throw Object.assign(new Error(`unknown command: ${verb}\n${USAGE}`), { code: 2 });
   }
