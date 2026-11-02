@@ -292,6 +292,15 @@ try {
   await page.evaluate(() => window.BW.undo());
   await page.waitForTimeout(150);
   check('undo restores the stored drawing exactly (key gone, no shadow)', (await shadowsOnPage()) === 0 && (await page.evaluate((p) => { const B = window.BW; const g = (o, q) => q.split('/').filter(Boolean).reduce((x, k) => x[k], o); return JSON.stringify(g(B.M[B.S.svc].ar.doc, p).model); }, ptr)) === rawBefore);
+  // the real click: a stored drawing shows «Arrows never overlap» on its sheet once it is selected; pressing it applies the key
+  await page.evaluate((p) => { const B = window.BW; B.S.dg = { b: p, ed: 'ar', nodes: [], edge: null }; B.S.sel = { p: null, b: p, ed: 'ar' }; B.render(); }, ptr);
+  await page.waitForTimeout(250);
+  const btn = page.locator('main.bw-doc figure[data-dg] [data-dg-cv-route]').first();
+  const shown = await btn.count();
+  if (shown) { await btn.scrollIntoViewIfNeeded(); await btn.click(); await page.waitForTimeout(300); }
+  check('the sheet offers «Arrows never overlap» on a stored drawing; one real click applies it', shown === 1 && (await shadowsOnPage()) >= 1 && (await page.evaluate((p) => { const B = window.BW; const g = (o, q) => q.split('/').filter(Boolean).reduce((x, k) => x[k], o); return g(B.M[B.S.svc].ar.doc, p).model.routing; }, ptr)) === 2 && (await btn.count()) === 0, `button ${shown}`);
+  await page.evaluate(() => window.BW.undo());
+  await page.waitForTimeout(150);
   await page.evaluate((p) => { const B = window.BW; B.S.dg = { b: p, ed: 'ar', nodes: [], edge: null }; B.runAction('dgAuto'); }, ptr);
   await page.waitForTimeout(250);
   check('Auto layout (dgAuto) draws the new arrows by default', (await shadowsOnPage()) >= 1 && (await page.evaluate((p) => { const B = window.BW; const g = (o, q) => q.split('/').filter(Boolean).reduce((x, k) => x[k], o); return g(B.M[B.S.svc].ar.doc, p).model.routing; }, ptr)) === 2);

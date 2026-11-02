@@ -37,7 +37,7 @@ const wf = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'workflow.json'), 'utf8'
     const dir = path.join(REPO, 'samples', s);
     for (const f of fs.existsSync(dir) ? fs.readdirSync(dir) : []) {
       if (/^document\.(ar|en)\.json$/.test(f)) docs.push([s, f, JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')), f.includes('.ar.') ? 'ar' : 'en']);
-      if (f === 'workflow.json') { const w = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); for (const loc of ['ar', 'en']) if (w[loc]) docs.push([s, f, { chapters: [{ sections: [{ blocks: [{ kind: 'diagram', model: DIAGRAM.layout(w[loc]) }] }] }] }, loc]); }
+      if (f === 'workflow.json') { const w = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); for (const loc of ['ar', 'en']) if (w[loc]) docs.push([s, f, { chapters: [{ sections: [{ blocks: [{ kind: 'diagram', model: (() => { const x = DIAGRAM.layout(w[loc]); delete x.routing; return x; })() }] }] }] }, loc]); } // 0.16.0: stored before layout() set the key
     }
   }
   const models = [];

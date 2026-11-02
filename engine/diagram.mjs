@@ -419,20 +419,21 @@ export const DIAGRAM = (() => {
   /** 0.15.3 (T7) · the fewest figures, cut on phase / role boundaries with continuation stubs, that each print at `minPt` or more.
    *  @returns {{figures: {caption: string, nodes: string[], model: object, minPtPrinted: number}[], minPtPrinted: number, ok: boolean}|null}
    *  null when the figure already prints legibly, or is too small to cut. */
-  function splitForLegibility(modelIn, { frameMm = [PRINT.wMm, PRINT.maxHmm], theme, locale = 'ar', minPt = 7, aspect = 1.5, maxNodes } = {}) {
+  function splitForLegibility(modelIn, { frameMm = [PRINT.wMm, PRINT.maxHmm], theme, locale = 'ar', minPt = 7, aspect = frameMm[0] / frameMm[1], maxNodes } = {}) {
     const base = ensure(modelIn);
     const count = base.nodes.filter((n) => !FREE.has(n.kind)).length;
     if (count < 6) return null;
     const lg0 = legibility(base, { frameMm, theme, locale, minPt });
     if (lg0.small.length === 0) return null;
     let best = null;
-    for (let cap = Math.min(maxNodes || 20, count - 1); cap >= 4; cap -= 2) {
+    for (let cap = Math.min(maxNodes || 20, count - 1); cap >= 4; cap -= 1) {
       const figs = splitByPhase(base, { maxNodes: cap, locale, aspect, byRole: true });
       if (figs.length < 2) continue;
-      const rated = figs.map((f) => ({ ...f, minPtPrinted: legibility(f.model, { frameMm, theme, locale, minPt }).minPtPrinted }));
+      const rated = figs.map((f) => { const lg = legibility(f.model, { frameMm, theme, locale, minPt }); return { ...f, minPtPrinted: lg.minPtPrinted, sharp: lg.small.length === 0 }; });
       const low = Math.min(...rated.map((f) => f.minPtPrinted));
-      if (!best || low > best.minPtPrinted) best = { figures: rated, minPtPrinted: low, ok: low >= minPt, cap };
-      if (low >= minPt) break;
+      const sharp = rated.every((f) => f.sharp); // none under minPt, unrounded (a 6.96 pt text prints as 7.0 and is still too small)
+      if (!best || (sharp && !best.ok) || (sharp === best.ok && low > best.minPtPrinted)) best = { figures: rated.map(({ sharp: z, ...f }) => f), minPtPrinted: low, ok: sharp, cap };
+      if (sharp) break;
     }
     return best;
   }

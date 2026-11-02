@@ -844,6 +844,8 @@ function dgCanvasPaint(fig, legMsg = '') {
   if (live && S.snap && !S.dgFrameLive.alt) ui.insertAdjacentHTML('beforeend', `<i class="dg-cv-grid" style="background-size:${DG_CV_STEP}mm ${DG_CV_STEP}mm"></i>`);
   for (const h of Object.keys(names)) ui.insertAdjacentHTML('beforeend', `<b class="dg-cv-h" data-dg-cv="${h}" role="button" aria-label="${esc(`${t('dgCvSize')}: ${names[h]}`)}" title="${esc(`${t('dgCvSize')}: ${names[h]}`)}"></b>`);
   if (legMsg) ui.insertAdjacentHTML('beforeend', `<span class="dg-cv-note" role="note">${esc(legMsg)}</span>`);
+  // 0.16.0: a stored drawing without model.routing offers its one-click apply on the sheet (the ribbon's diagram tab is full: 28 tools)
+  if (+dgBlock(fig.dataset.dg, S.dg.ed)?.model?.routing !== 2) ui.insertAdjacentHTML('beforeend', `<button type="button" class="dg-cv-route" data-dg-cv-route title="${esc(t('dgCvRoute'))}" style="position:absolute;inset-inline-start:8px;bottom:8px;padding:2px 9px;border-radius:6px;border:1px solid #14233a;background:#fff;color:#14233a;font-family:inherit;font-weight:600;font-size:12px;line-height:1.5;cursor:pointer;pointer-events:auto">${esc(t('dgCvRoute'))}</button>`);
   if (live) {
     const f = S.dgFrameLive.frame;
     ui.insertAdjacentHTML('beforeend', `<span class="dg-cv-read" dir="ltr">${f.wMm.toFixed(1)} × ${f.hMm.toFixed(1)} mm${S.dgFrameLive.capped ? ` · ${esc(t('dgCvMax'))}` : ''}</span>`);
@@ -918,6 +920,8 @@ function dgCanvasDrag(e, handle) {
   document.addEventListener('pointerup', up);
 }
 document.addEventListener('pointerdown', (e) => {
+  const r = e.target.closest?.('[data-dg-cv-route]');
+  if (r && e.button === 0 && S.dg) { e.preventDefault(); e.stopPropagation(); dgCanvasAction('dgCvRoute'); return; }
   const h = e.target.closest?.('[data-dg-cv]');
   if (!h || e.button !== 0 || !S.dg) return;
   dgCanvasDrag(e, h);
@@ -960,7 +964,7 @@ function dgRibbonCanvas() {
   dgRibbonCanvas.done = true;
   const tab = RB_TABS.find((x) => x[0] === 'diagram');
   if (!tab || tab[1].some((g) => g[0] === 'canvas')) return;
-  tab[1].push(['canvas', ['dgCvShapes', 'dgCvPage', 'dgCvRoute']]);
+  tab[1].push(['canvas', ['dgCvShapes', 'dgCvPage']]);
   RB_LISTED.add('dgCvShapes'); RB_LISTED.add('dgCvPage'); RB_LISTED.add('dgCvAuto'); RB_LISTED.add('dgCvRoute');
   if (typeof RB !== 'undefined') RB.defs = null;
 }
