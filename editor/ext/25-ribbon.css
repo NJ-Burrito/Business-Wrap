@@ -11,19 +11,35 @@
 .island:has(> .ribbon) > .brand { order: 0; }
 .island:has(> .ribbon) > .grp.doc { order: 1; border-inline-end: 0; padding-inline-end: 0; }
 .island:has(> .ribbon) > .ctx { order: 3; }
-/* 0.15.6 (Z5): the selection strip is one row, the height of the row it sits in, whether or not anything is selected, so picking a shape, an arrow or the
- * empty drawing can no longer change the bar's height (the page used to be pushed by 17 to 44 px each time). It takes the free room of that row and never wraps
- * (its extra tools fold into «More», which opens in the top layer and is not clipped). */
-.island:has(> .ribbon) > .ctx { box-sizing: border-box; block-size: 42px; min-block-size: 42px; max-block-size: 42px; flex: 1 1 0; min-inline-size: 0; overflow: hidden; flex-wrap: nowrap; }
-.island:has(> .ribbon) > .ctx .sb { flex-wrap: nowrap; }
-/* a tool never squeezes into its neighbour (its word used to spill over the next button and block it); when the strip is too narrow for words it shows icons only, the word stays in the tooltip */
-.island:has(> .ribbon) > .ctx { container-type: inline-size; }
-.island:has(> .ribbon) > .ctx .sb > .b, .island:has(> .ribbon) > .ctx .keep-tools > .b, .island:has(> .ribbon) > .ctx .more > .b { flex: 0 0 auto; }
-@container (max-inline-size: 760px) { .sb > .b:not(.ico) > .w { display: none; } .sb > .b:not(.ico) { padding-inline: 8px; } }
+/* 0.15.6 (Z5), rebuilt 0.15.9: the selection strip is ONE row, the height of the row it sits in, whether or not anything is selected, so picking a shape, an arrow or the
+ * empty drawing never changes the bar's height. 0.15.6 forced 42 px on a box that is a COLUMN (title above, tools below) and needs 62, so overflow cut the tools in half.
+ * Now the title and the tools sit side by side in the 42 px (content box 40, no padding), the strip takes all the free room of its row, and 25-ribbon.js (ctxFit) decides
+ * what fits: the title and the words shrink first, then tools move into «More» (a popover, so it is never clipped). Nothing is ever cut: what does not fit is in «More». */
+.island:has(> .ribbon) > .ctx { box-sizing: border-box; block-size: 42px; min-block-size: 42px; max-block-size: 42px; flex: 1 1 0; min-inline-size: 56px; flex-direction: row; align-items: center; gap: 8px; padding-block: 0; overflow: clip; overflow-clip-margin: 6px; flex-wrap: nowrap; }
+.island:has(> .ribbon).has-sel > .spacer { flex: 0 0 0; } /* the free room of the row goes to the strip while something is selected */
+.island:has(> .ribbon) > .ctx > .sc { flex: none; min-inline-size: 0; }
+.island:has(> .ribbon) > .ctx .sb { flex: 1 1 auto; min-inline-size: 0; flex-wrap: nowrap; align-items: center; }
+.island:has(> .ribbon) > .ctx .sb > .b, .island:has(> .ribbon) > .ctx .keep-tools > .b, .island:has(> .ribbon) > .ctx .more > .b { flex: 0 0 auto; min-block-size: 0; block-size: 36px; box-sizing: border-box; }
+.island:has(> .ribbon) > .ctx .sb > :is(.pick, select) { flex: 0 0 auto; }
+.island:has(> .ribbon) > .ctx .keep-tools { align-self: center; }
+/* the fit levels ctxFit chooses (data-fit on the strip): the title goes to its icon, then the words go; a tool's name stays in its tooltip and its accessible name */
+.island:has(> .ribbon) > .ctx[data-fit~="nolabel"] > .sc .st { display: none; }
+.island:has(> .ribbon) > .ctx[data-fit~="nowords"] .sb > .b:not(.ico) > .w { display: none; }
+.island:has(> .ribbon) > .ctx[data-fit~="nowords"] .sb > .b:not(.ico) { padding-inline: 8px; }
+/* narrow windows: the changes counter keeps its number and drops its word so the strip keeps room for «More» */
+@media (max-width: 1100px) { .island:has(> .ribbon) .status .count .w { display: none; } .island:has(> .ribbon) .status .count { padding-inline: 8px; } }
 .island:has(> .ribbon) > .ctx[hidden] { display: flex !important; visibility: hidden; position: absolute; inline-size: 0; min-inline-size: 0; flex: 0 0 0; } /* out of the flow, so the quick strip keeps its gaps (history sits 24 px from the direction pill) */
 .island:has(> .ribbon) > .ctx[hidden] > * { display: none !important; } /* nothing in it can be hovered, focused or counted while no selection exists */
 .island:has(> .ribbon) > .ctx[hidden], .island:has(> .ribbon) > .ctx[hidden] * { animation: none !important; transition: none !important; }
 .island:has(> .ribbon) > .ctx[hidden]::after { content: none !important; }
+/* under 960 px the row has no room left for the strip beside the brand, the pills and the changes counter: the strip gets a row of its own, between them and the ribbon, and that row is
+ * reserved whether or not anything is selected, so selecting still changes no height */
+@media (max-width: 959px) {
+  .island:has(> .ribbon) > .ctx, .island:has(> .ribbon) > .ctx[hidden] { order: 9; flex: 0 0 100%; inline-size: 100%; position: static; display: flex !important; visibility: visible; }
+  .island:has(> .ribbon) > .ctx[hidden] { visibility: hidden; }
+  /* the row breaks at a fixed place (after the brand, the selectors and the language pills), so the rows do not depend on how wide the selectors are while something is selected */
+  .island:has(> .ribbon) > .spacer, .island:has(> .ribbon).has-sel > .spacer { flex: 0 0 100%; block-size: 0; }
+}
 .island:has(> .ribbon) > .spacer { order: 4; }
 .island:has(> .ribbon) > .status { order: 5; }
 .island:has(> .ribbon) > .srv-toggle { order: 7; block-size: 40px; box-sizing: border-box; align-self: center; } /* 0.15.0 integration: the server toggle sits at the far end beside the power button, not between the mark and the selector */
@@ -89,7 +105,11 @@
 .rb-tab:focus-visible, .rb-col:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
 .rb-tabs.icons .rb-tab:not([aria-selected="true"]) { padding-inline: 10px; }
 .rb-tabs.icons .rb-tab:not([aria-selected="true"]) .rb-tl { display: none; }
-@media (max-width: 1279px) { .rb-tab:not([aria-selected="true"]) { padding-inline: 10px; } .rb-tab:not([aria-selected="true"]) .rb-tl { display: none; } }
+/* 0.15.9: no viewport media query decides the words any more (it dropped them at 1280 px whatever the room); 25-ribbon.js rbFitTabs measures: «tight» first, «icons» only when the words really do not fit */
+.rb-tabs.tight { gap: 2px; }
+.rb-tabs.icons { gap: 2px; }
+@media (max-width: 959px) { .rb-bar { padding-inline: 8px 48px; } .rb-tabs.icons .rb-tab:not([aria-selected="true"]) { padding-inline: 8px; } }
+.rb-tabs.tight .rb-tab { padding-inline: 9px; gap: 6px; }
 .rb-col { position: absolute; inset-inline-end: 16px; inset-block-start: 8px; border: 0; background: transparent; color: var(--on-glass-soft); width: 30px; height: 28px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .rb-col:hover { background: color-mix(in srgb, var(--on-glass) 12%, transparent); color: var(--on-glass); }
 .rb-chev { display: inline-grid; place-items: center; transition: transform .3s var(--e-out); }
