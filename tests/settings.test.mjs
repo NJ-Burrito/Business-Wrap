@@ -104,7 +104,12 @@ async function open(url, { ui = 'ar', store = {}, width = 1366, height = 860 } =
   return { ctx, page, errors, reqs };
 }
 const popupOpen = (page) => page.evaluate(() => { const h = document.getElementById('bw-update'); const s = h?.shadowRoot.querySelector('.scrim'); return !!(s && !s.hidden) && h.dataset.open; });
-const waitPopup = (page, ms = 6000) => page.waitForFunction(() => document.getElementById('bw-update')?.dataset.open === 'popup' && !document.getElementById('bw-update').shadowRoot.querySelector('.scrim').hidden, null, { timeout: ms }).then(() => true, () => false);
+let bannerSeen = false; // 0.16.0: the automatic notice is a small banner; the popup opens when the person presses «what's new» in it (or from Settings → Check now)
+const waitPopup = async (page, ms = 6000) => {
+  const first = await page.waitForFunction(() => { const d = document.getElementById('bw-update')?.dataset.open; return d === 'banner' || d === 'popup' ? d : false; }, null, { timeout: ms }).then((h) => h.jsonValue(), () => false);
+  if (first === 'banner') { bannerSeen = !(await page.evaluate(() => { const s = document.getElementById('bw-update').shadowRoot.querySelector('.scrim'); return !s.hidden; })); await page.evaluate(() => document.getElementById('bw-update').shadowRoot.querySelector('.bar button').click()); }
+  return page.waitForFunction(() => document.getElementById('bw-update')?.dataset.open === 'popup' && !document.getElementById('bw-update').shadowRoot.querySelector('.scrim').hidden, null, { timeout: 4000 }).then(() => true, () => false);
+};
 const shot = async (page, name) => { await page.waitForTimeout(450); await page.screenshot({ path: path.join(SHOTS, `${name}.png`) }); };
 async function axe(page, label) {
   await page.addScriptTag({ path: AXE });
@@ -127,6 +132,7 @@ try {
     const s = await startServer();
     const { ctx, page, errors } = await open(s.url, { ui });
     const shown = await waitPopup(page);
+    check(`${ui}: a newer release first shows a small banner, not a dialog (no scrim)`, bannerSeen);
     const txt = await uh(page, (r) => r.querySelector('.dlg').innerText);
     check(`${ui}: newer release → the popup, with the version, the notes and three buttons`, shown && txt.includes(NEWER) && /Settings page|صفحة الإعدادات/.test(txt) && (await uh(page, (r) => r.querySelectorAll('.row button').length)) === 3, txt.slice(0, 200));
     check(`${ui}: release notes are text only (no markup from the feed reaches the page)`, !(await uh(page, (r) => !!r.querySelector('.dlg b[onclick], .dlg [onclick]'))) && !txt.includes('**'));
