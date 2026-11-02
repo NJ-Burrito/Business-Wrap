@@ -855,7 +855,7 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                     set_para_bidi(cap)
                     cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     cap.paragraph_format.keep_with_next = True
-                    add_script_runs(cap, f"{block.get('figureLabel', '')} {counters['figure']}200f: {block.get('caption', '')}".strip(), font, bold=True)
+                    add_script_runs(cap, f"{block.get('figureLabel', '')} {counters['figure']}: {block.get('caption', '')}".strip(), font, bold=True)
                     p = document.add_paragraph()
                     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     p._p.append(diagram_run(block['resolved'], font, block.get('caption', '')))
