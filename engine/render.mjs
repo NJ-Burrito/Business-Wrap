@@ -265,6 +265,56 @@ export function pageSpec(p) {
   if ((orientation === 'landscape') !== (w > h)) [w, h] = [h, w];
   return { size: custom ? 'custom' : PAPER[size] ? size : 'A4', orientation, w, h };
 }
+/** The sheet every chapter that holds a figure or a diagram prints on (`@page wide`): the widest figure sheet, else A4 landscape. */
+export function docSheet(doc) {
+  const sheets = (doc?.chapters || [])
+    .flatMap((ch) => ch.sections || [])
+    .flatMap((sec) => sec.blocks || [])
+    .flatMap((x) => (x.kind === 'figure' && x.sheet ? [x.sheet] : []));
+  return sheets.reduce((w, s) => (!w || s.widthMm > w.widthMm ? s : w), null) ?? { widthMm: 297, heightMm: 210, drawHeightMm: 146, name: 'A4 landscape' };
+}
+/** mm of a CSS length written as the theme writes sizes (pt, px, mm, cm, em). */
+const cssMm = (v, d) => {
+  const m = /^(\d+(?:\.\d+)?)(pt|px|mm|cm|em)$/.exec(String(v));
+  if (!m) return d;
+  const n = +m[1];
+  return { pt: (n * 25.4) / 72, px: (n * 25.4) / 96, mm: n, cm: n * 10, em: n * 4.9 }[m[2]];
+};
+/**
+ * 0.15.9 · The room a diagram's canvas has on its page: {wMm, hMm} at most, measured on the sheet it prints on (`@page wide`, margins 14 mm above and 12 mm below),
+ * below what must stay with it (the chapter title when the diagram opens the chapter, the section title when it opens the section, a subhead right above it,
+ * its own figure title) and above its note, with a small slack. The headings and the title are `break-after:avoid` and the figure `break-inside:avoid`, so a
+ * canvas that fits this room always lands, with its titles, on one page; a canvas taller than the page would strand them, which is why the number is a limit.
+ */
+export function figureRoom(doc, ptr, themeIn) {
+  const theme = designTheme(themeIn, doc);
+  const sheet = docSheet(doc);
+  const side = cssMm(theme.vars?.['page-side'], 16);
+  const line = parseFloat(theme.vars?.line) > 0 ? parseFloat(theme.vars.line) : 1.8;
+  const m = /^\/chapters\/(\d+)\/sections\/(\d+)\/blocks\/(\d+)$/.exec(ptr || '');
+  const blocks = m ? doc.chapters?.[+m[1]]?.sections?.[+m[2]]?.blocks || [] : [];
+  const block = m ? blocks[+m[3]] : null;
+  const textW = sheet.widthMm - 2 * side;
+  const lines = (chars, fontMm) => Math.max(1, Math.ceil((chars * fontMm * 0.58) / textW));
+  const t3 = cssMm(theme.sizes?.h3, 4.94);
+  const capText = String(textOf(block?.caption ?? '')) ;
+  const noteText = String(textOf(block?.note ?? ''));
+  const capH = lines(capText.length + 12, t3) * t3 * line + 2.5;
+  const tt = cssMm(theme.sizes?.table, 4.23);
+  const noteH = noteText ? lines(noteText.length, tt) * tt * line + 1.1 : 0;
+  let chain = 0;
+  let k = m ? +m[3] - 1 : -1;
+  while (k >= 0 && blocks[k]?.kind === 'subhead') { chain += 9 + t3 * line + 4 + 1; k -= 1; } // h4: margin 9, text, padding 4, rule
+  if (m && k < 0) {
+    // a chapter with one section prints no section title; with several, every section has one (room for two lines)
+    if ((doc.chapters?.[+m[1]]?.sections || []).length > 1) chain += 7 + 2 * cssMm(theme.sizes?.h2, 5.64) * line + 3;
+    // the chapter title: 12 mm above it unless it is the first chapter, its line, 4 mm padding, the rule, 7 mm below
+    if (+m[2] === 0) chain += (+m[1] > 0 ? 12 : 0) + Math.max(cssMm(theme.sizes?.h1, 6.35) * line, 11) + 4 + 7 + 1;
+  }
+  const wMm = Math.floor((textW - 0.6) * 10) / 10;
+  const hMm = Math.max(40, Math.floor((sheet.heightMm - 14 - 12 - chain - capH - noteH - 2.7 - 0.6 - 5) * 10) / 10);
+  return { wMm, hMm, sheetW: sheet.widthMm, sheetH: sheet.heightMm, sideMm: side, chainMm: Math.round(chain * 10) / 10, captionMm: Math.round(capH * 10) / 10, noteMm: Math.round(noteH * 10) / 10 };
+}
 /** Print geometry of the document's own page (segment 0): CSS px of the content box. */
 export function pageGeom(doc) {
   const sp = pageSpec(doc?.layout?.page);
@@ -561,6 +611,12 @@ section.chapter.wide + section.chapter > h2{margin-top:0}
 .fig.sheet.hug{height:auto;max-height:${PAGE_ART_MM}mm}
 .fig.sheet.hug > .fig-art{flex:0 0 auto;display:block}
 .fig.sheet.hug > .fig-art svg{width:100%;height:auto;max-height:${PAGE_ART_MM - 24}mm;margin:0}
+/* the automatic drawing, capped to the room its page leaves it */
+.fig.sheet.hug.dg.cap > .fig-art svg{max-height:var(--arth)}
+/* an inline-block, as .whole: Chrome keeps the whole figure (its title, the canvas, the note) on one page; a flex or block figure was cut between its title and the canvas */
+.fig.sheet.hug.dg.fr{display:inline-block;width:100%;vertical-align:top;height:auto;max-height:none}
+.fig.dg.fr > .fig-art{box-sizing:border-box;width:calc(var(--frw) + 2px);height:calc(var(--frh) + 2px);max-width:none;padding:0;margin-inline:calc((100% - var(--frw) - 2px) / 2);display:block;overflow:hidden}
+.fig.sheet.hug.dg.fr > .fig-art svg{width:100%;height:100%;max-width:none;max-height:none;margin:0;display:block}
 figcaption{font-size:var(--t-table);color:var(--primary);margin:0 0 5px;font-weight:700}
 .fig.dg > figcaption{font-family:${display},${text},serif;font-size:var(--t-h3);margin:0 0 2.5mm}
 .fig.dg > .fig-art{padding:4mm}
@@ -939,9 +995,31 @@ export function renderParts(doc, o) {
       case 'diagram': {
         // a workflow diagram: an editable model drawn as shapes and real text (engine/diagram.mjs)
         figNo += 1;
-        return `<figure class="fig sheet hug dg" data-b="${attr(b)}" data-dg="${attr(b)}">
+        // 0.15.9: a saved canvas (block.frame) is kept inside the room the page leaves it; absent = the drawing exactly as before
+        const fr0 = DIAGRAM.frameNorm(block.frame);
+        let fr = null;
+        let room0 = null;
+        if (fr0) {
+          const room = figureRoom(doc, b, o.theme);
+          room0 = room;
+          fr = { ...fr0, wMm: Math.min(fr0.wMm, room.wMm), hMm: Math.min(fr0.hMm, room.hMm) };
+        }
+        const art = DIAGRAM.render(block.model || {}, { theme: o.theme, locale, title: block.caption, editor: !!o.editor, ...(fr ? { frame: fr } : {}) });
+        // 0.15.9 (owner, one-page landscape view): the automatic drawing's height rule (a flat 116 mm) ignores what shares its page: the chapter title, the section title,
+        // the figure title. When the drawing would not fit the room the page leaves it, its height is capped to that room, so its frame never runs over the footer.
+        // A drawing that fits is untouched (same markup as before).
+        let cap = 0;
+        if (!fr) {
+          const vb = /viewBox="(-?[\d.]+) (-?[\d.]+) ([\d.]+) ([\d.]+)"/.exec(art);
+          if (vb) {
+            const room = figureRoom(doc, b, o.theme);
+            const natural = Math.min(116, ((room.wMm - 8.5) * +vb[4]) / +vb[3]);
+            if (natural + 8.5 > room.hMm) cap = Math.max(30, Math.floor((room.hMm - 8.5) * 10) / 10);
+          }
+        }
+        return `<figure class="fig sheet hug dg${fr ? ' fr' : ''}${cap ? ' cap' : ''}" data-b="${attr(b)}" data-dg="${attr(b)}"${cap ? ` style="--arth:${cap}mm"` : ''}${fr ? ` data-frame="${fr.mode}" style="--frw:${fr.wMm}mm;--frh:${fr.hMm}mm;--shw:${room0.sheetW}mm"` : ''}>
   <figcaption><span class="fig-no">${esc(L.figureNo || L.figure)} ${figNo}: </span><span${dp(b + '/caption')}>${bidi(block.caption)}</span></figcaption>
-  <div class="fig-art">${DIAGRAM.render(block.model || {}, { theme: o.theme, locale, title: block.caption, editor: !!o.editor })}</div>
+  <div class="fig-art">${art}</div>
   ${block.note ? `<p class="fig-note"${dp(b + '/note')}>${bidi(block.note)}</p>` : ''}
 </figure>`;
       }
@@ -1194,13 +1272,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     })
     .join(NL);
 
-  const sheets = doc.chapters
-    .flatMap((ch) => ch.sections)
-    .flatMap((sec) => sec.blocks)
-    .flatMap((x) => (x.kind === 'figure' && x.sheet ? [x.sheet] : []));
-  const sheet =
-    sheets.reduce((w, s) => (!w || s.widthMm > w.widthMm ? s : w), null) ??
-    { widthMm: 297, heightMm: 210, drawHeightMm: 146, name: 'A4 landscape' };
+  const sheet = docSheet(doc);
 
   // design-pack logos still print in the lockup; empty slots print nothing (logos are placed freely as overlays)
   const slot = (logos, name) =>

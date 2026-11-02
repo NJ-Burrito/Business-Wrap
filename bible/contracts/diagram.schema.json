@@ -6,9 +6,11 @@
   "type": "object",
   "required": ["nodes", "edges"],
   "$defs": {
+    "blockFrame": { "type": "object", "required": ["wMm", "hMm"], "additionalProperties": false, "description": "0.15.9 · The canvas of a diagram block. It is a key of the BLOCK ({kind:'diagram', caption, model, frame}), beside the model, not inside it; absent = the drawing exactly as before (byte for byte). The canvas is wMm x hMm millimetres; the drawing keeps its proportions, is centred and is scaled to fit (never stretched, never cut, at most 0.4 mm per drawing unit). It is kept inside the room the page leaves (engine/render.mjs figureRoom): never over a title, the note, the header, the footer, another page or the margin. Both editions of a pair carry the same frame. Written with {op:'replace', path:'<block>/frame', value} and removed with {op:'delete', path:'<block>/frame'}. The editor view, the PDF, the DOCX and the HTML show the same size.", "properties": { "wMm": { "type": "number", "minimum": 20, "maximum": 1200, "description": "Width in millimetres." }, "hMm": { "type": "number", "minimum": 20, "maximum": 1200, "description": "Height in millimetres." }, "mode": { "enum": [0, 1, 2], "description": "How it was set: 0 = dragged by hand, 1 = fit to shapes, 2 = fit to page. A number, never a word: a string under a block would be read as editable text." } } },
     "anchor": { "type": "object", "required": ["side", "at"], "properties": { "side": { "enum": ["t", "r", "b", "l"], "description": "The face: top, right, bottom or left." }, "at": { "type": "number", "minimum": 0, "maximum": 1, "description": "How far along the face: top to bottom for l and r, left to right for t and b. Kept as a fraction, so it survives moving and resizing the shape." } }, "additionalProperties": false }
   },
   "properties": {
+    "frame": { "$ref": "#/$defs/blockFrame", "description": "Documentation only: the canvas lives on the block, not on the model (see $defs.blockFrame). A model never carries it." },
     "kind": { "const": "bw-diagram" },
     "version": { "const": 1 },
     "flow": { "enum": ["ltr", "rtl"], "description": "Direction of the chain (the house reference runs left to right in both editions)." },

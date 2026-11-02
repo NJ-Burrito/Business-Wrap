@@ -992,7 +992,17 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                     add_script_runs(cap, f"{block.get('figureLabel', '')} {counters['figure']}: {block.get('caption', '')}".strip(), font, bold=True)
                     p = document.add_paragraph()
                     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    p._p.append(diagram_run(block['resolved'], font, block.get('caption', '')))
+                    fr = block.get('frame') if isinstance(block.get('frame'), dict) else None
+                    frame_mm = None
+                    if fr:
+                        try:
+                            # the saved canvas, kept inside the landscape sheet's text area (the editor and the PDF clamp to the page's own room the same way)
+                            fw, fh = float(fr.get('wMm')), float(fr.get('hMm'))
+                            if fw > 0 and fh > 0:
+                                frame_mm = (min(max(fw, 20.0), 10.59 * 25.4), min(max(fh, 20.0), 5.7 * 25.4))
+                        except (TypeError, ValueError):
+                            frame_mm = None
+                    p._p.append(diagram_run(block['resolved'], font, block.get('caption', ''), frame_mm=frame_mm))
                 elif kind == 'stories':
                     add_stories(document, block, font, counters, ch['number'], story_seq)
                     counters['stories_block'] += 1

@@ -141,10 +141,24 @@ class _Canvas:
                 f'{group}</a:graphicData></a:graphic></wp:inline></w:drawing></w:r>')
 
 
-def diagram_run(resolved, font, title='', max_w_in=10.2, max_h_in=5.5):
-    """One <w:r> holding the whole diagram as a native shape group."""
-    cv = _Canvas(resolved['view'], max_w_in, max_h_in)
-    v = resolved['view']
+FRAME_CAP_MM = 0.4  # mm per drawing unit at most (engine/diagram.mjs FRAME.cap): the same rule as the PDF and the editor
+
+
+def frame_view(view, w_mm, h_mm):
+    """The drawing's view grown to the canvas' proportions and centred (engine/diagram.mjs frameView): the group is then exactly w_mm x h_mm."""
+    sc = min(w_mm / view['w'], h_mm / view['h'], FRAME_CAP_MM)
+    w, h = w_mm / sc, h_mm / sc
+    return {'x': view['x'] - (w - view['w']) / 2, 'y': view['y'] - (h - view['h']) / 2, 'w': w, 'h': h}
+
+
+def diagram_run(resolved, font, title='', max_w_in=10.2, max_h_in=5.5, frame_mm=None):
+    """One <w:r> holding the whole diagram as a native shape group. frame_mm = (w, h): the block's saved canvas (block.frame), drawn at exactly that size."""
+    view = resolved['view']
+    if frame_mm:
+        view = frame_view(view, frame_mm[0], frame_mm[1])
+        max_w_in, max_h_in = frame_mm[0] / 25.4, frame_mm[1] / 25.4
+    cv = _Canvas(view, max_w_in, max_h_in)
+    v = view
     cv.shape('rect', v['x'], v['y'], v['w'], v['h'], '#FFFFFF', None, 0, name='Paper')
     for it in resolved['items']:
         t = it['t']
