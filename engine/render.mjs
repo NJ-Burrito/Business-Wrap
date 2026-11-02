@@ -763,7 +763,7 @@ export function renderParts(doc, o) {
     const cw = Array.isArray(t.colWidths) && t.colWidths.length === width ? t.colWidths : null;
     const covered = coveredOf(t.merges || []);
     const spanAt = new Map((t.merges || []).map((m) => [`${m.r},${m.c}`, m]));
-    const keep = Array.from({ length: width }, (_, i) => (cw ? +cw[i] > 0 : t.merges?.length ? true : rowsIn.some((r) => !blank(r[i]))));
+    const keep = Array.from({ length: width }, (_, i) => (cw ? +cw[i] > 0 : t.merges?.length || t.keepAll ? true : rowsIn.some((r) => !blank(r[i]))));
     const idx = keep.map((k, i) => (k ? i : -1)).filter((i) => i >= 0);
     const columns = columnsIn.length ? idx.map((i) => columnsIn[i] ?? '') : [];
     const rows = rowsIn.map((r) => idx.map((i) => (blank(r[i]) ? (isRich(r[i]) ? { ...r[i], text: none } : none) : r[i])));
@@ -1128,12 +1128,16 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     return doc.chapters.flatMap((ch, ci) => {
       if (ch.tocHidden) return [];
       const cp = `/chapters/${ci}`;
-      const head = row(NUM.ch[ci], ch.title, 'toc-chapter', cp, cp + '/number', cp + '/title');
+      const numPtr = (p) => (NUM.manual ? p : ''); // the printed numbers are computed from position: only a manual-numbering document types them (UAT M5)
+      const head = row(NUM.ch[ci], ch.title, 'toc-chapter', cp, numPtr(cp + '/number'), cp + '/title');
       if (ch.sections.length === 1) {
         const cards = ch.sections[0].blocks.map((x, k) => [x, k]).filter(([x]) => x.kind === 'subhead' && !x.tocHidden).map(([x, k]) => row('', x.text, 'toc-card', `${cp}/sections/0/blocks/${k}`, '', `${cp}/sections/0/blocks/${k}/text`));
-        return [head, ...cards];
+        const only = ch.sections[0];
+        // a chapter of ONE story section: the card prints «6.1», so the contents list it too (UAT L2); other one-section chapters list only their sub-heads
+        const lone = only.blocks?.[0]?.kind === 'stories' && !only.tocHidden ? [row(NUM.sec[ci][0], only.title, '', `${cp}/sections/0`, numPtr(`${cp}/sections/0/number`), `${cp}/sections/0/title`)] : [];
+        return [head, ...lone, ...cards];
       }
-      return [head, ...ch.sections.map((sec, si) => [sec, si]).filter(([sec]) => !sec.tocHidden).map(([sec, si]) => row(NUM.sec[ci][si], sec.title, '', `${cp}/sections/${si}`, `${cp}/sections/${si}/number`, `${cp}/sections/${si}/title`))];
+      return [head, ...ch.sections.map((sec, si) => [sec, si]).filter(([sec]) => !sec.tocHidden).map(([sec, si]) => row(NUM.sec[ci][si], sec.title, '', `${cp}/sections/${si}`, numPtr(`${cp}/sections/${si}/number`), `${cp}/sections/${si}/title`))];
     });
   }
 
@@ -1223,7 +1227,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
       : `<tr><th${dp('/labels/control/' + k)}>${bidi(L.control[k])}</th><td${dp('/control/' + k)}>${bidi(c[k])}</td></tr>`)
     .join('')}</table></div>`,
     revisions: () => `<div data-part="revisions"><h3>${lb('revisions')}</h3>
-  ${table({ columns: [L.revVersion, L.revDate], colPtrs: ['/labels/revVersion', '/labels/revDate'], rows: (doc.revisions || []).map((r) => r.slice(0, 2)), rowsPtr: '/revisions' })}</div>`,
+  ${table({ columns: [L.revVersion, L.revDate], colPtrs: ['/labels/revVersion', '/labels/revDate'], rows: (doc.revisions || []).map((r) => r.slice(0, 2)), rowsPtr: '/revisions', keepAll: true /* UAT H3: a still-empty date stays a cell a person can type in */ })}</div>`,
     toc: () => `<div data-part="toc"><h3>${lb('contents')}</h3>
   ${toc}</div>`,
   };
