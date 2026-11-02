@@ -1,5 +1,5 @@
 ---
-description: Business-Wrap reset: list, and with the user's yes send to the Recycle Bin, the machine state (Edge profile, .system folders, local state; --all also whole workspaces and plugin data) so an old library cannot come back.
+description: Business-Wrap reset: list, and with the user's yes send to the Recycle Bin, the machine state (browser profile, .system folders, local state; --all also whole workspaces and plugin data) so an old library cannot come back.
 argument-hint: --dry-run | [--all] --yes
 allowed-tools: Bash(node:*)
 ---

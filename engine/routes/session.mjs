@@ -1,7 +1,7 @@
 // Tabs and runs (A10): each tab holds a live connection (EventSource) and pushes its state; on pagehide it flushes
 // with sendBeacon. The last connection gone → 4 s (a reload reconnects within it) → run.json, then ctx.onIdle
 // (the host's server exits 0). A relaunch asks /api/session/last and either resumes every tab (the server opens
-// Edge with all URLs, 30 per command line) or archives the run (new work).
+// the browser with all URLs, 30 per command line) or archives the run (new work).
 // Files: <workspace>\.system\sessions\<runId>\<tabId>.json, run.json; archive\<YYYY-MM-DD>\<runId>\. Machine-only.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -10,6 +10,7 @@ import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { ensure, readJson, localDir, subdir, systemDir } from '../workspace.mjs';
 import { launchBrowser, closeBrowsers, noteHost, hostState } from '../host.mjs';
+import { BROWSERS, installedBrowsers, osDefaultBrowser, classifyBrowser, isChromium, chooseBrowser, savedBrowser, saveBrowser } from '../export.mjs';
 
 /** editor/session-worker.js, next to the editor sources (installed copies keep the same layout). */
 const WORKER_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'editor', 'session-worker.js');
@@ -24,12 +25,16 @@ const day = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate(
  *  event stream and lists its tabs with POST /api/session/tabs; a tab is live while some connected client lists it. A page that connects
  *  directly (?tab=, an older page) is a client of one tab. clients: Map<clientId, {id, conns:Set<res>, tabs:Map<tab, info>, since, listedAt}>. */
 export function state(ctx) {
-  return (ctx.session ||= { runId: `${stamp(new Date())}-${crypto.randomBytes(3).toString('hex')}`, startedAt: new Date().toISOString(), clients: new Map(), timer: null, ended: false, inflight: 0, closing: new Map(), startedMs: Date.now(), leases: new Map(), revs: new Map(), beats: new Map(), asleepKey: '' });
+  return (ctx.session ||= { runId: `${stamp(new Date())}-${crypto.randomBytes(3).toString('hex')}`, startedAt: new Date().toISOString(), clients: new Map(), timer: null, ended: false, inflight: 0, closing: new Map(), startedMs: Date.now(), leases: new Map(), revs: new Map(), beats: new Map(), asleepKey: '', lost: new Map() });
 }
-/** 0.15.3 T2: a tab not heard from for this long is ASLEEP (Edge sleeping tabs, a frozen or discarded page): the bridge answers TAB_ASLEEP at once instead of waiting 15 s. The worker pings every 3 s. */
+/** 0.15.3 T2: a tab not heard from for this long is ASLEEP (a browser's sleeping or snoozed tab, a frozen or discarded page): the bridge answers TAB_ASLEEP at once instead of waiting 15 s. The worker pings every 3 s. */
 export const asleepMs = () => Number(process.env.BW_ASLEEP_MS) || 9000;
+/** 0.15.9 A4: a tab that vanished without a goodbye (a browser discarded it, or its page was killed) is `lost`, not closed: its saved state stays in the run, a command to it gets
+ *  TAB_ASLEEP, and when the LAST connection goes without a goodbye the host waits this long before it exits (a discarded last tab can come back and reload). A clean close keeps the 4 s. */
+export const discardGraceMs = () => Number(process.env.BW_DISCARD_GRACE_MS) || (process.env.BW_IDLE_MS ? IDLE_MS : 60000);
 /** Any proof that a tab's page runs (a state push, a flush, a bridge reply) counts as a beat, whatever the last tab list said. */
 export const beat = (ctx, tab) => { if (typeof tab === 'string') state(ctx).beats.set(tab, Date.now()); };
+const awakeOf = (a) => (a && typeof a === 'object' ? { rtc: a.rtc === true, tickMs: [1000, 5000, 60000].includes(a.tickMs) ? a.tickMs : 1000, stalls: Math.min(1e6, Math.max(0, Number(a.stalls) || 0)), lagMs: Math.min(1e9, Math.max(0, Number(a.lagMs) || 0)), frozen: Math.min(1e6, Math.max(0, Number(a.frozen) || 0)), resumed: Math.min(1e6, Math.max(0, Number(a.resumed) || 0)) } : null);
 const connected = (s) => [...s.clients.values()].filter((c) => c.conns.size);
 const liveTabs = (s) => new Set(connected(s).flatMap((c) => [...c.tabs.keys()]));
 const nConns = (s) => connected(s).reduce((n, c) => n + c.conns.size, 0);
@@ -104,7 +109,12 @@ const historyProfile = (ctx) => (ctx?.workspace ? path.join(systemDir(ctx.worksp
 function keepProfile(p, ctx) {
   if (!p || typeof p !== 'object' || typeof p.profile !== 'string' || !p.profile || p.profile.length > 2e6) return false;
   try { JSON.parse(p.profile); } catch { return false; }
-  const rec = JSON.stringify({ profile: p.profile, actor: typeof p.actor === 'string' ? p.actor.slice(0, 80) : '', at: new Date().toISOString() });
+  // 0.15.9 B8: the person's saved screen preferences (theme, direction, spelling dictionary, ...) travel with the host too, so a new browser profile (Chrome after Edge) starts as they left it.
+  // Only `bw:` keys of plain text, never the signing key; merged over what is kept, so a browser that knows fewer keys never wipes the others.
+  let prefs = {};
+  try { prefs = JSON.parse(fs.readFileSync(profileFile(), 'utf8')).prefs || {}; } catch { /* none yet */ }
+  if (p.prefs && typeof p.prefs === 'object') for (const [k, v] of Object.entries(p.prefs).slice(0, 60)) if (/^bw:[A-Za-z0-9:_-]{1,40}$/.test(k) && !/key/i.test(k) && typeof v === 'string' && v.length <= 4000 && (k in prefs || Object.keys(prefs).length < 80)) prefs[k] = v;
+  const rec = JSON.stringify({ profile: p.profile, actor: typeof p.actor === 'string' ? p.actor.slice(0, 80) : '', prefs, at: new Date().toISOString() });
   fs.mkdirSync(localDir(), { recursive: true });
   fs.writeFileSync(profileFile(), rec);
   if (historyProfile(ctx)) { ensure(ctx.workspace); fs.writeFileSync(historyProfile(ctx), zlib.gzipSync(rec)); }
@@ -133,7 +143,7 @@ function finish(ctx) {
   const dir = runDir(ctx, s.runId);
   const tabs = tabsOf(dir).map((x) => ({ tab: x.tab, title: x.title }));
   if (tabs.length) fs.writeFileSync(path.join(dir, 'run.json'), JSON.stringify({ runId: s.runId, startedAt: s.startedAt, endedAt: new Date().toISOString(), tabs }, null, 1));
-  if (process.env.BW_HOST_TOKEN) closeBrowsers(hostState()?.browserPids || [], { scan: false }); // the windows this host opened (a background Edge left on its profile); no slow process scan here
+  if (process.env.BW_HOST_TOKEN) closeBrowsers(hostState()?.browserPids || [], { scan: false }); // the windows this host opened (a background browser left on its profile); no slow process scan here
   ctx.onIdle?.();
 }
 function archive(ctx, id) {
@@ -192,6 +202,47 @@ function writeTab(ctx, b) {
   return true;
 }
 
+/** 0.15.9 R4: the older documents saved in the save folder («المستندات - Documents»): one folder per document, its .html inside (Versions, Exports and Sources are deeper and never listed).
+ *  Newest first; `q` filters by name or folder (case-insensitive, Unicode-normalised). Read only: engine/workspace.mjs is not touched. */
+export function olderDocs(ctx, q = '', limit = 300) {
+  const root = ensure(ctx.workspace).dirs.docs;
+  const out = [];
+  const norm = (x) => String(x || '').normalize('NFC').toLowerCase();
+  const take = (dir, rel) => {
+    let names = [];
+    try { names = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of names) {
+      if (!e.isFile() || !/\.html?$/i.test(e.name)) continue;
+      const file = path.join(dir, e.name);
+      let st; try { st = fs.statSync(file); } catch { continue; }
+      out.push({ id: [...rel, e.name].join('/'), name: e.name.replace(/\.html?$/i, ''), folder: rel[0] || '', file, at: st.mtime.toISOString(), size: st.size });
+    }
+  };
+  if (!root || !fs.existsSync(root)) return [];
+  take(root, []);
+  try { for (const d of fs.readdirSync(root, { withFileTypes: true })) if (d.isDirectory() && !/^[._]/.test(d.name)) take(path.join(root, d.name), [d.name]); } catch { /* unreadable */ }
+  const needle = norm(q).trim();
+  return out.filter((x) => !needle || norm(x.name).includes(needle) || norm(x.folder).includes(needle)).sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, Math.max(1, Math.min(1000, Number(limit) || 300)));
+}
+/** One older document's file by its id (a path relative to the documents folder): never outside it, only .html, not too big. */
+function olderDocFile(ctx, id) {
+  const root = path.resolve(ensure(ctx.workspace).dirs.docs);
+  const f = path.resolve(root, String(id || '').split('/').join(path.sep));
+  const rel = path.relative(root, f);
+  if (!rel || rel.startsWith('..') || path.isAbsolute(rel) || !/\.html?$/i.test(f) || rel.split(path.sep).length > 2) return null;
+  try { const st = fs.statSync(f); return st.isFile() && st.size <= 200 * 1024 * 1024 ? f : null; } catch { return null; }
+}
+/** What the last session left: its tabs with title, last-edited time and language. */
+function lastRun(ctx) {
+  const s = state(ctx);
+  const dirs = fs.existsSync(root(ctx)) ? fs.readdirSync(root(ctx)).filter((d) => RUN.test(d) && d !== s.runId).sort().reverse() : [];
+  for (const d of dirs) {
+    const tabs = tabsOf(runDir(ctx, d));
+    if (tabs.length) return { runId: d, tabs: tabs.map((x) => ({ tab: x.tab, title: x.title, at: x.at, ed: x.ed || null })).sort((a, b) => (String(a.at) < String(b.at) ? 1 : -1)) };
+  }
+  return { runId: null, tabs: [] };
+}
+
 /** The registry as GET /api/host/health reports it (engine/routes/health.mjs). */
 export function registry(ctx) {
   const s = state(ctx);
@@ -202,20 +253,47 @@ export function registry(ctx) {
     const listed = Math.round((o.ago || 0) + (c.listedAt ? now - c.listedAt : 0));
     const heard = s.beats.has(tab) ? now - s.beats.get(tab) : Infinity; // a push, a flush or a bridge reply is a fresher proof than the list
     const lastBeatMs = Math.min(listed, Math.round(heard));
-    const rec = { tab, svc: o.svc || null, docs: o.docs || [], automation: !!o.automation, live: true, lastBeatMs, asleep: lastBeatMs > asleepMs(), owns: [...s.leases].filter(([, l]) => l.tab === tab).map(([d]) => d) };
+    const rec = { tab, svc: o.svc || null, docs: o.docs || [], automation: !!o.automation, live: true, lastBeatMs, asleep: lastBeatMs > asleepMs(), owns: [...s.leases].filter(([, l]) => l.tab === tab).map(([d]) => d), ...(o.awake ? { awake: o.awake } : {}) };
     // a tab can be listed by two clients (a frozen old leader still holds its stream): the freshest proof wins
     const at = tabs.findIndex((x) => x.tab === tab);
     if (at < 0) tabs.push(rec); else if (rec.lastBeatMs < tabs[at].lastBeatMs) tabs[at] = rec;
   }
+  for (const [tab, l] of [...s.lost]) { // a discarded or killed tab: still the run's, asleep until it reloads (it re-lists itself) or the grace is over
+    if (now - l.at > Math.max(discardGraceMs(), 600000)) { s.lost.delete(tab); continue; }
+    if (!tabs.some((x) => x.tab === tab)) tabs.push({ tab, svc: l.svc || null, docs: l.docs || [], automation: !!l.automation, live: false, discarded: true, lastBeatMs: now - l.at, asleep: true, owns: [] });
+  }
   const warnings = [];
-  for (const t of tabs) if (t.asleep) warnings.push({ code: 'TAB_ASLEEP', tab: t.tab, lastBeatMs: t.lastBeatMs, how: 'the tab stopped answering (Edge sleeping tab, a frozen or discarded page): click the tab to wake it, or reopen with business-wrap open (its Edge is started with sleeping tabs off)' });
+  for (const t of tabs) if (t.discarded) warnings.push({ code: 'TAB_ASLEEP', tab: t.tab, lastBeatMs: t.lastBeatMs, discarded: true, how: 'the browser discarded this tab to save memory (or its page was killed): click the tab to reload it (its work comes back), or reopen with business-wrap open' });
+  for (const t of tabs) if (t.asleep && !t.discarded) warnings.push({ code: 'TAB_ASLEEP', tab: t.tab, lastBeatMs: t.lastBeatMs, how: 'the tab stopped answering (the browser put it to sleep, froze or discarded it): click the tab to wake it, or reopen with business-wrap open (the browser it starts has sleeping tabs off)' });
   if (nConns(s) >= 5) warnings.push({ code: 'MANY_CLIENTS', conns: nConns(s), note: 'five or more event streams: pages that do not use the shared worker each hold one of the six connections a browser allows per origin' });
   for (const t of tabs) if (t.lastBeatMs > 15000) warnings.push({ code: 'TAB_STALE', tab: t.tab, lastBeatMs: t.lastBeatMs });
   return { runId: s.runId, ...leaseInfo(s), clients: cl.map((c) => ({ client: c.id, conns: c.conns.size, tabs: [...c.tabs.keys()], since: new Date(c.since).toISOString() })), tabs, warnings };
 }
 
+/** 0.15.9 B4: the browsers Settings offers. `choices` = «default» + every Chromium browser found; `chosen` = what the next window will use and why (`via`). */
+export function browserInfo() {
+  const installed = installedBrowsers();
+  const def = osDefaultBrowser();
+  const defId = def ? classifyBrowser(def) : '';
+  const chosen = chooseBrowser();
+  return {
+    saved: savedBrowser(),
+    chosen: chosen ? { id: chosen.id, name: chosen.name, via: chosen.via, closable: chosen.chromium } : null,
+    systemDefault: def ? { id: defId, name: BROWSERS.find((b) => b.id === defId)?.name || (defId === 'other' ? def.split(/[\\/]/).pop() : defId), chromium: isChromium(defId) } : null,
+    choices: BROWSERS.filter((b) => installed[b.id]).map((b) => ({ id: b.id, name: b.name, recommended: b.id === 'chrome' })),
+    chromeFound: !!installed.chrome,
+  };
+}
+
 export default async (req, url, send, ctx, res) => {
   const p = url.pathname;
+  if (p === '/api/browser') {
+    try {
+      if (req.method === 'GET') { send(200, { ok: true, ...browserInfo() }); return true; }
+      if (req.method === 'POST') { const b = await readJson(req, 1e4); saveBrowser(typeof b.browser === 'string' ? b.browser : ''); send(200, { ok: true, ...browserInfo() }); return true; } // applies to the next window; nothing already open is touched
+    } catch (e) { send(e.code === 400 ? 400 : 500, { error: String(e.message || e).slice(0, 200) }); return true; }
+    return false;
+  }
   if (p === '/api/profile') {
     // H3: the profile (name, picture, actor id) kept on this machine the moment it is set (not only with a tab's push)
     try {
@@ -257,10 +335,13 @@ export default async (req, url, send, ctx, res) => {
         noteHost({ tabs: liveTabs(s).size });
         reconcile(ctx);
         if (!connected(s).length) {
-          // the last connection gone: every tab that closed in the last IDLE_MS went with it (a window closed, Edge quit) and stays
+          // the last connection gone: every tab that closed in the last IDLE_MS went with it (a window closed, the browser quit) and stays
           for (const t of s.closing.values()) clearTimeout(t);
           s.closing.clear();
-          clearTimeout(s.timer); s.timer = setTimeout(() => { if (!connected(s).length) finish(ctx); }, IDLE_MS);
+          // 0.15.9 A4: connections gone while tabs were still listed = no goodbye (a discarded last tab, a killed browser): those tabs are lost, and the host waits before it exits
+          const abrupt = [...c.tabs].filter(([t]) => !liveTabs(s).has(t));
+          for (const [t, o] of abrupt) if (!s.lost.has(t)) s.lost.set(t, { at: Date.now(), svc: o.svc, docs: o.docs, automation: o.automation });
+          clearTimeout(s.timer); s.timer = setTimeout(() => { if (!connected(s).length) finish(ctx); }, abrupt.length ? discardGraceMs() : IDLE_MS);
         } else settle(ctx, gone);
       });
       return true;
@@ -276,9 +357,12 @@ export default async (req, url, send, ctx, res) => {
       for (const x of b.tabs) {
         const o = typeof x === 'string' ? { tab: x } : x;
         if (!o || !TAB.test(String(o.tab))) { send(400, { error: 'tab' }); return true; }
-        next.set(o.tab, { tab: o.tab, svc: typeof o.svc === 'string' ? o.svc.slice(0, 120) : undefined, docs: Array.isArray(o.docs) ? o.docs.filter((d) => typeof d === 'string').slice(0, 50).map((d) => d.slice(0, 80)) : [], automation: o.automation === true, ago: Math.max(0, Number(o.ago) || 0) });
+        next.set(o.tab, { tab: o.tab, svc: typeof o.svc === 'string' ? o.svc.slice(0, 120) : undefined, docs: Array.isArray(o.docs) ? o.docs.filter((d) => typeof d === 'string').slice(0, 50).map((d) => d.slice(0, 80)) : [], automation: o.automation === true, ago: Math.max(0, Number(o.ago) || 0), ...(awakeOf(o.awake) ? { awake: awakeOf(o.awake) } : {}) });
       }
-      const left = [...c.tabs.keys()].filter((t) => !next.has(t));
+      const lostNow = new Set(Array.isArray(b.lost) ? b.lost.filter((t) => TAB.test(String(t))).slice(0, 400) : []);
+      for (const t of next.keys()) s.lost.delete(t); // it is back
+      for (const t of lostNow) if (!next.has(t) && !s.lost.has(t)) { const was = c.tabs.get(t) || {}; s.lost.set(t, { at: Date.now(), svc: was.svc, docs: was.docs, automation: was.automation }); }
+      const left = [...c.tabs.keys()].filter((t) => !next.has(t) && !lostNow.has(t)); // a lost tab is not a closed one: no 4 s drop, its record stays
       c.tabs = next;
       c.listedAt = Date.now();
       if (!c.conns.size && !next.size) s.clients.delete(c.id);
@@ -299,28 +383,41 @@ export default async (req, url, send, ctx, res) => {
       const tab = url.searchParams.get('tab');
       const f = path.join(runDir(ctx, s.runId), `${tab}.json`);
       if (!TAB.test(String(tab)) || !fs.existsSync(f)) { send(404, { error: 'not found' }); return true; }
-      send(200, fs.readFileSync(f, 'utf8'));
+      // x-bw-lost: this tab vanished without a goodbye (a discarded or killed page) and has come back: it puts its saved state back (editor/ext/12-session.js boot)
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-bw-lost': s.lost.has(tab) ? '1' : '0' });
+      res.end(fs.readFileSync(f, 'utf8'));
       return true;
     }
     if (req.method === 'GET' && p === '/api/session/last') {
-      const dirs = fs.existsSync(root(ctx)) ? fs.readdirSync(root(ctx)).filter((d) => RUN.test(d) && d !== s.runId).sort().reverse() : [];
-      for (const d of dirs) {
-        const tabs = tabsOf(runDir(ctx, d));
-        if (tabs.length) { send(200, { runId: d, tabs: tabs.map((x) => ({ tab: x.tab, title: x.title, at: x.at })) }); return true; }
-      }
-      send(200, { runId: null, tabs: [] });
+      send(200, lastRun(ctx));
       return true;
     }
+    // 0.15.9 R4 / R6: the same lists for the popup and for the MCP tools
+    if (req.method === 'GET' && p === '/api/session/documents') { send(200, { ok: true, docs: olderDocs(ctx, url.searchParams.get('q') || '', url.searchParams.get('limit') || 300) }); return true; }
+    if (req.method === 'GET' && p === '/api/session/document') {
+      const f = olderDocFile(ctx, url.searchParams.get('id'));
+      if (!f) { send(404, { error: 'not found' }); return true; }
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'content-security-policy': 'sandbox' });
+      res.end(fs.readFileSync(f));
+      return true;
+    }
+    if (req.method === 'GET' && p === '/api/session/recent') { send(200, { ok: true, last: lastRun(ctx), older: olderDocs(ctx, url.searchParams.get('q') || '', url.searchParams.get('limit') || 50) }); return true; }
     if (req.method === 'POST' && (p === '/api/session/resume' || p === '/api/session/new')) {
-      const { runId, tab: asker } = await readJson(req);
+      const { runId, tab: asker, tabs: pick } = await readJson(req);
       if (!RUN.test(String(runId)) || runId === s.runId || !fs.existsSync(runDir(ctx, runId))) { send(400, { error: 'runId' }); return true; }
       if (p === '/api/session/new') { send(200, { ok: archive(ctx, runId) }); return true; }
       // resume: the tabs move into this run, the old run is archived, the server opens every tab at once
-      const tabs = tabsOf(runDir(ctx, runId));
+      let tabs = tabsOf(runDir(ctx, runId));
+      const everyone = tabs.length;
+      if (Array.isArray(pick)) { tabs = tabs.filter((x) => pick.includes(x.tab)); if (!tabs.length) { send(400, { error: 'tabs' }); return true; } } // 0.15.9 R1: only the ones the person picked
       const dir = runDir(ctx, s.runId);
       fs.mkdirSync(dir, { recursive: true });
       for (const x of tabs) fs.writeFileSync(path.join(dir, `${x.tab}.json`), JSON.stringify(x));
-      archive(ctx, runId);
+      if (tabs.length === everyone) archive(ctx, runId);
+      else { // the others stay offered next time; the ones moved leave the old run, and an old run left with none is archived
+        for (const x of tabs) fs.rmSync(path.join(runDir(ctx, runId), `${x.tab}.json`), { force: true });
+        if (!tabsOf(runDir(ctx, runId)).length) archive(ctx, runId);
+      }
       // the tab that asked is not a tab of the run: it becomes the first resumed tab (the page navigates itself there),
       // so a resume never adds a tab, and its own fresh record leaves this run
       if (TAB.test(String(asker)) && !tabs.some((x) => x.tab === asker)) fs.rmSync(path.join(dir, `${asker}.json`), { force: true });

@@ -33,7 +33,7 @@ export function pickTab(ctx, { doc, tab }) {
   const tabs = r.tabs.filter((t) => t.live);
   const owner = doc ? r.leases?.[doc] : null;
   if (owner && tab && tab !== owner && tabs.some((t) => t.tab === owner)) return { notOwner: owner };
-  if (tab) return tabs.find((t) => t.tab === tab) || null;
+  if (tab) return tabs.find((t) => t.tab === tab) || r.tabs.find((t) => t.tab === tab && t.discarded) || null; // 0.15.9: a lost (discarded / killed) tab is asleep, not absent: TAB_ASLEEP says what to do
   if (owner) { const o = tabs.find((t) => t.tab === owner); if (o) return o; }
   const fresh = (a) => [...a].sort((x, y) => (x.asleep - y.asleep) || (x.lastBeatMs - y.lastBeatMs))[0] || null;
   if (doc) { const own = fresh(tabs.filter((t) => t.docs.includes(doc) || t.svc === doc)); if (own) return own; }
@@ -66,7 +66,7 @@ export default async (req, url, send, ctx) => {
     const target = pickTab(ctx, { doc, tab: b.tab });
     if (target?.notOwner) { send(409, { ok: false, code: 'NOT_OWNER', error: `tab ${b.tab} is a follower of ${doc}: it is owned by tab ${target.notOwner}`, owner: target.notOwner, tab: b.tab, how: 'send the call to the owner (omit tab to let the host route it)' }); return true; }
     if (!target) { send(404, { ok: false, code: 'NO_TAB', error: b.tab ? `tab ${b.tab} is not connected` : 'no editor tab is connected to this host', how: 'open the editor (open_in_editor tool or business-wrap open) and retry' }); return true; }
-    if (target.asleep) { send(503, { ok: false, code: 'TAB_ASLEEP', error: `tab ${target.tab} is asleep: it has not answered for ${target.lastBeatMs} ms (Edge sleeping tab, a frozen or discarded page)`, tab: target.tab, lastBeatMs: target.lastBeatMs, how: 'click the tab to wake it, or reopen the editor with business-wrap open (its Edge keeps tabs awake) and retry' }); return true; }
+    if (target.asleep) { send(503, { ok: false, code: 'TAB_ASLEEP', error: `tab ${target.tab} is asleep: it has not answered for ${target.lastBeatMs} ms (the browser put it to sleep, froze or discarded it)`, tab: target.tab, lastBeatMs: target.lastBeatMs, how: 'click the tab to wake it, or reopen the editor with business-wrap open (the browser it starts keeps tabs awake) and retry' }); return true; }
     const id = crypto.randomUUID();
     const answer = await new Promise((resolve) => {
       const timer = setTimeout(() => { pending.delete(id); resolve({ ok: false, code: 'TAB_TIMEOUT', message: `tab ${target.tab} did not answer within ${timeoutMs()} ms`, tab: target.tab, lastBeatMs: registry(ctx).tabs.find((t) => t.tab === target.tab)?.lastBeatMs ?? null }); }, timeoutMs());

@@ -162,13 +162,13 @@ try {
   check('T2: the woken old leader steps down (one stream, not two)', stepped, await tr(L));
   await D.close({ runBeforeUnload: false }); await E.close({ runBeforeUnload: false });
 
-  // Edge's launch line
+  // the editor browser's launch line (0.15.9: any Chromium, Google Chrome first)
   const stub = path.join(tmp, 'browser-stub.jsonl');
   process.env.BW_BROWSER_STUB = stub;
   H.launchBrowser(['http://127.0.0.1:1/']);
   delete process.env.BW_BROWSER_STUB;
   const argv = JSON.parse(fs.readFileSync(stub, 'utf8').trim().split('\n')[0]).args;
-  check('T2: Edge is launched with the keep-awake switches', ['--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'].every((f) => argv.includes(f)) && argv.some((a) => /^--disable-features=.*SleepingTabs/.test(a)), argv.join(' '));
+  check('T2: the browser is launched with the keep-awake switches', ['--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'].every((f) => argv.includes(f)) && argv.some((a) => /^--disable-features=.*SleepingTabs/.test(a)), argv.join(' '));
 
   // ── T10: the MCP server ──
   const { mcpRegistration } = await import('../mcp/startup.mjs');

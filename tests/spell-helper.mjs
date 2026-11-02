@@ -8,10 +8,9 @@ import { chromium } from 'playwright-core';
 import { launchOptions } from '../engine/export.mjs';
 
 export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const EDGE = ['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Microsoft/Edge/Application/msedge.exe'].find((p) => fs.existsSync(p));
-/** Edge when it is installed (Windows), else the house Chrome (Linux CI). */
-export const launch = () => chromium.launch(EDGE ? { headless: true, executablePath: EDGE } : launchOptions());
-export const browserName = () => (EDGE ? 'msedge' : 'chrome');
+/** 0.15.9 B9: the house browser, Google Chrome first (launchOptions walks the same chain as the editor). */
+export const launch = () => chromium.launch(launchOptions());
+export const browserName = () => 'chrome';
 export const tmpDir = (p) => fs.mkdtempSync(path.join(os.tmpdir(), p));
 /** The page's UI lives in a shadow root: run fn(root, arg) inside it. */
 export const shRoot = (page, fn, arg) => page.evaluate(([src, a]) => { const r = document.getElementById('bw-ui-host').shadowRoot; return new Function('r', 'a', `return (${src})(r, a)`)(r, a); }, [fn.toString(), arg]);

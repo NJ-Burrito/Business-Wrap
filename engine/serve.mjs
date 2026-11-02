@@ -281,7 +281,7 @@ usage: node engine/serve.mjs <editor.html> [--port 4317] [--out <exports folder>
         onUpdated: () => { server.close(() => process.exit(RESTART_CODE)); server.closeAllConnections?.(); setTimeout(() => process.exit(RESTART_CODE), 3000).unref(); },
       });
       console.log(`Business-Wrap editor on http://127.0.0.1:${server.address().port}/  (Ctrl+C to stop)`);
-      console.log('Open that address in Chrome or Edge. Use the editor through this server, not by double-clicking the HTML file: export, print, the printers list and updates need it.');
+      console.log('Open that address in Google Chrome (or another Chromium browser). Use the editor through this server, not by double-clicking the HTML file: export, print, the printers list and updates need it.');
     } catch (e) {
       console.error(`serve failed: ${e.message}`);
       process.exit(1);

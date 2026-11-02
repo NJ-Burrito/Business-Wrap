@@ -1,5 +1,5 @@
 ---
-description: Open the Business-Wrap editor: start the local host in the background (no window) and an Edge window (a blank document when no file is given).
+description: Open the Business-Wrap editor: start the local host in the background (no window) and a browser window, Google Chrome first (a blank document when no file is given).
 argument-hint: [doc.json | folder | editor.html] [--port 4317]
 allowed-tools: Bash(node:*)
 ---

@@ -9,11 +9,17 @@
  * HTML\ instead of the downloads; the first Save or export asks for the parent folder once; Settings «مجلد الحفظ».
  */
 // the host's copy of the profile, into an empty localStorage before any boot handler (30-profile asks at boot)
-if (!ls.get('bw:profile')) {
-  try {
-    const hp = JSON.parse(document.getElementById('bw-host-profile')?.textContent || 'null');
-    if (hp?.profile) { ls.set('bw:profile', hp.profile); if (hp.actor && !ls.get('bw:actor')) ls.set('bw:actor', hp.actor); }
-  } catch { /* no host profile */ }
+// 0.15.9 B8: the saved screen preferences (theme, direction, spelling dictionary ...) are kept with the host as well (PREF_KEYS), so a browser profile that has none of them (Chrome after
+// Edge, a wiped profile) starts as the person left it. The editor reads some of them while it loads, before this file runs, so a restore that set something reloads the page once.
+const PREF_KEYS = /^bw:(dark|ui|calm|dir:(ar|en)|spell:(on|ar|en|user|ign)|ruler|pages|snap|explainers|xpl-panel|rb:c|docx-fonts|exportFolder|wm-intro|seen-version)$/;
+const prefsNow = () => { const o = {}; try { for (const k of Object.keys(localStorage)) if (PREF_KEYS.test(k)) { const v = localStorage.getItem(k); if (typeof v === 'string' && v.length <= 4000) o[k] = v; } } catch { /* no storage */ } return o; };
+{
+  let hp = null;
+  try { hp = JSON.parse(document.getElementById('bw-host-profile')?.textContent || 'null'); } catch { /* no host profile */ }
+  if (hp?.profile && !ls.get('bw:profile')) { ls.set('bw:profile', hp.profile); if (hp.actor && !ls.get('bw:actor')) ls.set('bw:actor', hp.actor); }
+  let restored = 0;
+  if (hp?.prefs) for (const [k, v] of Object.entries(hp.prefs)) if (PREF_KEYS.test(k) && typeof v === 'string' && localStorage.getItem(k) === null) { try { localStorage.setItem(k, v); restored += 1; } catch { /* full */ } }
+  try { if (restored && !sessionStorage.getItem('bw:prefs-restored')) { sessionStorage.setItem('bw:prefs-restored', '1'); location.reload(); } } catch { /* no storage */ }
 }
 const SESS = (() => {
   const P = new URLSearchParams(location.search);
@@ -26,7 +32,7 @@ const SESS = (() => {
   // per edition: how many ops the last push carried, and its last op as sent (typing grows that op in place)
   const lens = () => Object.fromEntries(Object.entries(M[S.svc] || {}).map(([ed, e]) => [ed, { n: e.ops.length, last: JSON.stringify(e.ops.at(-1) ?? null) }]));
   function profile() {
-    const p = { profile: ls.get('bw:profile') || '', actor: ls.get('bw:actor') || '' };
+    const p = { profile: ls.get('bw:profile') || '', actor: ls.get('bw:actor') || '', prefs: prefsNow() };
     const k = JSON.stringify(p);
     if (!p.profile || k === profSent) return null;
     profSent = k;
@@ -36,7 +42,7 @@ const SESS = (() => {
     const lib = EXT.library;
     return { tab, seq: seq(), title: titleNow(), svc: S.svc, ed: S.ed, entry: lib?.isDoc(S.svc) ? lib.entryOf(S.svc) : null, snap: snapshotState(), profile: profile() };
   }
-  /* 0.15.0 L1 transport: ONE event stream per browser. Edge and Chrome allow 6 HTTP/1.1 connections per origin and every tab used to hold one,
+  /* 0.15.0 L1 transport: ONE event stream per browser. Chromium browsers allow 6 HTTP/1.1 connections per origin and every tab used to hold one,
    * so the 7th tab never loaded. Primary: a SharedWorker (/api/session/worker.js) holds the stream for all tabs. Fallback (no SharedWorker, or
    * the worker failed): BroadcastChannel 'bw-live' + the Web Locks lock 'bw-live-leader', whose holder opens the one stream and relays; when it
    * closes another tab takes the lock. Both keep the server's tab registry (POST /api/session/tabs) and route flush/req/ingest/progress to
@@ -45,7 +51,8 @@ const SESS = (() => {
     const subs = {};
     let mode = 'none', port = null, ch = null, es = null, lead = false, client = '', beatTimer = 0, sentKey = '', sentAt = 0, listSeq = 0, lastLead = Date.now(), watchTimer = 0;
     const known = new Map(); // leader: tab → {info, at}
-    const me = () => ({ tab, svc: S.svc, docs: EXT.library?.isDoc(S.svc) ? [S.svc] : [], automation: AUTO });
+    const lostTabs = new Set(); // leader: tabs that vanished without a bye (a discarded page)
+    const me = () => ({ tab, svc: S.svc, docs: EXT.library?.isDoc(S.svc) ? [S.svc] : [], automation: AUTO, awake: AWK.state() });
     const deliver = (event, data) => {
       if (data?.tab && data.tab !== tab) return;
       (subs[event] || []).forEach((f) => { try { f(data); } catch { /* a listener must not break the stream */ } });
@@ -55,10 +62,10 @@ const SESS = (() => {
     const postList = (force) => {
       if (!lead) return;
       const l = list();
-      const key = JSON.stringify(l.map(({ ago, ...r }) => r));
+      const key = JSON.stringify([l.map(({ ago, ...r }) => r), [...lostTabs]]);
       if (!force && key === sentKey && Date.now() - sentAt < 4500) return;
       sentKey = key; sentAt = Date.now();
-      fetch('/api/session/tabs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ client, seq: ++listSeq, tabs: l }), keepalive: true }).catch(() => {});
+      fetch('/api/session/tabs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ client, seq: ++listSeq, tabs: l, lost: [...lostTabs] }) }).then((r) => r.arrayBuffer()).catch(() => {}); // no keepalive: its unread bodies fill Chrome's quota and every later fetch fails (see editor/session-worker.js)
     };
     /** a follower that died without a bye: its Web Lock `bw-tab:<tab>` is gone twice in a row (see editor/session-worker.js) */
     async function sweep() {
@@ -69,7 +76,7 @@ const SESS = (() => {
       for (const [t, k] of [...known]) {
         if (t === tab || Date.now() - (k.since ||= Date.now()) < 4000) continue;
         if (held.has(`bw-tab:${t}`)) k.miss = 0;
-        else if ((k.miss = (k.miss || 0) + 1) >= 2) { known.delete(t); gone = true; }
+        else if ((k.miss = (k.miss || 0) + 1) >= 2) { known.delete(t); lostTabs.add(t); gone = true; }
       }
       if (gone) postList(true);
     }
@@ -108,7 +115,7 @@ const SESS = (() => {
         const d = m.data || {};
         if (d.t === 'ev') { lastLead = Date.now(); deliver(d.event, d.data); }
         else if (d.t === 'ping' || d.t === 'who') { lastLead = Date.now(); ch.postMessage({ t: d.t === 'who' ? 'hello' : 'beat', ...me() }); }
-        else if (lead && (d.t === 'hello' || d.t === 'beat')) { known.set(d.tab, { info: { tab: d.tab, svc: d.svc, docs: d.docs, automation: d.automation }, at: Date.now(), since: known.get(d.tab)?.since }); postList(d.t === 'hello'); }
+        else if (lead && (d.t === 'hello' || d.t === 'beat')) { lostTabs.delete(d.tab); known.set(d.tab, { info: { tab: d.tab, svc: d.svc, docs: d.docs, automation: d.automation, awake: d.awake }, at: Date.now(), since: known.get(d.tab)?.since }); postList(d.t === 'hello'); }
         else if (lead && d.t === 'bye') { known.delete(d.tab); postList(true); }
       };
       if (navigator.locks?.request) { takeLead(false); watchLeader(); }
@@ -190,6 +197,52 @@ const SESS = (() => {
       if (r.ok) { const e = await r.json(); if (e?.id === doc) { await EXT.library.adopt(e); LS.mine[doc] = LS.revs[doc] ?? LS.mine[doc]; if (!follows(doc)) delete LS.stale[doc]; banners(); } }
     } catch { /* the host has no copy yet */ }
   }
+  /* 0.15.9 A2/A3 keep-awake, measured in real Chrome (tests/awake-0159.test.mjs): a hidden tab's main-thread timers run at 1/s after a few seconds and stop (one a minute) after
+   * 5 minutes; a Web Lock does not change that; a dedicated worker's timers keep full rate; an open WebRTC data channel keeps the tab out of the intensive throttle. So every tab
+   * opens (1) a loopback RTCPeerConnection with one data channel (no network, no permission prompt, no speaker icon), (2) a dedicated heartbeat worker whose clock the page is
+   * compared with. The host is told the result in each tab beat (awake.rtc/tickMs/stalls/frozen/resumed). `?awake=0` switches both off (measurement only).
+   * A frozen page that is thawed (`resume`) or a tab shown again after a long hide re-announces itself, re-reads the leases and pushes its state: nothing reloads, nothing is lost. */
+  const AWK = (() => {
+    const st = { rtc: false, stalls: 0, lagMs: 0, tickMs: 1000, frozen: 0, resumed: 0 };
+    const OFF = P.get('awake') === '0';
+    let pcs = null, wk = null, tickAt = Date.now(), hiddenAt = 0, retryT = 0;
+    const retry = () => { if (retryT || OFF) return; retryT = setTimeout(() => { retryT = 0; try { pcs?.[0]?.close(); pcs?.[1]?.close(); } catch { /* closed */ } pcs = null; rtc(); }, 5000); };
+    function rtc() {
+      if (OFF || pcs || typeof RTCPeerConnection !== 'function') return;
+      try {
+        const a = new RTCPeerConnection({ iceServers: [] }), b = new RTCPeerConnection({ iceServers: [] });
+        a.onicecandidate = (e) => { if (e.candidate) b.addIceCandidate(e.candidate).catch(() => {}); };
+        b.onicecandidate = (e) => { if (e.candidate) a.addIceCandidate(e.candidate).catch(() => {}); };
+        const dc = a.createDataChannel('bw-awake');
+        dc.onopen = () => { st.rtc = true; };
+        dc.onclose = () => { st.rtc = false; pcs = null; retry(); };
+        b.ondatachannel = (e) => { e.channel.onmessage = () => {}; };
+        a.onconnectionstatechange = () => { if (['failed', 'closed', 'disconnected'].includes(a.connectionState)) { st.rtc = false; pcs = null; retry(); } };
+        pcs = [a, b, dc];
+        a.createOffer().then(async (o) => { await a.setLocalDescription(o); await b.setRemoteDescription(o); const an = await b.createAnswer(); await b.setLocalDescription(an); await a.setRemoteDescription(an); }).catch(() => { pcs = null; retry(); });
+      } catch { pcs = null; /* no WebRTC: the heartbeat worker and the Web Lock still hold */ }
+    }
+    function worker() {
+      if (OFF || wk || typeof Worker !== 'function') return;
+      try {
+        wk = new Worker('/api/session/worker.js', { name: 'bw-awake' });
+        wk.onmessage = (m) => { const lag = Date.now() - Number(m.data?.wall || Date.now()); if (lag > 3000) { st.stalls += 1; st.lagMs = lag; } };
+        wk.onerror = () => { try { wk.terminate(); } catch { /* gone */ } wk = null; };
+      } catch { wk = null; }
+    }
+    /** a page timer measured against the clock: ~1000 awake, 60000 in the intensive throttle (reported in three buckets so the beat does not change every second) */
+    const ticker = () => { const d = Date.now() - tickAt; tickAt = Date.now(); st.tickMs = d <= 1500 ? 1000 : d <= 5000 ? 5000 : 60000; };
+    async function wake() {
+      hub.again();
+      const r = await fetch('/api/session/leases').then((x) => x.json()).catch(() => null);
+      if (r) { LS.revs = r.revs || LS.revs; leaseIn({ leases: r.leases }); }
+      push();
+    }
+    document.addEventListener('freeze', () => { st.frozen += 1; });
+    document.addEventListener('resume', () => { st.resumed += 1; tickAt = Date.now(); wake(); });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 30000) { hiddenAt = 0; wake(); } });
+    return { start() { rtc(); worker(); setInterval(ticker, 1000); }, state: () => ({ ...st }), wake };
+  })();
   hub.on('lease', leaseIn);
   hub.on('hello', (d) => { if (d?.leases) leaseIn(d); });
   hub.on('rev', (d) => {
@@ -285,29 +338,100 @@ const SESS = (() => {
     }
     document.documentElement.dataset.bwResumed = '1';
   }
+  /* 0.15.9 R1-R5: the resume popup. The documents of the last session as a list (title, last-edited time, language): tick several, or press one to open it alone; a search box,
+   * select all / clear (they act on what the search shows), «continue all»; «open an older document» lists the save folder's Documents (newest first, searchable); a new blank
+   * document; «not now» or Esc closes it and changes nothing (the records stay for the next start). A tool's ?automation=1 tab never gets here (boot). */
   function modal(last, release) {
     const dlg = document.createElement('dialog');
     dlg.className = 'bw-resume';
     dlg.dataset.theme = S.dark ? 'dark' : 'light'; // the shell's theme tokens (build-editor brandCss) follow it here
     dlg.setAttribute('aria-labelledby', 'bw-resume-h');
-    dlg.innerHTML = `<h2 id="bw-resume-h">${esc(t('sessTitle'))}</h2><p>${esc(t('sessLead', { n: last.tabs.length }))}</p><ol class="list">${last.tabs.slice(0, 12).map((x) => `<li>${esc(x.title || x.tab)}</li>`).join('')}${last.tabs.length > 12 ? `<li>… +${last.tabs.length - 12}</li>` : ''}</ol><div class="btns"><button type="button" class="b primary" data-s="resume"><span class="w">${esc(t('sessResume', { n: last.tabs.length }))}</span></button><button type="button" class="b" data-s="new"><span class="w">${esc(t('sessNew'))}</span></button></div><p class="hint out" role="status"></p>`;
+    const loc = S.ui === 'ar' ? 'ar' : 'en';
+    const when = (iso) => { try { return new Date(iso).toLocaleString(loc, { dateStyle: 'medium', timeStyle: 'short', hour12: false }); } catch { return ''; } };
+    const langOf = (ed) => (ed === 'ar' ? t('resLangAr') : ed === 'en' ? t('resLangEn') : '');
+    const rows = last.tabs.map((x) => {
+      const title = String(x.title || x.tab);
+      return `<li data-tab="${esc(x.tab)}" data-q="${esc(title.normalize('NFC').toLowerCase())}"><label class="pick"><input type="checkbox" aria-label="${esc(t('resPick', { title }))}"><span class="box" aria-hidden="true"></span></label><button type="button" class="one" data-s="one" aria-label="${esc(t('resOpenOne', { title }))}"><span class="ti">${esc(title)}</span><span class="me">${esc([when(x.at), langOf(x.ed)].filter(Boolean).join(' · '))}</span></button></li>`;
+    }).join('');
+    dlg.innerHTML = `<h2 id="bw-resume-h">${esc(t('sessTitle'))}</h2><p class="lead">${esc(t('resLead', { n: last.tabs.length }))}</p>
+<div class="main"><div class="tools"><input type="search" class="q" aria-label="${esc(t('resSearch'))}" placeholder="${esc(t('resSearch'))}"><button type="button" class="b" data-s="all">${esc(t('resAll'))}</button><button type="button" class="b" data-s="none">${esc(t('resNone'))}</button></div>
+<p class="cnt hint" role="status" aria-live="polite"></p><ul class="list" role="list">${rows}</ul>
+<div class="btns"><button type="button" class="b primary" data-s="sel" disabled></button><button type="button" class="b" data-s="every">${esc(t('resOpenAll', { n: last.tabs.length }))}</button><button type="button" class="b" data-s="older">${esc(t('resOlder'))}</button><button type="button" class="b" data-s="new">${esc(t('resNew'))}</button><button type="button" class="b" data-s="later">${esc(t('resLater'))}</button></div></div>
+<div class="older" hidden><h3>${esc(t('resOlderTitle'))}</h3><div class="tools"><input type="search" class="oq" aria-label="${esc(t('resOlderSearch'))}" placeholder="${esc(t('resOlderSearch'))}"><button type="button" class="b" data-s="back">${esc(t('resBack'))}</button></div><p class="ocnt hint" role="status" aria-live="polite"></p><ul class="olist list" role="list"></ul></div>
+<p class="hint out" role="status"></p>`;
     root.appendChild(dlg);
-    dlg.addEventListener('click', async (ev) => {
-      const k = ev.target.closest('[data-s]')?.dataset.s;
-      if (!k) return;
-      dlg.querySelectorAll('button').forEach((b) => { b.disabled = true; });
-      const r = await json(`/api/session/${k}`, { runId: last.runId, tab });
-      if (k === 'resume') {
-        dlg.querySelector('.out').textContent = r.ok ? t('sessOpened', { n: r.n }) : String(r.error || '');
-        document.documentElement.dataset.bwResume = r.ok ? 'resumed' : 'failed';
-        // this tab becomes the run's first tab (never an extra one): it opens there itself
-        if (r.ok && r.here) { info = null; hub.bye(); setTimeout(() => location.replace(r.here), 600); }
-      }
-      else { document.documentElement.dataset.bwResume = 'new'; if (!/[#&]doc=/.test(location.hash)) await EXT.library?.newDocument(); } // a tab opened on one document keeps it (0.15.0)
-      setTimeout(() => { dlg.close(); dlg.remove(); }, k === 'resume' ? 1200 : 0);
+    const $ = (sel) => dlg.querySelector(sel);
+    const lis = () => [...dlg.querySelectorAll('.main li')];
+    const shown = () => lis().filter((li) => !li.hidden);
+    const picked = () => lis().filter((li) => li.querySelector('input').checked).map((li) => li.dataset.tab);
+    function refresh() {
+      const sel = picked().length;
+      $('.cnt').textContent = t('resCount', { shown: shown().length, n: last.tabs.length, sel });
+      const b = $('[data-s="sel"]');
+      b.disabled = !sel;
+      b.textContent = t('resOpenSel', { n: sel });
+    }
+    $('.q').addEventListener('input', () => {
+      const q = $('.q').value.normalize('NFC').toLowerCase().trim();
+      for (const li of lis()) li.hidden = !!q && !li.dataset.q.includes(q);
+      refresh();
     });
-    dlg.addEventListener('close', () => release?.(), { once: true }); // answered or dismissed (Esc): the hold goes
+    dlg.addEventListener('change', (ev) => { if (ev.target.matches('.main input[type=checkbox]')) refresh(); });
+    let olderTimer = 0, olderSeq = 0;
+    async function loadOlder() {
+      const seq = ++olderSeq;
+      let docs = [];
+      try { docs = (await fetch(`/api/session/documents?q=${encodeURIComponent($('.oq').value)}&limit=200`).then((r) => r.json())).docs || []; } catch { /* none */ }
+      if (seq !== olderSeq) return;
+      $('.olist').innerHTML = docs.map((d) => `<li><button type="button" class="one" data-s="doc" data-id="${esc(d.id)}" data-name="${esc(d.name)}"><span class="ti">${esc(d.name)}</span><span class="me">${esc(when(d.at))}</span></button></li>`).join('');
+      $('.ocnt').textContent = docs.length ? t('resOlderCount', { n: docs.length }) : t('resOlderEmpty');
+    }
+    $('.oq').addEventListener('input', () => { clearTimeout(olderTimer); olderTimer = setTimeout(loadOlder, 180); });
+    async function resume(tabs) {
+      dlg.querySelectorAll('button').forEach((x) => { x.disabled = true; });
+      const r = await json('/api/session/resume', { runId: last.runId, tab, ...(tabs ? { tabs } : {}) });
+      $('.out').textContent = r.ok ? t('sessOpened', { n: r.n }) : String(r.error || t('resFailed'));
+      document.documentElement.dataset.bwResume = r.ok ? 'resumed' : 'failed';
+      if (!r.ok) { dlg.querySelectorAll('button').forEach((x) => { x.disabled = false; }); refresh(); return; }
+      // this tab becomes the run's first tab (never an extra one): it opens there itself
+      if (r.here) { info = null; hub.bye(); setTimeout(() => location.replace(r.here), 600); }
+      setTimeout(() => { dlg.close(); dlg.remove(); }, 1200);
+    }
+    dlg.addEventListener('click', async (ev) => {
+      const el = ev.target.closest('[data-s]');
+      const k = el?.dataset.s;
+      if (!k) return;
+      if (k === 'all') { for (const li of shown()) li.querySelector('input').checked = true; refresh(); return; }
+      if (k === 'none') { for (const li of lis()) li.querySelector('input').checked = false; refresh(); return; }
+      if (k === 'one') { await resume([el.closest('li').dataset.tab]); return; }
+      if (k === 'sel') { const ids = picked(); if (ids.length) await resume(ids); return; }
+      if (k === 'every') { await resume(null); return; }
+      if (k === 'later') { dlg.close(); return; }
+      if (k === 'older') { $('.main').hidden = true; $('.older').hidden = false; loadOlder(); $('.oq').focus(); return; }
+      if (k === 'back') { $('.older').hidden = true; $('.main').hidden = false; $('.q').focus(); return; }
+      if (k === 'doc') {
+        el.disabled = true;
+        try {
+          const html = await fetch(`/api/session/document?id=${encodeURIComponent(el.dataset.id)}`).then((r) => { if (!r.ok) throw new Error('read'); return r.text(); });
+          await EXT.library?.importAny(new File([html], `${el.dataset.name}.html`, { type: 'text/html' }));
+          document.documentElement.dataset.bwResume = 'older';
+          $('.out').textContent = t('resOlderOpened', { name: el.dataset.name });
+          setTimeout(() => { dlg.close(); dlg.remove(); }, 600);
+        } catch { el.disabled = false; $('.out').textContent = t('resFailed'); }
+        return;
+      }
+      if (k === 'new') {
+        dlg.querySelectorAll('button').forEach((x) => { x.disabled = true; });
+        await json('/api/session/new', { runId: last.runId, tab });
+        document.documentElement.dataset.bwResume = 'new';
+        if (!/[#&]doc=/.test(location.hash)) await EXT.library?.newDocument(); // a tab opened on one document keeps it (0.15.0)
+        dlg.close(); dlg.remove();
+      }
+    });
+    dlg.addEventListener('close', () => release?.(), { once: true }); // answered or dismissed (Esc, «not now»): the hold goes, nothing was changed
+    refresh();
     dlg.showModal();
+    $('.q').focus();
     document.documentElement.dataset.bwResume = 'asked';
   }
 
@@ -335,14 +459,20 @@ const SESS = (() => {
       tab = P.get('tab');
       try { const r = await fetch(`/api/session/tab?tab=${encodeURIComponent(tab)}`); if (r.ok) resumed = await r.json(); } catch { /* fresh */ }
     }
-    try { tab ||= sessionStorage.getItem('bw:tab'); } catch { /* no storage */ }
+    let stored = false;
+    try { if (!tab) { tab = sessionStorage.getItem('bw:tab'); stored = !!tab; } } catch { /* no storage */ }
     tab ||= newId();
+    // 0.15.9 A4: a tab the browser discarded (or killed) and the user came back to is reloaded by the browser with the same tab id (sessionStorage survives). The host kept it as
+    // `lost` with its last state, and says so (x-bw-lost); the state is put back and one plain message says what happened. A plain reload of a live tab is left alone.
+    let wasDiscarded = false;
+    if (!resumed && stored) { try { const r = await fetch(`/api/session/tab?tab=${encodeURIComponent(tab)}`); if (r.ok && (r.headers.get('x-bw-lost') === '1' || document.wasDiscarded === true)) { resumed = await r.json(); wasDiscarded = true; } } catch { /* fresh */ } }
     try { sessionStorage.setItem('bw:tab', tab); } catch { /* no storage */ }
     if (AUTO) document.documentElement.dataset.bwAutomation = '1';
     try { navigator.locks?.request(`bw-tab:${tab}`, { mode: 'shared' }, () => new Promise(() => {})).catch(() => {}); } catch { /* no Web Locks */ } // held while this page lives: the hub's proof that the tab is not gone
     hub.on('flush', flush);
     hub.start();
-    if (resumed) await apply(resumed);
+    AWK.start();
+    if (resumed) { await apply(resumed); if (wasDiscarded) { document.documentElement.dataset.bwDiscarded = '1'; toast(t('discardedMsg'), 'ok'); } }
     else if (!AUTO) {
       const release = window.BW?.holdReady?.('resume'); // bw:ready / data-bw-ready wait until the resume question is settled (a tool's ?automation=1 tab never asks)
       const last = await fetch('/api/session/last').then((r) => r.json()).catch(() => null);
@@ -357,11 +487,33 @@ const SESS = (() => {
     const r = await json('/api/workspace/pick', {});
     if (r.ok) { info.workspace = { root: r.root, chosen: true }; el.querySelector('.ws-root').textContent = r.root; }
   });
-  return { boot, push, soon, flush, ensureFolder, card, mountCard, on: hub.on, bye: hub.bye, again: hub.again, seen, get readonly() { const d = curDoc(); return d ? (follows(d) ? 'follower' : LS.stale[d] ? 'stale' : '') : ''; }, get transport() { return hub.mode; }, get automation() { return AUTO; }, get tab() { return tab; }, get info() { return info; } };
+  /* 0.15.9 B4: the browser picker (GET/POST /api/browser, engine/routes/session.mjs). It applies to the next window the host opens. */
+  const brCard = () => (info ? `<p class="hint">${esc(t('brLead'))}</p><p><select class="br-sel" aria-label="${esc(t('brTitle'))}"></select></p><p class="hint br-now" role="status"></p>` : `<p class="hint">${esc(t('brServerOnly'))}</p>`);
+  const brMount = async (el) => {
+    const sel = el?.querySelector('.br-sel');
+    if (!sel) return;
+    const now = el.querySelector('.br-now');
+    const draw = (b) => {
+      sel.textContent = '';
+      const add = (v, label) => { const o = document.createElement('option'); o.value = v; o.textContent = label; sel.appendChild(o); };
+      add('', t('brAuto'));
+      if (b.systemDefault) add('default', t('brSystem', { name: b.systemDefault.name }));
+      for (const c of b.choices || []) add(c.id, c.recommended ? `${c.name} (${t('brRec')})` : c.name);
+      sel.value = [...sel.options].some((o) => o.value === b.saved) ? b.saved : '';
+      now.textContent = [b.chosen ? t('brNow', { name: b.chosen.name }) : '', b.chosen && !b.chosen.closable ? t('brOpener') : '', b.chromeFound ? '' : t('brNoChrome')].filter(Boolean).join(' ');
+      document.documentElement.dataset.bwBrowser = b.chosen?.id || '';
+    };
+    try { const r = await fetch('/api/browser'); if (r.ok) draw(await r.json()); } catch { return; }
+    sel.addEventListener('change', async () => {
+      const r = await json('/api/browser', { browser: sel.value });
+      if (r.ok) draw(r); else now.textContent = t('brFailed');
+    });
+  };
+  return { boot, push, soon, flush, ensureFolder, card, mountCard, brCard, brMount, on: hub.on, bye: hub.bye, again: hub.again, seen, get readonly() { const d = curDoc(); return d ? (follows(d) ? 'follower' : LS.stale[d] ? 'stale' : '') : ''; }, get transport() { return hub.mode; }, get automation() { return AUTO; }, get tab() { return tab; }, get info() { return info; } };
 })();
 
 bwExt({
-  settings: [{ id: 'workspace', title: 'wsTitle', html: SESS.card, mount: SESS.mountCard }],
+  settings: [{ id: 'workspace', title: 'wsTitle', html: SESS.card, mount: SESS.mountCard }, { id: 'browser', title: 'brTitle', html: SESS.brCard, mount: SESS.brMount }],
   expose: { session: SESS },
   on: {
     boot: () => { SESS.boot(); },

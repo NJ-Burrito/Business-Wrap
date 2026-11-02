@@ -2,7 +2,7 @@
 // hover INTENT (the pointer rests ~500 ms; sweeping never opens; while open another tool swaps in place after ~250 ms), is an OVERLAY (the pages,
 // the body padding and the zoom never change), slides with a human ease not tied to the OS reduced-motion setting, has no "seen" memory, closes
 // with its X (edge tab brings it back), shows a picture for every card, and works on ribbon tools and tabs.
-// Headless Edge, temp profile via launchOptions, closed in finally.
+// Headless Chrome, temp profile via launchOptions, closed in finally.
 //
 //   node tests/explain-panel.test.mjs
 import './_isolate.mjs';

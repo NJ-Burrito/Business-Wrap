@@ -1,5 +1,5 @@
 // A20 feature audit (the 0.12.0 baseline method, checked in at 0.13.0). Not part of `npm test`: it drives a headed
-// Microsoft Edge over a local server and reports, per feature, works / partial / broken, plus the works rate.
+// Google Chrome over a local server and reports, per feature, works / partial / broken, plus the works rate.
 //   node tests/audit.probe.mjs [editor.html] [--headless] [--json <file>]
 // Default editor: assets/editor/business-wrap.html. Own throw-away profile, server on a free port, exports and the save
 // folder in a temp folder; everything it starts is closed at the end. Each feature is capped at 20 s.
@@ -20,7 +20,7 @@ const ws = { parent: tmp, root: wsRoot, chosen: true, dirs: Object.fromEntries([
 process.env.BW_PICK_STUB = tmp; // a folder question answers with the temp folder, never a dialog
 const server = await serve(file, 0, { workspace: ws });
 const url = `http://127.0.0.1:${server.address().port}/`;
-const ctx = await chromium.launchPersistentContext(path.join(tmp, 'profile'), { channel: 'msedge', headless: flag('--headless'), viewport: { width: 1440, height: 900 }, acceptDownloads: true });
+const ctx = await chromium.launchPersistentContext(path.join(tmp, 'profile'), { channel: 'chrome', headless: flag('--headless'), viewport: { width: 1440, height: 900 }, acceptDownloads: true });
 const page = ctx.pages()[0] || (await ctx.newPage());
 const errors = [];
 page.on('pageerror', (e) => { errors.push(e.message); if (args.includes('--verbose')) console.log('PAGEERROR', e.message, (e.stack || '').split('\n').slice(1, 4).join(' | ')); });

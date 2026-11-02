@@ -41,7 +41,7 @@
 
 ▶️ Start the local server: `npm run serve` (the first time it builds the sample editor)
 
-🌐 Open the address it prints, `http://127.0.0.1:4317/`, in Chrome or Edge.
+🌐 Open the address it prints, `http://127.0.0.1:4317/`, in Google Chrome.
 
 ⚠️ Always open the editor **through the local server**, not by double-clicking the HTML file. Export, print, the printers list and updates need the server.
 
@@ -51,7 +51,7 @@
 |---|---|---|
 | 🟢 Node 20 or newer | `node --version` | runs everything |
 | 🐍 uv | `uv --version` | runs the Python steps (PDF finishing, DOCX) with their packages; no pip installs |
-| 🌐 Chrome or Edge | open it once | prints the PDF |
+| 🌐 Google Chrome | open it once | prints the PDF |
 | 🌱 git | `git --version` | cloning the repo and the plugin marketplace |
 
 📌 No uv? Install it: https://docs.astral.sh/uv/getting-started/installation/ (without it Business-Wrap falls back to plain `python` and tells you which packages it needs).
@@ -111,8 +111,8 @@ Installed as a plugin, Business-Wrap adds these commands; type `/` in Claude Cod
 
 | Command | What it does |
 |---|---|
-| `/business-wrap:open [doc.json\|folder\|editor.html]` | Start the local host and open the editor in Edge (a blank document when no file is given) |
-| `/business-wrap:close` | Stop every host and close every Edge window this install started |
+| `/business-wrap:open [doc.json\|folder\|editor.html]` | Start the local host and open the editor in your browser, Google Chrome first (a blank document when no file is given) |
+| `/business-wrap:close` | Stop every host and close every browser window this install started |
 | `/business-wrap:status` | Version, running hosts, how many steps were healed, any MCP problem |
 | `/business-wrap:doctor` | What is installed, where state lives, the last MCP server starts, and whether a plugin update left the server on the previous version |
 | `/business-wrap:new ["Title"]` | A new blank document pair (Arabic + English), opened in the editor |
@@ -122,7 +122,7 @@ Installed as a plugin, Business-Wrap adds these commands; type `/` in Claude Cod
 | `/business-wrap:export <doc.json> [ar\|en]` | PDF + DOCX, then the render and export gates |
 | `/business-wrap:verify-history <file>` | Check the tamper-evident history |
 | `/business-wrap:report <from> <to>` | Work report for a date range |
-| `/business-wrap:reset --dry-run` | List every library, Edge profile and plugin-data folder this program keeps; with `--yes` (only after you agree) send them to the Recycle Bin so an old library cannot come back (`--all`: whole workspaces too) |
+| `/business-wrap:reset --dry-run` | List every library, browser profile and plugin-data folder this program keeps; with `--yes` (only after you agree) send them to the Recycle Bin so an old library cannot come back (`--all`: whole workspaces too) |
 | `/business-wrap:update [--check\|--notes\|--apply --yes]` | Check, read what is new, or install (only after you agree) |
 | `/business-wrap:tabs [project]` | The documents open in the live editor and the host health (needs the editor open) |
 | `/business-wrap:outline [doc-id] [ar\|en]` | The outline of the open document: chapters, sections, blocks |
@@ -135,7 +135,7 @@ Installed as a plugin, Business-Wrap adds these commands; type `/` in Claude Cod
 
 The last 8 commands (`tabs` to `action`) talk to the open editor and need it open: without a tab they say so instead of guessing.
 
-🧹 **Reset (a clean start).** An uninstall does not remove your libraries: older versions kept them outside the program (`DocumentsBusiness-Wrap`, `DownloadsBusiness-Wrap`) and a new start imports them again. `business-wrap doctor` lists every known workspace, Edge profile and plugin-data path. `business-wrap reset --dry-run` prints what a reset would send away; `business-wrap reset --yes` sends the machine state (the editor's Edge profile, every `.system` folder, local settings) to the Recycle Bin; `--all` also sends whole workspaces (your documents and exports) and the plugin data. It never hard-deletes, so everything can be restored from the Recycle Bin, and without `--yes` in a non-interactive shell it refuses.
+🧹 **Reset (a clean start).** An uninstall does not remove your libraries: older versions kept them outside the program (`DocumentsBusiness-Wrap`, `DownloadsBusiness-Wrap`) and a new start imports them again. `business-wrap doctor` lists every known workspace, browser profile and plugin-data path. `business-wrap reset --dry-run` prints what a reset would send away; `business-wrap reset --yes` sends the machine state (the editor's browser profile, every `.system` folder, local settings) to the Recycle Bin; `--all` also sends whole workspaces (your documents and exports) and the plugin data. It never hard-deletes, so everything can be restored from the Recycle Bin, and without `--yes` in a non-interactive shell it refuses.
 
 Without Claude Code the same verbs run as `npm run cli -- <verb>` (for example `npm run cli -- open samples/event-permit`, `npm run host:close`). Every verb works offline, with no AI.
 
@@ -349,11 +349,13 @@ Every export and every save toast names the real path. Nothing is written anywhe
 |---|---|---|
 | `fontDir` | `BW_FONT_DIR` | font root (searched recursively); TrueType preferred |
 | `watermarkDir` | `BW_WATERMARK_DIR` | the tool's watermark images, editor UI only |
-| `chrome` | `BW_CHROME` | Chrome or Edge executable |
+| `chrome` | `BW_CHROME` | the Chromium that prints the PDF (default: Google Chrome, then the system default if it is Chromium, then Edge, then any Chromium found) |
+| | `BW_BROWSER` | the browser the editor opens in: `default` (the system default), a name (`chrome`, `edge`, `opera`, `operagx`, `brave`, `vivaldi`, `chromium`) or a full path. Settings › Browser saves the same choice in `.local/browser.json`. The order is `BW_BROWSER`, the saved choice, Google Chrome, the system default, Edge, any Chromium. Business-Wrap never changes your system default browser |
+| | `BW_EDGE` | an old setup's variable: where Edge is, if it is not in its usual place |
 | `poppler` | `BW_POPPLER` | poppler `bin` folder (pdftotext / pdffonts in the tests) |
 | `brandDir` | `BW_BRAND_DIR` | the tool's logo folder (default `brand/v3/logo/`), UI only |
 
-Browser support: Chrome and Edge, latest stable (Chromium 120+).
+Browser support: Google Chrome is the standard, tested browser (latest stable, Chromium 120+). Other Chromium browsers (Edge, Opera, Opera GX, Brave, Vivaldi) open the editor the same way; a Firefox or Safari default is opened with the system opener, and Business-Wrap cannot close that window.
 
 **Security gate:**
 ```powershell
@@ -440,7 +442,7 @@ Thmanyah by default: your own copy wins, and a bundled fallback (under the Thman
 <details>
 <summary>💻 What does it run on?</summary>
 
-Tested on Windows 11 with Node 24 and Chrome. It needs Node 20+, Chrome or Edge, and Python with uv for DOCX. macOS and Linux are untested.
+Tested on Windows 11 with Node 24 and Chrome. It needs Node 20+, Google Chrome (or another Chromium browser), and Python with uv for DOCX. macOS and Linux are untested.
 
 </details>
 

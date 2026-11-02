@@ -52,8 +52,8 @@ try {
   check('no tab: a document call is NO_TAB too', r.isError === true && data(r).code === 'NO_TAB', text(r));
 
   // a real tab (tool's tab: ?automation=1)
-  const edge = H.edgePath();
-  const opts = process.env.BRIDGE_BROWSER === 'chromium' || !edge ? launchOptions() : { ...launchOptions(), executablePath: edge };
+  const exe = H.browserPath(); // 0.15.9: the editor's browser (Google Chrome first)
+  const opts = process.env.BRIDGE_BROWSER === 'chromium' || !exe ? launchOptions() : { ...launchOptions(), executablePath: exe };
   browser = await chromium.launch(opts);
   ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
   page = await ctx.newPage();

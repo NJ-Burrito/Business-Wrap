@@ -34,7 +34,7 @@
 | copy fidelity | text extracted with poppler (`pdftotext -enc UTF-8`) round-trips | kerning opened gaps read as spaces |
 | edition parity | AR and EN editions have the same structure | a fix made on one side only |
 | editor script parses | the concatenated editor app script parses (`new Function`) at build time | two merged files declared the same name; the editor never booted (L28) |
-| feature audit | `tests/audit.probe.mjs` drives every toolbar feature in headed Edge: works ≥ 95 % before a release | 0.12.0 measured 76 % (58/76) |
+| feature audit | `tests/audit.probe.mjs` drives every toolbar feature in headed Google Chrome: works ≥ 95 % before a release | 0.12.0 measured 76 % (58/76) |
 | watermark absent | no output (PDF, DOCX, print, edits JSON, theme pack, Save-HTML export) contains the editor watermark | — (rule from the start) |
 | `security/check.py` | no client content, credentials, ID/phone shapes, emails, local paths, font binaries, metadata-bearing images, files over 5 MB, in tree **or history** | zero client content is a release condition |
 
