@@ -8,7 +8,6 @@
   <a href="https://nj-burrito.github.io/Business-Wrap/"><img src="https://img.shields.io/badge/website-nj--burrito.github.io-d3c6a6?labelColor=001e3d" alt="Website"></a>
   <a href="https://github.com/NJ-Burrito/Business-Wrap/releases/latest"><img src="https://img.shields.io/github/v/release/NJ-Burrito/Business-Wrap?label=release&color=d3c6a6&labelColor=001e3d" alt="Release"></a>
   <a href="https://www.npmjs.com/package/business-wrap"><img src="https://img.shields.io/npm/v/business-wrap?label=npm&logo=npm&logoColor=be9a41&color=d3c6a6&labelColor=001e3d" alt="npm"></a>
-  <a href="https://github.com/NJ-Burrito/Business-Wrap/actions/workflows/gates.yml"><img src="https://github.com/NJ-Burrito/Business-Wrap/actions/workflows/gates.yml/badge.svg" alt="Gates"></a>
   <a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-d3c6a6?labelColor=001e3d" alt="License: MIT"></a>
   <a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/.claude-plugin/marketplace.json"><img src="https://img.shields.io/badge/Claude%20Code-plugin-d3c6a6?labelColor=001e3d" alt="Claude Code plugin"></a>
   <a href="https://github.com/NJ-Burrito/Business-Wrap/blob/main/mcp/server.json"><img src="https://img.shields.io/badge/MCP-server-d3c6a6?labelColor=001e3d" alt="MCP server"></a>
