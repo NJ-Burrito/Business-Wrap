@@ -7,7 +7,7 @@ const GEN_OF = {
   field: ['stories', 'dataDictionary'], document: ['documents', 'stories', 'dataDictionary'], stage: ['stories', 'roles', 'workflow'],
   payment: ['fees', 'requirements', 'workflow'], action: ['stories', 'workflow'], return: ['rules', 'stories', 'workflow'], decision: ['workflow'],
   end: ['workflow', 'statuses'], timer: ['rules', 'requirements'], fee: ['fees'], integration: ['integrations', 'requirements'],
-  output: ['outputs', 'stories'], legislation: ['legislation'], recipient: ['recipients', 'rules'], notification: ['notifications', 'requirements'],
+  output: ['outputs', 'stories', 'outputDesc', 'outputTypes', 'outputVariants'], legislation: ['legislation'], recipient: ['recipients', 'rules'], notification: ['notifications', 'requirements'],
   kpi: ['kpis'], sla: ['slas'], channel: ['channels', 'prose'], system: [],
 };
 const NOTIFY = /notif|inform|email|sms|message|إشعار|اشعار|رسال/i;

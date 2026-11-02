@@ -16,7 +16,7 @@ const RB_TABS = [
   ['font', [['fontface', ['fmtFont', 'fmtSize', 'fmtColor']], ['style', ['fmtBold', 'fmtItalic', 'fmtUnderline', 'fmtStrike', 'fmtCode']], ['fother', ['fmtLink', 'fmtClear']]], null, '--bw-sec-font'],
   ['para', [['align', ['fmtAlignStart', 'fmtAlignCenter', 'fmtAlignEnd', 'fmtJustify', 'fmtTop', 'fmtMiddle', 'fmtBottom']], ['spacing', ['fmtLine', 'fmtBefore', 'fmtAfter']],
     ['lists', ['fmtQuote', 'fmtBullets', 'fmtNumbers', 'fmtShapes', 'fmtIndent', 'fmtOutdent']]], null, '--bw-sec-para'],
-  ['insert', [['content', ['image', 'logo', 'addDiagram', 'addPara', 'insTable', 'insSection', 'insChapter', 'insTextBox']], ['story', ['addStory', 'addOutputStory', 'storyPoint', 'storyCard']],
+  ['insert', [['content', ['image', 'logo', 'addDiagram', 'addPara', 'insTable', 'insSection', 'insChapter', 'insTextBox']], ['story', ['addStory', 'addOutputStory', 'addOutputsChapter', 'storyPoint', 'storyCard']],
     ['wrap', ['wrapInline', 'wrapSquare', 'wrapTight', 'wrapThrough', 'wrapTopBottom', 'wrapBehind', 'wrapFront']]], null, '--bw-sec-insert'],
   ['layout', [['page', ['pgSetup', 'pgBreak', 'breakBefore', 'keepNext', 'pages', 'renumber']], ['gaps', ['pgBreakAdd', 'pgBreakDel', 'pgPullUp', 'secDel', 'pgEmpty']],
     ['front', ['tocHide', 'tocAdd', 'fmRowAdd', 'fmRowDel', 'fmColAdd', 'fmColDel']]], null, '--bw-sec-gaps'],
@@ -29,7 +29,7 @@ const RB_TABS = [
     ['tblblock', ['duplicate', 'delete', 'moveUp', 'moveDown', 'comment', 'styleThis', 'hideBlock', 'breakBefore', 'keepNext']]], 'table', '--bw-sec-table'],
   ['picture', [['pic', ['replace', 'caption', 'every', 'ovDelete']], ['wrap', ['wrapInline', 'wrapSquare', 'wrapTight', 'wrapThrough', 'wrapTopBottom', 'wrapBehind', 'wrapFront']]], 'picture', '--bw-sec-footer'],
   ['diagram', [['nodes', ['dgStaff', 'dgApplicant', 'dgStart', 'dgPayment', 'dgRework', 'dgSystem', 'dgDecision', 'dgOk', 'dgStop', 'dgNote', 'dgGroup', 'dgText']],
-    ['dgflow', ['dgAuto', 'dgReset', 'dgFlow', 'dgLegend', 'dgMermaidIn', 'dgMermaidOut']], ['dgzoom', ['dgZoomIn', 'dgZoomOut', 'dgZoomFit', 'dgZoom100']], ['legend', ['dgLgText', 'dgLgLook', 'dgLgDel', 'dgLgReset']]], 'diagram', '--bw-sec-diagram'],
+    ['dgflow', ['dgAuto', 'dgReset', 'dgLegend', 'dgMermaidIn', 'dgMermaidOut']], ['dgzoom', ['dgZoomIn', 'dgZoomOut', 'dgZoomFit', 'dgZoom100']], ['legend', ['dgLgText', 'dgLgLook', 'dgLgDel', 'dgLgReset']]], 'diagram', '--bw-sec-diagram'],
   ['diagram2', [['shape', ['dgLabel', 'dgSub', 'dgConnect', 'dgDup', 'dgDel', 'dgFront', 'dgBack']], ['arrange', ['dgAlignL', 'dgAlignC', 'dgAlignR', 'dgAlignT', 'dgAlignM', 'dgAlignB', 'dgDistH', 'dgDistV', 'dgWrap']],
     ['arrow', ['dgEdgeLabel', 'dgBendAdd', 'dgBendDel', 'dgRouteAuto', 'dgRoute', 'dgHead', 'dgTail', 'dgLine', 'dgWeight', 'dgReverse', 'dgFrom', 'dgTo']]], 'diagram', '--bw-sec-diagram'],
 ];

@@ -44,7 +44,7 @@ try {
   const ep = await buildDocuments(EP);
   const ar = ep.docs.ar, en = ep.docs.en;
   const ch = ar.chapters.map((c) => c.title);
-  check('e-service: chapters 1–6 as the reference, no open-questions annex (questions beside the document)', JSON.stringify(ch) === JSON.stringify(['المقدمة', 'بطاقة الخدمة', 'متطلبات النظام الوظيفية', 'مسار الخدمة وسير العمل', 'قواعد العمل', 'قصص المستخدمين ومعايير القبول']), ch.join(' | '));
+  check('e-service: chapters 1–6 as the reference plus the 0.16.0 last chapter «المخرجات», no open-questions annex (questions beside the document)', JSON.stringify(ch) === JSON.stringify(['المقدمة', 'بطاقة الخدمة', 'متطلبات النظام الوظيفية', 'مسار الخدمة وسير العمل', 'قواعد العمل', 'قصص المستخدمين ومعايير القبول', 'المخرجات']), ch.join(' | '));
   const c2 = ar.chapters[1].sections.map((s) => s.title);
   const REF2 = ['وصف الخدمة', 'معرف الخدمة وترميزها', 'فئة متلقي الخدمة', 'الافتراضات والقيود والشروط', 'رسوم الخدمة', 'وثائق الخدمة', 'المرجعية الإدارية', 'مكان تقديم الخدمة', 'مخرجات الخدمة', 'التشريعات الناظمة', 'المستخدمون والأدوار', 'الربط الداخلي مع أنظمة الجهة', 'الربط مع خدمات النظام', 'مصادر البيانات الداخلية', 'الربط مع شركاء الخدمة', 'اللغات المدعومة'];
   check('e-service: chapter 2 = the 16 card sections 2.1–2.16 in order', JSON.stringify(c2) === JSON.stringify(REF2));
@@ -143,10 +143,13 @@ try {
   /* 9. domain neutrality */
   const BANNED = /حكوم|وزار|بوابة|متلقي الخدمة|التوقيع الرقمي|مخرج|\bgovernment|\bministr|\bportal\b|digital signature/i;
   const neutral = [path.join(TEMPLATES, '_core', 'text.json'), ...ids.filter((x) => x !== 'e-service').map((x) => path.join(TEMPLATES, x, 'pack.json'))];
-  const hits = neutral.flatMap((f) => strings(readJson(f)).filter((x) => BANNED.test(x)).map((x) => `${path.basename(path.dirname(f))}: ${x.slice(0, 40)}`));
+  // 0.16.0 (spec O): the owner's own word «المخرجات» / Outputs is the title of the last chapter in every pack that has an output, and the wording of that chapter lives in _core `od`: both are set aside here, nothing else is
+  const withoutOutputs = (j) => { const c = JSON.parse(JSON.stringify(j)); for (const lc of ['ar', 'en']) if (c[lc]) delete c[lc].od; if (c.chapters) c.chapters = c.chapters.filter((x) => !(x.sections || []).some((s) => /^output(Desc|Types|Variants)$/.test(s.gen))); return c; };
+  const hits = neutral.flatMap((f) => strings(withoutOutputs(readJson(f))).filter((x) => BANNED.test(x)).map((x) => `${path.basename(path.dirname(f))}: ${x.slice(0, 40)}`));
   check('core text and non-e-service packs assume no government, portal, recipient, signature or official output', !hits.length, hits.slice(0, 3).join(' / '));
   const call = await buildDocuments(CALL);
-  check('call-centre: no e-service term in the document', !strings(call.docs.ar).some((x) => BANNED.test(x)) && !strings(shop.docs.ar).some((x) => BANNED.test(x)));
+  const noOutputsChapter = (d) => ({ ...d, chapters: d.chapters.filter((c) => c.title !== 'المخرجات'), fill: undefined }); // 0.16.0 (spec O): the owner's last chapter is set aside, the rest of the document is checked as before
+  check('call-centre: no e-service term in the document', !strings(noOutputsChapter(call.docs.ar)).some((x) => BANNED.test(x)) && !strings(noOutputsChapter(shop.docs.ar)).some((x) => BANNED.test(x)));
   for (const id of ids) {
     try { const r = await buildDocuments({ ...SHOP, pack: id }); check(`e-shop evidence through pack ${id}`, r.evidence.fill.every((f) => f.fill) && !strings(r.docs.en).some((x) => /\{(name|entity|customer|request|output)\}/.test(x))); } catch (e) { check(`e-shop evidence through pack ${id}`, false, e.message); }
   }
