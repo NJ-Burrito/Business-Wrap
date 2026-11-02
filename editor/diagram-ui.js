@@ -26,6 +26,11 @@ function dgContext() {
   const edge = d.edge ? m.edges.find((e) => e.id === d.edge) : null;
   const opt = (v, cur0, label) => `<option value="${esc(v)}"${v === cur0 ? ' selected' : ''}>${esc(label)}</option>`;
   const pick = (name, label, opts) => `<label class="pick"><span class="vh">${esc(label)}</span><select data-dg="${name}" aria-label="${esc(label)}" title="${esc(label)}">${opts}</select></label>`;
+  if (d.legend) {
+    // 0.15.6 (L1): one entry of the key under the drawing is selected
+    const it = DIAGRAM.resolve(m, { theme: S.theme, locale: d.ed }).items.find((x) => x.t === 'text' && x.legend === d.legend);
+    return { cat: 'diagram', label: t('selLegend', { x: it ? it.lines.join(' ') : '' }), groups: [['dgLgText', 'dgLgLook', 'dgLgDel', 'dgLgReset', 'dgLegend']], keep: zoomKeep() };
+  }
   if (edge) {
     const sel = pick('wire', t('dgWire'), DIAGRAM.WIRE_KINDS.map((k) => opt(k, edge.kind, t(`dgw_${k}`))).join(''));
     return { cat: 'arrow', label: t('selArrow', { x: t(`dgw_${edge.kind}`) }), groups: [[sel, 'dgEdgeLabel', 'dgBendAdd', 'dgBendDel'], ['dgRoute', 'dgHead', 'dgTail', 'dgLine', 'dgWeight', 'dgRouteAuto', 'dgReverse', 'dgFrom', 'dgTo', 'dgDel']], keep: zoomKeep() };
@@ -40,7 +45,7 @@ function dgContext() {
     return { cat: 'shape', label: t('selShape', { x: dgNodeName(node) }), groups: [['dgLabel', kinds, colours, 'dgConnect', 'dgDel'], [icon, 'dgSub', 'dgDup', 'dgFront', 'dgBack']], keep: zoomKeep() };
   }
   const sym = btn('dgSymbol'); // 0.14.0 · O2: a gallery with the full names (the old select was squeezed to a sliver inside the «…» menu)
-  return { cat: 'diagram', label: t('selDiagram'), groups: [['dgStaff', 'dgDecision', 'dgStart', 'dgOk', 'dgStop', sym], ['dgApplicant', 'dgPayment', 'dgRework', 'dgSystem', 'dgNote', 'dgGroup', 'dgText', 'dgAuto', 'dgReset', 'dgFlow', 'dgLegend', 'dgZoom100', 'dgMermaidIn', 'dgMermaidOut']], keep: zoomKeep() };
+  return { cat: 'diagram', label: t('selDiagram'), groups: [['dgStaff', 'dgDecision', 'dgStart', 'dgOk', 'dgStop', sym], ['dgApplicant', 'dgPayment', 'dgRework', 'dgSystem', 'dgNote', 'dgGroup', 'dgText', 'dgAuto', 'dgReset', 'dgFlow', 'dgLegend', 'dgLgReset', 'dgZoom100', 'dgMermaidIn', 'dgMermaidOut']], keep: zoomKeep() };
 }
 /* ── selection paint: outline + resize handle, editor DOM only (never exported) ── */
 function dgPaint() {
@@ -96,11 +101,51 @@ function dgPaint() {
       }
     }
   }
+  if (S.dg.legend) {
+    const bb = dgLegendBox(m, S.dg.legend);
+    if (bb) g.insertAdjacentHTML('beforeend', `<rect class="dg-lgsel" x="${bb.x - 4}" y="${bb.y - 4}" width="${bb.w + 8}" height="${bb.h + 8}" rx="5" fill="none" stroke="#005fc2" stroke-width="1.5" stroke-dasharray="5 3" pointer-events="none"/>`);
+  }
   if (S.dgCand) {
     const c = m.nodes.find((x) => x.id === S.dgCand);
     if (c) g.insertAdjacentHTML('beforeend', `<rect class="dg-cand" x="${c.x - 5}" y="${c.y - 5}" width="${c.w + 10}" height="${c.h + 10}" rx="8" fill="#005fc2" fill-opacity=".10" stroke="#005fc2" stroke-width="2.5" pointer-events="none"/>`);
   }
   svg.appendChild(g);
+}
+/** The box round one legend entry (its swatch and its words), or null when that entry is not drawn. */
+function dgLegendBox(m, key) {
+  const its = DIAGRAM.resolve(m, { theme: S.theme, locale: S.dg?.ed || S.ed }).items.filter((x) => x.lg === key);
+  if (!its.length) return null;
+  const xs = [];
+  const ys = [];
+  for (const it of its) {
+    if (it.t === 'shape') { xs.push(it.x, it.x + it.w); ys.push(it.y, it.y + it.h); } else if (it.t === 'line') for (const [x, y] of it.pts) { xs.push(x); ys.push(y); } else if (it.t === 'circle') { xs.push(it.cx - it.r, it.cx + it.r); ys.push(it.cy - it.r, it.cy + it.r); } else if (it.t === 'text') { xs.push(it.box.x, it.box.x + it.box.w); ys.push(it.box.y, it.box.y + it.box.h); }
+  }
+  return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+}
+/** A list of choices at a ribbon button (the symbol gallery's panel). */
+function dgChoiceMenu(action, label, options, current, onPick) {
+  document.querySelector('.bw-dg-gallery')?.remove();
+  dgGalleryCss();
+  const el = document.createElement('div');
+  el.className = 'bw-dg-gallery';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-label', label);
+  el.dir = uiDir();
+  el.lang = S.ui;
+  el.style.fontFamily = 'inherit';
+  el.innerHTML = options.map(([v, name]) => `<button type="button" data-val="${esc(v)}"${v === current ? ' aria-current="true" style="border-color:#005fc2"' : ''}>${esc(name)}</button>`).join('');
+  document.body.appendChild(el);
+  const bt = root.querySelector(`[data-a="${action}"]`)?.getBoundingClientRect();
+  const w = el.getBoundingClientRect().width;
+  el.style.left = `${bt ? Math.max(8, Math.min(innerWidth - w - 8, bt.left + bt.width / 2 - w / 2)) : Math.max(8, (innerWidth - w) / 2)}px`;
+  el.style.top = `${Math.min(innerHeight - 120, (bt ? bt.bottom : 70) + 8)}px`;
+  const close = () => { el.remove(); document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc2, true); };
+  const away = (ev) => { if (!ev.composedPath().includes(el)) close(); };
+  const esc2 = (ev) => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(); } };
+  document.addEventListener('pointerdown', away, true);
+  document.addEventListener('keydown', esc2, true);
+  el.addEventListener('click', (ev) => { const b = ev.target.closest('button[data-val]'); if (!b) return; close(); onPick(b.dataset.val); });
+  el.querySelector('button')?.focus();
 }
 /** Show which joint / end is selected without replacing any element (a press must not swap the element under a double-click). */
 function dgMark() {
@@ -271,10 +316,51 @@ function dgJointDelete() {
   let k = S.dg.joint ? w.route.findIndex((q, i) => i > 0 && i < w.route.length - 1 && dgNear(q, S.dg.joint)) : -1;
   if (k < 0) k = w.route.length - 2;
   const edge = m.edges.find((x) => x.id === S.dg.edge);
-  dgSetVia(m, S.dg.edge, dgJointRemove(w.route, k, dgEdgeType(edge)));
+  const type = dgEdgeType(edge);
+  let via = dgJointRemove(w.route, k, type);
+  let anchors = {};
+  if (type === 'elbow') ({ via, anchors } = dgCleanDelete(m, edge.id, w, via));
+  dgSetVia(m, S.dg.edge, via);
+  Object.assign(edge, anchors);
   S.dg.joint = null;
   dgSave(m);
   return true;
+}
+/** E1: after a joint of an elbow arrow is deleted the path must stay clean: no jog and no extra joint where it meets a shape. When the end legs cannot both enter square,
+ *  the end's anchor moves to the face the remaining leg points at (the leg stays where it is), so nothing extra appears. */
+function dgCleanDelete(m, eid, before, via) {
+  const want = before.route.length - 3; // joints left on screen
+  const clean = (v, anchors) => {
+    const m2 = JSON.parse(JSON.stringify(m));
+    const e2 = m2.edges.find((x) => x.id === eid);
+    dgSetVia(m2, eid, v);
+    Object.assign(e2, anchors);
+    const w2 = dgWire(m2, eid);
+    const orthogonal = !!w2 && w2.route.every((q, i) => !i || Math.abs(q[0] - w2.route[i - 1][0]) < 0.6 || Math.abs(q[1] - w2.route[i - 1][1]) < 0.6);
+    return orthogonal && w2.route.length - 2 <= want ? { via: v, anchors } : null;
+  };
+  const plain = clean(via, {});
+  if (plain) return plain;
+  if (via.length === 1) {
+    const edge = m.edges.find((x) => x.id === eid);
+    const [J] = via;
+    const A = before.route[0];
+    const B = before.route.at(-1);
+    const nTo = m.nodes.find((n) => n.id === edge.to);
+    const nFrom = m.nodes.find((n) => n.id === edge.from);
+    const near1 = (a, b) => Math.abs(a - b) < 0.6;
+    const tries = [];
+    if (near1(J[0], A[0]) && nTo) { // the first leg is vertical: the head enters from the side the leg comes from
+      const side = J[0] < nTo.x ? 'l' : J[0] > nTo.x + nTo.w ? 'r' : null;
+      if (side) tries.push([[[J[0], DIAGRAM.anchorPoint(nTo, side, 0.5)[1]]], { toAnchor: { side, at: 0.5 } }]);
+    }
+    if (near1(J[0], B[0]) && nFrom) { // the last leg is vertical: the start leaves from the side facing it
+      const side = J[0] < nFrom.x ? 'l' : J[0] > nFrom.x + nFrom.w ? 'r' : null;
+      if (side) tries.push([[[J[0], DIAGRAM.anchorPoint(nFrom, side, 0.5)[1]]], { fromAnchor: { side, at: 0.5 } }]);
+    }
+    for (const [v, a] of tries) { const ok = clean(v, a); if (ok) return ok; }
+  }
+  return { via, anchors: {} };
 }
 /** The shape under a point of the drawing (the topmost one; bands do not count), with a little room around it. */
 function dgNodeAt(m, p, pad = 6) {
@@ -652,6 +738,8 @@ document.addEventListener('pointerdown', (e) => {
   const nodeEl = e.target.closest('[data-dg-node]');
   const edgeEl = e.target.closest('[data-dg-edge]');
   e.preventDefault();
+  const lgEl0 = e.target.closest('[data-dg-lg]');
+  if (lgEl0 && !nodeEl && !edgeEl && !S.dgPick) { dgSelect(ptr, ed, { legend: lgEl0.dataset.dgLg }); return; }
   if (S.dgPick && nodeEl) { dgFinishPick(nodeEl.dataset.dgNode); return; }
   if (edgeEl && !nodeEl) { dgSelect(ptr, ed, { edge: edgeEl.dataset.dgEdge }); return; }
   if (!nodeEl && !handle) { dgSelect(ptr, ed, {}); return; }
@@ -728,6 +816,8 @@ document.addEventListener('keydown', (e) => {
     dgSave(m);
     return;
   }
+  if (S.dg.legend && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); e.stopImmediatePropagation(); dgAction('dgLgDel'); return; }
+  if (S.dg.legend && (e.key === 'Enter' || e.key === 'F2')) { e.preventDefault(); e.stopImmediatePropagation(); dgInline({ legend: S.dg.legend }); return; }
   if ((e.key === 'Enter' || e.key === 'F2') && (S.dg.nodes.length === 1 || S.dg.edge)) { e.preventDefault(); e.stopImmediatePropagation(); dgInline(S.dg.edge ? { edge: S.dg.edge } : { node: S.dg.nodes[0] }); return; }
   if ((e.key === 'Delete' || e.key === 'Backspace') && S.dg.edge && S.dg.joint) { e.preventDefault(); e.stopImmediatePropagation(); dgAction('dgBendDel'); return; }
   if ((e.key === 'Delete' || e.key === 'Backspace') && S.dg.edge && S.dg.end) { e.preventDefault(); e.stopImmediatePropagation(); return; } // an arrow never dangles: an end is moved, not deleted
@@ -898,6 +988,32 @@ async function dgAction(a) {
       return;
     }
     case 'dgBendDel': dgJointDelete(); return;
+    case 'dgLgText': if (S.dg.legend) dgInline({ legend: S.dg.legend }); return;
+    case 'dgLgDel': {
+      if (!S.dg.legend) return;
+      m.legendHide = [...new Set([...(Array.isArray(m.legendHide) ? m.legendHide : []), S.dg.legend])];
+      S.dg.legend = null;
+      break;
+    }
+    case 'dgLgReset': {
+      if (!(m.legendHide || m.legendLook || m.legend !== undefined)) return;
+      delete m.legendHide; delete m.legendLook; delete m.legend;
+      S.dg.legend = null;
+      break;
+    }
+    case 'dgLgLook': {
+      const key = S.dg.legend;
+      if (!key) return;
+      const opts = [['', t('dgAuto2')], ...['staff', 'applicant', 'payment', 'rework', 'system', 'ok', 'stop', 'note'].map((k) => [`skin:${k}`, t(`dgk_${k}`)]), ...DIAGRAM.WIRE_KINDS.map((k) => [`wire:${k}`, t(`dgw_${k}`)]), ...DIAGRAM.SYMBOLS.map((k) => [`sym:${k}`, t(`sym_${k}`)])];
+      dgChoiceMenu('dgLgLook', t('dgLgLook'), opts, m.legendLook?.[key] || '', (v) => {
+        const m2 = dgModel();
+        const lk = m2.legendLook && typeof m2.legendLook === 'object' ? { ...m2.legendLook } : {};
+        if (v) lk[key] = v; else delete lk[key];
+        if (Object.keys(lk).length) m2.legendLook = lk; else delete m2.legendLook;
+        dgSave(m2);
+      });
+      return;
+    }
     case 'dgRoute': case 'dgHead': case 'dgTail': case 'dgLine': case 'dgWeight': if (edge) dgEdgeMenu(a.slice(2).toLowerCase()); return;
     case 'dgRouteAuto': {
       // «reset to automatic»: the joints and the anchors go, the arrow finds its own path again (its style stays)
@@ -949,7 +1065,7 @@ async function dgAction(a) {
       return;
     }
     case 'dgFlow': { m.flow = m.flow === 'rtl' ? 'ltr' : 'rtl'; dgSave(DIAGRAM.layout(m)); return; }
-    case 'dgLegend': { m.legend = m.legend === false ? undefined : false; if (m.legend === undefined) delete m.legend; break; }
+    case 'dgLegend': { S.dg.legend = null; m.legend = m.legend === false ? undefined : false; if (m.legend === undefined) delete m.legend; break; }
     case 'dgMermaidOut': download(`${S.svc}.${S.dg.ed}.diagram.mmd`, DIAGRAM.toMermaid(m), 'text/plain'); return;
     case 'dgMermaidIn': {
       const code = await ask(t('dgMermaidPrompt'), DIAGRAM.toMermaid(m));

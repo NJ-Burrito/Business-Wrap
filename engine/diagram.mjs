@@ -770,10 +770,10 @@ export const DIAGRAM = (() => {
     const B = p.tb ? p.b : edgePoint(p.T.n, via.at(-1) || A);
     const out = (pt, c, side) => {
       if (side) return { t: [0, -1], r: [1, 0], b: [0, 1], l: [-1, 0] }[side];
+      // a curve leaves a shape square to the face it leaves from (the face the line points at), so it bows instead of lying on the straight line
       const dx = pt[0] - c.cx;
       const dy = pt[1] - c.cy;
-      const L = Math.hypot(dx, dy) || 1;
-      return [dx / L, dy / L];
+      return Math.abs(dx) / (c.n.w / 2 || 1) > Math.abs(dy) / (c.n.h / 2 || 1) ? [Math.sign(dx) || 1, 0] : [0, Math.sign(dy) || 1];
     };
     p.nA = out(A, p.S, p.fa ? p.sides[0] : null);
     p.nB = out(B, p.T, p.tb ? p.sides[1] : null);
@@ -1056,8 +1056,10 @@ export const DIAGRAM = (() => {
     const legend = [];
     if (model.legend !== false) {
       const used = new Set(model.nodes.map((n) => (COLORS.includes(n.color) ? n.color : n.kind === 'start' ? 'applicant' : n.kind)));
-      const keys = ['staff', 'applicant', 'rework', 'payment', 'system', 'stop', 'ok', 'note'].filter((k) => used.has(k));
-      const wireKeys = ['main', 'return', 'stop'].filter((k) => plan.some((p) => p.e.kind === k));
+      // 0.15.6 (L1): an entry deleted by hand stays in model.legendHide (by its key), so it stays gone when shapes change
+      const hide = new Set(Array.isArray(model.legendHide) ? model.legendHide : []);
+      const keys = ['staff', 'applicant', 'rework', 'payment', 'system', 'stop', 'ok', 'note'].filter((k) => used.has(k) && !hide.has(k));
+      const wireKeys = ['main', 'return', 'stop'].filter((k) => plan.some((p) => p.e.kind === k) && !hide.has(`wire-${k}`));
       const items = [...keys.map((k) => ({ k, text: W[k] })), ...wireKeys.map((k) => ({ k: `wire-${k}`, wire: k, text: W[`wire-${k}`] }))];
       const chipW = 24;
       const chipH = 16;
@@ -1084,21 +1086,31 @@ export const DIAGRAM = (() => {
         let pos = Math.max(0, (width - row.reduce((sum, it) => sum + it.iw, 0) + gap) / 2);
         const ky = ky0 + li * pitch;
         for (const it of row) {
+          const l0 = legend.length;
           // the key starts at the reading start: the right edge in Arabic
           const chipX = rtl ? maxX - G.margin - pos - chipW : minX + G.margin + pos;
           const textX = rtl ? chipX - 7 : chipX + chipW + 7;
           const tw = keyW(it.text);
-          if (it.wire) {
+          // 0.15.6 (L1): the swatch of an entry can be another shape skin, another wire look, or a symbol (model.legendLook[key] = 'skin:staff' | 'wire:return' | 'sym:clock')
+          const lookRaw = model.legendLook && typeof model.legendLook === 'object' ? String(model.legendLook[it.k] || '') : '';
+          const [lkKind, lkName] = lookRaw.split(':');
+          const lk = (lkKind === 'skin' && P.skins[lkName]) || (lkKind === 'wire' && WIRE_KINDS.includes(lkName)) || (lkKind === 'sym' && GLYPHS[lkName]) ? { kind: lkKind, name: lkName } : null;
+          const wireName = lk ? (lk.kind === 'wire' ? lk.name : null) : it.wire;
+          const skinName = lk ? (lk.kind === 'skin' ? lk.name : null) : it.wire ? null : it.k;
+          if (lk && lk.kind === 'sym') {
+            glyph(lk.name, chipX + chipW / 2, ky + chipH / 2, P.caption, 1.5, legend);
+          } else if (wireName) {
             // the key's arrows point the way the chain runs (left to right in both editions, as the reference)
-            legend.push({ t: 'line', pts: [[chipX, ky + chipH / 2], [chipX + chipW - 2, ky + chipH / 2]], color: P.wire[it.wire], lw: WIRE[it.wire].w, dash: WIRE[it.wire].dash, arrow: true, wire: it.wire });
+            legend.push({ t: 'line', pts: [[chipX, ky + chipH / 2], [chipX + chipW - 2, ky + chipH / 2]], color: P.wire[wireName], lw: WIRE[wireName].w, dash: WIRE[wireName].dash, arrow: true, wire: wireName });
           } else {
-            const sk = P.skins[it.k];
-            const stadium = it.k === 'ok' || it.k === 'stop';
-            legend.push({ t: 'shape', geom: it.k === 'note' ? 'note' : stadium ? 'stadium' : 'round', rx: stadium ? chipH / 2 : 4, x: chipX, y: ky, w: chipW, h: chipH, fill: sk.fill, line: sk.line, lw: stadium ? G.strokeTerm : G.stroke, dash: '' });
-            const b = it.k === 'ok' ? 'check' : it.k === 'stop' ? 'cross' : it.k === 'system' ? 'cog' : it.k === 'note' ? '' : 'person';
+            const sk = P.skins[skinName];
+            const stadium = skinName === 'ok' || skinName === 'stop';
+            legend.push({ t: 'shape', geom: skinName === 'note' ? 'note' : stadium ? 'stadium' : 'round', rx: stadium ? chipH / 2 : 4, x: chipX, y: ky, w: chipW, h: chipH, fill: sk.fill, line: sk.line, lw: stadium ? G.strokeTerm : G.stroke, dash: '' });
+            const b = skinName === 'ok' ? 'check' : skinName === 'stop' ? 'cross' : skinName === 'system' ? 'cog' : skinName === 'note' ? '' : 'person';
             if (b) glyph(b, chipX + chipW / 2, ky + chipH / 2, sk.line, b === 'check' || b === 'cross' ? 0.95 : 1, legend);
           }
           legend.push(textItem([it.text], rtl ? textX - tw / 2 : textX + tw / 2, ky + chipH / 2, FS.key, P.caption, 400, { legend: it.k }));
+          for (let li2 = l0; li2 < legend.length; li2 += 1) legend[li2].lg = it.k;
           pos += it.iw;
         }
       });
@@ -1193,16 +1205,17 @@ export const DIAGRAM = (() => {
     for (const it of r.items) {
       const key = editor ? (it.deco ? `e:${it.deco}` : it.id && !it.wire ? `n:${it.id}` : it.wire && it.id ? `e:${it.id}` : null) : null;
       if (key !== cur) { out.push(close()); if (key) { cur = key; out.push(key.startsWith('n:') ? `<g data-dg-node="${esc(it.id)}">` : `<g data-dg-edge="${esc(it.id)}">`); } }
-      if (it.t === 'shape') out.push(it.fill === 'none' && !editor ? '' : shapeSvg(it));
-      else if (it.t === 'circle') out.push(`<circle cx="${it.cx}" cy="${it.cy}" r="${it.r}" fill="${it.fill || 'none'}" stroke="${it.color}" stroke-width="${r1(it.lw)}"${it.dash ? ` stroke-dasharray="${it.dash}"` : ''}/>`);
+      const tag = (str) => (editor && it.lg ? str.replace(/<(rect|path|circle|polygon|text)/g, `<$1 data-dg-lg="${esc(it.lg)}"`) : str);
+      if (it.t === 'shape') out.push(tag(it.fill === 'none' && !editor ? '' : shapeSvg(it)));
+      else if (it.t === 'circle') out.push(tag(`<circle cx="${it.cx}" cy="${it.cy}" r="${it.r}" fill="${it.fill || 'none'}" stroke="${it.color}" stroke-width="${r1(it.lw)}"${it.dash ? ` stroke-dasharray="${it.dash}"` : ''}/>`));
       else if (it.t === 'line') {
         const d = it.d || `M${it.pts.map(([x, y]) => `${x} ${y}`).join('L')}`;
         const styledEnds = it.head !== undefined;
         const mEnd = styledEnds ? (it.head !== 'none' && it.head !== 'bar' ? ` marker-end="url(#${markerOf('end', it.head, it.wire)})"` : '') : it.arrow ? ` marker-end="url(#bwdg-tip-${it.wire || 'main'})"` : '';
         const mStart = styledEnds && it.tail !== 'none' && it.tail !== 'bar' ? ` marker-start="url(#${markerOf('start', it.tail, it.wire)})"` : '';
-        out.push(`<path d="${d}" fill="none" stroke="${it.color}" stroke-width="${r1(it.lw)}"${it.dash ? ` stroke-dasharray="${it.dash}"` : ''} stroke-linecap="round" stroke-linejoin="round"${mStart}${mEnd}/>`);
+        out.push(tag(`<path d="${d}" fill="none" stroke="${it.color}" stroke-width="${r1(it.lw)}"${it.dash ? ` stroke-dasharray="${it.dash}"` : ''} stroke-linecap="round" stroke-linejoin="round"${mStart}${mEnd}/>`));
         if (editor && it.wire && it.id) out.push(`<path d="${d}" fill="none" stroke="transparent" stroke-width="12" class="dg-hit"/>`);
-      } else if (it.t === 'text') out.push(textSvg(it, editor));
+      } else if (it.t === 'text') out.push(tag(textSvg(it, editor)));
     }
     out.push(close());
     void open;

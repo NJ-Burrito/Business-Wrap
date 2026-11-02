@@ -13,6 +13,8 @@
     "version": { "const": 1 },
     "flow": { "enum": ["ltr", "rtl"], "description": "Direction of the chain (the house reference runs left to right in both editions)." },
     "legend": { "description": "false hides the legend; an object renames entries by key (staff, applicant, rework, payment, system, stop, ok, note, wire-main, wire-return, wire-stop).", "oneOf": [{ "const": false }, { "type": "object", "additionalProperties": { "type": "string" } }] },
+    "legendHide": { "type": "array", "items": { "type": "string" }, "description": "Legend entries deleted by hand, by key (staff, applicant, rework, payment, system, stop, ok, note, wire-main, wire-return, wire-stop). They stay deleted when shapes change; absent = every automatic entry shows." },
+    "legendLook": { "type": "object", "additionalProperties": { "type": "string", "pattern": "^(skin|wire|sym):[a-z]+$" }, "description": "The swatch of a legend entry, by entry key: skin:<shape colour>, wire:<main|return|stop> or sym:<symbol>. Absent = the entry's own." },
     "nodes": {
       "type": "array",
       "items": {

@@ -58,6 +58,10 @@ Object.assign(IC, {
   dgTail: BI_G('<circle cx="5" cy="12" r="2.2"/><path d="M8 12h13"/>'),
   dgLine: BI_G('<path d="M3 12h3"/><path d="M10.5 12h3"/><path d="M18 12h3"/>'),
   dgWeight: BI_G('<path d="M3 6h18" stroke-width="1"/><path d="M3 12h18" stroke-width="2.5"/><path d="M3 18h18" stroke-width="4.5"/>'),
+  dgLgText: BI_G('<path d="M4 7h16"/><path d="M4 12h10"/><path d="M4 17h6"/>'),
+  dgLgLook: BI_G('<rect x="3" y="5" width="8" height="6" rx="1.5"/><path d="M14 8h7"/><path d="M3 17h18"/>'),
+  dgLgDel: BI_G('<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/>'),
+  dgLgReset: BI_G('<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>'),
 });
 const BI_MAP = [
   ['[data-go][data-ring]', 'biJump'],

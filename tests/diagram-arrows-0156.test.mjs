@@ -51,7 +51,7 @@ const wf = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'workflow.json'), 'utf8'
     const b = DIAGRAM.render(DIAGRAM.ensure(m), { theme, locale: loc });
     const ae = OLD.render(OLD.ensure(m), { theme, locale: loc, editor: true });
     const be = DIAGRAM.render(DIAGRAM.ensure(m), { theme, locale: loc, editor: true });
-    const norm = (s) => s.replace(/ data-dg-cap="[^"]*"/g, ''); // the editor-only caption hook is the one new attribute
+    const norm = (s) => s.replace(/ data-dg-(cap|lg)="[^"]*"/g, ''); // the editor-only caption and legend hooks are the only new attributes
     if (a === b && norm(be) === ae) same += 1;
   }
   numbers.oldSamples = { compared, byteIdentical: same };
@@ -65,6 +65,8 @@ const wf = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'workflow.json'), 'utf8'
   Object.assign(E('e2'), { route: 'straight', line: 'dotted', weight: 'thick', head: 'triangle' });
   Object.assign(E('e5'), { head: 'bar', tail: 'bar', weight: 'thin' });
   Object.assign(E('e8'), { head: 'none', line: 'dashed' });
+  styled.legendHide = ['staff'];
+  styled.legendLook = { ok: 'sym:clock', rework: 'wire:return' };
   const r = DIAGRAM.resolve(styled, { theme, locale: 'en' });
   const w = (id) => r.items.find((x) => x.t === 'line' && x.wire && x.id === id);
   const svg = DIAGRAM.render(styled, { theme, locale: 'en' });
@@ -88,10 +90,11 @@ const wf = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'workflow.json'), 'utf8'
   } finally { await browser0.close(); }
   const docx = path.join(OUT, 'styled.en.docx');
   exportDocx(docEn, { locale: 'en', theme, docxPath: docx, embedFonts: false });
-  const code = 'import zipfile,sys,re;x=zipfile.ZipFile(sys.argv[1]).read("word/document.xml").decode();print(x.count("cubicBezTo>")//2,x.count(\'tailEnd type="triangle"\'),x.count(\'tailEnd type="diamond"\'),x.count(\'headEnd type="oval"\'),x.count(\'tailEnd type="arrow"\'),x.count("sysDot"),x.count("<pic:pic"))';
-  const [bez, tri, dia, oval, arrow, dot, pics] = (spawnSync(...py(['-c', code, docx], []), { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } }).stdout || '').trim().split(/\s+/).map(Number);
-  numbers.docxEnds = { bez, tri, dia, oval, arrow, dot, pics };
+  const code = 'import zipfile,sys,re;x=zipfile.ZipFile(sys.argv[1]).read("word/document.xml").decode();print(x.count("cubicBezTo>")//2,x.count(\'tailEnd type="triangle"\'),x.count(\'tailEnd type="diamond"\'),x.count(\'headEnd type="oval"\'),x.count(\'tailEnd type="arrow"\'),x.count("sysDot"),x.count("<pic:pic"),int("Staff stage" in x),int("Ends approved" in x))';
+  const [bez, tri, dia, oval, arrow, dot, pics, hid, kept] = (spawnSync(...py(['-c', code, docx], []), { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } }).stdout || '').trim().split(/\s+/).map(Number);
+  numbers.docxEnds = { bez, tri, dia, oval, arrow, dot, pics, hid, kept };
   check('A7 DOCX: curves are native cubic Bezier segments; triangle, diamond and circle map to Word triangle, diamond, oval; bar is a drawn line; no picture', bez >= 1 && tri >= 1 && dia >= 1 && oval >= 1 && arrow >= 1 && dot >= 1 && pics === 0, JSON.stringify(numbers.docxEnds));
+  check('L1 DOCX: a deleted legend entry is gone and the others stay', hid === 0 && kept === 1, JSON.stringify({ hid, kept }));
 }
 
 // ── the real editor ──
@@ -391,6 +394,77 @@ try {
     const ar = await page.evaluate(() => window.BW.EXT.ribbon.panelHtml('diagram2'));
     check('A6 the arrow group of the ribbon lists the pickers and the reset', ['dgRoute', 'dgHead', 'dgTail', 'dgLine', 'dgWeight', 'dgRouteAuto', 'dgBendAdd', 'dgBendDel'].every((id) => ar.includes(`data-a="${id}"`)));
     check('A6 Arabic names show in the ribbon', ar.includes(I.ar.dgRoute) && ar.includes(I.ar.dgRouteAuto));
+  }
+
+  // ── E1: deleting an elbow joint leaves a clean path: no jog, no extra joint ──
+  for (const kk of [1, 2]) {
+    await U.reveal();
+    await selectArrow('e16', 0.4);
+    await pick('route', 'elbow');
+    await page.evaluate(() => window.BW.runAction('dgRouteAuto'));
+    await page.waitForTimeout(60);
+    const wb = await U.wire('e16');
+    await click(await centerOf(jointEl(kk)));
+    await page.keyboard.press('Delete');
+    await page.waitForTimeout(90);
+    const wa = await U.wire('e16');
+    const ea = (await U.raw()).edges.find((e) => e.id === 'e16');
+    check(`E1 [joint ${kk}] a clean path: one joint left, no jog near the head, orthogonal`, interior(wb).length === 2 && interior(wa).length === 1 && wa.route.length === 3 && orth(wa.route) && (ea.via || []).length === 1, JSON.stringify({ before: wb.route, after: wa.route, anchors: [ea.fromAnchor, ea.toAnchor] }));
+    await page.evaluate(() => window.BW.undo());
+  }
+  await page.evaluate(() => window.BW.runAction('dgRouteAuto'));
+
+  // ── L1: legend entries: select, edit look, delete, reset ──
+  {
+    await U.reveal();
+    const lgText = (k) => page.locator(`${FIG} text[data-dg-legend="${k}"]`);
+    const lgKeys = () => page.evaluate(() => { const B = window.BW; const m = B.DIAGRAM.ensure(B.M[B.S.svc].ar.doc.chapters[2].sections[0].blocks[0].model); const r = B.DIAGRAM.resolve(m, { theme: B.S.theme, locale: 'ar' }); const by = {}; for (const it of r.items) if (it.lg) (by[it.lg] ||= []).push(it); return Object.fromEntries(Object.entries(by).map(([k, v]) => { const xs = v.flatMap((i) => (i.t === 'text' ? [i.box.x, i.box.x + i.box.w] : i.t === 'shape' ? [i.x, i.x + i.w] : i.t === 'line' ? i.pts.map((q) => q[0]) : i.t === 'circle' ? [i.cx - i.r, i.cx + i.r] : [])); return [k, { x0: Math.min(...xs), x1: Math.max(...xs), types: v.map((i) => i.t + (i.wire ? ':' + i.wire : '')), fill: v.find((i) => i.t === 'shape')?.fill }]; })); });
+    const k0 = Object.keys(await lgKeys());
+    const tb = await lgText('staff').boundingBox();
+    await click([tb.x + tb.width / 2, tb.y + tb.height / 2]);
+    const st = await page.evaluate(() => ({ lg: window.BW.S.dg?.legend, box: !!document.querySelector('main.bw-doc figure[data-dg] .dg-lgsel') }));
+    check('L1 a click on a legend entry selects it (visible selection)', st.lg === 'staff' && st.box, JSON.stringify(st));
+    const ctxLabel = await page.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.querySelector('.ctx .st')?.textContent);
+    const panel = await page.evaluate(() => window.BW.EXT.ribbon.panelHtml('diagram'));
+    check('L1 its own ribbon context, in Arabic', /المفتاح|بند/.test(ctxLabel || '') && ['dgLgText', 'dgLgLook', 'dgLgDel', 'dgLgReset'].every((id) => panel.includes(`data-a="${id}"`)), String(ctxLabel));
+    const o0 = await U.ops();
+    await page.keyboard.press('Delete');
+    await page.waitForTimeout(90);
+    const k1 = await lgKeys();
+    const raw1 = await U.raw();
+    check('L1 Delete removes that entry only (stored by key)', !k1.staff && Object.keys(k1).length === k0.length - 1 && same(raw1.legendHide, ['staff']) && (await U.ops()) === o0 + 1, JSON.stringify({ k0, k1: Object.keys(k1), hide: raw1.legendHide }));
+    const spans = Object.values(k1).sort((a, b) => a.x0 - b.x0);
+    const gaps = spans.slice(1).map((v, i) => Math.round((v.x0 - spans[i].x1) * 10) / 10);
+    const vw = await page.evaluate(() => { const B = window.BW; const m = B.DIAGRAM.ensure(B.M[B.S.svc].ar.doc.chapters[2].sections[0].blocks[0].model); return B.DIAGRAM.resolve(m, { theme: B.S.theme, locale: 'ar' }).view; });
+    const leftRoom = spans[0].x0 - (vw.x + 34);
+    const rightRoom = (vw.x + vw.w - 34) - spans.at(-1).x1;
+    check('L1 the other entries reflow with no gap (every gap within the keys own spacing, the row stays centred)', gaps.length >= 3 && Math.max(...gaps) <= 22 && Math.abs(leftRoom - rightRoom) <= 16, JSON.stringify({ gaps, leftRoom, rightRoom }));
+    await selectArrow('e16').catch(() => {});
+    await page.evaluate(() => window.BW.runAction('dgStaff'));
+    await page.waitForTimeout(80);
+    check('L1 an entry deleted by hand stays deleted when shapes change', !(await lgKeys()).staff && same((await U.raw()).legendHide, ['staff']));
+    await page.evaluate(() => window.BW.undo());
+    await page.evaluate(() => window.BW.undo());
+    check('L1/A8 undo brings the entry back, one step', !!(await lgKeys()).staff && !(await U.raw()).legendHide);
+    // the look: a symbol, a wire look, a shape skin
+    for (const [key, val, expect] of [['ok', 'sym:clock', (v) => !v.types.includes('shape') && v.types.some((t2) => t2 === 'circle' || t2 === 'line')], ['rework', 'wire:return', (v) => v.types.includes('line:return')], ['payment', 'skin:note', (v) => v.types.includes('shape')]]) {
+      const tbk = await lgText(key).boundingBox();
+      await click([tbk.x + tbk.width / 2, tbk.y + tbk.height / 2]);
+      await page.evaluate(() => window.BW.runAction('dgLgLook'));
+      await page.locator(`.bw-dg-gallery button[data-val="${val}"]`).click();
+      await page.waitForTimeout(80);
+      const kk2 = await lgKeys();
+      check(`L1 the look of «${key}» can be ${val}`, (await U.raw()).legendLook?.[key] === val && expect(kk2[key]), JSON.stringify(kk2[key]));
+    }
+    // the whole legend, and reset
+    await page.evaluate(() => window.BW.runAction('dgLegend'));
+    check('L1 «delete the whole legend» hides every entry', Object.keys(await lgKeys()).length === 0 && (await U.raw()).legend === false);
+    await page.evaluate(() => window.BW.runAction('dgLgReset'));
+    const rr = await U.raw();
+    check('L1 «reset legend» brings the automatic entries back', Object.keys(await lgKeys()).length === k0.length && !rr.legendHide && !rr.legendLook && rr.legend === undefined);
+    // print / editor SVG: the hook is editor only
+    const pr = await page.evaluate(() => { const B = window.BW; const m = B.DIAGRAM.ensure(B.M[B.S.svc].ar.doc.chapters[2].sections[0].blocks[0].model); return B.DIAGRAM.render(m, { theme: B.S.theme, locale: 'ar' }).includes('data-dg-lg'); });
+    check('L1 the selection hook never prints', pr === false);
   }
 
   // ── A9: how a diagram edit reaches the other edition (read from commit(), reported) ──
