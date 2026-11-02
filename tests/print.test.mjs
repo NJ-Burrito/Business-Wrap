@@ -175,6 +175,8 @@ try {
   const sh = (page, fn, arg) => page.evaluate(([f, a]) => new Function('r', 'a', `return (${f})(r, a)`)(document.getElementById('bw-ui-host').shadowRoot, a), [fn.toString(), arg]);
   const axe = async (page) => {
     if (!(await page.evaluate(() => !!window.axe))) await page.addScriptTag({ path: AXE });
+    // CI 0.15.7 (.xt > b read at a half-faded explainer card): axe reads colours as drawn, so wait until every finite animation has settled first (the assertion itself is unchanged)
+    await page.evaluate(async () => { for (let i = 0; i < 40; i++) { const run = document.getAnimations().filter((x) => x.effect && x.effect.getComputedTiming().iterations !== Infinity && x.playState === 'running'); if (!run.length) return; await Promise.all(run.map((x) => x.finished.catch(() => 0))); await new Promise((r) => setTimeout(r, 50)); } });
     const v = await page.evaluate(async () => (await window.axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'] })).violations.map((x) => ({ id: x.id, impact: x.impact, t: x.nodes[0]?.target?.join(' ') })));
     return v.filter((x) => x.impact === 'serious' || x.impact === 'critical');
   };
