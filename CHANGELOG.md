@@ -8,6 +8,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.15.8] - 2026-11-02
+
+🛡️ An update or a launch now deletes only what is proven to be Business-Wrap's own and unused. / 🛡️ التحديث والتشغيل لا يحذفان الآن إلا ما ثبت أنه من Business-Wrap نفسه وغير مستعمل.
+
+### Changed / تغيّر
+- 🔌 **A session that is still running keeps its folder**: in the Claude Code plugin cache, an older version folder is removed only when Claude Code has marked it as orphaned and no running program is using it. If that cannot be checked, nothing is removed, and the folder is tried again at the next launch. / **الجلسة التي ما زالت تعمل تحتفظ بمجلدها**: في ذاكرة إضافات Claude Code المؤقتة لا يُحذف مجلد إصدار أقدم إلا إذا وسمه Claude Code بأنه يتيم ولا يستعمله أي برنامج يعمل. وإذا تعذر الفحص لا يُحذف شيء، ويُعاد النظر في المجلد عند التشغيل التالي.
+- 📦 **A file that is not on the old release's list is never deleted without a copy**: on a first update, a file the old release did not ship stays where it is. If the old list cannot be read, files in the program folders that the new release does not carry are moved, not deleted, to `.local/backups/removed-files-<version>/`, and the update tells you the folder and how many files. Only the latest such folder is kept. / **الملف الذي ليس في قائمة الإصدار القديم لا يُحذف أبداً دون نسخة**: في أول تحديث يبقى في مكانه كل ملف لم يشحنه الإصدار القديم. وإذا تعذرت قراءة القائمة القديمة تُنقل ملفات مجلدات البرنامج التي لا يحملها الإصدار الجديد ولا تُحذف، إلى `.local/backups/removed-files-<version>/`، ويذكر التحديث المجلد وعدد الملفات. ويبقى آخر مجلد من هذا النوع فقط.
+
+### Fixed / أصلح
+- 🧹 **Folders beside the install are removed only when they are provably ours**: a name like `business-wrap.backup-mine`, or a `business-wrap.backup-1.2.3` that holds other content, is left exactly as it is and never stops an update. Only `.backup-<version>` and `.backup-<version>-data` folders that carry our marker, our own `package.json` or our own kind of content are cleaned up. / **المجلدات بجانب التثبيت لا تُحذف إلا إذا ثبت أنها لنا**: اسم مثل `business-wrap.backup-mine` أو `business-wrap.backup-1.2.3` يحوي محتوى آخر يبقى كما هو ولا يوقف تحديثاً. ولا يُنظَّف إلا ما اسمه `.backup-<version>` أو `.backup-<version>-data` ويحمل علامتنا أو `package.json` الخاص بنا أو نوع محتوانا.
+- 🔒 **Paths read from disk stay inside what they name**: a damaged or edited update marker or file list can no longer point a deletion outside the install or outside the update's own backup folders. / **المسارات المقروءة من القرص تبقى داخل ما تسميه**: علامة تحديث أو قائمة ملفات تالفة أو معدّلة لم تعد قادرة على توجيه حذف إلى خارج التثبيت أو خارج مجلدات النسخ الخاصة بالتحديث.
+- 🧪 A test no longer reads the page colours while the explanation card is still fading in. / اختبار لم يعد يقرأ ألوان الصفحة والبطاقة الشارحة ما زالت تظهر تدريجياً.
+
 ## [0.15.7] - 2026-11-02
 
 🧹 After an update, one version of Business-Wrap stays on your machine, and all your work stays with it. / 🧹 بعد التحديث تبقى نسخة واحدة من Business-Wrap على جهازك، ويبقى عملك كله معها.

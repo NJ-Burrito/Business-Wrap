@@ -116,7 +116,7 @@ function release(version, { drop = [], add = {}, broken = false } = {}) {
   return { version, zip, sha256: sha(fs.readFileSync(zip)), root };
 }
 const info = (r) => ({ version: r.version, zip: `https://github.com/${R}/releases/download/v${r.version}/business-wrap-${r.version}.zip`, zipApi: '', sha256: r.sha256 });
-const go = (dir, r, current, extra = {}) => { process.env.BW_UPDATE_ZIP = r.zip; return applyUpdate({ dir, release: info(r), repo: R, current, ...extra }); };
+const go = (dir, r, current, extra = {}) => { process.env.BW_UPDATE_ZIP = r.zip; process.env.BW_UPDATE_OLD_ZIP ??= path.join(tmp, 'no-such-old-release.zip'); /* offline: no listing unless a test names one */ return applyUpdate({ dir, release: info(r), repo: R, current, ...extra }); };
 const versionOf = (dir) => JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).version;
 
 try {
@@ -137,7 +137,7 @@ try {
     const after = tree(S.dir);
     const isUser = (k) => Object.keys(USER).includes(k) || Object.keys(UNKNOWN).includes(k);
     ok('U4 every KEEP path and every unknown user file is byte-identical (hashes)', Object.keys(userBefore).filter(isUser).every((k) => userBefore[k] === after[k]) && Object.keys(userBefore).filter((k) => KEEP.some((p) => k === p || k.startsWith(`${p}/`)) ).every((k) => userBefore[k] === after[k]));
-    ok('U4 .local as a whole is byte-identical (nothing added, nothing changed)', same(only(userBefore, (k) => k.startsWith('.local/')), only(after, (k) => k.startsWith('.local/'))));
+    ok('U4 .local as a whole is byte-identical (nothing changed; only the moved-aside copy of unlisted code files is added)', same(only(userBefore, (k) => k.startsWith('.local/')), only(after, (k) => k.startsWith('.local/') && !k.startsWith('.local/backups/removed-files-'))));
     ok('U4 the save folder (documents, Versions, Exports, Sources, projects, history, backups) is byte-identical', same(saveBefore, tree(S.save)));
     ok('U3 a file the old release dropped inside the code folders is gone', !fs.existsSync(path.join(S.dir, 'engine/old-only.mjs')));
     ok('U3 first update: a root file the new release ships is written over the old content', fs.readFileSync(path.join(S.dir, 'legacy-shipped.txt'), 'utf8') === 'shipped by V1');
@@ -170,7 +170,7 @@ try {
     const F = scenario('firstupdate', { extra: { 'legacy-shipped.txt': 'old release shipped this', 'extra-docs/shipped-note.md': 'old release shipped this too' } });
     process.env.BW_UPDATE_OLD_ZIP = rel1.zip; // pretend the CUR release zip listed these two files
     const o4 = await go(F.dir, rel2, CUR);
-    delete process.env.BW_UPDATE_OLD_ZIP;
+    process.env.BW_UPDATE_OLD_ZIP = path.join(tmp, 'no-such-old-release.zip');
     const a4 = tree(F.dir);
     ok('U3 first update with the old zip listing: the two paths it lists are deleted, an unlisted root file stays', o4.ok && !fs.existsSync(path.join(F.dir, 'legacy-shipped.txt')) && !fs.existsSync(path.join(F.dir, 'extra-docs/shipped-note.md')) && a4['my-notes.txt'] === sha(UNKNOWN['my-notes.txt']), JSON.stringify(o4));
     const G = scenario('firstupdate-nolist', { extra: { 'legacy-shipped.txt': 'old release shipped this', 'engine/gone.mjs': 'x', 'assets/user-in-code-folder.txt': 'u' } });
@@ -215,6 +215,7 @@ try {
     const L = scenario('legacy');
     put(L.parent, 'business-wrap.backup-0.15.5-data/.local/drafts/x.edits.json', v0);
     put(L.parent, 'business-wrap.backup-0.15.4/SKILL.md', 'an old kept backup of the previous layout');
+    put(L.parent, 'business-wrap.backup-0.15.4/package.json', JSON.stringify({ name: 'business-wrap', version: '0.15.4' }));
     put(L.parent, 'business-wrap.backup-0.15.4-data/.local/drafts/y.edits.json', v0);
     const lo = await go(L.dir, rel1, CUR);
     ok('U2/U6 older leftovers of the old layout are gone beside the install; one data copy moved under .local/backups/', lo.ok && noBackups(L.parent) && names(path.join(L.dir, '.local/backups')).filter((x) => x.startsWith('update-migration-')).length === 1, names(L.parent).join(','));
@@ -240,6 +241,7 @@ try {
     // a copy from a crash during the COPY (no marker) never touched the install: it is removed, the install is kept
     const C = scenario('crash-copy');
     put(C.parent, `business-wrap.backup-${CUR}/engine/half.mjs`, 'partial');
+    put(C.parent, `business-wrap.backup-${CUR}/package.json`, JSON.stringify({ name: 'business-wrap', version: CUR })); // the copy runs package.json first: that is how it is proven ours
     const c0 = tree(C.dir);
     const rc = recoverUpdateLeftovers(C.dir);
     ok('crash while copying (no marker): the partial copy is removed, the install is untouched', rc.removed.length === 1 && same(tree(C.dir), c0) && noBackups(C.parent));
@@ -266,26 +268,185 @@ try {
     for (const v of ['0.15.5', '0.15.6', '0.15.7']) put(cache, `${v}/package.json`, JSON.stringify({ name: 'business-wrap', version: v }));
     put(cache, '0.15.4/package.json', JSON.stringify({ name: 'someone-else', version: '0.15.4' }));
     put(cache, 'notes/readme.txt', 'not a version folder');
-    put(cache, '0.15.5/.orphaned_at', '1');
+    for (const v of ['0.15.5', '0.15.6']) put(cache, `${v}/.orphaned_at`, '1');
+    const none = { processes: () => [] }; // no live session: the real lister is exercised in the F1 block below
     put(plugins, 'cache/mk/other-plugin/0.1.0/package.json', JSON.stringify({ name: 'other-plugin' }));
     put(plugins, 'cache/mk/other-plugin/0.0.9/package.json', JSON.stringify({ name: 'other-plugin' }));
     put(plugins, 'installed_plugins.json', JSON.stringify({ version: 2, plugins: { 'business-wrap@mk': [{ installPath: path.join(cache, '0.15.7'), version: '0.15.7' }], 'other-plugin@mk': [{ installPath: path.join(plugins, 'cache/mk/other-plugin/0.1.0') }] } }));
-    const run = pruneOldPluginVersions(path.join(cache, '0.15.7'));
+    const run = pruneOldPluginVersions(path.join(cache, '0.15.7'), none);
     ok('U7 plugin: older Business-Wrap version folders are removed, the running one stays', run.removed.length === 2 && !fs.existsSync(path.join(cache, '0.15.5')) && !fs.existsSync(path.join(cache, '0.15.6')) && fs.existsSync(path.join(cache, '0.15.7/package.json')), JSON.stringify(run));
     ok('U7 plugin: another plugin\'s folders, a foreign package and a non-version folder are never touched', fs.existsSync(path.join(plugins, 'cache/mk/other-plugin/0.0.9/package.json')) && fs.existsSync(path.join(plugins, 'cache/mk/other-plugin/0.1.0/package.json')) && fs.existsSync(path.join(cache, '0.15.4/package.json')) && fs.existsSync(path.join(cache, 'notes/readme.txt')));
-    const oldRun = pruneOldPluginVersions(path.join(cache, '0.15.4'));
-    ok('U7 plugin: a path that is not <plugins>/cache/<marketplace>/business-wrap/<version>, or whose folder is not ours, does nothing', oldRun.removed.length === 0 && pruneOldPluginVersions(path.join(plugins, 'cache/mk/other-plugin/0.1.0')).removed.length === 0 && pruneOldPluginVersions(path.join(tmp, 'success', 'business-wrap')).removed.length === 0);
+    const oldRun = pruneOldPluginVersions(path.join(cache, '0.15.4'), none);
+    ok('U7 plugin: a path that is not <plugins>/cache/<marketplace>/business-wrap/<version>, or whose folder is not ours, does nothing', oldRun.removed.length === 0 && pruneOldPluginVersions(path.join(plugins, 'cache/mk/other-plugin/0.1.0'), none).removed.length === 0 && pruneOldPluginVersions(path.join(tmp, 'success', 'business-wrap'), none).removed.length === 0);
     put(cache, '0.15.8/package.json', JSON.stringify({ name: 'business-wrap', version: '0.15.8' }));
     put(plugins, 'installed_plugins.json', JSON.stringify({ version: 2, plugins: { 'business-wrap@mk': [{ installPath: path.join(cache, '0.15.7') }, { installPath: path.join(cache, '0.15.6') }] } }));
     put(cache, '0.15.6/package.json', JSON.stringify({ name: 'business-wrap' }));
-    const keep = pruneOldPluginVersions(path.join(cache, '0.15.8'));
+    put(cache, '0.15.7/.orphaned_at', '1');
+    put(cache, '0.15.6/.orphaned_at', '1');
+    const keep = pruneOldPluginVersions(path.join(cache, '0.15.8'), none);
     ok('U7 plugin: a version folder Claude Code still lists as installed is kept even when older', fs.existsSync(path.join(cache, '0.15.6')) && fs.existsSync(path.join(cache, '0.15.7')) && keep.removed.length === 0, JSON.stringify(keep));
     // the same through the launch path
     fs.writeFileSync(path.join(plugins, 'installed_plugins.json'), JSON.stringify({ version: 2, plugins: { 'business-wrap@mk': [{ installPath: path.join(cache, '0.15.8') }] } }));
-    const viaLaunch = launchCleanup(path.join(cache, '0.15.8'), { force: true });
+    const viaLaunch = launchCleanup(path.join(cache, '0.15.8'), { force: true, processes: () => [] });
     ok('U7 plugin: the launch path prunes the same way (0.15.6 and 0.15.7 go once only 0.15.8 is listed)', viaLaunch.plugin.removed.length === 2 && !fs.existsSync(path.join(cache, '0.15.7')) && fs.existsSync(path.join(cache, '0.15.8/package.json')), JSON.stringify(viaLaunch));
     const pl = await applyUpdate({ dir: path.join(cache, '0.15.8'), release: info(rel1), repo: R, current: '0.15.8' });
     ok('U7 plugin: an in-place update of the plugin cache copy is still refused (Claude Code owns that folder)', !pl.ok && pl.plugin === true);
+  }
+
+  /* ── F1 (0.15.8): an older plugin folder with a live session inside it is kept, and removed at the next launch once the session ends ── */
+  {
+    const plugins = path.join(tmp, 'claude-f1', 'plugins');
+    const cache = path.join(plugins, 'cache', 'mk', 'business-wrap');
+    for (const v of ['0.15.6', '0.15.7', '0.15.8']) put(cache, `${v}/package.json`, JSON.stringify({ name: 'business-wrap', version: v }));
+    put(cache, '0.15.7/.orphaned_at', '1');
+    put(cache, '0.15.6/.orphaned_at', '1');
+    put(cache, '0.15.50/package.json', JSON.stringify({ name: 'business-wrap', version: '0.15.50' })); // a newer look-alike name: never matched by 0.15.5
+    put(plugins, 'installed_plugins.json', JSON.stringify({ version: 2, plugins: { 'business-wrap@mk': [{ installPath: path.join(cache, '0.15.8') }] } }));
+    // a REAL child process whose command line sits inside the old folder (as a session's MCP server does)
+    const holder = path.join(cache, '0.15.7', 'hold.mjs');
+    fs.writeFileSync(holder, 'setInterval(() => {}, 1000);\n');
+    const kid = spawn(process.execPath, [holder], { stdio: 'ignore', windowsHide: true });
+    try {
+      await new Promise((r2) => setTimeout(r2, 600));
+      const procs = apply.listProcesses();
+      ok('F1 ready state: the real process list is readable and shows the child inside the old folder', Array.isArray(procs) && procs.some((t) => apply.mentions(t, path.join(cache, '0.15.7'))), `${procs && procs.length}`);
+      const first = launchCleanup(path.join(cache, '0.15.8'), { force: true });
+      ok('F1 a live process inside 0.15.7: the folder stays, byte-for-byte; 0.15.6 (idle, orphaned) goes', first.plugin.busy.length === 1 && fs.existsSync(holder) && fs.existsSync(path.join(cache, '0.15.7/.orphaned_at')) && !fs.existsSync(path.join(cache, '0.15.6')), JSON.stringify(first.plugin));
+    } finally {
+      kid.kill();
+      await new Promise((r2) => kid.exitCode !== null ? r2() : kid.once('exit', r2));
+    }
+    const second = launchCleanup(path.join(cache, '0.15.8'), { force: true });
+    ok('F1 the session ended: the next launch removes 0.15.7 (one version is reached)', !fs.existsSync(path.join(cache, '0.15.7')) && second.plugin.removed.length === 1 && fs.existsSync(path.join(cache, '0.15.8/package.json')), JSON.stringify(second.plugin));
+    ok('F1 a folder with a longer name (0.15.50) is not taken for 0.15.5 by the process match, and a not-readable process list keeps everything', !apply.mentions('node C:/x/0.15.50/a.js', 'C:/x/0.15.5') && apply.mentions('node "C:\\x\\0.15.5\\a.js"', 'C:/x/0.15.5') && apply.mentions('cwd C:/x/0.15.5', 'C:/x/0.15.5'));
+    put(cache, '0.15.4/package.json', JSON.stringify({ name: 'business-wrap', version: '0.15.4' }));
+    put(cache, '0.15.4/.orphaned_at', '1');
+    const blind = pruneOldPluginVersions(path.join(cache, '0.15.8'), { processes: () => null });
+    ok('F1 process list unreadable: nothing is removed', blind.removed.length === 0 && fs.existsSync(path.join(cache, '0.15.4/package.json')), JSON.stringify(blind));
+    fs.rmSync(path.join(cache, '0.15.4/.orphaned_at'));
+    const noMark = pruneOldPluginVersions(path.join(cache, '0.15.8'), { processes: () => [] });
+    ok('F1 no .orphaned_at mark from Claude Code: the folder is kept even though unlisted', noMark.removed.length === 0 && fs.existsSync(path.join(cache, '0.15.4/package.json')), JSON.stringify(noMark));
+  }
+
+  /* ── F2 (0.15.8): a first update never deletes an unlisted file without a copy ── */
+  {
+    const mine = { 'engine/my-hack.mjs': 'export const mine = 1;\n', 'assets/my-logo-notes.txt': 'notes\n', 'tests/my.test.mjs': 'x' };
+    const legacy = { 'legacy-shipped.txt': 'old release shipped this', 'engine/was-shipped-then-dropped.mjs': 'old' };
+    // with the old release's listing: a listed file goes, an unlisted one stays where it is
+    const W = scenario('f2-listing', { extra: { ...mine, ...legacy } });
+    const w0 = tree(W.dir);
+    const listZip = release(CUR, { add: { 'engine/was-shipped-then-dropped.mjs': 'listed', 'legacy-shipped.txt': 'listed' } });
+    process.env.BW_UPDATE_OLD_ZIP = listZip.zip;
+    const o1 = await go(W.dir, rel2, CUR);
+    process.env.BW_UPDATE_OLD_ZIP = path.join(tmp, 'no-such-old-release.zip');
+    const w1 = tree(W.dir);
+    ok('F2 with a listing: a listed file is deleted, an unlisted file in a code folder stays in place, byte-identical, nothing moved', o1.ok && !fs.existsSync(path.join(W.dir, 'engine/was-shipped-then-dropped.mjs')) && Object.keys(mine).every((k) => w1[k] === w0[k]) && !o1.removedFiles && !fs.existsSync(path.join(W.dir, '.local/backups/removed-files-' + CUR)), JSON.stringify(o1));
+    // with no listing: moved, path kept, hashes equal, the result names the folder and the count
+    const N = scenario('f2-nolist', { extra: { ...mine, ...legacy } });
+    const n0 = tree(N.dir);
+    const o2 = await go(N.dir, rel2, CUR);
+    const to = o2.removedFiles?.dir || '';
+    const moved = Object.keys(n0).filter((k) => !k.startsWith('.local/') && !fs.existsSync(path.join(N.dir, k)) && (k.startsWith('engine/') || k.startsWith('assets/') || k.startsWith('tests/') || k.startsWith('hooks/') || k.startsWith('bible/') || k.startsWith('update/') || k.startsWith('editor/') || k.startsWith('mcp/') || k.startsWith('security/') || k.startsWith('evals/') || k.startsWith('.')));
+    const gone = Object.keys(mine).concat('engine/was-shipped-then-dropped.mjs');
+    ok('F2 no listing: ok, the result names the folder under .local/backups and the count', o2.ok && o2.removedFiles && to === path.join(N.dir, '.local', 'backups', `removed-files-${CUR}`) && o2.removedFiles.count >= gone.length && /moved, not deleted/.test(o2.message) && o2.message.includes(to), JSON.stringify(o2));
+    ok('F2 no listing: every unlisted code file sits in that folder at its own path with the same hash (nothing was deleted)', gone.every((k) => fs.existsSync(path.join(to, k)) && sha(fs.readFileSync(path.join(to, k))) === n0[k]) && moved.every((k) => !fs.existsSync(path.join(N.dir, k)) ? fs.existsSync(path.join(to, k)) && sha(fs.readFileSync(path.join(to, k))) === n0[k] : true), to);
+    ok('F2 no listing: the count equals the files in that folder; a root file and samples/docs/ files stay', fs.readdirSync(to, { recursive: true }).filter((x) => fs.statSync(path.join(to, x)).isFile() && x !== '.bw-removed.json').length === o2.removedFiles.count && Object.keys(UNKNOWN).every((k) => sha(fs.readFileSync(path.join(N.dir, k))) === sha(UNKNOWN[k])));
+    // only the latest such folder stays
+    put(N.dir, '.local/backups/removed-files-0.1.0/.bw-removed.json', '{}');
+    put(N.dir, '.local/backups/removed-files-0.1.0/engine/old.mjs', 'older moved file');
+    put(N.dir, '.local/backups/removed-files-mine/note.txt', 'the user\'s own folder with a look-alike name (no marker)');
+    put(N.dir, 'engine/another-unlisted.mjs', 'again');
+    const rel3 = release(bump(V2, 1));
+    const o3 = await go(N.dir, rel3, V2); // this install has a manifest now: nothing moved; stage the no-manifest case by removing it
+    ok('F2 with a manifest nothing is moved and the prior moved-aside folder is kept', o3.ok && !o3.removedFiles && fs.existsSync(to) && fs.existsSync(path.join(N.dir, 'engine/another-unlisted.mjs')), JSON.stringify(o3));
+    const M = scenario('f2-latest', { extra: { 'engine/x1.mjs': 'x1' } });
+    put(M.dir, '.local/backups/removed-files-0.1.0/.bw-removed.json', '{}');
+    put(M.dir, '.local/backups/removed-files-0.1.0/engine/old.mjs', 'older moved file');
+    put(M.dir, '.local/backups/removed-files-mine/note.txt', 'user folder, no marker');
+    const o4 = await go(M.dir, rel2, CUR);
+    ok('F2 only the latest moved-aside folder stays (an older marked one goes; a look-alike without our marker is never touched)', o4.ok && !fs.existsSync(path.join(M.dir, '.local/backups/removed-files-0.1.0')) && fs.existsSync(o4.removedFiles.dir) && fs.readFileSync(path.join(M.dir, '.local/backups/removed-files-mine/note.txt'), 'utf8') === 'user folder, no marker', JSON.stringify(o4));
+    // a failed update puts every file back and leaves no aside folder
+    const X = scenario('f2-fail', { extra: { ...mine } });
+    const x0 = tree(X.dir);
+    const o5 = await go(X.dir, rel2, CUR, { failAt: 'verify' });
+    ok('F2 a failed update: every file back as before, no aside folder left, one version', !o5.ok && o5.rolledBack && same(tree(X.dir), x0) && !fs.existsSync(path.join(X.dir, `.local/backups/removed-files-${CUR}`)) && noBackups(X.parent), JSON.stringify(o5));
+  }
+
+  /* ── F3 (0.15.8): only proven leftovers go; look-alikes beside the install are byte-identical and never block an update ── */
+  {
+    const S = scenario('f3');
+    const look = {
+      'business-wrap.backup-mine/notes.txt': 'user folder',
+      'business-wrap.backup-1.2.3/photos/a.jpg': 'not ours: other content, no marker, no package.json',
+      'business-wrap.backup-1.2.4/package.json': JSON.stringify({ name: 'business-wrap', version: '9.9.9' }), // wrong version for its name
+      'business-wrap.backup-1.2.5/package.json': JSON.stringify({ name: 'someone-elses', version: '1.2.5' }),
+      'business-wrap.backup-1.2.6-data/taxes/2025.pdf': 'a user folder named like our data copy but holding other things',
+      'business-wrap.backup-1.2.7-data/.local/a.json': '{}', // looks like our data copy (top level .local) ...
+      'business-wrap.backup-1.2.7-data/photos/b.jpg': 'but holds a photos folder',
+      'business-wrap.backup-1.2.8.9/package.json': JSON.stringify({ name: 'business-wrap', version: '1.2.8.9' }),
+      'business-wrap.backup-/x.txt': 'x',
+    };
+    for (const [rel, c] of Object.entries(look)) put(S.parent, rel, c);
+    // and the ones that ARE ours, beside them
+    put(S.parent, `business-wrap.backup-1.1.1/package.json`, JSON.stringify({ name: 'business-wrap', version: '1.1.1' }));
+    put(S.parent, `business-wrap.backup-1.1.2/anything.txt`, 'x');
+    put(S.parent, `business-wrap.backup-1.1.2/${'.bw-rollback.json'}`, JSON.stringify({ phase: 'verified' }));
+    put(S.parent, `business-wrap.backup-1.1.3-data/drafts/a.edits.json`, '{}');
+    const before = tree(S.parent, ['business-wrap', 'business-wrap.backup-1.1.1', 'business-wrap.backup-1.1.2', 'business-wrap.backup-1.1.3-data']);
+    const out = await go(S.dir, rel1, CUR);
+    ok('F3 an update with look-alikes beside it succeeds, with no failure reported', out.ok && !out.leftover && !out.error, JSON.stringify(out));
+    ok('F3 every look-alike is byte-identical (hashes), proven leftovers are gone', same(before, tree(S.parent, ['business-wrap'])) && !fs.existsSync(path.join(S.parent, 'business-wrap.backup-1.1.1')) && !fs.existsSync(path.join(S.parent, 'business-wrap.backup-1.1.2')), names(S.parent).join(','));
+    const rec = recoverUpdateLeftovers(S.dir);
+    ok('F3 recovery on its own: nothing removed, nothing failed, nothing reported for a look-alike', rec.removed.length === 0 && rec.failed.length === 0 && rec.rolledBack.length === 0 && same(before, tree(S.parent, ['business-wrap'])), JSON.stringify(rec));
+    // a look-alike sitting at the exact name the rollback copy would take: not written into, not removed
+    const T = scenario('f3-same-name');
+    put(T.parent, `business-wrap.backup-${CUR}/photos/mine.jpg`, 'a user folder with the very name of the rollback copy');
+    const t0 = tree(path.join(T.parent, `business-wrap.backup-${CUR}`));
+    const o2 = await go(T.dir, rel1, CUR);
+    ok('F3 a user folder at the very name of the rollback copy is never written into or deleted; the update still succeeds', o2.ok && versionOf(T.dir) === V1 && same(tree(path.join(T.parent, `business-wrap.backup-${CUR}`)), t0), JSON.stringify(o2));
+    // launch cleanup behaves the same
+    const L = scenario('f3-launch');
+    for (const [rel, c] of Object.entries(look)) put(L.parent, rel, c);
+    const l0 = tree(L.parent, ['business-wrap']);
+    const lc = launchCleanup(L.dir, { force: true });
+    ok('F3 launch cleanup leaves every look-alike alone', same(l0, tree(L.parent, ['business-wrap'])) && lc.leftovers.failed.length === 0, JSON.stringify(lc));
+  }
+
+  /* ── F4 (0.15.8): a path read from a marker or manifest never reaches outside what it names ── */
+  {
+    const S = scenario('f4');
+    const victim = path.join(S.parent, 'victim');
+    put(victim, 'precious.txt', 'not Business-Wrap\'s');
+    put(S.dir, '.local/backups/update-migration-keep/note.txt', 'ours to keep');
+    const v0 = tree(victim);
+    const nested = path.join(S.dir, '.local', 'backups', 'update-migration-keep', 'deeper');
+    const bak = `${S.dir}.backup-${CUR}`;
+    const bads = [victim, path.join(S.dir, '.local', 'backups', 'update-migration-x', '..', '..', '..', 'victim'), path.join(S.dir, '.local', 'backups', 'other-name'), path.join(S.dir, '.local'), path.join(S.dir, 'drafts'), nested, S.dir];
+    for (const [i, bad] of bads.entries()) {
+      put(S.parent, 'business-wrap.backup-' + CUR + '/package.json', JSON.stringify({ name: 'business-wrap', version: CUR }));
+      fs.writeFileSync(path.join(bak, '.bw-rollback.json'), JSON.stringify({ phase: 'replacing', from: CUR, pid: 0, incoming: ['../victim/precious.txt', '/etc/passwd', 'C:/Windows/x', '.local/config.json'], dataBackup: bad, backupsExisted: true })); // platform-guard: ok literal inside a tampered marker, never used as a real path
+      if (!bad.includes('..')) fs.mkdirSync(bad, { recursive: true });
+      const before = tree(S.dir);
+      const rec = recoverUpdateLeftovers(S.dir);
+      const after = tree(S.dir);
+      ok('F4 tampered marker #' + i + ': nothing outside .local/backups/update-migration-* is touched (victim, drafts, .local and the kept copy byte-identical)', same(tree(victim), v0) && Object.keys(before).filter((k) => k.startsWith('.local/') || k.startsWith('drafts/')).every((k) => after[k] === before[k]) && fs.existsSync(path.join(S.dir, '.local/backups/update-migration-keep/note.txt')) && rec.rolledBack.length === 1, JSON.stringify(rec));
+      fs.rmSync(bak, { recursive: true, force: true });
+    }
+    // a genuine marker still restores its own data copy
+    const G = scenario('f4-good', { extra: { '.local/drafts/old.edits.json': JSON.stringify([{ op: 'setText', path: '/control/title', value: 'v0' }]) } });
+    const g0 = tree(G.dir);
+    const fresh = release(V1);
+    const sw = await swapInstall(G.dir, fresh.root, CUR, { verify: async (d, { dataBackup }) => { await apply.migrateUserData(d, dataBackup); throw new Error('forced (test)'); } });
+    ok('F4 a genuine marker (its own migration folder) still restores the edits file and removes that copy', !sw.ok && sw.rolledBack && same(tree(G.dir), g0), JSON.stringify(sw));
+    // a tampered manifest naming a path through a link
+    if (process.platform !== 'win32') {
+      const L = scenario('f4-link');
+      put(L.parent, 'outside/keep.txt', 'outside');
+      fs.symlinkSync(path.join(L.parent, 'outside'), path.join(L.dir, 'engine', 'link'));
+      put(L.dir, MANIFEST, JSON.stringify({ files: ['engine/link/keep.txt'] }));
+      await go(L.dir, rel1, CUR);
+      ok('F4 a manifest path through a link to elsewhere deletes nothing outside the install', fs.existsSync(path.join(L.parent, 'outside/keep.txt')));
+    }
   }
 
   /* ── U8: messages and docs say the old version is replaced ── */
@@ -299,21 +460,29 @@ try {
     const cl = read('CHANGELOG.md');
     const sec = cl.slice(cl.indexOf('## [0.15.7]'), cl.indexOf('## [0.15.6]'));
     ok('U8/U9 the 0.15.7 CHANGELOG section exists in English and Arabic and says the old version is replaced', sec.length > 100 && /replace/i.test(sec) && /[؀-ۿ]/.test(sec) && /استبدال|يُستبدل|تستبدل/.test(sec));
-    ok('U9 the version is 0.15.7 where the release reads it', versionOf(REPO) === '0.15.7' && JSON.parse(read('.claude-plugin/plugin.json')).version === '0.15.7' && JSON.parse(read('mcp/server.json')).version === '0.15.7');
+    const s8 = cl.slice(cl.indexOf('## [0.15.8]'), cl.indexOf('## [0.15.7]'));
+    ok('U8/U9 the 0.15.8 CHANGELOG section exists in English and Arabic and names the three safety rules', s8.length > 100 && /[؀-ۿ]/.test(s8) && /orphan|process|running/i.test(s8) && /moved|copy/i.test(s8) && /look-alike|name/i.test(s8));
+    ok('U9 the version is 0.15.8 where the release reads it', versionOf(REPO) === '0.15.8' && JSON.parse(read('.claude-plugin/plugin.json')).version === '0.15.8' && JSON.parse(read('mcp/server.json')).version === '0.15.8');
+    const bible = read('bible/07-updates.md') + read('bible/07-updates.ar.md');
+    ok('U8 the bible pair states the 0.15.8 rules (orphaned mark and live process, moved-aside folder, exact leftover names, contained marker paths)', /.orphaned_at/.test(bible) && /removed-files-/.test(bible) && /backup-<semver>/.test(bible) && /update-migration-/.test(bible) && /[؀-ۿ]/.test(read('bible/07-updates.ar.md')) && /removed-files-/.test(read('bible/07-updates.ar.md')));
   }
 
   /* ── ENTRY_SMOKE: the CLI of a fake old install, then the editor's update route through a live serve.mjs ── */
   {
     const feed = (v, r) => { const f = path.join(tmp, `feed-${v}.json`); fs.writeFileSync(f, JSON.stringify({ tag_name: `v${v}`, draft: false, prerelease: false, html_url: `https://github.com/${R}/releases/tag/v${v}`, published_at: '2026-11-02T00:00:00Z', body: '### Added / أضيف\n- One version stays / تبقى نسخة واحدة\n', assets: [{ name: `business-wrap-${v}.zip`, browser_download_url: `https://github.com/${R}/releases/download/v${v}/business-wrap-${v}.zip`, url: `https://api.github.com/repos/${R}/releases/assets/1`, digest: `sha256:${r.sha256}` }] })); return f; };
     const S = scenario('smoke-cli');
+    for (const [rel, c] of Object.entries({ 'business-wrap.backup-mine/notes.txt': 'user folder', 'business-wrap.backup-1.2.3/a.jpg': 'not ours', 'business-wrap.backup-1.2.6-data/taxes/x.pdf': 'not ours' })) put(S.parent, rel, c);
+    const look0 = tree(S.parent, ['business-wrap']);
     const s0 = tree(S.dir);
     const cli = spawnSync(process.execPath, [path.join(S.dir, 'update', 'cli.mjs'), 'update', '--apply', '--yes'], { encoding: 'utf8', env: { ...process.env, BW_UPDATE_FEED: feed(V1, rel1), BW_UPDATE_ZIP: rel1.zip, BW_LOCAL_DIR: path.join(tmp, 'smoke-cli-state'), BW_UPDATE_TOKEN: 'none', BW_ASSUME_NPX: '' } });
     const line = cli.stdout.split('\n').find((l) => l.startsWith('{')) || '{}';
     const res = JSON.parse(line);
-    ok('smoke CLI: `update --apply --yes` on the fake old install: exit 0, ok, new version, no copy beside, user data byte-identical', cli.status === 0 && res.ok && versionOf(S.dir) === V1 && noBackups(S.parent) && Object.keys(USER).every((k) => tree(S.dir)[k] === s0[k]), cli.stdout + cli.stderr);
+    ok('smoke CLI: `update --apply --yes` on the fake old install with look-alike folders beside it: exit 0, ok, new version, our copy gone and the look-alikes byte-identical, user data byte-identical', cli.status === 0 && res.ok && versionOf(S.dir) === V1 && same(look0, tree(S.parent, ['business-wrap'])) && Object.keys(USER).every((k) => tree(S.dir)[k] === s0[k]), cli.stdout + cli.stderr);
 
     // the editor's route: a live serve.mjs run FROM the fake install (its own files in use), on a free port
     const E = scenario('smoke-serve');
+    put(E.parent, 'business-wrap.backup-mine/notes.txt', 'user folder');
+    const elook0 = tree(E.parent, ['business-wrap']);
     const e0 = tree(E.dir);
     const edHtml = path.join(tmp, 'smoke-serve-editor.html');
     const { buildEditor } = await import('../engine/build-editor.mjs');
@@ -336,7 +505,7 @@ try {
       for (let i = 0; i < 300 && !p.finished; i++) { await new Promise((r2) => setTimeout(r2, 100)); try { p = await (await fetch(`${base}/api/update/progress`)).json(); } catch { break; } }
       const code = await Promise.race([exited, new Promise((r2) => setTimeout(() => r2('still running'), 8000))]);
       ok('smoke serve: POST /api/update/apply while the host runs: 202, progress finished ok, the host exits to restart on the new code', st.status === 202 && p.finished === true && p.ok === true && typeof code === 'number', JSON.stringify({ status: st.status, p, code }));
-      ok('smoke serve: one version (the new one), no copy beside, user data byte-identical, the save folder untouched', versionOf(E.dir) === V1 && noBackups(E.parent) && Object.keys(USER).every((k) => tree(E.dir)[k] === e0[k]) && same(tree(E.save), (() => { const t = {}; for (const [rel, s] of Object.entries(SAVE)) t[rel] = sha(Buffer.isBuffer(s) ? s : Buffer.from(s)); return t; })()));
+      ok('smoke serve: one version (the new one), no copy beside, user data byte-identical, the save folder untouched', versionOf(E.dir) === V1 && same(elook0, tree(E.parent, ['business-wrap'])) && Object.keys(USER).every((k) => tree(E.dir)[k] === e0[k]) && same(tree(E.save), (() => { const t = {}; for (const [rel, s] of Object.entries(SAVE)) t[rel] = sha(Buffer.isBuffer(s) ? s : Buffer.from(s)); return t; })()));
     } finally {
       if (srv.exitCode === null) srv.kill();
     }
