@@ -186,8 +186,10 @@ try {
   check('nothing leaks into Save HTML (no event, no journal field)', !leak(html) && html.includes('id="bw-data"'));
   check('nothing leaks into the design pack', !leak(pack) && pack.includes('bw-design-pack'));
   const exp = path.join(OUT, 'exports', 'event-permit', 'ar');
-  const pdf = path.join(exp, 'event-permit.ar.pdf');
-  const docx = path.join(exp, 'event-permit.ar.docx');
+  // --out exports are named by the document title (0.16.0), so find the files by extension, not by service slug
+  const inExp = (ext) => { const f = fs.existsSync(exp) ? fs.readdirSync(exp).filter((n) => n.endsWith('.' + ext)) : []; return f.length === 1 ? path.join(exp, f[0]) : path.join(exp, 'MISSING.' + ext); };
+  const pdf = inExp('pdf');
+  const docx = inExp('docx');
   const unzip = (f) => spawnSync(...py(['-c', 'import sys,zipfile;z=zipfile.ZipFile(sys.argv[1]);sys.stdout.write("".join(z.read(n).decode("utf-8","replace") for n in z.namelist() if n.endswith(".xml")))', f], []), { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } }).stdout || '';
   const pdfText = fs.existsSync(pdf) ? fs.readFileSync(pdf, 'latin1') : '';
   const docXml = fs.existsSync(docx) ? unzip(docx) : '';

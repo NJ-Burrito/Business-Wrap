@@ -215,6 +215,8 @@ try {
   const cnt0 = (await issues(pa)).length;
   await tool('spellIgnore').click();
   check('Ignore (the selected error) removes that one mark', await until(async () => (await issues(pa)).length === cnt0 - 1, 3000), `${cnt0} -> ${(await issues(pa)).length}`);
+  // the ribbon puts the selection back at 30, 120 and 400 ms after a press (rbRestoreText, 25-ribbon.js); let the Ignore press finish that before the text is replaced and the word is clicked, or the late restore moves the caret to the old offsets (the cause of the 0.15.7 failure: Fix all then fixed «accomodate»)
+  await sleep(700);
   await setLeaves(pa, 'en', ['A wronng and a accomodate and a wronng again', 'Another wronng line']);
   await waitIssues(pa, (l) => l.filter((i) => i.word === 'wronng').length >= 3, 20000);
   // fix all: the same word everywhere, ONE undo step
