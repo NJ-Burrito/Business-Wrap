@@ -23,7 +23,7 @@ import { spawn } from 'node:child_process';
 import { exportPdf, exportDocx, printHtml, loadTheme, fileStem } from './export.mjs';
 import { config } from './config.mjs';
 import { py } from './py.mjs';
-import { ensure as ensureWorkspace, outName, uniquePath, docTitle, inHistory, noteOutput } from './workspace.mjs';
+import { ensure as ensureWorkspace, outName, uniquePath, exportTitle, inHistory, noteOutput } from './workspace.mjs';
 
 /** The command runner: (cmd, args, {env, input, timeout}) → Promise<{status, stdout, stderr}>. Tests swap it. */
 const defaultRun = (cmd, args, { env, timeout = 120000 } = {}) => new Promise((ok) => {
@@ -277,7 +277,7 @@ export async function printApi(req, res, url, { send, OUT, maxBody, ws = () => n
       } else if (w) { ensureWorkspace(w); dir = { pdf: w.dirs.pdf, docx: w.dirs.docx, printHtml: w.dirs.html }[format]; }
       fs.mkdirSync(dir, { recursive: true });
       const doc = docFor(body);
-      const file = w ? uniquePath(dir, outName(docTitle(doc, body.service), new Date(), locale, ext)) : path.join(dir, `${stem}.${ext}`);
+      const file = w ? uniquePath(dir, outName(exportTitle(doc, body.folderTitle, body.service), new Date(), locale, ext)) : path.join(dir, `${stem}.${ext}`);
       if (format === 'pdf') { await exportPdf(doc, { locale, theme, pdfPath: file }); if (range) await cutPdf(file, range); }
       else if (format === 'docx') exportDocx(doc, { locale, theme, docxPath: file, embedFonts: body.embedFonts !== false });
       else fs.writeFileSync(file, printHtml(doc, { locale, theme }).html, 'utf8');

@@ -22,7 +22,7 @@ import { fork, spawnSync } from 'node:child_process';
 import { crawl, harvestToDocument } from './harvest/crawl.mjs';
 import { learningRoute } from './learning/http.mjs';
 import { printApi } from './printers.mjs';
-import { workspace as liveWorkspace, ensure as ensureWorkspace, outName, uniquePath, docTitle, inHistory, localDir, noteOutput } from './workspace.mjs';
+import { workspace as liveWorkspace, ensure as ensureWorkspace, outName, uniquePath, docTitle, exportTitle, inHistory, localDir, noteOutput } from './workspace.mjs';
 
 
 /** Re-wraps an older file in this editor. If that cannot be done without losing history (a newer format, a failing
@@ -212,7 +212,7 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
         const ws = !out && wsOf();
         // the save folder (A11): PDF\ and DOCX\, "<title>-<date>-<AR|ENG>", a clash gets -2, -3 (never an overwrite)
         if (ws) ensureWorkspace(ws);
-        const title = docTitle(body.doc, body.service);
+        const title = exportTitle(body.doc, body.folderTitle, body.service);
         // 0.16.0 (field notes item 8): `name` (a file name without folder), `destination` (an absolute folder) and `docx: false` come from the editor's bridge (editor_action exportPdf args);
         // the answer names the file AND its folder, so an agent never searches for it, and the PDF is written whole (exportPdf writes a temp file and renames it)
         const wantName = typeof body.name === 'string' ? body.name.replace(/\.(pdf|docx)$/i, '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, ' ').trim().slice(0, 150) : '';

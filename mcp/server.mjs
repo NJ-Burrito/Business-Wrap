@@ -6,8 +6,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { McpServer, z } from './vendor/sdk.mjs';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { exportPdf, exportDocx, loadTheme, fontsFor, REPO, renderDiagramPng, diagramWarnings } from '../engine/export.mjs';
-import { workspace, ensure, uniquePath, outName, docTitle } from '../engine/workspace.mjs';
+import { localeOf as engineLocaleOf, exportPdf, exportDocx, loadTheme, fontsFor, REPO, renderDiagramPng, diagramWarnings } from '../engine/export.mjs';
+import { workspace, ensure, uniquePath, outName, docTitle, exportTitle } from '../engine/workspace.mjs';
 import { applyOps, migrate, validateEdits, normaliseNumbers } from '../engine/edits.mjs';
 import { assertBase } from '../engine/edits-base.mjs';
 import { checkForUpdate, oneLiner, token, currentVersion } from '../update/check.mjs';
@@ -33,7 +33,15 @@ const out = (p, ext) => {
   fs.mkdirSync(path.dirname(f), { recursive: true });
   return f;
 };
-const localeOf = (file, doc, given) => given || (/\.en\.json$/i.test(file) ? 'en' : /\.ar\.json$/i.test(file) ? 'ar' : /[؀-ۿ]/.test(doc.control?.title || '') ? 'ar' : 'en');
+/** 0.17.0 (N11): the edition from engine/export.mjs localeOf (x.en.edited.json is English). */
+const localeOf = (file, doc, given) => engineLocaleOf(file, doc, given);
+/** The Arabic sibling's title for an English file (x.en.json -> x.ar.json), so both editions export into one document folder; null when there is none. */
+function pairHint(file, ed) {
+  if (ed !== 'en') return null;
+  const sib = String(file).replace(/\.en((?:\.[a-z0-9-]+)*\.json)$/i, '.ar$1');
+  if (sib === String(file)) return null;
+  try { return docTitle(JSON.parse(fs.readFileSync(path.resolve(sib), 'utf8')), ''); } catch { return null; }
+}
 function loadDocument(file, editsFile, force = false) {
   const rawText = fs.readFileSync(path.resolve(file), 'utf8');
   const doc = JSON.parse(rawText);
@@ -160,7 +168,7 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     const th = loadTheme(theme && path.resolve(theme));
     const stem = `${doc.service || 'document'}.${ed}`;
     const dir = out_dir ? path.resolve(out_dir) : null; // no out_dir: the save folder, Documents\<title>\Exports\<date> <title> - <language>
-    const target = (ext) => (dir ? path.join(dir, `${stem}.${ext}`) : uniquePath(ensure(workspace()).dirs.docs, outName(docTitle(doc, doc.service), new Date(), ed, ext)));
+    const target = (ext) => (dir ? path.join(dir, `${stem}.${ext}`) : uniquePath(ensure(workspace()).dirs.docs, outName(exportTitle(doc, pairHint(document, ed), doc.service), new Date(), ed, ext)));
     const pdf = await exportPdf(doc, { locale: ed, theme: th, pdfPath: target('pdf') });
     const res = { locale: ed, ops_applied: ops, pdf: pdf.pdf, post: pdf.post };
     if (docx !== false) res.docx = exportDocx(doc, { locale: ed, theme: th, docxPath: target('docx') }).docx;
