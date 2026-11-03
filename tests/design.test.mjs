@@ -429,10 +429,15 @@ try {
     const icm = (p, sel) => shadow(p, (r, s) => [...new Set([...r.querySelectorAll(s)].flatMap((svg) => svg.getAnimations({ subtree: true }).filter((a) => /^(icm|pjm)-/.test(a.animationName || '')).map(() => svg.dataset.ic)))], sel);
     const n = await iconPage();
     const missing = [];
+    // The motion lasts 200 ms. Sampling getAnimations() 170 ms after hover() returned raced it: on a loaded runner hover() returns late, the
+    // animation has already ended and the icon is wrongly reported missing (a different icon each run). So record the browser's own animationstart
+    // event instead (it fires once the animation begins, however late we look) and wait for it up to 2 s.
+    await shadow(n.p, (r) => { window.__icmStart = new Set(); r.addEventListener('animationstart', (e) => { if (/^(icm|pjm)-/.test(e.animationName || '')) window.__icmStart.add(e.target.closest?.('[data-ic]')?.dataset.ic || ''); }, true); });
     for (const k of n.keys) {
+      await n.p.evaluate(() => window.__icmStart.clear());
       await n.p.locator(`#icm-probe [data-probe="${k}"]`).hover();
-      await n.p.waitForTimeout(170);
-      if (!(await icm(n.p, `#icm-probe [data-probe="${k}"] .ic`)).length) missing.push(k);
+      const started = await n.p.evaluate(async (key) => { const t0 = performance.now(); while (performance.now() - t0 < 2000) { if (window.__icmStart.has(key)) return true; await new Promise((res) => setTimeout(res, 20)); } return false; }, k);
+      if (!started) missing.push(k);
     }
     check(`0.13 icons: every new icon has its own hover motion (${n.keys.length - missing.length}/${n.keys.length})`, n.keys.length >= 70 && missing.length === 0, missing.length ? `missing: ${missing.join(', ')}` : n.keys.join(','));
     // a real toolbar press: hover first (that motion ends), then click; only the pressed icon moves again

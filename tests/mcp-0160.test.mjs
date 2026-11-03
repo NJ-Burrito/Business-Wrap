@@ -33,9 +33,15 @@ const until = async (fn, ms = 20000, step = 200) => { for (const t0 = Date.now()
 const out = [];
 let failed = 0;
 // 0.16.3: a stalled run says where (the last check that passed) and what it had, within 8 minutes, instead of being killed silently at 15 (CI run 41587032456 left no line at all)
-setTimeout(() => { console.log(out.join('\n') + `\nFAIL  mcp-0160: stalled for 480 s; the last check before the stall: ${out.at(-1) || '(none)'}`); process.exit(1); }, 480e3).unref();
+// 0.16.6: a stall is NO CHECK FINISHING for 240 s (every check re-arms the timer), not a fixed 480 s for the whole suite: it takes ~50 s on a free machine
+// but ~10 x that on a loaded 4-core runner that runs two suites at once (CI run of 2026-11-03: still working in the restart section when the 480 s ran out). A hard ceiling of 840 s stays under the 15-minute kill.
+const stall = (why) => { console.log(out.join('\n') + `\nFAIL  mcp-0160: ${why}; the last check before the stall: ${out.at(-1) || '(none)'}`); process.exit(1); };
+let idleTimer = null;
+const armIdle = () => { clearTimeout(idleTimer); idleTimer = setTimeout(() => stall('stalled: no check finished for 240 s'), 240e3); idleTimer.unref(); };
+armIdle();
+setTimeout(() => stall('stalled: the suite ran 840 s'), 840e3).unref();
 const within = (p, ms) => Promise.race([p, new Promise((ok) => setTimeout(ok, ms).unref())]);
-const check = (n, ok, d = '') => { out.push(`${ok ? 'PASS' : 'FAIL'}  mcp-0160: ${n}${d && !ok ? '  — ' + String(d).replace(/\s+/g, ' ').slice(0, 600) : ''}`); if (!ok) failed += 1; };
+const check = (n, ok, d = '') => { armIdle(); out.push(`${ok ? 'PASS' : 'FAIL'}  mcp-0160: ${n}${d && !ok ? '  — ' + String(d).replace(/\s+/g, ' ').slice(0, 600) : ''}`); if (!ok) failed += 1; };
 const freePort = () => new Promise((ok) => { const s = net.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => ok(p)); }); });
 const launches = () => (fs.existsSync(stub) ? fs.readFileSync(stub, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);
 
@@ -78,11 +84,11 @@ async function launchChrome(url, profileName) {
 }
 const killChrome = (rec) => { if (rec?.pid) spawnSync('taskkill', ['/PID', String(rec.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true }); };
 async function attach(rec, match = () => true) {
-  const t = await until(async () => (await (await fetch(`http://127.0.0.1:${rec.cdp}/json`)).json()).find((x) => x.type === 'page' && match(x.url)), 40000);
+  const t = await until(async () => (await (await fetch(`http://127.0.0.1:${rec.cdp}/json`)).json()).find((x) => x.type === 'page' && match(x.url)), 90000);
   if (!t) throw new Error('no page');
   return tab(t.webSocketDebuggerUrl);
 }
-const booted = (c) => until(async () => (await c.ev('!!(window.BW && window.BW.ready && document.documentElement.dataset.bwSession)')) === true, 60000);
+const booted = (c) => until(async () => (await c.ev('!!(window.BW && window.BW.ready && document.documentElement.dataset.bwSession)')) === true, 120000);
 
 const client = new Client({ name: 'mcp-0160', version: '1.0.0' });
 const transport = new StdioClientTransport({ command: process.execPath, args: [path.join(REPO, 'mcp', 'cli.mjs')], cwd: REPO, env, stderr: 'pipe' });
@@ -194,17 +200,26 @@ try {
   r = await call('close_editor', {});
   const cl = data(r);
   check('M5: close_editor stops the host this session started and names it', !r.isError && cl.stopped >= 1 && cl.host?.pid, text(r).slice(0, 300));
-  killChrome(C1); await sleep(1500);
+  // The person closes the window; the browser is not killed. Chrome writes IndexedDB with relaxed durability (it reaches disk a moment later), so a kill -9 a second
+  // after an edit can lose it, and on a loaded runner it did: the restarted tab came up with no document (docs empty) and every later call to it timed out (reproduced under 2x CPU load).
+  // A crash is not what M5 is about (M9 and the tamper suites cover the sleeping and lost tab); a clean close is, and it waits until the browser is really gone.
+  const closeGracefully = async (rec) => { try { const v = await (await fetch(`http://127.0.0.1:${rec.cdp}/json/version`)).json(); const w = tab(v.webSocketDebuggerUrl); await w.send('Browser.close'); w.close(); } catch { /* gone */ } };
+  await closeGracefully(C1);
+  await until(() => !H.alive(C1.pid), 90000, 300); // the browser PROCESS is gone (its port closes earlier, while it still writes the profile and holds its lock)
+  killChrome(C1); // whatever is left of it (a no-op when it closed)
   const after = await until(() => !H.hostState() || !H.alive(H.hostState().pid), 10000);
   check('M5: the host is down', !!after);
   r = await call('open_in_editor', { documents: [SAMPLE] });
+  // host.start gives the server 20 s to answer (engine/host.mjs); on a runner loaded 2x over, a cold node start measured 9-10 s instead of 0.5 s, and a start can still miss that ceiling.
+  // It then stops its own spawn and says so ("the server did not come up"), leaving nothing behind: asking once more is what a person does, and is safe.
+  if (r.isError && /did not come up/.test(text(r))) r = await call('open_in_editor', { documents: [SAMPLE] });
   const idB = data(r).library_id;
   check('M5: after the restart the same files give the same library id', idB === idA, `${idA} / ${idB}`);
   hostFresh();
   C1 = await launchChrome(`${base}/?automation=1#doc=${idA}`, 'profile-main');
   const P1b = await attach(C1, (u) => u.startsWith('http://127.0.0.1'));
   check('M5: the restarted editor booted (positive sample)', !!(await booted(P1b)));
-  check('M5: the host sees the restarted tab (positive sample)', !!(await until(async () => (await health()).tabs.some((t) => t.live && (t.docs || []).includes(idA)), 30000)));
+  check('M5: the host sees the restarted tab (positive sample)', !!(await until(async () => (await health()).tabs.some((t) => t.live && (t.docs || []).includes(idA)), 90000)));
   r = await call('editor_get', { doc: idA, pointer: '/control/title', locale: 'ar' });
   check('M5: the edit made before the restart is still there', !r.isError && data(r).value === 'عنوان قبل إعادة التشغيل', text(r).slice(0, 200));
 
@@ -268,12 +283,12 @@ try {
   }
 
   /* M9 the host keeps its editor across a window close (the owner's host stopped twice with no cause) */
-  const closeGracefully = async (rec) => { try { const v = await (await fetch(`http://127.0.0.1:${rec.cdp}/json/version`)).json(); const w = tab(v.webSocketDebuggerUrl); await w.send('Browser.close'); w.close(); } catch { /* gone */ } };
   const hostPid = hostFresh().pid;
   await closeGracefully(C1); if (B) await closeGracefully(B);
   await sleep(9000); // longer than the 4 s a closed last tab used to leave a host
   check('M9: after the last window is closed (cleanly) the host an agent used is still up', H.alive(hostPid) && (await fetch(`${base}/api/version`).then((x) => x.ok).catch(() => false)), `pid ${hostPid} alive ${H.alive(hostPid)}`);
-  const gone = async (rec) => until(async () => { try { await fetch(`http://127.0.0.1:${rec.cdp}/json/version`, { signal: AbortSignal.timeout(800) }); return false; } catch { return true; } }, 15000, 300);
+  // gone = the browser process has exited, not just its debugging port closed: a new Chrome on the same profile while the old one still shuts down hands over to it and exits, and no page ever appears (seen on a loaded runner)
+  const gone = async (rec) => until(() => !H.alive(rec.pid), 90000, 300);
   await gone(C1); if (B) await gone(B);
   const oldC1 = C1;
   C1 = await launchChrome(`${base}/?automation=1#doc=${DOC}`, 'profile-main');
@@ -281,7 +296,7 @@ try {
   try {
     const P3 = await attach(C1, (u) => u.startsWith('http://127.0.0.1'));
     const up = await booted(P3);
-    const listed = await until(async () => { const x = await call('editor_list_documents', {}); m9 = text(x).slice(0, 200); return !x.isError && data(x).documents.some((d) => d.id === DOC); }, 40000, 500);
+    const listed = await until(async () => { const x = await call('editor_list_documents', {}); m9 = text(x).slice(0, 200); return !x.isError && data(x).documents.some((d) => d.id === DOC); }, 90000, 500);
     check('M9: a new window attaches to the same host and the library is as it was (positive sample)', !!up && !!listed, `up ${up}; ${m9}`);
   } catch (e) { check('M9: a new window attaches to the same host and the library is as it was (positive sample)', false, `${e.message}; old chrome ${oldC1.cdp}`); }
   /* M10 a busy host is not a dead host: a recorded host whose port accepts but does not answer in time is reused, never asked to stop */
