@@ -29,6 +29,8 @@ const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}
 {
   const r = spawnSync(process.execPath, [path.join(REPO, 'brand', 'v3', 'tools', 'build_ribbon_icons.mjs'), '--check'], { encoding: 'utf8' });
   check('I1 the ribbon category icons in editor/icons.json are the brand v3 drawings', r.status === 0, (r.stdout + r.stderr).trim());
+  const e = spawnSync(process.execPath, [path.join(REPO, 'brand', 'v3', 'tools', 'build_editor_icons.mjs'), '--check'], { encoding: 'utf8' });
+  check('I1 every other icons.json icon is a brand v3 drawing (none left in the old Lucide set)', e.status === 0, (e.stdout + e.stderr).trim());
 }
 // I5 (source half): every house keyframe in 40-icon-motion.css that moves there and back has at least 4 beats
 {
@@ -63,11 +65,13 @@ window.__probe = (surface) => {
   shell.appendChild(box);
   return keys.length;
 };
-// press-replay every probe icon, wait out the 180 ms colour ease, then read: the moves, the resting and the hot colour, their contrast
+// press-replay every probe icon, then read: the moves, the resting and the hot colour, their contrast
 window.__probeRead = async () => {
   const box = __root().getElementById('mt-probe');
   const bg = getComputedStyle(box).backgroundColor;
   const bs = [...box.querySelectorAll('button')];
+  // the colour ease (180 ms) only advances on a rendered frame, which a headless run does not promise within a timeout: read the end state
+  bs.forEach((b) => { b.querySelector('svg').style.transition = 'none'; });
   const rest = bs.map((b) => getComputedStyle(b.querySelector('svg')).color);
   bs.forEach((b) => b.classList.add('ic-go'));
   const moves = bs.map((b) => __anim(b.querySelector('svg')).length);
