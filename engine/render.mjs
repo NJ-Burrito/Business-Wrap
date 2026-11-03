@@ -765,6 +765,7 @@ body,p,li,td,dd{orphans:3;widows:3}
 .keep{break-inside:avoid}
 tbody.hold,ul.hold,div.hold{break-inside:avoid}
 .id-card{break-inside:avoid;display:inline-block;width:100%;margin-bottom:0}
+.id-card.ac-fold{break-inside:auto;display:block}
 .id-card+.story-info-body{margin-top:-1px}
 .id-card table.story-info{margin-bottom:0}
 .story-info-body tr:first-child th,.story-info-body tr:first-child td{border-top:0}
@@ -918,8 +919,9 @@ export function renderParts(doc, o) {
       : wrap(rows.slice(0, KEEP_ROWS), true) +
         wrap(rows.slice(KEEP_ROWS, rows.length - KEEP_ROWS), false) +
         wrap(rows.slice(-KEEP_ROWS), true);
-  const guardedBody = (rows) =>
-    guarded(rows, (part, hold) =>
+  // 0.16.5 (acc): a story card that carries the criteria row is taller than a hold group may be; its rows are free (no tbody.hold for the print pass to split and the editor to re-measure differently)
+  const guardedBody = (rows, free = false) =>
+    free ? `<tbody>${rows.join(NL)}</tbody>` : guarded(rows, (part, hold) =>
       part.length ? `<tbody${hold ? ' class="hold"' : ''}>${part.join(NL)}</tbody>` : ''
     );
 
@@ -1019,7 +1021,8 @@ export function renderParts(doc, o) {
         `<tr${t.alt && n++ % 2 ? ' class="alt"' : t.rowClass?.(ri) ? ` class="${t.rowClass(ri)}"` : ''} data-r="${ri}"${rowH(t.rowHeights?.[ri])}>${r
           .map((c, j) => (covered.has(`${ri},${idx[j]}`) ? '' : cell(c, ri, idx[j], spanAt.get(`${ri},${idx[j]}`), t)))
           .join('')}</tr>`
-    )
+    ),
+    t.noHold
   )}
 </table>`;
   }
@@ -1030,7 +1033,7 @@ export function renderParts(doc, o) {
     );
 
   /** paragraphs: [{text, p (pointer), b (block pointer)}] */
-  function prose(paragraphs, b) {
+  function prose(paragraphs, b, flat = false) {
     const out = [];
     let bullets = [];
     const flush = () => {
@@ -1056,6 +1059,7 @@ export function renderParts(doc, o) {
     }
     flush();
     flushList();
+    if (flat) return out.join(NL); // 0.16.5: the criteria row of a story card: no hold groups inside a table cell (the print pass would measure them as page groups)
     const last = out.length - 1;
     if (last >= 0) {
       const block = out[last];
@@ -1199,13 +1203,17 @@ export function renderParts(doc, o) {
             const dictionary = sub('dictionary');
             const actions = sub('actions');
             const card = s.card && Array.isArray(s.card.rows) ? s.card : null;
-            const cardSrc = card ? card.rows : storyCardDefault(s);
+            // 0.16.5 (acc): the field shape — «معايير القبول» subhead + its prose after a story card — prints as the card's last row (stepPaging sets `foldAc`); stored blocks untouched
+            const fa = foldAc && i === (block.items || []).length - 1 && !(s.acceptance || []).length ? foldAc : null;
+            const cardSrc = [...(card ? card.rows : storyCardDefault(s)), ...(fa ? [[{ foldLabel: 1 }, { foldBody: 1 }]] : [])];
             const goalText = s.goal || (s.as || s.want || s.so ? L.storyGoal.split(/(\{as\}|\{want\}|\{so\})/).map((x) => (x === '{as}' ? s.as : x === '{want}' ? s.want : x === '{so}' ? s.so : x)).join('') : '');
             const bound = (v) => v && typeof v === 'object' && !isRich(v) && STORY_CARD_BINDS.includes(v.bind);
             const labelled = (v) => v && typeof v === 'object' && !isRich(v) && typeof v.label === 'string';
             const ltr = new Set();
             const cardRows = cardSrc.map((row, ri) => (Array.isArray(row) ? row : []).map((v, ci) => {
               if (labelled(v)) return L[v.label] ?? '';
+              if (v && v.foldLabel) return fa.label.text || '';
+              if (v && v.foldBody) return '';
               if (!bound(v)) return v ?? '';
               if (v.bind === 'id') ltr.add(`${ri},${ci}`);
               return v.bind === 'goal' ? goalText : v.bind === 'acceptance' ? (s.acceptance || []).join(' ') : s[v.bind] ?? '';
@@ -1213,14 +1221,17 @@ export function renderParts(doc, o) {
             const cardPtr = (ri, ci) => {
               const v = cardSrc[ri]?.[ci];
               if (labelled(v)) return '/labels/' + v.label;
+              if (v && v.foldLabel) return fa.lp + '/text';
+              if (v && v.foldBody) return undefined;
               if (bound(v)) return v.bind === 'acceptance' ? undefined : `${sp}/${v.bind}`;
               return `${sp}/card/rows/${ri}/${ci}`;
             };
             const cardHtml = (ri, ci) => {
               const v = cardSrc[ri]?.[ci];
+              if (v && v.foldBody) return prose(paras(fa.body, fa.bp), fa.bp, true);
               return bound(v) && v.bind === 'acceptance' ? `<ol>${criteria}</ol>` : undefined;
             };
-            const hasAc = (r) => bound(r?.[1]) && r[1].bind === 'acceptance';
+            const hasAc = (r) => (bound(r?.[1]) && r[1].bind === 'acceptance') || !!r?.[1]?.foldBody;
             const cardTable = table({
               rows: cardRows,
               rowsPtr: `${sp}/card/rows`,
@@ -1233,11 +1244,12 @@ export function renderParts(doc, o) {
               rowHeights: card?.rowHeights,
               cellPtr: cardPtr,
               cellHtml: cardHtml,
+              noHold: !!fa,
               ltr,
               rowClass: (ri) => [hasAc(cardSrc[ri]) ? 'ac' : '', ri === 0 && cardSrc.length > 1 && (cardSrc[0] || []).some((v) => bound(v) && v.bind === 'id') ? 'idrow' : ''].filter(Boolean).join(' '),
             });
             const partsArr = [
-              `<div class="id-card">${cardTable}</div>`,
+              `<div class="id-card${fa ? ' ac-fold' : ''}">${cardTable}</div>`,
               ...(actions ? [`<p class="run-in dict-label">${lb('actionsTable')}</p>`, PLAIN + actions] : []),
               ...(dictionary ? [`<p class="run-in dict-label">${lb('dictionary')}</p>`, PLAIN + dictionary] : []),
             ];
@@ -1270,6 +1282,10 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
   const SHAPE_LABELS = new Set([L.actionsTable, L.dictionary, 'جدول الإجراءات', 'قاموس البيانات والمصطلحات', 'Actions table', 'Data dictionary and terms']
     .filter((x) => typeof x === 'string' && x).map((x) => x.replace(/\s+/g, ' ').trim().toLowerCase()));
   const isShapeLabel = (blk) => blk?.kind === 'subhead' && typeof blk.text === 'string' && SHAPE_LABELS.has(blk.text.replace(/[\s:：]+$/u, '').replace(/\s+/g, ' ').trim().toLowerCase());
+
+  const AC_LABELS = new Set([L.acceptance, 'معايير القبول', 'Acceptance criteria'].filter((x) => typeof x === 'string' && x).map((x) => x.replace(/\s+/g, ' ').trim().toLowerCase()));
+  const isAcLabel = (blk) => blk?.kind === 'subhead' && typeof blk.text === 'string' && AC_LABELS.has(blk.text.replace(/[\s:：]+$/u, '').replace(/\s+/g, ' ').trim().toLowerCase());
+  let foldAc = null;
 
   function groupForPaging(blocks, base, heading = '', cseg = 0) {
     const out = [];
@@ -1310,6 +1326,16 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
         return i + 1;
       }
       if (block.kind === 'stories') {
+        const lab = blocks[i + 1];
+        const bod = blocks[i + 2];
+        const lastIt = (block.items || []).at(-1);
+        if (isAcLabel(lab) && bod?.kind === 'prose' && lastIt && !(lastIt.acceptance || []).length && !(segOn && (segStarts.has(`${base}/${i + 1}`) || segStarts.has(`${base}/${i + 2}`)))) {
+          foldAc = { label: lab, lp: `${base}/${i + 1}`, body: bod, bp: `${base}/${i + 2}` };
+          out.push(renderBlock(block, b));
+          foldAc = null;
+          pending = '';
+          return i + 2;
+        }
         out.push(renderBlock(block, b));
         pending = '';
         return i;
