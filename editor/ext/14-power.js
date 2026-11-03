@@ -1,4 +1,4 @@
-/* Power off (owner request 2026-10-29). A command (Settings › Local server, under the single server toggle; no top-bar button since 0.15.0), only when the editor is served by the local
+/* Power off (owner request 2026-10-29). Reached only through the `powerOff` action (0.17.0 note 10: the one on/off control is the top-bar switch, 18-server.js; none in Settings), only when the editor is served by the local
  * host: a confirm dialog (Cancel has the focus, Esc cancels) → this tab and every other tab of this host save
  * (the draft, the library entry, the session state) → POST /api/power/off (engine/routes/power.mjs) → the «stopped»
  * page. The server then stops ONLY itself (0.15.2 note 4: the page and every browser window stay open; the card has a «Turn the host on» button).
@@ -60,7 +60,7 @@ const PW = (() => {
       stopped();
     } catch (e) { toast(t('pwFailed', { e: e.message || e }), 'warn'); document.documentElement.dataset.bwPower = 'failed'; }
   }
-  /* 0.15.0 w2: no toolbar button. The command stays (the `powerOff` action) and Settings › Local server shows it under the one server toggle (settings.js). */
+  /* 0.17.0 note 10: the host on/off control is ONLY the top-bar switch (18-server.js). No toolbar button, no command-palette entry and no Settings button: the `powerOff` action stays as a machine-only name (the bridge refuses it for agents). */
   return { off, confirmOff, stopped };
 })();
 
@@ -101,7 +101,6 @@ const RPT = (() => {
 })();
 
 bwExt({
-  cmds: location.protocol.startsWith('http') ? [{ id: 'powerOff', group: 'view', edit: false }] : [], // file:// has no host to turn off
   actions: { powerOff: () => PW.off() },
   expose: { power: PW, reportFolder: RPT },
 });

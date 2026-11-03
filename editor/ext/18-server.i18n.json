@@ -7,18 +7,16 @@
     "sv.stopping": "جارٍ الإيقاف…",
     "sv.checking": "جارٍ التحقق…",
     "sv.error": "تعذّر التشغيل",
-    "sv.tipOn": "الخادم المحلي يعمل. اضغط لإيقافه.",
+    "sv.tipOn": "الخادم المحلي يعمل. اضغط لإيقافه؛ تبقى الصفحة مفتوحة.",
     "sv.tipOff": "الخادم المحلي متوقف. اضغط لتشغيله.",
     "sv.tipBusy": "لا يمكن إيقاف الخادم أثناء تصدير أو استيراد أو طباعة.",
     "sv.undo": "تراجع",
     "sv.retry": "حاول مرة أخرى",
-    "sv.stoppedToast": "تم إيقاف الخادم المحلي.",
+    "sv.stoppedToast": "تم إيقاف الخادم المحلي. الصفحة ما زالت مفتوحة.",
     "sv.failed": "تعذّر تشغيل الخادم: {r}",
     "sv.stopFailed": "تعذّر إيقاف الخادم: {r}",
-    "sv.open": "افتح المحرر من الخادم",
-    "sv.setOn": "الخادم المحلي يعمل على المنفذ {p}. التصدير والطباعة متاحان.",
-    "sv.setOff": "الخادم المحلي متوقف. شغّله ليعمل التصدير والطباعة والحفظ في المجلد.",
-    "sv.hintServed": "الإيقاف يحفظ مستنداتك المفتوحة أولاً، ثم يوقف كل خوادم بزنس راب والنوافذ التي فتحها، ولا يمسّ أي برنامج آخر."
+    "sv.noLauncher": "لم يبدأ الخادم المحلي. المشغّل غير مسجَّل بعد على هذا الجهاز: افتح بزنس راب مرة من مجلده ثم اضغط من جديد.",
+    "sv.noLauncherStop": "لم يتوقف الخادم المحلي. المشغّل غير مسجَّل بعد على هذا الجهاز: افتح بزنس راب مرة من مجلده ثم اضغط من جديد."
   },
   "en": {
     "sv.label": "Local server",
@@ -28,17 +26,15 @@
     "sv.stopping": "Stopping…",
     "sv.checking": "Checking…",
     "sv.error": "Could not start",
-    "sv.tipOn": "The local server is running. Press to stop it.",
+    "sv.tipOn": "The local host is running. Press to stop it; this page stays open.",
     "sv.tipOff": "The local server is stopped. Press to start it.",
     "sv.tipBusy": "The server cannot be stopped while an export, import or print is running.",
     "sv.undo": "Undo",
     "sv.retry": "Try again",
-    "sv.stoppedToast": "The local server was stopped.",
+    "sv.stoppedToast": "The local host was stopped. This page is still open.",
     "sv.failed": "Could not start the server: {r}",
     "sv.stopFailed": "Could not stop the server: {r}",
-    "sv.open": "Open the editor from the server",
-    "sv.setOn": "The local server is running on port {p}. Export and print are available.",
-    "sv.setOff": "The local server is stopped. Start it for export, print and saving to the folder.",
-    "sv.hintServed": "Stopping saves your open documents first, then stops every Business-Wrap server and the windows it opened. It never touches any other program."
+    "sv.noLauncher": "The local host did not start. The launcher is not registered on this PC yet: open Business-Wrap once from its folder, then press again.",
+    "sv.noLauncherStop": "The local host did not stop. The launcher is not registered on this PC yet: open Business-Wrap once from its folder, then press again."
   }
 }

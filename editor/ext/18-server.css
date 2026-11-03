@@ -1,38 +1,43 @@
-/* The server toggle (0.15.0, note 15; look: out/qa-0.15.0/ui/designer.md section 12). One component, two mounts: the top bar (icon + state word) and
-   Settings › Local server (taller). State is never colour alone: the icon shape and the word change too. role="switch" + aria-checked.
-   Roles are local custom properties because the brand tokens carry no server colours; every pair was measured in the UI designer's contrast table. */
-.srv-toggle { --srv-on-fill: #0f5a46; --srv-on-ic: #7fdcc0; --srv-off-fill: #5a1c22; --srv-off-ic: #f29aa0; --srv-err-fill: #4a1418; --srv-ink: #eef1f6;
-  position: relative; display: inline-flex; align-items: center; gap: 8px; box-sizing: border-box; block-size: 40px; min-inline-size: 96px; padding: 0 12px 0 8px; margin-inline: 6px;
+/* The host switch (0.15.0 note 15; restyled 0.17.0 note 10). The ONLY on/off control of the local host: the top bar, inline-end after the history counter.
+   [green or red dot] [«Connected :4317» / «Offline»] [switch]. State is never colour alone: the word and the switch position change too.
+   role="switch" + aria-checked. It sits on the navy glass of the top bar, so its ink is --bw-on-glass; the dot colours are local roles
+   (the brand tokens carry no server colours): #3ddc84 and #ff6670 clear 3:1 on the glass in light and in dim-navy dark (see tests/settings-0170.test.mjs). */
+.srv-toggle { --srv-on: #3ddc84; --srv-off: #ff6670; --srv-busy: var(--bw-accent, #d2ad55); --srv-track-on: #0f6b45; --srv-ink: var(--bw-on-glass, #eef1f6); --srv-c: var(--srv-busy);
+  --srv-spring: var(--bw-ease-spring, cubic-bezier(.34, 1.56, .64, 1)); --srv-out: var(--bw-ease-out, cubic-bezier(.22, 1, .36, 1));
+  position: relative; display: inline-flex; align-items: center; gap: 9px; box-sizing: border-box; block-size: 40px; min-inline-size: 120px; padding-inline: 14px 8px; margin-inline: 6px;
   border: 0; border-radius: 20px; font: 700 13px/1 var(--bw-font-ui); color: var(--srv-ink); cursor: pointer; white-space: nowrap; flex: none;
-  transition: background-color var(--bw-dur-base, .2s) var(--bw-ease-out, ease-out), box-shadow var(--bw-dur-base, .2s) var(--bw-ease-out, ease-out); }
-.srv-toggle .srv-track { position: relative; flex: none; inline-size: 34px; block-size: 18px; border-radius: 9px; background: color-mix(in srgb, var(--srv-ink) 22%, transparent); }
-.srv-toggle .srv-thumb { position: absolute; inset-block-start: 2px; inset-inline-start: 2px; inline-size: 14px; block-size: 14px; border-radius: 50%; background: var(--srv-ink);
-  transition: inset-inline-start var(--bw-dur-base, .2s) var(--bw-ease-out, ease-out); }
+  background: color-mix(in srgb, var(--srv-ink) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--srv-ink) 26%, transparent);
+  transition: background-color var(--bw-dur-base, .2s) var(--srv-out), box-shadow var(--bw-dur-base, .2s) var(--srv-out), transform var(--bw-dur-fast, .14s) var(--srv-spring); }
+.srv-toggle[data-st="online"] { --srv-c: var(--srv-on); background: color-mix(in srgb, var(--srv-on) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--srv-on) 60%, transparent); }
+.srv-toggle:is([data-st="offline"], [data-st="error"]) { --srv-c: var(--srv-off); background: color-mix(in srgb, var(--srv-off) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--srv-off) 55%, transparent); }
+.srv-toggle[data-st="error"] { box-shadow: inset 0 0 0 2px var(--srv-off); }
+.srv-toggle:is([data-st="starting"], [data-st="stopping"], [data-st="checking"]) { cursor: progress; }
+/* the dot: solid, 10 px, with a soft halo; online breathes, a change of state pops once */
+.srv-dot { position: relative; flex: none; display: inline-grid; place-items: center; inline-size: 10px; block-size: 10px; border-radius: 50%; background: var(--srv-c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--srv-c) 30%, transparent);
+  transition: background-color var(--bw-dur-base, .2s) var(--srv-out), box-shadow var(--bw-dur-base, .2s) var(--srv-out); }
+.srv-toggle[data-st="online"] .srv-dot { animation: srv-pop .5s var(--srv-spring) 1, srv-halo 2.6s ease-out 0.5s infinite; }
+.srv-toggle:is([data-st="offline"], [data-st="error"]) .srv-dot { animation: srv-pop .5s var(--srv-spring) 1; }
+.srv-toggle:is([data-st="starting"], [data-st="stopping"], [data-st="checking"]) .srv-dot { background: transparent; box-shadow: none; inline-size: 14px; block-size: 14px; color: var(--srv-busy); margin-inline: -2px; }
+.srv-dot .ic { inline-size: 14px; block-size: 14px; animation: srv-spin 1s linear infinite; } /* the spinner turns even in calm mode: it is the only sign that work is going on */
+.srv-w { font-variant-numeric: tabular-nums; }
+/* the switch: a track and a thumb with a spring */
+.srv-track { position: relative; flex: none; inline-size: 34px; block-size: 18px; border-radius: 9px; background: color-mix(in srgb, var(--srv-ink) 24%, transparent); transition: background-color var(--bw-dur-base, .2s) var(--srv-out); }
+.srv-thumb { position: absolute; inset-block-start: 2px; inset-inline-start: 2px; inline-size: 14px; block-size: 14px; border-radius: 50%; background: var(--srv-ink); box-shadow: 0 1px 2px rgba(0, 0, 0, .35); transition: inset-inline-start .34s var(--srv-spring); }
+.srv-toggle[aria-checked="true"] .srv-track { background: var(--srv-track-on); }
 .srv-toggle[aria-checked="true"] .srv-thumb { inset-inline-start: 18px; }
-.srv-toggle .srv-ic { flex: none; display: inline-grid; place-items: center; inline-size: 20px; block-size: 20px; }
-.srv-toggle .srv-ic .ic { inline-size: 20px; block-size: 20px; }
-.srv-toggle[data-st="online"] { background: var(--srv-on-fill); }
-.srv-toggle[data-st="online"] .srv-ic { color: var(--srv-on-ic); }
-.srv-toggle[data-st="offline"] { background: var(--srv-off-fill); }
-.srv-toggle[data-st="offline"] .srv-ic { color: var(--srv-off-ic); }
-.srv-toggle[data-st="error"] { background: var(--srv-err-fill); box-shadow: inset 0 0 0 1px var(--srv-off-ic); }
-.srv-toggle[data-st="error"] .srv-ic { color: var(--srv-off-ic); }
-.srv-toggle:is([data-st="starting"], [data-st="stopping"], [data-st="checking"]) { background: var(--bw-surface); color: var(--bw-on-glass, var(--bw-ink)); box-shadow: inset 0 0 0 1px var(--bw-hair, var(--bw-line)); cursor: progress; }
-.srv-toggle:is([data-st="starting"], [data-st="stopping"], [data-st="checking"]) .srv-track { background: var(--bw-line); }
-.srv-toggle:is([data-st="starting"], [data-st="stopping"], [data-st="checking"]) .srv-thumb { background: var(--bw-ink-muted); }
-.srv-toggle:is([data-st="starting"], [data-st="stopping"], [data-st="checking"]) .srv-ic .ic { animation: srv-spin 1s linear infinite; } /* the spinner turns even in calm mode: it is the only sign that work is going on */
+.srv-toggle:is([data-st="starting"], [data-st="stopping"], [data-st="checking"]) .srv-track { opacity: .55; }
 .srv-toggle:disabled { opacity: 1; }
 .srv-toggle[aria-disabled="true"] { opacity: .62; cursor: not-allowed; }
-.srv-toggle:hover:not(:disabled):not([aria-disabled="true"]) { filter: brightness(1.12); }
+.srv-toggle:hover:not(:disabled):not([aria-disabled="true"]) { filter: brightness(1.14); }
+.srv-toggle:active:not(:disabled):not([aria-disabled="true"]) { transform: scale(.96); }
 .srv-toggle:focus-visible { outline: 3px solid var(--bw-focus); outline-offset: 2px; }
-.srv-toggle[data-where="settings"] { block-size: 56px; min-inline-size: 168px; padding-inline: 14px 18px; margin-inline: 0; font-size: 15px; border-radius: 28px; }
-.srv-toggle[data-where="settings"] .srv-track { inline-size: 48px; block-size: 24px; border-radius: 12px; }
-.srv-toggle[data-where="settings"] .srv-thumb { inline-size: 16px; block-size: 16px; inset-block-start: 4px; inset-inline-start: 4px; }
-.srv-toggle[data-where="settings"][aria-checked="true"] .srv-thumb { inset-inline-start: 28px; }
-.set-srv-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-/* a file:// page with no server found: the gold ring pulses twice, once per open */
+/* a file:// page with no host found: the gold ring pulses twice, once per open */
 .srv-toggle[data-pulse="1"] { animation: srv-ring 600ms ease-out 2; }
 html[data-bw-calm="1"] .srv-toggle[data-pulse="1"], .shell[data-calm="1"] .srv-toggle[data-pulse="1"] { animation: none; }
+html[data-bw-calm="1"] .srv-dot, .shell[data-calm="1"] .srv-dot { animation: none !important; }
+html[data-bw-calm="1"] .srv-thumb, .shell[data-calm="1"] :is(.srv-thumb, .srv-toggle) { transition: none; }
 @keyframes srv-ring { 0% { box-shadow: 0 0 0 0 var(--bw-accent); } 100% { box-shadow: 0 0 0 10px transparent; } }
 @keyframes srv-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .srv-toggle, .srv-toggle .srv-thumb { transition: none; } .srv-toggle[data-pulse="1"] { animation: none; } }
+@keyframes srv-pop { 0% { transform: scale(.4); } 60% { transform: scale(1.35); } 100% { transform: scale(1); } }
+@keyframes srv-halo { 0% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--srv-c) 34%, transparent); } 70%, 100% { box-shadow: 0 0 0 9px transparent; } }
+@media (prefers-reduced-motion: reduce) { .srv-toggle, .srv-thumb, .srv-track, .srv-dot { transition: none; } .srv-toggle[data-pulse="1"], .srv-toggle .srv-dot { animation: none !important; } }
