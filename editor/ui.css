@@ -184,6 +184,12 @@ ins { background: var(--bw-success-wash); color: var(--bw-on-success-wash); text
 .dialog label { display: flex; flex-direction: column; gap: 8px; }
 .dialog input[type="number"], .dialog select { font: inherit; color: var(--panel-ink); background: var(--panel); border: 1px solid var(--panel-line); border-radius: 10px; padding: 8px 10px; }
 .dialog input[type="color"] { inline-size: 100%; block-size: 44px; padding: 2px; border: 1px solid var(--panel-line); border-radius: 10px; background: var(--panel); cursor: pointer; }
+/* 0.17.0 (note 13): the live preview of the font, size and colour dialogs: the sample on a sheet of paper at its real point size, size chips above it */
+.dialog .dlg-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-block-start: 10px; }
+.dialog .dlg-chips .b { min-inline-size: 40px; padding-inline: 10px; }
+.dialog .dlg-prev { margin-block-start: 12px; border: 1px solid var(--panel-line); border-radius: 12px; background: var(--paper, #fafaf9); color: var(--ink, #1a1a1a); overflow: hidden; }
+.dialog .dlg-prev-k { display: block; padding: 4px 10px; font-size: 11.5px; letter-spacing: .02em; color: var(--panel-soft); background: var(--wash-2); }
+.dialog .dlg-prev-t { padding: 12px 14px; min-block-size: 64px; max-block-size: 160px; overflow: auto; overflow-wrap: anywhere; line-height: 1.5; }
 .dialog .dlg-hint { margin: 8px 0 0; font-size: 12.5px; color: var(--panel-soft); }
 .dialog.nudge { animation: dialog-nudge .36s var(--bw-ease-out) both; }
 @keyframes dialog-nudge { 0%, 100% { translate: 0; } 25% { translate: -6px 0; } 75% { translate: 6px 0; } }

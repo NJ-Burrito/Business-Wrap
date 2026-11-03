@@ -133,13 +133,14 @@ function viewsTable(main, g, nOut) {
   const z = parseFloat(getComputedStyle(main.parentElement).zoom) || 1;
   const r = main.getBoundingClientRect();
   const slotOf = (q) => Math.max(0, Math.floor(((main.dir === 'rtl' ? r.right - q.right : q.left - r.left) + 2) / z / g.SLOT));
-  const boxes = new Map([...main.querySelectorAll('.bw-frun')].map((b) => [slotOf(b.getBoundingClientRect()), b]));
+  const all = [...main.querySelectorAll('.bw-frun')];
+  const boxes = new Map(all.map((b) => [slotOf(b.getBoundingClientRect()), b]));
   const tab = [];
   for (let s = 0; s < nOut;) {
     const b = boxes.get(s);
     if (b) {
       const w = +b.dataset.w;
-      for (let j = 0; j < +b.dataset.m; j += 1) tab.push({ x: s * (g.Wmm + 12) + j * (w + 12), w, h: +b.dataset.h });
+      for (let j = 0; j < +b.dataset.m; j += 1) tab.push({ x: s * (g.Wmm + 12) + j * (w + 12), w, h: +b.dataset.h, bi: all.indexOf(b) });
       s += +b.dataset.slots;
     } else { tab.push({ x: s * (g.Wmm + 12), w: g.Wmm, h: g.Hmm }); s += 1; }
   }
@@ -332,7 +333,23 @@ function viewsWindow(g, at, spread) {
   if (!spread) return { w: a.w, h: a.h, start: a.x };
   if (at === 0) return { w: 2 * g.Wmm + 12, h: a.h, start: 0 }; // the cover alone: an empty page beside it
   const b = t[at + 1];
-  return { w: b ? b.x + b.w - a.x : a.w + 12 + g.Wmm, h: Math.max(a.h, b?.h || 0), start: a.x + g.Wmm + 12 };
+  // 0.17.0 (note 7): a turned sheet fills whole slots, so the sheet after it can lie further on than one gap. The book shows the two sheets 12 mm apart:
+  // the empty distance between them is `blank`, and viewsNudge slides the box of the first sheet across it (the window is that much shorter and starts that much later).
+  const blank = b && a.bi != null ? Math.max(0, b.x - (a.x + a.w + 12)) : 0;
+  return { w: b ? b.x + b.w - a.x - blank : a.w + 12 + g.Wmm, h: Math.max(a.h, b?.h || 0), start: a.x + g.Wmm + 12 + blank, blank };
+}
+/** Slide the first sheet of the open book (its box of turned pages, its paper, its header and footer frame, the repeated table heads on it) across the empty
+ *  distance to the second sheet. `translate` only, so the document and its columns are untouched; every other spread (and every other view) clears it. */
+function viewsNudge(main, at, blank) {
+  main.querySelectorAll('[data-nudge]').forEach((e) => { e.style.removeProperty('translate'); e.removeAttribute('data-nudge'); });
+  const a = S.pageTab?.[at];
+  if (!a || !(blank > 0.05) || a.bi == null) return;
+  const dx = `${main.dir === 'rtl' ? -blank : blank}mm 0`;
+  const mark = (e) => { if (e) { e.style.translate = dx; e.dataset.nudge = '1'; } };
+  mark(main.querySelectorAll('.bw-frun')[a.bi]);
+  mark(main.querySelector(`.bw-sheets .bw-sheet[data-page="${at}"]`));
+  mark(main.querySelector(`.bw-runs .bw-run-f[data-page="${at}"]`));
+  main.querySelectorAll('.bw-rpts .bw-rpt').forEach((e) => { const x = parseFloat(e.style.insetInlineStart) / VIEWS_MM; if (x >= a.x - 1 && x <= a.x + a.w + 1) mark(e); });
 }
 /** Fit one page (single) or the open book (spread) to the window, times the person's zoom. */
 function viewsFit() {
@@ -363,6 +380,7 @@ function viewsGo(delta, instant = false) {
   box.style.setProperty('--vw', `${win.w}mm`);
   box.style.setProperty('--vh', `${win.h}mm`);
   main.style.setProperty('--shift', `${win.start * VIEWS_MM * (main.dir === 'rtl' ? 1 : -1)}px`);
+  viewsNudge(main, at, spread ? win.blank : 0);
   if (instant) { main.style.transition = 'none'; void main.offsetWidth; main.style.transition = ''; }
   S.pageAt = at;
   if (g.mixed) viewsFit();

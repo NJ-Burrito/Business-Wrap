@@ -83,6 +83,8 @@
   main.bw-doc .bw-stale { background: var(--bw-stale-wash); box-shadow: inset 0 -2px 0 var(--bw-stale); }
   main.bw-doc .bw-hit { background: var(--bw-hit); }
   main.bw-doc .bw-has-comment { position: relative; }
+  /* 0.17.0 (note 14): the document title (first page) and the title row of «بيانات ضبط الوثيقة» carry no highlight: no hover box, no focus box, no selection ring, no stale wash; the caret is the focus mark */
+  main.bw-doc :is([data-p="/control/coverTitle"], [data-p="/control/title"]):is(:hover, :focus, :focus-visible, .bw-sel, .bw-stale) { outline: none; box-shadow: none; animation: none; background: transparent; }
   main.bw-doc .bw-has-comment::before { content: "✎"; position: absolute; inset-inline-end: -9mm; top: 0; font: 700 12pt system-ui, sans-serif; color: var(--bw-sel); }
   main.bw-doc .bw-break { border-top: 2px dashed var(--bw-sel); margin: 4mm 0; }
   #bw-overlay .bw-grip { position: absolute; z-index: 30; font: 600 13px system-ui, sans-serif; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--bw-sel); background: var(--bw-band, #001e3d); color: var(--bw-on-glass, #fafaf9); cursor: grab; touch-action: none; }

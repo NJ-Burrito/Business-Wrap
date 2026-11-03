@@ -1780,7 +1780,10 @@ function leaveEl(el, done) {
 }
 /** the counterpart: a panel opened again before its exit finished stays open */
 function arriveEl(el) { clearTimeout(el.bwLeave); el.bwLeave = 0; el.classList.remove('closing'); }
-function ask(label, value = '', { type = 'text', options = [], min, max, step } = {}) {
+/** 0.17.0 (note 13): `preview` = { text, css(value) -> inline css, opt?(value) -> css of one list row, chips? } draws a live preview of the value under the field:
+ *  the text under the selection (else a sample) in the face, size and colour being chosen, at its real point size, updated on every keystroke / arrow / click.
+ *  A list shows each row in its own face; `chips` are one-press values (the type scale). */
+function ask(label, value = '', { type = 'text', options = [], min, max, step, preview = null } = {}) {
   const d = root.querySelector('.dialog');
   if (!d.hidden && d.bwDirty?.()) { dlgNudge(d); return Promise.resolve(''); }
   d.bwCancel?.();
@@ -1790,12 +1793,20 @@ function ask(label, value = '', { type = 'text', options = [], min, max, step } 
   const num = (k, v) => (v != null ? ` ${k}="${esc(String(v))}"` : '');
   const field = type === 'color' ? `<input type="color" value="${esc(/^#[0-9a-f]{6}$/i.test(value) ? value : '#000000')}" />`
     : type === 'number' ? `<input type="number" inputmode="decimal" value="${esc(String(value))}"${num('min', min)}${num('max', max)}${num('step', step)} />`
-      : type === 'select' ? `<select>${options.map((o) => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}"${v === value ? ' selected' : ''}>${esc(l)}</option>`; }).join('')}</select>`
+      : type === 'select' ? `<select>${options.map((o) => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}"${v === value ? ' selected' : ''}${preview?.opt ? ` style="${attr(preview.opt(v))}"` : ''}>${esc(l)}</option>`; }).join('')}</select>`
         : `<textarea rows="3">${esc(value)}</textarea>`;
-  d.innerHTML = `<label>${esc(label)}${field}</label><p class="dlg-hint" hidden>${esc(t('ux.dlgKeep'))}</p><div class="btns"><button type="button" class="b primary" data-k="ok"><span class="w">${esc(t('save'))}</span></button><button type="button" class="b" data-k="no"><span class="w">${esc(t('close'))}</span></button></div>`;
+  const pvHtml = preview ? `${preview.chips ? `<div class="dlg-chips" role="group" aria-label="${esc(t('ux.previewSizes'))}">${preview.chips.map((c) => `<button type="button" class="b" data-chip="${esc(String(c))}"><span class="w">${esc(String(c))}</span></button>`).join('')}</div>` : ''}<div class="dlg-prev"><span class="dlg-prev-k">${esc(t('ux.preview'))}</span><div class="dlg-prev-t" dir="auto" role="img" aria-label="${esc(t('ux.preview'))}">${esc(preview.text || t('ux.previewSample'))}</div></div>` : '';
+  d.innerHTML = `<label>${esc(label)}${field}</label>${preview ? pvHtml : ''}<p class="dlg-hint" hidden>${esc(t('ux.dlgKeep'))}</p><div class="btns"><button type="button" class="b primary" data-k="ok"><span class="w">${esc(t('save'))}</span></button><button type="button" class="b" data-k="no"><span class="w">${esc(t('close'))}</span></button></div>`;
   const f = d.querySelector('textarea, input, select');
   const initial = f.value;
   d.bwDirty = () => f.value !== initial;
+  if (preview) {
+    const pv = d.querySelector('.dlg-prev-t');
+    const upd = () => { pv.style.cssText = preview.css(f.value); };
+    for (const ev of ['input', 'change', 'keyup']) f.addEventListener(ev, upd);
+    d.querySelectorAll('[data-chip]').forEach((c) => c.addEventListener('click', () => { f.value = c.dataset.chip; upd(); f.focus(); }));
+    upd();
+  }
   f.focus();
   return new Promise((res) => {
     const done = (v) => { d.bwDirty = null; d.bwCancel = null; leaveEl(d, () => { d.hidden = true; }); res(v); };
@@ -1898,6 +1909,36 @@ async function onBar(e) {
   if (a === 'dir') { setDir(b.dataset.d); return; }
   await runAction(a);
 }
+/** 0.17.0 (note 3): the place the person is working on, kept across a language / direction switch. The anchor is the leaf under the caret (else the
+ *  first leaf in view; in a page view the first leaf on the page shown) with its distance from the top of the window. Both editions share their
+ *  pointers, so the same leaf is found in the other edition; then a page view shows the page that leaf is on now, and the continuous page scrolls
+ *  so the leaf sits where it was. No anchor found (an empty page): the scroll and the page index stay as they were. Returns the restore function. */
+function placeHold() {
+  const main = mainOf(S.ed);
+  const paged = typeof viewsActive === 'function' && viewsActive();
+  const at0 = S.pageAt || 0;
+  const y0 = window.scrollY;
+  let p = null, top = 0;
+  if (main) {
+    const band = S.focus ? 0 : (barH || 90);
+    const leaves = [...main.querySelectorAll('[data-p]')];
+    const ae = document.activeElement?.closest?.('#bw-pair [data-p]');
+    const seen = (el) => { const r = el.getBoundingClientRect(); return r.height > 0 && r.bottom > band && r.top < innerHeight && (!paged || [at0, viewsMode() === 'spread' && at0 > 0 ? at0 + 1 : at0].includes(viewsPageOf(el))); };
+    const el = (ae && main.contains(ae) && seen(ae) ? ae : null) || leaves.find(seen);
+    if (el) { p = el.dataset.p; top = el.getBoundingClientRect().top; }
+  }
+  return () => {
+    const m = mainOf(S.ed);
+    let el = null;
+    for (let q = p; m && q && !el; q = q.slice(0, Math.max(0, q.lastIndexOf('/')))) { el = m.querySelector(`[data-p="${CSS.escape(q)}"]`); if (!q.includes('/')) break; }
+    if (paged) {
+      const pg = el ? viewsPageOf(el) : -1;
+      S.pageAt = pg >= 0 ? pg : at0;
+      viewsGo(0, true);
+    } else if (el) window.scrollTo({ top: Math.max(0, window.scrollY + el.getBoundingClientRect().top - top), behavior: 'instant' });
+    else window.scrollTo({ top: y0, behavior: 'instant' });
+  };
+}
 // Language «ع» / «E»: the interface language and the document edition together.
 function setLang(l) {
   const edChange = !!M[S.svc][l] && l !== S.ed;
@@ -1905,18 +1946,22 @@ function setLang(l) {
   const was = S.ui;
   S.ui = l;
   ls.set('bw:ui', S.ui);
+  const back = placeHold(); // the page being worked on stays (note 3)
   if (edChange) { S.ed = l; S.sel = null; S.selOv = null; }
   retranslateToasts(was, l);
   buildUi();
   render(!edChange);
+  back();
   window.BW_WM?.relabel();
 }
 // Layout direction RTL / LTR: independent of the language; remembered per edition (AR keeps RTL when EN goes LTR).
 function setDir(d) {
+  const back = placeHold(); // note 3: a direction switch keeps the page too
   S.dir = d;
   ls.set(`bw:dir:${S.ed}`, d);
   buildUi();
   render();
+  back();
 }
 /* ── zoom (0.15.0 note 9): 25 % to 400 %, presets for the buttons, x1.1 for Ctrl+wheel, the point under the window centre stays put ── */
 const ZOOM_MIN = 0.25;
