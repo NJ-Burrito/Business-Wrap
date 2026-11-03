@@ -103,12 +103,19 @@ try {
   const okw = await post({ 'x-bw-tab': tabA, 'x-bw-doc': DOC, 'x-bw-base': String(revNow) }, JSON.parse(after));
   check('T1: the owner at the current revision saves (200) and the revision advances', okw.s === 200 && Number(okw.rev) === revNow + 1, JSON.stringify(okw));
   // a tombstone (purge) is accepted from a follower tab too, a plain write from it is still refused
-  const TOMB = 'doc-tomb0155';
-  await post({ 'x-bw-tab': tabA, 'x-bw-doc': TOMB }, { id: TOMB, title: 'to purge', editions: {} });
-  const plainF = await post({ 'x-bw-tab': tabB, 'x-bw-doc': TOMB }, { id: TOMB, title: 'follower write', editions: {} });
+  // A write from a tab that does not LIST the document claims it only until the host's 1 s lease sweep (reconcile) drops it again, by design:
+  // nobody lists TOMB, so it has no standing owner. On a slow runner the sweep can fall between the owner's write and the follower's, and then the
+  // follower is rightly the first claimant (0.16.2 finding, run 41592793306). So the pair is tried on fresh documents until the sweep did not
+  // intervene; the follower must be refused on that pair, and a refusal must be seen at least once (R15).
+  let TOMB = '', plainF = { s: 0 }, tries = 0;
+  while (tries < 6 && plainF.s !== 409) {
+    TOMB = `doc-tomb0155${tries ? '-' + tries : ''}`; tries += 1;
+    await post({ 'x-bw-tab': tabA, 'x-bw-doc': TOMB }, { id: TOMB, title: 'to purge', editions: {} });
+    plainF = await post({ 'x-bw-tab': tabB, 'x-bw-doc': TOMB }, { id: TOMB, title: 'follower write', editions: {} });
+  }
   const purgeF = await post({ 'x-bw-tab': tabB, 'x-bw-doc': TOMB, 'x-bw-base': '0', 'x-bw-purge': '1' }, { id: TOMB, purge: true });
   const tombs = await (await fetch(`${base}/api/library/mirror?tombstones=1`)).json();
-  check('0.15.5: a purge from a follower tab with a stale base reaches the library (tombstone written); a plain follower write is still refused', plainF.s === 409 && purgeF.s === 200 && tombs.ids.includes(TOMB), JSON.stringify({ plainF: plainF.s, purgeF: purgeF.s, tombs: tombs.ids }));
+  check('0.15.5: a purge from a follower tab with a stale base reaches the library (tombstone written); a plain follower write is still refused', plainF.s === 409 && purgeF.s === 200 && tombs.ids.includes(TOMB), JSON.stringify({ tries, plainF: plainF.s, purgeF: purgeF.s, tombs: tombs.ids }));
   const nb = await callApi({ tool: 'get', doc: DOC, tab: tabB, args: { pointer: '/control/title', locale: 'ar' } });
   check('T1: a call that names the follower tab is refused (NOT_OWNER), never sent to it', nb.status === 409 && nb.body.code === 'NOT_OWNER' && nb.body.owner === tabA, JSON.stringify(nb.body).slice(0, 200));
   await A.close({ runBeforeUnload: false });
