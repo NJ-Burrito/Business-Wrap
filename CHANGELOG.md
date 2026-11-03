@@ -8,6 +8,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.16.4] - 2026-11-03
+
+📐 A fix release: the editor and the PDF now agree on tables, page breaks and story numbers. / 📐 إصدار إصلاحات: المحرر وملف PDF يتفقان الآن في الجداول وفواصل الصفحات وترقيم القصص.
+
+### Fixed / أصلح
+- 📋 **The editor draws a table's repeated header as the PDF does.** / **المحرر يرسم رأس الجدول المكرر كما يفعل ملف PDF.**
+- ✂️ **A page break mark takes no room in the page views.** / **علامة فاصل الصفحة لا تأخذ مساحة في عروض الصفحات.**
+- 🧱 **A table starts where its title, header and first row fit.** / **يبدأ الجدول حيث يتسع عنوانه ورأسه وصفه الأول.**
+- 🔢 **Story cards number 6.1, 6.2, 6.3** in the editor, the PDF and Word. / **بطاقات القصة تُرقَّم 6.1 و6.2 و6.3** في المحرر وPDF وWord.
+- 📏 Measured on real long documents: page counts are equal on all but one, which differs by one page. / قيس على وثائق طويلة حقيقية: عدد الصفحات متساوٍ في كلها إلا واحدة تختلف بصفحة واحدة.
+
+### Known limits / حدود معروفة
+- 📌 A row or a story's last part can still land on the neighbouring page on some long documents. / قد يقع صف أو الجزء الأخير من قصة في الصفحة المجاورة في بعض الوثائق الطويلة.
+
 ## [0.16.3] - 2026-11-03
 
 📦 A fix release: project import brings every document back once, long Arabic PDFs read, and the report speaks in plain words. / 📦 إصدار إصلاحات: استيراد المشروع يعيد كل وثيقة مرة واحدة، وقراءة ملفات PDF العربية الطويلة، والتقرير بكلمات بسيطة.

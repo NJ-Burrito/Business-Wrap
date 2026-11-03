@@ -13,7 +13,7 @@ import { buildEditor } from '../engine/build-editor.mjs';
 import { launchOptions, REPO, loadTheme, i18n, exportDocx } from '../engine/export.mjs';
 import { renderDocument } from '../engine/render.mjs';
 
-const BASE = '7387aef'; // 0.16.2 after the intended print changes since a276245 (story card ID row, field shape as a story card, a table's header kept with its first rows, Justify levels: 0c38351 adca1c7 8a5bca9 288f0a4); a doc without keepEmpty must print as it did there. Move it again only when the print changes on purpose
+const BASE = 'fab0db0'; // 0.16.2 after the intended print changes since a276245 (story card ID row, field shape as a story card, a table's header kept with its first rows, Justify levels: 0c38351 adca1c7 8a5bca9 288f0a4), then the page-matching parity change fab0db0 (the editor draws a table's repeated header, a table starts where its head fits, cards number 6.1); a doc without keepEmpty must print as it did there. Move it again only when the print changes on purpose
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-doc0160-'));
 let failed = 0;
 const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  doc-0160: ${name}${detail && !ok ? '  — ' + String(detail).replace(/\s+/g, ' ').slice(0, 300) : ''}`); if (!ok) failed += 1; };
