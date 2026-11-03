@@ -22,8 +22,8 @@ const browser = await chromium.launch(launchOptions());
 // the 12 general tabs (0.15.2: Spelling joins, before View) and the colour token each one carries (UI designer §1; the VALUES are read from the shipped CSS, never typed here)
 const GENERAL = [['file', '--bw-sec-file'], ['export', '--bw-sec-export'], ['home', '--bw-sec-edit'], ['font', '--bw-sec-font'], ['para', '--bw-sec-para'], ['insert', '--bw-sec-insert'],
   ['layout', '--bw-sec-gaps'], ['hf', '--bw-sec-header'], ['design', '--bw-sec-design'], ['review', '--bw-sec-document'], ['spelling', '--bw-sec-spell'], ['view', '--bw-sec-view']];
-// tools per tab as declared (UI designer §2; export is 19: the designer's list names 17, plus the design pack and the export-options button that keeps the page range, cover and folder fields)
-const COUNTS = { file: 7, export: 19, home: 10, font: 10, para: 19, insert: 20, layout: 17, hf: 17, design: 6, review: 11, spelling: 10, view: 15, table: 24, picture: 11, diagram: 28, diagram2: 28 };
+// tools per tab as declared (UI designer §2; export is 21: the designer's list names 17, plus the design pack, the export-options button that keeps the page range, cover and folder fields, and the three print-HTML tools of 0.17.0: export.printHtml.ar/.en/.both)
+const COUNTS = { file: 7, export: 21, home: 10, font: 10, para: 19, insert: 20, layout: 17, hf: 17, design: 6, review: 11, spelling: 10, view: 15, table: 24, picture: 11, diagram: 28, diagram2: 28 };
 
 async function open(ui, w, h) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h } });

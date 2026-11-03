@@ -61,11 +61,12 @@ const longest = Math.max(
 const expected = listFiles(fixtureDir).map((f) => `Fixture/${f.rel}`).sort();
 check(`fixture: ${expected.length} files, the longest path is ${longest} characters (past 260)`, expected.length === 4 && longest > 260, String(longest));
 
+const isWin = process.platform === 'win32'; // the PowerShell script and the 7-Zip paths below are Windows-only
 const ps1 = path.join(tmp, 'zip.ps1');
 fs.writeFileSync(ps1, `$ErrorActionPreference='Stop'\nCompress-Archive -Path "$env:BWT\\tree\\Fixture" -DestinationPath "$env:BWT\\ps.zip" -Force\n`);
 const seven = ['C:\\Program Files\\7-Zip\\7z.exe', 'C:\\Program Files (x86)\\7-Zip\\7z.exe'].find((p) => fs.existsSync(p));
 const zips = [];
-if (process.platform === 'win32') {
+if (isWin) {
   const r = spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ps1], { env: { ...process.env, BWT: tmp }, encoding: 'utf8' });
   if (r.status === 0 && fs.existsSync(path.join(tmp, 'ps.zip'))) zips.push(['Compress-Archive (Windows PowerShell)', path.join(tmp, 'ps.zip')]);
   else check('Compress-Archive made the zip', false, `${r.status} ${r.stderr}`.slice(0, 300));

@@ -139,6 +139,7 @@ try {
   const host = fake(hp);
   const { ctx: c2, page: f } = await open(pathToFileURL(editor).href, { ui: 'en', ports: [hp] });
   await until(async () => (await toggles(f))[0]?.st === 'offline', 8000);
+  await until(async () => isRed((await toggles(f))[0]?.dotRgb), 3000); // the dot fades from transparent to red over .2 s after the state flips
   const f0 = await toggles(f);
   check('file://: no host found -> «Offline», a RED dot, a switch that is off', f0.length === 1 && f0[0].st === 'offline' && f0[0].word === 'Offline' && isRed(f0[0].dotRgb) && f0[0].checked === 'false', JSON.stringify(f0));
   await press(f);

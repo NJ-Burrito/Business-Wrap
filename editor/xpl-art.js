@@ -508,6 +508,9 @@ out:docx.en export.docx.en@exportPdf
 out:docx.both export.docx.both@exportPdf
 out:print print@print
 out:html export.printHtml@print
+out:html.ar export.printHtml.ar@print
+out:html.en export.printHtml.en@print
+out:html.both export.printHtml.both@print
 out:menu export.menu@export.menu
 out:mmd export.mermaid@dgMermaidOut
 out:svg export.svg@export.svg
