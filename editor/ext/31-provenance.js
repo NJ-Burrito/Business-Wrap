@@ -114,9 +114,37 @@ async function pvLoad(svc, snap = null) {
   // Logged from this open on. A saved FILE that kept the mark and lost its log still warns: one opened as a file (!live) and one imported into the library (origin 'import').
   if (edited && !L.entries.length && !mir.log && live && ent && ent.origin !== 'import') { L.src = 'elsewhere'; L.verdict = { ok: true, issues: [], elsewhere: true }; L.pins = {}; return (PV.logs[svc] = L); }
   // a log continued from this machine's mirror is newer than any file state: only its chain and head are checked
-  L.verdict = await BWLOG1.verify(L, { mirror: L.from ? null : L.mirror, editions: L.src === 'mirror' ? undefined : eds, saved: L.src === 'html' || L.src === 'entry' });
+  const fromFile = L.src === 'html' || L.src === 'entry';
+  const sv = fromFile ? await pvSavedCheck(L, eds) : null; // 0.16.2 (T): a one-edition Save-HTML holds fewer editions than the log's last state vouches for
+  L.verdict = await BWLOG1.verify(L, { mirror: L.from ? null : L.mirror, editions: L.src === 'mirror' || sv ? undefined : eds, saved: fromFile });
+  if (sv && !sv.ok) { L.verdict.issues.push({ seq: L.entries.length - 1, reason: 'unlogged' }); L.verdict.ok = false; }
   L.pins = L.verdict.pins;
   return (PV.logs[svc] = L);
+}
+/** 0.16.2 (note T) · the editor saves a single-edition document (control.editions: 'ar' | 'en') WITHOUT its other, empty edition, but the log's document hash covers every edition the
+ *  session held, so an honest file read back (fresh profile, another computer) failed the «unlogged» check and showed the tamper warning. Two ways to vouch for such a file, both
+ *  still catching a hand edit:
+ *  · a file saved from 0.16.2 on: the signed «saveHtml» entry carries `savedDh`, the hash of exactly the editions the file holds → compared with the file's own state;
+ *  · an older file (no `savedDh`, ONE edition, the all-editions hash does not match): the dropped edition cannot be recomputed, so each op the file holds must equal, by id, the op the log
+ *    recorded (the log is signed): a changed op value is still «unlogged». Trimmed ops and an edited base text of such an old file cannot be seen (stated in the 0.16.2 notes).
+ *  Returns null when the ordinary all-editions check applies, else {ok}. */
+async function pvSavedCheck(L, eds) {
+  const last = L.entries.at(-1);
+  if (!last || last.kind !== 'saveHtml') return null;
+  const sd = last.data?.savedDh;
+  if (typeof sd === 'string') return { ok: (await BWLOG1.docHash(eds)) === sd };
+  if (Object.keys(eds).length !== 1 || pvLastDh(L) === (await BWLOG1.docHash(eds))) return null;
+  const [ed, e] = Object.entries(eds)[0];
+  const logged = new Map();
+  for (const x of L.entries) {
+    if (x.kind === 'op' && x.data?.op?.id && (!x.data.ed || x.data.ed === ed)) logged.set(x.data.op.id, x.data.op);
+    if (x.kind === 'merge') for (const m of x.data?.ops || []) if (m.op?.id && (!m.ed || m.ed === ed)) logged.set(m.op.id, m.op);
+  }
+  for (const o of e.ops || []) {
+    const a = logged.get(o.id);
+    if (!a || BWLOG1.canonical(await pvSlim(JSON.parse(JSON.stringify(a)))) !== BWLOG1.canonical(await pvSlim(JSON.parse(JSON.stringify(o))))) return { ok: false };
+  }
+  return { ok: true };
 }
 const pvWarn = (L) => { if (L?.verdict?.elsewhere && !L.told) { L.told = true; toast(t('pvElsewhere'), 'info', { actions: [[t('pvShow'), () => openDrawer('provenance')]] }); return; }
   if (pvBad(L)) toast(t('pvTampered'), 'warn', { persist: true, actions: [[t('pvShow'), () => openDrawer('provenance')]] }); };
@@ -198,7 +226,10 @@ const pvSaveHtml0 = saveHtml;
 if (PV_ON) saveHtml = async function pvSaveHtml(embedFonts) {
   await PV.ready; await PV.q; // the document's log is attached (the open event) before it is sealed into the file
   await pvSettle();
-  await pvAppend('saveHtml', { docTitle: pvTitle() });
+  // the editions the file will hold (editor.js saveHtml: a single-edition document leaves its other edition out): the entry vouches for exactly that state
+  const only = editionsOf(cur().doc)?.length === 1 ? editionsOf(cur().doc)[0] : null;
+  const held = Object.fromEntries(Object.entries(M[S.svc] || {}).filter(([ed]) => !only || ed === only || ed === S.ed));
+  await pvAppend('saveHtml', { docTitle: pvTitle(), savedDh: await BWLOG1.docHash(held) });
   const L = PV.logs[S.svc];
   PV.sealed = L ? { svc: S.svc, doc: L.doc, log: await BWLOG1.seal(L), contrib: pvContributors(L).map((c) => ({ id: c.id, kid: c.kid })) } : null;
   if (!L) return pvSaveHtml0(embedFonts);
