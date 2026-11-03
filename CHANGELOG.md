@@ -8,6 +8,40 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.17.0] - 2026-11-04
+
+✨ A minor release: new icons and motion, a launcher on the Desktop, the host switch in the top bar, smarter spelling, and English exports that work. / ✨ إصدار فرعي: أيقونات وحركة جديدة، ومشغّل على سطح المكتب، ومفتاح الخادم في الشريط العلوي، وتدقيق إملائي أذكى، وتصدير إنجليزي يعمل.
+
+### Added / أضيف
+- 🚀 **A Business-Wrap launcher with the logo** opens the editor in the browser without starting the host; a copy goes on the Desktop after the first run and after every update. / **مشغّل Business-Wrap بشعار الأداة** يفتح المحرّر في المتصفح دون تشغيل الخادم، وتوضع نسخة منه على سطح المكتب بعد أول تشغيل وبعد كل تحديث.
+- 🗂️ **Every file type in the save and download trees has its own icon**, sharp from 16 to 256 px. / **لكل نوع ملف في شجرتي الحفظ والتنزيل أيقونته الخاصة**، واضحة من 16 إلى 256 بكسل.
+- 🟢 **The host switch lives only in the top bar**, with a green or red dot and the port; switching it on starts the host, also from an opened HTML export (new link `business-wrap://start`). / **مفتاح الخادم في الشريط العلوي وحده**، مع نقطة خضراء أو حمراء ورقم المنفذ؛ وتشغيله يبدأ الخادم، حتى من ملف HTML مُصدَّر (رابط جديد `business-wrap://start`).
+- 🔤 **A live font preview** in the font size and style dialogs, including the cell font dialog. / **معاينة حيّة للخط** في نوافذ حجم الخط ونمطه، ومنها نافذة خط الخلية.
+
+### Changed / تغيّر
+- 🎨 **All icons redrawn in the brand theme**, categories first, with one gold accent, and new spring motion on hover. / **كل الأيقونات أعيد رسمها بألوان الهوية**، والفئات أولا، بلمسة ذهبية واحدة وحركة نابضة جديدة عند التمرير.
+- 🥚 **The logo watermark moves again in twenty scenes**, with two new easter eggs. / **العلامة المائية للشعار تتحرك من جديد في عشرين مشهدا**، مع مفاجأتين جديدتين.
+- ⚙️ **Settings reworked**: preferences first, clearer controls, a short About page. / **الإعدادات بتصميم جديد**: التفضيلات أولا، وأدوات أوضح، وصفحة «حول» مختصرة.
+- 🖥️ **The top-bar view control is now «الشاشة» / Display** with a monitor icon, apart from the ribbon View tab. / **أداة العرض في الشريط العلوي صار اسمها «الشاشة»** بأيقونة شاشة، مختلفة عن تبويب «عرض» في الشريط.
+- ✍️ **Spell checking is on by default and smarter** in Arabic and English, with technical and common word lists. / **التدقيق الإملائي مفعّل افتراضيا وأذكى** بالعربية والإنجليزية، مع قوائم كلمات تقنية وشائعة.
+- 🧘 **Only the Calm button reduces motion**; the system's reduced-motion setting no longer freezes the icons or the watermark. / **زر الهدوء وحده يخفّض الحركة**؛ وإعداد النظام لتقليل الحركة لم يعد يجمّد الأيقونات ولا العلامة المائية.
+
+### Fixed / أصلح
+- 🇬🇧 **English exports are complete**: PDF, DOCX and print HTML in English alone or with both editions, from the Export tab, the print centre, the CLI and MCP, into one document folder. / **تصدير النسخة الإنجليزية كامل**: PDF وDOCX وHTML الطباعة بالإنجليزية منفردة أو مع النسختين، من تبويب التصدير ومركز الطباعة وسطر الأوامر وMCP، في مجلد وثيقة واحد.
+- 📌 **A press on the background no longer folds the open ribbon tab.** / **النقر على الخلفية لم يعد يطوي تبويب الشريط المفتوح.**
+- 📄 **Switching language or direction keeps the page you are on.** / **تبديل اللغة أو الاتجاه يُبقيك في الصفحة نفسها.**
+- 📖 **Book view keeps an even gap next to landscape pages.** / **عرض الكتاب يحفظ مسافة متساوية بجانب الصفحات الأفقية.**
+- 🏷️ **No highlight box on the document title** on the cover and in «بيانات ضبط الوثيقة». / **لا إطار تمييز على عنوان الوثيقة** في الغلاف وفي «بيانات ضبط الوثيقة».
+- 📐 **The editor and the PDF agree more closely**: the same page width, the section heading stays before a story card, and a row cut across pages repeats the table header. / **المحرر وملف PDF أكثر تطابقا**: عرض الصفحة نفسه، وعنوان القسم يبقى قبل بطاقة القصة، والصف المقسوم على صفحتين يكرر رأس الجدول.
+- ⌫ **Backspace or Delete on a blank line you clicked removes it.** / **زر الحذف على سطر فارغ نقرت عليه يزيله.**
+- 🗜️ **Zip import reads old Arabic file names** (CP720 and CP437). / **استيراد الملف المضغوط يقرأ أسماء الملفات العربية القديمة** (CP720 وCP437).
+- 💾 **Edits are saved sooner** (within 1.5 s), and adding or deleting a story-card row is one undo step. / **التعديلات تُحفظ أسرع** (خلال ثانية ونصف)، وإضافة صف في بطاقة القصة أو حذفه خطوة تراجع واحدة.
+- 🪟 **A file saved from an older version tells you plainly** and opens the current viewer in one click. / **الملف المحفوظ من إصدار أقدم يخبرك بوضوح** ويفتح العارض الحالي بنقرة واحدة.
+
+### Known limits / حدود معروفة
+- 📌 A few pages in three long documents still start on a different block than the PDF. / بضع صفحات في ثلاث وثائق طويلة ما زالت تبدأ بكتلة مختلفة عن ملف PDF.
+- 🗜️ The zip import failure on one other computer is not reproduced yet. / فشل استيراد الملف المضغوط على جهاز آخر لم يُعَد إنتاجه بعد.
+
 ## [0.16.6] - 2026-11-03
 
 🔗 A fix release: a tab opened from a document link reopens the document. / 🔗 إصدار إصلاحات: التبويب المفتوح من رابط وثيقة يعيد فتح الوثيقة.
