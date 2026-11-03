@@ -69,13 +69,9 @@ try {
   // prints one page more than the editor. The other lengths are reported, not asserted: some of them still differ by one page (see parity-detail.md).
   const at14 = counts.find(([n]) => n === 14);
   check("the PDF has the editor's page count when the rules table ends with room for the notes table's title, header and first row", at14[1] === at14[2], `pdf ${at14[1]} editor ${at14[2]}`);
-  // every length, not only 14: the two page lists never part by more than one page (measured 2026-11-03: 14:20/20 17:21/20 20:21/20 23:21/21 26:21/21 29:21/21 32:22/21 35:22/21),
-  // and the PDF is never SHORTER than the editor's list (a page the editor shows must not vanish in the print)
-  const apart = counts.filter(([, p, e]) => Math.abs(p - e) > 1);
-  check('at every rules-table length (8 lengths) the PDF and the editor are within one page of each other', apart.length === 0, JSON.stringify(apart));
-  const shorter = counts.filter(([, p, e]) => p < e);
-  check('at no rules-table length is the PDF shorter than the editor', shorter.length === 0, JSON.stringify(shorter));
-  console.log(`INFO  parity-0163: ${counts.filter(([, p, e]) => p === e).length} of ${counts.length} lengths print exactly the editor's page count`);
+  // every length, not only 14 (measured 2026-11-03 before the editor drew a continued table's header: 17:21/20 20:21/20 23:21/21 32:22/21 35:22/21)
+  const apart = counts.filter(([, p, e]) => p !== e);
+  check(`at every rules-table length (${counts.length} lengths) the PDF has exactly the editor's page count`, apart.length === 0, JSON.stringify(apart));
   console.log(`INFO  parity-0163: pdf/editor pages by rules-table length: ${counts.map(([n, p, e]) => `${n}:${p}/${e}`).join(' ')}`);
   // 2. story numbers
   const withStories = (items, perSection) => {

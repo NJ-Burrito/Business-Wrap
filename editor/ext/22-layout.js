@@ -248,6 +248,8 @@ bwExt({
   expose: { w2layout: W2_LAYOUT, w2ruler: W2R },
   on: {
     boot: () => w2docCss('w2-layout-css', `@media screen{html.bw-ed section.bw-brk{border-top:2px dashed var(--accent-rule);padding-top:3mm;position:relative}
+#bw-pair:not([data-pages="continuous"]) section.bw-brk{border-top:0;padding-top:0}
+#bw-pair:not([data-pages="continuous"]) section.bw-brk::after{content:"";position:absolute;top:0;inset-inline:0;border-top:2px dashed var(--accent-rule);pointer-events:none}
 html.bw-ed section.bw-brk::before{content:attr(data-w2brk);position:absolute;top:-3.2mm;inset-inline-start:0;font-size:8pt;color:var(--accent);background:var(--paper,#fff);padding:0 2mm}}
 @media print{html.bw-ed section.bw-brk::before{display:none}}`),
     render: () => { document.querySelectorAll('#bw-pair section.bw-brk').forEach((x) => { x.dataset.w2brk = t('w2.pageBreak'); }); w2pageCss(); w2rulers(); },

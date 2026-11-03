@@ -1639,7 +1639,7 @@ export function relaxVerdicts(main, args, parent) {
   probe.setAttribute('aria-hidden', 'true');
   probe.style.cssText = `position:absolute;left:-30000px;top:0;visibility:hidden;pointer-events:none;width:${args[4]}px;zoom:1`;
   const copy = main.cloneNode(true);
-  copy.querySelectorAll('.bw-runs,.bw-sheets,.bw-slot').forEach((x) => x.remove());
+  copy.querySelectorAll('.bw-runs,.bw-sheets,.bw-slot,.bw-rpts').forEach((x) => x.remove());
   copy.querySelectorAll('[id]').forEach((x) => x.removeAttribute('id'));
   copy.removeAttribute('id');
   copy.style.cssText = 'zoom:1;width:100%;margin:0;transform:none;box-shadow:none;height:auto';
@@ -1665,121 +1665,6 @@ export function relaxVerdicts(main, args, parent) {
     });
   } finally { probe.remove(); }
   return live.length;
-}
-/**
- * 0.16.4 (bw-0164): ONE layout decides the pages. The editor's page views lay the document out in CSS columns, one column per sheet; the PDF used
- * to be laid out a second time by Chrome's print, and two engines tuned apart never agree to the page (a table's last rows, a title at a foot).
- * This runs in the print page after relaxTallGroups: it lays a copy of the document out in the same columns (editor/views.css: the sheet's width
- * and height, 12 mm gap, 18 + 16 mm padding on every column, a forced column where the print forces a page) and reads which block, table row or
- * list item opens each column. Those get `break-before: page` for the print, so the PDF starts its pages where the editor does. A paragraph the
- * column split stays with the natural flow. A title (a `break-after: avoid` chain) that would stand alone at a foot moves the break up to itself.
- * Sheets of another size (a figure chapter, a page setting) are left out of the copy and print as they always did.
- * Serialisable: pass it to page.evaluate. Returns {starts, columns, foreign} or null when there is nothing to lay out.
- */
-export function pagedStarts([wMm, hMm, topMm, botMm, keepProbe]) {
-  const main = document.querySelector('main.bw-doc');
-  if (!main) return null;
-  const MM = 96 / 25.4;
-  const GAP = 12;
-  const all = Array.from(main.querySelectorAll('*'));
-  all.forEach((e, i) => e.setAttribute('data-pgi', String(i)));
-  const host = document.createElement('div');
-  host.className = 'bw-pgprobe';
-  host.setAttribute('aria-hidden', 'true');
-  host.style.cssText = `position:absolute;left:0;top:0;visibility:hidden;pointer-events:none;width:${wMm}mm;zoom:1`;
-  const copy = main.cloneNode(true);
-  copy.removeAttribute('id');
-  copy.querySelectorAll('[id]').forEach((x) => x.removeAttribute('id'));
-  copy.querySelectorAll('script,style,.bw-runs,.bw-sheets').forEach((x) => x.remove());
-  const st = document.createElement('style');
-  st.textContent = `.bw-pgprobe>main.bw-doc{position:static;width:${wMm}mm;height:${hMm}mm;margin:0;padding:0;min-width:0;max-width:none;box-shadow:none;transform:none;column-width:${wMm}mm;column-gap:${GAP}mm;column-fill:auto;zoom:1}`
-    + `.bw-pgprobe .cover{break-after:column;height:${hMm}mm}`
-    + '.bw-pgprobe :is(.chapter.wide,.chapter.wide+.chapter,table.toc-cont,.bw-break,section.chapter.bw-brk,section.sec.bw-brk){break-before:column}'
-    + `.bw-pgprobe .wrap{box-decoration-break:clone;-webkit-box-decoration-break:clone;padding-block:${topMm}mm ${botMm}mm}`
-    + '.bw-pgprobe .bw-fbrk{display:block;height:0;break-before:column}';
-  host.append(st, copy);
-  document.body.appendChild(host);
-  const done = (r) => { if (!keepProbe) host.remove(); all.forEach((e) => e.removeAttribute('data-pgi')); return r; };
-  try {
-    // the sheet size each segment prints on, from the markers the render left in the document
-    const sizes = new Map(Array.from(main.querySelectorAll('a.bw-seg[data-seg]')).map((a) => [a.dataset.seg, [+a.dataset.wMm, +a.dataset.hMm]]));
-    const segOf = (el) => {
-      for (let x = el; x && x !== copy; x = x.parentElement) {
-        const m = /^page:\s*bw-seg-(\d+)/.exec(x.getAttribute('style') || '');
-        if (m) return m[1];
-        if (x.classList?.contains('chapter') && x.classList.contains('wide')) return 'w';
-      }
-      return '0';
-    };
-    const isForeign = (el) => { const k = segOf(el); if (k === 'w') return true; const z = sizes.get(k); return !!z && (z[0] !== wMm || z[1] !== hMm); };
-    // a container that prints on another sheet leaves the copy; a forced column stands in its place
-    let foreign = 0;
-    Array.from(copy.querySelectorAll('.chapter,.sec,.bw-pg')).forEach((el) => {
-      if (!el.isConnected || !isForeign(el)) return;
-      const parentForeign = el.parentElement && el.parentElement !== copy && el.parentElement.closest('.chapter,.sec,.bw-pg') && isForeign(el.parentElement.closest('.chapter,.sec,.bw-pg'));
-      if (parentForeign) return;
-      const m = document.createElement('div');
-      m.className = 'bw-fbrk';
-      el.before(m);
-      el.style.display = 'none';
-      foreign += 1;
-    });
-    const hr = copy.getBoundingClientRect();
-    const rtl = getComputedStyle(copy).direction === 'rtl';
-    const pitch = (wMm + GAP) * MM;
-    const colOf = (q) => Math.max(0, Math.floor(((rtl ? hr.right - (q.left + q.right) / 2 : (q.left + q.right) / 2 - hr.left) + 1) / pitch));
-    const BLOCKY = /^(block|flex|grid|list-item|table-row|flow-root|table|table-caption)$/;
-    const isBlock = (e) => BLOCKY.test(getComputedStyle(e).display);
-    const cand = [];
-    Array.from(copy.querySelectorAll('*')).forEach((e) => {
-      if (e.closest('.bw-fbrk,td,th,thead') || e.closest('[style*="display: none"]')) return;
-      if (!BLOCKY.test(getComputedStyle(e).display) || e.tagName === 'TABLE') return;
-      if (Array.from(e.children).some((c) => c.tagName !== 'COL' && c.tagName !== 'COLGROUP' && isBlock(c))) return; // a container: its blocks are the candidates
-      const rs = Array.from(e.getClientRects()).filter((q) => q.height >= 1 && q.width >= 1);
-      if (!rs.length) return;
-      cand.push({ e, a: colOf(rs[0]), b: colOf(rs[rs.length - 1]) });
-    });
-    const starts = [];
-    let last = 0;
-    let columns = 0;
-    // an element inside an atomic inline-block (a held group, `.whole`) is never split from what follows it by the page: its `break-after: avoid` does nothing outside
-    const atomic = (e) => { for (let x = e.parentElement; x && x !== copy; x = x.parentElement) if (/^inline/.test(getComputedStyle(x).display)) return true; return false; };
-    const lead = (e) => (getComputedStyle(e).breakAfter === 'avoid' || getComputedStyle(e).breakAfter === 'avoid-page') && !atomic(e);
-    cand.forEach((c, i) => {
-      columns = Math.max(columns, c.b + 1);
-      if (c.a > last && i > 0) {
-        let at = i;
-        // a title or header that ends the column before and holds on to what follows moves with it
-        while (at > 0 && cand[at - 1].b === last && cand[at - 1].a >= last && lead(cand[at - 1].e) && starts.indexOf(cand[at - 1].e.dataset.pgi) < 0 && cand[at - 1].a === cand[at - 1].b) at -= 1;
-        // the mark goes on the outermost box that opens at this very place (a heading's first span, a table's first row's section)
-        let el = cand[at].e;
-        for (let up = el.parentElement; up && up !== copy && !up.classList.contains('wrap'); up = el.parentElement) {
-          if (up.firstElementChild !== el && Array.from(up.children).slice(0, Array.from(up.children).indexOf(el)).some((x) => x.tagName !== 'COL' && x.tagName !== 'COLGROUP' && x.getBoundingClientRect().height >= 1 && getComputedStyle(x).display !== 'none')) break;
-          if (Array.from(up.childNodes).some((n) => n.nodeType === 3 && n.textContent.trim() && up.compareDocumentPosition(n) && n.compareDocumentPosition(el) & 4)) break;
-          el = up;
-        }
-        starts.push(el.dataset.pgi);
-        if (keepProbe) (window.__pgdbg = window.__pgdbg || []).push([el.dataset.pgi, c.e.tagName + '.' + c.e.className, c.a, c.b, last, at, i]);
-      }
-      last = Math.max(last, c.b);
-    });
-    return done({ starts, columns, foreign });
-  } catch (e) {
-    return done({ starts: [], columns: 0, foreign: 0, error: String(e && e.message || e) });
-  }
-}
-/** Applies pagedStarts' verdicts to the print document: the blocks that open a sheet in the editor open a page in the PDF. */
-export function applyStarts(starts) {
-  const main = document.querySelector('main.bw-doc');
-  let n = 0;
-  (starts || []).forEach((i) => {
-    const el = main.querySelectorAll('*')[+i];
-    if (!el) return;
-    el.style.setProperty('break-before', 'page');
-    el.setAttribute('data-pgb', '1');
-    n += 1;
-  });
-  return n;
 }
 export const relaxArgs = (doc) => { const g = doc ? pageGeom(doc) : PAGE; return [g.contentPx * PAGE.relaxAbove, PAGE.keepRows, g.contentPx, PAGE.fillFloor]; };
 
