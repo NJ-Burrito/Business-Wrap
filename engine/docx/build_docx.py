@@ -544,6 +544,10 @@ def add_stories(document, block, font, counters, chapter_number, story_seq):
         cap.paragraph_format.space_after = Pt(0)
         # the print's story-head: the SECTION's number (gold) then «قصة مستخدم» in the primary colour, on the top band of the sand card
         sn = str(block.get('number') or f"{chapter_number}.{story_seq[0]}")
+        if item_no > 0:  # 0.16.3: a block of several cards numbers each card (6.1, 6.2, ...), as the print does
+            _m = re.match(r'^(.*?)(\d+)$', sn)
+            if _m:
+                sn = f"{_m.group(1)}{int(_m.group(2)) + item_no}"
         nrun = cap.add_run(f"{sn}    ")
         nrun.bold = True
         nrun.font.size = Pt(theme_mod.SIZES['h2'])

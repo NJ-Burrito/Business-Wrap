@@ -783,7 +783,7 @@ table.headed>caption>:last-child{margin-bottom:0}
 h2,h3,h4,h5{break-after:avoid}
 h2+*,h3+*,h4+*,h5+*{break-before:avoid}
 .lead-in+table{break-before:avoid}
-table{break-before:avoid}
+/* 0.16.3: no blanket table break-before avoid: with the caption, the header and the first rows all held, it pulled a table that follows another table (rules, then source notes) onto the next page whole, where the editor's pages started it on the same page. A table's own title, header and first rows still stay together (caption, thead, tbody.hold); only the break between two tables is free again */
 tbody:first-of-type tr:first-child{break-before:avoid}
 /* 0.16.2: a table's header stays with its first rows: Chrome parted a header from its first group (tbody.hold) and left it alone at a page's foot */
 thead{break-after:avoid}
@@ -850,7 +850,13 @@ export function renderParts(doc, o) {
   const none = L.none;
   const PM = pageModel(doc);
   const NUM = docNumbers(doc); // 0.15.0 (F4): what prints comes from position, never from a stored number
-  const storyNo = (ptr, blk) => { const m = /^\/chapters\/(\d+)\/sections\/(\d+)\/blocks\/(\d+)/.exec(ptr || ''); return m ? (NUM.story[+m[1]]?.[+m[2]]?.[+m[3]] || (NUM.manual ? (blk.number ?? '') : '')) : (blk.number ?? ''); };
+  // 0.16.3: a stories block with several cards numbers them per card (6.1, 6.2, ...): the block's number is the first card's, each next card adds one to its last part; a block of one card (a section per card) keeps its own number
+  const storyNo = (ptr, blk, k = 0) => {
+    const m = /^\/chapters\/(\d+)\/sections\/(\d+)\/blocks\/(\d+)/.exec(ptr || '');
+    const base = String(m ? (NUM.story[+m[1]]?.[+m[2]]?.[+m[3]] || (NUM.manual ? (blk.number ?? '') : '')) : (blk.number ?? ''));
+    const t = k > 0 ? /^(.*?)(\d+)$/.exec(base) : null;
+    return t ? `${t[1]}${+t[2] + k}` : base;
+  };
   const segOn = PM.segments.length > 1;
   const segStarts = new Map(PM.segments.filter((x) => x.start).map((x) => [x.start, x]));
   const segOfPtr = (p) => PM.segOf.get(p) ?? 0;
@@ -1214,7 +1220,7 @@ export function renderParts(doc, o) {
               rowsPtr: `${sp}/card/rows`,
               extra: 'control story-info story-card',
               capClass: 'story-head',
-              caption: `<span class="sn"${dp(b + '/number')}>${bidi(storyNo(b, block))}</span>${lb('userStory')}`,
+              caption: `<span class="sn"${i === 0 ? dp(b + '/number') : ''}>${bidi(storyNo(b, block, i))}</span>${lb('userStory')}`,
               ...(o.editor ? { b, tb: `${sp}/card` } : {}),
               merges: card?.merges,
               colWidths: Array.isArray(card?.colWidths) ? card.colWidths : [22, 78],
