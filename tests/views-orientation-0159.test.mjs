@@ -146,7 +146,7 @@ try {
       const main = document.querySelector('#bw-pair main.bw-doc[data-locale="' + window.BW.S.ed + '"]');
       const mr = main.getBoundingClientRect();
       const segs = [...main.querySelectorAll('[style^="page:bw-seg-"], .chapter.wide')].filter((e) => !e.parentElement.closest('[style^="page:bw-seg-"], .chapter.wide'));
-      const out = segs.map((e) => { const q = e.getBoundingClientRect(); const prev = e.previousElementSibling?.getBoundingClientRect(); return { cx: q.left + q.width / 2 - (mr.left + mr.width / 2), wide: q.width > q.height, overlapPrev: prev ? prev.bottom - q.top > 1 && prev.height > 0 : false }; });
+      /* 0.16.1: a figure chapter may hold two figures, so it can be taller than wide; "wide" = wider than the portrait page column */ const out = segs.map((e) => { const q = e.getBoundingClientRect(); const prev = e.previousElementSibling?.getBoundingClientRect(); return { cx: q.left + q.width / 2 - (mr.left + mr.width / 2), wide: q.width > mr.width + 1, overlapPrev: prev ? prev.bottom - q.top > 1 && prev.height > 0 : false }; });
       return { n: segs.length, out };
     });
     check(`${label}: landscape sheets stand centred and overlap nothing`, r.n > 0 && r.out.every((o) => Math.abs(o.cx) < 2 && !o.overlapPrev) && r.out.some((o) => o.wide), JSON.stringify(r));

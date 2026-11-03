@@ -24,6 +24,8 @@ let failed = 0;
 const results = [];
 const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
 const SAMPLE = path.join(REPO, 'samples', 'event-permit');
+// 0.16.1: the sample prints its workflow as two figures; this suite drives ONE whole drawing, so it reads the whole-drawing copy of the documents
+const WHOLE = path.join(REPO, 'tests', 'fixtures', 'permit-whole');
 const wf = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'workflow.json'), 'utf8'));
 const theme = loadTheme();
 
@@ -77,7 +79,7 @@ for (const loc of ['ar', 'en']) {
   const relaid = DIAGRAM.layout(bent, { force: true });
   check('bend: «auto layout» routes every arrow afresh (bends cleared)', relaid.edges.every((e) => !e.via));
   // the edits contract: one replace op carries the bends; replaying it gives the same model
-  const docEn0 = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'document.en.json'), 'utf8'));
+  const docEn0 = JSON.parse(fs.readFileSync(path.join(WHOLE, 'document.en.json'), 'utf8'));
   const ptr = '/chapters/2/sections/0/blocks/0';
   const blk0 = docEn0.chapters[2].sections[0].blocks[0];
   const replayed = applyOps(docEn0, [{ op: 'replace', path: `${ptr}/model`, value: bent, old: blk0.model }]).chapters[2].sections[0].blocks[0].model;
@@ -113,7 +115,7 @@ for (const loc of ['ar', 'en']) {
 }
 
 // ── PDF: the diagram's words are real text; DOCX: native shapes, no picture ──
-const docAr = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'document.ar.json'), 'utf8'));
+const docAr = JSON.parse(fs.readFileSync(path.join(WHOLE, 'document.ar.json'), 'utf8'));
 const browser = await chromium.launch(launchOptions());
 try {
   const pdf = path.join(OUT, 'sample.ar.pdf');
@@ -128,7 +130,7 @@ try {
   let labels = ['رئيس القسم', 'مخرج رفض', 'إرجاع للتدقيق', 'المسار الأساسي للطلب'];
   let ltxt = txt;
   if (!HAVE_FONTS) {
-    const docEn = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'document.en.json'), 'utf8'));
+    const docEn = JSON.parse(fs.readFileSync(path.join(WHOLE, 'document.en.json'), 'utf8'));
     const pdfEn = path.join(OUT, 'sample.en.pdf');
     await exportPdf(docEn, { locale: 'en', theme, pdfPath: pdfEn, browser });
     ltxt = spawnSync(bin, ['-enc', 'UTF-8', pdfEn, '-'], { encoding: 'utf8' }).stdout || '';
@@ -147,7 +149,7 @@ try {
 
   // ── the editor: contextual toolbar and in-place editing ──
   const file = path.join(OUT, 'editor.html');
-  buildEditor({ inputs: [SAMPLE], out: file, set: 'diagram-test', watermarkDir: '' });
+  buildEditor({ inputs: [WHOLE], out: file, set: 'diagram-test', watermarkDir: '' });
   const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 } });
   await ctx.addInitScript(() => { try { localStorage.setItem('bw:ui', 'ar'); localStorage.setItem('bw:calm', '1'); } catch {} });
   const page = await ctx.newPage();

@@ -13,7 +13,7 @@ import { buildEditor } from '../engine/build-editor.mjs';
 import { launchOptions, REPO, loadTheme, i18n, exportDocx } from '../engine/export.mjs';
 import { renderDocument } from '../engine/render.mjs';
 
-const BASE = 'd9d5cae'; // 0.16.1 fixa: the last commit that changed the print on purpose (the output table label bar under a story card, engine/render.mjs + i18n); the lanes after it (0.16.0 figure, views, spec, 0.16.1 fixa) changed the print deliberately, so a base older than the newest deliberate change compares unlike with like. A doc without keepEmpty must print as it did there. Move BASE forward only with a deliberate print change
+const BASE = 'a276245'; // 0.16.1 after the frame and fixa lanes (the 0.16.0 final 75178ef predates the Output details label bar on a table after a story card, a print change on purpose; blank prints it); a doc without keepEmpty must print as it did there
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-doc0160-'));
 let failed = 0;
 const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  doc-0160: ${name}${detail && !ok ? '  — ' + String(detail).replace(/\s+/g, ' ').slice(0, 300) : ''}`); if (!ok) failed += 1; };

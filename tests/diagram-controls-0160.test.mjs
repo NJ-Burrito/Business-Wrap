@@ -18,7 +18,8 @@ const results = [];
 const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  | ' + detail : ''}`); if (!ok) failed += 1; };
 const NL = String.fromCharCode(10);
 process.on('uncaughtException', (e) => { console.log(results.join(NL)); console.error('CRASH: ' + String(e.message).split(NL).slice(0, 3).join(' / ')); process.exit(2); });
-const SAMPLE = path.join(REPO, 'samples', 'event-permit');
+// 0.16.1: the sample prints its workflow as two figures; this suite drives ONE whole drawing (the pre-split sample documents)
+const SAMPLE = path.join(REPO, 'tests', 'fixtures', 'permit-whole');
 const file = path.join(OUT, 'editor.html');
 buildEditor({ inputs: [SAMPLE], out: file, set: 'controls-0160', watermarkDir: '' });
 const browser = await chromium.launch(launchOptions());

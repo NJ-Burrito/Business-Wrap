@@ -63,7 +63,7 @@ for (const loc of ONLY === 'o2' ? [] : ['en', 'ar']) {
 
 // ── editor ──
 const file = path.join(tmp, 'a.html');
-buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, set: 'objects0140', watermarkDir: null });
+buildEditor({ inputs: [path.join(REPO, 'tests', 'fixtures', 'permit-whole')], out: file, set: 'objects0140', watermarkDir: null });
 const browser = await chromium.launch(launchOptions());
 try {
   for (const ui of ONLY === 'o2' ? [] : ['ar', 'en']) {

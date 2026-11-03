@@ -45,6 +45,8 @@ try {
         await act(page, st); // the ribbon tab that holds the tool, else the palette
       }
       await page.waitForTimeout(650); // let open/close motion settle: axe measures colours mid-fade otherwise
+      // 0.16.1: a fixed wait is not enough on a loaded machine (a full run saw the palette headers measured mid-fade, color-contrast x7): also wait until every finite animation of the page and of the UI shadow root has finished
+      await page.evaluate(async () => { const root = document.getElementById('bw-ui-host')?.shadowRoot; const all = [...document.getAnimations(), ...(root ? root.getAnimations() : [])].filter((x) => Number.isFinite(x.effect?.getComputedTiming().endTime)); await Promise.allSettled(all.map((x) => x.finished)); });
       const v = await page.evaluate(async () => {
         const r = await window.axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'] });
         return r.violations.map((x) => ({ id: x.id, impact: x.impact, n: x.nodes.length, target: x.nodes[0]?.target?.join(' ') }));
