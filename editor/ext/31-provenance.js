@@ -150,7 +150,10 @@ const pvWarn = (L) => { if (L?.verdict?.elsewhere && !L.told) { L.told = true; t
   if (pvBad(L)) toast(t('pvTampered'), 'warn', { persist: true, actions: [[t('pvShow'), () => openDrawer('provenance')]] }); };
 
 const pvState = (svc) => BWLOG1.canonical(BWLOG1.stateOf(M[svc]));
-const pvBad = (L) => !!L && !L.verdict.ok;
+// a new key for a name the log already knows (another browser profile or machine) is honest, not tampering: only the other reasons alarm
+const pvHard = (L) => (L?.verdict?.issues || []).filter((i) => i.reason !== 'tofu');
+const pvTofuNames = (L) => [...new Set((L?.verdict?.issues || []).filter((i) => i.reason === 'tofu').map((i) => L.entries[i.seq]?.actor?.name || t('pfNoName')))];
+const pvBad = (L) => !!L && !L.verdict.ok && pvHard(L).length > 0;
 const pvDigest = async (s) => `sha256:${BWLOG1.hex(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))))}`;
 /** 0.16.0 (field notes item 7) · a large string in a NEW log entry (a 300 KB logo, typed once into an op) is kept by its hash and size, not copied: {$blob, bytes, head}.
  *  The document and its edition history still hold the value, so nothing is lost and the entry still proves what was written; older entries are never touched (additive, AGENTS.md
@@ -309,8 +312,9 @@ function pvDrawer() {
   const elsewhere = L.verdict.ok && (L.verdict.elsewhere || L.entries.some((e) => e.kind === 'open' && e.data?.src === 'elsewhere'));
   const status = elsewhere ? `<p class="pv-status pv-elsewhere" data-elsewhere="1"><span class="i">${ic('info')}</span> <b>${esc(t('pvElsewhere'))}</b> · ${esc(t('pvElsewhereNote', { n: L.entries.length }))}</p>`
     : legacy ? `<p class="pv-status pv-legacy" data-legacy="1"><span class="i">${ic('info')}</span> <b>${esc(t('pvLegacy'))}</b> · ${esc(t('pvLegacyNote', { n: L.entries.length }))}</p>`
+    : !pvBad(L) && !L.verdict.ok ? `<p class="pv-status pv-tofu" data-tofu="1"><span class="i">${ic('info')}</span> <b>${esc(t('pvTofu'))}</b> · ${esc(t('pvTofuNote', { names: pvTofuNames(L).join(S.ui === 'ar' ? '، ' : ', ') }))}</p>`
     : L.verdict.ok ? `<p class="ok pv-status"><span class="i">${ic('ok')}</span> ${esc(t('pvChainOk', { n: L.entries.length }))}</p>`
-    : `<div class="err pv-status" role="alert"><p><span class="i">${ic('err')}</span> <b>${esc(t('pvTampered'))}</b></p><ul>${L.verdict.issues.map((i) => `<li>#${i.seq} · ${esc(t('pvr_' + i.reason))}</li>`).join('')}</ul></div>`;
+    : `<div class="err pv-status" role="alert"><p><span class="i">${ic('err')}</span> <b>${esc(t('pvTampered'))}</b></p><ul>${pvHard(L).map((i) => `<li>#${i.seq} · ${esc(t('pvr_' + i.reason))}</li>`).join('')}</ul></div>`;
   const mins = (ms) => Math.round(ms / 6e4);
   return {
     title: t('pvTitle'),

@@ -100,7 +100,31 @@ try {
   const svc = d.services[0].id;
   check(L + ': ' + 'the saveHtml entry ' + (LEGACY_RUN ? 'has no savedDh (an old file)' : 'vouches for the saved editions (savedDh)'), !LEGACY_RUN === (typeof (await page.evaluate(() => window.BW.EXT.ledger.log().entries.at(-1).data.savedDh)) === 'string'));
   check(L + ': ' + 'the file carries the mark, the sealed log and the edits', d.bwlog === 1 && !!d.prov?.[svc]?.log && d.services[0].editions[ed].ops.length >= 3, JSON.stringify({ bwlog: d.bwlog, prov: Object.keys(d.prov || {}), ops: d.services[0].editions[ed].ops.length }));
+  let tofuFile = null;
   await ctx.close();
+  if (!LEGACY_RUN && !single) {
+    // 0.16.3 tofu: the same contributor signs from another device (a second key for the same name), the chain otherwise whole: a calm note, no alarm.
+    // Built with the ledger engine itself: the saved file's log is unsealed, a Save-HTML entry is added under a new key for the same actor id, and sealed back.
+    const { BWLOG1: LG } = await import('../engine/ledger-v1.mjs');
+    const j = dataOf(html);
+    const log = await LG.unseal(j.prov[svc].log, j.prov[svc].doc);
+    const last = log.entries.at(-1);
+    await LG.append(log, { kind: 'saveHtml', data: last.data, actor: { id: last.actor.id, name: last.actor.name }, keys: await LG.newKeys(), docHash: last.docHash });
+    j.prov[svc].log = await LG.seal(log);
+    tofuFile = path.join(tmp, 'tofu.html'); fs.writeFileSync(tofuFile, withData(html, j), 'utf8');
+    check(L + ': tofu: ready state seen: the built file holds two keys for one actor id', new Set(log.entries.filter((e) => e.actor.id === last.actor.id).map((e) => e.actor.kid)).size === 2, JSON.stringify(log.entries.map((e) => e.actor.id + ':' + e.actor.kid.slice(0, 6) + ':' + e.kind)));
+  }
+  if (tofuFile) {
+    const rt = await openFresh(tofuFile);
+    check(L + ': tofu: two keys for one name, chain otherwise whole: no alarm toast, the log reports only tofu', rt.issues.length > 0 && rt.issues.every((x) => x === 'tofu') && rt.warn === 0, JSON.stringify(rt));
+    const tf = fs.readFileSync(tofuFile, 'utf8');
+    const tn = path.join(tmp, 'tofu-nolog.html'); fs.writeFileSync(tn, (() => { const j = dataOf(tf); delete j.prov; return withData(tf, j); })(), 'utf8');
+    const rtc = await openFresh(tn);
+    check(L + ': tofu: a cut chain (log removed) still warns', rtc.warn === 1, JSON.stringify(rtc));
+    const te = path.join(tmp, 'tofu-edited.html'); fs.writeFileSync(te, (() => { const j = dataOf(tf); const e = j.services[0].editions[ed]; e.ops[e.ops.length - 1] = { ...e.ops[e.ops.length - 1], value: 'Hand edited title' }; return withData(tf, j); })(), 'utf8');
+    const rte = await openFresh(te);
+    check(L + ': tofu: two keys plus a hand edit still warns', rte.warn === 1, JSON.stringify(rte));
+  }
 
   // honest: same folder, and another folder
   const r1 = await openFresh(file);

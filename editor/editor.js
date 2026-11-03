@@ -3434,7 +3434,7 @@ const BRIDGE = (() => {
     try { if (typeof pvFlushTyping === 'function') pvFlushTyping(); await PV.q; } catch { /* best effort */ }
     const L = EXT.ledger?.log?.(S.svc);
     if (!L) return { id: 'verifyHistory', ok: true, issues: [], entries: 0, legacy: false, note: 'no history log is attached to this document' };
-    return { id: 'verifyHistory', ok: !!L.verdict?.ok, issues: (L.verdict?.issues || []).slice(0, 50), entries: L.entries?.length || 0, legacy: !!L.verdict?.legacy, source: L.src || null };
+    return { id: 'verifyHistory', ok: !!L.verdict?.ok || !(L.verdict?.issues || []).some((i) => i.reason !== 'tofu'), issues: (L.verdict?.issues || []).slice(0, 50), entries: L.entries?.length || 0, legacy: !!L.verdict?.legacy, source: L.src || null };
   }
   /** 0.16.0 (item 8): the export an agent asked for, straight to the host: no window.open, no save-folder question (the person answers that one, not a tool), the file AND its folder in the reply. */
   async function exportViaHost({ name, destination, docx } = {}, ed) {
