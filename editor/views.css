@@ -21,6 +21,8 @@
   /* a forced page break starts a new page here too; text pages keep the print margins */
   #bw-pair .bw-view main.bw-doc .cover { break-after: column; height: var(--ph); }
   #bw-pair .bw-view main.bw-doc :is(.chapter.wide, .chapter.wide + .chapter, table.toc-cont, .bw-break) { break-before: column; }
+  /* 0.16.2 a section or chapter that starts on a new page («صفحة جديدة قبل هذا القسم», .bw-brk) breaks to a new COLUMN here: `break-before: page` after a held empty slot made it share the column of the turned sheet's last slot */
+  #bw-pair .bw-view main.bw-doc :is(section.chapter.bw-brk, section.sec.bw-brk) { break-before: column; }
   #bw-pair .bw-view main.bw-doc .wrap { box-decoration-break: clone; -webkit-box-decoration-break: clone; padding-block: 18mm 16mm; }
   /* 0.16.0 the print pass's verdicts on a long held table or list (views.js viewsRelax): its first rows and its last rows stay together */
   #bw-pair .bw-view main.bw-doc [data-rlr="a"] { break-after: avoid; }
