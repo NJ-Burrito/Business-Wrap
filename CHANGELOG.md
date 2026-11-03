@@ -8,6 +8,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.16.6] - 2026-11-03
+
+🔗 A fix release: a tab opened from a document link reopens the document. / 🔗 إصدار إصلاحات: التبويب المفتوح من رابط وثيقة يعيد فتح الوثيقة.
+
+### Fixed / أصلح
+- 📄 **A tab opened from a document link reopens the document** when the browser has lost its copy and the app still holds it. / **التبويب المفتوح من رابط وثيقة يعيد فتح الوثيقة** عندما يفقد المتصفح نسخته ويظل التطبيق محتفظا بها.
+
 ## [0.16.5] - 2026-11-03
 
 🧾 A fix release: acceptance criteria print as a row inside the story card, and the editor and the PDF agree on page counts. / 🧾 إصدار إصلاحات: معايير القبول تُطبع صفا داخل بطاقة القصة، والمحرر وملف PDF متفقان في عدد الصفحات.
