@@ -204,9 +204,14 @@ try {
   // after an edit can lose it, and on a loaded runner it did: the restarted tab came up with no document (docs empty) and every later call to it timed out (reproduced under 2x CPU load).
   // A crash is not what M5 is about (M9 and the tamper suites cover the sleeping and lost tab); a clean close is, and it waits until the browser is really gone.
   const closeGracefully = async (rec) => { try { const v = await (await fetch(`http://127.0.0.1:${rec.cdp}/json/version`)).json(); const w = tab(v.webSocketDebuggerUrl); await w.send('Browser.close'); w.close(); } catch { /* gone */ } };
+  const lost = await P1.ev(`new Promise((ok) => { const q = indexedDB.open('bw-library', 1); q.onerror = () => ok('open failed'); q.onsuccess = () => { const db = q.result; const tx = db.transaction('docs', 'readwrite'); tx.objectStore('docs').delete(${JSON.stringify(idA)}); tx.oncomplete = () => { db.close(); ok('deleted'); }; tx.onerror = () => ok('tx failed'); }; })`);
+  check('M5: the document is gone from the browser profile before it closes (the loss to heal; positive sample)', lost === 'deleted', String(lost));
   await closeGracefully(C1);
   await until(() => !H.alive(C1.pid), 90000, 300); // the browser PROCESS is gone (its port closes earlier, while it still writes the profile and holds its lock)
   killChrome(C1); // whatever is left of it (a no-op when it closed)
+  // The worst a closed browser can leave (CI run 41607115716 came back with the document missing from the tab even after a clean close): its IndexedDB did not keep the edit. The
+  // host's mirror still holds the document; the restarted tab must find it there (editor/ext/12-session.js healLink), not come up empty.
+  // (only the library record is lost; the profile's signing key and ledger stay, or M8's key checks would see a lost key)
   const after = await until(() => !H.hostState() || !H.alive(H.hostState().pid), 10000);
   check('M5: the host is down', !!after);
   r = await call('open_in_editor', { documents: [SAMPLE] });
@@ -219,7 +224,15 @@ try {
   C1 = await launchChrome(`${base}/?automation=1#doc=${idA}`, 'profile-main');
   const P1b = await attach(C1, (u) => u.startsWith('http://127.0.0.1'));
   check('M5: the restarted editor booted (positive sample)', !!(await booted(P1b)));
-  check('M5: the host sees the restarted tab (positive sample)', !!(await until(async () => (await health()).tabs.some((t) => t.live && (t.docs || []).includes(idA)), 90000)));
+  const seenTab = !!(await until(async () => (await health()).tabs.some((t) => t.live && (t.docs || []).includes(idA)), 90000));
+  let why = '';
+  if (!seenTab) {
+    const hh2 = await health().catch((e) => ({ err: String(e) }));
+    const st = await P1b.ev(`JSON.stringify({url: location.href, svc: window.BW?.S?.svc, healed: document.documentElement.dataset.bwHealed || '', lib: null})`).catch(() => null);
+    const lib = await P1b.ev(`window.BW.EXT.library.get(${JSON.stringify(idA)}).then((e)=>e ? 'in IndexedDB' : 'NOT in IndexedDB')`).catch(() => null);
+    why = JSON.stringify({ tabs: hh2.tabs, leases: hh2.leases, tab: st, lib });
+  }
+  check('M5: the host sees the restarted tab (positive sample)', seenTab, why);
   r = await call('editor_get', { doc: idA, pointer: '/control/title', locale: 'ar' });
   check('M5: the edit made before the restart is still there', !r.isError && data(r).value === 'عنوان قبل إعادة التشغيل', text(r).slice(0, 200));
 

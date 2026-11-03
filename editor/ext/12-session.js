@@ -525,8 +525,29 @@ const SESS = (() => {
     push();
     seen();
     document.documentElement.dataset.bwSession = tab;
+    healLink();
   }
-  const card = () => (info ? `<p class="hint">${esc(t('wsLead'))}</p><p><code class="ws-root">${esc(info.workspace.root)}</code></p><div class="btns"><button type="button" class="b" data-ws="pick"><span class="w">${esc(t('wsChange'))}</span></button></div>` : `<p class="hint">${esc(t('wsServerOnly'))}</p>`);
+  /** A #doc=<id> link whose document this browser's IndexedDB does not hold (a profile closed before Chrome flushed its relaxed-durability write, a wiped or moved profile)
+   *  but the host's mirror does: the library boot opens the link BEFORE it reads the mirror, so the tab came up holding nothing and the host never saw the document in it.
+   *  Here the mirror is read and the link is opened again, a few times, until the tab holds the document or the address no longer asks for it. */
+  async function healLink() {
+    const m = /[#&]doc=([^&]+)/.exec(location.hash);
+    if (!m) return;
+    const id = decodeURIComponent(m[1]);
+    const L = () => EXT.library;
+    let ingested = false;
+    for (let i = 0; i < 12; i += 1) {
+      await new Promise((r) => setTimeout(r, i ? 1500 : 800));
+      if (!L() || !new RegExp(`[#&]doc=${encodeURIComponent(id).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(location.hash)) return;
+      if (holdsDoc() && S.svc === id) return;
+      if (holdsDoc()) return; // another document was opened meanwhile: leave it
+      try {
+        if (!(await L().get(id)) && !ingested) { ingested = true; await L().ingestMirror(); }
+        if (await L().get(id)) { await L().open(id); document.documentElement.dataset.bwHealed = id; }
+      } catch { /* try again */ }
+    }
+  }
+  const card =() => (info ? `<p class="hint">${esc(t('wsLead'))}</p><p><code class="ws-root">${esc(info.workspace.root)}</code></p><div class="btns"><button type="button" class="b" data-ws="pick"><span class="w">${esc(t('wsChange'))}</span></button></div>` : `<p class="hint">${esc(t('wsServerOnly'))}</p>`);
   const mountCard = (el) => el?.querySelector('[data-ws="pick"]')?.addEventListener('click', async () => {
     const r = await json('/api/workspace/pick', {});
     if (r.ok) { info.workspace = { root: r.root, chosen: true }; el.querySelector('.ws-root').textContent = r.root; }
