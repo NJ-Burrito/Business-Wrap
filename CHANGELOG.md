@@ -8,6 +8,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.17.2] - 2026-11-04
+
+💾 A fix release: edits reach the saved list copy sooner. / 💾 إصدار إصلاحات: التعديلات تصل إلى نسخة القائمة المحفوظة أسرع.
+
+### Fixed / أصلح
+- 💾 **Edits reach the list copy 100 ms after the last change** (was 250 ms), so a browser crash half a second after an edit loses less. / **تصل التعديلات إلى نسخة القائمة بعد 100 مللي ثانية من آخر تغيير** (كانت 250)، فيقل ما يضيع إن انهار المتصفح بعد نصف ثانية من التعديل.
+
 ## [0.17.1] - 2026-11-04
 
 🖼️ A fix release: the three print-HTML tools have their own help drawings, and the checks follow 0.17.0. / 🖼️ إصدار إصلاحات: أدوات صفحة الطباعة HTML الثلاث لها رسوماتها الشارحة، والفحوص تتبع سلوك 0.17.0.
