@@ -9,8 +9,34 @@
    or four animations ran at once for 360 to 520 ms and every frame in which anything animates costs ~6 ms. One icon move is now capped at 200 ms
    for every icon and every button family (the moves read --bw-dur-page / --bw-dur-slow; inside an icon those two tokens are 200 ms; the
    shell's own motion tokens are not touched). */
-.ic[data-ic]:not(.bw-i) { --bw-dur-page: 200ms; --bw-dur-slow: 200ms; }
-:where(.ic[data-ic]:not(.bw-i)) > * { transform-box: fill-box; transform-origin: 50% 50%; --mvt: var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
+/* 0.17.0 (owner notes N5, N6: "bland and simple, make it alive"): every house move below is rebuilt on the animation principles
+   (out/qa-0.17.0/motion-detail.md section 2): ANTICIPATION (a small move the other way first), OVERSHOOT and FOLLOW-THROUGH (it passes
+   its mark and settles back in a damped wobble), SQUASH AND STRETCH (a pop squashes before it grows, a lift stretches as it rises).
+   The three states now differ: HOVER plays the part move (after the 120 ms rest, unchanged); PRESS squashes the whole icon and lets it
+   spring back on a real spring (--bw-spring-snap, linear() computed by brand/v3/tools/spring_easing.mjs) and replays the move;
+   KEYBOARD FOCUS plays the move plus a nod of the whole icon. The colour eases to the theme colour instead of switching.
+   One move is 380 ms (480 ms for the slow ones): long enough for the overshoot to read, still one move per rested hover, so the
+   0.15.2 hover-intent budget holds (one icon animates at a time). Calm mode stills everything (end of this file). */
+.ic[data-ic]:not(.bw-i) { --bw-dur-page: 380ms; --bw-dur-slow: 480ms; }
+:is(.shell, dialog, .bw-modal, .bw-mp) {
+  --bw-spring-pop: linear(0, 0.0858, 0.2902, 0.5389, 0.7874, 0.9894, 1.1317, 1.2118, 1.2336, 1.2123, 1.165, 1.1069, 1.0489, 1.0019, 0.9683, 0.9504, 0.9455, 0.9505, 0.9616, 0.9755, 0.9888, 0.9999, 1.0075, 1.0116, 1.0127, 1.0115, 1.0089, 1.0057, 1.0026, 1, 0.9982, 0.9973, 1); /* 775 ms, 23.4 % overshoot */
+  --bw-spring-soft: linear(0, 0.051, 0.1717, 0.3224, 0.4802, 0.6285, 0.7598, 0.8641, 0.9434, 0.9996, 1.0365, 1.0563, 1.0641, 1.0634, 1.0571, 1.0479, 1.0378, 1.0278, 1.0187, 1.0114, 1.0056, 1.0013, 0.9985, 0.9968, 0.996, 0.9958, 0.9961, 0.9966, 0.9973, 0.9979, 0.9986, 0.9991, 1); /* 740 ms, 6.5 % */
+  --bw-spring-snap: linear(0, 0.0596, 0.2006, 0.3741, 0.5537, 0.7241, 0.8621, 0.9682, 1.044, 1.0882, 1.1086, 1.1111, 1.1009, 1.0839, 1.064, 1.0436, 1.0259, 1.0115, 1.0005, 0.9933, 0.9892, 0.9876, 0.9878, 0.9892, 0.9913, 0.9936, 0.9957, 0.9976, 0.9992, 1.0002, 1.0009, 1.0013, 1); /* 502 ms, 11.2 % */
+  --icm-ease: cubic-bezier(.45, 0, .2, 1);
+}
+:where(.ic[data-ic]:not(.bw-i)) > * { transform-box: fill-box; transform-origin: 50% 50%; --mvt: var(--bw-dur-page) var(--icm-ease, ease-in-out) var(--d, 0s) 1; }
+/* the theme colour eases in; a press squashes the whole icon (wide and low) and a spring lets it go */
+.ic[data-ic] { transition: color 180ms var(--bw-ease-out), scale 502ms var(--bw-spring-snap, ease-out), rotate 502ms var(--bw-spring-snap, ease-out); }
+:is(button, summary, [role="option"], .sc, a.b):active:not(:disabled) .ic[data-ic] { scale: 1.12 .8; transition-duration: 180ms, 70ms, 70ms; transition-timing-function: ease-out; }
+:is(button, summary, [role="option"], .sc, a.b):focus-visible:not(:active) .ic[data-ic] { animation: icm-nod 520ms var(--icm-ease, ease-in-out) 1; }
+@keyframes icm-nod { 0%, 100% { rotate: 0deg; translate: 0 0; } 22% { rotate: -9deg; translate: 0 -1px; } 52% { rotate: 6deg; } 76% { rotate: -2deg; } }
+/* the gold part of a v3-drawn icon (the ribbon's categories, .bw-r): The Rule gold on a light surface, the bright gold on the glass */
+.ic:not(.bw-i) .hl { fill: var(--bw-accent-rule); }
+.ic:not(.bw-i) .hl.rl { fill: none; stroke: var(--bw-accent-rule); }
+:is(.island, .pop, .ctx, .more .menu, .ribbon) .ic:not(.bw-i) .hl { fill: var(--bw-accent); }
+:is(.island, .pop, .ctx, .more .menu, .ribbon) .ic:not(.bw-i) .hl.rl { fill: none; stroke: var(--bw-accent); }
+.ic:not(.bw-i) .on-hl { stroke: var(--bw-on-accent, #001e3d); }
+.ic:not(.bw-i) [pathLength="1"] { stroke-dasharray: 1 0; }
 /* 0.15.2 hover cost (out/qa-0.15.1/perf/after.md: every animated SVG part costs a layout per frame): a HOVER plays the part moves only once the pointer has RESTED
    on the tool (class .ic-rest, set 120 ms after the pointer entered it by 42-button-icons.js), never while it sweeps across the ribbon. Focus, press and
    keyboard selection are intent already and play at once.
@@ -18,23 +44,66 @@
    its keyboard selection, a panel group's summary, a checkbox row, a section title */
 :is(button, summary, [role="option"], .sc, label.chk, label.set-chk, a.b):is(.ic-rest:hover:not(:disabled), :focus-visible, :active:not(:disabled), .ic-go, [aria-selected="true"]) .ic[data-ic]:not(.bw-i) > * { animation: var(--icm, var(--pjm, none)); }
 
-/* the moves (parts set --x/--y/--r/--s/--o) */
-@keyframes icm-nudge { 0%, 100% { translate: 0 0; } 45% { translate: var(--x, 0) var(--y, 0); } }
-@keyframes icm-from { from { translate: var(--x, 0) var(--y, 0); opacity: 0; } 45% { opacity: 1; } to { translate: 0 0; opacity: 1; } }
-@keyframes icm-draw { from { stroke-dasharray: 0 48; } to { stroke-dasharray: 48 0; } }
-@keyframes icm-pop { 0%, 100% { scale: 1; } 40% { scale: var(--s, 1.2); } 70% { scale: .96; } }
-@keyframes icm-grow-x { from { scale: 0 1; } to { scale: 1 1; } }
-@keyframes icm-grow-y { from { scale: 1 0; } to { scale: 1 1; } }
-@keyframes icm-tilt { 0%, 100% { rotate: 0deg; } 40% { rotate: var(--r, 12deg); } 70% { rotate: calc(var(--r, 12deg) * -.3); } }
-@keyframes icm-spin { from { rotate: 0deg; } to { rotate: var(--r, 360deg); } }
-@keyframes icm-skew { 0%, 100% { transform: none; } 45% { transform: skewX(-14deg); } }
-@keyframes icm-bold { 45% { stroke-width: 3.4px; scale: 1.08; } }
-@keyframes icm-blink { 0%, 100% { opacity: 1; } 25%, 60% { opacity: .15; } }
-@keyframes icm-shake { 0%, 100% { translate: 0 0; } 20% { translate: -1.5px 0; } 40% { translate: 1.5px 0; } 60% { translate: -1px 0; } 80% { translate: .5px 0; } }
-@keyframes icm-recede { 0%, 100% { scale: 1; opacity: 1; } 45% { scale: var(--s, .8); opacity: .45; } }
-@keyframes icm-lift { 0%, 100% { translate: 0 0; rotate: 0deg; } 45% { translate: 0 -2px; rotate: -4deg; } }
+/* the moves (parts set --x/--y/--r/--s/--o). 0.17.0: each has a wind-up, an overshoot and a damped settle (see the header). */
+@keyframes icm-nudge {
+  0%, 100% { translate: 0 0; }
+  16% { translate: calc(var(--x, 0px) * -.3) calc(var(--y, 0px) * -.3); }
+  46% { translate: calc(var(--x, 0px) * 1.15) calc(var(--y, 0px) * 1.15); }
+  70% { translate: calc(var(--x, 0px) * -.18) calc(var(--y, 0px) * -.18); }
+  86% { translate: calc(var(--x, 0px) * .06) calc(var(--y, 0px) * .06); }
+}
+@keyframes icm-from {
+  from { translate: var(--x, 0) var(--y, 0); opacity: 0; scale: .9; }
+  40% { opacity: 1; }
+  58% { translate: calc(var(--x, 0px) * -.28) calc(var(--y, 0px) * -.28); scale: 1.04; }
+  80% { translate: calc(var(--x, 0px) * .08) calc(var(--y, 0px) * .08); scale: .99; }
+  to { translate: 0 0; opacity: 1; scale: 1; }
+}
+@keyframes icm-draw { from { stroke-dasharray: 0 48; } 75% { stroke-dasharray: 48 0; } to { stroke-dasharray: 48 0; } }
+@keyframes icm-pop {
+  0%, 100% { scale: 1; }
+  16% { scale: 1.06 .86; }
+  44% { scale: calc(var(--s, 1.2) * .96) calc(var(--s, 1.2) * 1.05); }
+  66% { scale: .95 1.02; }
+  84% { scale: 1.02 .99; }
+}
+@keyframes icm-grow-x { from { scale: 0 1; } 58% { scale: 1.14 1; } 80% { scale: .96 1; } to { scale: 1 1; } }
+@keyframes icm-grow-y { from { scale: 1 0; } 58% { scale: 1 1.14; } 80% { scale: 1 .96; } to { scale: 1 1; } }
+@keyframes icm-tilt {
+  0%, 100% { rotate: 0deg; }
+  15% { rotate: calc(var(--r, 12deg) * -.35); }
+  44% { rotate: calc(var(--r, 12deg) * 1.1); }
+  66% { rotate: calc(var(--r, 12deg) * -.32); }
+  84% { rotate: calc(var(--r, 12deg) * .1); }
+}
+@keyframes icm-spin { from { rotate: 0deg; } 14% { rotate: calc(var(--r, 360deg) * -.05); } 72% { rotate: calc(var(--r, 360deg) * 1.06); } 88% { rotate: calc(var(--r, 360deg) * .985); } to { rotate: var(--r, 360deg); } }
+@keyframes icm-skew { 0%, 100% { transform: none; } 18% { transform: skewX(5deg); } 46% { transform: skewX(-17deg); } 70% { transform: skewX(5deg); } 86% { transform: skewX(-1.5deg); } }
+@keyframes icm-bold { 0%, 100% { scale: 1; } 18% { stroke-width: 1.6px; scale: .96; } 45% { stroke-width: 3.4px; scale: 1.1; } 72% { scale: .98; } }
+@keyframes icm-blink { 0%, 100% { opacity: 1; scale: 1; } 25%, 60% { opacity: .15; scale: .92; } 80% { scale: 1.06; } }
+@keyframes icm-shake {
+  0%, 100% { translate: 0 0; rotate: 0deg; }
+  14% { translate: -2px 0; rotate: -5deg; } 30% { translate: 2px 0; rotate: 5deg; } 46% { translate: -1.5px 0; rotate: -3deg; }
+  62% { translate: 1px 0; rotate: 2deg; } 80% { translate: -.4px 0; rotate: -.5deg; }
+}
+@keyframes icm-recede { 0%, 100% { scale: 1; opacity: 1; } 40% { scale: var(--s, .8); opacity: .4; } 68% { scale: 1.06; opacity: 1; } 86% { scale: .98; } }
+@keyframes icm-lift {
+  0%, 100% { translate: 0 0; rotate: 0deg; scale: 1; }
+  16% { translate: 0 .6px; scale: 1.05 .92; }
+  44% { translate: 0 -3px; rotate: -5deg; scale: .96 1.05; }
+  70% { translate: 0 .4px; rotate: 1.5deg; scale: 1.03 .97; }
+  86% { translate: 0 0; rotate: -.5deg; scale: 1; }
+}
 
-@keyframes icm-flip { 0%, 100% { scale: 1 1; } 50% { scale: -1 1; } }
+@keyframes icm-flip { 0%, 100% { scale: 1 1; } 12% { scale: 1.08 .94; } 50% { scale: -1.06 1; } 74% { scale: -1 1; } 88% { scale: .96 1; } }
+/* 0.17.0 new moves for the ribbon's category icons */
+@keyframes icm-rise-through { 0%, 100% { translate: 0 0; opacity: 1; scale: 1; } 16% { translate: 0 1.6px; scale: 1.08 .84; } 40% { translate: 0 -7px; opacity: 0; scale: .9 1.15; } 41% { translate: 0 6px; opacity: 0; } 70% { translate: 0 -1.2px; opacity: 1; scale: 1; } 86% { translate: 0 .4px; } }
+@keyframes icm-flap { 0%, 100% { transform: none; } 18% { transform: scaleY(1.04); } 46% { transform: skewX(-9deg) scaleY(.74); } 72% { transform: skewX(2deg) scaleY(1.04); } 88% { transform: scaleY(.99); } }
+@keyframes icm-scribble { 0%, 100% { translate: 0 0; rotate: 0deg; } 15% { translate: -1px -1.5px; rotate: -6deg; } 32% { translate: 1px .5px; rotate: 5deg; } 50% { translate: -.5px -1px; rotate: -4deg; } 68% { translate: 1px .5px; rotate: 3deg; } 85% { translate: 0 0; rotate: -1deg; } }
+@keyframes icm-squash-stretch { 0%, 100% { scale: 1; } 18% { scale: 1.16 .78; } 44% { scale: .88 1.16; } 66% { scale: 1.05 .95; } 84% { scale: .99 1.01; } }
+@keyframes icm-hop { 0%, 100% { translate: 0 0; scale: 1; } 18% { translate: 0 .6px; scale: 1.1 .85; } 42% { translate: 0 -4px; scale: .94 1.08; } 66% { translate: 0 0; scale: 1.08 .9; } 82% { translate: 0 -.6px; scale: 1; } }
+@keyframes icm-orbit { 0%, 100% { translate: 0 0; scale: 1; } 20% { translate: -2.5px -1.5px; scale: 1.08; } 45% { translate: -1px -4px; scale: 1.14; } 70% { translate: 1px -1px; scale: 1.04; } 86% { translate: -.3px .3px; scale: .99; } }
+@keyframes icm-wiggle { 0%, 100% { translate: 0 0; } 20% { translate: -1.4px 0; } 40% { translate: 1.4px 0; } 60% { translate: -.8px 0; } 80% { translate: .4px 0; } }
+@keyframes icm-swap { 0%, 100% { translate: 0 0; } 18% { translate: .8px 0; } 48% { translate: -7.6px 0; } 70% { translate: .6px 0; } 86% { translate: -.2px 0; } }
 
 /* Documents «المستندات»: the folder lifts open */
 [data-ic="library"] > * { transform-origin: 50% 100%; --icm: icm-lift var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
@@ -369,9 +438,78 @@
 .ic[data-sw][data-ic="redo"] > * { --r: -28deg; }
 /* Arabic mirrors the directional glyphs (the shell is always dir=rtl, data-tdir carries the UI's reading direction) */
 .shell[data-tdir="rtl"] .ic:not([data-sw]):is([data-ic="undo"], [data-ic="redo"], [data-ic="fmtAlignStart"], [data-ic="fmtAlignEnd"], [data-ic="hdrStart"], [data-ic="hdrEnd"], [data-ic="ftrStart"], [data-ic="ftrEnd"], [data-ic="chStart"], [data-ic="chEnd"], [data-ic="fmtIndent"], [data-ic="fmtOutdent"], [data-ic="fmtBefore"], [data-ic="fmtAfter"], [data-ic="biBack"], [data-ic="biFwd"], [data-ic="view.left"], [data-ic="view.right"], [data-ic="side"], [data-ic="dgFrom"], [data-ic="dgTo"], [data-ic="dgAlignL"], [data-ic="dgAlignR"]) { scale: -1 1; }
+/* ── 0.17.0 the ribbon's category icons (brand/v3/tools/build_ribbon_icons.mjs draws them; .a … .e are their moving parts) ──
+   Each tab tells what it holds in one short scene: hover (after the rest) and selecting the tab play it, a press squashes the icon. */
+.ic.bw-r > :not(.a, .b, .c, .d, .e) { --icm: none; }
+.ic[data-ic="rbt.file"] > .a { --icm: icm-rise-through var(--mvt); --d: 70ms; }
+.ic[data-ic="rbt.file"] > .b { transform-origin: 50% 100%; --icm: icm-flap var(--mvt); }
+.ic[data-ic="rbt.export"] > .a { --icm: icm-rise-through var(--bw-dur-slow) var(--icm-ease) var(--d, 0s) 1; }
+.ic[data-ic="rbt.export"] > .c { --icm: icm-grow-x var(--mvt); --d: 160ms; }
+.ic[data-ic="rbt.home"] > .b { transform-origin: 10% 90%; --icm: icm-scribble var(--bw-dur-slow) var(--icm-ease) var(--d, 0s) 1; }
+.ic[data-ic="rbt.font"] > .a { transform-origin: 50% 100%; --icm: icm-squash-stretch var(--mvt); }
+.ic[data-ic="rbt.font"] > .b { transform-origin: 50% 100%; --icm: icm-hop var(--mvt); --d: 110ms; }
+.ic[data-ic="rbt.font"] > .c { transform-origin: 0 50%; --icm: icm-grow-x var(--mvt); --d: 60ms; }
+.ic[data-ic="rbt.para"] > .a { --s: 1.35; --icm: icm-pop var(--mvt); }
+.ic[data-ic="rbt.para"] > :is(.b, .c, .d, .e) { transform-origin: 0 50%; --icm: icm-grow-x var(--mvt) backwards; }
+.ic[data-ic="rbt.para"] > .c { --d: 45ms; }
+.ic[data-ic="rbt.para"] > .d { --d: 90ms; }
+.ic[data-ic="rbt.para"] > .e { --d: 135ms; }
+.ic[data-ic="rbt.insert"] > .a { --s: 1.3; --icm: icm-pop var(--mvt); }
+.ic[data-ic="rbt.insert"] > .b { --r: 180deg; --icm: icm-spin var(--mvt); --d: 40ms; }
+.ic[data-ic="rbt.layout"] > .a { --y: -4px; --icm: icm-from var(--mvt) backwards; }
+.ic[data-ic="rbt.layout"] > .b { transform-origin: 0 50%; --icm: icm-grow-x var(--mvt) backwards; --d: 70ms; }
+.ic[data-ic="rbt.layout"] > .c { --icm: icm-swap var(--bw-dur-slow) var(--icm-ease) var(--d, 0s) 1; --d: 40ms; }
+.ic[data-ic="rbt.hf"] > .a { --y: -4px; --icm: icm-from var(--mvt) backwards; }
+.ic[data-ic="rbt.hf"] > .b { --y: 4px; --icm: icm-from var(--mvt) backwards; --d: 90ms; }
+.ic[data-ic="rbt.design"] > .a { transform-origin: 30% 80%; --r: 14deg; --icm: icm-tilt var(--bw-dur-slow) var(--icm-ease) var(--d, 0s) 1; }
+.ic[data-ic="rbt.design"] > :is(.b, .c, .d) { --s: 1.7; --icm: icm-pop var(--mvt); }
+.ic[data-ic="rbt.design"] > .c { --d: 60ms; }
+.ic[data-ic="rbt.design"] > .d { --d: 120ms; }
+.ic[data-ic="rbt.review"] > .a { transform-origin: 20% 100%; --icm: icm-hop var(--mvt); }
+@keyframes icm-draw1 { from { stroke-dasharray: 0 1; } 75%, to { stroke-dasharray: 1 0; } }
+.ic[data-ic="rbt.view"] > .a { --icm: icm-orbit var(--bw-dur-slow) var(--icm-ease) var(--d, 0s) 1; }
+.ic[data-ic="rbt.tools"] > .a { transform-origin: 20% 80%; --r: -26deg; --icm: icm-tilt var(--bw-dur-slow) var(--icm-ease) var(--d, 0s) 1; }
+.ic[data-ic="rbt.tools"] > .b { --r: 180deg; --icm: icm-spin var(--mvt), icm-pop var(--mvt); --s: 1.5; --d: 120ms; }
+.ic[data-ic="rbt.table"] > .a { --y: -3.5px; --icm: icm-from var(--mvt) backwards; }
+.ic[data-ic="rbt.table"] > :is(.b, .c) { transform-origin: 0 50%; --icm: icm-grow-x var(--mvt) backwards; --d: 60ms; }
+.ic[data-ic="rbt.table"] > .c { --d: 110ms; }
+.ic[data-ic="rbt.table"] > .d { transform-origin: 50% 0; --icm: icm-grow-y var(--mvt) backwards; --d: 150ms; }
+.ic[data-ic="rbt.picture"] > .a { --y: 5px; --icm: icm-from var(--bw-dur-slow) var(--icm-ease) var(--d, 0s) 1 backwards; --d: 60ms; }
+.ic[data-ic="rbt.picture"] > .b { transform-origin: 50% 100%; --icm: icm-squash-stretch var(--mvt); }
+.ic[data-ic="rbt.diagram"] > .a { --s: 1.2; --icm: icm-pop var(--mvt); }
+.ic[data-ic="rbt.diagram"] > .c { --s: 1.25; --icm: icm-pop var(--mvt); --d: 200ms; }
+.ic[data-ic="rbt.diagram2"] > .a { --r: 90deg; --icm: icm-spin var(--mvt); }
+.ic[data-ic="rbt.diagram2"] > .b { --x: 2.5px; --icm: icm-nudge var(--mvt); --d: 120ms; }
+.ic[data-ic="rbt.spelling"] > .a { transform-origin: 50% 100%; --icm: icm-hop var(--mvt); }
+.ic[data-ic="rbt.spelling"] > .b { --icm: icm-wiggle var(--bw-dur-slow) var(--icm-ease) var(--d, 0s) 1; --d: 60ms; }
+.ic[data-ic="rbt.collapse"] > .a { --y: -2.5px; --icm: icm-nudge var(--mvt); }
+/* a path drawn with pathLength="1" (the gold ticks and lines) draws on a dash of 1, not 48 */
+.ic[data-ic="rbt.review"] > .b { --icm: icm-draw1 var(--mvt) backwards; --d: 90ms; }
+.ic[data-ic="rbt.home"] > .a { --icm: icm-draw1 var(--bw-dur-slow) var(--icm-ease) var(--d, 0s) 1 backwards; --d: 60ms; }
+.ic[data-ic="rbt.diagram"] > .b { --icm: icm-draw1 var(--mvt) backwards; --d: 80ms; }
+.ic[data-ic="rbt.spelling"] > .c { --icm: icm-draw1 var(--mvt) backwards; --d: 140ms; }
+
+/* ── 0.17.0 the brand mark in the top bar (chrome.css builds it; this makes its hover and press alive) ──
+   Hover / keyboard focus: the whole mark crouches, hops up stretched and lands with a squash (its parts still rebuild, chrome.css);
+   the cap flips in with an overshoot and The Rule overshoots its length and settles. A press squashes it flat and a spring
+   (--bw-spring-pop) lets it go. Calm mode: drawn and still. */
+.shell .brand svg { transition: transform var(--bw-dur-slow) var(--bw-ease-spring), scale 775ms var(--bw-spring-pop, ease-out); }
+.shell .brand:is(:hover, :focus-visible) svg { animation: bwm-hop 760ms var(--icm-ease) 1; }
+.shell .brand:active svg { scale: 1.16 .8; transition: transform var(--bw-dur-instant), scale 70ms ease-out; }
+.shell .brand:is(:hover, :focus-visible) svg .cap { animation: bwm-cap-flip 620ms var(--icm-ease) 260ms both; }
+.shell .brand:is(:hover, :focus-visible) svg .rule { animation: bwm-rule-snap 560ms var(--icm-ease) 380ms both; }
+@keyframes bwm-hop { 0%, 100% { translate: 0 0; scale: 1; } 14% { translate: 0 1px; scale: 1.1 .88; } 38% { translate: 0 -4px; scale: .94 1.08; } 60% { translate: 0 0; scale: 1.07 .93; } 76% { translate: 0 -1px; scale: .99 1.01; } 90% { translate: 0 0; scale: 1; } }
+@keyframes bwm-cap-flip { 0% { opacity: 0; transform: translateY(-10px) rotate(-28deg); } 55% { opacity: 1; transform: translateY(1.5px) rotate(9deg); } 76% { transform: translateY(-.6px) rotate(-3deg); } 100% { opacity: 1; transform: none; } }
+@keyframes bwm-rule-snap { from { transform: scaleX(0); } 62% { transform: scaleX(1.12); } 82% { transform: scaleX(.97); } to { transform: scaleX(1); } }
+
 /* calm mode and reduced motion: drawn, never moving */
 @media (prefers-reduced-motion: reduce) { .ic[data-ic] > * { animation: none !important; } }
 .shell[data-calm="1"] .ic[data-ic] > * { animation: none !important; }
+/* 0.17.0: calm also stills the whole-icon moves (the press squash, the focus nod, the colour ease) and the brand mark's hop */
+.shell[data-calm="1"] .ic[data-ic], :host-context(html[data-bw-calm="1"]) .ic[data-ic] { animation: none !important; transition: none !important; scale: none !important; }
+.shell[data-calm="1"] .brand svg, :host-context(html[data-bw-calm="1"]) .brand svg { animation: none !important; scale: none !important; }
+.shell[data-calm="1"] .brand svg :is(.cap, .rule) { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .shell .brand svg { animation: none !important; } }
 
 /* 0.15.0: the "from this page on" button of the page-number dialog (42-button-icons.js biHere) */
 [data-ic="biHere"] > :first-child { --y: -2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
