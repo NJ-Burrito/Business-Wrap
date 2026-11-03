@@ -8,6 +8,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.16.3] - 2026-11-03
+
+📦 A fix release: project import brings every document back once, long Arabic PDFs read, and the report speaks in plain words. / 📦 إصدار إصلاحات: استيراد المشروع يعيد كل وثيقة مرة واحدة، وقراءة ملفات PDF العربية الطويلة، والتقرير بكلمات بسيطة.
+
+### Fixed / أصلح
+- 🗂️ **Importing a project from a zip or a folder brings each document back once**, under its real title, with its work and its sealed history; extra copies are listed as not needed. / **استيراد المشروع من ملف zip أو من مجلد يعيد كل وثيقة مرة واحدة** بعنوانها الحقيقي مع عملها وسجلها المختوم، وتُدرج النسخ الزائدة على أنها غير لازمة.
+- 📄 **PDFs are read on long Arabic paths.** / **تُقرأ ملفات PDF على المسارات العربية الطويلة.**
+- 🧾 **The import report is in plain words, with the counts first.** / **تقرير الاستيراد بكلمات بسيطة والأعداد أولا.**
+- 🔑 **A new signing key for the same name is a calm note in the history**, not an alarm. / **مفتاح توقيع جديد لنفس الاسم ملاحظة هادئة في السجل**، وليس إنذارا.
+- 🔎 **The report now names any file it cannot read**, since the cause of the zip failure on the other computer is not established. / **التقرير يذكر الآن اسم أي ملف لا يستطيع قراءته**، فسبب فشل ملف zip على الحاسوب الآخر لم يتحدد بعد.
+
+### Known limits / حدود معروفة
+- 📌 PDF and editor pages can still differ on some long documents; a fix follows. / قد تختلف صفحات PDF والمحرر في بعض الوثائق الطويلة؛ وسيتبعه إصلاح.
+
 ## [0.16.2] - 2026-11-03
 
 📐 A fix release: Word-style Justify levels, page views and page breaks that agree, story cards in the reference look, and no false tamper warning. / 📐 إصدار إصلاحات: مستويات ضبط النص كما في Word، وعروض الصفحات وفواصلها متفقة، وبطاقات القصة بالشكل المرجعي، وبلا تحذير تلاعب كاذب.
