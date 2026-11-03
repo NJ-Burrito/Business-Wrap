@@ -14,6 +14,9 @@ import { spawnSync } from 'node:child_process';
 import { checkForUpdate, oneLiner, settings, saveSettings, installedNotes, token, ROOT, currentVersion, fromNpx, localInstall, updateCommand, isNewer } from './check.mjs';
 import { applyUpdate } from './apply.mjs';
 
+// 0.17.0 (N15): every entry that reaches this file (terminal, the plugin's SessionStart hook, the protocol handler) makes sure the launcher and its Desktop copy exist (once per install and version; silent)
+import('../launcher/launcher.mjs').then((m) => { if (!['--help', '-h', 'help'].some((h) => process.argv.includes(h))) m.autorun(); }).catch(() => {});
+
 const argv = process.argv.slice(2).filter((a) => a !== 'update');
 const has = (f) => argv.includes(f);
 const val = (f, d) => { const i = argv.indexOf(f); return i >= 0 && argv[i + 1] ? argv[i + 1] : d; };
@@ -90,7 +93,7 @@ const FIRST = process.argv[2];
 // 0.13.3 Settings › start / stop servers: the business-wrap: URL protocol (engine/protocol.mjs). `protocol` registers the per-user
 // handler, `handle "<url>"` is what the registered handler runs (open <file> | stop; anything else is refused with exit 2).
 if ((FIRST === 'protocol' || FIRST === 'handle') && ['--help', '-h', 'help'].includes(process.argv[3])) {
-  console.log(['usage: business-wrap protocol register | unregister | status [--json]', '       business-wrap handle "business-wrap://open?file=<a Business-Wrap .html file>" | "business-wrap://stop"'].join(String.fromCharCode(10)));
+  console.log(['usage: business-wrap protocol register | unregister | status [--json]', '       business-wrap handle "business-wrap://open?file=<a Business-Wrap .html file>" | "business-wrap://stop" | "business-wrap://start"'].join(String.fromCharCode(10)));
 } else if (FIRST === 'protocol' || FIRST === 'handle') {
   import('../engine/protocol.mjs').then(async (m) => {
     const json = process.argv.includes('--json');

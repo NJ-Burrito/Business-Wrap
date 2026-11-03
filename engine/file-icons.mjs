@@ -16,10 +16,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { isTestMode, testSandbox, pluginData, isPluginInstall } from './testguard.mjs';
+import { ICON_DIR as TREE_ICON_DIR, TREE_EXTS, kindOf } from '../assets/icons/kinds.mjs';
 
 const REPO = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const ICON_DIR = path.join(REPO, 'brand', 'v3', 'file-icons');
 export const EXTS = ['pdf', 'docx', 'html'];
+/** 0.17.0 (N16): every file type of the save and download tree, each with its own icon (assets/icons: 7 sizes, 16 to 256). Applying it changes the icon of
+ *  those extensions for this Windows account (a ProgID's DefaultIcon in HKCU), so it is a separate, explicit scope: `scope: 'tree'`. */
+export { TREE_ICON_DIR, TREE_EXTS };
+export const scopeOf = (scope) => (scope === 'tree' ? { exts: TREE_EXTS, srcDir: TREE_ICON_DIR, kindOf } : { exts: EXTS, srcDir: ICON_DIR, kindOf: (e) => e });
 export const BACKUP_NAME = 'file-icons-backup.json';
 
 const PROGID = /^[A-Za-z0-9_.\-{}]+( [A-Za-z0-9_.\-{}]+)*(\\[A-Za-z0-9_.\-{}]+( [A-Za-z0-9_.\-{}]+)*)?$/; // "Word.Document.12", "Opera GXStable" (a space), "Applications\foo.exe"
@@ -122,11 +127,12 @@ const sameValue = (a, b) => String(a || '').replace(/,0$/, '').toLowerCase() ===
  * @param {{reg?: {ops: (list: object[]) => Promise<object[]>}, refresh?: () => Promise<boolean>, platform?: string,
  *   stateDir?: string, srcDir?: string}} d   every part injectable; the defaults are the real ones.
  */
-export function createFileIcons({ reg, refresh, platform = process.platform, stateDir, srcDir = ICON_DIR } = {}) {
+export function createFileIcons({ reg, refresh, platform = process.platform, stateDir, srcDir = ICON_DIR, exts = EXTS, kindOf: kindFor = (e) => e } = {}) {
   const R = reg || realReg();
   const dir = () => stateDir || iconsStateDir();
   const backupFile = () => path.join(dir(), BACKUP_NAME);
-  const icoFile = (ext) => path.join(dir(), `${ext}.ico`);
+  const icoFile = (ext) => path.join(dir(), `${kindFor(ext)}.ico`);
+  const kinds = () => [...new Set(exts.map(kindFor))];
   const unsupported = () => ({ supported: false, reason: 'windows-only' });
 
   /** The ProgIDs each extension resolves to. Windows 11 24H2+ keeps TWO choices: UserChoice and UserChoiceLatest\ProgId, and
@@ -134,14 +140,14 @@ export function createFileIcons({ reg, refresh, platform = process.platform, sta
    *  Opera GXStable; the first press changed only .docx, where both agree). So every distinct one is covered; the .<ext>
    *  default (HKCU, else HKCR) only when neither exists. `progId` stays the first (UserChoice) for the old callers. */
   async function resolve() {
-    const list = EXTS.flatMap((e) => [
+    const list = exts.flatMap((e) => [
       { op: 'get', key: `HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.${e}\\UserChoice`, name: 'ProgId' },
       { op: 'get', key: `HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.${e}\\UserChoiceLatest\\ProgId`, name: 'ProgId' }, // sic: a SUBKEY named ProgId holding the value ProgId
       { op: 'get', key: `HKCU\\Software\\Classes\\.${e}`, name: '' },
       { op: 'get', key: `HKCR\\.${e}`, name: '' },
     ]);
     const r = await R.ops(list);
-    return EXTS.map((ext, i) => {
+    return exts.map((ext, i) => {
       const v = [0, 1, 2, 3].map((j) => r[i * 4 + j]?.data).map((x) => (x && PROGID.test(x) ? x : null));
       const chosen = [v[0], v[1]].filter(Boolean);
       const ids = [...new Set(chosen.length ? chosen : [v[2] || v[3]].filter(Boolean))];
@@ -160,10 +166,10 @@ export function createFileIcons({ reg, refresh, platform = process.platform, sta
 
   async function apply() {
     if (platform !== 'win32') return unsupported();
-    const missing = EXTS.filter((e) => !exists(path.join(srcDir, `${e}.ico`)));
+    const missing = kinds().filter((k) => !exists(path.join(srcDir, `${k}.ico`)));
     if (missing.length) return { supported: true, ok: false, error: `missing icon files: ${missing.join(', ')}` };
     fs.mkdirSync(dir(), { recursive: true });
-    for (const e of EXTS) fs.copyFileSync(path.join(srcDir, `${e}.ico`), icoFile(e));
+    for (const k of kinds()) fs.copyFileSync(path.join(srcDir, `${k}.ico`), path.join(dir(), `${k}.ico`));
     const found = await resolve();
     const bk = readBackup(backupFile());
     const todo = []; // one entry per distinct ProgID (a ProgID shared by two extensions keeps the first)
@@ -200,9 +206,9 @@ export function createFileIcons({ reg, refresh, platform = process.platform, sta
       results.push(took && same ? { ext: f.ext, progId: f.progId, ok: true } : { ext: f.ext, progId: f.progId, ok: false, reason: w[i]?.error ? 'write-failed' : !took ? 'not-read-back' : 'association-changed' });
     });
     const refreshed = refresh ? await refresh() : false;
-    results.sort((a, b) => EXTS.indexOf(a.ext) - EXTS.indexOf(b.ext));
+    results.sort((a, b) => exts.indexOf(a.ext) - exts.indexOf(b.ext));
     // per extension: ok when every ProgID it uses took (a hidden shared-progid duplicate is not a failure)
-    const perExt = EXTS.map((ext) => { const rs = results.filter((x) => x.ext === ext && !x.hidden); const ok = rs.length > 0 && rs.every((x) => x.ok); const bad = rs.find((x) => !x.ok); return ok ? { ext, progId: rs[0].progId, progIds: rs.map((x) => x.progId), ok: true } : { ext, ...(bad?.progId ? { progId: bad.progId } : {}), ok: false, reason: bad?.reason || 'no-association' }; });
+    const perExt = exts.map((ext) => { const rs = results.filter((x) => x.ext === ext && !x.hidden); const ok = rs.length > 0 && rs.every((x) => x.ok); const bad = rs.find((x) => !x.ok); return ok ? { ext, progId: rs[0].progId, progIds: rs.map((x) => x.progId), ok: true } : { ext, ...(bad?.progId ? { progId: bad.progId } : {}), ok: false, reason: bad?.reason || 'no-association' }; });
     return { supported: true, ok: perExt.some((x) => x.ok), results: perExt, detail: results.filter((x) => !x.hidden), refreshed };
   }
 

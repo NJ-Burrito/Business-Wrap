@@ -5,6 +5,7 @@
 // The handler command line is:  node <install>/update/cli.mjs handle "<url>".  Accepted URLs ONLY:
 //   business-wrap://open?file=<absolute path of a .html inside an allowed place>   (exists, carries the bw-data marker)
 //   business-wrap://stop
+//   business-wrap://start      (0.17.0) start THIS install's host and open no browser: the editor's settings lane, which cannot start a process, calls it
 // Anything else is refused (exit 2). Nothing from the URL reaches a shell: the file is opened through cli.mjs open()
 // (spawn with an args array). Allowed places for the file: the user's home, the temp folder, this install, the save
 // folder, the drive of this install (or `/`), and BW_ALLOWED_ROOTS (a path-delimited list). UNC paths are refused.
@@ -23,7 +24,7 @@ const WIN_HIVE = 'HKCU\\Software\\Classes';
 export const DESKTOP_NAME = 'business-wrap-handler.desktop';
 
 /* ── the URL ── */
-/** Parse a business-wrap: URL strictly. Returns {action:'open', file} or {action:'stop'}; throws code 2 on anything else. */
+/** Parse a business-wrap: URL strictly. Returns {action:'open', file}, {action:'stop'} or {action:'start'}; throws code 2 on anything else. */
 export function parseUrl(raw) {
   const refuse = (m) => Object.assign(new Error(`refused: ${m}`), { code: 2 });
   const s = String(raw ?? '').trim();
@@ -37,6 +38,10 @@ export function parseUrl(raw) {
   if (u.hostname === 'stop') {
     if (keys.length) throw refuse('stop takes no arguments');
     return { action: 'stop' };
+  }
+  if (u.hostname === 'start') {
+    if (keys.length) throw refuse('start takes no arguments');
+    return { action: 'start' };
   }
   if (u.hostname === 'open') {
     if (keys.length !== 1 || keys[0] !== 'file' || u.searchParams.getAll('file').length !== 1) throw refuse('open takes exactly one file');
@@ -185,6 +190,11 @@ export async function handle(url, { grace = Number(process.env.BW_POWER_GRACE_MS
     const peers = await flushPeers({ graceMs: grace });
     const r = await cli.close();
     return { action: 'stop', flushed: peers.length, ...r };
+  }
+  if (a.action === 'start') {
+    // 0.17.0: this install's host, no browser window (the page that asked is already open). With a host already up on the port, open() reuses it; a host of another install is refused (HOST_FOREIGN), never a second one.
+    const r = await cli.open({ inputs: [], browser: false, port: Number(process.env.BW_OPEN_PORT) || 4317 }); // BW_OPEN_PORT: tests only
+    return { action: 'start', url: r.url, port: r.port, pid: r.pid, browser: false };
   }
   const file = validateFile(a.file);
   const r = await cli.open({ inputs: [file], browser: true, port: Number(process.env.BW_OPEN_PORT) || 4317 }); // BW_OPEN_PORT: tests only

@@ -44,6 +44,7 @@ import { migrateLocal, pluginData, realParent, isTestMode } from './testguard.mj
 import { doctor as doctorInfo } from '../mcp/startup.mjs';
 import { KEEP_AWAKE_ARGS } from './host.mjs';
 import { chooseBrowser } from './export.mjs';
+import { autorun as ensureLauncher } from '../launcher/launcher.mjs'; // 0.17.0 (N15): the launcher + its Desktop copy, once per install and version
 
 const pkg = () => JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8'));
 const HOSTS = () => path.join(STATE_DIR(), 'cli-hosts.json');
@@ -121,6 +122,7 @@ async function hostOn(port) {
 }
 
 export async function open({ inputs = [], port = 4317, browser = true, ui, blank = false } = {}) {
+  ensureLauncher(); // MCP, the protocol handler (an opened export) and the plugin all arrive here
   if (!inputs.length && !blank) { const last = lastDocument(); if (last) inputs = [last.file]; }
   const implicitBlank = !inputs.length; // 0.16.0 (item 11): no document asked for, none in the library: the editor opens on its blank structure, and NO library document is made for it
   let editor;
@@ -552,6 +554,7 @@ export async function run(argv) {
 export async function main(argv = process.argv.slice(2)) {
   const json = argv.includes('--json');
   try {
+    if (!argv.some((a) => HELP.includes(a))) ensureLauncher();
     if (argv[0] !== 'doctor' && !argv.some((a) => HELP.includes(a))) await migrateLocal(REPO); // plugin installs: state moves to the plugin data folder once
     const r = await run(argv.filter((a) => a !== '--json'));
     if (r.usage) console.log(r.usage);
