@@ -527,6 +527,12 @@ export function docTitle(doc, fallback = 'document') {
   const t = String(c.title || '');
   return String(c.coverTitle || t.split(/\s*[:—]\s+/).slice(1).join(': ') || t || fallback).trim() || fallback;
 }
+/** 0.17.0 (N11): the title that names a document's folder and its export files. A caller that knows the primary (Arabic) edition passes its title as `hint`, so the English
+ *  export lands in the SAME document folder as the Arabic one (each file still carries its own language word); no hint = the edition's own title, as before. */
+export function exportTitle(doc, hint, fallback = 'document') {
+  const h = typeof hint === 'string' ? hint.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 200) : '';
+  return h || docTitle(doc, fallback);
+}
 /** The blank document's placeholder names: a title still equal to one of them is "not named yet". */
 export const PLACEHOLDER_TITLES = new Set(['خدمة جديدة', 'New service']);
 /** docTitle of an edition, falling back to another edition's title while this one is still the placeholder. */

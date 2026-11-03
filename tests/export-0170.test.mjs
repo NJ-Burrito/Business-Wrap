@@ -20,6 +20,7 @@ import { launchOptions, REPO, localeOf } from '../engine/export.mjs';
 import { serve } from '../engine/serve.mjs';
 import { wantedEditions } from '../engine/project-export.mjs';
 import { exportDoc } from '../engine/cli.mjs';
+import { rbTabFor } from './_ribbon.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-export0170-'));
 const results = [];
@@ -128,6 +129,7 @@ try {
         return { en: !!window.BW.M[window.BW.S.svc].en, cmds: ['export.printHtml.ar', 'export.printHtml.en', 'export.printHtml.both'].every((a) => window.BW.hasAction(a)), menu: !!R };
       });
       check(`${tag}: the editor holds the English edition and knows the three print-HTML tools`, has.en && has.cmds, JSON.stringify(has));
+      if (!svcFlag) check('pair: the Export tab lists the three print-HTML tools', (await rbTabFor(page, 'export.printHtml.en')) === 'export' && !!(await rbTabFor(page, 'export.printHtml.both')) && !!(await rbTabFor(page, 'export.printHtml.ar')));
       // the English edition is being edited: switch to it, as a person does, then export
       await page.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.querySelector('[data-a="ed"][data-ed="en"]')?.click());
       await page.waitForFunction(() => window.BW.S.ed === 'en');
@@ -170,6 +172,25 @@ try {
       check(`${tag}: the print centre opens on the English edition when that is the one being edited`, ed.state === 'en' && ed.shown === 'en', JSON.stringify(ed));
       check(`${tag}: no page errors`, errors.length === 0, errors.join(' | '));
     } finally { await ctx.close(); srv.close(); }
+  }
+
+  // ── 5 · one document folder for both editions (the save folder) ─────────
+  {
+    process.env.BW_WORKSPACE = path.join(tmp, 'ws');
+    fs.mkdirSync(process.env.BW_WORKSPACE, { recursive: true });
+    const srvW = await serve(file, 0, { workspace: true });
+    const url = `http://127.0.0.1:${srvW.address().port}/api/export/file`;
+    const pw = async (b) => { const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ service: 'blank', ...b }) }); return r.json(); };
+    try {
+      const ar = await pw({ locale: 'ar', doc: docAr, format: 'printHtml', folderTitle: 'وثيقة اختبار التصدير' });
+      const en = await pw({ locale: 'en', doc: docEn, format: 'printHtml', folderTitle: 'وثيقة اختبار التصدير' });
+      const enPdf = await pw({ locale: 'en', doc: docEn, format: 'pdf', folderTitle: 'وثيقة اختبار التصدير' });
+      check('save folder: the Arabic and English exports of one document sit in ONE document folder, each file named with its language', !!ar.file && !!en.file && path.dirname(ar.file) === path.dirname(en.file) && path.dirname(en.file) === path.dirname(enPdf.file) && /English/.test(path.basename(en.file)) && /العربية/.test(path.basename(ar.file)), JSON.stringify([ar.file, en.file]));
+      const old = await pw({ locale: 'en', doc: docEn, format: 'printHtml' });
+      check('save folder: a caller with no folderTitle keeps the old behaviour (the edition own title)', !!old.file && path.dirname(old.file) !== path.dirname(en.file), old.file);
+      const mcpSrc = fs.readFileSync(path.join(REPO, 'mcp', 'server.mjs'), 'utf8');
+      check('MCP export_document uses the shared locale rule and the Arabic sibling folder', /engineLocaleOf/.test(mcpSrc) && /pairHint\(document, ed\)/.test(mcpSrc));
+    } finally { srvW.close(); }
   }
 
   // ── 4 · the CLI ────────────────────────────────────────────────────────

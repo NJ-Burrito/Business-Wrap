@@ -86,7 +86,7 @@ async function pcAction(a) {
   busy(true);
   try {
     for (const ed of pcEds(l || S.ed)) {
-      const body = { service: S.svc, locale: ed, doc: M[S.svc][ed].doc, theme: S.theme, format, range: format === 'pdf' ? o.range : '', cover: o.cover, folder: o.folder || undefined, embedFonts: S.docxFonts };
+      const body = { service: S.svc, locale: ed, folderTitle: pcFolderTitle(), doc: M[S.svc][ed].doc, theme: S.theme, format, range: format === 'pdf' ? o.range : '', cover: o.cover, folder: o.folder || undefined, embedFonts: S.docxFonts };
       const r = await fetch('/api/export/file', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || r.status);
@@ -96,6 +96,14 @@ async function pcAction(a) {
       try { window.dispatchEvent(new CustomEvent('bw:wm', { detail: { id: 'W02' } })); } catch { /* no watermark */ } // after the file is written, never on a failed export
     }
   } catch (err) { flash(String(err.message || err), true); } finally { busy(false); }
+}
+/** 0.17.0 (N11): both editions export into ONE document folder, named by the primary (Arabic) edition's title (same rule as engine/workspace.mjs docTitle). */
+function pcFolderTitle() {
+  const name = (d) => { const c = d?.control || {}; const t = String(c.title || ''); return String(c.coverTitle || t.split(/\s*[:—]\s+/).slice(1).join(': ') || t).trim(); };
+  const only = editionsOf(cur().doc);
+  const order = only?.length === 1 ? [only[0]] : ['ar', 'en'];
+  const names = order.map((l) => name(M[S.svc][l]?.doc)).filter(Boolean);
+  return names.find((x) => x !== 'خدمة جديدة' && x !== 'New service') || names[0] || '';
 }
 function pcFetchDownload(url, name) {
   const x = document.createElement('a');
