@@ -530,6 +530,8 @@ def keep_rows_together(table, head_p=None) -> None:
                 p.paragraph_format.keep_with_next = True
 
 
+_TAKEN_STORY_NOS = set()
+
 def add_stories(document, block, font, counters, chapter_number, story_seq):
     for item_no, item in enumerate(block.get('items', [])):
         story_seq[0] += 1
@@ -544,6 +546,16 @@ def add_stories(document, block, font, counters, chapter_number, story_seq):
         cap.paragraph_format.space_after = Pt(0)
         # the print's story-head: the SECTION's number (gold) then «قصة مستخدم» in the primary colour, on the top band of the sand card
         sn = str(block.get('number') or f"{chapter_number}.{story_seq[0]}")
+        if item_no > 0:  # 0.16.3: a block of several cards numbers each card (6.1, 6.2, ...), as the print does
+            _m = re.match(r'^(.*?)(\d+)$', sn)
+            if _m:
+                # 0.16.4: card k counts on from the block's number, skipping a number another block already carries (engine/render.mjs storyNo)
+                _n, _left = int(_m.group(2)), item_no
+                while _left > 0:
+                    _n += 1
+                    if f"{_m.group(1)}{_n}" not in _TAKEN_STORY_NOS:
+                        _left -= 1
+                sn = f"{_m.group(1)}{_n}"
         nrun = cap.add_run(f"{sn}    ")
         nrun.bold = True
         nrun.font.size = Pt(theme_mod.SIZES['h2'])
@@ -885,6 +897,12 @@ def merge_labels(data: dict) -> None:
 def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir: Path, toc: bool=False):
     global _THEME_ROLES
     data = json.loads(doc_json.read_text(encoding='utf-8'))
+    _TAKEN_STORY_NOS.clear()
+    for _c in data.get('chapters', []):
+        for _s in _c.get('sections', []):
+            for _b in _s.get('blocks', []):
+                if _b.get('kind') == 'stories' and _b.get('number'):
+                    _TAKEN_STORY_NOS.add(str(_b['number']))
     merge_labels(data)
     hide = set((data.get('layout') or {}).get('hide') or [])
     document = Document()

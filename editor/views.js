@@ -164,50 +164,11 @@ function viewsSheets(main, g) {
  *  frame of the print measure), and its verdicts are written back as classes and attributes only (the editable markup is never cloned or
  *  split). The markers (`data-rlx`, `data-rlr`) are screen-only and cleared on the next pass. */
 function viewsRelax(main) {
-  // the last pass's verdicts go back to what the markup came with (class and style as rendered), then the pass is made again
-  main.querySelectorAll('[data-rlx]').forEach((e) => {
-    if (e.dataset.rlc === undefined) return;
-    if (e.dataset.rlc) e.setAttribute('class', e.dataset.rlc); else e.removeAttribute('class');
-    if (e.dataset.rls) e.setAttribute('style', e.dataset.rls); else e.removeAttribute('style');
-    delete e.dataset.rlc; delete e.dataset.rls; e.removeAttribute('data-rlx');
-  });
-  main.querySelectorAll('[data-rlr]').forEach((e) => e.removeAttribute('data-rlr'));
+  // 0.16.4: the verdicts are written by engine/render.mjs `relaxVerdicts`, the same function the PDF's page layout runs
   const pair = document.getElementById('bw-pair');
   const doc = cur().doc;
-  const live = [...main.querySelectorAll('.keep,.card,.hold,.fig')].filter((e) => !e.closest('.bw-runs'));
-  if (!pair || !doc || !live.length) return;
-  live.forEach((e, i) => { e.dataset.rlx = String(i); e.dataset.rlc = e.getAttribute('class') || ''; e.dataset.rls = e.getAttribute('style') || ''; });
-  const geo = doc.layout?.page ? pageGeom(doc) : PAGE;
-  const probe = document.createElement('div');
-  probe.className = 'bw-probe';
-  probe.setAttribute('aria-hidden', 'true');
-  probe.style.cssText = `position:absolute;left:-30000px;top:0;visibility:hidden;pointer-events:none;width:${geo.measurePx}px;zoom:1`;
-  const copy = main.cloneNode(true);
-  copy.querySelectorAll('.bw-runs,.bw-sheets,.bw-slot').forEach((x) => x.remove());
-  copy.querySelectorAll('[id]').forEach((x) => x.removeAttribute('id'));
-  copy.removeAttribute('id');
-  copy.style.cssText = 'zoom:1;width:100%;margin:0;transform:none;box-shadow:none;height:auto';
-  probe.appendChild(copy);
-  pair.appendChild(probe);
-  try {
-    relaxTallGroups([...(doc.layout?.page ? relaxArgs(doc) : relaxArgs()), copy]);
-    const by = new Map();
-    copy.querySelectorAll('[data-rlx]').forEach((e) => { const l = by.get(e.dataset.rlx); if (l) l.push(e); else by.set(e.dataset.rlx, [e]); });
-    live.forEach((el, i) => {
-      const g = by.get(String(i));
-      if (!g) return;
-      if (g.length > 1) { // a long held table or list: its first rows and its last rows stay together, the middle flows
-        const rows = [...el.children];
-        rows.slice(0, Math.max(0, g[0].children.length - 1)).forEach((r) => { r.dataset.rlr = 'a'; });
-        rows.slice(Math.max(0, rows.length - g[g.length - 1].children.length + 1)).forEach((r) => { r.dataset.rlr = 'b'; });
-        el.style.breakInside = 'auto';
-        el.classList.remove('whole');
-      } else {
-        if (g[0].style.breakInside === 'auto') el.style.breakInside = 'auto';
-        el.classList.toggle('whole', g[0].classList.contains('whole'));
-      }
-    });
-  } finally { probe.remove(); }
+  const geo = doc?.layout?.page ? pageGeom(doc) : PAGE;
+  relaxVerdicts(main, [...(doc?.layout?.page ? relaxArgs(doc) : relaxArgs()), geo.measurePx], pair && doc ? pair : null);
 }
 /** A box taller than the document's own page cannot be shown whole in its columns: say so. */
 function viewsOverflow() {
@@ -243,6 +204,7 @@ function viewsApply() {
   const made = viewsForeign(main, g0);
   if (made.length) main.dataset.bwmix = '1'; else delete main.dataset.bwmix;
   if (made.length) viewsReserve(main, g0);
+  viewsRepeat(main, viewsGeo());
   const nOut = viewsCount(main);
   S.pageTab = viewsTable(main, viewsGeo(), nOut);
   S.pageSizes = S.pageTab;
@@ -289,13 +251,73 @@ function viewsRuns(main) {
   lay.querySelectorAll('[data-p]').forEach((x) => { if (d.chrome) { x.dataset.w2p = x.dataset.p; x.tabIndex = 0; x.contentEditable = 'plaintext-only'; } x.removeAttribute('data-p'); });
   main.appendChild(lay);
 }
+/** 0.16.4 · A table's header repeats at the top of every column its rows continue on, as in the PDF (Chrome's print does it; its multicol does not, so the
+ *  page views were 13 mm per continued page roomier than the PDF and parted from it). A row that opens a column (not the table's first) gets room
+ *  for the header (`data-rpt`, `--rpt`: top padding on its cells) and the header is drawn over that room in a layer of its own (`.bw-rpts`, not part of the
+ *  document). A few passes: the room can push the row's last lines on. */
+function viewsRepeat(main, g) {
+  const z = parseFloat(getComputedStyle(main.parentElement).zoom) || 1;
+  const rtl = main.dir === 'rtl';
+  const tables = [...main.querySelectorAll('table')].filter((t) => t.tHead && t.tBodies.length && !t.closest('.bw-runs,.bw-slot,.bw-rpts'));
+  if (!tables.length) return;
+  const colOf = (t, q) => {
+    const box = t.closest('.bw-frun');
+    const o = (box || main).getBoundingClientRect();
+    const pitch = (box ? +box.dataset.w + 12 : g.Wmm + 12) * VIEWS_MM * z;
+    const c = (q.left + q.right) / 2;
+    return Math.max(0, Math.floor(((rtl ? o.right - c : c - o.left) + 1) / pitch));
+  };
+  const rowsOf = (t) => [...t.tBodies].flatMap((b) => [...b.rows]);
+  /** The rows that open a column (never the table's first row), in the layout as it stands. */
+  const opens = (t) => {
+    const out = new Set();
+    let prev = -1;
+    rowsOf(t).forEach((r, i) => {
+      const rs = [...r.getClientRects()].filter((q) => q.height >= 1);
+      if (!rs.length) return;
+      if (i > 0 && prev >= 0 && colOf(t, rs[0]) > prev) out.add(r);
+      prev = colOf(t, rs[rs.length - 1]);
+    });
+    return out;
+  };
+  const room = new Map(tables.map((t) => [t, t.tHead.getBoundingClientRect().height / z]));
+  for (let pass = 0; pass < 6; pass += 1) {
+    let changed = false;
+    for (const t of tables) {
+      const now = opens(t);
+      for (const r of rowsOf(t)) {
+        const on = now.has(r);
+        if (on && !r.dataset.rpt) { r.dataset.rpt = '1'; r.style.setProperty('--rpt', `${room.get(t).toFixed(2)}px`); changed = true; } else if (!on && r.dataset.rpt) { r.removeAttribute('data-rpt'); r.style.removeProperty('--rpt'); changed = true; }
+      }
+    }
+    if (!changed) break;
+  }
+  const mr = main.getBoundingClientRect();
+  let html = '';
+  for (const t of tables) for (const r of t.querySelectorAll('tr[data-rpt]')) {
+    const q = r.getClientRects()[0];
+    if (!q) continue;
+    const ths = [...t.tHead.rows[0]?.cells || []].map((c) => c.getBoundingClientRect().width / z);
+    const head = t.tHead.cloneNode(true);
+    head.querySelectorAll('[data-p],[contenteditable],[id]').forEach((e) => { e.removeAttribute('data-p'); e.removeAttribute('contenteditable'); e.removeAttribute('id'); e.removeAttribute('tabindex'); });
+    const w = q.width / z;
+    html += `<div class="bw-rpt" style="inset-inline-start:${((rtl ? mr.right - q.right : q.left - mr.left) / z).toFixed(2)}px;top:${((q.top - mr.top) / z).toFixed(2)}px;width:${w.toFixed(2)}px"><table class="${esc(t.className)}" style="table-layout:fixed;width:${w.toFixed(2)}px;margin:0"><colgroup>${ths.map((x) => `<col style="width:${x.toFixed(2)}px">`).join('')}</colgroup>${head.outerHTML}</table></div>`;
+  }
+  if (!html) return;
+  const lay = document.createElement('div');
+  lay.className = 'bw-rpts';
+  lay.setAttribute('contenteditable', 'false');
+  lay.setAttribute('aria-hidden', 'true');
+  lay.innerHTML = html;
+  main.appendChild(lay);
+}
 /** Pages = columns: the content's far edge in the reading direction, in slots. */
 function viewsCount(main) {
   const z = parseFloat(getComputedStyle(main.parentElement).zoom) || 1;
   const r = main.getBoundingClientRect();
   let far = 0;
   for (const el of main.children) {
-    if (el.classList.contains('bw-runs') || el.classList.contains('bw-sheets')) continue; // the header/footer layer is placed on the pages, it is not content
+    if (el.classList.contains('bw-runs') || el.classList.contains('bw-sheets') || el.classList.contains('bw-rpts')) continue; // the header/footer layer is placed on the pages, it is not content
     for (const q of el.getClientRects()) far = Math.max(far, main.dir === 'rtl' ? r.right - q.left : q.right - r.left);
   }
   return Math.max(1, Math.round(far / z / viewsGeo().SLOT + 0.25));
@@ -367,6 +389,8 @@ function viewsReveal(page) {
 }
 /** Take the boxes of another size, their empty slots and the sheets away again: the markup is the document's own. */
 function viewsUnwrap(root0) {
+  root0.querySelectorAll('.bw-rpts').forEach((x) => x.remove());
+  root0.querySelectorAll('tr[data-rpt]').forEach((r) => { r.removeAttribute('data-rpt'); r.style.removeProperty('--rpt'); });
   root0.querySelectorAll('.bw-slot, .bw-sheets').forEach((x) => x.remove());
   root0.querySelectorAll('.bw-frun').forEach((b) => b.replaceWith(...b.childNodes));
   root0.querySelectorAll('main.bw-doc[data-bwmix]').forEach((m) => { delete m.dataset.bwmix; });

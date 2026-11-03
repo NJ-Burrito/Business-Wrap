@@ -783,7 +783,7 @@ table.headed>caption>:last-child{margin-bottom:0}
 h2,h3,h4,h5{break-after:avoid}
 h2+*,h3+*,h4+*,h5+*{break-before:avoid}
 .lead-in+table{break-before:avoid}
-table{break-before:avoid}
+/* 0.16.3: no blanket table break-before avoid: with the caption, the header and the first rows all held, it pulled a table that follows another table (rules, then source notes) onto the next page whole, where the editor's pages started it on the same page. A table's own title, header and first rows still stay together (caption, thead, tbody.hold); only the break between two tables is free again */
 tbody:first-of-type tr:first-child{break-before:avoid}
 /* 0.16.2: a table's header stays with its first rows: Chrome parted a header from its first group (tbody.hold) and left it alone at a page's foot */
 thead{break-after:avoid}
@@ -850,7 +850,19 @@ export function renderParts(doc, o) {
   const none = L.none;
   const PM = pageModel(doc);
   const NUM = docNumbers(doc); // 0.15.0 (F4): what prints comes from position, never from a stored number
-  const storyNo = (ptr, blk) => { const m = /^\/chapters\/(\d+)\/sections\/(\d+)\/blocks\/(\d+)/.exec(ptr || ''); return m ? (NUM.story[+m[1]]?.[+m[2]]?.[+m[3]] || (NUM.manual ? (blk.number ?? '') : '')) : (blk.number ?? ''); };
+  // 0.16.3: a stories block with several cards numbers them per card (6.1, 6.2, ...): the block's number is the first card's, each next card adds one to its last part; a block of one card (a section per card) keeps its own number
+  const storyNo = (ptr, blk, k = 0) => {
+    const m = /^\/chapters\/(\d+)\/sections\/(\d+)\/blocks\/(\d+)/.exec(ptr || '');
+    const base = String(m ? (NUM.story[+m[1]]?.[+m[2]]?.[+m[3]] || (NUM.manual ? (blk.number ?? '') : '')) : (blk.number ?? ''));
+    // card k of a block counts on from the block's number, skipping a number another block (a later section's own one-card story) already carries,
+    // so no number prints twice (0.16.4)
+    let t = k > 0 ? /^(.*?)(\d+)$/.exec(base) : null;
+    if (!t) return base;
+    let n = +t[2];
+    for (let left = k; left > 0;) { n += 1; if (!TAKEN.has(`${t[1]}${n}`)) left -= 1; }
+    return `${t[1]}${n}`;
+  };
+  const TAKEN = new Set(NUM.story.flat(2).filter(Boolean).map(String));
   const segOn = PM.segments.length > 1;
   const segStarts = new Map(PM.segments.filter((x) => x.start).map((x) => [x.start, x]));
   const segOfPtr = (p) => PM.segOf.get(p) ?? 0;
@@ -1214,7 +1226,7 @@ export function renderParts(doc, o) {
               rowsPtr: `${sp}/card/rows`,
               extra: 'control story-info story-card',
               capClass: 'story-head',
-              caption: `<span class="sn"${dp(b + '/number')}>${bidi(storyNo(b, block))}</span>${lb('userStory')}`,
+              caption: `<span class="sn"${i === 0 ? dp(b + '/number') : ''}>${bidi(storyNo(b, block, i))}</span>${lb('userStory')}`,
               ...(o.editor ? { b, tb: `${sp}/card` } : {}),
               merges: card?.merges,
               colWidths: Array.isArray(card?.colWidths) ? card.colWidths : [22, 78],
@@ -1602,6 +1614,57 @@ export function relaxTallGroups([limit, keepRows, pageH, floor, root]) {
     if (height > remaining) waste += remaining;
   });
   return n;
+}
+/**
+ * 0.16.4 (bw-0164): the print pass's verdicts as ATTRIBUTES, one function for the editor's page views (editor/views.js viewsRelax) and the PDF
+ * (engine/export.mjs). relaxTallGroups splits a long held table into three tables; here that verdict is written back onto the one table instead
+ * (its first rows `data-rlr="a"`, its last rows `data-rlr="b"`, `break-inside`, `.whole`), so the markup is never cloned or split and the editor's
+ * column layout and the print lay out the same elements the same way. The decision is made on a copy laid out at the print measure. Markers are cleared
+ * on the next pass. Serialisable except for `relaxTallGroups`, which the caller provides (the editor has it in scope; the export adds it to the page).
+ * args = [relaxArgs..., measurePx]
+ */
+export function relaxVerdicts(main, args, parent) {
+  main.querySelectorAll('[data-rlx]').forEach((e) => {
+    if (e.dataset.rlc === undefined) return;
+    if (e.dataset.rlc) e.setAttribute('class', e.dataset.rlc); else e.removeAttribute('class');
+    if (e.dataset.rls) e.setAttribute('style', e.dataset.rls); else e.removeAttribute('style');
+    delete e.dataset.rlc; delete e.dataset.rls; e.removeAttribute('data-rlx');
+  });
+  main.querySelectorAll('[data-rlr]').forEach((e) => e.removeAttribute('data-rlr'));
+  const live = Array.from(main.querySelectorAll('.keep,.card,.hold,.fig')).filter((e) => !e.closest('.bw-runs'));
+  if (!parent || !live.length) return 0;
+  live.forEach((e, i) => { e.dataset.rlx = String(i); e.dataset.rlc = e.getAttribute('class') || ''; e.dataset.rls = e.getAttribute('style') || ''; });
+  const probe = document.createElement('div');
+  probe.className = 'bw-probe';
+  probe.setAttribute('aria-hidden', 'true');
+  probe.style.cssText = `position:absolute;left:-30000px;top:0;visibility:hidden;pointer-events:none;width:${args[4]}px;zoom:1`;
+  const copy = main.cloneNode(true);
+  copy.querySelectorAll('.bw-runs,.bw-sheets,.bw-slot,.bw-rpts').forEach((x) => x.remove());
+  copy.querySelectorAll('[id]').forEach((x) => x.removeAttribute('id'));
+  copy.removeAttribute('id');
+  copy.style.cssText = 'zoom:1;width:100%;margin:0;transform:none;box-shadow:none;height:auto';
+  probe.appendChild(copy);
+  parent.appendChild(probe);
+  try {
+    relaxTallGroups([args[0], args[1], args[2], args[3], copy]);
+    const by = new Map();
+    copy.querySelectorAll('[data-rlx]').forEach((e) => { const l = by.get(e.dataset.rlx); if (l) l.push(e); else by.set(e.dataset.rlx, [e]); });
+    live.forEach((el, i) => {
+      const g = by.get(String(i));
+      if (!g) return;
+      if (g.length > 1) { // a long held table or list: its first rows and its last rows stay together, the middle flows
+        const rows = Array.from(el.children);
+        rows.slice(0, Math.max(0, g[0].children.length - 1)).forEach((r) => { r.dataset.rlr = 'a'; });
+        rows.slice(Math.max(0, rows.length - g[g.length - 1].children.length + 1)).forEach((r) => { r.dataset.rlr = 'b'; });
+        el.style.breakInside = 'auto';
+        el.classList.remove('whole');
+      } else {
+        if (g[0].style.breakInside === 'auto') el.style.breakInside = 'auto';
+        el.classList.toggle('whole', g[0].classList.contains('whole'));
+      }
+    });
+  } finally { probe.remove(); }
+  return live.length;
 }
 export const relaxArgs = (doc) => { const g = doc ? pageGeom(doc) : PAGE; return [g.contentPx * PAGE.relaxAbove, PAGE.keepRows, g.contentPx, PAGE.fillFloor]; };
 

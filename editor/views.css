@@ -57,7 +57,13 @@
   #bw-pair .bw-runs img { height: 5mm; }
   #bw-pair .bw-view > main.bw-doc[dir="rtl"]::before { background: repeating-linear-gradient(to left, var(--paper, #fafaf9) 0 var(--pw), transparent var(--pw) calc(var(--pw) + var(--pg))); } /* doc-colour */
 }
-@media print { .bw-runs, .bw-sheets { display: none !important; } }
+/* 0.16.4 the repeated table header of a continued table: room on the row that opens the column, the header drawn over it */
+@media screen {
+  #bw-pair .bw-view > main.bw-doc tr[data-rpt] > td { padding-top: calc(2.5mm + var(--rpt, 0px)); }
+  #bw-pair .bw-view > main.bw-doc > .bw-rpts { position: absolute; inset-block-start: 0; inset-inline-start: 0; width: 0; height: 0; pointer-events: none; }
+  #bw-pair .bw-rpts .bw-rpt { position: absolute; background: var(--paper, #fafaf9); /* doc-colour */ }
+}
+@media print { .bw-runs, .bw-sheets, .bw-rpts { display: none !important; } }
 html[data-bw-calm="1"] #bw-pair .bw-view > main.bw-doc { transition: none; }
 @media (prefers-reduced-motion: reduce) { #bw-pair .bw-view > main.bw-doc { transition: none; } }
 
