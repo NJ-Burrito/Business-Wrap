@@ -2225,8 +2225,9 @@ async function onDrawer(e) {
     const go = x.dataset.go;
     // F2 · 17: the element in the BODY (a TOC row or the header strip carries the same pointer: never those);
     // a finding with no element on the page opens the Design group it is fixed in, or rings the cover's logo slots
-    const el = go === '#logos' ? (mainOf(S.ed)?.querySelector('.cover .lockup') || mainOf(S.ed)?.querySelector('.cover'))
+    const findGo = () => go === '#logos' ? (mainOf(S.ed)?.querySelector('.cover .lockup') || mainOf(S.ed)?.querySelector('.cover'))
       : [...(mainOf(S.ed)?.querySelectorAll(`[data-p="${CSS.escape(go)}"],[data-b="${CSS.escape(go)}"]`) || [])].find((n) => !n.closest('table.toc, .toc, .w2-strip'));
+    const el = findGo();
     const grp = /^#design:(\w+)$/.exec(go)?.[1] || (!el && go.startsWith('/labels/') ? 'labels' : null);
     if (grp) {
       (S.grpOpen ||= {})[grp] = true;
@@ -2239,7 +2240,13 @@ async function onDrawer(e) {
       el.scrollIntoView({ block: 'center', behavior: reduced() || x.dataset.ring ? 'auto' : 'smooth' });
       el.focus?.({ preventScroll: true });
       selectEl(el);
-      if (x.dataset.ring) { el.classList.remove('bw-jump'); void el.offsetWidth; el.classList.add('bw-jump'); setTimeout(() => el.classList.remove('bw-jump'), 1200); } // A14: a 1.2 s ring
+      if (x.dataset.ring) { // A14: a 1.2 s ring. A render that lands after the click (a slow machine) replaces the body's nodes: ring the one that is on the page now
+        const ringIt = (n) => { n.classList.remove('bw-jump'); void n.offsetWidth; n.classList.add('bw-jump'); setTimeout(() => n.classList.remove('bw-jump'), 1200); };
+        ringIt(el);
+        requestAnimationFrame(() => requestAnimationFrame(() => { if (!el.isConnected) { const n2 = findGo(); if (n2) ringIt(n2); } }));
+      }
+    } else if (x.dataset.ring) { // nothing on the page yet (a render still pending on a slow machine): look again once the page has painted
+      setTimeout(() => { const n2 = findGo(); if (n2) { n2.scrollIntoView({ block: 'center' }); n2.classList.remove('bw-jump'); void n2.offsetWidth; n2.classList.add('bw-jump'); setTimeout(() => n2.classList.remove('bw-jump'), 1200); } }, 250);
     }
     return;
   }

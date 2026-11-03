@@ -131,9 +131,27 @@ try {
     check('hover intent: tools found (looked)', pts.length >= 4, String(pts.length));
     const running = () => sh(page, (r) => [...r.querySelectorAll('.ribbon .ic *')].reduce((n, e) => n + e.getAnimations().length, 0));
     await page.mouse.move(700, 600);
-    let peak = 0;
-    for (const [x, y] of pts) { await page.mouse.move(x, y, { steps: 1 }); await page.waitForTimeout(40); peak = Math.max(peak, await running()); }
-    check('hover intent: sweeping across six tools (40 ms each) starts no icon part animation', peak === 0, String(peak));
+    // A sweep is a pointer that never stays 120 ms on one tool. The old loop awaited an evaluate between moves, so on a slow runner each tool
+    // really was rested on for longer than the delay. Now the moves are sent back to back (CDP keeps their order), and the page itself records
+    // when each tool was entered (event time stamps) and every animation count from a 5 ms sampler: the proof is "no animation while the
+    // pointer had been on a tool for less than the delay", and it is only accepted when the recorded dwell times show a real sweep.
+    await page.evaluate(() => {
+      const sw = window.__sw = { at: [], n: [] };
+      const host = document.getElementById('bw-ui-host');
+      const cnt = () => [...host.shadowRoot.querySelectorAll('.ribbon .ic *')].reduce((n, e) => n + e.getAnimations().length, 0);
+      host.shadowRoot.addEventListener('pointerover', (e) => { if (e.target.closest?.('.ribbon .rb-tools .b')) sw.at.push(e.timeStamp); }, true);
+      sw.timer = setInterval(() => sw.n.push([performance.now(), cnt()]), 5);
+    });
+    for (const [x, y] of pts) { await page.mouse.move(x, y, { steps: 1 }); await page.waitForTimeout(25); } // no evaluate between the moves
+    const sw = await page.evaluate(() => { clearInterval(window.__sw.timer); return window.__sw; });
+    const stamps = sw.at.slice(-pts.length);
+    const dwell = stamps.slice(1).map((t, i) => t - stamps[i]);
+    // a tool the pointer left within 100 ms must have started nothing before that; a tool it rested on longer (a slow runner) is not a sweep step and is not judged
+    const bad = stamps.slice(0, -1).map((t, i) => (dwell[i] < 100 ? Math.max(0, ...sw.n.filter(([u]) => u >= t && u < stamps[i + 1]).map(([, n]) => n)) : 0));
+    const peak = Math.max(0, ...bad);
+    const fast = dwell.filter((d) => d < 100).length;
+    check('hover intent: the sweep was real (looked: at least 3 tools left within 100 ms of entering)', stamps.length >= 4 && fast >= 3, JSON.stringify({ stamps: stamps.length, dwell: dwell.map(Math.round) }));
+    check('hover intent: sweeping across six tools (40 ms each) starts no icon part animation', peak === 0, JSON.stringify({ peak, samples: sw.n.length }));
     await page.mouse.move(pts[0][0], pts[0][1]); await page.waitForTimeout(100);
     const early = await running();
     await page.waitForTimeout(60);
