@@ -532,7 +532,15 @@ def keep_rows_together(table, head_p=None) -> None:
 
 _TAKEN_STORY_NOS = set()
 
-def add_stories(document, block, font, counters, chapter_number, story_seq):
+def is_ac_label(block) -> bool:
+    """0.16.5 (acc): a subhead that carries the «معايير القبول» house label (this document's wording or either locale's default)."""
+    if not isinstance(block, dict) or block.get('kind') != 'subhead' or not isinstance(block.get('text'), str):
+        return False
+    known = {L.get('acceptance'), _I18N['doc']['ar']['acceptance'], _I18N['doc']['en']['acceptance']}
+    norm = lambda x: re.sub(r'\s+', ' ', re.sub(r'[\s:：]+$', '', x)).strip().lower()
+    return norm(block['text']) in {norm(x) for x in known if isinstance(x, str) and x}
+
+def add_stories(document, block, font, counters, chapter_number, story_seq, fold=None):
     for item_no, item in enumerate(block.get('items', [])):
         story_seq[0] += 1
         roles = _THEME_ROLES
@@ -574,6 +582,8 @@ def add_stories(document, block, font, counters, chapter_number, story_seq):
         # widths) are the table, the same model as every other table. A {bind: field} cell prints the story's own field.
         src = card['rows'] if card else [[{'label': 'storyId'}, {'bind': 'id'}], [{'label': 'storyName'}, {'bind': 'name'}], [{'label': 'storyUser'}, {'bind': 'as'}]] + ([[{'label': 'storyGoalLabel'}, {'bind': 'goal'}]] if goal_text else []) + ([[{'label': 'acceptance'}, {'bind': 'acceptance'}]] if acceptance_items else [])
         fields = {'id': item.get('id', ''), 'name': item.get('name', ''), 'as': as_, 'goal': goal_text, 'acceptance': ''}
+        # 0.16.5 (acc): the field shape (a «معايير القبول» subhead + its prose after the card) prints as the card's last row, as render.mjs does
+        fold_here = fold if (fold and item_no == len(block.get('items', [])) - 1 and not acceptance_items) else None
         def resolve(v):
             if isinstance(v, dict) and not MD.is_rich(v):
                 if isinstance(v.get('label'), str):
@@ -582,6 +592,8 @@ def add_stories(document, block, font, counters, chapter_number, story_seq):
                     return fields[v['bind']]
             return v if v is not None else ''
         rows = [[resolve(v) for v in (r if isinstance(r, list) else [])] for r in src]
+        if fold_here:
+            rows.append([fold_here['label'].get('text', ''), ''])
         ac_at = [(ri, ci) for ri, r in enumerate(src) if isinstance(r, list) for ci, v in enumerate(r) if isinstance(v, dict) and v.get('bind') == 'acceptance']
         story_tbl = add_table(document, [], rows, font, spec=card)
         for ri, ci in ac_at:
@@ -594,6 +606,20 @@ def add_stories(document, block, font, counters, chapter_number, story_seq):
                     pp._p.getparent().remove(pp._p)
                 cell.paragraphs[0].text = ''
                 add_numbered_list_cell(cell, acceptance_items, font, new_criteria_num_id(document))
+        if fold_here:
+            cell = story_tbl.cell(len(rows) - 1, 1)
+            for pp in cell.paragraphs[1:]:
+                pp._p.getparent().remove(pp._p)
+            first = True
+            for para_text in fold_here['body'].get('paragraphs', []):
+                p = cell.paragraphs[0] if first else cell.add_paragraph()
+                first = False
+                p.paragraph_format.space_after = Pt(theme_mod.PROSE_AFTER_PT)
+                MD.add_leaf(p, para_text, font, add_script_runs)
+                info = MD.list_info(para_text)
+                if info:
+                    MD.number_paragraph(document, p, info)
+            counters['acceptance_folded'] = counters.get('acceptance_folded', 0) + 1
         theme_mod.style_story_card(story_tbl, _THEME_ROLES)
         # 0.16.2: the reference sets the «المعرف» row apart from the rest of the card: a card-coloured strip (3 pt) between it and the next row
         if len(src) > 1 and any(isinstance(v, dict) and v.get('bind') == 'id' for v in (src[0] if isinstance(src[0], list) else [])):
@@ -1113,7 +1139,13 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                             frame_mm = None
                     p._p.append(diagram_run(block['resolved'], font, block.get('caption', ''), frame_mm=frame_mm))
                 elif kind == 'stories':
-                    add_stories(document, block, font, counters, ch['number'], story_seq)
+                    _fold = None
+                    _la, _bd = (_blocks[bi + 1] if bi + 1 < len(_blocks) else {}), (_blocks[bi + 2] if bi + 2 < len(_blocks) else {})
+                    _its = block.get('items', [])
+                    if is_ac_label(_la) and _bd.get('kind') == 'prose' and _its and not _its[-1].get('acceptance') and not _la.get('hidden') and not _bd.get('hidden')                             and f'/chapters/{ci}/sections/{si}/blocks/{bi + 1}' not in seg_starts and f'/chapters/{ci}/sections/{si}/blocks/{bi + 2}' not in seg_starts:
+                        _fold = {'label': _la, 'body': _bd}
+                        _shape_skip.update({bi + 1, bi + 2})
+                    add_stories(document, block, font, counters, ch['number'], story_seq, _fold)
                     counters['stories_block'] += 1
                 elif kind == 'gap':
                     add_gap_block(document, block, font, counters)
