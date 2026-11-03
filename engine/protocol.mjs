@@ -4,7 +4,7 @@
 //   Linux    ~/.local/share/applications/business-wrap-handler.desktop + `xdg-mime default … x-scheme-handler/business-wrap`
 // The handler command line is:  node <install>/update/cli.mjs handle "<url>".  Accepted URLs ONLY:
 //   business-wrap://open?file=<absolute path of a .html inside an allowed place>   (exists, carries the bw-data marker)
-//   business-wrap://stop
+//   business-wrap://stop      stops ONLY the host (tabs flushed first); the editor page and every browser window stay open (0.17.0; the CLI `close` still ends everything)
 //   business-wrap://start      (0.17.0) start THIS install's host and open no browser: the editor's settings lane, which cannot start a process, calls it
 // Anything else is refused (exit 2). Nothing from the URL reaches a shell: the file is opened through cli.mjs open()
 // (spawn with an args array). Allowed places for the file: the user's home, the temp folder, this install, the save
@@ -188,7 +188,7 @@ export async function handle(url, { grace = Number(process.env.BW_POWER_GRACE_MS
   const cli = await import('./cli.mjs');
   if (a.action === 'stop') {
     const peers = await flushPeers({ graceMs: grace });
-    const r = await cli.close();
+    const r = await cli.stopHostOnly(); // 0.17.0: the host only; the editor page and the browser stay open (`business-wrap close` still ends everything)
     return { action: 'stop', flushed: peers.length, ...r };
   }
   if (a.action === 'start') {
