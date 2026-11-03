@@ -120,13 +120,10 @@ try {
     await undo();
     check(`${loc}: undo of the column restores the card`, (await story()).card.rows.every((r) => r.length === 2));
     await undo(); // the typing
-    await undo(); // the row
+    await undo(); // the row (0.17.0: the card is stored in the same step, so this also removes the card)
     s = await story();
-    check(`${loc}: undo of the row restores the card to 5 rows and the name to its old text`, s.card.rows.length === 5 && !s.name.endsWith('+x'), String(s.card.rows.length));
-    await undo(); // the stored card itself
-    s = await story();
-    check(`${loc}: undo all the way gives the original story back (no card key)`, !('card' in s) && (await rowsN()) === 5);
-    await page.evaluate(() => { const B = window.BW; B.redo(); B.redo(); }); // the stored card again (and its row)
+    check(`${loc}: undo of the row restores the original story: no card key, the name at its old text`, !('card' in s) && !s.name.endsWith('+x') && (await rowsN()) === 5, String(s.card?.rows.length));
+    await page.evaluate(() => { const B = window.BW; B.redo(); }); // the stored card with its row, one step
 
     // the document ID stays one value: a card cell that holds it follows an edit of it, in the same undo step
     const id0 = await page.evaluate(() => { const B = window.BW; return B.M[B.S.svc][B.S.ed].doc.control.documentId; });
