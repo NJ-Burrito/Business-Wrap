@@ -187,6 +187,23 @@ export async function close({ keep = [], caller = '', force = false } = {}) {
   return { stopped, pids: [...new Set(pids)], ...(h ? { host: { pid: h.pid, port: h.port, startedBy: by || 'person' } } : {}) };
 }
 
+/** 0.17.0 (owner rule 0.15.2 note 4): turn the host OFF and nothing else. The host process (and any server of this install) ends; the editor page and every browser
+ *  window stay open. Not close(): that also closes the browsers the host opened (host.stop and the session route's finish() both do), and a kill with /T would take
+ *  a browser the host launched with it (its parent link), so each pid is ended on its own. Tabs are flushed by the caller first (protocol handle). */
+export async function stopHostOnly() {
+  const real = await hostModule();
+  const pids = [];
+  const end = async (pid) => { if (!pid || !alive(pid)) return false; try { process.kill(pid); } catch { return false; } for (const t0 = Date.now(); alive(pid) && Date.now() - t0 < 4000;) await new Promise((r) => setTimeout(r, 100)); pids.push(pid); return !alive(pid); };
+  const h = real?.hostState?.();
+  if (h) { await end(h.pid); try { fs.rmSync(real.hostFile(), { force: true }); } catch { /* none */ } }
+  const f = HOSTS();
+  const hosts = fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')).hosts || [] : [];
+  for (const x of hosts) await end(x.pid); // the browserPid of a record is left alone
+  if (hosts.length) fs.writeFileSync(f, JSON.stringify({ hosts: [] }, null, 1));
+  for (const pid of ownServers()) await end(pid);
+  return { stopped: pids.length, pids: [...new Set(pids)], browsersKept: true, ...(h ? { host: { pid: h.pid, port: h.port } } : {}) };
+}
+
 export async function status() {
   const { hosts } = healStaleHosts(HOSTS());
   const real = await hostModule();

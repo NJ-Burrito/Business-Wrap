@@ -45,3 +45,6 @@ docs/DISTRIBUTION.md
 RECEIPT-*.md
 PROPOSAL-*.md
 recover-history-report.md
+
+# the launcher shortcut a run makes in the install folder (0.17.0)
+/Business-Wrap.lnk

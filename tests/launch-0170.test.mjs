@@ -77,6 +77,19 @@ try {
   const bad = spawnSync(process.execPath, [path.join(REPO, 'update', 'cli.mjs'), 'handle', 'business-wrap://start?x=1'], { env, encoding: 'utf8', windowsHide: true, timeout: 30000 });
   check('start link: a bad start URL exits 2 through the real handler', bad.status === 2);
 
+  // ── stop = the host only (owner rule 0.15.2 note 4): a stand-in "browser" pid recorded as one this host opened must survive ──
+  const dummy = spawn(process.execPath, ['-e', 'setTimeout(()=>{},120000)'], { detached: true, stdio: 'ignore', windowsHide: true });
+  dummy.unref();
+  const hj = path.join(sandbox.BW_LOCAL_DIR, 'host.json');
+  const hostJson = JSON.parse(fs.readFileSync(hj, 'utf8'));
+  fs.writeFileSync(hj, JSON.stringify({ ...hostJson, browserPids: [...(hostJson.browserPids || []), dummy.pid] }));
+  const isAlive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
+  const stp = spawnSync(process.execPath, [path.join(REPO, 'update', 'cli.mjs'), 'handle', 'business-wrap://stop', '--json'], { env, encoding: 'utf8', windowsHide: true, timeout: 60000 });
+  let so = null; try { so = JSON.parse(stp.stdout.trim().split(/\r?\n/).pop()); } catch { /* shown below */ }
+  check('stop link: exits 0 and the host is gone (port closed, host.json removed)', stp.status === 0 && so?.action === 'stop' && (await until(async () => !(await up(port)), 10000)) === true && !fs.existsSync(hj), `${stp.stdout} ${stp.stderr}`.slice(0, 300));
+  check('stop link: stops ONLY the host: the browser the host opened (recorded pid) is still running', so?.browsersKept === true && isAlive(dummy.pid) && !(so?.pids || []).includes(dummy.pid));
+  try { process.kill(dummy.pid); } catch { /* gone */ }
+
   // ═══ N15 the launcher and its Desktop copy (Windows) ═══
   if (win) {
     const lnkDir = mk('lnk'); const desktop = mk('desktop'); const local = mk('l2');
