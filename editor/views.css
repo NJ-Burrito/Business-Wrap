@@ -60,6 +60,11 @@
 /* 0.16.4 the repeated table header of a continued table: room on the row that opens the column, the header drawn over it */
 @media screen {
   #bw-pair .bw-view > main.bw-doc tr[data-rpt] > td { padding-top: calc(2.5mm + var(--rpt, 0px)); }
+  /* 0.17.0 a row cut across columns: every fragment takes the header's room on top (box-decoration-break), the first one keeps its own top padding by the pull of the
+     ::before, and the bottom padding sits after the last fragment's content (::after) so a cloned fragment foot does not eat the room the lines had */
+  #bw-pair .bw-view > main.bw-doc tr[data-rptc] > td { box-decoration-break: clone; padding-top: var(--rptc); padding-bottom: 0; orphans: 1; widows: 1; /* Chrome breaks a cell that has to lend its first fragment its cloned padding by the lines that fit, as the print did for the row */ }
+  #bw-pair .bw-view > main.bw-doc tr[data-rptc] > td::before { content: ""; display: block; margin-bottom: calc(var(--rpt1) - var(--rptc)); }
+  #bw-pair .bw-view > main.bw-doc tr[data-rptc] > td::after { content: ""; display: block; height: var(--rptb); }
   #bw-pair .bw-view > main.bw-doc > .bw-rpts { position: absolute; inset-block-start: 0; inset-inline-start: 0; width: 0; height: 0; pointer-events: none; }
   #bw-pair .bw-rpts .bw-rpt { position: absolute; background: var(--paper, #fafaf9); /* doc-colour */ }
 }

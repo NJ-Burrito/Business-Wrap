@@ -377,6 +377,22 @@ bwExt({
     // a typed line break shows in the page at once (the print path has <br>; the editor's leaf keeps its newline until its next render)
     boot: () => w2docCss('w2w-css', 'html.bw-ed #bw-pair :is(span, td, th, p, li, h1, h2, h3, h4, caption, bdi)[data-p] { white-space: pre-line !important; }'),
     keydown: (e) => {
+      // 0.17.0 · Backspace / Delete on a clicked blank line removes that line, as in Word: the line caret (26-lines) takes its place and deletes it,
+      // so both editions and one undo step come from the same code as the line caret's own Backspace / Delete (an other edition with words there is kept)
+      if ((e.key === 'Backspace' || e.key === 'Delete') && !e.isComposing && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && EXT.w2lines) {
+        const el = w2leafEl(e.target);
+        const m = el?.isContentEditable && /^(.*\/blocks)\/(\d+)\/paragraphs\/0$/.exec(el.dataset.p || '');
+        if (m && !el.textContent.trim()) {
+          const ed = el.closest('main.bw-doc')?.dataset.locale || S.ed;
+          const blk = get(cur(ed).doc, `${m[1]}/${m[2]}`);
+          if (blk?.kind === 'prose' && !blk.id && !blk.layout && blk.paragraphs?.length === 1 && typeof blk.paragraphs[0] === 'string' && !blk.paragraphs[0].trim()) {
+            e.preventDefault();
+            EXT.w2lines.place(m[1], +m[2], ed);
+            EXT.w2lines.del();
+            return true;
+          }
+        }
+      }
       if (e.key !== 'Enter' || e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return false;
       const el = w2leafEl(e.target);
       if (!el || !el.isContentEditable) return false;

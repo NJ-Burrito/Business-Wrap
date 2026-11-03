@@ -269,40 +269,53 @@ function viewsRepeat(main, g) {
     return Math.max(0, Math.floor(((rtl ? o.right - c : c - o.left) + 1) / pitch));
   };
   const rowsOf = (t) => [...t.tBodies].flatMap((b) => [...b.rows]);
-  /** The rows that open a column (never the table's first row), in the layout as it stands. */
+  /** The rows that open a column (never the table's first row), and the rows Chrome cuts across columns (a later fragment starts a column), in the layout as it stands. */
   const opens = (t) => {
-    const out = new Set();
+    const out = new Set(), cut = new Set();
     let prev = -1;
     rowsOf(t).forEach((r, i) => {
       const rs = [...r.getClientRects()].filter((q) => q.height >= 1);
       if (!rs.length) return;
       if (i > 0 && prev >= 0 && colOf(t, rs[0]) > prev) out.add(r);
+      if (colOf(t, rs[rs.length - 1]) > colOf(t, rs[0])) cut.add(r);
       prev = colOf(t, rs[rs.length - 1]);
     });
-    return out;
+    return { out, cut };
   };
   const room = new Map(tables.map((t) => [t, t.tHead.getBoundingClientRect().height / z]));
+  // the row's own paddings, read before any room is added (the continuation fragment takes the header's height in place of the top padding, the last fragment keeps the bottom one)
+  const pad = new Map(tables.flatMap((t) => rowsOf(t)).filter((r) => r.cells[0]).map((r) => { const cs = getComputedStyle(r.cells[0]); return [r, [cs.paddingTop, cs.paddingBottom]]; }));
   for (let pass = 0; pass < 6; pass += 1) {
     let changed = false;
     for (const t of tables) {
-      const now = opens(t);
+      const { out: now, cut } = opens(t);
       for (const r of rowsOf(t)) {
         const on = now.has(r);
         if (on && !r.dataset.rpt) { r.dataset.rpt = '1'; r.style.setProperty('--rpt', `${room.get(t).toFixed(2)}px`); changed = true; } else if (!on && r.dataset.rpt) { r.removeAttribute('data-rpt'); r.style.removeProperty('--rpt'); changed = true; }
+        // 0.17.0 · a row cut at the foot of a column: the PDF draws the header above the continuation too (a row that stays whole has no later fragment)
+        const c = cut.has(r) && pad.has(r);
+        if (c) {
+          if (!r.dataset.rptc) { r.dataset.rptc = '1'; r.style.setProperty('--rptc', `${room.get(t).toFixed(2)}px`); r.style.setProperty('--rptb', pad.get(r)[1]); changed = true; }
+          r.style.setProperty('--rpt1', on ? 'calc(2.5mm + var(--rpt, 0px))' : pad.get(r)[0]);
+        } else if (r.dataset.rptc) { r.removeAttribute('data-rptc'); ['--rptc', '--rptb', '--rpt1'].forEach((k) => r.style.removeProperty(k)); changed = true; }
       }
     }
     if (!changed) break;
   }
   const mr = main.getBoundingClientRect();
   let html = '';
-  for (const t of tables) for (const r of t.querySelectorAll('tr[data-rpt]')) {
-    const q = r.getClientRects()[0];
-    if (!q) continue;
+  for (const t of tables) for (const r of t.querySelectorAll('tr[data-rpt], tr[data-rptc]')) {
+    const rs = [...r.getClientRects()].filter((q) => q.height >= 1);
+    if (!rs.length) continue;
+    // the fragments that start a column: the first one when the row opens it, every later one in a new column (the continuation)
+    const marks = rs.filter((q, i) => (i === 0 ? r.dataset.rpt : r.dataset.rptc && colOf(t, q) > colOf(t, rs[i - 1])));
     const ths = [...t.tHead.rows[0]?.cells || []].map((c) => c.getBoundingClientRect().width / z);
     const head = t.tHead.cloneNode(true);
     head.querySelectorAll('[data-p],[contenteditable],[id]').forEach((e) => { e.removeAttribute('data-p'); e.removeAttribute('contenteditable'); e.removeAttribute('id'); e.removeAttribute('tabindex'); });
-    const w = q.width / z;
-    html += `<div class="bw-rpt" style="inset-inline-start:${((rtl ? mr.right - q.right : q.left - mr.left) / z).toFixed(2)}px;top:${((q.top - mr.top) / z).toFixed(2)}px;width:${w.toFixed(2)}px"><table class="${esc(t.className)}" style="table-layout:fixed;width:${w.toFixed(2)}px;margin:0"><colgroup>${ths.map((x) => `<col style="width:${x.toFixed(2)}px">`).join('')}</colgroup>${head.outerHTML}</table></div>`;
+    for (const q of marks) {
+      const w = q.width / z;
+      html += `<div class="bw-rpt" style="inset-inline-start:${((rtl ? mr.right - q.right : q.left - mr.left) / z).toFixed(2)}px;top:${((q.top - mr.top) / z).toFixed(2)}px;width:${w.toFixed(2)}px"><table class="${esc(t.className)}" style="table-layout:fixed;width:${w.toFixed(2)}px;margin:0"><colgroup>${ths.map((x) => `<col style="width:${x.toFixed(2)}px">`).join('')}</colgroup>${head.outerHTML}</table></div>`;
+    }
   }
   if (!html) return;
   const lay = document.createElement('div');
@@ -408,7 +421,7 @@ function viewsReveal(page) {
 /** Take the boxes of another size, their empty slots and the sheets away again: the markup is the document's own. */
 function viewsUnwrap(root0) {
   root0.querySelectorAll('.bw-rpts').forEach((x) => x.remove());
-  root0.querySelectorAll('tr[data-rpt]').forEach((r) => { r.removeAttribute('data-rpt'); r.style.removeProperty('--rpt'); });
+  root0.querySelectorAll('tr[data-rpt], tr[data-rptc]').forEach((r) => { r.removeAttribute('data-rpt'); r.removeAttribute('data-rptc'); ['--rpt', '--rptc', '--rptb', '--rpt1'].forEach((k) => r.style.removeProperty(k)); });
   root0.querySelectorAll('.bw-slot, .bw-sheets').forEach((x) => x.remove());
   root0.querySelectorAll('.bw-frun').forEach((b) => b.replaceWith(...b.childNodes));
   root0.querySelectorAll('main.bw-doc[data-bwmix]').forEach((m) => { delete m.dataset.bwmix; });
