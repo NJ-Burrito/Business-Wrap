@@ -296,11 +296,23 @@ try {
   await act('check'); await wait(300);
   const logoJump = await R((r) => [...r.querySelectorAll('.drawer li')].filter((li) => /الشعار|logo/i.test(li.textContent)).map((li) => !!li.querySelector('.jump')));
   check(17, 'check panel: the logo-slot finding has «اذهب إليه» too', logoJump.length > 0 && logoJump.every(Boolean), JSON.stringify(logoJump), true);
+  {
+    // the logo finding's jump rings the cover's logo slot (this was the jump the old test clicked by accident: it came first in the list)
+    const lj = page.locator('#bw-ui-host >> css=.drawer .jump[data-go="#logos"]').first();
+    await page.evaluate(() => { window.__ring = null; new MutationObserver(() => { const e = document.querySelector('main.bw-doc .bw-jump'); if (e && !window.__ring) window.__ring = { tag: e.tagName, cls: e.className }; }).observe(document.body, { attributes: true, attributeFilter: ['class'], subtree: true }); });
+    if (await lj.count()) await lj.click();
+    await page.waitForFunction(() => !!window.__ring, null, { timeout: 4000 }).catch(() => {});
+    check(17, 'check panel: the logo-slot jump rings the cover lockup in the body', !!(await page.evaluate(() => window.__ring)), JSON.stringify({ ring: await page.evaluate(() => window.__ring), vw: 1366 }));
+  }
   await page.mouse.click(1000, 450); await wait(300);
   const num0 = await page.evaluate(() => window.BW.M[window.BW.S.svc][window.BW.S.ed].doc.chapters[1].sections[1].number);
-  await page.evaluate(() => window.BW.setText('/chapters/1/sections/1/number', '9.9')); // a numbering finding, pointing at section 2.2
+  // Since 0.15.0 numbers print by position, so a stored number is only checked in a document that opted into manual numbering: opt in, then a wrong stored number is a finding pointing at section 2.2
+  const numMode0 = await page.evaluate(() => window.BW.M[window.BW.S.svc][window.BW.S.ed].doc.control?.numbering ?? null);
+  await page.evaluate(() => { window.BW.setText('/control/numbering', 'manual'); window.BW.setText('/chapters/1/sections/1/number', '9.9'); });
   await act('check'); await wait(300);
-  const jump = page.locator('#bw-ui-host >> css=.drawer .jump').first();
+  // the finding for THIS section, by its pointer: the panel lists every finding of the document, and on another machine (fonts, window) an earlier one can come first
+  const jumps = await R((r) => [...r.querySelectorAll('.drawer .jump')].map((j) => j.dataset.go || ('fix:' + j.dataset.fix)));
+  const jump = page.locator('#bw-ui-host >> css=.drawer .jump[data-go="/chapters/1/sections/1/title"]').first();
   const hasJump = await jump.count();
   // The ring lives 1.2 s; a click on a slow Linux runner can return after it is gone (CI runs 41202743358, 41205827544: null). Record the moment it is added.
   await page.evaluate(() => {
@@ -310,10 +322,11 @@ try {
   if (hasJump) await jump.click();
   await page.waitForFunction(() => !!window.__ring, null, { timeout: 4000 }).catch(() => {});
   const ring = await page.evaluate(() => window.__ring);
-  check(17, 'check panel: a numbering finding has «اذهب إليه»', hasJump > 0);
-  check(17, 'check panel: the jump rings the section in the document body (not its TOC row)', !!ring && !ring.inToc, JSON.stringify(ring), true);
+  check(17, 'check panel: a numbering finding has «اذهب إليه»', hasJump > 0, JSON.stringify(jumps));
+  const diag = await page.evaluate(() => { const m = document.querySelector('main.bw-doc'); const e = m?.querySelector('[data-p="/chapters/1/sections/1/title"]'); const r = e?.getBoundingClientRect(); return { vw: innerWidth, vh: innerHeight, found: !!e, rect: r && [Math.round(r.top), Math.round(r.height)], rung: !!document.querySelector('.bw-jump') }; });
+  check(17, 'check panel: the jump rings the section in the document body (not its TOC row)', !!ring && !ring.inToc, JSON.stringify({ ring, jumps, diag }), true);
   await page.mouse.click(1000, 450); await wait(300);
-  await page.evaluate((n) => window.BW.setText('/chapters/1/sections/1/number', n), num0);
+  await page.evaluate(([n, c]) => { window.BW.setText('/chapters/1/sections/1/number', n); window.BW.setText('/control/numbering', c || 'auto'); }, [num0, numMode0]);
 
   // L21 page size and orientation; L22 a page break before a section
   await page.evaluate(() => window.BW.EXT.w2layout.page('A3', 'landscape', 'section', '/chapters/1/sections/0/blocks/0'));
