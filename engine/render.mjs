@@ -689,6 +689,10 @@ caption.story-head .sn{color:var(--accent);font-weight:700;margin-inline-end:3mm
   margin:0 0 2.5mm;break-after:avoid}
 .cards-label{margin-top:0}
 .dict-label{margin-top:4mm}
+/* 0.16.3 (shape): the label part and a table's header stay with its first row (the owner's PDF stranded a title and header on a page of their own) */
+.story.lbl{break-after:avoid}
+table.dict.shape thead tr{break-after:avoid}
+table.dict.shape tbody tr:first-child{break-before:avoid}
 .story-info{margin-bottom:0;table-layout:fixed}
 table.control.story-info th,table.control.story-info td{border:1px solid var(--rule);
   padding:2.5mm 3mm;font-size:var(--t-table);vertical-align:top}
@@ -1247,6 +1251,11 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     }
   }
 
+  // 0.16.3 (shape): the house labels the story card's parts carry, in the document's own wording and in both locales' defaults
+  const SHAPE_LABELS = new Set([L.actionsTable, L.dictionary, 'جدول الإجراءات', 'قاموس البيانات والمصطلحات', 'Actions table', 'Data dictionary and terms']
+    .filter((x) => typeof x === 'string' && x).map((x) => x.replace(/\s+/g, ' ').trim().toLowerCase()));
+  const isShapeLabel = (blk) => blk?.kind === 'subhead' && typeof blk.text === 'string' && SHAPE_LABELS.has(blk.text.replace(/[\s:：]+$/u, '').replace(/\s+/g, ' ').trim().toLowerCase());
+
   function groupForPaging(blocks, base, heading = '', cseg = 0) {
     const out = [];
     let pending = heading;
@@ -1289,6 +1298,45 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
         out.push(renderBlock(block, b));
         pending = '';
         return i;
+      }
+      // 0.16.3 (shape): the field shape — a house-label subhead («جدول الإجراءات», «قاموس البيانات والمصطلحات») and the plain table under it, built
+      // by an agent rather than as `stories` blocks — prints as the story card's parts. Stored data is untouched; only these label+table pairs match.
+      if (isShapeLabel(block) && blocks[i + 1]?.kind === 'table' && next) {
+        let end = i + 2;
+        while (isShapeLabel(blocks[end]) && blocks[end + 1]?.kind === 'table' && !(segOn && segStarts.has(`${base}/${end}`))) end += 2;
+        const parts = [];
+        for (let k = i; k < end; k += 2) {
+          const lp = `${base}/${k}`;
+          const tp = `${base}/${k + 1}`;
+          const tb = blocks[k + 1];
+          const label = `<p class="run-in dict-label"${dp(lp + '/text')}${leafAttrs(blocks[k].text)}>${bidi(blocks[k].text)}</p>`;
+          parts.push({ b: lp, cls: 'lbl', html: label });
+          parts.push({
+            b: tp,
+            cls: 'plain',
+            html: table({
+              columns: (tb.columns || []).map(keepLeaf),
+              rows: (tb.rows || []).map((r) => r.map(keepLeaf)),
+              colsPtr: `${tp}/columns`,
+              rowsPtr: `${tp}/rows`,
+              extra: 'dict shape',
+              alt: true,
+              ...(o.editor ? { b: tp, tb: tp } : {}),
+              merges: tb.merges,
+              colWidths: tb.colWidths,
+              rowHeights: tb.rowHeights,
+              blankCell: tb.blankCell,
+            }),
+          });
+        }
+        const grp = parts
+          .map((p, k) => `<div class="story ${parts.length === 1 ? '' : k === 0 ? 'part-first' : k === parts.length - 1 ? 'part-last' : 'part-mid'} ${p.cls}" data-b="${attr(p.b)}">
+  ${p.html}
+</div>`)
+          .join(NL);
+        out.push(pending ? pending + NL + grp : grp);
+        pending = '';
+        return end - 1;
       }
       const shortTable = next?.kind === 'table' && (next.rows?.length ?? 0) <= GROUPABLE_ROWS;
       if (block.kind === 'subhead' && next) {

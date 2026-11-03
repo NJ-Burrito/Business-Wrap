@@ -412,6 +412,14 @@ def card_paragraph(paragraph, roles, edges=('left', 'right'), start_edge=None, f
         shd.set(qn('w:fill'), _hex(roles['card']))
         pPr.insert_element_before(shd, *_PPR_AFTER_BDR[1:])
 
+def is_shape_label(block) -> bool:
+    """0.16.3: a subhead that carries one of the story card's house labels (this document's wording or either locale's default)."""
+    if not isinstance(block, dict) or block.get('kind') != 'subhead' or not isinstance(block.get('text'), str):
+        return False
+    known = {L.get('actionsTable'), L.get('dictionary'), _I18N['doc']['ar']['actionsTable'], _I18N['doc']['ar']['dictionary'], _I18N['doc']['en']['actionsTable'], _I18N['doc']['en']['dictionary']}
+    norm = lambda x: re.sub(r'\s+', ' ', re.sub(r'[\s:：]+$', '', x)).strip().lower()
+    return norm(block['text']) in {norm(x) for x in known if isinstance(x, str) and x}
+
 def card_gap(document, roles, closing=False):
     """The sand strip between the parts of a story card (and its closing edge): a 4 pt shaded paragraph, not an empty body line."""
     p = document.add_paragraph()
@@ -1000,7 +1008,11 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                 num.font.color.rgb = theme_mod.rgb(roles['gold'])
                 num._element.get_or_add_rPr().insert(0, _font_el(F['display']))
                 add_script_runs(h2, sec['title'], F['display'], bold=True)
-            for bi, block in enumerate(sec.get('blocks', [])):
+            _blocks = sec.get('blocks', [])
+            _shape_skip = set()
+            for bi, block in enumerate(_blocks):
+                if bi in _shape_skip:
+                    continue
                 if block.get('hidden'):
                     continue
                 bptr = f'/chapters/{ci}/sections/{si}/blocks/{bi}'
@@ -1022,6 +1034,18 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                         if info:
                             MD.number_paragraph(document, p, info)
                     counters['prose_block'] += 1
+                elif kind == 'subhead' and is_shape_label(block) and bi + 1 < len(_blocks) and _blocks[bi + 1].get('kind') == 'table' and not _blocks[bi + 1].get('hidden'):
+                    # 0.16.3 (shape): the field shape (a house-label subhead and the plain table under it) prints as the story card's part, as render.mjs does
+                    tb = _blocks[bi + 1]
+                    _shape_skip.add(bi + 1)
+                    label_bar(document, block.get('text', ''), font, roles)
+                    shape_tbl = add_table(document, tb.get('columns', []), tb.get('rows', []), font, spec=tb)
+                    theme_mod.style_dictionary_table(shape_tbl, _THEME_ROLES)
+                    keep_header_with_next(shape_tbl)
+                    _nx = _blocks[bi + 2] if bi + 2 < len(_blocks) else {}
+                    _nn = _blocks[bi + 3] if bi + 3 < len(_blocks) else {}
+                    card_gap(document, roles, closing=not (is_shape_label(_nx) and _nn.get('kind') == 'table'))
+                    counters['shape_card_part'] = counters.get('shape_card_part', 0) + 1
                 elif kind == 'subhead':
                     p = document.add_paragraph()
                     p.paragraph_format.keep_with_next = True

@@ -138,6 +138,7 @@ Always `PYTHONUTF8=1` on Windows; Python packages through `uv`.
 6. Logo slots ship empty; the tool watermark stays in the editor UI and never reaches an output.
 7. Zero client content in the repo; run `security/check.py` before every commit and push.
 8. Judge Arabic PDF text with poppler `pdftotext -enc UTF-8`; an empty read is a tool suspicion.
+9. A user story is a `stories` block (`id`, `name`, `as`, `goal`, `acceptance[]`, optional `actions` and `dictionary` tables), not a subhead plus plain tables. A label subhead («جدول الإجراءات», «قاموس البيانات والمصطلحات») followed by a table still prints as the story card (0.16.3), but only a `stories` block keeps the card's fields and tools.
 
 ## Common mistakes
 | Mistake | Fix |
