@@ -427,14 +427,15 @@ try {
     check(`${ui}: avatar absent from the editor's print`, imgsA === '0', `images=${imgsA}`);
     await ctxA.close();
   }
-  // reduced motion: no intro, no float or tilt
-  const ctxR = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 1366, height: 900 } });
+  // calm (0.17.0: only the Calm button reduces motion, not the OS setting): no intro, no float or tilt
+  const ctxR = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+  await ctxR.addInitScript(() => { try { localStorage.setItem('bw:calm', '1'); } catch { /* none */ } });
   const pr = await ctxR.newPage();
   await pr.goto(pathToFileURL(avatarEditor).href);
   await pr.waitForFunction(() => window.BW_WM);
   await pr.waitForTimeout(300);
   const rm = await pr.evaluate(() => { const w = document.getElementById('bw-watermark'); return { intro: w.dataset.intro, role: w.dataset.role, transform: w.querySelector('.bw-wm-mark').style.transform }; });
-  check('reduced motion: avatar skips the intro and does not move', rm.intro === 'done' && rm.role === 'tester' && !rm.transform, JSON.stringify(rm));
+  check('calm: avatar skips the intro and does not move', rm.intro === 'done' && rm.role === 'tester' && !rm.transform, JSON.stringify(rm));
   await ctxR.close();
 
   // ── the redesigned shell ──────────────────────────────────────────────
@@ -557,13 +558,22 @@ try {
   if (brandMarks().stub) skip('brand mark draws itself on load', 'brand/v3/logo/mark.svg not present (brand package not merged here)');
   else check('brand mark draws itself on load (animated SVG works inline)', reveal[2] !== 'none' && parseFloat(reveal[0]) > 0 && parseFloat(reveal[1]) === 0, JSON.stringify(reveal));
   await ctxM.close();
-  const ctxR2 = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 1366, height: 900 } });
+  const ctxR2 = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+  await ctxR2.addInitScript(() => { try { localStorage.setItem('bw:calm', '1'); } catch { /* none */ } });
   const pr2 = await ctxR2.newPage();
   await pr2.goto(editorUrl);
   await pr2.waitForFunction(() => window.BW?.ready);
   const rm2 = await pr2.evaluate(() => { const sh = document.getElementById('bw-ui-host').shadowRoot; return { island: getComputedStyle(sh.querySelector('.island')).animationName, mark: getComputedStyle(sh.querySelector('.brand svg .ln') || sh.querySelector('.brand svg path')).strokeDashoffset }; });
-  check('reduced motion: the shell and the brand mark stay still', rm2.island === 'none' && parseFloat(rm2.mark) === 0, JSON.stringify(rm2));
+  check('calm: the shell and the brand mark stay still', rm2.island === 'none' && parseFloat(rm2.mark) === 0, JSON.stringify(rm2));
   await ctxR2.close();
+  // 0.17.0 (owner 2026-10-31): the OS reduced-motion setting alone does not still the shell
+  const ctxR3 = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 1366, height: 900 } });
+  const pr3 = await ctxR3.newPage();
+  await pr3.goto(editorUrl);
+  await pr3.waitForFunction(() => window.BW?.ready);
+  const rm3 = await pr3.evaluate(() => ({ calm: window.BW.S.calm, island: getComputedStyle(document.getElementById('bw-ui-host').shadowRoot.querySelector('.island')).animationName }));
+  check('OS reduced motion alone: not calm, the shell still animates (only Calm reduces motion)', rm3.calm === false && rm3.island !== 'none', JSON.stringify(rm3));
+  await ctxR3.close();
   // brand v3: the inline mark carries the "Cover" parts the chrome animates (DESIGN c.3), and brandCss() scopes the tokens
   if (brandMarks().stub) skip('brand mark: v3 part classes', 'brand/v3/logo/mark.svg not present');
   else {

@@ -79,16 +79,14 @@ async function openPage(ctx, url, ports) {
   await page.waitForFunction(() => window.BW?.ready);
   await page.evaluate(() => { try { window.BW.EXT.session?.on?.('flush', () => { window.__flushes++; }); } catch { /* no session module (file://) */ } }); // 0.15.0: the event stream lives in a SharedWorker; the page sees a flush through the session hub
   await sleep(500);
-  await page.evaluate(() => window.BW.runAction('settings'));
-  await page.waitForFunction(() => window.BW.S.drawer === 'settings');
   await sleep(700);
   await page.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.querySelector('[data-s="new"]')?.click()); // a served tab of a host that has other tabs asks «resume?»: answer «start fresh», it is not what is tested here
-  await page.waitForFunction(() => !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.set-srv-body .set-status'), null, { timeout: 15000 });
+  await page.waitForFunction(() => /^(online|offline|error)$/.test(document.getElementById('bw-ui-host').shadowRoot.querySelector('.island .srv-toggle')?.dataset.st || ''), null, { timeout: 15000 }); // 0.17.0: the top-bar switch is the only server control
   return page;
 }
-const card = (page) => shRoot(page, (r) => { const b = r.querySelector('.set-srv-body'); const tg = b.querySelector('.srv-toggle'); const st = tg?.dataset.st || ''; return { status: b.querySelector('.set-status')?.textContent.trim(), st, start: st === 'offline' || st === 'error', stop: st === 'online', open: b.querySelector('[data-k="srvOpen"]')?.dataset.v || null, word: tg?.querySelector('.srv-w')?.textContent }; });
+const card = (page) => shRoot(page, (r) => { const tg = r.querySelector('.island .srv-toggle'); const st = tg?.dataset.st || ''; const word = tg?.querySelector('.srv-w')?.textContent || ''; return { status: word, st, start: st === 'offline' || st === 'error', stop: st === 'online', open: st === 'online' ? (/:(\d+)\s*$/.exec(word)?.[1] || null) : null, word }; }); // 0.17.0: read from the top-bar switch; open = the port it names
 // the one toggle starts when it is offline and stops when it is online (srvStart / srvStop name the intent; srvOpen is the link beside it)
-const press = (page, k) => shRoot(page, (r, key) => r.querySelector(key === 'srvOpen' ? '.set-srv-body [data-k="srvOpen"]' : '.set-srv-body .srv-toggle').click(), k);
+const press = (page) => shRoot(page, (r) => r.querySelector('.island .srv-toggle').click()); // the top-bar switch starts when offline and stops when online
 const dlg = (page) => shRoot(page, (r) => { const d = r.querySelector('.dialog'); return { open: !d.hidden, text: d.textContent, focus: d.querySelector(':focus')?.dataset.k || r.activeElement?.dataset.k, hasFocus: document.hasFocus(), vis: document.visibilityState, ae: r.activeElement?.outerHTML?.slice(0, 160) }; });
 const toastTexts = (page) => shRoot(page, (r) => [...r.querySelectorAll('.toasts .toast')].map((t) => t.textContent.trim()));
 const dlgBtn = (page, k) => shRoot(page, (r, key) => r.querySelector(`.dialog [data-k="${key}"]`).click(), k);
@@ -167,23 +165,23 @@ try {
   const ctx1 = await browser.newContext({ viewport: { width: 1366, height: 860 } });
   const f1 = await openPage(ctx1, fileUrl, [pOpen]);
   const c0 = await card(f1);
-  check('start/no server: a file:// page says its server is stopped, its toggle is offline (press = start), no Open', /متوقف|stopped/.test(c0.status) && c0.start && !c0.stop && !c0.open, JSON.stringify(c0));
+  check('start/no server: a file:// page shows «غير متصل»/Offline, its toggle is offline (press = start), no port', /غير متصل|Offline/.test(c0.status) && c0.start && !c0.stop && !c0.open, JSON.stringify(c0));
   await press(f1, 'srvStart');
   await until(async () => (await f1.evaluate(() => window.__launched.length)) > 0, 5000);
   const launched = await f1.evaluate(() => window.__launched);
-  const want = `business-wrap://open?file=${encodeURIComponent(editor)}`;
-  check('start/no server: Start hands business-wrap://open?file=<this file> to the browser', launched.length === 1 && launched[0] === want, JSON.stringify(launched));
+  const want = 'business-wrap://start';
+  check('start/no server: Start hands business-wrap://start to the browser', launched.length === 1 && launched[0] === want, JSON.stringify(launched));
   const h = handler(launched[0], { BW_OPEN_PORT: String(pOpen) });
-  check('start/no server: the real handler opens that file and a server answers on the probe port', h.status === 0 && (await up(pOpen)), `${h.status} ${h.stderr} ${h.stdout}`.slice(0, 300));
+  check('start/no server: the real handler starts a host and a server answers on the probe port', h.status === 0 && (await up(pOpen)), `${h.status} ${h.stderr} ${h.stdout}`.slice(0, 300));
   const seen = await until(async () => (await card(f1)).open === String(pOpen), 15000);
   const c1 = await card(f1);
-  check('start/no server: the page notices and offers «Open from the server» for that port', seen && c1.status.includes(String(pOpen)), JSON.stringify(c1));
+  check('start/no server: the page notices and the switch names that port', seen && c1.status.includes(String(pOpen)), JSON.stringify(c1));
   check('start/no server: the toggle now reads «متصل :port» (press = stop)', await (async () => { const l = await card(f1); return l.stop && l.word === `متصل :${pOpen}`; })());
   const hostBefore = hostPort();
 
   // 2. one server already running: pressing Start asks the ports first, finds it, launches nothing and offers «Open from the server»
   const c2 = await card(f1);
-  check('start/one server: the page shows the running port and Open', c2.open === String(pOpen) && c2.status.includes(String(pOpen)), JSON.stringify(c2));
+  check('start/one server: the switch shows the running port', c2.open === String(pOpen) && c2.status.includes(String(pOpen)), JSON.stringify(c2));
   await f1.evaluate(() => window.dispatchEvent(new Event('focus'))); // the window regains focus: the page asks the ports again, and finds the one that answers
   await sleep(2500);
   const afterOne = await f1.evaluate(() => window.__launched);
@@ -271,7 +269,7 @@ try {
   check('stop/file: one press hands business-wrap://stop to the browser', stopUrl === 'business-wrap://stop', stopUrl);
   const hs = handler(stopUrl);
   check('stop/file: the real handler stops both servers; the unrelated node process lives', hs.status === 0 && (await until(async () => !alive(D.pid) && !alive(E.pid) && !(await up(D.port)) && !(await up(E.port)), 25000)) && alive(other), `${hs.status} ${hs.stderr}`);
-  check('stop/file: the page notices — «every server stopped», no Open button', await until(async () => { const c = await card(fd); return !c.open && /تم إيقاف|stopped|لا يعمل|No server|متوقف/.test(c.status); }, 15000));
+  check('stop/file: the page notices — the switch reads «غير متصل» and names no port', await until(async () => { const c = await card(fd); return !c.open && c.st === 'offline' && /غير متصل|Offline/.test(c.status); }, 15000));
   await ctxD.close();
 
   // a server of ANOTHER state folder (a parallel suite, another profile) is not this install's to stop: stop-all keeps it

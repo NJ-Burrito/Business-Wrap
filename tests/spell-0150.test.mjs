@@ -52,6 +52,7 @@ async function open(file, { served = true } = {}) {
   page.on('request', (r) => page.reqs.push(r.url()));
   page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') page.cons.push(m.text()); });
   await page.addInitScript(() => {
+    try { if (!sessionStorage.getItem('bw-50-init')) { sessionStorage.setItem('bw-50-init', '1'); localStorage.setItem('bw:spell:on', '0'); } } catch { /* no storage */ } // 0.17.0: checking is on by default; these checks start from an explicit off
     window.__long = [];
     try { new PerformanceObserver((l) => l.getEntries().forEach((e) => window.__long.push(Math.round(e.duration)))).observe({ entryTypes: ['longtask'] }); } catch { /* no longtask support */ }
   });

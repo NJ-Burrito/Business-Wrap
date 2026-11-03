@@ -388,20 +388,20 @@ try {
       await p.waitForTimeout(60);
       const idle = await anims(p);
       await p.locator('.brand').hover();
-      await p.waitForTimeout(120);
+      await p.waitForTimeout(500); // 0.17.0 motion: the parts move once the pointer has rested (120 ms)
       const hov = await anims(p);
       await ctx.close();
       return { idle, hov };
     };
     const n = await shot22('normal', {});
-    const hovNames = [...new Set(n.hov.filter((x) => /^bwm-hov/.test(x)))];
+    const hovNames = [...new Set(n.hov.filter((x) => /^bwm-(hov|hop|cap-flip|rule-snap)/.test(x)))]; // 0.17.0 motion: the mark's hover is bwm-hop + cap flip + rule snap on top of the sheet and spine
     const idleNames = [...new Set(n.idle.filter((x) => /^bwm-idle/.test(x)))];
     check('A22: the mark moves while idle (≥ 3 idle nods; no infinite loop since 0.15.0)', idleNames.length >= 3, idleNames.join(','));
     check('A22: hover plays ≥ 3 animations on the parts of the mark (spine, cap, lines, rule, sheet)', hovNames.length >= 3, hovNames.join(','));
     const c = await shot22('calm', {}, true);
     check('A22: calm mode → 0 animations on the mark (idle and hover)', c.idle.length === 0 && c.hov.length === 0, `${c.idle} | ${c.hov}`);
     const rm = await shot22('reduced', { reducedMotion: 'reduce' });
-    check('A22: reduced motion → 0 animations on the mark (idle and hover)', rm.idle.length === 0 && rm.hov.length === 0, `${rm.idle} | ${rm.hov}`);
+    check('A22: OS reduced motion does not still the mark (owner 2026-10-31: only Calm reduces motion): it still moves idle', rm.idle.length > 0, `${rm.idle} | ${rm.hov}`);
   }
 
   // ── 0.13 icon motion (owner request 2026-10-29): every icon added in 0.13.0 (BW.IC keys not in editor/icons.json; a
@@ -460,7 +460,8 @@ try {
       await c.p.locator(`#icm-probe [data-probe="${c.keys[0]}"]`).hover();
       await c.p.waitForTimeout(60);
       const a = await icm(c.p, '#icm-probe .ic');
-      check(`0.13 icons: ${name} → 0 icon animations (${c.keys.length} pressed + hovered)`, a.length === 0, a.join(','));
+      if (calm) check(`0.13 icons: ${name} → 0 icon animations (${c.keys.length} pressed + hovered)`, a.length === 0, a.join(','));
+      else check(`0.13 icons: ${name} does not still the icons (owner 2026-10-31: only Calm reduces motion): the hovered icon plays`, a.length >= 1, a.join(',')); // OS reduced motion
       await c.ctx.close();
     }
   }

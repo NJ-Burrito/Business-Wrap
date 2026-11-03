@@ -27,10 +27,10 @@ buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: f, set:
 const browser = await launch();
 const opened = [];
 /** A fresh browser context (its own localStorage). `store` is written once, before the page boots (a reload keeps the stored state). */
-async function open({ store = {}, width = 1366 } = {}) {
+async function open({ store = {}, width = 1366, bare = false } = {}) {
   const server = await serve(f, 0, { workspace: null });
   const ctx = await browser.newContext({ viewport: { width, height: 860 } });
-  await ctx.addInitScript((st) => { try { if (!sessionStorage.getItem('bw-52-init')) { sessionStorage.setItem('bw-52-init', '1'); localStorage.setItem('bw:ui', 'en'); for (const [k, v] of Object.entries(st)) localStorage.setItem(k, v); } } catch { /* no storage */ } }, store);
+  await ctx.addInitScript((st) => { try { if (!sessionStorage.getItem('bw-52-init')) { sessionStorage.setItem('bw-52-init', '1'); localStorage.setItem('bw:ui', 'en'); for (const [k, v] of Object.entries(st)) localStorage.setItem(k, v); } } catch { /* no storage */ } }, { ...(bare ? {} : { 'bw:spell:on': '0' }), ...store }); // 0.17.0: checking is on by default; these checks start from an explicit off
   const page = await ctx.newPage();
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
@@ -82,7 +82,7 @@ try {
   await sleep(300);
   const pAr = (await setLeaves(pa, 'ar', ['هذا مستنذ سليم نص']))[0];
   const pEn = (await setLeaves(pa, 'en', ['The recieve of a good document']))[0];
-  check('checking starts off (nothing stored)', await pa.evaluate(() => !BW.S.spell.ar && !BW.S.spell.en && BW.EXT.spell.issues().length === 0));
+  check('checking starts off (an explicit off is stored; the 0.17.0 default is on)', await pa.evaluate(() => !BW.S.spell.ar && !BW.S.spell.en && BW.EXT.spell.issues().length === 0));
   await pa.evaluate(() => BW.runAction('spell'));
   check('ONE command turns on both editions (S.spell.ar and S.spell.en) and stores one key bw:spell:on', await pa.evaluate(() => BW.S.spell.ar === true && BW.S.spell.en === true && localStorage.getItem('bw:spell:on') === '1'));
   check('the Arabic AND the English misspelling are both flagged with no second switch touched', await waitIssues(pa, (l) => l.some((i) => i.word === 'مستنذ' && i.ed === 'ar') && l.some((i) => i.word === 'recieve' && i.ed === 'en')), JSON.stringify(await issues(pa)));
@@ -106,7 +106,7 @@ try {
     ['old «both off» stays OFF', { 'bw:spell:ar': '0', 'bw:spell:en': '0' }, false],
     ['the new key wins over the old ones', { 'bw:spell:on': '0', 'bw:spell:ar': '1', 'bw:spell:en': '1' }, false],
   ]) {
-    const M = await open({ store });
+    const M = await open({ store, bare: true }); // bare: no explicit switch, so the old per-edition keys are what migrates
     const got = await M.page.evaluate(() => ({ ar: BW.S.spell.ar, en: BW.S.spell.en, on: localStorage.getItem('bw:spell:on'), a: localStorage.getItem('bw:spell:ar'), e: localStorage.getItem('bw:spell:en') }));
     check(`migration: ${name}`, got.ar === want && got.en === want && got.on === (want ? '1' : '0') && got.a === got.on && got.e === got.on, JSON.stringify(got));
     await M.close();

@@ -95,12 +95,11 @@ try {
   await page.goto(o.url);
   await page.waitForFunction(() => window.BW?.ready);
   await sleep(600);
-  // 0.15.0 w2: no top-bar power button; Settings › Local server holds it, under the single server toggle
+  // 0.17.0 note 10: the host on/off control is ONLY the top-bar switch (no power button in the top bar or in Settings); the `powerOff` action (confirm dialog) stays reachable through BW.runAction
   const inBar = await page.locator('.island [data-a="powerOff"]').count();
-  const openSet = async () => { await page.evaluate(() => window.BW.runAction('settings')); await page.waitForFunction(() => !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer [data-k="srvPowerOff"]')); };
-  const btn = { click: async () => { if (!(await page.locator('.drawer [data-k="srvPowerOff"]').count())) await openSet(); await page.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer [data-k="srvPowerOff"]').click()); } };
-  await openSet();
-  check('power: the top bar has no power button; Settings has it (served editor)', inBar === 0 && (await page.locator('.drawer [data-k="srvPowerOff"]').count()) === 1);
+  const inSet = await page.evaluate(async () => { window.BW.runAction('settings'); await new Promise((r) => setTimeout(r, 400)); return document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('.drawer [data-k="srvPowerOff"]').length; });
+  const btn = { click: async () => { await page.evaluate(() => { window.__pw = window.BW.runAction('powerOff'); }); } }; // not awaited: it resolves when the confirm dialog is answered
+  check('power: no power button in the top bar or in Settings (served editor); the one switch is in the top bar', inBar === 0 && inSet === 0 && (await page.locator('.island .srv-toggle').count()) === 1);
   await btn.click();
   await sleep(300);
   const asked = await page.evaluate(() => { const d = document.getElementById('bw-ui-host').shadowRoot.querySelector('.dialog'); return { open: !d.hidden, text: d.textContent, focus: d.querySelector(':focus')?.dataset.k || document.getElementById('bw-ui-host').shadowRoot.activeElement?.dataset.k }; });

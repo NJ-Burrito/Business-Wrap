@@ -218,6 +218,17 @@ const ceAsk = async (id) => {
 };
 const CE_IDS = ['cellMerge', 'cellSplit', 'cellWrap', 'cellFill', 'cellColW', 'cellRowH', 'cellClearValue', 'cellKeepEmpty', 'cellClearFormat'];
 const CE_RUN = { cellMerge: () => CE_ACT.merge(), cellSplit: () => CE_ACT.split(), cellWrap: () => CE_ACT.wrap(), cellClearValue: () => CE_ACT.clearValue(), cellKeepEmpty: () => CE_ACT.keepEmpty(), cellClearFormat: () => { CE_ACT.clearMarks(); CE_ACT.clearFormat(); }, cellFill: ceAsk, cellColW: ceAsk, cellRowH: ceAsk };
+/** 0.17.0 (fixb): the live preview of the cell font dialog, same shape as 21-format's w2preview: the first selected cell's text (else the dialog's sample) drawn in the face being chosen, at its real size. */
+function ceFontPreview() {
+  let text = '', size = 12;
+  try {
+    const tg = ceTarget();
+    const l = tg && ceBlk(tg.ed, tg.b).rows[tg.cells[0][0]][tg.cells[0][1]];
+    if (l != null) { text = String(textOf(l)).replace(/\s+/g, ' ').trim().slice(0, 80); if (isRich(l) && +l.style?.size) size = +l.style.size; }
+  } catch { /* no cell text: the sample */ }
+  const family = (f) => `font-family:'${String(f).replace(/['"\;]/g, '')}',sans-serif;`;
+  return { text, css: (v) => family(v || FONT_FAMILIES[0]) + `font-size:${size * 96 / 72}px;`, opt: family, chips: null };
+}
 /* the format bar acts on the selected cells (all of them, whole words) while a cell selection exists */
 const CE_FMT = {
   fmtBold: () => CE_ACT.mark('b'), fmtItalic: () => CE_ACT.mark('i'), fmtUnderline: () => CE_ACT.mark('u'), fmtStrike: () => CE_ACT.mark('s'), fmtCode: () => CE_ACT.mark('code'),
@@ -226,7 +237,7 @@ const CE_FMT = {
   fmtTop: () => CE_ACT.style({ valign: 'top' }), fmtMiddle: () => CE_ACT.style({ valign: 'middle' }), fmtBottom: () => CE_ACT.style({ valign: 'bottom' }),
   fmtBullets: () => CE_ACT.list('bullet'), fmtNumbers: () => CE_ACT.list('number'),
   fmtColor: async () => { const v = await ask(t('w2.colorPrompt'), '#000000', { type: 'color' }); if (/^#[0-9a-f]{6}$/i.test(v)) CE_ACT.mark('color', v); else if (v) toast(t('w2.badColor'), 'warn'); },
-  fmtFont: async () => { const v = await ask(t('w2.fontPrompt'), FONT_FAMILIES[0], { type: 'select', options: FONT_FAMILIES }); if (FONT_FAMILIES.includes(v)) CE_ACT.mark('font', v); },
+  fmtFont: async () => { const v = await ask(t('w2.fontPrompt'), FONT_FAMILIES[0], { type: 'select', options: FONT_FAMILIES, preview: ceFontPreview() }); if (FONT_FAMILIES.includes(v)) CE_ACT.mark('font', v); },
   fmtSize: async () => { const v = +(await ask(t('w2.sizePrompt'), '12', { type: 'number', min: 5, max: 72, step: 1 })); if (v >= 5 && v <= 72) CE_ACT.mark('size', v); },
 };
 

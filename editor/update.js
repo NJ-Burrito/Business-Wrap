@@ -102,7 +102,6 @@ button:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 .detail{margin:4px 0 0;font:12px/1.4 'Thmanyah Sans',system-ui,sans-serif;color:var(--soft);overflow-wrap:anywhere}
 @keyframes spin{to{transform:rotate(1turn)}}@keyframes pop{0%{transform:scale(.6)}100%{transform:scale(1)}}
 :host([data-calm="1"]) *{transition:none!important;animation:none!important}
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style><div class="card" role="status" aria-live="polite" hidden></div><div class="bar" role="status" aria-live="polite" hidden></div><div class="scrim" hidden><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="upd-h" aria-label="Business-Wrap" tabindex="-1"></div></div>`;
   document.body.appendChild(host);
   const card = ur.querySelector('.card');

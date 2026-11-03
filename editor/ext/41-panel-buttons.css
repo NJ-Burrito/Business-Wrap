@@ -24,4 +24,3 @@
 }
 
 .shell[data-calm="1"] .drawer :is(.b, .btns > button) { transition: none; transform: none !important; }
-@media (prefers-reduced-motion: reduce) { .drawer :is(.b, .btns > button) { transition: none; transform: none !important; } }

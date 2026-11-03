@@ -1,5 +1,5 @@
 // 0.13.3 icon system: every rendered .ic has its own hover/press/focus motion (a named --icm move or a brand .mv move),
-// a theme colour on hover, and nothing moves in calm mode or under prefers-reduced-motion. Walks the real editor:
+// a theme colour on hover, and nothing moves in calm mode (and icons keep moving under the OS prefers-reduced-motion: only Calm reduces motion, owner 2026-10-31). Walks the real editor:
 // toolbar, every folded menu, the view popover, the context bars, the palette and the side panels.
 //
 //   node tests/ui-icon-motion-0133.test.mjs            (UI_DUMP=1 prints the failing icons)
@@ -201,7 +201,7 @@ try {
   if (process.env.UI_DUMP) fs.writeFileSync(path.join(OUT, 'icon-rows.json'), JSON.stringify(rows));
   await ctx.close();
 
-  // calm mode and prefers-reduced-motion: no icon moves, no hover pose (hover over a sample of every third icon)
+  // calm mode: no icon moves, no hover pose; OS reduced motion: icons still move (hover over a sample of every third icon)
   const sample = items.filter((_, i) => i % 3 === 0 || ['undo', 'palette', 'image', 'save', 'delete', 'close'].includes(_.key));
   for (const mode of ['calm', 'reduced']) {
     const c2 = await freshPage(browser, { calm: mode === 'calm', reduced: mode === 'reduced' });
@@ -216,7 +216,8 @@ try {
       if (m.named || m.self || m.mvParts || m.tr !== 'none' || m.btn !== 'none') moved.push(it.key);
       await c2.page.mouse.move(5, 5);
     }
-    check(`${mode}: no icon moves on hover (animation or pose), ${sample.length} sampled`, moved.length === 0, moved.join(' '));
+    if (mode === 'calm') check(`calm: no icon moves on hover (animation or pose), ${sample.length} sampled`, moved.length === 0, moved.join(' '));
+    else check(`OS reduced motion does not still the icons (owner 2026-10-31: only Calm reduces motion): most of ${sample.length} sampled icons still move on hover`, moved.length >= Math.ceil(sample.length * 0.5), `${moved.length}/${sample.length} moved`);
     await c2.ctx.close();
   }
 

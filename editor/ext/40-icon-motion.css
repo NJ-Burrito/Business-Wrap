@@ -305,7 +305,7 @@
 [data-ic="hideBlock"] > * { --s:.78; --icm: icm-recede var(--mvt); }
 [data-ic="every"] > * { --r:180deg; --icm: icm-spin var(--mvt); }
 [data-ic="export.html"] > * { --y:-3px; --icm: icm-from var(--mvt); }
-[data-ic="export.printHtml"] > * { --s:1.14; --icm: icm-pop var(--mvt); }
+[data-ic="export.printHtml"] > *, [data-ic="export.printHtml.ar"] > *, [data-ic="export.printHtml.en"] > *, [data-ic="export.printHtml.both"] > * { --s:1.14; --icm: icm-pop var(--mvt); }
 [data-ic="export.svg"] > * { --icm: icm-draw var(--mvt); }
 [data-ic="export.png"] > * { --s:1.14; --icm: icm-pop var(--mvt); }
 [data-ic="exportAll"] > * { --y: -3px; --icm: icm-from var(--mvt); }
@@ -503,13 +503,11 @@
 @keyframes bwm-rule-snap { from { transform: scaleX(0); } 62% { transform: scaleX(1.12); } 82% { transform: scaleX(.97); } to { transform: scaleX(1); } }
 
 /* calm mode and reduced motion: drawn, never moving */
-@media (prefers-reduced-motion: reduce) { .ic[data-ic] > * { animation: none !important; } }
 .shell[data-calm="1"] .ic[data-ic] > * { animation: none !important; }
 /* 0.17.0: calm also stills the whole-icon moves (the press squash, the focus nod, the colour ease) and the brand mark's hop */
 .shell[data-calm="1"] .ic[data-ic], :host-context(html[data-bw-calm="1"]) .ic[data-ic] { animation: none !important; transition: none !important; scale: none !important; }
 .shell[data-calm="1"] .brand svg, :host-context(html[data-bw-calm="1"]) .brand svg { animation: none !important; scale: none !important; }
 .shell[data-calm="1"] .brand svg :is(.cap, .rule) { animation: none !important; }
-@media (prefers-reduced-motion: reduce) { .shell .brand svg { animation: none !important; } }
 
 /* 0.15.0: the "from this page on" button of the page-number dialog (42-button-icons.js biHere) */
 [data-ic="biHere"] > :first-child { --y: -2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }

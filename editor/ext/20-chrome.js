@@ -215,7 +215,6 @@ bwExt({
 .w2-strip .bw-band{flex-wrap:wrap;column-gap:3mm}
 .w2-strip .bw-band>*{min-width:0;overflow-wrap:anywhere}
 @media screen{#bw-pair{padding-left:var(--bw-room-l,0px);padding-right:var(--bw-room-r,0px);transition:padding .3s cubic-bezier(.16,1,.3,1)}}
-@media screen and (prefers-reduced-motion:reduce){#bw-pair{transition:none}}
 .w2-tag{font-size:8pt;color:var(--accent);font-weight:700}
 .w2-strip [data-ci]{cursor:pointer;border-radius:1mm;padding:0 1mm}
 .w2-strip [data-ci]:hover{outline:1px solid var(--rule-strong)}

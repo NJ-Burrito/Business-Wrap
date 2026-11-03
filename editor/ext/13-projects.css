@@ -64,6 +64,5 @@
 .px-modal .px-list li { margin-block: 3px; overflow-wrap: anywhere; }
 .px-modal .px-open { padding: 1px 8px; font-size: .85em; }
 .px-modal .px-btns { margin-block-start: 4px; }
-@media (prefers-reduced-motion: reduce) { .px-modal .px-bar > i { transition: none; } }
 html[data-bw-calm="1"] .px-modal .px-bar > i { transition: none; }
 .px-modal .px-plain { margin: .35rem 0; line-height: 1.7; }

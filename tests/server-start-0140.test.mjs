@@ -1,6 +1,6 @@
 // 0.14.0 S1 the server banner, 0.15.0 the server TOGGLE (editor/ext/18-server.js, lane spell, owner note 15): an editor opened with no Business-Wrap server
-// answering shows its toggle OFFLINE («غير متصل»); pressing it runs the real handler; the toggle turns ONLINE, and Settings offers «افتح المحرر من الخادم»,
-// which opens the SAME document served. The banner, its Dismiss button and its «Open» button are gone.
+// answering shows its toggle OFFLINE («غير متصل»); pressing it hands business-wrap://start to the real handler; the toggle turns ONLINE (0.17.0: no open link in Settings, the page stays),
+// The banner, its Dismiss button and its «Open» button are gone.
 //
 //   node tests/server-start-0140.test.mjs
 // Own state folders and free ports (BW_LOCAL_DIR, BW_STATE_DIR, BW_WORKSPACE, BW_PROBE_PORTS): never the user's host on 4317 and never the
@@ -43,9 +43,9 @@ async function server(port) {
 }
 const probeEnv = (ports) => { process.env.BW_PROBE_PORTS = ports.join(','); env.BW_PROBE_PORTS = ports.join(','); };
 const shRoot = (page, fn, arg) => page.evaluate(([src, a]) => { const r = document.getElementById('bw-ui-host').shadowRoot; return new Function('r', 'a', `return (${src})(r, a)`)(r, a); }, [fn.toString(), arg]);
-const bar = (page) => shRoot(page, (r) => { const b = r.querySelector('.island .srv-toggle'); if (!b) return null; return { st: b.dataset.st, dir: b.closest('.shell')?.dataset.tdir, word: b.querySelector('.srv-w')?.textContent || '', disabled: b.disabled, busy: b.getAttribute('aria-busy'), hasIcon: !!b.querySelector('svg.ic'), h: Math.round(b.getBoundingClientRect().height), role: b.getAttribute('role'), srvBar: !!r.querySelector('.srv-bar') }; });
-const press = (page, k) => shRoot(page, (r, key) => (key === 'sbOpen' ? r.querySelector('.set-srv-body [data-k="srvOpen"]') : r.querySelector('.island .srv-toggle')).click(), k); // the toggle starts or stops; the open link is in Settings
-const openSettings = async (page) => { await page.evaluate(() => window.BW.openDrawer('settings')); await until(() => shRoot(page, (r) => !!r.querySelector('.set-srv-body')), 5000); };
+const bar = (page) => shRoot(page, (r) => { const b = r.querySelector('.island .srv-toggle'); if (!b) return null; return { st: b.dataset.st, dir: b.closest('.shell')?.dataset.tdir, word: b.querySelector('.srv-w')?.textContent || '', disabled: b.disabled, busy: b.getAttribute('aria-busy'), hasIcon: !!b.querySelector('.srv-dot'), h: Math.round(b.getBoundingClientRect().height), role: b.getAttribute('role'), srvBar: !!r.querySelector('.srv-bar') }; });
+const press = (page) => shRoot(page, (r) => r.querySelector('.island .srv-toggle').click()); // the toggle starts or stops (0.17.0: the only control)
+const openSettings = async (page) => { await page.evaluate(() => window.BW.openDrawer('settings')); await sleep(700); };
 const fileUrl = pathToFileURL(editor).href;
 const PROBE = /^GET http:\/\/127\.0\.0\.1:(43(1[7-9]|2[0-7])|\d+)\/api\/version$/;
 
@@ -78,51 +78,42 @@ try {
   const f1 = await openPage(ctx1, fileUrl, { ports: [p1] });
   await until(async () => (await bar(f1))?.st === 'offline', 6000);
   const b0 = await bar(f1);
-  check('toggle/no server: «غير متصل» (offline, icon + word, a switch), right-to-left, about 40 px tall, in the top bar; no banner', b0 && b0.st === 'offline' && b0.word === 'غير متصل' && b0.dir === 'rtl' && b0.hasIcon && b0.role === 'switch' && b0.h >= 38 && b0.h <= 42 && !b0.srvBar, JSON.stringify(b0));
+  check('toggle/no server: «غير متصل» (offline, dot + word, a switch), right-to-left, about 40 px tall, in the top bar; no banner', b0 && b0.st === 'offline' && b0.word === 'غير متصل' && b0.dir === 'rtl' && b0.hasIcon && b0.role === 'switch' && b0.h >= 38 && b0.h <= 42 && !b0.srvBar, JSON.stringify(b0));
   check('toggle/no server: the page says so for tests (data-bw-server=offline)', (await f1.evaluate(() => document.documentElement.dataset.bwServer)) === 'offline');
   const http = f1.reqs.filter((u) => /https?:\/\//.test(u));
   check('toggle/no network: the only http request from the file:// page is GET <probe port>/api/version', http.length > 0 && http.every((u) => PROBE.test(u)), http.join(' '));
 
-  // ── 2. Start → the real handler → «افتح من الخادم» → the same document, served ──
+  // ── 2. Start → business-wrap://start → the real handler (a host with no document, no browser) → the toggle turns online; the page stays where it is ──
   await press(f1);
   await until(async () => (await f1.evaluate(() => window.__launched.length)) > 0, 6000);
   const launched = await f1.evaluate(() => window.__launched);
-  check('start: hands business-wrap://open?file=<this document> to the browser, once', launched.length === 1 && launched[0] === `business-wrap://open?file=${encodeURIComponent(editor)}`, JSON.stringify(launched));
+  check('start: hands business-wrap://start (no file, no command to type) to the browser, once', launched.length === 1 && launched[0] === 'business-wrap://start', JSON.stringify(launched));
   const bs = await bar(f1);
   check('start: while it starts the toggle is disabled, aria-busy, and says «جارٍ التشغيل…»', bs && bs.disabled && bs.busy === 'true' && bs.st === 'starting' && /جارٍ التشغيل/.test(bs.word), JSON.stringify(bs));
   const h = handler(launched[0], { BW_OPEN_PORT: String(p1) });
-  check('start: the real handler brings a server up on the probe port', h.status === 0 && (await up(p1)), `${h.status} ${h.stderr}`.slice(0, 300));
+  check('start: the real handler brings a host up on the probe port', h.status === 0 && (await up(p1)), `${h.status} ${h.stderr}`.slice(0, 300));
   check('start: the toggle turns «متصل» with the port', await until(async () => (await bar(f1))?.st === 'online', 15000) && (await bar(f1)).word === `متصل :${p1}`, JSON.stringify(await bar(f1)));
-  const svcFile = await f1.evaluate(() => window.BW.S.svc);
-  const nav = f1.waitForURL(`http://127.0.0.1:${p1}/`, { timeout: 15000 });
-  await openSettings(f1);
-  await press(f1, 'sbOpen');
-  await nav;
-  await f1.waitForFunction(() => window.BW?.ready);
-  const same = await f1.evaluate(() => ({ svc: window.BW.S.svc, proto: location.protocol }));
-  check('open: «افتح من الخادم» goes to the served address of the same document (same service)', same.proto === 'http:' && same.svc === svcFile, JSON.stringify({ same, svcFile }));
-  await sleep(1500);
-  check('open: the served page shows its toggle online (its server answers)', await until(async () => (await bar(f1))?.st === 'online', 8000), JSON.stringify(await bar(f1)));
+  const stay = await f1.evaluate(() => location.protocol);
+  check('start: no open link in Settings (0.17.0) and the page stays on file://', stay === 'file:' && (await (async () => { await openSettings(f1).catch(() => {}); return shRoot(f1, (r) => r.querySelectorAll('[data-k="srvOpen"], .set-srv-body').length); })()) === 0);
+  await f1.evaluate(() => window.BW.closeDrawer?.());
 
-  // ── 3. served page whose server dies: banner again; Start restarts the SAME file; Open ──
+  // ── 3. the host dies: offline on focus; Start asks again and the real handler restarts it ──
   stop();
-  check('served/died: the server is stopped', await until(async () => !(await up(p1)), 15000));
+  check('died: the host is stopped', await until(async () => !(await up(p1)), 15000));
   await sleep(2500); // the supervisor and the host file finish going away before the next start
   await f1.evaluate(() => window.dispatchEvent(new Event('focus'))); // the window regains focus: the page re-checks at once
-  check('served/died: the toggle goes offline on focus, no 10 s wait', await until(async () => (await bar(f1))?.st === 'offline', 8000), JSON.stringify(await bar(f1)));
+  check('died: the toggle goes offline on focus, no 10 s wait', await until(async () => (await bar(f1))?.st === 'offline', 8000), JSON.stringify(await bar(f1)));
   await f1.evaluate(() => { window.__launched = []; });
   await press(f1);
   await until(async () => (await f1.evaluate(() => window.__launched.length)) > 0, 6000);
   const l2 = await f1.evaluate(() => window.__launched);
-  check('served/died: Start asks for the same file the server was serving', l2.length === 1 && l2[0] === `business-wrap://open?file=${encodeURIComponent(editor)}`, JSON.stringify(l2));
+  check('died: Start asks for business-wrap://start again', l2.length === 1 && l2[0] === 'business-wrap://start', JSON.stringify(l2));
   const h3 = handler(l2[0], { BW_OPEN_PORT: String(p1) });
-  check('served/died: the real handler starts it again', h3.status === 0 && (await up(p1)), `${h3.status} ${h3.stderr}`.slice(0, 200));
-  await f1.waitForTimeout(1500);
-  check('served/died: once it answers again the served page shows online', await until(async () => (await bar(f1))?.st === 'online', 15000), JSON.stringify(await bar(f1)));
-  const gf = await fetch(`http://127.0.0.1:${p1}/api/servers/file`).then((r) => r.json()).catch(() => ({}));
+  check('died: the real handler starts it again', h3.status === 0 && (await up(p1)), `${h3.status} ${h3.stderr}`.slice(0, 200));
+  check('died: once it answers again the toggle shows online', await until(async () => (await bar(f1))?.st === 'online', 15000), JSON.stringify(await bar(f1)));
   const gb = await fetch(`http://127.0.0.1:${p1}/api/servers/file`, { headers: { origin: 'https://example.com' } });
   const gp = await fetch(`http://127.0.0.1:${p1}/api/servers/file`, { method: 'POST' });
-  check('route: GET /api/servers/file names the served document; a foreign origin gets 403, POST 405', path.resolve(gf.file || '') === path.resolve(editor) && gb.status === 403 && gp.status === 405, JSON.stringify({ gf, gb: gb.status, gp: gp.status }));
+  check('route: GET /api/servers/file from a foreign origin gets 403, POST 405', gb.status === 403 && gp.status === 405, JSON.stringify({ gb: gb.status, gp: gp.status }));
   await ctx1.close();
   stop();
   await until(async () => !(await up(p1)), 15000);

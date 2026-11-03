@@ -40,6 +40,7 @@ folder with its licence file, and are loaded at run time as data; nothing is mer
 - The MPL 1.1 requires that the covered files stay available in source form and that the licence notice is kept with them: the dictionary files are their own source, they are unchanged, and `COPYING.txt` stays next to them. A notice file beside data files is our reading of §3.5 for a data-only redistribution; this is a reading, not legal advice.
 - No dictionary or engine is sent anywhere: checking runs on your machine (in a Worker, or in the local host), and the words you type are never uploaded.
 - Not used on purpose: `@cspell/dict-ar` (LGPL-3.0 only, a derivative) and any GPL-only route.
+- In-house word lists (0.17.0), written for this project, no third-party list copied: `editor/dict/tech.ar.txt` (Arabic spellings of technical loan words), `editor/dict/common.ar.txt` and `editor/dict/common.en.txt` (common words the dictionaries lack). Licence: MIT, the project's own.
 
 ---
 
@@ -55,6 +56,7 @@ folder with its licence file, and are loaded at run time as data; nothing is mer
 - حجم كل ملف وبصمته في `editor/dict/SOURCES.json`، وملفات أياسبل مطابقة بايتاً ببايت للإيداع المذكور.
 - التدقيق يجري على جهازك (في Worker أو في المضيف المحلي)، ولا يُرفع أي نص إلى أي جهة.
 - لا نستخدم عمداً `@cspell/dict-ar` (LGPL-3.0 فقط، وهو مشتق) ولا أي مسار GPL فقط.
+- قوائم كلمات من تأليفنا (0.17.0) ولم تُنسخ من قائمة طرف ثالث: `editor/dict/tech.ar.txt` (كتابة عربية للألفاظ التقنية المستعارة) و`editor/dict/common.ar.txt` و`editor/dict/common.en.txt` (كلمات شائعة تنقصها القواميس). رخصتها MIT، رخصة المشروع نفسه.
 - قراءتنا للرخصة ليست استشارة قانونية؛ ويُراجَع بند §3.5 من MPL 1.1 قبل الإصدار.
 
 </div>

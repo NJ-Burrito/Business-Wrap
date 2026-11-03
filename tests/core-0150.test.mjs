@@ -298,7 +298,16 @@ try {
   }
 
   /* ── AC4: reduced motion and calm ─────────────────────────────────────── */
-  for (const mode of ['reduced', 'calm']) {
+  /* ── AC4 (0.17.0, owner 2026-10-31): only the Calm button reduces motion; the OS setting does not ─────────────── */
+  {
+    const { ctx, page } = await open({ clock: true, reduced: true });
+    check('AC4 (OS reduced): the page is NOT in calm mode (S.calm false, no data-bw-calm)', await page.evaluate(() => window.BW.S.calm === false && document.documentElement.dataset.bwCalm !== '1'));
+    await page.clock.runFor(600000);
+    const rnd = await WM(page, (W) => W.stats().plays.filter((p) => /^W1[1-9]$/.test(p.id)).length);
+    check('AC4 (OS reduced): random reactions still play (>= 1 in 10 simulated minutes)', rnd >= 1, String(rnd));
+    await ctx.close();
+  }
+  for (const mode of ['calm']) {
     const { ctx, page } = await open({ clock: true, reduced: mode === 'reduced', store: mode === 'calm' ? { 'bw:calm': '1' } : {} });
     if (mode === 'calm') check('AC4 (calm): the page really is in calm mode', await page.evaluate(() => window.BW.S.calm === true && document.documentElement.dataset.bwCalm === '1'));
     const adv = (ms) => page.clock.runFor(ms);
@@ -356,7 +365,7 @@ try {
 
   /* ── the spell seam (35-spell.js plugs into it): a 'spell' event, a remembered per-edition switch, native red lines unless the extension owns the edition ── */
   {
-    const { ctx, page } = await open();
+    const { ctx, page } = await open({ store: { 'bw:spell:on': '0' } }); // 0.17.0: checking is on by default, so the seam starts from an explicit off
     const r = await page.evaluate(async () => {
       const got = []; window.BW.EXT.on.spell.push((ed, on) => got.push([ed, on]));
       const attr = () => document.querySelector('#bw-pair main.bw-doc').getAttribute('spellcheck');

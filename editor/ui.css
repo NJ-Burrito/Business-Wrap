@@ -66,9 +66,7 @@ button { font: inherit; color: inherit; }
 .i { display: inline-grid; place-items: center; width: 18px; height: 18px; flex: none; }
 /* one stroke width for every icon (2, the brand v3 weight; Lucide was 1.75), one hover pose (the icon's own move plays on its parts, 40-icon-motion.css) */
 .ic { width: 18px; height: 18px; stroke-width: 2; } /* 0.15.0 perf booster 1: no colour or transform transition on the icon itself (an animated svg root costs main-thread frames); its own motion is the icm-* move, capped at 200 ms */
-@media (prefers-reduced-motion: no-preference) {
-  .shell:not([data-calm="1"]) .b:hover:not(:disabled) .ic { transform: translateY(-1px) scale(1.12); }
-}
+.shell:not([data-calm="1"]) .b:hover:not(:disabled) .ic { transform: translateY(-1px) scale(1.12); }
 /* the theme colour reaches every mono icon on hover, keyboard focus and press (the brand icons carry their gold part already) */
 :is(button, summary, [role="option"], .sc, label.chk, a.b):is(:hover:not(:disabled), :focus-visible, :active:not(:disabled), .ic-go, [aria-selected="true"]) .ic:not(.bw-i) { color: var(--ic-hot); }
 /* success pop: the button flashes the confirmation colour and its icon bounces */
@@ -187,7 +185,7 @@ ins { background: var(--bw-success-wash); color: var(--bw-on-success-wash); text
 /* 0.17.0 (note 13): the live preview of the font, size and colour dialogs: the sample on a sheet of paper at its real point size, size chips above it */
 .dialog .dlg-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-block-start: 10px; }
 .dialog .dlg-chips .b { min-inline-size: 40px; padding-inline: 10px; }
-.dialog .dlg-prev { margin-block-start: 12px; border: 1px solid var(--panel-line); border-radius: 12px; background: var(--paper, #fafaf9); color: var(--ink, #1a1a1a); overflow: hidden; }
+.dialog .dlg-prev { margin-block-start: 12px; border: 1px solid var(--panel-line); border-radius: 12px; background: var(--paper); color: var(--ink); overflow: hidden; }
 .dialog .dlg-prev-k { display: block; padding: 4px 10px; font-size: 11.5px; letter-spacing: .02em; color: var(--panel-soft); background: var(--wash-2); }
 .dialog .dlg-prev-t { padding: 12px 14px; min-block-size: 64px; max-block-size: 160px; overflow: auto; overflow-wrap: anywhere; line-height: 1.5; }
 .dialog .dlg-hint { margin: 8px 0 0; font-size: 12.5px; color: var(--panel-soft); }
@@ -201,7 +199,6 @@ ins { background: var(--bw-success-wash); color: var(--bw-on-success-wash); text
 .dialog.closing { animation: dialog-out var(--t-close) both; pointer-events: none; }
 .scrim.closing { animation: fade-out var(--t-close) both; pointer-events: none; }
 .scrim.closing .palette { animation: dialog-out var(--t-close) both; }
-@media (prefers-reduced-motion: reduce) { .dialog.closing, .scrim.closing, .scrim.closing .palette { animation: none; } }
 @keyframes dialog-in { from { opacity: 0; scale: var(--bw-scale-press); } to { opacity: 1; scale: 1; } }
 
 /* command palette */
@@ -247,7 +244,6 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
 /* calm mode and reduced motion: instant, no movement */
 .shell[data-calm="1"] *, .shell[data-calm="1"] { animation: none !important; transition: none !important; }
 .shell[data-calm="1"] .ic, .shell[data-calm="1"] .b, .shell[data-calm="1"] summary, .shell[data-calm="1"] button { transform: none !important; }
-@media (prefers-reduced-motion: reduce) { .shell *, .shell { animation: none !important; transition: none !important; } .shell .ic, .shell .b, .shell summary, .shell button { transform: none !important; } }
 @media (prefers-reduced-transparency: reduce) { .island, .pop { background: var(--deep); backdrop-filter: none; } }
 @media (max-width: 1520px) { .island { gap: 6px 8px; padding: 7px 10px; } .grp { gap: 2px; padding-inline-end: 7px; } .b { padding: 6px 8px; gap: 6px; font-size: 13.5px; } .seg .cap { display: none; } .pick select { max-width: 170px; } }
 @media (max-width: 1100px) { .b .w { font-size: 12.5px; } .count .w { display: none; } }
@@ -285,7 +281,6 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
 .more .menu .b { justify-content: flex-start; color: var(--on-glass); }
 .more .menu .pick select { max-width: none; width: 100%; }
 @media (max-width: 1520px) { .sec .sc .st { font-size: 11px; } .sec { padding: 0 5px; } }
-@media (prefers-reduced-motion: reduce) { .sec.now.swap { animation: none; } }
 :host-context(html[data-bw-calm="1"]) .sec.now.swap { animation: none; }
 /* 1366–1700 px: general tools fold to icon + section title (the tooltip names each one); a selection folds them further to icons */
 @media (max-width: 1700px) {

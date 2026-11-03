@@ -205,10 +205,10 @@ try {
     check(`exit transitions (${tag}): no page errors`, errors.length === 0, errors.join(' | '));
     await ctx.close();
   }
-  // reduced motion: static
-  {
-    const ctx = await browser.newContext({ bypassCSP: true, viewport: { width: 1500, height: 900 }, reducedMotion: 'reduce' });
-    await ctx.addInitScript(() => { try { localStorage.setItem('bw:ui', 'en'); } catch { /* none */ } });
+  // 0.17.0 (owner 2026-10-31): only Calm reduces motion. Calm: the palette closes at once; the OS reduced-motion setting alone does not.
+  for (const mode of ['calm', 'os-reduced']) {
+    const ctx = await browser.newContext({ bypassCSP: true, viewport: { width: 1500, height: 900 }, reducedMotion: mode === 'os-reduced' ? 'reduce' : 'no-preference' });
+    await ctx.addInitScript((calm) => { try { localStorage.setItem('bw:ui', 'en'); if (calm) localStorage.setItem('bw:calm', '1'); } catch { /* none */ } }, mode === 'calm');
     const page = await ctx.newPage();
     await page.goto(pathToFileURL(file).href);
     await page.waitForFunction(() => window.BW?.ready);
@@ -216,7 +216,8 @@ try {
     await page.keyboard.press('Control+K'); await page.waitForTimeout(300);
     await page.keyboard.press('Escape'); await page.waitForTimeout(40);
     const s = await rootEval(page, `(r) => { const e = r.querySelector('.scrim'); return { hidden: e.hidden, closing: e.classList.contains('closing') }; }`);
-    check('prefers-reduced-motion: the palette closes at once, no exit animation', s.hidden && !s.closing, JSON.stringify(s));
+    if (mode === 'calm') check('calm: the palette closes at once, no exit animation', s.hidden && !s.closing, JSON.stringify(s));
+    else check('OS prefers-reduced-motion alone: the palette still plays its exit animation (only Calm reduces motion)', !s.hidden && s.closing, JSON.stringify(s));
     await ctx.close();
   }
 } catch (e) {

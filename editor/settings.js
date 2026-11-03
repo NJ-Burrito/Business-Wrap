@@ -45,7 +45,7 @@ function setSeg(k, items, label) {
   const to = Math.max(0, items.findIndex((x) => x[2]));
   let i = to;
   if (SET_SLIDE && SET_SLIDE.k === k) {
-    if (!S.calm && !matchMedia('(prefers-reduced-motion: reduce)').matches) { i = SET_SLIDE.from; setTimeout(() => root.querySelector(`.drawer .set-seg[data-seg="${k}"]`)?.style.setProperty('--i', String(to)), 40); }
+    if (!S.calm) { i = SET_SLIDE.from; setTimeout(() => root.querySelector(`.drawer .set-seg[data-seg="${k}"]`)?.style.setProperty('--i', String(to)), 40); }
     SET_SLIDE = null;
   }
   return `<div class="set-seg" data-seg="${k}" role="group" aria-label="${esc(label)}" style="--n:${items.length};--i:${i}">${items.map(([v, word, on, lang]) => `<button type="button" data-k="${k}" data-v="${v}" aria-pressed="${on}"${lang ? ` lang="${lang}"` : ''}>${esc(word)}</button>`).join('')}</div>`;

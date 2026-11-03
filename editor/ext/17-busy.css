@@ -10,5 +10,4 @@
 .bw-busy .bz-x[hidden] { display: none; }
 @keyframes bz-spin { to { rotate: 360deg; } }
 :host([data-reading]) .bw-busy { inset-block-start: 12px; }
-@media (prefers-reduced-motion: reduce) { .bw-busy, .bw-busy .bz-sp { animation: none; } }
 html[data-bw-calm="1"] .bw-busy .bz-sp { animation: none; }

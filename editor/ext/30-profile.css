@@ -33,4 +33,3 @@
 .bw-modal .b:active:not(:disabled) { transform: scale(var(--press)); transition-duration: var(--bw-dur-instant); }
 .bw-modal textarea { font-family: var(--bw-font-ui); }
 .shell[data-calm="1"] ~ .bw-modal, .shell[data-calm="1"] ~ .bw-modal * { animation: none !important; transition: none !important; }
-@media (prefers-reduced-motion: reduce) { .bw-modal, .bw-modal * { animation: none !important; transition: none !important; transform: none !important; } }

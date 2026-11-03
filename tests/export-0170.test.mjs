@@ -206,6 +206,22 @@ try {
     const viaCli = await exportDoc({ document: named, locale: 'en', out: dir, docx: true });
     const dx = viaCli.docx && fs.existsSync(viaCli.docx) ? docxText(viaCli.docx) : '';
     check('CLI/MCP path (exportDoc, locale en): English PDF and DOCX', viaCli.locale === 'en' && fs.existsSync(viaCli.pdf) && /Software Requirements Specification/.test(dx), JSON.stringify(viaCli).slice(0, 200));
+    // 0.17.0 (fixb): with no --out, the Arabic file x.ar.json and its English sibling x.en.json land in ONE document folder of the save folder
+    {
+      const wsDir = path.join(tmp, 'ws-cli');
+      fs.mkdirSync(wsDir, { recursive: true });
+      const prevWs = process.env.BW_WORKSPACE;
+      process.env.BW_WORKSPACE = wsDir;
+      try {
+        const pdir = path.join(tmp, 'pair');
+        fs.mkdirSync(pdir);
+        fs.writeFileSync(path.join(pdir, 'doc.ar.json'), JSON.stringify(docAr));
+        fs.writeFileSync(path.join(pdir, 'doc.en.json'), JSON.stringify(docEn));
+        const rAr = await exportDoc({ document: path.join(pdir, 'doc.ar.json'), docx: false });
+        const rEn = await exportDoc({ document: path.join(pdir, 'doc.en.json'), docx: false });
+        check('CLI: exportDoc with no --out puts the Arabic and the English file of one document in the SAME folder', rAr.locale === 'ar' && rEn.locale === 'en' && fs.existsSync(rAr.pdf) && fs.existsSync(rEn.pdf) && path.dirname(rAr.pdf) === path.dirname(rEn.pdf), `${rAr.pdf} | ${rEn.pdf}`);
+      } finally { if (prevWs === undefined) delete process.env.BW_WORKSPACE; else process.env.BW_WORKSPACE = prevWs; }
+    }
   }
 } finally {
   await browser.close();
