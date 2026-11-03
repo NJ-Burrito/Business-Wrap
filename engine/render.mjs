@@ -667,6 +667,9 @@ h2+*,h3+*,h4+*,h5+*{break-before:avoid}
 .lead-in+table{break-before:avoid}
 table{break-before:avoid}
 tbody:first-of-type tr:first-child{break-before:avoid}
+/* 0.16.2: a table's header stays with its first rows: Chrome parted a header from its first group (tbody.hold) and left it alone at a page's foot */
+thead{break-after:avoid}
+thead+tbody{break-before:avoid}
 figure,.fig,.gap{break-inside:avoid}
 .bw-logo-slot{display:none}
 .bw-break{break-before:page;height:0}
@@ -1406,6 +1409,13 @@ export function relaxTallGroups([limit, keepRows, pageH, floor, root]) {
       }
       if (short && rows.length < keepRows * 2) {
         const remaining = pageH - usedFraction * pageH;
+        if (height > remaining) waste += remaining;
+        return;
+      }
+      if (rows.length <= keepRows) {
+        // 0.16.2: a group of no more than keepRows rows has no free middle: splitting it left an EMPTY first tbody (a break point right after the header) and the whole group in the clone
+        const remaining = pageH - usedFraction * pageH;
+        el.classList.add('hold');
         if (height > remaining) waste += remaining;
         return;
       }
