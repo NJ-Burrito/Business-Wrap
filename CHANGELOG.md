@@ -8,6 +8,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.16.5] - 2026-11-03
+
+🧾 A fix release: acceptance criteria print as a row inside the story card, and the editor and the PDF agree on page counts. / 🧾 إصدار إصلاحات: معايير القبول تُطبع صفا داخل بطاقة القصة، والمحرر وملف PDF متفقان في عدد الصفحات.
+
+### Fixed / أصلح
+- ✅ **Acceptance criteria print as the last row of the story card**, the same in the editor, the PDF and Word. / **معايير القبول تُطبع كآخر صف في بطاقة القصة**، بالشكل نفسه في المحرر وPDF وWord.
+- 📏 **Editor and PDF page counts are equal** on the real long documents measured. / **عدد صفحات المحرر وPDF متساو** في الوثائق الطويلة الحقيقية التي قيست.
+
+### Known limits / حدود معروفة
+- 📌 On some long documents a few pages can still start differently. / في بعض الوثائق الطويلة قد تبدأ بضع صفحات بشكل مختلف.
+
 ## [0.16.4] - 2026-11-03
 
 📐 A fix release: the editor and the PDF now agree on tables, page breaks and story numbers. / 📐 إصدار إصلاحات: المحرر وملف PDF يتفقان الآن في الجداول وفواصل الصفحات وترقيم القصص.
