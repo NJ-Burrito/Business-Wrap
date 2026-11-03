@@ -22,8 +22,10 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { editionOfFile, hashOf } from './edits-base.mjs';
 import { migrate, validateEdits } from './edits.mjs';
-import { extractZip } from './zip.mjs';
 import { importFile, words } from './import/import.mjs';
+import { unzipTo } from './import/unzip.mjs';
+import { planSources, contentKey, buildReport, SYSTEM_SEG } from './import/plan.mjs';
+import { shortDir, lp } from './import/safe.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
@@ -32,14 +34,15 @@ export const opsKey = (ops) => sha(JSON.stringify((ops || []).map((o) => [o.op, 
 export const editionKey = (raw, ops) => `${sha(raw)}:${opsKey(ops)}`;
 const BWDATA = /<script type="application\/json" id="bw-data">([\s\S]*?)<\/script>/;
 const MAX_FILES = 5000;
-const SKIP_NAMES = /^(index\.json|00 فهرس - Index\.html|desktop\.ini|thumbs\.db|\.ds_store)$/i;
+const SKIP_NAMES = /^(index\.json|00 فهرس - Index\.html)$/i;
+const SYSTEM_FILE = /^(desktop\.ini|thumbs\.db|\.ds_store)$|\.ico$/i; // 0.16.3: not documents; listed, not hidden
 
 function walk(dir, out = [], rel = '') {
-  for (const e of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }))) {
+  for (const e of fs.readdirSync(lp(dir), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }))) {
     if (e.isSymbolicLink()) continue;
     const r = rel ? `${rel}/${e.name}` : e.name;
     if (e.isDirectory()) walk(path.join(dir, e.name), out, r);
-    else if (e.isFile()) { out.push({ file: path.join(dir, e.name), rel: r }); if (out.length > MAX_FILES) throw new Error(`more than ${MAX_FILES} files`); }
+    else if (e.isFile()) { out.push({ file: lp(path.join(dir, e.name)), rel: r }); if (out.length > MAX_FILES) throw new Error(`more than ${MAX_FILES} files`); }
   }
   return out;
 }
@@ -60,7 +63,7 @@ function readSource(file, name, locale) {
 }
 
 export async function importProject({ inputs, project, locale, onProgress = () => {}, known = new Set(), onConflict = 'skip', queue, tmp, isCancelled = () => false } = {}) {
-  const work = tmp || fs.mkdtempSync(path.join(os.tmpdir(), 'bw-pimp-'));
+  const work = tmp || shortDir('p'); // short: the owner's long Arabic names must fit under MAX_PATH
   const cleanup = () => { if (!tmp) fs.rmSync(work, { recursive: true, force: true }); };
   const came_in = [], failed = [], skipped = [], warnings = [];
   let done = 0, total = 0;
@@ -70,8 +73,9 @@ export async function importProject({ inputs, project, locale, onProgress = () =
     const files = [];
     let guess = '';
     const unzip = (zf, src) => {
-      const dir = path.join(work, `zip-${files.length}-${crypto.randomBytes(3).toString('hex')}`);
-      const got = extractZip(zf, dir);
+      const dir = path.join(work, `z${files.length}${crypto.randomBytes(2).toString('hex')}`);
+      const { files: got, problems } = unzipTo(zf, dir); // one unreadable entry costs only itself, with its reason
+      for (const x of problems) failed.push({ file: x.name, reason: x.reason });
       return got.map((g) => ({ file: g.file, rel: g.name.replace(/^[^/]+\//, (m) => (got.every((x) => x.name.startsWith(m)) ? '' : m)), src }));
     };
     for (const [src, input] of (inputs || []).entries()) {
@@ -105,6 +109,9 @@ export async function importProject({ inputs, project, locale, onProgress = () =
     for (const f of files) {
       const base = path.posix.basename(f.rel), ext = path.extname(base).toLowerCase();
       if (SKIP_NAMES.test(base)) continue;
+      if (SYSTEM_FILE.test(base)) { skipped.push({ file: f.rel, reason: 'a system file (folder icon or settings), not a document', kind: 'system' }); continue; }
+      const sysSeg = f.rel.split('/').slice(0, -1).find((x) => SYSTEM_SEG.test(x));
+      if (sysSeg) { skipped.push({ file: f.rel, reason: `inside the folder «${sysSeg}»: a copy or a system file, not a document`, kind: 'not-document' }); continue; }
       if (ext === '.json') {
         const j = jsonOf(f.file);
         if (j === undefined) failed.push({ file: f.rel, reason: 'bad JSON: the file does not parse' });
@@ -132,27 +139,22 @@ export async function importProject({ inputs, project, locale, onProgress = () =
     }
     total = groups.size + sources.length + editsFiles.length;
     tick({ state: 'start' });
-    // 4. sources: PDF / DOCX / HTML (a Save-HTML whole)
+    // 4. sources: PDF / DOCX / HTML. Each document once, from its best source: editor HTML, else share HTML (both whole, with their work),
+    //    else DOCX / PDF / plain HTML read by engine/import. The other copies of a title are "not needed" (engine/import/plan.mjs).
     const documents = []; // payloads for queue, with `_file`/`_kind` for the report
     const pairs = new Map(); // source stem → [{locale, doc, file, words}]
-    for (const f of sources) {
+    const plan = planSources(sources);
+    documents.push(...plan.documents);
+    skipped.push(...plan.skipped);
+    done += plan.settled; tick({ state: 'planned' });
+    for (const f of plan.toRead) {
       if (isCancelled()) break;
       const ext = path.extname(f.rel).toLowerCase();
       try {
-        let data = null;
-        if (ext === '.html' || ext === '.htm') { const m = BWDATA.exec(fs.readFileSync(f.file, 'utf8')); try { data = m && JSON.parse(m[1]); } catch { /* not ours */ } }
-        if (data?.services?.length) {
-          for (const s of data.services) {
-            const d = { _file: f.rel, _kind: 'save-html', title: '', ops: {} };
-            for (const [ed, x] of Object.entries(s.editions || {})) { d[ed] = x.raw; d.ops[ed] = x.ops || []; }
-            documents.push(d);
-          }
-        } else {
-          const r = readSource(f.file, path.posix.basename(f.rel), locale);
-          if (ext === '.pdf') warnings.push({ file: f.rel, reason: 'pdf: tables may arrive as paragraphs and some right-to-left brackets may be mirrored; check the result' });
-          const k = `${f.src}|${dirOf(f.rel)}|${stemOf(path.posix.basename(f.rel))}`;
-          pairs.set(k, [...(pairs.get(k) || []), { locale: r.locale, doc: r.doc, file: f.rel, words: r.words, ext }]);
-        }
+        const r = readSource(f.file, path.posix.basename(f.rel), locale);
+        if (ext === '.pdf') warnings.push({ file: f.rel, reason: 'pdf: tables may arrive as paragraphs and some right-to-left brackets may be mirrored; check the result' });
+        const k = `${f.src}|${dirOf(f.rel)}|${stemOf(path.posix.basename(f.rel))}`;
+        pairs.set(k, [...(pairs.get(k) || []), { locale: r.locale, doc: r.doc, file: f.rel, words: r.words, ext }]);
       } catch (e) { failed.push({ file: f.rel, reason: String(e.message || e).replace(/\s+/g, ' ').slice(0, 300) }); }
       done += 1; tick({ file: f.rel, state: 'file' });
     }
@@ -195,17 +197,19 @@ export async function importProject({ inputs, project, locale, onProgress = () =
       } catch (x) { failed.push({ file: e.rel, reason: String(x.message || x).slice(0, 300) }); }
       done += 1; tick({ file: e.rel, state: 'file' });
     }
-    // 7. duplicates (already in the library, or twice in this batch)
+    // 7. duplicates (already in the library by CONTENT, or twice in this batch). The skip line names the document.
     const fresh = [];
     const seen = new Set();
     for (const d of documents) {
-      const keys = ['ar', 'en'].filter((l) => d[l]).map((l) => editionKey(d[l], d.ops?.[l]));
-      const dup = keys.length && keys.every((k) => known.has(k) || seen.has(k));
-      if (dup && onConflict !== 'keep') { skipped.push({ file: d._file, reason: 'already in the library (same content)' }); continue; }
-      keys.forEach((k) => seen.add(k));
+      const eds = ['ar', 'en'].filter((l) => d[l]);
+      const keys = eds.map((l) => editionKey(d[l], d.ops?.[l]));
+      const ckeys = eds.map((l) => contentKey(d[l], d.ops?.[l]));
+      const dup = eds.length && eds.every((l, i) => known.has(keys[i]) || known.has(ckeys[i]) || seen.has(keys[i]) || seen.has(ckeys[i]));
+      if (dup && onConflict !== 'keep') { skipped.push({ file: d._file, reason: `already in the library (same content): «${d.title || titleOf(d)}»`, kind: 'already', title: d.title || titleOf(d) }); continue; }
+      keys.forEach((k) => seen.add(k)); ckeys.forEach((k) => seen.add(k));
       fresh.push(d);
     }
-    if (isCancelled()) return { project: name, came_in, failed, skipped, warnings, total, cancelled: true };
+    if (isCancelled()) return { project: name, came_in, failed, skipped, warnings, total, cancelled: true, report: buildReport({ came_in, skipped, failed }) };
     // 8. into the library, one request
     let docIds = [];
     if (fresh.length) {
@@ -217,7 +221,7 @@ export async function importProject({ inputs, project, locale, onProgress = () =
     total = Math.max(total, done);
     done = total;
     tick({ state: 'done' });
-    return { project: name, came_in, failed, skipped, warnings, total };
+    return { project: name, came_in, failed, skipped, warnings, total, report: buildReport({ came_in, skipped, failed }) };
   } finally { cleanup(); }
 }
 

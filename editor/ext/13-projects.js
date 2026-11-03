@@ -378,6 +378,10 @@ const PX = (() => {
       for (;;) { const batch = await new Promise((res, rej) => r.readEntries(res, rej)); if (!batch.length) break; for (const c of batch) await walkEntry(c, `${prefix}${entry.name}/`, out); }
     }
   }
+  /** 0.16.3: the import report in plain words, counts first, Arabic then English (the engine writes both). */
+  const planeReport = (r) => (r.report ? `<p class="px-plain" dir="rtl">${esc(r.report.ar)}</p><p class="px-plain" dir="ltr">${esc(r.report.en)}</p>` : '');
+  const kindN = (r, k) => (r.skipped || []).filter((x) => x.kind === k).length;
+  const skippedOf = (r, k) => (r.skipped || []).filter((x) => x.kind === k).map((x) => `<span dir="ltr">${esc(x.file)}</span>: ${esc(x.reason)}`);
   async function importDialog(pid) {
     const projects = PJ.live();
     let picked = [];
@@ -425,7 +429,7 @@ ${picked.length ? `<table class="px-tbl"><thead><tr><th>${esc(t('pxFile'))}</th>
       if (!st.alive) return r;
       await PJ.sync();
       const pj = PJ.live().find((p) => p.name.toLowerCase() === String(r.project || target).toLowerCase());
-      const body = `<p class="px-sum" role="status">${esc(r.cancelled ? t('pxCancelled') : r.error ? r.error : t('pxImportDone', { name: r.project || target }))}</p>${r.cancelled ? '' : tiles([[r.came_in.length, t('pxCameIn'), 'ok'], [r.skipped.length, t('pxSkipped'), ''], [r.failed.length, t('pxFailed'), r.failed.length ? 'bad' : '']])}${list(t('pxCameIn'), r.came_in.map((c) => `<b>${esc(c.title || c.file)}</b> <small dir="ltr">${esc(c.file)}</small>${c.doc_id ? ` <button type="button" class="b px-open" data-px-act="open:${esc(c.doc_id)}">${esc(t('libOpen'))}</button>` : ''}`))}${list(t('pxFailed'), r.failed.map((x) => `<span dir="ltr">${esc(x.file)}</span>: ${esc(x.reason)}`))}${list(t('pxSkipped'), r.skipped.map((x) => `<span dir="ltr">${esc(x.file)}</span>: ${esc(x.reason)}`))}${list(t('pxWarnings'), (r.warnings || []).map((x) => `<span dir="ltr">${esc(x.file)}</span>: ${esc(x.reason)}`))}`;
+      const body = `<p class="px-sum" role="status">${esc(r.cancelled ? t('pxCancelled') : r.error ? r.error : t('pxImportDone', { name: r.project || target }))}</p>${r.cancelled ? '' : planeReport(r)}${r.cancelled ? '' : tiles([[r.came_in.length, t('pxCameIn'), 'ok'], [kindN(r, 'not-needed'), t('pxNotNeeded'), ''], [kindN(r, 'already'), t('pxAlready'), ''], [r.skipped.length - kindN(r, 'not-needed') - kindN(r, 'already'), t('pxSkipped'), ''], [r.failed.length, t('pxFailed'), r.failed.length ? 'bad' : '']])}${list(t('pxCameIn'), r.came_in.map((c) => `<b>${esc(c.title || c.file)}</b> <small dir="ltr">${esc(c.file)}</small>${c.doc_id ? ` <button type="button" class="b px-open" data-px-act="open:${esc(c.doc_id)}">${esc(t('libOpen'))}</button>` : ''}`))}${list(t('pxFailed'), r.failed.map((x) => `<span dir="ltr">${esc(x.file)}</span>: ${esc(x.reason)}`))}${list(t('pxNotNeeded'), skippedOf(r, 'not-needed'))}${list(t('pxAlready'), skippedOf(r, 'already'))}${list(t('pxSkipped'), r.skipped.filter((x) => x.kind !== 'not-needed' && x.kind !== 'already').map((x) => `<span dir="ltr">${esc(x.file)}</span>: ${esc(x.reason)}`))}${list(t('pxWarnings'), (r.warnings || []).map((x) => `<span dir="ltr">${esc(x.file)}</span>: ${esc(x.reason)}`))}`;
       const k = await st.ask(body, [...(pj && r.came_in.length ? [['project', t('pxOpenProject'), false]] : []), ...(r.came_in.some((c) => c.doc_id) ? [['undo', t('pxUndo'), false]] : []), ['copy', t('pxCopy'), false], ['close', t('pxClose'), true]]);
       if (k === 'copy') { await copy([r.project, ...r.came_in.map((c) => `IN      ${c.title} (${c.file})`), ...r.skipped.map((x) => `SKIPPED ${x.file} — ${x.reason}`), ...r.failed.map((x) => `FAILED  ${x.file} — ${x.reason}`)].join('\n')); continue; }
       if (k === 'project') { PJ.setFilter(pj.id); st.close(); openDrawer('library'); return r; }
