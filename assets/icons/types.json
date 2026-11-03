@@ -1,0 +1,19 @@
+{
+  "_": "The file types of the save and download tree (Documents/<title>/{<title>.html, Exports, Sources, Versions}) and the icon each one has. Source of truth for assets/icons/build_icons.py (the art) and engine/file-icons.mjs (the extension map). White label text must clear 4.5:1 on its colour (the builder asserts it).",
+  "sizes": [16, 24, 32, 48, 64, 128, 256],
+  "kinds": {
+    "pdf":    { "label": "PDF",  "colour": "#c0262d", "exts": ["pdf"], "what": "PDF export" },
+    "docx":   { "label": "DOCX", "colour": "#1b5fc1", "exts": ["docx"], "what": "Word export" },
+    "html":   { "label": "HTML", "colour": "#1b1813", "exts": ["html", "htm"], "what": "editor file, shared and print copies" },
+    "json":   { "label": "JSON", "colour": "#b34700", "exts": ["json", "bwlog"], "what": "document data, edits, history" },
+    "txt":    { "label": "TXT",  "colour": "#596270", "exts": ["txt", "log", "ini"], "what": "plain text, the README of the tree" },
+    "md":     { "label": "MD",   "colour": "#6a3db8", "exts": ["md", "markdown"], "what": "Markdown" },
+    "xml":    { "label": "XML",  "colour": "#0b6e83", "exts": ["xml", "bpmn"], "what": "BPMN and XML sources" },
+    "drawio": { "label": "DRAW", "colour": "#a8206f", "exts": ["drawio"], "what": "draw.io diagram source" },
+    "yaml":   { "label": "YAML", "colour": "#2e7d32", "exts": ["yaml", "yml"], "what": "YAML source" },
+    "image":  { "label": "IMG",  "colour": "#5f6b00", "exts": ["png", "jpg", "jpeg", "webp", "gif"], "what": "screenshots and diagram pictures" },
+    "svg":    { "label": "SVG",  "colour": "#7b4a2a", "exts": ["svg"], "what": "vector picture" },
+    "zip":    { "label": "ZIP",  "colour": "#7a5c00", "exts": ["zip"], "what": "archive" },
+    "file":   { "label": "FILE", "colour": "#3d434c", "exts": [], "what": "any other file" }
+  }
+}

@@ -556,7 +556,13 @@ export async function oldReleaseListing(release, from, repo, f, work) {
  * @param {{dir: string, release: {version, zip, zipApi, sha256}, repo: string, token?: string, current: string,
  *   onStage?: (stage: string) => void, failAt?: string}} a
  */
-export async function applyUpdate({ dir, release, repo, token = '', current, onStage = () => {}, failAt = '', fetch: fetchImpl = globalThis.fetch }) {
+export async function applyUpdate(a) {
+  const r = await applyUpdateCore(a);
+  // 0.17.0 (N15): after every update the NEW install makes its launcher and puts a fresh copy on the Desktop (own process: the new code; silent; skipped in test runs)
+  if (r?.ok && r.applied !== false && !r.plugin) { try { (await import('../launcher/launcher.mjs')).afterUpdate(a.dir); } catch { /* the first run of the new version does it */ } }
+  return r;
+}
+async function applyUpdateCore({ dir, release, repo, token = '', current, onStage = () => {}, failAt = '', fetch: fetchImpl = globalThis.fetch }) {
   const stage = (s) => { try { onStage(s); } catch { /* a progress listener never stops the update */ } };
   // a plugin install is Claude Code's copy (<plugins>/cache/<marketplace>/<plugin>/<version>): rewriting it in place forks it from what the
   // client believes is installed and leaves a running server on a half-new tree. The client's own update path is the only one.
