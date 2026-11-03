@@ -194,7 +194,7 @@ const LIB = (() => {
   }
   /** The open document → its list entry (Save, and the autosave after every change): the list copy is always the latest. */
   async function persist(id = S.svc) {
-    if (soonId === id) { clearTimeout(soonT); soonT = 0; soonId = null; }
+    if (soonId === id) { clearTimeout(soonT); soonT = 0; soonId = null; soonSince = 0; }
     if (!isDoc(id) || !M[id]) return null;
     const old = (await get(id)) || {};
     if (old.deletedAt) return null; // a document in the Trash is not brought back by an autosave
@@ -209,9 +209,20 @@ const LIB = (() => {
     document.documentElement.dataset.bwLibSaved = String(++seq);
     return entry;
   }
-  let soonT = 0, soonId = null, seq = 0;
+  let soonT = 0, soonId = null, seq = 0, soonSince = 0;
   const savedAt = {};
-  const persistSoon = () => { if (!isDoc(S.svc)) { stamp(); return; } if (soonId && soonId !== S.svc) persistNow(); clearTimeout(soonT); soonId = S.svc; soonT = setTimeout(() => persist(soonId), 600); };
+  // 0.17.0 (P5): an edit reaches the list copy 250 ms after the last change (was 600), and never later than 1.5 s after the FIRST change of a burst
+  // (a long typing run used to wait for its first pause): a hard crash (the browser process killed) about a second after an edit keeps the edit.
+  const SOON_MS = 250, SOON_MAX_MS = 1500;
+  const persistSoon = () => {
+    if (!isDoc(S.svc)) { stamp(); return; }
+    if (soonId && soonId !== S.svc) persistNow();
+    clearTimeout(soonT);
+    soonId = S.svc;
+    const now = Date.now();
+    if (!soonSince) soonSince = now;
+    soonT = setTimeout(() => persist(soonId), Math.max(0, Math.min(SOON_MS, soonSince + SOON_MAX_MS - now)));
+  };
   const persistNow = () => (soonId ? persist(soonId) : null);
 
   /* «آخر حفظ» beside the change counter: the list copy (a document) or the draft (a template), and the last Save HTML */
@@ -527,17 +538,79 @@ const LIB = (() => {
   return { ingestMirror, all, get, put, open, adopt, save, saveInPlace, captureHtml, queued, ACCEPT, persist, persistSoon, persistNow, stamp, saveTemplate, fromTemplate, metricsOf, newDocument, importAny, remove, restore, purge, duplicate, entryOf, titleOf, syncTitle, syncAll, onCommit, isDoc, fromHash, drawer, TEMPLATES };
 })();
 
+/* A saved file opened straight from disk keeps the viewer it was saved with (0.17.0, P4). When a newer Business-Wrap answers on this computer
+ * (the same loopback probe as the server toggle), a banner offers ONE click: «افتحه بالعارض الحالي». The click opens the server's page in a new
+ * window (#handoff) and hands it this document's Save-HTML text by postMessage; the current viewer imports it like any dropped file (the same
+ * LIB.importAny) and opens it, edits, comments and log intact. Nothing is sent to any other address: the target origin is the loopback server
+ * that answered, and the receiving page accepts the one message only from the window that opened it, only from a file page (origin null).
+ * Files saved before this version have no banner (their code is old); they open through the app: «استيراد» or a drop. */
+const OLV = (() => {
+  const served = location.protocol.startsWith('http');
+  const num = (v) => String(v || '').split(/[.-]/).slice(0, 3).map((x) => parseInt(x, 10) || 0);
+  const newer = (a, b) => { const x = num(a), y = num(b); for (let i = 0; i < 3; i += 1) if (x[i] !== y[i]) return x[i] > y[i]; return false; };
+  /** The Business-Wrap server that answers on this computer: {port, version} or null. */
+  async function find(ports = Array.from({ length: 11 }, (_, i) => 4317 + i)) {
+    const all = await Promise.all(ports.map(async (p) => { try { const j = await (await fetch(`http://127.0.0.1:${p}/api/version`, { cache: 'no-store', signal: AbortSignal.timeout(900) })).json(); return j?.name === 'Business-Wrap' && j.version ? { port: Number(j.port) || p, version: String(j.version) } : null; } catch { return null; } }));
+    return all.find(Boolean) || null;
+  }
+  /** Opens the server's page and hands this document over; resolves true once the page took it. The window opens first, inside the click
+   *  (a pop-up blocker allows only that), then the document is captured while the new page boots. */
+  async function openWith(host) {
+    const origin = `http://127.0.0.1:${host.port}`;
+    const w = window.open(`${origin}/#handoff`, '_blank');
+    if (!w) { toast(t('olvBlocked'), 'warn'); return false; }
+    let ready = false, cap = null, sent = false;
+    return new Promise((ok) => {
+      const end = (r) => { window.removeEventListener('message', on); clearTimeout(timer); ok(r); };
+      const send = () => { if (sent || !ready || !cap) return; sent = true; w.postMessage({ bw: 'open-file', html: cap.text }, origin); end(true); };
+      const on = (e) => { if (e.source !== w || e.origin !== origin || e.data?.bw !== 'viewer-ready') return; ready = true; send(); };
+      const timer = setTimeout(() => { toast(t('olvTimeout'), 'warn', { persist: true }); end(false); }, 30000);
+      window.addEventListener('message', on);
+      LIB.captureHtml().then((c) => { cap = c; if (!c?.text) { toast(t('olvFailed'), 'err'); try { w.close(); } catch { /* gone */ } end(false); } else send(); }, () => { toast(t('olvFailed'), 'err'); end(false); });
+    });
+  }
+  /** A file page: look for a NEWER server and offer the click. `force` shows it for any answering server (tests). */
+  async function check({ ports, force = false } = {}) {
+    if (served) return null;
+    const host = await find(ports);
+    if (!host || (!force && !newer(host.version, DATA.version))) return null;
+    toast(t('olvBanner', { old: DATA.version, now: host.version }), 'info', { persist: true, cls: 'banner', actions: [[t('olvOpen'), () => { openWith(host); }]] });
+    return host;
+  }
+  /** The server's page opened by a file page: say we are ready, take the one document, import it. */
+  function receive() {
+    if (!served || !window.opener || location.hash !== '#handoff') return;
+    let n = 0;
+    const ping = () => { try { window.opener.postMessage({ bw: 'viewer-ready', version: DATA.version }, '*'); } catch { /* the opener is gone */ } };
+    const stop = () => { clearInterval(iv); window.removeEventListener('message', on); };
+    const on = async (e) => {
+      if (e.source !== window.opener || !(e.origin === 'null' || e.origin === 'file://') || e.data?.bw !== 'open-file') return;
+      stop();
+      const html = e.data.html;
+      if (typeof html !== 'string' || html.length > 60 * 1024 * 1024 || !/id="bw-data"/.test(html)) { toast(t('olvFailed'), 'err'); return; }
+      try { history.replaceState(null, '', location.pathname + location.search); } catch { /* keep the hash */ }
+      const title = /<title>([^<]{1,160})<\/title>/.exec(html)?.[1]?.replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'document';
+      await LIB.importAny(new File([html], `${title}.html`, { type: 'text/html' }));
+    };
+    window.addEventListener('message', on);
+    const iv = setInterval(() => { ping(); n += 1; if (n > 40) stop(); }, 500);
+    ping();
+  }
+  return { find, check, openWith, receive, newer };
+})();
 IC.library = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" /> </svg>';
 bwExt({
   cmds: [{ id: 'library', group: 'file', key: 'Ctrl+O', edit: false }],
   actions: { library: () => openDrawer('library') },
   drawers: { library: LIB.drawer },
-  expose: { library: LIB },
+  expose: { library: LIB, olv: OLV },
   on: {
     // the host's queue first (an `open_in_editor` link is /#doc=<id> of a document that may still be in the inbox), then the document, then the rest of the mirror
     boot: async () => {
       // the host's `ingest` push (engine/routes/library.mjs queueDocuments; the transport relays every server event as window 'bw:srv')
       window.addEventListener('bw:srv', (ev) => { if (ev.detail?.event === 'ingest') LIB.ingestMirror({ mirrorToo: false }).catch(() => {}); });
+      OLV.receive();
+      if (!navigator.webdriver) setTimeout(() => { OLV.check().catch(() => {}); }, 1500); // a test drives check() itself
       await LIB.ingestMirror({ mirrorToo: false }).catch(() => {}); await LIB.fromHash(); LIB.ingestMirror().catch(() => {}); },
     // Ctrl+O = «المستندات» (open a document); the toolbar tool sits in File
     keydown: (e) => { if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'o') { e.preventDefault(); openDrawer('library'); return true; } return false; },
