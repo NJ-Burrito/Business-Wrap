@@ -1,11 +1,12 @@
-/* Business-Wrap editor — the Settings page (0.11.0), concatenated after update.js.
- * A drawer («الإعدادات» / Settings), reached from the toolbar's View section and Ctrl+K, in four cards:
- * About (name, logo, version, release date, repository, licence, credits — embedded at build time, so it shows
- * from file:// too), Update (installed vs latest, last check, «تحقّق الآن», auto-check on launch) and Preferences
- * (language, word direction, page view, reduced motion), each written to the store it already had
- * (bw:ui, bw:dir:<ed>, bw:pages, bw:calm, bw:update-auto), and Local learning («التعلّم المحلي»,
- * mounted by learning-hook.js through BW_LEARNING.mount(el)). The check itself is update.js (BW_UPDATE):
- * from file:// nothing is fetched, the card says why and how to update instead.
+/* Business-Wrap editor — the Settings page (0.11.0; reworked 0.17.0 notes 8, 9, 10), concatenated after update.js.
+ * A drawer («الإعدادات» / Settings), reached from the toolbar's View section and Ctrl+K. Cards, most used first (Preferences opens first; the others are the collapsible groups every drawer has):
+ * Preferences (language, word direction, page view, reduced motion), Update (installed vs latest, last check, «تحقّق الآن»,
+ * auto-check on launch), File icons, Local learning (mounted by learning-hook.js through BW_LEARNING.mount(el)) and
+ * About (name, logo, version, release date, repository: only what a user needs; embedded at build time, so it shows from
+ * file:// too). Extension cards follow (collapsible groups, as before). Each preference is written to the store it already had
+ * (bw:ui, bw:dir:<ed>, bw:pages, bw:calm, bw:update-auto). The check itself is update.js (BW_UPDATE).
+ * 0.17.0 note 10: the host on/off control is NOT here. It lives only in the top bar (editor/ext/18-server.js); this file keeps
+ * the shared start / probe helpers (SRV, srvProbe, srvBegin, srvWait) that control uses.
  * Declarations only (hoisted): openDrawer('settings') calls them. */
 
 function setStamp(ts) {
@@ -34,41 +35,51 @@ function setUpdateInner() {
 </dl>
 <p class="set-status" role="status" aria-live="polite" data-st="${esc(st?.status || '')}">${esc(setStatusText(st))}</p>
 <div class="btns"><button type="button" class="b primary" data-k="updCheck"><span class="i">${ic('updCheck')}</span><span class="w">${esc(t('set.checkNow'))}</span></button>${avail ? `<button type="button" class="b" data-k="updNow"><span class="i">${ic('update')}</span><span class="w">${esc(t('set.updateNow'))}</span></button>` : ''}</div>
-<label class="chk"><input type="checkbox" data-set="auto" ${updAuto() ? 'checked' : ''}> ${esc(t('set.auto'))}</label>
+${setSwitch('auto', updAuto(), t('set.auto'))}
 ${served ? '' : `<div class="set-file"><p>${esc(t('set.file'))}</p><p><b>${esc(t('set.fileServe'))}</b><code dir="ltr">npm run serve -- &lt;editor.html&gt;</code></p><p><b>${esc(t('set.fileCli'))}</b><code dir="ltr">npx business-wrap update --apply --yes</code></p></div>`}
 <p class="hint">${esc(t('set.dataSafe'))}</p>`;
 }
+/** A segmented control with a sliding pill: --n segments, --i the pressed one (settings.css moves the pill with a spring). */
+let SET_SLIDE = null; // {k, from}: the segmented control whose pill slides from its old place once the drawer is redrawn
 function setSeg(k, items, label) {
-  return `<div class="set-seg" role="group" aria-label="${esc(label)}">${items.map(([v, word, on, lang]) => `<button type="button" data-k="${k}" data-v="${v}" aria-pressed="${on}"${lang ? ` lang="${lang}"` : ''}>${esc(word)}</button>`).join('')}</div>`;
+  const to = Math.max(0, items.findIndex((x) => x[2]));
+  let i = to;
+  if (SET_SLIDE && SET_SLIDE.k === k) {
+    if (!S.calm && !matchMedia('(prefers-reduced-motion: reduce)').matches) { i = SET_SLIDE.from; setTimeout(() => root.querySelector(`.drawer .set-seg[data-seg="${k}"]`)?.style.setProperty('--i', String(to)), 40); }
+    SET_SLIDE = null;
+  }
+  return `<div class="set-seg" data-seg="${k}" role="group" aria-label="${esc(label)}" style="--n:${items.length};--i:${i}">${items.map(([v, word, on, lang]) => `<button type="button" data-k="${k}" data-v="${v}" aria-pressed="${on}"${lang ? ` lang="${lang}"` : ''}>${esc(word)}</button>`).join('')}</div>`;
 }
-function settingsPanel() {
-  const A = DATA.about || { name: 'Business-Wrap', version: DATA.version, credits: [] };
+/** A switch: a real checkbox (keyboard, screen reader, data-set for settingsChange) with a drawn track and a spring thumb. */
+function setSwitch(key, on, text) {
+  return `<label class="chk set-sw"><input type="checkbox" data-set="${key}" ${on ? 'checked' : ''}><span class="set-sw-t" aria-hidden="true"><i></i></span><span class="set-sw-w">${esc(text)}</span></label>`;
+}
+function setCard(cls, id, icon, title, body) {
+  return `<section class="card set-c ${cls}" aria-labelledby="set-h-${id}"><h3 class="set-h" id="set-h-${id}"><span class="i">${ic(icon)}</span>${esc(title)}</h3>${body}</section>`;
+}
+/** About (0.17.0 note 8): the name, the version, the release date and the repository. Nothing else. */
+function setAboutInner(A) {
   const repoText = String(A.repo || '').replace(/^https:\/\//, '');
-  setTimeout(icoLoad, 0); // the drawer is in the page once this returns: ask the server where the file icons stand
-  return `<div class="set">
-<section class="card set-about" aria-labelledby="set-h-about"><h3 id="set-h-about"><span class="i">${ic('about')}</span>${esc(t('set.about'))}</h3>
-<div class="set-id"><span class="set-logo" aria-hidden="true">${DATA.brand?.mark || ''}</span><p><b class="set-name" dir="ltr">${esc(A.name || 'Business-Wrap')}</b> <bdi class="set-ver" dir="ltr">${esc(A.version || DATA.version || '')}</bdi></p></div>
+  return `<div class="set-id"><span class="set-logo" aria-hidden="true">${DATA.brand?.mark || ''}</span><p><b class="set-name" dir="ltr">${esc(A.name || 'Business-Wrap')}</b> <bdi class="set-ver" dir="ltr">${esc(A.version || DATA.version || '')}</bdi></p></div>
 <dl class="set-dl">
-<dt>${esc(t('set.version'))}</dt><dd><bdi dir="ltr">${esc(A.version || DATA.version || '—')}</bdi></dd>
 <dt>${esc(t('set.date'))}</dt><dd><bdi dir="ltr">${esc(A.date || '—')}</bdi></dd>
 <dt>${esc(t('set.repo'))}</dt><dd>${A.repo ? `<a href="${esc(A.repo)}" target="_blank" rel="noopener noreferrer" dir="ltr">${esc(repoText)}</a>` : '—'}</dd>
-<dt>${esc(t('set.license'))}</dt><dd>${esc(A.license || '—')}</dd>
-<dt>${esc(t('set.credits'))}</dt><dd>${esc((A.credits || []).map((c) => (S.ui === 'ar' ? c : c.replace(/\s*\([؀-ۿ ]+\)/, ''))).join(' · '))}</dd>
-</dl>${t('pfTrustLimit') !== 'pfTrustLimit' ? `<p class="hint set-limit">${esc(t('pfTrustLimit'))}</p>` : ''}</section>
-<section class="card set-upd" aria-labelledby="set-h-upd"><h3 id="set-h-upd"><span class="i">${ic('update')}</span>${esc(t('set.update'))}</h3>
-<div class="set-upd-body">${setUpdateInner()}</div></section>
-<section class="card set-srv" aria-labelledby="set-h-srv"><h3 id="set-h-srv"><span class="i">${ic('connect')}</span>${esc(t('srv.title'))}</h3>
-<div class="set-srv-body">${srvInner()}</div></section>
-<section class="card set-ico" aria-labelledby="set-h-ico"><h3 id="set-h-ico"><span class="i">${ic('image')}</span>${esc(t('ico.title'))}</h3>
-<div class="set-ico-body">${icoInner()}</div></section>
-<section class="card set-prefs" aria-labelledby="set-h-prefs"><h3 id="set-h-prefs"><span class="i">${ic('prefs')}</span>${esc(t('set.prefs'))}</h3>
-<div class="set-row"><span class="set-k">${esc(t('set.lang'))}</span>${setSeg('setLang', [['ar', 'ع العربية', S.ui === 'ar', 'ar'], ['en', 'E English', S.ui === 'en', 'en']], t('set.lang'))}</div>
+</dl>`;
+}
+function settingsPanel() {
+  const A = DATA.about || { name: 'Business-Wrap', version: DATA.version };
+  try { if (sessionStorage.getItem('bw:grp:settings:0') == null) sessionStorage.setItem('bw:grp:settings:0', '1'); } catch { /* storage blocked: all collapsed */ } // Preferences (group 0) opens first; the others stay collapsed (0.13 F2 · 11) until the person opens them
+  setTimeout(icoLoad, 0); // the drawer is in the page once this returns: ask the server where the file icons stand
+  const prefs = `<div class="set-row"><span class="set-k">${esc(t('set.lang'))}</span>${setSeg('setLang', [['ar', 'ع العربية', S.ui === 'ar', 'ar'], ['en', 'E English', S.ui === 'en', 'en']], t('set.lang'))}</div>
 <div class="set-row"><span class="set-k">${esc(t('set.dir'))}</span>${setSeg('setDir', ['rtl', 'ltr'].map((d) => [d, t(d), uiDir() === d]), t('set.dir'))}</div>
 <div class="set-row"><span class="set-k">${esc(t('set.view'))}</span>${setSeg('setView', viewModes().map((m) => [m, t('view.' + m), viewsMode() === m]), t('set.view'))}</div>
-<label class="chk"><input type="checkbox" data-set="calm" ${S.calm ? 'checked' : ''}> ${esc(t('set.calm'))}</label>
-</section>
-<section class="card set-lrn" aria-labelledby="set-h-lrn"><h3 id="set-h-lrn"><span class="i">${ic('learning')}</span>${esc(t('learning'))}</h3>
-<div class="set-lrn-body" data-lrn-mount></div></section>${EXT.settings.map((c) => `<section class="card set-x-${esc(c.id)}" aria-labelledby="set-h-${esc(c.id)}"><h3 id="set-h-${esc(c.id)}"><span class="i">${ic(c.icon || 'prefs')}</span>${esc(t(c.title))}</h3>${c.html()}</section>`).join('')}</div>`; // + extension cards
+${setSwitch('calm', S.calm, t('set.calm'))}`;
+  return `<div class="set">
+${setCard('set-prefs', 'prefs', 'prefs', t('set.prefs'), prefs)}
+${setCard('set-upd', 'upd', 'update', t('set.update'), `<div class="set-upd-body">${setUpdateInner()}</div>`)}
+${setCard('set-ico', 'ico', 'image', t('ico.title'), `<div class="set-ico-body">${icoInner()}</div>`)}
+${setCard('set-lrn', 'lrn', 'learning', t('learning'), '<div class="set-lrn-body" data-lrn-mount></div>')}
+${setCard('set-about', 'about', 'about', t('set.about'), setAboutInner(A))}${EXT.settings.map((c) => `<section class="card set-x-${esc(c.id)}" aria-labelledby="set-h-${esc(c.id)}"><h3 id="set-h-${esc(c.id)}"><span class="i">${ic(c.icon || 'prefs')}</span>${esc(t(c.title))}</h3>${c.html()}</section>`).join('')}</div>`; // + extension cards
 }
 /** Redraw the Update card in place (keeps the drawer, its scroll and the focus on the pressed button). */
 function setRefreshUpdate(focusKey) {
@@ -92,12 +103,14 @@ async function settingsClick(x) {
     return true;
   }
   if (k === 'updNow') { const st = updState(); if (st?.status === 'available') window.BW_UPDATE.popup(st, { manual: true }); return true; }
-  if (k === 'srvPowerOff') { await runAction('powerOff'); return true; }
   if (k === 'icoApply' || k === 'icoRestore') { await icoRun(k === 'icoApply' ? 'apply' : 'restore'); return true; }
-  if (k === 'srvOpen') { location.href = `http://127.0.0.1:${Number(v)}/`; return true; }
-  if (k === 'setLang') { setLang(v); return true; }
-  if (k === 'setDir') { setDir(v); return true; }
-  if (k === 'setView') { viewsSet(v); return true; }
+  if (k === 'setLang' || k === 'setDir' || k === 'setView') {
+    SET_SLIDE = { k, from: Number(x.closest('.set-seg')?.style.getPropertyValue('--i')) || 0 }; // the redraw starts the pill where it was and slides it
+    if (k === 'setLang') setLang(v);
+    else if (k === 'setDir') setDir(v);
+    else viewsSet(v);
+    return true;
+  }
   return false;
 }
 function settingsChange(el) {
@@ -112,22 +125,15 @@ const SRV = { found: [], note: '', busy: false, asked: false }; // found: ports 
 function srvServed() { return /^https?:$/.test(location.protocol); }
 /** The ports a file:// page asks: 4317-4327. window.__bwProbePorts is a test hook only (the tests run their own servers on free ports). */
 function srvPorts() { return Array.isArray(window.__bwProbePorts) ? window.__bwProbePorts : Array.from({ length: 11 }, (_, i) => 4317 + i); }
-async function srvProbe() {
+async function srvProbe(path = '/api/version') { // path: '/api/health' while a start is awaited (0.17.0 note 17)
   const found = [];
   await Promise.all(srvPorts().map(async (p) => {
     try {
-      const j = await (await fetch(`http://127.0.0.1:${p}/api/version`, { cache: 'no-store', signal: AbortSignal.timeout(900) })).json();
+      const j = await (await fetch(`http://127.0.0.1:${p}${path}`, { cache: 'no-store', signal: AbortSignal.timeout(900) })).json();
       if (j && j.name === 'Business-Wrap') found.push(p);
     } catch { /* nothing answers on this port */ }
   }));
   return found.sort((a, b) => a - b);
-}
-/** This file's own path for business-wrap://open?file=…, from location (a drive letter becomes C:\…); '' for a network path. */
-function srvFilePath() {
-  if (location.protocol !== 'file:' || location.host) return '';
-  let f = '';
-  try { f = decodeURIComponent(location.pathname); } catch { return ''; }
-  return /^\/[A-Za-z]:\//.test(f) ? f.slice(1).replace(/\//g, '\\') : f;
 }
 function srvLaunch(url) { // a link click: how a page asks the browser to hand a business-wrap: URL to its registered handler
   const a = document.createElement('a');
@@ -137,45 +143,28 @@ function srvLaunch(url) { // a link click: how a page asks the browser to hand a
   a.click();
   a.remove();
 }
-/** Settings › Local server (0.15.0 note 15): the same toggle as the top bar (editor/ext/18-server.js), its sentence, the port and the link to the served editor. */
-function srvInner() {
-  const sb = EXT.server;
-  const served = srvServed();
-  const on = sb?.state.mode === 'online';
-  const open = !served && on && sb.state.port ? `<button type="button" class="b" data-k="srvOpen" data-v="${Number(sb.state.port)}"><span class="i">${ic('connect')}</span><span class="w">${esc(t('sv.open'))}</span></button>` : '';
-  const off = served ? `<div class="set-srv-row"><button type="button" class="b danger" data-k="srvPowerOff" title="${esc(t('pwTitle'))}"><span class="i">${ic('powerOff')}</span><span class="w">${esc(t('powerOff'))}</span></button></div>` : '';
-  return `<div class="set-srv-row">${sb ? sb.html('settings') : ''}${open}</div>${off}
-<p class="set-status set-srv-status" role="status" aria-live="polite" data-st="${on ? 'on' : sb?.state.mode === 'offline' || sb?.state.mode === 'error' ? 'off' : ''}">${esc(sb ? sb.sentence() : '')}</p>
-<p class="hint">${esc(t(served ? 'sv.hintServed' : 'srv.hintFile'))}</p>`;
-}
-function srvDraw(focusKey) {
-  const body = root.querySelector('.drawer .set-srv-body');
-  if (!body) return;
-  const had = body.contains(root.activeElement) ? root.activeElement?.dataset?.k : '';
-  body.innerHTML = srvInner();
-  focusKey = focusKey || had;
-  if (focusKey) body.querySelector(`[data-k="${focusKey}"]`)?.focus();
-}
 /** Wait for a server to appear (want = true) or for none to answer (want = false), up to ms. */
-async function srvWait(want, ms) {
+async function srvWait(want, ms, path = '/api/version') {
   for (const t0 = Date.now(); Date.now() - t0 < ms;) {
     await new Promise((r) => setTimeout(r, 700));
-    SRV.found = await srvProbe();
+    SRV.found = await srvProbe(path);
     SRV.asked = true;
     if (!!SRV.found.length === want) return true;
   }
   return false;
 }
-/** The shared start (the toggle, editor/ext/18-server.js): ask the ports, launch business-wrap://open?file=<f> when none answers,
- *  wait for one. Resolves 'running' (one already answered, nothing launched), 'started' or 'failed'. onStep('checking'|'starting') for the UI. */
-async function srvBegin(f, onStep = () => {}) {
+/** The shared start (the top-bar toggle, editor/ext/18-server.js; 0.17.0 note 17): ask the ports; when none answers hand
+ *  business-wrap://start to the browser (the installed launcher starts this install's host and opens no browser), then poll
+ *  127.0.0.1:4317-4327 /api/health until one answers (20 s cap). Resolves 'running' (one already answered, nothing launched),
+ *  'started' or 'failed'. onStep('checking'|'starting') for the UI. */
+async function srvBegin(onStep = () => {}) {
   onStep('checking');
   SRV.found = await srvProbe();
   SRV.asked = true;
   if (SRV.found.length) return 'running';
   onStep('starting');
-  srvLaunch(`business-wrap://open?file=${encodeURIComponent(f)}`);
-  return (await srvWait(true, 25000)) ? 'started' : 'failed';
+  srvLaunch('business-wrap://start');
+  return (await srvWait(true, 20000, '/api/health')) ? 'started' : 'failed';
 }
 async function srvSaveHere() { // the same three saves as the power button: the draft, the library entry, the session state
   try { writeDraft(); } catch { /* nothing to write */ }

@@ -1,4 +1,4 @@
-// GET /api/host/health (0.15.0 L1): what a tool (or the owner) asks before blaming the host: is it up, which version, which browsers
+// GET /api/health (0.17.0 note 17): name + version + port, for the editor's start poll. GET /api/host/health (0.15.0 L1): what a tool (or the owner) asks before blaming the host: is it up, which version, which browsers
 // (clients) hold an event stream, which tabs are live and how long ago each answered, how many editor requests wait.
 // {ok, version, pid, uptimeS, workspace, clients:[{client, conns, tabs, since}], tabs:[{tab, svc, docs, automation, live, lastBeatMs}],
 //  pendingRequests, warnings:[{code:'MANY_CLIENTS'|'TAB_STALE'|'TAB_ASLEEP', …}], leases, revs}. lastBeatMs > 15000 marks a hung tab (report B4);
@@ -19,7 +19,20 @@ export function workspaceNote(ws) {
 const PKG = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'package.json');
 const version = () => { try { return JSON.parse(fs.readFileSync(PKG, 'utf8')).version; } catch { return null; } };
 
-export default async (req, url, send, ctx) => {
+const LOCAL_ORIGIN = /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/;
+
+/** GET /api/health (0.17.0 note 17): the one probe a file:// page makes after it hands business-wrap://start to the browser.
+ *  Name + version + port only (no tabs, no paths); readable from a file:// page (Origin: null) and from a local page, never from another site. */
+function publicHealth(req, res, ctx) {
+  const o = req.headers.origin;
+  const h = { 'content-type': 'application/json', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', vary: 'Origin' };
+  if (o === 'null' || (o && LOCAL_ORIGIN.test(o))) h['access-control-allow-origin'] = o;
+  res.writeHead(200, h);
+  res.end(JSON.stringify({ ok: true, name: 'Business-Wrap', version: version(), port: ctx.server?.address?.()?.port ?? null }));
+}
+
+export default async (req, url, send, ctx, res) => {
+  if (req.method === 'GET' && url.pathname === '/api/health' && res) { publicHealth(req, res, ctx); return true; }
   if (req.method !== 'GET' || url.pathname !== '/api/host/health') return false;
   const s = state(ctx);
   const r = registry(ctx);

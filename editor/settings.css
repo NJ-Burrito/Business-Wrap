@@ -1,7 +1,31 @@
-/* Settings page (0.11.0): editor/settings.js. Drawer cards in the house look; the boxes never move between
-   languages (the drawer keeps the shell's layout), only the words follow data-tdir. */
+/* Settings page (0.11.0; reworked 0.17.0 notes 8-10): editor/settings.js. Brand v3 (navy / gold / sand) in the light theme and the dim-navy dark
+   (45-dark-dim.css): every colour here is a token, so both themes follow. Cards are ordered by use (Preferences opens first, the rest are the drawer's collapsible groups); the drawer's own
+   stagger (chrome.css) brings them in. Motion: a spring pill under the segmented controls, a spring thumb on the switches, one press
+   squash. Calm mode (S.calm) and prefers-reduced-motion switch all of it off. The host on/off control is NOT in Settings (top bar only). */
 .set .card h3 .i { color: var(--gold-deep); }
 .shell[data-theme="dark"] .set .card h3 .i { color: var(--gold); }
+.set { display: grid; gap: 12px; }
+.set > .card { margin: 0; }
+.set > .card.set-c { padding: 14px 16px 16px; border-radius: 16px; background: var(--bw-surface, var(--panel)); box-shadow: 0 0 0 1px var(--panel-line), var(--bw-shadow-1, none);
+  transition: box-shadow var(--bw-dur-base, .2s) var(--e-out, ease-out), transform var(--bw-dur-base, .2s) var(--e-out, ease-out); }
+.set > .card.set-c:hover { box-shadow: 0 0 0 1px var(--bw-rule-strong, var(--panel-line)), var(--bw-shadow-2, none); }
+.set .card h3.set-h { display: flex; align-items: center; gap: 10px; margin: 0; font: 800 15px/1.3 'Thmanyah Sans', system-ui, sans-serif; color: var(--navy); }
+.shell[data-theme="dark"] .set .card h3.set-h { color: var(--bw-ink); }
+.set-h .i { display: inline-grid; place-items: center; flex: none; inline-size: 30px; block-size: 30px; border-radius: 50%; background: var(--wash); color: var(--gold-deep); transition: transform .34s var(--e-spring, cubic-bezier(.34, 1.56, .64, 1)); }
+.shell[data-theme="dark"] .set-h .i { color: var(--gold); }
+.set-h .i .ic, .set-h .i svg { inline-size: 18px; block-size: 18px; }
+.set > .card.set-c:hover .set-h .i { transform: rotate(-8deg) scale(1.08); }
+/* About: the navy cover band of brand v3 with the gold ring; name, version, date, repository only */
+.set-about { background: linear-gradient(135deg, #001e3d, #003c7a) !important; color: #fafaf9; box-shadow: 0 0 0 1px var(--gold) inset, var(--bw-shadow-1, none) !important; }
+.shell[data-theme="dark"] .set-about { background: linear-gradient(135deg, #0a1322, #152540) !important; }
+.set .card.set-about h3.set-h { color: #fafaf9; }
+.set-about .set-h .i { background: rgba(255, 255, 255, .12); color: #e6c46a; }
+.set-about .set-dl dt { color: #c3cde0; }
+.set-about .set-dl dd, .set-about .set-dl a { color: #fafaf9; }
+.set-about .set-name { color: #fafaf9; }
+.set-about .set-ver { background: #be9a41; color: #001e3d; }
+.set-about .set-logo { background: rgba(255, 255, 255, .1); }
+.set-about .set-dl a:focus-visible { outline-color: #e6c46a; }
 .set-id { display: flex; align-items: center; gap: 12px; margin: 4px 0 10px; }
 .set-logo { inline-size: 44px; block-size: 44px; flex: none; display: grid; place-items: center; border-radius: 12px; background: var(--deep); padding: 6px; }
 .set-logo svg { inline-size: 100%; block-size: 100%; }
@@ -12,6 +36,7 @@
 .set-dl dt { color: var(--panel-soft); font-weight: 600; }
 .set-dl dd { margin: 0; color: var(--panel-ink); overflow-wrap: anywhere; }
 .set-dl a { color: var(--navy); text-underline-offset: 3px; }
+.shell[data-theme="dark"] .set-dl a { color: var(--bw-primary); }
 .set-dl a:focus-visible, .set-seg button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
 .set-new { display: inline-block; margin-inline-start: 6px; padding: 2px 8px; border-radius: 999px; background: var(--gold); color: var(--on-gold); font-size: 11.5px; font-weight: 700; }
 .set-status { min-block-size: 1.4em; margin: 10px 0 8px; color: var(--panel-ink); font-weight: 600; }
@@ -20,21 +45,31 @@
 .set-file { margin: 10px 0; padding: 10px 12px; border-radius: 12px; background: var(--panel); box-shadow: 0 0 0 1px var(--panel-line); }
 .set-file p { margin: 4px 0; }
 .set-file code { display: block; margin-top: 4px; padding: 6px 8px; border-radius: 8px; background: var(--wash); color: var(--panel-ink); font: 12.5px/1.4 var(--bw-font-ui); text-align: left; overflow-wrap: anywhere; }
-.set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0; flex-wrap: wrap; }
+.set-row { display: grid; gap: 6px; margin: 12px 0; } /* label above its control: the card's height is the same in Arabic and English (the layout never flips) */
 .set-k { color: var(--panel-soft); font-weight: 600; }
 .shell[data-tdir="ltr"] .set :is(.set-k, dt, dd, b) { direction: ltr; }
 .shell[data-tdir="rtl"] .set :is(.set-k, dt, dd, b) { direction: rtl; }
-.set-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--wash); }
-.set-seg button { font: inherit; border: 0; border-radius: 9px; padding: 5px 12px; background: transparent; color: var(--panel-ink); cursor: pointer; transition: background .22s var(--e-out), color .22s var(--e-out), transform .22s var(--e-spring); }
-.set-seg button:hover { background: var(--wash-2); }
+/* segmented control: a pill (::before) slides under the pressed button; --n segments, --i the pressed index */
+.set-seg { position: relative; isolation: isolate; display: grid; inline-size: 100%; box-sizing: border-box; grid-auto-flow: column; grid-auto-columns: 1fr; padding: 3px; border-radius: 12px; background: var(--wash); max-inline-size: 100%; }
+.set-seg::before { content: ''; position: absolute; z-index: -1; inset-block: 3px; inline-size: calc((100% - 6px) / var(--n, 1)); inset-inline-start: calc(3px + var(--i, 0) * (100% - 6px) / var(--n, 1));
+  border-radius: 9px; background: var(--bw-primary, var(--navy)); box-shadow: 0 0 0 1px var(--gold) inset, var(--bw-shadow-1, none); transition: inset-inline-start .34s var(--e-spring, cubic-bezier(.34, 1.56, .64, 1)); }
+.set-seg button { font: inherit; white-space: nowrap; border: 0; border-radius: 9px; padding: 6px 14px; background: transparent; color: var(--panel-ink); cursor: pointer; transition: color .22s var(--e-out, ease-out), transform .22s var(--e-spring, cubic-bezier(.34, 1.56, .64, 1)); }
+.set-seg button:hover:not([aria-pressed="true"]) { background: var(--wash-2); }
 .set-seg button:active { transform: scale(var(--press, .96)); }
-.set-seg button[aria-pressed="true"] { background: var(--navy); color: var(--on-primary); box-shadow: 0 0 0 1px var(--gold) inset; }
-.shell[data-calm="1"] .set-seg button { transition: none; }
-@media (prefers-reduced-motion: reduce) { .set-seg button { transition: none; } }
-/* Servers card (0.13.3): start / stop. The icons are the toolbar's own (send, powerOff, connect) with their own moves (40-icon-motion.css). */
-.set-srv-status[data-st="on"] { color: var(--bw-accent-strong); }
-.set-srv .btns .b[disabled] { opacity: .6; cursor: progress; }
-.set-srv .btns .b .i { inline-size: 18px; block-size: 18px; }
+.set-seg button[aria-pressed="true"] { color: var(--bw-on-primary, var(--on-primary)); font-weight: 700; background: var(--bw-primary, var(--navy)); transition: background-color 0s .32s, color .01s .32s; } /* the pill slides first; the button then paints the same fill, so the pair is measurable and still right if the pill is missing */
+/* switch: a real checkbox, a drawn track, a spring thumb */
+.set-sw { position: relative; display: flex; align-items: center; gap: 12px; min-block-size: 44px; margin: 6px 0 0; cursor: pointer; }
+.set-sw input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; margin: 0; }
+.set-sw-t { position: relative; flex: none; inline-size: 44px; block-size: 26px; border-radius: 13px; background: var(--bw-line-strong, #6f819f); transition: background-color .22s var(--e-out, ease-out); }
+.set-sw-t i { position: absolute; inset-block-start: 3px; inset-inline-start: 3px; inline-size: 20px; block-size: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .35); transition: inset-inline-start .34s var(--e-spring, cubic-bezier(.34, 1.56, .64, 1)), background-color .22s var(--e-out, ease-out); }
+.set-sw input:checked + .set-sw-t { background: var(--bw-primary, var(--navy)); }
+.set-sw input:checked + .set-sw-t i { inset-inline-start: 21px; background: var(--bw-on-primary, #fff); }
+.set-sw input:focus-visible + .set-sw-t { outline: 3px solid var(--focus); outline-offset: 2px; }
+.set-sw:active .set-sw-t i { transform: scale(.9); }
+.set-sw-w { flex: 1; min-inline-size: 0; line-height: 1.5; }
+.shell[data-calm="1"] :is(.set-seg button, .set-sw-t, .set-sw-t i, .set-h .i, .set > .card.set-c) { transition: none !important; }
+.shell[data-calm="1"] .set-seg::before { transition: none !important; }
+@media (prefers-reduced-motion: reduce) { .set-seg::before, .set-seg button, .set-sw-t, .set-sw-t i, .set-h .i, .set > .card.set-c { transition: none !important; } }
 
 /* File icons card (0.15.1): editor/settings.js icoInner */
 .set-ico-status[data-st="on"] { color: var(--bw-accent-strong); }
