@@ -57,14 +57,16 @@ export function makeEntry(d, { origin = 'import' } = {}) {
     try { doc = JSON.parse(raw); } catch { throw Object.assign(new Error(`${ed}: not JSON`), { code: 400 }); }
     if (!doc?.chapters || !doc?.control) throw Object.assign(new Error(`${ed}: not a Business-Wrap document (chapters and control are missing)`), { code: 400 });
     const ops = (d.ops?.[ed] || []).filter((o) => o && typeof o.op === 'string' && typeof o.path === 'string').map((o, i) => (o.id ? o : { ...o, id: `i${i.toString(36)}${Date.now().toString(36).slice(-4)}` }));
-    editions[ed] = { name: '', raw, hash: sha(raw), ops, status: {}, stale: [], comments: [], versions: [], marks: [], epochIds: [] };
+    const k = d.keep?.[ed] || {}; // 0.16.3 (fix 0163, additive): the work an imported Save-HTML carried comes in whole, not only its edits
+    const arr = (v) => (Array.isArray(v) ? v : []);
+    editions[ed] = { name: typeof k.name === 'string' ? k.name : '', raw, hash: sha(raw), ops, status: k.status && typeof k.status === 'object' && !Array.isArray(k.status) ? k.status : {}, stale: arr(k.stale), comments: arr(k.comments), versions: arr(k.versions), marks: arr(k.marks), epochIds: arr(k.epochIds) };
   }
   if (!Object.keys(editions).length) throw Object.assign(new Error('document: {ar} or {en} (a document JSON) is required'), { code: 400 });
   const first = Object.values(editions)[0].raw;
   const now = new Date().toISOString(), id = `doc-${crypto.randomUUID()}`;
   let title = String(d.title || '').trim();
   if (!title) { const names = Object.values(editions).map((e) => titleOfRaw(e.raw, id)); title = names.find((n) => n && !PLACEHOLDER.has(n)) || names[0]; }
-  return { id, title, service: JSON.parse(first).service || 'document', origin, createdAt: now, savedAt: now, editions, words: entryWords({ editions }), bwlog: 1, ...(d.srcKey ? { src: { key: String(d.srcKey).toLowerCase(), hash: d.srcHash } } : {}) }; // words per built edition (0.15.3); src: additive (0.16.0)
+  return { id, title, service: JSON.parse(first).service || 'document', origin, createdAt: now, savedAt: now, editions, words: entryWords({ editions }), bwlog: 1, ...(typeof d.prov?.log === 'string' && d.prov.log ? { prov: { doc: String(d.prov.doc || ''), log: d.prov.log } } : {}), ...(d.srcKey ? { src: { key: String(d.srcKey).toLowerCase(), hash: d.srcHash } } : {}) }; // words per built edition (0.15.3); src: additive (0.16.0)
 }
 
 /**

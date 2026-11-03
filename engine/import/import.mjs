@@ -12,6 +12,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { py } from '../py.mjs';
+import { onShortCopy } from './safe.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const latin = (s) => s.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x660));
@@ -26,13 +27,15 @@ const TITLE_ROW = /^(عنوان الوثيقة|document title|title)$/i;
 
 /** pdftotext's UTF-8 text. BW_PDFTOTEXT names the binary. */
 export function pdfText(file) {
-  const r = spawnSync(process.env.BW_PDFTOTEXT || 'pdftotext', ['-layout', '-enc', 'UTF-8', file, '-'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, windowsHide: true });
+  // read through a short ASCII-named temp copy: a long Arabic path under a long temp folder made pdftotext fail with "I/O Error" (0.16.3)
+  const r = onShortCopy(file, (short) => spawnSync(process.env.BW_PDFTOTEXT || 'pdftotext', ['-layout', '-enc', 'UTF-8', short, '-'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, windowsHide: true }));
   if (r.status !== 0) throw new Error(`pdftotext failed: ${(r.stderr || r.error?.message || '').slice(0, 200)}`);
   return r.stdout;
 }
 /** The PDF's Info «Title» (pdfinfo, poppler or xpdf; BW_PDFINFO names the binary), '' when there is none or no pdfinfo. */
 export function pdfTitle(file) {
-  const r = spawnSync(process.env.BW_PDFINFO || 'pdfinfo', ['-enc', 'UTF-8', file], { encoding: 'utf8', windowsHide: true });
+  let r;
+  try { r = onShortCopy(file, (short) => spawnSync(process.env.BW_PDFINFO || 'pdfinfo', ['-enc', 'UTF-8', short], { encoding: 'utf8', windowsHide: true })); } catch { return ''; }
   return r.status === 0 ? clean(/^Title:\s*(.*)$/m.exec(r.stdout || '')?.[1] || '').trim() : '';
 }
 export const words = (s) => (String(s).match(/\S+/g) || []).length;

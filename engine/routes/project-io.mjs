@@ -14,6 +14,8 @@ import crypto from 'node:crypto';
 import { ensure, readJson, systemDir, subdir } from '../workspace.mjs';
 import { exportProject, PROJECTS_NAME } from '../project-export.mjs';
 import { importProject, editionKey } from '../project-import.mjs';
+import { contentKey } from '../import/plan.mjs';
+import { lp } from '../import/safe.mjs';
 import { queueDocuments, mirrorEntry, push } from './library.mjs';
 import { readState } from './projects.mjs';
 import { reveal } from '../host.mjs';
@@ -34,13 +36,14 @@ function newJob(ctx, kind) {
 }
 const finish = (j, state, patch = {}) => { Object.assign(j, patch, { state }); if (running === j) running = null; j.push(); };
 
-const upDir = (id) => path.join(os.tmpdir(), `bw-upload-${id}`);
+// short on purpose (0.16.3): <tmp>\bw-u-<8 hex> leaves the room a long Arabic folder and file name need under Windows' 260 characters
+const upDir = (id) => path.join(os.tmpdir(), `bw-u-${crypto.createHash('sha1').update(String(id)).digest('hex').slice(0, 8)}`);
 /** Hashes of every document text the library mirror holds: what an import's duplicates are judged against. */
 function knownHashes(ctx) {
   const set = new Set();
   const dir = subdir(ensure(ctx.workspace).dirs, 'library');
   for (const f of fs.existsSync(dir) ? fs.readdirSync(dir).filter((x) => x.endsWith('.json.gz')) : []) {
-    try { const e = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(dir, f))).toString('utf8')); if (e.deletedAt) continue; for (const x of Object.values(e.editions || {})) if (x.raw) set.add(editionKey(x.raw, x.ops)); } catch { /* skip a bad entry */ }
+    try { const e = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(dir, f))).toString('utf8')); if (e.deletedAt) continue; for (const x of Object.values(e.editions || {})) if (x.raw) { set.add(editionKey(x.raw, x.ops)); set.add(contentKey(x.raw, x.ops)); } } catch { /* skip a bad entry */ }
   }
   return set;
 }
@@ -95,7 +98,7 @@ export default async (req, url, send, ctx, res) => {
     if (req.method === 'POST' && p === '/api/project/upload') {
       const job = String(url.searchParams.get('job')), rel = String(url.searchParams.get('name') || '').replace(/\\/g, '/');
       if (!UP.test(job) || !rel || rel.startsWith('/') || rel.split('/').some((x) => x === '..' || x === '.' || !x) || /[:\u0000]/.test(rel) || rel.length > 400) { send(400, { error: 'upload: job=up-<id>&name=<relative path>' }); return true; }
-      const target = path.join(upDir(job), ...rel.split('/'));
+      const target = lp(path.join(upDir(job), ...rel.split('/')));
       fs.mkdirSync(path.dirname(target), { recursive: true });
       let bytes = 0, over = false;
       const out = fs.createWriteStream(target);
@@ -146,7 +149,7 @@ export default async (req, url, send, ctx, res) => {
         queue: async (documents, opts) => queueDocuments(ctx, documents, opts),
       }).then((r) => finish(j, r.cancelled ? 'cancelled' : 'done', { result: r }))
         .catch((e) => finish(j, 'failed', { error: String(e.message || e).slice(0, 300) }))
-        .finally(() => { for (const d of cleanup) fs.rmSync(d, { recursive: true, force: true }); });
+        .finally(() => { for (const d of cleanup) fs.rmSync(lp(d), { recursive: true, force: true }); });
       send(200, { job: j.id });
       return true;
     }
