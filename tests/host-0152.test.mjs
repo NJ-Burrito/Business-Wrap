@@ -4,7 +4,7 @@
 //   10  Fill height: the page's top sits right under the ribbon, its bottom just above the pager (or the window bottom), the same gap on both sides (+-2 px),
 //       with the ribbon open and folded, and again after a window resize
 //   4   turning the host off (Settings, power) stops ONLY the host: the page stays open and shows «server off», with a Turn-on button that asks the
-//       installed Business-Wrap for the server again (business-wrap://open?file=...); a host that comes back brings the page online again
+//       installed Business-Wrap for the server again (business-wrap://start); a host that comes back brings the page online again
 //   12  editor_action runs the widened safe list through the real MCP client -> host -> tab; a destructive name is REFUSED; an unknown name is UNKNOWN_ACTION
 //   13  check answers spelling counts (ar / en) and diagramWarnings
 //   node tests/host-0152.test.mjs
@@ -225,13 +225,12 @@ try {
     check('check: diagramWarnings agrees with the editor\'s own Check panel (one finding per warning)', !r.err && r.d.diagramWarnings.length === r.d.findings.filter((f) => /\/blocks\/\d+$/.test(f.path || '') && f.level === 'warn' && /pt|نقطة/.test(f.message)).length, JSON.stringify({ w: r.d.diagramWarnings, dg }));
 
     // 4: turning the host off stops ONLY the host; the page stays open and can turn it on again
-    await page.evaluate(() => window.BW.runAction('settings'));
-    await page.waitForFunction(() => !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer [data-k="srvPowerOff"]'));
+    // 0.17.0 note 10: no power button in Settings; the confirm dialog is reached through the `powerOff` action (the top bar's switch stops without it)
     const hostPid = hs.pid;
     const closedWindows = []; // a page of the same context that would be closed by «close everything»
     const keep = await ctx.newPage();
     await keep.goto('about:blank');
-    await sh(page, (x) => x.querySelector('.drawer [data-k="srvPowerOff"]').click());
+    await page.evaluate(() => { window.__pw = window.BW.runAction('powerOff'); }); // not awaited: it resolves when the confirm dialog is answered
     await sleep(300);
     await page.locator('.dialog [data-k="pw-yes"]').click();
     const shown = await until(() => sh(page, (x) => !!x.querySelector('.pw-off [data-k="pw-on"]')), 6000);
@@ -244,8 +243,8 @@ try {
     check('power: the server toggle shows offline («server off») on the same page', toggle, await page.evaluate(() => document.documentElement.dataset.bwServer));
     // turn it on again from the same page: the button hands the open command to the installed Business-Wrap
     await sh(page, (x) => x.querySelector('.pw-off [data-k="pw-on"]').click());
-    const launched = await until(() => page.evaluate(() => window.__launched.some((u) => u.startsWith('business-wrap://open?file='))), 8000);
-    check('power: Turn on asks the installed Business-Wrap (business-wrap://open?file=...) from the same page', launched, JSON.stringify(await page.evaluate(() => window.__launched)));
+    const launched = await until(() => page.evaluate(() => window.__launched.some((u) => u === 'business-wrap://start')), 8000);
+    check('power: Turn on asks the installed Business-Wrap (business-wrap://start) from the same page', launched, JSON.stringify(await page.evaluate(() => window.__launched)));
     // the host comes back on the same port (what the protocol handler does): the page finds it and goes online, the card goes away
     const { open: openHost } = await import('../engine/cli.mjs');
     await openHost({ inputs: [path.join(REPO, 'samples', 'event-permit')], browser: false, port });

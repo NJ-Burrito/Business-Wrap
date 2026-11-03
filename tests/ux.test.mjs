@@ -164,9 +164,9 @@ try {
     const mid = await sh(page, (r) => { const s = r.querySelector('.seg.lang'); const t = s.querySelector('.thumb').getBoundingClientRect().x; const on = s.querySelector('[aria-pressed="true"]').getBoundingClientRect().x; return Math.abs(t - on); });
     check('A3: the thumb slides (mid-flight it has not yet arrived)', mid > 2, `offset ${mid.toFixed(1)} px at 90 ms`);
     await ctx.close();
-    const rm = await open({ ui: 'ar', reduced: true });
+    const rm = await open({ ui: 'ar', store: { 'bw:calm': '1' } }); // 0.17.0: only the Calm button reduces motion
     const tr = await sh(rm.page, (r) => getComputedStyle(r.querySelector('.seg.lang .thumb')).transitionDuration);
-    check('A3: reduced motion → no thumb motion', /^0s(, 0s)*$/.test(tr), tr);
+    check('A3: calm → no thumb motion', /^0s(, 0s)*$/.test(tr), tr);
     await rm.ctx.close();
   }
 
@@ -298,11 +298,11 @@ try {
     check(`A5: every toolbar, view and selection tool has an explainer in Arabic and English (${keys.size} tools)`, !missing.length, missing.join(' '));
     // 0.13.1 final pass #5: Save and Import say what they do since H3 (save in place; import opens the file as a document)
     check('A5: Save / Import hover help describe the 0.13.1 behaviour (save in place, import opens as a document), AR + EN', /في مكانها/.test(UX.ar['explain.save']) && /in place/.test(UX.en['explain.save']) && /وثيقةً في «المستندات»/.test(UX.ar['explain.import']) && /as a document/.test(UX.en['explain.import']), JSON.stringify([UX.ar['explain.save'], UX.en['explain.import']]));
-    const rm = await open({ ui: 'ar', reduced: true });
+    const rm = await open({ ui: 'ar', store: { 'bw:calm': '1' } }); // 0.17.0: only the Calm button reduces motion
     await (await rbBtn(rm.page,'save')).hover();
     await rm.page.waitForTimeout(1200);
     const still = await sh(rm.page, (r) => { const c = r.querySelector('.xpl'); return c && !c.hidden ? [...c.querySelectorAll('svg *')].flatMap((e) => e.getAnimations()).length : -1; });
-    check('A5: reduced motion → the card shows a still frame', still === 0, String(still));
+    check('A5: calm → the card shows a still frame', still === 0, String(still));
     await rm.ctx.close();
   }
 
@@ -575,15 +575,16 @@ try {
   { // 0.13 A7
     const { ctx, page } = await open({ width: 1440, height: 900 });
     await page.evaluate(() => window.BW.runAction('settings')); await page.waitForTimeout(500);
-    const first = (a) => a.length >= 2 && a.every((x) => x === false); // F2 · 11: every group collapsed on open
+    const allShut = (a) => a.length >= 2 && a.every((x) => x === false); // F2 · 11: every group collapsed on open (Design, Process)
+    const first = (a) => a.length >= 2 && a[0] === true && a.slice(1).every((x) => x === false); // 0.17.0 (N9): Settings opens Preferences (group 0) first, the rest collapsed
     const g = await sh(page, (R) => [...R.querySelectorAll('.drawer details.pgrp')].map((d) => d.open));
-    check('F2 11: Settings opens with every group collapsed (local learning too)', g.length >= 3 && first(g), JSON.stringify(g));
+    check('F2 11: Settings opens with Preferences open and every other group collapsed (local learning too)', g.length >= 3 && first(g), JSON.stringify(g));
     // the Design and Process panels follow the same rule (the owner asked for all side panels)
     await page.evaluate(() => window.BW.openDrawer('theme')); await page.waitForTimeout(300);
     const gd = await sh(page, (R) => [...R.querySelectorAll('.drawer details.dgrp')].map((d) => d.open));
     await page.evaluate(() => window.BW.openDrawer('process')); await page.waitForTimeout(300);
     const gp = await sh(page, (R) => [...R.querySelectorAll('.drawer details.pgrp')].map((d) => d.open));
-    check('F2 11: the Design panel opens with every group collapsed (the Process panel: harvest.test, with a model)', gd.length >= 6 && first(gd) && (gp.length < 2 || first(gp)), JSON.stringify({ gd, gp }));
+    check('F2 11: the Design panel opens with every group collapsed (the Process panel: harvest.test, with a model)', gd.length >= 6 && allShut(gd) && (gp.length < 2 || allShut(gp)), JSON.stringify({ gd, gp }));
     await page.evaluate(() => { window.BW.runAction('settings'); }); await page.waitForTimeout(400);
     await sh(page, (R) => { const d = R.querySelectorAll('.drawer details.pgrp')[2]; d.open = true; });
     await page.waitForTimeout(100);
@@ -826,10 +827,10 @@ try {
       check(`H2 panel buttons (${dark ? 'dark' : 'light'}): no page errors`, !errors.length, errors.join(' | '));
       await ctx.close();
     }
-    const rm = await open({ ui: 'ar', width: 1500, reduced: true });
+    const rm = await open({ ui: 'ar', width: 1500, store: { 'bw:calm': '1' } });
     await openSettings(rm.page);
     const still = (await pills(rm.page)).filter((x) => x.tr.split(',').some((d) => parseFloat(d) > 0));
-    check('H2 panel buttons: reduced motion = no transition', !still.length, JSON.stringify(still.slice(0, 2)));
+    check('H2 panel buttons: calm = no transition', !still.length, JSON.stringify(still.slice(0, 2)));
     await rm.ctx.close();
   }
   { // 0.13.1 final pass #4: every toolbar and panel button carries an icon (and every icon this pass added has its own move)
@@ -838,7 +839,7 @@ try {
     await settle(page, 1200);
     const scan = () => sh(page, (R) => {
       const words = window.BW.EXT.buttonIcons.words;
-      return [...R.querySelectorAll('.island button, .drawer button')].filter((b) => !b.closest('.dialog, .toasts') && !b.matches(words) && !b.querySelector('svg'))
+      return [...R.querySelectorAll('.island button, .drawer button')].filter((b) => !b.closest('.dialog, .toasts') && !b.matches(words) && !b.matches('.srv-toggle') && !b.querySelector('svg')) /* 0.17.0: the host switch is a dot, a word and a track */
         .map((b) => `${b.closest('.drawer') ? 'panel' : 'toolbar'}:${Object.entries(b.dataset).map(([k, v]) => `${k}=${v}`).join(',')} «${b.textContent.trim().slice(0, 24)}»`);
     });
     const bare = new Set(await scan());

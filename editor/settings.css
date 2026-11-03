@@ -1,7 +1,7 @@
 /* Settings page (0.11.0; reworked 0.17.0 notes 8-10): editor/settings.js. Brand v3 (navy / gold / sand) in the light theme and the dim-navy dark
    (45-dark-dim.css): every colour here is a token, so both themes follow. Cards are ordered by use (Preferences opens first, the rest are the drawer's collapsible groups); the drawer's own
    stagger (chrome.css) brings them in. Motion: a spring pill under the segmented controls, a spring thumb on the switches, one press
-   squash. Calm mode (S.calm) and prefers-reduced-motion switch all of it off. The host on/off control is NOT in Settings (top bar only). */
+   squash. Calm mode (S.calm) switches all of it off. The host on/off control is NOT in Settings (top bar only). */
 .set .card h3 .i { color: var(--gold-deep); }
 .shell[data-theme="dark"] .set .card h3 .i { color: var(--gold); }
 .set { display: grid; gap: 12px; }
@@ -16,16 +16,16 @@
 .set-h .i .ic, .set-h .i svg { inline-size: 18px; block-size: 18px; }
 .set > .card.set-c:hover .set-h .i { transform: rotate(-8deg) scale(1.08); }
 /* About: the navy cover band of brand v3 with the gold ring; name, version, date, repository only */
-.set-about { background: linear-gradient(135deg, #001e3d, #003c7a) !important; color: #fafaf9; box-shadow: 0 0 0 1px var(--gold) inset, var(--bw-shadow-1, none) !important; }
-.shell[data-theme="dark"] .set-about { background: linear-gradient(135deg, #0a1322, #152540) !important; }
-.set .card.set-about h3.set-h { color: #fafaf9; }
-.set-about .set-h .i { background: rgba(255, 255, 255, .12); color: #e6c46a; }
-.set-about .set-dl dt { color: #c3cde0; }
-.set-about .set-dl dd, .set-about .set-dl a { color: #fafaf9; }
-.set-about .set-name { color: #fafaf9; }
-.set-about .set-ver { background: #be9a41; color: #001e3d; }
-.set-about .set-logo { background: rgba(255, 255, 255, .1); }
-.set-about .set-dl a:focus-visible { outline-color: #e6c46a; }
+.set-about { background: linear-gradient(135deg, var(--bw-band), var(--bw-primary)) !important; color: var(--on-glass); box-shadow: 0 0 0 1px var(--gold) inset, var(--bw-shadow-1, none) !important; }
+.shell[data-theme="dark"] .set-about { background: linear-gradient(135deg, var(--bw-band), var(--bw-band)) !important; }
+.set .card.set-about h3.set-h { color: var(--on-glass); }
+.set-about .set-h .i { background: color-mix(in srgb, white 12%, transparent); color: var(--bw-accent); }
+.set-about .set-dl dt { color: var(--on-glass-soft); }
+.set-about .set-dl dd, .set-about .set-dl a { color: var(--on-glass); }
+.set-about .set-name { color: var(--on-glass); }
+.set-about .set-ver { background: var(--bw-accent); color: var(--on-gold); }
+.set-about .set-logo { background: color-mix(in srgb, white 10%, transparent); }
+.set-about .set-dl a:focus-visible { outline-color: var(--bw-accent); }
 .set-id { display: flex; align-items: center; gap: 12px; margin: 4px 0 10px; }
 .set-logo { inline-size: 44px; block-size: 44px; flex: none; display: grid; place-items: center; border-radius: 12px; background: var(--deep); padding: 6px; }
 .set-logo svg { inline-size: 100%; block-size: 100%; }
@@ -61,7 +61,7 @@
 .set-sw { position: relative; display: flex; align-items: center; gap: 12px; min-block-size: 44px; margin: 6px 0 0; cursor: pointer; }
 .set-sw input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; margin: 0; }
 .set-sw-t { position: relative; flex: none; inline-size: 44px; block-size: 26px; border-radius: 13px; background: var(--bw-line-strong, #6f819f); transition: background-color .22s var(--e-out, ease-out); }
-.set-sw-t i { position: absolute; inset-block-start: 3px; inset-inline-start: 3px; inline-size: 20px; block-size: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .35); transition: inset-inline-start .34s var(--e-spring, cubic-bezier(.34, 1.56, .64, 1)), background-color .22s var(--e-out, ease-out); }
+.set-sw-t i { position: absolute; inset-block-start: 3px; inset-inline-start: 3px; inline-size: 20px; block-size: 20px; border-radius: 50%; background: white; box-shadow: 0 1px 3px color-mix(in srgb, black 35%, transparent); transition: inset-inline-start .34s var(--e-spring, cubic-bezier(.34, 1.56, .64, 1)), background-color .22s var(--e-out, ease-out); }
 .set-sw input:checked + .set-sw-t { background: var(--bw-primary, var(--navy)); }
 .set-sw input:checked + .set-sw-t i { inset-inline-start: 21px; background: var(--bw-on-primary, #fff); }
 .set-sw input:focus-visible + .set-sw-t { outline: 3px solid var(--focus); outline-offset: 2px; }
@@ -69,7 +69,6 @@
 .set-sw-w { flex: 1; min-inline-size: 0; line-height: 1.5; }
 .shell[data-calm="1"] :is(.set-seg button, .set-sw-t, .set-sw-t i, .set-h .i, .set > .card.set-c) { transition: none !important; }
 .shell[data-calm="1"] .set-seg::before { transition: none !important; }
-@media (prefers-reduced-motion: reduce) { .set-seg::before, .set-seg button, .set-sw-t, .set-sw-t i, .set-h .i, .set > .card.set-c { transition: none !important; } }
 
 /* File icons card (0.15.1): editor/settings.js icoInner */
 .set-ico-status[data-st="on"] { color: var(--bw-accent-strong); }

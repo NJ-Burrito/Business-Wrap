@@ -44,7 +44,6 @@
 @keyframes sp-pulse { 50% { opacity: .2; } }
 @keyframes sp-slide { 0% { margin-inline-start: -40%; } 100% { margin-inline-start: 100%; } }
 html[data-bw-calm="1"] .sp-bar i, html[data-bw-calm="1"] .sp-chip[data-st="loading"] .sp-dot { animation: none; }
-@media (prefers-reduced-motion: reduce) { .sp-bar i, .sp-chip[data-st="loading"] .sp-dot { animation: none; } }
 
 /* the Spelling tab: the error count on its tool */
 .rb-tools [data-a="spellCount"] .i { position: relative; }

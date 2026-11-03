@@ -40,4 +40,3 @@ html[data-bw-calm="1"] .srv-thumb, .shell[data-calm="1"] :is(.srv-thumb, .srv-to
 @keyframes srv-spin { to { transform: rotate(360deg); } }
 @keyframes srv-pop { 0% { transform: scale(.4); } 60% { transform: scale(1.35); } 100% { transform: scale(1); } }
 @keyframes srv-halo { 0% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--srv-c) 34%, transparent); } 70%, 100% { box-shadow: 0 0 0 9px transparent; } }
-@media (prefers-reduced-motion: reduce) { .srv-toggle, .srv-thumb, .srv-track, .srv-dot { transition: none; } .srv-toggle[data-pulse="1"], .srv-toggle .srv-dot { animation: none !important; } }

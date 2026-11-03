@@ -70,7 +70,6 @@
 .status .count:hover { background: color-mix(in srgb, var(--on-glass) 18%, transparent); border-color: var(--bw-sec-file); transform: translateY(-1px); box-shadow: 0 2px 8px color-mix(in srgb, var(--deep) 35%, transparent); }
 .status .count:active { transform: scale(var(--press, .96)); box-shadow: none; transition-duration: .08s; }
 .status .count:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { .status .count, .status .count:hover, .status .count:active { transition: none; transform: none; } }
 :host-context(html[data-bw-calm="1"]) .status .count, :host-context(html[data-bw-calm="1"]) .status .count:hover, :host-context(html[data-bw-calm="1"]) .status .count:active { transition: none; transform: none; }
 
 /* 0.15.0 · the ribbon: tabs centred with an icon and a colour each (note 1), a 64 x 72 grid on an 8 px unit (note 2), no horizontal scroll (note 3),
@@ -140,7 +139,6 @@
 .ribbon .more .menu { z-index: 60; }
 /* below 1024 px the groups wrap to a second band: the fallback, never a scroll bar */
 @media (max-width: 1023px) { .rb-panel { flex-wrap: wrap; block-size: auto; min-block-size: 184px; row-gap: 8px; } }
-@media (prefers-reduced-motion: reduce) { .rb-chev, .rb-tab { transition: none; } }
 :host-context(html[data-bw-focus="1"]) .ribbon { display: none; }
 /* the quick strip has room now (the sections moved into the ribbon): the changes button stays while something is selected */
 .island:has(> .ribbon).has-sel .status .count { display: inline-flex; }

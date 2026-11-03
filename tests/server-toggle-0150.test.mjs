@@ -1,6 +1,6 @@
 // 0.15.0 lane spell, owner note 15: ONE server toggle (editor/ext/18-server.js), in a real browser (Edge when installed).
-//   - exactly one toggle in the top bar, exactly two with Settings › Local server open, no banner (.srv-bar), no Start/Stop/Open buttons
-//   - role="switch" + aria-checked; the state is icon + word + colour; AR and EN; both toggles always show the same state; axe: no serious violation
+//   - exactly one toggle in the top bar, still one with Settings open (0.17.0: the host switch is the top bar only), no banner (.srv-bar), no Start/Stop/Open buttons
+//   - role="switch" + aria-checked; the state is dot + word + colour; AR and EN; axe: no serious violation
 //   - served page: shows online with the port; stop is refused with the reason in the tooltip while an export/import/print job runs; stop then Undo
 //   - file:// page: no server -> offline, the gold ring pulses once per open (not in calm mode); press -> «Starting…» (disabled, aria-busy) -> online;
 //     press -> stop (business-wrap://stop) -> offline + an «Undo» toast that starts it again; a server that was already up -> online, no pulse
@@ -33,12 +33,12 @@ buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: editor,
 /** A stand-in for a Business-Wrap server: answers GET /api/version the way a file:// page's probe expects. */
 function fake(port) {
   const s = http.createServer((req, res) => {
-    if (req.url === '/api/version') { res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': req.headers.origin || '*' }); res.end(JSON.stringify({ name: 'Business-Wrap', version: '0.0.0-test', served: true, port })); } else { res.writeHead(404); res.end(); }
+    if (req.url === '/api/version' || req.url === '/api/health') { res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': req.headers.origin || '*' }); res.end(JSON.stringify({ name: 'Business-Wrap', version: '0.0.0-test', served: true, port })); } else { res.writeHead(404); res.end(); }
   });
   return { up: () => new Promise((ok) => s.listen(port, '127.0.0.1', ok)), down: () => new Promise((ok) => { s.close(() => ok()); s.closeAllConnections?.(); }) };
 }
 const browser = await launch();
-const toggles = (page) => shRoot(page, (r) => [...r.querySelectorAll('.srv-toggle')].map((b) => ({ where: b.dataset.where, st: b.dataset.st, role: b.getAttribute('role'), checked: b.getAttribute('aria-checked'), busy: b.getAttribute('aria-busy'), disabled: b.disabled, ariaDisabled: b.getAttribute('aria-disabled'), word: b.querySelector('.srv-w')?.textContent, icon: !!b.querySelector('.srv-ic svg'), title: b.title, pulse: b.dataset.pulse, inBar: !!b.closest('.island'), label: b.getAttribute('aria-label'), fill: getComputedStyle(b).backgroundColor, h: Math.round(b.getBoundingClientRect().height) })));
+const toggles = (page) => shRoot(page, (r) => [...r.querySelectorAll('.srv-toggle')].map((b) => ({ where: b.dataset.where, st: b.dataset.st, role: b.getAttribute('role'), checked: b.getAttribute('aria-checked'), busy: b.getAttribute('aria-busy'), disabled: b.disabled, ariaDisabled: b.getAttribute('aria-disabled'), word: b.querySelector('.srv-w')?.textContent, icon: !!b.querySelector('.srv-dot'), title: b.title, pulse: b.dataset.pulse, inBar: !!b.closest('.island'), label: b.getAttribute('aria-label'), fill: getComputedStyle(b).backgroundColor, h: Math.round(b.getBoundingClientRect().height) })));
 const press = (page, where = 'top') => shRoot(page, (r, w) => (w === 'settings' ? r.querySelector('.drawer .srv-toggle') : r.querySelector('.island .srv-toggle')).click(), where);
 const toastText = (page) => shRoot(page, (r) => [...r.querySelectorAll('.toasts .toast')].map((t) => t.textContent.trim()));
 async function open(url, { ui, calm, ports } = {}) {
@@ -70,7 +70,7 @@ try {
   const { ctx: c1, page: a } = await open(`http://127.0.0.1:${sp}/`, { ports: [sp] });
   const t1 = await toggles(a);
   check(`browser is ${browserName()}; exactly ONE toggle with Settings closed, in the top bar`, t1.length === 1 && t1[0].where === 'top' && t1[0].inBar, JSON.stringify(t1));
-  check('it is a switch: role=switch, aria-checked=true, state online, icon + word «متصل :port»', t1[0].role === 'switch' && t1[0].checked === 'true' && t1[0].st === 'online' && t1[0].icon && t1[0].word === `متصل :${sp}`, JSON.stringify(t1[0]));
+  check('it is a switch: role=switch, aria-checked=true, state online, dot + word «متصل :port»', t1[0].role === 'switch' && t1[0].checked === 'true' && t1[0].st === 'online' && t1[0].icon && t1[0].word === `متصل :${sp}`, JSON.stringify(t1[0]));
   check('the toggle is 40 px tall', t1[0].h === 40, String(t1[0].h));
   const banner = await shRoot(a, (r) => ({ bar: !!r.querySelector('.srv-bar'), btn: [...r.querySelectorAll('button')].filter((b) => /Start server|Stop server|تشغيل الخادم|إيقاف كل خوادم|افتح من الخادم/.test(b.textContent)).length }));
   check('no banner (.srv-bar) and no Start / Stop / Open server button anywhere', !banner.bar && banner.btn === 0, JSON.stringify(banner));
@@ -78,11 +78,9 @@ try {
   const ev1 = await events(a);
   check('window event bw:server {online:true} fired; no bw:wm for the very first answer', ev1.includes('server:true') && !ev1.some((x) => x.startsWith('wm:')), JSON.stringify(ev1));
   await a.evaluate(() => BW.openDrawer('settings'));
-  await until(async () => (await toggles(a)).length === 2, 4000);
+  await sleep(700);
   const t2 = await toggles(a);
-  check('Settings › Local server open: exactly TWO toggles (top bar + Settings), the same state, the Settings one taller', t2.length === 2 && t2[0].st === t2[1].st && t2.find((x) => x.where === 'settings').h === 56, JSON.stringify(t2.map((x) => [x.where, x.st, x.h])));
-  const sentence = await shRoot(a, (r) => r.querySelector('.set-srv-status')?.textContent.trim());
-  check('Settings says the port in a sentence under its toggle', sentence.includes(String(sp)), sentence);
+  check('Settings › Local server open: still exactly ONE toggle (0.17.0: the host switch is the top bar only), no Settings control', t2.length === 1 && t2[0].where === 'top' && !(await shRoot(a, (r) => r.querySelector('.drawer .srv-toggle, .drawer [data-k="srvPowerOff"]'))), JSON.stringify(t2.map((x) => [x.where, x.st, x.h])));
   // axe on the toggles
   await a.evaluate(fs.readFileSync(AXE, 'utf8')); // evaluated through the protocol: the page CSP refuses an injected <script>
   const ax = await a.evaluate(async () => { const r = await window.axe.run(document.getElementById('bw-ui-host'), { runOnly: ['wcag2a', 'wcag2aa', 'wcag21aa', 'best-practice'] }); return r.violations.filter((v) => v.nodes.some((n) => /srv-toggle/.test(n.html))).map((v) => `${v.id}:${v.nodes.filter((n) => /srv-toggle/.test(n.html)).length}`); });
@@ -102,10 +100,10 @@ try {
   // stop (answered by the test, the real server is not stopped), then Undo
   await a.evaluate(() => { window.__ev.length = 0; });
   await press(a);
-  check('online -> press: «جارٍ الإيقاف…» then offline, one POST /api/servers/stop (confirm), the other toggle follows', await until(async () => { const t = await toggles(a); return t.length === 2 && t.every((x) => x.st === 'offline'); }, 8000) && posts === 1, JSON.stringify(await toggles(a)));
+  check('online -> press: «جارٍ الإيقاف…» then offline, one POST /api/servers/stop (confirm), the other toggle follows', await until(async () => { const t = await toggles(a); return t.length === 1 && t.every((x) => x.st === 'offline'); }, 8000) && posts === 1, JSON.stringify(await toggles(a)));
   const off = (await toggles(a))[0] || (await toggles(a))[1];
   const onFill = t1[0].fill;
-  check('offline is not colour alone: another icon, another word «غير متصل», another fill', off.word === 'غير متصل' && off.checked === 'false' && off.fill !== onFill && off.icon, `${off.fill} vs ${onFill}`);
+  check('offline is not colour alone: another dot colour, another word «غير متصل», another fill', off.word === 'غير متصل' && off.checked === 'false' && off.fill !== onFill && off.icon, `${off.fill} vs ${onFill}`);
   const ev2 = await events(a);
   check('stop fires bw:server {online:false} and bw:wm W08 once', ev2.filter((x) => x === 'server:false').length === 1 && ev2.filter((x) => x === 'wm:W08').length === 1, JSON.stringify(ev2));
   check('an «تراجع» (Undo) toast is offered', (await toastText(a)).some((x) => /تراجع/.test(x)), JSON.stringify(await toastText(a)));
@@ -137,22 +135,18 @@ try {
   check('file://, no server: the gold ring pulses (data-pulse=1, once per open) and then settles', pulsed && (await until(async () => (await toggles(f))[0]?.pulse === '0', 4000)), JSON.stringify(await toggles(f)));
   check('file://, no server: bw:server {online:false} fired and NO bw:wm for the first answer', (await events(f)).includes('server:false') && !(await events(f)).some((x) => x.startsWith('wm:')), JSON.stringify(await events(f)));
   await press(f);
-  check('press: «Starting…», disabled, aria-busy, spinner icon', await until(async () => { const t = (await toggles(f))[0]; return t?.st === 'starting' && t.disabled && t.busy === 'true'; }, 3000), JSON.stringify(await toggles(f)));
-  check('press: hands business-wrap://open?file=<this document> to the browser, once', await until(async () => (await f.evaluate(() => window.__launched)).length === 1, 4000) && (await f.evaluate(() => window.__launched))[0] === `business-wrap://open?file=${encodeURIComponent(editor)}`, JSON.stringify(await f.evaluate(() => window.__launched)));
+  check('press: «Starting…», disabled, aria-busy, spinner', await until(async () => { const t = (await toggles(f))[0]; return t?.st === 'starting' && t.disabled && t.busy === 'true'; }, 3000), JSON.stringify(await toggles(f)));
+  check('press: hands business-wrap://start to the browser, once', await until(async () => (await f.evaluate(() => window.__launched)).length === 1, 4000) && (await f.evaluate(() => window.__launched))[0] === 'business-wrap://start', JSON.stringify(await f.evaluate(() => window.__launched)));
   await fs1.up();
   check('the server answers -> online with the port; W07 and bw:server {online:true} fire', await until(async () => (await toggles(f))[0]?.st === 'online', 12000) && (await toggles(f))[0].word === `متصل :${port}` && (await events(f)).includes('wm:W07') && (await events(f)).includes('server:true'), JSON.stringify([await toggles(f), await events(f)]));
-  await f.evaluate(() => BW.openDrawer('settings'));
-  await until(async () => (await toggles(f)).length === 2, 4000);
-  const open2 = await shRoot(f, (r) => !!r.querySelector('.set-srv-body [data-k="srvOpen"]'));
-  check('Settings (file://, online) offers «افتح المحرر من الخادم» (the only open link) and shows the same state in both toggles', open2 && (await toggles(f)).every((x) => x.st === 'online'));
   await f.evaluate(() => { window.__launched.length = 0; window.__ev.length = 0; });
-  await press(f, 'settings'); // the Settings toggle is the same component: it stops too
-  check('online -> press the SETTINGS toggle: asks the installed Business-Wrap to stop (business-wrap://stop)', await until(async () => (await f.evaluate(() => window.__launched)).includes('business-wrap://stop'), 4000));
+  await press(f);
+  check('online -> press the top-bar toggle: asks the installed Business-Wrap to stop (business-wrap://stop)', await until(async () => (await f.evaluate(() => window.__launched)).includes('business-wrap://stop'), 4000));
   await fs1.down();
   check('the server goes away -> offline; W08 fires; an «تراجع» toast appears', await until(async () => (await toggles(f))[0]?.st === 'offline', 12000) && (await events(f)).includes('wm:W08') && (await toastText(f)).some((x) => /تراجع/.test(x)), JSON.stringify([await toggles(f), await events(f), await toastText(f)]));
   await f.evaluate(() => { window.__launched.length = 0; });
   await shRoot(f, (r) => [...r.querySelectorAll('.toasts .toast button')].find((b) => /تراجع/.test(b.textContent))?.click());
-  check('Undo asks for the server again (business-wrap://open?file=)', await until(async () => (await f.evaluate(() => window.__launched)).some((u) => u.startsWith('business-wrap://open?file=')), 4000));
+  check('Undo asks for the server again (business-wrap://start)', await until(async () => (await f.evaluate(() => window.__launched)).some((u) => u === 'business-wrap://start'), 4000));
   await fs1.up();
   check('and it is online again', await until(async () => (await toggles(f)).every((x) => x.st === 'online'), 12000));
   check('no page errors (file://)', f.errors.length === 0, f.errors.join(' | '));
@@ -168,7 +162,7 @@ try {
   await press(g);
   await until(async () => (await toggles(g))[0]?.st === 'starting', 3000);
   await g.evaluate(() => window.__skew(26000));
-  check('a start that never answers ends in the error state «تعذّر التشغيل» with a reason in the tooltip', await until(async () => (await toggles(g))[0]?.st === 'error', 8000) && /business-wrap protocol register/.test((await toggles(g))[0].title), JSON.stringify(await toggles(g)));
+  check('a start that never answers ends in the error state «تعذّر التشغيل» with a reason in the tooltip (no command to type, 0.17.0)', await until(async () => (await toggles(g))[0]?.st === 'error', 8000) && /المشغّل/.test((await toggles(g))[0].title) && !/protocol register/.test((await toggles(g))[0].title), JSON.stringify(await toggles(g)));
   check('…and one toast with «حاول مرة أخرى» (Try again)', (await toastText(g)).filter((x) => /حاول مرة أخرى/.test(x)).length === 1, JSON.stringify(await toastText(g)));
   await c4.close();
 

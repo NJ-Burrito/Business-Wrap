@@ -129,7 +129,6 @@
 @keyframes bwm-rule { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
 /* reduced motion and calm mode: the mark and the rule are drawn, never moving */
-@media (prefers-reduced-motion: reduce) { .sec.now::after, .brand svg * { animation: none !important; } .bw-i .mv { animation: none !important; } .brand svg { transition: none !important; transform: none !important; } }
 .shell[data-calm="1"] .sec.now::after, .shell[data-calm="1"] .brand svg *, .shell[data-calm="1"] .bw-i .mv { animation: none !important; }
 .shell[data-calm="1"] .brand svg { transition: none !important; transform: none !important; }
 

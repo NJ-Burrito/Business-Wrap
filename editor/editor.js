@@ -602,7 +602,7 @@ function exportDesignPack() {
 /* ── export PDF + DOCX ─────────────────────────────────────────────────── */
 async function exportPdfDocx() {
   const e = cur();
-  const body = { service: S.svc, locale: S.ed, doc: e.doc, theme: S.theme, embedFonts: S.docxFonts };
+  const body = { service: S.svc, locale: S.ed, folderTitle: pcFolderTitle(), doc: e.doc, theme: S.theme, embedFonts: S.docxFonts };
   if (location.protocol.startsWith('http')) {
     await beforeExport();
     try {
@@ -1161,7 +1161,7 @@ function replaceAll(q, r) {
   }
   return ops.length;
 }
-const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reduced = () => S.calm === true; // only the Calm button reduces motion (owner 2026-10-31); the OS setting is not read
 
 /* ── validation ────────────────────────────────────────────────────────── */
 /* 0.15.0 perf: the table-overflow check reads scrollWidth, which forces a layout; validate() runs on every refreshUi, i.e. every key.
@@ -1285,8 +1285,8 @@ function reqIdCheck(d) {
 /* ── UI (Shadow DOM): a floating island, a selection bar, a command palette ──
  * Design read: an authoring tool for bilingual requirement documents; the
  * island carries the SRS navy and gold so the tool and the document read as one.
- * Motion answers actions (press, open, confirm, count); calm mode and
- * prefers-reduced-motion turn it all to instant cross-fades. */
+ * Motion answers actions (press, open, confirm, count); calm mode turns it
+ * all to instant cross-fades (the OS reduced-motion setting is not read). */
 const host = document.createElement('div');
 host.id = 'bw-ui-host';
 document.body.prepend(host);
@@ -1302,12 +1302,11 @@ const ic = (k) => {
   const g = sw || IC[k];
   return g ? g.replace('<svg', `<svg data-ic="${k}"${sw ? ' data-sw="1"' : ''}`) : '';
 };
-const RMQ = matchMedia('(prefers-reduced-motion: reduce)');
 S.calm = ls.get('bw:calm') === '1';
 S.focus = false;
 S.snap = ls.get('bw:snap') !== '0';
 S.view = false;
-const isCalm = () => S.calm || RMQ.matches;
+const isCalm = () => S.calm;
 const setRootFlags = () => {
   const d = document.documentElement.dataset;
   d.bwCalm = S.calm ? '1' : '0';
@@ -3224,7 +3223,7 @@ const AGENT = (() => {
   const USER_EVS = ['wheel', 'touchmove', 'keydown', 'pointerdown'];
   function holdOn() { if (hold.on) return; hold.on = true; hold.y = window.scrollY; hold.user = false; window.addEventListener('scroll', onScroll, { passive: true }); USER_EVS.forEach((ev) => window.addEventListener(ev, userAct, { passive: true, capture: true })); }
   function holdOff() { if (!hold.on) return; hold.on = false; window.removeEventListener('scroll', onScroll); USER_EVS.forEach((ev) => window.removeEventListener(ev, userAct, { capture: true })); clearTimeout(hold.t); }
-  const css = '#bw-agent-ind{position:fixed;inset-block-end:14px;inset-inline-end:14px;z-index:99980;max-inline-size:min(360px,calc(100vw - 28px));display:flex;gap:8px;align-items:center;padding:7px 12px;border-radius:999px;background:var(--bw-band,#001e3d);color:var(--bw-on-primary,#fff);font:600 12.5px/1.3 "Thmanyah Sans",system-ui,sans-serif;box-shadow:0 6px 18px rgba(0,30,61,.28);cursor:pointer;border:0;transition:opacity .25s,transform .25s}#bw-agent-ind[hidden]{display:none}#bw-agent-ind .dot{inline-size:9px;block-size:9px;border-radius:50%;background:var(--bw-accent,#be9a41);flex:none}#bw-agent-ind[data-live="1"] .dot{animation:bwAgentPulse 1s ease-in-out infinite}#bw-agent-ind .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#bw-agent-ind time{opacity:.75;font-variant-numeric:tabular-nums;flex:none}.bw-agent-hl{outline:2px solid var(--bw-accent,#be9a41)!important;outline-offset:2px;background:color-mix(in srgb,var(--bw-accent,#be9a41) 16%,transparent)!important;transition:outline-color .6s,background .6s}@keyframes bwAgentPulse{50%{opacity:.35}}@media print{#bw-agent-ind{display:none!important}.bw-agent-hl{outline:0!important;background:none!important}}@media (prefers-reduced-motion:reduce){#bw-agent-ind .dot{animation:none!important}}';
+  const css = '#bw-agent-ind{position:fixed;inset-block-end:14px;inset-inline-end:14px;z-index:99980;max-inline-size:min(360px,calc(100vw - 28px));display:flex;gap:8px;align-items:center;padding:7px 12px;border-radius:999px;background:var(--bw-band,#001e3d);color:var(--bw-on-primary,#fff);font:600 12.5px/1.3 "Thmanyah Sans",system-ui,sans-serif;box-shadow:0 6px 18px rgba(0,30,61,.28);cursor:pointer;border:0;transition:opacity .25s,transform .25s}#bw-agent-ind[hidden]{display:none}#bw-agent-ind .dot{inline-size:9px;block-size:9px;border-radius:50%;background:var(--bw-accent,#be9a41);flex:none}#bw-agent-ind[data-live="1"] .dot{animation:bwAgentPulse 1s ease-in-out infinite}#bw-agent-ind .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#bw-agent-ind time{opacity:.75;font-variant-numeric:tabular-nums;flex:none}.bw-agent-hl{outline:2px solid var(--bw-accent,#be9a41)!important;outline-offset:2px;background:color-mix(in srgb,var(--bw-accent,#be9a41) 16%,transparent)!important;transition:outline-color .6s,background .6s}@keyframes bwAgentPulse{50%{opacity:.35}}@media print{#bw-agent-ind{display:none!important}.bw-agent-hl{outline:0!important;background:none!important}}';
   const hhmmss = (d) => d.toLocaleTimeString('en-GB', { hour12: false });
   function ensure() {
     if (chip) return chip;

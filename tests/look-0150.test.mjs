@@ -254,8 +254,8 @@ try {
       await page.mouse.move(5, 700); await page.mouse.move(btn.x, btn.y, { steps: 2 }); await page.waitForTimeout(160); // 0.15.2: the part moves play once the pointer has rested (120 ms)
       const a = await sh(page, (r) => { const b = r.querySelector('.island .ribbon .rb-panel button[data-a]:hover'); if (!b) return null; return b.getAnimations({ subtree: true }).map((x) => ({ n: x.animationName || x.transitionProperty, end: x.effect.getComputedTiming().endTime })); });
       check('perf 1: hovering a tool plays something (the probe looked)', Array.isArray(a) && a.length > 0, JSON.stringify(a));
-      const long = (a || []).filter((x) => x.end > 250 && !/^(background|border|box-shadow|outline)/.test(x.n));
-      check('perf 1: every icon move and icon transition on a hovered tool ends within 250 ms (200 ms + its own delay)', long.length === 0, JSON.stringify(long));
+      const long = (a || []).filter((x) => x.end > 560 && !/^(background|border|box-shadow|outline)/.test(x.n));
+      check('perf 1: every icon move and icon transition on a hovered tool ends within 560 ms (0.17.0 motion: moves are 380/480 ms, played once the pointer has rested)', long.length === 0, JSON.stringify(long));
     }
     await ctx.close();
   }
@@ -280,7 +280,8 @@ try {
       const c = await open({ ui: 'en', ...opts });
       const n = await c.page.evaluate(() => window.BW.EXT.look.idleNow());
       const any = await sh(c.page, (r) => r.querySelector('.brand svg').getAnimations({ subtree: true }).filter((a) => a.playState === 'running' || a.playState === 'pending').length);
-      check(`perf 2 (${name}): nothing plays on the mark`, any === 0 && (name === 'calm' ? n.length === 0 : true), `${n.length} set, ${any} running`);
+      if (name === 'calm') check('perf 2 (calm): nothing plays on the mark', any === 0 && n.length === 0, `${n.length} set, ${any} running`);
+      else check('perf 2 (OS reduced motion): the mark is not stilled by the OS setting (only Calm reduces motion, owner 2026-10-31): its idle nod is set', n.length > 0, `${n.length} set, ${any} running`);
       await c.ctx.close();
     }
   }

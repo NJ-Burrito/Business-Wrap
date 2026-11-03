@@ -1,5 +1,5 @@
 // 0.15.0 wave 2 lane polish: W05 from a REAL ribbon click, a failed export fires no W02 (a good one does), W10 plays on a fresh
-// profile (queued past the first intro), and the served top bar has exactly one server control (power-off lives in Settings).
+// profile (queued past the first intro), and the served top bar has exactly one server control (the host switch is the top bar only, 0.17.0).
 //   node tests/polish-0150.test.mjs
 import './_isolate.mjs';
 import fs from 'node:fs';
@@ -84,12 +84,12 @@ try {
     check('top bar: exactly one server control (the toggle)', r.toggles === 1 && r.power === 0, JSON.stringify(r));
     await page.evaluate(() => window.BW.runAction('settings'));
     await page.waitForTimeout(600);
-    const s = await page.evaluate(() => { const rt = document.getElementById('bw-ui-host').shadowRoot; const b = rt.querySelectorAll('.drawer [data-k="srvPowerOff"]'); const bb = b[0]?.getBoundingClientRect(); return { n: b.length, text: b[0]?.textContent.trim(), box: bb && [Math.round(bb.x), Math.round(bb.y), Math.round(bb.width), Math.round(bb.height)], vis: b[0] && getComputedStyle(b[0]).visibility, toggles: rt.querySelectorAll('.srv-toggle').length }; });
-    check('Settings: the power-off button sits in the server section (AR/EN label), toggles stay at two', s.n === 1 && !!s.text && s.toggles === 2 && s.box[2] > 0, JSON.stringify(s));
-    await page.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer [data-k="srvPowerOff"]').click());
+    const s = await page.evaluate(() => { const rt = document.getElementById('bw-ui-host').shadowRoot; return { n: rt.querySelectorAll('.drawer [data-k="srvPowerOff"]').length, toggles: rt.querySelectorAll('.srv-toggle').length }; });
+    check('Settings: no power-off button and no second toggle (0.17.0 note 10: the host switch is the top bar only)', s.n === 0 && s.toggles === 1, JSON.stringify(s));
+    await page.evaluate(() => { window.__pw = window.BW.runAction('powerOff'); }); // the action stays reachable for tools; it asks first (not awaited: it resolves when the dialog is answered)
     await page.waitForTimeout(400);
     const asked = await page.evaluate(() => document.documentElement.dataset.bwPower);
-    check('Settings: pressing it asks first (the confirm dialog)', asked === 'asked', String(asked));
+    check('powerOff action: asks first (the confirm dialog)', asked === 'asked', String(asked));
     await ctx.close();
   }
   { // W10 on a fresh profile: the first intro is playing, W10 waits and then plays

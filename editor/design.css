@@ -62,7 +62,6 @@
 .drawer .fp-up li { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .drawer .fp-up span { font-size: 15px; }
 .drawer .labs label { font-size: 12.5px; }
-@media (prefers-reduced-motion: reduce) { .drawer .fp-pop, .drawer .dgrp > summary::after, .drawer .dgrp > summary, .drawer .cc input[type="color"] { animation: none; transition: none; } .drawer .cc input[type="color"]:hover { transform: none; } }
 .shell[data-calm="1"] .drawer .cc input[type="color"]:hover { transform: none; }
 
 /* A28 palette import: swatch list with a role each, the contrast gate as a table, overrides with a reason */

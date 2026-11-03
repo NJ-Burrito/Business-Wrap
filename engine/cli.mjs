@@ -30,7 +30,7 @@ import http from 'node:http';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { buildEditor } from './build-editor.mjs';
-import { exportPdf, exportDocx, loadTheme, loadEdited, fontsFor, REPO, userCwd, fileStem, renderDiagramPng } from './export.mjs';
+import { exportPdf, exportDocx, loadTheme, loadEdited, fontsFor, REPO, userCwd, fileStem, renderDiagramPng, localeOf } from './export.mjs';
 import { modelIn } from './diagram-cli.mjs';
 import { systemFonts } from './fonts.mjs';
 import { registeredServers } from './server-registry.mjs';
@@ -38,7 +38,7 @@ import { harvestModel, harvestCrawl } from './harvest/cli.mjs';
 import { harvestSources, MODEL_EXT, TEXT_EXT } from './harvest/sources.mjs';
 import { STATE_DIR, healPort, healStaleHosts, healWorkspace, healFont, readHealLog, alive } from './heal/index.mjs';
 import { GATES } from './heal/gates.mjs';
-import { workspace, localDir, ensure, reportPath, sourcesDir, keepVersion, docTitle, outName, uniquePath, noteOutput, DOCS_NAME } from './workspace.mjs';
+import { workspace, localDir, ensure, reportPath, sourcesDir, keepVersion, docTitle, exportTitle, outName, uniquePath, noteOutput, DOCS_NAME } from './workspace.mjs';
 import { tidy } from './tidy.mjs';
 import { migrateLocal, pluginData, realParent, isTestMode } from './testguard.mjs';
 import { doctor as doctorInfo } from '../mcp/startup.mjs';
@@ -280,11 +280,18 @@ export async function importSources({ inputs, out, name, roles, openIt = false, 
   return res;
 }
 
+/** The Arabic sibling's title for an English file (x.en.json -> x.ar.json), so both editions export into one document folder; null when there is none. */
+function pairHint(file, ed) {
+  if (ed !== 'en') return null;
+  const sib = String(file).replace(/\.en((?:\.[a-z0-9-]+)*\.json)$/i, '.ar$1');
+  if (sib === String(file)) return null;
+  try { return docTitle(JSON.parse(fs.readFileSync(path.resolve(sib), 'utf8')), ''); } catch { return null; }
+}
 export async function exportDoc({ document, locale, out, edits, docx = true }) {
   if (!document) throw Object.assign(new Error('export <doc.json> [ar|en]'), { code: 2 });
   const file = path.resolve(document);
   const doc = loadEdited(file, edits && path.resolve(edits));
-  const ed = locale || (/\.en\.json$/i.test(file) ? 'en' : /\.ar\.json$/i.test(file) ? 'ar' : /[؀-ۿ]/.test(doc.control?.title || '') ? 'ar' : 'en');
+  const ed = localeOf(file, doc, locale); // 0.17.0: x.en.edited.json is English too
   const pre = GATES.document(doc);
   if (pre.verdict === 'FAIL') return { locale: ed, gates: [pre] };
   const th = loadTheme();
@@ -298,7 +305,7 @@ export async function exportDoc({ document, locale, out, edits, docx = true }) {
   // no --out: the save folder, Documents\<title>\Exports\<date> <title> - <language>.pdf|docx
   const dir = out ? path.resolve(out) : null;
   const stem = `${fileStem(doc.service || doc.control.documentId)}.${ed}`;
-  const target = (ext) => (dir ? path.join(dir, `${stem}.${ext}`) : uniquePath(ensure(workspace()).dirs.docs, outName(docTitle(doc, doc.service), new Date(), ed, ext)));
+  const target = (ext) => (dir ? path.join(dir, `${stem}.${ext}`) : uniquePath(ensure(workspace()).dirs.docs, outName(exportTitle(doc, pairHint(file, ed), doc.service), new Date(), ed, ext)));
   const pdf = (await exportPdf(doc, { locale: ed, theme: th, pdfPath: target('pdf') })).pdf;
   const files = [pdf];
   if (docx) files.push(exportDocx(doc, { locale: ed, theme: th, docxPath: target('docx') }).docx);
