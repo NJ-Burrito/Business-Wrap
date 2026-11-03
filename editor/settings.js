@@ -197,7 +197,7 @@ function icoInner() {
 <div class="btns"><button type="button" class="b primary" data-k="icoApply"${dis}><span class="i">${ic('image')}</span><span class="w">${esc(t('ico.apply'))}</span></button><button type="button" class="b" data-k="icoRestore"${dis}><span class="i">${ic('undo')}</span><span class="w">${esc(t('ico.restore'))}</span></button></div>
 <p class="set-status set-ico-status" role="status" aria-live="polite" data-st="${ICO.bad ? 'bad' : ICO.st?.applied ? 'on' : ''}">${esc(line)}</p>
 <p class="hint">${esc(t('ico.note'))}</p>
-<h4 class="set-ico-fh">${esc(t('ico.folders'))}</h4>
+<p class="set-ico-fh">${esc(t('ico.folders'))}</p>
 <ul class="set-ico-folders">${FOLDER_ROW.map(([k, key]) => `<li>${FOLDER_ICONS[k]}<span>${esc(t(key))}</span></li>`).join('')}</ul>
 <p class="hint">${esc(t('ico.foldersNote'))}</p>`;
 }
