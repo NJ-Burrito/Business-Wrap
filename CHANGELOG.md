@@ -8,6 +8,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.16.1] - 2026-11-03
+
+🛠️ A fix release: the one-page view, zoom, the ribbon, Word and the sample figures. / 🛠️ إصدار إصلاحات: عرض الصفحة الواحدة والتكبير والشريط وWord ورسوم النموذج.
+
+### Fixed / أصلح
+- 📄 **The one-page view is no longer blank** after you scroll. / **عرض الصفحة الواحدة لم يعد فارغا** بعد التمرير.
+- 🔍 **Page zoom works over a figure** (Ctrl and the wheel), and figure zoom now behaves the same in both directions. / **تكبير الصفحة يعمل فوق الرسم** (Ctrl مع العجلة)، وتكبير الرسم صار متماثلا في الاتجاهين.
+- 🧩 **The logo steps aside from open panels**, and **the ribbon follows the selection**. / **الشعار يبتعد عن اللوحات المفتوحة**، و**الشريط يتبع التحديد**.
+- ✍️ **Wording and direction fixes**: the step arrow, the English Settings page, the folder picker and resume text, and the Arabic figure caption «الشكل 1:» keeps its order in Word. / **إصلاحات في الصياغة والاتجاه**: سهم الخطوة وصفحة الإعدادات بالإنجليزية ومنتقي المجلد ونص الاستئناف، وتسمية الرسم العربية «الشكل 1:» تحافظ على ترتيبها في Word.
+- 📝 **Word is closer to the PDF**: the same vertical rhythm, chapters start on the PDF's pages, and a story card keeps its lead-in. One page may still differ between the two. / **Word أقرب إلى PDF**: الإيقاع الرأسي نفسه، وتبدأ الفصول في صفحات PDF، وتحتفظ بطاقة القصة بمقدمتها. وقد تختلف صفحة واحدة بين الملفين.
+- 🖼️ **The two-figure sample prints at 7 pt or more**, in Arabic and English, and **the output table has its label** in Word. / **نموذج الرسمين يُطبع بحجم 7 نقاط أو أكثر** بالعربية والإنجليزية، و**جدول المخرجات له عنوانه** في Word.
+- 🔄 **The update restart waits for the page** before it reloads. / **إعادة التشغيل بعد التحديث تنتظر الصفحة** قبل إعادة التحميل.
+- 🔤 **The font source is fixed**, so a design rebuild keeps the type scale. / **مصدر الخط صُحّح**، فتحافظ إعادة بناء التصميم على مقياس الخط.
+- 🧪 **Tests now run on Windows on GitHub**, with the full failure detail shown. / **الاختبارات تعمل الآن على Windows في GitHub** مع إظهار تفاصيل الفشل كاملة.
+
+### Known limits / حدود معروفة
+- 📌 A subhead before a story card moves the section heading onto the output table's caption. / عنوان فرعي قبل بطاقة القصة ينقل عنوان القسم إلى تسمية جدول المخرجات.
+- 🗂️ Several documents in one tab is not built. / عدة وثائق في لسان واحد لم تُبنَ بعد.
+
 ## [0.16.0] - 2026-11-02
 
 🚀 Agents edit live and in view, arrows never overlap, Chrome is the standard browser, and Linux is no longer supported. / 🚀 الوكلاء يحرّرون مباشرة وأمام عينك، والأسهم لا تتداخل، وChrome هو المتصفح المعتمد، ولينكس لم يعد مدعوما.
