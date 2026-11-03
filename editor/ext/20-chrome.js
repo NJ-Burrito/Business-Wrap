@@ -251,3 +251,6 @@ document.addEventListener('input', (e) => {
   if (el) setText(el.dataset.w2p, el.innerText.replace(/\s+/g, ' ').trim(), S.ed);
 });
 document.addEventListener('focusout', (e) => { if (e.target.closest?.('#bw-pair :is(.w2-strip, .bw-runs) [data-w2p]')) render(); });
+
+// 0.17.0 (note 4): the top-bar «view» control (the display popover: page mode, zoom, compare, look) is a screen, not the ribbon View tab's eye. lucide monitor (ISC).
+Object.assign(IC, { view: '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>' });

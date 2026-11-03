@@ -284,8 +284,10 @@ function rbSync() {
     const was = RB.ctx;
     RB.ctx = now;
     // the contextual tab opens once, when the selection starts. 0.15.9: not under 1024 px, where its tools wrap onto a second band (360 px against 184) and selecting would push the page by 176 px: the tab still appears in the row, one press away, and the selection strip (.ctx) carries the tools
-    if (now && !rbNarrow()) { RB.tab = now; if (RB.collapsed) { RB.collapsed = false; ls.set('bw:rb:c', '0'); } }
-    else if (RB.tab === was || RB.tab === 'diagram2') RB.tab = 'home';
+    // 0.17.0 (note 1): the tab the person was on is remembered (RB.pre) and comes back when the selection ends (a press on the background), so the ribbon is not thrown to Home
+    if (now && !rbNarrow()) { if (!was) RB.pre = RB.tab; RB.tab = now; if (RB.collapsed) { RB.collapsed = false; ls.set('bw:rb:c', '0'); } }
+    else if (RB.tab === was || RB.tab === 'diagram2') { RB.tab = RB.pre && RB.pre !== was && rbTabs().some((x) => x[0] === RB.pre) ? RB.pre : 'home'; RB.pre = null; }
+    if (!now) RB.pre = null;
   }
   // 0.15.9 (M3): inside a diagram the ribbon follows what is selected: an arrow or a shape opens the tab that holds its tools, the empty drawing the tab that adds shapes.
   // It moves only when the KIND of selection changes (never while the person is working in a tab of their own choosing), and never under 1024 px (the page must not move).

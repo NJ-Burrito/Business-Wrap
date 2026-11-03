@@ -183,6 +183,28 @@ const W2_FORMAT = {
     return w2put(styleLeaf(leaf, { level: Math.max(0, Math.min(8, (leaf.style.level || 0) + d)) }), leaf);
   },
 };
+/** 0.17.0 (note 13): the live preview of the font, size and colour dialogs. The text under the selection (else the dialog's sample) is drawn in the face, at the real
+ *  point size and in the colour being chosen, with the marks it already carries (bold, italic, underline); `kind` is the one value the field changes. */
+function w2preview(kind, st) {
+  const leaf = W2F.leaf();
+  let text = '', marks = '';
+  try {
+    if (leaf != null) {
+      const [a, b] = w2range(leaf);
+      text = textOf(leaf).slice(a, b).replace(/\s+/g, ' ').trim().slice(0, 80);
+      if (hasMark(leaf, a, b, 'b')) marks += 'font-weight:700;';
+      if (hasMark(leaf, a, b, 'i')) marks += 'font-style:italic;';
+      if (hasMark(leaf, a, b, 'u')) marks += 'text-decoration:underline;';
+    }
+  } catch { /* no range: the sample */ }
+  const family = (f) => `font-family:'${String(f).replace(/['"\;]/g, '')}',sans-serif;`;
+  const own = FONT_FAMILIES.includes(st.font) ? st.font : (designTheme(S.theme, cur().doc).fonts?.text || FONT_FAMILIES[0]);
+  const css = (v) => marks
+    + (kind === 'font' ? family(v || own) : family(own))
+    + (kind === 'size' ? `font-size:${Math.min(72, Math.max(5, +v || 12)) * 96 / 72}px;` : `font-size:${(+st.size || 12) * 96 / 72}px;`)
+    + (kind === 'color' ? (/^#[0-9a-f]{6}$/i.test(v) ? `color:${v};` : '') : (st.color ? `color:${st.color};` : ''));
+  return { text, css, opt: kind === 'font' ? family : null, chips: kind === 'size' ? [7, 8, 10, 12, 14, 16, 22] : null };
+}
 const W2_TOGGLES = { fmtBold: 'b', fmtItalic: 'i', fmtUnderline: 'u', fmtStrike: 's', fmtCode: 'code' };
 async function w2formatAction(id) {
   if (W2F.leaf() == null && !W2F.multi) { toast(t('w2.pickText'), 'info'); return; }
@@ -190,9 +212,9 @@ async function w2formatAction(id) {
   const st = isRich(W2F.leaf()) ? W2F.leaf().style || {} : {};
   switch (id) {
     case 'fmtLink': { const v = await ask(t('w2.linkPrompt'), 'https://'); if (/^(https?:\/\/|mailto:)\S+$/i.test(v)) W2_FORMAT.mark('link', v); else if (v) toast(t('w2.badLink'), 'warn'); return; }
-    case 'fmtColor': { const v = await ask(t('w2.colorPrompt'), st.color || S.theme.vars?.primary || '#000000', { type: 'color' }); if (/^#[0-9a-f]{6}$/i.test(v)) W2_FORMAT.mark('color', v); else if (v) toast(t('w2.badColor'), 'warn'); return; }
-    case 'fmtFont': { const v = await ask(t('w2.fontPrompt'), FONT_FAMILIES.includes(st.font) ? st.font : FONT_FAMILIES[0], { type: 'select', options: FONT_FAMILIES }); if (FONT_FAMILIES.includes(v)) W2_FORMAT.mark('font', v); else if (v) toast(t('w2.badFont'), 'warn'); return; }
-    case 'fmtSize': { const v = +(await ask(t('w2.sizePrompt'), String(st.size || 12), { type: 'number', min: 5, max: 72, step: 1 })); if (v >= 5 && v <= 72) W2_FORMAT.mark('size', v); return; }
+    case 'fmtColor': { const v = await ask(t('w2.colorPrompt'), st.color || S.theme.vars?.primary || '#000000', { type: 'color', preview: w2preview('color', st) }); if (/^#[0-9a-f]{6}$/i.test(v)) W2_FORMAT.mark('color', v); else if (v) toast(t('w2.badColor'), 'warn'); return; }
+    case 'fmtFont': { const v = await ask(t('w2.fontPrompt'), FONT_FAMILIES.includes(st.font) ? st.font : FONT_FAMILIES[0], { type: 'select', options: FONT_FAMILIES, preview: w2preview('font', st) }); if (FONT_FAMILIES.includes(v)) W2_FORMAT.mark('font', v); else if (v) toast(t('w2.badFont'), 'warn'); return; }
+    case 'fmtSize': { const v = +(await ask(t('w2.sizePrompt'), String(st.size || 12), { type: 'number', min: 5, max: 72, step: 1, preview: w2preview('size', st) })); if (v >= 5 && v <= 72) W2_FORMAT.mark('size', v); return; }
     case 'fmtClear': return W2_FORMAT.clear();
     case 'fmtAlignStart': case 'fmtAlignCenter': case 'fmtAlignEnd': case 'fmtJustify': case 'fmtJustifyLow': case 'fmtJustifyMedium': case 'fmtJustifyHigh':
       // 0.16.2 note J: Justify, then Word's three kashida levels as additive align values; Latin text is plain justify at every level (render, DOCX)
