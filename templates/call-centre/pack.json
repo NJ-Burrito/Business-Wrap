@@ -628,13 +628,6 @@
    "sections": [
     {
      "title": {
-      "ar": "وصف المخرج",
-      "en": "Description of the output"
-     },
-     "gen": "outputDesc"
-    },
-    {
-     "title": {
       "ar": "الأنواع والحالات",
       "en": "Types and cases"
      },
