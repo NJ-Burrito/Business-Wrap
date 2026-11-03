@@ -217,7 +217,9 @@ export function richHtml(leaf, bidi) {
   }
   return out;
 }
-const LEAF_ALIGN = { start: 'start', center: 'center', end: 'end', justify: 'justify' };
+const LEAF_ALIGN = { start: 'start', center: 'center', end: 'end', justify: 'justify', 'justify-low': 'justify', 'justify-medium': 'justify', 'justify-high': 'justify' };
+/** 0.16.2 note J: the kashida level of a paragraph (Word's Justify Low / Medium / High), '' for every other alignment. */
+export const KASHIDA_LEVEL = { 'justify-low': 'low', 'justify-medium': 'medium', 'justify-high': 'high' };
 const LEAF_VALIGN = { top: 'top', middle: 'middle', bottom: 'bottom' };
 const mmOk = (v) => (Number.isFinite(+v) && +v >= 0 && +v <= 60 ? +v : null);
 /** style="…" and class for an element holding a rich leaf ('' for a string: the 0.12.0 markup). */
@@ -231,7 +233,7 @@ export function leafAttrs(leaf, cls = '') {
   if (mmOk(st.spaceBefore) != null) d.push(`margin-top:${mmOk(st.spaceBefore)}mm`);
   if (mmOk(st.spaceAfter) != null) d.push(`margin-bottom:${mmOk(st.spaceAfter)}mm`);
   const c = [cls, st.quote ? 'bw-quote' : ''].filter(Boolean).join(' ');
-  return (c ? ` class="${c}"` : '') + (d.length ? ` style="${d.join(';')}"` : '');
+  return (c ? ` class="${c}"` : '') + (d.length ? ` style="${d.join(';')}"` : '') + (KASHIDA_LEVEL[st.align] ? ` data-jk="${KASHIDA_LEVEL[st.align]}"` : '');
 }
 /** The list a paragraph belongs to: {kind: 'bullet'|'number'|'shape', shape, level 0–8} or null. */
 export function listOf(leaf) {
@@ -436,6 +438,114 @@ function tbDecl(st = {}) {
  * @param o.extraHead extra markup for <head> (editor stylesheet), '' for print
  * @param o.extraBody extra markup at the end of <body> (editor app), '' for print
  */
+/** 0.16.2 note J · Justify Low / Medium / High. Chrome has no kashida justification, so the stretch is drawn as a DISPLAY layer: after layout
+ *  every full line of an Arabic paragraph marked data-jk (low | medium | high) gets empty <i class="bw-k" data-k="ـ.."> elements whose
+ *  ::before paints the tatweels (pseudo content: not in textContent, not copied, not found, not spell-checked, not in the document data).
+ *  Each line takes a share of its own slack (30 % / 60 % / 95 %), at most 1 / 2 / 4 per word; the rest stays plain justify, so the line
+ *  count and every page break are unchanged (a paragraph whose height grew is put back). Last lines, short lines and Latin words are not
+ *  touched. The paragraph is laid out with geometricPrecision (fractional glyph advances, as the PDF prints them), so the widths measured on screen are the printed widths. Self-contained: it is also printed into the PDF page as a script (renderDocument), so it must not use anything outside it. */
+export function kashidaPass(root) {
+  const scope = root || document;
+  const els = [...scope.querySelectorAll('[data-jk]')];
+  if (!document.getElementById('bw-kashida-css')) {
+    const st = document.createElement('style');
+    st.id = 'bw-kashida-css';
+    st.textContent = '[data-jk]{text-rendering:geometricPrecision}i.bw-k{font:inherit;font-style:normal;text-decoration:none;padding:0;margin:0;border:0;background:none}i.bw-k::before{content:attr(data-k)}.bw-kp{position:absolute;visibility:hidden;white-space:pre;left:0;top:0}';
+    document.head.appendChild(st);
+  }
+  const clear = (el) => { for (const k of el.querySelectorAll('i.bw-k')) k.remove(); for (const k of el.querySelectorAll('.bw-kp')) k.remove(); el.normalize(); };
+  const FRAC = { low: 0.3, medium: 0.6, high: 0.95 }, CAP = { low: 1, medium: 2, high: 4 };
+  const DUAL = 'بتثجحخسشصضطظعغفقكلمنهيئىپچگکی', LETTER = /[\u0621-\u064A\u066E-\u06D3]/;
+  for (const el of els) clear(el);
+  const TW = '\u0640';
+  const probes = els.map((el) => {
+    const mk = (txt) => { const s = document.createElement('span'); s.className = 'bw-kp'; s.textContent = txt; el.appendChild(s); return s; };
+    return [mk(TW), mk(TW + ' ' + TW)];
+  });
+  const r = document.createRange(); // ONE live range: every live range is updated by each text split, so one per word would make the inserts quadratic
+  const jobs = els.map((el, ei) => {
+    const level = el.dataset.jk;
+    const h0 = el.getBoundingClientRect().height;
+    const tw = probes[ei][0].getBoundingClientRect().width;
+    const sp = probes[ei][1].getBoundingClientRect().width - 2 * tw;
+    // the words (pieces of a text node between spaces) in reading order, each with its box and its candidate places
+    const pieces = [];
+    const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let node, prevWs = true;
+    while ((node = walk.nextNode())) {
+      if (node.parentElement.closest('.bw-kp')) continue;
+      const data = node.data;
+      for (const m of data.matchAll(/\S+/g)) {
+        r.setStart(node, m.index); r.setEnd(node, m.index + m[0].length);
+        const b = r.getBoundingClientRect();
+        const before = m.index > 0 ? /\s/.test(data[m.index - 1]) : prevWs;
+        const w = m[0], cands = [];
+        for (let i = 0; i < w.length - 1; i += 1) {
+          if (DUAL.includes(w[i]) && LETTER.test(w[i + 1]) && !(w[i] === 'ل' && 'اأإآ'.includes(w[i + 1])) && !(i === 0 && w.length < 3)) cands.push(m.index + i + 1);
+        }
+        cands.reverse(); // the place before the last letter first
+        pieces.push({ node, b, before, cands, used: 0, at: [] });
+      }
+      prevWs = /\s$/.test(data);
+    }
+    const lines = [];
+    for (const p of pieces) {
+      if (!p.b.width) continue;
+      const cy = (p.b.top + p.b.bottom) / 2, last = lines.at(-1);
+      if (last && cy >= last.top && cy <= last.bottom) { last.ps.push(p); last.top = Math.min(last.top, p.b.top); last.bottom = Math.max(last.bottom, p.b.bottom); }
+      else lines.push({ ps: [p], top: p.b.top, bottom: p.b.bottom });
+    }
+    for (const ln of lines) { ln.l = Math.min(...ln.ps.map((p) => p.b.left)); ln.r = Math.max(...ln.ps.map((p) => p.b.right)); }
+    const full = Math.max(0, ...lines.slice(0, -1).map((ln) => ln.r - ln.l));
+    const plan = [];
+    lines.slice(0, -1).forEach((ln) => {
+      if (ln.ps.length < 2 || ln.r - ln.l < full - 1.5) return; // a short line (a forced break) is not stretched
+      const spaces = ln.ps.slice(1).filter((p) => p.before).length;
+      const slack = ln.r - ln.l - ln.ps.reduce((a, p) => a + p.b.width, 0) - spaces * sp;
+      let n = Math.floor((Math.min(slack * FRAC[level], slack - 3)) / tw);
+      if (!(tw > 0) || n < 1) return;
+      const cap = CAP[level];
+      for (let progress = true; n > 0 && progress;) {
+        progress = false;
+        for (const p of ln.ps) {
+          if (n > 0 && p.used < cap && p.cands.length) { p.at.push(p.cands[p.used % p.cands.length]); p.used += 1; n -= 1; progress = true; }
+        }
+      }
+      plan.push(...ln.ps.filter((p) => p.at.length));
+    });
+    return { el, h0, plan };
+  });
+  for (const el of els) for (const k of el.querySelectorAll('.bw-kp')) k.remove();
+  for (const j of jobs) {
+    const byNode = new Map();
+    for (const p of j.plan) {
+      const m = byNode.get(p.node) || new Map();
+      for (const off of p.at) m.set(off, (m.get(off) || 0) + 1);
+      byNode.set(p.node, m);
+    }
+    for (const [nd, m] of byNode) {
+      for (const [off, c] of [...m].sort((a, b) => b[0] - a[0])) {
+        const tail = nd.splitText(off);
+        const k = document.createElement('i');
+        k.className = 'bw-k';
+        k.setAttribute('aria-hidden', 'true');
+        k.setAttribute('data-k', TW.repeat(c));
+        tail.parentNode.insertBefore(k, tail);
+      }
+    }
+  }
+  // the guard: a paragraph that grew (a line wrapped) is put back to plain justify
+  r.detach();
+  const grew = jobs.filter((j) => j.plan.length && j.el.getBoundingClientRect().height > j.h0 + 0.5); // all reads first, then the writes
+  for (const j of grew) clear(j.el);
+  return { n: jobs.length, reverted: grew.length };
+}
+/** The script a printed page carries when it holds a kashida paragraph (none otherwise: an old document is byte-identical). */
+export function kashidaScript(doc) {
+  // the PDF is printed at the page's own width while the export window is narrower: under print media the page is laid out at the sheet width, so the stretch is measured where it is printed
+  return `<style id="bw-kashida-print">@media print{html{min-width:${pageSpec(doc?.layout?.page).w}mm}}</style><script id="bw-kashida">(function(){var run=${kashidaPass.toString()};function go(){try{run(document)}catch(e){}}window.bwKashida=go;if(document.fonts){document.fonts.ready.then(go);document.fonts.addEventListener('loadingdone',go)}else go();window.addEventListener('load',go)})()<\/script>`;
+}
+
 export function renderDocument(doc, o) {
   const locale = o.locale || 'ar';
   const theme = designTheme(o.theme, doc);
@@ -444,6 +554,7 @@ export function renderDocument(doc, o) {
   const logos = o.logos || {};
   const parts = renderParts(doc, { ...o, locale, bidi, L });
 
+  const main = documentMain(parts, logos, locale);
   return `<!doctype html>
 <html lang="${locale}" dir="${locale === 'ar' ? 'rtl' : 'ltr'}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -455,9 +566,9 @@ ${o.fontCss || ''}
 ${documentCss(theme, parts.sheet, doc)}</style>
 ${o.extraHead || ''}</head>
 <body>
-${documentMain(parts, logos, locale)}
+${main}
 ${o.extraBody || ''}
-</body></html>`;
+${/ data-jk="/.test(main) ? kashidaScript(doc) : ''}</body></html>`;
 }
 
 /** The print stylesheet. Depends on the theme and the widest figure sheet only. */

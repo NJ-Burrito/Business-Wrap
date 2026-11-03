@@ -61,7 +61,7 @@
         "style": {
           "type": "object",
           "properties": {
-            "align": { "enum": ["start", "center", "end", "justify"] },
+            "align": { "enum": ["start", "center", "end", "justify", "justify-low", "justify-medium", "justify-high"] },
             "valign": { "enum": ["top", "middle", "bottom"] },
             "lineHeight": { "type": "number", "minimum": 0.8, "maximum": 4 },
             "spaceBefore": { "type": "number", "minimum": 0, "maximum": 60 },

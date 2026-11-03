@@ -142,3 +142,7 @@ bwExt({
   },
   expose: { buttonIcons: { map: BI_MAP, words: BI_WORDS, decorate: biDecorate } },
 });
+/* 0.16.2 note J: Justify Low / Medium / High (three lines, the bottom bar is the stretch level) */
+IC.fmtJustifyLow = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18"/><path d="M3 9h18"/><path d="M3 14h18"/><path d="M3 20h5"/></svg>';
+IC.fmtJustifyMedium = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18"/><path d="M3 9h18"/><path d="M3 14h18"/><path d="M3 20h10"/></svg>';
+IC.fmtJustifyHigh = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18"/><path d="M3 9h18"/><path d="M3 14h18"/><path d="M3 20h18"/></svg>';

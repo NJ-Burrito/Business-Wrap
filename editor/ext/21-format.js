@@ -194,8 +194,9 @@ async function w2formatAction(id) {
     case 'fmtFont': { const v = await ask(t('w2.fontPrompt'), FONT_FAMILIES.includes(st.font) ? st.font : FONT_FAMILIES[0], { type: 'select', options: FONT_FAMILIES }); if (FONT_FAMILIES.includes(v)) W2_FORMAT.mark('font', v); else if (v) toast(t('w2.badFont'), 'warn'); return; }
     case 'fmtSize': { const v = +(await ask(t('w2.sizePrompt'), String(st.size || 12), { type: 'number', min: 5, max: 72, step: 1 })); if (v >= 5 && v <= 72) W2_FORMAT.mark('size', v); return; }
     case 'fmtClear': return W2_FORMAT.clear();
-    case 'fmtAlignStart': case 'fmtAlignCenter': case 'fmtAlignEnd': case 'fmtJustify':
-      return W2_FORMAT.style({ align: { fmtAlignStart: 'start', fmtAlignCenter: 'center', fmtAlignEnd: 'end', fmtJustify: 'justify' }[id] });
+    case 'fmtAlignStart': case 'fmtAlignCenter': case 'fmtAlignEnd': case 'fmtJustify': case 'fmtJustifyLow': case 'fmtJustifyMedium': case 'fmtJustifyHigh':
+      // 0.16.2 note J: Justify, then Word's three kashida levels as additive align values; Latin text is plain justify at every level (render, DOCX)
+      return W2_FORMAT.style({ align: { fmtAlignStart: 'start', fmtAlignCenter: 'center', fmtAlignEnd: 'end', fmtJustify: 'justify', fmtJustifyLow: 'justify-low', fmtJustifyMedium: 'justify-medium', fmtJustifyHigh: 'justify-high' }[id] });
     case 'fmtTop': case 'fmtMiddle': case 'fmtBottom': return W2_FORMAT.style({ valign: id.slice(3).toLowerCase() });
     case 'fmtLine': { const v = +(await ask(t('w2.linePrompt'), String(st.lineHeight || 1.8), { type: 'number', min: 0.8, max: 4, step: 0.1 })); if (v >= 0.8 && v <= 4) W2_FORMAT.style({ lineHeight: v }); return; }
     case 'fmtBefore': case 'fmtAfter': { const k = id === 'fmtBefore' ? 'spaceBefore' : 'spaceAfter'; const v = await ask(t('w2.spacePrompt'), String(st[k] ?? 0), { type: 'number', min: 0, max: 60, step: 1 }); if (v !== '' && +v >= 0 && +v <= 60) W2_FORMAT.style({ [k]: +v }); return; }
@@ -208,14 +209,26 @@ async function w2formatAction(id) {
     default:
   }
 }
-const W2_FMT_IDS = ['fmtBold', 'fmtItalic', 'fmtUnderline', 'fmtStrike', 'fmtCode', 'fmtLink', 'fmtColor', 'fmtFont', 'fmtSize', 'fmtClear', 'fmtAlignStart', 'fmtAlignCenter', 'fmtAlignEnd', 'fmtJustify', 'fmtTop', 'fmtMiddle', 'fmtBottom', 'fmtLine', 'fmtBefore', 'fmtAfter', 'fmtQuote', 'fmtBullets', 'fmtNumbers', 'fmtShapes', 'fmtIndent', 'fmtOutdent'];
-const W2_KEYS = { b: 'fmtBold', i: 'fmtItalic', u: 'fmtUnderline' };
+/** 0.16.2 note J: the kashida levels are a DISPLAY layer (render.mjs kashidaPass): after each render, and when the width or the fonts change,
+ *  the full lines of every Justify Low / Medium / High Arabic paragraph get tatweels drawn by CSS (no characters: not stored, copied, found or checked). */
+let w2kTimer = 0;
+function w2kashida() {
+  if (w2kTimer) return;
+  w2kTimer = requestAnimationFrame(() => {
+    w2kTimer = 0;
+    const main = document.querySelector('#bw-pair');
+    if (main && main.querySelector('[data-jk]')) kashidaPass(main);
+  });
+}
+W2_FORMAT.kashida = () => { cancelAnimationFrame(w2kTimer); w2kTimer = 0; const m = document.querySelector('#bw-pair'); return m ? kashidaPass(m) : 0; };
+const W2_FMT_IDS = ['fmtBold', 'fmtItalic', 'fmtUnderline', 'fmtStrike', 'fmtCode', 'fmtLink', 'fmtColor', 'fmtFont', 'fmtSize', 'fmtClear', 'fmtAlignStart', 'fmtAlignCenter', 'fmtAlignEnd', 'fmtJustify', 'fmtJustifyLow', 'fmtJustifyMedium', 'fmtJustifyHigh', 'fmtTop', 'fmtMiddle', 'fmtBottom', 'fmtLine', 'fmtBefore', 'fmtAfter', 'fmtQuote', 'fmtBullets', 'fmtNumbers', 'fmtShapes', 'fmtIndent', 'fmtOutdent'];
+const W2_KEYS = { b: 'fmtBold', i: 'fmtItalic', u: 'fmtUnderline', j: 'fmtJustify' };
 bwExt({
-  cmds: W2_FMT_IDS.map((id) => ({ id, group: 'format', edit: true, ...({ fmtBold: { key: 'Ctrl+B' }, fmtItalic: { key: 'Ctrl+I' }, fmtUnderline: { key: 'Ctrl+U' } }[id] || {}) })),
+  cmds: W2_FMT_IDS.map((id) => ({ id, group: 'format', edit: true, ...({ fmtBold: { key: 'Ctrl+B' }, fmtItalic: { key: 'Ctrl+I' }, fmtUnderline: { key: 'Ctrl+U' }, fmtJustify: { key: 'Ctrl+J' } }[id] || {}) })),
   actions: Object.fromEntries(W2_FMT_IDS.map((id) => [id, w2formatAction])),
   expose: { w2format: W2_FORMAT },
   on: {
-    // Ctrl+B / I / U inside a leaf: one op, the browser's own (HTML) formatting never runs
+    // Ctrl+B / I / U / J inside a leaf: one op, the browser's own (HTML) formatting never runs
     keydown: (e) => {
       const k = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && W2_KEYS[e.key.toLowerCase()];
       if (!k || !w2leafEl(e.target)) return false;
@@ -225,6 +238,7 @@ bwExt({
       return true;
     },
     render: () => {
+      w2kashida();
       // a block tool over several leaves (lists) re-renders the page: the same range is put back, so the tool can be pressed again
       if (W2F.multi && W2F.keep) {
         const m = mainOf(W2F.multi[0].ed);
@@ -260,6 +274,8 @@ bwExt({
     },
     boot: () => {
       w2showSection('format', false);
+      window.addEventListener('resize', w2kashida);
+      document.fonts?.addEventListener?.('loadingdone', w2kashida);
       w2docCss('w2-fmt-css', 'html.bw-ed a.bw-link{pointer-events:none}');
     },
   },

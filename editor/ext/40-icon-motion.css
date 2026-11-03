@@ -80,9 +80,9 @@
 :is([data-ic="chStart"], [data-ic="hdrStart"], [data-ic="ftrStart"], [data-ic="fmtAlignStart"], [data-ic="chEnd"], [data-ic="hdrEnd"], [data-ic="ftrEnd"], [data-ic="fmtAlignEnd"]) > :is(:nth-child(2), :nth-child(3)) { --icm: icm-from var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
 :is([data-ic="chStart"], [data-ic="hdrStart"], [data-ic="ftrStart"], [data-ic="fmtAlignStart"], [data-ic="chEnd"], [data-ic="hdrEnd"], [data-ic="ftrEnd"], [data-ic="fmtAlignEnd"]) > :nth-child(3) { --d: var(--bw-stagger); }
 :is([data-ic="chCenter"], [data-ic="hdrCenter"], [data-ic="ftrCenter"], [data-ic="fmtAlignCenter"]) > :is(:nth-child(2), :nth-child(3)) { --icm: icm-grow-x var(--bw-dur-page) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
-[data-ic="fmtJustify"] > * { --icm: icm-grow-x var(--bw-dur-slow) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
-[data-ic="fmtJustify"] > :nth-child(2) { --d: var(--bw-stagger); }
-[data-ic="fmtJustify"] > :nth-child(3) { --d: calc(var(--bw-stagger) * 2); }
+[data-ic="fmtJustify"] > *, [data-ic="fmtJustifyLow"] > *, [data-ic="fmtJustifyMedium"] > *, [data-ic="fmtJustifyHigh"] > * { --icm: icm-grow-x var(--bw-dur-slow) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
+[data-ic="fmtJustify"] > :nth-child(2), [data-ic="fmtJustifyLow"] > :nth-child(2), [data-ic="fmtJustifyMedium"] > :nth-child(2), [data-ic="fmtJustifyHigh"] > :nth-child(2) { --d: var(--bw-stagger); }
+[data-ic="fmtJustify"] > :nth-child(3), [data-ic="fmtJustifyLow"] > :nth-child(3), [data-ic="fmtJustifyMedium"] > :nth-child(3), [data-ic="fmtJustifyHigh"] > :nth-child(3) { --d: calc(var(--bw-stagger) * 2); }
 /* remove item: the bin's lid lifts */
 :is([data-ic="chDelete"]) > :is(:nth-child(4), :nth-child(5)) { transform-origin: 0 100%; --y: -2px; --r: -10deg; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1, icm-tilt var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 /* remove the header / footer item: the band slips away from its edge, the cross recedes */
