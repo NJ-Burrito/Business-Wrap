@@ -12,7 +12,7 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { py } from './py.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { renderDocument, chromeTemplates, relaxTallGroups, relaxArgs, PAGE, pageGeom, pageModel, folioOf, designTheme, confidentialText, uploadedFontCss, faceWeights } from './render.mjs';
+import { renderDocument, chromeTemplates, relaxTallGroups, relaxVerdicts, relaxArgs, pagedStarts, applyStarts, pageSpec, PAGE, pageGeom, pageModel, folioOf, designTheme, confidentialText, uploadedFontCss, faceWeights } from './render.mjs';
 import { applyOps, migrate, normaliseNumbers } from './edits.mjs';
 import { assertBase } from './edits-base.mjs';
 import { loadManifest, resolveFonts, fontFaceCss, systemFamily, normaliseFont, ttfDataUri } from './fonts.mjs';
@@ -306,7 +306,20 @@ async function exportPdfWork(doc, { locale, theme, pdfPath, browser: shared }) {
     await page.emulateMedia({ media: 'print' });
     await page.goto(pathToFileURL(tmp).href, { waitUntil: 'load' });
     await page.evaluate(() => document.fonts.ready.then(() => true));
-    await page.evaluate(relaxTallGroups, doc.layout?.page ? relaxArgs(doc) : relaxArgs());
+    if (process.env.BW_PAGED !== '1') {
+      await page.evaluate(relaxTallGroups, doc.layout?.page ? relaxArgs(doc) : relaxArgs());
+    } else {
+      // 0.16.4 EXPERIMENT, off unless BW_PAGED=1 (measured on 7 real documents: it does not agree with the editor, see out/qa-0.16.2/parity-detail.md): ONE layout decides the pages. The print pass's verdicts are written as attributes (the editor's page view does the same, with the same function),
+      // the document is laid out in the editor's columns, and the block that opens each column opens a page here (see pagedStarts)
+      await page.addScriptTag({ content: `var relaxTallGroups=${relaxTallGroups};` });
+      await page.addStyleTag({ content: '[data-rlr="a"]{break-after:avoid}[data-rlr="b"]{break-before:avoid}thead{display:table-row-group}' });
+      const args = [...(doc.layout?.page ? relaxArgs(doc) : relaxArgs()), geo.measurePx];
+      await page.evaluate(`(${relaxVerdicts})(document.querySelector('main.bw-doc'), ${JSON.stringify(args)}, document.body)`);
+      const sp = pageSpec(doc.layout?.page);
+      const r = await page.evaluate(pagedStarts, [sp.w, sp.h, 18, 16]);
+      if (r?.starts?.length) await page.evaluate(applyStarts, r.starts);
+      if (process.env.BW_PAGED_LOG) console.log('paged', JSON.stringify({ starts: r?.starts?.length, columns: r?.columns, foreign: r?.foreign, error: r?.error }));
+    }
     const chromeOpt = { theme, labels, locale, fontCss: fontFaceCss(used.filter((c) => [400, 700].includes(c.weight)), { embed: true }) + chosen.css + uploadedFontCss(chosen.doc), logos: theme.logos };
     const chrome = chromeTemplates(doc, chromeOpt);
     fs.mkdirSync(path.dirname(pdfPath), { recursive: true });

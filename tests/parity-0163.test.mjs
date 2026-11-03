@@ -69,6 +69,13 @@ try {
   // prints one page more than the editor. The other lengths are reported, not asserted: some of them still differ by one page (see parity-detail.md).
   const at14 = counts.find(([n]) => n === 14);
   check("the PDF has the editor's page count when the rules table ends with room for the notes table's title, header and first row", at14[1] === at14[2], `pdf ${at14[1]} editor ${at14[2]}`);
+  // every length, not only 14: the two page lists never part by more than one page (measured 2026-11-03: 14:20/20 17:21/20 20:21/20 23:21/21 26:21/21 29:21/21 32:22/21 35:22/21),
+  // and the PDF is never SHORTER than the editor's list (a page the editor shows must not vanish in the print)
+  const apart = counts.filter(([, p, e]) => Math.abs(p - e) > 1);
+  check('at every rules-table length (8 lengths) the PDF and the editor are within one page of each other', apart.length === 0, JSON.stringify(apart));
+  const shorter = counts.filter(([, p, e]) => p < e);
+  check('at no rules-table length is the PDF shorter than the editor', shorter.length === 0, JSON.stringify(shorter));
+  console.log(`INFO  parity-0163: ${counts.filter(([, p, e]) => p === e).length} of ${counts.length} lengths print exactly the editor's page count`);
   console.log(`INFO  parity-0163: pdf/editor pages by rules-table length: ${counts.map(([n, p, e]) => `${n}:${p}/${e}`).join(' ')}`);
   // 2. story numbers
   const withStories = (items, perSection) => {
@@ -91,6 +98,17 @@ try {
   };
   const one = await sn(withStories(3, false));
   check('a stories block of three cards numbers them 6.1, 6.2, 6.3', one.join() === '6.1,6.2,6.3', one.join());
+  // a one-card section, a three-card block, then a one-card section whose own number is one the cards would reach: no number prints twice
+  const mixed = () => {
+    const d = JSON.parse(JSON.stringify(built.docs.ar));
+    const ch = d.chapters.find((c) => String(c.number) === '6');
+    const proto = ch.sections.flatMap((s) => s.blocks).find((b) => b.kind === 'stories');
+    const mk = (k) => ({ ...JSON.parse(JSON.stringify(proto)), items: Array.from({ length: k }, (_, i) => ({ ...JSON.parse(JSON.stringify(proto.items[0])), id: `US-0${i + 1}` })) });
+    ch.sections = [1, 3, 1].map((k, i) => ({ title: `قسم ${i + 1}`, number: `6.${i + 1}`, blocks: [{ ...mk(k), number: `6.${i + 1}` }] }));
+    return d;
+  };
+  const mx = await sn(mixed());
+  check('cards of a three-card block skip the number a later one-card section carries (6.1, 6.2, 6.4, 6.5, 6.3: all different)', new Set(mx).size === mx.length && mx.length === 5 && mx.join() === '6.1,6.2,6.4,6.5,6.3', mx.join());
   const per = await sn(withStories(3, true));
   check('three sections of one card each keep their section numbers (6.1, 6.2, 6.3)', per.join() === '6.1,6.2,6.3', per.join());
 } finally {

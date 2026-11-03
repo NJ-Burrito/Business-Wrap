@@ -164,50 +164,11 @@ function viewsSheets(main, g) {
  *  frame of the print measure), and its verdicts are written back as classes and attributes only (the editable markup is never cloned or
  *  split). The markers (`data-rlx`, `data-rlr`) are screen-only and cleared on the next pass. */
 function viewsRelax(main) {
-  // the last pass's verdicts go back to what the markup came with (class and style as rendered), then the pass is made again
-  main.querySelectorAll('[data-rlx]').forEach((e) => {
-    if (e.dataset.rlc === undefined) return;
-    if (e.dataset.rlc) e.setAttribute('class', e.dataset.rlc); else e.removeAttribute('class');
-    if (e.dataset.rls) e.setAttribute('style', e.dataset.rls); else e.removeAttribute('style');
-    delete e.dataset.rlc; delete e.dataset.rls; e.removeAttribute('data-rlx');
-  });
-  main.querySelectorAll('[data-rlr]').forEach((e) => e.removeAttribute('data-rlr'));
+  // 0.16.4: the verdicts are written by engine/render.mjs `relaxVerdicts`, the same function the PDF's page layout runs
   const pair = document.getElementById('bw-pair');
   const doc = cur().doc;
-  const live = [...main.querySelectorAll('.keep,.card,.hold,.fig')].filter((e) => !e.closest('.bw-runs'));
-  if (!pair || !doc || !live.length) return;
-  live.forEach((e, i) => { e.dataset.rlx = String(i); e.dataset.rlc = e.getAttribute('class') || ''; e.dataset.rls = e.getAttribute('style') || ''; });
-  const geo = doc.layout?.page ? pageGeom(doc) : PAGE;
-  const probe = document.createElement('div');
-  probe.className = 'bw-probe';
-  probe.setAttribute('aria-hidden', 'true');
-  probe.style.cssText = `position:absolute;left:-30000px;top:0;visibility:hidden;pointer-events:none;width:${geo.measurePx}px;zoom:1`;
-  const copy = main.cloneNode(true);
-  copy.querySelectorAll('.bw-runs,.bw-sheets,.bw-slot').forEach((x) => x.remove());
-  copy.querySelectorAll('[id]').forEach((x) => x.removeAttribute('id'));
-  copy.removeAttribute('id');
-  copy.style.cssText = 'zoom:1;width:100%;margin:0;transform:none;box-shadow:none;height:auto';
-  probe.appendChild(copy);
-  pair.appendChild(probe);
-  try {
-    relaxTallGroups([...(doc.layout?.page ? relaxArgs(doc) : relaxArgs()), copy]);
-    const by = new Map();
-    copy.querySelectorAll('[data-rlx]').forEach((e) => { const l = by.get(e.dataset.rlx); if (l) l.push(e); else by.set(e.dataset.rlx, [e]); });
-    live.forEach((el, i) => {
-      const g = by.get(String(i));
-      if (!g) return;
-      if (g.length > 1) { // a long held table or list: its first rows and its last rows stay together, the middle flows
-        const rows = [...el.children];
-        rows.slice(0, Math.max(0, g[0].children.length - 1)).forEach((r) => { r.dataset.rlr = 'a'; });
-        rows.slice(Math.max(0, rows.length - g[g.length - 1].children.length + 1)).forEach((r) => { r.dataset.rlr = 'b'; });
-        el.style.breakInside = 'auto';
-        el.classList.remove('whole');
-      } else {
-        if (g[0].style.breakInside === 'auto') el.style.breakInside = 'auto';
-        el.classList.toggle('whole', g[0].classList.contains('whole'));
-      }
-    });
-  } finally { probe.remove(); }
+  const geo = doc?.layout?.page ? pageGeom(doc) : PAGE;
+  relaxVerdicts(main, [...(doc?.layout?.page ? relaxArgs(doc) : relaxArgs()), geo.measurePx], pair && doc ? pair : null);
 }
 /** A box taller than the document's own page cannot be shown whole in its columns: say so. */
 function viewsOverflow() {
