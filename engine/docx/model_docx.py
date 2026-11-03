@@ -96,7 +96,10 @@ def add_leaf(paragraph, leaf, font, add_script_runs, bold=False):
 
 def style_paragraph(paragraph, st):
     pPr = paragraph._p.get_or_add_pPr()
-    al = {'start': 'start', 'center': 'center', 'end': 'end', 'justify': 'both'}.get(st.get('align'))
+    al = {'start': 'start', 'center': 'center', 'end': 'end', 'justify': 'both', 'justify-low': 'lowKashida', 'justify-medium': 'mediumKashida', 'justify-high': 'highKashida'}.get(st.get('align'))
+    # 0.16.2 note J: Word's own kashida levels act on Arabic letters only; a paragraph with none (Latin text) is plain justify at every level
+    if al and al.endswith('Kashida') and paragraph.text and not re.search(r'[؀-ۿ]', paragraph.text):
+        al = 'both'
     if al:
         for old in pPr.findall(qn('w:jc')):
             pPr.remove(old)

@@ -14,7 +14,7 @@ const RB_TABS = [
     ['xdiagram', ['export.mermaid', 'export.svg', 'export.png']], ['xprint', ['print', 'exportPdf', 'export.opts']], ['xproj', ['projExport', 'projImport']]], null, '--bw-sec-export'],
   ['home', [['edit', ['undo', 'redo', 'find', 'copyBlock', 'pasteBlock']], ['block', ['duplicate', 'delete', 'moveUp', 'moveDown', 'comment']]], null, '--bw-sec-edit'],
   ['font', [['fontface', ['fmtFont', 'fmtSize', 'fmtColor']], ['style', ['fmtBold', 'fmtItalic', 'fmtUnderline', 'fmtStrike', 'fmtCode']], ['fother', ['fmtLink', 'fmtClear']]], null, '--bw-sec-font'],
-  ['para', [['align', ['fmtAlignStart', 'fmtAlignCenter', 'fmtAlignEnd', 'fmtJustify', 'fmtTop', 'fmtMiddle', 'fmtBottom']], ['spacing', ['fmtLine', 'fmtBefore', 'fmtAfter']],
+  ['para', [['align', ['fmtAlignStart', 'fmtAlignCenter', 'fmtAlignEnd', 'fmtJustify', 'fmtJustifyLow', 'fmtJustifyMedium', 'fmtJustifyHigh', 'fmtTop', 'fmtMiddle', 'fmtBottom']], ['spacing', ['fmtLine', 'fmtBefore', 'fmtAfter']],
     ['lists', ['fmtQuote', 'fmtBullets', 'fmtNumbers', 'fmtShapes', 'fmtIndent', 'fmtOutdent']]], null, '--bw-sec-para'],
   ['insert', [['content', ['image', 'logo', 'addDiagram', 'addPara', 'insTable', 'insSection', 'insChapter', 'insTextBox']], ['story', ['addStory', 'addOutputStory', 'addOutputsChapter', 'storyPoint', 'storyCard']],
     ['wrap', ['wrapInline', 'wrapSquare', 'wrapTight', 'wrapThrough', 'wrapTopBottom', 'wrapBehind', 'wrapFront']]], null, '--bw-sec-insert'],

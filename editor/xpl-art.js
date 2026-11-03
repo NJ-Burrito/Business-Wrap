@@ -301,7 +301,12 @@ const XPL_SCENES = {
     switch (k) {
       case 'align': {
         const ws = [70, 84, 60, 78, 40];
-        const p = xaEnd(a), jw = a === 'j' ? ws.map((w, i) => (i === 4 ? 56 : 88)) : ws;
+        const p = xaEnd(a), jw = a[0] === 'j' ? ws.map((w, i) => (i === 4 ? 56 : 88)) : ws;
+        // 0.16.2 note J: jl / jm / jh = Justify Low / Medium / High: the stretch drawn as accent bars inside the full lines (1, 2, 3 per line)
+        if (a.length === 2 && a[0] === 'j') {
+          const nb = { l: 1, m: 2, h: 3 }[a[1]];
+          return sheet + jw.map((w, i) => xaLn(36, 22 + i * 10, w)).join('') + jw.slice(0, 4).map((w, i) => [...Array(nb)].map((_, k) => xaR('ac k-grow', 46 + k * (w / (nb + 0.4)) * 0.9, 22.6 + i * 10, 10 + nb * 3, 2.8, 1.4, xaSc(0, 1, 'left center'))).join('')).join('');
+        }
         return sheet + jw.map((w, i) => xaLn(p === 'c' ? 80 - w / 2 : p === 'r' ? 124 - w : 36, 22 + i * 10, w)).join('');
       }
       case 'v': {
@@ -627,6 +632,9 @@ para:align.s fmtAlignStart@ok
 para:align.c fmtAlignCenter@ok
 para:align.e fmtAlignEnd@ok
 para:align.j fmtJustify@ok
+para:align.jl fmtJustifyLow@ok
+para:align.jm fmtJustifyMedium@ok
+para:align.jh fmtJustifyHigh@ok
 para:v.t fmtTop@ok
 para:v.m fmtMiddle@ok
 para:v.b fmtBottom@ok
