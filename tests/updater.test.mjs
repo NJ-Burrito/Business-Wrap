@@ -131,7 +131,13 @@ try {
   let restarted = 0;
   const srv = await serve(ed, 0, { installDir: D.dir, onUpdated: () => { restarted += 1; } });
   const base = `http://127.0.0.1:${srv.address().port}`;
-  const get = async (p, h = {}) => { const x = await fetch(base + p, { headers: h }); return { status: x.status, j: await x.json() }; };
+  // the apply copies files with synchronous calls inside this process, so on a slow runner the server can be busy for longer than its idle keep-alive (5 s) and close a socket the client then reuses: a read ECONNRESET on a GET. GETs are safe to repeat, so retry the reset (a page does the same: its polls catch and go on).
+  const get = async (p, h = {}) => {
+    for (let k = 0; ; k++) {
+      try { const x = await fetch(base + p, { headers: h }); return { status: x.status, j: await x.json() }; }
+      catch (e) { if (k >= 4 || !/ECONNRESET|fetch failed/.test(`${e.cause?.code || ''}${e.message}`)) throw e; await new Promise((r2) => setTimeout(r2, 200)); }
+    }
+  };
   let g = await get('/api/version');
   ok('GET /api/version: name, version, release date, repo, licence', g.status === 200 && g.j.version === CUR && g.j.name === 'Business-Wrap' && /github\.com/.test(g.j.repo) && g.j.license && g.j.served === true, JSON.stringify(g.j).slice(0, 200));
   g = await get('/api/update/check?force=1');

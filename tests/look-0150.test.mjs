@@ -42,6 +42,8 @@ async function open({ ui = 'ar', width = 1366, height = 768, dark = false, calm 
   await page.waitForFunction(() => window.BW?.ready);
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(700);
+  // the bar's entrance (island-in, a 0.98 scale) can still be running on a slow runner: measure only after every finite animation in the UI has ended
+  await page.evaluate(async () => { const r = document.getElementById('bw-ui-host').shadowRoot; await Promise.all(r.getAnimations({ subtree: true }).filter((a) => a.effect?.getTiming().iterations !== Infinity).map((a) => a.finished.catch(() => {}))); });
   return { ctx, page, errors };
 }
 const sh = (page, fn, arg) => page.evaluate(([f, a]) => new Function('r', 'a', `return (${f})(r, a)`)(document.getElementById('bw-ui-host').shadowRoot, a), [fn.toString(), arg]);
