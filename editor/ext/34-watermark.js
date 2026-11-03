@@ -13,6 +13,10 @@
  * last 2 s, in focus mode, in a hidden tab, or above 200 % zoom. Reduced motion or calm mode: the random ones are off, an action
  * reaction is a 240 ms opacity pulse, the easter egg is a still role switch.
  *
+ * 0.17.0 (owner note N6): the reactions are acted (anticipation, squash and stretch, follow-through; see BUILD), the idle float breathes,
+ * and two more easter eggs sit beside W20 without new ids (EGGS: «charge», a long press; «dizzy», circling the pointer round the mark).
+ * Tests and the preview: BW_WM.WM.eggs(), .playEgg(name) (the rules apply), .play(name) (no rules), .frames(id) (the keyframes).
+ *
  * Contract for the other lanes (frozen): window.dispatchEvent(new CustomEvent('bw:wm', { detail: { id: 'W05' } })). Only this
  * file plays reactions. Tests: BW_WM.play(id) plays one directly (no rate rules), BW_WM.trigger(id) goes through the rules. */
 (() => {
@@ -58,38 +62,74 @@
 #bw-watermark .fx-ring { inset: 0; border: 2px solid var(--bw-accent, #c99a2e); border-radius: 50%; }
 `;
 
-  /* ── the reactions: each returns its animations (target, keyframes, options). Total length = the table's ms. ── */
-  const kf = (...t) => t.map((transform) => ({ transform }));
+  /* ── the reactions: each returns its animations (target, keyframes, options). Total length = the table's ms. ──
+     0.17.0 (owner note N6, "bland and simple, make it alive"): every reaction is acted, not just moved. Each one has an ANTICIPATION
+     (it crouches or winds up the other way first), the action with SQUASH AND STRETCH (it stretches as it rises, squashes as it lands),
+     and a FOLLOW-THROUGH (it overshoots its rest and settles in a damped wobble). Still only transform and opacity, still the same
+     lengths (the table above); the keyframes say where each beat falls (out/qa-0.17.0/motion-detail.md section 3). */
+  /** keyframes with their beats: [[offset, transform], ...] */
+  const at = (...t) => t.map(([offset, transform]) => ({ offset, transform }));
   const mk = (id, ms, keys, extra = {}) => ({ target: 'mark', keys, ms, composite: 'add', easing: EASE, ...extra });
   const op = (ms, keys, easing = EASE) => ({ target: 'wm', keys: keys.map((opacity) => ({ opacity })), ms, easing });
   const OP_UP = (ms) => op(ms, [IDLE, UP, IDLE]);
+  const IO = 'cubic-bezier(.45,0,.2,1)'; // the acted beats carry their own timing, so the curve between them is a soft in-out
+  const shadowAt = (ms, peak, delay = 0) => ({ target: 'shadow', keys: [{ transform: 'scale(1)', opacity: 0.55 }, { transform: `scale(${peak})`, opacity: 0.25, offset: 0.42 }, { transform: 'scale(1.08)', opacity: 0.6, offset: 0.68 }, { transform: 'scale(1)', opacity: 0 }], ms, delay, easing: IO });
   const BUILD = {
-    W01: (ms) => [mk('W01', ms, kf('translateY(0) scaleY(1)', 'translateY(6px) scaleY(.94)', 'translateY(0) scaleY(1)')), OP_UP(ms)],
-    W02: (ms) => [mk('W02', ms, kf('translateY(0) rotate(0deg)', 'translateY(-24px) rotate(-8deg)', 'translateY(0) rotate(0deg)')), op(ms, [IDLE, UP, UP, IDLE])],
-    W03: (ms) => [mk('W03', ms, kf('rotate(0deg)', 'rotate(-360deg)'), { easing: 'ease-in-out' }), OP_UP(ms)],
-    W04: (ms) => [mk('W04', ms, kf('scale(1)', 'scale(1.12)', 'scale(1)')), OP_UP(ms),
-      { target: 'star', keys: [{ transform: 'scale(0)', opacity: 0 }, { transform: 'scale(1)', opacity: 1, offset: 0.5 }, { transform: 'scale(1)', opacity: 0 }], ms, easing: EASE }],
-    W05: (ms, d) => { const x = (d?.dir === -1 || d?.dir === 'start' || d?.dir === 'left') ? -6 : 6; return [mk('W05', ms, kf('translateX(0)', `translateX(${x}px)`, 'translateX(0)')), OP_UP(ms)]; },
-    W06: (ms) => [mk('W06', ms, kf('scaleY(1)', 'scaleY(1.06)', 'scaleY(.96)', 'scaleY(1)')), op(ms, [IDLE, 0.18, IDLE], 'ease-in-out')],
-    W07: (ms) => [mk('W07', ms, [{ transform: 'translateY(-8px) scale(1.08)' }, { transform: 'translateY(2px) scale(.98)', offset: 0.6 }, { transform: 'translateY(0) scale(1)' }]), op(ms, [UP, UP, IDLE])],
-    W08: (ms) => [mk('W08', ms, kf('scaleY(1)', 'scaleY(.9)', 'scaleY(1)'), { easing: 'ease-in' }), op(ms, [IDLE, 0.15, IDLE], 'ease-in')],
-    W09: (ms) => [mk('W09', ms, [{ transform: 'translateY(-32px)' }, { transform: 'translateY(0)', offset: 0.45 }, { transform: 'translateY(-6px)', offset: 0.6 }, { transform: 'translateY(0)', offset: 0.75 }, { transform: 'translateY(-2px)', offset: 0.87 }, { transform: 'translateY(0)' }]), op(ms, [UP, UP, IDLE])],
-    W10: (ms) => [mk('W10', ms, kf('rotate(0deg)', 'rotate(10deg)', 'rotate(-8deg)', 'rotate(6deg)', 'rotate(0deg)')), op(ms, [IDLE, UP, UP, IDLE])],
-    W11: (ms) => [mk('W11', ms, kf('translateY(0)', 'translateY(-10px)', 'translateY(0)'), { easing: 'cubic-bezier(.34,1.56,.64,1)' }), OP_UP(ms),
-      { target: 'shadow', keys: [{ transform: 'scale(1)', opacity: 0.6 }, { transform: 'scale(.9)', opacity: 0.6 }, { transform: 'scale(1)', opacity: 0.6 }], ms, easing: EASE }],
-    W12: (ms) => [mk('W12', ms, kf('rotateY(0deg)', 'rotateY(16deg)', 'rotateY(-16deg)', 'rotateY(0deg)')), OP_UP(ms)],
-    W13: (ms) => [mk('W13', ms, kf('translateY(0)', 'translateY(0)')), OP_UP(ms),
+    // save: a nod: it rises a little, ducks with a squash, rebounds and settles
+    W01: (ms) => [mk('W01', ms, at([0, 'translateY(0) scale(1,1)'], [0.18, 'translateY(-3px) scale(.97,1.04)'], [0.42, 'translateY(6px) scale(1.07,.9)'], [0.64, 'translateY(-2px) scale(.98,1.03)'], [0.82, 'translateY(1px) scale(1.01,.99)'], [1, 'translateY(0) scale(1,1)']), { easing: IO }), OP_UP(ms)],
+    // export: crouch, launch with a lean, fall back past the floor, land squashed, settle
+    W02: (ms) => [mk('W02', ms, at([0, 'translateY(0) rotate(0deg) scale(1,1)'], [0.14, 'translateY(4px) rotate(2deg) scale(1.08,.88)'], [0.42, 'translateY(-26px) rotate(-10deg) scale(.93,1.09)'], [0.7, 'translateY(2px) rotate(2deg) scale(1.07,.92)'], [0.85, 'translateY(-2px) rotate(-.5deg) scale(.99,1.01)'], [1, 'translateY(0) rotate(0deg) scale(1,1)']), { easing: IO }), op(ms, [IDLE, UP, UP, IDLE]), shadowAt(ms, 0.5)],
+    // undo: winds forward first, then rewinds a whole turn, overshoots and comes back
+    W03: (ms) => [mk('W03', ms, at([0, 'rotate(0deg)'], [0.16, 'rotate(16deg)'], [0.78, 'rotate(-374deg)'], [0.9, 'rotate(-356deg)'], [1, 'rotate(-360deg)']), { easing: IO }), OP_UP(ms)],
+    // spelling: a squash, a pop, and a gold star that twirls in and out
+    W04: (ms) => [mk('W04', ms, at([0, 'scale(1)'], [0.2, 'scale(1.06,.9)'], [0.5, 'scale(1.14,1.16)'], [0.74, 'scale(.97)'], [0.88, 'scale(1.02)'], [1, 'scale(1)']), { easing: IO }), OP_UP(ms),
+      { target: 'star', keys: [{ transform: 'scale(0) rotate(0deg)', opacity: 0 }, { transform: 'scale(1.25) rotate(100deg)', opacity: 1, offset: 0.45 }, { transform: 'scale(.9) rotate(150deg)', opacity: 1, offset: 0.7 }, { transform: 'scale(0) rotate(200deg)', opacity: 0 }], ms, easing: IO }],
+    // tab switch: it leans the way the tab went, swings back past the middle, settles
+    W05: (ms, d) => { const x = (d?.dir === -1 || d?.dir === 'start' || d?.dir === 'left') ? -6 : 6; return [mk('W05', ms, at([0, 'translateX(0) rotate(0deg)'], [0.45, `translateX(${x}px) rotate(${x / 2}deg)`], [0.75, `translateX(${-x / 4}px) rotate(${-x / 6}deg)`], [1, 'translateX(0) rotate(0deg)']), { easing: IO }), OP_UP(ms)]; },
+    // idle: a real yawn: it stretches up tall and thin, holds it, sags, shakes it off
+    W06: (ms) => [mk('W06', ms, at([0, 'scale(1,1) rotate(0deg)'], [0.3, 'scale(.95,1.09) rotate(-2deg)'], [0.5, 'scale(.95,1.1) rotate(2deg)'], [0.68, 'scale(1.05,.93) rotate(0deg)'], [0.78, 'scale(1,1) rotate(-3deg)'], [0.86, 'scale(1,1) rotate(3deg)'], [0.94, 'scale(1,1) rotate(-1deg)'], [1, 'scale(1,1) rotate(0deg)']), { easing: IO }), op(ms, [IDLE, 0.18, IDLE], 'ease-in-out')],
+    // the server wakes: it springs up out of a crouch and lands awake
+    W07: (ms) => [mk('W07', ms, at([0, 'translateY(4px) scale(1.1,.85)'], [0.35, 'translateY(-10px) scale(.94,1.1)'], [0.6, 'translateY(1px) scale(1.05,.95)'], [0.8, 'translateY(-1px) scale(.99,1.01)'], [1, 'translateY(0) scale(1,1)']), { easing: IO }), op(ms, [UP, UP, IDLE])],
+    // the server sleeps: it droops, nods off to one side, then the other, and rests
+    W08: (ms) => [mk('W08', ms, at([0, 'translateY(0) scale(1,1) rotate(0deg)'], [0.3, 'translateY(2px) scale(1.04,.9) rotate(-5deg)'], [0.6, 'translateY(3px) scale(1.06,.88) rotate(4deg)'], [0.82, 'translateY(1px) scale(1.02,.96) rotate(-1deg)'], [1, 'translateY(0) scale(1,1) rotate(0deg)']), { easing: 'ease-in-out' }), op(ms, [IDLE, 0.15, IDLE], 'ease-in')],
+    // an import lands: it drops in from above and bounces twice, squashing on every landing
+    W09: (ms) => [mk('W09', ms, at([0, 'translateY(-32px) scale(.95,1.07)'], [0.4, 'translateY(0) scale(1.13,.85)'], [0.52, 'translateY(-8px) scale(.97,1.04)'], [0.66, 'translateY(0) scale(1.06,.94)'], [0.78, 'translateY(-2px) scale(1,1)'], [0.88, 'translateY(0) scale(1.02,.98)'], [1, 'translateY(0) scale(1,1)']), { easing: IO }), op(ms, [UP, UP, IDLE])],
+    // welcome: a little hop, then a wave that keeps swinging and dies down
+    W10: (ms) => [mk('W10', ms, at([0, 'translateY(0) rotate(0deg)'], [0.12, 'translateY(-6px) rotate(0deg)'], [0.24, 'translateY(0) rotate(12deg)'], [0.4, 'translateY(0) rotate(-10deg)'], [0.56, 'translateY(0) rotate(7deg)'], [0.72, 'translateY(0) rotate(-4deg)'], [0.86, 'translateY(0) rotate(1.5deg)'], [1, 'translateY(0) rotate(0deg)']), { easing: IO }), op(ms, [IDLE, UP, UP, IDLE])],
+    // hop: crouch, jump stretched, land squashed (its shadow shrinks while it is up)
+    W11: (ms) => [mk('W11', ms, at([0, 'translateY(0) scale(1,1)'], [0.15, 'translateY(2px) scale(1.08,.9)'], [0.45, 'translateY(-12px) scale(.95,1.06)'], [0.7, 'translateY(0) scale(1.06,.94)'], [0.85, 'translateY(-1.5px) scale(1,1)'], [1, 'translateY(0) scale(1,1)']), { easing: IO }), OP_UP(ms), shadowAt(ms, 0.7)],
+    // tilt-wave: it turns to look one way, then the other, and back
+    W12: (ms) => [mk('W12', ms, at([0, 'rotateY(0deg)'], [0.3, 'rotateY(20deg)'], [0.62, 'rotateY(-15deg)'], [0.84, 'rotateY(5deg)'], [1, 'rotateY(0deg)']), { easing: IO }), OP_UP(ms)],
+    // shimmer: a gold light sweeps across; the mark draws a breath as it passes
+    W13: (ms) => [mk('W13', ms, at([0, 'scale(1)'], [0.45, 'scale(1.035)'], [1, 'scale(1)']), { easing: 'ease-in-out' }), OP_UP(ms),
       { target: 'strip', keys: [{ transform: 'translateX(-120%) skewX(-40deg)', opacity: 1 }, { transform: 'translateX(420%) skewX(-40deg)', opacity: 1 }], ms, easing: 'ease-in-out' }],
-    W14: (ms) => [mk('W14', ms, kf('translateY(0)', 'translateY(0)')), OP_UP(ms),
+    // blink: one half, then the other; the mark squints with each
+    W14: (ms) => [mk('W14', ms, at([0, 'scale(1,1)'], [0.25, 'scale(1.03,.95)'], [0.5, 'scale(1,1)'], [0.75, 'scale(1.03,.95)'], [1, 'scale(1,1)']), { easing: 'ease-in-out' }), OP_UP(ms),
       { target: 'halfN', keys: [{ opacity: 0 }, { opacity: 0.6 }, { opacity: 0 }], ms: ms / 2, easing: 'ease-in-out' },
       { target: 'halfJ', keys: [{ opacity: 0 }, { opacity: 0.6 }, { opacity: 0 }], ms: ms / 2, delay: ms / 2, easing: 'ease-in-out' }],
-    W15: (ms) => [mk('W15', ms, [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(10deg)', offset: 0.3 }, { transform: 'rotateY(10deg)', offset: 0.7 }, { transform: 'rotateY(0deg)' }]), OP_UP(ms)],
-    W16: (ms) => [mk('W16', ms, kf('translateY(0)', 'translateY(0)')), OP_UP(ms)],
-    W17: (ms) => [mk('W17', ms, kf('rotateY(0deg)', 'rotateY(360deg)')), OP_UP(ms)],
-    W18: (ms) => [mk('W18', ms, kf('scale(1,1)', 'scale(1.1,.9)', 'scale(.94,1.06)', 'scale(1,1)')), OP_UP(ms)],
-    W19: (ms) => [mk('W19', ms, [{ transform: 'translateY(0)' }, { transform: 'translateY(-4px)', offset: 0.25 }, { transform: 'translateY(0)', offset: 0.5 }, { transform: 'translateY(-3px)', offset: 0.75 }, { transform: 'translateY(0)' }], { easing: 'ease-in-out' }), OP_UP(ms)],
-    W20: (ms) => [mk('W20', ms, [{ transform: 'rotateY(0deg) scale(1)' }, { transform: 'rotateY(360deg) scale(1.3)', offset: 0.5 }, { transform: 'rotateY(720deg) scale(1)' }]), op(ms, [IDLE, UP, UP, IDLE]),
-      ...[0, 1, 2].map((i) => ({ target: `ring${i}`, keys: [{ transform: 'scale(.6)', opacity: 0.6 }, { transform: 'scale(2.2)', opacity: 0 }], ms: ms - 240, delay: i * 120, easing: EASE }))],
+    // peek: it leans out to look past its corner, holds, and pops back
+    W15: (ms) => [mk('W15', ms, at([0, 'translateX(0) rotate(0deg) rotateY(0deg)'], [0.25, 'translateX(-7px) rotate(-7deg) rotateY(12deg)'], [0.62, 'translateX(-7px) rotate(-7deg) rotateY(12deg)'], [0.78, 'translateX(1.5px) rotate(2deg) rotateY(-3deg)'], [1, 'translateX(0) rotate(0deg) rotateY(0deg)']), { easing: IO }), OP_UP(ms)],
+    // role flip: it turns edge-on, the next role is behind, it swings back past front and settles
+    W16: (ms) => [mk('W16', ms, at([0, 'rotateY(0deg) scale(1)'], [0.12, 'rotateY(-10deg) scale(.98)'], [0.4, 'rotateY(90deg) scale(1.04)'], [0.7, 'rotateY(-14deg) scale(1)'], [0.86, 'rotateY(4deg) scale(1)'], [1, 'rotateY(0deg) scale(1)']), { easing: IO }), OP_UP(ms)],
+    // spin-flip: a hop with a full turn that overshoots and swings back to face front
+    W17: (ms) => [mk('W17', ms, at([0, 'translateY(0) rotateY(0deg)'], [0.14, 'translateY(2px) rotateY(-12deg)'], [0.62, 'translateY(-8px) rotateY(380deg)'], [0.82, 'translateY(0) rotateY(354deg)'], [1, 'translateY(0) rotateY(360deg)']), { easing: IO }), OP_UP(ms)],
+    // jelly: squash, stretch, and a wobble that dies down
+    W18: (ms) => [mk('W18', ms, at([0, 'scale(1,1)'], [0.18, 'scale(1.15,.85)'], [0.38, 'scale(.9,1.1)'], [0.56, 'scale(1.06,.94)'], [0.74, 'scale(.98,1.02)'], [0.88, 'scale(1.01,.99)'], [1, 'scale(1,1)']), { easing: IO }), OP_UP(ms)],
+    // float-bob: two slow bobs on the water, rocking a little
+    W19: (ms) => [mk('W19', ms, at([0, 'translateY(0) rotate(0deg)'], [0.25, 'translateY(-5px) rotate(-2deg)'], [0.5, 'translateY(0) rotate(1deg)'], [0.75, 'translateY(-3px) rotate(1.5deg)'], [1, 'translateY(0) rotate(0deg)']), { easing: 'ease-in-out' }), OP_UP(ms)],
+    // the easter egg, lucky seven: a deep crouch, a leap with two whole turns, a squashed landing and three gold rings
+    W20: (ms) => [mk('W20', ms, at([0, 'translateY(0) rotateY(0deg) scale(1,1)'], [0.12, 'translateY(6px) rotateY(-20deg) scale(1.16,.82)'], [0.5, 'translateY(-22px) rotateY(400deg) scale(1.28,1.34)'], [0.74, 'translateY(3px) rotateY(724deg) scale(1.14,.88)'], [0.88, 'translateY(-2px) rotateY(718deg) scale(.98,1.02)'], [1, 'translateY(0) rotateY(720deg) scale(1,1)']), { easing: IO }), op(ms, [IDLE, UP, UP, IDLE]),
+      ...[0, 1, 2].map((i) => ({ target: `ring${i}`, keys: [{ transform: 'scale(.6)', opacity: 0.7 }, { transform: 'scale(2.3)', opacity: 0 }], ms: ms - 480, delay: 240 + i * 120, easing: EASE }))],
+  };
+  /* 0.17.0 two new easter eggs (not reactions: the table and its 20 ids are frozen). Same rules as W20: one at a time, under the 10-minute
+     cap, never while typing, in focus mode or a hidden tab; in calm mode a still (the mark holds at full opacity, nothing moves).
+       charge  hold the mark down for 0.7 s: it squashes as it charges, and on release it springs up, spins and lands (with the star)
+       dizzy   circle the pointer around the mark twice within 3 s: it gets dizzy, wobbling in shrinking circles while the star orbits */
+  const EGGS = {
+    charge: ['spring-charge', 1300, (ms) => [mk('charge', ms, at([0, 'translateY(4px) scale(1.14,.8)'], [0.3, 'translateY(-24px) rotate(-8deg) scale(.9,1.16)'], [0.55, 'translateY(-26px) rotate(352deg) scale(1.04,1.04)'], [0.76, 'translateY(3px) rotate(362deg) scale(1.12,.88)'], [0.9, 'translateY(-1px) rotate(359deg) scale(.99,1.01)'], [1, 'translateY(0) rotate(360deg) scale(1,1)']), { easing: IO }), op(ms, [UP, UP, IDLE]), shadowAt(ms, 0.45),
+      { target: 'star', keys: [{ transform: 'scale(0) rotate(0deg)', opacity: 0 }, { transform: 'scale(1.3) rotate(120deg)', opacity: 1, offset: 0.55 }, { transform: 'scale(0) rotate(240deg)', opacity: 0 }], ms, easing: IO }]],
+    dizzy: ['dizzy', 1600, (ms) => [mk('dizzy', ms, at([0, 'translate(0,0) rotate(0deg)'], [0.12, 'translate(5px,-2px) rotate(8deg)'], [0.25, 'translate(0,-5px) rotate(-7deg)'], [0.38, 'translate(-4px,-1px) rotate(6deg)'], [0.5, 'translate(0,3px) rotate(-5deg)'], [0.62, 'translate(3px,-1px) rotate(3deg)'], [0.74, 'translate(0,-2px) rotate(-2deg)'], [0.86, 'translate(-1px,0) rotate(1deg)'], [1, 'translate(0,0) rotate(0deg)']), { easing: 'ease-in-out' }), OP_UP(ms),
+      { target: 'star', keys: [0, 0.25, 0.5, 0.75, 1].map((o, i) => ({ offset: o, opacity: o === 1 ? 0 : 1, transform: `rotate(${i * 180}deg) translateX(${i === 4 ? 0 : 14}px) rotate(${-i * 180}deg) scale(${i === 4 ? 0 : 0.8})` })), ms, easing: 'linear' }]],
   };
 
   const target = (name) => {
@@ -102,7 +142,8 @@
 
   /** Play one reaction now (no rate rules; reduced motion / calm still apply). Returns the animations, or null when it cannot play. */
   function play(id, detail) {
-    const spec = TABLE[id];
+    const egg = EGGS[id];
+    const spec = TABLE[id] || (egg && [egg[0], 'egg', egg[1]]);
     if (!spec || !M0) return null;
     const [name, kind, ms] = spec;
     if (stillPlaying()) cancelPlaying();
@@ -112,8 +153,8 @@
       if (kind === 'random') return null;
       // an action reaction is a 240 ms opacity pulse, the easter egg a still (the role image advances, the mark holds at full opacity)
       list = kind === 'egg' ? [op(1500, [UP, UP])] : [op(240, [IDLE, UP, IDLE], 'linear')];
-      if (kind === 'egg') M0.flip(true);
-    } else list = BUILD[id](ms, detail);
+      if (id === 'W20') M0.flip(true);
+    } else list = egg ? egg[2](ms, detail) : BUILD[id](ms, detail);
     M0.mark.style.willChange = 'transform, opacity';
     const anims = [];
     for (const a of list) {
@@ -175,6 +216,17 @@
     }
     stamp(kind, id);
     return !!play(id, detail);
+  }
+
+  /** 0.17.0: a new easter egg (EGGS) through the W20 rules: at most one of each per minute, never while typing, suppressed or over the cap. */
+  const lastEggBy = {};
+  function playEgg(name) {
+    if (!EGGS[name] || !M0) return false;
+    const t0 = now();
+    if (t0 - (lastEggBy[name] ?? -1e9) < 60000 || typingFor() < 2000 || suppressed() || !withinCap()) return false;
+    lastEggBy[name] = t0;
+    stamp('egg', name);
+    return !!play(name);
   }
 
   /* ── random reactions: a shuffle bag, 25 to 70 s after the last reaction of any kind ── */
@@ -309,6 +361,30 @@
       }
     };
     stage.addEventListener('click', counted);
+    // 0.17.0 egg «charge»: hold the mark down; it squashes while it charges (the anticipation), and a release after 0.7 s launches it
+    let held = null;
+    const CHARGE_MS = 700;
+    const unhold = () => { if (!held) return; try { held.anim?.cancel(); } catch { /* gone */ } const ok = now() - held.at >= CHARGE_MS; held = null; return ok; };
+    stage.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      held = { at: now(), anim: RM.matches || typeof mark.animate !== 'function' ? null : mark.animate([{ transform: 'scale(1,1)' }, { transform: 'translateY(4px) scale(1.14,.8)' }], { duration: CHARGE_MS, easing: 'cubic-bezier(.3,0,.2,1)', fill: 'forwards', composite: 'add' }) };
+    });
+    stage.addEventListener('pointerup', () => { if (unhold()) playEgg('charge'); });
+    for (const ev of ['pointercancel', 'pointerleave']) stage.addEventListener(ev, unhold);
+    // 0.17.0 egg «dizzy»: two whole circles of the pointer around the middle of the mark within 3 s
+    let spin = { a: null, sum: 0, at: 0 };
+    stage.addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'touch') return;
+      const r = stage.getBoundingClientRect();
+      const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+      if (Math.hypot(dx, dy) < 10) return; // too near the middle to read a direction
+      const a = Math.atan2(dy, dx), t0 = now();
+      if (spin.a === null || t0 - spin.at > 3000) spin = { a, sum: 0, at: t0 };
+      let d = a - spin.a;
+      if (d > Math.PI) d -= 2 * Math.PI; else if (d < -Math.PI) d += 2 * Math.PI;
+      spin.a = a; spin.sum += d;
+      if (Math.abs(spin.sum) >= 4 * Math.PI) { spin = { a: null, sum: 0, at: 0 }; playEgg('dizzy'); }
+    });
     stage.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') counted(e); });
     // a hover plays the hop at most once per 3 s
     stage.addEventListener('pointerenter', (e) => {
@@ -337,7 +413,8 @@
     const LOOP = 14, STEPS = 56; // seconds; the periods inside it: float 7 s, tilt-x 14 s, tilt-y 14/3 s: whole cycles, so the loop is seamless
     const idleFrames = Array.from({ length: STEPS + 1 }, (_, i) => {
       const tt = (i / STEPS) * LOOP, tau = Math.PI * 2;
-      return { transform: `translateY(${(Math.sin(tau * tt / 7) * 6).toFixed(2)}px) rotateX(${(Math.sin(tau * tt / 14) * 4).toFixed(3)}deg) rotateY(${(Math.sin(tau * tt / (14 / 3) + 1) * 6).toFixed(3)}deg)` };
+      // 0.17.0: it also breathes (4 whole breaths in the 14 s loop, so the loop stays seamless): alive while it waits
+      return { transform: `translateY(${(Math.sin(tau * tt / 7) * 6).toFixed(2)}px) rotateX(${(Math.sin(tau * tt / 14) * 4).toFixed(3)}deg) rotateY(${(Math.sin(tau * tt / (14 / 3) + 1) * 6).toFixed(3)}deg) scale(${(1 + Math.sin(tau * tt / 3.5) * 0.014).toFixed(4)}, ${(1 - Math.sin(tau * tt / 3.5) * 0.01).toFixed(4)})` };
     });
     const spring = (v, tgt, vel, k, c, dt) => { const a = k * (tgt - v) - c * vel; vel += a * dt; return [v + vel * dt, vel]; };
     const idleWanted = () => !pointer && !raf && !document.hidden && !RM.matches && !calm() && document.documentElement.dataset.bwHot !== '1';
@@ -384,6 +461,8 @@
     ids: () => [...IDS],
     spec: (id) => (TABLE[id] ? { id, name: TABLE[id][0], kind: TABLE[id][1], ms: TABLE[id][2] } : null),
     play, trigger,
+    eggs: () => Object.entries(EGGS).map(([id, [name, ms]]) => ({ id, name, ms })), playEgg,
+    frames: (id) => { const egg = EGGS[id]; const ms = TABLE[id]?.[2] ?? egg?.[1]; return ms ? (egg ? egg[2](ms) : BUILD[id](ms)).map((a) => ({ ...a })) : null; },
     isPlaying: () => !!stillPlaying(),
     last: () => st.last,
     stats: () => ({ plays: st.plays.slice(), lastAny: st.lastAny }),
