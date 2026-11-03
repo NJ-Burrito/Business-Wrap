@@ -321,6 +321,8 @@ try {
     const id = await pg.evaluate(async () => { const e = await window.BW.EXT.library.newDocument(); await window.BW.EXT.library.save(); return e.id; });
     await pg.waitForFunction((id) => window.BW.S.svc === id, id);
     await pg.waitForTimeout(900);
+    const thr = Number(process.env.BW_TEST_CPU_THROTTLE || 0); // a slow CI runner on demand: BW_TEST_CPU_THROTTLE=6
+    if (thr > 1) await (await c.newCDPSession(pg)).send('Emulation.setCPUThrottlingRate', { rate: thr });
     const mark = `CRASH-${delay}-${Date.now()}`;
     await pg.evaluate((m) => { const B = window.BW; const e = B.M[B.S.svc][B.S.ed]; B.commit([{ op: 'setText', path: '/control/title', value: m, old: e.doc.control.title }]); }, mark);
     await pg.waitForTimeout(delay);
@@ -336,8 +338,9 @@ try {
     await Promise.race([c.close().catch(() => {}), sleep(4000)]);
     return kept;
   };
-  check('P5: the browser process killed 0.5 s after an edit: the edit is in the list copy after the restart', await crashAfter(500, 1));
-  check('P5: the browser process killed 1 s after an edit: the edit is in the list copy after the restart', await crashAfter(1000, 2));
+  let r1, r2;
+  check('P5: the browser process killed 0.5 s after an edit: the edit is in the list copy after the restart', (r1 = await crashAfter(500, 1)) === true, `kept=${r1}`);
+  check('P5: the browser process killed 1 s after an edit: the edit is in the list copy after the restart', (r2 = await crashAfter(1000, 2)) === true, `kept=${r2}`);
 } catch (e) {
   check('test run', false, e.stack || e);
 } finally {

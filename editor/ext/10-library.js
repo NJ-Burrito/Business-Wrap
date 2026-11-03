@@ -213,7 +213,8 @@ const LIB = (() => {
   const savedAt = {};
   // 0.17.0 (P5): an edit reaches the list copy 250 ms after the last change (was 600), and never later than 1.5 s after the FIRST change of a burst
   // (a long typing run used to wait for its first pause): a hard crash (the browser process killed) about a second after an edit keeps the edit.
-  const SOON_MS = 250, SOON_MAX_MS = 1500;
+  // 0.17.2: 100 ms (was 250): a process kill 0.5 s after an edit still found the write unfinished on a slow runner (get + put are two IndexedDB steps)
+  const SOON_MS = 100, SOON_MAX_MS = 1500;
   const persistSoon = () => {
     if (!isDoc(S.svc)) { stamp(); return; }
     if (soonId && soonId !== S.svc) persistNow();

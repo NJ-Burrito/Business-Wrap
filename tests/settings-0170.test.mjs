@@ -53,6 +53,7 @@ const isRed = (c) => { const [r, g, b] = rgb(c); return r > 180 && r > g * 1.6 &
 async function open(url, { ui = 'en', dark = false, calm = false, ports } = {}) {
   const ctx = await browser.newContext({ viewport: { width: 1366, height: 860 } });
   const page = await ctx.newPage();
+  if (Number(process.env.BW_TEST_CPU_THROTTLE) > 1) await (await ctx.newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate: Number(process.env.BW_TEST_CPU_THROTTLE) }); // a slow CI runner on demand
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
   await page.addInitScript(({ ui: u, dark: d, calm: c, ports: pp }) => {
@@ -123,12 +124,14 @@ try {
   const url0 = a.url();
   await press(a);
   await until(async () => (await toggles(a))[0]?.st === 'offline', 6000);
+  await until(async () => isRed((await toggles(a))[0]?.dotRgb), 4000); // the dot fades from transparent (busy) to red over .2 s; a slow frame reads rgba(0,0,0,0)
   const t2 = await toggles(a);
   check('N17 off: the top-bar press posts /api/servers/stop once; the switch says «غير متصل», the dot turns RED', stopCalls === 1 && t2[0].st === 'offline' && t2[0].checked === 'false' && isRed(t2[0].dotRgb) && t2[0].word === 'غير متصل', JSON.stringify([stopCalls, t2[0]]));
   const still = await a.evaluate(() => ({ url: location.href, shell: !!document.getElementById('bw-ui-host'), off: !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.pw-off'), bw: !!window.BW?.ready }));
   check('N17 off: the page stays open (same address, editor alive, no «stopped» page replaces it)', still.url === url0 && still.shell && still.bw && !still.off, JSON.stringify(still));
   await press(a); // on again from the served page: a host already answers, so nothing is launched and the switch is on
   await until(async () => (await toggles(a))[0]?.st === 'online', 8000);
+  await until(async () => isGreen((await toggles(a))[0]?.dotRgb), 4000);
   const t3 = await toggles(a);
   check('N17 on (served): the press turns the switch on again, green dot, the page never reloaded', t3[0].st === 'online' && isGreen(t3[0].dotRgb) && (await a.evaluate(() => window.__launched.length)) === 0 && a.url() === url0, JSON.stringify(t3[0]));
   check('N10: no power-off command in the toolbar or the palette', (await shRoot(a, (r) => r.querySelectorAll('[data-a="powerOff"]').length)) === 0);
@@ -150,6 +153,7 @@ try {
   check('N17 on: no business-wrap://open?file= and no command to type', !l1.some((u) => u.includes('open?file=')));
   await host.up(); // the launcher has started the host
   await until(async () => (await toggles(f))[0]?.st === 'online', 8000);
+  await until(async () => isGreen((await toggles(f))[0]?.dotRgb), 4000);
   const f1 = await toggles(f);
   check('N17 on: the poll sees /api/health -> «Online :port», a GREEN dot, the switch is on', f1[0].st === 'online' && f1[0].word === `Online :${hp}` && isGreen(f1[0].dotRgb) && f1[0].checked === 'true', JSON.stringify(f1[0]));
   check('N17: the file:// page stays the file:// page', (await f.evaluate(() => location.protocol)) === 'file:');
@@ -157,6 +161,7 @@ try {
   const launched2 = await until(async () => (await f.evaluate(() => window.__launched)).includes('business-wrap://stop'), 5000);
   await host.down();
   await until(async () => (await toggles(f))[0]?.st === 'offline', 8000);
+  await until(async () => isRed((await toggles(f))[0]?.dotRgb), 4000);
   const f2 = await toggles(f);
   check('N17 off (file://): asks business-wrap://stop, then shows «Offline» with a red dot; the page is still open', launched2 && f2[0].st === 'offline' && isRed(f2[0].dotRgb) && (await f.evaluate(() => !!window.BW?.ready)), JSON.stringify(f2[0]));
   // the launcher is not registered: nothing ever answers -> a plain message after 20 s, never a command line
