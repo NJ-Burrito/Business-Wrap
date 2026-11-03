@@ -8,10 +8,12 @@
  * The watermark is UI only: it never reaches any of these files. Declarations only (hoisted), listeners at the end. */
 
 function pcExportIds() {
-  return ['export.pdf.ar', 'export.pdf.en', 'export.pdf.both', 'export.docx.ar', 'export.docx.en', 'export.docx.both', 'export.html', 'export.printHtml', 'export.edits', 'export.editsAll', 'export.pack', 'export.mermaid', 'export.svg', 'export.png'];
+  return ['export.pdf.ar', 'export.pdf.en', 'export.pdf.both', 'export.docx.ar', 'export.docx.en', 'export.docx.both', 'export.html', 'export.printHtml', 'export.printHtml.ar', 'export.printHtml.en', 'export.printHtml.both', 'export.edits', 'export.editsAll', 'export.pack', 'export.mermaid', 'export.svg', 'export.png'];
 }
 function pcServer() { return location.protocol.startsWith('http'); }
-function pcServerOnly(id) { return ['export.docx.ar', 'export.docx.en', 'export.docx.both', 'export.printHtml'].includes(id); }
+function pcServerOnly(id) { return ['export.docx.ar', 'export.docx.en', 'export.docx.both', 'export.printHtml', 'export.printHtml.ar', 'export.printHtml.en', 'export.printHtml.both'].includes(id); }
+// 0.17.0 (N11): the three print-HTML tools wear the print-HTML icon (the icon set has one for it)
+for (const l of ['ar', 'en', 'both']) if (IC['export.printHtml'] && !IC[`export.printHtml.${l}`]) IC[`export.printHtml.${l}`] = IC['export.printHtml'];
 function pcOpts() {
   if (!S.pc) { let f = ''; try { f = ls.get('bw:exportFolder') || ''; } catch { /* no storage */ } S.pc = { range: '', cover: true, folder: f }; }
   return S.pc;
@@ -37,7 +39,7 @@ function pcExportMenu() {
     return btn(id, { extra: note ? ` aria-disabled="true" data-note="${esc(note)}"` : '' });
   };
   // a row group (PDF, DOCX, diagram) says once why its tools are unavailable, beside its heading
-  const why = (k) => (k === 'docx' && !srv ? t('export.needsServer') : k === 'diagram' && !hasDg ? t('export.noDiagram') : '');
+  const why = (k) => ((k === 'docx' || k === 'html') && !srv ? t('export.needsServer') : k === 'diagram' && !hasDg ? t('export.noDiagram') : '');
   const grp = (k, ids, row = false) => `<div class="pc-g${row ? ' row' : ''}" role="group" aria-labelledby="pcg-${k}"><span class="pc-h" id="pcg-${k}">${esc(t('export.g.' + k))}${why(k) ? `<span class="pc-badge">${esc(why(k))}</span>` : ''}</span>${ids.map(item).join('')}</div>`;
   const name = t('export.menu');
   return `<div class="more pcx"><button type="button" class="b" data-a="more" data-x="export.menu" aria-expanded="false" aria-haspopup="true" title="${esc(name)}"><span class="i">${ic('export.menu')}</span><span class="w" data-alt="${esc(tAlt('export.menu'))}">${esc(name)}</span></button>
@@ -50,13 +52,20 @@ function pcExportMenu() {
   </div>
   ${grp('pdf', ['export.pdf.ar', 'export.pdf.en', 'export.pdf.both'], true)}
   ${grp('docx', ['export.docx.ar', 'export.docx.en', 'export.docx.both'], true)}
-  ${grp('files', ['export.html', 'export.printHtml', 'export.edits', 'export.editsAll', 'export.pack'])}
+  ${grp('html', ['export.printHtml.ar', 'export.printHtml.en', 'export.printHtml.both'], true)}
+  ${grp('files', ['export.html', 'export.edits', 'export.editsAll', 'export.pack'])}
   ${grp('diagram', ['export.mermaid', 'export.svg', 'export.png'], true)}
 </div></div>`;
 }
 
 /** The editions an action covers: ar / en / both (the ones this service has). */
-function pcEds(l) { return (l === 'both' ? ['ar', 'en'] : [l]).filter((x) => M[S.svc][x]); }
+/** 0.17.0 (N11): a named edition (ar / en) always exports when the editor has it, even in a document flagged for the other language; "both" leaves out
+ *  the empty edition of a single-edition document (control.editions), judged on the document as it is now (its ops applied). */
+function pcEds(l) {
+  const only = editionsOf(cur().doc);
+  const eds = l === 'both' ? (only?.length === 1 ? only : ['ar', 'en']) : [l];
+  return eds.filter((x) => M[S.svc][x]);
+}
 async function pcAction(a) {
   const el = root.querySelector(`[data-a="${a}"][aria-disabled="true"]`);
   if (el) {
@@ -147,6 +156,7 @@ function pcClose(d = root.querySelector('dialog.pc-dlg')) { if (d?.open) leaveEl
 function pcOpenPrint() {
   const shell = root.querySelector('.shell');
   if (!shell) return;
+  if (S.pp && M[S.svc]?.[S.ed]) S.pp.ed = S.ed; // 0.17.0 (N11): the print centre opens on the edition being edited, not on the one it was first opened with
   uxMenusOpen().forEach((m) => uxMenuClose(m));
   let d = root.querySelector('dialog.pc-dlg');
   if (!d) {

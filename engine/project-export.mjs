@@ -14,7 +14,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { applyOps, exportEditions } from './edits.mjs';
+import { applyOps, editionsOf } from './edits.mjs';
 import { hashOf } from './edits-base.mjs';
 import { exportDocx, exportPdf, launchOptions, loadPlaywright, loadTheme, printHtml, REPO } from './export.mjs';
 import { stamp, titleStem } from './workspace.mjs';
@@ -76,6 +76,24 @@ ${rows}
 `;
 }
 
+/** The editions of a library entry an export writes. 0.17.0 (N11): the single-edition flag (control.editions) is read from the edition AS IT IS NOW (its saved ops
+ *  applied), not from the base `raw`, which never carries it: the old read exported the empty edition of a flagged document and, after "both" was turned back on,
+ *  could still drop the English one. A named language (`locales` ar | en) always exports the edition when the document has it; the flag only trims "both". */
+export function wantedEditions(d, locs, locales = 'both') {
+  const have = Object.keys(d?.editions || {}).filter((l) => d.editions[l]?.raw);
+  const named = locales === 'ar' || locales === 'en';
+  let only = null;
+  if (!named) {
+    for (const l of have) {
+      let doc = null;
+      try { doc = applyOps(JSON.parse(d.editions[l].raw), d.editions[l].ops || []); } catch { try { doc = JSON.parse(d.editions[l].raw); } catch { doc = null; } }
+      const e = editionsOf(doc);
+      if (e?.length === 1) { only = e[0]; break; }
+    }
+  }
+  return (only ? have.filter((l) => l === only) : have).filter((l) => locs.includes(l));
+}
+
 export async function exportProject({ project, docs, formats = ['pdf'], locales = 'both', layout = 'folder', outParent, onProgress = () => {}, isCancelled = () => false, theme } = {}) {
   if (!outParent) throw new Error('exportProject: outParent is required');
   if (!Array.isArray(docs) || !docs.length) throw new Error('exportProject: the project has no documents');
@@ -91,7 +109,7 @@ export async function exportProject({ project, docs, formats = ['pdf'], locales 
   const th = theme || loadTheme();
   const exportedAt = new Date().toISOString();
   // units: one per file wanted: document × edition present × format (a document that lacks an edition has fewer)
-  const wanted = docs.map((d) => exportEditions(d).filter((l) => locs.includes(l)));
+  const wanted = docs.map((d) => wantedEditions(d, locs, locales));
   const total = wanted.reduce((n, ls) => n + ls.length * fmts.length, 0) || docs.length;
   let done = 0, browser = null, cancelled = false;
   const items = [];

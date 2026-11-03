@@ -499,6 +499,18 @@ export function loadEdited(docFile, editsFile, { force = false } = {}) {
   return doc;
 }
 
+/** The edition a document file is in when the caller did not say: `--locale` wins; else the file name (`x.en.json`, and `x.en.edited.json`, the name the editor
+ *  gives its offline download, which the old `/\.en\.json$/` test took for Arabic); else the script of the title (more Arabic letters than Latin = ar). */
+export function localeOf(file, doc, explicit) {
+  if (explicit === 'ar' || explicit === 'en') return explicit;
+  const m = /\.(ar|en)(?:\.[a-z0-9-]+)*\.json$/i.exec(path.basename(String(file || '')));
+  if (m) return m[1].toLowerCase();
+  const text = [doc?.control?.title, doc?.control?.coverTitle, doc?.chapters?.[0]?.title].filter(Boolean).join(' ');
+  const ar = (text.match(/[؀-ۿ]/g) || []).length;
+  const la = (text.match(/[A-Za-z]/g) || []).length;
+  return la > ar ? 'en' : 'ar';
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const a = args(process.argv.slice(2));
   if (!a.doc) {
@@ -506,7 +518,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     process.exit(2);
   }
   const doc = loadEdited(path.resolve(userCwd(), a.doc), a.edits && path.resolve(userCwd(), a.edits));
-  const locale = a.locale || (/\.en\.json$/.test(a.doc) ? 'en' : 'ar');
+  const locale = localeOf(a.doc, doc, a.locale);
   const theme = loadTheme(a.theme);
   // --out: that folder, as "<service>.<locale>.<ext>"; without it the save folder, never this repository:
   // Documents\<title>\Exports\<date> <title> - <language>.<ext>
