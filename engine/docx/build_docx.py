@@ -468,9 +468,12 @@ def thmanyah_only(document, font):
         pass
 
 def keep_header_with_next(table):
-    """A table's header row never sits alone at the foot of a page: its paragraphs keep with the first row."""
-    if table.rows:
-        for cell in table.rows[0].cells:
+    """A table's header row never sits alone at the foot of a page: its paragraphs keep with the first row.
+    0.16.2: the same keep as the print (render.mjs: the header and the first KEEP_ROWS rows `hold` together, and a header never parts from them):
+    the header and the rows before the KEEP_ROWS-th body row keep with next, so all of them move to the next page together when they do not fit."""
+    n = len(table.rows)
+    for ri in range(0, min(KEEP_ROWS, max(n - 1, 0))):  # KEEP_ROWS is defined below (read at call time)
+        for cell in table.rows[ri].cells:
             for pp in cell.paragraphs:
                 pp.paragraph_format.keep_with_next = True
 
