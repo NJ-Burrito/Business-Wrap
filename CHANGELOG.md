@@ -8,6 +8,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.17.1] - 2026-11-04
+
+🖼️ A fix release: the three print-HTML tools have their own help drawings, and the checks follow 0.17.0. / 🖼️ إصدار إصلاحات: أدوات صفحة الطباعة HTML الثلاث لها رسوماتها الشارحة، والفحوص تتبع سلوك 0.17.0.
+
+### Fixed / أصلح
+- 🖼️ **Print HTML in Arabic, in English and in both editions each has its own explanation drawing.** / **صفحة الطباعة HTML بالعربية وبالإنجليزية وبالنسختين لكل منها رسمها الشارح الخاص.**
+- ✅ **The test suite follows the 0.17.0 behaviour**: one-step row undo, Settings opens on its first section, the new print width, 21 export tools. / **حزمة الاختبارات تتبع سلوك 0.17.0**: تراجع بخطوة واحدة للصف، والإعدادات تفتح على قسمها الأول، وعرض الطباعة الجديد، و21 أداة تصدير.
+
 ## [0.17.0] - 2026-11-04
 
 ✨ A minor release: new icons and motion, a launcher on the Desktop, the host switch in the top bar, smarter spelling, and English exports that work. / ✨ إصدار فرعي: أيقونات وحركة جديدة، ومشغّل على سطح المكتب، ومفتاح الخادم في الشريط العلوي، وتدقيق إملائي أذكى، وتصدير إنجليزي يعمل.
