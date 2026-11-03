@@ -8,6 +8,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.16.2] - 2026-11-03
+
+📐 A fix release: Word-style Justify levels, page views and page breaks that agree, story cards in the reference look, and no false tamper warning. / 📐 إصدار إصلاحات: مستويات ضبط النص كما في Word، وعروض الصفحات وفواصلها متفقة، وبطاقات القصة بالشكل المرجعي، وبلا تحذير تلاعب كاذب.
+
+### Changed / تغيّر
+- ↔️ **Justify, Low, Medium and High work like Word**, in the editor, the PDF and Word. / **ضبط النص: عادي ومنخفض ومتوسط وعالٍ كما في Word**، في المحرر وPDF وWord.
+- 🗂️ **Story cards follow the reference look**, also for documents built as a label plus a plain table. / **بطاقات القصة بالشكل المرجعي**، حتى للوثائق المبنية من عنوان وجدول عادي.
+- 📝 **«وصف المخرج» moved into the output story's acceptance.** / **«وصف المخرج» انتقل إلى معايير قبول قصة المخرج.**
+
+### Fixed / أصلح
+- 📄 **Landscape pages no longer overlap the chapters after them** in page views. / **الصفحات الأفقية لم تعد تتداخل مع الفصول التالية** في عروض الصفحات.
+- ✂️ **The PDF and the editor break pages alike**, and **a table's title and header stay with its first rows**. / **ملف PDF والمحرر يقسّمان الصفحات بالطريقة نفسها**، و**عنوان الجدول ورأسه يبقيان مع أول صفوفه**.
+- 🛡️ **No tamper warning on an honest saved file**, and old saved files stop warning. / **لا تحذير تلاعب على ملف محفوظ سليم**، والملفات القديمة تتوقف عن التحذير.
+- 🗃️ **The file icons card in Settings collapses** like the others. / **بطاقة أيقونات الملفات في الإعدادات تنطوي** مثل غيرها.
+
+### Known limits / حدود معروفة
+- 📌 A saved file opened directly keeps the viewer it was saved with; open it through the app or save it again. / الملف المحفوظ المفتوح مباشرة يحتفظ بالعارض الذي حُفظ به؛ افتحه عبر التطبيق أو احفظه من جديد.
+
 ## [0.16.1] - 2026-11-03
 
 🛠️ A fix release: the one-page view, zoom, the ribbon, Word and the sample figures. / 🛠️ إصدار إصلاحات: عرض الصفحة الواحدة والتكبير والشريط وWord ورسوم النموذج.
