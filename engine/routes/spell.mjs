@@ -4,7 +4,7 @@
 //      WebAssembly compile ('wasm-unsafe-eval') and nothing else. The page's own CSP needs `worker-src 'self'` (engine/build-editor.mjs).
 //   2. The same engine in Node, for a page whose Worker cannot start (an older CSP, a browser without WebAssembly):
 //      POST /api/spell/check {lang, words[]} -> {bad[]}, POST /api/spell/suggest {lang, word} -> {s[]}.
-// GET /api/spell/info lists what is bundled (names, versions, licences, sizes) for the Spelling panel and the Settings card.
+// GET /api/spell/info lists what is bundled (names, versions, licences, sizes) for the Spelling panel and the Settings card, and the word lists the page's smarter checking uses (0.17.0: tech, techAr, common).
 // Nothing here reaches the network; the dictionaries are the unmodified files under editor/dict/ (NOTICE.md).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -58,6 +58,9 @@ const readInfo = () => {
   try { src = JSON.parse(fs.readFileSync(path.join(DICT_DIR, 'SOURCES.json'), 'utf8')); } catch { /* no sources file: info says so */ }
   let tech = [];
   try { tech = fs.readFileSync(path.join(DICT_DIR, 'tech.txt'), 'utf8').split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith('#')); } catch { /* none */ }
+  const lines = (f) => { try { return fs.readFileSync(path.join(DICT_DIR, f), 'utf8').split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith('#')); } catch { return []; } };
+  const techAr = lines('tech.ar.txt');
+  const list = (f) => lines(f).flatMap((l) => l.split(/\s+/));
   const size = (f) => { try { return fs.statSync(path.join(DICT_DIR, f)).size; } catch { return 0; } };
   return {
     ok: fs.existsSync(WORKER_FILE) && fs.existsSync(path.join(DICT_DIR, FILES['ar.dic'])),
@@ -67,6 +70,8 @@ const readInfo = () => {
     },
     engine: { name: src.engine?.name || 'hunspell-asm', version: src.engine?.version || '', licence: src.engine?.licence || '' },
     tech,
+    techAr, // loan words and technical terms in Arabic (editor/dict/tech.ar.txt)
+    common: { ar: list('common.ar.txt'), en: list('common.en.txt') }, // everyday words: a ranking prior for suggestions, never an acceptance list
   };
 };
 
