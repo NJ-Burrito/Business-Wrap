@@ -173,7 +173,7 @@ const W2_WRITE = {
       return {
         title: w2sFreshTitle(tIn('w2s.outputTitle', ed), ed),
         blocks: [
-          { kind: 'stories', number: num, ...(first ? { lead: tIn('w2s.storyLead', ed) } : {}), items: [{ id, name: '…', as: '…', want: '…', so: '…', acceptance: ['…'] }] },
+          { kind: 'stories', number: num, ...(first ? { lead: tIn('w2s.storyLead', ed) } : {}), items: [{ id, name: '…', as: '…', want: '…', so: '…', acceptance: [tIn('w2o.descText', ed), '…'] }] },
           { kind: 'table', columns: w2sWords('w2s.cols.outputCard', ed), rows },
         ],
       };
@@ -182,7 +182,7 @@ const W2_WRITE = {
     return W2_WRITE.placeSection(build);
   },
   /** 0.16.0 (spec O): the «المخرجات» / Outputs chapter, added to an older document in ONE undo step (the insert, the renumbering of any annex after it, both
-   *  editions): a description, the types and cases (one row), then the fixed and the changing part. Placeholders only; an existing chapter of that title is left alone.
+   *  editions): the types and cases (one row), then the fixed and the changing part. Placeholders only; an existing chapter of that title is left alone.
    *  It goes last, ahead of a closing annex. */
   addOutputsChapter() {
     const d = w2doc();
@@ -198,10 +198,9 @@ const W2_WRITE = {
         number: String(n),
         title: head(ed),
         sections: [
-          { number: `${n}.1`, title: tIn('w2o.desc', ed), blocks: [{ kind: 'prose', paragraphs: [tIn('w2o.descText', ed)] }] },
-          { number: `${n}.2`, title: tIn('w2o.types', ed), blocks: [{ kind: 'table', columns: w2sWords('w2o.cols.types', ed), rows: [row([null, null, null, tIn('w2o.oneStyle', ed)])] }] },
-          { number: `${n}.3`, title: tIn('w2o.fixed', ed), blocks: [{ kind: 'table', columns: w2sWords('w2o.cols.fixed', ed), rows: [row([null, null])] }] },
-          { number: `${n}.4`, title: tIn('w2o.changing', ed), blocks: [{ kind: 'table', columns: w2sWords('w2o.cols.changing', ed), rows: [row([null, null, null, tIn('w2o.example', ed)])] }] },
+          { number: `${n}.1`, title: tIn('w2o.types', ed), blocks: [{ kind: 'table', columns: w2sWords('w2o.cols.types', ed), rows: [row([null, null, null, tIn('w2o.oneStyle', ed)])] }] },
+          { number: `${n}.2`, title: tIn('w2o.fixed', ed), blocks: [{ kind: 'table', columns: w2sWords('w2o.cols.fixed', ed), rows: [row([null, null])] }] },
+          { number: `${n}.3`, title: tIn('w2o.changing', ed), blocks: [{ kind: 'table', columns: w2sWords('w2o.cols.changing', ed), rows: [row([null, null, null, tIn('w2o.example', ed)])] }] },
         ],
       };
     };

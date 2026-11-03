@@ -572,6 +572,12 @@ def add_stories(document, block, font, counters, chapter_number, story_seq):
                 cell.paragraphs[0].text = ''
                 add_numbered_list_cell(cell, acceptance_items, font, new_criteria_num_id(document))
         theme_mod.style_story_card(story_tbl, _THEME_ROLES)
+        # 0.16.2: the reference sets the «المعرف» row apart from the rest of the card: a card-coloured strip (3 pt) between it and the next row
+        if len(src) > 1 and any(isinstance(v, dict) and v.get('bind') == 'id' for v in (src[0] if isinstance(src[0], list) else [])):
+            for cell in story_tbl.rows[0].cells:
+                theme_mod.set_cell_border(cell, 'bottom', roles['card'], 24)
+            for cell in story_tbl.rows[1].cells:
+                theme_mod.set_cell_border(cell, 'top', roles['card'], 24)
         keep_rows_together(story_tbl, cap)
         has_more = bool((item.get('actions') or {}).get('rows')) or bool((item.get('dictionary') or {}).get('rows'))
         card_gap(document, roles, closing=not has_more)
@@ -580,6 +586,7 @@ def add_stories(document, block, font, counters, chapter_number, story_seq):
         if actions and actions.get('rows'):
             label_bar(document, L['actionsTable'], font, roles)
             act_tbl = add_table(document, actions.get('columns', []), actions.get('rows', []), font, spec=actions)
+            theme_mod.style_dictionary_table(act_tbl, _THEME_ROLES)  # 0.16.2: the same pale blue header, navy words and full grid as the dictionary
             keep_header_with_next(act_tbl)
             card_gap(document, roles, closing=not (item.get('dictionary') or {}).get('rows'))
             counters['stories_actions_table'] = counters.get('stories_actions_table', 0) + 1

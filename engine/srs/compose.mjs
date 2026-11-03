@@ -355,7 +355,7 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
       k += 1;
       const o = model.outputs[0] || {};
       const P2 = T.story.output;
-      const item = { id: `${pack.codes?.us || 'US'}-${pad(k)}`, name: tx(P2.name), as: g('outputUser') || g('customer'), want: tx(P2.want), so: tx(P2.so), acceptance: [tx(T.acc.output1), ...(pack.outputAcceptance?.[locale] || []).map((x) => tx(x)), tx(T.acc.output2), ...(model.serial && secTitle.identifier ? [tx(T.acc.output3, { sec: secTitle.identifier || '' })] : [])] };
+      const item = { id: `${pack.codes?.us || 'US'}-${pad(k)}`, name: tx(P2.name), as: g('outputUser') || g('customer'), want: tx(P2.want), so: tx(P2.so), acceptance: [tx(T.acc.output1), ...outputDescCriteria(), ...(pack.outputAcceptance?.[locale] || []).map((x) => tx(x)), tx(T.acc.output2), ...(model.serial && secTitle.identifier ? [tx(T.acc.output3, { sec: secTitle.identifier || '' })] : [])] };
       const blocks = [{ kind: 'stories', number: '', items: [item] }];
       if (o.preview) blocks.push({ kind: 'shots', caption: tx(g('outputPreviewCaption')), images: [o.preview], width: 70 });
       blocks.push(table(col('outputCard'), [[g('outputNameLabel'), pick(o.name, locale) || out], [g('outputWhenLabel'), pick(o.when, locale) || (signed ? g('outputWhenSigned') || g('outputWhenDefault') : g('outputWhenDefault'))], [g('outputToLabel'), pick(o.to, locale) || g('outputToDefault')]]));
@@ -370,18 +370,19 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
   const OD = T.od || {};
   const variants = () => (model.outputs.length ? model.outputs : [{ name: { ar: out, en: out } }]);
   const oName = (o) => pick(o.name, locale) || out;
-  GEN.outputDesc = () => {
-    const vs = variants();
-    const parts = vs.map((o) => {
+  /* 0.16.2 (owner O): there is no «وصف المخرج» section any more. What it said (the variation, when it is issued, to whom, how long it is valid) is
+   * stated as criteria of the output story's acceptance, from the same evidence: the record's own description first, else the wording built
+   * from the variation's name, when, to and validity. A pack with no output story prints no description at all (nothing states an output). */
+  function outputDescCriteria() {
+    return variants().flatMap((o) => {
       const d = pick(o.description, locale);
-      if (d) return d;
+      if (d) return [d];
       const w = pick(o.when, locale);
       const to = pick(o.to, locale);
       const v = pick(o.validity, locale);
-      return [fill(OD.desc, { o: oName(o) }), w ? fill(OD.descWhen, { w }) : '', to ? fill(OD.descTo, { t: to }) : '', v ? fill(OD.descValidity, { v }) : ''].filter(Boolean).join(' ');
+      return [fill(OD.desc, { o: oName(o) }), w ? fill(OD.descWhen, { w }) : '', to ? fill(OD.descTo, { t: to }) : '', v ? fill(OD.descValidity, { v }) : ''].filter(Boolean);
     });
-    return { blocks: [prose(parts)], fill: model.outputs.length ? 'evidence' : 'derived', source: srcOf('outputs') || (approvedOutput ? { kind: 'model', ref: 'approved end' } : null) };
-  };
+  }
   GEN.outputTypes = (s, number) => {
     const vs = variants();
     const unresolved = [];
@@ -427,7 +428,7 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
 
   /* lay the pack out; numbers from position */
   // first pass: section numbers by gen (cross references such as «2.15 …» need them before the text is written)
-  pack.chapters.forEach((c, ci) => (c.sections || []).forEach((s, si) => { const t = pick(s.title, locale); const num = `${ci + 1}.${si + 1}`; if (s.gen === 'integrations') secTitle[s.of] = `${num} ${t}`; else secTitle[s.gen] = `${num} ${t}`; }));
+  pack.chapters.forEach((c, ci) => (c.sections || []).filter((x) => x.gen !== 'outputDesc').forEach((s, si) => { const t = pick(s.title, locale); const num = `${ci + 1}.${si + 1}`; if (s.gen === 'integrations') secTitle[s.of] = `${num} ${t}`; else secTitle[s.gen] = `${num} ${t}`; }));
   const chapters = pack.chapters.map((c, ci) => {
     const sections = [];
     for (const s of c.sections || []) {
@@ -435,6 +436,7 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
       const title = pick(s.title, locale);
       const gen = GEN[s.gen];
       if (s.gen === 'questions' && profile.questionsInDocument !== true && pack.questionsInDocument !== true) continue;
+      if (s.gen === 'outputDesc') continue; // 0.16.2: an older pack still lists it; its wording lives in the output story now
       if (['outputDesc', 'outputTypes', 'outputVariants'].includes(s.gen) && !hasOutput) continue; // no output, no chapter (the empty chapter is dropped)
       if (!gen) throw new Error(`pack ${pack.id}: section «${title}» names an unknown generator «${s.gen}»`);
       const r = gen(s, num);

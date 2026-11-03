@@ -706,7 +706,8 @@
                   "want": "…",
                   "so": "…",
                   "acceptance": [
-                    "Write the first acceptance criterion."
+                    "Write the first acceptance criterion.",
+                    "Describe what the service issues: what it is, for whom, and what it proves."
                   ]
                 }
               ]
@@ -742,18 +743,6 @@
       "sections": [
         {
           "number": "7.1",
-          "title": "Description of the output",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "Describe what the service issues: what it is, for whom, and what it proves."
-              ]
-            }
-          ]
-        },
-        {
-          "number": "7.2",
           "title": "Types and cases",
           "blocks": [
             {
@@ -776,7 +765,7 @@
           ]
         },
         {
-          "number": "7.3",
+          "number": "7.2",
           "title": "The fixed part",
           "blocks": [
             {
@@ -795,7 +784,7 @@
           ]
         },
         {
-          "number": "7.4",
+          "number": "7.3",
           "title": "The changing part",
           "blocks": [
             {

@@ -696,6 +696,9 @@ table.control.story-info th{color:var(--ink);font-weight:700;background:var(--pr
 table.control.story-info td{font-weight:400;background:var(--paper)}
 table.control.story-card>tbody.hold{break-inside:auto}
 table.control.story-card td:first-child{color:var(--ink);font-weight:700;background:var(--primary-50)}
+/* 0.16.2: the «المعرف» row stands apart from the card's other rows, as in the reference: a card-coloured strip, not a grid line */
+table.control.story-info tr.idrow td,table.control.story-info tr.idrow th{border-bottom:3mm solid var(--card)}
+table.control.story-info tr.idrow + tr td,table.control.story-info tr.idrow + tr th{border-top:3mm solid var(--card)}
 .story-info tr.ac,.story-info tr.ac td,.story-info tr.ac th{break-inside:auto}
 .story-info tr.ac ol{margin:0;padding-inline-start:8mm;max-width:none;list-style:decimal}
 .story-info tr.ac li{margin-bottom:1.2mm}
@@ -1212,7 +1215,7 @@ export function renderParts(doc, o) {
               cellPtr: cardPtr,
               cellHtml: cardHtml,
               ltr,
-              rowClass: (ri) => (hasAc(cardSrc[ri]) ? 'ac' : ''),
+              rowClass: (ri) => [hasAc(cardSrc[ri]) ? 'ac' : '', ri === 0 && cardSrc.length > 1 && (cardSrc[0] || []).some((v) => bound(v) && v.bind === 'id') ? 'idrow' : ''].filter(Boolean).join(' '),
             });
             const partsArr = [
               `<div class="id-card">${cardTable}</div>`,

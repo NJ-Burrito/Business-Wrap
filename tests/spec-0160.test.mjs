@@ -119,7 +119,7 @@ for (const l of LOCS) {
   const want = l === 'ar' ? 'المخرجات' : 'Outputs';
   const tables = c.sections.flatMap((s) => s.blocks.filter((b) => b.kind === 'table'));
   check(`O ${l}: samples/blank ends with the chapter «${want}», number ${d.chapters.length}, after the user stories`, c.title === want && c.number === String(d.chapters.length) && d.chapters.at(-2).sections.some((s) => s.blocks.some((b) => b.kind === 'stories')));
-  check(`O ${l}: blank sections are numbered ${c.number}.1 to ${c.number}.4 with a description, types and cases, the fixed part and the changing part`, c.sections.length === 4 && c.sections.every((s, i) => s.number === `${c.number}.${i + 1}`) && c.sections[0].blocks[0].kind === 'prose' && tables.length === 3);
+  check(`O ${l}: blank sections are numbered ${c.number}.1 to ${c.number}.3 with types and cases, the fixed part and the changing part (0.16.2: no description section)`, c.sections.length === 3 && c.sections.every((s, i) => s.number === `${c.number}.${i + 1}`) && c.sections[0].blocks[0].kind === 'table' && tables.length === 3);
   check(`O ${l}: blank columns are the types (${TXT[l].od.cols.types.length}), fixed (2) and changing (4) columns of the wording, placeholders only`, j(tables[0].columns) === j(TXT[l].od.cols.types) && j(tables[1].columns) === j(TXT[l].od.cols.fixed) && j(tables[2].columns) === j(TXT[l].od.cols.changing) && tables.every((t) => t.rows.length === 1 && t.rows[0].every((x) => x === '…' || /^\[.*\]$/.test(x) || x === TXT[l].od.oneStyle)));
 }
 check('O the pair has the same shape (sections, tables, column counts)', j(chapterOf(blank('ar')).sections.map((s) => s.blocks.map((b) => [b.kind, b.columns?.length]))) === j(chapterOf(blank('en')).sections.map((s) => s.blocks.map((b) => [b.kind, b.columns?.length]))));
@@ -136,7 +136,7 @@ for (const id of packs) {
     const want = l === 'ar' ? 'المخرجات' : 'Outputs';
     const tabs = c.sections.flatMap((s) => s.blocks.filter((b) => b.kind === 'table'));
     const stories = d.chapters.findIndex((x) => x.sections.some((s) => s.blocks.some((b) => b.kind === 'stories')));
-    check(`O ${id} ${l}: the built document ends with «${want}» after the user stories, with description, types, fixed and changing tables`, c.title === want && stories >= 0 && stories < d.chapters.length - 1 && c.sections.length === 4 && c.sections[0].blocks[0].kind === 'prose' && j(c.sections[1].blocks[0].columns) === j(TXT[l].od.cols.types) && j(c.sections[3].blocks[0].columns) === j(TXT[l].od.cols.changing) && (c.sections[2].blocks[0].kind === 'table' ? j(c.sections[2].blocks[0].columns) === j(TXT[l].od.cols.fixed) : r.evidence.openQuestions.some((q) => q.section === c.sections[2].number)) && c.sections.every((s, i) => s.number === `${c.number}.${i + 1}`), c.title);
+    check(`O ${id} ${l}: the built document ends with «${want}» after the user stories, with types, fixed and changing tables (0.16.2: the description is in the output story)`, c.title === want && stories >= 0 && stories < d.chapters.length - 1 && c.sections.length === 3 && c.sections[0].blocks[0].kind === 'table' && j(c.sections[0].blocks[0].columns) === j(TXT[l].od.cols.types) && j(c.sections[2].blocks[0].columns) === j(TXT[l].od.cols.changing) && (c.sections[1].blocks[0].kind === 'table' ? j(c.sections[1].blocks[0].columns) === j(TXT[l].od.cols.fixed) : r.evidence.openQuestions.some((q) => q.section === c.sections[1].number)) && c.sections.every((s, i) => s.number === `${c.number}.${i + 1}`), c.title);
     check(`O ${id} ${l}: nothing invented: every row carries a stated or pack-given value (no empty cell, no raw key); a part nothing states is a named open question`, tabs.every((t) => t.rows.length > 0 && t.rows.every((row) => row.every((x) => String(x).trim() && !/^(output|when|to)[A-Z]/.test(x)))));
   }
 }
@@ -154,12 +154,12 @@ for (const id of packs) {
   const r = await CLI.buildDocuments({ pack: 'e-service', profile: FX('council.profile.json'), harvestDump: FX('garden-form.ar.json'), model: FX('garden-permit.bpmn20.xml'), record: f2, today: '2026-10-29' });
   for (const l of LOCS) {
     const c = chapterOf(r.docs[l]);
-    const types = c.sections[1].blocks[0];
-    check(`O two variations ${l}: types has one row each; fixed and changing come once per variation (${c.sections.length} sections)`, types.rows.length === 2 && c.sections.length === 2 + 4 && c.sections.every((s, i) => s.number === `${c.number}.${i + 1}`), c.sections.map((s) => s.title).join(' | '));
-    check(`O two variations ${l}: the stated variation fills its tables; the second asks, with the question named in the evidence`, c.sections[2].blocks[0].rows[0][1] === (l === 'ar' ? 'تصريح مؤقت' : 'Temporary permit') && c.sections[3].blocks[0].rows[0][3] === (l === 'ar' ? 'فلان' : 'A. Name') && r.evidence.openQuestions.some((q) => /تصريح نهائي|Final permit/.test(q[l])));
+    const types = c.sections[0].blocks[0];
+    check(`O two variations ${l}: types has one row each; fixed and changing come once per variation (${c.sections.length} sections)`, types.rows.length === 2 && c.sections.length === 1 + 4 && c.sections.every((s, i) => s.number === `${c.number}.${i + 1}`), c.sections.map((s) => s.title).join(' | '));
+    check(`O two variations ${l}: the stated variation fills its tables; the second asks, with the question named in the evidence`, c.sections[1].blocks[0].rows[0][1] === (l === 'ar' ? 'تصريح مؤقت' : 'Temporary permit') && c.sections[2].blocks[0].rows[0][3] === (l === 'ar' ? 'فلان' : 'A. Name') && r.evidence.openQuestions.some((q) => /تصريح نهائي|Final permit/.test(q[l])));
   }
 }
-check('O the open-question chapter, where a pack has one, stays last', ['approval', 'call-centre', 'e-commerce', 'saas'].every((id) => { const pk = readJson(path.join(REPO, 'templates', id, 'pack.json')); const i = pk.chapters.findIndex((c) => c.sections.some((s) => s.gen === 'outputDesc')); return i >= 0 && pk.chapters.slice(i + 1).every((c) => c.sections.every((s) => s.gen === 'questions')); }));
+check('O the open-question chapter, where a pack has one, stays last', ['approval', 'call-centre', 'e-commerce', 'saas'].every((id) => { const pk = readJson(path.join(REPO, 'templates', id, 'pack.json')); const i = pk.chapters.findIndex((c) => c.sections.some((s) => s.gen === 'outputTypes')); return i >= 0 && pk.chapters.slice(i + 1).every((c) => c.sections.every((s) => s.gen === 'questions')); }));
 check('O the bible and AGENTS.md carry the rule', /المخرجات|Outputs/.test(fs.readFileSync(path.join(REPO, 'AGENTS.md'), 'utf8')) && /Outputs chapter|outputDesc/.test(fs.readFileSync(path.join(REPO, 'bible', '09-template-packs.md'), 'utf8')));
 
 // ══ T · the type scale, in the page, the PDF, the DOCX and the HTML ═════════════════════════════════════════════════════
@@ -270,7 +270,7 @@ try {
   d = await docs();
   for (const l of LOCS) {
     const c = d[l].chapters[6];
-    check(`O ${l}: the command adds «${l === 'ar' ? 'المخرجات' : 'Outputs'}» as chapter 7 with 4 numbered sections and the three tables`, d[l].chapters.length === 7 && c.title === blank(l).chapters[6].title && c.sections.length === 4 && c.sections.every((s, i) => s.number === `7.${i + 1}`) && j(c.sections.slice(1).map((s) => s.blocks[0].columns)) === j(blank(l).chapters[6].sections.slice(1).map((s) => s.blocks[0].columns)), c?.title);
+    check(`O ${l}: the command adds «${l === 'ar' ? 'المخرجات' : 'Outputs'}» as chapter 7 with 3 numbered sections and the three tables`, d[l].chapters.length === 7 && c.title === blank(l).chapters[6].title && c.sections.length === 3 && c.sections.every((s, i) => s.number === `7.${i + 1}`) && j(c.sections.map((s) => s.blocks[0].columns)) === j(blank(l).chapters[6].sections.map((s) => s.blocks[0].columns)), c?.title);
   }
   check('O one gesture, one undo step (both editions)', (await steps()) === s0 + 1, `${s0} -> ${await steps()}`);
   await ep.evaluate(() => window.BW.undo());
