@@ -70,10 +70,14 @@ try {
   const SEC = '/chapters/0/sections/0/blocks';
   // a real click on the empty margin of the page, level with the top edge of block `i`
   const clickMargin = async (ed, i, dy = 2) => {
+    // 0.16.3: a slow runner re-laid the page (the real fonts arriving) between the measure and the click, so the click landed on the block below: scroll first,
+    // let the fonts and two frames settle, then measure, and click only when the same block top is still there
+    await page.evaluate(([e, k]) => { const el = document.querySelector(`#bw-pair main.bw-doc[data-locale="${e}"] [data-b="/chapters/0/sections/0/blocks/${k}"]`); el.scrollIntoView({ block: 'center' }); }, [ed, i]);
+    await page.evaluate(async () => { await document.fonts?.ready; await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))); });
+    await page.waitForTimeout(250);
     const r = await page.evaluate(([e, k]) => {
       const main = document.querySelector(`#bw-pair main.bw-doc[data-locale="${e}"]`);
       const el = main.querySelector(`[data-b="/chapters/0/sections/0/blocks/${k}"]`);
-      el.scrollIntoView({ block: 'center' });
       const m = main.getBoundingClientRect(), b = el.getBoundingClientRect();
       return { x: m.left + 2, y: b.top, mid: (b.top + b.bottom) / 2 };
     }, [ed, i]);

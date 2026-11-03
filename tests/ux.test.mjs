@@ -131,7 +131,8 @@ try {
     }
     check(`A2 ${width}: the same controls, icons and names in Arabic and English`, JSON.stringify(got.ar.tools) === JSON.stringify(got.en.tools), JSON.stringify([got.ar.tools.filter((x) => !got.en.tools.includes(x)), got.en.tools.filter((x) => !got.ar.tools.includes(x))]));
     check(`A2 ${width}: the bar folds the same way (words shown/hidden per tool) in both languages`, JSON.stringify(got.ar.shown) === JSON.stringify(got.en.shown) && got.ar.fold === got.en.fold, `${got.ar.fold} vs ${got.en.fold} | ${got.ar.shown.filter((x, i) => x !== got.en.shown[i]).join(' ')}`);
-    check(`A2 ${width}: a table cell's tools match in both languages`, JSON.stringify(got.ar.cell) === JSON.stringify(got.en.cell) && got.ar.cell.length > 3, JSON.stringify([got.ar.cell, got.en.cell]));
+    // 0.16.3: the strip folds by room, and English words are wider than Arabic ones, so a tool may sit in the strip in one language and in «More» in the other: the SET (with icon and name flags) must match, not the position
+    check(`A2 ${width}: a table cell's tools match in both languages`, JSON.stringify([...got.ar.cell].sort()) === JSON.stringify([...got.en.cell].sort()) && got.ar.cell.length > 3, JSON.stringify([got.ar.cell, got.en.cell]));
   }
 
   // ── A3: whole-field segmented toggles with a spring thumb ──────────────

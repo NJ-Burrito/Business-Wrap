@@ -32,6 +32,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const until = async (fn, ms = 20000, step = 200) => { for (const t0 = Date.now(); Date.now() - t0 < ms; await sleep(step)) { try { const v = await fn(); if (v) return v; } catch { /* not yet */ } } return false; };
 const out = [];
 let failed = 0;
+// 0.16.3: a stalled run says where (the last check that passed) and what it had, within 8 minutes, instead of being killed silently at 15 (CI run 41587032456 left no line at all)
+setTimeout(() => { console.log(out.join('\n') + `\nFAIL  mcp-0160: stalled for 480 s; the last check before the stall: ${out.at(-1) || '(none)'}`); process.exit(1); }, 480e3).unref();
+const within = (p, ms) => Promise.race([p, new Promise((ok) => setTimeout(ok, ms).unref())]);
 const check = (n, ok, d = '') => { out.push(`${ok ? 'PASS' : 'FAIL'}  mcp-0160: ${n}${d && !ok ? '  — ' + String(d).replace(/\s+/g, ' ').slice(0, 600) : ''}`); if (!ok) failed += 1; };
 const freePort = () => new Promise((ok) => { const s = net.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => ok(p)); }); });
 const launches = () => (fs.existsSync(stub) ? fs.readFileSync(stub, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);
@@ -299,8 +302,8 @@ try {
   check('the suite ran to the end', false, e.stack || e.message);
 } finally {
   for (const rec of chromes) killChrome(rec);
-  try { await client.close(); } catch { /* closed */ }
-  try { const h = H.hostState(); if (h && H.alive(h.pid)) await H.stop(); } catch { /* none */ }
+  try { await within(client.close(), 8000); } catch { /* closed */ }
+  try { const h = H.hostState(); if (h && H.alive(h.pid)) await within(H.stop(), 15000); } catch { /* none */ }
 }
 console.log(out.join('\n'));
 console.log(`${failed ? 'FAIL' : 'PASS'}  mcp-0160: ${out.length - failed}/${out.length}`);
