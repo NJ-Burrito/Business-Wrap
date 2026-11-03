@@ -12,6 +12,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { pathToFileURL } from 'node:url';
+import { chromium } from 'playwright-core';
+import { buildEditor } from '../engine/build-editor.mjs';
 import { REPO, exportPdf, launchOptions, loadPlaywright, loadTheme } from '../engine/export.mjs';
 import { serve } from '../engine/serve.mjs';
 import { dirsOf } from '../engine/workspace.mjs';
@@ -75,11 +78,11 @@ const buildTree = async (root) => {
 const listFiles = (dir, rel = '') => fs.readdirSync(lp(dir), { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? listFiles(path.join(dir, e.name), `${rel}${e.name}/`) : [{ file: path.join(dir, e.name), rel: `${rel}${e.name}` }]));
 
 const servers = [];
-async function host(name) {
+async function host(name, editorFile) {
   const root = path.join(tmp, name, 'Business-Wrap');
   const ws = { parent: path.join(tmp, name), root, chosen: true, dirs: dirsOf(root) };
-  const file = path.join(tmp, `${name}.html`);
-  fs.writeFileSync(file, '<!doctype html><title>x</title>');
+  const file = editorFile || path.join(tmp, `${name}.html`);
+  if (!editorFile) fs.writeFileSync(file, '<!doctype html><title>x</title>');
   const server = await serve(file, 0, { workspace: ws });
   servers.push(server);
   const base_ = `http://127.0.0.1:${server.address().port}`;
@@ -98,7 +101,7 @@ async function host(name) {
     return job(j);
   };
   const inbox = async () => { const ids = (await call('GET', '/api/library/inbox')).body.ids; return Promise.all(ids.map(async (id) => (await call('GET', `/api/library/inbox?id=${id}`)).body)); };
-  return { call, uploadImport, inbox, ws };
+  return { call, uploadImport, inbox, ws, port: server.address().port };
 }
 
 const assertResult = (label, j, entries) => {
@@ -171,6 +174,52 @@ try {
   fs.writeFileSync(bad, buf);
   const one = await importProject({ inputs: [bad], queue: async (docs) => ({ doc_id: docs.map((_, i) => `d${i}`) }) });
   check('a zip with one unreadable entry: that entry fails with a named reason, the other document comes in', cd > 0 && one.came_in.length === 1 && one.failed.length === 1 && /compression method 14/.test(one.failed[0].reason), JSON.stringify({ in: one.came_in.length, failed: one.failed }));
+
+  // 4. the sealed history log travels (0.16.3, AMEND): an honest saved file imported opens with NO tamper warning, a file whose log was really cut still warns
+  const edFile = path.join(tmp, 'ed.editor.html');
+  buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit'), path.join(REPO, 'samples', 'blank')], out: edFile, set: 'i163', watermarkDir: null });
+  const browser = await chromium.launch(launchOptions());
+  try {
+    const dataOf = (html) => JSON.parse(/<script type="application\/json" id="bw-data">([\s\S]*?)<\/script>/.exec(html)[1]);
+    const withData = (html, d) => html.replace(/(<script type="application\/json" id="bw-data">)[\s\S]*?(<\/script>)/, (_, a, b) => a + JSON.stringify(d).replace(/</g, '\u003c') + b);
+    const saved = async (title, name) => {
+      const ctx = await browser.newContext({ acceptDownloads: true, viewport: { width: 1500, height: 900 } });
+      const pg = await ctx.newPage();
+      await pg.goto(pathToFileURL(edFile).href);
+      await pg.waitForFunction(() => window.BW?.ready && window.BW.EXT.ledger?.log());
+      await pg.evaluate(async () => { await window.BW.EXT.ledger.ready(); });
+      for (const v of [`${title} 1`, title]) await pg.evaluate((v) => { const e = window.BW.M[window.BW.S.svc][window.BW.S.ed]; return window.BW.commit([{ op: 'setText', path: '/control/title', value: v, old: e.doc.control.title }]); }, v);
+      await pg.evaluate(() => window.BW.EXT.ledger.ready());
+      const [dl] = await Promise.all([pg.waitForEvent('download'), pg.evaluate(() => window.BW.runAction('saveHtml'))]);
+      const f = path.join(tmp, name); await dl.saveAs(f); await ctx.close();
+      return fs.readFileSync(f, 'utf8');
+    };
+    const honest = await saved('عنوان سجل سليم', 'honest.html');
+    const cutSrc = await saved('عنوان سجل مقطوع', 'cut.html');
+    const dh = dataOf(honest), dc = dataOf(cutSrc);
+    check('fixture: the honest saved file carries a sealed log and the bwlog mark', !!dh.prov?.[dh.services[0].id]?.log && dh.bwlog === 1, Object.keys(dh.prov || {}).join());
+    const { prov: _cut, ...dcut } = dc;
+    const root2 = path.join(tmp, 'tree2');
+    const w2 = (rel, data) => { const f = path.join(root2, ...rel.split('/')); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, data); };
+    w2('سليم/سليم.html', honest); w2('مقطوع/مقطوع.html', withData(cutSrc, dcut));
+    const E = await host('p', edFile);
+    const jp = await E.uploadImport(listFiles(root2), 'مشروع السجل', 'skip');
+    const ep = await E.inbox();
+    const byT = (t) => ep.find((e) => e.title === t);
+    const hon = byT('عنوان سجل سليم'), cut = byT('عنوان سجل مقطوع');
+    check('history: both documents came in; the honest entry carries its log (entry.prov, old document id), the cut one has none', jp.state === 'done' && ep.length === 2 && hon?.prov?.log && hon.prov.doc && !cut?.prov, JSON.stringify({ s: jp.state, t: ep.map((e) => e.title), p: ep.map((e) => !!e.prov) }));
+    const ctx2 = await browser.newContext({ viewport: { width: 1500, height: 900 } });
+    const page = await ctx2.newPage();
+    await page.goto(`http://127.0.0.1:${E.port}/`);
+    await page.waitForFunction(() => window.BW?.ready && window.BW.EXT.library && window.BW.EXT.ledger);
+    await page.waitForFunction(async (n) => (await window.BW.EXT.library.all()).filter((e) => /^doc-/.test(e.id)).length >= n, 2);
+    const openV = async (id) => { await page.waitForFunction(async (id) => !!(await window.BW.EXT.library.get(id)), id, { timeout: 30000 }); let r = false; for (let i = 0; i < 20 && !r; i++) { r = await page.evaluate((id) => window.BW.EXT.library.open(id), id); if (!r) await new Promise((x) => setTimeout(x, 1000)); } await page.waitForFunction((id) => window.BW.S.svc === id, id, { timeout: 15000 }).catch(async (e) => { throw new Error(`open(${id}) returned ${r}; S.svc=${await page.evaluate(() => window.BW.S.svc)}; ids=${JSON.stringify(await page.evaluate(async () => (await window.BW.EXT.library.all()).map((x) => x.id)))}`); }); await page.evaluate(() => window.BW.EXT.ledger.ready()); return page.evaluate(() => { const l = window.BW.EXT.ledger.log(); return { ok: l.verdict.ok, reasons: l.verdict.issues.map((i) => i.reason), src: l.src, n: l.entries.length }; }); };
+    const vh = await openV(hon.id);
+    check('honest imported document: opens with its own log, chain intact, NO tamper warning', vh.ok && !vh.reasons.length && vh.src === 'entry' && vh.n >= 3, JSON.stringify(vh));
+    const vc = await openV(cut.id);
+    check('imported document whose log was really cut still warns («stripped»)', !vc.ok && vc.reasons.includes('stripped'), JSON.stringify(vc));
+    await ctx2.close();
+  } finally { await browser.close(); }
 } catch (e) {
   check('test run', false, e.stack || e);
 } finally {

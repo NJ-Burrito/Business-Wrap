@@ -93,10 +93,10 @@ export function planSources(sources) {
       let r;
       try { r = readSaveData(f.file); } catch (e) { cands.push({ f, ext, rank: 3, title: stem, key: titleKey(stem), plain: true }); continue; }
       if (r.data && Array.isArray(r.data.services)) {
-        const made = r.data.services.map((s) => candidate(s, f, { htmlTitle: r.htmlTitle, stem })).filter(Boolean);
+        const made = r.data.services.map((s) => { const c = candidate(s, f, { htmlTitle: r.htmlTitle, stem }); const pv = r.data.prov?.[s.id]; if (c && typeof pv?.log === 'string' && pv.log) c.prov = { doc: String(pv.doc || s.id), log: pv.log }; return c; }).filter(Boolean);
         if (!made.length) { skip(f, 'the file carries no document (it holds no edition to import)', 'no-document'); continue; }
         const rank = SHARE.test(f.rel) ? 1 : 0;
-        for (const c of made) cands.push({ f, ext, rank, title: c.title, key: c.key, ops: c.ops, nEd: Object.keys(c.eds).length, blank: c.blank, eds: c.eds, svc: c });
+        for (const c of made) cands.push({ f, ext, rank, title: c.title, key: c.key, ops: c.ops, nEd: Object.keys(c.eds).length, blank: c.blank, eds: c.eds, svc: c, prov: c.prov });
         continue;
       }
       cands.push({ f, ext, rank: 3, title: stem, key: titleKey(stem), plain: true });
@@ -129,6 +129,7 @@ export function planSources(sources) {
           w += wordsOf(e.applied);
         }
         d._words = w;
+        if (c.prov) d.prov = c.prov; // the sealed history log travels with the work (additive; 31-provenance reads entry.prov and unseals it with the OLD document id)
         documents.push(d);
         chosenFiles.add(c.f);
       } else if (!chosenFiles.has(c.f)) { toRead.push(c.f); chosenFiles.add(c.f); }
