@@ -2,7 +2,7 @@
 // zip, made by Windows, 7-Zip or another tool, must come in as far as it can with a named reason for each file that cannot.
 //   unzipTo(zipFile, dir, limits?) → {files: [{name, file, size}], problems: [{name, reason}]}
 // Reads: the central directory, zip64 (end record, locator, extra fields), UTF-8 names (flag 0x800 or the 0x7075 extra field), names
-// without the flag (UTF-8 when valid, else Windows-1256), data descriptors (sizes come from the central directory), stored and deflated entries.
+// without the flag (UTF-8 when valid, else the legacy code page that reads as Arabic: Windows-1256 or OEM 720, or OEM 437), data descriptors (sizes come from the central directory), stored and deflated entries.
 // Refuses per entry: encrypted, other methods, symbolic links, names that leave the folder. Hard guards stay whole-archive: entries and declared size.
 // Files are written through lp() so a long Arabic path works on Windows.
 import fs from 'node:fs';
@@ -20,7 +20,26 @@ function nameOf(buf, flags, extra) {
   }
   const u = buf.toString('utf8');
   if (flags & 0x800 || !u.includes('�')) return u;
-  try { return new TextDecoder('windows-1256').decode(buf); } catch { return buf.toString('latin1'); }
+  return legacyName(buf);
+}
+
+// The second half (0x80..0xFF) of the two OEM code pages Windows' built-in zip writes when the name has no UTF-8 flag (generated from the code
+// pages themselves): 720 on an Arabic system, 437 on a Western one. Windows-1256 is what WinRAR and older tools write.
+const CP720 = 'éâàçêëèïîّْô¤ـûùءآأؤ£إئابةتثجحخدذرزسشص«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀ضطظعغفµقكلمنهوىي≡ًٌٍَُِ≈°∙·√ⁿ²■ ';
+const CP437 = 'ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ';
+const viaTable = (buf, table) => { let o = ''; for (const b of buf) o += b < 0x80 ? String.fromCharCode(b) : table[b - 0x80]; return o; };
+
+/** A name with no UTF-8 flag and not valid UTF-8: the code page under which most of its high bytes read as Arabic letters wins (1256, then 720);
+ *  a name with no such majority (a Western name: é ü ñ) is OEM 437. */
+export function legacyName(buf) {
+  let w = '';
+  try { w = new TextDecoder('windows-1256').decode(buf); } catch { w = buf.toString('latin1'); }
+  const o = viaTable(buf, CP720);
+  const high = [...buf].filter((b) => b >= 0x80).length || 1;
+  const share = (txt) => { let a = 0; for (const c of txt) if (c >= 'ء' && c <= 'ي') a += 1; return a / high; };
+  const sw = share(w), so = share(o);
+  if (sw < 0.6 && so < 0.6) return viaTable(buf, CP437);
+  return so > sw ? o : w;
 }
 
 export function listZip(buf, limits = {}) {

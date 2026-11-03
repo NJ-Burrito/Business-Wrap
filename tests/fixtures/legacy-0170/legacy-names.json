@@ -1,0 +1,35 @@
+{
+ "note": "Zip entry names as OLD Windows tools write them with NO UTF-8 flag: hex of the bytes in the OEM Arabic code page 720 (Explorer on an Arabic system), Windows-1256 (WinRAR, older tools), OEM 437 (Explorer on a Western system). Generated with Python's own codecs, so the expected text is independent of the reader's tables.",
+ "cases": [
+  {
+   "id": "arabic-cp720",
+   "codepage": "cp720",
+   "expect": "عنوان تجريبي أول للخدمة/ملف - مشاركة.html",
+   "hex": "e3ebed9feb20a2a4a9efa0ef209aede920e9e9a6a7eaa12feae9e5202d20eaac9fa9e8a12e68746d6c"
+  },
+  {
+   "id": "arabic-cp1256",
+   "codepage": "cp1256",
+   "expect": "عنوان تجريبي أول للخدمة/ملف - مشاركة.html",
+   "hex": "dae4e6c7e420caccd1edc8ed20c3e6e120e1e1cecfe3c92fe3e1dd202d20e3d4c7d1dfc92e68746d6c"
+  },
+  {
+   "id": "arabic2-cp720",
+   "codepage": "cp720",
+   "expect": "المستندات - Documents/تحديث بيانات منتج غذائي/تحديث بيانات منتج غذائي.html",
+   "hex": "9fe9eaaba2eba79fa2202d20446f63756d656e74732fa2a5a7efa320a0ef9feb9fa220eaeba2a420e4a89f9eef2fa2a5a7efa320a0ef9feb9fa220eaeba2a420e4a89f9eef2e68746d6c"
+  },
+  {
+   "id": "arabic2-cp1256",
+   "codepage": "cp1256",
+   "expect": "المستندات - Documents/تحديث بيانات منتج غذائي/تحديث بيانات منتج غذائي.html",
+   "hex": "c7e1e3d3cae4cfc7ca202d20446f63756d656e74732fcacdcfedcb20c8edc7e4c7ca20e3e4cacc20dbd0c7c6ed2fcacdcfedcb20c8edc7e4c7ca20e3e4cacc20dbd0c7c6ed2e68746d6c"
+  },
+  {
+   "id": "west-cp437",
+   "codepage": "cp437",
+   "expect": "café ü ñ/résumé.html",
+   "hex": "63616682208120a42f728273756d822e68746d6c"
+  }
+ ]
+}

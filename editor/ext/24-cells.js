@@ -315,6 +315,65 @@ A.colDel = () => {
   ceJoin(x.ed, () => { for (const c of cs) ceFixFormulas(x, 'col', c, -1); });
 };
 
+/* ── a story's ID card: rows added and deleted in ONE undo step, also in the criteria row that folds in after the card (0.17.0, P5) ──
+ * The card may be only printed (not stored): storing it and the row edit are one undo step, in both editions (the card of the other edition
+ * is stored with it, so the pair keeps one shape). The «معايير القبول» row that follows the card is not a stored row: it is a subhead and a prose
+ * block printed as the card's last row (render.mjs foldAc). Add row there = an empty row at the end of the stored rows, above it. Delete row there
+ * = the subhead and the prose block go (the row is gone from the page), one undo step; the core would record an op that deletes nothing. */
+const A_CARD = { rowAdd: A.rowAdd, rowDel: A.rowDel };
+function ceCardCtx() {
+  const x = tableCtx();
+  const m = x && /^(.*\/items\/\d+)\/card\/rows$/.exec(x.rows);
+  if (!m || x.r < 0) return null;
+  const ed = S.ed;
+  const tr = mainOf(ed)?.querySelector(`table[data-rows="${CSS.escape(x.rows)}"] tbody tr[data-r="${x.r}"]`);
+  const first = tr?.firstElementChild?.dataset.p || '';
+  const lab = /^(.*\/blocks\/\d+)\/text$/.exec(first);
+  const body = lab && tr.querySelector('[data-b]')?.dataset.b;
+  return { ...x, ed, sp: m[1], fold: lab && body ? { lab: lab[1], body } : null };
+}
+/** Stores the card (this edition and the other) as the first op of a group; returns the group and the first free op number. */
+function ceCardStore(c) {
+  if (Array.isArray(get(cur(c.ed).doc, c.rows))) return { group: undefined, k0: 0 };
+  if (!EXT.w2write?.materialiseCard(c.rows, c.ed)) return null;
+  const group = cur(c.ed).ops.at(-1).id.split('.')[0];
+  const o = other(c.ed);
+  if (S.both && hasOther() && get(cur(o).doc, c.sp) && !get(cur(o).doc, `${c.sp}/card`) && EXT.w2write.materialiseCard(`${c.sp}/card/rows`, o)) cur(o).ops.at(-1).id = `${group}.p0`;
+  return { group, k0: 1 };
+}
+A.rowAdd = () => {
+  const c = ceCardCtx();
+  if (!c) return A_CARD.rowAdd();
+  const st = ceCardStore(c);
+  if (!st) return A_CARD.rowAdd();
+  const rows = get(cur(c.ed).doc, c.rows);
+  const at = c.fold ? rows.length : Math.min(c.r + 1, rows.length);
+  S.typingGroup = null;
+  commit([{ op: 'insert', path: `${c.rows}/${at}`, value: Array.from({ length: c.w || 2 }, () => '') }], { ed: c.ed, mirror: true, ...(st.group ? { group: st.group, k0: st.k0 } : {}) });
+};
+A.rowDel = () => {
+  const c = ceCardCtx();
+  if (!c) return A_CARD.rowDel();
+  S.typingGroup = null;
+  if (c.fold) {
+    const d = cur(c.ed).doc;
+    const ops = [c.fold.body, c.fold.lab].map((p) => ({ op: 'delete', path: p, old: get(d, p) })); // the later block first, so the first pointer stays right
+    const o = other(c.ed);
+    const pair = S.both && hasOther() && ['subhead', 'prose'].every((k, i) => get(cur(o).doc, [c.fold.lab, c.fold.body][i])?.kind === k);
+    commit(ops, { ed: c.ed, mirror: !!pair });
+    lastCell = null;
+    return;
+  }
+  const rows = get(cur(c.ed).doc, c.rows);
+  if (Array.isArray(rows) && c.r >= rows.length) return; // a printed row that is not stored (nothing to delete)
+  const st = ceCardStore(c);
+  if (!st) return A_CARD.rowDel();
+  const now = get(cur(c.ed).doc, c.rows);
+  if (c.r >= now.length) return;
+  commit([{ op: 'delete', path: `${c.rows}/${c.r}`, old: now[c.r] }], { ed: c.ed, mirror: true, ...(st.group ? { group: st.group, k0: st.k0 } : {}) });
+  lastCell = null;
+};
+
 // the page is redrawn by the structural commit: the cell that had the focus loses it, and its focusout must not recalculate the
 // table in a commit of its own, before the references have followed (TCELLS-01: one user action, one undo step)
 for (const k of ['rowAdd', 'rowDel', 'colAdd', 'colDel']) { const f = A[k]; A[k] = (...a) => { CE.busy = true; try { return f(...a); } finally { CE.busy = false; } }; }
