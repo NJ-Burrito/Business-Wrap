@@ -588,6 +588,22 @@ export function uploadedFontCss(doc) {
     .join('\n');
 }
 const safeToken = ([k, v]) => /^[a-z0-9-]+$/.test(k) && /^[#a-zA-Z0-9(),.\s%-]+$/.test(String(v)); // leaf-ok: a style value, not text
+/**
+ * 0.17.0 (pages): the PDF is laid out on a page whose width Chrome rounds to whole pixels (A4: 793.7 px becomes 794 px), the editor's page is the exact
+ * 210 mm. A third of a pixel is enough to flip a line that fills its cell to the hair (a roles table row of three lines printed, four in the editor: five
+ * millimetres, then a held group of three rows fitting one page in the PDF and not in the editor). In print, `.wrap` takes the exact width the editor
+ * uses. Not applied while the print pass measures (that page is the measure wide, below the threshold), so the verdicts of relaxTallGroups are
+ * unchanged. The full-bleed bands (h4, .gap) reach the page edge again by the same amount.
+ */
+export function printTrimCss(doc) {
+  const wmm = doc?.layout?.page ? pageSpec(doc.layout.page).w : 210;
+  const measure = doc?.layout?.page ? pageGeom(doc).measurePx : PAGE.measurePx;
+  const px = (wmm / 25.4) * 96;
+  const x = Math.round(px) - px;
+  if (!(Math.abs(x) > 0.01)) return '';
+  const t = (+x.toFixed(3)).toString();
+  return `@media print and (min-width:${measure + 40}px){.wrap{width:calc(100% - ${t}px);box-sizing:border-box}h4,.gap{margin-inline-end:calc(0mm - var(--page-side) - ${t}px)}}`;
+}
 export function documentCss(themeIn, sheet, doc) {
   const theme = designTheme(themeIn, doc);
   const tail = doc ? `
@@ -754,6 +770,7 @@ figcaption{font-size:var(--t-table);color:var(--primary);margin:0 0 5px;font-wei
 .fig-note{font-size:var(--t-table);color:var(--muted);margin:4px 0 0}
 @page{size:A4 portrait;margin:18mm 0 16mm;background:${paper}}
 .wrap{padding-inline:var(--page-side)}
+${printTrimCss(doc)}
 @page cover{margin:0;background:${paper}}
 @page:first{margin:0;background:${paper}}
 @page wide{size:${sheet.widthMm}mm ${sheet.heightMm}mm;margin:14mm 0 12mm;background:${paper}}
@@ -1381,8 +1398,20 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
       }
       const shortTable = next?.kind === 'table' && (next.rows?.length ?? 0) <= GROUPABLE_ROWS;
       if (block.kind === 'subhead' && next) {
+        // 0.17.0 (pages): a subhead opening a section is the section heading's neighbour, not its replacement: the heading (`pending`) goes in front
+        // and is spent here. Left pending, the next table of the section took it as its caption (a subhead before a story card moved the section
+        // heading onto the output table's caption).
+        if (next.kind === 'stories') {
+          const head = pending + renderBlock(block, b);
+          pending = '';
+          const at = out.length;
+          const end = stepPaging(i + 1); // the card goes through its own branch (acceptance fold, house labels)
+          out.splice(at, out.length - at, `<div class="keep">${head}${NL}${out.slice(at).join(NL)}</div>`);
+          return end;
+        }
         if (next.kind !== 'table' || shortTable) {
-          out.push(`<div class="keep">${renderBlock(block, b)}${NL}${renderBlock(next, nb)}</div>`);
+          out.push(`<div class="keep">${pending}${renderBlock(block, b)}${NL}${renderBlock(next, nb)}</div>`);
+          pending = '';
           i += 1;
           return i;
         }
