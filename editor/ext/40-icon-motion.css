@@ -214,6 +214,10 @@
 [data-ic="pgSetup"] > :nth-child(3) { --d: var(--bw-stagger); }
 [data-ic="pgSetup"] > :nth-child(4) { --d: calc(var(--bw-stagger) * 2); }
 [data-ic="pgSetup"] > :nth-child(5) { --d: calc(var(--bw-stagger) * 3); }
+/* margins (0.17.6): the text block settles inside the sheet, the four margin ticks grow in */
+[data-ic="margins"] > :nth-child(2) { transform-origin: 50% 50%; --s: .72; --icm: icm-recede var(--bw-dur-slow) var(--bw-ease-in-out) var(--d, 0s) 1; }
+[data-ic="margins"] > :is(:nth-child(3), :nth-child(4)) { --icm: icm-grow-y var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
+[data-ic="margins"] > :is(:nth-child(5), :nth-child(6)) { --icm: icm-grow-x var(--bw-dur-slow) var(--bw-ease-spring) var(--d, 0s) 1 backwards; }
 /* page break: the scissors snip */
 [data-ic="pgBreak"] > :nth-child(1) { --r: -12deg; --icm: icm-tilt var(--bw-dur-slow) var(--bw-ease-in-out) var(--d, 0s) 1; }
 [data-ic="pgBreak"] > :nth-child(3) { --r: 12deg; --icm: icm-tilt var(--bw-dur-slow) var(--bw-ease-in-out) var(--d, 0s) 1; }

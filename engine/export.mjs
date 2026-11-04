@@ -12,7 +12,7 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { py } from './py.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { renderDocument, chromeTemplates, relaxTallGroups, relaxArgs, PAGE, pageGeom, pageModel, folioOf, designTheme, confidentialText, uploadedFontCss, faceWeights } from './render.mjs';
+import { renderDocument, chromeTemplates, relaxTallGroups, relaxArgs, PAGE, pageGeom, hasPageGeom, pageModel, folioOf, designTheme, confidentialText, uploadedFontCss, faceWeights } from './render.mjs';
 import { applyOps, migrate, normaliseNumbers } from './edits.mjs';
 import { assertBase } from './edits-base.mjs';
 import { loadManifest, resolveFonts, fontFaceCss, systemFamily, normaliseFont, ttfDataUri } from './fonts.mjs';
@@ -301,12 +301,12 @@ async function exportPdfWork(doc, { locale, theme, pdfPath, browser: shared }) {
   fs.writeFileSync(tmp, html, 'utf8');
   const browser = shared || (await (await chromium()).launch(launchOptions()));
   try {
-    const geo = doc.layout?.page ? pageGeom(doc) : PAGE;
+    const geo = hasPageGeom(doc) ? pageGeom(doc) : PAGE;
     const page = await browser.newPage({ viewport: { width: geo.measurePx, height: geo.contentPx } });
     await page.emulateMedia({ media: 'print' });
     await page.goto(pathToFileURL(tmp).href, { waitUntil: 'load' });
     await page.evaluate(() => document.fonts.ready.then(() => true));
-    await page.evaluate(relaxTallGroups, doc.layout?.page ? relaxArgs(doc) : relaxArgs());
+    await page.evaluate(relaxTallGroups, hasPageGeom(doc) ? relaxArgs(doc) : relaxArgs());
     const chromeOpt = { theme, labels, locale, fontCss: fontFaceCss(used.filter((c) => [400, 700].includes(c.weight)), { embed: true }) + chosen.css + uploadedFontCss(chosen.doc), logos: theme.logos };
     const chrome = chromeTemplates(doc, chromeOpt);
     fs.mkdirSync(path.dirname(pdfPath), { recursive: true });

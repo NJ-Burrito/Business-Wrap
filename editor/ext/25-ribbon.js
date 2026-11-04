@@ -18,7 +18,7 @@ const RB_TABS = [
     ['lists', ['fmtQuote', 'fmtBullets', 'fmtNumbers', 'fmtShapes', 'fmtIndent', 'fmtOutdent']]], null, '--bw-sec-para'],
   ['insert', [['content', ['image', 'logo', 'addDiagram', 'addPara', 'insTable', 'insSection', 'insChapter', 'insTextBox']], ['story', ['addStory', 'addOutputStory', 'addOutputsChapter', 'storyPoint', 'storyCard']],
     ['wrap', ['wrapInline', 'wrapSquare', 'wrapTight', 'wrapThrough', 'wrapTopBottom', 'wrapBehind', 'wrapFront']]], null, '--bw-sec-insert'],
-  ['layout', [['page', ['pgSetup', 'pgBreak', 'breakBefore', 'keepNext', 'pages', 'renumber']], ['gaps', ['pgBreakAdd', 'pgBreakDel', 'pgPullUp', 'secDel', 'pgEmpty']],
+  ['layout', [['page', ['pgSetup', 'margins', 'pgBreak', 'breakBefore', 'keepNext', 'pages', 'renumber']], ['gaps', ['pgBreakAdd', 'pgBreakDel', 'pgPullUp', 'secDel', 'pgEmpty']],
     ['front', ['tocHide', 'tocAdd', 'fmRowAdd', 'fmRowDel', 'fmColAdd', 'fmColDel']]], null, '--bw-sec-gaps'],
   ['hf', [['header', ['hdrText', 'hdrField', 'hdrLogo', 'every', 'hdrStart', 'hdrCenter', 'hdrEnd', 'hdrDelete', 'hdrScope']], ['footer', ['ftrText', 'ftrField', 'hdrConf', 'ftrStart', 'ftrCenter', 'ftrEnd', 'ftrDelete', 'ftrScope']]], null, '--bw-sec-header'],
   ['design', [['design', ['theme', 'styleThis', 'hideBlock']], ['appearance', ['dark', 'calm', 'focus']]], null, '--bw-sec-design'],

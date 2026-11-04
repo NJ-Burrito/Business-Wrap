@@ -353,6 +353,7 @@ const XPL_SCENES = {
       case 'pull': return xaPage(14, 8, 56, 78, 5) + xaR('gh', 90, 8, 56, 78, 5) + xaR('blk k-mv', 22, 58, 40, 12, 3, xaMv(76, -40)) + xaG('k-gone', xaP('cut', 'M80 4 v88'));
       case 'secdel': return xaPage(40, 8, 70, 80, 0) + xaLn(48, 16, 54, 'side') + xaLines(48, 26, 3, 54) + xaR('gh', 46, 44, 58, 36, 3) + xaG('k-gone', xaLn(48, 48, 54, 'no') + xaLines(48, 58, 3, 54));
       case 'empty': return xaPage(40, 8, 70, 80, 3) + xaR('gh', 48, 40, 54, 8, 2) + xaG('k-gone', xaR('cell', 48, 40, 54, 8, 2) + xaR('cell', 48, 52, 54, 8, 2)) + xaLines(48, 66, 1, 54) + xaC('ok', 118, 20, 6) + xaP('wh', 'M115 20 l2.4 2.4 l4 -5');
+      case 'margins': return xaR('sheet', 40, 8, 80, 80, 5) + xaR('gh', 52, 20, 56, 56, 2) + xaLines(58, 28, 5, 44) + xaP('acs', 'M40 48 h12 m-4 -4 l4 4 l-4 4');
       case 'ruler': return xaPage(40, 20, 80, 70, 5) + xaR('rl2', 40, 10, 80, 7, 1) + Array.from({ length: 17 }, (_, i) => xaR('ln', 41 + i * 4.7, 11, 0.8, i % 4 === 0 ? 5 : 3, 0)).join('');
       case 'renum': return xaPage(40, 8, 70, 80, 0) + [0, 1, 2, 3].map((i) => xaC('pr', 52, 22 + i * 16, 5) + xaR('wh', 50.4, 19 + i * 16, 3.2, 6, 1) + xaLn(62, 20 + i * 16, 40)).join('') + xaP('acs k-fade', 'M114 22 q8 20 0 44 m-3 -5 l3 5 l4 -4');
       case 'start': return xaPage(40, 8, 70, 80, 0) + [0, 1, 2].map((i) => xaC('ac', 52, 26 + i * 16, 6) + xaLn(64, 24 + i * 16, 36)).join('') + xaR('mk k-grow', 46, 14, 14, 6, 3, xaSc(0, 1, 'left center'));
@@ -673,6 +674,7 @@ layout:pull pgPullUp@moveUp
 layout:secdel secDel@delete
 layout:empty pgEmpty@check
 layout:ruler ruler@view
+layout:margins margins@view
 layout:renum renumber@renumber
 layout:start renumList@renumber
 layout:docid docId@ok

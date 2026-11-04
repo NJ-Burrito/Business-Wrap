@@ -1,0 +1,36 @@
+{
+ "ar": {
+  "margins": "الهوامش",
+  "m.presets": "هوامش جاهزة",
+  "m.normal": "عادي",
+  "m.narrow": "ضيّق",
+  "m.wide": "واسع",
+  "m.custom": "مخصّص (مم)",
+  "m.top": "أعلى",
+  "m.bottom": "أسفل",
+  "m.start": "البداية",
+  "m.end": "النهاية",
+  "m.mm": "مم",
+  "m.limits": "الجانبان من 5 إلى 50 مم، وأعلى وأسفل من 10 إلى 50 مم. البداية هي اليمين في الصفحة العربية.",
+  "m.apply": "تطبيق",
+  "m.cancel": "إلغاء",
+  "m.set": "تم ضبط الهوامش"
+ },
+ "en": {
+  "margins": "Margins",
+  "m.presets": "Preset margins",
+  "m.normal": "Normal",
+  "m.narrow": "Narrow",
+  "m.wide": "Wide",
+  "m.custom": "Custom (mm)",
+  "m.top": "Top",
+  "m.bottom": "Bottom",
+  "m.start": "Start",
+  "m.end": "End",
+  "m.mm": "mm",
+  "m.limits": "Sides 5 to 50 mm, top and bottom 10 to 50 mm. Start is the right side on an Arabic page.",
+  "m.apply": "Apply",
+  "m.cancel": "Cancel",
+  "m.set": "Margins set"
+ }
+}
