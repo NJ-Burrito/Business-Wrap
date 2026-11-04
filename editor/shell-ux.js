@@ -97,7 +97,7 @@ function uxBgPress(e) {
   if (path.some((x) => x.matches?.('main.bw-doc, dialog, [popover], #bw-watermark, #bw-overlay, .bw-ov'))) return false;
   return true;
 }
-window.addEventListener('pointerdown', (e) => { if (uxBgPress(e) && EXT.ribbon && !EXT.ribbon.state.collapsed) EXT.ribbon.collapse(true); }, true);
+window.addEventListener('pointerdown', (e) => { if (uxBgPress(e) && EXT.ribbon && !EXT.ribbon.state.collapsed) EXT.ribbon.collapse(true, { persist: false }); }, true);
 /** Esc inside the UI peels one layer at a time: explainer → open menu → view popover → panel → the selection's tools. */
 function uxEscape() {
   if (xplHide()) return;
