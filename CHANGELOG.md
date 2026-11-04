@@ -8,6 +8,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.17.3] - 2026-11-04
+
+🔤 A fix release: a very long unbroken word no longer freezes the page. / 🔤 إصدار إصلاحات: الكلمة الطويلة جدا بلا فواصل لم تعد تجمّد الصفحة.
+
+### Fixed / أصلح
+- 🔤 **The spell checker skips a run of more than 64 letters**, so a very long unbroken word no longer freezes the page. / **المدقق الإملائي يتخطى أي سلسلة تزيد على 64 حرفا**، فلم تعد الكلمة الطويلة جدا بلا فواصل تجمّد الصفحة.
+- 🕸️ **The harvest crawler survives a page that navigates late.** / **زاحف الحصاد يصمد أمام صفحة تتأخر في الانتقال.**
+
 ## [0.17.2] - 2026-11-04
 
 💾 A fix release: edits reach the saved list copy sooner. / 💾 إصدار إصلاحات: التعديلات تصل إلى نسخة القائمة المحفوظة أسرع.
