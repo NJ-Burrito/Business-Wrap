@@ -353,6 +353,7 @@ const SP = (() => {
     const off = Math.min(pos - e.start, e.node.data.length);
     return end && off === 0 && lo > 0 && map[lo - 1].node.data.length ? [map[lo - 1].node, map[lo - 1].node.data.length] : [e.node, off];
   };
+  const MAX_WORD = 64;
   function leafTokens(el, ed, out) {
     const L = el.closest('[lang]')?.getAttribute('lang')?.slice(0, 2).toLowerCase();
     if (L && L !== 'ar' && L !== 'en') return;
@@ -368,6 +369,7 @@ const SP = (() => {
         re.lastIndex = 0;
         for (let k = re.exec(c); k; k = re.exec(c)) {
           const raw = k[0];
+          if (raw.length > MAX_WORD) continue; // no language has a 64-letter word; a pasted blob made the checker and the suggester run for minutes (the tab froze, then crashed)
           const start = m.index + k.index;
           if (lang === 'ar') { const w = norm.ar(raw); if (w.length < 2) continue; out.push({ leaf, lang, raw, word: w, start, end: start + raw.length }); } else {
             if (skipLatin(raw)) continue;

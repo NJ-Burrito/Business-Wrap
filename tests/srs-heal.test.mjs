@@ -6,6 +6,7 @@ import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { REPO } from '../engine/export.mjs';
 import { buildDocuments, buildToDir } from '../engine/srs/cli.mjs';
 import { loadPack, coreText, deepMerge } from '../engine/srs/compose.mjs';
@@ -342,7 +343,7 @@ export async function run(check) {
   check('every built document: no healer error', [ep].every((r) => r.evidence.heal.every((h) => !/healer error/.test(h.detail))), ep.evidence.heal.filter((h) => /healer error/.test(h.detail)).map((h) => `${h.id}: ${h.detail}`).join(' / '));
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'))) {
+if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) {
   const results = []; let failed = 0;
   const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
   try { await run(check); } catch (e) { check('srs-heal run', false, e.stack?.split('\n').slice(0, 4).join(' / ')); }
