@@ -75,7 +75,7 @@ export function linesToProcess(lines, { name } = {}) {
   return JSON.stringify({ process: title, steps: steps.map((s, i) => ({ id: `s${i + 1}`, name: s })) });
 }
 
-const expand = (srcs) => srcs.flatMap((s) => (fs.statSync(s).isDirectory() ? fs.readdirSync(s).sort().map((f) => path.join(s, f)).filter((f) => fs.statSync(f).isFile()) : [s]));
+const expand = (srcs) => srcs.flatMap((s) => (fs.statSync(s).isDirectory() ? fs.readdirSync(s).filter((f) => !/^(desktop\.ini|thumbs\.db|\.ds_store)$/i.test(f)).sort().map((f) => path.join(s, f)).filter((f) => fs.statSync(f).isFile()) : [s]));
 /**
  * Every source → one document pair (+ editor). Returns { results: [{source, kind, documents, editor, service}], skipped }.
  * A file that is neither a model nor a readable document is listed in `skipped` with the reason.

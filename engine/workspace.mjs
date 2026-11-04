@@ -236,7 +236,7 @@ export function roleOfFolder(dir, root) {
   if (rel.startsWith('..') || path.isAbsolute(rel)) return null;
   const p = rel.split(path.sep);
   const low = (s) => s.toLowerCase();
-  if (p[0] === SYSTEM_NAME) return 'system'; // .system and every sub-folder of it (history, backups, sessions, library, cache, icons)
+  if (p[0] === SYSTEM_NAME) return p.length === 1 ? 'system' : null; // 0.17.5: .system itself only; its sub-folders (history, backups, sessions, library, cache, icons, archive) are machine collections that code lists as entries, so they never get a desktop.ini
   if (p[0] !== DOCS_NAME) return null;
   if (p.length === 1) return 'documents';
   if (p[1] === UNSORTED_NAME) return p.length === 2 ? 'unsorted' : null;
@@ -256,8 +256,7 @@ export function applyTreeIcons(root, opts = {}) {
     const put = (dir) => { const role = roleOfFolder(dir, base); if (role && ensureFolderIcon(dir, { kind: role, systemDir: sys, ...opts })) n += 1; };
     const subs = (d) => { try { return fs.readdirSync(d, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => path.join(d, e.name)); } catch { return []; } };
     put(base);
-    put(sys);
-    for (const s of subs(sys)) put(s);
+    put(sys); // .system only: its sub-folders are machine collections (sessions\<run>, library\*.gz …) and stay free of desktop.ini
     const docs = path.join(base, DOCS_NAME);
     if (fs.existsSync(docs)) {
       put(docs);

@@ -291,11 +291,21 @@ try {
     check(`${ed}: design pack import applies tokens, refuses hostile values`, applied.primary === '#7a1f5c' && !applied.ink.includes('<') && applied.logo === '' && !applied.pwned, JSON.stringify(applied));
 
     // the colleague's Save-HTML imports too (data only)
+    // 0.17.5: the import's completion is the flash it writes (flash() runs once the file is read and merged), but a later re-render rebuilds the shell and empties
+    // the .flash span, so reading it afterwards raced (GitHub gates runs 41738387730 and 41775516653). A MutationObserver records every non-empty flash text from
+    // the moment before the import starts; the test waits for that record, with no timer standing in for the import.
+    await fresh.evaluate(() => {
+      const sr = document.getElementById('bw-ui-host').shadowRoot;
+      window.__bwFlashSeen = [];
+      const note = () => { const t = (sr.querySelector('.flash')?.textContent || '').trim(); if (t) window.__bwFlashSeen.push(t); };
+      new MutationObserver(note).observe(sr, { subtree: true, childList: true, characterData: true });
+      note();
+    });
+    const flashBefore = await fresh.evaluate(() => window.__bwFlashSeen.length);
     const [ch3] = await Promise.all([fresh.waitForEvent('filechooser'), act(fresh, 'import')]);
     await ch3.setFiles(savedHtml);
-    // the flash is written when the import has been read, not when setFiles returns: wait for the text (a loaded runner read it empty, GitHub gates run 41738387730)
-    await fresh.waitForFunction(() => /\S/.test(document.getElementById('bw-ui-host').shadowRoot.querySelector('.flash')?.textContent || ''), null, { timeout: 10000 }).catch(() => {});
-    check(`${ed}: Save-HTML file imports`, (await fresh.locator('.flash').textContent()).length > 0);
+    await fresh.waitForFunction((n) => window.__bwFlashSeen.length > n, flashBefore, { timeout: 30000 }).catch(() => {});
+    check(`${ed}: Save-HTML file imports`, (await fresh.evaluate(() => window.__bwFlashSeen.length)) > flashBefore);
 
     // the Save-HTML file opens on its own and shows the edited document
     const ctx3 = await browser.newContext({ viewport: { width: 1366, height: 1300 } });

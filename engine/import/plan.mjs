@@ -90,6 +90,7 @@ export function planSources(sources) {
     const ext = path.extname(f.rel).toLowerCase();
     const seg = f.rel.split('/').slice(0, -1).find((x) => SYSTEM_SEG.test(x));
     if (seg) { skip(f, `inside the folder «${seg}»: a copy or a system file, not a document`, 'not-document'); continue; }
+    if (/(^|\/)(desktop\.ini|thumbs\.db|\.ds_store)$/i.test(f.rel) || ext === '.ico') { skip(f, 'a system file (folder icon or settings), not a document', 'system'); continue; } // 0.17.5
     const stem = stemTitle(f.rel);
     if (ext === '.html' || ext === '.htm') {
       let r;
@@ -136,6 +137,7 @@ export function planSources(sources) {
         chosenFiles.add(c.f);
       } else if (!chosenFiles.has(c.f)) { toRead.push(c.f); chosenFiles.add(c.f); }
     }
+    if (!keep.length) { for (const c of list) skip(c.f, 'not a document format this import reads', 'not-document', c.title); continue; } // 0.17.5: a type outside EXT_PREF (a stray .json, .ini) used to throw here
     for (const c of list) if (!keep.includes(c) && !chosenFiles.has(c.f)) skip(c.f, `not needed: «${keep[0].title}» comes from ${label(keep[0])} (${keep[0].f.rel})`, 'not-needed', keep[0].title);
   }
   for (const f of sources) if (chosenFiles.has(f)) settled.delete(f);

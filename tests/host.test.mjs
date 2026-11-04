@@ -31,7 +31,7 @@ const t00 = Date.now();
 // each check is also written as it happens: a suite killed by BW_SUITE_TIMEOUT shows how far it got (a hang was invisible when everything was printed at the end)
 const check = (n, ok, d = '') => { console.log(`step ${((Date.now() - t00) / 1000).toFixed(1)}s ${ok ? 'ok' : 'FAIL'} ${n}`); out.push(`${ok ? 'PASS' : 'FAIL'}  host: ${n}${d && !ok ? '  — ' + d : ''}`); if (!ok) failed += 1; };
 const sessions = path.join(tmp, 'ws', 'Business-Wrap', '.system', 'sessions');
-const runs = () => (fs.existsSync(sessions) ? fs.readdirSync(sessions).filter((d) => d !== 'archive') : []);
+const runs = () => (fs.existsSync(sessions) ? fs.readdirSync(sessions, { withFileTypes: true }).filter((e) => e.isDirectory() && e.name !== 'archive').map((e) => e.name) : []);
 const gone = async (pid, ms) => { const t0 = Date.now(); while (H.alive(pid) && Date.now() - t0 < ms) await new Promise((r) => setTimeout(r, 100)); return { gone: !H.alive(pid), ms: Date.now() - t0 }; };
 const stubLines = () => (fs.existsSync(process.env.BW_BROWSER_STUB) ? fs.readFileSync(process.env.BW_BROWSER_STUB, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);
 
