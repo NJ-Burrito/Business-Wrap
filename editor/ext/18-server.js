@@ -70,7 +70,7 @@ const SB = (() => {
     const found = await probe();
     if (!found || (isBusy() && st.mode !== 'checking') || SRV.busy) return;
     st.port = found[0] || 0;
-    if (found.length) set('online');
+    if (found.length) { const wanted = st.mode === 'error'; set('online'); if (wanted) reconnect(); } // a host came up after a failed start (a late «Open» in the browser box): a served page follows it
     else {
       if (st.mode === 'error') { draw(); return; } // an error stays until the next press or a server appears
       const first = st.mode === 'checking';
@@ -82,16 +82,23 @@ const SB = (() => {
     if (isBusy() || SRV.busy) return;
     SRV.busy = true;
     set('starting');
-    const r = await srvBegin();
-    SRV.busy = false;
+    // 0.17.7: a browser asks before it hands business-wrap: to another program, once per page ORIGIN (a file:// editor and the served http://127.0.0.1:<port> tab are two origins);
+    // the box is easy to miss, so a host that has not answered after a few seconds gets one plain hint instead of a silent wait.
+    const hint = setTimeout(() => { if (st.mode === 'starting') toast(t('sv.allowHint'), 'info', { ms: 12000 }); }, 3500);
+    let r;
+    try { r = await srvBegin(); } finally { clearTimeout(hint); SRV.busy = false; }
     if (r === 'failed') {
-      set('error', t('sv.noLauncher'));
-      toast(t('sv.failed', { r: t('sv.noLauncher') }), 'warn', { actions: [[t('sv.retry'), start]] });
+      set('error', t('sv.noStart'));
+      toast(t('sv.failed', { r: t('sv.noStart') }), 'warn', { actions: [[t('sv.retry'), start]] });
       return;
     }
     st.port = SRV.found[0] || st.port;
     set('online');
-    if (served() && st.port && st.port !== (Number(location.port) || 80)) location.href = `http://127.0.0.1:${st.port}/`; // the same document, from the host that is up now
+    reconnect();
+  }
+  /** A served page whose own host is gone and which found a host on another port (the restarted host did not get this port back): go to it, the same document from the host that is up now. */
+  function reconnect() {
+    if (served() && st.port && st.port !== (Number(location.port) || 80)) location.href = `http://127.0.0.1:${st.port}/`;
   }
   async function stop() {
     if (isBusy() || SRV.busy) return;
