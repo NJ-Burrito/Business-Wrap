@@ -8,6 +8,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.17.4] - 2026-11-04
+
+📁 A fix release: folder icons, one style across Settings, a simpler README, the editor and the PDF page for page, and a safer project import. / 📁 إصدار إصلاحات: أيقونات للمجلدات، وأسلوب واحد في الإعدادات، وإقرأني أبسط، والمحرر وملف PDF صفحة بصفحة، واستيراد مشروع أكثر أمانا.
+
+### Added / أضيف
+- 📁 **Every folder Business-Wrap makes has its own icon** (save folder, Documents, each document, Exports, Sources, Versions, Projects, project export) in Explorer, the folder picker and Settings; a project zip keeps them when unpacked with Explorer. / **لكل مجلد ينشئه بزنس راب أيقونته الخاصة** (مجلد الحفظ والمستندات ومجلد كل مستند والملفات المصدرة والمصادر والنسخ السابقة والمشاريع وتصدير المشروع) في مستكشف ويندوز ومنتقي المجلدات والإعدادات، ويحتفظ بها ملف ZIP للمشروع عند فكه بالمستكشف.
+
+### Changed / تغيّر
+- ⚙️ **Every Settings group, About included, shares one card, title colour and icon tile.** / **كل مجموعات الإعدادات، ومنها «حول»، بنفس البطاقة ولون العنوان وبلاطة الأيقونة.**
+- 📖 **The README is rewritten in simpler words**: a short hook, short emoji-led blocks, a 3-step start, developer detail at the end. / **أعيدت كتابة إقرأني بكلمات أبسط**: سطر افتتاحي قصير، وكتل قصيرة بأيقونات، وبدء في 3 خطوات، وتفاصيل المطورين في النهاية.
+
+### Fixed / أصلح
+- 📐 **The page views and the PDF start every page on the same block at any window size.** / **عرض الصفحات وملف PDF يبدآن كل صفحة بالكتلة نفسها في أي حجم نافذة.**
+- 🗜️ **Project import opens files from a zip on computers without long-path support**, and an unreadable share file is reported instead of its PDF replacing it. / **استيراد المشروع يفتح ملفات الأرشيف المضغوط على الأجهزة التي لا تدعم المسارات الطويلة**، ويبلغ عن ملف المشاركة غير القابل للفتح بدل أن يحل ملف PDF محله.
+- 🚀 **Only the real install owns the Desktop launcher and the business-wrap:// link**; a test or extra copy never takes them over, and a launcher pointing at a deleted folder repairs itself. / **التثبيت الحقيقي وحده يملك مشغل سطح المكتب ورابط business-wrap://**؛ فلا يستولي عليهما اختبار أو نسخة إضافية، والمشغل الذي يشير إلى مجلد محذوف يصلح نفسه.
+- 🟢 **Checked in real Chrome**: the top-bar switch of a saved or exported editor starts and stops the local host. / **تم التحقق في كروم الحقيقي**: مفتاح الشريط العلوي في محرر محفوظ أو مصدر يشغل الخادم المحلي ويوقفه.
+
 ## [0.17.3] - 2026-11-04
 
 🔤 A fix release: a very long unbroken word no longer freezes the page. / 🔤 إصدار إصلاحات: الكلمة الطويلة جدا بلا فواصل لم تعد تجمّد الصفحة.
