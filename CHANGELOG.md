@@ -8,6 +8,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.17.11] - 2026-11-04
+
+🎬 A small release: the Explain pictures are redrawn, each with its own story. / 🎬 إصدار صغير: أعيد رسم صور الشرح، ولكل منها قصتها.
+
+### Changed / تغيّر
+- 🎬 **Every kind of Explain picture has its own moving story**: a block drops into place, text flows around a picture, lines glide to their alignment, cells split and fill, margins and page breaks move, with soft shadows and a light sweep at the end (the Calm button stills it). / **لكل نوع من صور الشرح قصته المتحركة**: كتلة تستقر في مكانها، ونص ينساب حول صورة، وأسطر تنزلق إلى محاذاتها، وخلايا تنقسم وتمتلئ، وهوامش وفواصل صفحات تتحرك، مع ظلال ناعمة ولمعة ضوء في النهاية (زر الهدوء يوقفها).
+- ✨ **Stars instead of crosses** in the finish of each picture, and the undo and redo arrows turn the right way in Arabic. / **نجوم بدلا من علامات الضرب** في ختام كل صورة، وأسهم التراجع والإعادة تدور في الاتجاه الصحيح بالعربية.
+
 ## [0.17.10] - 2026-11-04
 
 🖱️ A fix release: a background click closes what is open, and livelier Explain pictures. / 🖱️ إصدار إصلاحات: النقر على الخلفية يغلق ما هو مفتوح، وصور شرح أكثر حيوية.
