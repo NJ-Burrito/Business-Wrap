@@ -16,7 +16,7 @@
   --xa-hi: color-mix(in srgb, var(--bw-on-glass, #fff) 14%, transparent);
   --xa-sh: color-mix(in srgb, var(--bw-band, #001e3d) 34%, transparent);
   --xa-sh2: color-mix(in srgb, var(--bw-band, #001e3d) 18%, transparent);
-  --xa-gold: var(--bw-accent-rule, var(--bw-accent));
+  --xa-gold: color-mix(in srgb, var(--bw-accent-rule, var(--bw-accent)) 72%, var(--bw-accent-strong, var(--bw-accent-rule)));
   --xa-in: cubic-bezier(.22, 1, .36, 1);
 }
 .xpl-dock svg .fr-win { fill: var(--bw-surface); stroke: color-mix(in srgb, var(--bw-line-strong, var(--bw-rule-strong)) 70%, var(--xa-gold) 30%); stroke-width: 1; filter: drop-shadow(0 2px 3px var(--xa-sh)); }
@@ -61,6 +61,9 @@
 .xpl-dock svg .selbox { animation: xa-selbox 2.4s var(--e-move, ease) infinite; }
 @keyframes xa-selbox { 0%, 8% { opacity: 0; scale: 0 1; } 14% { opacity: 1; scale: 0 1; } 30% { opacity: 1; scale: 1 1; } 46% { opacity: 1; } 60%, 100% { opacity: 0; scale: 1 1; } }
 
+/* what just arrived wears a gold edge (the eye lands on the change) */
+.xpl-dock svg .k-in :is(.blk, .bx, .sheet, .cell, .sf) { stroke: var(--xa-gold); stroke-width: 1.2; }
+
 /* ── motion ── */
 .xpl-dock svg .scn { transform-box: view-box; transform-origin: 0 0; animation: xa-enter .5s var(--xa-in) both; }
 .xpl-dock svg .pg > .sheet { animation: xa-sheet .45s var(--xa-in) both; }
@@ -86,7 +89,7 @@
 @keyframes xa-rip { 0%, 13% { opacity: 0; scale: .4; } 15% { opacity: .95; } 30%, 100% { opacity: 0; scale: 2.6; } }
 @keyframes xa-pay { 0%, 44% { opacity: 0; scale: 1; } 47% { opacity: .9; } 70%, 100% { opacity: 0; scale: 2.2; } }
 @keyframes xa-spk { 0%, 45% { opacity: 0; scale: .2; rotate: 0deg; } 55% { opacity: 1; scale: 1.15; } 74%, 100% { opacity: 0; scale: .5; rotate: 45deg; } }
-@keyframes xa-sweep { 0%, 56% { opacity: 0; translate: 0 0; } 62% { opacity: .1; } 86%, 100% { opacity: 0; translate: 190px 0; } }
+@keyframes xa-sweep { 0%, 56% { opacity: 0; translate: 0 0; } 62% { opacity: .06; } 86%, 100% { opacity: 0; translate: 190px 0; } }
 @keyframes xa-badge { 0%, 42% { scale: 1; } 50% { scale: 1.2; } 60%, 100% { scale: 1; } }
 @keyframes xa-tab { 0%, 10% { opacity: .35; } 20%, 100% { opacity: 1; } }
 
