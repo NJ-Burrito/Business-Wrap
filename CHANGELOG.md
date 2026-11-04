@@ -8,6 +8,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.17.5] - 2026-11-04
+
+🛠️ A fix release: folder icons no longer trip the host or the import. / 🛠️ إصدار إصلاحات: أيقونات المجلدات لم تعد تعطل الخادم ولا الاستيراد.
+
+### Fixed / أصلح
+- 📁 **Folder icons are no longer written into the hidden .system sub-folders**, and importing or listing a folder that holds desktop.ini no longer fails. / **لم تعد أيقونات المجلدات تكتب داخل المجلدات الفرعية المخفية في .system**، ولم يعد استيراد مجلد فيه desktop.ini أو عرضه يتعطل.
+
 ## [0.17.4] - 2026-11-04
 
 📁 A fix release: folder icons, one style across Settings, a simpler README, the editor and the PDF page for page, and a safer project import. / 📁 إصدار إصلاحات: أيقونات للمجلدات، وأسلوب واحد في الإعدادات، وإقرأني أبسط، والمحرر وملف PDF صفحة بصفحة، واستيراد مشروع أكثر أمانا.
