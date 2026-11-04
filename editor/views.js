@@ -45,6 +45,8 @@ function viewsFirstPage() {
  * size (long text goes on to the next landscape page), and the slots it covers are held empty (.bw-slot). viewsTable lists every page
  * with its place and size; the window shows exactly that sheet (or the two sheets of a book). */
 const VIEWS_MM = 96 / 25.4;
+/** The scale the window shows the pages at (--bw-pz): screen px per layout px. The pages are laid out at exactly 100 percent and scaled by a transform only (0.17.4: no CSS zoom anywhere above them). */
+function viewsZ() { return parseFloat(document.documentElement.style.getPropertyValue('--bw-pz')) || 0.6; }
 /** The turned sheet every figure chapter prints on (engine/render.mjs @page wide): the widest figure sheet, else A4 landscape. */
 function viewsWide(d) {
   let s = null;
@@ -110,7 +112,7 @@ function viewsForeign(main, g) {
 }
 /** After layout: how many pages each box of another size holds, and how many slots of the document's own columns it covers. */
 function viewsReserve(main, g) {
-  const z = parseFloat(getComputedStyle(main.parentElement).zoom) || 1;
+  const z = viewsZ();
   const rtl = main.dir === 'rtl';
   const side = parseFloat(getComputedStyle(main).getPropertyValue('--page-side')) || 16;
   for (const box of main.querySelectorAll('.bw-frun')) {
@@ -130,7 +132,7 @@ function viewsReserve(main, g) {
 }
 /** Every page, in reading order: its place (mm from the start edge of the book), its sheet size. */
 function viewsTable(main, g, nOut) {
-  const z = parseFloat(getComputedStyle(main.parentElement).zoom) || 1;
+  const z = viewsZ();
   const r = main.getBoundingClientRect();
   const slotOf = (q) => Math.max(0, Math.floor(((main.dir === 'rtl' ? r.right - q.right : q.left - r.left) + 2) / z / g.SLOT));
   const all = [...main.querySelectorAll('.bw-frun')];
@@ -257,7 +259,7 @@ function viewsRuns(main) {
  *  for the header (`data-rpt`, `--rpt`: top padding on its cells) and the header is drawn over that room in a layer of its own (`.bw-rpts`, not part of the
  *  document). A few passes: the room can push the row's last lines on. */
 function viewsRepeat(main, g) {
-  const z = parseFloat(getComputedStyle(main.parentElement).zoom) || 1;
+  const z = viewsZ();
   const rtl = main.dir === 'rtl';
   const tables = [...main.querySelectorAll('table')].filter((t) => t.tHead && t.tBodies.length && !t.closest('.bw-runs,.bw-slot,.bw-rpts'));
   if (!tables.length) return;
@@ -327,7 +329,7 @@ function viewsRepeat(main, g) {
 }
 /** Pages = columns: the content's far edge in the reading direction, in slots. */
 function viewsCount(main) {
-  const z = parseFloat(getComputedStyle(main.parentElement).zoom) || 1;
+  const z = viewsZ();
   const r = main.getBoundingClientRect();
   let far = 0;
   for (const el of main.children) {
@@ -403,7 +405,7 @@ function viewsGo(delta, instant = false) {
 function viewsPageOf(el) {
   const main = mainOf(S.ed);
   if (!main || !el || !main.contains(el)) return -1;
-  const z = parseFloat(getComputedStyle(main.parentElement).zoom) || 1;
+  const z = viewsZ();
   const r = main.getBoundingClientRect();
   const q = el.getBoundingClientRect();
   const off = main.dir === 'rtl' ? r.right - q.right : q.left - r.left;

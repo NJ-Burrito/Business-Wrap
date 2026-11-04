@@ -56,7 +56,7 @@ try {
       await page.waitForTimeout(500);
       const r = await page.evaluate(() => {
         const main = document.querySelector('#bw-pair .bw-view > *');
-        const z = parseFloat(getComputedStyle(main.parentElement).zoom) || 1;
+        const z = parseFloat(document.documentElement.style.getPropertyValue('--bw-pz')) || 1;
         const pitch = (parseFloat(main.parentElement.style.getPropertyValue('--pw')) + 12) * (96 / 25.4) * z;
         const rtl = main.dir === 'rtl';
         const o = main.getBoundingClientRect();
