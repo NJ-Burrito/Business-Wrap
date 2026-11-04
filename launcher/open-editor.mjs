@@ -54,6 +54,8 @@ export async function openEditor({ file } = {}) {
 
 const real = (f) => { try { return fs.realpathSync.native(path.resolve(f)); } catch { return path.resolve(f); } };
 if (process.argv[1] && real(process.argv[1]) === real(fileURLToPath(import.meta.url))) {
+  // 0.17.8: the Desktop launcher makes sure business-wrap: is registered (or repaired, e.g. node moved) before the editor's host switch needs it
+  import('./launcher.mjs').then((m) => m.autorun(), () => {});
   openEditor({ file: process.argv[2] }).catch(async (e) => {
     // windowless: this file is the only place a failure can be read
     try { const { STATE_DIR } = await import('../engine/heal/index.mjs'); const d = path.join(STATE_DIR(), 'launcher'); fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(path.join(d, 'last-error.txt'), `${new Date().toISOString()} ${e?.stack || e}\n`); } catch { /* none */ }

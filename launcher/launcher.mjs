@@ -131,6 +131,10 @@ export function ensureLauncher({ installDir = INSTALL, lnkDir, desktop, force = 
 /** The hook every entry calls (terminal, MCP, Claude Code plugin hook, protocol handler, an opened export): idempotent, once per install and version, never throws,
  *  silent. BW_NO_LAUNCHER=1 skips; test mode skips unless a test names its own Desktop folder (BW_DESKTOP_DIR). */
 export function autorun() {
+  // 0.17.8: the business-wrap: link too. It used to be registered only by `business-wrap open`, so a PC set up with `npm run serve`, `npm run host`,
+  // MCP or the Desktop launcher had a top-bar host switch that handed business-wrap://start to nothing. ensureRegistered keeps its own guards
+  // (BW_NO_PROTOCOL, sandbox, worktree, another live install) and never throws.
+  if (process.platform === 'win32') import('../engine/protocol.mjs').then((m) => m.ensureRegistered(), () => {});
   if (process.env.BW_NO_LAUNCHER === '1' || process.platform !== 'win32') return { skipped: true };
   if (sandboxed() && !process.env.BW_DESKTOP_DIR) return { skipped: true };
   return ensureLauncher();

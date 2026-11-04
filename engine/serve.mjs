@@ -255,6 +255,8 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
 // run as the entry point, also when started through a junction or a symlink (compare real paths)
 const real = (f) => { try { return fs.realpathSync.native(path.resolve(f)); } catch { return path.resolve(f); } };
 if (process.argv[1] && real(process.argv[1]) === real(fileURLToPath(import.meta.url))) {
+  // 0.17.8: `npm run serve` (the README start) registers the business-wrap: link and the launcher too, so the top-bar host switch can start the host again later
+  if (!process.env.BW_SERVE_CHILD) import('../launcher/launcher.mjs').then((m) => m.autorun(), () => {});
   const args = process.argv.slice(2);
   const opt = (k) => { const i = args.indexOf(`--${k}`); return i < 0 ? undefined : args[i + 1]; };
   let file = args.find((a, i) => !a.startsWith('--') && !['--port', '--out'].includes(args[i - 1]));

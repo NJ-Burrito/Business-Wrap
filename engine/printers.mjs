@@ -148,7 +148,7 @@ export function printCommand(method, job, { file, images = [], output = '', docN
       '-t', docName, '--', file] };
   }
   if (method === 'sumatra') {
-    const s = [job.range, `${job.copies}x`, job.color === 'mono' ? 'monochrome' : 'color', { one: 'simplex', long: 'duplexlong', short: 'duplexshort' }[job.duplex], job.paper && `paper=${job.paper}`, job.orientation !== 'auto' && job.orientation, 'fit'].filter(Boolean);
+    const s = [job.range, `${job.copies}x`, job.color === 'mono' ? 'monochrome' : 'color', { one: 'simplex', long: 'duplexlong', short: 'duplexshort' }[job.duplex], job.paper && `paper=${job.paper}`, job.orientation !== 'auto' && job.orientation, job.actual ? 'noscale' : 'fit'].filter(Boolean);
     return { cmd: sumatraPath() || 'SumatraPDF.exe', args: ['-print-to', job.printer, '-print-settings', s.join(','), '-silent', file] };
   }
   return { cmd: 'powershell.exe', args: [...PS, PRINT_PS], env: { BW_JOB: JSON.stringify({ printer: job.printer, copies: job.copies, duplex: job.duplex, color: job.color !== 'mono', paper: job.paper, orientation: job.orientation, images, output, docName }) } };
@@ -195,10 +195,34 @@ async function rasterise(pdf, range, dir) {
   return JSON.parse(r.stdout.trim());
 }
 
+/* 0.17.8: «printer default» paper put the A4 document on the driver's default sheet (Letter on many PCs): a shrunk page with white bands.
+ * With no paper chosen, the printer's paper that matches the document's own page size is used, and that page prints 1:1 (edge to edge). */
+const SHEETS = [['A3', 297, 420, /^A3\b/i], ['A4', 210, 297, /^A4\b/i], ['A5', 148, 210, /^A5\b/i], ['Letter', 215.9, 279.4, /^Letter\b/i], ['Legal', 215.9, 355.6, /^Legal\b/i]];
+/** The printer's paper name for a page of wMm × hMm (either orientation, 2 mm slack), or ''. */
+export function paperFor(wMm, hMm, names = []) {
+  const [a, b] = [wMm, hMm].sort((x, y) => x - y);
+  const s = SHEETS.find(([, w, h]) => Math.abs(a - w) <= 2 && Math.abs(b - h) <= 2);
+  if (!s) return '';
+  const fit = names.filter((n) => s[3].test(n));
+  return fit.find((n) => n.trim().toLowerCase() === s[0].toLowerCase()) || fit.sort((x, y) => x.length - y.length)[0] || '';
+}
+/** The first page of a PDF in mm: {w, h}, or null. */
+async function pdfPageMm(pdf) {
+  const code = 'import pymupdf,sys,json\nd=pymupdf.open(sys.argv[1]);r=d[0].rect;print(json.dumps([r.width*25.4/72,r.height*25.4/72]))';
+  const r = await RUN(...py(['-c', code, pdf]), { env: { PYTHONUTF8: '1' } });
+  try { const [w, h] = JSON.parse(String(r.stdout).trim()); return r.status === 0 ? { w, h } : null; } catch { return null; }
+}
+
 /** Sends a PDF to a listed printer. output: print to this file instead (virtual printers, the local proof). */
 export async function printPdf(file, opts, { output = '', docName } = {}) {
   const { printers } = await listPrinters();
   const job = checkOptions(opts, printers);
+  if (!job.paper) {
+    const names = printers.find((x) => x.name === job.printer)?.paper || [];
+    const mm = names.length ? await pdfPageMm(file) : null;
+    const name = mm ? paperFor(mm.w, mm.h, names) : '';
+    if (name) { job.paper = name; job.actual = true; }
+  }
   const method = output ? (PLATFORM === 'win32' ? 'dotnet' : 'lp') : printMethod();
   docName = docName || path.basename(file);
   let tmp = '';

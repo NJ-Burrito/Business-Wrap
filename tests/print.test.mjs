@@ -16,7 +16,7 @@ import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { launchOptions, REPO } from '../engine/export.mjs';
 import { serve } from '../engine/serve.mjs';
-import { setRunner, parseWindows, parseLpstat, parseLpoptions, printCommand, checkOptions, listPrinters, printPdf } from '../engine/printers.mjs';
+import { setRunner, parseWindows, parseLpstat, parseLpoptions, printCommand, checkOptions, listPrinters, printPdf, paperFor } from '../engine/printers.mjs';
 import { py } from '../engine/py.mjs';
 
 const require = createRequire(import.meta.url);
@@ -84,6 +84,10 @@ function mockLp(cmd, args, opt = {}) {
   check('lp: auto orientation passes nothing (landscape figure pages keep landscape)', !lp({}).some((a) => a.startsWith('orientation')));
   const su = (o) => printCommand('sumatra', job(o), { file: 'C:/a.pdf' }).args;
   check('SumatraPDF: -print-to <name> -print-settings … -silent <file>', su({}).join('|') === '-print-to|HP_LaserJet|-print-settings|1x,color,simplex,fit|-silent|C:/a.pdf', su({}).join('|'));
+  // 0.17.8: «printer default» paper put A4 on the driver's Letter sheet; the document's own size is matched and printed 1:1
+  check('paper: an A4 page (either orientation) picks the printer\'s A4, never Letter', paperFor(210, 297, ['Letter', 'Legal', 'A4', 'A4 Small']) === 'A4' && paperFor(297.1, 210.2, ['Letter', 'A4 210 x 297 mm']) === 'A4 210 x 297 mm' && paperFor(215.9, 279.4, ['A4', 'Letter']) === 'Letter');
+  check('paper: no matching sheet or an odd size gives \'\' (the printer default stays)', paperFor(210, 297, ['Letter', 'Legal']) === '' && paperFor(100, 150, ['A4']) === '' && paperFor(210, 297) === '');
+  check('SumatraPDF: a matched paper prints at actual size (noscale), not fit', su({ paper: 'A4', actual: true })[3] === '1x,color,simplex,paper=A4,noscale', su({ paper: 'A4', actual: true })[3]);
   check('SumatraPDF: every option in -print-settings', su({ range: '2-4', copies: 2, color: 'mono', duplex: 'short', paper: 'A3', orientation: 'landscape' })[3] === '2-4,2x,monochrome,duplexshort,paper=A3,landscape,fit', su({ range: '2-4', copies: 2, color: 'mono', duplex: 'short', paper: 'A3', orientation: 'landscape' })[3]);
   const dn = printCommand('dotnet', job({ copies: 2, duplex: 'long', color: 'mono', paper: 'A4', orientation: 'auto' }), { images: ['a.png'], output: 'C:/o.pdf', docName: 'x' });
   const env = JSON.parse(dn.env.BW_JOB);
@@ -101,7 +105,7 @@ function mockLp(cmd, args, opt = {}) {
   calls.length = 0;
   const r = await printPdf(path.join(OUT, 'none.pdf'), { printer: 'Microsoft Print to PDF', copies: 1, range: '1-2' });
   const ps = calls.find((c) => c.cmd === 'powershell.exe' && c.env.BW_JOB);
-  check('print (Windows, mocked): pages rasterised for the range, job sent, job id read', r.ok && r.jobId === 42 && r.pages === 2 && ['python', 'uv'].includes(calls[0].cmd) && calls[0].args.at(-1) === '[1,2]' && JSON.parse(ps.env.BW_JOB).images.length === 2, JSON.stringify(r));
+  check('print (Windows, mocked): pages rasterised for the range, job sent, job id read', r.ok && r.jobId === 42 && r.pages === 2 && calls.some((c) => ['python', 'uv'].includes(c.cmd) && c.args.at(-1) === '[1,2]') && JSON.parse(ps.env.BW_JOB).images.length === 2, JSON.stringify(r));
   check('print: no command is run through a shell', fs.readFileSync(path.join(REPO, 'engine', 'printers.mjs'), 'utf8').includes('shell: false') && !/import \{[^}]*\bexec/.test(fs.readFileSync(path.join(REPO, 'engine', 'printers.mjs'), 'utf8')));
   setRunner(mockLp, 'linux');
   calls.length = 0;
