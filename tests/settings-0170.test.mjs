@@ -60,6 +60,7 @@ async function open(url, { ui = 'en', dark = false, calm = false, ports } = {}) 
     if (pp) window.__bwProbePorts = pp;
     try { localStorage.setItem('bw:ui', u); localStorage.setItem('bw:dark', d ? '1' : '0'); localStorage.setItem('bw:calm', c ? '1' : '0'); } catch { /* none */ }
     window.__launched = [];
+    window.addEventListener('bw:follow', (e) => { e.preventDefault(); (window.__follow ||= []).push(e.detail.url); }); // 0.17.8: the file:// page would replace itself with the served editor; the suite keeps its page
     document.addEventListener('click', (e) => { const a = e.composedPath().find((n) => n.matches?.('a[href^="business-wrap:"]')); if (a) { window.__launched.push(a.getAttribute('href')); e.preventDefault(); } }, true);
   }, { ui, dark, calm, ports });
   await page.goto(url);
@@ -149,7 +150,7 @@ try {
   const launched1 = await until(async () => (await f.evaluate(() => window.__launched)).length >= 1, 5000);
   const l1 = await f.evaluate(() => window.__launched);
   const mid = await toggles(f);
-  check('N17 on: one press hands business-wrap://start (and only that) to the browser; the switch shows «Starting…» (busy)', launched1 && l1.length === 1 && l1[0] === 'business-wrap://start' && mid[0].st === 'starting' && mid[0].busy === 'true', JSON.stringify([l1, mid[0]]));
+  check('N17 on: one press hands business-wrap://start (with this file, 0.17.8; and only that) to the browser; the switch shows «Starting…» (busy)', launched1 && l1.length === 1 && /^business-wrap:\/\/start(\?file=|$)/.test(l1[0]) && mid[0].st === 'starting' && mid[0].busy === 'true', JSON.stringify([l1, mid[0]]));
   check('N17 on: no business-wrap://open?file= and no command to type', !l1.some((u) => u.includes('open?file=')));
   await host.up(); // the launcher has started the host
   await until(async () => (await toggles(f))[0]?.st === 'online', 8000);

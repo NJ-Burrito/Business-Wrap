@@ -40,6 +40,7 @@ const check = (name, ok, detail = '') => {
 const browser = await chromium.launch(launchOptions());
 async function open({ ui = 'ar', width = 1366, height = 860, reduced = false, store = {} } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height }, reducedMotion: reduced ? 'reduce' : 'no-preference' });
+  await ctx.addInitScript(() => { window.__bwProbePorts = []; }); // test hook of editor/settings.js: never probe the real host on 4317 (a machine with the host running would show the server toggle animating)
   await ctx.addInitScript(([u, st]) => { try { if (!sessionStorage.getItem('bw-test-init')) { sessionStorage.setItem('bw-test-init', '1'); localStorage.setItem('bw:ui', u); for (const [k, v] of Object.entries(st)) localStorage.setItem(k, v); } } catch {} }, [ui, store]);
   const page = await ctx.newPage();
   const errors = [];
@@ -273,7 +274,7 @@ try {
       check(`A5 ${ui}: leaving keeps the card (reference area) and the same tool shows it again`, second?.text === SAVE_TXT[ui] && !!(await card()), JSON.stringify(second));
       // keyboard focus shows it too
       await page.keyboard.press('Tab');
-      await rbTabFor(page, 'save'); await sh(page, (r) => r.querySelector('.ribbon .rb-panel [data-a="save"]').focus());
+      await rbTabFor(page, 'save'); await sh(page, (r) => r.querySelector('.island > .b.bar-save[data-a="save"]').focus());
       await page.waitForTimeout(1150);
       const kb = await card();
       check(`A5 ${ui}: keyboard focus shows the card`, kb?.text === SAVE_TXT[ui], JSON.stringify(kb));
@@ -536,7 +537,7 @@ try {
     await rbTabFor(page, 'save'); const r = await sh(page, (R) => {
       const isl = R.querySelector('.island'); const out = {};
       for (const a of ['dark', 'calm', 'calm', 'snap', 'view', 'view', 'uiLang', 'dir', 'dark']) { window.BW.runAction(a); out[a] = R.querySelector('.island') === isl; }
-      return { out, ui: window.BW.S.ui, lang: R.querySelector('.shell').lang, save: R.querySelector('.ribbon .rb-panel [data-a="save"] .w').textContent };
+      return { out, ui: window.BW.S.ui, lang: R.querySelector('.shell').lang, save: R.querySelector('.island > .b.bar-save[data-a="save"] .w').textContent };
     });
     check('0.13 R2: island same node through toggles', Object.values(r.out).every(Boolean), JSON.stringify(r));
     check('0.13 R2: language words follow in place', r.ui === 'en' && r.lang === 'en' && /Save/i.test(r.save), JSON.stringify(r));

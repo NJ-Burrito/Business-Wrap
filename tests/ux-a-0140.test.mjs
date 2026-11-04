@@ -53,7 +53,7 @@ const UX = { ar: {}, en: {} };
 }
 const toastRects = (page) => sh(page, (r) => [...r.querySelectorAll('.toast')].map((x) => { const b = x.getBoundingClientRect(); return { l: b.left, r: b.right, t: b.top, b: b.bottom }; }));
 // 0.14.0: the tools live in the ribbon; Save is on its File tab
-const saveXY = async (page) => { await page.evaluate(() => window.BW.EXT.ribbon.setTab('file')); await page.waitForTimeout(150); return sh(page, (r) => { const q = r.querySelector('.ribbon .rb-panel [data-a="save"]').getBoundingClientRect(); return { x: q.left + q.width / 2, y: q.top + q.height / 2 }; }); };
+const saveXY = async (page) => { await page.evaluate(() => window.BW.EXT.ribbon.setTab('file')); await page.waitForTimeout(150); return sh(page, (r) => { const q = r.querySelector('.island > .b.bar-save[data-a="save"]').getBoundingClientRect(); return { x: q.left + q.width / 2, y: q.top + q.height / 2 }; }); };
 
 try {
   // ── A1 ──
@@ -72,7 +72,7 @@ try {
     await page.waitForTimeout(250);
     check(`A1 ${ui}: leaving the tool keeps the card in the panel (0.15.0 note 10: the panel is a reference area, the user closes it)`, !!(await card(page)));
     await page.evaluate(() => document.activeElement?.blur());
-    await sh(page, (r) => { r.querySelector('.ribbon .rb-panel [data-a="save"]').focus(); });
+    await sh(page, (r) => { r.querySelector('.island > .b.bar-save[data-a="save"]').focus(); });
     await page.keyboard.press('Shift+Tab'); await page.keyboard.press('Tab');
     await page.waitForTimeout(1300);
     const kb = await card(page);

@@ -3,6 +3,7 @@
 // closes the served tab (an http page cannot navigate to file://). Sandbox only: temp state, a free port, BW_BROWSER_STUB (no browser is launched by the host),
 // no registry, no Desktop, never the real host on 4317.
 //   node tests/window-0178.test.mjs
+import './_isolate.mjs';
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
@@ -83,7 +84,7 @@ try {
   await shRoot(page, (r) => r.querySelector('.island .srv-toggle').click());
   const back = await until(() => stubLines().length > 0, 15000);
   const line = stubLines().at(-1) || {};
-  check('off: the host opens the file:// editor as a new window with the served window\'s geometry', back && line.launcher && line.args.at(-1) === pathToFileURL(editor).href && line.args.includes(`--window-position=${geo.x},${geo.y}`) && line.args.includes(`--window-size=${geo.w},${geo.h}`), JSON.stringify([geo, line]));
+  check('off: the host opens the file:// editor as a new window with the served window\'s geometry', back && line.launcher && [pathToFileURL(editor).href, pathToFileURL(fs.realpathSync.native(editor)).href].includes(line.args.at(-1)) && line.args.includes(`--window-position=${geo.x},${geo.y}`) && line.args.includes(`--window-size=${geo.w},${geo.h}`), JSON.stringify([geo, line]));
   check('off: the host goes away (host only) and the served tab closes itself', await until(async () => !(await up(P)), 15000) && (await until(async () => (await page.evaluate(() => window.__closed).catch(() => 0)) >= 1, 5000)));
 
   // a served tab that did NOT come from disk keeps the old behaviour: nothing reopened, the page stays

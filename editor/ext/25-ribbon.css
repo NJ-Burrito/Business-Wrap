@@ -27,14 +27,17 @@
 .island:has(> .ribbon) > .ctx[data-fit~="nowords"] .sb > .b:not(.ico) > .w { display: none; }
 .island:has(> .ribbon) > .ctx[data-fit~="nowords"] .sb > .b:not(.ico) { padding-inline: 8px; }
 /* narrow windows: the changes counter keeps its number and drops its word so the strip keeps room for «More» */
+/* 0.17.9: the gold Save joined the top row, so with nothing selected the row is full: the palette button is the icon alone up to 1400 px and Save too up to 1000 px, as a selection already makes them (the bar must not change height on select: selection-strip S2) */
+@media (max-width: 1400px) { .island:has(> .ribbon) > .b.cmd .w { display: none; } }
+@media (max-width: 1000px) { .island:has(> .ribbon) > .b.bar-save .w { display: none; } }
 @media (max-width: 1100px) { .island:has(> .ribbon) .status .count .w { display: none; } .island:has(> .ribbon) .status .count { padding-inline: 8px; } }
 .island:has(> .ribbon) > .ctx[hidden] { display: flex !important; visibility: hidden; position: absolute; inline-size: 0; min-inline-size: 0; flex: 0 0 0; } /* out of the flow, so the quick strip keeps its gaps (history sits 24 px from the direction pill) */
 .island:has(> .ribbon) > .ctx[hidden] > * { display: none !important; } /* nothing in it can be hovered, focused or counted while no selection exists */
 .island:has(> .ribbon) > .ctx[hidden], .island:has(> .ribbon) > .ctx[hidden] * { animation: none !important; transition: none !important; }
 .island:has(> .ribbon) > .ctx[hidden]::after { content: none !important; }
-/* under 960 px the row has no room left for the strip beside the brand, the pills and the changes counter: the strip gets a row of its own, between them and the ribbon, and that row is
+/* under 1040 px (0.17.9: was 960, before the gold Save joined the row) the row has no room left for the strip beside the brand, the pills and the changes counter: the strip gets a row of its own, between them and the ribbon, and that row is
  * reserved whether or not anything is selected, so selecting still changes no height */
-@media (max-width: 959px) {
+@media (max-width: 1039px) {
   .island:has(> .ribbon) > .ctx, .island:has(> .ribbon) > .ctx[hidden] { order: 9; flex: 0 0 100%; inline-size: 100%; position: static; display: flex !important; visibility: visible; }
   .island:has(> .ribbon) > .ctx[hidden] { visibility: hidden; }
   /* the row breaks at a fixed place (after the brand, the selectors and the language pills), so the rows do not depend on how wide the selectors are while something is selected */

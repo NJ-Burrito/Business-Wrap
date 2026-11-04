@@ -60,6 +60,7 @@ async function openPage(ctx, url, { ports, ui } = {}) {
     if (u) { try { localStorage.setItem('bw:ui', u); } catch { /* none */ } }
     // (0.15.0: no banner, nothing to switch on: an automated browser sees the toggle like anyone)
     window.__launched = [];
+    window.addEventListener('bw:follow', (e) => { e.preventDefault(); (window.__follow ||= []).push(e.detail.url); }); // 0.17.8: the file:// page would replace itself with the served editor; the suite keeps its page
     document.addEventListener('click', (e) => { const a = e.composedPath().find((n) => n.matches?.('a[href^="business-wrap:"]')); if (a) { window.__launched.push(a.getAttribute('href')); e.preventDefault(); } }, true);
   }, { ports, ui });
   await page.goto(url);
@@ -87,7 +88,7 @@ try {
   await press(f1);
   await until(async () => (await f1.evaluate(() => window.__launched.length)) > 0, 6000);
   const launched = await f1.evaluate(() => window.__launched);
-  check('start: hands business-wrap://start (no file, no command to type) to the browser, once', launched.length === 1 && launched[0] === 'business-wrap://start', JSON.stringify(launched));
+  check('start: hands business-wrap://start (no file, no command to type) to the browser, once', launched.length === 1 && /^business-wrap:\/\/start(\?file=|$)/.test(launched[0]), JSON.stringify(launched));
   const bs = await bar(f1);
   check('start: while it starts the toggle is disabled, aria-busy, and says «جارٍ التشغيل…»', bs && bs.disabled && bs.busy === 'true' && bs.st === 'starting' && /جارٍ التشغيل/.test(bs.word), JSON.stringify(bs));
   const h = handler(launched[0], { BW_OPEN_PORT: String(p1) });
@@ -107,7 +108,7 @@ try {
   await press(f1);
   await until(async () => (await f1.evaluate(() => window.__launched.length)) > 0, 6000);
   const l2 = await f1.evaluate(() => window.__launched);
-  check('died: Start asks for business-wrap://start again', l2.length === 1 && l2[0] === 'business-wrap://start', JSON.stringify(l2));
+  check('died: Start asks for business-wrap://start again', l2.length === 1 && /^business-wrap:\/\/start(\?file=|$)/.test(l2[0]), JSON.stringify(l2));
   const h3 = handler(l2[0], { BW_OPEN_PORT: String(p1) });
   check('died: the real handler starts it again', h3.status === 0 && (await up(p1)), `${h3.status} ${h3.stderr}`.slice(0, 200));
   check('died: once it answers again the toggle shows online', await until(async () => (await bar(f1))?.st === 'online', 15000), JSON.stringify(await bar(f1)));

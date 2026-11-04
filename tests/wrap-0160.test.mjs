@@ -109,15 +109,18 @@ try {
       await page.reload();
       await page.waitForFunction(() => document.documentElement.dataset.bwReady === '1', null, { timeout: 15000 });
       check(`R ${mode} ready state: the reloaded page shows the saved library document`, /^doc-/.test(await page.evaluate(() => window.BW.S.svc)));
+      await page.waitForTimeout(800); // slow runner: let the open-time autosave land first, so the mark read below is the settled one and the increment waited for is this Save's own
       const m0 = await mark();
       await edit('second-' + mode);
       await page.evaluate(() => window.BW.runAction('save'));
       await page.waitForFunction((n) => Number(document.documentElement.dataset.bwLibSaved || 0) > n, m0, { timeout: 15000 });
+      await page.waitForTimeout(500); // the Save's mirror request to the server is in flight when the mark is set; let it land before the reload
       await page.reload();
       await page.waitForFunction(() => document.documentElement.dataset.bwReady === '1', null, { timeout: 15000 });
       const t2 = await page.evaluate(() => JSON.stringify(window.BW.M[window.BW.S.svc].ar.doc.chapters[0].sections[0].blocks[0]));
       check(`R ${mode}: a second edit, Save, reload brings the second edit back`, t2.includes('second-' + mode), t2.slice(0, 140));
       // an edit and a reload at once, no Save: the autosave must not lose it
+      await page.waitForTimeout(800);
       await edit('third-' + mode);
       await page.reload();
       await page.waitForFunction(() => document.documentElement.dataset.bwReady === '1', null, { timeout: 15000 });

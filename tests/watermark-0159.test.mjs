@@ -78,7 +78,7 @@ try {
   {
     const { ctx, page, errors } = await open();
     const m = await measure(page);
-    check('looked: editor ready over http, the mark is mounted with 4 roles + intro and an 84 px stage at the bottom corner (Arabic: right, 44 px from the edge, 0.17.8 O4)', !!m && m.w === 84 && m.h === 84 && m.r === 44, JSON.stringify(m));
+    check('looked: editor ready over http, the mark is mounted with 4 roles + intro and an 84 px stage at the bottom LEFT in both languages (44 px from the edge, 0.17.8 O4)', !!m && m.w === 84 && m.h === 84 && m.l === 44, JSON.stringify(m));
     check('looked: BW_WM.roles() = tester, teacher, volunteer, professional', JSON.stringify(await page.evaluate(() => window.BW_WM.roles())) === '["tester","teacher","volunteer","professional"]');
     check('no page errors on boot', errors.length === 0, errors.join(' | '));
     await ctx.close();
@@ -115,7 +115,7 @@ try {
     for (const dark of [false, true]) {
       const { ctx, page } = await open({ ui: dark ? 'ar' : 'en', dark, width, height: Math.round(width * 0.5625), zoom });
       const m = await measure(page);
-      check(`M1 zoom ${zoom * 100}% ${width} ${dark ? 'dark ar' : 'light en'}: visible at its home corner (css viewport ${m?.vw}x${m?.vh})`, m1ok(m) && (dark ? m.r : m.l) === 44 && m.b >= 16 && m.b <= 40, JSON.stringify(m));
+      check(`M1 zoom ${zoom * 100}% ${width} ${dark ? 'dark ar' : 'light en'}: visible at its home corner (css viewport ${m?.vw}x${m?.vh})`, m1ok(m) && m.l === 44 && m.b >= 16 && m.b <= 40, JSON.stringify(m));
       await ctx.close();
     }
   }

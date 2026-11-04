@@ -3,12 +3,14 @@
 // (BW.EXT.ribbon.tabs() + the panel it draws), never typed into a test. A command that is on no tab goes through the palette (Ctrl+K).
 //   import { act, rbBtn, rbTabFor, rbTabs } from './_ribbon.mjs';
 const HOST = '#bw-ui-host';
+// 0.17.8 (O7): Save lives in the top bar (gold, beside the palette), on no ribbon tab; every other tool is in the ribbon panel
+const selOf = (a, dd = null) => (a === 'save' ? '.island > .b.bar-save[data-a="save"]' : `.ribbon .rb-panel [data-a="${a}"]${dd ? `[data-d="${dd}"]` : ''}`);
 
 /** The tab id (general or contextual, whichever is drawn now) whose panel holds [data-a=action]; null if none. Leaves that tab open. */
 export async function rbTabFor(page, action, d = null) {
   return page.evaluate(async ([a, dd]) => {
     const R = window.BW.EXT.ribbon; const r = document.getElementById('bw-ui-host').shadowRoot;
-    const sel = `.ribbon .rb-panel [data-a="${a}"]${dd ? `[data-d="${dd}"]` : ''}`;
+    const sel = a === 'save' ? '.island > .b.bar-save[data-a="save"]' : `.ribbon .rb-panel [data-a="${a}"]${dd ? `[data-d="${dd}"]` : ''}`;
     const has = () => !!r.querySelector(sel);
     if (has()) return R.state.tab;
     const cur = R.state.tab;
@@ -23,13 +25,13 @@ export const rbTabs = (page) => page.evaluate(() => window.BW.EXT.ribbon.tabs())
 /** A locator for the ribbon button of an action, after opening the tab that holds it (the first locator even if absent). */
 export async function rbBtn(page, action, d = null) {
   await rbTabFor(page, action, d);
-  return page.locator(HOST).locator(`.ribbon .rb-panel [data-a="${action}"]${d ? `[data-d="${d}"]` : ''}`).first();
+  return page.locator(HOST).locator(selOf(action, d)).first();
 }
 /** Run an action like a user: its ribbon tab, then the click ('hover' / 'focus' also allowed); the palette when it is not on the ribbon. */
 export async function act(page, action, { how = 'click', d = null, timeout = 8000 } = {}) {
   const tab = await rbTabFor(page, action, d);
   if (tab) {
-    const b = page.locator(HOST).locator(`.ribbon .rb-panel [data-a="${action}"]${d ? `[data-d="${d}"]` : ''}`).first();
+    const b = page.locator(HOST).locator(selOf(action, d)).first();
       return b[how]({ timeout });
   }
   await page.keyboard.press('Control+K');
