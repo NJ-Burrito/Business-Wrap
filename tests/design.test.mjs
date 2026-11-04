@@ -457,9 +457,16 @@ try {
     for (const [name, opts, calm] of [['calm mode', {}, true], ['reduced motion', { reducedMotion: 'reduce' }, false]]) {
       const c = await iconPage(opts, calm);
       await shadow(c.p, (r) => r.querySelectorAll('#icm-probe .b').forEach((b) => b.classList.add('ic-go')));
+      // slow CI runner: a 60 ms sample can land before the animation starts or after it ended. Record the animationstart events inside the page
+      // (the hovered icon's own move counts whenever it starts) and wait in the page, up to 4 s, for one; the calm branch still samples once.
+      if (!calm) await shadow(c.p, (r) => { window.__icmSeen = []; r.addEventListener('animationstart', (e) => { if (/^(icm|pjm)-/.test(e.animationName || '')) window.__icmSeen.push(e.animationName); }, true); });
       await c.p.locator(`#icm-probe [data-probe="${c.keys[0]}"]`).hover();
       await c.p.waitForTimeout(60);
-      const a = await icm(c.p, '#icm-probe .ic');
+      let a = await icm(c.p, '#icm-probe .ic');
+      if (!calm && a.length < 1) {
+        await c.p.waitForFunction(() => window.__icmSeen.length > 0, null, { timeout: 4000 }).catch(() => {});
+        a = await c.p.evaluate(() => window.__icmSeen.slice());
+      }
       if (calm) check(`0.13 icons: ${name} → 0 icon animations (${c.keys.length} pressed + hovered)`, a.length === 0, a.join(','));
       else check(`0.13 icons: ${name} does not still the icons (owner 2026-10-31: only Calm reduces motion): the hovered icon plays`, a.length >= 1, a.join(',')); // OS reduced motion
       await c.ctx.close();
