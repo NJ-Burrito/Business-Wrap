@@ -1,0 +1,101 @@
+/* 0.17.8 (O6) · the Explain panel (.xpl-dock, explainers.js) in the current theme: brand tokens only (--bw-*), navy glass, a gold accent, the dim dark set
+ * of 45-dark-dim.css (it follows the tokens, nothing here is a colour of its own), Thmanyah only. Loads after ux.css (ext/*.css come last), so it refines
+ * that file's panel without touching it. Layout and words are unchanged; AR (rtl) and EN (ltr) use logical properties and mirror together.
+ *
+ * Motion (transitions-dev tokens: ease-out for arrivals, spring for small pops, 120-320 ms, distances 6-10 px, stagger 45 ms):
+ *   panel   slides in (ux.css) then its header rule draws, the picture opens and the hint rises in turn   (.enter)
+ *   card    picture reveals, then title, key, text and button arrive one after another                       (.xpl.in)
+ *   swap    the text slides a few px along the reading direction while the picture cross-fades              (.xpl.swap)
+ *   more    the text opens and closes by height, not by a jump                                                (p.open / p.closing)
+ *   hover   picture leans in, close button turns, edge tab nudges, every control has a gold focus ring
+ * ONLY the editor's Calm button (.shell[data-calm="1"]) stops all of it. No OS reduced-motion media query anywhere in this file (owner rule). */
+.xpl-dock {
+  --xe-out: cubic-bezier(.22, 1, .36, 1);
+  --xe-io: cubic-bezier(.65, 0, .35, 1);
+  --xe-gold: var(--bw-accent-rule, var(--bw-accent));
+  background: color-mix(in srgb, var(--bw-surface) 94%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15); backdrop-filter: blur(14px) saturate(1.15);
+  border-radius: 18px;
+  box-shadow: var(--bw-shadow-3), 0 0 0 1px color-mix(in srgb, var(--bw-line) 80%, var(--bw-primary) 20%), inset 0 1px 0 color-mix(in srgb, var(--bw-on-glass, #fff) 10%, transparent);
+  font-family: var(--bw-font-ui, 'Thmanyah Sans', system-ui, sans-serif);
+  transition: transform .26s var(--xe-out), opacity .2s var(--xe-io), box-shadow .24s var(--xe-out);
+}
+.xpl-dock[data-open="0"] { background: var(--bw-surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.xpl-dock[data-open="0"]:hover { box-shadow: var(--bw-shadow-3), 0 0 0 1px var(--xe-gold); }
+.xpl-dock:not([data-open="0"]):hover { box-shadow: var(--bw-shadow-3), 0 0 0 1px color-mix(in srgb, var(--bw-line) 55%, var(--xe-gold) 45%), inset 0 1px 0 color-mix(in srgb, var(--bw-on-glass, #fff) 10%, transparent); }
+
+/* header: navy glass bar, a gold rule under it that draws from the reading start */
+.xpl-dock .xd-h { background: color-mix(in srgb, var(--bw-surface-2) 78%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: none; }
+.xpl-dock .xd-h::after { content: ""; position: absolute; inset-inline: 0; inset-block-end: 0; block-size: 2px; background: linear-gradient(to right, var(--xe-gold), color-mix(in srgb, var(--xe-gold) 0%, transparent)); transform-origin: left center; }
+.xpl-dock[dir="rtl"] .xd-h::after { background: linear-gradient(to left, var(--xe-gold), color-mix(in srgb, var(--xe-gold) 0%, transparent)); transform-origin: right center; }
+.xpl-dock .xd-h .i { inline-size: 26px; block-size: 26px; padding: 4px; box-sizing: border-box; border-radius: 9px; background: var(--bw-primary-soft); color: var(--bw-primary); align-items: center; justify-content: center; transition: transform .32s var(--e-spring, var(--xe-out)); }
+.xpl-dock .xd-h:hover .i { transform: rotate(-8deg) scale(1.08); }
+.xpl-dock .xd-w { letter-spacing: 0; }
+.xpl-dock .xd-x { transition: background-color .16s var(--xe-out), color .16s var(--xe-out), transform .26s var(--xe-out); }
+.xpl-dock .xd-x .ic { transition: transform .3s var(--xe-out); }
+.xpl-dock .xd-x:hover .ic { transform: rotate(90deg); }
+.xpl-dock .xd-x:active { transform: scale(.92); }
+.xpl-dock .xd-x:focus-visible, .xpl-dock .xd-tab:focus-visible, .xpl .xm:focus-visible { outline: 2px solid var(--bw-focus, var(--bw-accent)); outline-offset: 1px; }
+
+/* the picture: a soft navy wash with a gold hairline under it; leans in on hover */
+.xpl-dock .xpl .xa, .xpl-dock .xph .xa { position: relative; background: radial-gradient(120% 120% at 50% 0%, var(--bw-surface-2), var(--bw-primary-soft)); box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--xe-gold) 45%, transparent); }
+.xpl-dock .xa svg { transition: transform .5s var(--xe-out); transform-origin: 50% 60%; }
+.xpl-dock .xpl:hover .xa svg, .xpl-dock .xph:hover .xa svg { transform: scale(1.035); }
+
+/* the card */
+.xpl-dock .xpl .xb { padding: 12px 16px 16px; }
+.xpl-dock .xpl .xt b { color: var(--bw-primary); letter-spacing: 0; }
+.xpl-dock .xpl .xt kbd { background: var(--bw-surface-2); color: var(--bw-ink-muted); box-shadow: 0 0 0 1px var(--bw-line), 0 1px 0 var(--bw-line-strong); transition: transform .24s var(--e-spring, var(--xe-out)), box-shadow .2s var(--xe-out); }
+.xpl-dock .xpl:hover .xt kbd { transform: translateY(-1px); box-shadow: 0 0 0 1px var(--xe-gold), 0 2px 0 var(--xe-gold); }
+.xpl-dock .xpl p { color: var(--bw-ink-muted); max-block-size: 7.75em; transition: max-block-size .3s var(--xe-out); }
+.xpl-dock .xpl p.open { max-block-size: var(--xh, 40em); }
+.xpl-dock .xpl p.open.closing { max-block-size: 7.75em; }
+.xpl .xm { all: unset; box-sizing: border-box; margin-block-start: 6px; padding: 3px 8px; border-radius: 8px; cursor: pointer; font: 800 12.5px/1.3 var(--bw-font-ui, 'Thmanyah Sans', system-ui, sans-serif); color: var(--bw-accent-strong, var(--bw-primary)); background: color-mix(in srgb, var(--xe-gold) 12%, transparent); transition: background-color .16s var(--xe-out), transform .2s var(--xe-out); }
+.xpl .xm[hidden] { display: none; }
+.xpl .xm:hover { background: color-mix(in srgb, var(--xe-gold) 24%, transparent); transform: translateY(-1px); }
+.xpl .xm:active { transform: scale(.96); }
+
+/* the hint shown before any card */
+.xpl-dock .xph p { color: var(--bw-ink-muted); }
+
+/* the edge tab (closed panel) */
+.xpl-dock .xd-tab { color: var(--bw-primary); transition: background-color .16s var(--xe-out); }
+.xpl-dock .xd-tab .i { transition: transform .3s var(--xe-out); }
+.xpl-dock .xd-tab:hover .i { transform: translateX(-3px) scale(1.12); }
+.xpl-dock[dir="rtl"] .xd-tab:hover .i { transform: translateX(3px) scale(1.12); }
+
+/* ── motion: panel arrival ── */
+.xpl-dock.enter .xd-h::after { animation: xe-rule .55s var(--xe-out) .12s both; }
+.xpl-dock.enter .xd-h .i { animation: xe-pop .45s var(--e-spring, var(--xe-out)) .1s both; }
+.xpl-dock.enter .xph .xa { animation: xe-art .5s var(--xe-out) .14s both; }
+.xpl-dock.enter .xph p { animation: xe-rise .42s var(--xe-out) .26s both; }
+
+/* ── motion: card arrival (first card) and swap (another tool, in place) ── */
+.xpl-dock .xpl.in { animation: xe-card .26s var(--xe-out) both; }
+.xpl-dock .xpl.in .xa { animation: xe-art .5s var(--xe-out) both; }
+.xpl-dock .xpl.in .xa svg { animation: xe-settle .7s var(--xe-out) both; }
+.xpl-dock .xpl.in .xt b { animation: xe-rise .38s var(--xe-out) .08s both; }
+.xpl-dock .xpl.in .xt kbd { animation: xe-pop .4s var(--e-spring, var(--xe-out)) .16s both; }
+.xpl-dock .xpl.in p { animation: xe-rise .4s var(--xe-out) .13s both; }
+.xpl-dock .xpl.in .xm { animation: xe-rise .4s var(--xe-out) .2s both; }
+.xpl-dock .xpl.swap { animation: xe-fade .18s var(--xe-io) both; }
+.xpl-dock .xpl.swap .xa { animation: xe-fade .24s var(--xe-io) both; }
+.xpl-dock .xpl.swap .xa svg { animation: xe-settle .5s var(--xe-out) both; }
+.xpl-dock .xpl.swap :is(.xt b, p, .xm) { animation: xe-slide .3s var(--xe-out) both; }
+.xpl-dock .xpl.swap .xt kbd { animation: xe-pop .34s var(--e-spring, var(--xe-out)) .04s both; }
+.xpl-dock .xpl.swap p { animation-delay: .04s; }
+.xpl-dock .xpl[dir="rtl"].swap :is(.xt b, p, .xm) { animation-name: xe-slide-r; }
+
+@keyframes xe-rule { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes xe-pop { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: none; } }
+@keyframes xe-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes xe-card { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes xe-art { from { opacity: 0; clip-path: inset(0 0 100% 0); } to { opacity: 1; clip-path: inset(0 0 0 0); } }
+@keyframes xe-settle { from { transform: scale(1.08); } to { transform: scale(1); } }
+@keyframes xe-fade { from { opacity: .3; } to { opacity: 1; } }
+@keyframes xe-slide { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+@keyframes xe-slide-r { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+
+/* ── Calm: the only switch that stops it ── */
+.shell[data-calm="1"] .xpl-dock, .shell[data-calm="1"] .xpl-dock * , .shell[data-calm="1"] .xpl-dock *::after { animation: none !important; transition: none !important; }
+.shell[data-calm="1"] .xpl-dock :is(.xd-h .i, .xd-x .ic, .xd-tab .i, .xa svg, .xt kbd, .xm) { transform: none !important; }

@@ -114,6 +114,7 @@ function xplDock() {
     dock.className = 'xpl-dock bw-sidepanel';
     dock.innerHTML = '<header class="xd-h"><span class="i"></span><b class="xd-w"></b><button type="button" class="xd-x" aria-controls="bw-xpl-body"></button></header><div class="xd-b" id="bw-xpl-body"><div class="xph"><div class="xa" aria-hidden="true"></div><p></p></div></div><button type="button" class="xd-tab"><span class="i"></span></button>';
     shell.appendChild(dock);
+    if (xplPanelOpen()) xplEnter(dock);
     const tab = dock.querySelector('.xd-tab'); // closed (or stepped aside) the dock IS this 40 x 96 edge tab
     dock.querySelector('.xd-x').addEventListener('click', () => xplPanelSet(false));
     tab.addEventListener('click', () => { dock.dataset.force = '1'; xplPanelSet(true); });
@@ -145,13 +146,22 @@ function xplDock() {
   dock.querySelector('.xd-b').hidden = !open;
   return dock;
 }
+/** 0.17.8 (O6): the panel's own parts (header rule, picture, hint) arrive in a short stagger after the slide. Class only: the CSS is in ext/37-explain.css and
+ *  stands still under the Calm button (.shell[data-calm="1"]), never under the OS reduced-motion setting. */
+function xplEnter(dock) {
+  clearTimeout(dock.__enT);
+  dock.classList.remove('enter');
+  void dock.offsetWidth;
+  dock.classList.add('enter');
+  dock.__enT = setTimeout(() => dock.classList.remove('enter'), 900);
+}
 function xplPanelSet(open, temp = false) {
   if (!temp) ls.set('bw:xpl-panel', open ? '1' : '0'); // temp = folded for the spelling panel: the preference is not touched
   XPL_FOLDED = temp && !open;
   const dock = root.querySelector('.xpl-dock');
   if (!open) xplClear();
   if (!dock) { xplDock(); return; }
-  if (open) bwSidePanelOpen(dock, xplDock); // slides in over the pages
+  if (open) { bwSidePanelOpen(dock, xplDock); xplEnter(dock); } // slides in over the pages, then its parts follow one after another
   else if (xplPanelVisible()) bwSidePanelClose(dock, xplDock); // slides out, then only the edge tab stays
   else xplDock();
 }
@@ -294,7 +304,21 @@ function xplShow(el, k) {
   const p = card.querySelector('.xb p'), more = card.querySelector('.xm');
   if (p.scrollHeight > p.clientHeight + 2) {
     more.hidden = false;
-    more.addEventListener('click', () => { const o = p.classList.toggle('open'); more.textContent = t(o ? 'xpl.less' : 'xpl.more'); });
+    // the text opens and closes by height (0.17.8): the open height is measured now, the close runs back to five lines and only then re-applies the clamp
+    p.style.setProperty('--xh', `${p.scrollHeight}px`);
+    more.setAttribute('aria-expanded', 'false');
+    more.addEventListener('click', () => {
+      const calm = shell.dataset.calm === '1';
+      clearTimeout(p.__xT);
+      if (!p.classList.contains('open') || p.classList.contains('closing')) {
+        p.classList.remove('closing'); p.classList.add('open');
+        more.textContent = t('xpl.less'); more.setAttribute('aria-expanded', 'true');
+      } else {
+        more.textContent = t('xpl.more'); more.setAttribute('aria-expanded', 'false');
+        if (calm) p.classList.remove('open');
+        else { p.classList.add('closing'); p.__xT = setTimeout(() => p.classList.remove('open', 'closing'), 300); }
+      }
+    });
   }
   if (st.el && st.el !== el) st.el.removeAttribute('aria-describedby');
   el.setAttribute('aria-describedby', 'bw-xpl');
