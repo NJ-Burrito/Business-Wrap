@@ -85,6 +85,16 @@ export function copyToDesktop({ lnk, desktop }) {
   return { copy, replaced };
 }
 
+/** True when the Desktop copy `lnk` points at an install folder that no longer exists. Cheap first: a copy that holds this install's own path is fine (no shell call). */
+function deadCopy(lnk, installDir) {
+  try {
+    const b = fs.readFileSync(lnk);
+    if (b.includes(Buffer.from(installDir, 'utf16le')) || b.includes(Buffer.from(installDir, 'latin1'))) return false;
+    const cur = installOf(readShortcut(lnk)?.args);
+    return !!cur && !fs.existsSync(cur);
+  } catch { return false; }
+}
+
 /** The launcher in place, and the Desktop copy when this install (version + folder) has not put one there yet (or `force`). Never throws.
  *  → {launcher, desktop:{copy, replaced}|{skipped}}. */
 export function ensureLauncher({ installDir = INSTALL, lnkDir, desktop, force = false, node } = {}) {
@@ -92,7 +102,8 @@ export function ensureLauncher({ installDir = INSTALL, lnkDir, desktop, force = 
     if (process.platform !== 'win32') return { supported: false, reason: 'windows-only' };
     const ver = version(installDir);
     const stamp = readStamp(installDir);
-    const due = force || !stamp || stamp.version !== ver || stamp.install !== installDir;
+    let due = force || !stamp || stamp.version !== ver || stamp.install !== installDir;
+    if (!due) { const w = stamp.desktop || stamp.watch; if (w && fs.existsSync(w) && deadCopy(w, installDir)) due = true; } // 0.17.4: a current stamp, but the Desktop copy points at a folder that is gone: repair it
     const dir = lnkDir || lnkDirFor(installDir);
     const have = path.join(dir, LNK_NAME);
     let launcher = { ok: true, lnk: have, replaced: false, kept: true };
@@ -105,7 +116,7 @@ export function ensureLauncher({ installDir = INSTALL, lnkDir, desktop, force = 
     const current = fs.existsSync(existing) ? installOf(readShortcut(existing)?.args) : null;
     const may = mayTakeOver({ installDir, current, explicit: force, realProfile: desktop === undefined && !process.env.BW_DESKTOP_DIR });
     if (!may.ok) {
-      writeAtomic(stampFile(installDir), JSON.stringify({ version: ver, install: installDir, desktop: null, skipped: may.why, at: new Date().toISOString() }, null, 1)); // asked once, not on every run
+      writeAtomic(stampFile(installDir), JSON.stringify({ version: ver, install: installDir, desktop: null, watch: existing, skipped: may.why, at: new Date().toISOString() }, null, 1)); // asked once, not on every run
       return { launcher, desktop: { skipped: may.why, ...(current ? { keeps: current } : {}) } };
     }
     const d = copyToDesktop({ lnk: launcher.lnk, desktop: where });

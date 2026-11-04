@@ -13,7 +13,7 @@ import { spawnSync } from 'node:child_process';
 import { REPO } from '../engine/export.mjs';
 import * as P from '../engine/protocol.mjs';
 import { ensureLauncher, readShortcut, desktopDir, LNK_NAME } from '../launcher/launcher.mjs';
-import { mayTakeOver, installOf, isCheckout } from '../launcher/ownership.mjs';
+import { mayTakeOver, installOf, isWorktree } from '../launcher/ownership.mjs';
 
 const results = [];
 let failed = 0;
@@ -39,10 +39,13 @@ try {
   check('rule: explicit (force / register) always wins', mayTakeOver({ installDir: tmp, current: os.homedir(), explicit: true }).ok);
   check('rule: a sandboxed run never takes the real profile, whatever it holds', mayTakeOver({ installDir: tmp, current: null }).why === 'sandbox');
   const keep = {}; for (const k of ['BW_TEST_MODE', 'BW_TEST_SLOT', 'BW_LOCAL_DIR', 'BW_STATE_DIR', 'BW_WORKSPACE']) { keep[k] = process.env[k]; delete process.env[k]; }
-  const co = path.join(tmp, 'checkout'); fs.mkdirSync(co); fs.writeFileSync(path.join(co, '.git'), 'gitdir: x');
+  const co = path.join(tmp, 'worktree'); fs.mkdirSync(co); fs.writeFileSync(path.join(co, '.git'), 'gitdir: x/.git/worktrees/w'); // a worktree: .git is a FILE
+  const clone = path.join(tmp, 'clone'); fs.mkdirSync(path.join(clone, '.git'), { recursive: true }); // a primary clone: .git is a folder
   const r1 = mayTakeOver({ installDir: co, current: null }); const r2 = mayTakeOver({ installDir: co, current: dead }); const r3 = mayTakeOver({ installDir: tmp, current: dead });
+  const c1 = mayTakeOver({ installDir: clone, current: null }); const c2 = mayTakeOver({ installDir: clone, current: clone }); const c3 = mayTakeOver({ installDir: clone, current: dead }); const c4 = mayTakeOver({ installDir: clone, current: os.homedir() });
   for (const [k, v] of Object.entries(keep)) if (v !== undefined) process.env[k] = v;
-  check('rule: a git checkout never takes the real profile on its own (not even a dead one or an empty one); a release install does', r1.why === 'checkout' && r2.why === 'checkout' && r3.ok && isCheckout(co) && !isCheckout(tmp));
+  check('rule: a git WORKTREE (.git is a file) never takes the real profile on its own (not even a dead or an empty one); a release install does', r1.why === 'worktree' && r2.why === 'worktree' && r3.ok && isWorktree(co) && !isWorktree(tmp));
+  check('rule: a primary CLONE (.git is a folder, the owner own install) is an install like any other: takes none / itself / a dead target, never a live other install', c1.ok && c2.ok && c3.why === 'dead-target' && c4.why === 'other-install-alive' && !isWorktree(clone));
   check('installOf: reads the install out of a launcher command and a handler command', installOf('//B //Nologo "C:\\x y\\Business-Wrap\\launcher\\open-editor.vbs" "C:\\n\\node.exe"') === 'C:\\x y\\Business-Wrap' && installOf('"node.exe" "O:\\a\\update\\cli.mjs" handle "%1"') === 'O:\\a' && installOf('nothing') === null);
 
   if (win) {
@@ -59,6 +62,17 @@ try {
     fs.rmSync(B, { recursive: true, force: true }); // the install the shortcut points at is gone: a dead target
     const c = ensureLauncher({ installDir: C, lnkDir: path.join(tmp, 'lnkC'), desktop });
     check('desktop: a target whose install folder is gone is taken over by the next install', !!c.desktop?.copy && targetOf()?.toLowerCase() === C.toLowerCase(), JSON.stringify(c.desktop));
+    // repair: the stamp is current, but the Desktop copy points at a folder that is gone (E is deleted after C took it, E then runs again without force)
+    const E = fake('E');
+    ensureLauncher({ installDir: E, lnkDir: path.join(tmp, 'lnkE'), desktop, force: true });
+    const Z = fake('Z'); ensureLauncher({ installDir: Z, lnkDir: path.join(tmp, 'lnkZ'), desktop, force: true }); // the copy now belongs to Z
+    const e2 = ensureLauncher({ installDir: E, lnkDir: path.join(tmp, 'lnkE'), desktop });
+    check('repair: a Desktop copy that points at another LIVE install is not touched', ['already-copied', 'other-install-alive'].includes(e2.desktop?.skipped) && targetOf()?.toLowerCase() === Z.toLowerCase(), JSON.stringify(e2.desktop));
+    fs.rmSync(Z, { recursive: true, force: true });
+    const e3 = ensureLauncher({ installDir: E, lnkDir: path.join(tmp, 'lnkE'), desktop });
+    check('repair: a current stamp, but the copy points at a deleted install: repaired without --force', !!e3.desktop?.copy && targetOf()?.toLowerCase() === E.toLowerCase(), JSON.stringify(e3.desktop));
+    const e4 = ensureLauncher({ installDir: E, lnkDir: path.join(tmp, 'lnkE'), desktop });
+    check('repair: and a copy that already points at this install is left as it is (no re-copy)', e4.desktop?.skipped === 'already-copied');
     // a test run with no Desktop named never reaches the real one
     const realDesk = (() => { try { const r = spawnSync('powershell.exe', ['-NoProfile', '-Command', "[Environment]::GetFolderPath('Desktop')"], { encoding: 'utf8', windowsHide: true }); return String(r.stdout).trim(); } catch { return ''; } })();
     const before = stat(path.join(realDesk, LNK_NAME));
@@ -81,8 +95,8 @@ try {
       P.register({ hive }); // the explicit action (`protocol register`) always takes over
       check('protocol: `protocol register` (explicit) takes over even a live one', P.status({ hive }).current === true);
     } finally { P.unregister({ hive }); spawnSync('reg.exe', ['delete', hive, '/f'], { windowsHide: true }); }
-    const e3 = P.ensureRegistered(); // no hive: this would be the REAL key
-    check('protocol: a sandboxed run with no fake hive never writes the real registration, and the real key did not move', e3.skipped === 'sandbox' && regOf() === realBefore, JSON.stringify(e3));
+    const e5 = P.ensureRegistered(); // no hive: this would be the REAL key
+    check('protocol: a sandboxed run with no fake hive never writes the real registration, and the real key did not move', e5.skipped === 'sandbox' && regOf() === realBefore, JSON.stringify(e5));
   } else check('launcher/protocol take-over: Windows-only parts skipped on this platform', true);
 } finally {
   spawnSync('python', [path.join(os.homedir(), '.claude', 'skills', 'safe-delete', 'scripts', 'trash.py'), tmp], { stdio: 'ignore', windowsHide: true, env: { ...process.env, PYTHONUTF8: '1' } });
