@@ -25,7 +25,7 @@ import { migrate, validateEdits } from './edits.mjs';
 import { importFile, words } from './import/import.mjs';
 import { unzipTo } from './import/unzip.mjs';
 import { planSources, contentKey, buildReport, SYSTEM_SEG } from './import/plan.mjs';
-import { shortDir, lp } from './import/safe.mjs';
+import { shortDir, lp, onShortCopy } from './import/safe.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
@@ -56,7 +56,8 @@ const dirOf = (rel) => (rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) :
 function readSource(file, name, locale) {
   const ext = path.extname(file).toLowerCase();
   if (ext !== '.docx') return importFile(file, { name, locale });
-  const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--one', file, name, locale || ''], { encoding: 'utf8', timeout: 60000, maxBuffer: 256 * 1024 * 1024, windowsHide: true });
+  // python gets a short ASCII-named copy: no code page or MAX_PATH can touch it (the same rule as pdftotext)
+  const r = onShortCopy(file, (short) => spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--one', short, name, locale || ''], { encoding: 'utf8', timeout: 60000, maxBuffer: 256 * 1024 * 1024, windowsHide: true }));
   if (r.error?.code === 'ETIMEDOUT') throw new Error('docx: no answer within 60 s (needs uv and python-docx; first run downloads it)');
   if (r.status !== 0) throw new Error(String(r.stderr || r.error?.message || 'docx import failed').replace(/\s+/g, ' ').slice(-300));
   return JSON.parse(r.stdout);
@@ -146,6 +147,7 @@ export async function importProject({ inputs, project, locale, onProgress = () =
     const plan = planSources(sources);
     documents.push(...plan.documents);
     skipped.push(...plan.skipped);
+    failed.push(...plan.failed);
     done += plan.settled; tick({ state: 'planned' });
     for (const f of plan.toRead) {
       if (isCancelled()) break;

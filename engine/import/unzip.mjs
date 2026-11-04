@@ -105,7 +105,7 @@ export function unzipTo(zipFile, dir, limits = {}) {
       if (data.length !== e.size) throw new Error(`it is ${data.length} bytes, the archive says ${e.size}`);
       fs.mkdirSync(lp(path.dirname(target)), { recursive: true });
       fs.writeFileSync(lp(target), data);
-      files.push({ name: parts.join('/'), file: target, size: data.length });
+      files.push({ name: parts.join('/'), file: lp(target), size: data.length }); // lp: every reader downstream opens it however long the path
     } catch (x) { problems.push({ name: e.name, reason: `cannot be read from the zip: ${String(x.message || x).replace(/\s+/g, ' ').slice(0, 160)}` }); }
   }
   return { files, problems };
