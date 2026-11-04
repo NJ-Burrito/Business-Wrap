@@ -6,6 +6,7 @@
 //   business-wrap://open?file=<absolute path of a .html inside an allowed place>   (exists, carries the bw-data marker)
 //   business-wrap://stop      stops ONLY the host (tabs flushed first); the editor page and every browser window stay open (0.17.0; the CLI `close` still ends everything)
 //   business-wrap://start      (0.17.0) start THIS install's host and open no browser: the editor's settings lane, which cannot start a process, calls it
+//   business-wrap://start?file=<path>   (0.17.8) the same, serving that editor file (the page asking is that file; the page then replaces itself with the served URL, in the same window)
 // Anything else is refused (exit 2). Nothing from the URL reaches a shell: the file is opened through cli.mjs open()
 // (spawn with an args array). Allowed places for the file: the user's home, the temp folder, this install, the save
 // folder, the drive of this install (or `/`), and BW_ALLOWED_ROOTS (a path-delimited list). UNC paths are refused.
@@ -41,8 +42,10 @@ export function parseUrl(raw) {
     return { action: 'stop' };
   }
   if (u.hostname === 'start') {
-    if (keys.length) throw refuse('start takes no arguments');
-    return { action: 'start' };
+    // 0.17.8 (window switch): the file:// editor that asks for the host passes ITS OWN file, so the served editor opens that same document
+    if (keys.length === 0) return { action: 'start' };
+    if (keys.length !== 1 || keys[0] !== 'file' || u.searchParams.getAll('file').length !== 1) throw refuse('start takes no arguments, or exactly one file');
+    return { action: 'start', file: u.searchParams.get('file') };
   }
   if (u.hostname === 'open') {
     if (keys.length !== 1 || keys[0] !== 'file' || u.searchParams.getAll('file').length !== 1) throw refuse('open takes exactly one file');
@@ -200,8 +203,13 @@ export async function handle(url, { grace = Number(process.env.BW_POWER_GRACE_MS
   }
   if (a.action === 'start') {
     // 0.17.0: this install's host, no browser window (the page that asked is already open). With a host already up on the port, open() reuses it; a host of another install is refused (HOST_FOREIGN), never a second one.
-    const r = await cli.open({ inputs: [], browser: false, port: Number(process.env.BW_OPEN_PORT) || 4317 }); // BW_OPEN_PORT: tests only
-    return { action: 'start', url: r.url, port: r.port, pid: r.pid, browser: false };
+    // 0.17.8: with ?file= the host serves that very editor file (the document the person has open). A file that fails the checks (outside the allowed places, not an editor) is
+    // not an error: the host still starts, on the newest document, and the answer says the file was ignored.
+    let file = null;
+    let fileIgnored = null;
+    if (a.file) { try { file = validateFile(a.file); } catch (e) { fileIgnored = String(e.message || e); } }
+    const r = await cli.open({ inputs: file ? [file] : [], browser: false, port: Number(process.env.BW_OPEN_PORT) || 4317 }); // BW_OPEN_PORT: tests only
+    return { action: 'start', url: r.url, port: r.port, pid: r.pid, browser: false, ...(file ? { file } : {}), ...(fileIgnored ? { fileIgnored } : {}) };
   }
   const file = validateFile(a.file);
   const r = await cli.open({ inputs: [file], browser: true, port: Number(process.env.BW_OPEN_PORT) || 4317 }); // BW_OPEN_PORT: tests only

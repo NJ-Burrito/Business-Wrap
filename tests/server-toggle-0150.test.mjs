@@ -51,6 +51,7 @@ async function open(url, { ui, calm, ports } = {}) {
     if (pp) window.__bwProbePorts = pp;
     try { if (u) localStorage.setItem('bw:ui', u); if (c) localStorage.setItem('bw:calm', '1'); } catch { /* none */ }
     window.__launched = [];
+    window.addEventListener('bw:follow', (e) => { e.preventDefault(); (window.__follow ||= []).push(e.detail.url); }); // 0.17.8: the file:// page would replace itself with the served editor; the suite keeps its page
     window.__ev = [];
     window.addEventListener('bw:server', (e) => window.__ev.push(`server:${e.detail.online}`));
     window.addEventListener('bw:wm', (e) => window.__ev.push(`wm:${e.detail.id}`));
@@ -136,7 +137,7 @@ try {
   check('file://, no server: bw:server {online:false} fired and NO bw:wm for the first answer', (await events(f)).includes('server:false') && !(await events(f)).some((x) => x.startsWith('wm:')), JSON.stringify(await events(f)));
   await press(f);
   check('press: «Starting…», disabled, aria-busy, spinner', await until(async () => { const t = (await toggles(f))[0]; return t?.st === 'starting' && t.disabled && t.busy === 'true'; }, 3000), JSON.stringify(await toggles(f)));
-  check('press: hands business-wrap://start to the browser, once', await until(async () => (await f.evaluate(() => window.__launched)).length === 1, 4000) && (await f.evaluate(() => window.__launched))[0] === 'business-wrap://start', JSON.stringify(await f.evaluate(() => window.__launched)));
+  check('press: hands business-wrap://start to the browser, once', await until(async () => (await f.evaluate(() => window.__launched)).length === 1, 4000) && /^business-wrap:\/\/start(\?file=|$)/.test((await f.evaluate(() => window.__launched))[0]), JSON.stringify(await f.evaluate(() => window.__launched)));
   await fs1.up();
   check('the server answers -> online with the port; W07 and bw:server {online:true} fire', await until(async () => (await toggles(f))[0]?.st === 'online', 12000) && (await toggles(f))[0].word === `متصل :${port}` && (await events(f)).includes('wm:W07') && (await events(f)).includes('server:true'), JSON.stringify([await toggles(f), await events(f)]));
   await f.evaluate(() => { window.__launched.length = 0; window.__ev.length = 0; });
@@ -146,7 +147,7 @@ try {
   check('the server goes away -> offline; W08 fires; an «تراجع» toast appears', await until(async () => (await toggles(f))[0]?.st === 'offline', 12000) && (await events(f)).includes('wm:W08') && (await toastText(f)).some((x) => /تراجع/.test(x)), JSON.stringify([await toggles(f), await events(f), await toastText(f)]));
   await f.evaluate(() => { window.__launched.length = 0; });
   await shRoot(f, (r) => [...r.querySelectorAll('.toasts .toast button')].find((b) => /تراجع/.test(b.textContent))?.click());
-  check('Undo asks for the server again (business-wrap://start)', await until(async () => (await f.evaluate(() => window.__launched)).some((u) => u === 'business-wrap://start'), 4000));
+  check('Undo asks for the server again (business-wrap://start)', await until(async () => (await f.evaluate(() => window.__launched)).some((u) => /^business-wrap:\/\/start(\?file=|$)/.test(u)), 4000));
   await fs1.up();
   check('and it is online again', await until(async () => (await toggles(f)).every((x) => x.st === 'online'), 12000));
   check('no page errors (file://)', f.errors.length === 0, f.errors.join(' | '));

@@ -163,13 +163,21 @@ async function srvWait(want, ms, path = '/api/version') {
  *  business-wrap://start to the browser (the installed launcher starts this install's host and opens no browser), then poll
  *  127.0.0.1:4317-4327 /api/health until one answers (20 s cap). Resolves 'running' (one already answered, nothing launched),
  *  'started' or 'failed'. onStep('checking'|'starting') for the UI. */
+/** 0.17.8: the absolute path of the editor file this page IS (file:// only; '' for a served page or a UNC path), so the host can serve that same document. */
+function srvDiskFile() {
+  if (location.protocol !== 'file:' || location.host) return '';
+  let p = '';
+  try { p = decodeURIComponent(location.pathname); } catch { return ''; }
+  return /^\/[A-Za-z]:[\\/]/.test(p) ? p.slice(1) : p;
+}
 async function srvBegin(onStep = () => {}) {
   onStep('checking');
   SRV.found = await srvProbe();
   SRV.asked = true;
   if (SRV.found.length) return 'running';
   onStep('starting');
-  srvLaunch('business-wrap://start');
+  const disk = srvDiskFile();
+  srvLaunch(disk ? `business-wrap://start?file=${encodeURIComponent(disk)}` : 'business-wrap://start');
   return (await srvWait(true, 20000, '/api/health')) ? 'started' : 'failed';
 }
 async function srvSaveHere() { // the same three saves as the power button: the draft, the library entry, the session state

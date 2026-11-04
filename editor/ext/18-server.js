@@ -9,10 +9,29 @@
  * launcher starts this install's host and opens no browser; srvBegin in editor/settings.js), then polls 127.0.0.1:4317-4327 /api/health until
  * one answers (20 s cap; a plain message when the launcher is not registered yet). A served page talks to its own host
  * (engine/routes/servers.mjs). The only network traffic from a file:// page is the GET /api/version and /api/health probe of those ports (srvProbe).
+ * ONE window (0.17.8 note O2): turning the host ON in the editor opened from disk REPLACES that page, in the same window and place, with the served editor
+ * (location.replace to http://127.0.0.1:<port>/?via=disk&from=<file>: the host serves that same file, so it is the same document; a cancelable window event
+ * `bw:follow` {detail:{url}} fires first, a test cancels it). The served tab remembers it came from disk (sessionStorage `bw:disk`, the URL is cleaned).
+ * Turning it OFF in that tab asks the host (POST /api/servers/stop {returnTo:{x,y,w,h,file}}) to open the editor from disk as a new window at this window's
+ * screenX / screenY / outerWidth / outerHeight before it ends (an http page cannot navigate to file://), then the served tab closes itself (window.close works
+ * on a tab whose history holds one page, which location.replace keeps true). A served tab that did not come from disk behaves as before: «Offline», the page stays.
  * Contract for other lanes: window event `bw:server` {detail:{online}} on every change of the answer; `bw:wm` W07 (went online) / W08 (went offline)
  * on a real transition only; <html data-bw-server="online|offline|starting|stopping|error|checking"> for tests. */
 const SB = (() => {
   const served = () => /^https?:$/.test(location.protocol);
+  /** A served tab that was the editor on disk and was replaced in place (0.17.8): the marker rides the URL once, then lives in this tab's sessionStorage. */
+  const disk = (() => {
+    try {
+      const u = new URL(location.href);
+      if (served() && u.searchParams.get('via') === 'disk') {
+        sessionStorage.setItem('bw:disk', JSON.stringify({ file: u.searchParams.get('from') || '' }));
+        u.searchParams.delete('via'); u.searchParams.delete('from');
+        history.replaceState(history.state, '', u.pathname + u.search + u.hash); // replaceState keeps the history at one entry: the tab stays closable by script
+      }
+      return served() ? JSON.parse(sessionStorage.getItem('bw:disk') || 'null') : null;
+    } catch { return null; }
+  })();
+  const diskQuery = (file) => `?via=disk&from=${encodeURIComponent(file || '')}`;
   const SPIN = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>'; // Lucide loader-circle (ISC)
   const st = { mode: served() ? 'online' : 'checking', port: served() ? Number(location.port) || 80 : 0, note: '', pulse: false, known: served(), answered: null };
   let pulsed = false;
@@ -98,21 +117,32 @@ const SB = (() => {
   }
   /** A served page whose own host is gone and which found a host on another port (the restarted host did not get this port back): go to it, the same document from the host that is up now. */
   function reconnect() {
-    if (served() && st.port && st.port !== (Number(location.port) || 80)) location.href = `http://127.0.0.1:${st.port}/`;
+    if (served() && st.port && st.port !== (Number(location.port) || 80)) location.href = `http://127.0.0.1:${st.port}/${disk ? diskQuery(disk.file) : ''}`;
+    else if (!served() && st.port) follow();
   }
+  /** The file:// page replaces ITSELF with the served editor: same window, same place, one window (history stays one page). */
+  function follow() {
+    const url = `http://127.0.0.1:${Number(st.port)}/${diskQuery(srvDiskFile())}`;
+    if (!window.dispatchEvent(new CustomEvent('bw:follow', { detail: { url }, cancelable: true }))) return;
+    location.replace(url);
+  }
+  const geometry = () => ({ x: window.screenX, y: window.screenY, w: window.outerWidth, h: window.outerHeight });
   async function stop() {
     if (isBusy() || SRV.busy) return;
     if (jobRunning()) { toast(t('sv.tipBusy'), 'warn'); return; }
     SRV.busy = true;
     set('stopping');
     let gone = false;
+    let back = false; // the editor from disk opened as a new window where this one is: this tab goes away
     let why = '';
     if (served()) {
       await srvSaveHere();
       try {
-        const r = await fetch('/api/servers/stop', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
+        const r = await fetch('/api/servers/stop', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true, ...(disk ? { returnTo: { ...geometry(), file: disk.file } } : {}) }) });
         if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
         gone = true;
+        const j = await r.json().catch(() => ({}));
+        if (disk && j.reopened && !j.reopened.error) back = true;
       } catch (e) { why = String(e.message || e); }
     } else {
       srvLaunch('business-wrap://stop');
@@ -122,7 +152,9 @@ const SB = (() => {
     SRV.busy = false;
     if (!gone) { st.port = st.port || 0; set('online'); toast(t('sv.stopFailed', { r: why }), 'warn'); return; }
     set('offline');
-    toast(t('sv.stoppedToast'), 'info', { ms: 6000, actions: [[t('sv.undo'), start]] });
+    const stopped = () => toast(t('sv.stoppedToast'), 'info', { ms: 6000, actions: [[t('sv.undo'), start]] });
+    if (back) { setTimeout(() => window.close(), 1500); setTimeout(stopped, 2200); return; } // the new window has had its moment to appear; a browser that refuses to close this tab leaves it «Offline» with the usual toast
+    stopped();
   }
   function press() { return st.mode === 'online' ? stop() : st.mode === 'offline' || st.mode === 'error' ? start() : undefined; }
   function open() { if (st.port) location.href = `http://127.0.0.1:${Number(st.port)}/`; }

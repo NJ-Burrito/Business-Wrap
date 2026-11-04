@@ -35,20 +35,29 @@ export async function editorFile(file) {
 }
 
 /** Open `url` in the browser the editor uses (Google Chrome first, then the default Chromium, Edge, any): the person's own profile, a new tab, no host. */
-export async function openInBrowser(url) {
-  if (process.env.BW_BROWSER_STUB) { fs.appendFileSync(process.env.BW_BROWSER_STUB, `${JSON.stringify({ exe: 'stub', args: [url], launcher: true })}\n`); return { exe: 'stub', via: 'stub' }; }
+/** 0.17.8 (window switch): geometry = {x, y, w, h} (a window's screenX, screenY, outerWidth, outerHeight): the editor opens as a NEW window there (the host switch's way back from the served tab). */
+export const geometryArgs = (g) => {
+  const n = (v) => v !== null && v !== '' && Number.isFinite(Number(v));
+  if (!g || !n(g.x) || !n(g.y) || !n(g.w) || !n(g.h)) return [];
+  const [x, y, w, h] = [g.x, g.y, g.w, g.h].map((v) => Math.round(Number(v)));
+  if (Math.abs(x) > 30000 || Math.abs(y) > 30000 || w < 200 || h < 150 || w > 30000 || h > 30000) return [];
+  return ['--new-window', `--window-position=${x},${y}`, `--window-size=${w},${h}`];
+};
+export async function openInBrowser(url, { geometry } = {}) {
+  const geo = geometryArgs(geometry);
+  if (process.env.BW_BROWSER_STUB) { fs.appendFileSync(process.env.BW_BROWSER_STUB, `${JSON.stringify({ exe: 'stub', args: [...geo, url], launcher: true })}\n`); return { exe: 'stub', via: 'stub' }; }
   const { chooseBrowser } = await import('../engine/export.mjs');
   const b = chooseBrowser();
   const run = (exe, args) => { const c = spawn(exe, args, { detached: true, stdio: 'ignore' }); c.on('error', () => {}); c.unref(); };
-  if (b?.exe) { run(b.exe, [url]); return { exe: b.exe, via: b.via }; }
+  if (b?.exe) { run(b.exe, [...geo, url]); return { exe: b.exe, via: b.via }; }
   if (process.platform === 'win32') { run('explorer.exe', [url]); return { exe: 'explorer.exe', via: 'shell' }; }
   throw new Error('no browser found: install Google Chrome');
 }
 
-export async function openEditor({ file } = {}) {
+export async function openEditor({ file, geometry } = {}) {
   const f = await editorFile(file);
   const url = pathToFileURL(f).href;
-  const b = await openInBrowser(url);
+  const b = await openInBrowser(url, { geometry });
   return { file: f, url, browser: b.exe, via: b.via, host: false };
 }
 

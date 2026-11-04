@@ -66,6 +66,7 @@ async function openPage(ctx, url, ports) {
   await page.addInitScript(({ ports: pp }) => {
     if (pp) window.__bwProbePorts = pp; // test hook of editor/settings.js
     window.__launched = [];
+    window.addEventListener('bw:follow', (e) => { e.preventDefault(); (window.__follow ||= []).push(e.detail.url); }); // 0.17.8: the file:// page would replace itself with the served editor; the suite keeps its page
     document.addEventListener('click', (e) => { const a = e.target.closest?.('a[href^="business-wrap:"]'); if (a) { window.__launched.push(a.getAttribute('href')); e.preventDefault(); } }, true); // a business-wrap: link is recorded, not followed
     window.__flushes = 0;
     const add = EventSource.prototype.addEventListener;
@@ -169,8 +170,9 @@ try {
   await press(f1, 'srvStart');
   await until(async () => (await f1.evaluate(() => window.__launched.length)) > 0, 5000);
   const launched = await f1.evaluate(() => window.__launched);
-  const want = 'business-wrap://start';
-  check('start/no server: Start hands business-wrap://start to the browser', launched.length === 1 && launched[0] === want, JSON.stringify(launched));
+  const want = 'business-wrap://start?file=...';
+  const askedFile = decodeURIComponent((launched[0] || '').split('?file=')[1] || '');
+  check('start/no server: Start hands business-wrap://start to the browser', launched.length === 1 && launched[0].startsWith('business-wrap://start?file=') && path.resolve(askedFile) === path.resolve(editor), JSON.stringify(launched));
   const h = handler(launched[0], { BW_OPEN_PORT: String(pOpen) });
   check('start/no server: the real handler starts a host and a server answers on the probe port', h.status === 0 && (await up(pOpen)), `${h.status} ${h.stderr} ${h.stdout}`.slice(0, 300));
   const seen = await until(async () => (await card(f1)).open === String(pOpen), 15000);
