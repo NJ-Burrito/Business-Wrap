@@ -8,6 +8,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.17.7] - 2026-11-04
+
+↹ A small feature release: tab stops on the ruler, and a clearer host switch. / ↹ إصدار ميزات صغير: علامات جدولة على المسطرة، ومفتاح خادم أوضح.
+
+### Added / أضيف
+- ↹ **Tab stops on the ruler**: pick start, center, end or decimal at the ruler's corner, click to add, drag to move, drag off to remove; Tab lines text up with them in the editor, the PDF and Word (checked in Word). / **علامات الجدولة على المسطرة**: اختر البداية أو الوسط أو النهاية أو العشرية من زاوية المسطرة، وانقر للإضافة، واسحب للنقل، واسحب خارجها للحذف؛ ويحاذي مفتاح Tab النص معها في المحرر وملف PDF ووورد (تم التحقق في وورد).
+
+### Fixed / أصلح
+- 🟢 **The host switch in a tab the host opened** tells you to choose «Open» in the browser's «Open Business-Wrap?» box, says why a start failed, and follows a host that comes up on another port. / **مفتاح الخادم في تبويب فتحه الخادم** يطلب منك اختيار «فتح» في مربع المتصفح «فتح بزنس راب؟»، ويذكر سبب تعذر التشغيل، ويتبع الخادم إذا عاد على منفذ آخر.
+- ⌨️ **The document title fields show a quiet focus ring for the keyboard only**, and the caret blink follows only the Calm button. / **حقول عنوان الوثيقة تعرض إطار تركيز هادئا للوحة المفاتيح فقط**، ووميض المؤشر يتبع زر الهدوء وحده.
+- 📏 **Ruler labels no longer clip at the page edge**, and the tooltip keeps its unit order in English. / **أرقام المسطرة لم تعد تقص عند حافة الصفحة**، والتلميح يحفظ ترتيب الوحدة بالإنجليزية.
+
 ## [0.17.6] - 2026-11-04
 
 📏 A small feature release: page margins and a ruler you can drag, as in Word. / 📏 إصدار ميزات صغير: هوامش الصفحة ومسطرة تسحبها كما في وورد.
