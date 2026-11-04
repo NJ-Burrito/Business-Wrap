@@ -127,6 +127,16 @@ try {
     await page.waitForTimeout(300);
     const menuStill = await page.evaluate(() => !!window.BW.EXT.scope.menu());
     check(`${ui} O1: looked - the scope menu opened; a background click keeps it open`, menuOpen && menuStill, JSON.stringify({ menuAsk, menuOpen, menuStill }));
+    // diagram-ui.js: the diagram gallery popup stays open on a background press
+    await page.evaluate(() => window.BW.runAction('addDiagram'));
+    await page.waitForTimeout(900);
+    await page.evaluate(() => window.BW.runAction('dgSymbol'));
+    await page.waitForTimeout(400);
+    const galOpen = await page.evaluate(() => !!document.querySelector('.bw-dg-gallery'));
+    await page.mouse.click(4, 400);
+    await page.waitForTimeout(300);
+    const galStill = await page.evaluate(() => !!document.querySelector('.bw-dg-gallery'));
+    check(`${ui} O1: looked - the diagram popup opened; a background click keeps it open`, galOpen && galStill, JSON.stringify({ galOpen, galStill }));
     check(`${ui}: no page errors`, errors.length === 0, errors.join(' | '));
     await ctx.close();
   }
