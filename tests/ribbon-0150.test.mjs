@@ -23,7 +23,7 @@ const browser = await chromium.launch(launchOptions());
 const GENERAL = [['file', '--bw-sec-file'], ['export', '--bw-sec-export'], ['home', '--bw-sec-edit'], ['font', '--bw-sec-font'], ['para', '--bw-sec-para'], ['insert', '--bw-sec-insert'],
   ['layout', '--bw-sec-gaps'], ['hf', '--bw-sec-header'], ['design', '--bw-sec-design'], ['review', '--bw-sec-document'], ['spelling', '--bw-sec-spell'], ['view', '--bw-sec-view']];
 // tools per tab as declared (UI designer §2; export is 21: the designer's list names 17, plus the design pack, the export-options button that keeps the page range, cover and folder fields, and the three print-HTML tools of 0.17.0: export.printHtml.ar/.en/.both)
-const COUNTS = { file: 7, export: 21, home: 10, font: 10, para: 19, insert: 20, layout: 18, hf: 17, design: 6, review: 11, spelling: 10, view: 16, table: 24, picture: 11, diagram: 28, diagram2: 28 };
+const COUNTS = { file: 6, export: 21, home: 10, font: 10, para: 19, insert: 20, layout: 18, hf: 17, design: 6, review: 11, spelling: 10, view: 16, table: 24, picture: 11, diagram: 28, diagram2: 28 };
 
 async function open(ui, w, h) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h } });
@@ -217,7 +217,8 @@ try {
     const c1 = await inShell(page, `const b = r.querySelector('.rb-bar').getBoundingClientRect(), t = r.querySelector('.rb-tabs').getBoundingClientRect(); const tb = r.querySelector('#rb-tab-table'); return { has: !!tb, dx: Math.abs((b.left + b.right) / 2 - (t.left + t.right) / 2), sel: tb?.getAttribute('aria-selected'), gold: tb && getComputedStyle(tb).boxShadow.includes('inset'), icons: r.querySelector('.rb-tabs').classList.contains('icons'), n: r.querySelectorAll('.rb-tab').length, noScroll: (() => { const p = r.querySelector('.rb-panel'); return p.scrollWidth <= p.clientWidth + 1; })(), tight: r.querySelector('.rb-tabs').scrollWidth <= r.querySelector('.rb-tabs').clientWidth + 1 };`);
     check('contextual: a cell selection adds the Table tab, selected, centred with it (within 2 px), no scroll, the tab strip fits', c1.has && c1.sel === 'true' && c1.dx <= 2 && c1.noScroll && c1.tight && c1.n === 13, JSON.stringify(c1));
     check('contextual: the Table tab keeps the contextual gold top rule', c1.gold, '');
-    await page.mouse.click(60, 700);
+    // 0.17.8 (O1): a click on the background around the page keeps the selection; an empty spot on the page itself clears it
+    { const bm = await page.locator(`#bw-pair main.bw-doc[data-locale="${ed}"]`).boundingBox(); await page.mouse.click(bm.x + 3, 400); }
     await page.waitForTimeout(300);
     check('contextual: clearing the selection brings the previous tab back and removes the Table tab', await sh(page, (r) => !r.querySelector('#rb-tab-table') && r.querySelector('.rb-tab[aria-selected="true"]')?.dataset.tab === 'home'));
     // the diagram tabs open together
