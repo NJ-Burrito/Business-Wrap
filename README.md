@@ -1,8 +1,8 @@
-<h1 align="center">Business-Wrap: bilingual requirements document generator (Arabic + English)</h1>
+<h1 align="center">📄 Evidence in. Document out.</h1>
+
+<h3 align="center">Business-Wrap: bilingual requirements document generator (Arabic + English)</h3>
 
 <p align="center"><img src="https://raw.githubusercontent.com/NJ-Burrito/Business-Wrap/main/site/assets/media/hero.gif" alt="Business-Wrap: evidence in, one Arabic and English requirements document out" width="720"></p>
-
-<h3 align="center">📄 Evidence in. One Arabic and English requirements document out.</h3>
 
 <p align="center">
   <a href="https://nj-burrito.github.io/Business-Wrap/"><img src="https://img.shields.io/badge/website-nj--burrito.github.io-d3c6a6?labelColor=001e3d" alt="Website"></a>
@@ -15,35 +15,45 @@
   <a href="https://github.com/NJ-Burrito/Business-Wrap/stargazers"><img src="https://img.shields.io/github/stars/NJ-Burrito/Business-Wrap?style=social" alt="Stars"></a>
 </p>
 
-## ⚡ In 10 seconds
+**Jump to:** [🧐 What is it?](#-what-is-it) · [🚀 Start in 3 steps](#-start-in-3-steps) · [✅ Before you start](#-before-you-start) · [🔒 Is it safe?](#-is-it-safe) · [❓ Questions](#-questions) · [🆘 Problems?](#-problems) · [💻 For developers](#-for-developers--للمطورين)
 
-📥 **Evidence in:** a process model (BPMN, draw.io, YAML) or a walk through the live service.
+## 🧐 What is it?
 
-✍️ **Edit on the page that prints:** Arabic right to left, English left to right.
+📄 Business-Wrap writes a **requirements document**: the paper that says what a service must do.
 
-📄 **Out:** PDF and DOCX, fonts embedded as real, selectable text.
+🌍 One document, two languages: Arabic and English.
 
-🎀 **A ribbon with 12 tabs,** an explanation panel for every tool, offline Arabic and English spell checking, and a dim navy dark mode.
+✍️ You edit on the page that prints. What you see is what comes out.
 
-🤖 **Your AI assistant can drive the open editor:** read it, edit it as one undoable step, proofread it, draw a diagram.
+🏠 It runs on your computer. Nothing is uploaded.
+
+🆓 Free and open source (MIT).
+
+## 🎁 What you get
+
+📥 **You give it:** a process model (a file that draws the steps of the work: BPMN, draw.io or YAML) or a walk through the live service.
+
+📄 **You get:** PDF and DOCX (Word) files. The fonts are inside, as real text you can select.
+
+✍️ Arabic runs right to left. English runs left to right.
+
+🎀 A ribbon with 12 tabs, a help panel for every tool, spell checking in Arabic and English with no internet, and a dim navy dark mode.
 
 📦 Export and import a whole project.
 
-🆓 Free and open source (MIT). Runs on your computer. Nothing is uploaded.
+🤖 Optional: your AI assistant can work in the open editor. It reads, edits as one undoable step, proofreads and draws a diagram.
 
-**Jump to:** [▶️ Quick start](#️-quick-start) · [✅ Before you start](#-before-you-start) · [🧩 Install](#-install) · [🚀 Commands](#-commands) · [🔁 Updates](#-updates) · [🧰 What it does](#-what-it-does) · [🔤 Fonts](#-fonts) · [🤖 For AI agents](#-for-ai-agents) · [🔒 Is it safe?](#-is-it-safe) · [❓ Questions](#-questions) · [🆘 Problems?](#-problems)
+## 🚀 Start in 3 steps
 
-## ▶️ Quick start
+1️⃣ **Get the folder.** Download `business-wrap-<version>.zip` from the [releases page](https://github.com/NJ-Burrito/Business-Wrap/releases/latest) and unzip it. Or clone it: `git clone https://github.com/NJ-Burrito/Business-Wrap`, then `cd Business-Wrap`. Open a terminal (a window where you type commands) in that folder.
 
-📂 Open a terminal in the Business-Wrap folder: `cd Business-Wrap`
+2️⃣ **Install once:** `npm ci`
 
-📦 Install once: `npm ci`
+3️⃣ **Start it:** `npm run serve` (the first time it builds the sample editor). Open the address it prints, `http://127.0.0.1:4317/`, in Google Chrome.
 
-▶️ Start the local server: `npm run serve` (the first time it builds the sample editor)
+⚠️ Always open the editor **through the local server** (the `npm run serve` window), not by double-clicking the HTML file. Export, print, the printers list and updates need the server.
 
-🌐 Open the address it prints, `http://127.0.0.1:4317/`, in Google Chrome.
-
-⚠️ Always open the editor **through the local server**, not by double-clicking the HTML file. Export, print, the printers list and updates need the server.
+✅ Check the list below first.
 
 ## ✅ Before you start
 
@@ -58,7 +68,140 @@
 
 🧪 Optional, tests only: poppler (`pdffonts -v`).
 
-## 🧩 Install
+## 🧰 What it does
+
+🌾 **Harvest (collect the facts):** a process model gives roles, workflow, rules and statuses. A crawl (an automatic walk) of the live service gives the card, form, attachments and messages. The merge keeps both.
+
+📝 **Editor:** one HTML file. The page you edit is the page that prints. Every change is undoable and recorded.
+
+🎀 **Ribbon:** 12 tabs (File, Export, Home, Font, Paragraph, Insert, Layout, Header and footer, Design, Review, Spelling, View), plus 4 that appear when you select a table, a picture or a diagram. Every tool has its name under it. Nothing scrolls sideways.
+
+💡 **Help panel:** rest on a tool for a moment and a panel shows a small drawing of what it does. It floats over the pages and moves nothing.
+
+🔤 **Spelling:** offline Arabic and English checking with one switch, a Spelling tab and a side panel with suggestions.
+
+📦 **Projects:** export every document of a project as HTML, PDF, DOCX or edits, in one folder or one zip with an index page. Import a project, a folder, a zip or a pile of PDF, DOCX and HTML files.
+
+🔍 **Zoom:** 25% to 400%, with Fill width, Fill height and Ctrl plus the mouse wheel. 100% is true size.
+
+🌙 **Look:** a dim navy dark mode, a calm drafting-grid background behind the pages, and a watermark that reacts now and then without a sound.
+
+🔀 **Two languages, one layout:** «ع» / «E» switches language; RTL / LTR switches word direction. The toolbar and the page stay where they are.
+
+🧭 **Diagrams:** the workflow figure is editable on the page. Mermaid (a text language for diagrams) in and out.
+
+🎨 **Design:** colours, sizes, template parts, any font. Labels say what they do, in Arabic and English.
+
+📤 **Exports:** PDF, DOCX, edits JSON, design pack, Save HTML, webhooks (a message sent to an address you set).
+
+🔌 **Server switch:** one toggle in the top bar. Turn the server off and the editor stays open with a Turn on card.
+
+🗂️ **File and folder icons (Windows):** in Settings, use Business-Wrap icons for your PDF, Word and web page files. Restore puts the Windows icons back.
+
+🔐 **Safety:** a security gate keeps client content, credentials and local paths out of the repo.
+
+## 🔁 Updates
+
+✨ **In the editor:** open it through `npm run serve`. A newer release shows a popup with **Update now**, **Later** and **Skip this version**.
+
+🛡️ Update now backs up first, replaces program files only, and puts the old version back on any failure.
+
+🔓 The repo is public: no token, no sign-in. Nothing updates without your consent.
+
+💻 Plugin and terminal updates: see [For developers](#-for-developers--للمطورين).
+
+## 🔤 Fonts
+
+🎯 Documents use the Thmanyah families. **Cairo is banned**, also as a fallback.
+
+🏠 **Your own copy wins:** `BW_FONT_DIR`, `.local/config.json`, then the system font folder.
+
+🎁 **No copy on this machine?** A bundled fallback in `fonts/nj-fonts/` is used, so the PDF prints right out of the box.
+
+⚖️ `fonts/nj-fonts/` is under the Thmanyah licence, **not** MIT. Details: [fonts/README.md](fonts/README.md).
+
+## 🔒 Is it safe?
+
+🏠 **Local only:** the editor, the PDF printer and the DOCX builder run on your computer. Nothing is uploaded ([docs/privacy.md](docs/privacy.md)).
+
+🔁 **One automatic request:** the update check, at most once a day, to the public GitHub release list. Webhooks send only to an address you set.
+
+🌾 **The crawler is a dry run:** it stops before Send, Submit, Confirm or Pay unless you ask twice.
+
+🔏 **Tamper-evident history:** every edit, save and export is logged in a signed chain. Honest limit: it is not access control. Details are in [For developers](#-for-developers--للمطورين).
+
+🛡️ **A security gate** (`security/check.py`, plus gitleaks in CI) keeps client content, credentials and local paths out of the repo. Found a problem? [SECURITY.md](SECURITY.md).
+
+## ❓ Questions
+
+<details>
+<summary>🆓 Is it free?</summary>
+
+Yes. MIT licence, no paid plan, no account.
+
+</details>
+
+<details>
+<summary>🏠 Does my document leave my computer?</summary>
+
+No. The editor, the PDF printer and the DOCX builder run locally.
+
+The one automatic request is the update check: at most once a day, to the public GitHub release list. Webhooks send only to an address you set.
+
+</details>
+
+<details>
+<summary>🤖 Do I need Claude?</summary>
+
+No. The editor and the command line work on their own. The plugin and the MCP server are optional.
+
+</details>
+
+<details>
+<summary>🔄 What goes in, what comes out?</summary>
+
+In: a process model (BPMN, draw.io, YAML) or a crawl of a live service.
+
+Out: PDF, DOCX, the edits JSON, a design pack, and the editor saved as HTML.
+
+</details>
+
+<details>
+<summary>🌾 Will the crawler file a real request?</summary>
+
+Not unless you ask twice: `submit: true` in the config and `--yes-file-real-request`. Otherwise it stops before Send, Submit, Confirm or Pay.
+
+</details>
+
+<details>
+<summary>🔤 Which fonts can I use?</summary>
+
+Thmanyah by default: your own copy wins, and a bundled fallback (under the Thmanyah licence, not MIT) makes the PDF right out of the box. Any font on your computer, or a file you upload, also works; its licence is your responsibility.
+
+</details>
+
+<details>
+<summary>💻 What does it run on?</summary>
+
+Tested on Windows 11 with Node 24 and Chrome. It needs Node 20+, Google Chrome (or another Chromium browser), and Python with uv for DOCX. **Linux is not supported** (the package refuses to install there); macOS is untested.
+
+</details>
+
+## 🆘 Problems?
+
+🆘 **[Support page](https://nj-burrito.github.io/Business-Wrap/support.html):** the common fixes.
+
+📖 **[The guide](docs/guide.md):** install, quick start, troubleshooting, backup.
+
+🐞 **[Open an issue](https://github.com/NJ-Burrito/Business-Wrap/issues/new/choose):** pick Bug or Feature; include the version (`node update/cli.mjs --check`).
+
+🔒 **Security problem?** Report it privately: [SECURITY.md](SECURITY.md).
+
+## 💻 For developers / للمطورين
+
+📌 Everything below is for developers, AI agents and power users. You do not need it to start.
+
+### 🧩 Install
 
 🧩 **Claude Code plugin** (the skill, the MCP server and the `/business-wrap:` commands together; they run from the plugin's own files with Node, no npm install and no registry):
 ```
@@ -72,7 +215,7 @@
 claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.17.3 business-wrap-mcp
 ```
 
-💻 **From source:** `git clone https://github.com/NJ-Burrito/Business-Wrap`, then the [Quick start](#️-quick-start).
+💻 **From source:** `git clone https://github.com/NJ-Burrito/Business-Wrap`, then the [Start in 3 steps](#-start-in-3-steps).
 
 <details>
 <summary>📦 Other ways: release zip, MCP from a clone, tool list</summary>
@@ -83,7 +226,7 @@ claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.17.
 
 </details>
 
-## 🚀 Commands
+### 🚀 Commands
 
 ```powershell
 npm ci                 # install
@@ -143,17 +286,11 @@ Without Claude Code the same verbs run as `npm run cli -- <verb>` (for example `
 
 <!-- reset: section added by the cli lane -->
 
-## 🔁 Updates
-
-✨ **In the editor:** open it through `npm run serve`. A newer release shows a popup with **Update now**, **Later** and **Skip this version**.
-
-🛡️ Update now backs up first, replaces program files only, and puts the old version back on any failure.
+### 🔁 Update from a plugin or a terminal
 
 🧩 **Claude Code plugin:** `/plugin marketplace update business-wrap`, then `/plugin update business-wrap`, then `/reload-plugins` (an MCP client without it: restart the client). The plugin is never updated in place; until you reload, the running MCP server answers `RESTART_REQUIRED`, and a stale "not connected" can stay cached for 15 minutes. `/business-wrap:doctor` shows what is loaded.
 
 ⌨️ **Terminal or agent:** `node update/cli.mjs --check` (at most one request a day), `--apply --yes` to install, `--notes` for what changed.
-
-🔓 The repo is public: no token, no sign-in. Nothing updates without your consent.
 
 <details>
 <summary>📖 How the in-editor update works</summary>
@@ -161,40 +298,6 @@ Without Claude Code the same verbs run as `npm run cli -- <verb>` (for example `
 At launch the editor (served by `npm run serve -- <editor.html>` or `node engine/serve.mjs <editor.html>`) checks for a newer release, at most once a day and without blocking anything. Update now downloads the release, checks its fingerprint, backs up, replaces the program files only, verifies the new version, restarts the server and reopens your document where you were. Your documents, edits and their history, design packs, fonts, logos, `out/` and `.local/` are never touched. **Settings** (toolbar View section, or Ctrl+K) shows About, the update state with **Check now** and the auto-check switch, and your preferences. Opened from disk (`file://`), the page cannot check: Settings says how to update. Every release: https://github.com/NJ-Burrito/Business-Wrap/releases. Details: [bible/07-updates.md](bible/07-updates.md).
 
 </details>
-
-## 🧰 What it does
-
-🌾 **Harvest:** a process model gives roles, workflow, rules and statuses; a crawl of the live service gives the card, form, attachments and messages. The merge keeps both.
-
-📝 **Editor:** one HTML file. The page you edit is the page that prints. Every change is undoable and recorded.
-
-🎀 **Ribbon:** 12 tabs (File, Export, Home, Font, Paragraph, Insert, Layout, Header and footer, Design, Review, Spelling, View), plus 4 that appear when you select a table, a picture or a diagram. Each tab has its own icon and colour, every tool has its name under it, nothing scrolls sideways, and it opens and closes with a smooth glide.
-
-💡 **Explanation panel:** rest on a tool for a moment and a panel on the right shows a small drawing of what it does. It floats over the pages and moves nothing.
-
-🔤 **Spelling:** offline Arabic and English checking with one switch. A Spelling tab (next, previous, fix, fix all, ignore, add to dictionary, a count) and a side panel with suggestions when you click a misspelt word.
-
-📦 **Projects:** export every document of a project as HTML, PDF, DOCX or edits, in one folder or one zip with an index page. Import a project, a folder, a zip or a pile of PDF, DOCX and HTML files as one project.
-
-🤖 **Live editor tools:** your AI assistant can list the open documents, read one, get its outline, apply a batch of edits as one undo step signed as the agent, and run a safe editor action. Eight `/business-wrap:` commands wrap them (see Commands).
-
-🔍 **Zoom:** 25% to 400%, with Fill width, Fill height and Ctrl plus the mouse wheel. 100% is true size.
-
-🌙 **Look:** a dim navy dark mode, a calm drafting-grid background behind the pages, and a watermark that reacts now and then without a sound.
-
-🔌 **Server switch:** one toggle in the top bar. Turn the server off and the editor stays open with a Turn on card.
-
-🗂️ **File and folder icons (Windows):** in Settings, use Business-Wrap icons for your PDF, Word and web page files; Restore puts the Windows icons back. File icons follow the app record Windows 11 keeps for each file type, and your document folders get an icon that matches what is inside (PDF, Word or web page), set automatically.
-
-🔀 **Two languages, one layout:** «ع» / «E» switches language; RTL / LTR switches word direction. The toolbar and the page stay where they are.
-
-🧭 **Diagrams:** the workflow figure is editable on the page. Mermaid in and out.
-
-🎨 **Design:** colours, sizes, template parts, any font. Labels say what they do, in Arabic and English.
-
-📤 **Exports:** PDF, DOCX, edits JSON, design pack, Save HTML, webhooks.
-
-🔐 **Safety:** a security gate keeps client content, credentials and local paths out of the repo.
 
 <details>
 <summary>🔍 Full feature table</summary>
@@ -299,7 +402,7 @@ Each gives the Arabic and English document JSON and an editor. In the editor: **
 - **Tooling:** the `business-wrap` CLI (offline, no AI), "/" commands, MCP harvest → editor, healers and per-stage gates.
 - **Design:** import a colour palette (with the contrast gate), logo motion, calmer side panels (groups collapsed), short click-to-dismiss toasts.
 
-### Where your files go / أين تُحفظ ملفاتك
+### Where your files go / أين تحفظ ملفاتك
 
 ```
 Business-Wrap\
@@ -318,17 +421,7 @@ Every export and every save toast names the real path. Nothing is written anywhe
 
 </details>
 
-## 🔤 Fonts
-
-🎯 Documents use the Thmanyah families. **Cairo is banned**, also as a fallback.
-
-🏠 **Your own copy wins:** `BW_FONT_DIR`, `.local/config.json`, then the system font folder.
-
-🎁 **No copy on this machine?** A bundled fallback in `fonts/nj-fonts/` is used, so the PDF prints right out of the box.
-
-⚖️ `fonts/nj-fonts/` is under the Thmanyah licence, **not** MIT. Details: [fonts/README.md](fonts/README.md).
-
-## 🤖 For AI agents
+### 🤖 For AI agents
 
 📘 Read [AGENTS.md](AGENTS.md) and [SKILL.md](SKILL.md) (Claude Code, Claude Desktop, Codex, Cursor, Gemini CLI or any MCP client).
 
@@ -379,82 +472,12 @@ git config core.hooksPath .githooks
 
 </details>
 
-## 🔒 Is it safe?
-
-🏠 **Local only:** the editor, the PDF printer and the DOCX builder run on your computer. Nothing is uploaded ([docs/privacy.md](docs/privacy.md)).
-
-🔁 **One automatic request:** the update check, at most once a day, to the public GitHub release list. Webhooks send only to an address you set.
-
-🌾 **The crawler is a dry run:** it stops before Send, Submit, Confirm or Pay unless you ask twice.
-
-🔏 **Tamper-evident history (0.13.0), and its honest limit:** every edit, save, export, sign, lock and unlock is an entry in a hash-chained, signed log (`bwlog` v1, a frozen format) that travels inside the shared HTML, with a mirror in your save folder's `HISTORY`. A removed or edited entry, or an edit that was never logged, is detected and shown. The log is encrypted only against casual reading: Business-Wrap is MIT and open source, so the key is in the code. Someone with the source can rebuild a whole chain with new keys; that is caught only where a mirror or a pinned key from the real author exists (another machine, the `HISTORY` store, an earlier shared copy). There is no trusted timestamp. Removing the log and the `bwlog` mark is not enough to pass a file off as "made before 0.13": since 0.13.1 a Save-HTML also carries independent traces (the timeline marks in each edition, a `bw-ledger` meta tag with the document id and state hash, an attribute on `<html>`, a second hash in the CSP, the file's own version), and any one of them with no valid log reads «stripped». Someone who finds and removes every trace by hand can still make a file look pre-0.13; where the local `HISTORY` mirror knows the document, it still flags it «stripped» on this machine. Lock blocks accidental edits; it is not access control ([bible/11-trust-ledger.md](bible/11-trust-ledger.md)).
-
-🛡️ **A security gate** (`security/check.py`, plus gitleaks in CI) keeps client content, credentials and local paths out of the repo. Found a problem? [SECURITY.md](SECURITY.md).
-
-## ❓ Questions
-
 <details>
-<summary>🆓 Is it free?</summary>
+<summary>🔏 Tamper-evident history, and its honest limit</summary>
 
-Yes. MIT licence, no paid plan, no account.
+every edit, save, export, sign, lock and unlock is an entry in a hash-chained, signed log (`bwlog` v1, a frozen format) that travels inside the shared HTML, with a mirror in your save folder's `HISTORY`. A removed or edited entry, or an edit that was never logged, is detected and shown. The log is encrypted only against casual reading: Business-Wrap is MIT and open source, so the key is in the code. Someone with the source can rebuild a whole chain with new keys; that is caught only where a mirror or a pinned key from the real author exists (another machine, the `HISTORY` store, an earlier shared copy). There is no trusted timestamp. Removing the log and the `bwlog` mark is not enough to pass a file off as "made before 0.13": since 0.13.1 a Save-HTML also carries independent traces (the timeline marks in each edition, a `bw-ledger` meta tag with the document id and state hash, an attribute on `<html>`, a second hash in the CSP, the file's own version), and any one of them with no valid log reads «stripped». Someone who finds and removes every trace by hand can still make a file look pre-0.13; where the local `HISTORY` mirror knows the document, it still flags it «stripped» on this machine. Lock blocks accidental edits; it is not access control ([bible/11-trust-ledger.md](bible/11-trust-ledger.md)).
 
 </details>
-
-<details>
-<summary>🏠 Does my document leave my computer?</summary>
-
-No. The editor, the PDF printer and the DOCX builder run locally.
-
-The one automatic request is the update check: at most once a day, to the public GitHub release list. Webhooks send only to an address you set.
-
-</details>
-
-<details>
-<summary>🤖 Do I need Claude?</summary>
-
-No. The editor and the command line work on their own. The plugin and the MCP server are optional.
-
-</details>
-
-<details>
-<summary>🔄 What goes in, what comes out?</summary>
-
-In: a process model (BPMN, draw.io, YAML) or a crawl of a live service.
-
-Out: PDF, DOCX, the edits JSON, a design pack, and the editor saved as HTML.
-
-</details>
-
-<details>
-<summary>🌾 Will the crawler file a real request?</summary>
-
-Not unless you ask twice: `submit: true` in the config and `--yes-file-real-request`. Otherwise it stops before Send, Submit, Confirm or Pay.
-
-</details>
-
-<details>
-<summary>🔤 Which fonts can I use?</summary>
-
-Thmanyah by default: your own copy wins, and a bundled fallback (under the Thmanyah licence, not MIT) makes the PDF right out of the box. Any font on your computer, or a file you upload, also works; its licence is your responsibility.
-
-</details>
-
-<details>
-<summary>💻 What does it run on?</summary>
-
-Tested on Windows 11 with Node 24 and Chrome. It needs Node 20+, Google Chrome (or another Chromium browser), and Python with uv for DOCX. **Linux is not supported** (the package refuses to install there); macOS is untested.
-
-</details>
-
-## 🆘 Problems?
-
-🆘 **[Support page](https://nj-burrito.github.io/Business-Wrap/support.html):** the common fixes.
-
-📖 **[The guide](docs/guide.md):** install, quick start, troubleshooting, backup.
-
-🐞 **[Open an issue](https://github.com/NJ-Burrito/Business-Wrap/issues/new/choose):** pick Bug or Feature; include the version (`node update/cli.mjs --check`).
-
-🔒 **Security problem?** Report it privately: [SECURITY.md](SECURITY.md).
 
 ## 🌐 More from NJ
 [Portfolio](https://nj-burrito.github.io/) · [NJ-Kit](https://nj-burrito.github.io/NJ-Kit/) · [QA-Wrap](https://nj-burrito.github.io/QA-Wrap/) · [Profile-Wrap](https://nj-burrito.github.io/Profile-Wrap/) · [Story-Wrap](https://nj-burrito.github.io/story-wrap/) · [GitHub](https://github.com/NJ-Burrito)
