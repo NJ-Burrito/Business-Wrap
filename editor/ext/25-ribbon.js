@@ -384,9 +384,9 @@ function rbSetTab(tab, { focus = false } = {}) {
   if (focus) root.querySelector(`#rb-tab-${tab}`)?.focus({ preventScroll: true });
   if (changed) { try { window.dispatchEvent(new CustomEvent('bw:wm', { detail: { id: 'W05' } })); } catch { /* no watermark */ } } // the watermark's tab tick (a real change, not a collapse, not the first paint)
 }
-function rbCollapse(on) {
+function rbCollapse(on, opts) {
   RB.collapsed = on ?? !RB.collapsed;
-  ls.set('bw:rb:c', RB.collapsed ? '1' : '0');
+  if (opts?.persist !== false) ls.set('bw:rb:c', RB.collapsed ? '1' : '0'); // a press on the background folds for the moment only (0.17.12): the fold button and a tab press are what the user remembers
   rbSync();
 }
 /** A press on a tab (click, Enter, Space): the selected tab folds / unfolds the ribbon, another tab is selected (note 6). */

@@ -659,7 +659,11 @@ try {
     // Z5: selecting a shape, an arrow or the empty drawing never changes the ribbon's height or shifts the page
     await U.reveal();
     await page.keyboard.press('Escape');
-    await page.mouse.click(5, 5);
+    // 0.17.12: not (5, 5): a press on the background folds the ribbon (owner rule 0.17.8), which would change the bar's height; deselect with a press on plain page paper
+    const paper = await page.evaluate(() => { const m = document.querySelector('#bw-pair main.bw-doc'); const r = m.getBoundingClientRect(); const bar = document.getElementById('bw-ui-host').shadowRoot.querySelector('.island').getBoundingClientRect().bottom;
+      for (let y = Math.max(bar + 6, 6); y < innerHeight - 4; y += 10) for (let x = Math.round(r.left + 2); x < r.right - 4; x += Math.max(6, Math.round(r.width / 40))) { const el = document.elementFromPoint(x, y); if (el && m.contains(el) && !el.closest('[data-b], [data-p], .bw-ov, figure[data-dg], #bw-overlay')) return { x, y }; }
+      return null; });
+    if (paper) await page.mouse.click(paper.x, paper.y);
     const a0 = await snap();
     const sb = await page.locator(`${FIG} svg`).boundingBox();
     const seen = [a0];

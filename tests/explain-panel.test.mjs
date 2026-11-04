@@ -55,7 +55,8 @@ async function cardAt(page, key, t0, max = 1500) {
 /** The page's layout as a person sees it: the sheets' edges, the body padding, the zoom, the document width. */
 const layout = (page) => page.evaluate(() => { const m = document.querySelector('main.bw-doc'); const b = m.getBoundingClientRect(); const de = document.documentElement; return { l: b.left, r: b.right, w: b.width, t: b.top, pad: getComputedStyle(document.body).paddingRight + '|' + getComputedStyle(document.body).paddingLeft, inline: document.body.style.paddingRight, zoom: de.style.getPropertyValue('--bw-zoom'), sw: de.scrollWidth, cw: de.clientWidth }; });
 /** Logs closes of the card / the has-card flag from now on (a swap must produce none). */
-const spy = (page) => sh(page, (r) => { window.__xplLog = []; const c = r.querySelector('.xpl'); const d = r.querySelector('.xpl-dock'); if (c) new MutationObserver(() => { if (c.hidden) window.__xplLog.push('card-hidden'); }).observe(c, { attributes: true, attributeFilter: ['hidden'] }); if (d) new MutationObserver(() => { if (!d.classList.contains('has-card')) window.__xplLog.push('has-card-off'); }).observe(d, { attributes: true, attributeFilter: ['class'] }); });
+// 0.17.12: the spy logs a card going away (has-card removed); the dock's own 'enter' stagger class ending 900 ms after a reopen is not that
+const spy = (page) => sh(page, (r) => { window.__xplLog = []; const c = r.querySelector('.xpl'); const d = r.querySelector('.xpl-dock'); if (c) new MutationObserver(() => { if (c.hidden) window.__xplLog.push('card-hidden'); }).observe(c, { attributes: true, attributeFilter: ['hidden'] }); if (d) new MutationObserver((ms) => { for (const m of ms) if (/(^|\s)has-card(\s|$)/.test(m.oldValue || '') && !d.classList.contains('has-card')) window.__xplLog.push('has-card-off'); }).observe(d, { attributes: true, attributeFilter: ['class'], attributeOldValue: true }); });
 /** Clicks the panel's X and records the dock's left edge on EVERY animation frame inside the page for `ms` (a slow runner cannot make one wall-clock sample miss the slide).
  *  Returns { d0, lefts, max } where max is the furthest the dock got from d0.l. */
 async function closeTracked(page, ms = 600) {
@@ -243,7 +244,7 @@ try {
     await page.waitForTimeout(700);
     const v2 = await verdict();
     check(`${ui}: rapid enter and leave of one tool opens nothing`, v2.opens <= v2.rests && (v2.rests > 0 || !(await card(page))), JSON.stringify(v2));
-    if (await card(page)) { await sh(page, (rt) => rt.querySelector('.xd-x').click()); await page.waitForTimeout(500); await sh(page, (rt) => rt.querySelector('.xd-tab').click()); await page.waitForTimeout(500); await page.mouse.move(5, 400); await page.waitForTimeout(200); } // a legitimate slow-runner open: back to the empty panel for the steps below
+    if (await card(page)) { await sh(page, (rt) => rt.querySelector('.xd-x').click()); await page.waitForTimeout(500); await sh(page, (rt) => rt.querySelector('.xd-tab').click()); await page.waitForTimeout(1000); await page.mouse.move(5, 400); await page.waitForTimeout(200); } // a legitimate slow-runner open: back to the empty panel for the steps below
     // rest on one: opens once
     await spy(page);
     await page.mouse.move(pts[2].x, pts[2].y, { steps: 5 });

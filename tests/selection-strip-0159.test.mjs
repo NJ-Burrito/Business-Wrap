@@ -106,8 +106,11 @@ const deselect = async (page, cssH) => {
   await page.evaluate(() => { const B = window.BW; B.S.selOv = null; });
   await page.keyboard.press('Escape');
   // 0.17.8 (O1): a press on the background around the page folds the ribbon (it would change the bar's height, not the selection); deselect with a press on an empty spot of the page itself
-  const spot = await page.evaluate(() => { const m = document.querySelector('#bw-pair main.bw-doc'); const r = m.getBoundingClientRect(); return { x: Math.max(2, Math.round(r.left + 2)) }; });
-  await page.mouse.click(spot.x, Math.round(cssH * 0.6));
+  // the page's left edge can carry a decorative strip (.w2-strip) outside main.bw-doc: search for a point whose hit is inside the page and is plain cover/page paper, never a block, a drawing or the editor UI
+  const spot = await page.evaluate((h) => { const m = document.querySelector('#bw-pair main.bw-doc'); const r = m.getBoundingClientRect(); const x0 = Math.max(2, Math.round(r.left + 2)); const bar = document.getElementById('bw-ui-host').shadowRoot.querySelector('.island').getBoundingClientRect().bottom;
+    for (let x = x0; x < r.right - 4; x += Math.max(6, Math.round(r.width / 40))) for (let y = Math.round(h * 0.6); y < h - 4; y += 12) { if (y < bar + 4) continue; const el = document.elementFromPoint(x, y); if (el && m.contains(el) && !el.closest('[data-b], [data-p], .bw-ov, figure[data-dg], #bw-overlay')) return { x, y }; }
+    return { x: x0, y: Math.round(h * 0.6) }; }, cssH);
+  await page.mouse.click(spot.x, spot.y);
   await page.waitForTimeout(150);
 };
 
