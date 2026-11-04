@@ -278,7 +278,7 @@ def close_landscape_section(document, body_geometry: dict):
     port.orientation = WD_ORIENT.LANDSCAPE if port.page_width > port.page_height else WD_ORIENT.PORTRAIT
     port.top_margin = body_geometry['top_margin']
     port.bottom_margin = body_geometry['bottom_margin']
-    port.left_margin = port.right_margin = body_geometry['left_margin']
+    port.left_margin, port.right_margin = body_geometry['left_margin'], body_geometry.get('right_margin', body_geometry['left_margin'])
     return port
 
 def add_figure(document, svg: str, caption: str, font: str, workdir: Path, counters: dict, pic_width=None):
@@ -973,6 +973,9 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     body_section.top_margin = Inches(0.7)
     body_section.bottom_margin = Inches(0.63)
     body_section.left_margin = body_section.right_margin = Inches(0.55)
+    page_margins = MD.margins_of(data)
+    if page_margins:
+        MD.apply_margins(body_section, page_margins, LOCALE == 'ar')
     body_section.header_distance = Inches(9 / 25.4)
     body_section.footer_distance = Inches(8 / 25.4)
     ctrl = data.get('control') or {}
@@ -990,7 +993,7 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     seg_starts, block_ids = MD.page_model(data)
     cur_page = MD.page_spec(doc_page) if doc_page else None
     add_control_front_matter(document, data, font, counters, toc=toc)
-    body_geometry = {'page_width': body_section.page_width, 'page_height': body_section.page_height, 'top_margin': body_section.top_margin, 'bottom_margin': body_section.bottom_margin, 'left_margin': body_section.left_margin}
+    body_geometry = {'page_width': body_section.page_width, 'page_height': body_section.page_height, 'top_margin': body_section.top_margin, 'bottom_margin': body_section.bottom_margin, 'left_margin': body_section.left_margin, 'right_margin': body_section.right_margin}
     first_page_secs = []
     def open_segment(seg):
         # a page segment (A18 size/orientation, A6 scoped header/footer items): a new Word section
@@ -998,7 +1001,7 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
         sec = document.add_section(WD_SECTION.NEW_PAGE)
         MD.apply_page(sec, seg['page'])
         sec.top_margin, sec.bottom_margin = body_geometry['top_margin'], body_geometry['bottom_margin']
-        sec.left_margin = sec.right_margin = body_geometry['left_margin']
+        sec.left_margin, sec.right_margin = body_geometry['left_margin'], body_geometry.get('right_margin', body_geometry['left_margin'])
         body_geometry['page_width'], body_geometry['page_height'] = sec.page_width, sec.page_height
         if data.get('chrome') and (seg['only'] or seg['from']):
             bands(sec, {'from': seg['from'], 'only': []})

@@ -331,9 +331,31 @@ export function figureFrame(doc, ptr, themeIn) {
   return [Math.round((room.wMm - DIAGRAM.PRINT.padMm) * 10) / 10, Math.round(Math.min(DIAGRAM.PRINT.maxHmm, room.hMm - DIAGRAM.PRINT.padMm) * 10) / 10];
 }
 /** Print geometry of the document's own page (segment 0): CSS px of the content box. */
+/**
+ * 0.17.6 · Page margins (mm): doc.layout.margins = {top, bottom, start, end}. `start` and `end` are the reading direction's sides (Arabic: right, left), so an
+ * Arabic and an English edition of one document mirror each other. A document without the setting gets today's margins (18 above, 16 below, 16 at the sides)
+ * and none of the CSS below. Limits: the sides 5 to 50 mm, above and below 10 to 50 mm (the running header and footer sit in that band). The figure sheet
+ * (`@page wide`, 14 and 12 mm) and the cover keep their own margins; a section turned landscape keeps the same four margins (not rotated).
+ */
+export const MARGIN_DEFAULT = { top: 18, bottom: 16, start: 16, end: 16 };
+export const MARGIN_LIMIT = { top: [10, 50], bottom: [10, 50], start: [5, 50], end: [5, 50] };
+export function marginsOf(doc) {
+  const m = doc?.layout?.margins;
+  if (!m || typeof m !== 'object') return null;
+  const out = {};
+  for (const k of Object.keys(MARGIN_DEFAULT)) {
+    const v = +m[k];
+    const [lo, hi] = MARGIN_LIMIT[k];
+    out[k] = Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v * 10) / 10)) : MARGIN_DEFAULT[k];
+  }
+  return out;
+}
+/** True when the document's page differs from the plain A4 with today's margins (a paper size or margins were set). */
+export const hasPageGeom = (doc) => !!(doc?.layout?.page || marginsOf(doc));
 export function pageGeom(doc) {
   const sp = pageSpec(doc?.layout?.page);
-  return { ...sp, contentPx: Math.round(((sp.h - 18 - 16) / 25.4) * 96), measurePx: Math.round(((sp.w - 16 - 16) / 25.4) * 96) };
+  const mg = marginsOf(doc) || MARGIN_DEFAULT;
+  return { ...sp, contentPx: Math.round(((sp.h - mg.top - mg.bottom) / 25.4) * 96), measurePx: Math.round(((sp.w - mg.start - mg.end) / 25.4) * 96) };
 }
 /** Every block in reading order: {ptr, ci, si, bi, block}. */
 export function blocksInOrder(doc) {
@@ -597,12 +619,14 @@ const safeToken = ([k, v]) => /^[a-z0-9-]+$/.test(k) && /^[#a-zA-Z0-9(),.\s%-]+$
  */
 export function printTrimCss(doc) {
   const wmm = doc?.layout?.page ? pageSpec(doc.layout.page).w : 210;
-  const measure = doc?.layout?.page ? pageGeom(doc).measurePx : PAGE.measurePx;
+  const measure = hasPageGeom(doc) ? pageGeom(doc).measurePx : PAGE.measurePx;
+  const mg = marginsOf(doc);
+  const endv = mg ? `${mg.end}mm` : 'var(--page-side)';
   const px = (wmm / 25.4) * 96;
   const x = Math.round(px) - px;
   if (!(Math.abs(x) > 0.01)) return '';
   const t = (+x.toFixed(3)).toString();
-  return `@media print and (min-width:${measure + 40}px){.wrap{width:calc(100% - ${t}px);box-sizing:border-box}h4,.gap{margin-inline-end:calc(0mm - var(--page-side) - ${t}px)}}`;
+  return `@media print and (min-width:${measure + 40}px){.wrap{width:calc(100% - ${t}px);box-sizing:border-box}h4,.gap{margin-inline-end:calc(0mm - ${endv} - ${t}px)}}`;
 }
 export function documentCss(themeIn, sheet, doc) {
   const theme = designTheme(themeIn, doc);
@@ -827,6 +851,17 @@ export function modelCss(doc) {
   if (doc.layout?.page) {
     const sp = pageSpec(doc.layout.page);
     out.push(`@page{size:${sp.w}mm ${sp.h}mm}`, `.cover{height:${sp.h}mm}`, `.bw-every{top:${sp.h}mm;width:${sp.w}mm}`);
+  }
+  const mg = marginsOf(doc);
+  if (mg) {
+    // 0.17.6 page margins: the vars carry the values (the editor's live preview sets them on the page); @page cannot read a var, so it takes the numbers
+    out.push(`.bw-doc{--pm-top:${mg.top}mm;--pm-bottom:${mg.bottom}mm;--pm-start:${mg.start}mm;--pm-end:${mg.end}mm}`,
+      `@page{margin:${mg.top}mm 0 ${mg.bottom}mm}`,
+      '.wrap{padding-inline:var(--pm-start) var(--pm-end)}',
+      'h4{margin-inline:calc(0mm - var(--pm-start)) calc(0mm - var(--pm-end));padding-inline:var(--pm-start) var(--pm-end)}',
+      '.gap{margin-inline:calc(0mm - var(--pm-start)) calc(0mm - var(--pm-end));padding-inline:var(--pm-start) var(--pm-end)}');
+    const trim = printTrimCss(doc); // the trim of a sheet that is not a whole number of px comes after the rules it adjusts
+    if (trim) out.push(trim);
   }
   if (PM.segments.length > 1) {
     out.push('.bw-seg{display:block;height:1px;margin-bottom:-1px;overflow:hidden;font-size:0;line-height:0}');

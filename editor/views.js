@@ -114,10 +114,12 @@ function viewsForeign(main, g) {
 function viewsReserve(main, g) {
   const z = viewsZ();
   const rtl = main.dir === 'rtl';
-  const side = parseFloat(getComputedStyle(main).getPropertyValue('--page-side')) || 16;
+  const cs = getComputedStyle(main);
+  const sideOf = (v) => parseFloat(cs.getPropertyValue(v)) || parseFloat(cs.getPropertyValue('--page-side')) || 16;
+  const sides = sideOf('--pm-start') + sideOf('--pm-end'); // 0.17.6 page margins: the text width of a run of other-sized pages is the sheet less both sides
   for (const box of main.querySelectorAll('.bw-frun')) {
     const ww = +box.dataset.w;
-    const cw = ww - 2 * side;
+    const cw = ww - sides;
     const pitch = ww + 12;
     const br = box.getBoundingClientRect();
     let far = 0;
@@ -170,8 +172,8 @@ function viewsRelax(main) {
   // 0.16.4: the verdicts are written by engine/render.mjs `relaxVerdicts`, the same function the PDF's page layout runs
   const pair = document.getElementById('bw-pair');
   const doc = cur().doc;
-  const geo = doc?.layout?.page ? pageGeom(doc) : PAGE;
-  relaxVerdicts(main, [...(doc?.layout?.page ? relaxArgs(doc) : relaxArgs()), geo.measurePx], pair && doc ? pair : null);
+  const geo = hasPageGeom(doc) ? pageGeom(doc) : PAGE;
+  relaxVerdicts(main, [...(hasPageGeom(doc) ? relaxArgs(doc) : relaxArgs()), geo.measurePx], pair && doc ? pair : null);
 }
 /** A box taller than the document's own page cannot be shown whole in its columns: say so. */
 function viewsOverflow() {

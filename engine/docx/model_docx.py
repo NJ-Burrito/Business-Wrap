@@ -281,6 +281,34 @@ def page_spec(p):
     return {'w': w, 'h': h, 'landscape': land}
 
 
+# 0.17.6 page margins: doc.layout.margins = {top, bottom, start, end} in mm, as render.mjs marginsOf (same limits, same defaults; None = today's)
+MARGIN_DEFAULT = {'top': 18.0, 'bottom': 16.0, 'start': 16.0, 'end': 16.0}
+MARGIN_LIMIT = {'top': (10.0, 50.0), 'bottom': (10.0, 50.0), 'start': (5.0, 50.0), 'end': (5.0, 50.0)}
+
+
+def margins_of(data):
+    m = (data.get('layout') or {}).get('margins')
+    if not isinstance(m, dict):
+        return None
+    out = {}
+    for k, d in MARGIN_DEFAULT.items():
+        try:
+            v = float(m.get(k))
+        except (TypeError, ValueError):
+            out[k] = d
+            continue
+        lo, hi = MARGIN_LIMIT[k]
+        out[k] = min(hi, max(lo, round(v * 10) / 10))
+    return out
+
+
+def apply_margins(section, mg, rtl):
+    """The body section's w:pgMar. Word's left and right are physical: in an Arabic page the start margin is the right one."""
+    section.top_margin, section.bottom_margin = Mm(mg['top']), Mm(mg['bottom'])
+    left, right = (mg['end'], mg['start']) if rtl else (mg['start'], mg['end'])
+    section.left_margin, section.right_margin = Mm(left), Mm(right)
+
+
 def apply_page(section, spec):
     from docx.enum.section import WD_ORIENT
     section.orientation = WD_ORIENT.LANDSCAPE if spec['landscape'] else WD_ORIENT.PORTRAIT

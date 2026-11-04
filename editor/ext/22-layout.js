@@ -162,7 +162,7 @@ function w2pageCss() {
       if (wd.w !== base.w) {
         const sel = `#bw-pair:not([data-pages="single"]):not([data-pages="spread"]) main.bw-doc[data-locale="${ed}"] .chapter.wide:not([style^="page:"])`;
         const nm = `${wd.w}×${wd.h} mm · ${t(wd.w > wd.h ? 'w2.landscape' : 'w2.portrait')}`;
-        rules.push(`${sel}{box-sizing:border-box;width:${wd.w}mm;margin-inline:calc((100% - ${wd.w}mm) / 2);padding-inline:var(--page-side,16mm);padding-block:6mm 4mm;background:var(--paper,#fff);box-shadow:0 0 0 1px var(--rule-strong),0 12px 30px -18px rgba(0,30,61,.45);position:relative}`,
+        rules.push(`${sel}{box-sizing:border-box;width:${wd.w}mm;margin-inline:calc((100% - ${wd.w}mm) / 2);padding-inline:var(--pm-start,var(--page-side,16mm)) var(--pm-end,var(--page-side,16mm));padding-block:6mm 4mm;background:var(--paper,#fff);box-shadow:0 0 0 1px var(--rule-strong),0 12px 30px -18px rgba(0,30,61,.45);position:relative}`,
           `${sel}::after{content:${JSON.stringify(nm)};position:absolute;top:1mm;inset-inline-end:3mm;font-size:7.5pt;color:var(--muted)}`);
       }
     }
@@ -170,7 +170,7 @@ function w2pageCss() {
       if (x.page.w === base.w && x.page.h === base.h) continue;
       const sel = `#bw-pair:not([data-pages="single"]):not([data-pages="spread"]) main.bw-doc[data-locale="${ed}"] [style="page:bw-seg-${x.n}"]`;
       const name = `${x.page.size === 'custom' ? `${x.page.w}×${x.page.h} mm` : x.page.size} · ${t(x.page.orientation === 'landscape' ? 'w2.landscape' : 'w2.portrait')}`;
-      rules.push(`${sel}{box-sizing:border-box;width:${x.page.w}mm;margin-inline:calc((100% - ${x.page.w}mm) / 2);padding-inline:var(--page-side,16mm);padding-block:6mm 4mm;background:var(--paper,#fff);box-shadow:0 0 0 1px var(--rule-strong),0 12px 30px -18px rgba(0,30,61,.45);position:relative}`,
+      rules.push(`${sel}{box-sizing:border-box;width:${x.page.w}mm;margin-inline:calc((100% - ${x.page.w}mm) / 2);padding-inline:var(--pm-start,var(--page-side,16mm)) var(--pm-end,var(--page-side,16mm));padding-block:6mm 4mm;background:var(--paper,#fff);box-shadow:0 0 0 1px var(--rule-strong),0 12px 30px -18px rgba(0,30,61,.45);position:relative}`,
         `${sel}::after{content:${JSON.stringify(name)};position:absolute;top:1mm;inset-inline-end:3mm;font-size:7.5pt;color:var(--muted)}`);
     }
   }

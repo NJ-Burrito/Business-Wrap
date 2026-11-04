@@ -23,7 +23,7 @@
   #bw-pair .bw-view main.bw-doc :is(.chapter.wide, .chapter.wide + .chapter, table.toc-cont, .bw-break) { break-before: column; }
   /* 0.16.2 a section or chapter that starts on a new page («صفحة جديدة قبل هذا القسم», .bw-brk) breaks to a new COLUMN here: `break-before: page` after a held empty slot made it share the column of the turned sheet's last slot */
   #bw-pair .bw-view main.bw-doc :is(section.chapter.bw-brk, section.sec.bw-brk) { break-before: column; }
-  #bw-pair .bw-view main.bw-doc .wrap { box-decoration-break: clone; -webkit-box-decoration-break: clone; padding-block: 18mm 16mm; }
+  #bw-pair .bw-view main.bw-doc .wrap { box-decoration-break: clone; -webkit-box-decoration-break: clone; padding-block: var(--pm-top, 18mm) var(--pm-bottom, 16mm); }
   /* 0.16.0 the print pass's verdicts on a long held table or list (views.js viewsRelax): its first rows and its last rows stay together */
   #bw-pair .bw-view main.bw-doc [data-rlr="a"] { break-after: avoid; }
   #bw-pair .bw-view main.bw-doc [data-rlr="b"] { break-before: avoid; }
@@ -40,7 +40,7 @@
   #bw-pair .bw-sheets .bw-sheet { position: absolute; top: 0; display: block; background: var(--paper, #fafaf9); /* doc-colour */ filter: drop-shadow(0 1px 1px color-mix(in srgb, var(--bw-band, #001e3d) 16%, transparent)) drop-shadow(0 4px 6px color-mix(in srgb, var(--bw-band, #001e3d) 12%, transparent)); }
   /* a run of pages of another size: a box with its own columns, as big as that sheet less the margins the document's columns carry (18 + 16 mm
      above and below, the side margin to each side); it starts on a column of the document's own and the slots its pages cover stay empty */
-  #bw-pair main.bw-doc[data-bwmix] .bw-frun { display: block; box-sizing: content-box; width: calc(var(--rw) - 2 * var(--page-side, 16mm)); height: calc(round(var(--rh), 1px) - 34mm); column-width: calc(var(--rw) - 2 * var(--page-side, 16mm)); column-gap: calc(12mm + 2 * var(--page-side, 16mm)); column-fill: auto; break-before: column; break-after: column; break-inside: avoid; }
+  #bw-pair main.bw-doc[data-bwmix] .bw-frun { display: block; box-sizing: content-box; width: calc(var(--rw) - var(--pm-start, var(--page-side, 16mm)) - var(--pm-end, var(--page-side, 16mm))); height: calc(round(var(--rh), 1px) - var(--pm-top, 18mm) - var(--pm-bottom, 16mm)); column-width: calc(var(--rw) - var(--pm-start, var(--page-side, 16mm)) - var(--pm-end, var(--page-side, 16mm))); column-gap: calc(12mm + var(--pm-start, var(--page-side, 16mm)) + var(--pm-end, var(--page-side, 16mm))); column-fill: auto; break-before: column; break-after: column; break-inside: avoid; }
   /* the figure sheet (`@page wide`) keeps 14 mm above and 12 mm below: 8 mm more room than the document's columns carry, as in the PDF */
   #bw-pair main.bw-doc[data-bwmix] .bw-frun[data-wide] { height: calc(round(var(--rh), 1px) - 26mm); margin-block-start: -4mm; }
   #bw-pair main.bw-doc[data-bwmix] .bw-slot { display: block; height: 1px; break-after: column; }
