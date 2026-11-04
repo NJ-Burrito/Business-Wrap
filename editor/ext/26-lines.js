@@ -193,16 +193,22 @@ document.addEventListener('click', (e) => {
   paintSel(); refreshUi();
   lnSet({ ed, ...slot });
 });
-bwExt({
-  expose: { w2lines: LN_API },
-  on: {
-    boot: () => w2docCss('w2-lines-css', `@media screen{html.bw-ed .bw-ln-caret{display:block;height:0;position:relative;margin:0;padding:0;pointer-events:none;overflow:visible;clear:both}
+const w2lnCss = () => w2docCss('w2-lines-css', `@media screen{html.bw-ed .bw-ln-caret{display:block;height:0;position:relative;margin:0;padding:0;pointer-events:none;overflow:visible;clear:both}
 html.bw-ed .bw-ln-caret::before{content:"";position:absolute;inset-inline-start:0;top:-.7em;height:1.4em;width:2px;background:var(--accent,#c8a24a);animation:bw-ln-blink 1.06s steps(1) infinite}
 html.bw-ed .bw-ln-caret::after{content:"";position:absolute;inset-inline:0;top:0;border-top:1px dashed var(--accent,#c8a24a);opacity:.45}
 html[data-bw-calm="1"] .bw-ln-caret::before{animation:none}
-@keyframes bw-ln-blink{50%{opacity:0}}
-@media (prefers-reduced-motion:reduce){html.bw-ed .bw-ln-caret::before{animation:none}}}
-@media print{.bw-ln-caret{display:none!important}}`),
+@keyframes bw-ln-blink{50%{opacity:0}}}
+@media print{.bw-ln-caret{display:none!important}}`);
+bwExt({
+  expose: { w2lines: LN_API },
+  on: {
+    boot: () => {
+      // keyboard-modality flag for the title-field focus ring (editor.css, 0.17.7): a pointer press sets it, the next Tab clears it
+      const rt = document.documentElement;
+      document.addEventListener('pointerdown', () => { rt.dataset.bwPtr = '1'; }, true);
+      document.addEventListener('keydown', (e) => { if (e.key === 'Tab') delete rt.dataset.bwPtr; }, true);
+      w2lnCss();
+    },
     render: () => {
       lnPaint();
       const f = LN.focus;
