@@ -575,7 +575,7 @@ const SP = (() => {
     if (li) li.outerHTML = rowHtml(is);
   }
   function paintSettings() {
-    const c = root.querySelector('.drawer .set-x-spell');
+    const c = root.querySelector('.drawer .set-x-spell .set-x-body'); // 0.17.4: the body only, so the card keeps its title and icon
     if (c) c.innerHTML = settingsHtml();
   }
   function loadInfo() {
