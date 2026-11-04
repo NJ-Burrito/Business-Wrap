@@ -92,6 +92,19 @@ async function robotsAllows(page, url, ua = '*') {
   return !dis.some((d) => u.pathname.startsWith(d));
 }
 
+/** The page's identity for "did the press do anything": address + size of the HTML. page.content() throws "page is navigating" when a navigation commits between two calls
+ *  (a late submit on a slow machine); wait the navigation out and read again; a page still moving after the retries is a page that changed. */
+async function pageStamp(page) {
+  for (let i = 0; i < 8; i += 1) {
+    try { return page.url() + (await page.content()).length; } catch (e) {
+      if (!/navigat/i.test(String(e.message))) throw e;
+      await page.waitForLoadState('domcontentloaded').catch(() => {});
+      await page.waitForTimeout(100);
+    }
+  }
+  return page.url() + ':navigating';
+}
+
 /** Press like a person: focus + Enter (or Space for checkables), a click only if that did nothing. */
 // Healing (B4): the wait extends once to a ceiling (HEALED), and a step that names `alt: {role, name, text, label}`
 // may find its control by those when the selector no longer matches (HEALED); anything else fails.
@@ -102,13 +115,13 @@ async function press(page, selector, { timeout = 10000, alt } = {}) {
     el = (await healLocator(page, { ...alt })).locator.first();
     await el.waitFor({ state: 'visible', timeout });
   }
-  const before = page.url() + (await page.content()).length;
+  const before = await pageStamp(page);
   await el.focus();
   const tag = await el.evaluate((e) => `${e.tagName}:${e.type || ''}`);
   await page.keyboard.press(/INPUT:(checkbox|radio)/i.test(tag) ? 'Space' : 'Enter');
   await page.waitForLoadState('domcontentloaded').catch(() => {});
   await page.waitForTimeout(150);
-  if (page.url() + (await page.content()).length === before) await el.click({ timeout }).catch(() => {});
+  if ((await pageStamp(page)) === before) await el.click({ timeout }).catch(() => {});
 }
 
 async function pauses(page, rules, log) {

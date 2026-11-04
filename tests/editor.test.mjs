@@ -293,6 +293,8 @@ try {
     // the colleague's Save-HTML imports too (data only)
     const [ch3] = await Promise.all([fresh.waitForEvent('filechooser'), act(fresh, 'import')]);
     await ch3.setFiles(savedHtml);
+    // the flash is written when the import has been read, not when setFiles returns: wait for the text (a loaded runner read it empty, GitHub gates run 41738387730)
+    await fresh.waitForFunction(() => /\S/.test(document.getElementById('bw-ui-host').shadowRoot.querySelector('.flash')?.textContent || ''), null, { timeout: 10000 }).catch(() => {});
     check(`${ed}: Save-HTML file imports`, (await fresh.locator('.flash').textContent()).length > 0);
 
     // the Save-HTML file opens on its own and shows the edited document

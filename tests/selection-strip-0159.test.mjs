@@ -117,6 +117,10 @@ for (const win of WINDOWS) for (const zoom of ZOOMS) for (const ui of ['ar', 'en
 const ONLY = process.env.BW_STRIP_ONLY ? process.env.BW_STRIP_ONLY.split(/\s+/) : null;
 if (ONLY) for (let i = jobs.length - 1; i >= 0; i -= 1) if (!ONLY.includes(`${jobs[i][0]}|${jobs[i][1]}|${jobs[i][2]}|${jobs[i][3]}`)) jobs.splice(i, 1);
 
+/** The strip refits on font arrival (document.fonts loadingdone) and on the next frame (rbFitSoon); on a loaded runner a measure taken right after the click can land
+ *  between the two and see More 1-2 px outside a strip that is about to be refitted (GitHub gates run 41738387730, S1 1920px z150 ar light, not reproducible alone). Measure the settled layout. */
+const settle = (page) => page.evaluate(() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 60))))));
+
 async function runJob([win, zoom, ui, dark]) {
   const tag = `${win}px z${Math.round(zoom * 100)} ${ui} ${dark ? 'dark' : 'light'}`;
   const { ctx, page } = await openPage(win, zoom, ui, dark);
@@ -128,8 +132,10 @@ async function runJob([win, zoom, ui, dark]) {
     const sheet = sheetKeys.has(`${win}|${zoom}|${ui}|${dark}`);
     for (const kind of KINDS) {
       await deselect(page, cssH);
+      await settle(page);
       const before = await page.evaluate(measure);
       await select(page, kind, cssH);
+      await settle(page);
       const m = await page.evaluate(measure);
       tally.kinds += 1;
       if (m.hidden) { tally.noSel.push(`${tag} / ${kind}`); check(`S1 ${tag} / ${kind}: the selection produced a strip`, false, 'strip hidden'); continue; }

@@ -250,12 +250,18 @@ try {
       await page.locator('main.bw-doc [data-p="/chapters/1/sections/0/blocks/1/rows/0/1"]').click();
       (await sh(page, (r) => [...r.querySelectorAll('.ctx [data-a]')].map((el) => el.dataset.a))).forEach((k) => keys.add(k));
       const card = () => sh(page, (r) => { const c = r.querySelector('.xpl'); if (!c || c.hidden) return null; const anim = [...c.querySelectorAll('svg *')].flatMap((e) => e.getAnimations()).length; return { text: c.querySelector('p').textContent, name: c.querySelector('b').textContent, anim, lang: c.lang }; });
+      // The dwell is measured inside the page, from the pointerover that starts the rest to the first frame the card is on screen. Reading the card 300 ms after
+      // Playwright's hover() returned measured the runner instead: hover() returns late on a loaded CI machine (actionability checks, a busy renderer), and the card's own
+      // 500 ms rest timer (XPL_INTENT, unchanged since 0.15.0) had already run out by then (GitHub gates runs 41738387730 attempts 1 and 3).
+      await sh(page, (r) => { const w = (window.__xplDwell = { over: 0, shown: 0 }); r.addEventListener('pointerover', () => { if (!w.over) w.over = performance.now(); }, true);
+        new MutationObserver(() => { if (w.over && !w.shown && r.querySelector('.xpl:not([hidden])')) w.shown = performance.now(); }).observe(r, { subtree: true, childList: true, attributes: true, attributeFilter: ['hidden'] }); });
       await (await rbBtn(page,'save')).hover();
+      await page.waitForFunction(() => window.__xplDwell.shown, null, { timeout: 8000 }).catch(() => {});
+      const dwell = await page.evaluate(() => { const w = window.__xplDwell; return w.over && w.shown ? Math.round(w.shown - w.over) : -1; });
       await page.waitForTimeout(300);
-      const early = await card();
-      await page.waitForTimeout(900);
       const shown = await card();
-      check(`A5 ${ui}: hover ~900 ms shows the card (not at 300 ms) with its sentence and a running animation`, !early && shown && shown.text === SAVE_TXT[ui] && shown.anim > 0 && shown.lang === ui, JSON.stringify({ early, shown }));
+      const early = dwell >= 300 ? null : { dwell };
+      check(`A5 ${ui}: hover ~900 ms shows the card (not at 300 ms) with its sentence and a running animation`, !early && shown && shown.text === SAVE_TXT[ui] && shown.anim > 0 && shown.lang === ui, JSON.stringify({ dwell, shown }));
       await page.keyboard.press('Escape');
       check(`A5 ${ui}: Esc leaves the card in the panel (0.15.0: the user closes the panel, nothing hides the card by itself)`, !!(await card()));
       await page.mouse.move(700, 600); // leave first: hovering the same spot again sends no pointerover
