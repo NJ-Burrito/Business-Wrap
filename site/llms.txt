@@ -12,6 +12,10 @@
 - [Support](https://nj-burrito.github.io/Business-Wrap/support.html)
 - [Terms](https://nj-burrito.github.io/Business-Wrap/terms.html)
 
+## Author
+
+By Nader Alzghoul (also NJ-Burrito, نادر الزغول): portfolio https://nj-burrito.github.io/ · LinkedIn https://www.linkedin.com/in/nader-alzghoul · GitHub https://github.com/NJ-Burrito <!-- bw-allow:bw-denylist (author credit, SEO brief seo1104) -->
+
 ## Short answers
 
 - Free? Yes. MIT licence, no paid plan, no account.

@@ -19,6 +19,9 @@ const OUT = path.join(ROOT, 'site');
 const BASE = 'https://nj-burrito.github.io/Business-Wrap/';
 const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 const REPO = 'https://github.com/NJ-Burrito/Business-Wrap';
+const AUTHOR = 'Nader Alzghoul'; // bw-allow:bw-denylist (author credit, SEO brief seo1104; the owner named on his own tool site)
+const AUTHOR_AR = 'نادر الزغول'; // bw-allow:bw-denylist (author credit, SEO brief seo1104; the owner named on his own tool site)
+const LINKEDIN = 'https://www.linkedin.com/in/nader-alzghoul'; // bw-allow:bw-denylist (author credit, SEO brief seo1104; the owner named on his own tool site)
 
 // Brand files copied into site/assets from brand/v3 (the first source that exists wins).
 const ASSETS = {
@@ -121,6 +124,8 @@ function head(a, lang, file, ld, pre) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(t)}</title>
 <meta name="description" content="${esc(d)}">
+<meta name="author" content="${lang === 'ar' ? AUTHOR_AR : AUTHOR} (NJ-Burrito)">
+<link rel="author" href="https://nj-burrito.github.io/">
 ${file === '404.html' ? '<meta name="robots" content="noindex">' : `<link rel="canonical" href="${self}">`}
 ${alt}<meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#001e3d" media="(prefers-color-scheme: dark)">
@@ -219,6 +224,7 @@ function footer(lang, pre) {
     <div class="foot-brand">${mark('is-dark')}<p><strong>${T[lang].name}</strong><span>${ar ? 'أدلة تدخل. وثيقة واحدة بلغتين.' : 'Evidence in. One document, two languages.'}</span></p></div>
     <nav class="foot-row" aria-label="${ar ? 'صفحات الموقع' : 'Site pages'}">${legal}</nav>
     <nav class="foot-row foot-family" aria-label="${ar ? 'العائلة والروابط' : 'Family and links'}"><a href="https://nj-burrito.github.io/">${ar ? 'الموقع الشخصي' : 'Portfolio'}</a><a href="https://nj-burrito.github.io/NJ-Kit/">NJ-Kit</a><a href="https://nj-burrito.github.io/QA-Wrap/">QA-Wrap</a><a href="https://nj-burrito.github.io/Profile-Wrap/">Profile-Wrap</a><a href="${story}">Story-Wrap</a><a href="https://github.com/NJ-Burrito">GitHub</a><a href="https://www.linkedin.com/in/nader-alzghoul">LinkedIn</a><a href="${REPO}">${ar ? 'المصدر' : 'Source'}</a><a href="https://nj-burrito.github.io/#contact">${ar ? 'تواصل' : 'Contact'}</a></nav><!-- bw-allow:bw-denylist (Lead approved 2026-10-28: Nader's own profile link on his own tool site) -->
+    <p class="fine">${ar ? `من <a href="https://nj-burrito.github.io/">${AUTHOR_AR}</a> (NJ-Burrito)` : `By <a href="https://nj-burrito.github.io/">${AUTHOR}</a> (NJ-Burrito)`}</p>
     <p class="fine">${ar ? `رخصة MIT. لا صلة له بأي جهة حكومية ولا بشركة Anthropic. الخطوط: انظر <a href="${REPO}/blob/main/NOTICE.md">NOTICE</a>.` : `MIT licence. Not affiliated with any government service or with Anthropic. Fonts: see <a href="${REPO}/blob/main/NOTICE.md">NOTICE</a>.`}</p>
   </div>
   <p class="sr-only" id="copy-status" role="status" data-done="${T[lang].copied}"></p>
@@ -256,7 +262,7 @@ function build(file, lang) {
   const pre = bilingual ? '/Business-Wrap/' : lang === 'ar' ? '../' : '';
   const twin = file === 'index.html' ? (lang === 'ar' ? '../' : 'ar/') : (lang === 'ar' ? `../${file}` : `ar/${file}`);
   const ldFile = path.join(HERE, 'pages', file.replace(/\.html$/, '.ld.json'));
-  const ld = fs.existsSync(ldFile) ? JSON.stringify(JSON.parse(fs.readFileSync(ldFile, 'utf8').replace(/\{\{version\}\}/g, VERSION))) : '';
+  const ld = fs.existsSync(ldFile) ? JSON.stringify(JSON.parse(fs.readFileSync(ldFile, 'utf8').replace(/\{\{version\}\}/g, VERSION).replace(/\{\{author\}\}/g, AUTHOR).replace(/\{\{author-ar\}\}/g, AUTHOR_AR).replace(/\{\{linkedin\}\}/g, LINKEDIN))) : '';
   s = s.replace(/<html[^>]*>/, `<html lang="${lang}" dir="${lang === 'ar' ? 'rtl' : 'ltr'}" data-lang="${lang}">`);
   s = s.replace(/\{\{head ([^}]*)\}\}/, (_, a) => head(attrs(a), lang, file, ld, pre));
   s = s.replace(/\{\{header ([^}]*)\}\}/, (_, a) => header(attrs(a).page, lang, pre, bilingual ? `/Business-Wrap/${lang === 'ar' ? '' : 'ar/'}` : twin));
@@ -272,6 +278,8 @@ function build(file, lang) {
   // page-relative asset URLs: the Arabic edition lives one folder down
   if (pre === '../') s = s.replace(/(\s(?:href|src|poster|data-poster)=")assets\//g, '$1../assets/');
   if (bilingual) s = s.replace(/(\s(?:href|src|poster|data-poster)=")assets\//g, '$1/Business-Wrap/assets/');
+  // The author name is on the repo's denylist; a line that credits him carries the allow marker (owner SEO brief, 2026-11-04).
+  s = s.split(/\r?\n/).map((l) => (/Alzghoul|الزغول/.test(l) && !l.includes('bw-allow:bw-denylist') ? `${l} <!-- bw-allow:bw-denylist (author credit, SEO brief seo1104) -->` : l)).join('\n');
   // no tashkeel on public Arabic (the gate below refuses it)
   if (/[\u064B-\u0652]/.test(s)) throw new Error(`${lang}/${file}: Arabic diacritics found (public Arabic is unvowelled)`);
   if (/\u2014/.test(s)) throw new Error(`${lang}/${file}: em dash found`);
@@ -279,7 +287,7 @@ function build(file, lang) {
 }
 
 function sitemap(pages) {
-  const day = '2026-10-28';
+  const day = '2026-11-04';
   const urls = pages.filter((f) => f !== '404.html').flatMap((f) => ['en', 'ar'].map((l) => `  <url><loc>${pageUrl(l, f)}</loc><lastmod>${day}</lastmod><xhtml:link rel="alternate" hreflang="en" href="${pageUrl('en', f)}"/><xhtml:link rel="alternate" hreflang="ar" href="${pageUrl('ar', f)}"/><xhtml:link rel="alternate" hreflang="x-default" href="${pageUrl('en', f)}"/></url>`));
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.join('\n')}\n</urlset>\n`;
 }

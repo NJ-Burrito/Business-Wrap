@@ -512,6 +512,8 @@ git config core.hooksPath .githooks
 </details>
 
 ## 🌐 المزيد من NJ
+👤 من نادر الزغول (NJ-Burrito): [الموقع الشخصي](https://nj-burrito.github.io/) · [لينكدإن](https://www.linkedin.com/in/nader-alzghoul) · [GitHub](https://github.com/NJ-Burrito) <!-- bw-allow:bw-denylist (author credit, SEO brief seo1104) -->
+
 [الموقع الشخصي](https://nj-burrito.github.io/) · [NJ-Kit](https://nj-burrito.github.io/NJ-Kit/) · [QA-Wrap](https://nj-burrito.github.io/QA-Wrap/) · [Profile-Wrap](https://nj-burrito.github.io/Profile-Wrap/) · [Story-Wrap](https://nj-burrito.github.io/story-wrap/ar/) · [GitHub](https://github.com/NJ-Burrito)
 
 ⚖️ [MIT](LICENSE) · [NOTICE.md](NOTICE.md) (الخطوط) · [fonts/README.ar.md](fonts/README.ar.md)
