@@ -1,0 +1,11 @@
+{
+  "note": "SYNTHETIC. The shape of a saved project folder on a machine without long-path support (0.17.4): invented titles, no client data. Built by tests/import-hp-0174.test.mjs.",
+  "docs": [
+    { "id": "A", "title": "عنوان تجريبي طويل جدا لخدمة إلكترونية وهمية تستخدم لاختبار المسارات الطويلة في استيراد المشاريع", "files": ["share", "pdf"], "ops": 7 },
+    { "id": "B", "title": "عنوان تجريبي ثان لخدمة وهمية أخرى", "files": ["editor", "exports-share", "exports-pdf", "share", "pdf"], "ops": 9, "shareOps": 3 },
+    { "id": "C", "title": "عنوان تجريبي ثالث وطويل نسبيا لخدمة وهمية ثالثة تحتوي ملف مشاركة وملف PDF فقط", "files": ["share", "pdf"], "ops": 5 }
+  ],
+  "blank": true,
+  "system": ["المستندات - Documents/خدمة جديدة/desktop.ini", "المستندات - Documents/.system/folder.ico"],
+  "expect": { "came_in": 3, "blank": 1, "system": 2, "not_document": 2, "not_needed": 4, "failed": 0 }
+}

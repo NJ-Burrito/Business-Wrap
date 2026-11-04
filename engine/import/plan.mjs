@@ -1,17 +1,19 @@
 // Which file is the document (0.16.3, fix 0163). A folder or zip the owner saved holds the SAME document several times: the editor
 // file (Documents\<title>\<title>.html), a share file (<title> - مشاركة.html, Exports\*.shared.html), a PDF. Import brings each document
 // back ONCE, from the best source: editor HTML, else share HTML, else DOCX / PDF / plain HTML. Other copies are "not needed".
-//   planSources(sources) → {documents, toRead, skipped, settled}
+//   planSources(sources) → {documents, toRead, skipped, failed, settled}
 //     sources    [{file, rel, src}] (.pdf .docx .html .htm)
 //     documents  payloads for the library from Save-HTML files, whole: both editions, their ops, comments, versions, marks
 //     toRead     the chosen files that still need reading by engine/import (PDF, DOCX, plain HTML)
 //     skipped    [{file, reason, kind, title?}]  kind: not-needed | not-document | blank | no-document
+//     failed     [{file, reason}] a file that could not be opened: named, never quietly taken for a plain HTML (0.17.4: that let its PDF win)
 //     settled    how many of the given files were settled without reading (documents + skipped)
 // A Save-HTML's text is the BLANK base with the work as ops on top: the real title is the applied document's, never the base's.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { applyOps } from '../edits.mjs';
+import { lp } from './safe.mjs';
 
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
 const BWDATA = /<script type="application\/json" id="bw-data">([\s\S]*?)<\/script>/;
@@ -47,7 +49,7 @@ export function contentKey(raw, ops) {
 
 /** The Save-HTML data of a file, or null (not ours / not parseable). */
 export function readSaveData(file) {
-  const t = fs.readFileSync(file, 'utf8');
+  const t = fs.readFileSync(lp(file), 'utf8'); // lp: a long Arabic path under a long temp folder (Windows without long-path support)
   const m = BWDATA.exec(t);
   let data = null;
   if (m) try { data = JSON.parse(m[1]); } catch { data = null; }
@@ -80,7 +82,7 @@ function candidate(s, f, fallback) {
 }
 
 export function planSources(sources) {
-  const skipped = [];
+  const skipped = [], failed = [];
   const cands = []; // {f, rank, ext, title, key, payload?}
   const settled = new Set();
   const skip = (f, reason, kind, title) => { skipped.push({ file: f.rel, reason, kind, ...(title ? { title } : {}) }); settled.add(f); };
@@ -91,7 +93,7 @@ export function planSources(sources) {
     const stem = stemTitle(f.rel);
     if (ext === '.html' || ext === '.htm') {
       let r;
-      try { r = readSaveData(f.file); } catch (e) { cands.push({ f, ext, rank: 3, title: stem, key: titleKey(stem), plain: true }); continue; }
+      try { r = readSaveData(f.file); } catch (e) { failed.push({ file: f.rel, reason: `cannot be opened (${e.code || e.message}); the path may be too long or the file is locked` }); settled.add(f); continue; }
       if (r.data && Array.isArray(r.data.services)) {
         const made = r.data.services.map((s) => { const c = candidate(s, f, { htmlTitle: r.htmlTitle, stem }); const pv = r.data.prov?.[s.id]; if (c && typeof pv?.log === 'string' && pv.log) c.prov = { doc: String(pv.doc || s.id), log: pv.log }; return c; }).filter(Boolean);
         if (!made.length) { skip(f, 'the file carries no document (it holds no edition to import)', 'no-document'); continue; }
@@ -138,7 +140,7 @@ export function planSources(sources) {
   }
   for (const f of sources) if (chosenFiles.has(f)) settled.delete(f);
   const settledN = sources.filter((f) => !toRead.includes(f)).length;
-  return { documents, toRead, skipped, settled: settledN };
+  return { documents, toRead, skipped, failed, settled: settledN };
 }
 
 /** The import report in plain words, counts first, Arabic and English: {counts, ar, en}. */
