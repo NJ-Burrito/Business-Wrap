@@ -16,7 +16,9 @@
     "sv.failed": "تعذّر تشغيل الخادم: {r}",
     "sv.stopFailed": "تعذّر إيقاف الخادم: {r}",
     "sv.noLauncher": "لم يبدأ الخادم المحلي. المشغّل غير مسجَّل بعد على هذا الجهاز: افتح بزنس راب مرة من مجلده ثم اضغط من جديد.",
-    "sv.noLauncherStop": "لم يتوقف الخادم المحلي. المشغّل غير مسجَّل بعد على هذا الجهاز: افتح بزنس راب مرة من مجلده ثم اضغط من جديد."
+    "sv.noLauncherStop": "لم يتوقف الخادم المحلي. المشغّل غير مسجَّل بعد على هذا الجهاز: افتح بزنس راب مرة من مجلده ثم اضغط من جديد.",
+    "sv.allowHint": "المتصفح يسألك الإذن: اختر «فتح» في مربع «فتح بزنس راب؟» (وفعّل «السماح دائمًا» كي لا يسأل ثانية).",
+    "sv.noStart": "لم يبدأ الخادم المحلي. إن ظهر مربع «فتح بزنس راب؟» في المتصفح فاختر «فتح» (وفعّل «السماح دائمًا»)، وإلا فالمشغّل غير مسجَّل بعد: افتح بزنس راب مرة من مجلده. ثم اضغط من جديد."
   },
   "en": {
     "sv.label": "Local server",
@@ -35,6 +37,8 @@
     "sv.failed": "Could not start the server: {r}",
     "sv.stopFailed": "Could not stop the server: {r}",
     "sv.noLauncher": "The local host did not start. The launcher is not registered on this PC yet: open Business-Wrap once from its folder, then press again.",
-    "sv.noLauncherStop": "The local host did not stop. The launcher is not registered on this PC yet: open Business-Wrap once from its folder, then press again."
+    "sv.noLauncherStop": "The local host did not stop. The launcher is not registered on this PC yet: open Business-Wrap once from its folder, then press again.",
+    "sv.allowHint": "Your browser is asking permission: choose Open in the «Open Business-Wrap?» box (tick Always allow so it does not ask again).",
+    "sv.noStart": "The local host did not start. If the browser showed an «Open Business-Wrap?» box, choose Open (and tick Always allow); otherwise the launcher is not registered yet: open Business-Wrap once from its folder. Then press again."
   }
 }
