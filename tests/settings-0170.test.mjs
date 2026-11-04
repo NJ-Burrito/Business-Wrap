@@ -202,9 +202,7 @@ try {
     const pillBg = await shRoot(page, (r) => getComputedStyle(r.querySelector('.drawer .set-seg'), '::before').backgroundColor);
     check(`${tag} Settings: label text on the card ≥ 4.5:1 (${contrast(rgb(q.k), rgb(q.card)).toFixed(2)}), heading ≥ 4.5:1, pressed text on the pill ≥ 4.5:1 (${contrast(rgb(q.onC), rgb(pillBg)).toFixed(2)})`,
       contrast(rgb(q.k), rgb(q.card)) >= 4.5 && contrast(rgb(q.h), rgb(q.card)) >= 4.5 && contrast(rgb(q.onC), rgb(pillBg)) >= 4.5, JSON.stringify([q, pillBg]));
-    const stops = (await shRoot(page, (r) => getComputedStyle(r.querySelector('.drawer .set-about')).backgroundImage)).match(/rgb\([^)]*\)/g) || [];
-    const worst = Math.min(...stops.map((c) => contrast(rgb(q.aboutInk), rgb(c))));
-    check(`${tag} Settings: About band (navy cover gradient, ${stops.length} stops read from the shipped CSS) keeps its text ≥ 4.5:1 (worst ${worst.toFixed(2)})`, stops.length >= 2 && worst >= 4.5, JSON.stringify([stops, q.aboutInk]));
+    check(`${tag} Settings: About (0.17.4: the same flat card surface as the other tabs) keeps its text ≥ 4.5:1 (${contrast(rgb(q.aboutInk), rgb(q.about)).toFixed(2)})`, /^rgba?\(/.test(q.about) && contrast(rgb(q.aboutInk), rgb(q.about)) >= 4.5, JSON.stringify([q.about, q.aboutInk]));
     check(`${tag}: no page error`, page.errors.length === 0, page.errors.join(' | '));
     await ctx.close();
     await new Promise((ok) => s2.close(ok));
