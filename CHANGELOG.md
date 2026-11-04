@@ -8,6 +8,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.17.8] - 2026-11-04
+
+🛠️ A fix release: the host switch on a new PC, and prints that fill the page. / 🛠️ إصدار إصلاحات: مفتاح الخادم على جهاز جديد، وطباعة تملأ الصفحة.
+
+### Fixed / أصلح
+- 🟢 **The host switch starts the host on any PC**: starting Business-Wrap with `npm run serve`, `npm run host`, MCP or the Desktop launcher now registers the `business-wrap:` link too, so the switch no longer does nothing on a PC where `business-wrap open` never ran. / **مفتاح الخادم يشغّل الخادم على أي جهاز**: تشغيل بزنس راب عبر `npm run serve` أو `npm run host` أو MCP أو مشغل سطح المكتب يسجّل الآن الرابط `business-wrap:` أيضا، فلم يعد المفتاح بلا أثر على جهاز لم يُشغَّل فيه `business-wrap open`.
+- 🖨️ **Printing fills the page at actual size**: with the paper left on «printer default», the print uses the printer's paper that matches the document (A4, not the driver's Letter) and prints it at 100%, with no white bands. / **الطباعة تملأ الصفحة بالحجم الفعلي**: إذا بقي الورق على «افتراضي الطابعة» تستخدم الطباعة ورق الطابعة المطابق للوثيقة (A4 لا Letter الافتراضي في التعريف) وتطبعها بنسبة 100% دون أشرطة بيضاء.
+
 ## [0.17.7] - 2026-11-04
 
 ↹ A small feature release: tab stops on the ruler, and a clearer host switch. / ↹ إصدار ميزات صغير: علامات جدولة على المسطرة، ومفتاح خادم أوضح.
