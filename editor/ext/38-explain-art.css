@@ -37,7 +37,7 @@
 .xpl-dock svg .fr-cur { opacity: 0; }
 .xpl-dock svg .fr-rip { fill: none; stroke: var(--xa-gold); stroke-width: 1.2; opacity: 0; }
 .xpl-dock svg .fr-pay { fill: none; stroke: var(--bw-accent); stroke-width: 1.6; opacity: 0; }
-.xpl-dock svg .fr-spk { fill: none; stroke: var(--bw-accent); stroke-width: 1.5; stroke-linecap: round; opacity: 0; }
+.xpl-dock svg .fr-spk { fill: var(--bw-accent); stroke: none; opacity: 0; }
 .xpl-dock svg .badge circle { fill: var(--bw-accent); stroke: color-mix(in srgb, var(--bw-on-glass, #fff) 55%, transparent); stroke-width: .8; filter: drop-shadow(0 1.5px 2px var(--xa-sh)); }
 
 /* ── depth: soft shadows, gloss edges, headings, stronger text bars ── */
@@ -64,6 +64,16 @@
 /* what just arrived wears a gold edge (the eye lands on the change) */
 .xpl-dock svg .k-in :is(.blk, .bx, .sheet, .cell, .sf) { stroke: var(--xa-gold); stroke-width: 1.2; }
 
+/* pass 2: moving objects carry a shadow, arrivals drop in from above, a glint crosses the result */
+.xpl-dock svg :is(.k-in, .k-in2) { --dy: -9px; }
+.xpl-dock svg :is(.k-in, .k-in2, .k-mv) { filter: drop-shadow(0 2px 1.6px var(--xa-sh)); }
+.xpl-dock svg .shd { fill: var(--bw-band); opacity: 0; stroke: none; filter: blur(1.1px); }
+.xpl-dock svg .star { fill: var(--bw-accent); stroke: none; }
+.xpl-dock svg .glint { fill: var(--bw-on-glass, #fff); opacity: 0; stroke: none; transform: skewX(-18deg); animation: xa-glint 2.4s var(--e-move, ease) infinite; }
+@keyframes xa-glint { 0%, 46% { opacity: 0; translate: 0 0; } 52% { opacity: .42; } 70%, 100% { opacity: 0; translate: var(--gw, 40px) 0; } }
+.xpl-dock svg .shd.k-fade { animation-name: xa-shd; }
+@keyframes xa-shd { 0%, 14% { opacity: 0; } 44%, 88% { opacity: .22; } 100% { opacity: 0; } }
+
 /* ── motion ── */
 .xpl-dock svg .scn { transform-box: view-box; transform-origin: 0 0; animation: xa-enter .5s var(--xa-in) both; }
 .xpl-dock svg .pg > .sheet { animation: xa-sheet .45s var(--xa-in) both; }
@@ -88,11 +98,12 @@
 @keyframes xa-cur { 0% { opacity: 0; translate: var(--dx, 28px) var(--dy, 30px); } 5% { opacity: 1; } 13% { opacity: 1; translate: 0 0; scale: 1; } 15% { scale: .82; } 19%, 38% { opacity: 1; translate: 0 0; scale: 1; } 47%, 100% { opacity: 0; translate: 4px 8px; scale: 1; } }
 @keyframes xa-rip { 0%, 13% { opacity: 0; scale: .4; } 15% { opacity: .95; } 30%, 100% { opacity: 0; scale: 2.6; } }
 @keyframes xa-pay { 0%, 44% { opacity: 0; scale: 1; } 47% { opacity: .9; } 70%, 100% { opacity: 0; scale: 2.2; } }
-@keyframes xa-spk { 0%, 45% { opacity: 0; scale: .2; rotate: 0deg; } 55% { opacity: 1; scale: 1.15; } 74%, 100% { opacity: 0; scale: .5; rotate: 45deg; } }
-@keyframes xa-sweep { 0%, 56% { opacity: 0; translate: 0 0; } 62% { opacity: .06; } 86%, 100% { opacity: 0; translate: 190px 0; } }
+@keyframes xa-spk { 0%, 45% { opacity: 0; scale: .2; rotate: 0deg; } 55% { opacity: 1; scale: 1.2; } 74%, 100% { opacity: 0; scale: .5; rotate: 20deg; } }
+@keyframes xa-sweep { 0%, 44% { opacity: 0; translate: 0 0; } 50% { opacity: .1; } 72%, 100% { opacity: 0; translate: 190px 0; } }
 @keyframes xa-badge { 0%, 42% { scale: 1; } 50% { scale: 1.2; } 60%, 100% { scale: 1; } }
 @keyframes xa-tab { 0%, 10% { opacity: .35; } 20%, 100% { opacity: 1; } }
 
 /* ── Calm: the end state, nothing moving (same rule as 37-explain.css, repeated so this file stands alone) ── */
 .shell[data-calm="1"] .xpl-dock svg, .shell[data-calm="1"] .xpl-dock svg * { animation: none !important; transition: none !important; }
-.shell[data-calm="1"] .xpl-dock svg :is(.fr-cur, .fr-rip, .fr-pay, .fr-spk, .fr-sweep) { opacity: 0 !important; }
+.shell[data-calm="1"] .xpl-dock svg :is(.fr-cur, .fr-rip, .fr-pay, .fr-spk, .fr-sweep, .glint) { opacity: 0 !important; }
+.shell[data-calm="1"] .xpl-dock svg .shd { opacity: .2 !important; }

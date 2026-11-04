@@ -24,7 +24,7 @@ const xaMv = (dx, dy, o = '') => `style="--dx:${dx}px;--dy:${dy}px${o ? `;transf
 const xaSc = (sx, sy, o = '') => `style="--sx:${sx};--sy:${sy}${o ? `;transform-origin:${o}` : ''}"`;
 const xaLn = (x, y, w, c = 'ln', s = '') => xaR(c, x, y, w, 4, 2, s);
 const xaLines = (x, y, n, w = 44, o = {}) => Array.from({ length: n }, (_, i) => {
-  const ww = i % 3 === 2 ? w - 14 : w;
+  const ww = i % 3 === 2 ? Math.max(5, w - 14) : w;
   return xaLn(o.right ? x + w - ww : x, y + i * (o.gap || 9), ww, o.c || 'ln', `style="--i:${i}"`);
 }).join('');
 /** A page: a sheet with a gloss edge, a heading bar (accent on the reading start side) and n text lines. */
@@ -38,6 +38,10 @@ const xaEnd = (a) => (a === 's' ? (XPL_RTL ? 'r' : 'l') : a === 'e' ? (XPL_RTL ?
 const xaMir = (inner) => (XPL_RTL ? `<g transform="translate(160 0) scale(-1 1)">${inner}</g>` : inner);
 const xaTray = (x = 44, y = 84, w = 72) => xaR('tray', x, y, w, 6, 3);
 const xaDown = (x, y, k = 'k-mv', d = -14) => xaG(k, xaP('acs', `M${x} ${y} v18 m-7 -7 l7 7 l7 -7`), xaMv(0, d));
+/** Pass 2 kit: a soft shadow that lands under a moving object, a 4-point star (payoff, never a cross), a glint that crosses the result. */
+const xaShd = (x, y, w) => xaR('shd k-fade', x, y, w, 3, 1.5);
+const xaStar = (x, y, r = 3) => `<path class="star" d="M${x} ${y - r} L${x + r * 0.28} ${y - r * 0.28} L${x + r} ${y} L${x + r * 0.28} ${y + r * 0.28} L${x} ${y + r} L${x - r * 0.28} ${y + r * 0.28} L${x - r} ${y} L${x - r * 0.28} ${y - r * 0.28} Z"/>`;
+const xaGlint = (x, y, w, h) => xaR('glint', x, y, 5, h, 2, `style="--gw:${w}px"`);
 /** A selected word: a short bar on a line of text. */
 const xaWord = (x, y, w, c = 'ln', s = '') => xaR(c, x, y, w, 6, 3, s);
 /** A diagram node by kind, centred on cx, cy. */
@@ -94,13 +98,14 @@ const XPL_SCENES = {
     };
     if (kind === 'menu') return xaPage(16, 10, 50, 76, 6) + [0, 1, 2, 3].map((i) => xaG(i % 2 ? 'k-in2' : 'k-in', xaR('sheet', 86, 8 + i * 20, 52, 16, 4) + xaR(['ac', 'pr', 'ok', 'mk'][i], 90, 12 + i * 20, 8, 8, 2) + xaLn(102, 14 + i * 20, 30), xaMv(-24, 0))).join('');
     const cards = lang === 'both' ? xaG('k-in', card(104, 4), xaMv(-30, 0)) + xaG('k-in2', card(108, 38), xaMv(-30, 0)) : xaG('k-in', card(104, 22), xaMv(-30, 0));
-    return from + xaP('acs k-draw', 'M70 46 h26 m-6 -6 l6 6 l-6 6') + cards;
+    const shd = lang === 'both' ? xaShd(108, 70, 30) : xaShd(108, 52, 30);
+    return xaG('k-mv', from, xaMv(0, 0)) + xaP('acs k-draw', 'M70 46 h26 m-6 -6 l6 6 l-6 6') + cards + shd + xaGlint(106, lang === 'both' ? 6 : 24, 24, 30);
   },
   in(v) {
     switch (v) {
       case 'mmd': return xaR('sheet', 10, 16, 42, 62, 5) + xaLines(16, 24, 5, 30, { gap: 10 }) + xaP('acs', 'M58 46 h14 m-5 -5 l5 5 l-5 5') + xaG('k-in', xaNode('', 96, 34) + xaNode('', 126, 62) + xaP('wr', 'M102 44 q12 20 22 8'), xaMv(-10, 0));
       case 'pack': return xaR('sheet', 10, 22, 36, 46, 6) + xaC('pr', 22, 38, 5) + xaC('ac', 34, 38, 5) + xaC('mk', 22, 54, 5) + xaP('acs', 'M52 46 h14 m-5 -5 l5 5 l-5 5') + xaPage(76, 10, 56, 76, 6, { c: 'ln hue' });
-      default: return xaR('tray', 10, 36, 30, 24, 4) + xaPage(52, 8, 56, 78, 7) + xaR('blk k-in', 58, 36, 44, 12, 3, xaMv(-44, 0));
+      default: return xaR('tray', 10, 36, 30, 24, 4) + xaPage(52, 8, 56, 78, 7) + xaR('blk k-in', 58, 36, 44, 12, 3, xaMv(-44, 0)) + xaShd(60, 47, 40) + xaGlint(58, 36, 40, 12);
     }
   },
   swap(v) { // an image/logo replaced, captioned, repeated, removed
@@ -109,10 +114,18 @@ const XPL_SCENES = {
       case 'caption': return pg + xaPicture(48, 30, 54, 28) + xaLn(56, 64, 38, 'mk k-grow', xaSc(0, 1, 'left center')) + xaLn(56, 72, 24);
       case 'every': return xaPage(10, 14, 40, 66, 3) + xaPage(60, 14, 40, 66, 3) + xaPage(110, 14, 40, 66, 3) + [20, 70, 120].map((x, i) => xaR(i ? 'ac k-in2' : 'ac k-in', x, 20, 20, 10, 3)).join('');
       case 'delete': return pg + xaR('gh', 48, 30, 54, 34, 3) + xaG('k-gone', xaPicture(48, 30, 54, 34));
-      default: return pg + xaPicture(48, 30, 54, 34) + xaG('k-mv', xaP('acs', 'M92 30 q10 0 10 10 M96 36 l6 4 l3 -6'), xaMv(-18, 0));
+      default: return pg + xaG('k-gone', xaPicture(48, 30, 54, 34, 'cell')) + xaG('k-in', xaPicture(48, 30, 54, 34), xaMv(24, 0)) + xaShd(52, 63, 46) + xaGlint(50, 30, 44, 34);
     }
   },
-  pop(v) { // a new block appears on the page
+  pop(v) { // a new block appears on the page: a dashed landing outline first, the block drops in with a shadow, a glint crosses it
+    const R = { image: [48, 34, 54, 26], logo: [86, 10, 18, 14], diagram: [46, 32, 58, 34], text: [54, 32, 44, 26], table: [48, 32, 54, 32], section: [46, 30, 58, 40], chapter: [46, 26, 58, 40], story: [46, 28, 58, 40], outchapter: [46, 24, 58, 44], outstory: [46, 28, 58, 40], point: [57, 42, 42, 20], card: [78, 28, 28, 40], toc: [50, 49, 52, 9], para: [48, 34, 54, 22] }[v] || (['tochide', 'newdoc', 'process'].includes(v) ? null : [48, 34, 54, 14]);
+    const out = XPL_SCENES.pop0(v);
+    if (!R) return out;
+    const pg = xaPage(40, 6, 70, 84, 7);
+    const at = out.startsWith(pg) ? pg.length : 0;
+    return out.slice(0, at) + xaR('gh', R[0], R[1], R[2], R[3], 3) + out.slice(at) + xaShd(R[0] + 4, R[1] + R[3] - 1, R[2] - 8) + xaGlint(R[0] + 2, R[1], R[2] - 6, R[3]);
+  },
+  pop0(v) {
     const pg = xaPage(40, 6, 70, 84, 7);
     switch (v) {
       case 'image': return pg + xaG('k-in', xaPicture(48, 34, 54, 26));
@@ -155,9 +168,10 @@ const XPL_SCENES = {
   },
   undo(v) {
     const pg = xaPage(40, 6, 70, 84, 7);
-    // undo: the last block leaves (a dashed ghost stays); redo: it comes back with a pop
+    // undo: the last block leaves (a dashed ghost stays) and a turning arrow runs back; redo: the block returns with a pop. The arrows follow the reading direction like the badge.
     const blk = xaR('hi', 48, 34, 54, 12, 3, 'style="stroke-width:1.2"');
-    return pg + (v === 'undo' ? xaR('gh', 48, 34, 54, 12, 3) + xaG('k-gone', blk) : xaR('gh', 48, 34, 54, 12, 3) + xaG('k-in', blk, xaMv(0, 6))) + (v === 'undo' ? xaP('arc back', 'M122 30 a14 14 0 1 0 6 18', 'style="stroke-dasharray:80"') : xaP('arc fwd', 'M38 30 a14 14 0 1 1 -6 18', 'style="stroke-dasharray:80"'));
+    const ar = v === 'undo' ? xaP('arc back', 'M116 26 h6 a12 12 0 1 1 0 24 h-8 m4 -4 l-4 4 l4 4', 'style="stroke-dasharray:80"') : xaP('arc fwd', 'M44 26 h-6 a12 12 0 1 0 0 24 h8 m-4 -4 l4 4 l-4 4', 'style="stroke-dasharray:80"');
+    return pg + xaR('gh', 48, 34, 54, 12, 3) + (v === 'undo' ? xaG('k-gone', blk) : xaG('k-in', blk, xaMv(0, 8))) + xaShd(50, 48, 50) + xaMir(ar);
   },
   /* ── tables ── */
   tbl(v) { // add|del|up|down . row|col
@@ -179,11 +193,11 @@ const XPL_SCENES = {
     const grid = (hi = '', skip = []) => Array.from({ length: 3 }, (_, r) => Array.from({ length: 3 }, (_, q) => skip.includes(`${r}${q}`) ? '' : xaR(hi.includes(`${r}${q}`) ? 'hi' : 'cell', 30 + q * 35, 18 + r * 21, 33, 19, 2)).join('')).join('');
     switch (v) {
       case 'merge': return sheet + grid('', ['00', '01']) + xaG('k-grow', xaR('hi', 30, 18, 68, 19, 2), xaSc(0.5, 1, 'left center')) + xaP('acs k-fade', 'M64 28 h-8 m3 -3 l-3 3 l3 3 M68 28 h8 m-3 -3 l3 3 l-3 3');
-      case 'split': return sheet + grid('00') + xaP('acs k-fade', 'M64 18 v19', 'style="stroke-dasharray:3 3"');
+      case 'split': return sheet + grid('', ['00']) + xaR('hi k-in', 30, 18, 15, 19, 2, xaMv(8, 0)) + xaR('hi k-in2', 49, 18, 15, 19, 2, xaMv(-8, 0)) + xaP('acs k-fade', 'M47 14 v27', 'style="stroke-dasharray:3 3"') + xaShd(34, 38, 28);
       case 'wrap': return sheet + grid() + xaR('sheet', 30, 18, 33, 19, 2) + xaLn(34, 22, 24) + xaLn(34, 29, 14, 'ln k-in');
-      case 'fill': return sheet + grid('01011112') + xaC('ac', 124, 24, 4);
-      case 'colw': return sheet + grid() + xaP('acs k-fade', 'M30 78 h68 m-6 -4 l6 4 l-6 4 M30 74 v8 M98 74 v8');
-      case 'rowh': return sheet + grid('00') + xaP('acs k-fade', 'M126 18 v19 m-4 -5 l4 5 l4 -5 M122 18 h8 M122 37 h8');
+      case 'fill': return sheet + grid('') + ['01', '10', '11', '12', '21'].map((k, i) => xaR(i % 2 ? 'hi k-in2' : 'hi k-in', 30 + k[1] * 35, 18 + k[0] * 21, 33, 19, 2, xaMv(0, -6))).join('') + xaG('k-mv', xaC('ac', 124, 24, 4) + xaP('acs', 'M118 30 q6 6 12 0'), xaMv(-60, 20));
+      case 'colw': return sheet + grid('', ['00', '10', '20']) + [0, 1, 2].map((r) => xaR('hi k-grow', 30, 18 + r * 21, 68, 19, 2, xaSc(0.5, 1, 'left center'))).join('') + xaP('acs k-fade', 'M30 78 h68 m-6 -4 l6 4 l-6 4 M30 74 v8 M98 74 v8');
+      case 'rowh': return sheet + grid('', ['00', '01', '02']) + [0, 1, 2].map((q) => xaR('hi k-grow', 30 + q * 35, 18, 33, 19, 2, xaSc(1, 0.55, 'center top'))).join('') + xaP('acs k-fade', 'M126 18 v19 m-4 -5 l4 5 l4 -5 M122 18 h8 M122 37 h8');
       case 'clearv': return sheet + grid('11') + xaG('k-gone', xaLn(70, 48, 22, 'ln'));
       case 'keepe': return sheet + grid('11') + xaP('acs k-fade', 'M68 48 h26', 'style="stroke-dasharray:3 3"') + xaP('acs', 'M64 40 v16 M98 40 v16');
       default: return sheet + grid('11') + xaG('k-gone', xaLn(70, 48, 22, 'ln') + xaC('ac', 90, 56, 3)) + xaP('prs', 'M112 60 l8 -8 l4 4 l-8 8 Z');
@@ -209,7 +223,7 @@ const XPL_SCENES = {
       case 'pages': return pg + side([0, 1, 2].map((i) => xaR(i === 1 ? 'hi' : 'sheet', 26, 14 + i * 22, 32, 19, 2)).join(''));
       case 'history': return pg + side(xaC('wh', 28, 22, 6) + [0, 1, 2].map((i) => xaLn(20, 36 + i * 12, 40 - i * 6, i ? 'wh' : 'mk')).join(''));
       case 'theme': return pg + side([0, 1, 2, 3].map((i) => xaC(['pr', 'ac', 'mk', 'ok'][i], 24 + (i % 2) * 16, 24 + Math.floor(i / 2) * 16, 6)).join('') + xaR('wh', 20, 56, 42, 4, 2) + xaC('ac', 40, 58, 5));
-      case 'palette': return xaR('sheet', 24, 14, 112, 68, 8) + xaR('cell', 32, 22, 96, 14, 5) + xaP('prs', 'M40 29 h6', 'style="stroke-width:1.6"') + [0, 1, 2].map((i) => xaR(i === 1 ? 'hi' : 'cell', 32, 42 + i * 13, 96, 10, 3)).join('');
+      case 'palette': return xaG('k-in', xaR('sheet', 24, 14, 112, 68, 8) + xaR('cell', 32, 22, 96, 14, 5) + xaP('prs', 'M40 29 h6', 'style="stroke-width:1.6"') + [0, 1, 2].map((i) => xaR(i === 1 ? 'hi' : 'cell', 32, 42 + i * 13, 96, 10, 3)).join(''), xaMv(0, -8)) + xaShd(30, 80, 100);
       case 'more': return xaPage(30, 8, 56, 78, 6) + xaG('k-in', xaR('sheet', 98, 24, 44, 40, 6) + [0, 1, 2].map((i) => xaLn(104, 32 + i * 10, 32)).join('')) + xaC('ac', 18, 40, 2.6) + xaC('ac', 18, 48, 2.6) + xaC('ac', 18, 56, 2.6);
       case 'settings': return pg + side(xaC('gh', 40, 40, 12) + xaC('wh', 40, 40, 4) + [0, 45, 90, 135].map((a) => xaR('wh', 38, 24, 4, 6, 1, `transform="rotate(${a} 40 40)"`)).join(''));
       case 'library': return pg + side([0, 1, 2].map((i) => xaR('sheet', 22, 14 + i * 22, 40, 18, 3) + xaR(['ac', 'pr', 'ok'][i], 26, 18 + i * 22, 8, 10, 2) + xaLn(38, 21 + i * 22, 20)).join(''));
@@ -234,7 +248,7 @@ const XPL_SCENES = {
       case 'ignore': return pg + W(46, 20, 56) + xaG('k-gone', bad(46, 38, 34)) + xaWord(46, 38, 34, 'wl') + W(46, 56, 44) + xaP('prs', 'M100 34 l16 16 m0 -16 l-16 16');
       case 'ignoreall': return pg + xaG('k-gone', bad(46, 20, 30) + bad(46, 40, 34) + bad(46, 60, 26)) + xaLn(46, 22, 30, 'wl') + xaLn(46, 42, 34, 'wl') + xaLn(46, 62, 26, 'wl') + xaP('prs', 'M100 30 l16 16 m0 -16 l-16 16 M100 52 l16 16 m0 -16 l-16 16');
       case 'add': return xaR('sheet', 40, 10, 66, 70, 6) + xaR('ac', 40, 10, 8, 70, 3) + W(56, 24, 36) + W(56, 38, 28) + xaC('ok k-grow', 100, 62, 11, xaSc(0, 0, '100px 62px')) + xaP('wh', 'M100 56 v12 M94 62 h12');
-      case 'count': return pg + bad(46, 20, 30) + bad(46, 40, 34) + bad(46, 60, 26) + xaC('no', 112, 26, 12) + xaLn(106, 24, 12, 'wl');
+      case 'count': return pg + bad(46, 20, 30) + bad(46, 40, 34) + bad(46, 60, 26) + xaG('k-in2', xaC('no', 112, 26, 12) + xaLn(106, 24, 12, 'wl'), xaMv(0, -8));
       case 'lang': return xaPage(14, 14, 56, 70, 5) + xaPage(90, 14, 56, 70, 5, { right: true }) + xaP('acs', 'M74 40 h12 M82 34 l6 6 l-6 6 M86 56 h-12 M78 50 l-6 6 l6 6');
       default: return pg + W(46, 24, 56) + bad(46, 40, 34);
     }
@@ -248,9 +262,9 @@ const XPL_SCENES = {
       case 'focus': return xaR('gh', 14, 4, 132, 88, 6) + xaG('k-gone', xaR('side', 14, 4, 132, 12, 6)) + xaG('k-scale', xaPage(44, 8, 72, 84, 7), 'style="--sc:.82"');
       case 'spell': return xaPage(40, 8, 80, 72, 4) + xaG('k-gone', xaP('no', 'M52 40 q2.5 -4 5 0 t5 0 t5 0 t5 0 t5 0', 'style="fill:none;stroke:var(--bw-danger);stroke-width:2"')) + xaWord(50, 33, 30, 'ln') + xaP('okS k-fade', 'M104 30 l4 4 l8 -9');
       case 'both': return xaPage(14, 14, 56, 70, 5) + xaPage(90, 14, 56, 70, 5, { right: true }) + xaR('hi k-grow', 20, 36, 42, 6, 3, xaSc(0, 1, 'left center')) + xaR('hi k-grow', 98, 36, 42, 6, 3, xaSc(0, 1, 'right center')) + xaP('acs', 'M74 46 h12 M78 42 l-4 4 l4 4 M82 42 l4 4 l-4 4');
-      case 'lock': return xaPage(40, 8, 70, 80, 6) + xaR('pr', 60, 40, 30, 24, 5) + xaP('prs', 'M66 40 v-8 a9 9 0 0 1 18 0 v8', 'style="stroke-width:3"') + xaC('wh', 75, 52, 3);
-      case 'power': return xaR('sheet', 30, 12, 100, 72, 10) + xaP('gh', 'M70 30 a20 20 0 1 0 20 0') + xaP('acs', 'M80 24 v22', 'style="stroke-width:4"') + xaG('k-blink', xaC('ac', 80, 48, 4));
-      case 'read': return xaPage(48, 8, 64, 80, 5) + xaP('acs', 'M16 48 q10 -12 20 0 q-10 12 -20 0 M124 48 q10 -12 20 0 q-10 12 -20 0') + xaC('ac', 26, 48, 3);
+      case 'lock': return xaPage(40, 8, 70, 80, 6) + xaR('pr', 60, 40, 30, 24, 5) + xaG('k-mv', xaP('prs', 'M66 40 v-8 a9 9 0 0 1 18 0 v8', 'style="stroke-width:3"'), xaMv(0, -9)) + xaShd(58, 64, 34) + xaC('wh', 75, 52, 3);
+      case 'power': return xaR('sheet', 30, 12, 100, 72, 10) + xaP('gh', 'M70 30 a20 20 0 1 0 20 0') + xaP('acs k-draw', 'M80 24 v22', 'style="stroke-width:4"') + xaG('k-blink', xaC('ac', 80, 48, 4)) + xaC('rng k-in2', 80, 38, 26);
+      case 'read': return xaPage(48, 8, 64, 80, 5) + xaR('mk k-mv', 54, 38, 52, 6, 3, xaMv(0, -22)) + xaP('acs', 'M16 48 q10 -12 20 0 q-10 12 -20 0 M124 48 q10 -12 20 0 q-10 12 -20 0') + xaG('k-mv', xaC('ac', 26, 48, 3), xaMv(0, -6));
       default: return xaR('track', 48, 34, 64, 28, 14) + xaC('knob', 62, 48, 10);
     }
   },
@@ -279,7 +293,7 @@ const XPL_SCENES = {
       case 'single': return xaG('one', xaPage(52, 8, 56, 78, 6)) + xaP('turn', 'M122 48 l8 0 m-4 -4 l4 4 l-4 4');
       case 'spread': return xaG('book', xaPage(24, 8, 56, 78, 6, { cls: 'pg l' }) + xaPage(84, 8, 56, 78, 6, { cls: 'pg r' }));
       case 'flow': return xaG('scroll', xaPage(52, 8, 56, 78, 6) + `<g transform="translate(0 84)">${xaPage(52, 8, 56, 78, 6)}</g>`);
-      case 'mode': return xaPage(8, 12, 40, 70, 4) + xaPage(60, 12, 40, 70, 4) + xaPage(112, 12, 40, 70, 4, { cls: 'pg l' }) + xaR('gh', 56, 8, 48, 78, 4);
+      case 'mode': return xaPage(8, 12, 40, 70, 4) + xaPage(60, 12, 40, 70, 4) + xaPage(112, 12, 40, 70, 4, { cls: 'pg l' }) + xaR('gh k-mv', 56, 8, 48, 78, 4, xaMv(-52, 0));
       case 'prev': return xaG('one', xaPage(52, 8, 56, 78, 6)) + xaMir(xaP('turn', 'M36 48 l-8 0 m4 -4 l-4 4 l4 4'));
       case 'next': return xaG('one', xaPage(52, 8, 56, 78, 6)) + xaMir(xaP('turn', 'M124 48 l8 0 m-4 -4 l4 4 l-4 4'));
       case 'side': return xaPage(10, 12, 64, 72, 5, { right: true }) + xaG('k-in', xaPage(86, 12, 64, 72, 5), xaMv(20, 0));
@@ -319,7 +333,10 @@ const XPL_SCENES = {
           const nb = { l: 1, m: 2, h: 3 }[a[1]];
           return sheet + jw.map((w, i) => xaLn(36, 22 + i * 10, w)).join('') + jw.slice(0, 4).map((w, i) => [...Array(nb)].map((_, k) => xaR('ac k-grow', 46 + k * (w / (nb + 0.4)) * 0.9, 22.6 + i * 10, 10 + nb * 3, 2.8, 1.4, xaSc(0, 1, 'left center'))).join('')).join('');
         }
-        return sheet + jw.map((w, i) => xaLn(p === 'c' ? 80 - w / 2 : p === 'r' ? 124 - w : 36, 22 + i * 10, w)).join('');
+        if (a[0] === 'j') return sheet + jw.map((w, i) => xaLn(36, 22 + i * 10, w, 'ln k-grow', xaSc(ws[i] / w, 1, 'left center'))).join('') + xaGlint(36, 20, 80, 50);
+        // the lines start left-aligned (centred when that is the target) and glide to their place, one after the other
+        const before = p === 'l' ? 'c' : 'l', xo = (q, w) => (q === 'c' ? 80 - w / 2 : q === 'r' ? 124 - w : 36);
+        return sheet + jw.map((w, i) => xaLn(xo(p, w), 22 + i * 10, w, 'ln k-mv', `style="--dx:${xo(before, w) - xo(p, w)}px;--dy:0px;animation-delay:${i * 45}ms"`)).join('') + xaGlint(36, 20, 80, 50);
       }
       case 'v': {
         const y = a === 't' ? 18 : a === 'm' ? 38 : 56;
@@ -328,9 +345,9 @@ const XPL_SCENES = {
       case 'space': return sheet + (a === 'l'
         ? [0, 1, 2, 3].map((i) => xaLn(36, 20 + i * 15, 76 - (i % 2) * 14, 'ln k-mv', xaMv(0, -i * 5))).join('') + xaP('acs', 'M124 20 v45 m-4 -6 l4 6 l4 -6 m-8 -39 l4 -6 l4 6')
         : xaLines(36, 22, 2, 76) + xaG('k-grow', xaR('hi', 36, a === 'b' ? 34 : 42, 76, 8, 2), xaSc(1, 0, 'center top')) + xaLines(36, 52, 2, 76));
-      case 'quote': return sheet + xaR('ac', 36, 24, 3, 38, 1.5) + xaLines(46, 28, 3, 70, { gap: 12 }) + xaP('prs', 'M96 22 q-6 0 -6 6 h6 v6 h-6', 'style="stroke-width:2.4"');
-      case 'bullets': return sheet + [0, 1, 2].map((i) => xaC('ac', 40, 28 + i * 16, 3.4) + xaLn(50, 26 + i * 16, 70 - i * 10)).join('');
-      case 'numbers': return sheet + [0, 1, 2].map((i) => xaC('pr', 40, 28 + i * 16, 5) + xaR('wh', 38.4, 25 + i * 16, 3.2, 6, 1) + xaLn(52, 26 + i * 16, 68 - i * 10)).join('');
+      case 'quote': return sheet + xaR('ac k-grow', 36, 24, 3, 38, 1.5, xaSc(1, 0, 'center top')) + xaLines(46, 28, 3, 70, { gap: 12 }) + xaG('k-in', xaP('prs', 'M96 22 q-6 0 -6 6 h6 v6 h-6', 'style="stroke-width:2.4"'), xaMv(0, -6)) + xaGlint(40, 24, 60, 38);
+      case 'bullets': return sheet + [0, 1, 2].map((i) => xaG(['k-in', 'k-in2', 'k-in'][i], xaC('ac', 40, 28 + i * 16, 3.4), xaMv(-8, 0)) + xaLn(50, 26 + i * 16, 70 - i * 10, 'ln k-mv', `style="--dx:-10px;--dy:0px;animation-delay:${i * 60}ms"`)).join('');
+      case 'numbers': return sheet + [0, 1, 2].map((i) => xaG(['k-in', 'k-in2', 'k-in'][i], xaC('pr', 40, 28 + i * 16, 5) + xaR('wh', 38.4, 25 + i * 16, 3.2, 6, 1), xaMv(-8, 0)) + xaLn(52, 26 + i * 16, 68 - i * 10, 'ln k-mv', `style="--dx:-10px;--dy:0px;animation-delay:${i * 60}ms"`)).join('');
       case 'shapes': return sheet + xaC('ac', 40, 28, 4) + xaR('pr', 36, 40, 8, 8, 1) + `<path class="ok" d="M40 56 l5 9 h-10 Z"/>` + [0, 1, 2].map((i) => xaLn(52, 26 + i * 16, 68 - i * 10)).join('');
       case 'indent': return sheet + xaMir(xaLn(36, 22, 70) + xaLn(50, 34, 60, 'ln k-mv', xaMv(-14, 0)) + xaLn(36, 46, 66) + xaP('acs', 'M118 30 h-12 m4 -4 l-4 4 l4 4'));
       case 'outdent': return sheet + xaMir(xaLn(36, 22, 70) + xaLn(36, 34, 60, 'ln k-mv', xaMv(14, 0)) + xaLn(36, 46, 66) + xaP('acs', 'M104 30 h12 m-4 -4 l4 4 l-4 4'));
@@ -348,7 +365,7 @@ const XPL_SCENES = {
       case 'text': return page + xaG('k-in', item('mk', 52, 40));
       case 'field': return page + xaG('k-in', item('ac', 52, 22) + xaR('wh', 58, y + 2, 10, 3, 1) + xaC('wh', 72, y + 3.5, 1.5));
       case 'logo': return page + xaG('k-in', xaR('ac', 98, y - 1, 14, 9, 2) + xaC('wh', 105, y + 3.5, 2.6));
-      case 'conf': return page + xaR('sheet', 62, y - 1, 36, 9, 4) + xaP('prs', `M70 ${y + 6} v-3 a3 3 0 0 1 6 0 v3`, 'style="stroke-width:1.4"') + xaLn(80, y + 2, 14, 'mk');
+      case 'conf': return page + xaG('k-in', xaR('sheet', 62, y - 1, 36, 9, 4) + xaP('prs', `M70 ${y + 6} v-3 a3 3 0 0 1 6 0 v3`, 'style="stroke-width:1.4"') + xaLn(80, y + 2, 14, 'mk'), xaMv(0, zone === 'hdr' ? -8 : 8)) + xaGlint(62, y - 1, 34, 9);
       case 'start': { const x = xaEnd('s') === 'l' ? 48 : 84; return page + xaG('k-mv', item('mk', x, 30), xaMv(65 - x, 0)); }
       case 'center': return page + xaG('k-mv', item('mk', 65, 30), xaMv(x0(), 0));
       case 'end': { const x = xaEnd('e') === 'l' ? 48 : 84; return page + xaG('k-mv', item('mk', x, 30), xaMv(65 - x, 0)); }
@@ -360,30 +377,31 @@ const XPL_SCENES = {
   layout(v) {
     switch (v) {
       case 'setup': return xaR('gh', 54, 8, 52, 76, 5) + xaG('k-scale', xaR('sheet', 30, 24, 100, 48, 5) + xaLines(38, 34, 3, 84), 'style="--sc:.6"') + xaP('acs', 'M118 78 h14 m-5 -5 l5 5 l-5 5');
-      case 'break': return xaPage(14, 8, 56, 78, 4) + xaPage(90, 8, 56, 78, 3) + xaR('side', 98, 20, 40, 8, 2) + xaP('cut', 'M80 4 v88');
+      case 'break': return xaPage(14, 8, 56, 78, 4) + xaPage(90, 8, 56, 78, 3) + xaR('side k-mv', 98, 20, 40, 8, 2, xaMv(-76, 44)) + xaP('cut k-draw', 'M80 4 v88') + xaShd(100, 28, 36);
       case 'breakdel': return xaPage(14, 8, 56, 78, 7) + xaPage(90, 8, 56, 78, 0) + xaR('gh', 98, 20, 40, 8, 2) + xaR('side k-mv', 22, 58, 40, 8, 2, xaMv(76, -38)) + xaG('k-gone', xaP('cut', 'M80 4 v88'));
       case 'pull': return xaPage(14, 8, 56, 78, 5) + xaR('gh', 90, 8, 56, 78, 5) + xaR('blk k-mv', 22, 58, 40, 12, 3, xaMv(76, -40)) + xaG('k-gone', xaP('cut', 'M80 4 v88'));
       case 'secdel': return xaPage(40, 8, 70, 80, 0) + xaLn(48, 16, 54, 'side') + xaLines(48, 26, 3, 54) + xaR('gh', 46, 44, 58, 36, 3) + xaG('k-gone', xaLn(48, 48, 54, 'no') + xaLines(48, 58, 3, 54));
       case 'empty': return xaPage(40, 8, 70, 80, 3) + xaR('gh', 48, 40, 54, 8, 2) + xaG('k-gone', xaR('cell', 48, 40, 54, 8, 2) + xaR('cell', 48, 52, 54, 8, 2)) + xaLines(48, 66, 1, 54) + xaC('ok', 118, 20, 6) + xaP('wh', 'M115 20 l2.4 2.4 l4 -5');
-      case 'margins': return xaR('sheet', 40, 8, 80, 80, 5) + xaR('gh', 52, 20, 56, 56, 2) + xaLines(58, 28, 5, 44) + xaP('acs', 'M40 48 h12 m-4 -4 l4 4 l-4 4');
-      case 'ruler': return xaPage(40, 20, 80, 70, 5) + xaR('rl2', 40, 10, 80, 7, 1) + Array.from({ length: 17 }, (_, i) => xaR('ln', 41 + i * 4.7, 11, 0.8, i % 4 === 0 ? 5 : 3, 0)).join('');
+      case 'margins': return xaR('sheet', 40, 8, 80, 80, 5) + xaR('gh', 52, 20, 56, 56, 2) + xaG('k-scale', xaLines(58, 28, 5, 44), 'style="--sc:1.28"') + xaP('acs k-fade', 'M40 48 h12 m-4 -4 l4 4 l-4 4') + xaGlint(54, 22, 48, 52);
+      case 'ruler': return xaPage(40, 20, 80, 70, 5) + xaR('rl2', 40, 10, 80, 7, 1) + xaR('ac k-mv', 62, 8.5, 6, 9, 2, xaMv(-20, 0)) + xaP('guide k-mv', 'M65 17 v70', xaMv(-20, 0)) + Array.from({ length: 17 }, (_, i) => xaR('ln', 41 + i * 4.7, 11, 0.8, i % 4 === 0 ? 5 : 3, 0)).join('');
       case 'renum': return xaPage(40, 8, 70, 80, 0) + [0, 1, 2, 3].map((i) => xaC('pr', 52, 22 + i * 16, 5) + xaR('wh', 50.4, 19 + i * 16, 3.2, 6, 1) + xaLn(62, 20 + i * 16, 40)).join('') + xaP('acs k-fade', 'M114 22 q8 20 0 44 m-3 -5 l3 5 l4 -4');
       case 'start': return xaPage(40, 8, 70, 80, 0) + [0, 1, 2].map((i) => xaC('ac', 52, 26 + i * 16, 6) + xaLn(64, 24 + i * 16, 36)).join('') + xaR('mk k-grow', 46, 14, 14, 6, 3, xaSc(0, 1, 'left center'));
       case 'docid': return xaPage(40, 8, 70, 80, 4) + xaR('sheet', 44, 12, 62, 18, 3) + xaR('mk k-in', 48, 16, 14, 6, 3) + xaR('mk k-in2', 92, 16, 14, 6, 3) + xaR('mk k-in', 48, 70, 14, 6, 3) + xaR('mk k-blink', 74, 56, 16, 6, 3);
       default: return xaPage(40, 8, 70, 80, 6);
     }
   },
-  wrap(v) { // text wrapping around a picture
+  wrap(v) { // text wrapping around a picture: the picture drops in, the lines shorten to make room (before: full-width lines)
     const sheet = xaR('sheet', 40, 6, 80, 84, 5);
-    const rows = (lines) => lines.map(([x, y, w]) => xaLn(x, y, w)).join('');
+    const rows = (lines) => lines.map(([x, y, w]) => (w < 64 ? xaLn(x, y, w, 'ln k-grow', xaSc(64 / w, 1, 'left center')) : xaLn(x, y, w))).join('');
+    const pic = (x, y, w, h, extra = '') => xaG('k-in', extra || xaPicture(x, y, w, h), xaMv(0, -12)) + xaShd(x + 3, y + h - 1, w - 6) + xaGlint(x + 2, y, w - 8, h);
     switch (v) {
-      case 'square': return sheet + xaPicture(80, 28, 28, 26) + rows([[48, 16, 64], [48, 26, 28], [48, 36, 28], [48, 46, 28], [48, 58, 64], [48, 68, 64]]);
-      case 'tight': return sheet + xaP('sf', 'M96 26 l12 14 l-6 18 l-14 0 l-6 -16 Z') + rows([[48, 16, 64], [48, 28, 40], [48, 38, 34], [48, 48, 38], [48, 58, 64], [48, 68, 64]]);
-      case 'through': return sheet + xaP('sf', 'M92 26 l14 14 l-4 16 l-16 0 l-4 -14 Z') + rows([[48, 16, 64], [48, 28, 42], [48, 38, 40], [48, 48, 40], [48, 58, 64], [48, 68, 64]]);
-      case 'topbottom': return sheet + rows([[48, 16, 64], [48, 26, 64]]) + xaPicture(54, 36, 52, 24) + rows([[48, 66, 64], [48, 76, 40]]);
-      case 'behind': return sheet + xaG('k-fade', xaPicture(62, 24, 40, 40)) + rows([[48, 18, 64], [48, 30, 64], [48, 42, 64], [48, 54, 64]]);
-      case 'front': return sheet + rows([[48, 18, 64], [48, 30, 64], [48, 42, 64], [48, 54, 64]]) + xaPicture(62, 24, 40, 40);
-      default: return sheet + rows([[48, 16, 64], [48, 26, 64]]) + xaG('k-mv', xaPicture(48, 34, 20, 12), xaMv(0, 6)) + rows([[48, 52, 64], [48, 62, 64]]);
+      case 'square': return sheet + pic(80, 28, 28, 26) + rows([[48, 16, 64], [48, 26, 28], [48, 36, 28], [48, 46, 28], [48, 58, 64], [48, 68, 64]]);
+      case 'tight': return sheet + pic(86, 26, 24, 32, xaP('sf', 'M96 26 l12 14 l-6 18 l-14 0 l-6 -16 Z')) + rows([[48, 16, 64], [48, 28, 40], [48, 38, 34], [48, 48, 38], [48, 58, 64], [48, 68, 64]]);
+      case 'through': return sheet + pic(80, 26, 28, 30, xaP('sf', 'M92 26 l14 14 l-4 16 l-16 0 l-4 -14 Z')) + rows([[48, 16, 64], [48, 28, 42], [48, 38, 40], [48, 48, 40], [48, 58, 64], [48, 68, 64]]);
+      case 'topbottom': return sheet + rows([[48, 16, 64], [48, 26, 64]]) + pic(54, 36, 52, 24) + rows([[48, 66, 64], [48, 76, 40]]);
+      case 'behind': return sheet + xaG('k-in', xaPicture(62, 24, 40, 40), xaMv(0, -10)) + rows([[48, 18, 64], [48, 30, 64], [48, 42, 64], [48, 54, 64]]) + xaGlint(64, 24, 34, 40);
+      case 'front': return sheet + rows([[48, 18, 64], [48, 30, 64], [48, 42, 64], [48, 54, 64]]) + pic(62, 24, 40, 40);
+      default: return sheet + rows([[48, 16, 64], [48, 26, 64]]) + xaG('k-mv', xaPicture(48, 34, 20, 12), xaMv(0, -10)) + rows([[48, 52, 64], [48, 62, 64]]) + xaShd(50, 45, 16);
     }
   },
   /* ── design ── */
@@ -392,8 +410,8 @@ const XPL_SCENES = {
     switch (v) {
       case 'slider': return xaR('sheet', 18, 22, 124, 50, 8) + xaR('track', 28, 44, 70, 6, 3) + xaC('knob slide', 36, 47, 7) + xaR('cell', 106, 36, 28, 22, 4) + xaR('mk', 111, 44, 18, 6, 2);
       case 'number': return xaR('sheet', 36, 32, 88, 32, 8) + xaR('cell', 44, 38, 40, 20, 4) + xaR('mk k-grow', 50, 45, 26, 6, 2, xaSc(0, 1, 'left center')) + xaR('caret', 80, 42, 2, 12, 1) + xaR('pr', 92, 38, 24, 20, 4);
-      case 'unit': return xaR('sheet', 26, 30, 108, 36, 8) + xaR('cell', 34, 38, 36, 20, 4) + xaR('mk', 40, 45, 24, 6, 2) + xaR('pr', 78, 38, 48, 20, 4) + xaP('wh', 'M110 46 l5 5 l5 -5', 'style="stroke-width:2"');
-      case 'swatch': return xaR('sheet', 24, 18, 112, 60, 8) + [['pr', 38], ['ac', 58], ['mk', 78], ['ok', 98], ['sg', 118]].map(([c, x], i) => xaC(c, x, 36, 8) + (i === 1 ? xaC('rng', x, 36, 11) : '')).join('') + xaR('chip', 34, 54, 92, 12, 4);
+      case 'unit': return xaR('sheet', 26, 30, 108, 36, 8) + xaR('cell', 34, 38, 36, 20, 4) + xaR('mk', 40, 45, 24, 6, 2) + xaR('pr', 78, 38, 48, 20, 4) + xaP('wh', 'M110 46 l5 5 l5 -5', 'style="stroke-width:2"') + xaG('k-in', xaR('sheet', 78, 60, 48, 24, 4) + xaLn(84, 66, 36) + xaR('hi', 82, 74, 40, 7, 2), xaMv(0, -8));
+      case 'swatch': return xaR('sheet', 24, 18, 112, 60, 8) + [['pr', 38], ['ac', 58], ['mk', 78], ['ok', 98], ['sg', 118]].map(([c, x], i) => xaC(c, x, 36, 8) + (i === 1 ? xaC('rng k-in2', x, 36, 11) : '')).join('') + xaR('chip', 34, 54, 92, 12, 4);
       case 'hex': return xaR('sheet', 26, 24, 108, 48, 8) + xaR('cell', 34, 32, 62, 14, 4) + xaP('prs', 'M42 36 v6 M48 36 v6 M40 38 h10 M40 41 h10', 'style="stroke-width:1.4"') + xaLn(54, 37, 32, 'mk k-grow', xaSc(0, 1, 'left center')) + xaR('chip', 104, 32, 22, 22, 6) + xaR('caret', 90, 34, 2, 10, 1);
       case 'part': return page + xaR('blk', 66, 14, 44, 16, 3) + xaR('gh', 66, 34, 44, 12, 3) + xaG('k-gone', xaR('side', 66, 34, 44, 12, 3)) + xaC('ac', 128, 24, 6) + xaP('wh', 'M125 24 l2.5 2.5 l4 -5');
       case 'move': return page + xaR('side k-mv', 66, 38, 44, 14, 3, xaMv(0, -24)) + xaR('blk', 66, 20, 44, 14, 3) + xaP('acs', 'M128 22 v34 m-4 -6 l4 6 l4 -6');
@@ -411,7 +429,7 @@ const XPL_SCENES = {
       case 'local': return sheet + xaR('cell', 32, 26, 40, 46, 4) + xaP('prs', 'M40 52 l8 -14 l8 14 M43 47 h10', 'style="stroke-width:2.2"') + xaG('k-in', [0, 1, 2].map((i) => xaR(i === 1 ? 'hi' : 'cell', 80, 24 + i * 16, 46, 12, 3)).join(''));
       case 'upload': return sheet + xaR('cell', 56, 28, 48, 38, 4) + xaP('prs', 'M66 54 l8 -14 l8 14 M69 49 h10', 'style="stroke-width:2.2"') + xaG('k-mv', xaP('acs', 'M80 14 v14 m-5 -5 l5 5 l5 -5'), xaMv(0, -16)) + xaR('tray', 44, 72, 72, 5, 2);
       case 'remove': return sheet + xaR('gh', 56, 28, 48, 38, 4) + xaG('k-gone', xaR('cell', 56, 28, 48, 38, 4) + xaP('prs', 'M66 54 l8 -14 l8 14 M69 49 h10'));
-      default: return sheet + xaR('cell', 30, 24, 100, 14, 4) + [0, 1, 2].map((i) => xaR(i === 1 ? 'hi' : 'cell', 30, 44 + i * 12, 100, 10, 3)).join('') + xaLn(36, 27, 40, 'pr');
+      default: return sheet + xaR('cell', 30, 24, 100, 14, 4) + [0, 1, 2].map((i) => xaR('cell', 30, 44 + i * 12, 100, 10, 3)).join('') + xaR('hi k-mv', 30, 56, 100, 10, 3, xaMv(0, -12)) + xaLn(36, 27, 40, 'pr');
     }
   },
   /* ── project, sharing ── */
@@ -458,8 +476,8 @@ const XPL_SCENES = {
       case 'connect': return cv + A(40, 40) + A(112, 40) + xaP('wr k-draw', 'M57 40 h38') + xaP('tipm k-in2', 'M92 35 l6 5 l-6 5');
       case 'dup': return cv + A(70, 34) + xaG('k-in', A(86, 52, 'bx ghost'), xaMv(-10, -8));
       case 'del': return cv + A(44, 40) + xaR('gh', 94, 30, 36, 20, 4) + xaG('k-gone', A(112, 40) + xaP('wr', 'M61 40 h34'));
-      case 'front': return cv + A(60, 36, 'bx dim') + A(76, 46, 'sf') + xaR('ac', 62, 40, 6, 6, 3);
-      case 'back': return cv + A(76, 46, 'bx') + xaG('k-mv', A(60, 36, 'sf dim'), xaMv(0, 0));
+      case 'front': return cv + A(60, 36, 'bx dim') + xaG('k-mv', A(76, 46, 'sf'), xaMv(-14, 12)) + xaR('ac k-fade', 62, 40, 6, 6, 3) + xaShd(64, 58, 28);
+      case 'back': return cv + A(76, 46, 'bx') + xaG('k-mv', A(60, 36, 'sf dim'), xaMv(16, 12)) + xaShd(46, 50, 28);
       case 'align': {
         const g = { l: 'M34 12 v72', c: 'M80 12 v72', r: 'M126 12 v72', t: 'M20 28 h120', m: 'M20 48 h120', b: 'M20 68 h120' }[a];
         const bxs = 'lcr'.includes(a) ? [[28, 18], [40, 40], [20, 62]].map(([w, y], i) => {
@@ -483,9 +501,9 @@ const XPL_SCENES = {
       case 'from': return cv + A(34, 30, 'bx dim') + A(34, 64) + A(118, 40) + xaP('wr', 'M51 64 q40 -4 50 -22') + xaG('k-mv', xaC('ac', 51, 64, 4), xaMv(0, -34));
       case 'to': return cv + A(34, 40) + A(118, 20, 'bx dim') + A(118, 64) + xaP('wr', 'M51 42 q40 4 50 20') + xaG('k-mv', xaC('ac', 101, 62, 4), xaMv(0, -42));
       case 'zoom': return xaR('sheet', 14, 8, 132, 80, 6) + xaG('k-scale', A(44, 40) + A(112, 40) + xaP('wr', 'M61 40 h34') + xaP('wr', 'M44 52 v16'), `style="--sc:${a === 'in' ? 0.6 : a === 'out' ? 1.6 : a === 'fit' ? 1.5 : 0.8};--se:${a === 'in' ? 1.25 : a === 'out' ? 0.7 : a === 'fit' ? 0.9 : 1}"`) + (a === 'fit' ? xaP('acs', 'M18 12 h8 M18 12 v8 M142 12 h-8 M142 12 v8 M18 84 h8 M18 84 v-8 M142 84 h-8 M142 84 v-8') : '');
-      case 'wire': return xaR('sheet', 14, 8, 132, 80, 6) + xaP('wr', 'M24 26 h100 m-6 -5 l6 5 l-6 5') + xaP('wr', 'M24 48 h100 m-6 -5 l6 5 l-6 5', 'style="stroke-dasharray:5 4"') + xaP('wr okS', 'M24 70 h100 m-6 -5 l6 5 l-6 5') + xaR('hi k-blink', 16, 40, 128, 16, 4, 'style="fill-opacity:.35"');
+      case 'wire': return xaR('sheet', 14, 8, 132, 80, 6) + xaP('wr k-draw', 'M24 26 h100 m-6 -5 l6 5 l-6 5') + xaP('wr', 'M24 48 h100 m-6 -5 l6 5 l-6 5', 'style="stroke-dasharray:5 4"') + xaP('wr okS k-draw', 'M24 70 h100 m-6 -5 l6 5 l-6 5') + xaR('hi k-blink', 16, 40, 128, 16, 4, 'style="fill-opacity:.35"');
       case 'kind': return cv + xaG('k-gone', A(112, 40)) + xaG('k-in', xaNode('decision', 112, 40)) + A(44, 40) + xaP('wr', 'M61 40 h34');
-      case 'color': return cv + A(44, 40) + xaR('ac', 94, 28, 36, 24, 5, 'style="fill-opacity:.8"') + xaP('wr', 'M61 40 h30') + [['pr', 40], ['ac', 56], ['ok', 72], ['mk', 88]].map(([c, x]) => xaC(c, x + 6, 72, 5)).join('');
+      case 'color': return cv + A(44, 40) + xaP('wr', 'M61 40 h30') + xaG('k-gone', xaR('pr', 94, 28, 36, 24, 5)) + xaG('k-in', xaR('ac', 94, 28, 36, 24, 5, 'style="fill-opacity:.85"'), xaMv(0, 6)) + [['pr', 40], ['ac', 56], ['ok', 72], ['mk', 88]].map(([c, x]) => xaC(c, x + 6, 72, 5)).join('') + xaC('rng k-in2', 62, 72, 8) + xaGlint(96, 28, 30, 24);
       case 'badge': return cv + A(44, 40) + A(112, 40) + xaP('wr', 'M61 40 h34') + xaG('k-in', xaC('ac', 128, 28, 7) + xaP('wh', 'M124 28 l3 3 l5 -6'));
       case 'icon': return cv + A(44, 36) + xaG('k-in', xaC('pr', 44, 36, 6) + xaP('wh', 'M41 36 l2 2 l4 -5')) + [0, 1, 2, 3].map((i) => xaR(i === 1 ? 'hi' : 'cell', 80 + (i % 2) * 24, 20 + Math.floor(i / 2) * 24, 20, 20, 4)).join('');
       case 'symbol': return cv + A(44, 40) + xaG('k-in', xaR('sheet', 84, 20, 50, 50, 6) + [0, 1, 2, 3].map((i) => xaC(['pr', 'ac', 'ok', 'mk'][i], 96 + (i % 2) * 24, 34 + Math.floor(i / 2) * 20, 6)).join(''));
@@ -499,7 +517,7 @@ const XPL_SCENES = {
     XPL_FR = { tab: i, lit: i + 1 };
     return xaPage(46, 6, 68, 84, 5) + xaG('k-in', xaR('sheet', 86, 18, 58, 40, 6) + [0, 1, 2].map((q) => xaR(q === 1 ? 'hi' : 'cell', 92, 24 + q * 11, 46, 8, 3)).join(''), xaMv(-12, -6)) + xaR('gh', 40, 2, 80, 90, 6);
   },
-  generic() { return xaPage(52, 8, 56, 78, 6) + xaR('hi', 58, 36, 44, 12, 3) + xaP('acs', 'M96 64 l-8 -14 l16 4 l-5 5 Z'); },
+  generic() { return xaPage(52, 8, 56, 78, 6) + xaR('gh', 58, 36, 44, 12, 3) + xaG('k-in', xaR('hi', 58, 36, 44, 12, 3), xaMv(0, -10)) + xaShd(60, 48, 40) + xaG('k-mv', xaP('acs', 'M96 64 l-8 -14 l16 4 l-5 5 Z'), xaMv(14, 14)); },
 };
 
 /** id → scene:variant (and an optional fallback icon after @). One line per family; ids separated by spaces. */
@@ -825,7 +843,7 @@ function xaFrame(inner, key) {
   const cur = `<g transform="translate(${cx + 0.8} ${cy + 1.2})"><g class="fr-cur" style="--dx:${Math.round(XPL_RTL ? -26 : 30)}px;--dy:34px"><path class="fr-ptr" d="M0 0 V9 L2.4 6.9 L4.1 10.6 L5.9 9.8 L4.2 6.2 L7.4 6.1 Z"/></g></g>`;
   const rip = xaC('fr-rip', cx, cy, 4);
   const body = `<g class="fr-cvg"><g class="scn" transform="translate(17.6 18) scale(.78)">${inner}</g><rect class="fr-sweep" x="-30" y="17" width="22" height="78" rx="0"/></g>`;
-  const spk = [[127, 70, 0], [154, 67, 1], [152, 91, 2]].map(([x, y, k]) => `<path class="fr-spk s${k}" d="M${x} ${y - 3} v6 M${x - 3} ${y} h6"/>`).join('');
+  const spk = xaStar(127, 70, 3.2).replace('class="star"', 'class="fr-spk s0"') + xaStar(154, 66, 2.4).replace('class="star"', 'class="fr-spk s1"') + xaC('fr-spk s2', 152, 91, 1.4) + xaC('fr-spk s1', 130, 90, 1);
   return head + body + xaC('fr-pay', 141, 80, 11) + spk + rip + cur;
 }
 
