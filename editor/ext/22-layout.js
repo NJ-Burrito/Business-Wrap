@@ -188,7 +188,9 @@ function w2rulerEl(page) {
   Object.assign(el.dataset, { w: page.w, h: page.h, orient: page.orientation, size: page.size });
   const marks = [];
   for (let mm = 0; mm <= Math.min(page.w, 1200); mm += 5) marks.push(`<s class="${mm % 10 ? 'h' : 'c'}" style="inset-inline-start:${mm}mm"></s>${mm && mm % 10 === 0 ? `<b style="inset-inline-start:${mm}mm">${mm / 10}</b>` : ''}`);
-  el.innerHTML = `<i class="s" style="width:${W2R.margin}mm"></i><i class="e" style="width:${W2R.margin}mm"></i>${marks.join('')}`;
+  const mg = EXT.margins?.get?.(); // 0.17.6: the margins model (when present) gives the real start and end margins
+  el.innerHTML = `<i class="s" style="width:${mg ? mg.start : W2R.margin}mm"></i><i class="e" style="width:${mg ? mg.end : W2R.margin}mm"></i>${marks.join('')}`;
+  EXT.w2rulerUi?.decorate(el, page); // 22-ruler.js: the margin handles and the indent markers
   return el;
 }
 /** One ruler on each sheet of the open editions: the document's own page at the top of the document, then every page segment. */
