@@ -210,9 +210,9 @@ Tested on Windows 11 with Node 24 and Chrome. It needs Node 20+, Google Chrome (
 ```
 💬 Then say **"build the requirements document for …"** or **"open it in the editor"**.
 
-🔌 **MCP server only** (any MCP client, stdio, local; 0.17.11 from the GitHub tag; npm still serves 0.12.0):
+🔌 **MCP server only** (any MCP client, stdio, local; 0.17.12 from the GitHub tag; npm still serves 0.12.0):
 ```
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.17.11 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.17.12 business-wrap-mcp
 ```
 
 💻 **From source:** `git clone https://github.com/NJ-Burrito/Business-Wrap`, then the [Start in 3 steps](#-start-in-3-steps).

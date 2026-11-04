@@ -8,6 +8,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.17.12] - 2026-11-04
+
+🛠️ A fix release for the background click. / 🛠️ إصدار إصلاحات لنقرة الخلفية.
+
+### Fixed / أصلح
+- 🖱️ **A background click folds the ribbon only for that moment**: the next time you open the editor the ribbon is as you left it with its own button. / **نقرة الخلفية تطوي الشريط لتلك اللحظة فقط**: في المرة التالية التي تفتح فيها المحرر يكون الشريط كما تركته بزره.
+- 📐 **A click inside a diagram pop-up no longer folds the ribbon**, so the page does not jump while you draw. / **النقر داخل نافذة منبثقة للمخطط لم يعد يطوي الشريط**، فلا تقفز الصفحة أثناء الرسم.
+
 ## [0.17.11] - 2026-11-04
 
 🎬 A small release: the Explain pictures are redrawn, each with its own story. / 🎬 إصدار صغير: أعيد رسم صور الشرح، ولكل منها قصتها.
