@@ -71,14 +71,14 @@ try {
     const docs = mkdir(DOCS_NAME);
     const ex = mkdir(DOCS_NAME, 'My Doc', 'Exports');
     touch(ex, '2026-10-31 a - English.pdf');
-    check('noteOutput: a PDF written to <docs>\\<title>\\Exports gives that folder the PDF icon (hidden .system of the documents folder)', noteOutput(path.join(ex, '2026-10-31 a - English.pdf')) === true && readIni(path.join(ex, 'desktop.ini')).includes(path.join(docs, '.system', 'business-wrap-folder-pdf.ico')));
+    check('noteOutput (0.17.4): a PDF written to <docs>/<title>/Exports gives that folder the Exports role icon (the hidden .system beside the documents folder), and the document folder its own', noteOutput(path.join(ex, '2026-10-31 a - English.pdf')) === true && readIni(path.join(ex, 'desktop.ini')).includes(path.join(tmp, '.system', 'business-wrap-folder-exports.ico')) && readIni(path.join(docs, 'My Doc', 'desktop.ini')).includes('business-wrap-folder-document.ico'));
     touch(ex, '2026-10-31 a - English.docx');
     noteOutput(path.join(ex, '2026-10-31 a - English.docx'));
-    check('noteOutput: then a DOCX arrives -> mixed -> the general icon', readIni(path.join(ex, 'desktop.ini')).includes('business-wrap-folder.ico,0'));
+    check('noteOutput: a DOCX arrives -> still the Exports icon (the role, not the content, picks it)', readIni(path.join(ex, 'desktop.ini')).includes('business-wrap-folder-exports.ico,0'));
     const ver = mkdir(DOCS_NAME, 'My Doc', 'Versions');
     touch(ver, '2026-10-30 My Doc.html');
     noteOutput(path.join(ver, '2026-10-30 My Doc.html'));
-    check('noteOutput: Versions holding only HTML -> the HTML icon', readIni(path.join(ver, 'desktop.ini')).includes('business-wrap-folder-html.ico'));
+    check('noteOutput: Versions -> the Versions icon', readIni(path.join(ver, 'desktop.ini')).includes('business-wrap-folder-versions.ico'));
     const hand = touch(mkdir('Desktop-like'), 'x.pdf');
     check('noteOutput: a folder outside the documents folder is never touched', noteOutput(path.join(hand, 'x.pdf')) === false && !fs.existsSync(path.join(hand, 'desktop.ini')));
     const deep = touch(mkdir(DOCS_NAME, 'My Doc', 'Other'), 'x.pdf');

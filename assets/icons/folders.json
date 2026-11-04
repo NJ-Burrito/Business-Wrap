@@ -1,0 +1,16 @@
+{
+  "_": "The folders Business-Wrap creates and the icon each ROLE has (0.17.4, owner note of 2026-11-04). Source of truth for assets/icons/build_folder_icons.py (the art), engine/brand-icons.mjs (which role a path has) and the editor's folder lists. Same family as the file icons: navy folder back, a front panel in the role's own colour, one white Lucide-style glyph (ISC). White on the colour must clear 4.5:1 (the builder asserts it); 'root' keeps the brand folder (band front, paper and gold lines).",
+  "sizes": [16, 24, 32, 48, 64, 128, 256],
+  "roles": {
+    "root":      { "colour": "brand",   "glyph": null,        "where": "Business-Wrap (the save folder itself)", "en": "Save folder", "ar": "مجلد الحفظ" },
+    "documents": { "colour": "#1b5fc1", "glyph": "files",     "where": "المستندات - Documents", "en": "Documents folder", "ar": "مجلد المستندات" },
+    "document":  { "colour": "#0b6e83", "glyph": "file-text", "where": "<title> (one per document), and each document folder of a project export", "en": "One document's folder", "ar": "مجلد مستند واحد" },
+    "exports":   { "colour": "#c0262d", "glyph": "upload",    "where": "<title>/Exports", "en": "Exports", "ar": "الملفات المصدّرة" },
+    "sources":   { "colour": "#6a3db8", "glyph": "link",      "where": "<title>/Sources", "en": "Sources", "ar": "المصادر" },
+    "versions":  { "colour": "#b34700", "glyph": "history",   "where": "<title>/Versions", "en": "Versions", "ar": "النسخ السابقة" },
+    "system":    { "colour": "#596270", "glyph": "lock",      "where": ".system and its sub-folders (hidden)", "en": "System folder", "ar": "مجلد النظام" },
+    "unsorted":  { "colour": "#7a5c00", "glyph": "inbox",     "where": "_غير مصنف - Unsorted", "en": "Unsorted", "ar": "غير مصنف" },
+    "projects":  { "colour": "#2e7d32", "glyph": "briefcase", "where": "Projects (the folder that holds project exports)", "en": "Projects", "ar": "المشاريع" },
+    "download":  { "colour": "#a8206f", "glyph": "download",  "where": "<project> - <stamp> (a project export folder, and the same tree unpacked from its .zip)", "en": "Project export (download)", "ar": "تصدير مشروع (تنزيل)" }
+  }
+}

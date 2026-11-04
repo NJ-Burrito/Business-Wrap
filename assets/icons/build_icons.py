@@ -16,6 +16,7 @@ import argparse
 import base64
 import io
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -34,7 +35,7 @@ def render_all(svgs: dict[str, str]) -> dict[tuple[str, int], bytes]:
     from playwright.sync_api import sync_playwright
     out: dict[tuple[str, int], bytes] = {}
     with sync_playwright() as p:
-        b = p.chromium.launch(channel="msedge", headless=True, args=["--force-color-profile=srgb"])
+        b = p.chromium.launch(channel=os.environ.get("BW_ICON_CHANNEL", "msedge"), headless=True, args=["--force-color-profile=srgb"])
         try:
             pg = b.new_page(viewport={"width": 1024, "height": 1024}, device_scale_factor=1)
             for key, svg in svgs.items():

@@ -1,5 +1,5 @@
 // A small dependency-free zip writer and reader (0.15.0, project export / import).
-//   writeZip(file, entries)            entries: [{name, data: Buffer|string} | {name, file: <path on disk>}]; UTF-8 names (flag 0x800),
+//   writeZip(file, entries)            entries: [{name, data: Buffer|string, attr?} | {name, file: <path on disk>, attr?}] (a name ending in / is a folder; attr = the MS-DOS attribute byte); UTF-8 names (flag 0x800),
 //                                      deflate (store for names already compressed: pdf docx zip png jpg woff2), no zip64: at most
 //                                      65535 entries and 4 GB, else it throws before writing anything it cannot finish
 //   readZip(file, limits)              → [{name, dir, size, csize, method, offset}] from the central directory; refuses a path that
@@ -63,15 +63,15 @@ export function writeZip(file, entries, { now = new Date() } = {}) {
       h.writeUInt16LE(time, 10); h.writeUInt16LE(date, 12); h.writeUInt32LE(crc, 14); h.writeUInt32LE(body.length, 18); h.writeUInt32LE(raw.length, 22);
       h.writeUInt16LE(nameBuf.length, 26); h.writeUInt16LE(0, 28);
       w(h); w(nameBuf); if (body.length) w(body);
-      central.push({ nameBuf, method, crc, csize: body.length, size: raw.length, offset, isDir });
+      central.push({ nameBuf, method, crc, csize: body.length, size: raw.length, offset, isDir, attr: (e.attr || 0) & 0xff });
     }
     const cdStart = pos;
     for (const c of central) {
       const h = Buffer.alloc(46);
-      h.writeUInt32LE(0x02014b50, 0); h.writeUInt16LE(0x031e, 4); h.writeUInt16LE(20, 6); h.writeUInt16LE(0x0800, 8); h.writeUInt16LE(c.method, 10);
+      h.writeUInt32LE(0x02014b50, 0); h.writeUInt16LE(c.attr ? 0x001e : 0x031e, 4); /* made by MS-DOS when the entry carries attributes: Windows reads them only then */ h.writeUInt16LE(20, 6); h.writeUInt16LE(0x0800, 8); h.writeUInt16LE(c.method, 10);
       h.writeUInt16LE(time, 12); h.writeUInt16LE(date, 14); h.writeUInt32LE(c.crc, 16); h.writeUInt32LE(c.csize, 20); h.writeUInt32LE(c.size, 24);
       h.writeUInt16LE(c.nameBuf.length, 28); h.writeUInt16LE(0, 30); h.writeUInt16LE(0, 32); h.writeUInt16LE(0, 34); h.writeUInt16LE(0, 36);
-      h.writeUInt32LE(c.isDir ? 0x41ed0010 : 0x81a40000, 38); // unix mode in the high 16 bits (dir 0755 / file 0644), MS-DOS dir bit low
+      h.writeUInt32LE(((c.isDir ? 0x41ed0010 : 0x81a40000) | c.attr) >>> 0, 38); // unix mode in the high 16 bits (dir 0755 / file 0644), MS-DOS attribute byte low (dir 0x10; `attr`: 0x01 read-only, 0x02 hidden, 0x04 system: Explorer's own unzip applies them, which is what makes a folder show its desktop.ini icon)
       h.writeUInt32LE(c.offset, 42);
       w(h); w(c.nameBuf);
     }
