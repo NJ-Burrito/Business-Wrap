@@ -95,13 +95,18 @@ try {
     const sel = 'main.bw-doc [data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]';
     await p.locator(sel).focus();
     await p.keyboard.press('End');
-    await p.evaluate(() => { window.__m = 0; new MutationObserver((l) => { window.__m += l.length; }).observe(document.getElementById('bw-ui-host').shadowRoot, { subtree: true, childList: true, attributes: true, characterData: true }); });
+    await p.evaluate(() => { window.__m = 0; window.__r = {}; new MutationObserver((l) => { window.__m += l.length; for (const m of l) { const k = m.type + ':' + m.target.nodeName + '.' + (m.target.className || '') + ':' + (m.attributeName || ''); window.__r[k] = (window.__r[k] || 0) + 1; } }).observe(document.getElementById('bw-ui-host').shadowRoot, { subtree: true, childList: true, attributes: true, characterData: true }); });
     await p.keyboard.type('x'); // the first key may enable Undo (a real change of the bar)
     await frame(p);
-    await p.evaluate(() => { window.__m = 0; });
-    for (let i = 0; i < 20; i++) { await p.keyboard.press(i % 6 === 5 ? 'Space' : 'a'); await frame(p); }
-    const muts = await p.evaluate(() => window.__m);
-    check('D1: 20 keystrokes cause < 150 toolbar DOM mutations (0.13.3 made ~5,300: the fit re-measured the bar on every key; what is left is the change counter and the selection text)', muts < 150, String(muts));
+    // State wait (slow CI runner): the 800 ms boot wait above is not enough there, late boot work (fonts, spell, layout) lands in the
+    // counting window. Wait, inside the page, until the bar has been mutation-free for 600 ms (cap 20 s) before counting.
+    await p.evaluate(() => new Promise((res) => { let last = window.__m, t0 = performance.now(), q = performance.now(); const tick = () => { const now = performance.now(); if (window.__m !== last) { last = window.__m; q = now; } if (now - q >= 600 || now - t0 > 20000) res(); else setTimeout(tick, 50); }; tick(); }));
+    const typeBurst = async () => { await p.evaluate(() => { window.__m = 0; window.__r = {}; }); for (let i = 0; i < 20; i++) { await p.keyboard.press(i % 6 === 5 ? 'Space' : 'a'); await frame(p); } return p.evaluate(() => ({ m: window.__m, r: window.__r })); };
+    let burst = await typeBurst();
+    if (burst.m >= 150) burst = await typeBurst(); // one retry, same assertion (owner rule for flakes)
+    const muts = burst.m;
+    const mutDetail = String(muts) + ' ' + JSON.stringify(Object.entries(burst.r).sort((a, b) => b[1] - a[1]).slice(0, 6));
+    check('D1: 20 keystrokes cause < 150 toolbar DOM mutations (0.13.3 made ~5,300: the fit re-measured the bar on every key; what is left is the change counter and the selection text)', muts < 150, mutDetail);
     const fits = async () => p.evaluate(() => { const b = document.getElementById('bw-ui-host').shadowRoot.querySelector('.island'); return b.scrollWidth - b.clientWidth; });
     check('D1: typing keeps the bar fitted (no sideways scroll)', (await fits()) <= 0);
     await p.setViewportSize({ width: 1100, height: 800 });

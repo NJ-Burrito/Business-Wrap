@@ -119,7 +119,19 @@ if (ONLY) for (let i = jobs.length - 1; i >= 0; i -= 1) if (!ONLY.includes(`${jo
 
 /** The strip refits on font arrival (document.fonts loadingdone) and on the next frame (rbFitSoon); on a loaded runner a measure taken right after the click can land
  *  between the two and see More 1-2 px outside a strip that is about to be refitted (GitHub gates run 41738387730, S1 1920px z150 ar light, not reproducible alone). Measure the settled layout. */
-const settle = (page) => page.evaluate(() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 60))))));
+const settle0 = (page) => page.evaluate(() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 60))))));
+/** Slow runner (run 41824620199 attempt 2: More 1.4 px left of the strip, not reproducible alone): after the frame wait, keep measuring until the strip, More and every tool
+ *  have the same geometry on 5 polls in a row (a state wait, cap 6 s), so the checks below read the settled layout, never a fit still in flight. The assertions are unchanged. */
+const settle = async (page) => {
+  await settle0(page);
+  let prev = null, same = 0;
+  for (const t0 = Date.now(); same < 5 && Date.now() - t0 < 6000;) {
+    const m = await page.evaluate(measure);
+    const key = JSON.stringify([m.hidden, m.ctx, m.more && m.more.r, (m.tools || []).map((t) => t.r), m.islandH, m.scrollH]);
+    same = key === prev ? same + 1 : 0; prev = key;
+    await page.waitForTimeout(60);
+  }
+};
 
 async function runJob([win, zoom, ui, dark]) {
   const tag = `${win}px z${Math.round(zoom * 100)} ${ui} ${dark ? 'dark' : 'light'}`;
@@ -136,20 +148,19 @@ async function runJob([win, zoom, ui, dark]) {
       const before = await page.evaluate(measure);
       await select(page, kind, cssH);
       await settle(page);
-      const m = await page.evaluate(measure);
+      let m = await page.evaluate(measure);
       tally.kinds += 1;
       if (m.hidden) { tally.noSel.push(`${tag} / ${kind}`); check(`S1 ${tag} / ${kind}: the selection produced a strip`, false, 'strip hidden'); continue; }
       // S2: nothing moved (the baseline is the deselected page at the same scroll position as the selection starts from; the click itself may scroll an element into view, so scrollY is compared after a re-measure of the baseline at the new scroll)
       const dH = Math.abs(m.islandH - before.islandH), dSH = Math.abs(m.scrollH - before.scrollH);
       check(`S2 ${tag} / ${kind}: selecting moves the bar by ≤ 1 px and scrollHeight by ≤ 1 px`, dH <= 1 && dSH <= 1, `bar ${before.islandH}→${m.islandH}, scrollH ${before.scrollH}→${m.scrollH}`);
       // S1
-      const obj = await page.evaluate(() => {
+      const objOf = () => page.evaluate(() => {
         const els = [...document.querySelectorAll('main.bw-doc .dg-lgsel, main.bw-doc [data-dg-node].sel, main.bw-doc [data-dg-node][aria-selected="true"], main.bw-doc .is-sel, main.bw-doc .sel, main.bw-doc [data-sel], main.bw-doc .dg-ui:not(.dg-cv)')]; // 0.16.0: .dg-cv is the canvas frame layer over the whole figure (handles), not the selected thing; a figure taller than the room under the bar must scroll under it
         return els.map((e) => { const b = e.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom }; }).filter((b) => b.r - b.l > 0 && b.b - b.t > 0);
       });
-      const bad = [];
+      const badOf = (m, obj) => { const bad = [];
       const tools = m.tools;
-      tally.tools += tools.length;
       if (!tools.length && !m.more) bad.push('no tools at all');
       for (const [i, tl] of tools.entries()) {
         if (!tl.vis) { bad.push(`${tl.a}: not visible`); continue; }
@@ -163,6 +174,16 @@ async function runJob([win, zoom, ui, dark]) {
       if (m.more) { if (!m.more.vis || !inside(m.more.r, m.ctx)) bad.push(`More: not whole inside the strip ${JSON.stringify([m.more.vis, m.more.r, m.ctx])}`); if (!m.more.name) bad.push('More: no name'); }
       if (m.menuCount && !m.more) bad.push('tools in a menu with no More button');
       if (!inside(m.ctx, { l: 0, t: 0, r: m.cssW, b: cssH })) bad.push('strip outside the window');
+      return bad; };
+      let obj = await objOf();
+      let bad = badOf(m, obj);
+      if (bad.length) { // one retry (owner rule for flakes): a fresh select on the settled page, same assertions; a real fault fails twice
+        await deselect(page, cssH); await settle(page); await select(page, kind, cssH); await settle(page);
+        m = await page.evaluate(measure); obj = await objOf();
+        if (!m.hidden) bad = badOf(m, obj);
+      }
+      tally.tools += m.tools.length;
+      const tools = m.tools;
       check(`S1 ${tag} / ${kind}: ${tools.length} tools whole, uncut, not overlapping${m.more ? `, More (${m.menuCount})` : ''} [${m.fit || 'full'}]`, bad.length === 0, bad.slice(0, 4).join('; '));
       // More: opens, every item reachable (a real press lands on it), closes on Escape
       if (m.more && m.menuCount) {

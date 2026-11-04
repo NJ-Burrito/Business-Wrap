@@ -18,7 +18,8 @@ import { launchOptions, REPO } from '../engine/export.mjs';
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-transport-'));
 process.env.BW_LOCAL_DIR = path.join(tmp, '.local');
 process.env.BW_WORKSPACE = path.join(tmp, 'ws');
-process.env.BW_IDLE_MS = '1500';
+// 1500 ms starved a slow CI runner: a busy page missed its beat, the tab was discarded and the host stopped mid-suite (ECONNREFUSED). 5 s is still short; the stop waits below grow with it.
+process.env.BW_IDLE_MS = '5000';
 fs.mkdirSync(process.env.BW_WORKSPACE);
 const H = await import('../engine/host.mjs');
 const freePort = () => new Promise((res) => { const s = net.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => res(p)); }); });
@@ -46,7 +47,7 @@ const open = async (ctx, url) => {
   return p;
 };
 const got = (p, event) => p.evaluate((ev) => window.__srv.filter((x) => x.event === ev).length, event);
-const gone = async (pid, ms) => until(() => !H.alive(pid), ms);
+const gone = async (pid, ms) => until(() => !H.alive(pid), ms + 15000);
 
 async function scenario(label, { fallback }) {
   const h = await H.start({ editor, port: await freePort(), open: false });
@@ -179,7 +180,7 @@ async function latePush() {
   const held = [];
   await ctx.route('**/api/session/state', (route) => { if (hold) held.push(route); else route.continue(); });
   const pg = await open(ctx, h.url + '?tab=tablate01x');
-  await sse.body.cancel().catch(() => {}); // the stand-in client stays until the page is connected: with BW_IDLE_MS=1500 the host would otherwise stop while a slower page is still loading
+  await sse.body.cancel().catch(() => {}); // the stand-in client stays until the page is connected: with the short BW_IDLE_MS the host would otherwise stop while a slower page is still loading
   await sleep(700);
   hold = true;
   await pg.evaluate(() => window.BW.setText('/chapters/0/title', 'OLDER-PUSH'));
