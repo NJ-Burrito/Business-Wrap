@@ -82,14 +82,16 @@ async function open(doc, loc, vp = [1500, 900]) {
   await page.waitForFunction(() => window.BW?.ready);
   await page.evaluate((l) => { const B = window.BW; if (!B.S.calm) B.runAction('calm'); B.S.ed = l; B.render(); }, loc);
   await page.waitForFunction(() => document.documentElement.dataset.bwCalm === '1');
-  // a margins model stand-in (the real one is the margins lane's): records every call, announces bw:margins
+  // the margins model is the real one (editor/ext/22-margins.js); its set() is wrapped only to record the calls the ruler makes
   await page.evaluate(() => {
     const B = window.BW;
-    if (!B.EXT.margins) {
+    if (!B.EXT.margins) { // the model is absent (a branch without the margins lane): a stand-in with the same contract
       const st = { top: 20, bottom: 20, start: 16, end: 16 };
-      window.__mcalls = [];
-      B.EXT.margins = { get: () => ({ ...st }), set: (p, o) => { window.__mcalls.push({ p: { ...p }, live: !!(o && o.live) }); Object.assign(st, p); document.dispatchEvent(new CustomEvent('bw:margins')); } };
+      B.EXT.margins = { get: () => ({ ...st }), set: (p) => { Object.assign(st, p); document.dispatchEvent(new CustomEvent('bw:margins')); } };
     }
+    window.__mcalls = [];
+    const real = B.EXT.margins.set;
+    B.EXT.margins.set = (p, o) => { window.__mcalls.push({ p: { ...p }, live: !!(o && o.live) }); return real(p, o); };
     if (!B.EXT.w2ruler.on) B.runAction('ruler');
   });
   await page.waitForSelector('#bw-pair .bw-ruler.bw-ru');
@@ -222,7 +224,12 @@ for (const loc of ['ar', 'en']) {
   check(T('margin drag: live set() calls while dragging'), mc.slice(0, -1).length >= 1 && mc.slice(0, -1).every((c) => c.live === true && c.p.start != null), JSON.stringify(mc));
   check(T('margin drag: ONE final set({start:25},{live:false}) on release'), last && last.live === false && near(last.p.start, 25, 0.01) && mc.filter((c) => !c.live).length === 1, JSON.stringify(last));
   const shaded = await page.evaluate(() => parseFloat(document.querySelector('#bw-pair .bw-ruler i.s').style.width));
-  check(T('the ruler redraws on bw:margins (shaded margin 25 mm)'), near(shaded, 25, 0.01), String(shaded));
+  check(T('the ruler follows EXT.margins.get() (shaded margin 25 mm, handle at 25 mm)'), near(shaded, 25, 0.01) && near(parseFloat((await box(page, 'm-start')).inset), 25, 0.01), String(shaded));
+  const pageSide = await page.evaluate(() => parseFloat((() => { const B = window.BW; return B.M[B.S.svc][B.S.ed].doc.layout?.margins?.start; })()));
+  check(T('the margin is recorded in the document (doc.layout.margins.start is 25 mm)'), near(pageSide, 25, 0.2), String(pageSide));
+  await page.evaluate(() => window.BW.undo());
+  const back = await page.evaluate(() => window.BW.EXT.margins.get().start);
+  check(T('undo of the margin drag is ONE step (back to the margin before the drag)'), near(back, 16, 0.01), String(back));
   await page.evaluate(() => { window.__mcalls.length = 0; });
   await drag(r, 'm-end', 4);
   const me = await page.evaluate(() => window.__mcalls);

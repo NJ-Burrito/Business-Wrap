@@ -100,8 +100,8 @@ const ruTipOff = () => { if (RU.tip) RU.tip.hidden = true; };
 function ruCompute(kind, x, d) {
   const { mg, page, v } = d;
   const col = page.w - mg.start - mg.end;
-  if (kind === 'm-start') return { margin: ruClamp(x, 0, page.w - mg.end - 40) };
-  if (kind === 'm-end') return { margin: ruClamp(page.w - x, 0, page.w - mg.start - 40) };
+  if (kind === 'm-start') return { margin: ruClamp(x, 5, Math.min(50, page.w - mg.end - 40)) }; // the margins model's limits: 5 to 50 mm a side
+  if (kind === 'm-end') return { margin: ruClamp(page.w - x, 5, Math.min(50, page.w - mg.start - 40)) };
   const p = x - mg.start; // from the column's start edge
   if (kind === 'i-st') return { patch: { indentStart: ruClamp(p, 0, col - v.end - 10) } };
   if (kind === 'i-fl') { const a = ruClamp(p, 0, col - v.end - 10); return { patch: { indentFirst: a - v.start } }; }
@@ -240,7 +240,7 @@ window.addEventListener('pointercancel', ruCancel, true);
 document.addEventListener('keydown', ruKey, true);
 document.addEventListener('selectionchange', () => requestAnimationFrame(() => { if (!RU.drag) ruAll(); }));
 // the margins model announces a change (live or final): the ruler redraws at the new margins
-const ruMarginsChanged = () => { if (W2R.on && !RU.drag) w2rulers(); else if (W2R.on) { const mg = ruMargins(); if (mg) document.querySelectorAll('#bw-pair .bw-ruler').forEach((r) => { const s = r.querySelector('i.s'), e = r.querySelector('i.e'); if (s) s.style.width = `${mg.start}mm`; if (e) e.style.width = `${mg.end}mm`; }); } };
+const ruMarginsChanged = () => { if (W2R.on && !RU.drag) w2rulers(); else if (W2R.on) { const mg = ruMargins(); if (mg) document.querySelectorAll('#bw-pair .bw-ruler').forEach((r) => { const s = r.querySelector('i.s'), e = r.querySelector('i.e'); if (s) s.style.width = `${mg.start}mm`; if (e) e.style.width = `${mg.end}mm`; const hs = r.querySelector('.bw-ru-h.m.s'), he = r.querySelector('.bw-ru-h.m.e'); if (hs) hs.style.insetInlineStart = `${mg.start}mm`; if (he) he.style.insetInlineEnd = `${mg.end}mm`; }); } };
 document.addEventListener('bw:margins', ruMarginsChanged);
 window.addEventListener('bw:margins', ruMarginsChanged);
 bwExt({
