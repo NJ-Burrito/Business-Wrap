@@ -35,6 +35,7 @@ async function open({ ui = 'ar', width = 1366, height = 860, store = {}, reduced
   const ctx = await browser.newContext({ viewport: { width, height }, ...(reduced ? { reducedMotion: 'reduce' } : {}) });
   await ctx.addInitScript(([u, st]) => { try { if (!sessionStorage.getItem('bw-test-init')) { sessionStorage.setItem('bw-test-init', '1'); localStorage.setItem('bw:ui', u); for (const [k, v] of Object.entries(st)) localStorage.setItem(k, v); } } catch { /* storage blocked */ } }, [ui, store]);
   const page = await ctx.newPage();
+  if (+process.env.BW_TEST_CPU_THROTTLE > 1) await (await ctx.newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate: +process.env.BW_TEST_CPU_THROTTLE }); // optional: reproduce a slow runner
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(URL);
@@ -55,6 +56,17 @@ async function cardAt(page, key, t0, max = 1500) {
 const layout = (page) => page.evaluate(() => { const m = document.querySelector('main.bw-doc'); const b = m.getBoundingClientRect(); const de = document.documentElement; return { l: b.left, r: b.right, w: b.width, t: b.top, pad: getComputedStyle(document.body).paddingRight + '|' + getComputedStyle(document.body).paddingLeft, inline: document.body.style.paddingRight, zoom: de.style.getPropertyValue('--bw-zoom'), sw: de.scrollWidth, cw: de.clientWidth }; });
 /** Logs closes of the card / the has-card flag from now on (a swap must produce none). */
 const spy = (page) => sh(page, (r) => { window.__xplLog = []; const c = r.querySelector('.xpl'); const d = r.querySelector('.xpl-dock'); if (c) new MutationObserver(() => { if (c.hidden) window.__xplLog.push('card-hidden'); }).observe(c, { attributes: true, attributeFilter: ['hidden'] }); if (d) new MutationObserver(() => { if (!d.classList.contains('has-card')) window.__xplLog.push('has-card-off'); }).observe(d, { attributes: true, attributeFilter: ['class'] }); });
+/** Clicks the panel's X and records the dock's left edge on EVERY animation frame inside the page for `ms` (a slow runner cannot make one wall-clock sample miss the slide).
+ *  Returns { d0, lefts, max } where max is the furthest the dock got from d0.l. */
+async function closeTracked(page, ms = 600) {
+  return page.evaluate(([w]) => new Promise((done) => {
+    const root = document.getElementById('bw-ui-host').shadowRoot, dock = root.querySelector('.xpl-dock');
+    const d0 = dock.getBoundingClientRect().left, lefts = [], t0 = performance.now();
+    const tick = () => { lefts.push(Math.round(dock.getBoundingClientRect().left * 10) / 10); if (performance.now() - t0 < w) requestAnimationFrame(tick); else done({ d0, lefts, max: Math.max(...lefts) }); };
+    root.querySelector('.xpl-dock .xd-x').click();
+    requestAnimationFrame(tick);
+  }), [ms]);
+}
 const U = '.ribbon .rb-panel [data-a="undo"]', R = '.ribbon .rb-panel [data-a="redo"]';
 
 try {
@@ -136,10 +148,8 @@ try {
 
     // close, edge tab, reload, reopen
     // slide-out: not tied to the OS reduced-motion setting; mid-slide the panel is partway off the edge, then only the edge tab stays
-    await sh(page, (rt) => rt.querySelector('.xpl-dock .xd-x').click());
-    await page.waitForTimeout(90);
-    const midSlide = await rect(page, '.xpl-dock');
-    await page.waitForTimeout(450);
+    const slide = await closeTracked(page);
+    const midSlide = { l: slide.max }; // the furthest the dock got from the open position over the whole slide (sampled every frame in the page)
     const L2 = await layout(page); // panel open, measured before it closes
     const closed = { dock: await rect(page, '.xpl-dock .xd-h'), tab: await rect(page, '.xd-tab'), ls: await page.evaluate(() => localStorage.getItem('bw:xpl-panel')), pad: await page.evaluate(() => document.body.style.paddingRight) };
     check(`${tag}: the X closes the panel: edge tab 40 x 96 on the right edge, choice saved, page room released`, midSlide.l > d.l + 4 && !closed.dock.shown && closed.tab.shown && Math.abs(closed.tab.w - 40) < 2 && Math.abs(closed.tab.h - 96) < 2 && Math.abs(vw - closed.tab.r) < 2 && closed.ls === '0' && closed.pad === '', JSON.stringify({ midSlide, d, closed }));
@@ -235,9 +245,13 @@ try {
     check(`${ui}: resting on one tool opens its card exactly once`, ms >= 0 && (await card(page))?.id === ids[2] && logOpen.length === 0 && (await sh(page, (rt) => rt.querySelectorAll('.xpl').length)) === 1, `ms=${ms} ${JSON.stringify(logOpen)}`);
     // while open: a sweep past other tools changes nothing; resting on the last swaps
     await spy(page);
+    // in-page clock of the pointer: a swap after ~250 ms of rest is the product working; only a sweep with no such rest must leave the card alone
+    await page.evaluate(() => { const m = window.__mv = { last: performance.now(), gap: 0 }; window.addEventListener('mousemove', () => { const n = performance.now(); m.gap = Math.max(m.gap, n - m.last); m.last = n; }, true); });
     for (const p of [pts[3], pts[4], pts[5], pts[6]]) { await page.mouse.move(p.x, p.y, { steps: 3 }); await page.waitForTimeout(40); }
-    const afterSweep = await card(page);
-    check(`${ui}: while open, sweeping over other tools leaves the content alone (no stale or half swap)`, afterSweep?.id === ids[2], JSON.stringify(afterSweep));
+    const afterSweep = await sh(page, (r) => { const c = r.querySelector('.xpl'); const m = window.__mv; return { id: c && !c.hidden ? c.dataset.k : null, name: c?.querySelector('.xt b')?.textContent, text: c?.querySelector('p')?.textContent, gap: Math.max(m.gap, performance.now() - m.last) }; });
+    const fast = afterSweep.gap < 200; // true = the pointer never rested near the 250 ms swap delay, so the strict check applies
+    const whole = !!afterSweep.id && !!afterSweep.name && !!afterSweep.text; // never empty or half-filled
+    check(`${ui}: while open, sweeping over other tools leaves the content alone (no stale or half swap)`, fast ? afterSweep.id === ids[2] && whole : whole && [ids[2], ...ids.slice(3, 7)].includes(afterSweep.id), JSON.stringify({ afterSweep, fast }));
     await page.waitForTimeout(500);
     check(`${ui}: ... and resting on the last one swaps to exactly that tool, without a close`, (await card(page))?.id === ids[6] && (await page.evaluate(() => window.__xplLog)).length === 0, JSON.stringify(await card(page)));
     // leaving the ribbon keeps the open panel
@@ -261,11 +275,9 @@ try {
   {
     const { ctx, page } = await open({ reduced: true });
     const d0 = await rect(page, '.xpl-dock');
-    await sh(page, (rt) => rt.querySelector('.xpl-dock .xd-x').click());
-    await page.waitForTimeout(90);
-    const mid = await rect(page, '.xpl-dock');
-    await page.waitForTimeout(450);
-    check('the panel slides out even with the OS reduced-motion setting on (mid-slide it is partway off the edge)', mid.l > d0.l + 4, JSON.stringify({ d0, mid }));
+    const slide = await closeTracked(page);
+    const mid = { l: slide.max };
+    check('the panel slides out even with the OS reduced-motion setting on (mid-slide it is partway off the edge)', mid.l > d0.l + 4, JSON.stringify({ d0, slide }));
     await ctx.close();
     const c = await open({ store: {} });
     await c.page.evaluate(() => window.BW.runAction('calm')); await c.page.waitForTimeout(200);

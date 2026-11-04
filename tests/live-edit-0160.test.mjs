@@ -49,6 +49,7 @@ try {
   chrome = spawn(br.exe, [`--user-data-dir=${path.join(tmp, 'chrome-profile')}`, `--remote-debugging-port=${cdp}`, '--no-first-run', '--no-default-browser-check', '--window-size=1280,900', ...H.keepAwakeArgs(), '--new-window', `${base}/?automation=1#doc=${DOC}`], { stdio: 'ignore' });
   const t = await until(async () => (await (await fetch(`http://127.0.0.1:${cdp}/json`)).json()).find((x) => x.type === 'page' && x.url.startsWith(base)), 40000);
   const P = tab(t.webSocketDebuggerUrl);
+  if (+process.env.BW_TEST_CPU_THROTTLE > 1) await P.send('Emulation.setCPUThrottlingRate', { rate: +process.env.BW_TEST_CPU_THROTTLE }); // optional: reproduce a slow runner
   const ready = await until(async () => (await P.ev(`!!(window.BW && window.BW.ready && document.documentElement.dataset.bwSession && window.BW.S.svc === ${JSON.stringify(DOC)})`)) === true, 60000);
   check('the editor booted on the document (positive sample: BW.ready and S.svc is the id)', !!ready);
   await until(async () => (await (await fetch(`${base}/api/host/health`, { headers: { 'x-bw-token': token } })).json()).tabs.some((x) => x.live && (x.docs || []).includes(DOC)), 30000);
@@ -82,6 +83,13 @@ try {
 
   const ops = targets.map((p, i) => ({ op: 'setText', path: p, value: `${olds[i]} ✎${i}`, old: olds[i] }));
   const opsLen0 = await P.ev('window.BW.M[window.BW.S.svc].ar.ops.length');
+  // record the states INSIDE the page: wrap push on the ops array (one entry per applied op) and watch the DOM with a MutationObserver,
+  // so a slow runner that polls late still counts every op (the Node poll below only serves the chip, scroll and typing checks)
+  await P.ev(`(() => { const e = window.BW.M[window.BW.S.svc].ar; const R = window.__bwRec = { n: [], marks: [] };
+    const cnt = () => [...document.querySelectorAll('#bw-pair [data-p]')].filter((x) => x.textContent.includes('✎')).length;
+    const push = e.ops.push; Object.defineProperty(e.ops, 'push', { configurable: true, enumerable: false, writable: true, value: function (...a) { const r = push.apply(this, a); R.n.push(this.length); return r; } });
+    new MutationObserver(() => { const m = cnt(); if (R.marks.at(-1) !== m) R.marks.push(m); }).observe(document.getElementById('bw-pair'), { subtree: true, childList: true, characterData: true, attributes: true });
+    return 1; })()`);
   const pBatch = call('ops', { ops, locale: 'ar', agent: 'Claude (live test)', request_id: 'live-1' });
   const seen = new Set(), samples = [];
   let typed = false, maxHl = 0, chipText = '', chipTime = '', chipLive = false;
@@ -97,9 +105,11 @@ try {
     await sleep(50);
   }
   const rb = await pBatch;
+  const rec = (await P.ev('window.__bwRec')) || { n: [], marks: [] };
+  for (const n of rec.n) seen.add(n);
   const inter = [...seen].filter((n) => n > opsLen0 && n < opsLen0 + 12);
-  check('V1: the 12 ops arrived one at a time (at least 6 different intermediate states were seen)', rb.status === 200 && rb.body.result?.applied === 12 && inter.length >= 6, `status ${rb.status}; applied ${rb.body.result?.applied}; seen ${[...seen].map((n) => n - opsLen0).join(',')}`);
-  const marksSeen = [...new Set(samples.map((s) => s.marks))];
+  check('V1: the 12 ops arrived one at a time (at least 6 different intermediate states were seen)', rb.status === 200 && rb.body.result?.applied === 12 && inter.length >= 6, `status ${rb.status}; applied ${rb.body.result?.applied}; seen ${[...seen].map((n) => n - opsLen0).join(',')}; in-page ${rec.n.map((n) => n - opsLen0).join(',')}`);
+  const marksSeen = [...new Set([...samples.map((s) => s.marks), ...rec.marks])];
   check('V1: the page itself showed 1, 2, 3 … edited headings (the DOM changed step by step)', marksSeen.length >= 6, marksSeen.join(','));
   const grp = await P.ev(`(() => { const e = window.BW.M[window.BW.S.svc].ar; const last = e.ops.slice(-14).filter((o) => /✎/.test(String(o.value))); const g = new Set(last.map((o) => o.id.split('.')[0])); return { g: [...g], ids: last.map((o) => o.id.split('.')[1]), n: last.length }; })()`);
   check('V6: the 12 ops are in order in one group (g.0 … g.11)', grp.g.length === 1 && grp.n === 12 && grp.ids.join(',') === [...Array(12).keys()].join(','), JSON.stringify(grp));
