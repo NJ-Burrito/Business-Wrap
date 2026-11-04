@@ -1,3 +1,4 @@
+import './_isolate.mjs';
 // Tests the one-retry in tests/run.mjs against a fake tree (BW_ROOT): flaky -> RETRIED + exit 0, always-failing -> exit 1, passing -> no retry.
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
