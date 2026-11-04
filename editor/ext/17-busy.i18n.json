@@ -11,7 +11,11 @@
   "busy.webhook": "جارٍ الإرسال…",
   "busy.slow": "يستغرق وقتًا أطول من المعتاد",
   "busy.hide": "إخفاء",
-  "busy.gaveUp": "ما زال العمل جارياً أو تعذّر إنهاؤه؛ أُخفيت رسالة الانتظار. تحقق من النتيجة."
+  "busy.gaveUp": "ما زال العمل جارياً أو تعذّر إنهاؤه؛ أُخفيت رسالة الانتظار. تحقق من النتيجة.",
+  "busy.open": "جارٍ فتح الوثيقة… يرجى الانتظار",
+  "busy.bulk": "جارٍ تطبيق التعديل على الوثائق…",
+  "busy.icons": "جارٍ تطبيق أيقونات الملفات…",
+  "busy.keep": "أبقِ النافذة مفتوحة، وستعود إلى عملك فور الانتهاء"
  },
  "en": {
   "busy.work": "Working… please wait",
@@ -25,6 +29,10 @@
   "busy.webhook": "Sending…",
   "busy.slow": "taking longer than usual",
   "busy.hide": "Hide",
-  "busy.gaveUp": "The work is still running or could not finish; the waiting message was hidden. Check the result."
+  "busy.gaveUp": "The work is still running or could not finish; the waiting message was hidden. Check the result.",
+  "busy.open": "Opening the document… please wait",
+  "busy.bulk": "Applying the edit to the documents…",
+  "busy.icons": "Applying file icons…",
+  "busy.keep": "Keep this window open; you will be back to work the moment it ends"
  }
 }

@@ -10,4 +10,24 @@
 .bw-busy .bz-x[hidden] { display: none; }
 @keyframes bz-spin { to { rotate: 360deg; } }
 :host([data-reading]) .bw-busy { inset-block-start: 12px; }
-html[data-bw-calm="1"] .bw-busy .bz-sp { animation: none; }
+html[data-bw-calm="1"] .bw-busy .bz-sp, .shell[data-calm="1"] .bw-busy .bz-sp { animation: none; }
+/* 0.17.8 O5 · loading screen: a long phase swaps the small card for this, in the tool's colours; the scrim lets clicks through (it never traps the page). */
+.bw-load { position: fixed; z-index: 56; inset: 0; display: grid; place-items: center; background: color-mix(in srgb, var(--deep) 42%, transparent); backdrop-filter: blur(2px); pointer-events: none; animation: bl-in .25s ease both; }
+.bw-load[hidden] { display: none; }
+.bw-load .bl-box { pointer-events: auto; display: grid; justify-items: center; gap: 12px; min-inline-size: min(360px, 86vw); max-inline-size: min(480px, 92vw); padding: 28px 32px; border-radius: 22px; background: var(--deep); color: var(--on-glass); box-shadow: var(--bw-shadow-3); text-align: center; }
+.bw-load .bl-art { display: flex; gap: 8px; align-items: flex-end; block-size: 34px; }
+.bw-load .bl-art i { inline-size: 10px; block-size: 14px; border-radius: 4px; background: var(--gold); animation: bl-rise 1s ease-in-out infinite; }
+.bw-load .bl-art i:nth-child(2) { animation-delay: .15s; } .bw-load .bl-art i:nth-child(3) { animation-delay: .3s; }
+.bw-load .bl-t { font-weight: 800; font-size: 1.1em; }
+.bw-load .bl-d { opacity: .78; font-size: .92em; }
+.bw-load .bl-bar { inline-size: 100%; block-size: 5px; border-radius: 3px; background: color-mix(in srgb, var(--on-glass) 18%, transparent); overflow: hidden; }
+.bw-load .bl-bar b { display: block; inline-size: 38%; block-size: 100%; border-radius: 3px; background: var(--gold); animation: bl-run 1.3s ease-in-out infinite; }
+.bw-load .bl-x { font: inherit; font-weight: 700; color: var(--on-glass); background: color-mix(in srgb, var(--on-glass) 14%, transparent); border: 0; border-radius: 10px; padding: 6px 14px; cursor: pointer; }
+.bw-load .bl-x[hidden] { display: none; }
+@keyframes bl-in { from { opacity: 0; } }
+@keyframes bl-rise { 50% { block-size: 34px; } }
+@keyframes bl-run { from { translate: -100% 0; } to { translate: 270% 0; } }
+.shell[dir="rtl"] .bw-load .bl-bar b { animation-name: bl-run-r; }
+@keyframes bl-run-r { from { translate: 100% 0; } to { translate: -270% 0; } }
+.shell[data-calm="1"] .bw-load, .shell[data-calm="1"] .bw-load .bl-art i, .shell[data-calm="1"] .bw-load .bl-bar b { animation: none; }
+.shell[data-calm="1"] .bw-load .bl-bar b { inline-size: 100%; opacity: .6; }

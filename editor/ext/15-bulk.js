@@ -61,6 +61,7 @@ async function bkBack(o) {
 async function bkApply(ids, spec = bkSpec()) {
   if (BK.busy) return null;
   BK.busy = true;
+  const endBusy = EXT.busy?.begin('busy.bulk'); // 0.17.8 O5: the loading screen for a long bulk edit
   const o = { svc: S.svc, ed: S.ed };
   const rows = [];
   try {
@@ -91,6 +92,7 @@ async function bkApply(ids, spec = bkSpec()) {
     await bkBack(o).catch(() => {});
     await EXT.ledger?.ready?.();
     BK.busy = false;
+    endBusy?.();
   }
   const n = (st) => rows.filter((r) => r.status === st).length;
   toast(t('bkDone', { done: n('done'), skip: rows.length - n('done') }), n('done') ? 'ok' : 'warn');

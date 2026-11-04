@@ -129,7 +129,12 @@ const LIB = (() => {
     const h = isDoc(id) && !pending[id] ? `#doc=${encodeURIComponent(id)}` : '';
     if (location.hash !== h && (h || /[#&]doc=/.test(location.hash))) history.replaceState(history.state, '', location.pathname + location.search + h);
   }
+  /** 0.17.8 O5: opening a document from the store is a phase the loading screen covers (nothing shows when it is fast). */
   async function open(id, ed) {
+    const end = EXT.busy?.begin('busy.open');
+    try { return await openRun(id, ed); } finally { end?.(); }
+  }
+  async function openRun(id, ed) {
     if (!M[id] || !isDoc(id)) { const e = await get(id); if (!e) { toast(t('libMissing'), 'warn'); return false; } mount(e); }
     show(id, ed);
     return true;
@@ -274,7 +279,11 @@ const LIB = (() => {
    *  edits, log, lock and signatures kept), a document JSON, any other HTML / a DOCX / a PDF (read by the local server);
    *  an edits file or bundle still merges into the document it was made from. Progress, then the imported document
    *  opens with a result message; a failure says what to do in plain words. */
-  async function importAny(file) {
+  async function importAny(file) { // 0.17.8 O5: the loading screen covers every import path (JSON, Save-HTML, server-read HTML / DOCX / PDF / zip)
+    const end = file ? EXT.busy?.begin('busy.import') : null;
+    try { return await importAnyRun(file); } finally { end?.(); }
+  }
+  async function importAnyRun(file) {
     if (!file) return null;
     const name = file.name || '';
     const ext = (/\.([a-z0-9]+)$/i.exec(name)?.[1] || '').toLowerCase();
