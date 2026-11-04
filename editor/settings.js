@@ -54,6 +54,12 @@ function setSeg(k, items, label) {
 function setSwitch(key, on, text) {
   return `<label class="chk set-sw"><input type="checkbox" data-set="${key}" ${on ? 'checked' : ''}><span class="set-sw-t" aria-hidden="true"><i></i></span><span class="set-sw-w">${esc(text)}</span></label>`;
 }
+/** 0.17.4: every Settings group is the same card (set-c / set-h tile), extension groups included, each with its own icon (lucide, ISC). */
+const SET_G = (inner) => '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + inner + '</svg>';
+IC.setFolder = SET_G('<path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/>'); // folder-open: the save folder
+IC.setGlobe = SET_G('<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>'); // globe: the browser
+IC.setFolders = SET_G('<path d="M20 17a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.9a2 2 0 0 1-1.69-.9l-.81-1.2a2 2 0 0 0-1.67-.9H8a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2Z"/><path d="M2 8v11a2 2 0 0 0 2 2h14"/>'); // folders: the files folder
+const SET_ICON = { workspace: 'setFolder', browser: 'setGlobe', tree: 'setFolders' };
 function setCard(cls, id, icon, title, body) {
   return `<section class="card set-c ${cls}" aria-labelledby="set-h-${id}"><h3 class="set-h" id="set-h-${id}"><span class="i">${ic(icon)}</span>${esc(title)}</h3>${body}</section>`;
 }
@@ -79,7 +85,7 @@ ${setCard('set-prefs', 'prefs', 'prefs', t('set.prefs'), prefs)}
 ${setCard('set-upd', 'upd', 'update', t('set.update'), `<div class="set-upd-body">${setUpdateInner()}</div>`)}
 ${setCard('set-ico', 'ico', 'image', t('ico.title'), `<div class="set-ico-body">${icoInner()}</div>`)}
 ${setCard('set-lrn', 'lrn', 'learning', t('learning'), '<div class="set-lrn-body" data-lrn-mount></div>')}
-${setCard('set-about', 'about', 'about', t('set.about'), setAboutInner(A))}${EXT.settings.map((c) => `<section class="card set-x-${esc(c.id)}" aria-labelledby="set-h-${esc(c.id)}"><h3 id="set-h-${esc(c.id)}"><span class="i">${ic(c.icon || 'prefs')}</span>${esc(t(c.title))}</h3>${c.html()}</section>`).join('')}</div>`; // + extension cards
+${setCard('set-about', 'about', 'about', t('set.about'), setAboutInner(A))}${EXT.settings.map((c) => setCard(`set-x-${esc(c.id)}`, esc(c.id), SET_ICON[c.id] || c.icon || 'prefs', t(c.title), `<div class="set-x-body">${c.html()}</div>`)).join('')}</div>`; // + extension cards
 }
 /** Redraw the Update card in place (keeps the drawer, its scroll and the focus on the pressed button). */
 function setRefreshUpdate(focusKey) {

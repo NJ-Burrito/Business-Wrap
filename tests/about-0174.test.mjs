@@ -49,6 +49,21 @@ try {
     for (const k of ['bg', 'bgImage', 'shadow', 'radius', 'pad', 'color', 'h', 'hFont', 'chip', 'chipInk']) check(`${tag}: About ${k} equals the Update tab's`, m.about[k] === m.upd[k] && m.about[k] === m.prefs[k], JSON.stringify([m.about[k], m.upd[k], m.prefs[k]]));
     check(`${tag}: About's label and value colours equal the Update tab's (dt ${m.about.dt}, dd ${m.about.dd})`, m.about.dt && m.about.dt === m.upd.dt && m.about.dd === m.upd.dd, JSON.stringify([m.about, m.upd]));
     check(`${tag}: About's name uses the card heading colour, not a light-on-navy ink`, m.name === m.about.h || m.name === m.about.dd, JSON.stringify([m.name, m.about.h, m.about.dd]));
+    // every Settings group (built-in and extension cards) against Preferences: same card, title ink and weight, icon tile; a chevron; its own icon
+    const g = await shRoot(page, (r) => {
+      const cs = (e, p) => getComputedStyle(e)[p];
+      return [...r.querySelectorAll('.drawer .set .card')].map((c) => {
+        const h = c.querySelector('.set-h') || c.querySelector('h3'); const chip = h?.querySelector('.i');
+        return { cls: c.className.split(/\s+/).filter((n) => !['card', 'set-c', 'pgrp'].includes(n)).join(' '), isSet: c.classList.contains('set-c') && !!c.querySelector('.set-h'), bg: cs(c, 'backgroundColor'), shadow: cs(c, 'boxShadow'), radius: cs(c, 'borderRadius'), h: h && cs(h, 'color'), font: h && cs(h, 'fontFamily') + '|' + cs(h, 'fontSize') + '|' + cs(h, 'fontWeight'), chip: chip && cs(chip, 'backgroundColor'), chipInk: chip && cs(chip, 'color'), chipSize: chip && cs(chip, 'width'), icon: chip?.querySelector('svg')?.getAttribute('data-ic') || null, chev: !!c.querySelector('summary') };
+      });
+    });
+    const ref = g.find((x) => x.cls.startsWith('set-prefs'));
+    check(`${tag}: Settings has at least 9 groups, all built as one card (${g.length})`, g.length >= 9 && g.every((x) => x.isSet), JSON.stringify(g.map((x) => [x.cls, x.isSet])));
+    for (const x of g) {
+      const diff = ['bg', 'shadow', 'radius', 'h', 'font', 'chip', 'chipInk', 'chipSize'].filter((k) => x[k] !== ref[k]);
+      check(`${tag}: group «${x.cls}» has Preferences' card background, title colour and weight and icon tile`, diff.length === 0, diff.map((k) => `${k}: ${x[k]} vs ${ref[k]}`).join('; '));
+      check(`${tag}: group «${x.cls}» has a chevron summary and an icon of its own`, x.chev && !!x.icon && (x.icon !== 'prefs' || x.cls.startsWith('set-prefs')) && g.filter((y) => y.icon === x.icon).length === 1, `${x.icon} ${x.chev}`);
+    }
     check(`${tag}: no page error`, errors.length === 0, errors.join(' | '));
     if (process.env.BW_SHOT_DIR) { fs.mkdirSync(process.env.BW_SHOT_DIR, { recursive: true }); await page.screenshot({ path: path.join(process.env.BW_SHOT_DIR, `about-${dark ? 'dark' : 'light'}-${ui}.png`) }); }
     await ctx.close();
