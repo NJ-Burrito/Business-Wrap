@@ -5,6 +5,11 @@
  * from "before" through "action" to "after" in 2.4 s, and calm / reduced motion simply stops on the end state.
  * Scenes are families with variants (save:copy, fmt:bold, dg:align.l…); XPL_MAP assigns every id to one. A tool that has an icon
  * in editor/icons.json shows it in the corner badge; a tool without one shows the recipe's fallback icon (never a blank).
+ * 0.17.10 redraw: every drawing sits in a miniature of the real tool (navy top bar with tabs, a ribbon with one lit button, the canvas),
+ * a cursor glides to the lit button and presses it, then the scene plays before -> action -> after, and a small gold payoff (ring,
+ * sparkles, badge pop) closes the loop. Depth comes from CSS (soft shadows, gloss lines, a light sweep), never from gradients or ids
+ * (a gradient inside a hidden <svg> would not resolve), so the strings stay free of colours. Calm shows the end state: the CSS in
+ * ext/38-explain-art.css keeps the cursor, ripple, ring and sparkles at opacity 0 unless an animation runs.
  * Declarations only (hoisted); nothing runs until xplArtFor() is called after boot. */
 
 /** A class given inside the extra attributes (class="…") joins the shape's own classes instead of repeating the attribute. */
@@ -20,9 +25,11 @@ const xaSc = (sx, sy, o = '') => `style="--sx:${sx};--sy:${sy}${o ? `;transform-
 const xaLn = (x, y, w, c = 'ln', s = '') => xaR(c, x, y, w, 4, 2, s);
 const xaLines = (x, y, n, w = 44, o = {}) => Array.from({ length: n }, (_, i) => {
   const ww = i % 3 === 2 ? w - 14 : w;
-  return xaLn(o.right ? x + w - ww : x, y + i * (o.gap || 9), ww, o.c || 'ln');
+  return xaLn(o.right ? x + w - ww : x, y + i * (o.gap || 9), ww, o.c || 'ln', `style="--i:${i}"`);
 }).join('');
-const xaPage = (x = 52, y = 8, w = 56, h = 80, n = 7, o = {}) => xaG(o.cls || 'pg', xaR('sheet', x, y, w, h, 5) + xaLines(x + 6, y + 10, n, w - 12, o));
+/** A page: a sheet with a gloss edge, a heading bar (accent on the reading start side) and n text lines. */
+const xaPage = (x = 52, y = 8, w = 56, h = 80, n = 7, o = {}) => xaG(o.cls || 'pg', xaR('sheet', x, y, w, h, 5) + xaR('gl', x + 2, y + 1.2, w - 4, 1.4, 0.7)
+  + (n > 0 ? xaR('ln hd', o.right ? x + w - 6 - (w - 12) * 0.42 : x + 6, y + 4.6, (w - 12) * 0.42, 3, 1.5, 'style="--i:0"') : '') + xaLines(x + 6, y + 10, n, w - 12, o));
 /** Drawn for a right-to-left interface when true (start = right): set by xplArtFor before each drawing. */
 let XPL_RTL = true;
 /** A paragraph's start/end as a physical side: s -> l (LTR) or r (RTL), e the other; c and j stay. */
@@ -35,7 +42,7 @@ const xaDown = (x, y, k = 'k-mv', d = -14) => xaG(k, xaP('acs', `M${x} ${y} v18 
 const xaWord = (x, y, w, c = 'ln', s = '') => xaR(c, x, y, w, 6, 3, s);
 /** A diagram node by kind, centred on cx, cy. */
 function xaNode(kind, cx, cy, c = 'bx') {
-  const b = (w = 34, h = 20, r = 4) => xaR(c, cx - w / 2, cy - h / 2, w, h, r);
+  const b = (w = 34, h = 20, r = 4) => xaR(c, cx - w / 2, cy - h / 2, w, h, r) + xaR('gl', cx - w / 2 + 3, cy - h / 2 + 1.3, w - 6, 1.4, 0.7);
   switch (kind) {
     case 'start': return xaR('ac', cx - 18, cy - 8, 36, 16, 8);
     case 'decision': return `<path class="${c}" d="M${cx} ${cy - 15} L${cx + 22} ${cy} L${cx} ${cy + 15} L${cx - 22} ${cy} Z"/>`;
@@ -58,15 +65,16 @@ const xaPicture = (x, y, w, h, c = 'sf') => xaR(c, x, y, w, h, 3) + xaC('mk', x 
 const XPL_SCENES = {
   /* ── files ── */
   save(v) {
-    const base = xaTray();
+    const base = xaTray() + xaG('k-in2', xaC('ok', 118, 82, 6) + xaP('wh', 'M115 82 l2.4 2.6 l4.4 -5'));
+    const drop = (pg) => xaG('k-mv', pg, xaMv(0, -22)); // the document settles into the tray, then a tick confirms it
     switch (v) {
-      case 'copy': return xaG('k-in', xaPage(60, 12, 56, 74, 6, { cls: 'pg ghost' })) + xaPage(52, 6, 56, 74, 6) + base + xaDown(80, 34);
+      case 'copy': return xaG('k-in', xaPage(60, 12, 56, 74, 6, { cls: 'pg ghost' })) + drop(xaPage(52, 6, 56, 74, 6)) + base + xaDown(80, 34);
       case 'json': return xaPage(40, 6, 52, 74, 6) + xaP('acs k-draw', 'M112 28 q-7 0 -7 7 v6 q0 5 -5 5 q5 0 5 5 v6 q0 7 7 7 M132 28 q7 0 7 7 v6 q0 5 5 5 q-5 0 -5 5 v6 q0 7 -7 7') + base;
       case 'stack': return xaR('sheet', 62, 8, 52, 68, 5) + xaR('sheet', 56, 14, 52, 68, 5) + xaPage(50, 20, 52, 62, 5) + base + xaDown(80, 36);
       case 'pack': return xaR('sheet', 44, 12, 72, 62, 8) + xaC('pr', 64, 34, 7) + xaC('ac', 84, 34, 7) + xaC('mk', 104, 34, 7) + xaC('ok', 74, 56, 7) + xaC('sg', 94, 56, 7) + base;
-      case 'log': return xaPage(52, 6, 56, 74, 0) + [0, 1, 2, 3].map((i) => xaC('mk', 62, 22 + i * 13, 3) + xaLn(70, 20 + i * 13, 30)).join('') + base + xaDown(80, 40);
+      case 'log': return drop(xaPage(52, 6, 56, 74, 0)) + [0, 1, 2, 3].map((i) => xaC('mk', 62, 22 + i * 13, 3) + xaLn(70, 20 + i * 13, 30)).join('') + base + xaDown(80, 40);
       case 'snap': return xaPage(52, 6, 56, 74, 6) + xaP('prs', 'M44 22 v-10 h10 M116 22 v-10 h-10 M44 70 v10 h10 M116 70 v10 h-10') + xaC('wh k-flash', 80, 44, 24) + base;
-      default: return xaPage(52, 6, 56, 74, 6) + base + xaDown(80, 34);
+      default: return drop(xaPage(52, 6, 56, 74, 6)) + base + xaDown(80, 34);
     }
   },
   out(v) { // kind.lang: pdf|docx|print|html|menu|mmd|svg|png . ar|en|both
@@ -147,7 +155,9 @@ const XPL_SCENES = {
   },
   undo(v) {
     const pg = xaPage(40, 6, 70, 84, 7);
-    return pg + xaR('hi', 48, 34, 54, 12, 3) + (v === 'undo' ? xaP('arc back', 'M122 30 a14 14 0 1 0 6 18', 'style="stroke-dasharray:80"') : xaP('arc fwd', 'M38 30 a14 14 0 1 1 -6 18', 'style="stroke-dasharray:80"'));
+    // undo: the last block leaves (a dashed ghost stays); redo: it comes back with a pop
+    const blk = xaR('hi', 48, 34, 54, 12, 3, 'style="stroke-width:1.2"');
+    return pg + (v === 'undo' ? xaR('gh', 48, 34, 54, 12, 3) + xaG('k-gone', blk) : xaR('gh', 48, 34, 54, 12, 3) + xaG('k-in', blk, xaMv(0, 6))) + (v === 'undo' ? xaP('arc back', 'M122 30 a14 14 0 1 0 6 18', 'style="stroke-dasharray:80"') : xaP('arc fwd', 'M38 30 a14 14 0 1 1 -6 18', 'style="stroke-dasharray:80"'));
   },
   /* ── tables ── */
   tbl(v) { // add|del|up|down . row|col
@@ -281,18 +291,20 @@ const XPL_SCENES = {
     const sheet = xaR('sheet', 20, 22, 120, 52, 8) + xaLn(30, 32, 100) + xaLn(30, 58, 70);
     const w = (c, s = '') => xaWord(52, 42, 38, c, s);
     const before = xaLn(30, 43, 20) + xaLn(94, 43, 36);
+    // before: the word is plain; action: a gold selection grows over it, then the formatting lands with a small pop (end state = formatted)
+    const fxa = (body) => sheet + before + xaWord(52, 42, 38, 'ln', 'class="k-gone"') + xaR('selbox', 49, 38, 44, 14, 3) + xaG('k-in', body, xaMv(0, 3));
     switch (v) {
-      case 'bold': return sheet + before + xaR('pr', 52, 40, 38, 10, 4);
-      case 'italic': return sheet + before + xaR('pr', 52, 42, 38, 6, 3, 'style="transform:skewX(-18deg);transform-origin:center"');
-      case 'underline': return sheet + before + w('pr') + xaR('ac k-grow', 52, 51, 38, 2.4, 1, xaSc(0, 1, 'left center'));
-      case 'strike': return sheet + before + w('pr') + xaR('no k-grow', 48, 44, 46, 2.4, 1, xaSc(0, 1, 'left center'));
-      case 'code': return sheet + before + xaR('cell', 50, 38, 42, 12, 3) + xaP('prs', 'M58 42 l-4 4 l4 4 M84 42 l4 4 l-4 4', 'style="stroke-width:1.8"') + xaR('pr', 62, 44, 14, 4, 2);
-      case 'link': return sheet + before + w('ac') + xaR('ac', 52, 50, 38, 1.8, 1) + xaG('k-in', xaP('acs', 'M96 40 l6 -6 m-3 -1 l4 -2 l-1 4 M96 40 l-4 4', 'style="stroke-width:2"'));
-      case 'color': return sheet + before + w('ac') + xaC('ac', 98, 62, 4) + xaC('pr', 108, 62, 4) + xaC('ok', 118, 62, 4);
-      case 'font': return sheet + before + xaR('pr', 52, 40, 38, 8, 2) + xaP('wh', 'M58 46 l4 -4 l4 4 M60 45 h4 M74 42 v4 h6', 'style="stroke-width:1.6"');
-      case 'size': return sheet + before + xaR('pr', 48, 36, 46, 14, 4) + xaP('acs', 'M102 34 v18 m-3 -5 l3 5 l3 -5 m-6 -8 l3 -5 l3 5');
-      case 'clear': return sheet + before + w('ln') + xaG('k-gone', xaP('acs', 'M50 41 l44 8 M52 52 l40 -10')) + xaC('ok', 112, 62, 5);
-      default: return sheet + before + w('pr');
+      case 'bold': return fxa(xaR('pr', 52, 40, 38, 10, 4));
+      case 'italic': return fxa(xaR('pr', 52, 42, 38, 6, 3, 'style="transform:skewX(-18deg);transform-origin:center"'));
+      case 'underline': return fxa(w('pr') + xaR('ac k-grow', 52, 51, 38, 2.4, 1, xaSc(0, 1, 'left center')));
+      case 'strike': return fxa(w('pr') + xaR('no k-grow', 48, 44, 46, 2.4, 1, xaSc(0, 1, 'left center')));
+      case 'code': return fxa(xaR('cell', 50, 38, 42, 12, 3) + xaP('prs', 'M58 42 l-4 4 l4 4 M84 42 l4 4 l-4 4', 'style="stroke-width:1.8"') + xaR('pr', 62, 44, 14, 4, 2));
+      case 'link': return fxa(w('ac') + xaR('ac', 52, 50, 38, 1.8, 1) + xaG('k-in', xaP('acs', 'M96 40 l6 -6 m-3 -1 l4 -2 l-1 4 M96 40 l-4 4', 'style="stroke-width:2"')));
+      case 'color': return fxa(w('ac') + xaC('ac', 98, 62, 4) + xaC('pr', 108, 62, 4) + xaC('ok', 118, 62, 4));
+      case 'font': return fxa(xaR('pr', 52, 40, 38, 8, 2) + xaP('wh', 'M58 46 l4 -4 l4 4 M60 45 h4 M74 42 v4 h6', 'style="stroke-width:1.6"'));
+      case 'size': return fxa(xaR('pr', 48, 36, 46, 14, 4) + xaP('acs', 'M102 34 v18 m-3 -5 l3 5 l3 -5 m-6 -8 l3 -5 l3 5'));
+      case 'clear': return fxa(w('ln') + xaG('k-gone', xaP('acs', 'M50 41 l44 8 M52 52 l40 -10')) + xaC('ok', 112, 62, 5));
+      default: return fxa(w('pr'));
     }
   },
   para(v) { // paragraph formatting: align.<s|c|e|j>, v.<t|m|b>, space.<l|b|a>, quote, bullets, numbers, shapes, indent, outdent
@@ -481,13 +493,11 @@ const XPL_SCENES = {
     }
   },
   /* ── ribbon tabs ── */
-  tab(v) { // the ribbon strip with that tab raised and a tool group lit
+  tab(v) { // the tool strip of a ribbon tab: the tab pill in the top bar is raised, the group opens under it, a page waits below
     const names = ['file', 'home', 'insert', 'layout', 'design', 'review', 'view', 'table', 'picture', 'diagram', 'export', 'font', 'para', 'hf', 'tools', 'diagram2'];
-    const i = Math.max(0, names.indexOf(v)) % 8;
-    return xaR('side', 8, 10, 144, 16, 3) + Array.from({ length: 8 }, (_, q) => xaR(q === i ? 'ac' : 'wl', 12 + q * 17, q === i ? 8 : 13, 14, q === i ? 18 : 11, 3)).join('')
-      + xaR('sheet', 8, 28, 144, 34, 4) + [0, 1, 2, 3, 4].map((q) => xaR(q === i % 5 ? 'hi' : 'cell', 16 + q * 27, 35, 22, 20, 4)).join('')
-      + xaG('k-in', xaR('gh', 12 + (i % 5) * 27, 32, 30, 26, 5))
-      + xaPage(60, 66, 40, 30, 0);
+    const i = Math.max(0, names.indexOf(v)) % 5;
+    XPL_FR = { tab: i, lit: i + 1 };
+    return xaPage(46, 6, 68, 84, 5) + xaG('k-in', xaR('sheet', 86, 18, 58, 40, 6) + [0, 1, 2].map((q) => xaR(q === 1 ? 'hi' : 'cell', 92, 24 + q * 11, 46, 8, 3)).join(''), xaMv(-12, -6)) + xaR('gh', 40, 2, 80, 90, 6);
   },
   generic() { return xaPage(52, 8, 56, 78, 6) + xaR('hi', 58, 36, 44, 12, 3) + xaP('acs', 'M96 64 l-8 -14 l16 4 l-5 5 Z'); },
 };
@@ -789,6 +799,36 @@ tab:tools rbtab_tools@more
 tab:diagram2 rbtab_diagram2@dgAlignL
 `;
 
+/** The frame's x for a physical position: the miniature mirrors for a right-to-left interface (tabs and ribbon start on the right). */
+const xaFx = (x, w = 0) => (XPL_RTL ? 160 - x - w : x);
+const xaFr = (c, x, y, w, h, r = 1.4, s = '') => xaR(c, xaFx(x, w), y, w, h, r, s);
+/** Set by a scene that wants a particular tab / lit ribbon button ({ tab, lit }); read once by xaFrame. */
+let XPL_FR = null;
+const xaHash = (t) => { let h = 7; for (const ch of t) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h; };
+/** The miniature of the real tool around one scene: window, navy top bar with tabs, ribbon with one lit button (the one the cursor
+ *  presses), the canvas the scene lives in (scaled .78, clipped), and the payoff layer (ring, sparkles) at the badge. */
+function xaFrame(inner, key) {
+  const fr = XPL_FR || {}; XPL_FR = null;
+  const lit = fr.lit ?? (xaHash(key) % 6), tab = fr.tab ?? (xaHash(`${key}t`) % 5);
+  const bw = (i) => 9 + i * 11.5;
+  const cx = xaFx(bw(lit), 7) + 3.5, cy = 12.6;
+  const bar = '<path class="fr-bar" d="M0.5 8 V6.5 A6 6 0 0 1 6.5 0.5 H153.5 A6 6 0 0 1 159.5 6.5 V8 Z"/>';
+  const cvs = '<path class="fr-cv" d="M0.5 17 H159.5 V89 A6 6 0 0 1 153.5 95 H6.5 A6 6 0 0 1 0.5 89 Z"/>';
+  const head = xaR('fr-win', 0.5, 0.5, 159, 95, 6) + cvs + bar
+    + [0, 1, 2].map((i) => xaC('fr-dot', xaFx(6 + i * 4.4), 4.3, 1.25)).join('')
+    + [0, 1, 2, 3, 4].map((i) => xaFr(i === tab ? 'fr-tab on' : 'fr-tab', 27 + i * 15, 2.5, 12, 3.6, 1.8)).join('')
+    + xaFr('fr-tab', 112, 2.5, 38, 3.6, 1.8)
+    + xaR('fr-rib', 0.5, 8, 159, 9, 0) + xaR('fr-rule', 0.5, 16.6, 159, 0.8, 0)
+    + Array.from({ length: 7 }, (_, i) => (i === lit ? '' : xaFr('fr-btn', bw(i), 10.1, 7, 5.2, 1.6))).join('')
+    + xaFr('fr-pill', 98, 10.1, 52, 5.2, 2.6)
+    + xaC('fr-glow', cx, cy, 6.5) + xaFr('fr-btn on', bw(lit), 10.1, 7, 5.2, 1.6);
+  const cur = `<g transform="translate(${cx + 0.8} ${cy + 1.2})"><g class="fr-cur" style="--dx:${Math.round(XPL_RTL ? -26 : 30)}px;--dy:34px"><path class="fr-ptr" d="M0 0 V9 L2.4 6.9 L4.1 10.6 L5.9 9.8 L4.2 6.2 L7.4 6.1 Z"/></g></g>`;
+  const rip = xaC('fr-rip', cx, cy, 4);
+  const body = `<g class="fr-cvg"><g class="scn" transform="translate(17.6 18) scale(.78)">${inner}</g><rect class="fr-sweep" x="-30" y="17" width="22" height="78" rx="0"/></g>`;
+  const spk = [[127, 70, 0], [154, 67, 1], [152, 91, 2]].map(([x, y, k]) => `<path class="fr-spk s${k}" d="M${x} ${y - 3} v6 M${x - 3} ${y} h6"/>`).join('');
+  return head + body + xaC('fr-pay', 141, 80, 11) + spk + rip + cur;
+}
+
 /** Parsed once: id → [scene, variant, fallbackIcon]. */
 let XPL_RECIPES = null;
 function xplRecipes() {
@@ -808,9 +848,10 @@ function xplArtFor(id) {
   if (XPL_ART_CACHE[ck]) return XPL_ART_CACHE[ck];
   const [scene, variant, icon] = xplRecipes()[id] || ['generic', '', 'info'];
   XPL_RTL = uiDir() === 'rtl';
-  const inner = (XPL_SCENES[scene] || XPL_SCENES.generic)(variant);
+  XPL_FR = null;
+  const inner = xaFrame((XPL_SCENES[scene] || XPL_SCENES.generic)(variant), `${scene}:${variant}`);
   const glyph = ic(id) || (icon && ic(icon)) || ic(id.replace(/^dg_/, 'dg')) || ic('info');
-  return (XPL_ART_CACHE[ck] = `<svg viewBox="0 0 160 96" class="sc-${scene}" focusable="false" aria-hidden="true">${inner}<g class="badge" transform="translate(138 76)"><circle r="13"/><g transform="translate(-8.5 -8.5) scale(.7)">${glyph.replace('<svg', '<svg width="24" height="24"')}</g></g></svg>`);
+  return (XPL_ART_CACHE[ck] = `<svg viewBox="0 0 160 96" class="sc-${scene}" focusable="false" aria-hidden="true">${inner}<g class="badge" transform="translate(141 80)"><circle r="11"/><g transform="translate(-7.4 -7.4) scale(.62)">${glyph.replace('<svg', '<svg width="24" height="24"')}</g></g></svg>`);
 }
 /** Every id that has its own recipe (the test compares this with the i18n keys). */
 function xplArtIds() { return Object.keys(xplRecipes()); }

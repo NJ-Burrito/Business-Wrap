@@ -1,0 +1,98 @@
+/* 0.17.10 · the Explain illustrations (editor/xpl-art.js) in the current theme: navy glass window, gold accent, depth and a small story.
+ * Brand tokens only (--bw-*), so light, dark and the dim set of 45-dark-dim.css follow; no colour of its own, no gradient or id inside the
+ * SVG (a gradient in a hidden <svg> does not resolve), Thmanyah only (drawings carry no text). Loads after ux.css and 37-explain.css.
+ *
+ * Loop (2.4 s, every scene is written in its END state, which is the calm look):
+ *    0-12 %  before  the cursor glides to the lit ribbon button
+ *   12-20 %  press   the button dips, a ripple leaves it (the scene's own k-* parts start at 10-14 %)
+ *   14-44 %  action  the scene's parts move, grow, appear or leave (ux.css k-* classes)
+ *   44-70 %  after   the badge pops, a gold ring and sparkles leave it
+ *   56-86 %  a soft light sweep crosses the canvas; the drawing then resets for the next loop
+ * ONLY the editor's Calm button stops it (.shell[data-calm="1"]); the OS reduced-motion setting is not consulted. Calm shows the end
+ * state: cursor, ripple, ring, sparkles and sweep sit at opacity 0 unless an animation runs. */
+
+/* ── the miniature window ── */
+.xpl-dock svg {
+  --xa-hi: color-mix(in srgb, var(--bw-on-glass, #fff) 14%, transparent);
+  --xa-sh: color-mix(in srgb, var(--bw-band, #001e3d) 34%, transparent);
+  --xa-sh2: color-mix(in srgb, var(--bw-band, #001e3d) 18%, transparent);
+  --xa-gold: color-mix(in srgb, var(--bw-accent-rule, var(--bw-accent)) 72%, var(--bw-accent-strong, var(--bw-accent-rule)));
+  --xa-in: cubic-bezier(.22, 1, .36, 1);
+}
+.xpl-dock svg .fr-win { fill: var(--bw-surface); stroke: color-mix(in srgb, var(--bw-line-strong, var(--bw-rule-strong)) 70%, var(--xa-gold) 30%); stroke-width: 1; filter: drop-shadow(0 2px 3px var(--xa-sh)); }
+.xpl-dock svg .fr-bar { fill: var(--bw-band); stroke: none; }
+.xpl-dock svg .fr-rib { fill: var(--bw-surface-2); stroke: none; }
+.xpl-dock svg .fr-rule { fill: var(--xa-gold); opacity: .55; stroke: none; }
+.xpl-dock svg .fr-cv { fill: color-mix(in srgb, var(--bw-band, #001e3d) 9%, var(--bw-primary-wash)); stroke: none; }
+.xpl-dock svg .fr-dot { fill: var(--bw-on-glass, #fff); opacity: .45; stroke: none; }
+.xpl-dock svg .fr-tab { fill: var(--bw-on-glass, #fff); opacity: .3; stroke: none; }
+.xpl-dock svg .fr-tab.on { fill: var(--bw-accent); opacity: 1; filter: drop-shadow(0 0 1.6px var(--bw-accent)); }
+.xpl-dock svg .fr-btn { fill: var(--bw-primary-soft); stroke: var(--bw-rule-strong); stroke-width: .6; }
+.xpl-dock svg .fr-btn.on { fill: var(--bw-accent); stroke: var(--xa-gold); stroke-width: .8; filter: drop-shadow(0 .8px 1px var(--xa-sh)); }
+.xpl-dock svg .fr-pill { fill: var(--bw-primary-wash); stroke: var(--bw-rule-strong); stroke-width: .6; }
+.xpl-dock svg .fr-glow { fill: var(--bw-accent); opacity: .22; stroke: none; }
+.xpl-dock svg .fr-cvg { clip-path: inset(17px 0.6px 0.6px 0.6px round 0 0 5px 5px) view-box; }
+.xpl-dock svg .fr-sweep { fill: var(--bw-on-glass, #fff); opacity: 0; stroke: none; transform: skewX(-18deg); }
+.xpl-dock svg .fr-ptr { fill: var(--bw-ink); stroke: var(--bw-surface); stroke-width: 1; stroke-linejoin: round; filter: drop-shadow(0 1px 1px var(--xa-sh)); }
+.xpl-dock svg .fr-cur { opacity: 0; }
+.xpl-dock svg .fr-rip { fill: none; stroke: var(--xa-gold); stroke-width: 1.2; opacity: 0; }
+.xpl-dock svg .fr-pay { fill: none; stroke: var(--bw-accent); stroke-width: 1.6; opacity: 0; }
+.xpl-dock svg .fr-spk { fill: none; stroke: var(--bw-accent); stroke-width: 1.5; stroke-linecap: round; opacity: 0; }
+.xpl-dock svg .badge circle { fill: var(--bw-accent); stroke: color-mix(in srgb, var(--bw-on-glass, #fff) 55%, transparent); stroke-width: .8; filter: drop-shadow(0 1.5px 2px var(--xa-sh)); }
+
+/* ── depth: soft shadows, gloss edges, headings, stronger text bars ── */
+.xpl-dock svg .sheet { fill: var(--bw-surface); stroke: color-mix(in srgb, var(--bw-line-strong, var(--bw-rule-strong)) 65%, var(--bw-rule-strong)); stroke-width: .8; filter: drop-shadow(0 1.6px 1.6px var(--xa-sh)) drop-shadow(0 4px 6px var(--xa-sh2)); }
+.xpl-dock svg :is(.blk, .bx) { filter: drop-shadow(0 1.2px 1.2px var(--xa-sh)); }
+.xpl-dock svg .gl { fill: var(--xa-hi); stroke: none; }
+.xpl-dock svg .ln { fill: color-mix(in srgb, var(--bw-ink) 24%, var(--bw-surface)); }
+.xpl-dock svg .ln.hue, .xpl-dock svg .ln.hd { fill: var(--bw-primary); }
+.xpl-dock svg .ln.hd { opacity: .9; }
+.xpl-dock svg .pane .ln { fill: var(--bw-on-glass-soft, var(--bw-sec-insert)); opacity: .8; }
+.xpl-dock svg .side { filter: drop-shadow(0 1.2px 1.2px var(--xa-sh)); }
+.xpl-dock svg .tray { filter: drop-shadow(0 1px 1.2px var(--xa-sh)); }
+.xpl-dock svg :is(.ok, .no) { filter: drop-shadow(0 .8px .8px var(--xa-sh)); }
+/* key strokes stay >= 3:1 on the canvas in light too: gold uses its rule shade */
+.xpl-dock svg :is(.acs, .mkl, .rng) { stroke: var(--xa-gold); }
+.xpl-dock svg :is(.arc, .wire, .dirarrow, .guide, .cut, .tip, .turn) { stroke: var(--xa-gold); }
+.xpl-dock svg .ac { fill: var(--bw-accent); stroke: var(--xa-gold); stroke-width: .6; }
+
+/* the selection a format acts on: grows over the word, then lets go */
+.xpl-dock svg .selbox { fill: color-mix(in srgb, var(--bw-accent) 22%, transparent); stroke: var(--xa-gold); stroke-width: 1.1; stroke-dasharray: 3 2; opacity: 0; transform-origin: left center; }
+.xpl-dock svg .selbox { animation: xa-selbox 2.4s var(--e-move, ease) infinite; }
+@keyframes xa-selbox { 0%, 8% { opacity: 0; scale: 0 1; } 14% { opacity: 1; scale: 0 1; } 30% { opacity: 1; scale: 1 1; } 46% { opacity: 1; } 60%, 100% { opacity: 0; scale: 1 1; } }
+
+/* what just arrived wears a gold edge (the eye lands on the change) */
+.xpl-dock svg .k-in :is(.blk, .bx, .sheet, .cell, .sf) { stroke: var(--xa-gold); stroke-width: 1.2; }
+
+/* ── motion ── */
+.xpl-dock svg .scn { transform-box: view-box; transform-origin: 0 0; animation: xa-enter .5s var(--xa-in) both; }
+.xpl-dock svg .pg > .sheet { animation: xa-sheet .45s var(--xa-in) both; }
+.xpl-dock svg .pg > .ln:not([class*="k-"]) { animation: xa-line .42s var(--xa-in) both; animation-delay: calc(.12s + var(--i, 0) * 42ms); }
+.xpl-dock svg .fr-btn.on { animation: xa-press 2.4s var(--e-spring, var(--xa-in)) infinite; }
+.xpl-dock svg .fr-glow { animation: xa-glow 2.4s var(--e-move, ease) infinite; }
+.xpl-dock svg .fr-cur { animation: xa-cur 2.4s var(--e-move, ease) infinite; }
+.xpl-dock svg .fr-rip { animation: xa-rip 2.4s var(--e-out, ease-out) infinite; }
+.xpl-dock svg .fr-pay { animation: xa-pay 2.4s var(--e-out, ease-out) infinite; }
+.xpl-dock svg .fr-spk { animation: xa-spk 2.4s var(--e-spring, ease-out) infinite; }
+.xpl-dock svg .fr-spk.s1 { animation-delay: .06s; }
+.xpl-dock svg .fr-spk.s2 { animation-delay: .12s; }
+.xpl-dock svg .fr-sweep { animation: xa-sweep 2.4s var(--e-move, ease) infinite; }
+.xpl-dock svg .badge { animation: xa-badge 2.4s var(--e-spring, ease-out) infinite; }
+.xpl-dock svg .fr-tab.on { animation: xa-tab 2.4s var(--e-move, ease) infinite; }
+
+@keyframes xa-enter { from { opacity: 0; translate: 0 3px; scale: .97; } to { opacity: 1; translate: 0 0; scale: 1; } }
+@keyframes xa-sheet { from { opacity: 0; translate: 0 5px; } to { opacity: 1; translate: 0 0; } }
+@keyframes xa-line { from { opacity: 0; translate: 0 2px; } to { opacity: 1; translate: 0 0; } }
+@keyframes xa-press { 0%, 12% { scale: 1; } 15% { scale: .8; } 22% { scale: 1.14; } 32%, 100% { scale: 1; } }
+@keyframes xa-glow { 0%, 12% { opacity: .1; scale: .8; } 17% { opacity: .75; scale: 1.25; } 40%, 90% { opacity: .22; scale: 1; } 100% { opacity: .1; } }
+@keyframes xa-cur { 0% { opacity: 0; translate: var(--dx, 28px) var(--dy, 30px); } 5% { opacity: 1; } 13% { opacity: 1; translate: 0 0; scale: 1; } 15% { scale: .82; } 19%, 38% { opacity: 1; translate: 0 0; scale: 1; } 47%, 100% { opacity: 0; translate: 4px 8px; scale: 1; } }
+@keyframes xa-rip { 0%, 13% { opacity: 0; scale: .4; } 15% { opacity: .95; } 30%, 100% { opacity: 0; scale: 2.6; } }
+@keyframes xa-pay { 0%, 44% { opacity: 0; scale: 1; } 47% { opacity: .9; } 70%, 100% { opacity: 0; scale: 2.2; } }
+@keyframes xa-spk { 0%, 45% { opacity: 0; scale: .2; rotate: 0deg; } 55% { opacity: 1; scale: 1.15; } 74%, 100% { opacity: 0; scale: .5; rotate: 45deg; } }
+@keyframes xa-sweep { 0%, 56% { opacity: 0; translate: 0 0; } 62% { opacity: .06; } 86%, 100% { opacity: 0; translate: 190px 0; } }
+@keyframes xa-badge { 0%, 42% { scale: 1; } 50% { scale: 1.2; } 60%, 100% { scale: 1; } }
+@keyframes xa-tab { 0%, 10% { opacity: .35; } 20%, 100% { opacity: 1; } }
+
+/* ── Calm: the end state, nothing moving (same rule as 37-explain.css, repeated so this file stands alone) ── */
+.shell[data-calm="1"] .xpl-dock svg, .shell[data-calm="1"] .xpl-dock svg * { animation: none !important; transition: none !important; }
+.shell[data-calm="1"] .xpl-dock svg :is(.fr-cur, .fr-rip, .fr-pay, .fr-spk, .fr-sweep) { opacity: 0 !important; }
