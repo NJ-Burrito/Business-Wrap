@@ -53,7 +53,7 @@ try {
     const sheets = [...view.querySelectorAll('.bw-sheet')];
     const others = sheets.filter((s) => +s.dataset.page !== k).filter((s) => { const q = s.getBoundingClientRect(); return Math.min(q.right, r.right) - Math.max(q.left, r.left) > 1 && Math.min(q.bottom, r.bottom) - Math.max(q.top, r.top) > 1; }).map((s) => s.dataset.page);
     const mine = sheets.find((s) => +s.dataset.page === k)?.getBoundingClientRect();
-    const z = parseFloat(getComputedStyle(view).zoom) || 1;
+    const z = parseFloat(document.documentElement.style.getPropertyValue('--bw-pz')) || 1;
     const mm = 96 / 25.4;
     const pn = document.getElementById('bw-ui-host').shadowRoot.querySelector('.pager .pn')?.textContent || '';
     return { bad, k, n: B.S.pageN, w: r.width / z / mm, h: r.height / z / mm, sz, cx: (r.left + r.right) / 2 - vw / 2, inside, seen, others, mineOk: !mine || (Math.abs(mine.width - r.width) < 1.5 && Math.abs(mine.height - r.height) < 1.5), pn, ratioOk: Math.abs(r.width / r.height - sz.w / sz.h) < 0.01 };
@@ -72,7 +72,7 @@ try {
       }
     }
     const mr = main.getBoundingClientRect();
-    const z = parseFloat(getComputedStyle(main.parentElement).zoom) || 1;
+    const z = parseFloat(document.documentElement.style.getPropertyValue('--bw-pz')) || 1;
     const slot = (210 + 12) * 96 / 25.4;
     const ovs = [...main.querySelectorAll('.bw-ov')].filter((e) => !e.closest('.bw-frun')).map((e) => { const q = e.getBoundingClientRect(); const x = (main.dir === 'rtl' ? mr.right - q.right : q.left - mr.left) / z; return [e.dataset.i, +(x % slot).toFixed(1), +((q.top - mr.top) / z).toFixed(1)]; });
     return { off: off.slice(0, 3), n: off.length, ovs, boxes: main.querySelectorAll('.bw-frun').length };
@@ -127,7 +127,7 @@ try {
         const sheets = [...view.querySelectorAll('.bw-sheet')].filter((s) => show.includes(+s.dataset.page)).map((s) => s.getBoundingClientRect());
         const cut = sheets.some((a) => a.left < q.left - 1 || a.right > q.right + 1 || a.top < q.top - 1 || a.bottom > q.bottom + 1);
         const vw = document.documentElement.clientWidth;
-        const mmw = q.width / (parseFloat(getComputedStyle(view).zoom) || 1) / (96 / 25.4);
+        const mmw = q.width / (parseFloat(document.documentElement.style.getPropertyValue('--bw-pz')) || 1) / (96 / 25.4);
         const T = window.BW.S.pageTab;
         return { pw: 1, vw: mmw, sz: [T[k], T[k + 1] || {}], k, n: window.BW.S.pageN, vis, show: show.filter((x) => x < window.BW.S.pageN), cut, inside: q.left >= -0.5 && q.right <= vw + 0.5 };
       });

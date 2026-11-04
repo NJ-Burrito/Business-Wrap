@@ -120,7 +120,7 @@ try {
     const B = window.BW;
     const main = document.querySelector(`#bw-pair main.bw-doc[data-locale="${B.S.ed}"]`);
     const mr = main.getBoundingClientRect();
-    const z = parseFloat(getComputedStyle(main.parentElement).zoom) || 1;
+    const z = parseFloat(document.documentElement.style.getPropertyValue('--bw-pz')) || 1;
     const rtl = main.dir === 'rtl';
     const mm = 96 / 25.4;
     const tab = B.S.pageTab;
@@ -169,7 +169,7 @@ try {
         if (!sheets.some((s) => { const t = s.getBoundingClientRect(); return touch(t) && q.left >= t.left - 2 && q.right <= t.right + 2 && q.top >= t.top - 2 && q.bottom <= t.bottom + 2; })) stray.push(`${el.tagName} "${n.textContent.trim().slice(0, 20)}"`);
       }
     }
-    return { k: B.S.pageAt, n: B.S.pageN, shown, stray, sz: (B.S.pageSizes || [])[B.S.pageAt] || {}, w: r.width / (parseFloat(getComputedStyle(view).zoom) || 1) / (96 / 25.4) };
+    return { k: B.S.pageAt, n: B.S.pageN, shown, stray, sz: (B.S.pageSizes || [])[B.S.pageAt] || {}, w: r.width / (parseFloat(document.documentElement.style.getPropertyValue('--bw-pz')) || 1) / (96 / 25.4) };
   });
 
   // V: every page of the single view, then every spread, alone and whole, and the continuous sheet
