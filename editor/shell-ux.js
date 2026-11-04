@@ -89,14 +89,15 @@ function uxIsEmptySpace(el) {
   if (!el.closest?.('#bw-pair')) return false;
   return !el.closest('[data-b], [data-p], .bw-ov, figure[data-dg], .bw-dg-edit, #bw-overlay');
 }
-/** 0.17.8 (O1): a press on the background around the page (not in the editor UI, not on a page) changes nothing: no panel, drawer, menu, list or selection tool closes.
- *  Esc and the explicit close buttons still work. Takes the event, reads its composed path. */
+/** 0.17.8 (O1, owner reversal 2026-11-04): a press on the background around the page (not in the editor UI, not on a page) CLOSES everything open: the ribbon folds,
+ *  the side panel, every menu, list, popover, scope menu and diagram pop-up closes (each of those listens to the press itself; this seam folds the ribbon). Takes the event, reads its composed path. */
 function uxBgPress(e) {
   const path = e.composedPath();
   if (path.includes(host)) return false;
   if (path.some((x) => x.matches?.('main.bw-doc, dialog, [popover], #bw-watermark, #bw-overlay, .bw-ov'))) return false;
   return true;
 }
+window.addEventListener('pointerdown', (e) => { if (uxBgPress(e) && EXT.ribbon && !EXT.ribbon.state.collapsed) EXT.ribbon.collapse(true); }, true);
 /** Esc inside the UI peels one layer at a time: explainer → open menu → view popover → panel → the selection's tools. */
 function uxEscape() {
   if (xplHide()) return;
@@ -150,7 +151,7 @@ function uxMenuClose(menu, focusBack = false) {
 // an outside click closes the menus (the selection stays: only the document's own click handler decides that)
 window.addEventListener('pointerdown', (e) => {
   const open = uxMenusOpen();
-  if (!open.length || uxBgPress(e)) return;
+  if (!open.length) return;
   const path = e.composedPath();
   open.forEach((m) => { if (!path.includes(m) && !path.includes(m.previousElementSibling)) uxMenuClose(m); });
 }, true);
@@ -197,7 +198,7 @@ function uxGroup(d, kind) {
  * The press still selects what it lands on (one click, not two). Presses inside the UI — the panel, its colour
  * picker or font menu, the toolbar, menus, dialogs — keep it open; Esc keeps working. */
 window.addEventListener('pointerdown', (e) => {
-  if (!S.drawer || uxBgPress(e)) return; // O1: the background keeps the side panel open
+  if (!S.drawer) return; // O1 (owner reversal): the background closes the side panel too
   const path = e.composedPath();
   if (path.includes(host)) return;
   if (path.some((x) => x.matches?.('dialog, [popover]'))) return;

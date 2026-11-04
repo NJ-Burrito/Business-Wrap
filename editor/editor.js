@@ -2995,7 +2995,7 @@ document.addEventListener('click', (e) => {
     const cell = e.target.closest('td[data-r], table[data-rows] td');
     if (cell) lastCell = cell;
     selectEl(e.target);
-  } else if (uxIsEmptySpace(e.target) && !uxBgPress(e)) { // O1: the background around the page leaves the selection and its ribbon tab alone
+  } else if (uxIsEmptySpace(e.target)) {
     // a click on empty page or background: the general tools come back
     if (S.dg && performance.now() - (S.dgPickedAt || 0) < 600) return; // the press just picked a drawing; its click lands on the wrapper after a re-layout
     if (S.sel && (S.selAt || 0) >= (S.pressAt || 0)) return; // the press itself selected this block and the page redrew under it (owner-flows L22): its click lands on the wrapper, it must not undo the selection

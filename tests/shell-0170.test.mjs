@@ -1,5 +1,5 @@
 // 0.17.0 (bw170 shell): six owner notes about the editor's shell, one group of checks per note, AR and EN, at 1366 and 1920 px.
-//   N1  a press on the background outside the page does not fold or change the open ribbon tab (a contextual tab hands back to the tab the person was on)
+//   N1  a press on the background outside the page folds the open ribbon (0.17.8 owner rule: the background closes everything open); a contextual tab hands back to the tab the person was on
 //   N3  switching language or direction keeps the page being worked on (continuous: the same line stays where it was; one page / two pages: the same page)
 //   N4  the ribbon «View» tab and the top-bar display control differ in icon and in name
 //   N7  Book view: the two sheets are 12 mm apart whether a turned (landscape) sheet sits beside a turned or a portrait sheet, and every line stays on its sheet
@@ -57,12 +57,12 @@ for (const width of [1366, 1920]) {
       await page.waitForTimeout(500);
       const after = await ribbon(page);
       check(`N1 ${L}: the press landed on the background, a table tab was open first`, !spot.onPage && withCtx.ctx === 'table' && withCtx.tab === 'table' && withCtx.shown, JSON.stringify({ spot, withCtx }));
-      check(`N1 ${L}: after a press on the background the ribbon is not folded and is back on the tab it was on`, !after.collapsed && after.shown && after.tab === 'layout', JSON.stringify(after));
+      check(`N1 ${L}: after a press on the background the ribbon is folded and is back on the tab it was on (0.17.8: the background closes what is open)`, after.collapsed && !after.shown && after.tab === 'layout', JSON.stringify(after));
       await page.evaluate(() => window.BW.EXT.ribbon.setTab('font'));
       await page.mouse.click(8, 640);
       await page.waitForTimeout(300);
       const plain = await ribbon(page);
-      check(`N1 ${L}: a plain tab stays open on a background press`, !plain.collapsed && plain.shown && plain.tab === 'font', JSON.stringify(plain));
+      check(`N1 ${L}: a plain open tab folds on a background press (0.17.8)`, plain.collapsed && !plain.shown && plain.tab === 'font', JSON.stringify(plain));
       await page.evaluate(() => window.BW.EXT.ribbon.setTab('home'));
     }
 

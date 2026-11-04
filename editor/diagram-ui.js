@@ -167,7 +167,7 @@ function dgChoiceMenu(action, label, options, current, onPick) {
   el.style.left = `${bt ? Math.max(8, Math.min(innerWidth - w - 8, bt.left + bt.width / 2 - w / 2)) : Math.max(8, (innerWidth - w) / 2)}px`;
   el.style.top = `${Math.min(innerHeight - 120, (bt ? bt.bottom : innerHeight * 0.3) + 8)}px`;
   const close = () => { el.remove(); document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc2, true); };
-  const away = (ev) => { if (!ev.composedPath().includes(el) && !uxBgPress(ev)) close(); }; // 0.17.8 (O1): the background keeps the popup
+  const away = (ev) => { if (!ev.composedPath().includes(el)) close(); }; // 0.17.8 (O1, owner reversal): a press anywhere outside it, the background included, closes the popup
   const esc2 = (ev) => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(); } };
   document.addEventListener('pointerdown', away, true);
   document.addEventListener('keydown', esc2, true);
@@ -592,7 +592,7 @@ function dgEdgeMenu(key) {
   el.style.left = `${bt ? Math.max(8, Math.min(innerWidth - w - 8, bt.left + bt.width / 2 - w / 2)) : Math.max(8, (innerWidth - w) / 2)}px`;
   el.style.top = `${Math.min(innerHeight - 120, (bt ? bt.bottom : innerHeight * 0.3) + 8)}px`;
   const close = () => { el.remove(); document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc2, true); };
-  const away = (ev) => { if (!ev.composedPath().includes(el) && !uxBgPress(ev)) close(); }; // 0.17.8 (O1): the background keeps the popup
+  const away = (ev) => { if (!ev.composedPath().includes(el)) close(); }; // 0.17.8 (O1, owner reversal): a press anywhere outside it, the background included, closes the popup
   const esc2 = (ev) => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(); } };
   document.addEventListener('pointerdown', away, true);
   document.addEventListener('keydown', esc2, true);
@@ -1262,7 +1262,7 @@ function dgGalleryOpen() {
   el.style.left = `${left}px`;
   el.style.top = `${Math.min(innerHeight - 120, (bt ? bt.bottom : innerHeight * 0.3) + 8)}px`;
   const close = () => { el.remove(); document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc2, true); };
-  const away = (ev) => { if (!ev.composedPath().includes(el) && !uxBgPress(ev)) close(); }; // 0.17.8 (O1): the background keeps the popup
+  const away = (ev) => { if (!ev.composedPath().includes(el)) close(); }; // 0.17.8 (O1, owner reversal): a press anywhere outside it, the background included, closes the popup
   const esc2 = (ev) => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(); } };
   document.addEventListener('pointerdown', away, true);
   document.addEventListener('keydown', esc2, true);

@@ -538,7 +538,7 @@ function viewPopClose() {
 }
 root.addEventListener('click', (e) => { const b = e.target.closest?.('#viewpop [data-a]'); if (b) S.viewFocus = b.dataset.a; }, true);
 window.addEventListener('pointerdown', (e) => {
-  if (!S.view || uxBgPress(e)) return; // O1: the background keeps the open list
+  if (!S.view) return; // O1 (owner reversal): the background closes the open list too
   const p = e.composedPath();
   if (!p.some((x) => x.id === 'viewpop' || x.dataset?.a === 'view')) viewPopClose();
 }, true);
