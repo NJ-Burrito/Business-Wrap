@@ -78,6 +78,8 @@ function ruDecorate(el, page) {
     h.innerHTML = `<svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path d="${RU_ICON[k]}"/></svg>`;
     el.append(h);
   }
+  // 0.17.7: a label on the page edge would be half-clipped: it is hidden (the 1 cm ticks stay)
+  el.querySelectorAll('b').forEach((b) => { const x = parseFloat(b.style.insetInlineStart); if (x > page.w - 5) b.hidden = true; });
   const sel = document.createElement('button');
   sel.type = 'button'; sel.className = 'bw-ru-sel'; sel.dataset.ru = 'sel'; sel.tabIndex = 0;
   sel.innerHTML = '<svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true"><path/></svg>';
@@ -414,8 +416,8 @@ function ruWrapTabs(el) {
 }
 const ruTabsLater = (root) => requestAnimationFrame(() => { try { tabPass(root || document); } catch { /* the pass is a display layer */ } });
 function ruCss() {
-  w2docCss('w2-ruler-ui-css', `@media screen{html.bw-ed .bw-ruler.bw-ru{height:8mm;pointer-events:auto;overflow:visible;z-index:2;touch-action:none}
-html.bw-ed .bw-ruler.bw-ru s.c{height:3mm} html.bw-ed .bw-ruler.bw-ru b{top:.6mm}
+  w2docCss('w2-ruler-ui-css', `@media screen{html.bw-ed .bw-ruler.bw-ru{height:11mm;pointer-events:auto;overflow:visible;z-index:2;touch-action:none}
+html.bw-ed .bw-ruler.bw-ru s.c{height:3mm} html.bw-ed .bw-ruler.bw-ru b{top:.4mm} html.bw-ed .bw-ruler.bw-ru b[hidden]{display:none}
 html.bw-ed .bw-ru-h{position:absolute;z-index:3;cursor:ew-resize;outline:none;touch-action:none}
 html.bw-ed .bw-ru-h:focus-visible{outline:2px solid var(--accent,#0a5);outline-offset:1px}
 html.bw-ed .bw-ru-h.m{top:0;bottom:0;width:3mm;margin-inline-start:-1.5mm;background:transparent}
@@ -424,7 +426,7 @@ html.bw-ed .bw-ru-h.m::after{content:"";position:absolute;top:1mm;bottom:1mm;ins
 html.bw-ed .bw-ru-h.m:hover::after,html.bw-ed .bw-ru-h.m.on::after{opacity:1}
 html.bw-ed .bw-ru-h.i{width:3mm;height:3mm;margin-inline-start:-1.5mm;color:var(--accent,#0a5)}
 html.bw-ed .bw-ru-h.i.en{margin-inline-start:0;margin-inline-end:-1.5mm}
-html.bw-ed .bw-ru-h.i.fl{top:0} html.bw-ed .bw-ru-h.i.st,html.bw-ed .bw-ru-h.i.en{bottom:0}
+html.bw-ed .bw-ru-h.i.fl{top:3.4mm} html.bw-ed .bw-ru-h.i.st,html.bw-ed .bw-ru-h.i.en{bottom:0}
 html.bw-ed .bw-ru-h.i[hidden]{display:none}
 html.bw-ed .bw-ru-h.i svg{display:block;width:100%;height:100%;fill:currentColor} html.bw-ed .bw-ru-h.i.st svg{transform:translateY(0)}
 html.bw-ed .bw-ru-h.i:hover,html.bw-ed .bw-ru-h.i.on{color:var(--accent-strong,#063)}
