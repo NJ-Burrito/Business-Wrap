@@ -85,6 +85,10 @@
   main.bw-doc .bw-has-comment { position: relative; }
   /* 0.17.0 (note 14): the document title (first page) and the title row of «بيانات ضبط الوثيقة» carry no highlight: no hover box, no focus box, no selection ring, no stale wash; the caret is the focus mark */
   main.bw-doc :is([data-p="/control/coverTitle"], [data-p="/control/title"]):is(:hover, :focus, :focus-visible, .bw-sel, .bw-stale) { outline: none; box-shadow: none; animation: none; background: transparent; }
+  /* 0.17.7 (note 14 side effect): a quiet ring on these fields for KEYBOARD focus only (Tab); html[data-bw-ptr] (set by a pointer press, cleared by the next Tab) keeps mouse hover and click free of any box */
+  html:not([data-bw-ptr]) main.bw-doc :is([data-p="/control/coverTitle"], [data-p="/control/title"]):focus-visible { outline: 1px solid var(--bw-sel); outline-offset: 3px; border-radius: 2px; }
+  /* 0.17.7 (note 14 side effect): a quiet ring on these fields for KEYBOARD focus only; html[data-bw-ptr] (set by a pointer press, cleared by the next key) keeps mouse hover and click free of any box */
+  html:not([data-bw-ptr]) main.bw-doc :is([data-p="/control/coverTitle"], [data-p="/control/title"]):focus-visible { outline: 1px solid var(--bw-sel); outline-offset: 3px; border-radius: 2px; }
   main.bw-doc .bw-has-comment::before { content: "✎"; position: absolute; inset-inline-end: -9mm; top: 0; font: 700 12pt system-ui, sans-serif; color: var(--bw-sel); }
   main.bw-doc .bw-break { border-top: 2px dashed var(--bw-sel); margin: 4mm 0; }
   #bw-overlay .bw-grip { position: absolute; z-index: 30; font: 600 13px system-ui, sans-serif; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--bw-sel); background: var(--bw-band, #001e3d); color: var(--bw-on-glass, #fafaf9); cursor: grab; touch-action: none; }

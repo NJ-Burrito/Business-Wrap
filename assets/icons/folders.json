@@ -8,7 +8,7 @@
     "exports":   { "colour": "#c0262d", "glyph": "upload",    "where": "<title>/Exports", "en": "Exports", "ar": "الملفات المصدّرة" },
     "sources":   { "colour": "#6a3db8", "glyph": "link",      "where": "<title>/Sources", "en": "Sources", "ar": "المصادر" },
     "versions":  { "colour": "#b34700", "glyph": "history",   "where": "<title>/Versions", "en": "Versions", "ar": "النسخ السابقة" },
-    "system":    { "colour": "#596270", "glyph": "lock",      "where": ".system and its sub-folders (hidden)", "en": "System folder", "ar": "مجلد النظام" },
+    "system":    { "colour": "#596270", "glyph": "lock",      "where": ".system itself (hidden; sub-folders have no icon)", "en": "System folder", "ar": "مجلد النظام" },
     "unsorted":  { "colour": "#7a5c00", "glyph": "inbox",     "where": "_غير مصنف - Unsorted", "en": "Unsorted", "ar": "غير مصنف" },
     "projects":  { "colour": "#2e7d32", "glyph": "briefcase", "where": "Projects (the folder that holds project exports)", "en": "Projects", "ar": "المشاريع" },
     "download":  { "colour": "#a8206f", "glyph": "download",  "where": "<project> - <stamp> (a project export folder, and the same tree unpacked from its .zip)", "en": "Project export (download)", "ar": "تصدير مشروع (تنزيل)" }
