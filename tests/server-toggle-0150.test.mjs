@@ -162,9 +162,16 @@ try {
   await g.evaluate(() => { const real = Date.now; let skew = 0; Date.now = () => real() + skew; window.__skew = (ms) => { skew += ms; }; });
   await press(g);
   await until(async () => (await toggles(g))[0]?.st === 'starting', 3000);
-  await g.evaluate(() => window.__skew(26000));
-  check('a start that never answers ends in the error state «تعذّر التشغيل» with a reason in the tooltip (no command to type, 0.17.0)', await until(async () => (await toggles(g))[0]?.st === 'error', 8000) && /المشغّل/.test((await toggles(g))[0].title) && !/protocol register/.test((await toggles(g))[0].title), JSON.stringify(await toggles(g)));
-  check('…and one toast with «حاول مرة أخرى» (Try again)', (await toastText(g)).filter((x) => /حاول مرة أخرى/.test(x)).length === 1, JSON.stringify(await toastText(g)));
+  // A slow runner can press before srvWait has taken its start time, so one skew would be lost: re-apply it on every poll while still starting
+  // (the skew is only a clock in this page), and give the real 20 s cap plus margin as the outer budget.
+  const errored = await until(async () => {
+    const t = (await toggles(g))[0];
+    if (t?.st === 'error') return true;
+    await g.evaluate(() => window.__skew(26000));
+    return false;
+  }, 45000, 250);
+  check('a start that never answers ends in the error state «تعذّر التشغيل» with a reason in the tooltip (no command to type, 0.17.0)', errored && /المشغّل/.test((await toggles(g))[0].title) && !/protocol register/.test((await toggles(g))[0].title), JSON.stringify(await toggles(g)));
+  check('…and one toast with «حاول مرة أخرى» (Try again)', await until(async () => (await toastText(g)).filter((x) => /حاول مرة أخرى/.test(x)).length === 1, 5000) || false, JSON.stringify(await toastText(g)));
   await c4.close();
 
   // ── 5. calm mode: no pulse; a server already up: online at once ───────────────────────────────────────────────────────────────
