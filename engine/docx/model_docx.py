@@ -118,6 +118,7 @@ def style_paragraph(paragraph, st):
             edge.set(qn(k), v)
         bdr.append(edge); pPr.append(bdr)
     paragraph_indents(pPr, st)
+    paragraph_tabs(paragraph, st)
 
 
 def _ind_mm(v, lo=0):
@@ -137,6 +138,36 @@ def paragraph_indents(pPr, st):
         ind.attrib.pop(qn('w:right'), None); ind.set(qn('w:end'), tw(e))
     if f:
         ind.set(qn('w:hanging' if f < 0 else 'w:firstLine'), tw(abs(f)))
+
+
+def paragraph_tabs(paragraph, st):
+    """0.17.7 (tab stops): w:tabs / w:tab, position in twips (1 mm = 56.6929) from the text column's start edge. val left | center | right | decimal:
+    in a bidi (Arabic) paragraph Word reads left / right as start / end and measures the position from the right edge, so the same logical stop mirrors."""
+    tabs = st.get('tabs')
+    if not isinstance(tabs, list):
+        return
+    seen = []
+    for t in sorted((x for x in tabs if isinstance(x, dict)), key=lambda x: x.get('pos') if isinstance(x.get('pos'), (int, float)) else 0):
+        pos, al = t.get('pos'), t.get('align')
+        if isinstance(pos, bool) or not isinstance(pos, (int, float)) or not 0 <= pos <= 400 or al not in _TAB_VAL:
+            continue
+        if any(abs(pos - q) < 0.05 for q in seen) or len(seen) >= 40:
+            continue
+        seen.append(pos)
+        pPr = paragraph._p.get_or_add_pPr()
+        tabsEl = pPr.find(qn('w:tabs'))
+        if tabsEl is None:
+            tabsEl = OxmlElement('w:tabs')
+            anchor = next((c for c in pPr if c.tag in {qn('w:' + n) for n in _TAB_NEXT}), None)  # schema order: tabs comes before these
+            if anchor is not None:
+                anchor.addprevious(tabsEl)
+            else:
+                pPr.append(tabsEl)
+        e = OxmlElement('w:tab'); e.set(qn('w:val'), _TAB_VAL[al]); e.set(qn('w:pos'), str(int(round(pos * 56.6929)))); tabsEl.append(e)
+
+
+_TAB_NEXT = ('suppressAutoHyphens', 'kinsoku', 'wordWrap', 'overflowPunct', 'topLinePunct', 'autoSpaceDE', 'autoSpaceDN', 'bidi', 'adjustRightInd', 'snapToGrid', 'spacing', 'ind', 'contextualSpacing', 'mirrorIndents', 'suppressOverlap', 'jc', 'textDirection', 'textAlignment', 'textboxTightWrap', 'outlineLvl', 'divId', 'cnfStyle', 'rPr', 'sectPr', 'pPrChange')
+_TAB_VAL = {'start': 'left', 'center': 'center', 'end': 'right', 'decimal': 'decimal'}
 
 
 def cell_valign(cell, leaf):

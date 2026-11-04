@@ -224,6 +224,20 @@ const LEAF_VALIGN = { top: 'top', middle: 'middle', bottom: 'bottom' };
 const mmOk = (v) => (Number.isFinite(+v) && +v >= 0 && +v <= 60 ? +v : null);
 /** 0.17.6 (ruler): a paragraph indent in mm, a number only (start/end 0 to 150; the first line's offset from the start indent, -150 to 150). */
 const indOk = (v, lo = 0) => (typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= 150 ? v : null);
+/** 0.17.7 (tab stops): a paragraph's tab stops, validated and sorted: [{pos mm 0..400, align start|center|end|decimal}] (at most 40); [] when none are valid. */
+export const TAB_ALIGN = { start: 1, center: 1, end: 1, decimal: 1 };
+export function tabsOf(st) {
+  const raw = st && Array.isArray(st.tabs) ? st.tabs : [];
+  const out = [];
+  for (const t of raw) {
+    if (!t || typeof t.pos !== 'number' || !Number.isFinite(t.pos) || t.pos < 0 || t.pos > 400 || !TAB_ALIGN[t.align]) continue;
+    if (out.some((o) => Math.abs(o.pos - t.pos) < 0.05)) continue;
+    out.push({ pos: Math.round(t.pos * 100) / 100, align: t.align });
+    if (out.length >= 40) break;
+  }
+  return out.sort((x, y) => x.pos - y.pos);
+}
+const TABX = '\uE000';
 /** style="…" and class for an element holding a rich leaf ('' for a string: the 0.12.0 markup). */
 export function leafAttrs(leaf, cls = '') {
   const st = isRich(leaf) ? leaf.style || {} : null;
@@ -238,7 +252,8 @@ export function leafAttrs(leaf, cls = '') {
   if (indOk(st.indentEnd)) d.push(`margin-inline-end:${indOk(st.indentEnd)}mm`);
   if (indOk(st.indentFirst, -150)) d.push(`text-indent:${indOk(st.indentFirst, -150)}mm`);
   const c = [cls, st.quote ? 'bw-quote' : ''].filter(Boolean).join(' ');
-  return (c ? ` class="${c}"` : '') + (d.length ? ` style="${d.join(';')}"` : '') + (KASHIDA_LEVEL[st.align] ? ` data-jk="${KASHIDA_LEVEL[st.align]}"` : '');
+  const tb = tabsOf(st);
+  return (c ? ` class="${c}"` : '') + (d.length ? ` style="${d.join(';')}"` : '') + (KASHIDA_LEVEL[st.align] ? ` data-jk="${KASHIDA_LEVEL[st.align]}"` : '') + (tb.length ? ` data-tabs="${tb.map((t) => `${t.pos}:${t.align}`).join(',')}"` : '');
 }
 /** The list a paragraph belongs to: {kind: 'bullet'|'number'|'shape', shape, level 0–8} or null. */
 export function listOf(leaf) {
@@ -573,6 +588,74 @@ export function kashidaScript(doc) {
   return `<style id="bw-kashida-print">@media print{html{min-width:${pageSpec(doc?.layout?.page).w}mm}}</style><script id="bw-kashida">(function(){var run=${kashidaPass.toString()};function go(){try{run(document)}catch(e){}}window.bwKashida=go;if(document.fonts){document.fonts.ready.then(go);document.fonts.addEventListener('loadingdone',go)}else go();window.addEventListener('load',go)})()<\/script>`;
 }
 
+/**
+ * 0.17.7 (tab stops) · The tab characters of a paragraph that has stops (data-tabs="mm:align,…" on the element, from style.tabs) are drawn as
+ * <span class="bw-tab"> (inline-block, contenteditable=false, the \t stays its text) and this pass gives each span the width that carries the text
+ * after it to the next stop: start = the text begins at the stop, center = its middle, end = its end, decimal = its first . , or ٫ . Stops are
+ * measured from the text column's start edge (the right edge in Arabic; logical, so RTL mirrors for free); past the last custom stop Word's
+ * default grid of 12.7 mm applies. CSS tab-size only gives equal steps, so it is not used. Self-contained: it is also printed into the PDF page as a script.
+ */
+export function tabPass(root) {
+  const scope = root || document;
+  const els = scope.matches && scope.matches('[data-tabs]') ? [scope] : [...scope.querySelectorAll('[data-tabs]')];
+  const DEF = 12.7;
+  let n = 0;
+  for (const el of els) {
+    const tabs = [...el.querySelectorAll('.bw-tab')];
+    if (!tabs.length) continue;
+    const stops = String(el.getAttribute('data-tabs') || '').split(',').map((q) => { const m = q.split(':'); return { pos: +m[0], align: m[1] }; }).filter((q) => Number.isFinite(q.pos)).sort((a, b) => a.pos - b.pos);
+    const cs = getComputedStyle(el);
+    const rtl = cs.direction === 'rtl';
+    const r0 = el.getBoundingClientRect();
+    const scale = el.offsetWidth ? r0.width / el.offsetWidth : 1;
+    const pxmm = (96 / 25.4) * scale;
+    const ms = (parseFloat(cs.marginInlineStart) || 0) * scale;
+    const origin = rtl ? r0.right + ms : r0.left - ms;
+    for (const t of tabs) t.style.width = '0px';
+    tabs.forEach((t, k) => {
+      const rt = t.getBoundingClientRect();
+      const x = ((rtl ? origin - rt.left : rt.left - origin)) / pxmm;
+      // the text after this tab, up to the next tab: its width on this tab's line (and, for decimal, the width up to the decimal mark)
+      const next = tabs[k + 1] || null;
+      const lineW = (rg) => { let w = 0; for (const q of rg.getClientRects()) if (q.bottom > rt.top + 1 && q.top < rt.bottom - 1) w += q.width; return w / pxmm; };
+      const body = () => { const rg = document.createRange(); rg.setStartAfter(t); if (next) rg.setEndBefore(next); else rg.setEnd(el, el.childNodes.length); return rg; };
+      const after = () => lineW(body());
+      // a decimal stop: the distance from where the text starts to the near edge of its first . , or the Arabic decimal mark (the whole width when there is none)
+      const toMark = () => {
+        const walker = document.createTreeWalker(el, 4);
+        let nd;
+        let started = false;
+        while ((nd = walker.nextNode())) {
+          if (!started) { if (!(t.compareDocumentPosition(nd) & 4)) continue; started = true; }
+          if (next && ((next.compareDocumentPosition(nd) & 4) || next.contains(nd))) break;
+          const i = nd.data.search(/[.,\u066B]/);
+          if (i < 0) continue;
+          const rg = document.createRange();
+          rg.setStart(nd, i); rg.setEnd(nd, i + 1);
+          const q = rg.getBoundingClientRect();
+          return (rtl ? rt.left - q.right : q.left - rt.left) / pxmm;
+        }
+        return after();
+      };
+      const cand = stops.filter((q) => q.pos > x + 0.05);
+      let width = null;
+      for (const q of cand) {
+        const w = q.align === 'center' ? after() / 2 : q.align === 'end' ? after() : q.align === 'decimal' ? toMark() : 0;
+        const room = q.pos - x - w;
+        if (room >= -0.01) { width = Math.max(0, room); break; }
+      }
+      if (width == null) width = (Math.floor(x / DEF + 1e-6) + 1) * DEF - x;
+      t.style.width = `${(width * 96) / 25.4}px`;
+      n += 1;
+    });
+  }
+  return n;
+}
+/** The script a printed page carries when it holds a tab stop (none otherwise: an old document is byte-identical). */
+export function tabScript() {
+  return `<script id="bw-tabs">(function(){var run=${tabPass.toString()};function go(){try{run(document)}catch(e){}}window.bwTabs=go;if(document.fonts){document.fonts.ready.then(go);document.fonts.addEventListener('loadingdone',go)}else go();window.addEventListener('load',go)})()<\/script>`;
+}
+
 export function renderDocument(doc, o) {
   const locale = o.locale || 'ar';
   const theme = designTheme(o.theme, doc);
@@ -595,7 +678,7 @@ ${o.extraHead || ''}</head>
 <body>
 ${main}
 ${o.extraBody || ''}
-${/ data-jk="/.test(main) ? kashidaScript(doc) : ''}</body></html>`;
+${/ data-jk="/.test(main) ? kashidaScript(doc) : ''}${/ data-tabs="/.test(main) ? tabScript() : ''}</body></html>`;
 }
 
 /** The print stylesheet. Depends on the theme and the widest figure sheet only. */
@@ -878,6 +961,7 @@ export function modelCss(doc) {
   const richBlock = (b) => isRich(b.text) || isRich(b.caption) || (b.paragraphs || []).some(isRich) || (b.columns || []).some(isRich) || (b.rows || []).some((r) => Array.isArray(r) && r.some(isRich));
   const anyRich = chs.some((ch) => (ch.sections || []).some((x) => (x.blocks || []).some(richBlock))) || (doc.overlays || []).some((o) => isRich(o.text)) || (doc.controlTable?.rows || []).some((r) => Array.isArray(r) && r.some(isRich));
   if (anyRich) out.push('.bw-quote{border-inline-start:3px solid var(--accent-rule);padding-inline-start:4mm;color:var(--muted);font-style:italic}', 'code{font-family:inherit;background:var(--card);padding:0 1mm;border-radius:1mm}', 'a.bw-link{color:var(--primary);text-decoration:underline}', 'ol.bw-list,ul.bw-list{margin:2mm 0;padding-inline-start:7mm}', 'li.bw-nest{list-style:none}', 'html.bw-ed a.bw-link{pointer-events:none}');
+  if (anyRich && chs.some((ch) => (ch.sections || []).some((x) => (x.blocks || []).some((b) => (b.paragraphs || []).some((q) => isRich(q) && q.style?.tabs) || (isRich(b.text) && b.text.style?.tabs))))) out.push('.bw-tab{display:inline-block;white-space:pre;tab-size:0;-moz-tab-size:0}'); // 0.17.7 tab stops
   if (anyRich) out.push('td.bw-cell-list ul.bw-list,td.bw-cell-list ol.bw-list{margin:0;padding-inline-start:5mm}', 'td.bw-cell-list li{white-space:pre-wrap}', 'td.bw-nl{white-space:pre-line}');
   if ((doc.overlays || []).some((o) => o.wrap || o.kind === 'text')) out.push('.bw-ovf{position:relative;z-index:1}', '.bw-ovf img{display:block;width:100%;height:auto}', '.bw-ov.bw-behind{z-index:-1}', '.bw-ov.bw-front{z-index:3}', '.bw-tb{display:flex;flex-direction:column;border:1px solid var(--rule-strong);background:var(--card);padding:3mm;font-size:var(--t-table);line-height:1.5}', '.bw-tb-body{white-space:pre-wrap}');
   return out.length ? out.join('\n') + '\n' : '';
@@ -904,7 +988,9 @@ export function renderParts(doc, o) {
   const hide = new Set(doc.layout?.hide || []);
   const bidi0 = o.bidi || makeBidi(locale);
   // a rich leaf (A26) prints its marks; a string takes the 0.12.0 path unchanged
-  const bidi = (v) => (isRich(v) ? richHtml(v, bidi0) : bidi0(v));
+  // 0.17.7: a paragraph with tab stops draws its tab characters as spans (polish() would collapse them to a space); the sentinel crosses polish/bidi and becomes the span
+  const tabSpan = '<span class="bw-tab" contenteditable="false">\t</span>';
+  const bidi = (v) => (isRich(v) ? (tabsOf(v.style).length ? richHtml(v, (x) => bidi0(String(x).replace(/\t/g, TABX))).replace(/\uE000/g, tabSpan) : richHtml(v, bidi0)) : bidi0(v));
   const none = L.none;
   const PM = pageModel(doc);
   const NUM = docNumbers(doc); // 0.15.0 (F4): what prints comes from position, never from a stored number
@@ -1163,7 +1249,7 @@ export function renderParts(doc, o) {
         st.push({ tag, level: L, from, n: 0 });
       }
       st.at(-1).n += 1;
-      out.push(`<li data-b="${attr(b)}" data-level="${L}"${leafAttrs(it.leaf)}><span${dp(it.p)}>${richHtml(it.leaf, bidi0)}</span>`);
+      out.push(`<li data-b="${attr(b)}" data-level="${L}"${leafAttrs(it.leaf)}><span${dp(it.p)}>${isRich(it.leaf) && tabsOf(it.leaf.style).length ? bidi(it.leaf) : richHtml(it.leaf, bidi0)}</span>`);
     }
     while (st.length) closeTop();
     return out.join('');
