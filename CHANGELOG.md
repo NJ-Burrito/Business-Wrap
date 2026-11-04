@@ -8,6 +8,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.17.9] - 2026-11-04
+
+✨ A polish release: one window for the host, a loading screen, a calmer background, and Save always in reach. / ✨ إصدار تحسينات: نافذة واحدة للخادم، وشاشة تحميل، وخلفية لا تطوي شيئا، وزر الحفظ في متناول اليد دائما.
+
+### Changed / تغيّر
+- 💾 **The gold Save button is in the top bar**, always in view, no longer inside the Files tab. / **زر الحفظ الذهبي في الشريط العلوي**، ظاهر دائما، ولم يعد داخل تبويب الملفات.
+- 🪟 **One window for the host**: turning the host on replaces the editor in the same window and place; turning it off brings the editor back there. / **نافذة واحدة للخادم**: تشغيل الخادم يستبدل المحرر في النافذة نفسها ومكانها، وإيقافه يعيد المحرر إلى المكان نفسه.
+- 💡 **The Explain panel is redrawn in the current theme**, with smooth entry, reveal and open/close motion (the Calm button stills it). / **لوحة الشرح أعيد رسمها بالمظهر الحالي**، مع حركة دخول وظهور وفتح وإغلاق سلسة (زر الهدوء يوقفها).
+
+### Added / أضيف
+- ⏳ **A loading screen for long work**: export, import, opening, print, file icons, bulk edits, big pastes, design packs and updates say what is happening until they finish. / **شاشة تحميل للأعمال الطويلة**: التصدير والاستيراد والفتح والطباعة وأيقونات الملفات والتعديل الجماعي واللصق الكبير وحزم التصميم والتحديثات تخبرك بما يجري حتى تنتهي.
+
+### Fixed / أصلح
+- 🖱️ **A click on the background collapses nothing**: the ribbon, side panel, top bar, menus, lists and diagram pop-ups stay open. / **النقر على الخلفية لا يطوي شيئا**: الشريط واللوحة الجانبية والشريط العلوي والقوائم والنوافذ المنبثقة للمخططات تبقى مفتوحة.
+- 🏷️ **The page watermark keeps a fixed place**: a long role word no longer pushes it, and Arabic mirrors the same distance from the right. / **العلامة المائية للصفحة ثابتة المكان**: الكلمة الطويلة لم تعد تدفعها، والعربية تعكس المسافة نفسها من اليمين.
+
 ## [0.17.8] - 2026-11-04
 
 🛠️ A fix release: the host switch on a new PC, and prints that fill the page. / 🛠️ إصدار إصلاحات: مفتاح الخادم على جهاز جديد، وطباعة تملأ الصفحة.
