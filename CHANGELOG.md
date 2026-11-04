@@ -8,6 +8,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.17.10] - 2026-11-04
+
+🖱️ A fix release: a background click closes what is open, and livelier Explain pictures. / 🖱️ إصدار إصلاحات: النقر على الخلفية يغلق ما هو مفتوح، وصور شرح أكثر حيوية.
+
+### Changed / تغيّر
+- 🖱️ **A click on the background outside the pages closes everything open**: the ribbon folds, and the side panel, menus, lists and diagram pop-ups close. A click on the page works as before. / **النقر على الخلفية خارج الصفحات يغلق كل ما هو مفتوح**: يُطوى الشريط، وتُغلق اللوحة الجانبية والقوائم والنوافذ المنبثقة للمخططات. أما النقر على الصفحة فيعمل كما كان.
+- 🎬 **The Explain pictures move**: each one shows a small copy of the tool, the pointer presses the tool, the change plays, and a small finish confirms it (the Calm button stills it). / **صور الشرح تتحرك**: تعرض كل صورة نسخة صغيرة من الأداة، ويضغط المؤشر على الأداة، ويظهر التغيير، ثم لمسة ختامية تؤكده (زر الهدوء يوقفها).
+
+### Fixed / أصلح
+- 🏷️ **The watermark stays at the bottom left in both languages**, at the same fixed distance. / **العلامة المائية تبقى أسفل اليسار في اللغتين**، على المسافة الثابتة نفسها.
+- 📐 **The top bar no longer jumps when you select text** in a narrow window. / **الشريط العلوي لم يعد يقفز عند تحديد نص** في نافذة ضيقة.
+
 ## [0.17.9] - 2026-11-04
 
 ✨ A polish release: one window for the host, a loading screen, a calmer background, and Save always in reach. / ✨ إصدار تحسينات: نافذة واحدة للخادم، وشاشة تحميل، وخلفية لا تطوي شيئا، وزر الحفظ في متناول اليد دائما.
