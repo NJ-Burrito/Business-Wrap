@@ -95,8 +95,11 @@ try {
       P.register({ hive }); // the explicit action (`protocol register`) always takes over
       check('protocol: `protocol register` (explicit) takes over even a live one', P.status({ hive }).current === true);
     } finally { P.unregister({ hive }); spawnSync('reg.exe', ['delete', hive, '/f'], { windowsHide: true }); }
-    const e5 = P.ensureRegistered(); // no hive: this would be the REAL key
-    check('protocol: a sandboxed run with no fake hive never writes the real registration, and the real key did not move', e5.skipped === 'sandbox' && regOf() === realBefore, JSON.stringify(e5));
+    // no hive: this would be the REAL key. What it must do is not write: either the key already points at this install (a read, `already`) or the run is refused as a sandbox.
+    // A register() answer carries `where` (the key it wrote); the real value must be byte-identical before and after. Holds with a key that is current, stale, or absent (a CI runner).
+    const e5 = P.ensureRegistered();
+    const wrote = !!e5.where || (e5.registered === true && !e5.already);
+    check('protocol: a sandboxed run with no fake hive never writes the real registration (nothing written; the real key is byte-identical before and after)', !wrote && (e5.already === true || e5.skipped === 'sandbox') && regOf() === realBefore, JSON.stringify(e5));
   } else check('launcher/protocol take-over: Windows-only parts skipped on this platform', true);
 } finally {
   spawnSync('python', [path.join(os.homedir(), '.claude', 'skills', 'safe-delete', 'scripts', 'trash.py'), tmp], { stdio: 'ignore', windowsHide: true, env: { ...process.env, PYTHONUTF8: '1' } });
