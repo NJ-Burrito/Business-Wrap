@@ -356,7 +356,7 @@ export function tidyCmd({ dryRun = false } = {}) {
 const homeDir = () => (process.env.BW_HOME_DIR ? path.resolve(process.env.BW_HOME_DIR) : os.homedir());
 const sameP = (a, b) => path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
 const within = (p, dir) => { const r = path.relative(path.resolve(dir), path.resolve(p)); return !!r && !r.startsWith('..') && !path.isAbsolute(r); };
-const entriesOf = (p) => { try { return fs.statSync(p).isDirectory() ? fs.readdirSync(p).length : 1; } catch { return 0; } };
+const entriesOf = (p) => { try { return fs.statSync(p).isDirectory() ? fs.readdirSync(p).filter((n) => !/^(desktop\.ini|thumbs\.db)$/i.test(n)).length : 1; /* 0.17.5: the folder icon's desktop.ini is not content */ } catch { return 0; } };
 /** Every known workspace root (a library the editor syncs back in), workspace state, browser profile, local state and plugin-data path.
  *  kind: workspace | workspace-state | edge-profile | state | plugin-data. Only the paths that exist carry exists:true. */
 export function knownRoots() {

@@ -74,7 +74,7 @@ try {
     const e4 = ensureLauncher({ installDir: E, lnkDir: path.join(tmp, 'lnkE'), desktop });
     check('repair: and a copy that already points at this install is left as it is (no re-copy)', e4.desktop?.skipped === 'already-copied');
     // a test run with no Desktop named never reaches the real one
-    const realDesk = (() => { try { const r = spawnSync('powershell.exe', ['-NoProfile', '-Command', "[Environment]::GetFolderPath('Desktop')"], { encoding: 'utf8', windowsHide: true }); return String(r.stdout).trim(); } catch { return ''; } })();
+    const realDesk = (() => { if (process.platform !== 'win32') return ''; try { const r = spawnSync('powershell.exe', ['-NoProfile', '-Command', "[Environment]::GetFolderPath('Desktop')"], { encoding: 'utf8', windowsHide: true }); return String(r.stdout).trim(); } catch { return ''; } })();
     const before = stat(path.join(realDesk, LNK_NAME));
     delete process.env.BW_DESKTOP_DIR;
     const t = ensureLauncher({ installDir: fake('D'), lnkDir: path.join(tmp, 'lnkD'), force: true });

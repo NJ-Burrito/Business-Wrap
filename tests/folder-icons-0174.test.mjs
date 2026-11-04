@@ -49,7 +49,7 @@ try {
   check('role: the documents folder', R(DOCS_NAME) === 'documents');
   check('role: a document folder', R(DOCS_NAME, 'My Doc') === 'document');
   check('role: Exports, Sources, Versions of a document', R(DOCS_NAME, 'My Doc', 'Exports') === 'exports' && R(DOCS_NAME, 'My Doc', 'Sources') === 'sources' && R(DOCS_NAME, 'My Doc', 'Versions') === 'versions');
-  check('role: .system and every sub-folder of it', R(SYSTEM_NAME) === 'system' && R(SYSTEM_NAME, 'history') === 'system' && R(SYSTEM_NAME, 'cache', 'x') === 'system');
+  check('role: .system itself only (0.17.5: its sub-folders are machine collections that code lists as entries, so they have none)', R(SYSTEM_NAME) === 'system' && R(SYSTEM_NAME, 'history') === null && R(SYSTEM_NAME, 'sessions') === null && R(SYSTEM_NAME, 'cache', 'x') === null);
   check('role: Unsorted', R(DOCS_NAME, UNSORTED_NAME) === 'unsorted');
   check('role: a folder that is not ours (sub-folder of Sources, an unknown sub-folder, a dot folder, outside the tree) has none', R(DOCS_NAME, 'My Doc', 'Sources', 'page-1') === null && R(DOCS_NAME, 'My Doc', 'Other') === null && R(DOCS_NAME, '.hidden') === null && R('Elsewhere') === null && roleOfFolder(path.join(tmp, 'x'), root) === null);
 
@@ -71,14 +71,15 @@ try {
     fs.mkdirSync(path.join(ws.docs, UNSORTED_NAME), { recursive: true });
     fs.mkdirSync(path.join(ws.docs, 'My Doc', 'Sources', 'page-1'), { recursive: true });
     const n = applyTreeIcons(root, { notify: false });
-    const want = [[root, 'root'], [ws.docs, 'documents'], [path.join(ws.docs, 'My Doc'), 'document'], [path.join(ws.docs, 'My Doc', 'Exports'), 'exports'], [path.join(ws.docs, 'My Doc', 'Sources'), 'sources'], [path.join(ws.docs, 'My Doc', 'Versions'), 'versions'], [ws.system, 'system'], [ws.history, 'system'], [ws.cache, 'system'], [path.join(ws.docs, UNSORTED_NAME), 'unsorted']];
+    const want = [[root, 'root'], [ws.docs, 'documents'], [path.join(ws.docs, 'My Doc'), 'document'], [path.join(ws.docs, 'My Doc', 'Exports'), 'exports'], [path.join(ws.docs, 'My Doc', 'Sources'), 'sources'], [path.join(ws.docs, 'My Doc', 'Versions'), 'versions'], [ws.system, 'system'], [path.join(ws.docs, UNSORTED_NAME), 'unsorted']];
     check('tree: every folder of the save tree got its role icon', want.every(([d, r]) => fs.existsSync(path.join(d, 'desktop.ini')) && readIni(path.join(d, 'desktop.ini')).includes(`business-wrap-folder-${r}.ico,0`)), want.filter(([d, r]) => !fs.existsSync(path.join(d, 'desktop.ini')) || !readIni(path.join(d, 'desktop.ini')).includes(`business-wrap-folder-${r}.ico,0`)).map((x) => x[1]).join());
-    check('tree: applyTreeIcons counts what it marked (root, documents, document + 3, unsorted, .system + 5 sub-folders = 13), and leaves a harvest sub-folder alone', n === 13 && !fs.existsSync(path.join(ws.docs, 'My Doc', 'Sources', 'page-1', 'desktop.ini')), String(n));
+    check('tree: applyTreeIcons counts what it marked (root, documents, document + 3, unsorted, .system = 8), and leaves a harvest sub-folder and every .system sub-folder alone', n === 8 && !fs.existsSync(path.join(ws.docs, 'My Doc', 'Sources', 'page-1', 'desktop.ini')) && fs.readdirSync(ws.system, { withFileTypes: true }).filter((e) => e.isDirectory()).every((e) => !fs.existsSync(path.join(ws.system, e.name, 'desktop.ini'))), String(n));
     const n2 = applyTreeIcons(root, { notify: false });
     check('tree: a second run is idempotent (same count, nothing rewritten)', n2 === n);
     const theirs = path.join(ws.docs, 'Theirs');
     fs.mkdirSync(theirs);
-    fs.writeFileSync(path.join(theirs, 'desktop.ini'), '[.ShellClassInfo]\r\nIconResource=C:\\their.ico,0\r\n');
+    const theirIco = process.platform === 'win32' ? 'C:\\their.ico' : '/their.ico'; // a drive path only where drives exist
+    fs.writeFileSync(path.join(theirs, 'desktop.ini'), `[.ShellClassInfo]\r\nIconResource=${theirIco},0\r\n`);
     ensureFolderIcon(path.join(ws.docs, 'My Doc', 'Exports'), { kind: 'exports', systemDir: ws.system, notify: false });
     check('tree: a document folder\'s own desktop.ini is rewritten when its role changes, a foreign one never', applyTreeIcons(root, { notify: false }) === n && /their\.ico/.test(readIni(path.join(theirs, 'desktop.ini'))));
     // docFolder / noteOutput: the real writers
