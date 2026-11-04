@@ -2222,7 +2222,7 @@ ${e.comments.length ? `<h3>${esc(t('comment'))}</h3><ul class="list">${e.comment
   };
   d.onkeydown = (e) => { DP.keydown(e); };
   d.onbeforeinput = (e) => { DP.beforeinput(e); };
-  d.onpaste = (e) => { DP.paste(e); };
+  d.onpaste = (e) => { const big = (e.clipboardData?.getData('text/plain') || '').length > 20000; const end = big ? EXT.busy?.begin('busy.work') : null; try { DP.paste(e); } finally { end?.(); } };
   d.onchange = (e) => {
     if (DP.change(e)) return;
     if (e.target.dataset.k === 'embed') S.embedFonts = e.target.checked;
@@ -2334,6 +2334,7 @@ async function onDrawer(e) {
   if (k === 'timp') {
     const f = await pickFile('.json,application/json');
     if (!f) return;
+    const endBusy = EXT.busy?.begin('busy.work');
     try {
       const p = JSON.parse(await readAs(f, 'text'));
       if (p.kind !== 'bw-design-pack') throw new Error();
@@ -2351,7 +2352,7 @@ async function onDrawer(e) {
       const safeVars = Object.fromEntries(Object.entries(rest.vars || {}).filter(([k2, v]) => /^[a-z0-9-]+$/.test(k2) && /^[#a-zA-Z0-9(),.\s%-]+$/.test(String(v))));
       S.theme = { ...S.theme, ...rest, vars: { ...S.theme.vars, ...safeVars }, logos: { ...S.theme.logos, ...safeLogos } };
       touched(); render(); openDrawer('theme');
-    } catch { flash(t('badFile'), true); }
+    } catch { flash(t('badFile'), true); } finally { endBusy?.(); }
   }
   if (x.dataset.mine !== undefined || x.dataset.theirs !== undefined) {
     const i = +(x.dataset.mine ?? x.dataset.theirs);
@@ -3041,7 +3042,8 @@ document.addEventListener('paste', (e) => {
   if (!el) return;
   e.preventDefault();
   const text = sanitizePaste(e.clipboardData.getData('text/plain') || e.clipboardData.getData('text/html'));
-  document.execCommand('insertText', false, text);
+  const endBusy = text.length > 20000 ? EXT.busy?.begin('busy.work') : null; // a big paste shows the loading screen
+  try { document.execCommand('insertText', false, text); } finally { endBusy?.(); }
 });
 // Pasted HTML is reduced to text by string work only: it never reaches an HTML
 // parser, so no element (and no on*= handler in it) is ever created. On Linux

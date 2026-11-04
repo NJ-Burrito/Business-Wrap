@@ -102,6 +102,31 @@ try {
     await page.waitForTimeout(500);
     const closed = await sh(page, (r) => !r.querySelector('.drawer:not([hidden]):not(.closing)'));
     check(`${ui} O1: the drawer's close button still works`, wasOpen && closed, JSON.stringify({ wasOpen, closed }));
+    // editor.js page click: a background click keeps the selection (and its tab); 28-scope.js: it keeps the open scope menu
+    const cellSel = await page.evaluate(async () => {
+      const B = window.BW; const blocks = B.M[B.S.svc][B.S.ed].doc.chapters[1].sections[0].blocks; const at = `/chapters/1/sections/0/blocks/${blocks.length}`;
+      B.commit([{ op: 'insert', path: at, value: { kind: 'table', columns: ['A', 'B'], rows: [['1', '2'], ['3', '4']] } }], { mirror: true });
+      await new Promise((q) => setTimeout(q, 300));
+      const td = document.querySelector(`#bw-pair main.bw-doc[data-locale="${B.S.ed}"] table[data-b="${at}"] td[data-r="0"][data-c="0"]`);
+      td.scrollIntoView({ block: 'center' });
+      await new Promise((q) => setTimeout(q, 200));
+      const r = td.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    });
+    await page.mouse.click(cellSel.x, cellSel.y);
+    await page.waitForTimeout(400);
+    const hasTab = () => sh(page, (r) => !!r.querySelector('#rb-tab-table'));
+    const t0 = await hasTab();
+    await page.mouse.click(4, 400);
+    await page.waitForTimeout(300);
+    check(`${ui} O1: looked - a cell selection shows the Table tab; a background click keeps it`, t0 && (await hasTab()), String(t0));
+    const menuAsk = await page.evaluate(() => { try { window.BW.EXT.scope.open(); } catch (e) { return String(e); } return 'ok'; });
+    await page.waitForTimeout(300);
+    const menuOpen = await page.evaluate(() => !!window.BW.EXT.scope.menu());
+    await page.mouse.click(4, 400);
+    await page.waitForTimeout(300);
+    const menuStill = await page.evaluate(() => !!window.BW.EXT.scope.menu());
+    check(`${ui} O1: looked - the scope menu opened; a background click keeps it open`, menuOpen && menuStill, JSON.stringify({ menuAsk, menuOpen, menuStill }));
     check(`${ui}: no page errors`, errors.length === 0, errors.join(' | '));
     await ctx.close();
   }

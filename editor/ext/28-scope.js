@@ -39,7 +39,7 @@ function scopeMenu(items) {
       done(b.dataset.scope || '');
     };
     // a press anywhere outside the menu closes it, so the ribbon (undo, redo) is never left silently blocked behind it (UAT M8)
-    const away = (e) => { if (!e.composedPath().includes(d) && !d.hidden) done(''); };
+    const away = (e) => { if (!e.composedPath().includes(d) && !d.hidden && !uxBgPress(e)) done(''); }; // 0.17.8 (O1): the background around the page keeps it open
     document.addEventListener('pointerdown', away, true);
     root.addEventListener('pointerdown', away, true);
     d.onkeydown = (e) => {
