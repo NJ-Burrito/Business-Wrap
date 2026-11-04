@@ -7,6 +7,7 @@
 //   node tests/run.mjs --list          print the selected suites (after --shard/--changed/names) and exit, running nothing
 //   node tests/run.mjs --record        after the run, merge the measured times into tests/durations.json
 //   node tests/run.mjs --merge <files> merge suite-times.json files (CI artifacts) into tests/durations.json and exit
+//   --retry / --no-retry               one retry of each failed suite, alone, after the rest finish (default on when CI=true; off locally)
 // Exit 1 if any suite fails; failing suite output is printed in full, passing output is dropped.
 import { spawn, execFileSync } from 'node:child_process';
 import { readdirSync, writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
@@ -14,7 +15,7 @@ import { dirname, join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import os from 'node:os';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const ROOT = process.env.BW_ROOT || join(dirname(fileURLToPath(import.meta.url)), '..'); // BW_ROOT: tests/run-retry.test.mjs points the runner at a fake tree
 const args = process.argv.slice(2);
 const flag = (f) => args.includes(f);
 const valueOf = (f) => { const i = args.indexOf(f); return i < 0 ? null : args[i + 1]; };
@@ -27,7 +28,7 @@ const writeDurations = (d) => writeFileSync(DURATIONS, JSON.stringify(Object.fro
 const all = [
   ...readdirSync(join(ROOT, 'tests')).filter((f) => f.endsWith('.test.mjs')).map((f) => 'tests/' + f),
   'mcp/test/server.test.mjs',
-];
+].filter((f) => existsSync(join(ROOT, f)));
 if (mergeAt >= 0) {
   const d = readDurations();
   for (const f of args.slice(mergeAt + 1)) { const t = JSON.parse(readFileSync(f, 'utf8')); for (const [k, v] of Object.entries(t)) if (typeof v === 'number') d[k] = v; }
@@ -77,15 +78,15 @@ const t0 = Date.now();
 // BW_SUITE_TIMEOUT seconds (default 900; the slowest suite takes about 5 minutes) kills the suite's process tree and reports it as a failure with the output it had written.
 // The suite is also finished when its process exits, even if a child it started (a server, a browser) still holds the output pipe open: waiting for the pipe to close would wait for that child.
 const SUITE_TIMEOUT = (Number(process.env.BW_SUITE_TIMEOUT) || 900) * 1000;
-const run = (f) => new Promise((res) => {
+const run = (f, isRetry = false) => new Promise((res) => {
   const s = Date.now(); let out = '';
-  console.log(`start ${f}`);
+  console.log(`${isRetry ? 'retry ' : ''}start ${f}`);
   const p = spawn(process.execPath, [f], { cwd: ROOT, env: { ...process.env, BW_TEST_SLOT: String(results.length), BW_TEST_MODE: '1' } });
   let done = false, timedOut = false, exitCode = null;
   const finish = (code) => {
     if (done) return; done = true; clearTimeout(timer);
-    const r = { f, code: timedOut ? 124 : (code ?? exitCode ?? 1), s: (Date.now() - s) / 1000, out }; results.push(r);
-    console.log(`${r.code ? 'FAIL' : 'ok  '} ${r.s.toFixed(1).padStart(6)}s ${f}${timedOut ? '  (timed out)' : ''}`); res();
+    const r = { f, code: timedOut ? 124 : (code ?? exitCode ?? 1), s: (Date.now() - s) / 1000, out }; if (!isRetry) results.push(r);
+    console.log(`${isRetry ? 'retry ' : ''}${r.code ? 'FAIL' : 'ok  '} ${r.s.toFixed(1).padStart(6)}s ${f}${timedOut ? '  (timed out)' : ''}`); res(r);
   };
   const timer = setTimeout(() => {
     timedOut = true; out += `
@@ -100,11 +101,27 @@ FAIL  ${f}: no end after ${SUITE_TIMEOUT / 1000} s, its process tree was killed 
 });
 const queue = [...want];
 await Promise.all(Array.from({ length: jobs }, async () => { while (queue.length) await run(queue.shift()); }));
+// One retry (owner-approved, Business-Wrap release notes: flakes get one retry, never fewer assertions). Each failed suite runs once more, alone, after the parallel phase,
+// so the retry has the machine to itself. A suite that timed out is not retried (a second 900 s hang would cost the job its budget). Passing on retry keeps the shard green
+// and prints a RETRIED line with the first run's first FAIL line, so the flake stays visible.
+const retryOn = flag('--no-retry') ? false : flag('--retry') || process.env.CI === 'true';
+const retried = [];
+if (retryOn) {
+  for (const r of results.filter((x) => x.code && x.code !== 124)) {
+    const lines = r.out.split('\n');
+    const firstFail = (lines.find((l) => /\bFAIL\b/.test(l)) || lines.find((l) => l.trim()) || `exit ${r.code}`).trim();
+    const again = await run(r.f, true);
+    if (!again.code) {
+      Object.assign(r, { code: 0, s: r.s + again.s, out: again.out }); retried.push(`RETRIED ${r.f}: passed on retry (first run failed: ${firstFail})`);
+    } else { r.out += `\n----- retry also failed (exit ${again.code}) -----\n` + again.out; r.code = again.code; }
+  }
+}
 const bad = results.filter((r) => r.code);
 // every line that is not a PASS (the failing checks with their detail), not the last 6000 characters: a suite that prints many PASS lines after its FAIL hid the FAIL in the CI log
 for (const r of bad) console.log(`\n===== ${r.f} (exit ${r.code}) =====\n${r.out.split('\n').filter((l) => !/^\s*PASS\b/.test(l)).join('\n').slice(-30000)}`);
+for (const l of retried) console.log(l);
 const total = (Date.now() - t0) / 1000;
-console.log(`\n${results.length - bad.length}/${results.length} suites ok, wall ${total.toFixed(1)}s, sum ${results.reduce((a, r) => a + r.s, 0).toFixed(1)}s, jobs ${jobs}`);
+console.log(`\n${results.length - bad.length}/${results.length} suites ok, wall ${total.toFixed(1)}s, sum ${results.reduce((a, r) => a + r.s, 0).toFixed(1)}s, jobs ${jobs}${retried.length ? `, ${retried.length} passed only on retry` : ''}`);
 const times = Object.fromEntries(results.map((r) => [r.f, r.s]));
 try { mkdirSync(join(ROOT, 'out'), { recursive: true }); writeFileSync(join(ROOT, 'out', 'suite-times.json'), JSON.stringify(times, null, 1)); } catch {}
 if (flag('--record')) { try { writeDurations({ ...readDurations(), ...Object.fromEntries(results.filter((r) => !r.code).map((r) => [r.f, r.s])) }); console.log('recorded -> tests/durations.json'); } catch (e) { console.log('record failed: ' + e.message); } }
