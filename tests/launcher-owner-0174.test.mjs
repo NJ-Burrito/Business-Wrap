@@ -98,7 +98,7 @@ try {
     // no hive: this would be the REAL key. What it must do is not write: either the key already points at this install (a read, `already`) or the run is refused as a sandbox.
     // A register() answer carries `where` (the key it wrote); the real value must be byte-identical before and after. Holds with a key that is current, stale, or absent (a CI runner).
     const e5 = P.ensureRegistered();
-    const wrote = !!e5.where || (e5.registered === true && !e5.already);
+    const wrote = !!e5.where || (e5.registered === true && !e5.already && !e5.skipped);
     check('protocol: a sandboxed run with no fake hive never writes the real registration (nothing written; the real key is byte-identical before and after)', !wrote && (e5.already === true || e5.skipped === 'sandbox') && regOf() === realBefore, JSON.stringify(e5));
   } else check('launcher/protocol take-over: Windows-only parts skipped on this platform', true);
 } finally {
