@@ -32,6 +32,7 @@ let server = null;
 try {
   const ctx = await browser.newContext({ viewport: { width: 1500, height: 900 }, acceptDownloads: true });
   const page = await ctx.newPage();
+  if (Number(process.env.BW_TEST_CPU_THROTTLE) > 1) await (await ctx.newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate: Number(process.env.BW_TEST_CPU_THROTTLE) }); // a slow CI runner on demand
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   const ready = (p = page) => p.waitForFunction(() => window.BW?.ready && window.BW.EXT.library);
@@ -100,6 +101,8 @@ try {
 
   // 6. import a Save-HTML file
   await page.evaluate((id) => window.BW.EXT.library.open(id), id1);
+  // the open entry is mounted with both edits before its Save HTML is captured (the file carries what the model holds at that moment)
+  await page.waitForFunction((id) => window.BW.S.svc === id && window.BW.M[id]?.ar?.ops.length === 2, id1, { timeout: 10000 }).catch(() => {});
   const dl = page.waitForEvent('download');
   await page.evaluate(() => window.BW.saveHtml(false));
   const htmlFile = path.join(tmp, 'saved.editor.html');
@@ -108,7 +111,8 @@ try {
   const fc = page.waitForEvent('filechooser');
   await sh('[data-lib="import"]').click();
   await (await fc).setFiles(htmlFile);
-  await page.waitForFunction(async () => (await window.BW.EXT.library.all()).length === 3, null, { timeout: 8000 }).catch(() => {});
+  // wait on the real completion: the imported entry is in the list WITH its edits (not just "3 entries": the count is true at the first write)
+  await page.waitForFunction(async () => { const all = await window.BW.EXT.library.all(); const i = all.find((e) => e.origin === 'import'); return all.length === 3 && !!i && Object.values(i.editions).reduce((a, x) => a + x.ops.length, 0) === 2; }, null, { timeout: 20000 }).catch(() => {});
   L = await lib();
   const imp = L.find((e) => e.origin === 'import');
   check('import of a Save-HTML file creates an entry with its edits', L.length === 3 && imp && imp.ops === 2, JSON.stringify(L));

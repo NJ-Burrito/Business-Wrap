@@ -84,6 +84,7 @@ const normDom = (page, ed) =>
   }, ed);
 async function open(ctx) {
   const page = await ctx.newPage();
+  if (Number(process.env.BW_TEST_CPU_THROTTLE) > 1) await (await ctx.newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate: Number(process.env.BW_TEST_CPU_THROTTLE) }); // a slow CI runner on demand
   const errors = [];
   // name the source of any CSP report, so a blocked handler points at its element
   await page.addInitScript(() => document.addEventListener('securitypolicyviolation', (e) => console.error(`CSP-SOURCE ${e.violatedDirective} sample=${JSON.stringify(e.sample)} at ${e.sourceFile}:${e.lineNumber} target=${e.target?.outerHTML?.slice?.(0, 120) || e.target?.nodeName}`)));
