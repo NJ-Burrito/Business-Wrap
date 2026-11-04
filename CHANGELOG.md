@@ -8,6 +8,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.17.6] - 2026-11-04
+
+📏 A small feature release: page margins and a ruler you can drag, as in Word. / 📏 إصدار ميزات صغير: هوامش الصفحة ومسطرة تسحبها كما في وورد.
+
+### Added / أضيف
+- 📐 **Page margins**: set top, bottom, start and end (5 to 50 mm) from Layout > Margins, with Normal, Narrow and Wide presets or your own values; the editor, the PDF and Word follow. / **هوامش الصفحة**: اضبط الأعلى والأسفل والبداية والنهاية (من 5 إلى 50 مم) من تخطيط الصفحة > الهوامش، بقيم جاهزة (عادي وضيق وواسع) أو بقيمك، ويتبعها المحرر وملف PDF ووورد.
+- 📏 **The ruler is interactive**: drag the margin edges, and the first-line, start and end indent markers of a paragraph, in 0.25 cm steps (Alt for fine steps); indents print and export to Word. Turn it on from the View tab. / **المسطرة صارت تفاعلية**: اسحب حافتي الهامش، ومؤشرات إزاحة السطر الأول والبداية والنهاية للفقرة، بخطوات 0.25 سم (Alt لخطوات أدق)، وتظهر الإزاحات في الطباعة وفي وورد. شغلها من تبويب العرض.
+
+### Fixed / أصلح
+- ✅ **Several timing checks now measure inside the page**, so slow test machines no longer fail them. / **عدة فحوص توقيت تقيس الآن داخل الصفحة**، فلم تعد تفشل على أجهزة الاختبار البطيئة.
+
+### Known limits / حدود معروفة
+- 📌 Tab stops on the ruler are not built yet. / علامات الجدولة على المسطرة لم تبن بعد.
+
 ## [0.17.5] - 2026-11-04
 
 🛠️ A fix release: folder icons no longer trip the host or the import. / 🛠️ إصدار إصلاحات: أيقونات المجلدات لم تعد تعطل الخادم ولا الاستيراد.
