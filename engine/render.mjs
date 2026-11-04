@@ -222,6 +222,8 @@ const LEAF_ALIGN = { start: 'start', center: 'center', end: 'end', justify: 'jus
 export const KASHIDA_LEVEL = { 'justify-low': 'low', 'justify-medium': 'medium', 'justify-high': 'high' };
 const LEAF_VALIGN = { top: 'top', middle: 'middle', bottom: 'bottom' };
 const mmOk = (v) => (Number.isFinite(+v) && +v >= 0 && +v <= 60 ? +v : null);
+/** 0.17.6 (ruler): a paragraph indent in mm, a number only (start/end 0 to 150; the first line's offset from the start indent, -150 to 150). */
+const indOk = (v, lo = 0) => (typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= 150 ? v : null);
 /** style="…" and class for an element holding a rich leaf ('' for a string: the 0.12.0 markup). */
 export function leafAttrs(leaf, cls = '') {
   const st = isRich(leaf) ? leaf.style || {} : null;
@@ -232,6 +234,9 @@ export function leafAttrs(leaf, cls = '') {
   if (Number.isFinite(+st.lineHeight) && +st.lineHeight >= 0.8 && +st.lineHeight <= 4) d.push(`line-height:${+st.lineHeight}`);
   if (mmOk(st.spaceBefore) != null) d.push(`margin-top:${mmOk(st.spaceBefore)}mm`);
   if (mmOk(st.spaceAfter) != null) d.push(`margin-bottom:${mmOk(st.spaceAfter)}mm`);
+  if (indOk(st.indentStart)) d.push(`margin-inline-start:${indOk(st.indentStart)}mm`);
+  if (indOk(st.indentEnd)) d.push(`margin-inline-end:${indOk(st.indentEnd)}mm`);
+  if (indOk(st.indentFirst, -150)) d.push(`text-indent:${indOk(st.indentFirst, -150)}mm`);
   const c = [cls, st.quote ? 'bw-quote' : ''].filter(Boolean).join(' ');
   return (c ? ` class="${c}"` : '') + (d.length ? ` style="${d.join(';')}"` : '') + (KASHIDA_LEVEL[st.align] ? ` data-jk="${KASHIDA_LEVEL[st.align]}"` : '');
 }

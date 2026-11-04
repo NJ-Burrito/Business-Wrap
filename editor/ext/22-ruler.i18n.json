@@ -1,0 +1,20 @@
+{
+ "ar": {
+  "ru.label": "مسطرة الصفحة",
+  "ru.cm": "سم",
+  "ru.mStart": "هامش بداية الصفحة",
+  "ru.mEnd": "هامش نهاية الصفحة",
+  "ru.first": "إزاحة السطر الأول",
+  "ru.start": "إزاحة البداية (معلّقة)",
+  "ru.end": "إزاحة النهاية"
+ },
+ "en": {
+  "ru.label": "Page ruler",
+  "ru.cm": "cm",
+  "ru.mStart": "Page start margin",
+  "ru.mEnd": "Page end margin",
+  "ru.first": "First-line indent",
+  "ru.start": "Start (hanging) indent",
+  "ru.end": "End indent"
+ }
+}

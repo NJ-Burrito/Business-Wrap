@@ -117,6 +117,26 @@ def style_paragraph(paragraph, st):
         for k, v in (('w:val', 'single'), ('w:sz', '18'), ('w:space', '8'), ('w:color', 'C8A96A')):
             edge.set(qn(k), v)
         bdr.append(edge); pPr.append(bdr)
+    paragraph_indents(pPr, st)
+
+
+def _ind_mm(v, lo=0):
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) and lo <= v <= 150 else None
+
+
+def paragraph_indents(pPr, st):
+    """0.17.6 (ruler): w:ind start / end / firstLine or hanging, in twips (1 mm = 56.6929 twips); start and end follow the paragraph's direction."""
+    s, e, f = _ind_mm(st.get('indentStart')), _ind_mm(st.get('indentEnd')), _ind_mm(st.get('indentFirst'), -150)
+    if not (s or e or f):
+        return
+    ind = pPr.get_or_add_ind()
+    tw = lambda mm: str(int(round(mm * 56.6929)))
+    if s:
+        ind.attrib.pop(qn('w:left'), None); ind.set(qn('w:start'), tw(s))
+    if e:
+        ind.attrib.pop(qn('w:right'), None); ind.set(qn('w:end'), tw(e))
+    if f:
+        ind.set(qn('w:hanging' if f < 0 else 'w:firstLine'), tw(abs(f)))
 
 
 def cell_valign(cell, leaf):

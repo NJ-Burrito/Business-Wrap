@@ -24,7 +24,7 @@ const RB_TABS = [
   ['design', [['design', ['theme', 'styleThis', 'hideBlock']], ['appearance', ['dark', 'calm', 'focus']]], null, '--bw-sec-design'],
   ['review', [['check', ['check', 'history', 'outline', 'find', 'comment']], ['flow', ['timeline', 'bulkEdit', 'webhooks']], ['sign', ['pvOpen', 'pvSign', 'lkToggle']]], null, '--bw-sec-document'],
   ['spelling', [['spOn', ['spell', 'spellCount', 'spellLang']], ['spMove', ['spellPrev', 'spellNext']], ['spFix', ['spellFix', 'spellFixAll']], ['spDict', ['spellIgnore', 'spellIgnoreAll', 'spellAdd']]], null, '--bw-sec-spell'],
-  ['view', [['view', ['view', 'side', 'both', 'spell', 'snap', 'settings']], ['zoom', ['zoomOut', 'zoomPct', 'zoomIn', 'zoomReset', 'zoomFit', 'zoomHeight']], ['pages', ['view.continuous', 'view.single', 'view.spread']]], null, '--bw-sec-view'],
+  ['view', [['view', ['view', 'side', 'both', 'spell', 'snap', 'ruler', 'settings']], ['zoom', ['zoomOut', 'zoomPct', 'zoomIn', 'zoomReset', 'zoomFit', 'zoomHeight']], ['pages', ['view.continuous', 'view.single', 'view.spread']]], null, '--bw-sec-view'],
   ['table', [['rows', ['rowAdd', 'rowDel', 'rowUp', 'rowDown']], ['cols', ['colAdd', 'colDel']], ['cells', ['cellMerge', 'cellSplit', 'cellWrap', 'cellFill', 'cellColW', 'cellRowH', 'cellClearValue', 'cellKeepEmpty', 'cellClearFormat']],
     ['tblblock', ['duplicate', 'delete', 'moveUp', 'moveDown', 'comment', 'styleThis', 'hideBlock', 'breakBefore', 'keepNext']]], 'table', '--bw-sec-table'],
   ['picture', [['pic', ['replace', 'caption', 'every', 'ovDelete']], ['wrap', ['wrapInline', 'wrapSquare', 'wrapTight', 'wrapThrough', 'wrapTopBottom', 'wrapBehind', 'wrapFront']]], 'picture', '--bw-sec-footer'],
