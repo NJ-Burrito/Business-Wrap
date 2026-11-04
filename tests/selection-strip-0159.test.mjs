@@ -105,7 +105,9 @@ async function select(page, kind, cssH) {
 const deselect = async (page, cssH) => {
   await page.evaluate(() => { const B = window.BW; B.S.selOv = null; });
   await page.keyboard.press('Escape');
-  await page.mouse.click(2, Math.round(cssH * 0.6));
+  // 0.17.8 (O1): a press on the background around the page folds the ribbon (it would change the bar's height, not the selection); deselect with a press on an empty spot of the page itself
+  const spot = await page.evaluate(() => { const m = document.querySelector('#bw-pair main.bw-doc'); const r = m.getBoundingClientRect(); return { x: Math.max(2, Math.round(r.left + 2)) }; });
+  await page.mouse.click(spot.x, Math.round(cssH * 0.6));
   await page.waitForTimeout(150);
 };
 
