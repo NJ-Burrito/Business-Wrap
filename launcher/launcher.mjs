@@ -13,6 +13,7 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { localBase, isTestMode, isPluginInstall, pluginData } from '../engine/testguard.mjs';
+import { sandboxed, mayTakeOver, installOf } from './ownership.mjs';
 
 export const INSTALL = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const LNK_NAME = 'Business-Wrap.lnk';
@@ -84,6 +85,16 @@ export function copyToDesktop({ lnk, desktop }) {
   return { copy, replaced };
 }
 
+/** True when the Desktop copy `lnk` points at an install folder that no longer exists. Cheap first: a copy that holds this install's own path is fine (no shell call). */
+function deadCopy(lnk, installDir) {
+  try {
+    const b = fs.readFileSync(lnk);
+    if (b.includes(Buffer.from(installDir, 'utf16le')) || b.includes(Buffer.from(installDir, 'latin1'))) return false;
+    const cur = installOf(readShortcut(lnk)?.args);
+    return !!cur && !fs.existsSync(cur);
+  } catch { return false; }
+}
+
 /** The launcher in place, and the Desktop copy when this install (version + folder) has not put one there yet (or `force`). Never throws.
  *  → {launcher, desktop:{copy, replaced}|{skipped}}. */
 export function ensureLauncher({ installDir = INSTALL, lnkDir, desktop, force = false, node } = {}) {
@@ -91,7 +102,8 @@ export function ensureLauncher({ installDir = INSTALL, lnkDir, desktop, force = 
     if (process.platform !== 'win32') return { supported: false, reason: 'windows-only' };
     const ver = version(installDir);
     const stamp = readStamp(installDir);
-    const due = force || !stamp || stamp.version !== ver || stamp.install !== installDir;
+    let due = force || !stamp || stamp.version !== ver || stamp.install !== installDir;
+    if (!due) { const w = stamp.desktop || stamp.watch; if (w && fs.existsSync(w) && deadCopy(w, installDir)) due = true; } // 0.17.4: a current stamp, but the Desktop copy points at a folder that is gone: repair it
     const dir = lnkDir || lnkDirFor(installDir);
     const have = path.join(dir, LNK_NAME);
     let launcher = { ok: true, lnk: have, replaced: false, kept: true };
@@ -99,14 +111,22 @@ export function ensureLauncher({ installDir = INSTALL, lnkDir, desktop, force = 
     if (!due) return { launcher, desktop: { skipped: 'already-copied' } };
     const where = desktop === undefined ? desktopDir() : desktop;
     if (!where) return { launcher, desktop: { skipped: 'no-desktop-folder' } };
+    // 0.17.4: only the install the person set up takes over a Desktop copy on its own (launcher/ownership.mjs); `make --force` is the explicit take-over
+    const existing = path.join(where, LNK_NAME);
+    const current = fs.existsSync(existing) ? installOf(readShortcut(existing)?.args) : null;
+    const may = mayTakeOver({ installDir, current, explicit: force, realProfile: desktop === undefined && !process.env.BW_DESKTOP_DIR });
+    if (!may.ok) {
+      writeAtomic(stampFile(installDir), JSON.stringify({ version: ver, install: installDir, desktop: null, watch: existing, skipped: may.why, at: new Date().toISOString() }, null, 1)); // asked once, not on every run
+      return { launcher, desktop: { skipped: may.why, ...(current ? { keeps: current } : {}) } };
+    }
     const d = copyToDesktop({ lnk: launcher.lnk, desktop: where });
     writeAtomic(stampFile(installDir), JSON.stringify({ version: ver, install: installDir, desktop: d.copy, at: new Date().toISOString() }, null, 1));
     return { launcher, desktop: d };
   } catch (e) { return { launcher: { ok: false, error: String(e?.message || e).slice(0, 200) }, desktop: { skipped: 'error' } }; }
 }
 
-/** A run in its own state folder (a test, a trial: BW_LOCAL_DIR, BW_STATE_DIR, BW_WORKSPACE) never writes the real Desktop. `node launcher/launcher.mjs make` still does. */
-const sandboxed = () => isTestMode() || !!(process.env.BW_LOCAL_DIR || process.env.BW_STATE_DIR || process.env.BW_WORKSPACE);
+// A run in its own state folder (a test, a trial) never writes the real Desktop; a source checkout never takes over a live one (launcher/ownership.mjs).
+// `node launcher/launcher.mjs make --force` is the person's own "make this the default" and still does.
 
 /** The hook every entry calls (terminal, MCP, Claude Code plugin hook, protocol handler, an opened export): idempotent, once per install and version, never throws,
  *  silent. BW_NO_LAUNCHER=1 skips; test mode skips unless a test names its own Desktop folder (BW_DESKTOP_DIR). */

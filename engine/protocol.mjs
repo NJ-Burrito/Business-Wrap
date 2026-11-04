@@ -15,6 +15,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { REPO } from './export.mjs';
+import { mayTakeOver, installOf } from '../launcher/ownership.mjs';
 
 export const SCHEME = 'business-wrap';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -135,12 +136,18 @@ export function unregister({ hive = WIN_HIVE, dir, platform = process.platform }
   }
   return { registered: false, removed: false, platform };
 }
-/** Register when missing or pointing at another install's handler (idempotent, no admin). Never throws. BW_NO_PROTOCOL=1 skips. */
+/** Register when missing, or when it points at an install that no longer exists (idempotent, no admin, never throws). BW_NO_PROTOCOL=1 skips.
+ *  0.17.4: the registration is the person's, per user, so only the install they set up writes it on its own (launcher/ownership.mjs): a sandboxed run
+ *  (test mode, BW_LOCAL_DIR ...) never writes the real one (a test names its own `hive` / `dir`), a source checkout never takes over a live one,
+ *  and no install replaces a handler that points at another install that still exists. `business-wrap protocol register` is the explicit take-over (register()). */
 export function ensureRegistered(o = {}) {
   if (process.env.BW_NO_PROTOCOL === '1') return { skipped: true };
   try {
+    const own = o.hive !== undefined || o.dir !== undefined; // a test's own fake registry layer
     const s = status(o);
     if (s.registered && s.current) return { ...s, already: true };
+    const may = mayTakeOver({ installDir: INSTALL, current: s.registered ? installOf(s.command) : null, realProfile: !own });
+    if (!may.ok) return { registered: s.registered, skipped: may.why, command: s.command };
     return register(o);
   } catch (e) { return { registered: false, error: String(e.message || e).slice(0, 200) }; }
 }
