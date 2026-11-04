@@ -117,7 +117,17 @@
   "ico.fPdf": "مجلد ملفات PDF",
   "ico.fDocx": "مجلد ملفات DOCX",
   "ico.fHtml": "مجلد ملفات HTML",
-  "ico.foldersNote": "يضع بزنس راب هذه الأيقونات تلقائيًا على مجلداته فقط: المجلد الذي فيه ملفات PDF فقط أو DOCX فقط أو HTML فقط يأخذ أيقونته، وغيره يأخذ أيقونة بزنس راب العامة.",
+  "ico.fr.root": "مجلد الحفظ",
+  "ico.fr.documents": "مجلد المستندات",
+  "ico.fr.document": "مجلد مستند واحد",
+  "ico.fr.exports": "الملفات المصدّرة",
+  "ico.fr.sources": "المصادر",
+  "ico.fr.versions": "النسخ السابقة",
+  "ico.fr.system": "مجلد النظام",
+  "ico.fr.unsorted": "غير مصنف",
+  "ico.fr.projects": "المشاريع",
+  "ico.fr.download": "تصدير مشروع (تنزيل)",
+  "ico.foldersNote": "يضع بزنس راب هذه الأيقونات تلقائيًا على مجلداته فقط، لكل دور أيقونته: مجلد الحفظ والمستندات ومجلد كل مستند وملفاته المصدّرة ومصادره ونسخه السابقة ومجلد النظام وتصدير المشروع. لا يغيّر أي مجلد آخر.",
   "ico.fail": "تعذّر تغيير الأيقونات: {m}"
  },
  "en": {
@@ -237,7 +247,17 @@
   "ico.fPdf": "PDF files folder",
   "ico.fDocx": "DOCX files folder",
   "ico.fHtml": "HTML files folder",
-  "ico.foldersNote": "Business-Wrap sets these automatically, on its own folders only: a folder holding only PDFs, only DOCX or only HTML files gets that icon, anything else gets the general Business-Wrap icon.",
+  "ico.fr.root": "Save folder",
+  "ico.fr.documents": "Documents folder",
+  "ico.fr.document": "One document's folder",
+  "ico.fr.exports": "Exports",
+  "ico.fr.sources": "Sources",
+  "ico.fr.versions": "Versions",
+  "ico.fr.system": "System folder",
+  "ico.fr.unsorted": "Unsorted",
+  "ico.fr.projects": "Projects",
+  "ico.fr.download": "Project export (download)",
+  "ico.foldersNote": "Business-Wrap sets these automatically, on its own folders only, one icon per role: the save folder, Documents, each document's folder with its Exports, Sources and Versions, the system folder and a project export. It never changes any other folder.",
   "ico.fail": "Could not change the icons: {m}"
  }
 }

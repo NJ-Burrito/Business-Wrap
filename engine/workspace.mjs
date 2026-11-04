@@ -86,6 +86,7 @@ export function parentChange(since = 0) {
 /** Create the folders; .system carries the hidden attribute on Windows (dot-folder elsewhere), the README of the tree is written once, and an
  *  old 0.13.0-0.13.2 layout (PDF, DOCX, HTML, HISTORY) of a chosen folder is moved into the tree once per process (engine/tidy.mjs; BW_NO_MIGRATE=1 skips it). */
 const hidden = new Set();
+const iconed = new Set();
 const migrated = new Set();
 export function ensure(ws = workspace()) {
   if (ws.root && !migrated.has(ws.root)) {
@@ -101,6 +102,7 @@ export function ensure(ws = workspace()) {
     hidden.add(sys);
   }
   if (ws.root) writeReadme(ws.root);
+  if (ws.root && !iconed.has(ws.root)) { iconed.add(ws.root); applyTreeIcons(ws.root); } // once per process per save folder: the folders that exist now (new ones are marked as they are made)
   return ws;
 }
 /** True when `file` lies inside <base>\.system (or the old HISTORY; case-insensitive on Windows): machine state, never served. */
@@ -222,22 +224,64 @@ export function docFolder(docsDir, info) {
   if (JSON.stringify(idx) !== before) writeIndex(hist, idx);
   const dir = path.join(docsDir, folder);
   fs.mkdirSync(dir, { recursive: true });
-  ensureFolderIcon(dir, { kind: 'general' }); // the document's own folder is always the general Business-Wrap folder; Windows only, never throws
+  ensureFolderIcon(dir, { kind: 'document', systemDir: path.join(path.dirname(path.resolve(docsDir)), SYSTEM_NAME) }); // the document's own folder wears the document icon (0.17.4); Windows only, never throws
   return { folder, dir };
 }
 const docsRootOf = (p) => { let d = path.resolve(p); for (;;) { if (path.basename(d) === DOCS_NAME) return d; const up = path.dirname(d); if (up === d) return null; d = up; } };
-/** Business-Wrap just wrote `file` (an export, a version, a share, a harvest output): gives its folder the icon its content earns
- *  (0.15.3: only PDFs -> the PDF folder, only DOCX -> DOCX, only HTML -> HTML, else the general Business-Wrap folder). Only
- *  Exports\, Sources\, Versions\ and the document folders inside the documents folder are ever touched, never a folder Business-Wrap
- *  did not make. Windows only; never throws. */
+/** The icon role (assets/icons/folders.json) of a folder of the tree, from where it sits; null for a folder that is not Business-Wrap's own.
+ *  `root` is the save folder (the one that holds المستندات - Documents and .system). */
+export function roleOfFolder(dir, root) {
+  const rel = path.relative(path.resolve(root), path.resolve(dir));
+  if (!rel) return 'root';
+  if (rel.startsWith('..') || path.isAbsolute(rel)) return null;
+  const p = rel.split(path.sep);
+  const low = (s) => s.toLowerCase();
+  if (p[0] === SYSTEM_NAME) return 'system'; // .system and every sub-folder of it (history, backups, sessions, library, cache, icons)
+  if (p[0] !== DOCS_NAME) return null;
+  if (p.length === 1) return 'documents';
+  if (p[1] === UNSORTED_NAME) return p.length === 2 ? 'unsorted' : null;
+  if (p[1].startsWith('.')) return null;
+  if (p.length === 2) return 'document';
+  if (p.length === 3 && ['exports', 'sources', 'versions'].includes(low(p[2]))) return low(p[2]);
+  return null;
+}
+/** 0.17.4: every folder of the save tree that exists now gets its role icon: the save folder, المستندات - Documents, each document's folder with its
+ *  Exports\ / Sources\ / Versions\, _غير مصنف - Unsorted, .system and its sub-folders. Idempotent, Windows only, never throws; a folder that is not ours
+ *  (its desktop.ini is someone else's) is left alone. → the number of folders that now carry an icon. */
+export function applyTreeIcons(root, opts = {}) {
+  let n = 0;
+  try {
+    const base = path.resolve(root);
+    const sys = path.join(base, SYSTEM_NAME);
+    const put = (dir) => { const role = roleOfFolder(dir, base); if (role && ensureFolderIcon(dir, { kind: role, systemDir: sys, ...opts })) n += 1; };
+    const subs = (d) => { try { return fs.readdirSync(d, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => path.join(d, e.name)); } catch { return []; } };
+    put(base);
+    put(sys);
+    for (const s of subs(sys)) put(s);
+    const docs = path.join(base, DOCS_NAME);
+    if (fs.existsSync(docs)) {
+      put(docs);
+      for (const d of subs(docs)) {
+        put(d);
+        for (const x of subs(d)) put(x);
+      }
+    }
+  } catch { /* cosmetic */ }
+  return n;
+}
+/** Business-Wrap just wrote `file` (an export, a version, a share, a harvest output): gives its folder its role icon (0.17.4: Exports, Sources,
+ *  Versions, the document's folder; before it was the icon of what the folder held). Only Exports\, Sources\, Versions\ and the document folders inside
+ *  the documents folder are ever touched, never a folder Business-Wrap did not make. Windows only; never throws. */
 export function noteOutput(file) {
   try {
     const dir = path.dirname(path.resolve(file));
     const root = docsRootOf(dir);
     if (!root || dir === root) return false;
-    const rel = path.relative(root, dir).split(path.sep);
-    const ok = rel.length === 1 ? !rel[0].startsWith('.') : rel.length === 2 && ['Exports', 'Sources', 'Versions'].includes(rel[1]) && !rel[0].startsWith('.');
-    return ok ? refreshFolderIcon(dir, { systemDir: path.join(root, SYSTEM_NAME) }) : false;
+    const sysDir = path.join(path.dirname(root), SYSTEM_NAME);
+    const role = roleOfFolder(dir, path.dirname(root));
+    if (!['document', 'exports', 'sources', 'versions'].includes(role)) return false;
+    if (role !== 'document') ensureFolderIcon(path.dirname(dir), { kind: 'document', systemDir: sysDir }); // its document folder too
+    return ensureFolderIcon(dir, { kind: role, systemDir: sysDir });
   } catch { return false; }
 }
 const idPart = (id, n = 8) => String(id).replace(/^doc-/, '').replace(/[^\w]/g, '').slice(0, n) || 'unknown';
@@ -414,6 +458,18 @@ export function quickPlaces() {
   return out;
 }
 
+/** The icon role of any folder the picker lists (0.17.4): a Business-Wrap save folder, anything inside one, the projects folder; '' for every other folder. */
+export function roleOfListed(p) {
+  try {
+    const abs = path.resolve(p);
+    if (path.basename(abs) === 'المشاريع - Projects') return 'projects';
+    for (let d = abs; ; d = path.dirname(d)) {
+      if (path.basename(d) === 'Business-Wrap' && (fs.existsSync(path.join(d, DOCS_NAME)) || fs.existsSync(path.join(d, SYSTEM_NAME)))) return roleOfFolder(abs, d) || '';
+      if (path.dirname(d) === d) return '';
+    }
+  } catch { return ''; }
+}
+
 /** The sub-folders of a folder (folders only, sorted, at most 3000). '' = the places themselves (the drives). Never throws:
  *  → {path, parent, entries:[{name, path}], truncated, blocked, error?:{code, message}}  (codes: relative missing notfolder unreadable). */
 export function listFolders(p) {
@@ -429,7 +485,7 @@ export function listFolders(p) {
   try { ds = fs.readdirSync(abs, { withFileTypes: true }); } catch (e) { return { ...base, error: { code: 'unreadable', message: String(e.message || e).slice(0, 200) } }; }
   const names = ds.filter((d) => d.isDirectory() || (d.isSymbolicLink() && isDir(path.join(abs, d.name)))).map((d) => d.name);
   names.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
-  return { ...base, entries: names.slice(0, 3000).map((name) => ({ name, path: path.join(abs, name) })), truncated: names.length > 3000 };
+  return { ...base, entries: names.slice(0, 3000).map((name) => { const q = path.join(abs, name); const role = roleOfListed(q); return role ? { name, path: q, role } : { name, path: q }; }), truncated: names.length > 3000 };
 }
 
 const fail = (code, message) => Object.assign(new Error(message), { code: 400, pickerCode: code });

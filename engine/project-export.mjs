@@ -42,6 +42,20 @@ function uniqueDir(parent, name) {
   return d;
 }
 
+/** The role icons of one project-export tree (root = the folder Business-Wrap made): the root is «download», each document folder «document»; the icon files sit
+ *  in <root>\.system. `relative` writes the icon paths relative to each folder (a tree about to be zipped). Windows, or any platform with `relative`; never throws. → folders marked. */
+export function applyExportIcons(root, { relative = false } = {}) {
+  let n = 0;
+  try {
+    const sys = path.join(root, '.system');
+    const opts = { systemDir: sys, relative, force: relative, notify: !relative };
+    if (ensureFolderIcon(root, { kind: 'download', ...opts })) n += 1;
+    if (ensureFolderIcon(sys, { kind: 'system', ...opts })) n += 1; // the hidden .system itself
+    for (const e of fs.readdirSync(root, { withFileTypes: true })) if (e.isDirectory() && !e.name.startsWith('.') && ensureFolderIcon(path.join(root, e.name), { kind: 'document', ...opts })) n += 1;
+  } catch { /* cosmetic */ }
+  return n;
+}
+
 /** The edited document of one edition: its base with its ops replayed. */
 export const docOf = (ed) => applyOps(JSON.parse(ed.raw), ed.ops || []);
 
@@ -115,6 +129,7 @@ export async function exportProject({ project, docs, formats = ['pdf'], locales 
   const items = [];
   const documents = [];
   const progress = (o) => { try { onProgress({ done, total, ...o }); } catch { /* a listener must not stop the export */ } };
+  const projDirNew = !fs.existsSync(projDir);
   fs.mkdirSync(root, { recursive: true });
   try {
     for (let i = 0; i < docs.length; i++) {
@@ -181,15 +196,24 @@ export async function exportProject({ project, docs, formats = ['pdf'], locales 
   fs.writeFileSync(path.join(root, 'index.json'), JSON.stringify(index, null, 1));
   fs.writeFileSync(path.join(root, '00 فهرس - Index.html'), indexHtml(index), 'utf8');
   progress({ state: 'index' });
-  if (!stage) { // a tree Business-Wrap just made: its root is the general icon, each document folder the icon of what it holds (Windows only)
-    const sys = path.join(root, '.system');
-    ensureFolderIcon(root, { kind: 'general', systemDir: sys });
-    try { for (const e of fs.readdirSync(root, { withFileTypes: true })) if (e.isDirectory() && !e.name.startsWith('.')) refreshFolderIcon(path.join(root, e.name), { systemDir: sys }); } catch { /* cosmetic */ }
+  // 0.17.4: the export tree carries its role icons, so the download folder is recognisable in Explorer: the root is «download», each document folder «document»,
+  // its icons live in the hidden .system beside them. In a zip the icon paths are written relative to each folder and the icons travel in the zip (the staged
+  // tree is icon-ed on any platform), so an unpacked copy resolves them wherever it lands; the System attribute Explorer needs on a folder is set by
+  // applyExportIcons() for a tree the host unpacks (and by the unpacker's own attribute handling otherwise).
+  applyExportIcons(root, { relative: !!stage });
+  if (!stage) {
+    const pj = projDir;
+    if (projDirNew) ensureFolderIcon(pj, { kind: 'projects', systemDir: path.join(pj, '.system') }); // the folder that holds every project export: made by this export
   }
   if (!stage) return { root, zip: null, cancelled: false, index, items };
   // zip: the staged tree under its own folder name, in tree order, then the stage goes
   const entries = [];
-  const walk = (d, rel) => { for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) { const p = `${rel}/${e.name}`; if (e.isDirectory()) walk(path.join(d, e.name), p); else entries.push({ name: p, file: path.join(d, e.name) }); } };
+  // folders are written as entries of their own with the MS-DOS attributes Explorer's unzip applies: System+Read-only on a folder that has our desktop.ini (without it the
+  // icon never shows), Hidden on .system, Hidden+System on desktop.ini (0.17.4)
+  const walk = (d, rel) => {
+    entries.push({ name: `${rel}/`, attr: (path.basename(rel).startsWith('.') ? 0x02 : 0) | (fs.existsSync(path.join(d, 'desktop.ini')) ? 0x05 : 0) });
+    for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) { const p = `${rel}/${e.name}`; if (e.isDirectory()) walk(path.join(d, e.name), p); else entries.push({ name: p, file: path.join(d, e.name), ...(e.name.toLowerCase() === 'desktop.ini' ? { attr: 0x06 } : {}) }); }
+  };
   walk(root, finalName);
   fs.mkdirSync(projDir, { recursive: true });
   let zip = path.join(projDir, `${finalName}.zip`);

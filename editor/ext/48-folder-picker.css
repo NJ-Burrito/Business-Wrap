@@ -40,3 +40,5 @@ dialog.bw-fp .ic { inline-size: 20px; block-size: 20px; flex: none; }
   dialog.bw-fp .fp-places { flex-direction: row; flex-wrap: wrap; border-inline-end: 0; padding-inline-end: 0; max-block-size: none; }
   dialog.bw-fp .fp-place { inline-size: auto; }
 }
+dialog.bw-fp .fp-item .i.fp-role { inline-size: 24px; block-size: 24px; flex: none; }
+dialog.bw-fp .fp-item .i.fp-role svg { inline-size: 24px; block-size: 24px; display: block; flex: none; } /* 0.17.4: a Business-Wrap folder wears its own role icon (assets/icons/folders.json), the same as in Explorer */

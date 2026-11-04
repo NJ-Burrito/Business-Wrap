@@ -201,7 +201,7 @@ try {
       const c = await card(page);
       check(`ui ${lang}: the row shows both buttons and the honest note (served)`, c.text.includes(apply) && c.text.includes(restore) && c.text.includes(note) && c.keys.join() === 'icoApply,icoRestore' && c.dis.every((d) => !d), JSON.stringify(c).slice(0, 300));
       const fr = await page.evaluate(() => [...document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('.drawer .set-ico-folders li')].map((li) => ({ svg: !!li.querySelector('svg path'), t: li.textContent.trim() })));
-      check(`ui ${lang}: the folder-icons preview row shows four labelled folders (0.15.3)`, fr.length === 4 && fr.every((x) => x.svg && x.t) && (lang === 'en' ? fr[1].t === 'PDF files folder' : /PDF/.test(fr[1].t) && /[؀-ۿ]/.test(fr[1].t)), JSON.stringify(fr));
+      check(`ui ${lang}: the folder-icons preview row shows ten labelled role folders (0.17.4)`, fr.length === 10 && fr.every((x) => x.svg && x.t) && (lang === 'en' ? fr[3].t === 'Exports' : /[؀-ۿ]/.test(fr[3].t)), JSON.stringify(fr));
       if (lang === 'en') {
         await page.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer [data-k="icoApply"]').click());
         await page.waitForFunction(() => /Icons applied/.test(document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer .set-ico-status')?.textContent || ''), null, { timeout: 8000 });
