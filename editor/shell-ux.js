@@ -94,7 +94,7 @@ function uxIsEmptySpace(el) {
 function uxBgPress(e) {
   const path = e.composedPath();
   if (path.includes(host)) return false;
-  if (path.some((x) => x.matches?.('main.bw-doc, dialog, [popover], #bw-watermark, #bw-overlay, .bw-ov'))) return false;
+  if (path.some((x) => x.matches?.('main.bw-doc, dialog, [popover], #bw-watermark, #bw-overlay, .bw-ov, .bw-dg-gallery, .bw-dg-edit, #bw-agent-ind, .bw-ru-tip'))) return false; // 0.17.12: a press inside a diagram pop-up (gallery, label editor) is not a press on the background
   return true;
 }
 window.addEventListener('pointerdown', (e) => { if (uxBgPress(e) && EXT.ribbon && !EXT.ribbon.state.collapsed) EXT.ribbon.collapse(true, { persist: false }); }, true);
