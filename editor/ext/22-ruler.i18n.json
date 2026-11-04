@@ -6,7 +6,14 @@
   "ru.mEnd": "هامش نهاية الصفحة",
   "ru.first": "إزاحة السطر الأول",
   "ru.start": "إزاحة البداية (معلّقة)",
-  "ru.end": "إزاحة النهاية"
+  "ru.end": "إزاحة النهاية",
+  "ru.tabType": "نوع علامة الجدولة",
+  "ru.tab.start": "بداية",
+  "ru.tab.center": "وسط",
+  "ru.tab.end": "نهاية",
+  "ru.tab.decimal": "عشرية",
+  "ru.tabStop": "علامة جدولة",
+  "ru.tabRemove": "إفلات لحذف العلامة"
  },
  "en": {
   "ru.label": "Page ruler",
@@ -15,6 +22,13 @@
   "ru.mEnd": "Page end margin",
   "ru.first": "First-line indent",
   "ru.start": "Start (hanging) indent",
-  "ru.end": "End indent"
+  "ru.end": "End indent",
+  "ru.tabType": "Tab type",
+  "ru.tab.start": "Left (start)",
+  "ru.tab.center": "Center",
+  "ru.tab.end": "Right (end)",
+  "ru.tab.decimal": "Decimal",
+  "ru.tabStop": "Tab stop",
+  "ru.tabRemove": "Release to remove the tab stop"
  }
 }
