@@ -9,7 +9,7 @@ const RB = { tab: 'home', collapsed: ls.get('bw:rb:c') === '1', ctx: null, key: 
  *  RB_MAX_GROUPS groups, so the panel never needs a scroll bar (note 3); an id that no command has is skipped at draw time, a command no group lists lands in «more» (rbSweep). */
 const RB_MAX_TOOLS = 28, RB_MAX_GROUPS = 6;
 const RB_TABS = [
-  ['file', [['save', ['save', 'saveHtml', 'import']], ['share', ['library', 'shShare']], ['newdoc', ['newdoc', 'process']]], null, '--bw-sec-file'],
+  ['file', [['save', ['saveHtml', 'import']], ['share', ['library', 'shShare']], ['newdoc', ['newdoc', 'process']]], null, '--bw-sec-file'],
   ['export', [['xpdf', ['export.pdf.ar', 'export.pdf.en', 'export.pdf.both']], ['xdocx', ['export.docx.ar', 'export.docx.en', 'export.docx.both']], ['xweb', ['export.html', 'export.printHtml.ar', 'export.printHtml.en', 'export.printHtml.both', 'export.edits', 'export.editsAll', 'export.pack']],
     ['xdiagram', ['export.mermaid', 'export.svg', 'export.png']], ['xprint', ['print', 'exportPdf', 'export.opts']], ['xproj', ['projExport', 'projImport']]], null, '--bw-sec-export'],
   ['home', [['edit', ['undo', 'redo', 'find', 'copyBlock', 'pasteBlock']], ['block', ['duplicate', 'delete', 'moveUp', 'moveDown', 'comment']]], null, '--bw-sec-edit'],
@@ -36,7 +36,7 @@ const RB_TABS = [
 const RB_ALIAS = ['exportEdits', 'exportAll']; // the old File-tab twins of export.edits / export.editsAll: one tool each now, on the Export tab
 const RB_LISTED = new Set([...RB_TABS.flatMap((x) => x[1].flatMap((g) => g[1])), ...RB_ALIAS]);
 const RB_PRESSED = { dark: () => S.dark, calm: () => S.calm, focus: () => S.focus, snap: () => S.snap, side: () => S.side, both: () => S.both, spell: () => !!(S.spell && (S.spell.ar || S.spell.en)) }; // spell: the one switch of 0.15.2 keeps S.spell.ar and .en equal
-const RB_SKIP = new Set(['uiLang', 'dir']); // the language and direction pills live in the quick strip only (note 8)
+const RB_SKIP = new Set(['uiLang', 'dir', 'save']); // the language and direction pills live in the quick strip only (note 8); 0.17.8 (O7): Save lives in the top bar
 /** The tab definitions with the sweep merged in: a command no group lists goes to View's «more» group, or to a tab of its own («tools») once View would pass the cap. */
 function rbDefs() {
   if (RB.defs && RB.defsN === CMDS.length) return RB.defs;

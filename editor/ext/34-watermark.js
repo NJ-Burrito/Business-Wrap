@@ -293,8 +293,11 @@
         const over = (rs, left, lift) => rs.some((r) => r.left < left + w + 8 && r.right > left - 8 && r.top < innerHeight - 16 - lift && r.bottom > innerHeight - 16 - lift - h - 8);
         const lift = Math.max(0, Math.round(innerHeight - 16 - Math.min(...toasts.map((r) => r.top), innerHeight) + 8));
         // home first; else the other corner; else the other corner above the toasts; else home
-        const tries = [['left', 0], ['right', 0], ['right', lift]];
-        const pick = tries.find(([side, lf]) => { const left = side === 'left' ? 16 : vw - 16 - w; return !over(panels, left, lf) && (side === 'left' || !over(toasts, left, lf)); }) || tries.find(([side, lf]) => { const left = side === 'left' ? 16 : vw - 16 - w; return !over(panels, left, lf); }) || tries[0];
+        // 0.17.8 (O4): home is a fixed offset from the left page edge (English) or the right one (Arabic mirrors it); the box is as wide as the longest role word
+        const home = S.ui === 'ar' ? 'right' : 'left', other = home === 'left' ? 'right' : 'left';
+        const tries = [[home, 0], [other, 0], ...(home === 'right' ? [[home, lift], [other, lift]] : [[other, lift]])];
+        const x = (side) => (side === 'left' ? 16 : vw - 16 - w);
+        const pick = tries.find(([side, lf]) => !over(panels, x(side), lf) && (side === 'right' ? !over(toasts, x(side), lf) : true)) || tries.find(([side, lf]) => !over(panels, x(side), lf)) || tries[0];
         if (wm.dataset.wmSide !== pick[0]) wm.dataset.wmSide = pick[0];
         wm.style.setProperty('--bw-wm-lift', pick[1] ? `${pick[1]}px` : '0px');
       };
@@ -327,6 +330,7 @@
     const label = () => {
       wm.dir = S.ui === 'ar' ? 'rtl' : 'ltr';
       wm.lang = S.ui;
+      wmAvoid(); // the home corner follows the language
       stage.setAttribute('aria-label', t('wmLabel', { r: roleName() }));
     };
     const settle = () => { wm.dataset.intro = 'done'; show(imgs[pi]); setTag(false); label(); };

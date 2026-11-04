@@ -1381,7 +1381,7 @@ function uiHtml() {
       </div>
     </div>
     <div class="ctx sec now" role="group" hidden></div>
-    ${['file', 'insert', 'edit', 'document', 'design', ...EXT.sections.map((x) => x.cat)].map((cat) => sec(cat, CMDS.filter((c) => c.group === cat).map(tool))).join('')}
+    ${['file', 'insert', 'edit', 'document', 'design', ...EXT.sections.map((x) => x.cat)].map((cat) => sec(cat, CMDS.filter((c) => c.group === cat && c.id !== 'save').map(tool))).join('')}
     ${sec('export', [pcExportMenu(), tool(CMDS.find((c) => c.id === 'print')), tool(CMDS.find((c) => c.id === 'exportPdf'))])}
     <span class="spacer"></span>
     <div class="status" role="status" aria-live="polite">
@@ -1396,6 +1396,7 @@ function uiHtml() {
     ${btn('view', { extra: ` aria-expanded="${S.view}" aria-controls="viewpop"` })}
     ${btn('settings')}
     </div></div>
+    ${tool(CMDS.find((c) => c.id === 'save')).replace('class="b primary"', 'class="b primary bar-save"')}
     ${btn('palette', { cls: 'cmd', label: t('palette'), tip: `${t('palette')} (Ctrl+K)`, extra: ' aria-keyshortcuts="Control+K"' })}
     <div class="progress" hidden aria-hidden="true"><i></i></div>
   </div>
@@ -2993,7 +2994,7 @@ document.addEventListener('click', (e) => {
     const cell = e.target.closest('td[data-r], table[data-rows] td');
     if (cell) lastCell = cell;
     selectEl(e.target);
-  } else if (uxIsEmptySpace(e.target)) {
+  } else if (uxIsEmptySpace(e.target) && !uxBgPress(e)) { // O1: the background around the page leaves the selection and its ribbon tab alone
     // a click on empty page or background: the general tools come back
     if (S.dg && performance.now() - (S.dgPickedAt || 0) < 600) return; // the press just picked a drawing; its click lands on the wrapper after a re-layout
     if (S.sel && (S.selAt || 0) >= (S.pressAt || 0)) return; // the press itself selected this block and the page redrew under it (owner-flows L22): its click lands on the wrapper, it must not undo the selection

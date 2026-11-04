@@ -89,6 +89,14 @@ function uxIsEmptySpace(el) {
   if (!el.closest?.('#bw-pair')) return false;
   return !el.closest('[data-b], [data-p], .bw-ov, figure[data-dg], .bw-dg-edit, #bw-overlay');
 }
+/** 0.17.8 (O1): a press on the background around the page (not in the editor UI, not on a page) changes nothing: no panel, drawer, menu, list or selection tool closes.
+ *  Esc and the explicit close buttons still work. Takes the event, reads its composed path. */
+function uxBgPress(e) {
+  const path = e.composedPath();
+  if (path.includes(host)) return false;
+  if (path.some((x) => x.matches?.('main.bw-doc, dialog, [popover], #bw-watermark, #bw-overlay, .bw-ov'))) return false;
+  return true;
+}
 /** Esc inside the UI peels one layer at a time: explainer → open menu → view popover → panel → the selection's tools. */
 function uxEscape() {
   if (xplHide()) return;
@@ -142,7 +150,7 @@ function uxMenuClose(menu, focusBack = false) {
 // an outside click closes the menus (the selection stays: only the document's own click handler decides that)
 window.addEventListener('pointerdown', (e) => {
   const open = uxMenusOpen();
-  if (!open.length) return;
+  if (!open.length || uxBgPress(e)) return;
   const path = e.composedPath();
   open.forEach((m) => { if (!path.includes(m) && !path.includes(m.previousElementSibling)) uxMenuClose(m); });
 }, true);
@@ -189,7 +197,7 @@ function uxGroup(d, kind) {
  * The press still selects what it lands on (one click, not two). Presses inside the UI — the panel, its colour
  * picker or font menu, the toolbar, menus, dialogs — keep it open; Esc keeps working. */
 window.addEventListener('pointerdown', (e) => {
-  if (!S.drawer) return;
+  if (!S.drawer || uxBgPress(e)) return; // O1: the background keeps the side panel open
   const path = e.composedPath();
   if (path.includes(host)) return;
   if (path.some((x) => x.matches?.('dialog, [popover]'))) return;

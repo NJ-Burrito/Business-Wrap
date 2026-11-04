@@ -43,6 +43,7 @@
 .island:has(> .ribbon) > .spacer { order: 4; }
 .island:has(> .ribbon) > .status { order: 5; }
 .island:has(> .ribbon) > .srv-toggle { order: 7; block-size: 40px; box-sizing: border-box; align-self: center; } /* 0.15.0 integration: the server toggle sits at the far end beside the power button, not between the mark and the selector */
+.island:has(> .ribbon) > .b.bar-save { order: 7; } /* 0.17.8 (O7): the gold Save sits in the top bar beside the palette, no longer in the Files group */
 .island:has(> .ribbon) > .b.cmd { order: 8; }
 .island:has(> .ribbon) > .progress { order: 9; }
 .island:has(> .ribbon) > .ribbon { order: 10; }
