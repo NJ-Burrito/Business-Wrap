@@ -8,6 +8,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.17.13] - 2026-11-05
+
+🛠️ A fix release from the owner's notes: a shorter save stamp, a calmer Save button, a clear message when exports are missing a package, and a host status that follows the switch. / 🛠️ إصدار إصلاحات من ملاحظات المالك: ختم حفظ أقصر، وزر حفظ أهدأ، ورسالة واضحة حين ينقص التصدير حزمة، وحالة خادم تتبع المفتاح.
+
+### Fixed / أصلح
+- 💾 **The «last saved» stamp is a small bubble with one time**: «Last saved: 08:49». The list and HTML times stay in its tooltip, and it shows on narrower screens (down to 1240 px). / **ختم «آخر حفظ» فقاعة صغيرة بوقت واحد**: «آخر حفظ: 08:49 ص». يبقى وقت القائمة ووقت HTML في التلميح، ويظهر على شاشات أضيق (حتى 1240 بكسل).
+- 🟡 **The gold Save button is calmer**: a deeper gold that gets darker on hover instead of brighter, a navy label at readable contrast, a clean save icon centred on the label, and a visible focus ring. / **زر الحفظ الذهبي أهدأ**: ذهبي أعمق يغمق عند المرور بدل أن يسطع، ونص كحلي بتباين مقروء، وأيقونة حفظ نظيفة في وسط النص، وحلقة تركيز ظاهرة.
+- 📦 **A copy without its packages now says so and can fix itself**: when `playwright-core` is missing (a zip copy or a plugin folder without `npm ci`), the editor shows one notice with «Install now» and the manual `npm ci`, instead of a raw «Cannot find package» error on export. The host also says it at start. / **النسخة التي تنقصها الحزم تقول ذلك الآن وتصلح نفسها**: حين تنقص `playwright-core` (نسخة من ملف مضغوط أو مجلد إضافة بلا `npm ci`) يعرض المحرر تنبيهاً واحداً فيه «ثبّت الآن» والأمر اليدوي `npm ci`، بدل خطأ «Cannot find package» الخام عند التصدير. ويذكر الخادم ذلك عند تشغيله.
+- 🔌 **The host status follows the switch**: a host that is shutting down says so, so the editor reopened from disk no longer shows a green «Connected» for it; after any change the status re-checks every 1.5 s for 15 s, and a refused connection turns it red at once. / **حالة الخادم تتبع المفتاح**: الخادم الذي يُغلق يعلن ذلك، فلا يظهر المحرر المفتوح من القرص «متصل» أخضر له؛ وبعد أي تغيير تُفحص الحالة كل 1.5 ثانية مدة 15 ثانية، والاتصال المرفوض يحوّلها إلى الأحمر فوراً.
+
 ## [0.17.12] - 2026-11-04
 
 🛠️ A fix release for the background click. / 🛠️ إصدار إصلاحات لنقرة الخلفية.

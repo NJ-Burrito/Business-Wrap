@@ -18,6 +18,7 @@ import { assertBase } from './edits-base.mjs';
 import { loadManifest, resolveFonts, fontFaceCss, systemFamily, normaliseFont, ttfDataUri } from './fonts.mjs';
 import { config } from './config.mjs';
 import { DIAGRAM } from './diagram.mjs';
+import { depsStatus, missingError } from './deps.mjs';
 import { workspace, ensure, uniquePath, outName, docTitle, noteOutput, localDir } from './workspace.mjs'; // the default output folder of the command line (a cycle by design: used inside functions only)
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -236,10 +237,13 @@ let playwright;
  *  (an npm or npx install hoists dependencies beside the package, not inside it). */
 export async function loadPlaywright() {
   if (playwright) return playwright;
+  if (process.env.BW_DEPS_ROOT && !depsStatus().ok) throw missingError(); // tests: a root with nothing installed fails like a copy without node_modules
   const local = path.join(REPO, 'node_modules', 'playwright-core', 'index.mjs');
   playwright = await import(fs.existsSync(local) ? pathToFileURL(local).href : 'playwright-core');
   return playwright;
 }
+/** 0.17.13: forget the cached module after the one-time install, so the next export finds what npm just wrote. */
+export function resetPlaywright() { playwright = undefined; }
 async function chromium() {
   return (await loadPlaywright()).chromium;
 }

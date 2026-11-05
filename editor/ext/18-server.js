@@ -57,11 +57,21 @@ const SB = (() => {
     });
     measureBar(true);
   }
+  /** 0.17.13: after a state change, and after an «online» answer in the first 20 s of a page's life (a host that is stopping can still answer once), ask again every 1.5 s for 15 s before relaxing to the 10 s beat. */
+  let fastUntil = 0, fastT = 0;
+  function fast() {
+    fastUntil = Date.now() + 15000;
+    if (fastT) return;
+    const tick = () => { fastT = 0; if (Date.now() >= fastUntil) return; fastT = setTimeout(tick, 1500); check(); };
+    fastT = setTimeout(tick, 1500);
+  }
   function set(mode, note = '') {
+    const changed = st.mode !== mode;
     st.mode = mode;
     st.note = note;
     if (mode === 'online') st.pulse = false;
     draw();
+    if (changed && (mode === 'online' || mode === 'offline')) fast();
     const online = mode === 'online';
     const answer = online ? true : mode === 'offline' || mode === 'error' ? false : null;
     if (answer !== null && answer !== st.answered) {
@@ -72,14 +82,17 @@ const SB = (() => {
     }
   }
   /** Who answers now: the ports a file:// page asks, or this served page's own /api/version (then, best effort, the other ports). */
+  let slow = 0; // consecutive timeouts of this page's own host
   async function probe() {
     if (served()) {
       try {
-        const j = await (await fetch('/api/version', { cache: 'no-store', signal: AbortSignal.timeout(6000) })).json();
-        if (j) {
-          return [Number(location.port) || 80];
-        }
-      } catch (e) { if (e?.name === 'TimeoutError' || e?.name === 'AbortError') return null; /* slow, not dead: keep what the toggle shows */ }
+        const j = await (await fetch('/api/version', { cache: 'no-store', signal: AbortSignal.timeout(slow ? 2500 : 6000) })).json();
+        slow = 0;
+        if (j) return j.stopping ? [] : [Number(location.port) || 80]; // 0.17.13: a host that says it is stopping is already gone
+      } catch (e) {
+        // 0.17.13: a refused connection means the host is gone (fall through at once to the other ports); a timeout is slow, not dead, once - the second in a row, with no export running, counts as gone
+        if (e?.name === 'TimeoutError' || e?.name === 'AbortError') { slow += 1; if (slow < 2 || jobRunning()) { fast(); return null; } }
+      }
     }
     return srvProbe();
   }
@@ -89,6 +102,7 @@ const SB = (() => {
     const found = await probe();
     if (!found || (isBusy() && st.mode !== 'checking') || SRV.busy) return;
     st.port = found[0] || 0;
+    if (found.length && performance.now() < 20000) fast();
     if (found.length) { const wanted = st.mode === 'error'; set('online'); if (wanted) reconnect(); } // a host came up after a failed start (a late «Open» in the browser box): a served page follows it
     else {
       if (st.mode === 'error') { draw(); return; } // an error stays until the next press or a server appears

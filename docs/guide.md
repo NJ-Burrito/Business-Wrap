@@ -46,6 +46,7 @@
 | Copied Arabic text splits words ("المدير ية") | pair kerning opened gaps | `font-kerning: none` |
 | `(SRS)` prints as `)SRS(`, list commas reorder | bidi-neutral punctuation around isolated runs | wrap the whole Latin phrase in one `<bdi>` |
 | `pdftotext` returns no Arabic | xpdf `pdftotext` without `-enc UTF-8`, or pymupdf/pdfium | use poppler with `-enc UTF-8`; never trust two tools agreeing |
+| Export fails with `Cannot find package 'playwright-core'` (the editor shows an «Install now» notice) | this copy has no `node_modules` (a zip or plugin folder) | press «Install now», or run `npm ci` in the Business-Wrap folder, then export again |
 | Python crashes printing Arabic | Windows cp1252 console | `PYTHONUTF8=1` |
 | Security gate fails on a line you wrote on purpose (documentation example) | the line matches a rule | add `bw-allow:<rule-id>` on that line, or rewrite it |
 | Security gate fails on `history:` | the hit is in an old commit | unpushed: amend/rebase that commit; pushed: rotate the secret, then rewrite history with the owner's approval |

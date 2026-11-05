@@ -1,0 +1,18 @@
+{
+  "ar": {
+    "deps.notice": "التصدير يحتاج تثبيتًا لمرة واحدة: حزمة playwright-core غير مثبّتة في هذه النسخة. اضغط «ثبّت الآن» (يلزم اتصال بالإنترنت)، أو شغّل الأمر npm ci داخل مجلد بزنس راب.",
+    "deps.install": "ثبّت الآن",
+    "deps.installing": "جارٍ التثبيت… قد يستغرق دقيقة أو دقيقتين.",
+    "deps.done": "تم التثبيت. يمكنك التصدير الآن.",
+    "deps.failed": "تعذّر التثبيت: {r}. شغّل الأمر npm ci داخل مجلد بزنس راب.",
+    "deps.retry": "حاول مرة أخرى"
+  },
+  "en": {
+    "deps.notice": "Export needs a one-time install: the playwright-core package is not installed in this copy. Press «Install now» (needs an internet connection), or run npm ci inside the Business-Wrap folder.",
+    "deps.install": "Install now",
+    "deps.installing": "Installing… this can take a minute or two.",
+    "deps.done": "Installed. You can export now.",
+    "deps.failed": "Install failed: {r}. Run npm ci inside the Business-Wrap folder.",
+    "deps.retry": "Try again"
+  }
+}

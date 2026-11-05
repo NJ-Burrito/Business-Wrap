@@ -9,7 +9,7 @@
 .drawer .lib-tpls { margin-top: 12px; }
 .drawer .lib-tpls summary { cursor: pointer; }
 .status { position: relative; }
-.status .bw-stamp { font-size: 11px; font-weight: 600; white-space: nowrap; color: var(--on-glass-soft); pointer-events: none; } /* 0.15.0: sits in the quick strip beside the counter (no floating pill) */
-@media (max-width: 1280px) { .status .bw-stamp { display: none; } }
+.status .bw-stamp { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--hair, color-mix(in srgb, var(--on-glass) 22%, transparent)); background: color-mix(in srgb, var(--on-glass) 8%, transparent); font-size: 11.5px; font-weight: 600; line-height: 1.4; white-space: nowrap; color: var(--on-glass-soft); cursor: default; } /* 0.17.13: a small bubble with ONE time (the most recent save); both times are in its tooltip */
+@media (max-width: 1230px) { .status .bw-stamp { display: none; } } /* measured 2026-11-05: with the short text the top bar keeps its height down to 1240 px (AR and EN); at 1200 it wrapped to a second row */
 
 .island.has-sel .status .bw-stamp { display: none; }

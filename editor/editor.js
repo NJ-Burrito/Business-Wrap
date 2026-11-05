@@ -1348,6 +1348,8 @@ function sec(cat, tools) {
 }
 /** A registry command as a toolbar tool: its label, its tooltip (with the shortcut), the shortcut shown in menus. */
 const TIPS = { image: 'imageTip', logo: 'logoTip', exportPdf: 'exportPdfTip' };
+/** 0.17.13: the top-bar Save draws the plain Lucide `save` (floppy, ISC) at the bar's stroke weight; the registry icon carries a gold highlight part that disappears on the gold fill. data-ic stays so the icon's own nudge still plays. */
+const SAVE_ICON = '<svg aria-hidden="true" focusable="false" class="ic" data-ic="save" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>';
 function tool(c) {
   return btn(c.id, { cls: c.id === 'save' ? 'primary' : '', tip: TIPS[c.id] ? t(TIPS[c.id]) : c.key ? `${t(c.id)} (${c.key})` : '' });
 }
@@ -1396,7 +1398,7 @@ function uiHtml() {
     ${btn('view', { extra: ` aria-expanded="${S.view}" aria-controls="viewpop"` })}
     ${btn('settings')}
     </div></div>
-    ${tool(CMDS.find((c) => c.id === 'save')).replace('class="b primary"', 'class="b primary bar-save"')}
+    ${tool(CMDS.find((c) => c.id === 'save')).replace('class="b primary"', 'class="b primary bar-save"').replace(/<svg[\s\S]*?<\/svg>/, SAVE_ICON)}
     ${btn('palette', { cls: 'cmd', label: t('palette'), tip: `${t('palette')} (Ctrl+K)`, extra: ' aria-keyshortcuts="Control+K"' })}
     <div class="progress" hidden aria-hidden="true"><i></i></div>
   </div>
@@ -1517,7 +1519,7 @@ function fitBar() {
   // A write that leaves the markup as it was (the same class, the same text set again, the visually hidden status line) is not a change.
   const real = (r) => {
     if (r.target.nodeType === 1 && r.target.closest?.('.vh')) return false;
-    if (r.type === 'attributes' && ((r.attributeName.startsWith('data-') && r.target.classList?.contains('bw-stamp')) || r.attributeName === 'data-pulse')) return false; // the save stamp's data-* (a timestamp) and the server toggle's pulse flag (a timed animation switch) never change the bar's layout
+    if (r.type === 'attributes' && (((r.attributeName.startsWith('data-') || r.attributeName === 'title') && r.target.classList?.contains('bw-stamp')) || r.attributeName === 'data-pulse')) return false; // the save stamp's data-* (a timestamp) and the server toggle's pulse flag (a timed animation switch) never change the bar's layout
     if (r.type === 'attributes') return r.target.getAttribute(r.attributeName) !== r.oldValue;
     if (r.type === 'characterData') return r.target.data !== r.oldValue;
     const gone = [...r.removedNodes], came = [...r.addedNodes];
@@ -1726,6 +1728,7 @@ function dismiss(el) {
   setTimeout(() => el.remove(), 260);
 }
 function flash(msg, bad = false) {
+  if (bad && EXT.deps?.map?.(msg)) return; // 0.17.13: a missing playwright-core is one friendly notice with «Install now», not the raw path (ext/19-deps.js)
   const f = root.querySelector('.flash');
   if (f) f.textContent = msg;
   toast(msg, bad ? 'err' : 'ok');

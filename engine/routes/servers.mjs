@@ -55,6 +55,7 @@ export default async (req, url, send, ctx) => {
   let reopened = null;
   if (b.returnTo && typeof b.returnTo === 'object') reopened = await reopenOnDisk(b.returnTo, ctx);
   send(200, { ok: true, grace: GRACE(), servers: peers.length + 1, ...(reopened ? { reopened } : {}) });
+  ctx.stopping = true; // 0.17.13: /api/health and /api/version say so for the grace window, so the reopened file:// editor does not take this host for a live one
   setTimeout(() => stopSelf(ctx), GRACE());
   return true;
 };

@@ -31,9 +31,9 @@ fs.mkdirSync(path.dirname(editor), { recursive: true });
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: editor, set: 'sample' });
 
 /** A stand-in for a Business-Wrap server: answers GET /api/version the way a file:// page's probe expects. */
-function fake(port) {
+function fake(port, { stopping = false } = {}) {
   const s = http.createServer((req, res) => {
-    if (req.url === '/api/version' || req.url === '/api/health') { res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': req.headers.origin || '*' }); res.end(JSON.stringify({ name: 'Business-Wrap', version: '0.0.0-test', served: true, port })); } else { res.writeHead(404); res.end(); }
+    if (req.url === '/api/version' || req.url === '/api/health') { res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': req.headers.origin || '*' }); res.end(JSON.stringify({ name: 'Business-Wrap', version: '0.0.0-test', served: true, port, ...(stopping ? { stopping: true } : {}) })); } else { res.writeHead(404); res.end(); }
   });
   return { up: () => new Promise((ok) => s.listen(port, '127.0.0.1', ok)), down: () => new Promise((ok) => { s.close(() => ok()); s.closeAllConnections?.(); }) };
 }
@@ -187,6 +187,43 @@ try {
   check('a server already up when the file opens: online, no pulse, W07 not fired for the first answer', await until(async () => (await toggles(k))[0]?.st === 'online', 8000) && (await toggles(k))[0].pulse === '0' && !(await events(k)).some((x) => x.startsWith('wm:')), JSON.stringify([await toggles(k), await events(k)]));
   await c6.close();
   await fs3.down();
+
+  // ── 6. 0.17.13 (owner note 4): a host in its power-off grace window is not a host; a host that vanishes is noticed within seconds (timing measured INSIDE the page) ──
+  const port4 = await free();
+  const fs4 = fake(port4, { stopping: true });
+  await fs4.up();
+  const { ctx: c7, page: m } = await open(fileUrl, { ports: [port4] });
+  await sleep(1800);
+  check('a file:// page whose only host answers stopping:true shows offline, never online (the reopened editor ignores a host that is shutting down)', (await toggles(m))[0]?.st === 'offline' && !(await events(m)).includes('server:true'), JSON.stringify({ t: await toggles(m), ev: await events(m) }));
+  await c7.close();
+  await fs4.down();
+
+  const port5 = await free();
+  const fs5 = fake(port5);
+  await fs5.up();
+  const { ctx: c8, page: n } = await open(fileUrl, { ports: [port5] });
+  await until(async () => (await toggles(n))[0]?.st === 'online', 8000);
+  await n.evaluate(() => { window.__tr = []; new MutationObserver(() => window.__tr.push([document.documentElement.dataset.bwServer, performance.now()])).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bw-server'] }); });
+  const t0 = await n.evaluate(() => performance.now());
+  await fs5.down();
+  const wentOff = await until(async () => (await toggles(n))[0]?.st === 'offline', 9000, 100);
+  const tr = await n.evaluate(() => window.__tr);
+  const offAt = tr.find((x) => x[0] === 'offline');
+  check('a page that saw its host online in the first seconds notices it gone within 6 s (fast re-check, measured in the page), not after the 10 s beat', wentOff && offAt && offAt[1] - t0 < 6000, JSON.stringify({ t0, tr }));
+  await c8.close();
+
+  // the host side: stopping:true in /api/health and /api/version for the grace window, then the host is gone (the power route flushes only this host's tabs)
+  process.env.BW_POWER_GRACE_MS = '2500';
+  const s6 = await serve(editor, 0, { workspace: null });
+  const p6 = s6.address().port;
+  const j6 = async (u) => (await (await fetch(`http://127.0.0.1:${p6}${u}`, { headers: { origin: 'null' } })).json());
+  const before = [(await j6('/api/health')).stopping, (await j6('/api/version')).stopping];
+  const off6 = await fetch(`http://127.0.0.1:${p6}/api/power/off`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"confirm":true}' });
+  const during = [(await j6('/api/health')).stopping, (await j6('/api/version')).stopping];
+  check('host: /api/health and /api/version carry no stopping flag normally, stopping:true during the grace window after a power-off', off6.ok && before.every((x) => x === undefined) && during.every((x) => x === true), JSON.stringify({ before, during }));
+  s6.close();
+  s6.closeAllConnections?.();
+  delete process.env.BW_POWER_GRACE_MS;
 } catch (e) {
   check('suite ran to the end', false, e.stack?.split('\n').slice(0, 5).join(' / '));
 } finally {

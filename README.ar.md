@@ -50,7 +50,7 @@
 
 1️⃣ **احصل على المجلد.** نزل `business-wrap-<version>.zip` من [صفحة الإصدارات](https://github.com/NJ-Burrito/Business-Wrap/releases/latest) وفك ضغطه. أو انسخ المستودع: `git clone https://github.com/NJ-Burrito/Business-Wrap` ثم `cd Business-Wrap`. وافتح طرفية (نافذة تكتب فيها الأوامر) داخل ذلك المجلد.
 
-2️⃣ **ثبت مرة واحدة:** `npm ci`
+2️⃣ **ثبت مرة واحدة:** `npm ci` (النسخة التي بلا `node_modules`، مثل ملف zip، لا تصدّر PDF أو DOCX قبل هذه الخطوة. يخبرك المحرر بذلك ويعرض «ثبّت الآن»، ويطبع الخادم سطرا واحدا عند التشغيل.)
 
 3️⃣ **شغله:** `npm run serve` (في المرة الأولى يبني محرر المثال). وافتح العنوان الذي يطبعه `http://127.0.0.1:4317/` في Google Chrome.
 
@@ -219,12 +219,12 @@
 
 💬 ثم قل: **«ابن وثيقة متطلبات …»** أو **«افتحها في المحرر»**.
 
-🔌 **خادم MCP وحده** (أي عميل MCP، stdio محلي؛ الإصدار 0.17.12 من وسم GitHub، فسجل npm ما زال على 0.12.0):
+🔌 **خادم MCP وحده** (أي عميل MCP، stdio محلي؛ الإصدار 0.17.13 من وسم GitHub، فسجل npm ما زال على 0.12.0):
 
 <div dir="ltr">
 
 ```
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.17.12 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.17.13 business-wrap-mcp
 ```
 
 </div>

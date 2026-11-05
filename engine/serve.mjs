@@ -22,6 +22,7 @@ import { fork, spawnSync } from 'node:child_process';
 import { crawl, harvestToDocument } from './harvest/crawl.mjs';
 import { learningRoute } from './learning/http.mjs';
 import { printApi } from './printers.mjs';
+import { depsStatus } from './deps.mjs';
 import { workspace as liveWorkspace, ensure as ensureWorkspace, outName, uniquePath, docTitle, exportTitle, inHistory, localDir, noteOutput } from './workspace.mjs';
 
 
@@ -111,14 +112,14 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
       // that, is readable from a null origin, and only name + version + port are given (no update state, no repository).
       if (req.method === 'GET' && url.pathname === '/api/version' && req.headers.origin === 'null') {
         res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'access-control-allow-origin': 'null', vary: 'Origin' });
-        return res.end(JSON.stringify({ name: 'Business-Wrap', version: versionOf(), served: true, port: server.address()?.port ?? null }));
+        return res.end(JSON.stringify({ name: 'Business-Wrap', version: versionOf(), served: true, port: server.address()?.port ?? null, ...(ctx.stopping ? { stopping: true } : {}) }));
       }
       if (url.pathname === '/api/version' || url.pathname.startsWith('/api/update')) {
         // the editor's Settings page and update popup (editor/update.js, editor/settings.js). The check runs here,
         // from the public release list, no token needed: the page never holds a token and never calls GitHub itself.
         if (req.headers.origin && !LOCAL_ORIGIN.test(req.headers.origin)) return send(403, { error: 'origin' });
         if (req.method === 'GET' && url.pathname === '/api/version') {
-          return send(200, { ...aboutInfo(), version: versionOf(), served: true, mode: fs.existsSync(path.join(installDir, '.git')) ? 'git' : 'zip', checks: updateSettings().check, last, updating: !!(job && !job.finished) });
+          return send(200, { ...aboutInfo(), version: versionOf(), served: true, ...(ctx.stopping ? { stopping: true } : {}), mode: fs.existsSync(path.join(installDir, '.git')) ? 'git' : 'zip', checks: updateSettings().check, last, updating: !!(job && !job.finished) });
         }
         if (req.method === 'GET' && (url.pathname === '/api/update' || url.pathname === '/api/update/check')) {
           const r = await checkForUpdate({ force: url.searchParams.get('force') === '1', current: versionOf() });
@@ -299,6 +300,8 @@ usage: node engine/serve.mjs <editor.html> [--port 4317] [--out <exports folder>
         onUpdated: () => { server.close(() => process.exit(RESTART_CODE)); server.closeAllConnections?.(); setTimeout(() => process.exit(RESTART_CODE), 3000).unref(); },
       });
       console.log(`Business-Wrap editor on http://127.0.0.1:${server.address().port}/  (Ctrl+C to stop)`);
+      const dp = depsStatus();
+      if (!dp.ok) console.log(`Missing: ${dp.missing.join(', ')} is not installed in this copy, so PDF/DOCX export will not work yet. Run \`npm ci\` in ${REPO} (or press «Install now» in the editor).`);
       console.log('Open that address in Google Chrome (or another Chromium browser). Use the editor through this server, not by double-clicking the HTML file: export, print, the printers list and updates need it.');
     } catch (e) {
       console.error(`serve failed: ${e.message}`);

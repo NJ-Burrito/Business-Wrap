@@ -136,7 +136,7 @@ async function srvProbe(path = '/api/version') { // path: '/api/health' while a 
   await Promise.all(srvPorts().map(async (p) => {
     try {
       const j = await (await fetch(`http://127.0.0.1:${p}${path}`, { cache: 'no-store', signal: AbortSignal.timeout(900) })).json();
-      if (j && j.name === 'Business-Wrap') found.push(p);
+      if (j && j.name === 'Business-Wrap' && !j.stopping) found.push(p); // 0.17.13: a host in its power-off grace window (stopping:true) is not a host to connect to
     } catch { /* nothing answers on this port */ }
   }));
   return found.sort((a, b) => a - b);

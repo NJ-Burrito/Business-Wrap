@@ -232,7 +232,7 @@ const LIB = (() => {
   const persistNow = () => (soonId ? persist(soonId) : null);
 
   /* «آخر حفظ» beside the change counter: the list copy (a document) or the draft (a template), and the last Save HTML */
-  const hhmm = (d) => { try { return d ? new Date(d).toLocaleTimeString(S.ui === 'ar' ? 'ar' : 'en', { hour: '2-digit', minute: '2-digit' }) : '—'; } catch { return '—'; } };
+  const hhmm = (d) => { try { return d ? new Date(d).toLocaleTimeString(S.ui === 'ar' ? 'ar' : 'en', { hour: '2-digit', minute: '2-digit', ...(S.ui === 'ar' ? {} : { hourCycle: 'h23' }) }) : '—'; } catch { return '—'; } };
   function stamp() {
     const c = root.querySelector('.count');
     if (!c) return;
@@ -244,8 +244,13 @@ const LIB = (() => {
     const doc = isDoc(S.svc) && !pending[S.svc];
     const list = doc ? savedAt[S.svc] : S.savedAt;
     // every key lands here (persistSoon): write only what changed, so the toolbar fit (a MutationObserver on the bar) is not woken per key
-    const txt = t(doc ? 'libStamp' : 'libStampDraft', { list: hhmm(list), html: hhmm(html) });
+    // 0.17.13: the bubble shows ONE time, the most recent of the list/draft save and the last Save HTML; the full detail (both times) stays in its tooltip
+    const ms = (d) => { const n = d ? new Date(d).getTime() : NaN; return Number.isFinite(n) ? n : 0; };
+    const last = ms(list) >= ms(html) ? list : html;
+    const txt = t('libStamp', { time: hhmm(last) });
     if (el.textContent !== txt) el.textContent = txt;
+    const tip = t(doc ? 'libStampTip' : 'libStampTipDraft', { list: hhmm(list), html: hhmm(html) });
+    if (el.title !== tip) el.title = tip;
     const dl = list ? new Date(list).toISOString() : '';
     if (el.dataset.list !== dl) el.dataset.list = dl;
     if (el.dataset.html !== (html || '')) el.dataset.html = html || '';

@@ -135,6 +135,8 @@ try {
   const st = await page.evaluate(() => { const el = document.getElementById('bw-ui-host').shadowRoot.querySelector('.bw-stamp'); return { text: el?.textContent || '', list: el?.dataset.list || '' }; });
   const tt = await toasts();
   check('an edit is autosaved into the list entry, the «آخر حفظ» stamp moves, no «حُفظ تلقائياً» toast', stored === 3 && st.list && st.list !== stamp0 && /آخر حفظ/.test(st.text) && !/حُفظ تلقائياً/.test(tt), JSON.stringify({ stored, st, stamp0, tt: tt.slice(0, 200) }));
+  const bub = await page.evaluate(() => { const el = document.getElementById('bw-ui-host').shadowRoot.querySelector('.bw-stamp'); const cs = el && getComputedStyle(el); return { text: el?.textContent || '', title: el?.title || '', role: el?.getAttribute('role'), radius: cs?.borderTopLeftRadius, w: el?.getBoundingClientRect().width, html: el?.dataset.html }; });
+  check('0.17.13: the save stamp is a small bubble with ONE time («آخر حفظ: 08:49 ص», no list/HTML pair); both times stay in its tooltip; role=status', /^آخر حفظ: \S+( \S+)?$/.test(bub.text) && !/القائمة|HTML/.test(bub.text) && /القائمة/.test(bub.title) && /HTML/.test(bub.title) && bub.role === 'status' && parseFloat(bub.radius) >= 10 && bub.w < 150, JSON.stringify(bub));
   await page.reload();
   await ready();
   await page.waitForFunction((id) => window.BW.S.svc === id, id1, { timeout: 5000 }).catch(() => {});

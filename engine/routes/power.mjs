@@ -26,6 +26,7 @@ export default async (req, url, send, ctx) => {
   if (b?.confirm !== true) { send(400, { error: 'confirm' }); return true; }
   emit(ctx, 'flush'); // every tab saves now (0.15.0: one stream per browser; ctx.session.live no longer exists)
   send(200, { ok: true, grace: GRACE_MS });
+  ctx.stopping = true; // 0.17.13: reported by /api/health and /api/version during the grace window
   setTimeout(() => stopSelf(ctx), GRACE_MS);
   return true;
 };

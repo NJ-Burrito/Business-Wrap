@@ -9,6 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { state, registry } from './session.mjs';
 import { parentChange } from '../workspace.mjs';
+import { depsStatus } from '../deps.mjs';
 
 /** The save folder as a tool should see it: its root, whether the person chose it, and (since this host started) any change of it. */
 export function workspaceNote(ws) {
@@ -28,7 +29,7 @@ function publicHealth(req, res, ctx) {
   const h = { 'content-type': 'application/json', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', vary: 'Origin' };
   if (o === 'null' || (o && LOCAL_ORIGIN.test(o))) h['access-control-allow-origin'] = o;
   res.writeHead(200, h);
-  res.end(JSON.stringify({ ok: true, name: 'Business-Wrap', version: version(), port: ctx.server?.address?.()?.port ?? null }));
+  res.end(JSON.stringify({ ok: true, name: 'Business-Wrap', version: version(), port: ctx.server?.address?.()?.port ?? null, deps: depsStatus(), ...(ctx.stopping ? { stopping: true } : {}) }));
 }
 
 export default async (req, url, send, ctx, res) => {
@@ -45,6 +46,8 @@ export default async (req, url, send, ctx, res) => {
     hostKey: process.env.BW_HOST_TOKEN ? crypto.createHash('sha256').update(process.env.BW_HOST_TOKEN).digest('hex').slice(0, 16) : null, // proves which start spawned it, never the token
     uptimeS: Math.round(process.uptime()),
     workspace: ws ? workspaceNote(ws) : null, // 0.16.0: {root, chosen, changed?:{from, to, at, by}}: a save-folder change is named here and in every editor reply
+    deps: depsStatus(), // 0.17.13: {ok, missing:[…]} — playwright-core not installed (a copy without node_modules): exports fail until `npm ci`
+    ...(ctx.stopping ? { stopping: true } : {}), // 0.17.13: the grace window of a power-off
     runId: s.runId,
     clients: r.clients,
     tabs: r.tabs,

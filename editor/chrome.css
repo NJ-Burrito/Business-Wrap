@@ -58,6 +58,15 @@
 /* hierarchy: the one primary action on the glass is a gold fill with a navy label; everything else stays quiet */
 .island .b.primary { box-shadow: 0 0 0 1px color-mix(in srgb, var(--bw-accent) 45%, transparent); }
 .island .b.primary:hover:not(:disabled) { transform: translateY(-1px); }
+/* 0.17.13 (owner note): the top-bar Save. Resting fill is the accent deepened 8 % toward black (navy label 5.4:1 light, 7.4:1 dark); hover goes DEEPER (14 %, 4.7:1 light, 6.5:1 dark), never lighter, so there is no glare on a bright fill;
+ * the icon keeps the label colour on hover (the shared --ic-hot is the accent, which vanished on a gold fill); a ring in the glass text colour marks keyboard focus (the island's --focus is the accent, gold on gold) */
+.island .b.primary.bar-save { --ic-hot: var(--bw-on-accent); background: color-mix(in srgb, var(--bw-accent) 92%, black) !important; color: var(--bw-on-accent) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, black 14%, transparent); transition: background-color var(--bw-dur-fast, .18s) var(--bw-ease-out, ease-out), transform .42s var(--e-spring, ease-out); }
+.island .b.primary.bar-save:hover:not(:disabled) { background: color-mix(in srgb, var(--bw-accent) 86%, black) !important; transform: none; }
+.island .b.primary.bar-save:focus-visible { outline: 2px solid var(--on-glass); outline-offset: 2px; }
+.island .b.primary.bar-save:active:not(:disabled) { background: color-mix(in srgb, var(--bw-accent) 80%, black) !important; transform: scale(var(--press, .96)); }
+.island .b.primary.bar-save .ic { stroke-width: 2; }
+.shell:not([data-calm="1"]) .island .b.primary.bar-save:hover:not(:disabled) .ic { transform: none; }
+.shell[data-calm="1"] .island .b.primary.bar-save { transition: none; }
 /* UI-CHROME-07: the primary button presses like every other (its hover lift outranked the shared :active) */
 .island .b.primary:active:not(:disabled) { transform: scale(var(--press, .96)); }
 .drawer .b.primary, .dialog .b.primary { box-shadow: var(--bw-shadow-1); }
