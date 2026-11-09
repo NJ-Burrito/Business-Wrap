@@ -1,0 +1,22 @@
+{
+  "id": "uat-signoff",
+  "code": "UAT",
+  "category": "delivery",
+  "order": 20,
+  "since": "0.18.0",
+  "name": {
+    "ar": "محضر قبول المستخدم (UAT)",
+    "en": "UAT sign-off"
+  },
+  "description": {
+    "ar": "محضر قبول المستخدم: المشاركون والسيناريوهات ونتائجها والعيوب المفتوحة ومعايير القبول، ثم قرار مقبول أو مقبول بشروط أو مرفوض بتواقيع الممثلين.",
+    "en": "The user acceptance record: participants, scenarios and results, open defects and acceptance criteria, then a decision of accepted, accepted with conditions or rejected, signed by the representatives."
+  },
+  "placeholder": {
+    "ar": "اسم المشروع",
+    "en": "Project name"
+  },
+  "palette": "gold",
+  "coverDesign": "spine",
+  "motif": "uat-signoff"
+}

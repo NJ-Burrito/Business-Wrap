@@ -236,7 +236,7 @@ function viewsRuns(main) {
   // the page each segment starts on (its marker's column)
   const starts = [...main.querySelectorAll('a.bw-seg[data-seg]')].map((a) => [viewsPageOf(a), +a.dataset.seg]).sort((x, y) => x[0] - y[0]);
   const segOf = (k) => starts.reduce((s, [p, n2]) => (p <= k ? n2 : s), segs[0]?.n ?? 0);
-  const first = main.querySelector('.cover') ? 1 : 0;
+  const first = main.querySelector('.cover:not([data-cover="compact"])') ? 1 : 0; // 0.18.0: a compact cover is a title block on page 1, not a cover page: its page carries the running bands like any other
   const lay = document.createElement('div');
   lay.className = 'bw-runs';
   lay.setAttribute('contenteditable', 'false');

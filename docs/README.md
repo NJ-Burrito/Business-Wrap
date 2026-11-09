@@ -18,6 +18,7 @@
 |---|---|---|---|
 | 🚀 | [Guide](guide.md) | install, quickstart, troubleshooting, backup, hand-over | [guide.ar.md](guide.ar.md) |
 | 🔒 | [Privacy](privacy.md) | everything stays on your machine; the only network use is the one you choose | [privacy.ar.md](privacy.ar.md) |
+| 📑 | [Document types](../bible/14-document-types.md) | the 17 types, the start page, `business-wrap new --type`, adding a type | [14-document-types.ar.md](../bible/14-document-types.ar.md) |
 | 🗺️ | [Roadmap](roadmap.md) | the plan written at 0.1.0 and what has shipped since | [roadmap.ar.md](roadmap.ar.md) |
 | ⚖️ | [Decisions](decisions.md) | each ruling: date, decision, why, what enforces it | [decisions.ar.md](decisions.ar.md) |
 | 📖 | [Glossary](glossary.md) | the words the tool uses, English and Arabic in one table | same file |

@@ -1,0 +1,575 @@
+{
+  "composedAt": "",
+  "control": {
+    "documentId": "BW-CR-NEW-001",
+    "title": "Change request with impact analysis: Change title",
+    "preparedBy": "Name and job title",
+    "documentType": "Change request with impact analysis",
+    "classification": "Internal",
+    "owner": "Organisation name",
+    "issuedOn": "YYYY-MM-DD",
+    "version": "V0.1",
+    "status": "Draft",
+    "reviewCycle": "At every change request"
+  },
+  "revisions": [
+    [
+      "V0.1",
+      "YYYY-MM-DD",
+      "First draft",
+      "—"
+    ]
+  ],
+  "labels": {
+    "kicker": "CHANGE REQUEST",
+    "subtitle": "Request number and project"
+  },
+  "chapters": [
+    {
+      "title": "Change summary",
+      "sections": [
+        {
+          "title": "Change summary",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "A short card identifying the request: title, date, who asked and the requirement or deliverable affected."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "Value"
+              ],
+              "rows": [
+                [
+                  "CR number",
+                  "CR-001"
+                ],
+                [
+                  "Project or system",
+                  "…"
+                ],
+                [
+                  "Requested by",
+                  "…"
+                ],
+                [
+                  "Request date",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "Priority",
+                  "High, medium or low"
+                ],
+                [
+                  "Change type",
+                  "Scope, schedule, cost or technical"
+                ],
+                [
+                  "Affected item",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Reason and justification",
+      "sections": [
+        {
+          "title": "Reason and justification",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Why the change is needed now and what happens if it is not made. Write a real effect, not an opinion."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Description of the change",
+      "sections": [
+        {
+          "title": "Description of the change",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Set the currently approved position against the proposed one, item by item."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "Current",
+                "Proposed"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Impact analysis",
+      "sections": [
+        {
+          "title": "Impact analysis",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Rate each area as none, low, medium or high, then explain everything above none."
+              ]
+            },
+            {
+              "kind": "subhead",
+              "text": "Impact matrix"
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Area",
+                "Impact level",
+                "Description",
+                "Effort (person-days)"
+              ],
+              "rows": [
+                [
+                  "Scope",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Requirements",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Design",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Development",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Testing",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Documentation",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Schedule",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Cost",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Resources",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Risk",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Users and training",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Interfaces",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Effort, schedule and cost estimate",
+      "sections": [
+        {
+          "title": "Effort, schedule and cost estimate",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "The estimate in figures, and what changes in the delivery dates and the approved budget."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "Approved",
+                "After change",
+                "Difference"
+              ],
+              "rows": [
+                [
+                  "Effort",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Delivery date",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Cost",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Alternatives considered",
+      "sections": [
+        {
+          "title": "Alternatives considered",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "At least one alternative, including the option of not making the change."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Option",
+                "Pros",
+                "Cons",
+                "Cost"
+              ],
+              "rows": [
+                [
+                  "Do not change",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Risks",
+      "sections": [
+        {
+          "title": "Risks",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "The risks of making the change and of not making it."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Risk",
+                "Likelihood",
+                "Impact",
+                "Mitigation"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Implementation and rollback plan",
+      "sections": [
+        {
+          "title": "Implementation and rollback plan",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "The steps, who owns each and its date, and how to return to the previous state if the change fails."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Step",
+                "Owner",
+                "Date"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "…",
+                  "…",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "Rollback",
+                  "…",
+                  "YYYY-MM-DD"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Affected items",
+      "sections": [
+        {
+          "title": "Affected items",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "The documents, requirements and test cases that will be edited if the change is approved."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "ID",
+                "Version",
+                "Change needed"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Decision and approval",
+      "sections": [
+        {
+          "title": "Decision and approval",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "The change board's decision: approved, rejected or deferred, with conditions. Then the members sign."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Decision",
+                "Choice"
+              ],
+              "rows": [
+                [
+                  "Approved",
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ],
+                [
+                  "Rejected",
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ],
+                [
+                  "Deferred",
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ]
+              ]
+            },
+            {
+              "kind": "subhead",
+              "text": "Signatures"
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Name",
+                "Board role",
+                "Decision",
+                "Signature",
+                "Date"
+              ],
+              "rows": [
+                [
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ],
+                [
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ],
+                [
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ]
+              ],
+              "blankCell": "",
+              "rowHeights": [
+                18,
+                18,
+                18
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "openQuestions": []
+}

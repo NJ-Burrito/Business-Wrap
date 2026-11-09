@@ -1,0 +1,22 @@
+{
+  "id": "tot",
+  "code": "TOT",
+  "category": "training",
+  "order": 10,
+  "since": "0.18.0",
+  "name": {
+    "en": "Training of Trainers (TOT) guide",
+    "ar": "دليل تدريب المدربين (TOT)"
+  },
+  "description": {
+    "en": "Prepares a trainer to deliver a programme: objectives, modules, sessions, exercises, assessment and follow-up, with a day-by-day schedule.",
+    "ar": "يعد المدرب لتقديم برنامج تدريبي: الأهداف والوحدات والجلسات والتمارين والتقييم والمتابعة، مع جدول زمني يوما بيوم."
+  },
+  "placeholder": {
+    "en": "Programme name",
+    "ar": "اسم البرنامج"
+  },
+  "palette": "rust",
+  "coverDesign": "spine",
+  "motif": "tot"
+}

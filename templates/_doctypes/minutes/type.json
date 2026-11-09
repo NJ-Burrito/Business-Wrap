@@ -1,0 +1,28 @@
+{
+  "id": "minutes",
+  "code": "MOM",
+  "category": "governance",
+  "order": 30,
+  "since": "0.18.0",
+  "name": {
+    "en": "Minutes of meeting",
+    "ar": "محضر اجتماع"
+  },
+  "description": {
+    "en": "Records what happened in a meeting: attendance, items, decisions and actions with owners and dates, for those who attended and those who did not.",
+    "ar": "يسجل ما جرى في الاجتماع: الحضور والبنود والقرارات والإجراءات بأصحابها ومواعيدها، لمن حضر ولمن لم يحضر."
+  },
+  "placeholder": {
+    "en": "Meeting subject",
+    "ar": "موضوع الاجتماع"
+  },
+  "palette": "slate",
+  "coverDesign": "compact",
+  "motif": "minutes",
+  "layout": {
+    "hide": [
+      "revisions",
+      "toc"
+    ]
+  }
+}

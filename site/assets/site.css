@@ -201,6 +201,8 @@ html[data-theme="dark"] .masthead .mark .rule { stroke: var(--bw-accent); }
 .flow p { color: var(--bw-ink-muted); }
 .how-media { margin: 48px auto 0; max-width: 880px; }
 .how-media video { width: 100%; aspect-ratio: 2 / 1; object-fit: cover; border-radius: var(--bw-radius-md); background: var(--bw-surface); box-shadow: var(--bw-shadow-2); outline: 1px solid color-mix(in srgb, var(--bw-ink) 10%, transparent); outline-offset: -1px; }
+.how-media img { display: block; width: 100%; height: auto; border-radius: var(--bw-radius-md); background: var(--bw-surface); box-shadow: var(--bw-shadow-2); outline: 1px solid color-mix(in srgb, var(--bw-ink) 10%, transparent); outline-offset: -1px; }
+.how-media.studio-shot { margin: 0 auto 40px; max-width: 960px; }
 
 /* 02 features: story cards with their gold id */
 .stories { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }

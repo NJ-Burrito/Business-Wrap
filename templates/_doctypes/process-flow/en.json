@@ -1,0 +1,724 @@
+{
+  "composedAt": "",
+  "control": {
+    "documentId": "BW-PF-NEW-001",
+    "title": "Process flow document (as-is and to-be): Process name",
+    "preparedBy": "Name and job title",
+    "documentType": "Process flow document (as-is and to-be)",
+    "classification": "Internal",
+    "owner": "Organisation name",
+    "issuedOn": "YYYY-MM-DD",
+    "version": "V0.1",
+    "status": "Draft",
+    "reviewCycle": "On every change to the process"
+  },
+  "revisions": [
+    [
+      "V0.1",
+      "YYYY-MM-DD",
+      "First draft",
+      "—"
+    ]
+  ],
+  "labels": {
+    "kicker": "PROCESS FLOW",
+    "subtitle": "The process as it runs, and as it should run"
+  },
+  "chapters": [
+    {
+      "number": "1",
+      "title": "Purpose and scope",
+      "sections": [
+        {
+          "number": "1.1",
+          "title": "Process definition",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Say what the process is, what starts it, what ends it and what is in and out of scope."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "Description"
+              ],
+              "rows": [
+                [
+                  "Process name",
+                  "…"
+                ],
+                [
+                  "Trigger",
+                  "…"
+                ],
+                [
+                  "End result",
+                  "…"
+                ],
+                [
+                  "Out of scope",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "2",
+      "title": "Overview (SIPOC)",
+      "sections": [
+        {
+          "number": "2.1",
+          "title": "SIPOC table",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Summarise the process from supplier to customer so its edges are known before it is drawn."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Supplier",
+                "Input",
+                "Process",
+                "Output",
+                "Customer"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "3",
+      "title": "Roles and actors",
+      "sections": [
+        {
+          "number": "3.1",
+          "title": "Role list",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "List each role that appears in the diagram, its department and what it handles."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Role",
+                "Department",
+                "Responsibility",
+                "System used"
+              ],
+              "rows": [
+                [
+                  "[Role]",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "[Role]",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "4",
+      "title": "As-is process",
+      "sections": [
+        {
+          "number": "4.1",
+          "title": "As-is diagram and steps",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Draw the process as it really runs, not as the regulation says, after interviewing those who run it."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Step",
+                "Actor",
+                "Activity",
+                "System",
+                "Duration",
+                "Pain point"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "[Role]",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "2",
+                  "[Role]",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            },
+            {
+              "kind": "diagram",
+              "caption": "As-is process: replace with your steps",
+              "model": {
+                "kind": "bw-diagram",
+                "version": 1,
+                "flow": "ltr",
+                "nodes": [
+                  {
+                    "id": "n1",
+                    "kind": "start",
+                    "label": "Process starts"
+                  },
+                  {
+                    "id": "n2",
+                    "kind": "applicant",
+                    "label": "Prepare the input"
+                  },
+                  {
+                    "id": "n3",
+                    "kind": "staff",
+                    "label": "Manual check"
+                  },
+                  {
+                    "id": "n4",
+                    "kind": "decision",
+                    "label": "Complete?"
+                  },
+                  {
+                    "id": "n5",
+                    "kind": "rework",
+                    "label": "Return for correction"
+                  },
+                  {
+                    "id": "n6",
+                    "kind": "ok",
+                    "label": "Approved"
+                  }
+                ],
+                "edges": [
+                  {
+                    "id": "e1",
+                    "from": "n1",
+                    "to": "n2",
+                    "kind": "main"
+                  },
+                  {
+                    "id": "e2",
+                    "from": "n2",
+                    "to": "n3",
+                    "kind": "main"
+                  },
+                  {
+                    "id": "e3",
+                    "from": "n3",
+                    "to": "n4",
+                    "kind": "main"
+                  },
+                  {
+                    "id": "e4",
+                    "from": "n4",
+                    "to": "n6",
+                    "label": "Yes",
+                    "kind": "main"
+                  },
+                  {
+                    "id": "e5",
+                    "from": "n4",
+                    "to": "n5",
+                    "label": "No",
+                    "kind": "return"
+                  },
+                  {
+                    "id": "e6",
+                    "from": "n5",
+                    "to": "n2",
+                    "kind": "return"
+                  }
+                ],
+                "legend": {
+                  "applicant": "Role A step",
+                  "staff": "Role B step",
+                  "system": "Automatic step",
+                  "rework": "Returned for correction",
+                  "ok": "Ends approved"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "5",
+      "title": "As-is pain points",
+      "sections": [
+        {
+          "number": "5.1",
+          "title": "Pain point register",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Give each pain point its cause, effect and a measure where there is one, for example: data re-keyed by hand between two systems, 15 minutes per request."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Pain point",
+                "Cause",
+                "Impact",
+                "Measure"
+              ],
+              "rows": [
+                [
+                  "PP-01",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "PP-02",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "6",
+      "title": "To-be process",
+      "sections": [
+        {
+          "number": "6.1",
+          "title": "To-be diagram and steps",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Draw the new process once the pain points are removed, and show in the table what changed in each step."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Step",
+                "Actor",
+                "Activity",
+                "System",
+                "Duration",
+                "Change from as-is"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "[Role]",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "2",
+                  "[Role]",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            },
+            {
+              "kind": "diagram",
+              "caption": "To-be process: replace with your steps",
+              "model": {
+                "kind": "bw-diagram",
+                "version": 1,
+                "flow": "ltr",
+                "nodes": [
+                  {
+                    "id": "n1",
+                    "kind": "start",
+                    "label": "Process starts"
+                  },
+                  {
+                    "id": "n2",
+                    "kind": "applicant",
+                    "label": "Enter details"
+                  },
+                  {
+                    "id": "n3",
+                    "kind": "system",
+                    "label": "Automatic check"
+                  },
+                  {
+                    "id": "n4",
+                    "kind": "decision",
+                    "label": "Complete?"
+                  },
+                  {
+                    "id": "n5",
+                    "kind": "staff",
+                    "label": "Review"
+                  },
+                  {
+                    "id": "n6",
+                    "kind": "ok",
+                    "label": "Approved"
+                  }
+                ],
+                "edges": [
+                  {
+                    "id": "e1",
+                    "from": "n1",
+                    "to": "n2",
+                    "kind": "main"
+                  },
+                  {
+                    "id": "e2",
+                    "from": "n2",
+                    "to": "n3",
+                    "kind": "main"
+                  },
+                  {
+                    "id": "e3",
+                    "from": "n3",
+                    "to": "n4",
+                    "kind": "main"
+                  },
+                  {
+                    "id": "e4",
+                    "from": "n4",
+                    "to": "n5",
+                    "label": "Yes",
+                    "kind": "main"
+                  },
+                  {
+                    "id": "e5",
+                    "from": "n4",
+                    "to": "n2",
+                    "label": "No",
+                    "kind": "return"
+                  },
+                  {
+                    "id": "e6",
+                    "from": "n5",
+                    "to": "n6",
+                    "kind": "main"
+                  }
+                ],
+                "legend": {
+                  "applicant": "Role A step",
+                  "staff": "Role B step",
+                  "system": "Automatic step",
+                  "rework": "Returned for correction",
+                  "ok": "Ends approved"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "7",
+      "title": "Gap analysis",
+      "sections": [
+        {
+          "number": "7.1",
+          "title": "As-is against to-be",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Set as-is and to-be side by side with the expected benefit of each change."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Area",
+                "As-is",
+                "To-be",
+                "Benefit"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "8",
+      "title": "Decision points and business rules",
+      "sections": [
+        {
+          "number": "8.1",
+          "title": "Decision gateways",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "List each decision gateway in the diagram with its condition and the result of each branch."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Decision",
+                "Condition",
+                "Outcome"
+              ],
+              "rows": [
+                [
+                  "D-01",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "D-02",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "9",
+      "title": "Exceptions and alternative flows",
+      "sections": [
+        {
+          "number": "9.1",
+          "title": "Exceptions",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Say what happens when the process leaves its path: a rejection, a missing document or a system outage."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Exception",
+                "Handling",
+                "Owner"
+              ],
+              "rows": [
+                [
+                  "EX-01",
+                  "…",
+                  "…",
+                  "[Owner]"
+                ],
+                [
+                  "EX-02",
+                  "…",
+                  "…",
+                  "[Owner]"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "10",
+      "title": "Inputs, outputs and systems",
+      "sections": [
+        {
+          "number": "10.1",
+          "title": "Documents and data",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "List the documents and data going in and out, and the systems they pass through."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Name",
+                "Type",
+                "From",
+                "To"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "Input",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "Output",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "11",
+      "title": "Process metrics",
+      "sections": [
+        {
+          "number": "11.1",
+          "title": "Indicators",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Compare as-is with to-be: cycle time, rework count and first-time completion rate."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "KPI",
+                "As-is",
+                "To-be target",
+                "Source"
+              ],
+              "rows": [
+                [
+                  "Cycle time",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "First-time completion",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "12",
+      "title": "Assumptions, risks and open questions",
+      "sections": [
+        {
+          "number": "12.1",
+          "title": "Register",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "List what we assumed, what we fear and what is not settled."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Type",
+                "Statement",
+                "Owner"
+              ],
+              "rows": [
+                [
+                  "A-01",
+                  "Assumption",
+                  "…",
+                  "[Owner]"
+                ],
+                [
+                  "R-01",
+                  "Risk",
+                  "…",
+                  "[Owner]"
+                ],
+                [
+                  "Q-01",
+                  "Question",
+                  "…",
+                  "[Owner]"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "openQuestions": []
+}

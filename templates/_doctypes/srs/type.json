@@ -1,0 +1,23 @@
+{
+  "id": "srs",
+  "code": "SRS",
+  "category": "requirements",
+  "order": 10,
+  "since": "0.18.0",
+  "name": {
+    "ar": "وثيقة متطلبات البرمجيات (SRS)",
+    "en": "Software Requirements Specification (SRS)"
+  },
+  "description": {
+    "ar": "تحدد ما يجب أن تفعله الخدمة الإلكترونية أو النظام: بطاقة الخدمة والمتطلبات الوظيفية وقواعد العمل وسير العمل وقصص المستخدمين ومعايير القبول.",
+    "en": "Defines what an e-service or system must do: the service card, functional requirements, business rules, workflow and user stories with acceptance criteria."
+  },
+  "placeholder": {
+    "ar": "خدمة جديدة",
+    "en": "New service"
+  },
+  "palette": "navy",
+  "coverDesign": "spine",
+  "motif": "srs",
+  "source": "samples/blank"
+}

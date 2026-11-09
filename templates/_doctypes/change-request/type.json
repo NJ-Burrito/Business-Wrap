@@ -1,0 +1,22 @@
+{
+  "id": "change-request",
+  "code": "CR",
+  "category": "governance",
+  "order": 20,
+  "since": "0.18.0",
+  "name": {
+    "ar": "طلب تغيير مع تحليل الأثر",
+    "en": "Change request with impact analysis"
+  },
+  "description": {
+    "ar": "طلب تغيير على متطلب أو مخرج معتمد: السبب والوصف ومصفوفة أثر على اثني عشر مجالا والتقدير والبدائل والمخاطر وخطة التنفيذ، ثم قرار اللجنة وتواقيعها.",
+    "en": "A request to change an approved requirement or deliverable: reason, description, an impact matrix over twelve areas, estimate, alternatives, risks and rollout plan, then the board's decision and signatures."
+  },
+  "placeholder": {
+    "ar": "عنوان التغيير",
+    "en": "Change title"
+  },
+  "palette": "slate",
+  "coverDesign": "spine",
+  "motif": "change-request"
+}

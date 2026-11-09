@@ -1,0 +1,403 @@
+{
+  "composedAt": "",
+  "control": {
+    "documentId": "BW-RN-NEW-001",
+    "title": "Release notes: Product and version",
+    "preparedBy": "Name and job title",
+    "documentType": "Release notes",
+    "classification": "Internal",
+    "owner": "Organisation name",
+    "issuedOn": "YYYY-MM-DD",
+    "version": "V0.1",
+    "status": "Draft",
+    "reviewCycle": "At every release"
+  },
+  "revisions": [
+    [
+      "V0.1",
+      "YYYY-MM-DD",
+      "First draft",
+      "—"
+    ]
+  ],
+  "labels": {
+    "kicker": "RELEASE NOTES",
+    "subtitle": "Product and release number"
+  },
+  "chapters": [
+    {
+      "title": "Release summary",
+      "sections": [
+        {
+          "title": "Release summary",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Three to five lines on the most important parts of the release, in the user's words and not the developer's. Example: \"You can now follow your request from the home page without opening the request list.\""
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "Value"
+              ],
+              "rows": [
+                [
+                  "Release number",
+                  "1.0.0"
+                ],
+                [
+                  "Release date",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "Release type",
+                  "Major, minor or patch"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "What is new",
+      "sections": [
+        {
+          "title": "What is new",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Each new feature with a description that starts with what the user can now do."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Feature",
+                "Description",
+                "Who is affected",
+                "Reference"
+              ],
+              "rows": [
+                [
+                  "N-001",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "N-002",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Improvements",
+      "sections": [
+        {
+          "title": "Improvements",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Changes to existing behaviour that make it faster, clearer or easier."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Improvement",
+                "Description",
+                "Reference"
+              ],
+              "rows": [
+                [
+                  "I-001",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "I-002",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Fixed defects",
+      "sections": [
+        {
+          "title": "Fixed defects",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "The defects that were fixed, with their severity and a short note on the fix."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Defect ID",
+                "Summary",
+                "Severity",
+                "Fix"
+              ],
+              "rows": [
+                [
+                  "DEF-001",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "DEF-002",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Known issues and workarounds",
+      "sections": [
+        {
+          "title": "Known issues and workarounds",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "What is not fixed yet and what users do in the meantime. Do not drop a known issue because showing it is awkward."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Issue",
+                "Impact",
+                "Workaround",
+                "Planned fix"
+              ],
+              "rows": [
+                [
+                  "K-001",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "K-002",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Breaking changes and deprecations",
+      "sections": [
+        {
+          "title": "Breaking changes and deprecations",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "What stops working as before, what the user or team must do and the effective date."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Change",
+                "Impact",
+                "Action required",
+                "Effective date"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "YYYY-MM-DD"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Upgrade and deployment notes",
+      "sections": [
+        {
+          "title": "Upgrade and deployment notes",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Prerequisites, the upgrade steps in order and how the team rolls back if it fails."
+              ]
+            },
+            {
+              "kind": "subhead",
+              "text": "Upgrade steps"
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Step",
+                "Action",
+                "Owner"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "…",
+                  "…"
+                ],
+                [
+                  "2",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Rollback",
+                  "…",
+                  "…"
+                ]
+              ]
+            },
+            {
+              "kind": "subhead",
+              "text": "Compatibility"
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Component",
+                "Supported versions"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Documentation and training updates",
+      "sections": [
+        {
+          "title": "Documentation and training updates",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "The guides that changed and what users need to learn again."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Document",
+                "What changed",
+                "Version"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Support",
+      "sections": [
+        {
+          "title": "Support",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "How a user reports a problem in this release and to whom."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Channel",
+                "Details"
+              ],
+              "rows": [
+                [
+                  "Report",
+                  "…"
+                ],
+                [
+                  "Support hours",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "openQuestions": []
+}

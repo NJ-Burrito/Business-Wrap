@@ -1,0 +1,731 @@
+{
+  "composedAt": "",
+  "control": {
+    "documentId": "BW-TOR-NEW-001",
+    "title": "Terms of Reference (ToR): Project name",
+    "preparedBy": "Name and job title",
+    "documentType": "Terms of Reference (ToR)",
+    "classification": "Internal",
+    "owner": "[Organisation name]",
+    "issuedOn": "YYYY-MM-DD",
+    "version": "V0.1",
+    "status": "Draft",
+    "reviewCycle": "At each change of scope"
+  },
+  "revisions": [
+    [
+      "V0.1",
+      "YYYY-MM-DD",
+      "First draft",
+      "—"
+    ]
+  ],
+  "labels": {
+    "kicker": "TERMS OF REFERENCE",
+    "subtitle": "Scope of work"
+  },
+  "chapters": [
+    {
+      "number": "1",
+      "title": "Background and rationale",
+      "sections": [
+        {
+          "number": "1.1",
+          "title": "Context",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Describe the context the project arose from, the need it meets and what came before. Keep it to one page."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "No.",
+                "Rationale",
+                "Source"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "…",
+                  "…"
+                ],
+                [
+                  "2",
+                  "…",
+                  "…"
+                ],
+                [
+                  "3",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "2",
+      "title": "Objectives",
+      "sections": [
+        {
+          "number": "2.1",
+          "title": "Overall and specific objectives",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Overall objective: […]"
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "No.",
+                "Objective",
+                "Measure",
+                "Target value"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "Reduce the processing time of a request.",
+                  "Average days per request",
+                  "[…]"
+                ],
+                [
+                  "2",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "3",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "3",
+      "title": "Scope of work",
+      "sections": [
+        {
+          "number": "3.1",
+          "title": "In and out of scope",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "In scope",
+                "Out of scope"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "4",
+      "title": "Deliverables",
+      "sections": [
+        {
+          "number": "4.1",
+          "title": "Deliverable list",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "A deliverable without a written acceptance criterion is not accepted."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Deliverable",
+                "Description",
+                "Acceptance criterion",
+                "Due date"
+              ],
+              "rows": [
+                [
+                  "D-01",
+                  "Inception report",
+                  "…",
+                  "…",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "D-02",
+                  "…",
+                  "…",
+                  "…",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "D-03",
+                  "…",
+                  "…",
+                  "…",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "D-04",
+                  "…",
+                  "…",
+                  "…",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "D-05",
+                  "…",
+                  "…",
+                  "…",
+                  "YYYY-MM-DD"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "5",
+      "title": "Timeline and milestones",
+      "sections": [
+        {
+          "number": "5.1",
+          "title": "Phases",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Phase",
+                "Deliverables",
+                "Start",
+                "End",
+                "Dependency"
+              ],
+              "rows": [
+                [
+                  "1. Inception",
+                  "D-01",
+                  "YYYY-MM-DD",
+                  "YYYY-MM-DD",
+                  "—"
+                ],
+                [
+                  "2. […]",
+                  "…",
+                  "YYYY-MM-DD",
+                  "YYYY-MM-DD",
+                  "Phase 1"
+                ],
+                [
+                  "3. […]",
+                  "…",
+                  "YYYY-MM-DD",
+                  "YYYY-MM-DD",
+                  "Phase 2"
+                ],
+                [
+                  "4. Handover",
+                  "…",
+                  "YYYY-MM-DD",
+                  "YYYY-MM-DD",
+                  "Phase 3"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "6",
+      "title": "Roles and responsibilities",
+      "sections": [
+        {
+          "number": "6.1",
+          "title": "RACI matrix",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "R: responsible. A: accountable. C: consulted. I: informed."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Activity",
+                "Sponsor",
+                "Implementer",
+                "Project team",
+                "Beneficiary"
+              ],
+              "rows": [
+                [
+                  "Approve deliverables",
+                  "A",
+                  "R",
+                  "C",
+                  "I"
+                ],
+                [
+                  "Prepare deliverables",
+                  "I",
+                  "A",
+                  "R",
+                  "C"
+                ],
+                [
+                  "Provide access and data",
+                  "A",
+                  "I",
+                  "R",
+                  "C"
+                ],
+                [
+                  "Report progress",
+                  "I",
+                  "A",
+                  "R",
+                  "I"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "7",
+      "title": "Team and qualifications",
+      "sections": [
+        {
+          "number": "7.1",
+          "title": "Required roles",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Role",
+                "Qualifications",
+                "Minimum experience (years)",
+                "Number"
+              ],
+              "rows": [
+                [
+                  "Project manager",
+                  "…",
+                  "[…]",
+                  "1"
+                ],
+                [
+                  "Business analyst",
+                  "…",
+                  "[…]",
+                  "[…]"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "8",
+      "title": "Governance and reporting",
+      "sections": [
+        {
+          "number": "8.1",
+          "title": "Meetings and reports",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Report or meeting",
+                "Frequency",
+                "Recipient",
+                "Content"
+              ],
+              "rows": [
+                [
+                  "Progress report",
+                  "[Weekly | Monthly]",
+                  "Sponsor",
+                  "Progress, risks, next steps"
+                ],
+                [
+                  "Steering meeting",
+                  "[Monthly]",
+                  "Sponsor and implementer",
+                  "Decisions and escalations"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "9",
+      "title": "Assumptions, constraints and dependencies",
+      "sections": [
+        {
+          "number": "9.1",
+          "title": "Register",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Type",
+                "Statement",
+                "Owner"
+              ],
+              "rows": [
+                [
+                  "A-01",
+                  "Assumption",
+                  "…",
+                  "[Name]"
+                ],
+                [
+                  "C-01",
+                  "Constraint",
+                  "…",
+                  "[Name]"
+                ],
+                [
+                  "DP-01",
+                  "Dependency",
+                  "…",
+                  "[Name]"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "10",
+      "title": "Budget and payment terms",
+      "sections": [
+        {
+          "number": "10.1",
+          "title": "Payment schedule",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Total budget: […]"
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Payment",
+                "Percentage",
+                "Linked deliverable",
+                "Condition"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "[…]%",
+                  "D-01",
+                  "Written acceptance of the deliverable"
+                ],
+                [
+                  "2",
+                  "[…]%",
+                  "…",
+                  "…"
+                ],
+                [
+                  "3",
+                  "[…]%",
+                  "…",
+                  "…"
+                ],
+                [
+                  "4",
+                  "[…]%",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "11",
+      "title": "Proposal evaluation criteria",
+      "sections": [
+        {
+          "number": "11.1",
+          "title": "Criteria and weights",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "The weights add up to 100."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Criterion",
+                "Weight",
+                "How it is scored"
+              ],
+              "rows": [
+                [
+                  "Technical approach",
+                  "[…]",
+                  "…"
+                ],
+                [
+                  "Team and experience",
+                  "[…]",
+                  "…"
+                ],
+                [
+                  "Timeline",
+                  "[…]",
+                  "…"
+                ],
+                [
+                  "Price",
+                  "[…]",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "12",
+      "title": "Confidentiality and intellectual property",
+      "sections": [
+        {
+          "number": "12.1",
+          "title": "Confidentiality",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "The implementer keeps all information received in the project confidential and uses it only for the project. […]"
+              ]
+            }
+          ]
+        },
+        {
+          "number": "12.2",
+          "title": "Ownership of deliverables",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "After handover and final payment, the sponsor owns the deliverables. Rights the implementer held before the project stay with the implementer. […]"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "13",
+      "title": "Approval, distribution and terms",
+      "sections": [
+        {
+          "number": "13.1",
+          "title": "Approval and sign-off",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Name",
+                "Job title",
+                "Action",
+                "Signature",
+                "Date"
+              ],
+              "rows": [
+                [
+                  "",
+                  "",
+                  "Prepared",
+                  "",
+                  ""
+                ],
+                [
+                  "",
+                  "",
+                  "Reviewed",
+                  "",
+                  ""
+                ],
+                [
+                  "",
+                  "",
+                  "Approved",
+                  "",
+                  ""
+                ]
+              ],
+              "blankCell": ""
+            }
+          ]
+        },
+        {
+          "number": "13.2",
+          "title": "Distribution list",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Recipient",
+                "Role",
+                "Delivery method",
+                "Date"
+              ],
+              "rows": [
+                [
+                  "[Name]",
+                  "Sponsor",
+                  "…",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "[Name]",
+                  "Implementer",
+                  "…",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "13.3",
+          "title": "Terms and abbreviations",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Term",
+                "Definition"
+              ],
+              "rows": [
+                [
+                  "ToR",
+                  "Terms of Reference: the scope of work expected of an implementer."
+                ],
+                [
+                  "RACI",
+                  "A matrix of who is responsible, accountable, consulted and informed."
+                ],
+                [
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "openQuestions": []
+}

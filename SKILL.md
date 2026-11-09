@@ -1,6 +1,6 @@
 ---
 name: business-wrap
-description: Use when a requirements or specification document (SRS, service card, business requirements, workflow, user stories and acceptance criteria) must be produced, rebuilt, edited or exported as an Arabic and/or English PDF and DOCX from evidence; when someone wants to open the Business-Wrap editor or make small edits in an HTML replica instead of regenerating; when a design pack, palette, typography tokens, logo slot or font setup is changed; when a document's fonts, RTL text, pagination, colours or Type 3 glyphs look wrong; when a document should start from a process model (BPMN, Flowable, Camunda, draw.io, step list) or from crawling a live e-service; or before publishing the repo (security gate). Arabic triggers - وثيقة متطلبات، مواصفات الخدمة، بطاقة الخدمة، قصص المستخدمين، معايير القبول، مخطط سير العمل، افتح المحرر، محرر الوثيقة، تعديل الوثيقة، تصدير PDF أو DOCX، استخراج من نموذج إجراء، المرور على الخدمة، حزمة التصميم، لوحة الألوان، الخطوط، فحص الأمان.
+description: Use when a requirements or specification document (SRS, service card, business requirements, workflow, user stories and acceptance criteria) or any other document a business analyst or tester hands over (BRD, FRS, test plan, test cases, user manual, UAT sign-off, release notes, ToR, change request, minutes, TOT guide) must be produced, rebuilt, edited or exported as an Arabic and/or English PDF and DOCX from evidence; when someone wants to open the Business-Wrap editor or make small edits in an HTML replica instead of regenerating; when a design pack, palette, typography tokens, logo slot or font setup is changed; when a document's fonts, RTL text, pagination, colours or Type 3 glyphs look wrong; when a document should start from a process model (BPMN, Flowable, Camunda, draw.io, step list) or from crawling a live e-service; or before publishing the repo (security gate). Arabic triggers - وثيقة متطلبات، خطة اختبار، دليل مستخدم، ملاحظات إصدار، محضر اجتماع، الشروط المرجعية، صفحة البداية، مواصفات الخدمة، بطاقة الخدمة، قصص المستخدمين، معايير القبول، مخطط سير العمل، افتح المحرر، محرر الوثيقة، تعديل الوثيقة، تصدير PDF أو DOCX، استخراج من نموذج إجراء، المرور على الخدمة، حزمة التصميم، لوحة الألوان، الخطوط، فحص الأمان.
 ---
 
 # Business-Wrap
@@ -33,6 +33,24 @@ Fonts: the shipped file names the Thmanyah fonts installed in the OS (`local()`)
 <div dir="rtl">
 
 المحرر جزء من المهارة وجاهز للفتح: **`assets/editor/business-wrap.html`**. افتحه في Google Chrome فيبدأ على وثيقة فارغة بالعربية والإنجليزية؛ والمثال في قائمة الخدمات؛ ولفتح ملف JSON لوثيقتك استخدم «استيراد». للتصدير إلى PDF وDOCX بنقرة، والصور المصغرة للصفحات، وخطافات الويب: شغّل `node engine/cli.mjs open` من نسخة المستودع بعد `npm install` (أو `/business-wrap:open` أو أداة MCP `open_in_editor`)، فيعمل الخادم المحلي في الخلفية دون أي نافذة، ويعود الأمر فوراً بالعنوان ويفتح المتصفح عليه، وتُكتب مخرجاته في `HISTORY\host.log`. وحين يطلب منك المستخدم فتح المحرر فهذه الطريقة وحدها: لا `node engine/serve.mjs` في طرفية، ولا `start powershell` ولا `Start-Process`، لأنها تترك نافذة طرفية مفتوحة. ولإيقاف كل شيء: زر الإيقاف في الشريط (يسأل أولاً ويحفظ كل التبويبات، ثم يوقف الخادم وكل عملية شغّلها هذا التثبيت ونوافذ المتصفح الخاصة به)، أو `node engine/cli.mjs stop --all`. والإعدادات ومعلومات البرنامج والتحديث من قسم «العرض» في الشريط أو Ctrl+K ← الإعدادات. ولبناء محرر خاص بوثائقك: `node engine/build-editor.mjs`. وبعد تغيير `editor/` أو `engine/` أعد بناء الملف بالأمر `npm run skill-html`.
+
+</div>
+
+## Document types / أنواع الوثائق (0.18.0, `bible/14-document-types.md`)
+Business-Wrap ships **17 document types**, each a designed starter document in both languages: `blank`, `srs`, `brd`, `frs`, `rtm`, `process-flow`, `test-plan`, `test-cases`, `defect-report`, `user-manual`, `uat-signoff`, `release-notes`, `tor`, `change-request`, `minutes`, `business-case`, `tot`. Every type exports PDF and DOCX in Arabic and English and keeps the ribbon, diagrams, profile, watermark and Explain.
+
+| Want | Do |
+|---|---|
+| Let the person pick | the editor opens on the **start page** (a gallery of the types); File tab, **Start page** (Ctrl+Alt+N) brings it back |
+| List the types | `npx business-wrap types` (id, code, category, cover design, names) |
+| Create one | `npx business-wrap new --type <id> [--title "…"]`, or `/business-wrap:new --type <id>`; an unknown id is refused and the valid ids are listed |
+| Which type fits | a spec of what a system must do: `brd` (business side), `frs` (function by function), `srs` (an e-service, or built from evidence); testing: `test-plan`, `test-cases`, `defect-report`; hand-over: `user-manual`, `uat-signoff`, `release-notes`; governance: `tor`, `change-request`, `minutes`, `business-case`; `tot` for training; `process-flow` for as-is and to-be; `rtm` to trace requirements to tests |
+
+A type is placeholder content to fill in, never client data. An evidence pack (`bible/09-template-packs.md`) is a different path: it builds a requirements document from a process model or a crawl. Adding a type is one folder in `templates/_doctypes/` (contract in its README).
+
+<div dir="rtl">
+
+يضم بزنس راب **17 نوعا من الوثائق**، كل نوع وثيقة ابتدائية مصممة بالعربية والإنجليزية. وكل نوع يصدر PDF وDOCX باللغتين ويحتفظ بالشريط والمخططات والملف الشخصي والعلامة المائية وأداة الشرح. يختار المستخدم من **صفحة البداية** (تبويب «ملف» ثم «صفحة البداية»، أو Ctrl+Alt+N)، أو تنشئ أنت النوع بالأمر `npx business-wrap new --type <id>`. المحتوى نص نموذجي يملؤه المستخدم، ولا بيانات عميل فيه.
 
 </div>
 
@@ -111,6 +129,7 @@ The harvest above gives a quick document; **this is the method that yields the f
 | Start a document from a BPMN / draw.io / YAML model or a live service | `bible/08-harvest.md`, `bible/contracts/harvest.schema.json` |
 | The full requirements document from evidence, template packs, profiles, the evidence ledger | `bible/09-template-packs.md`, `templates/pack.schema.json`, `bible/contracts/service-record.schema.json`, `bible/contracts/profile.schema.json` |
 | What the tool learned from the user's edits; rules, conflicts, privacy | `bible/10-learning.md`, `npm run learn -- rules` |
+| The 17 document types, the start page, adding a type | `bible/14-document-types.md`, `templates/_doctypes/README.md` |
 | Install, quickstart, troubleshooting | `docs/guide.md` |
 
 ## Quick reference

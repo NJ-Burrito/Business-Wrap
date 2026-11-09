@@ -143,6 +143,7 @@ const XPL_SCENES = {
       case 'toc': return pg + [0, 1, 2].map((i) => xaLn(50, 20 + i * 10, 40 - i * 3) + xaLn(92, 20 + i * 10, 8)).join('') + xaG('k-in', xaLn(50, 50, 30, 'mk') + xaLn(92, 50, 8));
       case 'tochide': return pg + [0, 1, 2].map((i) => xaLn(50, 20 + i * 10, 40 - i * 4) + xaLn(92, 20 + i * 10, 8)).join('') + xaR('gh', 48, 48, 56, 8, 3) + xaG('k-gone', xaLn(50, 50, 30, 'mk') + xaLn(92, 50, 8));
       case 'newdoc': return xaPage(26, 14, 52, 72, 4, { cls: 'pg ghost' }) + xaG('k-in', xaPage(70, 8, 56, 78, 6)) + xaG('k-in2', xaC('ac', 124, 14, 9) + xaP('wh', 'M124 9 v10 M119 14 h10'));
+      case 'start': return xaR('sheet', 14, 8, 132, 80, 6) + xaR('side', 14, 8, 132, 12, 6) + [0, 1, 2].map((i) => xaR(i === 1 ? 'hi' : 'cell', 24 + i * 40, 28, 32, 44, 3) + xaR(['pr', 'ac', 'ok'][i], 24 + i * 40, 28, 4, 44, 2) + xaLn(32 + i * 40, 62, 18)).join('') + xaG('k-in', xaR('pr', 62, 28, 36, 8, 2) + xaC('ac', 128, 70, 9) + xaP('wh', 'M128 65 v10 M123 70 h10'));
       case 'process': return xaR('sheet', 14, 8, 132, 80, 6) + xaNode('start', 40, 24) + xaG('k-in', xaNode('', 40, 56) + xaP('wr', 'M40 33 v14')) + xaG('k-in2', xaNode('decision', 104, 56) + xaP('wr', 'M58 56 h22'));
       case 'para': return pg + xaLines(48, 14, 2, 54) + xaG('k-in', xaLines(48, 34, 3, 54, { c: 'ln mkln' })) + xaLines(48, 64, 2, 54);
       default: return pg + xaG('k-in', xaR('blk', 48, 34, 54, 14, 3));
@@ -567,6 +568,7 @@ pop:card storyCard@add
 pop:toc tocAdd@pages
 pop:tochide tocHide@hideBlock
 pop:newdoc newdoc@newdoc
+pop:start startPage@newdoc
 pop:process process@process
 edit:dup duplicate@duplicate
 edit:del delete@delete

@@ -8,6 +8,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.18.0] - 2026-11-10
+
+📚 Business-Wrap becomes a document studio for BAs and QAs: a start page like Word's and 17 designed document types, each in Arabic and English. / 📚 أصبح Business-Wrap استوديو مستندات لمحللي الأعمال ومختبري الجودة: صفحة بداية مثل Word و17 نوعا مصمما من المستندات، كل منها بالعربية والإنجليزية.
+
+### Added / أضيف
+- 🏠 **Start page**: the first screen when the editor opens on its own. A gallery of document types with thumbnails, category chips (Requirements, Testing, Delivery, Governance, Training), search, recent documents you can open or keep at the top, and a preview card with an Arabic / English choice and «Create». Back to it from File > Start page. / **صفحة البداية**: أول شاشة حين يفتح المحرر وحده. معرض لأنواع المستندات بصور مصغرة، وأزرار فئات (المتطلبات، الاختبار، التسليم، الحوكمة، التدريب)، وبحث، ومستندات حديثة تفتحها أو تثبتها في الأعلى، وبطاقة معاينة فيها اختيار العربية أو الإنجليزية و«إنشاء». والعودة إليها من ملف > صفحة البداية.
+- 📄 **17 document types**, each a real starter in both languages with its own structure, tables and cover: Blank, SRS, BRD, FRS, RTM, Process flow (as-is / to-be), Test plan, Test cases, Defect report, User manual, UAT sign-off, Release notes, ToR, Change request with impact analysis, Minutes of meeting, Business case, TOT (training of trainers). / **17 نوعا من المستندات**، كل منها بداية حقيقية باللغتين ببنيتها وجداولها وغلافها: مستند فارغ، وثيقة متطلبات البرمجيات، متطلبات العمل، المتطلبات الوظيفية، مصفوفة التتبع، سير العملية (الحالي والمستهدف)، خطة الاختبار، حالات الاختبار، تقرير عيب، دليل المستخدم، محضر قبول المستخدم، ملاحظات الإصدار، الشروط المرجعية، طلب تغيير مع تحليل الأثر، محضر اجتماع، دراسة الجدوى، دليل تدريب المدربين.
+- 🎨 **A cover per type**: a spine cover or a compact title block, the category colour and one motif per type, the same in print, PDF and Word; dense tables get a washed header, zebra rows and coloured status cells. / **غلاف لكل نوع**: غلاف بشريط جانبي أو كتلة عنوان مختصرة، ولون الفئة، وشكل خاص بكل نوع، بالشكل نفسه في الطباعة وPDF وWord؛ والجداول الكثيفة برأس ملون وصفوف متناوبة وخلايا حالة ملونة.
+- ⌨️ **CLI and server**: `types` lists the types, `new --type <id>` writes an editor for one; the local server answers `GET /api/doctypes`. / **سطر الأوامر والخادم**: `types` يعرض الأنواع، و`new --type <id>` يكتب محررا لنوع منها؛ ويجيب الخادم المحلي `GET /api/doctypes`.
+
+### Changed / تغير
+- Every existing feature (ribbon, diagrams, PDF and DOCX export, profile, watermark, Explain) works in every type; documents without a type print exactly as before. / تعمل كل الميزات الحالية (الشريط، المخططات، تصدير PDF وDOCX، الملف التعريفي، العلامة المائية، الشرح) في كل نوع؛ والمستندات بلا نوع تطبع كما كانت تماما.
+- A compact first page keeps its page number and running header. / الصفحة الأولى المختصرة تحتفظ برقم الصفحة والترويسة.
+
 ## [0.17.13] - 2026-11-05
 
 🛠️ A fix release from the owner's notes: a shorter save stamp, a calmer Save button, a clear message when exports are missing a package, and a host status that follows the switch. / 🛠️ إصدار إصلاحات من ملاحظات المالك: ختم حفظ أقصر، وزر حفظ أهدأ، ورسالة واضحة حين ينقص التصدير حزمة، وحالة خادم تتبع المفتاح.

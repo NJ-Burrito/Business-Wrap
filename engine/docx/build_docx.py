@@ -22,6 +22,7 @@ LOCALE = os.environ.get('BW_LOCALE', 'ar')
 L = dict(_I18N['doc'][LOCALE])
 import theme as theme_mod
 import model_docx as MD
+import cover_design as CD
 DEFAULT_BODY_FONT = 'thmanyah serif text'
 ARABIC = re.compile('[\u0600-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-\ufeff]')
 LATIN_DIGIT = re.compile('[A-Za-z0-9]')
@@ -948,6 +949,10 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     style.font.size = Pt(12)
     roles = theme_mod.load_roles()
     _THEME_ROLES = roles
+    cv = CD.cover_of(data)  # 0.18.0: a cover design (spine | compact) and a motif; None = today's cover, byte for byte
+    CD.apply_dense(roles, cv)
+    manual = CD.is_manual(data)
+    compact = bool(cv and cv['design'] == 'compact' and 'cover' not in hide)
     theme_mod.apply_style_scale(document, roles, font)
     thmanyah_only(document, F['body'])
     if toc:
@@ -955,11 +960,16 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     counters = {'table_block': 0, 'figure': 0, 'stories_block': 0, 'prose_block': 0, 'subhead_block': 0}
     cover_logos = theme_logos(workdir, ('end', 'center', 'start') if LOCALE == 'ar' else ('start', 'center', 'end'))
     header_logo = (theme_logos(workdir, ('header',)) or [None])[0]
-    theme_mod.build_cover(document, data.get('control') or {}, roles, font, cover_logos) if 'cover' not in hide else None
+    if 'cover' in hide:
+        pass
+    elif cv and cv['design'] == 'spine':
+        CD.build_spine(document, data.get('control') or {}, roles, font, cover_logos, cv, theme_mod, LOCALE == 'ar')
+    elif not compact:
+        theme_mod.build_cover(document, data.get('control') or {}, roles, font, cover_logos)
     from docx.enum.section import WD_SECTION
-    body_section = document.add_section(WD_SECTION.NEW_PAGE)
-    if document.paragraphs:
-        from docx.enum.text import WD_LINE_SPACING
+    body_section = document.sections[0] if compact else document.add_section(WD_SECTION.NEW_PAGE)  # a compact cover has no page of its own
+    from docx.enum.text import WD_LINE_SPACING
+    if document.paragraphs and not compact:
         _break_pf = document.paragraphs[-1].paragraph_format
         _break_pf.space_before = Pt(0)
         _break_pf.space_after = Pt(0)
@@ -980,7 +990,7 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     body_section.footer_distance = Inches(8 / 25.4)
     ctrl = data.get('control') or {}
     cover_section = document.sections[0]
-    theme_mod.add_header_footer(document, roles, font, header_logo, ctrl.get('documentId', ''), ctrl.get('issuedOn', ''), cover_section=cover_section, body_section=body_section)
+    theme_mod.add_header_footer(document, roles, font, header_logo, ctrl.get('documentId', ''), ctrl.get('issuedOn', ''), cover_section=cover_section, body_section=body_section, single=compact)
     def bands(sec, seg=None, first=False):
         # doc.chrome (A5/A6): the section's header and footer from the items; first=True → this section's first page
         for part in ('header', 'footer'):
@@ -992,6 +1002,12 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
         bands(body_section)
     seg_starts, block_ids = MD.page_model(data)
     cur_page = MD.page_spec(doc_page) if doc_page else None
+    if cv and 'cover' not in hide:
+        png = CD.motif_png(cv['motif'], LOCALE == 'ar', workdir, theme_mod.THEME_JSON)
+        if compact:
+            CD.build_compact(document, ctrl, roles, font, cover_logos, cv, png, int(body_section.page_width - body_section.left_margin - body_section.right_margin), theme_mod, LOCALE == 'ar')
+        else:
+            CD.place_motif(cover_section, png, LOCALE == 'ar', cv)
     add_control_front_matter(document, data, font, counters, toc=toc)
     body_geometry = {'page_width': body_section.page_width, 'page_height': body_section.page_height, 'top_margin': body_section.top_margin, 'bottom_margin': body_section.bottom_margin, 'left_margin': body_section.left_margin, 'right_margin': body_section.right_margin}
     first_page_secs = []
@@ -1038,9 +1054,11 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
         h1.runs[-1].text = '    '  # the chip's own gap is two spaces: in an RTL line the number box sat glued to the title (UAT H1)
         add_script_runs(h1, ch['title'], F['display'], bold=True)
         story_seq = [0]
+        counters['step'] = 0
         for si, sec in enumerate(ch['sections']):
             if sec.get('hidden'):
                 continue
+            counters['step'] = 0
             # as the print renderer: a one-section chapter prints no section heading; otherwise «n.m title»
             sec_ptr = f'/chapters/{ci}/sections/{si}/blocks/0'
             if sec_ptr in seg_starts:
@@ -1079,7 +1097,16 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                         p.paragraph_format.space_after = Pt(theme_mod.PROSE_AFTER_PT)
                         p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
                         p.paragraph_format.line_spacing = Pt(round(theme_mod.SIZES['body'] * theme_mod.LINE, 1))
-                        MD.add_leaf(p, para_text, font, add_script_runs)
+                        co = CD.callout_of(para_text) if manual else None
+                        if co:
+                            # 0.18.0 (user manual): a paragraph that opens with a tag word is a callout: fill and border in its colour, the tag word bold
+                            add_script_runs(p, co['tag'] + ' ', font, bold=True)
+                            for r in p.runs:
+                                r.font.color.rgb = theme_mod.rgb(roles.get(CD._CALLOUT[co['kind']][2], roles['navy']))
+                            MD.add_leaf(p, co['rest'], font, add_script_runs)
+                            CD.style_callout(p, co['kind'], roles, _PPR_AFTER_BDR)
+                        else:
+                            MD.add_leaf(p, para_text, font, add_script_runs)
                         info = MD.list_info(para_text)
                         if info:
                             MD.number_paragraph(document, p, info)
@@ -1099,6 +1126,10 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                 elif kind == 'subhead':
                     p = document.add_paragraph()
                     p.paragraph_format.keep_with_next = True
+                    if manual:
+                        # 0.18.0 (user manual): a subhead is a step: its number on a filled chip, counting from 1 in each section
+                        counters['step'] = counters.get('step', 0) + 1
+                        CD.step_chip(p, counters['step'], F['display'], roles, theme_mod)
                     MD.add_leaf(p, block.get('text', ''), F['subhead'], add_script_runs, bold=False)
                     counters['subhead_block'] += 1
                 elif kind == 'table':

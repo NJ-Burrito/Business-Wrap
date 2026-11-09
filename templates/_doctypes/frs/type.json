@@ -1,0 +1,22 @@
+{
+  "id": "frs",
+  "code": "FRS",
+  "category": "requirements",
+  "order": 30,
+  "since": "0.18.0",
+  "name": {
+    "ar": "مواصفات المتطلبات الوظيفية (FRS)",
+    "en": "Functional Requirements Specification (FRS)"
+  },
+  "description": {
+    "ar": "ما يفعله النظام وظيفة وظيفة: الأدوار والمتطلبات والشاشات والبيانات والقواعد والتكامل والمتطلبات غير الوظيفية، مع تتبعها إلى وثيقة متطلبات العمل.",
+    "en": "What a system does, function by function: roles, requirements, screens, data, rules, integrations and non-functional requirements, traced back to the BRD."
+  },
+  "placeholder": {
+    "ar": "اسم النظام",
+    "en": "System name"
+  },
+  "palette": "navy",
+  "coverDesign": "spine",
+  "motif": "frs"
+}

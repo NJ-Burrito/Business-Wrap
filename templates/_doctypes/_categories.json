@@ -1,0 +1,8 @@
+[
+ { "id": "start", "name": { "ar": "ابدأ", "en": "Start" }, "order": 10 },
+ { "id": "requirements", "name": { "ar": "المتطلبات", "en": "Requirements" }, "order": 20 },
+ { "id": "testing", "name": { "ar": "الاختبار", "en": "Testing" }, "order": 30 },
+ { "id": "delivery", "name": { "ar": "التسليم", "en": "Delivery" }, "order": 40 },
+ { "id": "governance", "name": { "ar": "الحوكمة", "en": "Governance" }, "order": 50 },
+ { "id": "training", "name": { "ar": "التدريب", "en": "Training" }, "order": 60 }
+]

@@ -1,0 +1,744 @@
+{
+  "composedAt": "",
+  "control": {
+    "documentId": "BW-UM-NEW-001",
+    "title": "User manual: Service name",
+    "preparedBy": "Name and job title",
+    "documentType": "User manual",
+    "classification": "Internal",
+    "owner": "[Organisation name]",
+    "issuedOn": "YYYY-MM-DD",
+    "version": "V0.1",
+    "status": "Draft",
+    "reviewCycle": "With every system release"
+  },
+  "revisions": [
+    [
+      "V0.1",
+      "YYYY-MM-DD",
+      "First draft",
+      "—"
+    ]
+  ],
+  "labels": {
+    "kicker": "USER MANUAL",
+    "subtitle": "Step-by-step guide"
+  },
+  "chapters": [
+    {
+      "number": "1",
+      "title": "About this guide",
+      "sections": [
+        {
+          "number": "1.1",
+          "title": "Purpose and scope",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "This guide explains how to file a request through the portal, from the service card to sending the request, then following it until its final status. It does not cover the work of the staff who review requests."
+              ]
+            },
+            {
+              "kind": "subhead",
+              "text": "Document control"
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "Value"
+              ],
+              "rows": [
+                [
+                  "System or service",
+                  "[System or service name]"
+                ],
+                [
+                  "System version",
+                  "1.0"
+                ],
+                [
+                  "Document language",
+                  "Arabic and English"
+                ],
+                [
+                  "Target users",
+                  "[User group]"
+                ],
+                [
+                  "Document code",
+                  "BW-UM-NEW-001"
+                ],
+                [
+                  "Version",
+                  "V0.1"
+                ],
+                [
+                  "Last updated",
+                  "YYYY-MM-DD"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "1.2",
+          "title": "Conventions",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Button and field names appear in « » exactly as the screen shows them. The numbered circles on screenshots match the numbers of the steps. Four kinds of callout appear in the guide.",
+                "Note: adds a condition or an explanation.",
+                "Tip: shows a quicker way.",
+                "Important: something to do before you continue.",
+                "Warning: an action that cannot be undone."
+              ]
+            }
+          ]
+        },
+        {
+          "number": "1.3",
+          "title": "Terms and abbreviations",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Term",
+                "Definition"
+              ],
+              "rows": [
+                [
+                  "Portal",
+                  "The website where requests are filed and followed."
+                ],
+                [
+                  "Request",
+                  "One submission of the service form with its attachments."
+                ],
+                [
+                  "Attachment",
+                  "A file uploaded with the request."
+                ],
+                [
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "2",
+      "title": "The service at a glance",
+      "sections": [
+        {
+          "number": "2.1",
+          "title": "Service card",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "In short"
+              ],
+              "rows": [
+                [
+                  "What the service is",
+                  "…"
+                ],
+                [
+                  "Who may apply",
+                  "…"
+                ],
+                [
+                  "Fee",
+                  "…"
+                ],
+                [
+                  "Documents needed",
+                  "…"
+                ],
+                [
+                  "Channel",
+                  "…"
+                ],
+                [
+                  "Time to complete",
+                  "…"
+                ],
+                [
+                  "Output",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "3",
+      "title": "Before you start",
+      "sections": [
+        {
+          "number": "3.1",
+          "title": "Checklist",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Requirement",
+                "How to check it"
+              ],
+              "rows": [
+                [
+                  "An account on the portal",
+                  "You can sign in with your user name. If not, see Support and contact."
+                ],
+                [
+                  "The right permission",
+                  "Your role is listed under Roles and permissions."
+                ],
+                [
+                  "A current browser",
+                  "Use the latest Chrome, Edge or Firefox."
+                ],
+                [
+                  "Documents at hand",
+                  "Each file matches the formats and size in Attachments."
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "4",
+      "title": "Roles and permissions",
+      "sections": [
+        {
+          "number": "4.1",
+          "title": "Who does what",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Role",
+                "What the role can do",
+                "How to get access"
+              ],
+              "rows": [
+                [
+                  "Applicant",
+                  "Files requests and follows their own requests.",
+                  "Register on the portal."
+                ],
+                [
+                  "Reviewer",
+                  "Reviews requests and records a decision.",
+                  "Assigned by the system administrator."
+                ],
+                [
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "5",
+      "title": "Steps",
+      "sections": [
+        {
+          "number": "5.1",
+          "title": "Filing a request",
+          "blocks": [
+            {
+              "kind": "subhead",
+              "text": "Step 1: Sign in"
+            },
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Open the portal and press «Sign in». Enter your user name and password, then press «Continue».",
+                "Note: if you forgot your password, press «Forgot password» and follow the message you receive."
+              ]
+            },
+            {
+              "kind": "figure",
+              "caption": "Screenshot 1: the sign-in screen",
+              "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 160 46\" style=\"width:156mm\"><rect x=\"1\" y=\"1\" width=\"158\" height=\"44\" fill=\"#f6efe9\" stroke=\"#b9aca2\"/><rect x=\"1\" y=\"1\" width=\"158\" height=\"7\" fill=\"#e7dcd3\"/><rect x=\"10\" y=\"15\" width=\"62\" height=\"3\" fill=\"#d7cbc1\"/><rect x=\"90\" y=\"16\" width=\"56\" height=\"18\" fill=\"none\" stroke=\"#853311\" stroke-width=\"1.4\"/><circle cx=\"90\" cy=\"16\" r=\"4.4\" fill=\"#853311\"/><text x=\"90\" y=\"17.8\" text-anchor=\"middle\" font-size=\"5.2\" font-weight=\"700\" fill=\"#fff\">1</text></svg>",
+              "compact": true
+            },
+            {
+              "kind": "subhead",
+              "text": "Step 2: Open the service"
+            },
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Press the service name in the list and read the service card. Then press «Start request».",
+                "Tip: use the search box above the list if the service is not in view."
+              ]
+            },
+            {
+              "kind": "figure",
+              "caption": "Screenshot 2: the service card",
+              "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 160 46\" style=\"width:156mm\"><rect x=\"1\" y=\"1\" width=\"158\" height=\"44\" fill=\"#f6efe9\" stroke=\"#b9aca2\"/><rect x=\"1\" y=\"1\" width=\"158\" height=\"7\" fill=\"#e7dcd3\"/><rect x=\"10\" y=\"15\" width=\"62\" height=\"3\" fill=\"#d7cbc1\"/><rect x=\"90\" y=\"16\" width=\"56\" height=\"18\" fill=\"none\" stroke=\"#853311\" stroke-width=\"1.4\"/><circle cx=\"90\" cy=\"16\" r=\"4.4\" fill=\"#853311\"/><text x=\"90\" y=\"17.8\" text-anchor=\"middle\" font-size=\"5.2\" font-weight=\"700\" fill=\"#fff\">2</text></svg>",
+              "compact": true
+            },
+            {
+              "kind": "subhead",
+              "text": "Step 3: Fill in the form"
+            },
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Fill in the fields of each panel in order. Required fields carry an asterisk. Press «Next» to move to the following panel.",
+                "Important: some choices show new fields. See Choices and what they reveal."
+              ]
+            },
+            {
+              "kind": "figure",
+              "caption": "Screenshot 3: the form",
+              "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 160 46\" style=\"width:156mm\"><rect x=\"1\" y=\"1\" width=\"158\" height=\"44\" fill=\"#f6efe9\" stroke=\"#b9aca2\"/><rect x=\"1\" y=\"1\" width=\"158\" height=\"7\" fill=\"#e7dcd3\"/><rect x=\"10\" y=\"15\" width=\"62\" height=\"3\" fill=\"#d7cbc1\"/><rect x=\"90\" y=\"16\" width=\"56\" height=\"18\" fill=\"none\" stroke=\"#853311\" stroke-width=\"1.4\"/><circle cx=\"90\" cy=\"16\" r=\"4.4\" fill=\"#853311\"/><text x=\"90\" y=\"17.8\" text-anchor=\"middle\" font-size=\"5.2\" font-weight=\"700\" fill=\"#fff\">3</text></svg>",
+              "compact": true
+            },
+            {
+              "kind": "subhead",
+              "text": "Step 4: Attach the documents"
+            },
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Press «Choose file» beside each attachment, pick the file and wait for the green tick.",
+                "Note: a file in another format, or over the maximum size, is rejected."
+              ]
+            },
+            {
+              "kind": "figure",
+              "caption": "Screenshot 4: the attachments panel",
+              "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 160 46\" style=\"width:156mm\"><rect x=\"1\" y=\"1\" width=\"158\" height=\"44\" fill=\"#f6efe9\" stroke=\"#b9aca2\"/><rect x=\"1\" y=\"1\" width=\"158\" height=\"7\" fill=\"#e7dcd3\"/><rect x=\"10\" y=\"15\" width=\"62\" height=\"3\" fill=\"#d7cbc1\"/><rect x=\"90\" y=\"16\" width=\"56\" height=\"18\" fill=\"none\" stroke=\"#853311\" stroke-width=\"1.4\"/><circle cx=\"90\" cy=\"16\" r=\"4.4\" fill=\"#853311\"/><text x=\"90\" y=\"17.8\" text-anchor=\"middle\" font-size=\"5.2\" font-weight=\"700\" fill=\"#fff\">4</text></svg>",
+              "compact": true
+            },
+            {
+              "kind": "subhead",
+              "text": "Step 5: Review and send"
+            },
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Check the summary, then press «Send».",
+                "Warning: a sent request cannot be edited. Check every field before you press «Send»."
+              ]
+            },
+            {
+              "kind": "figure",
+              "caption": "Screenshot 5: the summary",
+              "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 160 46\" style=\"width:156mm\"><rect x=\"1\" y=\"1\" width=\"158\" height=\"44\" fill=\"#f6efe9\" stroke=\"#b9aca2\"/><rect x=\"1\" y=\"1\" width=\"158\" height=\"7\" fill=\"#e7dcd3\"/><rect x=\"10\" y=\"15\" width=\"62\" height=\"3\" fill=\"#d7cbc1\"/><rect x=\"90\" y=\"16\" width=\"56\" height=\"18\" fill=\"none\" stroke=\"#853311\" stroke-width=\"1.4\"/><circle cx=\"90\" cy=\"16\" r=\"4.4\" fill=\"#853311\"/><text x=\"90\" y=\"17.8\" text-anchor=\"middle\" font-size=\"5.2\" font-weight=\"700\" fill=\"#fff\">5</text></svg>",
+              "compact": true
+            }
+          ]
+        },
+        {
+          "number": "5.2",
+          "title": "Screenshot callout key",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "No.",
+                "Element on screen",
+                "What it does"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "«Start request» button",
+                  "Opens the request form."
+                ],
+                [
+                  "2",
+                  "Progress bar",
+                  "Shows the panel you are on."
+                ],
+                [
+                  "3",
+                  "…",
+                  "…"
+                ],
+                [
+                  "4",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "6",
+      "title": "Form fields",
+      "sections": [
+        {
+          "number": "6.1",
+          "title": "Field reference",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Panel",
+                "Field",
+                "What to enter",
+                "Required"
+              ],
+              "rows": [
+                [
+                  "Applicant",
+                  "Full name",
+                  "Your name as in your official papers.",
+                  "Yes"
+                ],
+                [
+                  "Applicant",
+                  "Contact details",
+                  "A way we can reach you.",
+                  "Yes"
+                ],
+                [
+                  "Request",
+                  "Request type",
+                  "Pick one option from the list.",
+                  "Yes"
+                ],
+                [
+                  "Request",
+                  "Details",
+                  "Describe the request in a few lines.",
+                  "No"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "7",
+      "title": "Choices and what they reveal",
+      "sections": [
+        {
+          "number": "7.1",
+          "title": "Choice reference",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Choice",
+                "Options",
+                "What appears next"
+              ],
+              "rows": [
+                [
+                  "Request type",
+                  "[Option A | Option B]",
+                  "[Fields that appear]"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "8",
+      "title": "Attachments",
+      "sections": [
+        {
+          "number": "8.1",
+          "title": "Required and allowed files",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "#",
+                "Attachment name",
+                "Mandatory",
+                "Formats and size"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "[Attachment name]",
+                  "Yes",
+                  "[Formats and maximum size]"
+                ],
+                [
+                  "2",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "3",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "9",
+      "title": "Following up",
+      "sections": [
+        {
+          "number": "9.1",
+          "title": "Request statuses",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "After sending, open «My requests». The status appears beside each request."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Status",
+                "Meaning",
+                "What you do"
+              ],
+              "rows": [
+                [
+                  "Submitted",
+                  "The request was received and waits for review.",
+                  "Nothing."
+                ],
+                [
+                  "Under review",
+                  "A reviewer is checking it.",
+                  "Wait for the result."
+                ],
+                [
+                  "Returned",
+                  "The request needs a correction.",
+                  "Open it, correct it and send it again."
+                ],
+                [
+                  "Completed",
+                  "The final result is issued.",
+                  "Download the output."
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "10",
+      "title": "Messages and errors",
+      "sections": [
+        {
+          "number": "10.1",
+          "title": "Message reference",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Message",
+                "Why it appears",
+                "What to do"
+              ],
+              "rows": [
+                [
+                  "Required field",
+                  "A required field is empty.",
+                  "Fill it in and press «Next» again."
+                ],
+                [
+                  "File too large",
+                  "The file is over the maximum size.",
+                  "Reduce the file and attach it again."
+                ],
+                [
+                  "Session expired",
+                  "You were idle for too long.",
+                  "Sign in again. Entries not sent may be lost."
+                ],
+                [
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "11",
+      "title": "Frequently asked questions",
+      "sections": [
+        {
+          "number": "11.1",
+          "title": "Questions and answers",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Question",
+                "Answer"
+              ],
+              "rows": [
+                [
+                  "Can I edit a request after sending it?",
+                  "No. Contact support if it must change."
+                ],
+                [
+                  "Where do I find my request?",
+                  "Under «My requests»."
+                ],
+                [
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "12",
+      "title": "Support and contact",
+      "sections": [
+        {
+          "number": "12.1",
+          "title": "How to get help",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Channel",
+                "Details",
+                "Working hours"
+              ],
+              "rows": [
+                [
+                  "Support desk",
+                  "[Contact details]",
+                  "[Days and hours]"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "13",
+      "title": "Approval and sign-off",
+      "sections": [
+        {
+          "number": "13.1",
+          "title": "Sign-off",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Name",
+                "Job title",
+                "Action",
+                "Signature",
+                "Date"
+              ],
+              "rows": [
+                [
+                  "",
+                  "",
+                  "Prepared",
+                  "",
+                  ""
+                ],
+                [
+                  "",
+                  "",
+                  "Reviewed",
+                  "",
+                  ""
+                ],
+                [
+                  "",
+                  "",
+                  "Approved",
+                  "",
+                  ""
+                ]
+              ],
+              "blankCell": "",
+              "rowHeights": [
+                12,
+                12,
+                12
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "openQuestions": []
+}

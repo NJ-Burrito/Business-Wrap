@@ -1,0 +1,31 @@
+{
+  "id": "rtm",
+  "code": "RTM",
+  "category": "requirements",
+  "order": 40,
+  "since": "0.18.0",
+  "name": {
+    "ar": "مصفوفة تتبع المتطلبات (RTM)",
+    "en": "Requirements traceability matrix (RTM)"
+  },
+  "description": {
+    "ar": "مصفوفة بالعرض تتبع كل متطلب عمل إلى المتطلب الوظيفي والتصميم وحالات الاختبار والنتائج والعيوب والإصدار.",
+    "en": "A landscape matrix that traces each business requirement forward to its functional requirement, design, test cases, results, defects and release."
+  },
+  "placeholder": {
+    "ar": "اسم المشروع",
+    "en": "Project name"
+  },
+  "palette": "navy",
+  "coverDesign": "compact",
+  "motif": "rtm",
+  "layout": {
+    "hide": [
+      "toc"
+    ],
+    "page": {
+      "size": "A4",
+      "orientation": "landscape"
+    }
+  }
+}

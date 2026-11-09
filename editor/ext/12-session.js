@@ -495,7 +495,14 @@ const SESS = (() => {
     }).catch(() => _download(name, text, type));
   };
 
+  /** 0.18.0: the session's resume check is over (no host to ask, nothing to resume, or the resume popup answered / dismissed): `bw:session-settled` (once) and
+   *  <html data-bw-session-settled>. The start page (50-start) waits for it, so it never stacks on the resume dialog or over a document the host is bringing back. */
+  let settledOnce = false, popup = false;
+  const settled = () => { if (settledOnce) return; settledOnce = true; document.documentElement.dataset.bwSessionSettled = '1'; window.dispatchEvent(new Event('bw:session-settled')); };
   async function boot() {
+    try { await bootRun(); } finally { if (!popup) settled(); }
+  }
+  async function bootRun() {
     if (!location.protocol.startsWith('http')) return;
     try { const r = await fetch('/api/session/info'); if (!r.ok) return; info = await r.json(); } catch { return; }
     let resumed = null;
@@ -520,7 +527,7 @@ const SESS = (() => {
     else if (!AUTO) {
       const release = window.BW?.holdReady?.('resume'); // bw:ready / data-bw-ready wait until the resume question is settled (a tool's ?automation=1 tab never asks)
       const last = await fetch('/api/session/last').then((r) => r.json()).catch(() => null);
-      if (last?.tabs?.length) modal(last, release); else release?.();
+      if (last?.tabs?.length) { popup = true; modal(last, () => { release?.(); settled(); }); } else release?.(); // the popup's own close settles the session (the finally in boot() skips it while the popup is up)
     }
     push();
     seen();

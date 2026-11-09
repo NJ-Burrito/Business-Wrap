@@ -1,0 +1,22 @@
+{
+  "id": "test-plan",
+  "code": "TP",
+  "category": "testing",
+  "order": 10,
+  "since": "0.18.0",
+  "name": {
+    "ar": "خطة الاختبار",
+    "en": "Test plan"
+  },
+  "description": {
+    "ar": "تحدد كيف سيختبر الفريق النظام: ما يختبر وما لا يختبر، وبأي منهج وبيئة وجدول، وما يعد نجاحا.",
+    "en": "Sets out how the team will test the system: what is and is not tested, with which approach, environment and schedule, and what counts as success."
+  },
+  "placeholder": {
+    "ar": "عنوان الخطة",
+    "en": "Plan title"
+  },
+  "palette": "forest",
+  "coverDesign": "spine",
+  "motif": "test-plan"
+}

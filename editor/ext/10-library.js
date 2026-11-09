@@ -45,7 +45,9 @@ const LIB = (() => {
    * («عنوان الوثيقة», /control/title = "<kind>: <service name>") say the same service name. Editing the cover
    * updates «عنوان الوثيقة», and an edition still on the placeholder («خدمة جديدة» / "New service") takes the new name too,
    * so the list, the share file, the report, the PDF Title, an import and every saved file name follow it. */
+  /* 0.18.0: a document type's own placeholder title («عنوان المستند» / "Document title", type.json) is a placeholder too: LIB.addPlaceholders(list) (50-start reads them from the registry payload) */
   const PLACEHOLDER = new Set(['خدمة جديدة', 'New service']);
+  const addPlaceholders = (list) => { for (const x of list || []) if (x && typeof x === 'string') PLACEHOLDER.add(x.trim()); };
   const KIND = /^(.*?)\s*[:—]\s+/;
   const nameOf = (c = {}) => String(c.coverTitle || String(c.title || '').split(/\s*[:—]\s+/).slice(1).join(': ') || c.title || '').trim();
   /** The service title: control.coverTitle, else the service-name part of control.title; an edition still on the
@@ -97,7 +99,12 @@ const LIB = (() => {
     const editions = {};
     for (const [ed, e] of Object.entries(M[id])) editions[ed] = snapEd(e);
     // A16: the lock state travels with the entry (32-lock exposes EXT.lock), so a locked document opens locked
-    return { id, title: titleOf(id), service: id, origin: 'template', createdAt: now, savedAt: now, editions, words: Object.fromEntries(Object.entries(M[id]).map(([ed, e]) => [ed, wordCount(e.doc)])) /* 0.15.3: words per built edition, refreshed on every save */, theme: S.theme, lock: EXT.lock?.of(id) || null, bwlog: 1, ...extra };
+    return { id, title: titleOf(id), service: id, origin: 'template', createdAt: now, savedAt: now, editions, words: Object.fromEntries(Object.entries(M[id]).map(([ed, e]) => [ed, wordCount(e.doc)])) /* 0.15.3: words per built edition, refreshed on every save */, theme: S.theme, lock: EXT.lock?.of(id) || null, bwlog: 1, ...docTypeOf(id), ...extra };
+  }
+  /** 0.18.0: the document type the open service was made from (doc.docType, written by engine/doctypes.mjs compose): an additive entry key, absent on every older entry. */
+  function docTypeOf(id) {
+    const dt = Object.values(M[id] || {}).map((e) => e.doc?.docType).find((x) => typeof x === 'string' && x);
+    return dt ? { docType: dt } : {};
   }
   /** An entry into the session (DATA.services + M), replacing what was there. */
   function mount(entry) {
@@ -258,17 +265,29 @@ const LIB = (() => {
   const titleFromRaw = (raw, id) => { const c = JSON.parse(raw).control || {}; return String(c.coverTitle || String(c.title || '').split(/\s*[:—]\s+/).slice(1).join(': ') || c.title || id); };
   const makeEntry = (editions, origin, service, theme = S.theme) => {
     const now = new Date().toISOString(), id = `doc-${uuid()}`;
-    return { id, title: titleFromRaw(Object.values(editions)[0].raw, id), service, origin, createdAt: now, savedAt: now, editions, theme, bwlog: 1 };
+    let dt = '';
+    try { dt = JSON.parse(Object.values(editions)[0].raw).docType || ''; } catch { /* not a document */ }
+    return { id, title: titleFromRaw(Object.values(editions)[0].raw, id), service, origin, createdAt: now, savedAt: now, editions, theme, bwlog: 1, ...(typeof dt === 'string' && dt ? { docType: dt } : {}) };
   };
-  /** A document JSON as a new entry (import, new document): `store` false = unsaved until the first Save. */
-  async function fromDocs(docs, origin, store = true) {
+  /** A document JSON as a new entry (import, new document): `store` false = unsaved until the first Save. `ed` (0.18.0) = the edition the editor opens on. */
+  async function fromDocs(docs, origin, store = true, ed) {
     const editions = {};
     for (const [ed, raw] of Object.entries(docs)) editions[ed] = { name: '', raw, hash: await hashOf(raw), ops: [], status: {}, stale: [], comments: [], versions: [], marks: [], epochIds: [] };
     const entry = makeEntry(editions, origin, JSON.parse(Object.values(docs)[0]).service || 'document');
     if (store) { await put(entry); mirror(entry); } else pending[entry.id] = { origin, createdAt: entry.createdAt };
     mount(entry);
-    show(entry.id);
+    show(entry.id, ed);
     return entry;
+  }
+  /** 0.18.0 document studio: a new document of registry type `id`, built from the payload's composed pair (docs.ar and docs.en: design, cover design, layout and
+   *  starter content already written by engine/doctypes.mjs compose). Both editions exist at once; `ed` is the one the editor opens on. Unsaved until the first
+   *  edit, exactly like New (F8). Returns the entry, or null (toast) when the type is unknown. */
+  async function newFromType(id, ed) {
+    const ty = EXT.start?.type?.(id);
+    const docs = {};
+    for (const e of ['ar', 'en']) if (typeof ty?.docs?.[e] === 'string') docs[e] = ty.docs[e];
+    if (!Object.keys(docs).length) { toast(t('startOpenFail'), 'warn'); return null; }
+    try { return await fromDocs(docs, 'type', false, ed === 'ar' || ed === 'en' ? ed : undefined); } catch (e) { console.error(e); toast(t('startOpenFail'), 'warn'); return null; }
   }
   async function newDocument() {
     let docs = null;
@@ -550,7 +569,7 @@ const LIB = (() => {
     })().finally(() => { ingesting = null; });
     return ingesting;
   }
-  return { ingestMirror, all, get, put, open, adopt, save, saveInPlace, captureHtml, queued, ACCEPT, persist, persistSoon, persistNow, stamp, saveTemplate, fromTemplate, metricsOf, newDocument, importAny, remove, restore, purge, duplicate, entryOf, titleOf, syncTitle, syncAll, onCommit, isDoc, fromHash, drawer, TEMPLATES };
+  return { ingestMirror, all, get, put, open, adopt, save, saveInPlace, captureHtml, queued, ACCEPT, persist, persistSoon, persistNow, stamp, saveTemplate, fromTemplate, metricsOf, newDocument, newFromType, fromDocs, addPlaceholders, docTypeOf, importAny, remove, restore, purge, duplicate, entryOf, titleOf, syncTitle, syncAll, onCommit, isDoc, fromHash, drawer, TEMPLATES };
 })();
 
 /* A saved file opened straight from disk keeps the viewer it was saved with (0.17.0, P4). When a newer Business-Wrap answers on this computer

@@ -1,0 +1,750 @@
+{
+  "composedAt": "",
+  "control": {
+    "documentId": "BW-TOT-NEW-001",
+    "title": "Training of Trainers (TOT) guide: Programme name",
+    "preparedBy": "Name and job title",
+    "documentType": "Training of Trainers (TOT) guide",
+    "classification": "Internal",
+    "owner": "[Organisation name]",
+    "issuedOn": "YYYY-MM-DD",
+    "version": "V0.1",
+    "status": "Draft",
+    "reviewCycle": "After each delivery"
+  },
+  "revisions": [
+    [
+      "V0.1",
+      "YYYY-MM-DD",
+      "First draft",
+      "—"
+    ]
+  ],
+  "labels": {
+    "kicker": "TRAINER GUIDE",
+    "subtitle": "Training programme"
+  },
+  "chapters": [
+    {
+      "number": "1",
+      "title": "Programme overview",
+      "sections": [
+        {
+          "number": "1.1",
+          "title": "Why the programme exists",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "This programme prepares trainers to deliver [topic] to [group]. It exists because [the problem it addresses].",
+                "After the programme, a trainer plans a session, runs it and measures what participants learned."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "2",
+      "title": "Participants and entry requirements",
+      "sections": [
+        {
+          "number": "2.1",
+          "title": "Who may attend",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Group",
+                "Entry requirements",
+                "Maximum number"
+              ],
+              "rows": [
+                [
+                  "[Group of trainers]",
+                  "[Experience the programme assumes]",
+                  "20"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "3",
+      "title": "Learning objectives",
+      "sections": [
+        {
+          "number": "3.1",
+          "title": "Objectives",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "By the end of the programme the participant can:"
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "No.",
+                "Objective",
+                "Level",
+                "Measured by"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "Explain how adults learn.",
+                  "Understand",
+                  "Pre-test and post-test"
+                ],
+                [
+                  "2",
+                  "Plan a session with objectives, activities and timing.",
+                  "Apply",
+                  "Session plan review"
+                ],
+                [
+                  "3",
+                  "Facilitate an exercise and keep time.",
+                  "Apply",
+                  "Practice teaching"
+                ],
+                [
+                  "4",
+                  "Evaluate a session from participant feedback.",
+                  "Evaluate",
+                  "Feedback analysis"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "4",
+      "title": "Training approach and the trainer's role",
+      "sections": [
+        {
+          "number": "4.1",
+          "title": "Method",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Each topic follows one cycle: a short input, then an exercise, then a discussion. The trainer facilitates rather than lectures, keeps time and collects feedback."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Method",
+                "When to use it",
+                "Suggested time"
+              ],
+              "rows": [
+                [
+                  "Short input",
+                  "To introduce a concept.",
+                  "10 minutes"
+                ],
+                [
+                  "Exercise",
+                  "To practise the concept.",
+                  "20 minutes"
+                ],
+                [
+                  "Discussion",
+                  "To link it to real work.",
+                  "15 minutes"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "5",
+      "title": "Programme schedule",
+      "sections": [
+        {
+          "number": "5.1",
+          "title": "Day by day",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Day",
+                "Time",
+                "Module",
+                "Method",
+                "Trainer"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "09:00-10:30",
+                  "Module 1: […]",
+                  "Input and exercise",
+                  "[Name]"
+                ],
+                [
+                  "1",
+                  "10:30-10:45",
+                  "Break",
+                  "—",
+                  "—"
+                ],
+                [
+                  "1",
+                  "10:45-12:15",
+                  "Module 2: […]",
+                  "Exercise and discussion",
+                  "[Name]"
+                ],
+                [
+                  "1",
+                  "12:15-13:15",
+                  "Lunch",
+                  "—",
+                  "—"
+                ],
+                [
+                  "1",
+                  "13:15-14:45",
+                  "Module 3: […]",
+                  "Practice",
+                  "[Name]"
+                ],
+                [
+                  "2",
+                  "09:00-10:30",
+                  "Module 4: […]",
+                  "…",
+                  "[Name]"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "6",
+      "title": "Training modules",
+      "sections": [
+        {
+          "number": "6.1",
+          "title": "Module card",
+          "blocks": [
+            {
+              "kind": "subhead",
+              "text": "Module 1: [Title]"
+            },
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Duration: […]",
+                "Objectives: […]",
+                "Key content: […]",
+                "Activities: […]",
+                "Materials: […]",
+                "Assessment: […]"
+              ]
+            },
+            {
+              "kind": "subhead",
+              "text": "Session plan"
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Time (min)",
+                "Topic",
+                "Method",
+                "Materials",
+                "Trainer notes"
+              ],
+              "rows": [
+                [
+                  "10",
+                  "Opening and objectives",
+                  "Input",
+                  "Slides",
+                  "…"
+                ],
+                [
+                  "20",
+                  "[Topic]",
+                  "Exercise",
+                  "Handout",
+                  "…"
+                ],
+                [
+                  "15",
+                  "Discussion",
+                  "Group work",
+                  "Flipchart",
+                  "…"
+                ],
+                [
+                  "5",
+                  "Summary",
+                  "Input",
+                  "—",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "6.2",
+          "title": "Trainer notes",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "What to say: […]",
+                "What to avoid: […]",
+                "Common mistakes and questions to expect: […]"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "7",
+      "title": "Exercises and case studies",
+      "sections": [
+        {
+          "number": "7.1",
+          "title": "Exercise list",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Title",
+                "Module",
+                "Type",
+                "Duration (min)",
+                "Instructions",
+                "Expected outcome"
+              ],
+              "rows": [
+                [
+                  "EX-01",
+                  "[Title]",
+                  "1",
+                  "Group exercise",
+                  "20",
+                  "…",
+                  "…"
+                ],
+                [
+                  "EX-02",
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "EX-03",
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "8",
+      "title": "Assessment",
+      "sections": [
+        {
+          "number": "8.1",
+          "title": "Assessment plan",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Assessment",
+                "Timing",
+                "Method",
+                "Pass mark",
+                "Linked objectives"
+              ],
+              "rows": [
+                [
+                  "Pre-test",
+                  "Day 1, start",
+                  "Short quiz",
+                  "—",
+                  "1"
+                ],
+                [
+                  "Practice teaching",
+                  "Last day",
+                  "Observed session",
+                  "[…]",
+                  "2, 3"
+                ],
+                [
+                  "Post-test",
+                  "Last day, end",
+                  "Short quiz",
+                  "[…]",
+                  "1, 4"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "8.2",
+          "title": "Practice teaching rubric",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Criterion",
+                "Excellent",
+                "Satisfactory",
+                "Needs improvement"
+              ],
+              "rows": [
+                [
+                  "Objectives",
+                  "Stated and met",
+                  "Stated",
+                  "Missing"
+                ],
+                [
+                  "Timing",
+                  "On time throughout",
+                  "Small overruns",
+                  "Session overran"
+                ],
+                [
+                  "Facilitation",
+                  "Everyone takes part",
+                  "Some take part",
+                  "Lecture only"
+                ],
+                [
+                  "Use of feedback",
+                  "Adjusts during the session",
+                  "Collects feedback",
+                  "Ignores feedback"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "9",
+      "title": "Materials and logistics",
+      "sections": [
+        {
+          "number": "9.1",
+          "title": "Before day one",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "Quantity",
+                "Responsible",
+                "Notes"
+              ],
+              "rows": [
+                [
+                  "Training room, seated in groups",
+                  "1",
+                  "[Name]",
+                  "…"
+                ],
+                [
+                  "Projector and screen",
+                  "1",
+                  "[Name]",
+                  "…"
+                ],
+                [
+                  "Handouts",
+                  "One per participant",
+                  "[Name]",
+                  "…"
+                ],
+                [
+                  "Flipchart and markers",
+                  "2",
+                  "[Name]",
+                  "…"
+                ],
+                [
+                  "Attendance sheet",
+                  "1",
+                  "[Name]",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "10",
+      "title": "Programme evaluation and follow-up",
+      "sections": [
+        {
+          "number": "10.1",
+          "title": "Indicators",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Indicator",
+                "Instrument",
+                "Timing",
+                "Target"
+              ],
+              "rows": [
+                [
+                  "Participant satisfaction",
+                  "Survey",
+                  "End of last day",
+                  "[…]"
+                ],
+                [
+                  "What was applied at work",
+                  "Short interview",
+                  "After 30 days",
+                  "[…]"
+                ],
+                [
+                  "What is still applied",
+                  "Short interview",
+                  "After 60 days",
+                  "[…]"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "11",
+      "title": "Annexes",
+      "sections": [
+        {
+          "number": "11.1",
+          "title": "Attendance sheet",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Name",
+                "Organisation",
+                "Day 1",
+                "Day 2",
+                "Signature"
+              ],
+              "rows": [
+                [
+                  "",
+                  "",
+                  "",
+                  "",
+                  ""
+                ],
+                [
+                  "",
+                  "",
+                  "",
+                  "",
+                  ""
+                ],
+                [
+                  "",
+                  "",
+                  "",
+                  "",
+                  ""
+                ],
+                [
+                  "",
+                  "",
+                  "",
+                  "",
+                  ""
+                ]
+              ],
+              "blankCell": ""
+            }
+          ]
+        },
+        {
+          "number": "11.2",
+          "title": "Certificate conditions",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "A certificate is issued to a participant who attends every day and reaches the pass mark in the assessment."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "12",
+      "title": "Approval, distribution and terms",
+      "sections": [
+        {
+          "number": "12.1",
+          "title": "Approval and sign-off",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Name",
+                "Job title",
+                "Action",
+                "Signature",
+                "Date"
+              ],
+              "rows": [
+                [
+                  "",
+                  "",
+                  "Prepared",
+                  "",
+                  ""
+                ],
+                [
+                  "",
+                  "",
+                  "Reviewed",
+                  "",
+                  ""
+                ],
+                [
+                  "",
+                  "",
+                  "Approved",
+                  "",
+                  ""
+                ]
+              ],
+              "blankCell": ""
+            }
+          ]
+        },
+        {
+          "number": "12.2",
+          "title": "Distribution list",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Recipient",
+                "Role",
+                "Delivery method",
+                "Date"
+              ],
+              "rows": [
+                [
+                  "[Name]",
+                  "Trainer",
+                  "…",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "[Name]",
+                  "Programme coordinator",
+                  "…",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "12.3",
+          "title": "Terms and abbreviations",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Term",
+                "Definition"
+              ],
+              "rows": [
+                [
+                  "TOT",
+                  "Training of Trainers: a programme that prepares people to train others."
+                ],
+                [
+                  "Facilitation",
+                  "Guiding a group to learn by doing, not by listening alone."
+                ],
+                [
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "openQuestions": []
+}

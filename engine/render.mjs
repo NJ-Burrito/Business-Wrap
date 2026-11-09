@@ -716,6 +716,250 @@ export function printTrimCss(doc) {
   const t = (+x.toFixed(3)).toString();
   return `@media print and (min-width:${measure + 40}px){.wrap{width:calc(100% - ${t}px);box-sizing:border-box}h4,.gap{margin-inline-end:calc(0mm - ${endv} - ${t}px)}}`;
 }
+// ---- 0.18.0 (document studio): cover designs, one category colour, one flat motif per document type ----
+// `doc.coverDesign` (spine | compact) and `doc.motif` (a document-type id) are additive keys; with neither, nothing here prints and the output is byte
+// for byte what it was. The colours are the document's own design vars (doc.design.vars: primary, primary-deep, primary-50, primary-100, accent-bright, ...),
+// so a category palette reaches the PDF and the DOCX without a new colour. Motifs are drawn in a 160 x 94 mm box (1 unit = 1 mm) from flat shapes:
+// rectangles, circles, lines, polygons and check marks, no gradient, shadow, opacity or blur; they are shown at 152 x 89 mm. The DOCX builder asks
+// engine/covers/motif-svg.mjs for the same drawing, so the two never part. Design: work/sdlc/design/ux/covers.md.
+export const COVER_DESIGNS = ['spine', 'compact'];
+export const COVER_MOTIFS = ['blank', 'srs', 'user-manual', 'tot', 'tor', 'brd', 'frs', 'test-plan', 'test-cases', 'uat-signoff', 'release-notes', 'change-request', 'minutes', 'process-flow', 'rtm', 'defect-report', 'business-case'];
+/** The Latin type code printed large on a spine cover; never taken from the title. Blank has none. */
+export const COVER_CODES = { srs: 'SRS', brd: 'BRD', frs: 'FRS', rtm: 'RTM', 'process-flow': 'PF', 'test-plan': 'TP', 'test-cases': 'TC', 'defect-report': 'DR', 'uat-signoff': 'UAT', 'release-notes': 'RN', 'user-manual': 'UM', tot: 'TOT', tor: 'TOR', 'change-request': 'CR', minutes: 'MOM', 'business-case': 'BC' };
+/** The types whose tables are dense (a washed header, a faint zebra): the sheets people scan down. */
+export const COVER_DENSE = ['test-cases', 'rtm', 'defect-report', 'release-notes'];
+/** Motif colour roles: [theme var, fallback when a theme has none]. s shape, w wash, z faint, d deep. */
+export const MOTIF_ROLES = {
+  s: ['primary', '#003c7a'], w: ['primary-100', '#e1eaf4'], z: ['primary-50', '#f2f6fa'], d: ['primary-deep', '#001e3d'],
+  p: ['paper', '#fafaf9'], b: ['rule-strong', '#d5cfc3'], b2: ['rule', '#e8e4de'], k: ['ink', '#1b1813'],
+  g: ['accent-bright', '#be9a41'], gr: ['accent-rule', '#9c7e36'], r: ['signal', '#a81a1f'], rl: ['signal-wash', '#f2e4e4'],
+  c: ['card', '#efede6'], r3: ['signal-300', '#dc898c'], n4: ['neutral-400', '#bcb29f'],
+};
+const MW = 160;
+const MH = 94;
+const mR = (x, y, w, h, f, o = {}) => ({ t: 'r', x, y, w, h, f, ...o });
+const mC = (x, y, r, f, s, sw) => ({ t: 'c', x, y, r, f, s, sw });
+const mL = (x1, y1, x2, y2, s, sw = 0.8, dash) => ({ t: 'l', x1, y1, x2, y2, s, sw, dash });
+const mP = (pts, f, s, sw) => ({ t: 'p', pts, f, s, sw });
+const mK = (x, y, z, s, sw = 1.3) => ({ t: 'k', x, y, z, s, sw });
+const mB = (x, y, w, h = 2.6, f = 'b') => mR(x, y, w, h, f, { rx: h <= 3 ? h / 2 : 0.8 });
+const mA = (x1, y1, x2, y2, s, sw = 1.1) => {
+  const a = Math.atan2(y2 - y1, x2 - x1);
+  const bx = x2 - 4 * Math.cos(a);
+  const by = y2 - 4 * Math.sin(a);
+  const px = -Math.sin(a) * 2.4;
+  const py = Math.cos(a) * 2.4;
+  return [mL(x1, y1, bx, by, s, sw), mP([[x2, y2], [bx + px, by + py], [bx - px, by - py]], s)];
+};
+const rng = (n) => Array.from({ length: n }, (_, i) => i);
+const MOTIF = {
+  srs: () => rng(4).flatMap((i) => { const y = i * 23; return [mR(0, y, 160, 19, 'w', { rx: 1.5 }), mR(6, y + 6, 22, 7, i ? 's' : 'g', { rx: 1.2 }), mB(34, y + 5, 96 - i * 6), mB(34, y + 11, 64 + (i % 2) * 20)]; }),
+  brd: () => [mC(38, 47, 38, 'w'), mC(38, 47, 27, 'p'), mC(38, 47, 16, 's'), mC(38, 47, 6, 'g'), ...mA(84, 4, 42, 43, 'gr', 1.6),
+    ...[22, 46, 70].flatMap((y, i) => [mR(88, y, 46, 4.2, 's', { rx: 1 }), mB(88, y + 8, 70), mB(88, y + 13, 52 + i * 6)])],
+  frs: () => [...[0, 60, 120].flatMap((x, i) => [mR(x, 0, 40, 24, i === 1 ? 's' : 'w', { rx: 2, s: 's', sw: 1 }), mB(x + 7, 8, 26, 2.6, i === 1 ? 'p' : 's'), mB(x + 7, 14, 18, 2.6, i === 1 ? 'p' : 'b')]),
+    ...mA(41, 12, 59, 12, 'gr'), ...mA(101, 12, 119, 12, 'gr'), mR(0, 38, 160, 10, 'w'), mL(0, 48, 160, 48, 's', 1.2),
+    ...[1, 2, 3, 4, 5].map((i) => mL(0, 48 + i * 8.4, 160, 48 + i * 8.4, 'b2', 0.7)), mL(40, 38, 40, 90, 'b2', 0.7), mL(100, 38, 100, 90, 'b2', 0.7),
+    ...rng(5).flatMap((i) => { const y = 52 + i * 8.4; return [mB(4, y, 26 - (i % 2) * 6, 2), mB(44, y, 44, 2), mB(104, y, 34, 2)]; })],
+  rtm: () => [mR(0, 0, 160, 10, 'w'), mL(0, 10, 160, 10, 's', 1.2), ...rng(4).map((j) => mB(42 + j * 29.5 + 7, 4, 16, 2.4, 's')),
+    ...rng(5).flatMap((i) => { const y = 10 + i * 15; return [mL(0, y + 15, 160, y + 15, 'b2', 0.7), mB(4, y + 6, 30, 2.4), ...rng(4).filter((j) => [[0, 0], [0, 1], [1, 1], [1, 3], [2, 0], [2, 2], [3, 2], [3, 3], [4, 3]].some(([a, b]) => a === i && b === j)).map((j) => mC(42 + j * 29.5 + 14.75, y + 7.5, 3.2, i === 2 && j === 2 ? 'g' : 's'))]; })],
+  'process-flow': () => [...[0, 1].flatMap((k) => [mR(0, k * 48, 160, 44, k ? 'p' : 'z', { s: 'b', sw: 0.7 }), mR(0, k * 48, 9, 44, 's')]),
+    mC(24, 22, 5, 's'), mR(38, 14, 32, 16, 'p', { rx: 2, s: 's', sw: 1.2 }), mP([[98, 22], [110, 12], [122, 22], [110, 32]], 'w', 's', 1.2), mR(92, 62, 36, 16, 's', { rx: 2 }), mC(148, 70, 5.5, 'g', 's', 1.4),
+    ...mA(29, 22, 37, 22, 'k', 1), ...mA(70, 22, 97, 22, 'k', 1), ...mA(110, 32, 110, 61, 'k', 1), ...mA(128, 70, 141.5, 70, 'k', 1),
+    mB(42, 20, 24, 2, 's'), mB(97, 66, 28, 2, 'p'), mB(97, 71, 18, 2, 'p')],
+  'test-plan': () => rng(4).flatMap((i) => { const y = i * 24; const done = i < 2; return [mR(0, y + 1, 11, 11, done ? 's' : 'p', { rx: 2, s: 's', sw: 1.2 }), ...(done ? [mK(0, y + 1, 11, 'p', 1.4)] : []), mB(18, y + 2, 92 - i * 6), mB(18, y + 8, 64), mR(126, y + 1, 34, 10, 'w', { rx: 5 }), mB(134, y + 5, 18, 2, 's'), mL(0, y + 19, 160, y + 19, 'b2', 0.7)]; }),
+  'test-cases': () => [mR(0, 0, 160, 11, 's'), ...rng(6).flatMap((i) => { const y = 11 + i * 13.6; const fail = i === 3; return [...(i % 2 ? [mR(0, y, 160, 13.6, 'z')] : []), mL(0, y + 13.6, 160, y + 13.6, 'b2', 0.7), mB(4, y + 5.5, 16, 2.4, 's'), mB(30, y + 5.5, 50 - (i % 3) * 8, 2.4), mB(94, y + 5.5, 24, 2.4), mR(129, y + 3.3, 26, 7, fail ? 'rl' : 'w', { rx: 3.5 }), mB(134, y + 5.6, 16, 2.2, fail ? 'r' : 's')]; }),
+    ...[26, 90, 124].map((x) => mL(x, 11, x, 92.6, 'b2', 0.7))],
+  'defect-report': () => [...['r', 'r3', 'g', 'n4'].flatMap((col, i) => { const y = i * 23; return [mR(0, y, 160, 19, 'p', { rx: 1.5, s: 'b', sw: 0.7 }), mC(11, y + 9.5, 5, col), mB(22, y + 5.5, 100 - i * 18, 2.8, col), mB(22, y + 11.5, 120 - i * 12, 2.2)]; }), mR(126, 5, 28, 8, 'w', { rx: 4 }), mB(133, 8, 14, 2, 's')],
+  'uat-signoff': () => [...rng(3).flatMap((i) => { const y = i * 24; return [mC(6, y + 6, 6, 'w', 's', 1.2), mK(0.5, y + 0.5, 11, 's', 1.4), mB(18, y + 3, 80 - i * 8, 2.8, 'k'), mB(18, y + 9, 60, 2.2), mL(112, y + 12, 160, y + 12, 'k', 0.9), mB(112, y + 15, 20, 1.8)]; }),
+    mL(0, 88, 62, 88, 'k', 0.9), mB(0, 91, 24, 1.8), mL(76, 88, 118, 88, 'k', 0.9), mB(76, 91, 18, 1.8), mC(144, 80, 11, 's'), mC(144, 80, 8, null, 'p', 0.9), mK(135, 71, 18, 'g', 1.8)],
+  'release-notes': () => [mR(0, 0, 58, 24, 's', { rx: 3 }), mC(7, 12, 2.6, 'p'), mB(15, 8, 30, 3.2, 'p'), mB(15, 14.5, 20, 2.4, 'w'), mB(74, 8, 40, 2.8), mB(74, 14, 26, 2.2, 'b2'),
+    ...[['s', 'p'], ['g', 'k'], ['p', 's', 's'], ['s', 'p']].flatMap(([fl, tx, st], i) => { const y = 36 + i * 15.5; return [mR(0, y, 24, 9, fl, { rx: 4.5, ...(st ? { s: st, sw: 1 } : {}) }), mB(6, y + 3.3, 12, 2.2, tx), mB(32, y + 1.5, 110 - i * 10, 2.6), mB(32, y + 6, 80, 2)]; })],
+  'user-manual': () => [mR(0, 0, 13, 13, 's', { rx: 2 }), mR(5.2, 3.4, 2.8, 6.2, 'p', { rx: 0.6 }), mB(19, 3, 70, 4.2, 'k'), mB(19, 10, 104, 2.4),
+    mR(0, 20, 160, 56, 'c', { rx: 1.5, s: 'b', sw: 0.8 }), mR(3, 23, 154, 6, 'b2', { rx: 1 }), mR(3, 32, 32, 41, 'b2', { rx: 1 }), ...rng(3).map((j) => mB(7, 37 + j * 7, 22, 2)),
+    mR(40, 33, 50, 12, 'p', { s: 'b', sw: 0.6 }), mR(40, 49, 80, 6, 'p', { s: 'b', sw: 0.6 }), mR(40, 59, 80, 6, 'p', { s: 'b', sw: 0.6 }),
+    mR(37.5, 46.5, 85.5, 11.5, null, { rx: 1.2, s: 'r', sw: 1.4 }), mC(124, 46.5, 4.4, 'r'), mR(123, 44.2, 2, 4.6, 'p', { rx: 0.5 }), mR(0, 84, 9, 9, 's', { rx: 1.5 }), mB(14, 86.5, 60, 3.2, 'k')],
+  tot: () => [...['z', 'w', 's', 'd'].flatMap((f, i) => { const h = 20 + i * 17; return [mR(i * 40, 94 - h, 32, h, f, { rx: 1.5, ...(i < 2 ? { s: 's', sw: 0.8 } : {}) }), mB(i * 40 + 6, 94 - h + 6, 20, 2.4, i > 1 ? 'p' : 's')]; }),
+    mL(136, 23, 136, 9, 'k', 1), mP([[136, 9], [145, 12], [136, 15]], 'g'), ...rng(3).map((i) => mC(6 + i * 9, 12, 3.2, 's')), mB(36, 10, 40, 2.8)],
+  tor: () => [mR(0, 0, 160, 58, null, { rx: 2, s: 's', sw: 1.2 }), mR(6, 6, 38, 4, 's', { rx: 1 }),
+    ...rng(3).flatMap((i) => { const x = 6 + i * 50; return [mR(x, 17, 44, 16, 'w', { rx: 1.5 }), mB(x + 5, 22, 28, 2.4, 's'), mB(x + 5, 27, 20, 2)]; }),
+    mR(6, 38, 70, 14, null, { rx: 1.5, s: 's', sw: 0.9, dash: '2.4 1.8' }), mB(12, 44, 40, 2.2), mL(0, 78, 160, 78, 's', 1.4),
+    ...[4, 52, 102, 154].flatMap((x, i) => [mC(x, 78, 4, i === 3 ? 'g' : 's', 'p', 1.2), mB(Math.min(142, Math.max(0, x - 9)), 86, 18, 2.2)])],
+  'change-request': () => [mR(0, 0, 58, 44, 'w', { rx: 2 }), mB(6, 7, 34, 3.2, 's'), mB(6, 15, 44, 2.4), mB(6, 21, 38, 2.4), mB(6, 27, 44, 2.4), mL(4, 28.2, 54, 28.2, 'r', 1.1),
+    mR(102, 0, 58, 44, 's', { rx: 2 }), mB(108, 7, 34, 3.2, 'g'), mB(108, 15, 44, 2.4, 'p'), mB(108, 21, 38, 2.4, 'p'), mB(108, 27, 30, 2.4, 'p'), ...mA(64, 22, 96, 22, 'gr', 1.8),
+    ...[[0.35, 's'], [0.6, 'g'], [0.85, 'r']].flatMap(([fr, col], i) => { const y = 56 + i * 13; return [mC(4, y + 3, 3, col), mB(12, y + 1.5, 22, 3), mR(40, y + 1, 120, 4, 'b2', { rx: 2 }), mR(40, y + 1, 120 * fr, 4, col, { rx: 2 })]; })],
+  minutes: () => [...rng(3).map((i) => mC(6 + i * 11, 6, 5, i < 2 ? 's' : 'g')), mB(112, 3, 48, 2.8, 'k'), mB(126, 9, 34, 2.2),
+    ...rng(3).flatMap((i) => { const y = 22 + i * 17; return [mC(5, y + 4, 5, 'w', 's', 1), mB(16, y + 1, 90 - i * 10, 3, 'k'), mB(16, y + 7, 120, 2.2), mL(0, y + 14.5, 160, y + 14.5, 'b2', 0.7)]; }),
+    mR(0, 78, 10, 10, 'p', { rx: 2, s: 's', sw: 1.2 }), mB(16, 80, 76, 2.8), mR(118, 79, 42, 8, 'w', { rx: 4 }), mB(126, 82, 26, 2, 's')],
+  'business-case': () => [mL(0, 88, 112, 88, 'k', 1), ...[[6, 14], [40, 30], [74, 50]].flatMap(([x, h]) => [mR(x, 62, 14, 26, 'w', { s: 's', sw: 0.9 }), mR(x + 16, 88 - h, 14, h, 's')]),
+    mL(0, 62, 112, 62, 'gr', 1.2, '3 2'), mC(63, 62, 4.4, 'g', 'p', 1.2), mR(124, 6, 36, 36, 'w', { rx: 3 }), mC(142, 24, 10, 'g'), mC(142, 24, 6.4, null, 'p', 0.9), mB(124, 52, 36, 3, 'k'), mB(124, 60, 30, 2.4), mB(124, 66, 36, 2.4), mB(124, 72, 22, 2.4)],
+  blank: () => [mC(80, 38, 24, null, 'n4', 1.4), mR(78.4, 26, 3.2, 24, 'n4', { rx: 1.6 }), mR(68, 36.4, 24, 3.2, 'n4', { rx: 1.6 }), mR(34, 74, 92, 1.8, 'b2', { rx: 0.9 }), mR(34, 80, 72, 1.8, 'b2', { rx: 0.9 }), mR(34, 86, 52, 1.8, 'b2', { rx: 0.9 })],
+};
+const f2 = (v) => String(+Number(v).toFixed(2));
+/** The motif's shapes (the plain data the SVG is made of); [] for an unknown id. */
+export function coverMotifShapes(id) { return MOTIF[id] ? MOTIF[id]().flat() : []; }
+/**
+ * One motif as an SVG string. `rtl` mirrors it (arrows then point the way the language reads; a check mark moves but is not flipped). With `colors`
+ * ({role: '#hex'}) every paint is a plain attribute (the DOCX route draws it to a PNG); without, shapes carry classes the cover CSS paints from the theme.
+ */
+export function coverMotifSvg(id, { rtl = false, colors = null, cls = 'cover-motif' } = {}) {
+  if (!MOTIF[id]) return '';
+  const X = (x, w = 0) => f2(rtl ? MW - x - w : x);
+  const paint = (role, kind) => (role ? (colors ? ` ${kind}="${colors[role] || '#000000'}"` : '') : (kind === 'fill' ? ' fill="none"' : ''));
+  const klass = (f, s) => { const c = [f ? `f-${f}` : '', s ? `s-${s}` : ''].filter(Boolean).join(' '); return !colors && c ? ` class="${c}"` : ''; };
+  const stroke = (s, sw, dash) => (s ? `${paint(s, 'stroke')} stroke-width="${f2(sw ?? 0.8)}"${dash ? ` stroke-dasharray="${dash}"` : ''} stroke-linejoin="round"` : '');
+  const out = coverMotifShapes(id).map((sh) => {
+    switch (sh.t) {
+      case 'r': return `<rect${klass(sh.f, sh.s)} x="${X(sh.x, sh.w)}" y="${f2(sh.y)}" width="${f2(sh.w)}" height="${f2(sh.h)}"${sh.rx ? ` rx="${f2(sh.rx)}"` : ''}${paint(sh.f, 'fill')}${stroke(sh.s, sh.sw, sh.dash)}/>`;
+      case 'c': return `<circle${klass(sh.f, sh.s)} cx="${X(sh.x)}" cy="${f2(sh.y)}" r="${f2(sh.r)}"${paint(sh.f, 'fill')}${stroke(sh.s, sh.sw)}/>`;
+      case 'l': return `<line${klass(null, sh.s)} x1="${X(sh.x1)}" y1="${f2(sh.y1)}" x2="${X(sh.x2)}" y2="${f2(sh.y2)}" fill="none"${stroke(sh.s, sh.sw, sh.dash)}/>`;
+      case 'p': return `<polygon${klass(sh.f, sh.s)} points="${sh.pts.map(([x, y]) => `${X(x)},${f2(y)}`).join(' ')}"${paint(sh.f, 'fill')}${stroke(sh.s, sh.sw)}/>`;
+      default: { // k: a check mark moves with the mirror but is drawn the same way round
+        const bx = rtl ? MW - sh.x - sh.z : sh.x;
+        const pts = [[0.2, 0.52], [0.42, 0.72], [0.8, 0.3]].map(([a, b]) => `${f2(bx + a * sh.z)},${f2(sh.y + b * sh.z)}`).join(' ');
+        return `<polyline${klass(null, sh.s)} points="${pts}" fill="none"${stroke(sh.s, sh.sw)} stroke-linecap="round"/>`;
+      }
+    }
+  });
+  return `<svg class="${cls}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${MW} ${MH}" width="${MW}" height="${MH}" aria-hidden="true" focusable="false">${out.join('')}</svg>`;
+}
+/** The cover design a document asks for: { design, motif } or null (today's cover). A motif alone means the spine design. */
+export function coverOf(doc) {
+  const motif = COVER_MOTIFS.includes(doc?.motif) ? doc.motif : '';
+  const design = COVER_DESIGNS.includes(doc?.coverDesign) ? doc.coverDesign : motif ? 'spine' : '';
+  return design ? { design, motif } : null;
+}
+const lum = (hex) => { const v = [1, 3, 5].map((i) => parseInt(String(hex).slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+/** WCAG contrast of two #rrggbb colours (computed from the live palette, never typed). */
+export const contrastOf = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+/** The spine code's colour: the gold where it reads on the spine (4.5:1), else the pale gold step. */
+export function spineCodeColor(vars) {
+  const gold = vars['accent-bright'] || MOTIF_ROLES.g[1];
+  const deep = vars['primary-deep'] || MOTIF_ROLES.d[1];
+  return /^#[0-9a-f]{6}$/i.test(gold) && /^#[0-9a-f]{6}$/i.test(deep) && contrastOf(gold, deep) < 4.5 ? vars['accent-200'] || '#e3ddce' : gold;
+}
+/** The user manual's tag words for a callout (a note, a tip, an important point, a warning) in both languages. */
+export const CALLOUT_TAGS = { note: ['Note', 'ملاحظة'], tip: ['Tip', 'نصيحة'], important: ['Important', 'مهم'], warning: ['Warning', 'تحذير'] };
+const CALLOUT_RE = new RegExp(`^(${Object.values(CALLOUT_TAGS).flat().join('|')})\\s*[:：—–-]\\s*`, 'u');
+/** A paragraph's callout kind and tag word when it opens with one ("Note: ..."), else null. */
+export function calloutOf(text) {
+  const m = CALLOUT_RE.exec(String(text ?? ''));
+  if (!m) return null;
+  const kind = Object.keys(CALLOUT_TAGS).find((k) => CALLOUT_TAGS[k].includes(m[1]));
+  return { kind, tag: m[1], len: m[0].length };
+}
+/** True for a user manual: its steps and callouts take the manual's look. */
+export const isManual = (doc) => doc?.motif === 'user-manual' || doc?.docType === 'user-manual';
+/** The stylesheet of the cover designs; '' for a document that asks for none. fam = the quoted display family. */
+export function coverCss(doc, theme, fam = {}) {
+  const cv = coverOf(doc);
+  if (!cv) return '';
+  const vars = theme.vars || {};
+  const display = fam.display || 'inherit';
+  const paints = Object.entries(MOTIF_ROLES).map(([k, [v, d]]) => `.cover-motif .f-${k}{fill:var(--${v},${d})}.cover-motif .s-${k}{stroke:var(--${v},${d})}`).join(NL);
+  const px = 'inset-inline:34mm 16mm';
+  const base = `/* 0.18.0 cover design: ${cv.design}${cv.motif ? ' / ' + cv.motif : ''} */
+.cover[data-cover]{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+.cover-motif{display:block;flex:0 0 auto}
+${paints}`;
+  const dense = COVER_DENSE.includes(cv.motif) && !('th-fill' in vars) && !('zebra' in vars) ? ':root{--th-fill:var(--primary-100);--zebra:var(--primary-50)}\n' : '';
+  if (cv.design === 'compact') {
+    const mg = marginsOf(doc);
+    return `${base}
+.cover[data-cover=compact]{display:block;page:auto;height:auto;overflow:visible;break-after:auto;padding-block:0 7mm;padding-inline:var(--pm-start,var(--page-side)) var(--pm-end,var(--page-side))}
+@page:first{margin:${mg ? mg.top : 18}mm 0 ${mg ? mg.bottom : 16}mm;background:${safeToken(['paper', vars.paper]) ? vars.paper : '#fff'}}
+.cover[data-cover=compact] .tb-band{position:relative;height:2.5mm;background:var(--primary-deep)}
+.cover[data-cover=compact] .tb-band i{position:absolute;top:0;bottom:0;inset-inline-start:0;width:20mm;background:var(--accent-bright)}
+.cover[data-cover=compact] .lockup{padding:5mm 0 0;min-height:0;justify-content:flex-start}
+.cover[data-cover=compact] .lockup:empty{display:none}
+.cover[data-cover=compact] .lockup img{height:auto;max-height:12mm;margin:0}
+.cover[data-cover=compact] .tb-row{display:flex;align-items:center;justify-content:space-between;gap:8mm;padding:6mm 0 5mm}
+.cover[data-cover=compact] .tb-main{flex:1;min-width:0}
+.cover[data-cover=compact] .tb-id{display:flex;align-items:center;gap:3mm;margin-bottom:3mm}
+.cover[data-cover=compact] .tb-code{background:var(--primary);color:var(--paper,#fff);font-family:${display},system-ui,sans-serif;font-weight:700;font-size:var(--t-meta);letter-spacing:.12em;padding:.8mm 3mm;border-radius:1mm;line-height:1.5}
+.cover[data-cover=compact] .kicker{margin:0}
+.cover[data-cover=compact] .subtitle{margin-top:3mm}
+.cover[data-cover=compact] .cover-motif{width:46mm;height:27mm}
+.cover[data-cover=compact] .tb-meta{display:flex;justify-content:space-between;gap:6mm;padding:2.5mm 0;border-top:.75pt solid var(--rule-strong);border-bottom:.75pt solid var(--rule);font-size:var(--t-meta);color:var(--muted)}
+.cover[data-cover=compact]+.wrap{padding-top:6mm}
+${dense}`;
+  }
+  return `${base}
+.cover[data-cover=spine] .spine{position:static}
+.cover[data-cover=spine] .spine .cap{inset-inline:auto;inset-inline-start:0;width:20mm;height:20mm}
+.cover[data-cover=spine] .spine .id{position:absolute;top:110mm;left:0;width:20mm;height:62mm;display:flex;align-items:center;justify-content:center;font-size:var(--t-micro);letter-spacing:.3em;color:${spineCodeColor(vars)}}
+.bw-doc[dir=rtl] .cover[data-cover=spine] .spine .id{transform:none;left:auto;right:0}
+.cover[data-cover=spine] .lockup{position:absolute;top:20mm;${px};height:20mm;padding:0;min-height:0;justify-content:flex-start;gap:6mm}
+.cover[data-cover=spine] .lockup img{height:auto;max-height:20mm;max-width:50mm;margin:0}
+.cover[data-cover=spine] .cover-rule{position:absolute;top:56mm;${px};margin:0;height:.75pt;background:var(--rule)}
+.cover[data-cover=spine] .cover-body{display:contents}
+.cover[data-cover=spine] .type-code{position:absolute;top:91mm;inset-inline-start:34mm;font-family:${display},system-ui,sans-serif;font-weight:900;font-size:17.14mm;line-height:1;letter-spacing:.07em;color:var(--primary)}
+.cover[data-cover=spine] .kicker{position:absolute;top:119.5mm;inset-inline-start:34mm;margin:0;font-size:var(--t-meta);color:var(--accent)}
+.cover[data-cover=spine] .rule-short{position:absolute;top:134.5mm;inset-inline-start:34mm;width:20mm;height:.75pt;margin:0}
+.cover[data-cover=spine] .cover-title{position:absolute;top:141mm;${px}}
+.cover[data-cover=spine] .cover-title .subtitle{margin-top:3mm}
+.cover[data-cover=spine] .cover-motif{position:absolute;top:163mm;inset-inline-start:34mm;width:152mm;height:89.3mm}
+.cover[data-cover=spine] .cover-foot{position:absolute;top:258mm;${px};margin:0;padding:6mm 0 0;font-size:var(--t-meta);border-top:.75pt solid var(--rule)}
+${dense}`;
+}
+/**
+ * 0.18.0 polish (L10a): the status words a table cell may carry, by kind, in both languages. A cell whose WHOLE text is one of them takes the fill of
+ * covers.md section 4 (the word stays): ok = Pass / Covered, bad = Fail / Gap, warn = Blocked / Partial, idle = Not run.
+ */
+export const STATUS_WORDS = {
+  ok: ['Pass', 'Passed', 'Covered', 'ناجح', 'نجح', 'مغطى'],
+  bad: ['Fail', 'Failed', 'Gap', 'فاشل', 'فشل', 'ثغرة', 'فجوة'],
+  warn: ['Blocked', 'Partial', 'محجوب', 'جزئي'],
+  idle: ['Not run', 'لم ينفذ'],
+};
+const STATUS_KIND = new Map(Object.entries(STATUS_WORDS).flatMap(([k, ws]) => ws.map((w) => [w, k])));
+/** The status kind (ok | bad | warn | idle) of a cell's text, or '' when it is no status word. */
+export const statusKind = (text) => STATUS_KIND.get(String(text ?? '').trim()) || '';
+/** True for a document built from a document type (doc.docType): only these take the 0.18.0 polish; any other document prints as it always did. */
+export const isTyped = (doc) => typeof doc?.docType === 'string' && doc.docType !== '';
+/** The page-flow and status polish of a typed document; '' (no byte) for any other document. */
+export function polishCss(doc) {
+  if (!isTyped(doc)) return '';
+  const land = doc.layout?.page ? pageSpec(doc.layout.page).orientation === 'landscape' : false;
+  const compact = coverOf(doc)?.design === 'compact';
+  const st = (k, fill, ink) => `.bw-doc table:not(.control):not(.toc):not(.story) tbody tr td.st-${k}{background:var(--${fill},transparent);color:var(--${ink});font-weight:700}`;
+  return `/* 0.18.0 polish: bands, chapter heading rows, status cells${compact ? ', compact first page' : ''} */
+h4{padding-bottom:3mm}
+h2{break-inside:avoid}
+${st('ok', 'success-100', 'success-700')}
+${st('bad', 'signal-100', 'signal-600')}
+${st('warn', 'accent-100', 'accent-800')}
+${st('idle', 'neutral-100', 'neutral-700')}
+.bw-doc td[class*=st-]{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+${compact ? `.cover[data-cover=compact]+.wrap [data-part=control]{break-inside:avoid}
+.cover[data-cover=compact]+.wrap [data-part=control] table.control{break-inside:avoid}
+.cover[data-cover=compact]+.wrap section.chapter:first-of-type .keep{break-inside:avoid;break-after:avoid}
+.cover[data-cover=compact]+.wrap section.chapter:first-of-type p.lead-in{break-inside:avoid}
+${land ? `.cover[data-cover=compact]+.wrap [data-part=control] table.control{display:block}
+.cover[data-cover=compact]+.wrap [data-part=control] table.control colgroup{display:none}
+.cover[data-cover=compact]+.wrap [data-part=control] table.control tbody{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(5,auto);grid-auto-flow:column;column-gap:12mm}
+.cover[data-cover=compact]+.wrap [data-part=control] table.control tr{display:grid;grid-template-columns:42% 58%;break-inside:avoid}
+.cover[data-cover=compact]+.wrap [data-part=control] table.control th{width:auto}
+` : ''}` : ''}`;
+}
+/** The user manual's own look (steps, screenshot frames, callouts), only for a user-manual document. */
+export function manualCss(doc) {
+  if (!isManual(doc)) return '';
+  const co = (k, border, fill, tag) => `.bw-doc p.bw-co-${k}{background:var(--${fill});border-color:var(--${border})}.bw-doc p.bw-co-${k} b.bw-tag{color:var(--${tag})}`;
+  return `/* 0.18.0 user manual: numbered steps, screenshot frames, callouts */
+section.chapter,section.sec{counter-reset:bw-step}
+.bw-doc h4{counter-increment:bw-step;display:flex;align-items:center;gap:3mm;margin:7mm 0 3mm;margin-inline:0;padding:0;border-top:0;background:none;color:var(--ink);font-size:var(--t-h3)}
+.bw-doc h4::before{content:counter(bw-step);flex:0 0 auto;width:8mm;height:8mm;display:flex;align-items:center;justify-content:center;background:var(--primary);color:var(--paper,#fff);font-size:var(--t-table);font-weight:700;line-height:1}
+.bw-doc .fig.shots{background:var(--card);border:.75pt solid var(--rule-strong);padding:3mm;margin:3mm 0 6mm}
+.bw-doc .fig.shots .shot{max-width:none;margin:0 0 2mm;border:0}
+.bw-doc .fig.shots figcaption{font-size:var(--t-meta);color:var(--muted);margin:0}
+.bw-doc p.bw-callout{border:.75pt solid;padding:3mm;margin:0 0 4mm}
+${co('note', 'primary-800', 'primary-wash', 'primary-800')}
+${co('tip', 'success-700', 'success-100', 'success-700')}
+${co('important', 'accent-700', 'accent-100', 'accent-800')}
+${co('warning', 'signal-700', 'signal-100', 'signal-700')}
+`;
+}
+
 export function documentCss(themeIn, sheet, doc) {
   const theme = designTheme(themeIn, doc);
   const tail = doc ? `
@@ -728,6 +972,8 @@ ${modelCss(doc)}${sanitizeCss(doc.design?.css).css}
   const vars = Object.entries(theme.vars).filter(safeToken).map(([k, v]) => `  --${k}:${v};`).join(NL);
   const paper = safeToken(['paper', theme.vars.paper]) ? theme.vars.paper : '#fff';
   const PAGE_ART_MM = 140;
+  // 0.18.0: the cover designs and the user manual's look; '' (and no byte) for a document that asks for neither
+  const designCss = [coverCss(doc, theme, { display }), manualCss(doc), polishCss(doc)].filter(Boolean).map((s) => (s.endsWith('\n') ? s : `${s}\n`)).join('');
   return `${doc ? uploadedFontCss(doc) : ''}
 *{box-sizing:border-box}
 :root{
@@ -929,7 +1175,7 @@ figure,.fig,.gap{break-inside:avoid}
 .bw-ov-cap{font-size:var(--t-meta);color:var(--muted);text-align:center;margin-top:1mm}
 .bw-every{position:absolute;top:297mm;left:0;width:210mm;height:0}
 @media print{.bw-every{position:static}.bw-every>.bw-ov{position:fixed}}
-${tail}`;
+${designCss}${tail}`;
 }
 
 /** CSS for the 0.13.0 document model — empty for a document that uses none of it (0.12.0 output unchanged). */
@@ -986,6 +1232,7 @@ export function renderParts(doc, o) {
   // a printed label, editable in place: it writes /labels/<key> of this document
   const lb = (k, v = L[k]) => `<span${dp('/labels/' + k)}>${bidi(v)}</span>`;
   const hide = new Set(doc.layout?.hide || []);
+  const manual = isManual(doc);
   const bidi0 = o.bidi || makeBidi(locale);
   // a rich leaf (A26) prints its marks; a string takes the 0.12.0 path unchanged
   // 0.17.7: a paragraph with tab stops draws its tab characters as spans (polish() would collapse them to a space); the sentinel crosses polish/bidi and becomes the span
@@ -1080,6 +1327,8 @@ export function renderParts(doc, o) {
     let attrs = isRich(c) ? leafAttrs(c, textOf(c).length > 200 ? 'long' : '') : String(c).length > 200 ? ' class="long"' : '';
     if (d.length) attrs = /style="/.test(attrs) ? attrs.replace('style="', `style="${d.join(';')};`) : attrs + ` style="${d.join(';')}"`;
     if (li) attrs = /class="/.test(attrs) ? attrs.replace('class="', 'class="bw-cell-list ') : attrs + ' class="bw-cell-list"';
+    const stk = !li && isTyped(doc) ? statusKind(textOf(c)) : ''; // a status word (Pass, Fail, Blocked, Not run, Covered, Partial, Gap) in a typed document takes its fill
+    if (stk) attrs = /class="/.test(attrs) ? attrs.replace('class="', `class="st-${stk} `) : attrs + ` class="st-${stk}"`;
     else if (textOf(c).includes('\n')) attrs = /class="/.test(attrs) ? attrs.replace('class="', 'class="bw-nl ') : attrs + ' class="bw-nl"';
     const sp = (span && span.cs > 1 ? ` colspan="${span.cs}"` : '') + (span && span.rs > 1 ? ` rowspan="${span.rs}"` : '');
     const f = st.formula ? ` data-f="${attr(st.formula)}"` : '';
@@ -1198,6 +1447,12 @@ export function renderParts(doc, o) {
         continue;
       }
       flush();
+      // 0.18.0 (user manual): a paragraph that opens with a tag word ("Note: ...", «ملاحظة: ...») is a callout box; the tag word is bold in print and export (not while it is edited in place)
+      const co = manual && !isRich(para.leaf) ? calloutOf(para.text) : null;
+      if (co) {
+        out.push(`<p data-b="${attr(b)}"${dp(para.p)}${leafAttrs(para.leaf, `bw-callout bw-co-${co.kind}`)}>${(o.editor ? '' : `<b class="bw-tag">${esc(para.text.slice(0, co.len).trimEnd())}</b> `) + bidi(o.editor ? para.text : para.text.slice(co.len)) || '<br>'}</p>`);
+        continue;
+      }
       out.push(`<p data-b="${attr(b)}"${dp(para.p)}${leafAttrs(para.leaf)}>${bidi(para.leaf ?? para.text) || '<br>'}</p>`); // an empty line keeps its height (0.14.0 page lines)
     }
     flush();
@@ -1591,7 +1846,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
       const numPtr = (p) => (NUM.manual ? p : ''); // the printed numbers are computed from position: only a manual-numbering document types them (UAT M5)
       const head = row(NUM.ch[ci], ch.title, 'toc-chapter', cp, numPtr(cp + '/number'), cp + '/title');
       if (ch.sections.length === 1) {
-        const cards = ch.sections[0].blocks.map((x, k) => [x, k]).filter(([x]) => x.kind === 'subhead' && !x.tocHidden).map(([x, k]) => row('', x.text, 'toc-card', `${cp}/sections/0/blocks/${k}`, '', `${cp}/sections/0/blocks/${k}/text`));
+        const cards = ch.sections[0].blocks.map((x, k) => [x, k]).filter(([x]) => x.kind === 'subhead' && !x.tocHidden && !isTyped(doc)).map(([x, k]) => row('', x.text, 'toc-card', `${cp}/sections/0/blocks/${k}`, '', `${cp}/sections/0/blocks/${k}/text`));
         const only = ch.sections[0];
         // a chapter of ONE story section: the card prints «6.1», so the contents list it too (UAT L2); other one-section chapters list only their sub-heads
         const lone = only.blocks?.[0]?.kind === 'stories' && !only.tocHidden ? [row(NUM.sec[ci][0], only.title, '', `${cp}/sections/0`, numPtr(`${cp}/sections/0/number`), `${cp}/sections/0/title`)] : [];
@@ -1656,7 +1911,48 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
   const slot = (logos, name) =>
     logos[name] && SAFE_IMG.test(logos[name]) ? `<img class="logo-${name}" data-logo="${name}" src="${attr(logos[name])}" alt="" />` : '';
 
-  const cover = (logos) => hide.has('cover') ? '' : `<div class="cover" data-part="cover">${overlaysFor((o) => o.mode === 'cover')}
+  // 0.18.0: a cover design (spine | compact, doc.coverDesign) with a flat motif per document type; none asked = the cover below, byte for byte
+  const cv = coverOf(doc);
+  const coverDesigned = (logos) => {
+    const code = COVER_CODES[cv.motif] || '';
+    const art = cv.motif ? coverMotifSvg(cv.motif, { rtl: locale === 'ar' }) : '';
+    const attrs = `data-part="cover" data-cover="${cv.design}"${cv.motif ? ` data-motif="${cv.motif}"` : ''}`;
+    const title = `<h1${dp(c.coverTitle != null || serviceName !== c.title ? '/control/coverTitle' : '/control/title')}>${bidi(serviceName)}</h1>
+    <div class="subtitle"${dp(c.subtitle != null ? '/control/subtitle' : '/labels/subtitle')}>${bidi(c.subtitle ?? L.subtitle)}</div>`;
+    const meta = `<span><bdi dir="ltr"${dp('/control/version')}>${esc(c.version)}</bdi>${L.comma}<span${dp('/control/status')}>${esc(c.status)}</span>${L.comma}<bdi dir="ltr"${dp('/control/issuedOn')}>${esc(c.issuedOn)}</bdi></span>`;
+    const lockup = `<div class="lockup">${slot(logos, 'start')}${slot(logos, 'center')}${slot(logos, 'end')}</div>`;
+    const docId = `<bdi dir="ltr"${dp('/control/documentId')}>${esc(c.documentId)}</bdi>`;
+    if (cv.design === 'compact') {
+      return `<div class="cover" ${attrs}>${overlaysFor((o) => o.mode === 'cover')}
+  <div class="tb-band"><i></i></div>
+  ${lockup}
+  <div class="tb-row">
+    <div class="tb-main">
+    <div class="tb-id">${code ? `<span class="tb-code"><bdi dir="ltr">${code}</bdi></span>` : ''}<div class="kicker">${lb('kicker')}</div></div>
+    ${title}
+    </div>
+    ${art}
+  </div>
+  <div class="tb-meta">${meta}<span>${docId}</span></div>
+</div>`;
+    }
+    return `<div class="cover" ${attrs}>${overlaysFor((o) => o.mode === 'cover')}
+  <div class="spine"><i class="cap"></i><span class="id">${docId}</span></div>
+  <div class="cover-main">
+  ${lockup}
+  <div class="cover-rule"></div>
+  <div class="cover-body">
+    ${code ? `<div class="type-code"><bdi dir="ltr">${code}</bdi></div>` : ''}
+    <div class="kicker">${lb('kicker')}</div>
+    <div class="rule-short"></div>
+    <div class="cover-title">${title}</div>
+  </div>
+  <div class="cover-foot">${meta}${c.owner ? `<span${dp('/control/owner')}>${bidi(c.owner)}</span>` : ''}</div>
+  </div>
+  ${art}
+</div>`;
+  };
+  const cover = (logos) => hide.has('cover') ? '' : cv ? coverDesigned(logos) : `<div class="cover" data-part="cover">${overlaysFor((o) => o.mode === 'cover')}
   <div class="spine"><i class="cap"></i><span class="id"><bdi dir="ltr"${dp('/control/documentId')}>${esc(c.documentId)}</bdi></span></div>
   <div class="cover-main">
   <div class="lockup">${slot(logos, 'start')}${slot(logos, 'center')}${slot(logos, 'end')}</div>

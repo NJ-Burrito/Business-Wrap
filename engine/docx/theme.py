@@ -490,9 +490,12 @@ def style_table_theme(table, roles: dict[str, str], has_header: bool) -> None:
                 for run in p.runs:
                     run.font.color.rgb = rgb(roles['navy'])
     body_rows = rows[1:] if has_header else rows
-    for row in body_rows:
+    zebra = roles.get('zebra', '')
+    for n, row in enumerate(body_rows):
         for cell in row.cells:
             set_cell_border(cell, 'bottom', roles['rule'], 4)
+            if n % 2 and isinstance(zebra, str) and len(zebra) == 7 and zebra.startswith('#'):
+                set_cell_shading(cell, zebra)  # 0.18.0: a dense table's faint zebra (the print's --zebra), only when the theme or the type sets one
     for row in rows:
         for cell in row.cells:
             for p in cell.paragraphs:
@@ -500,7 +503,7 @@ def style_table_theme(table, roles: dict[str, str], has_header: bool) -> None:
                 for run in p.runs:
                     run.font.size = Pt(SIZES['table'])
 
-def add_header_footer(document, roles: dict, font: str, logo: Path | None, doc_id: str='', issued_on: str='', cover_section=None, body_section=None) -> None:
+def add_header_footer(document, roles: dict, font: str, logo: Path | None, doc_id: str='', issued_on: str='', cover_section=None, body_section=None, single: bool=False) -> None:
     from docx.enum.text import WD_TAB_ALIGNMENT
     cover_section = cover_section or document.sections[0]
     body_section = body_section or document.sections[-1]
@@ -553,10 +556,11 @@ def add_header_footer(document, roles: dict, font: str, logo: Path | None, doc_i
             spacer_pf.line_spacing = lift
             for r in spacer.runs:
                 r.font.size = Pt(1)
-    _spread_footer(cover_section, with_folio=False, inset=Inches(16 / 25.4), lift=Pt(COVER_FOOTER_LIFT_TWIPS / 20))
-    cover_section.header.is_linked_to_previous = False
-    for p in list(cover_section.header.paragraphs):
-        p.text = ''
+    if not single:  # single: one section holds the title block and the body (the compact cover), so there is no cover page to dress
+        _spread_footer(cover_section, with_folio=False, inset=Inches(16 / 25.4), lift=Pt(COVER_FOOTER_LIFT_TWIPS / 20))
+        cover_section.header.is_linked_to_previous = False
+        for p in list(cover_section.header.paragraphs):
+            p.text = ''
     _spread_footer(body_section, with_folio=True, muted_hex=HF_MUTED)
     sectPr = body_section._sectPr
     pgNumType = OxmlElement('w:pgNumType')

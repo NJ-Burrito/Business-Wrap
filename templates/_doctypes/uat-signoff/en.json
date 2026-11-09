@@ -1,0 +1,468 @@
+{
+  "composedAt": "",
+  "control": {
+    "documentId": "BW-UAT-NEW-001",
+    "title": "UAT sign-off: Project name",
+    "preparedBy": "Name and job title",
+    "documentType": "UAT sign-off",
+    "classification": "Internal",
+    "owner": "Organisation name",
+    "issuedOn": "YYYY-MM-DD",
+    "version": "V0.1",
+    "status": "Draft",
+    "reviewCycle": "At every acceptance cycle"
+  },
+  "revisions": [
+    [
+      "V0.1",
+      "YYYY-MM-DD",
+      "First draft",
+      "—"
+    ]
+  ],
+  "labels": {
+    "kicker": "UAT SIGN-OFF",
+    "subtitle": "Project and release"
+  },
+  "chapters": [
+    {
+      "title": "Purpose and scope",
+      "sections": [
+        {
+          "title": "Purpose and scope",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "What was tried in this cycle, what was not, and on which release."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Participants",
+      "sections": [
+        {
+          "title": "Participants",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Everyone who took part in acceptance, from the beneficiary and the supplier."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Name",
+                "Organisation",
+                "Role",
+                "Responsibility"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Environment and entry conditions",
+      "sections": [
+        {
+          "title": "Environment and entry conditions",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "The environment and data used, and which earlier testing was completed before acceptance began."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Condition",
+                "Met",
+                "Evidence"
+              ],
+              "rows": [
+                [
+                  "System testing completed",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Acceptance environment ready",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Acceptance scenarios and results",
+      "sections": [
+        {
+          "title": "Acceptance scenarios and results",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "For each real business scenario a result: pass or fail, who ran it and when."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Scenario",
+                "Requirement",
+                "Result",
+                "Tester",
+                "Date",
+                "Comments"
+              ],
+              "rows": [
+                [
+                  "UAT-001",
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "YYYY-MM-DD",
+                  "…"
+                ],
+                [
+                  "UAT-002",
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "YYYY-MM-DD",
+                  "…"
+                ],
+                [
+                  "UAT-003",
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "YYYY-MM-DD",
+                  "…"
+                ]
+              ],
+              "colWidths": [
+                13,
+                13,
+                14,
+                10,
+                9,
+                19,
+                22
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Open defects and issues",
+      "sections": [
+        {
+          "title": "Open defects and issues",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Everything still open at sign-off, with its severity and what was agreed about it."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Description",
+                "Severity",
+                "Status",
+                "Agreed action",
+                "Target date"
+              ],
+              "rows": [
+                [
+                  "DEF-001",
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "DEF-002",
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "YYYY-MM-DD"
+                ]
+              ],
+              "colWidths": [
+                13,
+                24,
+                11,
+                11,
+                22,
+                19
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Acceptance criteria",
+      "sections": [
+        {
+          "title": "Acceptance criteria",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "The criteria agreed before starting and whether each was met. Example: \"No open critical or high defects, and every priority-one scenario passed.\""
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Criterion",
+                "Met",
+                "Evidence"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Decision and sign-off",
+      "sections": [
+        {
+          "title": "Decision and sign-off",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Choose one decision: accepted, accepted with conditions or rejected. Then each representative signs in their own row."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Decision",
+                "Choice"
+              ],
+              "rows": [
+                [
+                  "Accepted",
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ],
+                [
+                  "Accepted with conditions",
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ],
+                [
+                  "Rejected",
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ]
+              ]
+            },
+            {
+              "kind": "subhead",
+              "text": "Signatures"
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Name",
+                "Organisation",
+                "Job title",
+                "Decision",
+                "Signature",
+                "Date"
+              ],
+              "rows": [
+                [
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ],
+                [
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ],
+                [
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ]
+              ],
+              "blankCell": "",
+              "rowHeights": [
+                20,
+                20,
+                20
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Conditions and follow-up",
+      "sections": [
+        {
+          "title": "Conditions and follow-up",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "If the decision is acceptance with conditions, list each condition, its date and who clears it."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Condition",
+                "Owner",
+                "Due date",
+                "Status"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "YYYY-MM-DD",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "YYYY-MM-DD",
+                  "…"
+                ]
+              ],
+              "colWidths": [
+                40,
+                20,
+                25,
+                15
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "openQuestions": []
+}

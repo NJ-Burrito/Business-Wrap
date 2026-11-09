@@ -1,0 +1,22 @@
+{
+  "id": "process-flow",
+  "code": "PF",
+  "category": "requirements",
+  "order": 50,
+  "since": "0.18.0",
+  "name": {
+    "ar": "وثيقة سير العملية (الحالي والمستهدف)",
+    "en": "Process flow document (as-is and to-be)"
+  },
+  "description": {
+    "ar": "توثق عملية عمل كما تجري اليوم وكما يراد لها: الأدوار ومخططا الحالي والمستهدف والمشكلات والفجوات والقرارات والاستثناءات والمؤشرات.",
+    "en": "Documents a business process as it runs today and as it should run: roles, as-is and to-be diagrams, pain points, gaps, decisions, exceptions and metrics."
+  },
+  "placeholder": {
+    "ar": "اسم العملية",
+    "en": "Process name"
+  },
+  "palette": "navy",
+  "coverDesign": "spine",
+  "motif": "process-flow"
+}

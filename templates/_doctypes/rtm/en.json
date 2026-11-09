@@ -1,0 +1,229 @@
+{
+  "composedAt": "",
+  "control": {
+    "documentId": "BW-RTM-NEW-001",
+    "title": "Requirements traceability matrix (RTM): Project name",
+    "preparedBy": "Name and job title",
+    "documentType": "Requirements traceability matrix (RTM)",
+    "classification": "Internal",
+    "owner": "Organisation name",
+    "issuedOn": "YYYY-MM-DD",
+    "version": "V0.1",
+    "status": "Draft",
+    "reviewCycle": "At every release"
+  },
+  "revisions": [
+    [
+      "V0.1",
+      "YYYY-MM-DD",
+      "First draft",
+      "—"
+    ]
+  ],
+  "labels": {
+    "kicker": "TRACEABILITY MATRIX",
+    "subtitle": "From business requirement to test result"
+  },
+  "chapters": [
+    {
+      "number": "1",
+      "title": "How to read this matrix",
+      "sections": [
+        {
+          "number": "1.1",
+          "title": "Columns and coverage states",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Tie each row to one requirement; never merge two requirements into one row. The states below say how far a requirement is covered."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "State",
+                "Meaning"
+              ],
+              "rows": [
+                [
+                  "Covered",
+                  "Has a design, a test case and a passing result"
+                ],
+                [
+                  "Partial",
+                  "Has some links but not all"
+                ],
+                [
+                  "Gap",
+                  "No test case or no design yet"
+                ],
+                [
+                  "Out of scope",
+                  "Dropped by a change request"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "2",
+      "title": "The matrix",
+      "sections": [
+        {
+          "number": "2.1",
+          "title": "Requirement to test",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "One row per requirement, tracing forward from business to test."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "BR ID",
+                "Requirement",
+                "FR ID",
+                "Design ref",
+                "Test case IDs",
+                "Test result",
+                "Defect IDs",
+                "Release",
+                "Status"
+              ],
+              "rows": [
+                [
+                  "BR-01",
+                  "…",
+                  "FR-01",
+                  "…",
+                  "TC-01",
+                  "Pass",
+                  "—",
+                  "V1.0",
+                  "Covered"
+                ],
+                [
+                  "BR-02",
+                  "…",
+                  "FR-02",
+                  "…",
+                  "TC-02",
+                  "Fail",
+                  "DEF-01",
+                  "V1.0",
+                  "Partial"
+                ],
+                [
+                  "BR-03",
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "Gap"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "3",
+      "title": "Coverage summary",
+      "sections": [
+        {
+          "number": "3.1",
+          "title": "Counts",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Compute these from the matrix: how many requirements there are and how many have a design, a test case and a passing test."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Metric",
+                "Count",
+                "Percent"
+              ],
+              "rows": [
+                [
+                  "Requirements",
+                  "…",
+                  "…"
+                ],
+                [
+                  "With a design",
+                  "…",
+                  "…"
+                ],
+                [
+                  "With a test case",
+                  "…",
+                  "…"
+                ],
+                [
+                  "With a passing test",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "4",
+      "title": "Gaps and orphans",
+      "sections": [
+        {
+          "number": "4.1",
+          "title": "Open gaps",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "A requirement with no test case, or a test case with no requirement. Close each one or justify it."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "Type",
+                "Action",
+                "Owner"
+              ],
+              "rows": [
+                [
+                  "BR-03",
+                  "No test case",
+                  "…",
+                  "[Owner]"
+                ],
+                [
+                  "TC-09",
+                  "No requirement",
+                  "…",
+                  "[Owner]"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "openQuestions": []
+}

@@ -1,0 +1,93 @@
+{
+  "$comment": "Computed by `node tools/doctypes/check.mjs --write-palettes` from palette/tokens.json (decisions.md D2). Never typed by hand: the validator recomputes every value and fails on a difference. \"$from\" says where each value comes from.",
+  "navy": {
+    "primary": "#003c7a",
+    "primary-deep": "#001e3d",
+    "primary-50": "#f2f6fa",
+    "primary-100": "#e1eaf4",
+    "accent": "#5f4d21",
+    "accent-rule": "#9c7e36",
+    "accent-bright": "#be9a41",
+    "$from": {
+      "primary": "ramp.primary.800",
+      "primary-deep": "ramp.primary.950",
+      "primary-50": "ramp.primary.50",
+      "primary-100": "ramp.primary.100",
+      "accent": "ramp.accent.800",
+      "accent-rule": "ramp.accent.600",
+      "accent-bright": "ramp.accent.500"
+    }
+  },
+  "forest": {
+    "primary": "#16644e",
+    "primary-deep": "#0b3227",
+    "primary-50": "#f4f8f7",
+    "primary-100": "#e4f1ed",
+    "accent": "#5f4d21",
+    "accent-rule": "#9c7e36",
+    "accent-bright": "#be9a41",
+    "$from": {
+      "primary": "ramp.success.700",
+      "primary-deep": "mix(ramp.success.700, #000000, 0.5)",
+      "primary-50": "ramp.success.50",
+      "primary-100": "ramp.success.100",
+      "accent": "ramp.accent.800",
+      "accent-rule": "ramp.accent.600",
+      "accent-bright": "ramp.accent.500"
+    }
+  },
+  "gold": {
+    "primary": "#7d652b",
+    "primary-deep": "#5f4d21",
+    "primary-50": "#f8f7f4",
+    "primary-100": "#efede6",
+    "accent": "#5f4d21",
+    "accent-rule": "#9c7e36",
+    "accent-bright": "#be9a41",
+    "$from": {
+      "primary": "ramp.accent.700",
+      "primary-deep": "ramp.accent.800",
+      "primary-50": "ramp.accent.50",
+      "primary-100": "ramp.accent.100",
+      "accent": "ramp.accent.800",
+      "accent-rule": "ramp.accent.600",
+      "accent-bright": "ramp.accent.500"
+    }
+  },
+  "slate": {
+    "primary": "#393328",
+    "primary-deep": "#1b1813",
+    "primary-50": "#f6f5f2",
+    "primary-100": "#e8e4de",
+    "accent": "#5f4d21",
+    "accent-rule": "#9c7e36",
+    "accent-bright": "#be9a41",
+    "$from": {
+      "primary": "ramp.neutral.800",
+      "primary-deep": "ramp.neutral.900",
+      "primary-50": "ramp.neutral.100",
+      "primary-100": "ramp.neutral.200",
+      "accent": "ramp.accent.800",
+      "accent-rule": "ramp.accent.600",
+      "accent-bright": "ramp.accent.500"
+    }
+  },
+  "rust": {
+    "primary": "#853311",
+    "primary-deep": "#431a09",
+    "primary-50": "#f9f5f3",
+    "primary-100": "#f3ebe7",
+    "accent": "#5f4d21",
+    "accent-rule": "#9c7e36",
+    "accent-bright": "#be9a41",
+    "$from": {
+      "primary": "color.diagram.rework-line",
+      "primary-deep": "mix(color.diagram.rework-line, #000000, 0.5)",
+      "primary-50": "mix(color.diagram.rework-line, #ffffff, 0.95)",
+      "primary-100": "mix(color.diagram.rework-line, #ffffff, 0.9)",
+      "accent": "ramp.accent.800",
+      "accent-rule": "ramp.accent.600",
+      "accent-bright": "ramp.accent.500"
+    }
+  }
+}

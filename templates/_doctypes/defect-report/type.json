@@ -1,0 +1,29 @@
+{
+  "id": "defect-report",
+  "code": "DEF",
+  "category": "testing",
+  "order": 30,
+  "since": "0.18.0",
+  "name": {
+    "ar": "تقرير عيب",
+    "en": "Defect report"
+  },
+  "description": {
+    "ar": "تقرير عيب واحد يكفي المطور لإعادة إنتاجه وإصلاحه: بطاقة وخطوات ونتيجة متوقعة وفعلية وأدلة وبيئة وسجل إصلاح وإعادة اختبار.",
+    "en": "One defect described so a developer can reproduce and fix it: card, steps, expected and actual result, evidence, environment, and a fix and retest log."
+  },
+  "placeholder": {
+    "ar": "ملخص العيب",
+    "en": "Defect summary"
+  },
+  "palette": "forest",
+  "coverDesign": "compact",
+  "motif": "defect-report",
+  "layout": {
+    "hide": [
+      "toc",
+      "revisions",
+      "control"
+    ]
+  }
+}

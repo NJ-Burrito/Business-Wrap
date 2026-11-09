@@ -1,0 +1,22 @@
+{
+  "id": "business-case",
+  "code": "BC",
+  "category": "governance",
+  "order": 40,
+  "since": "0.18.0",
+  "name": {
+    "ar": "دراسة الجدوى (حالة العمل)",
+    "en": "Business case"
+  },
+  "description": {
+    "ar": "تبرر الاستثمار في مبادرة: المشكلة والفوائد ومقارنة الخيارات والتوصية والكلفة والتحليل المالي والمخاطر والقرار المطلوب.",
+    "en": "Justifies an investment: problem, benefits, options compared, recommendation, cost, financial analysis, risks and the decision requested."
+  },
+  "placeholder": {
+    "ar": "اسم المبادرة",
+    "en": "Initiative name"
+  },
+  "palette": "slate",
+  "coverDesign": "spine",
+  "motif": "business-case"
+}

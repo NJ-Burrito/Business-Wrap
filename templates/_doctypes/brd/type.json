@@ -1,0 +1,22 @@
+{
+  "id": "brd",
+  "code": "BRD",
+  "category": "requirements",
+  "order": 20,
+  "since": "0.18.0",
+  "name": {
+    "ar": "وثيقة متطلبات العمل (BRD)",
+    "en": "Business Requirements Document (BRD)"
+  },
+  "description": {
+    "ar": "ما تحتاجه الجهة من المشروع من منظور العمل: المشكلة والأهداف والأطراف والمتطلبات ومعايير النجاح، دون تصميم الحل.",
+    "en": "What the organisation needs from a project, from the business side: problem, objectives, stakeholders, requirements and success criteria, without designing the solution."
+  },
+  "placeholder": {
+    "ar": "اسم المشروع",
+    "en": "Project name"
+  },
+  "palette": "navy",
+  "coverDesign": "spine",
+  "motif": "brd"
+}

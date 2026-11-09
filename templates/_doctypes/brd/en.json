@@ -1,0 +1,611 @@
+{
+  "composedAt": "",
+  "control": {
+    "documentId": "BW-BRD-NEW-001",
+    "title": "Business Requirements Document (BRD): Project name",
+    "preparedBy": "Name and job title",
+    "documentType": "Business Requirements Document (BRD)",
+    "classification": "Internal",
+    "owner": "Organisation name",
+    "issuedOn": "YYYY-MM-DD",
+    "version": "V0.1",
+    "status": "Draft",
+    "reviewCycle": "On every change to the scope"
+  },
+  "revisions": [
+    [
+      "V0.1",
+      "YYYY-MM-DD",
+      "First draft",
+      "—"
+    ]
+  ],
+  "labels": {
+    "kicker": "BUSINESS REQUIREMENTS",
+    "subtitle": "What the business needs, before the solution is designed"
+  },
+  "chapters": [
+    {
+      "number": "1",
+      "title": "Executive summary",
+      "sections": [
+        {
+          "number": "1.1",
+          "title": "Summary",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "In half a page: the problem, what is needed, the expected effect and the decision asked of the reader. Write this chapter last."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "2",
+      "title": "Business context and problem statement",
+      "sections": [
+        {
+          "number": "2.1",
+          "title": "Current situation and pain points",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Describe where the current process breaks down, with at least one real figure and its source."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "No.",
+                "Pain point",
+                "Impact",
+                "Evidence"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "2",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "3",
+      "title": "Business objectives and success criteria",
+      "sections": [
+        {
+          "number": "3.1",
+          "title": "Objectives and indicators",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Tie each objective to an indicator, a baseline, a target and a date."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Objective",
+                "KPI",
+                "Baseline",
+                "Target",
+                "By when"
+              ],
+              "rows": [
+                [
+                  "O-01",
+                  "…",
+                  "…",
+                  "…",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "O-02",
+                  "…",
+                  "…",
+                  "…",
+                  "YYYY-MM-DD"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "4",
+      "title": "Scope",
+      "sections": [
+        {
+          "number": "4.1",
+          "title": "In scope, out of scope and deferred",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "State what is in, what is out and what is deferred to a later phase."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "In scope",
+                "Out of scope",
+                "Deferred"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "5",
+      "title": "Stakeholders",
+      "sections": [
+        {
+          "number": "5.1",
+          "title": "Stakeholder register",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Who the project affects, who affects it and how each relationship is managed."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Stakeholder",
+                "Role",
+                "Interest",
+                "Influence",
+                "Engagement"
+              ],
+              "rows": [
+                [
+                  "[Name]",
+                  "[Role]",
+                  "H / M / L",
+                  "H / M / L",
+                  "…"
+                ],
+                [
+                  "[Name]",
+                  "[Role]",
+                  "H / M / L",
+                  "H / M / L",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "6",
+      "title": "Business process overview",
+      "sections": [
+        {
+          "number": "6.1",
+          "title": "Process as it runs today",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Replace these steps with five to ten steps of the process today and as it should be."
+              ]
+            },
+            {
+              "kind": "diagram",
+              "caption": "Process today: replace with your steps",
+              "model": {
+                "kind": "bw-diagram",
+                "version": 1,
+                "flow": "ltr",
+                "nodes": [
+                  {
+                    "id": "n1",
+                    "kind": "start",
+                    "label": "Request received"
+                  },
+                  {
+                    "id": "n2",
+                    "kind": "staff",
+                    "label": "Review"
+                  },
+                  {
+                    "id": "n3",
+                    "kind": "decision",
+                    "label": "Complete?"
+                  },
+                  {
+                    "id": "n4",
+                    "kind": "ok",
+                    "label": "Done"
+                  }
+                ],
+                "edges": [
+                  {
+                    "id": "e1",
+                    "from": "n1",
+                    "to": "n2",
+                    "kind": "main"
+                  },
+                  {
+                    "id": "e2",
+                    "from": "n2",
+                    "to": "n3",
+                    "kind": "main"
+                  },
+                  {
+                    "id": "e3",
+                    "from": "n3",
+                    "to": "n4",
+                    "label": "Yes",
+                    "kind": "main"
+                  },
+                  {
+                    "id": "e4",
+                    "from": "n3",
+                    "to": "n2",
+                    "label": "No",
+                    "kind": "return"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "7",
+      "title": "Business requirements",
+      "sections": [
+        {
+          "number": "7.1",
+          "title": "Requirements register",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Each requirement has a BR code and one sentence that starts \"The organisation must...\" or \"Users must be able to...\", with its MoSCoW priority."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Requirement",
+                "Linked objective",
+                "Priority",
+                "Source"
+              ],
+              "rows": [
+                [
+                  "BR-01",
+                  "…",
+                  "O-01",
+                  "Must",
+                  "…"
+                ],
+                [
+                  "BR-02",
+                  "…",
+                  "O-02",
+                  "Should",
+                  "…"
+                ],
+                [
+                  "BR-03",
+                  "…",
+                  "…",
+                  "Could",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "8",
+      "title": "Assumptions, constraints and dependencies",
+      "sections": [
+        {
+          "number": "8.1",
+          "title": "Register",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "What we assume to be true, what limits us and what we wait on others for."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Type",
+                "Statement",
+                "Owner"
+              ],
+              "rows": [
+                [
+                  "A-01",
+                  "Assumption",
+                  "…",
+                  "[Owner]"
+                ],
+                [
+                  "C-01",
+                  "Constraint",
+                  "…",
+                  "[Owner]"
+                ],
+                [
+                  "D-01",
+                  "Dependency",
+                  "…",
+                  "[Owner]"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "9",
+      "title": "Risks",
+      "sections": [
+        {
+          "number": "9.1",
+          "title": "Risk register",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Score likelihood and impact from 1 to 5 and write a mitigation for every high risk."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Risk",
+                "Likelihood",
+                "Impact",
+                "Mitigation",
+                "Owner"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "1-5",
+                  "1-5",
+                  "…",
+                  "[Owner]"
+                ],
+                [
+                  "…",
+                  "1-5",
+                  "1-5",
+                  "…",
+                  "[Owner]"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "10",
+      "title": "Benefits and estimated cost",
+      "sections": [
+        {
+          "number": "10.1",
+          "title": "Benefits and cost",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Give benefits in numbers where possible, and the estimated cost to build and run."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "Type",
+                "Estimate",
+                "Basis"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "Benefit",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "Cost",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "11",
+      "title": "Delivery approach and outline timeline",
+      "sections": [
+        {
+          "number": "11.1",
+          "title": "Phases",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Describe how the project will be delivered, in phases with approximate dates."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Phase",
+                "What it delivers",
+                "Start",
+                "End"
+              ],
+              "rows": [
+                [
+                  "Phase 1",
+                  "…",
+                  "YYYY-MM-DD",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "Phase 2",
+                  "…",
+                  "YYYY-MM-DD",
+                  "YYYY-MM-DD"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "12",
+      "title": "Acceptance and approval criteria",
+      "sections": [
+        {
+          "number": "12.1",
+          "title": "Approval",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "State the condition under which this document is complete, then each approver signs."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Role",
+                "Name",
+                "Signature",
+                "Date"
+              ],
+              "rows": [
+                [
+                  "Business sponsor",
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ],
+                [
+                  "Project manager",
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ]
+              ],
+              "blankCell": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "13",
+      "title": "Annex: open questions",
+      "sections": [
+        {
+          "number": "13.1",
+          "title": "Open questions",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "No.",
+                "Question",
+                "Owner",
+                "Due"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "…",
+                  "[Owner]",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "2",
+                  "…",
+                  "[Owner]",
+                  "YYYY-MM-DD"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "openQuestions": []
+}

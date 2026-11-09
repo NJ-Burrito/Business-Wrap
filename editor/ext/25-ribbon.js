@@ -9,7 +9,7 @@ const RB = { tab: 'home', collapsed: ls.get('bw:rb:c') === '1', ctx: null, key: 
  *  RB_MAX_GROUPS groups, so the panel never needs a scroll bar (note 3); an id that no command has is skipped at draw time, a command no group lists lands in «more» (rbSweep). */
 const RB_MAX_TOOLS = 28, RB_MAX_GROUPS = 6;
 const RB_TABS = [
-  ['file', [['save', ['saveHtml', 'import']], ['share', ['library', 'shShare']], ['newdoc', ['newdoc', 'process']]], null, '--bw-sec-file'],
+  ['file', [['save', ['saveHtml', 'import']], ['share', ['library', 'shShare']], ['newdoc', ['startPage', 'newdoc', 'process']]], null, '--bw-sec-file'],
   ['export', [['xpdf', ['export.pdf.ar', 'export.pdf.en', 'export.pdf.both']], ['xdocx', ['export.docx.ar', 'export.docx.en', 'export.docx.both']], ['xweb', ['export.html', 'export.printHtml.ar', 'export.printHtml.en', 'export.printHtml.both', 'export.edits', 'export.editsAll', 'export.pack']],
     ['xdiagram', ['export.mermaid', 'export.svg', 'export.png']], ['xprint', ['print', 'exportPdf', 'export.opts']], ['xproj', ['projExport', 'projImport']]], null, '--bw-sec-export'],
   ['home', [['edit', ['undo', 'redo', 'find', 'copyBlock', 'pasteBlock']], ['block', ['duplicate', 'delete', 'moveUp', 'moveDown', 'comment']]], null, '--bw-sec-edit'],

@@ -1,0 +1,475 @@
+{
+  "composedAt": "",
+  "control": {
+    "documentId": "BW-MOM-NEW-001",
+    "title": "Minutes of meeting: Meeting subject",
+    "preparedBy": "Name and job title",
+    "documentType": "Minutes of meeting",
+    "classification": "Internal",
+    "owner": "[Organisation name]",
+    "issuedOn": "YYYY-MM-DD",
+    "version": "V0.1",
+    "status": "Draft",
+    "reviewCycle": "Per meeting"
+  },
+  "controlTable": {
+    "columns": [
+      "Item",
+      "Value"
+    ],
+    "rows": [
+      [
+        "Meeting title",
+        "[Meeting subject]"
+      ],
+      [
+        "Meeting number",
+        "1"
+      ],
+      [
+        "Date and time",
+        "YYYY-MM-DD HH:MM"
+      ],
+      [
+        "Venue or link",
+        "[Room or meeting link]"
+      ],
+      [
+        "Chair",
+        "[Name]"
+      ],
+      [
+        "Minute taker",
+        "[Name]"
+      ],
+      [
+        "Document code",
+        {
+          "bind": "documentId"
+        }
+      ],
+      [
+        "Status",
+        {
+          "bind": "status"
+        }
+      ]
+    ]
+  },
+  "revisions": [
+    [
+      "V0.1",
+      "YYYY-MM-DD",
+      "First draft",
+      "—"
+    ]
+  ],
+  "labels": {
+    "kicker": "MINUTES OF MEETING",
+    "subtitle": "Meeting record",
+    "controlChapter": "Meeting details",
+    "controlData": "Key facts"
+  },
+  "chapters": [
+    {
+      "number": "1",
+      "title": "Attendance",
+      "sections": [
+        {
+          "number": "1.1",
+          "title": "Attendees",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Start time: HH:MM. End time: HH:MM."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Name",
+                "Organisation",
+                "Role",
+                "Attendance"
+              ],
+              "rows": [
+                [
+                  "[Name]",
+                  "…",
+                  "…",
+                  "Present"
+                ],
+                [
+                  "[Name]",
+                  "…",
+                  "…",
+                  "Present"
+                ],
+                [
+                  "[Name]",
+                  "…",
+                  "…",
+                  "Remote"
+                ],
+                [
+                  "[Name]",
+                  "…",
+                  "…",
+                  "Apologies"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "2",
+      "title": "Agenda",
+      "sections": [
+        {
+          "number": "2.1",
+          "title": "Items as sent",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "#",
+                "Item",
+                "Presenter",
+                "Time (min)"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "Opening and previous actions",
+                  "[Name]",
+                  "5"
+                ],
+                [
+                  "2",
+                  "…",
+                  "[Name]",
+                  "[…]"
+                ],
+                [
+                  "3",
+                  "…",
+                  "[Name]",
+                  "[…]"
+                ],
+                [
+                  "4",
+                  "Any other business",
+                  "[Name]",
+                  "5"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "3",
+      "title": "Discussion summary",
+      "sections": [
+        {
+          "number": "3.1",
+          "title": "By item",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Write a short paragraph per item on what was agreed or disputed. Do not keep a verbatim record."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "Summary",
+                "Outcome"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "…",
+                  "…"
+                ],
+                [
+                  "2",
+                  "…",
+                  "…"
+                ],
+                [
+                  "3",
+                  "…",
+                  "…"
+                ],
+                [
+                  "4",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "4",
+      "title": "Decisions",
+      "sections": [
+        {
+          "number": "4.1",
+          "title": "Decision log",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Decision",
+                "Decided by",
+                "Affects"
+              ],
+              "rows": [
+                [
+                  "DEC-01",
+                  "…",
+                  "[Name]",
+                  "…"
+                ],
+                [
+                  "DEC-02",
+                  "…",
+                  "[Name]",
+                  "…"
+                ],
+                [
+                  "DEC-03",
+                  "…",
+                  "[Name]",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "5",
+      "title": "Action items",
+      "sections": [
+        {
+          "number": "5.1",
+          "title": "Actions",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Each action has one owner and a fixed date. An action without a name or a date will not be done."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Action",
+                "Owner",
+                "Due date",
+                "Status"
+              ],
+              "rows": [
+                [
+                  "ACT-01",
+                  "Send the second draft of the requirements.",
+                  "[Name]",
+                  "YYYY-MM-DD",
+                  "Open"
+                ],
+                [
+                  "ACT-02",
+                  "…",
+                  "[Name]",
+                  "YYYY-MM-DD",
+                  "Open"
+                ],
+                [
+                  "ACT-03",
+                  "…",
+                  "[Name]",
+                  "YYYY-MM-DD",
+                  "Open"
+                ],
+                [
+                  "ACT-04",
+                  "…",
+                  "[Name]",
+                  "YYYY-MM-DD",
+                  "Open"
+                ],
+                [
+                  "ACT-05",
+                  "…",
+                  "[Name]",
+                  "YYYY-MM-DD",
+                  "Open"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "6",
+      "title": "Parking lot",
+      "sections": [
+        {
+          "number": "6.1",
+          "title": "Deferred points",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Point",
+                "Reason",
+                "Target meeting"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "7",
+      "title": "Next meeting",
+      "sections": [
+        {
+          "number": "7.1",
+          "title": "Date and likely items",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Date and time: YYYY-MM-DD HH:MM. Place: […]. Likely items: […]"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "8",
+      "title": "Approval of the minutes",
+      "sections": [
+        {
+          "number": "8.1",
+          "title": "Approval",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "The chair approves the minutes once attendees have them and no objection comes within the agreed period."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Name",
+                "Role",
+                "Signature",
+                "Date"
+              ],
+              "rows": [
+                [
+                  "",
+                  "Chair",
+                  "",
+                  ""
+                ],
+                [
+                  "",
+                  "Minute taker",
+                  "",
+                  ""
+                ],
+                [
+                  "",
+                  "",
+                  "",
+                  ""
+                ]
+              ],
+              "blankCell": ""
+            }
+          ]
+        },
+        {
+          "number": "8.2",
+          "title": "Distribution list",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Recipient",
+                "Role",
+                "Delivery method",
+                "Date"
+              ],
+              "rows": [
+                [
+                  "[Name]",
+                  "…",
+                  "…",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "[Name]",
+                  "…",
+                  "…",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "openQuestions": []
+}

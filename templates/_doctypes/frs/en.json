@@ -1,0 +1,550 @@
+{
+  "composedAt": "",
+  "control": {
+    "documentId": "BW-FRS-NEW-001",
+    "title": "Functional Requirements Specification (FRS): System name",
+    "preparedBy": "Name and job title",
+    "documentType": "Functional Requirements Specification (FRS)",
+    "classification": "Internal",
+    "owner": "Organisation name",
+    "issuedOn": "YYYY-MM-DD",
+    "version": "V0.1",
+    "status": "Draft",
+    "reviewCycle": "On every change to the scope"
+  },
+  "revisions": [
+    [
+      "V0.1",
+      "YYYY-MM-DD",
+      "First draft",
+      "—"
+    ]
+  ],
+  "labels": {
+    "kicker": "FUNCTIONAL SPECIFICATION",
+    "subtitle": "What the system does, function by function"
+  },
+  "chapters": [
+    {
+      "number": "1",
+      "title": "Introduction",
+      "sections": [
+        {
+          "number": "1.1",
+          "title": "Purpose and scope",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "State the purpose and scope of the document, how it relates to the BRD (give its code and version) and who reads it."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "2",
+      "title": "System overview",
+      "sections": [
+        {
+          "number": "2.1",
+          "title": "Context diagram",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Show the system, its users and the neighbouring systems, then describe it in a paragraph."
+              ]
+            },
+            {
+              "kind": "diagram",
+              "caption": "System context: replace with your system",
+              "model": {
+                "kind": "bw-diagram",
+                "version": 1,
+                "flow": "ltr",
+                "nodes": [
+                  {
+                    "id": "n1",
+                    "kind": "applicant",
+                    "label": "User"
+                  },
+                  {
+                    "id": "n2",
+                    "kind": "system",
+                    "label": "The system"
+                  },
+                  {
+                    "id": "n3",
+                    "kind": "staff",
+                    "label": "Staff"
+                  },
+                  {
+                    "id": "n4",
+                    "kind": "system",
+                    "label": "Neighbouring system"
+                  }
+                ],
+                "edges": [
+                  {
+                    "id": "e1",
+                    "from": "n1",
+                    "to": "n2",
+                    "kind": "main"
+                  },
+                  {
+                    "id": "e2",
+                    "from": "n3",
+                    "to": "n2",
+                    "kind": "main"
+                  },
+                  {
+                    "id": "e3",
+                    "from": "n2",
+                    "to": "n4",
+                    "kind": "main"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "3",
+      "title": "User roles and permissions",
+      "sections": [
+        {
+          "number": "3.1",
+          "title": "Permission matrix",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Describe each role briefly, then mark what it can do in each function: create C, read R, update U, delete D."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Function",
+                "Applicant",
+                "Staff",
+                "Reviewer",
+                "Administrator"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "C R",
+                  "R U",
+                  "R",
+                  "—"
+                ],
+                [
+                  "…",
+                  "R",
+                  "R U",
+                  "R U",
+                  "C R U D"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "4",
+      "title": "Functional requirements",
+      "sections": [
+        {
+          "number": "4.1",
+          "title": "Requirements by module",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Split by functional unit. Each requirement has an FR code, one testable statement and the business requirement it came from."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Requirement",
+                "Module",
+                "Priority",
+                "Source BR",
+                "Acceptance criterion"
+              ],
+              "rows": [
+                [
+                  "FR-01",
+                  "…",
+                  "…",
+                  "Must",
+                  "BR-01",
+                  "…"
+                ],
+                [
+                  "FR-02",
+                  "…",
+                  "…",
+                  "Should",
+                  "BR-02",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "5",
+      "title": "Screens and interfaces",
+      "sections": [
+        {
+          "number": "5.1",
+          "title": "Screen list",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "For each screen give its purpose, fields, actions and what shows on error. Attach the design if there is one."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Screen",
+                "Purpose",
+                "Fields",
+                "Actions",
+                "Notes"
+              ],
+              "rows": [
+                [
+                  "SCR-01",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "SCR-02",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "6",
+      "title": "Data requirements",
+      "sections": [
+        {
+          "number": "6.1",
+          "title": "Data dictionary",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "List each field with its type, length, validation rule and source."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Entity",
+                "Field",
+                "Type",
+                "Length",
+                "Required",
+                "Validation",
+                "Source"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "Yes",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "No",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "7",
+      "title": "Business rules and validations",
+      "sections": [
+        {
+          "number": "7.1",
+          "title": "Rules",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Write each rule with a BR code and wording that allows only one reading."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Rule",
+                "Applies to",
+                "Message on breach"
+              ],
+              "rows": [
+                [
+                  "BR-01",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "BR-02",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "8",
+      "title": "Integrations",
+      "sections": [
+        {
+          "number": "8.1",
+          "title": "Connected systems",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "For each system: the direction of exchange, the data, the protocol and the frequency."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "System",
+                "Direction",
+                "Data",
+                "Protocol",
+                "Frequency"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "In / Out",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "In / Out",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "9",
+      "title": "Reports and notifications",
+      "sections": [
+        {
+          "number": "9.1",
+          "title": "Outputs",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "List what the system sends and issues, when and to whom."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Output",
+                "Trigger",
+                "Recipient",
+                "Channel",
+                "Content"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "10",
+      "title": "Non-functional requirements",
+      "sections": [
+        {
+          "number": "10.1",
+          "title": "Measurable requirements",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Cover performance, security, availability, accessibility and languages, each with a measurable value."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Category",
+                "Requirement",
+                "How it is measured"
+              ],
+              "rows": [
+                [
+                  "NFR-01",
+                  "Performance",
+                  "…",
+                  "…"
+                ],
+                [
+                  "NFR-02",
+                  "Security",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "11",
+      "title": "Traceability to business requirements",
+      "sections": [
+        {
+          "number": "11.1",
+          "title": "Trace matrix",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "A business requirement with no functional requirement against it is a gap to close before approval."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "BR",
+                "FRs",
+                "Status"
+              ],
+              "rows": [
+                [
+                  "BR-01",
+                  "FR-01",
+                  "Covered"
+                ],
+                [
+                  "BR-02",
+                  "FR-02",
+                  "Covered"
+                ],
+                [
+                  "BR-03",
+                  "…",
+                  "Gap"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "12",
+      "title": "Annex: open questions",
+      "sections": [
+        {
+          "number": "12.1",
+          "title": "Open questions",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "No.",
+                "Question",
+                "Owner",
+                "Status"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "…",
+                  "[Owner]",
+                  "Open"
+                ],
+                [
+                  "2",
+                  "…",
+                  "[Owner]",
+                  "Open"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "openQuestions": []
+}

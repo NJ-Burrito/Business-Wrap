@@ -10,7 +10,7 @@
 
 💾 Keep three files per document: the document JSON, `edits.json`, `theme.json`.
 
-**Jump to:** [1. Requirements](#1-requirements-tested-versions-2026-10-27) · [2. Quickstart](#2-quickstart-windows-step-by-step) · [3. Troubleshooting](#3-troubleshooting) · [4. Backup](#4-backup-and-restore-edits-and-drafts) · [5. Hand-over](#5-handing-a-document-to-a-colleague)
+**Jump to:** [1. Requirements](#1-requirements-tested-versions-2026-10-27) · [2. Quickstart](#2-quickstart-windows-step-by-step) · [3. Troubleshooting](#3-troubleshooting) · [4. Backup](#4-backup-and-restore-edits-and-drafts) · [5. Hand-over](#5-handing-a-document-to-a-colleague) · [8. Start from a type](#8-start-a-document-from-a-type-0180)
 
 ## 1. Requirements (tested versions, 2026-10-27)
 | Tool | Version tested | Why |
@@ -108,3 +108,14 @@ business-wrap protocol unregister
 The registered handler runs `node <install>/update/cli.mjs handle "<url>"` and accepts only two links: `business-wrap://open?file=<absolute path of a Business-Wrap .html file>` and `business-wrap://stop`. Anything else is refused. The file must exist, end in `.html`, sit inside your home folder, the temp folder, this install, the save folder or the install's drive, and contain the editor's `bw-data` block. The browser may ask once whether to allow opening Business-Wrap.
 
 If the Start button does nothing, register the handler once with `business-wrap protocol register` and press it again.
+
+## 8. Start a document from a type (0.18.0)
+
+Business-Wrap ships 17 document types: blank, SRS, BRD, FRS, RTM, process flow, test plan, test cases, defect report, user manual, UAT sign-off, release notes, ToR, change request, minutes, business case and a TOT guide. Each opens on its own design (cover, sections, tables) and exports PDF and DOCX in Arabic and English. The full table is in the [README](../README.md#-the-17-types).
+
+1. **The start page.** Open the editor through `npm run serve` without a document of your own: the gallery is the first screen. Search with `/`, filter with the category chips, click a tile to preview what is inside, then press **Create** (a double click or Ctrl+Enter creates at once). The language switch in the preview chooses which edition opens first; the other edition is kept in step.
+2. **Later, from the editor.** File tab, **Start page** (Ctrl+Alt+N). The document you have open stays open behind it, and a link takes you back to it.
+3. **The command line.** `npx business-wrap types` lists the types; `npx business-wrap new --type brd --title "Payments platform"` creates one and opens it. An unknown `--type` is refused with the list of valid ids. Without `--type`, `new` still makes the blank Arabic and English pair.
+4. **Turn the start page off.** Settings, Start page: untick «Show the start page when the tool opens». The File tab button still opens it.
+
+Every type opens with placeholder text to replace, never client data. The ribbon, diagrams, profile, watermark and the tools that explain themselves work in every type. How a type is built and how to add one: [bible/14-document-types.md](../bible/14-document-types.md).

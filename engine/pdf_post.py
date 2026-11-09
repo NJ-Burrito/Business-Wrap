@@ -4,6 +4,8 @@ pipeline (render.ts clearCoverHeader + tools/srs/stamp-folios.py):
 1. the cover loses Chrome's running head (Chrome paints header/footer on every sheet);
 2. the sheets after the cover get a folio, «1» on the first one, measured off the
    footer run Chrome already drew on that sheet (baseline, size, colour, margin);
+   (0.18.0) a document with `coverDesign: compact` has NO cover page: its title block sits on page 1, so page 1 keeps its
+   running head and gets a folio like every other page (the folio of page 1 is «1», the total counts every page);
 3. (0.13.0) the page-segment markers (link annotations to bw.invalid) are removed.
 
     python engine/pdf_post.py <pdf> <folio-face.ttf> <anchor text> <rtl|ltr> [right:n|left:n/N|center:n|none]
@@ -80,12 +82,40 @@ def brand_stamp(doc):
     doc.xref_set_key(doc[0].xref, "Thumb", "%d 0 R" % xref)
 
 
+MM = 72 / 25.4
+
+
+def compact_first_page(doc):
+    """0.18.0: is page 1 a compact title block (coverDesign: compact) rather than a cover page?
+
+    The PDF carries no flag, so this reads what the compact block draws (engine/render.mjs `.cover[data-cover=compact] .tb-band`):
+    two filled bars of the same 2.5 mm height at the top of page 1, a long one over the measure and a 20 mm accent at its start
+    (left in LTR, right in RTL). The spine cover and the original cover draw no such pair, so a document with no `coverDesign`
+    is never taken for a compact one and prints exactly as before."""
+    page = doc[0]
+    bars = []
+    for d in page.get_drawings():
+        r = d["rect"]
+        if d.get("fill") is not None and d["type"] == "f" and 1.5 * MM < r.height < 4 * MM and r.y0 < page.rect.height * 0.25:
+            bars.append(r)
+    for long_bar in bars:
+        if long_bar.width < 60 * MM:
+            continue
+        for short in bars:
+            if abs(short.width - 20 * MM) < 1.5 * MM and abs(short.y0 - long_bar.y0) < 0.5 and abs(short.height - long_bar.height) < 0.5                     and (abs(short.x0 - long_bar.x0) < 0.5 or abs(short.x1 - long_bar.x1) < 0.5):
+                return True
+    return False
+
+
 def main(pdf_path, fontfile, anchor_text, direction, folio="right:n"):
     doc = pymupdf.open(pdf_path)
-    cover = doc[0]
-    band = pymupdf.Rect(0, 0, cover.rect.width, 12 * 72 / 25.4)
-    cover.add_redact_annot(band)
-    cover.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_REMOVE, graphics=pymupdf.PDF_REDACT_LINE_ART_NONE)
+    compact = compact_first_page(doc)
+    first = 0 if compact else 1  # the first sheet that gets a folio: a compact page 1 is a page like any other
+    if not compact:
+        cover = doc[0]
+        band = pymupdf.Rect(0, 0, cover.rect.width, 12 * 72 / 25.4)
+        cover.add_redact_annot(band)
+        cover.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_REMOVE, graphics=pymupdf.PDF_REDACT_LINE_ART_NONE)
     for page in doc:
         for ln in page.get_links():
             if (ln.get("uri") or "").startswith(MARK):
@@ -95,7 +125,7 @@ def main(pdf_path, fontfile, anchor_text, direction, folio="right:n"):
     if not fontfile and side != "none":
         print('post: WARN no TrueType face found; folios set in a built-in face (install the fonts)')
     done, missed = 0, []
-    for i in range(1, doc.page_count if side != "none" else 1):
+    for i in range(first, doc.page_count if side != "none" else first):
         page = doc[i]
         runs = footer_runs(page)
         bottom = page.rect.height - 16 * 72 / 25.4
@@ -111,7 +141,8 @@ def main(pdf_path, fontfile, anchor_text, direction, folio="right:n"):
         same = [r for r in runs if abs(r[1][1] - baseline) < 1.0] or [anchor]
         margin = min(r[1][0] for r in same) if same[0][0] else 16 * 72 / 25.4
         rgb = ((colour >> 16) & 255, (colour >> 8) & 255, colour & 255)
-        label = "%d / %d" % (i, doc.page_count - 1) if fmt == "n/N" else str(i)
+        number, total = (i + 1, doc.page_count) if compact else (i, doc.page_count - 1)
+        label = "%d / %d" % (number, total) if fmt == "n/N" else str(number)
         width = font.text_length(label, fontsize=size)
         # the footer row is LTR whatever the page is: right / left / centre slot
         x = page.rect.width - margin - width if side == "right" else margin if side == "left" else (page.rect.width - width) / 2
@@ -125,7 +156,7 @@ def main(pdf_path, fontfile, anchor_text, direction, folio="right:n"):
     doc.ez_save(pdf_path + ".tmp")
     doc.close()
     os.replace(pdf_path + ".tmp", pdf_path)
-    print("post: cover chrome cleared; %d sheet(s) numbered" % done)
+    print("post: %s; %d sheet(s) numbered" % ("compact page 1 kept its running head" if compact else "cover chrome cleared", done))
 
 
 if __name__ == "__main__":

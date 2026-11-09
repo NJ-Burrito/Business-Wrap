@@ -1,0 +1,17 @@
+{
+  "id": "blank",
+  "code": "DOC",
+  "category": "start",
+  "order": 10,
+  "since": "0.18.0",
+  "name": { "ar": "وثيقة فارغة", "en": "Blank document" },
+  "description": {
+    "ar": "وثيقة نظيفة: ترويسة بالعنوان وجدول ضبط وفصل واحد فارغ، تبدأ منها حين لا يناسبك نوع آخر.",
+    "en": "A clean document: a title block, a control table and one empty chapter, for work no other type fits."
+  },
+  "placeholder": { "ar": "عنوان الوثيقة", "en": "Document title" },
+  "palette": "navy",
+  "coverDesign": "compact",
+  "motif": "blank",
+  "layout": { "hide": ["revisions", "toc"] }
+}

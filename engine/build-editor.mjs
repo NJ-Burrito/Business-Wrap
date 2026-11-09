@@ -22,6 +22,7 @@ import { config } from './config.mjs';
 import { installedNotes } from '../update/check.mjs';
 import { STATE_SCHEMA } from './edits.mjs';
 import { FORMAT, BUILT_KEYS, migrateData, historyProblems, FormatError } from './format.mjs';
+import { payloadJson } from './doctypes.mjs';
 
 /** Tool watermark folder: BW_WATERMARK_DIR / .local/config.json watermarkDir, else the repo's editor/brand/watermark. */
 export const DEFAULT_WATERMARK_DIR = config().watermarkDir || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'editor', 'brand', 'watermark');
@@ -118,7 +119,7 @@ function editorScript(extDir) {
 ${strip(read(path.join(HERE, 'cells.mjs')))}\n${strip(read(path.join(HERE, 'diagram.mjs')))}\n${strip(read(path.join(HERE, 'render.mjs')))}\n${strip(read(path.join(HERE, 'fontinfo.mjs')))}\n${strip(read(path.join(HERE, 'ledger-v1.mjs')))}\n${strip(read(path.join(HERE, 'bulk.mjs')))}\nconst HV = (() => {\n${hv}\nreturn { parseModel, modelToDocument, processFigure, humanGraph, harvestToDocument, mergeToDocument };\n})();\n${['value-control.js', 'fonts.js', 'design-panel.js', 'editor.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${read(path.join(REPO, 'editor', 'diagram-ui.js'))}\n${['shell-ux.js', 'views.js', 'explainers.js', 'xpl-art.js', 'print-center.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${['update.js', 'settings.js'].map((f) => read(path.join(REPO, 'editor', f))).join('\n')}\n${extFiles(extDir, '.js').map(read).join('\n')}\nboot();\n})();`;
 }
 
-export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, localFonts = false, watermarkDir = DEFAULT_WATERMARK_DIR, ui = 'ar', ops = {}, extDir = EXT_DIR }) {
+export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, localFonts = false, watermarkDir = DEFAULT_WATERMARK_DIR, ui = 'ar', ops = {}, extDir = EXT_DIR, docTypes = false }) {
   const theme = loadTheme(themeFile);
   const services = new Map();
   for (const f of docFiles(inputs)) {
@@ -134,7 +135,7 @@ export function buildEditor({ inputs, out, set, themeFile, embedFonts = false, l
   const local = localFonts ? localFontCss() : null;
   const { cuts, used } = local ? { cuts: [], used: local.families } : fontsFor(theme);
   const fontCss = local ? local.css : fontFaceCss(cuts, { embed: embedFonts });
-  const html = editorHtml({ services: [...services.values()], setId: set || [...services.keys()].join('+'), ui, theme, fontCss, fontFamilies: local ? local.families : [...new Set(cuts.map((c) => c.family))], wm: watermarkImages(watermarkDir), extDir });
+  const html = editorHtml({ services: [...services.values()], setId: set || [...services.keys()].join('+'), ui, theme, fontCss, fontFamilies: local ? local.families : [...new Set(cuts.map((c) => c.family))], wm: watermarkImages(watermarkDir), extDir, docTypes });
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, html, 'utf8');
   return { out, services: [...services.keys()], watermark: watermarkImages(watermarkDir).length, fonts: used.length, bytes: Buffer.byteLength(html) };
@@ -152,7 +153,7 @@ export function aboutInfo() {
 }
 
 /** One editor HTML from services already in hand (documents + their stored edits, history and comments). */
-function editorHtml({ services, setId, ui = 'ar', theme, fontCss, fontFamilies, wm = [], extDir = EXT_DIR, carry = {} }) {
+function editorHtml({ services, setId, ui = 'ar', theme, fontCss, fontFamilies, wm = [], extDir = EXT_DIR, carry = {}, docTypes = false }) {
   const I = i18n();
   // shell UX strings (0.10.0): ux.*, view.*, explain.* live in their own file and join the UI table here
   const UX = JSON.parse(read(path.join(REPO, 'editor', 'ux-i18n.json')));
@@ -202,7 +203,7 @@ ${faviconLink('html')}
 ${read(path.join(REPO, 'editor', 'views.css'))}</style>
 `;
   const body = `<script type="application/json" id="bw-data">${jsonInScript(data)}</script>
-${wm.length ? `<script type="application/json" id="bw-watermark-data">${jsonInScript(wm)}</script>\n` : ''}<script id="bw-app">${app}</script>`;
+${wm.length ? `<script type="application/json" id="bw-watermark-data">${jsonInScript(wm)}</script>\n` : ''}${docTypes ? `<script type="application/json" id="bw-doctypes">${payloadJson()}</script>\n` : ''}<script id="bw-app">${app}</script>`;
   return renderDocument(doc0, { locale: ed0, labels: I.doc[ed0], theme, fontCss, logos: theme.logos, extraHead: head, extraBody: body });
 }
 
@@ -228,7 +229,9 @@ export function rewrapEditorHtml(html) { // throws FormatError (file untouched o
   // every key this build does not make itself travels as is: the provenance (bwlog mark, prov log, contributors, lock) and
   // anything a later extension adds; a file re-wrapped without them would read as «stripped» (0.13.1 final pass, item 1)
   const carry = Object.fromEntries(Object.entries(d).filter(([k]) => !BUILT_KEYS.has(k)));
-  const out = carryTraces(html, editorHtml({ services: d.services, setId: d.setId, ui: d.uiLang === 'en' ? 'en' : 'ar', theme, fontCss, fontFamilies: fontFamilies || [], wm, carry }));
+  // 0.18.0: the document-type registry (bw-doctypes, a script of its own, never part of bw-data) is carried only if the old file had it, and is regenerated from this build's registry
+  const docTypes = /<script type="application\/json" id="bw-doctypes">/.test(html);
+  const out = carryTraces(html, editorHtml({ services: d.services, setId: d.setId, ui: d.uiLang === 'en' ? 'en' : 'ar', theme, fontCss, fontFamilies: fontFamilies || [], wm, carry, docTypes }));
   // the gate that makes a silent loss impossible: whatever the old file held of history must be in the new one, or no re-wrap
   const lost = historyProblems(JSON.parse(m[1]), JSON.parse(/<script type="application\/json" id="bw-data">([\s\S]*?)<\/script>/.exec(out)[1]));
   if (lost.length) throw new FormatError(`re-wrap would lose history: ${lost.slice(0, 5).join('; ')}`);

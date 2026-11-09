@@ -2,6 +2,8 @@
 
 **Verdict:** one neutral model of the process, many layouts. The evidence (a form crawl, a process model, a service record) becomes one bilingual model; a **template pack** says which chapters and sections a document has and in whose words; the generators fill every section from the model and say where each came from. A section the evidence cannot fill becomes a **named open question**, never a silent «none».
 
+See also: `14-document-types.md`. A document type (SRS, BRD, test plan, user manual and 13 more) is a starter document chosen from the editor's start page; a template pack here builds a requirements document from evidence.
+
 ## The command
 ```
 node engine/srs/cli.mjs build --pack <id|folder> --profile <profile.json>

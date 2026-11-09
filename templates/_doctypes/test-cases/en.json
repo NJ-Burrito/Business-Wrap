@@ -1,0 +1,313 @@
+{
+  "composedAt": "",
+  "control": {
+    "documentId": "BW-TC-NEW-001",
+    "title": "Test cases sheet: Module name",
+    "preparedBy": "Name and job title",
+    "documentType": "Test cases sheet",
+    "classification": "Internal",
+    "owner": "Organisation name",
+    "issuedOn": "YYYY-MM-DD",
+    "version": "V0.1",
+    "status": "Draft",
+    "reviewCycle": "At every build"
+  },
+  "revisions": [
+    [
+      "V0.1",
+      "YYYY-MM-DD",
+      "First draft",
+      "—"
+    ]
+  ],
+  "labels": {
+    "kicker": "TEST CASES",
+    "subtitle": "Module or feature"
+  },
+  "chapters": [
+    {
+      "title": "How to use this sheet",
+      "sections": [
+        {
+          "title": "How to use this sheet",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Explain the status and severity values used in the sheet. Write each case so that another tester can run it without asking."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Value",
+                "Meaning"
+              ],
+              "rows": [
+                [
+                  "Passed",
+                  "The actual result matches the expected one"
+                ],
+                [
+                  "Failed",
+                  "The actual result differs from the expected one"
+                ],
+                [
+                  "Blocked",
+                  "Cannot run for a reason outside the case"
+                ],
+                [
+                  "Not run",
+                  "The case has not been run yet"
+                ]
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Severity",
+                "Meaning"
+              ],
+              "rows": [
+                [
+                  "Critical",
+                  "System down or data lost"
+                ],
+                [
+                  "High",
+                  "A core function does not work"
+                ],
+                [
+                  "Medium",
+                  "A fault with a workaround"
+                ],
+                [
+                  "Low",
+                  "A cosmetic fault"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Test cases",
+      "sections": [
+        {
+          "title": "Test cases",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "One case per behaviour. Steps are numbered, each step is one action, and the expected result is written before the run, not after. Example steps: \"1. Open the sign-in page. 2. Enter a valid user name and a wrong password. 3. Press Sign in.\""
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Title",
+                "Preconditions",
+                "Steps",
+                "Test data",
+                "Expected result",
+                "Actual result",
+                "Status",
+                "Severity"
+              ],
+              "rows": [
+                [
+                  "TC-001",
+                  "…",
+                  "…",
+                  "1. …",
+                  "…",
+                  "…",
+                  "…",
+                  "Not run",
+                  "…"
+                ],
+                [
+                  "TC-002",
+                  "…",
+                  "…",
+                  "1. …",
+                  "…",
+                  "…",
+                  "…",
+                  "Not run",
+                  "…"
+                ],
+                [
+                  "TC-003",
+                  "…",
+                  "…",
+                  "1. …",
+                  "…",
+                  "…",
+                  "…",
+                  "Not run",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Execution summary",
+      "sections": [
+        {
+          "title": "Execution summary",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Computed from the cases above: the total passed, failed, blocked and not run, and the pass rate."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Module",
+                "Total",
+                "Passed",
+                "Failed",
+                "Blocked",
+                "Not run",
+                "Pass rate"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "0",
+                  "0",
+                  "0",
+                  "0",
+                  "0",
+                  "0%"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Defects raised",
+      "sections": [
+        {
+          "title": "Defects raised",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Link each failed case to its defect code in the tracker."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Defect ID",
+                "Linked case",
+                "Summary",
+                "Severity",
+                "Status"
+              ],
+              "rows": [
+                [
+                  "DEF-001",
+                  "TC-001",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "DEF-002",
+                  "TC-002",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Approval and sign-off",
+      "sections": [
+        {
+          "title": "Approval and sign-off",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "The tester and the reviewer sign in their own rows once the run is complete."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Name",
+                "Job title",
+                "Action",
+                "Signature",
+                "Date"
+              ],
+              "rows": [
+                [
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  "Executed",
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ],
+                [
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  "Reviewed",
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ]
+              ],
+              "blankCell": "",
+              "rowHeights": [
+                16,
+                16
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "openQuestions": []
+}

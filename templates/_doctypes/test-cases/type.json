@@ -1,0 +1,31 @@
+{
+  "id": "test-cases",
+  "code": "TC",
+  "category": "testing",
+  "order": 20,
+  "since": "0.18.0",
+  "name": {
+    "ar": "جدول حالات الاختبار",
+    "en": "Test cases sheet"
+  },
+  "description": {
+    "ar": "جدول حالات اختبار بصفحة أفقية: شروط مسبقة وخطوات مرقمة وبيانات ونتيجة متوقعة وفعلية وحالة لكل حالة، وملخص تنفيذ وسجل عيوب.",
+    "en": "A landscape sheet of test cases: preconditions, numbered steps, data, expected and actual result and status for each case, with an execution summary and a defect log."
+  },
+  "placeholder": {
+    "ar": "اسم الوحدة",
+    "en": "Module name"
+  },
+  "palette": "forest",
+  "coverDesign": "compact",
+  "motif": "test-cases",
+  "layout": {
+    "hide": [
+      "toc"
+    ],
+    "page": {
+      "size": "A4",
+      "orientation": "landscape"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "composedAt": "",
+  "control": {
+    "documentId": "BW-DOC-NEW-001",
+    "title": "Blank document: Document title",
+    "preparedBy": "Name and job title",
+    "documentType": "Blank document",
+    "classification": "Internal",
+    "owner": "Organisation name",
+    "issuedOn": "YYYY-MM-DD",
+    "version": "V0.1",
+    "status": "Draft",
+    "reviewCycle": "As needed"
+  },
+  "revisions": [["V0.1", "YYYY-MM-DD", "First draft", "—"]],
+  "labels": { "kicker": "BLANK DOCUMENT", "subtitle": "Subtitle" },
+  "chapters": [
+    {
+      "number": "1",
+      "title": "Chapter 1",
+      "sections": [
+        {
+          "number": "1.1",
+          "title": "Section title",
+          "blocks": [
+            { "kind": "prose", "paragraphs": ["Write here. Add chapters, sections, tables and diagrams from the ribbon, and reorder them by dragging."] }
+          ]
+        }
+      ]
+    }
+  ],
+  "openQuestions": []
+}

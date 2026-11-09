@@ -32,9 +32,9 @@
       "@id": "https://nj-burrito.github.io/Business-Wrap/#app",
       "name": "Business-Wrap",
       "alternateName": ["Business Wrap", "بزنس راب"],
-      "description": "Free, open-source bilingual requirements document generator. A process model or a walk through a live e-service becomes an Arabic and English requirements document, edited on the page that prints and exported to PDF and DOCX.",
+      "description": "Free, open-source bilingual document studio. 17 document types for business analysts and testers (SRS, BRD, FRS, test plan, test cases, user manual, UAT sign-off, release notes and more), plus a requirements document built from a process model or a live e-service, edited on the page that prints and exported to PDF and DOCX.",
       "applicationCategory": "BusinessApplication",
-      "applicationSubCategory": "Requirements document generator",
+      "applicationSubCategory": "Document studio for business analysts and testers",
       "operatingSystem": "Windows 11 (tested); macOS and Linux untested",
       "softwareRequirements": "Node.js 20 or newer, Chrome or Edge, Python with uv for DOCX",
       "softwareVersion": "{{version}}",
@@ -43,6 +43,7 @@
       "isAccessibleForFree": true,
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
       "featureList": [
+        "A start page and 17 document types (SRS, BRD, FRS, RTM, process flow, test plan, test cases, defect report, user manual, UAT sign-off, release notes, ToR, change request, minutes, business case, TOT guide), each in Arabic and English",
         "Harvest from a process model (BPMN, draw.io, YAML) or a crawl of the live service, and merge both",
         "One HTML editor that is the print layout; every edit recorded and undoable",
         "Arabic right to left and English left to right, both first-class",
@@ -74,6 +75,7 @@
       "@id": "https://nj-burrito.github.io/Business-Wrap/#faq",
       "inLanguage": "en",
       "mainEntity": [
+        { "@type": "Question", "name": "Which documents can I make with Business-Wrap?", "acceptedAnswer": { "@type": "Answer", "text": "17 types: blank, SRS, BRD, FRS, RTM, process flow, test plan, test cases, defect report, user manual, UAT sign-off, release notes, ToR, change request, minutes, business case and a TOT guide. Each exports PDF and DOCX in Arabic and English." } },
         { "@type": "Question", "name": "Is Business-Wrap free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. It is open source under the MIT licence. There is no paid plan and no account." } },
         { "@type": "Question", "name": "Does my document leave my computer?", "acceptedAnswer": { "@type": "Answer", "text": "No. The editor, PDF printing and DOCX building run locally. The one automatic request is the update check, at most once a day, to the public GitHub release list. Webhooks send only to an address you set." } },
         { "@type": "Question", "name": "Do I need Claude to use it?", "acceptedAnswer": { "@type": "Answer", "text": "No. The editor and the command line work on their own. The Claude Code plugin and the MCP server are optional ways in." } },

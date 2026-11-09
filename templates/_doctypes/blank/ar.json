@@ -1,0 +1,33 @@
+{
+  "composedAt": "",
+  "control": {
+    "documentId": "BW-DOC-NEW-001",
+    "title": "وثيقة فارغة: عنوان الوثيقة",
+    "preparedBy": "الاسم والمسمى الوظيفي",
+    "documentType": "وثيقة فارغة",
+    "classification": "داخلي",
+    "owner": "اسم الجهة",
+    "issuedOn": "YYYY-MM-DD",
+    "version": "V0.1",
+    "status": "مسودة",
+    "reviewCycle": "عند الحاجة"
+  },
+  "revisions": [["V0.1", "YYYY-MM-DD", "المسودة الأولى", "—"]],
+  "labels": { "kicker": "وثيقة فارغة", "subtitle": "العنوان الفرعي" },
+  "chapters": [
+    {
+      "number": "1",
+      "title": "الفصل الأول",
+      "sections": [
+        {
+          "number": "1.1",
+          "title": "عنوان القسم",
+          "blocks": [
+            { "kind": "prose", "paragraphs": ["اكتب هنا. أضف فصولا وأقساما وجداول ومخططات من الشريط، وأعد ترتيبها بالسحب."] }
+          ]
+        }
+      ]
+    }
+  ],
+  "openQuestions": []
+}

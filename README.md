@@ -1,6 +1,6 @@
 <h1 align="center">📄 Evidence in. Document out.</h1>
 
-<h3 align="center">Business-Wrap: bilingual requirements document generator (Arabic + English)</h3>
+<h3 align="center">Business-Wrap: the bilingual document studio for business analysts and testers (Arabic + English)</h3>
 
 <p align="center"><img src="https://raw.githubusercontent.com/NJ-Burrito/Business-Wrap/main/site/assets/media/hero.gif" alt="Business-Wrap: evidence in, one Arabic and English requirements document out" width="720"></p>
 
@@ -15,11 +15,11 @@
   <a href="https://github.com/NJ-Burrito/Business-Wrap/stargazers"><img src="https://img.shields.io/github/stars/NJ-Burrito/Business-Wrap?style=social" alt="Stars"></a>
 </p>
 
-**Jump to:** [🧐 What is it?](#-what-is-it) · [🚀 Start in 3 steps](#-start-in-3-steps) · [✅ Before you start](#-before-you-start) · [🔒 Is it safe?](#-is-it-safe) · [❓ Questions](#-questions) · [🆘 Problems?](#-problems) · [💻 For developers](#-for-developers--للمطورين)
+**Jump to:** [🧐 What is it?](#-what-is-it) · [📑 The document studio](#-the-document-studio) · [🚀 Start in 3 steps](#-start-in-3-steps) · [✅ Before you start](#-before-you-start) · [🔒 Is it safe?](#-is-it-safe) · [❓ Questions](#-questions) · [🆘 Problems?](#-problems) · [💻 For developers](#-for-developers--للمطورين)
 
 ## 🧐 What is it?
 
-📄 Business-Wrap writes a **requirements document**: the paper that says what a service must do.
+📄 Business-Wrap writes the documents a business analyst or a tester hands to a client or to another department: a requirements specification, a test plan, a user manual, release notes, minutes and more. **17 document types**, each with its own designed layout.
 
 🌍 One document, two languages: Arabic and English.
 
@@ -29,9 +29,57 @@
 
 🆓 Free and open source (MIT).
 
+## 📑 The document studio
+
+🏁 When the editor opens without a document of its own, the **start page** is the first screen. It is a gallery of the 17 types, each drawn as a small page, with a search box, category chips and your recent documents beside it.
+
+<p align="center"><img src="https://raw.githubusercontent.com/NJ-Burrito/Business-Wrap/main/site/assets/media/start-en.png" alt="The Business-Wrap start page: a gallery of document types with category chips, a search box and recent documents" width="860"></p>
+
+🖱️ Click a type to preview what is inside, then press **Create**. A double click (or Ctrl+Enter) creates it at once. The editor opens on that type's own design: its cover, sections and tables, not a renamed SRS.
+
+### 📚 The 17 types
+
+| Type | بالعربية | Category | What it is for | `id` |
+|---|---|---|---|---|
+| Blank document | وثيقة فارغة | Start | A clean title block, a control table and one empty chapter. | `blank` |
+| Software Requirements Specification (SRS) | وثيقة متطلبات البرمجيات (SRS) | Requirements | What an e-service or system must do: service card, requirements, rules, workflow, user stories with acceptance criteria. | `srs` |
+| Business Requirements Document (BRD) | وثيقة متطلبات العمل (BRD) | Requirements | What the organisation needs from a project: problem, objectives, stakeholders, success criteria. | `brd` |
+| Functional Requirements Specification (FRS) | مواصفات المتطلبات الوظيفية (FRS) | Requirements | What a system does, function by function, traced back to the BRD. | `frs` |
+| Requirements traceability matrix (RTM) | مصفوفة تتبع المتطلبات (RTM) | Requirements | A landscape matrix from each requirement to its design, test cases, results, defects and release. | `rtm` |
+| Process flow document (as-is and to-be) | وثيقة سير العملية (الحالي والمستهدف) | Requirements | A process as it runs today and as it should run: roles, two diagrams, pain points, gaps, metrics. | `process-flow` |
+| Test plan | خطة الاختبار | Testing | How the team will test: scope, approach, environment, schedule, exit criteria. | `test-plan` |
+| Test cases sheet | جدول حالات الاختبار | Testing | A landscape sheet of cases with steps, expected and actual result and status, plus a defect log. | `test-cases` |
+| Defect report | تقرير عيب | Testing | One defect, described so a developer can reproduce and fix it. | `defect-report` |
+| User manual | دليل المستخدم | Delivery | A task, step by step, with screenshot placeholders, numbered callouts and reference tables. | `user-manual` |
+| UAT sign-off | محضر قبول المستخدم (UAT) | Delivery | Scenarios and results, open defects, then a decision (accepted, with conditions or rejected) and signatures. | `uat-signoff` |
+| Release notes | ملاحظات الإصدار | Delivery | What is new, fixed and known, breaking changes and upgrade steps, in the user's words. | `release-notes` |
+| Terms of Reference (ToR) | الشروط المرجعية (ToR) | Governance | Scope, deliverables, timeline, responsibilities and evaluation criteria for a call for proposals or a contract. | `tor` |
+| Change request with impact analysis | طلب تغيير مع تحليل الأثر | Governance | The reason, an impact matrix over twelve areas, alternatives, risks, then the board's decision. | `change-request` |
+| Minutes of meeting | محضر اجتماع | Governance | Attendance, items, decisions and actions with owners and dates. | `minutes` |
+| Business case | دراسة الجدوى (حالة العمل) | Governance | Problem, benefits, options compared, recommendation, cost, risks and the decision requested. | `business-case` |
+| Training of Trainers (TOT) guide | دليل تدريب المدربين (TOT) | Training | Objectives, modules, sessions, exercises, assessment and a day-by-day schedule. | `tot` |
+
+### ➕ Three ways to start one
+
+1️⃣ **The start page.** Pick a tile and press Create. Search with `/`, or filter with the category chips. The language switch in the preview chooses which edition opens first; the other edition is kept in step.
+
+2️⃣ **Inside the editor.** File tab, then **Start page** (Ctrl+Alt+N). Your open document stays open behind it.
+
+3️⃣ **The command line.** `npx business-wrap types` lists the types. `npx business-wrap new --type brd --title "Payments platform"` creates one and opens it. In Claude Code: `/business-wrap:new --type brd`.
+
+### 🧰 What every type keeps
+
+📤 **PDF and DOCX in both languages,** with the fonts embedded as real text.
+
+🎀 **The whole editor:** the ribbon, editable diagrams, your profile and work log, the watermark and the tools that explain themselves.
+
+🎨 **The Business-Wrap theme,** with a colour for each category and one of two cover designs (a full cover page, or a compact title block for short documents).
+
+🧾 **Starter text, not client data.** Every type opens with placeholder content you replace. Nothing in it comes from a real client.
+
 ## 🎁 What you get
 
-📥 **You give it:** a process model (a file that draws the steps of the work: BPMN, draw.io or YAML) or a walk through the live service.
+📥 **You give it:** a type from the start page, or evidence for a requirements document: a process model (a file that draws the steps of the work: BPMN, draw.io or YAML) or a walk through the live service.
 
 📄 **You get:** PDF and DOCX (Word) files. The fonts are inside, as real text you can select.
 
@@ -49,7 +97,7 @@
 
 2️⃣ **Install once:** `npm ci` (a copy without `node_modules`, such as a zip, cannot export PDF or DOCX until this runs. The editor says so and offers «Install now»; the host also prints one line at start.)
 
-3️⃣ **Start it:** `npm run serve` (the first time it builds the sample editor). Open the address it prints, `http://127.0.0.1:4317/`, in Google Chrome.
+3️⃣ **Start it:** `npm run serve` (the first time it builds the sample editor). Open the address it prints, `http://127.0.0.1:4317/`, in Google Chrome. Then pick a document type on the [start page](#-the-document-studio).
 
 ⚠️ Always open the editor **through the local server** (the `npm run serve` window), not by double-clicking the HTML file. Export, print, the printers list and updates need the server.
 
@@ -135,6 +183,13 @@
 ## ❓ Questions
 
 <details>
+<summary>📑 Which documents can I make?</summary>
+
+17 types: blank, SRS, BRD, FRS, RTM, process flow, test plan, test cases, defect report, user manual, UAT sign-off, release notes, ToR, change request, minutes, business case and a TOT guide. See [the table](#-the-17-types). Each exports PDF and DOCX in Arabic and English.
+
+</details>
+
+<details>
 <summary>🆓 Is it free?</summary>
 
 Yes. MIT licence, no paid plan, no account.
@@ -210,9 +265,9 @@ Tested on Windows 11 with Node 24 and Chrome. It needs Node 20+, Google Chrome (
 ```
 💬 Then say **"build the requirements document for …"** or **"open it in the editor"**.
 
-🔌 **MCP server only** (any MCP client, stdio, local; 0.17.13 from the GitHub tag; npm still serves 0.12.0):
+🔌 **MCP server only** (any MCP client, stdio, local; 0.18.0 from the GitHub tag; npm still serves 0.12.0):
 ```
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.17.13 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.18.0 business-wrap-mcp
 ```
 
 💻 **From source:** `git clone https://github.com/NJ-Burrito/Business-Wrap`, then the [Start in 3 steps](#-start-in-3-steps).

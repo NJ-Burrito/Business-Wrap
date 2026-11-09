@@ -1,0 +1,743 @@
+{
+  "composedAt": "",
+  "control": {
+    "documentId": "BW-TP-NEW-001",
+    "title": "Test plan: Plan title",
+    "preparedBy": "Name and job title",
+    "documentType": "Test plan",
+    "classification": "Internal",
+    "owner": "Organisation name",
+    "issuedOn": "YYYY-MM-DD",
+    "version": "V0.1",
+    "status": "Draft",
+    "reviewCycle": "At every release"
+  },
+  "revisions": [
+    [
+      "V0.1",
+      "YYYY-MM-DD",
+      "First draft",
+      "—"
+    ]
+  ],
+  "labels": {
+    "kicker": "TEST PLAN",
+    "subtitle": "System under test"
+  },
+  "chapters": [
+    {
+      "title": "Introduction",
+      "sections": [
+        {
+          "title": "Introduction",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "The purpose and scope of the plan and the documents it relies on, such as requirements and design."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Test items and features to be tested",
+      "sections": [
+        {
+          "title": "Test items and features to be tested",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "List each feature to be tested and link it to its requirement and test level."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Feature",
+                "Requirement",
+                "Level",
+                "Priority"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Features not tested",
+      "sections": [
+        {
+          "title": "Features not tested",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "What is not tested in this cycle and why, so that nobody reads its absence as proof it works."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Feature",
+                "Reason",
+                "Accepted risk"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Test approach",
+      "sections": [
+        {
+          "title": "Test approach",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "The test levels and types, design techniques and automation, including what concerns Arabic and English and right-to-left layout."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Test type",
+                "Objective",
+                "Technique",
+                "Tool",
+                "Owner"
+              ],
+              "rows": [
+                [
+                  "Functional",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Arabic and English interface",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Performance",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Entry, exit and suspension criteria",
+      "sections": [
+        {
+          "title": "Entry, exit and suspension criteria",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "When testing starts, when it ends and when it is suspended. Make each condition a figure or state that can be checked. Example: \"No open critical defects and a case pass rate of at least 95%.\""
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Phase",
+                "Entry criteria",
+                "Exit criteria",
+                "Suspension criteria"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Test environment and data",
+      "sections": [
+        {
+          "title": "Test environment and data",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "The environments, addresses, data used and who owns each. Do not use real personal data unless it has been anonymised."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Environment",
+                "Purpose",
+                "Data",
+                "Owner"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Roles and responsibilities",
+      "sections": [
+        {
+          "title": "Roles and responsibilities",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Who writes the cases, who runs them, who triages defects and who decides on release."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Role",
+                "Name",
+                "Responsibilities"
+              ],
+              "rows": [
+                [
+                  "Test lead",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Tester",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Schedule",
+      "sections": [
+        {
+          "title": "Schedule",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Activities with their dates and their dependence on the development handover."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Activity",
+                "Start",
+                "End",
+                "Owner",
+                "Dependency"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "YYYY-MM-DD",
+                  "YYYY-MM-DD",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "YYYY-MM-DD",
+                  "YYYY-MM-DD",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Test deliverables",
+      "sections": [
+        {
+          "title": "Test deliverables",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "What is handed over at the end of the cycle: test cases, execution results, defect report and a summary report."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Deliverable",
+                "Format",
+                "When",
+                "Owner"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Defect management",
+      "sections": [
+        {
+          "title": "Defect management",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "The defect lifecycle, the definition of severity and priority in a table, and who closes a defect."
+              ]
+            },
+            {
+              "kind": "diagram",
+              "caption": "Defect lifecycle",
+              "model": {
+                "kind": "bw-diagram",
+                "version": 1,
+                "nodes": [
+                  {
+                    "id": "new",
+                    "kind": "system",
+                    "label": "New"
+                  },
+                  {
+                    "id": "open",
+                    "kind": "staff",
+                    "label": "Open"
+                  },
+                  {
+                    "id": "fixed",
+                    "kind": "system",
+                    "label": "Fixed"
+                  },
+                  {
+                    "id": "retest",
+                    "kind": "staff",
+                    "label": "Retest"
+                  },
+                  {
+                    "id": "closed",
+                    "kind": "ok",
+                    "label": "Closed"
+                  },
+                  {
+                    "id": "reopened",
+                    "kind": "rework",
+                    "label": "Reopened"
+                  },
+                  {
+                    "id": "rejected",
+                    "kind": "stop",
+                    "label": "Rejected"
+                  }
+                ],
+                "edges": [
+                  {
+                    "id": "e1",
+                    "from": "new",
+                    "to": "open",
+                    "kind": "main",
+                    "label": "Triage"
+                  },
+                  {
+                    "id": "e2",
+                    "from": "open",
+                    "to": "fixed",
+                    "kind": "main",
+                    "label": "Fix"
+                  },
+                  {
+                    "id": "e3",
+                    "from": "fixed",
+                    "to": "retest",
+                    "kind": "main"
+                  },
+                  {
+                    "id": "e4",
+                    "from": "retest",
+                    "to": "closed",
+                    "kind": "main",
+                    "label": "Passes"
+                  },
+                  {
+                    "id": "e5",
+                    "from": "retest",
+                    "to": "reopened",
+                    "kind": "return",
+                    "label": "Fails"
+                  },
+                  {
+                    "id": "e6",
+                    "from": "reopened",
+                    "to": "open",
+                    "kind": "return"
+                  },
+                  {
+                    "id": "e7",
+                    "from": "open",
+                    "to": "rejected",
+                    "kind": "stop",
+                    "label": "Not a defect"
+                  }
+                ],
+                "legend": {
+                  "staff": "Tester or developer step",
+                  "system": "Status set by the tracker",
+                  "rework": "Reopened after a failed retest",
+                  "stop": "Ends rejected",
+                  "ok": "Ends closed"
+                }
+              }
+            },
+            {
+              "kind": "subhead",
+              "text": "Severity definitions"
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Severity",
+                "Definition",
+                "Example",
+                "Fix target"
+              ],
+              "rows": [
+                [
+                  "Critical",
+                  "System down or data lost, no workaround",
+                  "…",
+                  "…"
+                ],
+                [
+                  "High",
+                  "A core function does not work",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Medium",
+                  "A fault with a workaround",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Low",
+                  "A cosmetic fault",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Risks and contingencies",
+      "sections": [
+        {
+          "title": "Risks and contingencies",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "What may disrupt testing and what is done then."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Risk",
+                "Likelihood",
+                "Impact",
+                "Action"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Metrics and reporting",
+      "sections": [
+        {
+          "title": "Metrics and reporting",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "What is measured, how it is computed, how often it is reported and to whom."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Metric",
+                "Definition",
+                "Target",
+                "Frequency"
+              ],
+              "rows": [
+                [
+                  "Case pass rate",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Open defects",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Terms and references",
+      "sections": [
+        {
+          "title": "Terms and references",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Define each term and abbreviation used in the plan and list the documents it relies on, with code and version."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Term",
+                "Definition"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…"
+                ]
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Code",
+                "Document",
+                "Version"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Approval and sign-off",
+      "sections": [
+        {
+          "title": "Approval and sign-off",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Each party signs in their own row before the plan is approved; a plan without these signatures is not approved."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Name",
+                "Job title",
+                "Action",
+                "Signature",
+                "Date"
+              ],
+              "rows": [
+                [
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  "Prepared",
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ],
+                [
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  "Reviewed",
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ],
+                [
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  "Approved",
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ]
+              ],
+              "blankCell": "",
+              "rowHeights": [
+                16,
+                16,
+                16
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "openQuestions": []
+}

@@ -1,0 +1,411 @@
+{
+  "composedAt": "",
+  "control": {
+    "documentId": "BW-DEF-NEW-001",
+    "title": "Defect report: Defect summary",
+    "preparedBy": "Name and job title",
+    "documentType": "Defect report",
+    "classification": "Internal",
+    "owner": "Organisation name",
+    "issuedOn": "YYYY-MM-DD",
+    "version": "V0.1",
+    "status": "Draft",
+    "reviewCycle": "On every status change"
+  },
+  "revisions": [
+    [
+      "V0.1",
+      "YYYY-MM-DD",
+      "First draft",
+      "—"
+    ]
+  ],
+  "labels": {
+    "kicker": "DEFECT REPORT",
+    "subtitle": "Defect ID"
+  },
+  "chapters": [
+    {
+      "title": "Defect summary",
+      "sections": [
+        {
+          "title": "Defect summary",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "A one-line title saying what happens and where. Example: \"The Send button stays disabled after the required fields are filled on the request page.\""
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "Value"
+              ],
+              "rows": [
+                [
+                  "Defect ID",
+                  "…"
+                ],
+                [
+                  "Title",
+                  "…"
+                ],
+                [
+                  "Module",
+                  "…"
+                ],
+                [
+                  "Severity",
+                  "…"
+                ],
+                [
+                  "Priority",
+                  "…"
+                ],
+                [
+                  "Reported by",
+                  "…"
+                ],
+                [
+                  "Reported on",
+                  "…"
+                ],
+                [
+                  "Status",
+                  "…"
+                ],
+                [
+                  "Assigned to",
+                  "…"
+                ],
+                [
+                  "Linked test case",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Description",
+      "sections": [
+        {
+          "title": "Description",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "A short paragraph on what the tester saw and since when."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Steps to reproduce",
+      "sections": [
+        {
+          "title": "Steps to reproduce",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Numbered steps, each a single action, starting from a known point. Add the test data used."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "No.",
+                "Step",
+                "Data"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "…",
+                  "…"
+                ],
+                [
+                  "2",
+                  "…",
+                  "…"
+                ],
+                [
+                  "3",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Expected and actual result",
+      "sections": [
+        {
+          "title": "Expected and actual result",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "What should have happened and what did, in two separate items."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Expected",
+                "Actual"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Evidence",
+      "sections": [
+        {
+          "title": "Evidence",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Screenshots, logs and recordings, each with its type and location."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "No.",
+                "Type",
+                "File or link",
+                "Note"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "Screenshot",
+                  "…",
+                  "…"
+                ],
+                [
+                  "2",
+                  "Log",
+                  "…",
+                  "…"
+                ]
+              ]
+            },
+            {
+              "kind": "shots",
+              "caption": "Screenshot placeholder",
+              "images": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Environment",
+      "sections": [
+        {
+          "title": "Environment",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Operating system, browser, device, build version and the interface language and direction."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "Value"
+              ],
+              "rows": [
+                [
+                  "Operating system",
+                  "…"
+                ],
+                [
+                  "Browser",
+                  "…"
+                ],
+                [
+                  "Device",
+                  "…"
+                ],
+                [
+                  "Build version",
+                  "…"
+                ],
+                [
+                  "Interface language",
+                  "…"
+                ],
+                [
+                  "Text direction",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Impact and workaround",
+      "sections": [
+        {
+          "title": "Impact and workaround",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Who is affected, how badly and whether there is a temporary workaround."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Analysis and fix",
+      "sections": [
+        {
+          "title": "Analysis and fix",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Written by the developer: the root cause, the fix and the release that carries it."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "Value"
+              ],
+              "rows": [
+                [
+                  "Root cause",
+                  "…"
+                ],
+                [
+                  "Fix",
+                  "…"
+                ],
+                [
+                  "Release with the fix",
+                  "…"
+                ],
+                [
+                  "Developer",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Verification and closure",
+      "sections": [
+        {
+          "title": "Verification and closure",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Written by the tester after the retest: the result and date. The defect is not closed before this."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "Value"
+              ],
+              "rows": [
+                [
+                  "Retest result",
+                  "…"
+                ],
+                [
+                  "Retest date",
+                  "…"
+                ],
+                [
+                  "Tester",
+                  "…"
+                ],
+                [
+                  "Closure decision",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Status history",
+      "sections": [
+        {
+          "title": "Status history",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Every move between statuses with its date and who made it."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Date",
+                "Status",
+                "Changed by",
+                "Comment"
+              ],
+              "rows": [
+                [
+                  "YYYY-MM-DD",
+                  "New",
+                  "…",
+                  "…"
+                ],
+                [
+                  "YYYY-MM-DD",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "openQuestions": []
+}

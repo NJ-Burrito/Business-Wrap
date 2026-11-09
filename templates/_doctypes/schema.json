@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "business-wrap/doctype.schema.json",
+  "title": "Business-Wrap document type (templates/_doctypes/<id>/type.json)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "code", "category", "order", "name", "description", "placeholder", "palette", "coverDesign", "motif"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "maxLength": 32 },
+    "code": { "type": "string", "pattern": "^[A-Z]{2,4}$" },
+    "category": { "enum": ["start", "requirements", "testing", "delivery", "governance", "training"] },
+    "order": { "type": "integer", "minimum": 0, "maximum": 999 },
+    "since": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "name": { "$ref": "#/$defs/pair90" },
+    "description": { "$ref": "#/$defs/pair240" },
+    "placeholder": { "$ref": "#/$defs/pair60" },
+    "palette": { "enum": ["navy", "forest", "gold", "slate", "rust"] },
+    "coverDesign": { "enum": ["spine", "compact"] },
+    "motif": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "maxLength": 32 },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hide": { "type": "array", "uniqueItems": true, "items": { "enum": ["cover", "control", "revisions", "toc", "questions"] } },
+        "front": { "type": "array", "uniqueItems": true, "items": { "enum": ["control", "revisions", "toc"] } },
+        "page": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "size": { "enum": ["A3", "A4", "A5", "B5", "Letter", "Legal", "Tabloid"] },
+            "orientation": { "enum": ["portrait", "landscape"] }
+          }
+        }
+      }
+    },
+    "source": { "type": "string", "pattern": "^samples/[a-z0-9-]+$" }
+  },
+  "$defs": {
+    "pair60": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ar", "en"],
+      "properties": {
+        "ar": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "en": { "type": "string", "minLength": 1, "maxLength": 60 }
+      }
+    },
+    "pair90": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ar", "en"],
+      "properties": {
+        "ar": { "type": "string", "minLength": 1, "maxLength": 90 },
+        "en": { "type": "string", "minLength": 1, "maxLength": 90 }
+      }
+    },
+    "pair240": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ar", "en"],
+      "properties": {
+        "ar": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "en": { "type": "string", "minLength": 1, "maxLength": 240 }
+      }
+    }
+  }
+}

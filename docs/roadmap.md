@@ -17,6 +17,7 @@
 | 0.3.0 | DOCX builder ported generically (both font slots, rule widths, font embedding by graft), DOCX check | partly shipped: DOCX font embedding without Word (0.8.0) |
 | 0.4.0 | Workflow figure renderer with the four figure gates (collisions, fidelity, captions, freeze) | partly shipped: the workflow diagram as an editable block, real text in the PDF, native shapes in the DOCX (0.9.0) |
 | 0.5.0 | Consolidation workflow (root cause → devil → 5-viewpoint vote → proof) as a script | not started |
+| 0.18.0 (not in the 0.1.0 plan) | Document studio: a start page and 17 document types (SRS, BRD, FRS, RTM, process flow, test plan, test cases, defect report, user manual, UAT sign-off, release notes, ToR, change request, minutes, business case, TOT guide), each with its own cover and sections and exported to PDF and DOCX in both languages | shipped in 0.18.0 |
 | 1.0.0 | First production release after one real document is delivered end to end | target |
 
 Versioning: semver; tags `vMAJOR.MINOR.PATCH` on `main` (see [CHANGELOG.md](../CHANGELOG.md)).

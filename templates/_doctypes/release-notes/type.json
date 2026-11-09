@@ -1,0 +1,22 @@
+{
+  "id": "release-notes",
+  "code": "RN",
+  "category": "delivery",
+  "order": 30,
+  "since": "0.18.0",
+  "name": {
+    "ar": "ملاحظات الإصدار",
+    "en": "Release notes"
+  },
+  "description": {
+    "ar": "ملاحظات إصدار بلغة المستخدم: ملخص وجديد وتحسينات وعيوب مصلحة ومشكلات معروفة وتغييرات جذرية وخطوات الترقية وقنوات الدعم.",
+    "en": "Release notes in the user's words: summary, what is new, improvements, fixed defects, known issues, breaking changes, upgrade steps and support channels."
+  },
+  "placeholder": {
+    "ar": "اسم المنتج والإصدار",
+    "en": "Product and version"
+  },
+  "palette": "gold",
+  "coverDesign": "spine",
+  "motif": "release-notes"
+}

@@ -1,0 +1,456 @@
+{
+  "composedAt": "",
+  "control": {
+    "documentId": "BW-BC-NEW-001",
+    "title": "Business case: Initiative name",
+    "preparedBy": "Name and job title",
+    "documentType": "Business case",
+    "classification": "Internal",
+    "owner": "Organisation name",
+    "issuedOn": "YYYY-MM-DD",
+    "version": "V0.1",
+    "status": "Draft",
+    "reviewCycle": "At each decision gate"
+  },
+  "revisions": [
+    [
+      "V0.1",
+      "YYYY-MM-DD",
+      "First draft",
+      "—"
+    ]
+  ],
+  "labels": {
+    "kicker": "BUSINESS CASE",
+    "subtitle": "Why to invest, in which option and at what return"
+  },
+  "chapters": [
+    {
+      "number": "1",
+      "title": "Executive summary",
+      "sections": [
+        {
+          "number": "1.1",
+          "title": "Summary",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "In one page: the problem, the recommended option, the cost, the return and the decision requested."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "2",
+      "title": "Problem and strategic fit",
+      "sections": [
+        {
+          "number": "2.1",
+          "title": "Problem or opportunity",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Describe the problem or opportunity and the goal in the organisation's plan that the project serves."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "3",
+      "title": "Objectives and expected benefits",
+      "sections": [
+        {
+          "number": "3.1",
+          "title": "Benefits",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Give each benefit its type (financial or not), how it is measured, its value and when it is realised."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Benefit",
+                "Type",
+                "Measure",
+                "Value",
+                "Timing"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "Financial",
+                  "…",
+                  "…",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "…",
+                  "Non-financial",
+                  "…",
+                  "…",
+                  "YYYY-MM-DD"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "4",
+      "title": "Options analysis",
+      "sections": [
+        {
+          "number": "4.1",
+          "title": "Options compared",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Compare at least three options. The first is \"do nothing\", the baseline."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Option",
+                "Description",
+                "Cost",
+                "Benefits",
+                "Risks"
+              ],
+              "rows": [
+                [
+                  "A: Do nothing",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "B: [Option]",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "C: [Option]",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "5",
+      "title": "Recommended option",
+      "sections": [
+        {
+          "number": "5.1",
+          "title": "Recommendation",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Name the chosen option, why it beat the others and how it will be delivered."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "6",
+      "title": "Cost estimate",
+      "sections": [
+        {
+          "number": "6.1",
+          "title": "Cost items",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Give the one-off cost and the yearly running cost, item by item."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "One-off",
+                "Annual",
+                "Notes"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "7",
+      "title": "Financial analysis",
+      "sections": [
+        {
+          "number": "7.1",
+          "title": "Cost and benefit by year",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Show the yearly flow of cost and benefit, then the return on investment and the payback period. State no figure that is not computed from this table."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Year",
+                "Costs",
+                "Benefits",
+                "Net",
+                "Cumulative"
+              ],
+              "rows": [
+                [
+                  "Year 1",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Year 2",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Year 3",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "8",
+      "title": "Risks and dependencies",
+      "sections": [
+        {
+          "number": "8.1",
+          "title": "Risk register",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "List what may reduce the benefit or raise the cost, and what depends on someone outside the project team."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Risk",
+                "Likelihood",
+                "Impact",
+                "Mitigation"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "1-5",
+                  "1-5",
+                  "…"
+                ],
+                [
+                  "…",
+                  "1-5",
+                  "1-5",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "9",
+      "title": "Timeline and milestones",
+      "sections": [
+        {
+          "number": "9.1",
+          "title": "Phases",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "List the project phases with approximate dates."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Phase",
+                "Start",
+                "End",
+                "Deliverable"
+              ],
+              "rows": [
+                [
+                  "Phase 1",
+                  "YYYY-MM-DD",
+                  "YYYY-MM-DD",
+                  "…"
+                ],
+                [
+                  "Phase 2",
+                  "YYYY-MM-DD",
+                  "YYYY-MM-DD",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "10",
+      "title": "Governance and resources",
+      "sections": [
+        {
+          "number": "10.1",
+          "title": "Roles",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Say who sponsors, who manages and who delivers, and how decisions are taken."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Role",
+                "Name",
+                "Responsibility"
+              ],
+              "rows": [
+                [
+                  "Sponsor",
+                  "[Name]",
+                  "…"
+                ],
+                [
+                  "Project manager",
+                  "[Name]",
+                  "…"
+                ],
+                [
+                  "Delivery lead",
+                  "[Name]",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "11",
+      "title": "Decision requested and approval",
+      "sections": [
+        {
+          "number": "11.1",
+          "title": "Decision",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "State the decision requested in one sentence, then the decision maker signs."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Role",
+                "Name",
+                "Signature",
+                "Date"
+              ],
+              "rows": [
+                [
+                  "Decision maker",
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ],
+                [
+                  "Sponsor",
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ]
+              ],
+              "blankCell": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "openQuestions": []
+}

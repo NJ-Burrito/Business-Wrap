@@ -6,7 +6,8 @@
 //   business-wrap stop --all                               stop every host, server and browser window this install started (tabs saved first)
 //   business-wrap close                                    the same as stop --all
 //   business-wrap status                                   version, running hosts, heal count
-//   business-wrap new [--title "…"] [--out dir] [--no-open]  a blank document pair + its editor (default: Documents\<title>\ in the save folder)
+//   business-wrap new [--title "…"] [--type id] [--out dir] [--no-open]  a blank document pair (or, with --type, the starter document of that type) + its editor (default: Documents\<title>\ in the save folder)
+//   business-wrap types                                    the document types (0.18.0): id, code, category, cover design, names
 //   business-wrap build <doc.json|folder ...> --out <editor.html> [--ui ar|en]
 //   business-wrap harvest <url|crawl.json|model|PDF/DOCX/HTML|folder> [--out dir] [--name n] [--roles f] [--no-open]
 //   business-wrap import <file|folder ...> [--out dir] [--no-open]   user sources (BPMN, draw.io, YAML, PDF, DOCX, HTML)
@@ -30,6 +31,7 @@ import http from 'node:http';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { buildEditor } from './build-editor.mjs';
+import * as DT from './doctypes.mjs';
 import { exportPdf, exportDocx, loadTheme, loadEdited, fontsFor, REPO, userCwd, fileStem, renderDiagramPng, localeOf } from './export.mjs';
 import { modelIn } from './diagram-cli.mjs';
 import { systemFonts } from './fonts.mjs';
@@ -134,7 +136,7 @@ export async function open({ inputs = [], port = 4317, browser = true, ui, blank
     const first = JSON.parse(fs.readFileSync(documents[0], 'utf8'));
     healWorkspace(EDITORS());
     editor = path.join(EDITORS(), `${fileStem(first.service || first.control.documentId)}.editor.html`);
-    buildEditor({ inputs: documents, out: editor, set: first.service, ui });
+    buildEditor({ inputs: documents, out: editor, set: first.service, ui, docTypes: implicitBlank }); // the blank editor (no document asked for) carries the document types too (0.18.0)
   }
   // 0.16.0 (item 10): this state folder has no host of its own, yet a Business-Wrap host already answers on the port (another install, another state folder): a second host is refused, not
   // started on the next port (the second host on 4318 that the first could not see). Reuse that host from the install that owns it, or stop it there.
@@ -213,16 +215,27 @@ export async function status() {
   return { version: pkg().version, hosts: hosts.map(({ pid, port, url, editor }) => ({ pid, port, url, editor })), host, healed: readHealLog().length, ai: false, mcp: d && { plugin: d.plugin, state: d.local, last_initialize_ms: d.last_initialize_ms, registered: d.registered?.registered ?? null, last_start: d.last_start, last_error: d.last_error, problems: d.problems } };
 }
 
-export async function newDoc({ title, out, browser = true, openIt = true } = {}) {
-  const slug = fileStem(title || 'new-document').toLowerCase();
+/** 0.18.0 (contract C6): the document types as the start page lists them, `business-wrap types`. */
+export function types() {
+  return { types: DT.listTypes().map((t) => ({ id: t.id, code: t.code, category: t.category, coverDesign: t.coverDesign || 'spine', palette: t.palette, name: t.name })) };
+}
+
+export async function newDoc({ title, out, type, browser = true, openIt = true } = {}) {
+  let known = null;
+  if (type !== undefined) {
+    known = DT.listTypes().find((t) => t.id === type);
+    if (!known) throw Object.assign(new Error(`new --type: unknown document type «${type}» (business-wrap types lists them: ${DT.listTypes().map((t) => t.id).join(', ') || 'none in this build'})`), { code: 2 });
+  }
+  const slug = known ? known.id : fileStem(title || 'new-document').toLowerCase();
   // no --out: the save folder, Documents\<title>\ (the pair of JSON files in Sources\, the editor as <title>.html)
-  const tree = out ? null : sourcesDir([title || 'مستند جديد - New document']);
+  const tree = out ? null : sourcesDir([title || (known ? `${known.name.ar} - ${known.name.en}` : 'مستند جديد - New document')]);
   const dir = tree ? tree.dir : path.resolve(out);
   fs.mkdirSync(dir, { recursive: true });
   const documents = [];
   for (const ed of ['ar', 'en']) {
-    const d = JSON.parse(fs.readFileSync(path.join(REPO, 'samples', 'blank', `document.${ed}.json`), 'utf8'));
-    if (title) { d.control.title = title; d.service = slug; }
+    // --type: the COMPOSED starter document (service, docType, coverDesign, motif, design.vars and layout are written by engine/doctypes.mjs compose, nowhere else)
+    const d = known ? DT.compose(known.id, ed) : JSON.parse(fs.readFileSync(path.join(REPO, 'samples', 'blank', `document.${ed}.json`), 'utf8'));
+    if (title) { d.control.title = title; if (!known) d.service = slug; }
     d.control.issuedOn ||= new Date().toISOString().slice(0, 10);
     const f = path.join(dir, `document.${ed}.json`);
     fs.writeFileSync(f, JSON.stringify(d, null, 1) + '\n');
@@ -230,7 +243,7 @@ export async function newDoc({ title, out, browser = true, openIt = true } = {})
   }
   const editorFile = tree ? path.join(tree.docDir, `${tree.folder}.html`) : path.join(dir, `${slug}.editor.html`);
   if (tree) keepVersion(editorFile);
-  const editor = buildEditor({ inputs: documents, out: editorFile, set: slug }).out;
+  const editor = buildEditor({ inputs: documents, out: editorFile, set: slug, docTypes: true }).out;
   return { documents, editor, ...(openIt ? { opened: await open({ inputs: [editor], browser }) } : {}) };
 }
 
@@ -511,20 +524,20 @@ async function pickerCmd(pos, val) {
 }
 
 /** Every verb this CLI answers (the plugin commands may only call these). */
-export const VERBS = ['open', 'close', 'stop', 'status', 'new', 'build', 'harvest', 'import', 'export', 'gate', 'heal-log', 'verify-history', 'library', 'tidy', 'report', 'update', 'doctor', 'reset', 'editor', 'picker', 'help'];
+export const VERBS = ['open', 'close', 'stop', 'status', 'new', 'types', 'build', 'harvest', 'import', 'export', 'gate', 'heal-log', 'verify-history', 'library', 'tidy', 'report', 'update', 'doctor', 'reset', 'editor', 'picker', 'help'];
 
 const USAGE = fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').filter((l) => l.startsWith('//   business-wrap')).map((l) => l.slice(5)).join('\n');
 /** The flags each verb knows (T11: an unknown flag is an error, never silently ignored). */
 const COMMON = ['--json'];
 const KNOWN_FLAGS = {
-  open: ['--port', '--no-browser', '--ui'], close: ['--all'], stop: ['--all'], status: [], new: ['--title', '--out', '--no-browser', '--no-open'], build: ['--out', '--ui'],
+  open: ['--port', '--no-browser', '--ui'], close: ['--all'], stop: ['--all'], status: [], new: ['--title', '--type', '--out', '--no-browser', '--no-open'], types: [], build: ['--out', '--ui'],
   harvest: ['--out', '--name', '--roles', '--no-open', '--no-browser'], import: ['--out', '--name', '--roles', '--no-open', '--no-browser'],
   export: ['--out', '--edits', '--no-docx'], gate: [], 'heal-log': [], 'verify-history': ['--history'], library: [], report: [], doctor: [], reset: ['--all', '--dry-run', '--yes'],
   picker: ['--path', '--name'],
   editor: ['--doc', '--pointer', '--pointer-file', '--locale', '--ops-file', '--mirror', '--agent', '--group', '--id', '--args-file', '--project', '--title', '--file', '--tab', '--out', '--scale', '--request-id', '--destination', '--name', '--no-docx', '--restore', '--include-trashed'],
 };
 /** Flags that take a value: whatever follows one is its value, even a lone - (stdin) or a dash-led name. */
-const VALUED = new Set(['--path', '--pointer-file', '--tab', '--scale', '--out', '--port', '--name', '--roles', '--edits', '--title', '--ui', '--history', '--doc', '--pointer', '--locale', '--ops-file', '--agent', '--group', '--id', '--args-file', '--project', '--file', '--request-id', '--destination']);
+const VALUED = new Set(['--type', '--path', '--pointer-file', '--tab', '--scale', '--out', '--port', '--name', '--roles', '--edits', '--title', '--ui', '--history', '--doc', '--pointer', '--locale', '--ops-file', '--agent', '--group', '--id', '--args-file', '--project', '--file', '--request-id', '--destination']);
 const HELP = ['--help', '-h', 'help', '-?'];
 /** T11: an unknown flag is an error. A lone - and anything right after a valued flag is a VALUE (stdin, a dash-led name), never a flag. Exported for tests/cli-0154. */
 export function checkFlags(verb, rest) {
@@ -547,7 +560,8 @@ export async function run(argv) {
     case 'open': return open({ inputs: pos, port: val('port') ? Number(val('port')) : 4317, browser, ui: val('ui') });
     case 'close': case 'stop': return close();
     case 'status': return status();
-    case 'new': return newDoc({ title: val('title') || pos[0], out: val('out'), browser, openIt: !flags.has('--no-open') });
+    case 'new': return newDoc({ title: val('title') || pos[0], out: val('out'), type: val('type'), browser, openIt: !flags.has('--no-open') });
+    case 'types': return types();
     case 'build': return build({ inputs: pos, out: val('out'), ui: val('ui') });
     case 'harvest': return harvest({ input: pos[0], out: val('out'), name: val('name'), roles: val('roles'), openIt: !flags.has('--no-open'), browser });
     case 'import': return importSources({ inputs: pos, out: val('out'), name: val('name'), roles: val('roles'), openIt: !flags.has('--no-open'), browser });
@@ -583,6 +597,7 @@ export async function main(argv = process.argv.slice(2)) {
     const r = await run(argv.filter((a) => a !== '--json'));
     if (r.usage) console.log(r.usage);
     else if (argv[0] === 'editor') console.log(JSON.stringify(r, null, 1));
+    else if (argv[0] === 'types' && !json) console.log(r.types.map((t) => `${t.id.padEnd(16)}${t.code.padEnd(6)}${t.category.padEnd(14)}${t.coverDesign.padEnd(9)}${t.name.en}  |  ${t.name.ar}`).join(String.fromCharCode(10)) || 'no document types in this build');
     else if (argv[0] === 'tidy') { if (r.lines.length) console.log(r.lines.join(String.fromCharCode(10))); console.log(json ? JSON.stringify({ ...r, lines: undefined }) : `${r.dryRun ? 'plan' : 'tidy'}: ${r.moved} of ${r.files_before} files, unsorted ${r.unmatched}, failed ${r.failed}  (${r.root})`); }
     else if (argv[0] === 'reset' && !json) { for (const i of r.items) console.log(`${i.recycled === undefined ? (r.dryRun ? 'would recycle' : 'listed') : i.recycled ? 'recycled' : 'FAILED'}  ${i.kind.padEnd(16)} ${i.path}`); console.log(r.cancelled ? 'cancelled: nothing changed' : r.dryRun ? `dry run: ${r.items.length} item(s) would go to the Recycle Bin (add --yes to do it)` : `${r.recycled} item(s) sent to the Recycle Bin${r.failed ? `, ${r.failed} failed (is Edge or a host still running?)` : ''}`); }
     else if (argv[0] === 'update') process.stdout.write(r.output);

@@ -1,0 +1,22 @@
+{
+  "id": "tor",
+  "code": "TOR",
+  "category": "governance",
+  "order": 10,
+  "since": "0.18.0",
+  "name": {
+    "en": "Terms of Reference (ToR)",
+    "ar": "الشروط المرجعية (ToR)"
+  },
+  "description": {
+    "en": "Sets the scope of work expected of an implementer, the deliverables, timeline, responsibilities and evaluation criteria; a basis for a call for proposals or a contract.",
+    "ar": "تحدد نطاق العمل المطلوب من المنفذ والمخرجات والجدول الزمني والمسؤوليات ومعايير التقييم؛ وهي أساس لطلب العروض أو للعقد."
+  },
+  "placeholder": {
+    "en": "Project name",
+    "ar": "اسم المشروع"
+  },
+  "palette": "slate",
+  "coverDesign": "spine",
+  "motif": "tor"
+}

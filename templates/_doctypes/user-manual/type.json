@@ -1,0 +1,22 @@
+{
+  "id": "user-manual",
+  "code": "UM",
+  "category": "delivery",
+  "order": 10,
+  "since": "0.18.0",
+  "name": {
+    "en": "User manual",
+    "ar": "دليل المستخدم"
+  },
+  "description": {
+    "en": "Walks a user through a task step by step, with screenshot placeholders, numbered callouts and reference tables for fields, choices and messages.",
+    "ar": "يشرح للمستخدم خطوة بخطوة كيف ينجز مهمته، بمواضع للقطات الشاشة ومربعات ترقيم وجداول مرجعية للحقول والاختيارات والرسائل."
+  },
+  "placeholder": {
+    "en": "Service name",
+    "ar": "اسم الخدمة"
+  },
+  "palette": "gold",
+  "coverDesign": "spine",
+  "motif": "user-manual"
+}
