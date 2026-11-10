@@ -8,6 +8,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.19.1] - 2026-11-10
+
+🛠️ A fix release: a document whose revision history has no column labels opens again. / 🛠️ إصدار إصلاحات: الوثيقة التي ليس لسجل مراجعاتها عناوين أعمدة تفتح مجددا.
+
+### Fixed / أصلح
+- 📜 **Revision history without labels**: 0.19.0 stopped rendering a document whose revision table had no column labels of its own; it prints as before again. / **سجل مراجعات بلا عناوين**: توقف 0.19.0 عن عرض وثيقة ليس لجدول مراجعاتها عناوين أعمدة خاصة بها؛ وعادت تطبع كما كانت.
+
 ## [0.19.0] - 2026-11-10
 
 📚 Every document type redesigned for its own job, a side panel on the start page, the host switch there too, and a truly empty Blank page. / 📚 كل نوع من الوثائق أعيد تصميمه لعمله، ولوحة جانبية في صفحة البداية، ومفتاح الخادم فيها أيضا، وصفحة فارغة حقا.

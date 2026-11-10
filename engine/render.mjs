@@ -2230,7 +2230,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
       : `<tr><th${dp('/labels/control/' + k)}>${bidi(L.control[k])}</th><td${dp('/control/' + k)}>${bidi(c[k])}</td></tr>`)
     .join('')}</table></div>`,
     revisions: () => `<div data-part="revisions"><h3>${lb('revisions')}</h3>
-  ${(() => { const n = revCols(doc); const keys = ['revVersion', 'revDate', 'revDesc', 'revAuthor'].slice(0, n); return table({ columns: keys.map((k) => L[k] ?? REV_LABELS[k][lang]), colPtrs: keys.map((k) => '/labels/' + k), rows: (doc.revisions || []).map((r) => r.slice(0, n)), rowsPtr: '/revisions', ...(n > 2 ? { blankCell: '' } : {}), keepAll: true /* UAT H3: a still-empty date stays a cell a person can type in */ }); })()}</div>`,
+  ${(() => { const n = revCols(doc); const keys = ['revVersion', 'revDate', 'revDesc', 'revAuthor'].slice(0, n); return table({ columns: keys.map((k) => L[k] ?? REV_LABELS[k]?.[lang]), colPtrs: keys.map((k) => '/labels/' + k), rows: (doc.revisions || []).map((r) => r.slice(0, n)), rowsPtr: '/revisions', ...(n > 2 ? { blankCell: '' } : {}), keepAll: true /* UAT H3: a still-empty date stays a cell a person can type in */ }); })()}</div>`,
     // 0.19.0 C7: a typed document's approvals print on the control page too (the DOCX's APPROVALS_COLUMNS); empty cells stay empty, to be signed
     ...(approvalsShown(doc) ? { approvals: () => `<div data-part="approvals"><h3>${lb('approvals')}</h3>
   ${table({ columns: L.approvalCols || [], colsPtr: '/labels/approvalCols', rows: doc.approvals.filter(Array.isArray), rowsPtr: '/approvals', keepAll: true, blankCell: '', extra: 'approvals', ...((L.approvalCols || []).length === 5 ? { colWidths: APPROVAL_WIDTHS } : {}) /* 0.19.0 R3 (review #15) */ })}</div>` } : {}),
