@@ -1,7 +1,8 @@
 // 0.18.0 (document studio) · lane L8, render gate: every registry type x ar/en composes and renders through the real engine (no browser, no server).
 //   per type and edition (the type list is read from the registry, never typed here):
 //   1. compose + renderDocument return a full page: lang/dir right (ar = rtl, en = ltr), the document's own title in <title>
-//   2. exactly one `.cover` carrying data-cover = the type's coverDesign and data-motif = its motif (= the id), and the type's palette on the document
+//   2. exactly one `.cover` carrying data-cover = the type's page-1 layout and data-type = its id, with no motif and no svg (0.19.0, tests/page1-0190),
+//      and the type's palette on the document
 //      (0.19.0: an `empty` type, the Blank document, hides its cover: none is drawn, its one skeleton chapter is `bare`, and tests/blank-empty-0190 holds the rest)
 //   3. every chapter heading of the model is in the markup (data-p="/chapters/N/title", the text equal)
 //   4. no "undefined" / "NaN" / "[object" anywhere in the markup (data attributes, text, CSS)
@@ -10,7 +11,7 @@
 //   node tests/run.mjs doctypes-render-0180
 import './_isolate.mjs';
 import { loadTheme, i18n } from '../engine/export.mjs';
-import { renderDocument } from '../engine/render.mjs';
+import { renderDocument, coverOf } from '../engine/render.mjs';
 import * as DT from '../engine/doctypes.mjs';
 
 const results = [];
@@ -33,7 +34,7 @@ const blocksOf = (doc) => doc.chapters.flatMap((c, ci) => (c.sections || []).fla
 
 // the registry itself: 17 types are the 0.18.0 promise, and the first look must have seen them (R15)
 check(`the registry lists the 17 types of 0.18.0 (${types.length})`, types.length === 17, types.map((t) => t.id).join());
-check('every type has a unique id and a cover design of the two designs', new Set(types.map((t) => t.id)).size === types.length && types.every((t) => DT.COVER_DESIGNS.includes(t.coverDesign || 'spine')));
+check('every type has a unique id and a page-1 family of the known ones', new Set(types.map((t) => t.id)).size === types.length && types.every((t) => DT.COVER_DESIGNS.includes(t.coverDesign || 'spine')));
 
 for (const t of types) {
   for (const ed of DT.EDITIONS) {
@@ -47,8 +48,10 @@ for (const t of types) {
       html.startsWith('<!doctype html>') && html.includes(`<html lang="${ed}" dir="${ed === 'ar' ? 'rtl' : 'ltr'}">`) && plain(html.match(/<title>([\s\S]*?)<\/title>/)?.[1] || '') === plain(doc.control.title) && doc.control.title.length > 2, doc.control.title);
     const covers = html.match(/<div class="cover"[^>]*>/g) || [];
     const want = DT.COVER_DESIGNS.includes(t.coverDesign) ? t.coverDesign : 'spine';
-    check(t.empty ? `${tag}: an empty type draws no cover (layout.hide has cover)` : `${tag}: one cover, data-cover=${want}, data-motif=${t.motif || t.id}`, t.empty ? covers.length === 0 && (doc.layout?.hide || []).includes('cover') : covers.length === 1 && covers[0].includes(`data-cover="${want}"`) && covers[0].includes(`data-motif="${t.motif || t.id}"`) && (t.motif || t.id) === t.id, covers.join(' '));
-    check(`${tag}: the composed document carries its docType, cover design, motif and the palette's primary`, doc.docType === t.id && doc.service === t.id && doc.coverDesign === want && doc.motif === (t.motif || t.id) && /^#[0-9a-f]{6}$/i.test(doc.design?.vars?.primary || ''), JSON.stringify([doc.docType, doc.service, doc.coverDesign, doc.motif, doc.design?.vars?.primary]));
+    const layoutOf = coverOf(doc)?.design; // report, form and sheet print with the nearest built layout until lane R2 lands
+    const coverPart = covers.length ? html.slice(html.indexOf('<div class="cover"'), html.indexOf('<div class="wrap">')) : '';
+    check(t.empty ? `${tag}: an empty type draws no cover (layout.hide has cover)` : `${tag}: one cover, data-cover=${layoutOf}, data-type=${t.id}, no motif and no svg`, t.empty ? covers.length === 0 && (doc.layout?.hide || []).includes('cover') : covers.length === 1 && covers[0].includes(`data-cover="${layoutOf}"`) && covers[0].includes(`data-type="${t.id}"`) && !/data-motif|cover-motif|<svg/.test(coverPart), covers.join(' '));
+    check(`${tag}: the composed document carries its docType, page-1 family and the palette's primary, and no motif`, doc.docType === t.id && doc.service === t.id && doc.coverDesign === want && !('motif' in doc) && /^#[0-9a-f]{6}$/i.test(doc.design?.vars?.primary || ''), JSON.stringify([doc.docType, doc.service, doc.coverDesign, doc.motif, doc.design?.vars?.primary]));
     const heads = new Map([...html.matchAll(/<span data-p="\/chapters\/(\d+)\/title">([\s\S]*?)<\/span>/g)].map((m) => [+m[1], plain(m[2])]));
     const bare = (c) => t.empty && c.bare === true; // 0.19.0: the Blank document's skeleton chapter prints no heading (and has none)
     const missing = doc.chapters.map((c, i) => [i, c.title]).filter(([i, ti]) => !bare(doc.chapters[i]) && (!ti || heads.get(i) !== plain(ti)));

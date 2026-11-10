@@ -1,32 +1,38 @@
-"""Business-Wrap DOCX cover designs (0.18.0, document studio): `spine` and `compact`, a category colour, one flat motif per document type.
+"""Business-Wrap DOCX page-1 designs (0.18.0 document studio; 0.19.0 page-1 families): `spine` (a title page) and `compact` (a title block on page 1),
+a category colour, and since 0.19.0 NO motif and no art on page 1 (work/sdlc/design/0190-types.md §1, tests/page1-0190).
 
-The renderer (engine/render.mjs) is the source of the design: the same keys (`coverDesign`, `motif`), the same type codes, the same motif drawing
-(engine/covers/motif-svg.mjs is called for the SVG, which is drawn to a PNG with the builder's own rasterizer). The colours are the theme's own vars,
-so a category palette (doc.design.vars) reaches the Word file through BW_THEME with no new colour. Only solid fills, hairlines and one picture are used.
+The renderer (engine/render.mjs) is the source of the design: the same keys (`coverDesign`, `docType`; an old file's `motif` only names the type), the
+same type codes, the same control block (C3 field grid) where the 0.18 motif was. The colours are the theme's own vars, so a category palette
+(doc.design.vars) reaches the Word file through BW_THEME with no new colour. Only solid fills and straight rules are drawn; the only pictures are
+logos the user adds, and every one is named `logo-...` (wp:docPr) so the page-1 test can tell a logo from art.
 A document with neither key never comes here (theme.build_cover is unchanged for it).
 """
 from __future__ import annotations
-import subprocess, sys, re
+import re
 from pathlib import Path
 from docx.shared import Pt, Emu, Mm, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
-# keep in step with engine/render.mjs (COVER_DESIGNS, COVER_MOTIFS, COVER_CODES, COVER_DENSE): tests/cover-designs-0180.test.mjs compares them
-DESIGNS = ('spine', 'compact')
-MOTIFS = ('blank', 'srs', 'user-manual', 'tot', 'tor', 'brd', 'frs', 'test-plan', 'test-cases', 'uat-signoff', 'release-notes', 'change-request', 'minutes', 'process-flow', 'rtm', 'defect-report', 'business-case')
-CODES = {'srs': 'SRS', 'brd': 'BRD', 'frs': 'FRS', 'rtm': 'RTM', 'process-flow': 'PF', 'test-plan': 'TP', 'test-cases': 'TC', 'defect-report': 'DR', 'uat-signoff': 'UAT', 'release-notes': 'RN', 'user-manual': 'UM', 'tot': 'TOT', 'tor': 'TOR', 'change-request': 'CR', 'minutes': 'MOM', 'business-case': 'BC'}
+# keep in step with engine/render.mjs (COVER_DESIGNS, COVER_TYPES, COVER_CODES, COVER_DENSE, COVER_CONTROL): tests/cover-designs-0180.test.mjs compares them
+DESIGNS = ('spine', 'compact', 'report', 'form', 'sheet')
+LAYOUT = {'spine': 'spine', 'report': 'spine', 'compact': 'compact', 'form': 'compact', 'sheet': 'compact'}  # R2 builds report, form and sheet
+TYPES = ('blank', 'srs', 'user-manual', 'tot', 'tor', 'brd', 'frs', 'test-plan', 'test-cases', 'uat-signoff', 'release-notes', 'change-request', 'minutes', 'process-flow', 'rtm', 'defect-report', 'business-case')
+CODES = {'srs': 'SRS', 'brd': 'BRD', 'frs': 'FRS', 'rtm': 'RTM', 'process-flow': 'PF', 'test-plan': 'TP', 'test-cases': 'TC', 'defect-report': 'DEF', 'uat-signoff': 'UAT', 'release-notes': 'RN', 'user-manual': 'UM', 'tot': 'TOT', 'tor': 'TOR', 'change-request': 'CR', 'minutes': 'MOM', 'business-case': 'BC'}
 DENSE = ('test-cases', 'rtm', 'defect-report', 'release-notes')
-MOTIF_SCRIPT = Path(__file__).resolve().parents[1] / 'covers' / 'motif-svg.mjs'
-MOTIF_SCALE = 12  # css px of the 160 x 94 box to device px: 152 mm shown = about 300 dpi
+CONTROL = ('documentId', 'version', 'status', 'issuedOn', 'owner', 'preparedBy', 'approvedBy', 'classification')
+CONTROL_LABELS = {'approvedBy': {'en': 'Approved by', 'ar': 'جهة الاعتماد'}}
+FIELD_KINDS = ('text', 'chip', 'date', 'blank')
+FIELD_COLS = (2, 3, 4, 6)
 
 
 def cover_of(data: dict) -> dict | None:
-    """{'design', 'motif'} the document asks for, or None (today's cover). A motif alone means the spine design."""
-    motif = data.get('motif') if data.get('motif') in MOTIFS else ''
-    design = data.get('coverDesign') if data.get('coverDesign') in DESIGNS else ('spine' if motif else '')
-    return {'design': design, 'motif': motif} if design else None
+    """{'design': the layout drawn, 'family': the asked family, 'type': the type id or ''}, or None (today's cover). An old `motif` alone means spine."""
+    old = data.get('motif') if data.get('motif') in TYPES else ''
+    typ = data.get('docType') if data.get('docType') in TYPES else old
+    family = data.get('coverDesign') if data.get('coverDesign') in DESIGNS else ('spine' if old else '')
+    return {'design': LAYOUT[family], 'family': family, 'type': typ} if family else None
 
 
 def is_manual(data: dict) -> bool:
@@ -52,24 +58,15 @@ def spine_code_color(roles: dict) -> str:
 
 def apply_dense(roles: dict, cv: dict | None) -> None:
     """The sheets people scan down (test cases, RTM, defects, release notes) get a washed header and a faint zebra, as the print does."""
-    if cv and cv['motif'] in DENSE:
+    if cv and cv['type'] in DENSE:
         roles.setdefault('th-fill', roles.get('primary-100', '#e1eaf4'))
         roles.setdefault('zebra', roles.get('primary-50', '#f2f6fa'))
 
 
-def motif_png(motif: str, rtl: bool, workdir: Path, theme_json: Path) -> Path | None:
-    """The motif drawn to a PNG (flat shapes, 300 dpi at the shown size), or None when node or Chrome is not there (the cover then has no motif)."""
-    if not motif:
-        return None
-    try:
-        import build_docx as _b
-        svg = subprocess.run(['node', str(MOTIF_SCRIPT), motif, 'rtl' if rtl else 'ltr', str(theme_json)], check=True, capture_output=True, text=True, encoding='utf-8').stdout
-        png = Path(workdir) / f'cover-motif-{motif}-{"rtl" if rtl else "ltr"}.png'
-        _b.rasterize_svg(svg, png, scale=MOTIF_SCALE)
-        return png if png.exists() else None
-    except Exception as e:  # a missing browser must not stop the export: the cover keeps its type code and colour
-        print(f'WARN: cover motif {motif} not drawn: {e}', file=sys.stderr)
-        return None
+def name_logo(shape, path) -> None:
+    """Word names a picture `Picture n`; a logo is named `logo-<file stem>` so page 1 can be told from art (spec §3: only `logo-*` pictures are allowed)."""
+    stem = Path(str(path)).stem
+    shape._inline.docPr.set('name', stem if stem.startswith('logo-') else f'logo-{stem}')
 
 
 # ---- small OOXML helpers (heights, borders, shading are the builder's own idioms) ----
@@ -81,8 +78,9 @@ def _tw(mm: float) -> int:
     return int(round(mm * 56.6929))
 
 
-def _fresh_table(document, rows: int, widths_mm: list[float], rtl: bool, theme_mod):
-    table = document.add_table(rows=rows, cols=len(widths_mm))
+def _fresh_table(document, rows: int, widths_mm: list[float], rtl: bool, theme_mod, host=None):
+    """A borderless fixed-width table with zero cell margins; `host` (a cell) nests it there instead of the document body."""
+    table = document.add_table(rows=rows, cols=len(widths_mm)) if host is None else host.add_table(rows, len(widths_mm))
     table.autofit = False
     tblPr = table._tbl.tblPr
     tblW = tblPr.find(qn('w:tblW'))
@@ -179,14 +177,123 @@ def _logos(cell, logos, height_mm: float) -> None:
     for i, l in enumerate(items):
         if i:
             run.add_text('     ')
-        run.add_picture(str(l), height=Mm(height_mm))
+        name_logo(run.add_picture(str(l), height=Mm(height_mm)), l)
 
 
 def _meta_text(control: dict, L: dict) -> str:
     return L['comma'].join([control.get('version', ''), control.get('status', ''), control.get('issuedOn', '')])
 
 
-def build_spine(document, control: dict, roles: dict, font: str, logos, cv: dict, theme_mod, rtl: bool) -> None:
+def _borders(table, outer: tuple, inner: tuple) -> None:
+    """Table borders: outer (hex, eighths of a point) on the four edges, inner on insideH / insideV (straight rules only)."""
+    tblPr = table._tbl.tblPr
+    old = tblPr.find(qn('w:tblBorders'))
+    b = OxmlElement('w:tblBorders')
+    for edge in ('top', 'left', 'bottom', 'right', 'insideH', 'insideV'):
+        color, sz = inner if edge.startswith('inside') else outer
+        el = OxmlElement(f'w:{edge}')
+        el.set(qn('w:val'), 'single')
+        el.set(qn('w:sz'), str(sz))
+        el.set(qn('w:space'), '0')
+        el.set(qn('w:color'), _hex(color))
+        b.append(el)
+    if old is not None:
+        old.addnext(b)
+        tblPr.remove(old)
+    else:
+        tblPr.insert_element_before(b, 'w:shd', 'w:tblLayout', 'w:tblCellMar', 'w:tblLook')
+
+
+def _cell_margins(cell, top: float, side: float, bottom: float) -> None:
+    tcPr = cell._tc.get_or_add_tcPr()
+    mar = OxmlElement('w:tcMar')
+    for edge, mm in (('top', top), ('start', side), ('bottom', bottom), ('end', side)):
+        el = OxmlElement(f'w:{edge}')
+        el.set(qn('w:w'), str(_tw(mm)))
+        el.set(qn('w:type'), 'dxa')
+        mar.append(el)
+    tcPr.insert_element_before(mar, 'w:textDirection', 'w:tcFitText', 'w:vAlign', 'w:hideMark', 'w:tcPrChange')
+
+
+def _min_height(row, mm: float) -> None:
+    """A row at least `mm` tall that never splits (schema order: cantSplit before trHeight; an existing height or cantSplit is replaced, not doubled)."""
+    trPr = row._tr.get_or_add_trPr()
+    for tag in ('w:trHeight', 'w:cantSplit'):
+        for old in trPr.findall(qn(tag)):
+            trPr.remove(old)
+    h = OxmlElement('w:trHeight')
+    h.set(qn('w:val'), str(_tw(mm)))
+    h.set(qn('w:hRule'), 'atLeast')
+    trPr.insert_element_before(h, 'w:tblHeader', 'w:tblCellSpacing', 'w:jc', 'w:hidden', 'w:ins', 'w:del', 'w:trPrChange')
+    h.addprevious(OxmlElement('w:cantSplit'))
+
+
+def control_fields(data: dict, labels: dict, rtl: bool) -> list:
+    """The eight common control fields of the title page (render.mjs COVER_CONTROL), from `control`; an empty `approvedBy` is a blank box."""
+    control = data.get('control') or {}
+    out = []
+    for k in CONTROL:
+        label = (labels.get('control') or {}).get(k) or CONTROL_LABELS.get(k, {}).get('ar' if rtl else 'en', k)
+        value = str(control.get(k) or '')
+        kind = 'blank' if k == 'approvedBy' and not value.strip() else ('ltr' if k in ('documentId', 'version', 'issuedOn') else 'text')
+        out.append({'label': label, 'value': value, 'kind': kind})
+    return out
+
+
+def type_fields(data: dict) -> list:
+    """The type's own page-1 fields (content key `cover`, spec §2)."""
+    return [f for f in ((data.get('cover') or {}).get('fields') or []) if isinstance(f, dict)]
+
+
+def field_grid(document, host, fields: list, cols: int, width_mm: float, roles: dict, font: str, theme_mod, rtl: bool):
+    """C3: a field grid as a native table (fixed widths): label 7 pt muted above value 9.5 pt; 0.75 pt rule-strong outer, rule inner; rows at least
+    11 mm; a `chip` value takes the status fill (C9) or the wash; `date` and Latin ids stay left to right; `blank` is an empty box."""
+    import build_docx as _b
+    if not fields:
+        return None
+    n = cols if cols in FIELD_COLS else 2
+    nrows = -(-len(fields) // n)
+    table = _fresh_table(document, nrows, [width_mm / n] * n, rtl, theme_mod, host=host)
+    _borders(table, (roles['rule-strong'], 6), (roles['rule'], 4))
+    for row in table.rows:
+        _min_height(row, 11)
+    rest = len(fields) % n
+    for i, f in enumerate(fields):
+        r, c = divmod(i, n)
+        cell = table.cell(r, c)
+        if rest and i == len(fields) - 1 and c < n - 1:
+            cell = cell.merge(table.cell(r, n - 1))
+        _cell_margins(cell, 1.6, 2.5, 1.8)
+        lp = cell.paragraphs[0]
+        _tight(lp, round(theme_mod.SIZES['micro'] * 1.45, 1), after=1)
+        _b.set_para_bidi(lp)
+        _b.add_script_runs(lp, str(f.get('label') or ''), font)
+        for run in lp.runs:
+            run.font.size = Pt(theme_mod.SIZES['micro'])
+            run.font.color.rgb = theme_mod.rgb(roles['muted'])
+        vp = cell.add_paragraph()
+        _tight(vp, 13.3)
+        _b.set_para_bidi(vp)
+        kind = f.get('kind') if f.get('kind') in FIELD_KINDS + ('ltr',) else 'text'
+        value = '' if kind == 'blank' else str(f.get('value') or '')
+        if not value:
+            vp.add_run().font.size = Pt(9.5)
+            continue
+        _b.add_script_runs(vp, value, font, bold=True)
+        colors = status_colors(value, roles) if kind == 'chip' else None
+        for run in vp.runs:
+            run.font.size = Pt(9.5)
+            run.font.color.rgb = theme_mod.rgb(colors[1] if colors else roles['ink'])
+            if kind == 'chip':
+                shd = OxmlElement('w:shd')
+                shd.set(qn('w:val'), 'clear')
+                shd.set(qn('w:color'), 'auto')
+                shd.set(qn('w:fill'), _hex(colors[0] if colors else roles.get('primary-100', roles['navy'])))
+                run._element.get_or_add_rPr().append(shd)
+    return table
+
+
+def build_spine(document, control: dict, roles: dict, font: str, logos, cv: dict, theme_mod, rtl: bool, data: dict | None = None) -> None:
     """The spine cover on the same A4 grid as the print (covers.md section 1), as one table of exact-height rows: columns spine 20 | gutter 14 |
     three text columns (20, 60, 80) | right margin 16 mm. Row heights put every line at the print's y, so Word needs no paragraph arithmetic."""
     import build_docx as _b
@@ -236,7 +343,7 @@ def build_spine(document, control: dict, roles: dict, font: str, logos, cv: dict
     _tiny(hair)
     theme_mod.set_cell_border(hair, 'bottom', roles['rule'], 6)
     # type code: Display Black, cap height 12 mm (48.6 pt on a 1.0 line), baseline at 106 mm
-    code = CODES.get(cv['motif'], '')
+    code = CODES.get(cv['type'], '')
     cell = span('code')
     p = cell.paragraphs[0]
     _tight(p, 48.6)
@@ -276,6 +383,27 @@ def build_spine(document, control: dict, roles: dict, font: str, logos, cv: dict
     for r in sp.runs:
         r.font.size = Pt(theme_mod.SIZES['table'])
         r.font.color.rgb = theme_mod.rgb(roles['muted'])
+    # 0.19.0: the control block where the 0.18 motif was (C3): the eight control fields, then the type's own fields; it ends at 252 mm
+    ctl = span('gapE')
+    tcPr = ctl._tc.get_or_add_tcPr()
+    va = OxmlElement('w:vAlign')
+    va.set(qn('w:val'), 'bottom')
+    tcPr.append(va)
+    first = ctl.paragraphs[0]
+    d = data or {'control': control}
+    tf = type_fields(d)
+    tcols = (d.get('cover') or {}).get('cols')
+    def after(space_after_pt):
+        # python-docx closes a nested table with an empty paragraph (Word needs one): it becomes a 1 pt spacer
+        p = ctl.paragraphs[-1]
+        _tight(p, 1, after=space_after_pt)
+        p.add_run().font.size = Pt(1)
+    field_grid(document, ctl, control_fields(d, _b.L, rtl), 2, 152, roles, font, theme_mod, rtl)
+    if tf:
+        after(10)
+        field_grid(document, ctl, tf, tcols if tcols in (2, 3) else 2, 152, roles, font, theme_mod, rtl)
+    after(16)  # about 6 mm under the block: it ends near 252 mm, as the print
+    first._p.getparent().remove(first._p)
     # meta row (258 to 283 mm): a hairline over it, version / status / date at the start, the owner at the end
     start, end = C('meta', 2).merge(C('meta', 3)), C('meta', 4)
     for cell in (start, end):
@@ -303,18 +431,13 @@ def build_spine(document, control: dict, roles: dict, font: str, logos, cv: dict
                 _tiny(cell)
 
 
-def place_motif(cover_section, png: Path | None, rtl: bool, cv: dict) -> None:
-    """The spine cover's motif: one anchored picture on the page (34 mm from the start edge, 163 mm down, 152 mm wide), mirrored for Arabic by the drawing itself."""
+def tighten_cover_header(cover_section, cv: dict) -> None:
+    """The spine cover's top margin is 0: an empty header line of normal height would push the whole cover table down. (0.18 drew the motif here; 0.19.0 draws none.)"""
     if cv['design'] != 'spine':
         return
-    for hp in cover_section.header.paragraphs:  # the cover's top margin is 0: an empty header line of normal height would push the whole table down
+    for hp in cover_section.header.paragraphs:
         _tight(hp, 1)
         hp.add_run().font.size = Pt(1)
-    if not png:
-        return
-    import build_docx as _b
-    host = _b._ov_host(cover_section.header.add_paragraph)
-    _b.anchored_picture(host, png, 24 if rtl else 34, 163, 152)
 
 
 def step_chip(paragraph, number: int, font: str, roles: dict, theme_mod) -> None:
@@ -360,9 +483,9 @@ def style_callout(paragraph, kind: str, roles: dict, pbdr_after: tuple) -> None:
     return _hex(tag)
 
 
-def build_compact(document, control: dict, roles: dict, font: str, logos, cv: dict, png: Path | None, text_width: int, theme_mod, rtl: bool) -> None:
-    """The compact cover: no page of its own, a title block at the head of page 1: a band (gold cap, deep colour), the type code and kicker, the title
-    and subtitle with the small motif at the end, a meta line (version, status, date, document code). Three small tables on the body's own margins."""
+def build_compact(document, control: dict, roles: dict, font: str, logos, cv: dict, text_width: int, theme_mod, rtl: bool, data: dict | None = None) -> None:
+    """The compact cover: no page of its own, a title block at the head of page 1: a band (gold cap, deep colour), the type code chip and kicker, the
+    title and subtitle (0.19.0: no motif), a meta line (version, status, date, document code), then the type's own fields (C3) when it has any."""
     import build_docx as _b
     F = theme_mod.faces(font)
     W = text_width / 36000  # mm
@@ -388,16 +511,15 @@ def build_compact(document, control: dict, roles: dict, font: str, logos, cv: di
         for i, l in enumerate(items):
             if i:
                 run.add_text('     ')
-            run.add_picture(str(l), height=Mm(12))
+            name_logo(run.add_picture(str(l), height=Mm(12)), l)
     else:
         spacer().paragraph_format.space_after = Pt(8)
-    # title block: text | motif
-    mot_w = 52 if png else 0
-    main = _fresh_table(document, 1, [W - mot_w, mot_w] if mot_w else [W], rtl, theme_mod)
+    # title block
+    main = _fresh_table(document, 1, [W], rtl, theme_mod)
     text_cell = main.cell(0, 0)
     p = text_cell.paragraphs[0]
     _tight(p, 14, after=6)
-    code = CODES.get(cv['motif'], '')
+    code = CODES.get(cv['type'], '')
     if code:
         chip = p.add_run(f' {code} ')
         chip.font.bold = True
@@ -436,12 +558,6 @@ def build_compact(document, control: dict, roles: dict, font: str, logos, cv: di
     for r in sp.runs:
         r.font.size = Pt(theme_mod.SIZES['table'])
         r.font.color.rgb = theme_mod.rgb(roles['muted'])
-    if mot_w:
-        mc = main.cell(0, 1)
-        mp = mc.paragraphs[0]
-        _tight(mp)
-        _end_align(mp, rtl)
-        mp.add_run().add_picture(str(png), width=Mm(46))
     spacer().paragraph_format.space_after = Pt(4)
     # meta line
     meta = _fresh_table(document, 1, [W / 2, W / 2], rtl, theme_mod)
@@ -462,6 +578,10 @@ def build_compact(document, control: dict, roles: dict, font: str, logos, cv: di
         for r in cell.paragraphs[0].runs:
             r.font.size = Pt(theme_mod.SIZES['meta'])
             r.font.color.rgb = theme_mod.rgb(roles['muted'])
+    tf = type_fields(data or {})
+    if tf:
+        spacer().paragraph_format.space_after = Pt(4)
+        field_grid(document, None, tf, ((data or {}).get('cover') or {}).get('cols') or 2, W, roles, font, theme_mod, rtl)
     spacer().paragraph_format.space_after = Pt(10)
 
 

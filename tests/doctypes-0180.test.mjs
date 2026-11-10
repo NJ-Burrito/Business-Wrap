@@ -110,7 +110,7 @@ check('six categories in order with the Arabic and English names of the brief',
   j(CATS.map((c) => [c.id, c.name.ar, c.name.en])) === j([['start', 'ابدأ', 'Start'], ['requirements', 'المتطلبات', 'Requirements'], ['testing', 'الاختبار', 'Testing'], ['delivery', 'التسليم', 'Delivery'], ['governance', 'الحوكمة', 'Governance'], ['training', 'التدريب', 'Training']]));
 check('categories carry a unique integer order', new Set(CATS.map((c) => c.order)).size === 6 && CATS.every((c) => Number.isInteger(c.order)));
 const schema = rdJson(path.join(DIR, 'schema.json'));
-check('schema.json enums equal the category ids, the palette ids and the cover designs', j([...schema.properties.category.enum].sort()) === j(CATS.map((c) => c.id).sort()) && j([...schema.properties.palette.enum].sort()) === j(Object.keys(PAL).sort()) && j(schema.properties.coverDesign.enum) === j(DT.COVER_DESIGNS) && j(DT.COVER_DESIGNS) === j(['spine', 'compact']));
+check('schema.json enums equal the category ids, the palette ids and the cover designs', j([...schema.properties.category.enum].sort()) === j(CATS.map((c) => c.id).sort()) && j([...schema.properties.palette.enum].sort()) === j(Object.keys(PAL).sort()) && j(schema.properties.coverDesign.enum) === j(DT.COVER_DESIGNS) && j(DT.COVER_DESIGNS) === j(['spine', 'compact', 'report', 'form', 'sheet']));
 {
   const good = rdJson(path.join(DIR, 'blank', 'type.json'));
   check('schema accepts the real blank type.json', CHK.validateSchema(schema, good).length === 0);
@@ -121,6 +121,13 @@ check('schema.json enums equal the category ids, the palette ids and the cover d
   refused('an unknown category', (t) => { t.category = 'qa'; });
   refused('an unknown palette', (t) => { t.palette = 'purple'; });
   refused('the old band cover design', (t) => { t.coverDesign = 'band'; });
+  refused('a layout.back naming the contents', (t) => { t.layout = { ...(t.layout || {}), back: ['toc'] }; });
+  refused('a tocDepth of 3', (t) => { t.layout = { ...(t.layout || {}), tocDepth: 3 }; });
+  // 0.19.0 S1, S3: the new page-1 families, an optional motif, layout.back and tocDepth
+  const accepted = (name, edit) => { const t = JSON.parse(j(good)); edit(t); check(`schema accepts ${name}`, CHK.validateSchema(schema, t).length === 0, CHK.validateSchema(schema, t)); };
+  for (const f of ['report', 'form', 'sheet']) accepted(`the ${f} family`, (t) => { t.coverDesign = f; });
+  accepted('a type.json without motif (0.19.0: optional and ignored)', (t) => { delete t.motif; });
+  accepted('layout.back and tocDepth', (t) => { t.layout = { back: ['control', 'revisions'], tocDepth: 1 }; });
   refused('a missing Arabic name', (t) => { delete t.name.ar; });
   refused('an unknown key', (t) => { t.colour = 'red'; });
   refused('a source outside samples/', (t) => { t.source = '../x'; });
@@ -137,7 +144,7 @@ for (const ed of DT.EDITIONS) {
   const before = j(blank.content[ed]);
   const d = DT.compose('blank', ed);
   const pal = PAL[blank.palette];
-  check(`compose(blank, ${ed}): service, docType, coverDesign, motif, design.vars (palette), layout`, d.service === 'blank' && d.docType === 'blank' && d.coverDesign === 'compact' && d.motif === 'blank' && j(d.design.vars) === j(pal) && j(d.layout) === j(blank.layout));
+  check(`compose(blank, ${ed}): service, docType, coverDesign, design.vars (palette), layout; no motif (0.19.0)`, d.service === 'blank' && d.docType === 'blank' && d.coverDesign === 'compact' && !('motif' in d) && j(d.design.vars) === j(pal) && j(d.layout) === j(blank.layout));
   check(`compose(blank, ${ed}): the content is carried unchanged and the loaded copy is not mutated`, j(DT.loadType('blank').content[ed]) === before && d.control.documentId === 'BW-DOC-NEW-001' && j(d.chapters) === j(blank.content[ed].chapters) && !('approvals' in d));
 }
 { let thrown = false; try { DT.compose('blank', 'fr'); } catch { thrown = true; } check('compose refuses an edition other than ar or en', thrown); }
@@ -146,7 +153,7 @@ check('the file format is untouched: FORMAT 1 and BUILT_KEYS as at 0.17.13, no d
 // ───────── payload (contract C2) ─────────
 {
   const p = DT.payload();
-  check('payload(): v 1, categories {id,name,order}, types with the C2 keys', p.v === 1 && Array.isArray(p.categories) && p.types.length === TYPES.length && p.types.every((t) => j(Object.keys(t)) === j(['id', 'code', 'category', 'order', 'name', 'description', 'placeholder', 'coverDesign', 'motif', 'palette', 'accent', 'art', 'docs'])) && p.categories.every((c) => j(Object.keys(c)) === j(['id', 'name', 'order'])));
+  check('payload(): v 1, categories {id,name,order}, types with the C2 keys', p.v === 1 && Array.isArray(p.categories) && p.types.length === TYPES.length && p.types.every((t) => j(Object.keys(t)) === j(['id', 'code', 'category', 'order', 'name', 'description', 'placeholder', 'coverDesign', 'palette', 'accent', 'art', 'docs'])) && p.categories.every((c) => j(Object.keys(c)) === j(['id', 'name', 'order'])));
   const pb = p.types.find((t) => t.id === 'blank');
   check('payload(): accent is the palette primary, docs are minified composed JSON strings, art is a string', pb.accent === PAL.navy.primary && DT.EDITIONS.every((ed) => typeof pb.docs[ed] === 'string' && !pb.docs[ed].includes(NL) && j(JSON.parse(pb.docs[ed])) === j(DT.compose('blank', ed))) && typeof pb.art === 'string');
   check('payload(): only categories that hold a type are listed', j(p.categories.map((c) => c.id)) === j(CATS.map((c) => c.id).filter((id) => p.types.some((t) => t.category === id))));
@@ -187,7 +194,7 @@ check('the file format is untouched: FORMAT 1 and BUILT_KEYS as at 0.17.13, no d
 }
 
 // ───────── the validator refuses planted faults (real blank, one change each) ─────────
-check('the real blank type passes the validator with no error and no warning', (() => { const r = CHK.validateType('blank'); return r.errors.length === 0 && r.warnings.length === 0; })());
+check('the real blank type passes the validator with no error and no warning (the art layer contract, S8, is reported apart in the pilot)', (() => { const r = CHK.validateType('blank'); return r.errors.length === 0 && r.warnings.length === 0 && Array.isArray(r.contract); })());
 flagged('a block kind outside the handled eight', /kind «chart»/, (t, en, ar) => { classic(t, en, ar); para(en).kind = 'chart'; para(ar).kind = 'chart'; });
 flagged('an e-mail address', /bw-email/, (t, en) => { para(en).paragraphs = [`Write to ${EMAIL} please`]; });
 flagged('a phone number', /bw-jo-phone/, (t, en) => { para(en).paragraphs = [`Call ${PHONE}`]; });
@@ -196,14 +203,64 @@ flagged('a staging host', /bw-staging-host/, (t, en) => { para(en).paragraphs = 
 flagged('a design key written in the content', /«design» is composed/, (t, en) => { en.design = { vars: {} }; });
 flagged('a service key written in the content', /«service» is composed/, (t, en) => { en.service = 'x'; });
 flagged('a coverDesign key written in the content', /«coverDesign» is composed/, (t, en, ar) => { ar.coverDesign = 'spine'; });
-flagged('a non-empty approvals list', /approvals/, (t, en) => { en.approvals = [{ name: 'x' }]; });
+flagged('an approvals list of objects (rows are arrays)', /approvals/, (t, en) => { en.approvals = [{ name: 'x' }]; });
+flagged('a signed approvals row in a starter (S6)', /approvals\[0\]: name, date and signature stay empty/, (t, en) => { en.approvals = [['Prepared by', 'A person', '', '', '']]; });
+{
+  const { r } = mutant((t, en, ar) => { for (const d of [en, ar]) d.approvals = [['Prepared by', '', '', '', ''], ['Approved by', '', '', '', '']]; });
+  check('validator accepts approvals rows with empty name, date and signature (S6, C7)', r.errors.length === 0, r.errors.join(' || '));
+}
+// 0.19.0 S2: the content key `cover`
+const field = (i, o = {}) => ({ label: `L${i}`, value: 'x', ...o });
+flagged('a cover with 11 fields', /cover\.fields holds 11, at most 10/, (t, en) => { en.cover = { fields: Array.from({ length: 11 }, (_, i) => field(i)) }; });
+flagged('a cover with two id fields', /more than one id:true/, (t, en) => { en.cover = { fields: [field(0, { id: true }), field(1, { id: true })] }; });
+flagged('a cover field of an unknown kind', /kind must be one of text \| chip \| date \| blank/, (t, en) => { en.cover = { fields: [field(0, { kind: 'pill' })] }; });
+flagged('cover.cols 5', /cover\.cols must be one of 2, 3, 4, 6/, (t, en) => { en.cover = { cols: 5 }; });
+flagged('a cover figure of an unknown kind', /figures\[0\]\.kind/, (t, en) => { en.cover = { figures: [{ label: 'Passed', value: '1', kind: 'great' }] }; });
+flagged('five statement choices', /statement\.choices: at most 4/, (t, en) => { en.cover = { statement: { text: 'x', choices: ['a', 'b', 'c', 'd', 'e'] } }; });
+flagged('a badge without a value', /cover\.badge is \{label, value\}/, (t, en) => { en.cover = { badge: { label: 'Version' } }; });
+flagged('a cover whose Arabic edition has one field less (S7)', /pair shape differs at cover/, (t, en, ar) => { en.cover = { fields: [field(0), field(1)] }; ar.cover = { fields: [field(0)] }; });
+flagged('a cover whose id field sits elsewhere in Arabic (S7)', /pair shape differs at cover\.id/, (t, en, ar) => { en.cover = { fields: [field(0, { id: true }), field(1)] }; ar.cover = { fields: [field(0), field(1, { id: true })] }; });
+{
+  const { r } = mutant((t, en, ar) => { for (const d of [en, ar]) d.cover = { cols: 4, fields: [field(0, { id: true }), field(1, { kind: 'chip' }), field(2, { kind: 'date' }), field(3, { kind: 'blank' })], figures: [{ label: 'Passed', value: '1', kind: 'ok' }], badge: { label: 'Version', value: '1.0.0' }, statement: { text: 'x', items: ['a'], choices: ['b', 'c'] } }; });
+  check('validator accepts a full cover key in both editions (S2)', r.errors.length === 0, r.errors.join(' || '));
+}
+// S3: layout.back and tocDepth in content
+flagged('a layout.back that is also hidden', /layout\.back and layout\.hide both name «control»/, (t, en, ar) => { for (const d of [en, ar]) d.layout = { hide: ['control'], back: ['control'] }; });
+flagged('a content tocDepth of 0', /tocDepth must be 1 or 2/, (t, en, ar) => { for (const d of [en, ar]) d.layout = { tocDepth: 0 }; });
+flagged('a back list that differs between the editions (S7)', /pair shape differs at layout/, (t, en, ar) => { en.layout = { back: ['revisions'] }; ar.layout = { back: ['control'] }; });
+// S4, S5: table keys and screenshot frames
+const tbl = (o = {}) => ({ kind: 'table', columns: ['a', 'b', 'c'], rows: [['1', '2', '3']], ...o });
+flagged('a numCols index past the last column', /numCols holds column indexes below 3/, (t, en, ar) => { classic(t, en, ar); for (const d of [en, ar]) d.chapters[0].sections[0].blocks.push(tbl({ numCols: [3] })); });
+flagged('an unknown table style', /table style must be sheet \| signoff/, (t, en, ar) => { classic(t, en, ar); for (const d of [en, ar]) d.chapters[0].sections[0].blocks.push(tbl({ style: 'grid' })); });
+flagged('a table style that differs between the editions (S7)', /pair shape differs/, (t, en, ar) => { classic(t, en, ar); en.chapters[0].sections[0].blocks.push(tbl({ style: 'sheet' })); ar.chapters[0].sections[0].blocks.push(tbl()); });
+flagged('a screenshot ratio 1:1', /shots ratio must be 16:10 \| 4:3 \| 9:16/, (t, en, ar) => { classic(t, en, ar); for (const d of [en, ar]) d.chapters[0].sections[0].blocks.push({ kind: 'shots', images: [], ratio: '1:1' }); });
+flagged('a screenshot badge 100', /shots badge is a whole number 1 to 99/, (t, en, ar) => { classic(t, en, ar); for (const d of [en, ar]) d.chapters[0].sections[0].blocks.push({ kind: 'shots', images: [], badge: 100 }); });
+{
+  const { r } = mutant((t, en, ar) => { classic(t, en, ar); for (const d of [en, ar]) d.chapters[0].sections[0].blocks.push(tbl({ style: 'signoff', numCols: [1, 2], nowrapCols: [0], accentCol: 2, colWidths: [30, 30, 30] })); });
+  check('validator: valid table keys pass; colWidths that sum to 90 are a warning, not an error (S4)', r.errors.length === 0 && r.warnings.some((w) => /colWidths sum to 90/.test(w)), r.errors.join(' || '));
+}
+// S8: the art layer contract (a warning in the pilot)
+{
+  const good = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 320"><g class="bw-a-page"><rect width="240" height="320"/></g><g class="bw-a-sheet"><rect x="10" y="10" width="9" height="9"/></g><g class="bw-a-head"><rect width="5" height="5"/></g><g class="bw-a-row"><rect width="5" height="5"/></g><g class="bw-a-row"><rect width="5" height="5"/></g><g class="bw-a-node"><rect width="5" height="5"/></g><g class="bw-a-mark"><rect width="5" height="5"/></g></svg>';
+  check('S8: an svg that keeps the layer contract has no contract finding', CHK.layerContract(good).length === 0, CHK.layerContract(good));
+  check('S8: a nested layer, a missing head, a mark that is not last, a bare shape at the top are each found', /nested/.test(CHK.layerContract(good.replace('<g class="bw-a-row"><rect width="5" height="5"/></g><g class="bw-a-row">', '<g class="bw-a-row"><g class="bw-a-node"/></g><g class="bw-a-row">')).join()) && /bw-a-head/.test(CHK.layerContract(good.replace('<g class="bw-a-head">', '<g class="bw-a-row">')).join()) && /bw-a-mark, last/.test(CHK.layerContract(good.replace('</svg>', '<g class="bw-a-row"/></svg>')).join()) && /direct child/.test(CHK.layerContract(good.replace('</svg>', '<rect width="1" height="1"/></svg>')).join()));
+  check('S8: layers out of the table order are found (a row before the head)', /out of order/.test(CHK.layerContract(good.replace('<g class="bw-a-head"><rect width="5" height="5"/></g><g class="bw-a-row"><rect width="5" height="5"/></g>', '<g class="bw-a-row"><rect width="5" height="5"/></g><g class="bw-a-head"><rect width="5" height="5"/></g>')).join()));
+  const { r } = mutant(() => ({ svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 320"><rect width="240" height="320" fill="#ffffff"/></svg>' }));
+  const lines = [];
+  CHK.run(['blank'], mutant(() => ({ svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 320"><rect width="240" height="320" fill="#ffffff"/></svg>' })).o, (m) => lines.push(m));
+  check('S8 in the pilot: art that breaks the contract is reported (a WARN line), not an error', r.errors.length === 0 && r.contract.some((w) => /layer contract/.test(w)) && lines.some((l) => /WARN .*layer contract/.test(l)), JSON.stringify([r.errors, r.contract]));
+}
 flagged('an unknown top-level key', /unknown top-level key «extra»/, (t, en) => { en.extra = 1; });
 flagged('a missing control key', /control\.status/, (t, en) => { delete en.control.status; });
 flagged('a wrong document id', /documentId must be BW-DOC-NEW-001/, (t, en) => { en.control.documentId = 'BW-XYZ-NEW-001'; });
 flagged('a title that does not end with the placeholder', /control\.title must end with/, (t, en, ar) => { classic(t, en, ar); en.control.title = 'Blank document: Something else'; });
 flagged('missing cover labels', /labels\.kicker/, (t, en, ar) => { classic(t, en, ar); delete en.labels; });
 flagged('a chapter number that is not positional', /numbers are positional/, (t, en, ar) => { classic(t, en, ar); en.chapters[0].number = '7'; });
-flagged('a motif that differs from the id', /motif must equal/, (t) => { t.motif = 'other'; });
+{
+  const { r } = mutant((t) => { t.motif = 'other'; });
+  const { r: r2 } = mutant((t) => { delete t.motif; });
+  check('a motif that differs from the id is only a warning (0.19.0: motif is ignored); a type.json without motif is clean (S1)', r.errors.length === 0 && r.warnings.some((w) => /motif is ignored/.test(w)) && r2.errors.length === 0 && !r2.warnings.some((w) => /motif/.test(w)), JSON.stringify([r.errors, r.warnings, r2.errors]));
+}
 flagged('an unknown palette', /type\.json palette/, (t) => { t.palette = 'purple'; });
 flagged('an unknown category', /category/, (t) => { t.category = 'qa'; });
 flagged('a type.json id that differs from its folder', /differs from the folder/, (t) => { t.id = 'other'; });

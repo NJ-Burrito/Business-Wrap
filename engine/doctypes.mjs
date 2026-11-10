@@ -2,8 +2,8 @@
 //
 // A document type is a finished STARTER DOCUMENT in templates/_doctypes/<id>/ (type.json = look + metadata, en.json and
 // ar.json = the document content). This module only READS that folder: it lists the types, loads one, composes the final
-// document of an edition (the one place that writes `service`, `docType`, `coverDesign`, `motif`, `design.vars` and
-// `layout`) and builds the payload the editor embeds as <script id="bw-doctypes"> (C2). It writes nothing and imports
+// document of an edition (the one place that writes `service`, `docType`, `coverDesign`, `design.vars` and
+// `layout`; 0.19.0: no `motif`, page 1 carries no art) and builds the payload the editor embeds as <script id="bw-doctypes"> (C2). It writes nothing and imports
 // nothing but node:fs/path, so the editor build, the served route and the CLI share it. The validator is
 // tools/doctypes/check.mjs; the folder contract is templates/_doctypes/README.md.
 //
@@ -17,8 +17,8 @@ export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 /** The seven colour roles a palette sets (the only ones the CSS and DOCX read; render.mjs designTheme, docx/theme.py load_roles). */
 export const ROLES = ['primary', 'primary-deep', 'primary-50', 'primary-100', 'accent', 'accent-rule', 'accent-bright'];
 export const EDITIONS = ['ar', 'en'];
-/** D3 (decisions.md): two cover designs; absent in a document means today's cover. */
-export const COVER_DESIGNS = ['spine', 'compact'];
+/** D3 (decisions.md) and the 0.19.0 page-1 families (work/sdlc/design/0190-types.md §1); absent in a document means today's cover. */
+export const COVER_DESIGNS = ['spine', 'compact', 'report', 'form', 'sheet'];
 export const ID_RE = /^[a-z][a-z0-9-]*$/;
 /** The block kinds the renderers and the DOCX builder handle (architecture F2); a starter document uses nothing else. */
 export const BLOCK_KINDS = ['prose', 'subhead', 'table', 'figure', 'diagram', 'stories', 'gap', 'shots'];
@@ -98,8 +98,8 @@ export function loadType(id, o) {
 }
 
 /**
- * The final document of one edition ('ar' | 'en'). The only place `service`, `docType`, `coverDesign`, `motif`, `design.vars`
- * and `layout` are written: the document stays self-contained, so a saved file never needs the registry. FORMAT and
+ * The final document of one edition ('ar' | 'en'). The only place `service`, `docType`, `coverDesign`, `design.vars`
+ * and `layout` are written (0.19.0: `motif` is no longer written; type.json may still carry it, it is ignored): the document stays self-contained, so a saved file never needs the registry. FORMAT and
  * BUILT_KEYS (engine/format.mjs) are untouched; the new keys are additive document keys.
  */
 export function compose(typeId, ed, o) {
@@ -113,7 +113,6 @@ export function compose(typeId, ed, o) {
     service: typeId,
     docType: typeId,
     coverDesign: COVER_DESIGNS.includes(t.coverDesign) ? t.coverDesign : 'spine',
-    motif: t.motif || typeId,
     design: { ...(content.design || {}), vars: { ...pal, ...(content.design?.vars || {}) } },
   };
   const layout = { ...(t.layout || {}), ...(content.layout || {}) };
@@ -123,7 +122,7 @@ export function compose(typeId, ed, o) {
 
 /**
  * Contract C2, built at build time and embedded as <script type="application/json" id="bw-doctypes">:
- *   { v:1, categories:[{id,name,order}], types:[{id,code,category,order,name,description,placeholder,coverDesign,motif,palette,
+ *   { v:1, categories:[{id,name,order}], types:[{id,code,category,order,name,description,placeholder,coverDesign,palette,
  *     accent:'#hex' (the palette's primary), art:'<svg…>' ('' when none), docs:{ar:'<raw json string>', en:'<raw json string>'}}] }
  * `docs` are the COMPOSED documents, minified. Only categories that hold a type are listed.
  */
@@ -136,7 +135,7 @@ export function payload(o) {
     return {
       id: t.id, code: t.code, category: t.category, order: t.order ?? 999,
       name: t.name, description: t.description, placeholder: t.placeholder,
-      coverDesign: COVER_DESIGNS.includes(t.coverDesign) ? t.coverDesign : 'spine', motif: t.motif || t.id,
+      coverDesign: COVER_DESIGNS.includes(t.coverDesign) ? t.coverDesign : 'spine',
       palette: t.palette, accent: pals[t.palette].primary, art: full.art, docs,
     };
   });

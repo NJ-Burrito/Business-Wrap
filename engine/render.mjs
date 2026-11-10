@@ -719,125 +719,47 @@ export function printTrimCss(doc) {
   const t = (+x.toFixed(3)).toString();
   return `@media print and (min-width:${measure + 40}px){.wrap{width:calc(100% - ${t}px);box-sizing:border-box}h4,.gap{margin-inline-end:calc(0mm - ${endv} - ${t}px)}}`;
 }
-// ---- 0.18.0 (document studio): cover designs, one category colour, one flat motif per document type ----
-// `doc.coverDesign` (spine | compact) and `doc.motif` (a document-type id) are additive keys; with neither, nothing here prints and the output is byte
-// for byte what it was. The colours are the document's own design vars (doc.design.vars: primary, primary-deep, primary-50, primary-100, accent-bright, ...),
-// so a category palette reaches the PDF and the DOCX without a new colour. Motifs are drawn in a 160 x 94 mm box (1 unit = 1 mm) from flat shapes:
-// rectangles, circles, lines, polygons and check marks, no gradient, shadow, opacity or blur; they are shown at 152 x 89 mm. The DOCX builder asks
-// engine/covers/motif-svg.mjs for the same drawing, so the two never part. Design: work/sdlc/design/ux/covers.md.
-export const COVER_DESIGNS = ['spine', 'compact'];
-export const COVER_MOTIFS = ['blank', 'srs', 'user-manual', 'tot', 'tor', 'brd', 'frs', 'test-plan', 'test-cases', 'uat-signoff', 'release-notes', 'change-request', 'minutes', 'process-flow', 'rtm', 'defect-report', 'business-case'];
-/** The Latin type code printed large on a spine cover; never taken from the title. Blank has none. */
-export const COVER_CODES = { srs: 'SRS', brd: 'BRD', frs: 'FRS', rtm: 'RTM', 'process-flow': 'PF', 'test-plan': 'TP', 'test-cases': 'TC', 'defect-report': 'DR', 'uat-signoff': 'UAT', 'release-notes': 'RN', 'user-manual': 'UM', tot: 'TOT', tor: 'TOR', 'change-request': 'CR', minutes: 'MOM', 'business-case': 'BC' };
+// ---- 0.18.0 (document studio): page-1 designs and one category colour; 0.19.0: NO motif and no art on page 1, ever (work/sdlc/design/0190-types.md) ----
+// `doc.coverDesign` (a page-1 family) and `doc.docType` are additive keys; with no coverDesign (and no old `motif`), nothing here prints and the output is
+// byte for byte what it was. The colours are the document's own design vars (doc.design.vars), so a category palette reaches the PDF and the DOCX without a
+// new colour. 0.19.0: page 1 is drawn only with straight horizontal and vertical lines, rectangles and text (spec §1, tests/page1-0190): the 0.18 motif is
+// gone from render, PDF and Word, and an old file that still carries `motif` prints without it (the key is read only to know the type).
+// Families (spec §1): spine (title page with the control block), compact (a title block on page 1); report, form and sheet are R2's: until they land they
+// print with the nearest built family (report as spine, form and sheet as compact). engine/docx/cover_design.py mirrors the constants below.
+export const COVER_DESIGNS = ['spine', 'compact', 'report', 'form', 'sheet'];
+const COVER_LAYOUT = { spine: 'spine', report: 'spine', compact: 'compact', form: 'compact', sheet: 'compact' };
+/** The type ids a document may name in docType (or, in a 0.18 file, in `motif`). */
+export const COVER_TYPES = ['blank', 'srs', 'user-manual', 'tot', 'tor', 'brd', 'frs', 'test-plan', 'test-cases', 'uat-signoff', 'release-notes', 'change-request', 'minutes', 'process-flow', 'rtm', 'defect-report', 'business-case'];
+/** C2: the Latin type code (type.json `code`); never taken from the title. Blank has none. */
+export const COVER_CODES = { srs: 'SRS', brd: 'BRD', frs: 'FRS', rtm: 'RTM', 'process-flow': 'PF', 'test-plan': 'TP', 'test-cases': 'TC', 'defect-report': 'DEF', 'uat-signoff': 'UAT', 'release-notes': 'RN', 'user-manual': 'UM', tot: 'TOT', tor: 'TOR', 'change-request': 'CR', minutes: 'MOM', 'business-case': 'BC' };
 /** The types whose tables are dense (a washed header, a faint zebra): the sheets people scan down. */
 export const COVER_DENSE = ['test-cases', 'rtm', 'defect-report', 'release-notes'];
-/** Motif colour roles: [theme var, fallback when a theme has none]. s shape, w wash, z faint, d deep. */
-export const MOTIF_ROLES = {
-  s: ['primary', '#003c7a'], w: ['primary-100', '#e1eaf4'], z: ['primary-50', '#f2f6fa'], d: ['primary-deep', '#001e3d'],
-  p: ['paper', '#fafaf9'], b: ['rule-strong', '#d5cfc3'], b2: ['rule', '#e8e4de'], k: ['ink', '#1b1813'],
-  g: ['accent-bright', '#be9a41'], gr: ['accent-rule', '#9c7e36'], r: ['signal', '#a81a1f'], rl: ['signal-wash', '#f2e4e4'],
-  c: ['card', '#efede6'], r3: ['signal-300', '#dc898c'], n4: ['neutral-400', '#bcb29f'],
-};
-const MW = 160;
-const MH = 94;
-const mR = (x, y, w, h, f, o = {}) => ({ t: 'r', x, y, w, h, f, ...o });
-const mC = (x, y, r, f, s, sw) => ({ t: 'c', x, y, r, f, s, sw });
-const mL = (x1, y1, x2, y2, s, sw = 0.8, dash) => ({ t: 'l', x1, y1, x2, y2, s, sw, dash });
-const mP = (pts, f, s, sw) => ({ t: 'p', pts, f, s, sw });
-const mK = (x, y, z, s, sw = 1.3) => ({ t: 'k', x, y, z, s, sw });
-const mB = (x, y, w, h = 2.6, f = 'b') => mR(x, y, w, h, f, { rx: h <= 3 ? h / 2 : 0.8 });
-const mA = (x1, y1, x2, y2, s, sw = 1.1) => {
-  const a = Math.atan2(y2 - y1, x2 - x1);
-  const bx = x2 - 4 * Math.cos(a);
-  const by = y2 - 4 * Math.sin(a);
-  const px = -Math.sin(a) * 2.4;
-  const py = Math.cos(a) * 2.4;
-  return [mL(x1, y1, bx, by, s, sw), mP([[x2, y2], [bx + px, by + py], [bx - px, by - py]], s)];
-};
-const rng = (n) => Array.from({ length: n }, (_, i) => i);
-const MOTIF = {
-  srs: () => rng(4).flatMap((i) => { const y = i * 23; return [mR(0, y, 160, 19, 'w', { rx: 1.5 }), mR(6, y + 6, 22, 7, i ? 's' : 'g', { rx: 1.2 }), mB(34, y + 5, 96 - i * 6), mB(34, y + 11, 64 + (i % 2) * 20)]; }),
-  brd: () => [mC(38, 47, 38, 'w'), mC(38, 47, 27, 'p'), mC(38, 47, 16, 's'), mC(38, 47, 6, 'g'), ...mA(84, 4, 42, 43, 'gr', 1.6),
-    ...[22, 46, 70].flatMap((y, i) => [mR(88, y, 46, 4.2, 's', { rx: 1 }), mB(88, y + 8, 70), mB(88, y + 13, 52 + i * 6)])],
-  frs: () => [...[0, 60, 120].flatMap((x, i) => [mR(x, 0, 40, 24, i === 1 ? 's' : 'w', { rx: 2, s: 's', sw: 1 }), mB(x + 7, 8, 26, 2.6, i === 1 ? 'p' : 's'), mB(x + 7, 14, 18, 2.6, i === 1 ? 'p' : 'b')]),
-    ...mA(41, 12, 59, 12, 'gr'), ...mA(101, 12, 119, 12, 'gr'), mR(0, 38, 160, 10, 'w'), mL(0, 48, 160, 48, 's', 1.2),
-    ...[1, 2, 3, 4, 5].map((i) => mL(0, 48 + i * 8.4, 160, 48 + i * 8.4, 'b2', 0.7)), mL(40, 38, 40, 90, 'b2', 0.7), mL(100, 38, 100, 90, 'b2', 0.7),
-    ...rng(5).flatMap((i) => { const y = 52 + i * 8.4; return [mB(4, y, 26 - (i % 2) * 6, 2), mB(44, y, 44, 2), mB(104, y, 34, 2)]; })],
-  rtm: () => [mR(0, 0, 160, 10, 'w'), mL(0, 10, 160, 10, 's', 1.2), ...rng(4).map((j) => mB(42 + j * 29.5 + 7, 4, 16, 2.4, 's')),
-    ...rng(5).flatMap((i) => { const y = 10 + i * 15; return [mL(0, y + 15, 160, y + 15, 'b2', 0.7), mB(4, y + 6, 30, 2.4), ...rng(4).filter((j) => [[0, 0], [0, 1], [1, 1], [1, 3], [2, 0], [2, 2], [3, 2], [3, 3], [4, 3]].some(([a, b]) => a === i && b === j)).map((j) => mC(42 + j * 29.5 + 14.75, y + 7.5, 3.2, i === 2 && j === 2 ? 'g' : 's'))]; })],
-  'process-flow': () => [...[0, 1].flatMap((k) => [mR(0, k * 48, 160, 44, k ? 'p' : 'z', { s: 'b', sw: 0.7 }), mR(0, k * 48, 9, 44, 's')]),
-    mC(24, 22, 5, 's'), mR(38, 14, 32, 16, 'p', { rx: 2, s: 's', sw: 1.2 }), mP([[98, 22], [110, 12], [122, 22], [110, 32]], 'w', 's', 1.2), mR(92, 62, 36, 16, 's', { rx: 2 }), mC(148, 70, 5.5, 'g', 's', 1.4),
-    ...mA(29, 22, 37, 22, 'k', 1), ...mA(70, 22, 97, 22, 'k', 1), ...mA(110, 32, 110, 61, 'k', 1), ...mA(128, 70, 141.5, 70, 'k', 1),
-    mB(42, 20, 24, 2, 's'), mB(97, 66, 28, 2, 'p'), mB(97, 71, 18, 2, 'p')],
-  'test-plan': () => rng(4).flatMap((i) => { const y = i * 24; const done = i < 2; return [mR(0, y + 1, 11, 11, done ? 's' : 'p', { rx: 2, s: 's', sw: 1.2 }), ...(done ? [mK(0, y + 1, 11, 'p', 1.4)] : []), mB(18, y + 2, 92 - i * 6), mB(18, y + 8, 64), mR(126, y + 1, 34, 10, 'w', { rx: 5 }), mB(134, y + 5, 18, 2, 's'), mL(0, y + 19, 160, y + 19, 'b2', 0.7)]; }),
-  'test-cases': () => [mR(0, 0, 160, 11, 's'), ...rng(6).flatMap((i) => { const y = 11 + i * 13.6; const fail = i === 3; return [...(i % 2 ? [mR(0, y, 160, 13.6, 'z')] : []), mL(0, y + 13.6, 160, y + 13.6, 'b2', 0.7), mB(4, y + 5.5, 16, 2.4, 's'), mB(30, y + 5.5, 50 - (i % 3) * 8, 2.4), mB(94, y + 5.5, 24, 2.4), mR(129, y + 3.3, 26, 7, fail ? 'rl' : 'w', { rx: 3.5 }), mB(134, y + 5.6, 16, 2.2, fail ? 'r' : 's')]; }),
-    ...[26, 90, 124].map((x) => mL(x, 11, x, 92.6, 'b2', 0.7))],
-  'defect-report': () => [...['r', 'r3', 'g', 'n4'].flatMap((col, i) => { const y = i * 23; return [mR(0, y, 160, 19, 'p', { rx: 1.5, s: 'b', sw: 0.7 }), mC(11, y + 9.5, 5, col), mB(22, y + 5.5, 100 - i * 18, 2.8, col), mB(22, y + 11.5, 120 - i * 12, 2.2)]; }), mR(126, 5, 28, 8, 'w', { rx: 4 }), mB(133, 8, 14, 2, 's')],
-  'uat-signoff': () => [...rng(3).flatMap((i) => { const y = i * 24; return [mC(6, y + 6, 6, 'w', 's', 1.2), mK(0.5, y + 0.5, 11, 's', 1.4), mB(18, y + 3, 80 - i * 8, 2.8, 'k'), mB(18, y + 9, 60, 2.2), mL(112, y + 12, 160, y + 12, 'k', 0.9), mB(112, y + 15, 20, 1.8)]; }),
-    mL(0, 88, 62, 88, 'k', 0.9), mB(0, 91, 24, 1.8), mL(76, 88, 118, 88, 'k', 0.9), mB(76, 91, 18, 1.8), mC(144, 80, 11, 's'), mC(144, 80, 8, null, 'p', 0.9), mK(135, 71, 18, 'g', 1.8)],
-  'release-notes': () => [mR(0, 0, 58, 24, 's', { rx: 3 }), mC(7, 12, 2.6, 'p'), mB(15, 8, 30, 3.2, 'p'), mB(15, 14.5, 20, 2.4, 'w'), mB(74, 8, 40, 2.8), mB(74, 14, 26, 2.2, 'b2'),
-    ...[['s', 'p'], ['g', 'k'], ['p', 's', 's'], ['s', 'p']].flatMap(([fl, tx, st], i) => { const y = 36 + i * 15.5; return [mR(0, y, 24, 9, fl, { rx: 4.5, ...(st ? { s: st, sw: 1 } : {}) }), mB(6, y + 3.3, 12, 2.2, tx), mB(32, y + 1.5, 110 - i * 10, 2.6), mB(32, y + 6, 80, 2)]; })],
-  'user-manual': () => [mR(0, 0, 13, 13, 's', { rx: 2 }), mR(5.2, 3.4, 2.8, 6.2, 'p', { rx: 0.6 }), mB(19, 3, 70, 4.2, 'k'), mB(19, 10, 104, 2.4),
-    mR(0, 20, 160, 56, 'c', { rx: 1.5, s: 'b', sw: 0.8 }), mR(3, 23, 154, 6, 'b2', { rx: 1 }), mR(3, 32, 32, 41, 'b2', { rx: 1 }), ...rng(3).map((j) => mB(7, 37 + j * 7, 22, 2)),
-    mR(40, 33, 50, 12, 'p', { s: 'b', sw: 0.6 }), mR(40, 49, 80, 6, 'p', { s: 'b', sw: 0.6 }), mR(40, 59, 80, 6, 'p', { s: 'b', sw: 0.6 }),
-    mR(37.5, 46.5, 85.5, 11.5, null, { rx: 1.2, s: 'r', sw: 1.4 }), mC(124, 46.5, 4.4, 'r'), mR(123, 44.2, 2, 4.6, 'p', { rx: 0.5 }), mR(0, 84, 9, 9, 's', { rx: 1.5 }), mB(14, 86.5, 60, 3.2, 'k')],
-  tot: () => [...['z', 'w', 's', 'd'].flatMap((f, i) => { const h = 20 + i * 17; return [mR(i * 40, 94 - h, 32, h, f, { rx: 1.5, ...(i < 2 ? { s: 's', sw: 0.8 } : {}) }), mB(i * 40 + 6, 94 - h + 6, 20, 2.4, i > 1 ? 'p' : 's')]; }),
-    mL(136, 23, 136, 9, 'k', 1), mP([[136, 9], [145, 12], [136, 15]], 'g'), ...rng(3).map((i) => mC(6 + i * 9, 12, 3.2, 's')), mB(36, 10, 40, 2.8)],
-  tor: () => [mR(0, 0, 160, 58, null, { rx: 2, s: 's', sw: 1.2 }), mR(6, 6, 38, 4, 's', { rx: 1 }),
-    ...rng(3).flatMap((i) => { const x = 6 + i * 50; return [mR(x, 17, 44, 16, 'w', { rx: 1.5 }), mB(x + 5, 22, 28, 2.4, 's'), mB(x + 5, 27, 20, 2)]; }),
-    mR(6, 38, 70, 14, null, { rx: 1.5, s: 's', sw: 0.9, dash: '2.4 1.8' }), mB(12, 44, 40, 2.2), mL(0, 78, 160, 78, 's', 1.4),
-    ...[4, 52, 102, 154].flatMap((x, i) => [mC(x, 78, 4, i === 3 ? 'g' : 's', 'p', 1.2), mB(Math.min(142, Math.max(0, x - 9)), 86, 18, 2.2)])],
-  'change-request': () => [mR(0, 0, 58, 44, 'w', { rx: 2 }), mB(6, 7, 34, 3.2, 's'), mB(6, 15, 44, 2.4), mB(6, 21, 38, 2.4), mB(6, 27, 44, 2.4), mL(4, 28.2, 54, 28.2, 'r', 1.1),
-    mR(102, 0, 58, 44, 's', { rx: 2 }), mB(108, 7, 34, 3.2, 'g'), mB(108, 15, 44, 2.4, 'p'), mB(108, 21, 38, 2.4, 'p'), mB(108, 27, 30, 2.4, 'p'), ...mA(64, 22, 96, 22, 'gr', 1.8),
-    ...[[0.35, 's'], [0.6, 'g'], [0.85, 'r']].flatMap(([fr, col], i) => { const y = 56 + i * 13; return [mC(4, y + 3, 3, col), mB(12, y + 1.5, 22, 3), mR(40, y + 1, 120, 4, 'b2', { rx: 2 }), mR(40, y + 1, 120 * fr, 4, col, { rx: 2 })]; })],
-  minutes: () => [...rng(3).map((i) => mC(6 + i * 11, 6, 5, i < 2 ? 's' : 'g')), mB(112, 3, 48, 2.8, 'k'), mB(126, 9, 34, 2.2),
-    ...rng(3).flatMap((i) => { const y = 22 + i * 17; return [mC(5, y + 4, 5, 'w', 's', 1), mB(16, y + 1, 90 - i * 10, 3, 'k'), mB(16, y + 7, 120, 2.2), mL(0, y + 14.5, 160, y + 14.5, 'b2', 0.7)]; }),
-    mR(0, 78, 10, 10, 'p', { rx: 2, s: 's', sw: 1.2 }), mB(16, 80, 76, 2.8), mR(118, 79, 42, 8, 'w', { rx: 4 }), mB(126, 82, 26, 2, 's')],
-  'business-case': () => [mL(0, 88, 112, 88, 'k', 1), ...[[6, 14], [40, 30], [74, 50]].flatMap(([x, h]) => [mR(x, 62, 14, 26, 'w', { s: 's', sw: 0.9 }), mR(x + 16, 88 - h, 14, h, 's')]),
-    mL(0, 62, 112, 62, 'gr', 1.2, '3 2'), mC(63, 62, 4.4, 'g', 'p', 1.2), mR(124, 6, 36, 36, 'w', { rx: 3 }), mC(142, 24, 10, 'g'), mC(142, 24, 6.4, null, 'p', 0.9), mB(124, 52, 36, 3, 'k'), mB(124, 60, 30, 2.4), mB(124, 66, 36, 2.4), mB(124, 72, 22, 2.4)],
-  blank: () => [mC(80, 38, 24, null, 'n4', 1.4), mR(78.4, 26, 3.2, 24, 'n4', { rx: 1.6 }), mR(68, 36.4, 24, 3.2, 'n4', { rx: 1.6 }), mR(34, 74, 92, 1.8, 'b2', { rx: 0.9 }), mR(34, 80, 72, 1.8, 'b2', { rx: 0.9 }), mR(34, 86, 52, 1.8, 'b2', { rx: 0.9 })],
-};
-const f2 = (v) => String(+Number(v).toFixed(2));
-/** The motif's shapes (the plain data the SVG is made of); [] for an unknown id. */
-export function coverMotifShapes(id) { return MOTIF[id] ? MOTIF[id]().flat() : []; }
+/** The house values of the two roles the spine code needs when a theme has none. */
+const SPINE_FALLBACK = { gold: '#be9a41', deep: '#001e3d' };
+/** C3 on the spine title page: the eight common control fields, in print order (spec §1). `approvedBy` is an additive control key; absent, its box is blank. */
+export const COVER_CONTROL = ['documentId', 'version', 'status', 'issuedOn', 'owner', 'preparedBy', 'approvedBy', 'classification'];
+/** Labels of the fields that have none in the house labels (i18n.json `control`): a document's labels.control.<key> wins. */
+export const COVER_LABELS = { approvedBy: { en: 'Approved by', ar: 'جهة الاعتماد' } };
+/** C3 kinds and grid widths (schema S2). */
+export const FIELD_KINDS = ['text', 'chip', 'date', 'blank'];
+export const FIELD_COLS = [2, 3, 4, 6];
 /**
- * One motif as an SVG string. `rtl` mirrors it (arrows then point the way the language reads; a check mark moves but is not flipped). With `colors`
- * ({role: '#hex'}) every paint is a plain attribute (the DOCX route draws it to a PNG); without, shapes carry classes the cover CSS paints from the theme.
+ * The page-1 design a document asks for: { design: the layout drawn (spine | compact), family: the asked family, type: the type id or '' } or null (today's
+ * cover). A 0.18 `motif` alone still means the spine design; it is never drawn.
  */
-export function coverMotifSvg(id, { rtl = false, colors = null, cls = 'cover-motif' } = {}) {
-  if (!MOTIF[id]) return '';
-  const X = (x, w = 0) => f2(rtl ? MW - x - w : x);
-  const paint = (role, kind) => (role ? (colors ? ` ${kind}="${colors[role] || '#000000'}"` : '') : (kind === 'fill' ? ' fill="none"' : ''));
-  const klass = (f, s) => { const c = [f ? `f-${f}` : '', s ? `s-${s}` : ''].filter(Boolean).join(' '); return !colors && c ? ` class="${c}"` : ''; };
-  const stroke = (s, sw, dash) => (s ? `${paint(s, 'stroke')} stroke-width="${f2(sw ?? 0.8)}"${dash ? ` stroke-dasharray="${dash}"` : ''} stroke-linejoin="round"` : '');
-  const out = coverMotifShapes(id).map((sh) => {
-    switch (sh.t) {
-      case 'r': return `<rect${klass(sh.f, sh.s)} x="${X(sh.x, sh.w)}" y="${f2(sh.y)}" width="${f2(sh.w)}" height="${f2(sh.h)}"${sh.rx ? ` rx="${f2(sh.rx)}"` : ''}${paint(sh.f, 'fill')}${stroke(sh.s, sh.sw, sh.dash)}/>`;
-      case 'c': return `<circle${klass(sh.f, sh.s)} cx="${X(sh.x)}" cy="${f2(sh.y)}" r="${f2(sh.r)}"${paint(sh.f, 'fill')}${stroke(sh.s, sh.sw)}/>`;
-      case 'l': return `<line${klass(null, sh.s)} x1="${X(sh.x1)}" y1="${f2(sh.y1)}" x2="${X(sh.x2)}" y2="${f2(sh.y2)}" fill="none"${stroke(sh.s, sh.sw, sh.dash)}/>`;
-      case 'p': return `<polygon${klass(sh.f, sh.s)} points="${sh.pts.map(([x, y]) => `${X(x)},${f2(y)}`).join(' ')}"${paint(sh.f, 'fill')}${stroke(sh.s, sh.sw)}/>`;
-      default: { // k: a check mark moves with the mirror but is drawn the same way round
-        const bx = rtl ? MW - sh.x - sh.z : sh.x;
-        const pts = [[0.2, 0.52], [0.42, 0.72], [0.8, 0.3]].map(([a, b]) => `${f2(bx + a * sh.z)},${f2(sh.y + b * sh.z)}`).join(' ');
-        return `<polyline${klass(null, sh.s)} points="${pts}" fill="none"${stroke(sh.s, sh.sw)} stroke-linecap="round"/>`;
-      }
-    }
-  });
-  return `<svg class="${cls}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${MW} ${MH}" width="${MW}" height="${MH}" aria-hidden="true" focusable="false">${out.join('')}</svg>`;
-}
-/** The cover design a document asks for: { design, motif } or null (today's cover). A motif alone means the spine design. */
 export function coverOf(doc) {
-  const motif = COVER_MOTIFS.includes(doc?.motif) ? doc.motif : '';
-  const design = COVER_DESIGNS.includes(doc?.coverDesign) ? doc.coverDesign : motif ? 'spine' : '';
-  return design ? { design, motif } : null;
+  const old = COVER_TYPES.includes(doc?.motif) ? doc.motif : '';
+  const type = COVER_TYPES.includes(doc?.docType) ? doc.docType : old;
+  const family = COVER_DESIGNS.includes(doc?.coverDesign) ? doc.coverDesign : old ? 'spine' : '';
+  return family ? { design: COVER_LAYOUT[family], family, type } : null;
 }
 const lum = (hex) => { const v = [1, 3, 5].map((i) => parseInt(String(hex).slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
 /** WCAG contrast of two #rrggbb colours (computed from the live palette, never typed). */
 export const contrastOf = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
 /** The spine code's colour: the gold where it reads on the spine (4.5:1), else the pale gold step. */
 export function spineCodeColor(vars) {
-  const gold = vars['accent-bright'] || MOTIF_ROLES.g[1];
-  const deep = vars['primary-deep'] || MOTIF_ROLES.d[1];
+  const gold = vars['accent-bright'] || SPINE_FALLBACK.gold;
+  const deep = vars['primary-deep'] || SPINE_FALLBACK.deep;
   return /^#[0-9a-f]{6}$/i.test(gold) && /^#[0-9a-f]{6}$/i.test(deep) && contrastOf(gold, deep) < 4.5 ? vars['accent-200'] || '#e3ddce' : gold;
 }
 /** The user manual's tag words for a callout (a note, a tip, an important point, a warning) in both languages. */
@@ -852,19 +774,29 @@ export function calloutOf(text) {
 }
 /** True for a user manual: its steps and callouts take the manual's look. */
 export const isManual = (doc) => doc?.motif === 'user-manual' || doc?.docType === 'user-manual';
-/** The stylesheet of the cover designs; '' for a document that asks for none. fam = the quoted display family. */
+/** C3: the field grid's stylesheet (square corners, straight rules only: it may print on page 1). */
+const FIELD_GRID_CSS = `.bw-fields{display:grid;grid-template-columns:repeat(var(--fg-cols,2),minmax(0,1fr));gap:.75pt;background:var(--rule);border:.75pt solid var(--rule-strong);margin:0;line-height:1.4}
+.bw-fields>.fg{background:var(--paper,#fff);min-height:11mm;padding:1.6mm 2.5mm 1.8mm;break-inside:avoid;min-width:0}
+.bw-fields .fg-l{display:block;font-size:var(--t-micro);color:var(--muted);font-weight:400;margin-bottom:.8mm}
+.bw-fields .fg-v{display:block;font-size:9.5pt;color:var(--ink);font-weight:700;overflow-wrap:anywhere}
+.bw-fields .fg-date{white-space:nowrap;unicode-bidi:isolate}
+.bw-fields .fg-chip{display:inline-block;padding:0 2mm;background:var(--primary-100,#e1eaf4);color:var(--primary-deep,#001e3d)}
+.bw-fields .fg-chip.st-ok{background:var(--success-100,transparent);color:var(--success-700)}
+.bw-fields .fg-chip.st-bad{background:var(--signal-100,transparent);color:var(--signal-600)}
+.bw-fields .fg-chip.st-warn{background:var(--accent-100,transparent);color:var(--accent-800)}
+.bw-fields .fg-chip.st-idle{background:var(--neutral-100,transparent);color:var(--neutral-700)}
+.bw-fields .fg-blank{min-height:5mm}`;
+/** The stylesheet of the page-1 designs; '' for a document that asks for none. fam = the quoted display family. */
 export function coverCss(doc, theme, fam = {}) {
   const cv = coverOf(doc);
   if (!cv) return '';
   const vars = theme.vars || {};
   const display = fam.display || 'inherit';
-  const paints = Object.entries(MOTIF_ROLES).map(([k, [v, d]]) => `.cover-motif .f-${k}{fill:var(--${v},${d})}.cover-motif .s-${k}{stroke:var(--${v},${d})}`).join(NL);
   const px = 'inset-inline:34mm 16mm';
-  const base = `/* 0.18.0 cover design: ${cv.design}${cv.motif ? ' / ' + cv.motif : ''} */
+  const base = `/* 0.19.0 page 1: ${cv.family}${cv.type ? ' / ' + cv.type : ''} (no motif, no art) */
 .cover[data-cover]{print-color-adjust:exact;-webkit-print-color-adjust:exact}
-.cover-motif{display:block;flex:0 0 auto}
-${paints}`;
-  const dense = COVER_DENSE.includes(cv.motif) && !('th-fill' in vars) && !('zebra' in vars) ? ':root{--th-fill:var(--primary-100);--zebra:var(--primary-50)}\n' : '';
+${FIELD_GRID_CSS}`;
+  const dense = COVER_DENSE.includes(cv.type) && !('th-fill' in vars) && !('zebra' in vars) ? ':root{--th-fill:var(--primary-100);--zebra:var(--primary-50)}\n' : '';
   if (cv.design === 'compact') {
     const mg = marginsOf(doc);
     return `${base}
@@ -878,10 +810,9 @@ ${paints}`;
 .cover[data-cover=compact] .tb-row{display:flex;align-items:center;justify-content:space-between;gap:8mm;padding:6mm 0 5mm}
 .cover[data-cover=compact] .tb-main{flex:1;min-width:0}
 .cover[data-cover=compact] .tb-id{display:flex;align-items:center;gap:3mm;margin-bottom:3mm}
-.cover[data-cover=compact] .tb-code{background:var(--primary);color:var(--paper,#fff);font-family:${display},system-ui,sans-serif;font-weight:700;font-size:var(--t-meta);letter-spacing:.12em;padding:.8mm 3mm;border-radius:1mm;line-height:1.5}
+.cover[data-cover=compact] .tb-code{background:var(--primary);color:var(--paper,#fff);font-family:${display},system-ui,sans-serif;font-weight:700;font-size:var(--t-meta);letter-spacing:.12em;padding:.8mm 3mm;line-height:1.5}
 .cover[data-cover=compact] .kicker{margin:0}
 .cover[data-cover=compact] .subtitle{margin-top:3mm}
-.cover[data-cover=compact] .cover-motif{width:46mm;height:27mm}
 .cover[data-cover=compact] .tb-meta{display:flex;justify-content:space-between;gap:6mm;padding:2.5mm 0;border-top:.75pt solid var(--rule-strong);border-bottom:.75pt solid var(--rule);font-size:var(--t-meta);color:var(--muted)}
 .cover[data-cover=compact]+.wrap{padding-top:6mm}
 ${dense}`;
@@ -900,7 +831,7 @@ ${dense}`;
 .cover[data-cover=spine] .rule-short{position:absolute;top:134.5mm;inset-inline-start:34mm;width:20mm;height:.75pt;margin:0}
 .cover[data-cover=spine] .cover-title{position:absolute;top:141mm;${px}}
 .cover[data-cover=spine] .cover-title .subtitle{margin-top:3mm}
-.cover[data-cover=spine] .cover-motif{position:absolute;top:163mm;inset-inline-start:34mm;width:152mm;height:89.3mm}
+.cover[data-cover=spine] .cover-ctl{position:absolute;bottom:45mm;inset-inline-start:34mm;width:152mm;display:flex;flex-direction:column;gap:4mm}
 .cover[data-cover=spine] .cover-foot{position:absolute;top:258mm;${px};margin:0;padding:6mm 0 0;font-size:var(--t-meta);border-top:.75pt solid var(--rule)}
 ${dense}`;
 }
@@ -919,15 +850,39 @@ const STATUS_KIND = new Map(Object.entries(STATUS_WORDS).flatMap(([k, ws]) => ws
 export const statusKind = (text) => STATUS_KIND.get(String(text ?? '').trim()) || '';
 /** True for a document built from a document type (doc.docType): only these take the 0.18.0 polish; any other document prints as it always did. */
 export const isTyped = (doc) => typeof doc?.docType === 'string' && doc.docType !== '';
+/** 0.19.0 C7: a typed document prints its `approvals` rows on the control page (HTML and PDF too; Word always did). */
+export const approvalsShown = (doc) => isTyped(doc) && Array.isArray(doc.approvals) && doc.approvals.some(Array.isArray);
+/** C12: a `shots` block with no image yet prints a screenshot frame (a typed document, or one that sets `ratio` or `badge`). */
+export const SHOT_RATIOS = { '16:10': [16, 10], '4:3': [4, 3], '9:16': [9, 16] };
+export const SHOT_LABEL = { en: 'Screenshot', ar: 'لقطة الشاشة' };
+export const shotFrame = (doc, block) => Array.isArray(block?.images) && block.images.length === 0 && (isTyped(doc) || block.ratio !== undefined || block.badge !== undefined);
+/** The frame's width and height in mm: at most 120 mm wide and 90 mm tall, at the block's ratio (16:10 when unset). */
+export function shotBox(block) {
+  const [rw, rh] = SHOT_RATIOS[block?.ratio] || SHOT_RATIOS['16:10'];
+  const w = Math.min(120, (90 * rw) / rh);
+  return { w: +w.toFixed(2), h: +((w * rh) / rw).toFixed(2), rw, rh };
+}
 /** The page-flow and status polish of a typed document; '' (no byte) for any other document. */
 export function polishCss(doc) {
   if (!isTyped(doc)) return '';
   const land = doc.layout?.page ? pageSpec(doc.layout.page).orientation === 'landscape' : false;
   const compact = coverOf(doc)?.design === 'compact';
+  const spine = coverOf(doc)?.design === 'spine';
+  const hide = new Set(doc.layout?.hide || []);
+  const frontShown = ['control', 'revisions', 'toc'].some((k) => !hide.has(k)) || approvalsShown(doc);
   const st = (k, fill, ink) => `.bw-doc table:not(.control):not(.toc):not(.story) tbody tr td.st-${k}{background:var(--${fill},transparent);color:var(--${ink});font-weight:700}`;
+  // 0.19.0 C11: on a title-page family, page 2 is document control and approvals, the contents start their own page, chapter 1 opens on a new page.
+  // C7: the front approvals' rows are tall enough to sign. C12: a screenshot frame. C15: a chapter heading row moves whole.
   return `/* 0.18.0 polish: bands, chapter heading rows, status cells${compact ? ', compact first page' : ''} */
 h4{padding-bottom:3mm}
-h2{break-inside:avoid}
+h2{break-inside:avoid;break-after:avoid}
+.wrap>[data-part=approvals]{break-inside:avoid}
+.wrap>[data-part=approvals] table td{height:12mm;vertical-align:middle}
+.bw-doc .shot-frame{position:relative;width:var(--sf-w,120mm);max-width:100%;aspect-ratio:var(--sf-r,16/10);margin:0 auto 2mm;background:var(--card);border:1.4pt solid var(--signal);break-inside:avoid;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+.bw-doc .shot-frame .shot-badge{position:absolute;top:3mm;inset-inline-start:3mm;min-width:7mm;height:7mm;padding:0 1.5mm;display:flex;align-items:center;justify-content:center;background:var(--signal);color:var(--paper,#fff);font-weight:700;font-size:var(--t-table);line-height:1}
+${spine && frontShown ? `.cover[data-cover=spine]+.wrap>[data-part=toc]:not(h2+[data-part=toc]){break-before:page}
+.cover[data-cover=spine]+.wrap>section.chapter:first-of-type{break-before:page}
+` : ''}
 ${st('ok', 'success-100', 'success-700')}
 ${st('bad', 'signal-100', 'signal-600')}
 ${st('warn', 'accent-100', 'accent-800')}
@@ -1237,6 +1192,7 @@ export function renderParts(doc, o) {
   const L = withLabels(o.L || o.labels, o.theme?.labels?.[locale], doc.labels);
   // a printed label, editable in place: it writes /labels/<key> of this document
   const lb = (k, v = L[k]) => `<span${dp('/labels/' + k)}>${bidi(v)}</span>`;
+  let shotSeq = 0; // 0.19.0 C12: the screenshot frames' running number (a block's own `badge` wins)
   const hide = new Set(doc.layout?.hide || []);
   const manual = isManual(doc);
   const bidi0 = o.bidi || makeBidi(locale);
@@ -1577,11 +1533,23 @@ export function renderParts(doc, o) {
   ${block.note ? `<p class="fig-note"${dp(b + '/note')}>${bidi(block.note)}</p>` : ''}
 </figure>`;
       }
-      case 'shots':
+      case 'shots': {
+        if (shotFrame(doc, block)) {
+          // 0.19.0 C12: no image yet: a card frame at the block's ratio, a signal outline and a numbered badge; an empty caption reads «Screenshot n»
+          shotSeq += 1;
+          const n = Number.isInteger(block.badge) && block.badge >= 1 && block.badge <= 99 ? block.badge : shotSeq;
+          const box = shotBox(block);
+          const cap = textOf(block.caption ?? '').trim() ? bidi(block.caption) : bidi(`${SHOT_LABEL[locale === 'ar' ? 'ar' : 'en']} ${n}`);
+          return `<figure class="fig shots shots-frame" data-b="${attr(b)}">
+  <div class="shot-frame" style="--sf-w:${box.w}mm;--sf-r:${box.rw}/${box.rh}"><span class="shot-badge"><bdi dir="ltr">${n}</bdi></span></div>
+  <figcaption${dp(b + '/caption')}>${cap}</figcaption>
+</figure>`;
+        }
         return `<figure class="fig shots" data-b="${attr(b)}">
   ${(block.images || []).map((src) => (String(src).startsWith('data:') ? `<img class="shot" src="${attr(src)}" alt="" style="width:${Math.min(100, Math.max(10, Number(block.width) || 100))}%" />` : '')).join(NL)}
   <figcaption${dp(b + '/caption')}>${bidi(block.caption)}</figcaption>
 </figure>`;
+      }
       case 'stories':
         return (block.items || [])
           .map((s, i) => {
@@ -1851,6 +1819,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
       const cp = `/chapters/${ci}`;
       const numPtr = (p) => (NUM.manual ? p : ''); // the printed numbers are computed from position: only a manual-numbering document types them (UAT M5)
       const head = row(NUM.ch[ci], ch.title, 'toc-chapter', cp, numPtr(cp + '/number'), cp + '/title');
+      if (doc.layout?.tocDepth === 1) return [head]; // 0.19.0 C11: contents at depth 1 list the chapters only
       if (ch.sections.length === 1) {
         const cards = ch.sections[0].blocks.map((x, k) => [x, k]).filter(([x]) => x.kind === 'subhead' && !x.tocHidden && !isTyped(doc)).map(([x, k]) => row('', x.text, 'toc-card', `${cp}/sections/0/blocks/${k}`, '', `${cp}/sections/0/blocks/${k}/text`));
         const only = ch.sections[0];
@@ -1917,17 +1886,44 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
   const slot = (logos, name) =>
     logos[name] && SAFE_IMG.test(logos[name]) ? `<img class="logo-${name}" data-logo="${name}" src="${attr(logos[name])}" alt="" />` : '';
 
-  // 0.18.0: a cover design (spine | compact, doc.coverDesign) with a flat motif per document type; none asked = the cover below, byte for byte
+  // 0.18.0: a page-1 design (doc.coverDesign) per document type; none asked = the cover below, byte for byte. 0.19.0: no motif and no art, ever: the
+  // spine title page carries the control block (C3) where the 0.18 motif was; the code chip (C2) comes from docType (an old file's `motif` names the type)
   const cv = coverOf(doc);
+  /** C3: a field grid. fields = [{label, value, kind, id, lp, vp}] (lp, vp: the label's and the value's pointers); cols 2 | 3 | 4 | 6. */
+  const fieldGrid = (fields, cols, cls) => {
+    if (!fields.length) return '';
+    const n = FIELD_COLS.includes(cols) ? cols : 2;
+    const rest = fields.length % n;
+    return `<div class="bw-fields ${cls}" style="--fg-cols:${n}">${fields.map((f, i) => {
+      const span = rest && i === fields.length - 1 ? ` style="grid-column:span ${n - rest + 1}"` : '';
+      const kind = FIELD_KINDS.includes(f.kind) || f.kind === 'ltr' ? f.kind : 'text';
+      const raw = f.value ?? '';
+      const sk = kind === 'chip' ? statusKind(textOf(raw)) : '';
+      const v = kind === 'blank' ? `<span class="fg-v fg-blank"${dp(f.vp)}></span>`
+        : kind === 'date' || kind === 'ltr' ? `<span class="fg-v"><bdi dir="ltr" class="fg-date"${dp(f.vp)}>${esc(textOf(raw))}</bdi></span>`
+        : kind === 'chip' ? `<span class="fg-v"><span class="fg-chip${sk ? ' st-' + sk : ''}"${dp(f.vp)}>${bidi(raw)}</span></span>`
+        : `<span class="fg-v"${dp(f.vp)}>${bidi(raw)}</span>`;
+      return `<div class="fg${f.id === true ? ' fg-id' : ''}"${span}><span class="fg-l"${dp(f.lp)}>${bidi(f.label ?? '')}</span>${v}</div>`;
+    }).join('')}</div>`;
+  };
+  /** The type's own fields (content key `cover`, spec §2 / S2); the control fields are never copied into it. */
+  const typeFields = () => (Array.isArray(doc.cover?.fields) ? doc.cover.fields : []).filter((f) => f && typeof f === 'object')
+    .map((f, i) => ({ ...f, lp: `/cover/fields/${i}/label`, vp: `/cover/fields/${i}/value` }));
+  const controlFields = () => COVER_CONTROL.map((k) => ({
+    label: L.control?.[k] ?? COVER_LABELS[k]?.[locale === 'ar' ? 'ar' : 'en'] ?? k,
+    value: c[k] ?? '',
+    kind: k === 'approvedBy' && !textOf(c[k] ?? '').trim() ? 'blank' : ['documentId', 'version', 'issuedOn'].includes(k) ? 'ltr' : 'text',
+    lp: `/labels/control/${k}`, vp: `/control/${k}`,
+  }));
   const coverDesigned = (logos) => {
-    const code = COVER_CODES[cv.motif] || '';
-    const art = cv.motif ? coverMotifSvg(cv.motif, { rtl: locale === 'ar' }) : '';
-    const attrs = `data-part="cover" data-cover="${cv.design}"${cv.motif ? ` data-motif="${cv.motif}"` : ''}`;
+    const code = COVER_CODES[cv.type] || '';
+    const attrs = `data-part="cover" data-cover="${cv.design}"${cv.family !== cv.design ? ` data-family="${cv.family}"` : ''}${cv.type ? ` data-type="${cv.type}"` : ''}`;
     const title = `<h1${dp(c.coverTitle != null || serviceName !== c.title ? '/control/coverTitle' : '/control/title')}>${bidi(serviceName)}</h1>
     <div class="subtitle"${dp(c.subtitle != null ? '/control/subtitle' : '/labels/subtitle')}>${bidi(c.subtitle ?? L.subtitle)}</div>`;
     const meta = `<span><bdi dir="ltr"${dp('/control/version')}>${esc(c.version)}</bdi>${L.comma}<span${dp('/control/status')}>${esc(c.status)}</span>${L.comma}<bdi dir="ltr"${dp('/control/issuedOn')}>${esc(c.issuedOn)}</bdi></span>`;
     const lockup = `<div class="lockup">${slot(logos, 'start')}${slot(logos, 'center')}${slot(logos, 'end')}</div>`;
     const docId = `<bdi dir="ltr"${dp('/control/documentId')}>${esc(c.documentId)}</bdi>`;
+    const tf = typeFields();
     if (cv.design === 'compact') {
       return `<div class="cover" ${attrs}>${overlaysFor((o) => o.mode === 'cover')}
   <div class="tb-band"><i></i></div>
@@ -1937,9 +1933,9 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     <div class="tb-id">${code ? `<span class="tb-code"><bdi dir="ltr">${code}</bdi></span>` : ''}<div class="kicker">${lb('kicker')}</div></div>
     ${title}
     </div>
-    ${art}
   </div>
   <div class="tb-meta">${meta}<span>${docId}</span></div>
+  ${fieldGrid(tf, doc.cover?.cols, 'fg-type')}
 </div>`;
     }
     return `<div class="cover" ${attrs}>${overlaysFor((o) => o.mode === 'cover')}
@@ -1953,9 +1949,9 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     <div class="rule-short"></div>
     <div class="cover-title">${title}</div>
   </div>
+  <div class="cover-ctl">${fieldGrid(controlFields(), 2, 'fg-control')}${fieldGrid(tf, FIELD_COLS.includes(doc.cover?.cols) && doc.cover.cols <= 3 ? doc.cover.cols : 2, 'fg-type')}</div>
   <div class="cover-foot">${meta}${c.owner ? `<span${dp('/control/owner')}>${bidi(c.owner)}</span>` : ''}</div>
   </div>
-  ${art}
 </div>`;
   };
   const cover = (logos) => hide.has('cover') ? '' : cv ? coverDesigned(logos) : `<div class="cover" data-part="cover">${overlaysFor((o) => o.mode === 'cover')}
@@ -1984,6 +1980,9 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     .join('')}</table></div>`,
     revisions: () => `<div data-part="revisions"><h3>${lb('revisions')}</h3>
   ${table({ columns: [L.revVersion, L.revDate], colPtrs: ['/labels/revVersion', '/labels/revDate'], rows: (doc.revisions || []).map((r) => r.slice(0, 2)), rowsPtr: '/revisions', keepAll: true /* UAT H3: a still-empty date stays a cell a person can type in */ })}</div>`,
+    // 0.19.0 C7: a typed document's approvals print on the control page too (the DOCX's APPROVALS_COLUMNS); empty cells stay empty, to be signed
+    ...(approvalsShown(doc) ? { approvals: () => `<div data-part="approvals"><h3>${lb('approvals')}</h3>
+  ${table({ columns: L.approvalCols || [], colsPtr: '/labels/approvalCols', rows: doc.approvals.filter(Array.isArray), rowsPtr: '/approvals', keepAll: true, blankCell: '', extra: 'approvals' })}</div>` } : {}),
     toc: () => `<div data-part="toc"><h3>${lb('contents')}</h3>
   ${toc}</div>`,
   };
