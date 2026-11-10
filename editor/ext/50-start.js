@@ -1,6 +1,7 @@
 /* 0.18.0 document studio · the start page (lane L3; spec work/sdlc/design/ux/start-page.md, contracts C2 and C3 of work/sdlc/design/architecture.md).
  * The first screen when the tool opens without a document, and File › Start page at any time: a gallery of the registry's document types (thumbnails
- * from each type's own `art`), category chips, search, the recent documents (open, pin) and a preview card with the document language and Create.
+ * from each type's own `art`), category chips, search, the recent documents (open, pin) and, on a click, the side panel (0.19.0: what the type is for, when to use it,
+ * its sections, who uses it, the document language and Create, with the type's own thumbnail move).
  * Create builds both editions from the payload's composed pair (LIB.newFromType: design, cover design and starter content are already in it) into a new
  * library document and opens the editor on it. It is a view of the shell, not a dialog: no scrim, no focus trap; Esc or «Back» returns.
  * Types come from the embedded JSON script #bw-doctypes (C2) and, served, from GET /api/doctypes when the page lacks the script.
@@ -185,26 +186,13 @@ const START = (() => {
     if (st.gone.has(r.id)) return `<li class="st-rec st-gone" data-recent="${esc(r.id)}"><span class="st-open" aria-disabled="true"><span class="st-rt" data-mirror="${lang() === 'ar'}">${art(ty)}</span><span class="st-rm"><span class="st-fn" dir="auto">${esc(r.file)}</span><span class="st-meta st-miss">${esc(t('startMissing'))}</span></span></span><button type="button" class="st-btn st-sm" data-st-rm="${esc(r.id)}">${esc(t('startRemove'))}</button></li>`;
     return `<li class="st-rec" data-recent="${esc(r.id)}"><button type="button" class="st-open" data-st-open="${esc(r.id)}"><span class="st-rt" data-mirror="${lang() === 'ar'}">${art(ty)}</span><span class="st-rm"><span class="st-fn" dir="auto" title="${esc(r.file)}">${esc(r.file)}</span><span class="st-meta">${esc(meta)} <span class="st-go">· ${esc(t('startOpen'))}</span></span></span></button><button type="button" class="st-ib st-keep" aria-pressed="${r.pinned}" aria-label="${esc(`${t(r.pinned ? 'startUnpin' : 'startPin')}: ${r.file}`)}" title="${esc(t(r.pinned ? 'startUnpin' : 'startPin'))}" data-st-keep="${esc(r.id)}">${KEEP_ICON}</button></li>`;
   }
+  /** The end column: Recent (0.19.0: always; a picked type opens the side panel over it instead of swapping it out). */
   function side() {
     const l = lang();
     const box = el.querySelector('[data-st-side]');
-    const kind = st.sel ? 'prev' : 'rec';
-    const cls = kind !== st.kind ? ' st-in' : '';
-    st.kind = kind;
+    const cls = st.kind !== 'rec' ? ' st-in' : '';
+    st.kind = 'rec';
     box.setAttribute('aria-label', t('startAside'));
-    if (st.sel) {
-      const ty = type(st.sel);
-      if (!ty) { st.sel = null; side(); return; }
-      const pl = st.pl;
-      box.innerHTML = `<div class="st-pane st-prev${cls}" role="region" aria-label="${esc(t('startPreview'))}"><div class="st-hd"><h2>${esc(t('startPreview'))}</h2><button type="button" class="st-ib" data-st-a="close" aria-label="${esc(t('startClosePrev'))}" title="${esc(t('startClosePrev'))}">${ic('close')}</button></div>
-<div class="st-cover"><span class="st-thumb" data-land="${land(ty)}" data-mirror="${pl === 'ar'}">${art(ty)}</span></div>
-<h3 lang="${pl}" dir="${pl === 'ar' ? 'rtl' : 'ltr'}">${esc(nm(ty, pl))}</h3><p lang="${pl}" dir="${pl === 'ar' ? 'rtl' : 'ltr'}">${esc(dsc(ty, pl))}</p>
-<span class="st-lab" id="st-pl-l">${esc(t('startLang'))}</span>
-<div class="st-seg st-seg-w" role="radiogroup" aria-labelledby="st-pl-l"><button type="button" role="radio" aria-checked="${pl === 'ar'}" data-st-pl="ar" lang="ar">${esc(t('startLangAr'))}</button><button type="button" role="radio" aria-checked="${pl === 'en'}" data-st-pl="en" lang="en">${esc(t('startLangEn'))}</button></div>
-${inside(ty, pl).length ? `<span class="st-lab">${esc(t('startInside'))}</span><ul lang="${pl}" dir="${pl === 'ar' ? 'rtl' : 'ltr'}">${inside(ty, pl).map((s) => `<li>${esc(s)}</li>`).join('')}</ul>` : ''}
-<button type="button" class="st-btn st-primary" data-st-a="create" data-bw-create="${esc(ty.id)}">${ic('add')}<span>${esc(t('startCreate'))}</span></button><p class="st-hint">${esc(t('startHint'))}</p></div>`;
-      return;
-    }
     const rows = st.rec;
     const pinned = rows.filter((r) => r.pinned), rest = rows.filter((r) => !r.pinned);
     box.innerHTML = `<div class="st-pane${cls}"><h2>${esc(t('startRecent'))}<span class="st-n">${rows.length || ''}</span></h2>${rows.length
@@ -212,9 +200,89 @@ ${inside(ty, pl).length ? `<span class="st-lab">${esc(t('startInside'))}</span><
       : `<div class="st-norec"><span class="st-art" data-mirror="${l === 'ar'}">${art(type('blank'))}</span><b>${esc(t('startNoRecT'))}</b><span>${esc(t('startNoRecP'))}</span></div>`}
 <div class="st-drop">${st.last ? `<button type="button" class="st-btn" data-st-a="resume">${ic('history')}<span>${esc(tf('startResume', { n: st.last }))}</span></button>` : ''}<button type="button" class="st-btn" data-st-a="file">${ic('rbt.file')}<span>${esc(t('startOpenFile'))}</span></button><small>${esc(t('startDrop'))}</small></div></div>`;
   }
-  async function refresh() { st.rec = await recents(); if (isOpen() && !st.sel) side(); }
+
+  /* ── the side panel (0.19.0 N4; treatment work/sdlc/design/0190-motion.md) ──
+   * A drawer on the inline-end edge: the type's stage (its page with its own move), name, description, document language, Create, then what it is for,
+   * when to use it, its sections (the starter's chapter titles in the chosen language) and who uses it (payload `info`, templates/_doctypes/_info.json).
+   * Keyboard: Tab wraps inside it; Esc or X closes it and focus returns to the tile. Each move's keyframes hold only the `from` state: the element's own
+   * style is the end frame, so Calm (animation: none) shows the end frame and a finished move looks the same. */
+  // id -> its move (the move layer the CSS animates, [data-fx]; durations live in 50-start.css and the test measures them); a type not listed settles
+  const MOVES = { blank: 'settle', srs: 'fan', brd: 'mark', frs: 'branch', rtm: 'link', 'process-flow': 'flow', 'test-plan': 'tick', 'test-cases': 'fill', 'defect-report': 'flag',
+    'user-manual': 'step', 'uat-signoff': 'stamp', 'release-notes': 'tag', tor: 'scope', 'change-request': 'swap', minutes: 'write', 'business-case': 'rise', tot: 'stack' };
+  const moveOf = (id) => MOVES[id] || 'settle';
+  /** The move layer's shapes, in a 120 x 160 box (160 x 120 for a landscape sheet); --k orders a stagger; pathLength 1 lets a stroke draw from dashoffset 1. */
+  function fx(kind, wide) {
+    const k = (i) => `style="--k:${i}"`;
+    const P = (d, c, i = 0) => `<path class="${c}" d="${d}" pathLength="1" ${k(i)}/>`;
+    const y3 = (i) => 60 + ((i + 1) % 3) * 16;
+    const body = {
+      settle: '<rect class="fx-caret fx-g" x="27" y="50" width="2.4" height="13" rx="1.2"/>',
+      fan: '',
+      mark: `<rect class="fx-mk fx-g" x="22" y="90" width="64" height="8" rx="1.5" ${k(0)}/><rect class="fx-mk fx-g" x="22" y="103" width="46" height="8" rx="1.5" ${k(1)}/>`,
+      branch: `<rect class="fx-nd fx-a" x="50" y="70" width="20" height="11" rx="2" ${k(0)}/>${P('M60 81V93L36 105', 'fx-ln', 1)}${P('M60 93L84 105', 'fx-ln', 2)}<rect class="fx-nd fx-a" x="24" y="105" width="24" height="11" rx="2" ${k(4)}/><rect class="fx-nd fx-a" x="72" y="105" width="24" height="11" rx="2" ${k(5)}/>`,
+      link: [0, 1, 2].map((i) => `<circle class="fx-nd fx-a" cx="24" cy="${52 + i * 16}" r="2.6" ${k(i)}/>${P(`M24 ${52 + i * 16}C60 ${52 + i * 16} 96 ${y3(i)} 136 ${y3(i)}`, 'fx-ln', i)}<circle class="fx-nd fx-end fx-a" cx="136" cy="${y3(i)}" r="2.6" ${k(i)}/>`).join(''),
+      flow: [0, 1, 2].map((i) => `<rect class="fx-nd fx-a" x="${18 + i * 34}" y="96" width="18" height="13" rx="3" ${k(i)}/>`).join('') + P('M38 102.5H50M46.5 99L50 102.5L46.5 106', 'fx-ln', 0) + P('M72 102.5H84M80.5 99L84 102.5L80.5 106', 'fx-ln', 1),
+      tick: [0, 1, 2].map((i) => `<rect class="fx-box" x="24" y="${84 + i * 15}" width="9" height="9" rx="1.6"/><rect class="fx-tx" x="38" y="${86.5 + i * 15}" width="${50 - i * 9}" height="4" rx="1"/>${P(`M25.8 ${88.6 + i * 15}L28.2 ${91 + i * 15}L32.2 ${85.6 + i * 15}`, 'fx-ck', i)}`).join(''),
+      fill: [0, 1, 2, 3, 4].map((i) => `<rect class="fx-row fx-a" x="16" y="${50 + i * 11}" width="118" height="6.5" rx="1" ${k(i)}/>`).join('') + '<circle class="fx-dot fx-ok" cx="143" cy="97.25" r="3.6"/>',
+      flag: '<circle class="fx-ring" cx="72" cy="100" r="14" pathLength="1"/><circle class="fx-pin fx-r" cx="72" cy="100" r="3"/>',
+      step: [0, 1, 2].map((i) => `<g class="fx-bd" ${k(i)}><circle class="fx-a" cx="27" cy="${80 + i * 22}" r="7"/><circle class="fx-w" cx="27" cy="${80 + i * 22}" r="2.2"/></g><rect class="fx-tx" x="40" y="${78 + i * 22}" width="${52 - i * 8}" height="4" rx="1"/>`).join(''),
+      stamp: '<g class="fx-seal"><circle class="fx-sr" cx="84" cy="116" r="17"/><circle class="fx-sr fx-thin" cx="84" cy="116" r="12.5"/><path class="fx-sk" d="M77.5 116.5L82 121L91 111"/></g>',
+      tag: '<g class="fx-tag"><path class="fx-a" d="M70 28H104V44H70L64 36Z"/><circle class="fx-w" cx="71" cy="36" r="1.8"/></g><circle class="fx-dot fx-g" cx="104" cy="60" r="4"/>',
+      scope: '<rect class="fx-blk fx-a" x="28" y="88" width="64" height="36" rx="2"/><path class="fx-br fx-br1" d="M24 96V84H36"/><path class="fx-br fx-br2" d="M96 116V128H84"/>',
+      swap: `<rect class="fx-tx" x="24" y="90" width="62" height="5" rx="1"/>${P('M21 92.5H89', 'fx-st', 0)}<rect class="fx-new fx-a" x="24" y="101" width="52" height="5" rx="1"/>`,
+      write: [0, 1, 2].map((i) => `<rect class="fx-wr" x="24" y="${88 + i * 11}" width="${66 - i * 12}" height="3.6" rx="1.2" ${k(i)}/>`).join('') + '<circle class="fx-pen fx-g" cx="68" cy="111.8" r="2.4"/>',
+      rise: `<path class="fx-base" d="M24 128.5H96"/>${[[30, 14], [48, 24], [66, 36]].map(([x, h], i) => `<rect class="fx-bar fx-a" x="${x}" y="${128 - h}" width="12" height="${h}" rx="1" ${k(i)}/>`).join('')}${P('M30 104L50 96L70 84L92 78', 'fx-ln fx-up', 3)}`,
+      stack: [0, 1, 2].map((i) => `<g class="fx-card" ${k(i)}><rect class="fx-cd" x="${28 + i * 5}" y="${82 + i * 16}" width="58" height="14" rx="2"/><rect class="fx-a" x="${28 + i * 5}" y="${82 + i * 16}" width="4" height="14" rx="1"/></g>`).join(''),
+    }[kind] ?? '';
+    return body ? `<svg class="st-fx" viewBox="${wide ? '0 0 160 120' : '0 0 120 160'}" preserveAspectRatio="none" aria-hidden="true" focusable="false"${kind === 'flow' ? ' data-ltr="true"' : ''}>${body}</svg>` : '';
+  }
+  /** N3's raster thumbnail of the edition's real first page (thumb.{ar,en}, a data: image), else the type's own art. */
+  const thumbOf = (ty, pl) => { const s = ty.thumb?.[pl]; return typeof s === 'string' && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(s) ? s : ''; };
+  function stage(ty, pl, delay) {
+    const kind = moveOf(ty.id), raster = thumbOf(ty, pl), wide = land(ty);
+    const pg = raster ? `<img src="${raster}" alt="" draggable="false">` : art(ty);
+    const copies = kind === 'fan' ? `<span class="st-pg st-b2">${pg}</span><span class="st-pg st-b1">${pg}</span>` : '';
+    return `<div class="st-stage" aria-hidden="true" data-fx="${kind}" data-land="${wide}" data-raster="${!!raster}" style="--acc:${esc(ty.accent || 'var(--bw-primary)')};--fx-d:${delay}ms"><span class="st-sheet" data-mirror="${pl === 'ar'}">${copies}<span class="st-pg">${pg}</span>${fx(kind, wide)}</span></div>`;
+  }
+  const PANEL_FOCUS = 'button:not([disabled]), [href], input, [tabindex]:not([tabindex="-1"])';
+  /** Draws (or removes) the panel of st.sel. `swap`: the panel is already open (another type, the other language): no slide; the content cross-fades and the move replays. */
+  function panel(swap = false) {
+    let box = el.querySelector('[data-st-panel]');
+    const ty = st.sel ? type(st.sel) : null;
+    if (!ty) { box?.remove(); st.sel = null; return null; }
+    const pl = st.pl, dir = pl === 'ar' ? 'rtl' : 'ltr';
+    const was = !!box && swap;
+    if (!box) {
+      box = document.createElement('section');
+      box.className = 'st-panel st-prev'; box.dataset.stPanel = ''; box.tabIndex = -1;
+      box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-labelledby', 'st-pn');
+      el.appendChild(box);
+    }
+    el.style.setProperty('--st-sb', `${Math.max(0, el.offsetWidth - el.clientWidth)}px`); // clear of the page's own scrollbar (right in English, left in Arabic)
+    box.dataset.type = ty.id;
+    box.dataset.fx = moveOf(ty.id);
+    box.classList.toggle('st-in', !was);
+    const info = ty.info || {};
+    const LAB = { purpose: 'startPurpose', whenToUse: 'startWhen', audience: 'startAudience' };
+    const say = (k) => { const v = info[k]?.[pl] || info[k]?.en || ''; return v ? `<h4>${esc(t(LAB[k]))}</h4><p lang="${pl}" dir="${dir}" data-st-info="${k}">${esc(v)}</p>` : ''; };
+    let chapters = [];
+    try { chapters = (JSON.parse(ty.docs?.[pl] || '{}').chapters || []).map((c) => String(c.title || '').trim()).filter(Boolean); } catch { /* no starter */ }
+    let n = 0;
+    const ix = () => `style="--n:${n++}"`;
+    box.innerHTML = `<div class="st-pane${was ? ' st-swap' : ''}">
+<div class="st-hd" ${ix()}><h2>${esc(t('startAbout'))}${ty.code ? `<span class="st-code" lang="en" dir="ltr">${esc(ty.code)}</span>` : ''}</h2><button type="button" class="st-ib" data-st-a="close" aria-label="${esc(t('startClosePrev'))}" title="${esc(t('startClosePrev'))}">${ic('close')}</button></div>
+<div class="st-cover" ${ix()}>${stage(ty, pl, was ? 60 : 180)}</div>
+<h3 id="st-pn" lang="${pl}" dir="${dir}" ${ix()}>${esc(nm(ty, pl))}</h3><p class="st-pd" lang="${pl}" dir="${dir}" ${ix()}>${esc(dsc(ty, pl))}</p>
+<div class="st-plw" ${ix()}><span class="st-lab" id="st-pl-l">${esc(t('startLang'))}</span>
+<div class="st-seg st-seg-w" role="radiogroup" aria-labelledby="st-pl-l"><button type="button" role="radio" aria-checked="${pl === 'ar'}" data-st-pl="ar" lang="ar">${esc(t('startLangAr'))}</button><button type="button" role="radio" aria-checked="${pl === 'en'}" data-st-pl="en" lang="en">${esc(t('startLangEn'))}</button></div></div>
+<button type="button" class="st-btn st-primary" data-st-a="create" data-bw-create="${esc(ty.id)}" ${ix()}>${ic('add')}<span>${esc(t('startCreate'))}</span></button>
+<div class="st-info" ${ix()}>${say('purpose')}${say('whenToUse')}${chapters.length ? `<h4>${esc(t('startSections'))}</h4><ol lang="${pl}" dir="${dir}" data-st-sections>${chapters.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}${say('audience')}</div>
+<p class="st-hint" ${ix()}>${esc(t('startHint'))}</p></div>`;
+    return box;
+  }
+  async function refresh() { st.rec = await recents(); if (isOpen()) side(); }
   /** How many documents the last session had (the «Continue where you left off» button): only a served page has a host session to ask. */
-  async function lastCount() { try { st.last = (await EXT.session?.lastCount?.()) || 0; } catch { st.last = 0; } if (isOpen() && !st.sel) side(); }
+  async function lastCount() { try { st.last = (await EXT.session?.lastCount?.()) || 0; } catch { st.last = 0; } if (isOpen()) side(); }
 
   /* ── actions ── */
   /** The tiles are patched in place, never rebuilt, when the pick changes: a double click is two clicks on the SAME element (a rebuilt tile would lose the second). */
@@ -228,15 +296,18 @@ ${inside(ty, pl).length ? `<span class="st-lab">${esc(t('startInside'))}</span><
     });
   }
   function pick(id, focusCreate) {
-    if (st.sel !== id) st.pl = lang(); // picking the tile that is already picked keeps the document language chosen in the card
+    const same = st.sel === id && !!el.querySelector('[data-st-panel]');
+    if (st.sel !== id) st.pl = lang(); // picking the tile that is already picked keeps the document language chosen in the panel
+    const swap = !!st.sel && !same;
     st.sel = id; st.first = false;
-    markTiles(); side();
+    markTiles();
+    const box = same ? el.querySelector('[data-st-panel]') : panel(swap); // the same tile again (a double click's second click) leaves the panel and its move alone
     if (focusCreate) el.querySelector('[data-st-a="create"]')?.focus();
-    else el.querySelector(`.st-tile[data-type="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
+    else box?.focus({ preventScroll: true });
   }
   function closePreview() {
     const id = st.sel; st.sel = null; st.first = false;
-    markTiles(); side(); refresh();
+    markTiles(); panel(); refresh();
     el.querySelector(`.st-tile[data-type="${CSS.escape(id || '')}"]`)?.focus();
   }
   async function create(id, ed) {
@@ -275,14 +346,14 @@ ${inside(ty, pl).length ? `<span class="st-lab">${esc(t('startInside'))}</span><
     const e = await LIBX().importAny(f);
     if (e) close(true);
   }
-  function setUi(l) { if (S.ui !== l) runAction('uiLang'); st.sel = null; st.first = false; st.kind = ''; chrome(); gallery(); side(); }
+  function setUi(l) { if (S.ui !== l) runAction('uiLang'); st.sel = null; st.first = false; st.kind = ''; chrome(); gallery(); side(); panel(); }
 
   /* ── events ── */
   function onClick(ev) {
     const g = (s) => ev.target.closest(s);
     let b;
     if ((b = g('[data-st-c]'))) { st.cat = b.dataset.stC; st.q = ''; el.querySelector('[data-st-q]').value = ''; st.first = false; chrome(); gallery(); return; }
-    if ((b = g('[data-st-pl]'))) { st.pl = b.dataset.stPl; markTiles(); side(); el.querySelector(`[data-st-pl="${st.pl}"]`)?.focus(); return; }
+    if ((b = g('[data-st-pl]'))) { st.pl = b.dataset.stPl; markTiles(); panel(true); el.querySelector(`[data-st-pl="${st.pl}"]`)?.focus(); return; }
     if ((b = g('[data-st-keep]'))) { const id = b.dataset.stKeep; const p = pins(); savePins(p.includes(id) ? p.filter((x) => x !== id) : [...p, id]); refresh().then(() => el?.querySelector(`[data-st-keep="${CSS.escape(id)}"]`)?.focus()); return; }
     if ((b = g('[data-st-open]'))) { openRecent(b.dataset.stOpen); return; }
     if ((b = g('[data-st-rm]'))) { const id = b.dataset.stRm; LIBX().remove(id).catch(() => {}); savePins(pins().filter((x) => x !== id)); st.gone.delete(id); refresh(); return; }
@@ -307,6 +378,14 @@ ${inside(ty, pl).length ? `<span class="st-lab">${esc(t('startInside'))}</span><
     const q = el.querySelector('[data-st-q]');
     const inField = ev.target === q;
     if (ev.key === '/' && !inField && !/^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName || '')) { ev.preventDefault(); q.focus(); return; }
+    if (ev.key === 'Tab') { // the side panel keeps keyboard focus: Tab and Shift+Tab wrap inside it
+      const p = ev.target.closest?.('[data-st-panel]');
+      if (p) {
+        const f = [...p.querySelectorAll(PANEL_FOCUS)].filter((x) => x.getClientRects().length);
+        if (f.length && (ev.shiftKey ? (ev.target === f[0] || ev.target === p) : ev.target === f[f.length - 1])) { ev.preventDefault(); f[ev.shiftKey ? f.length - 1 : 0].focus(); }
+        return;
+      }
+    }
     if (ev.key === 'Escape') {
       ev.preventDefault();
       if (inField && st.q) { st.q = ''; q.value = ''; chrome(); gallery(); }
@@ -361,7 +440,7 @@ ${inside(ty, pl).length ? `<span class="st-lab">${esc(t('startInside'))}</span><
     // 0.18.2: the NJ mark (z 41, in the page, above this view) stays on screen over the start page; 50-start.css leaves it a bottom-start safe area (0.18.0 hid it, which hid it on every open)
     chrome(); gallery(); side();
     st.rec = await recents();
-    if (isOpen() && !st.sel) side();
+    if (isOpen()) side();
     lastCount();
     if (!opts.auto || !st.opener) el.querySelector('[data-st-q]')?.focus({ preventScroll: true });
     setTimeout(() => { st.first = false; el?.querySelector('.st-grid')?.classList.remove('st-first'); }, 1400);

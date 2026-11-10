@@ -27,7 +27,7 @@
     "startClear": "مسح البحث",
     "startBlank": "ابدأ فارغا",
     "startPreview": "معاينة",
-    "startClosePrev": "إغلاق المعاينة",
+    "startClosePrev": "إغلاق اللوحة",
     "startCreate": "إنشاء",
     "startLang": "لغة المستند",
     "startInside": "المحتوى",
@@ -50,7 +50,12 @@
     "startSetShow": "عرض صفحة البداية عند فتح الأداة",
     "startSetHint": "تظهر مرة واحدة عند فتح الأداة بلا مستند. زر «صفحة البداية» في تبويب ملف يفتحها في أي وقت.",
     "startLangAr": "العربية",
-    "startLangEn": "English"
+    "startLangEn": "English",
+    "startAbout": "عن هذا النوع",
+    "startPurpose": "الغرض منه",
+    "startWhen": "متى تستخدمه",
+    "startSections": "الأقسام",
+    "startAudience": "من يستخدمه"
   },
   "en": {
     "startPage": "Start page",
@@ -80,7 +85,7 @@
     "startClear": "Clear search",
     "startBlank": "Start blank",
     "startPreview": "Preview",
-    "startClosePrev": "Close preview",
+    "startClosePrev": "Close the panel",
     "startCreate": "Create",
     "startLang": "Language of the document",
     "startInside": "Inside",
@@ -103,6 +108,11 @@
     "startSetShow": "Show the start page when the tool opens",
     "startSetHint": "It shows once when the tool opens with no document. The Start page button in the File tab opens it any time.",
     "startLangAr": "العربية",
-    "startLangEn": "English"
+    "startLangEn": "English",
+    "startAbout": "About this type",
+    "startPurpose": "What it is for",
+    "startWhen": "When to use it",
+    "startSections": "Sections",
+    "startAudience": "Who uses it"
   }
 }
