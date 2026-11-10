@@ -724,8 +724,12 @@ export function printTrimCss(doc) {
 // byte for byte what it was. The colours are the document's own design vars (doc.design.vars), so a category palette reaches the PDF and the DOCX without a
 // new colour. 0.19.0: page 1 is drawn only with straight horizontal and vertical lines, rectangles and text (spec §1, tests/page1-0190): the 0.18 motif is
 // gone from render, PDF and Word, and an old file that still carries `motif` prints without it (the key is read only to know the type).
-// Families (spec §1): spine (title page with the control block), compact (a title block on page 1); report, form and sheet are R2's: until they land they
-// print with the nearest built family (report as spine, form and sheet as compact). engine/docx/cover_design.py mirrors the constants below.
+// Families (spec §1): spine (title page with the control block), compact (a title block on page 1), and (0.19.0 R2) report (a decision paper: band,
+// key-figure tiles C4, decision box C5, control block), form (a header on page 1: ID box or badge C6, field grid, statement C5, then chapter 1 on the
+// same page) and sheet (landscape: fields in one row, a summary strip of status tiles C4, then the sheet). `design` is the page model the editor and
+// pdf_post.py read (report is a title page = spine; form and sheet are a header on page 1 = compact); `family` picks the drawing. Every family is
+// driven by the content key `cover` only, and prints a sound page 1 without it (no fields, figures, badge or statement yet).
+// engine/docx/cover_design.py mirrors the constants below.
 export const COVER_DESIGNS = ['spine', 'compact', 'report', 'form', 'sheet'];
 const COVER_LAYOUT = { spine: 'spine', report: 'spine', compact: 'compact', form: 'compact', sheet: 'compact' };
 /** The type ids a document may name in docType (or, in a 0.18 file, in `motif`). */
@@ -743,6 +747,26 @@ export const COVER_LABELS = { approvedBy: { en: 'Approved by', ar: 'جهة ال�
 /** C3 kinds and grid widths (schema S2). */
 export const FIELD_KINDS = ['text', 'chip', 'date', 'blank'];
 export const FIELD_COLS = [2, 3, 4, 6];
+/** C4 tile kinds (schema S2) and the report's control block (spec §1: ID, version, status, date, owner, prepared by; the type's fields follow). */
+export const FIGURE_KINDS = ['none', 'ok', 'warn', 'bad', 'idle'];
+export const REPORT_CONTROL = ['documentId', 'version', 'status', 'issuedOn', 'owner', 'preparedBy'];
+/** Words the families print that are no house label (a document's labels.<key> wins): back matter heading (C10), the derived summary strip's total,
+ * the seal box of a sign-off statement. */
+export const FAMILY_LABELS = {
+  backMatter: { en: 'Document control', ar: 'ضبط الوثيقة' },
+  total: { en: 'Total', ar: 'الإجمالي' },
+  seal: { en: 'Seal', ar: 'الختم' },
+};
+/** The parts a form or a sheet prints after its last chapter (C10): `layout.back` when set, else control and revisions (spec §1: no contents list). */
+export function backOf(doc) {
+  const fam = coverOf(doc)?.family;
+  const asked = Array.isArray(doc?.layout?.back) ? doc.layout.back.filter((k) => k === 'control' || k === 'revisions') : null;
+  const keys = asked ?? (fam === 'form' || fam === 'sheet' ? ['control', 'revisions'] : []);
+  const hide = new Set(doc?.layout?.hide || []);
+  return [...new Set(keys)].filter((k) => !hide.has(k));
+}
+/** True for a family with no contents list (form, sheet). */
+export const noContents = (doc) => ['form', 'sheet'].includes(coverOf(doc)?.family);
 /**
  * The page-1 design a document asks for: { design: the layout drawn (spine | compact), family: the asked family, type: the type id or '' } or null (today's
  * cover). A 0.18 `motif` alone still means the spine design; it is never drawn.
@@ -786,6 +810,32 @@ const FIELD_GRID_CSS = `.bw-fields{display:grid;grid-template-columns:repeat(var
 .bw-fields .fg-chip.st-warn{background:var(--accent-100,transparent);color:var(--accent-800)}
 .bw-fields .fg-chip.st-idle{background:var(--neutral-100,transparent);color:var(--neutral-700)}
 .bw-fields .fg-blank{min-height:5mm}`;
+/** C4 tiles, C5 statement box, C6 badge and the form's ID box: square corners, straight rules, solid fills only (they print on page 1). */
+const FAMILY_PARTS_CSS = `.bw-tiles{display:grid;grid-template-columns:repeat(var(--tl-n,4),minmax(0,1fr));gap:2mm;margin:0;line-height:1.3}
+.bw-tiles>.tl{background:var(--primary-50,#f2f6fa);border-top:.75pt solid var(--rule-strong);padding:2.2mm 3mm 2.6mm;min-width:0;break-inside:avoid}
+.bw-tiles .tl-l{display:block;font-size:var(--t-micro);color:var(--muted);margin-bottom:1mm}
+.bw-tiles .tl-v{display:block;font-weight:700;font-size:17pt;line-height:1.15;color:var(--primary-deep,#001e3d);overflow-wrap:anywhere}
+.bw-tiles>.tl-ok{background:var(--success-100,#e6f2ea)}.bw-tiles>.tl-ok .tl-v{color:var(--success-700)}
+.bw-tiles>.tl-bad{background:var(--signal-100,#f9e3e3)}.bw-tiles>.tl-bad .tl-v{color:var(--signal-600)}
+.bw-tiles>.tl-warn{background:var(--accent-100,#f3ecdc)}.bw-tiles>.tl-warn .tl-v{color:var(--accent-800)}
+.bw-tiles>.tl-idle{background:var(--neutral-100,#efefed)}.bw-tiles>.tl-idle .tl-v{color:var(--neutral-700)}
+.bw-stmt{border:1.2pt solid var(--primary);background:var(--primary-50,#f2f6fa);padding:3.5mm 4mm;margin:0;break-inside:avoid;line-height:1.55;font-size:var(--t-table)}
+.bw-stmt .st-t{margin:0;font-weight:700;color:var(--ink)}
+.bw-stmt .st-items{list-style:none;margin:2mm 0 0;padding:0}
+.bw-stmt .st-items li{position:relative;padding-inline-start:4.5mm;margin:0 0 1mm}
+.bw-stmt .st-items li::before{content:"";position:absolute;inset-inline-start:0;top:.62em;width:1.6mm;height:1.6mm;background:var(--primary)}
+.bw-stmt .st-foot{display:flex;align-items:flex-end;justify-content:space-between;gap:6mm;margin-top:3mm}
+.bw-stmt .st-choices{display:flex;flex-wrap:wrap;gap:2mm 8mm}
+.bw-stmt .st-ch{display:inline-flex;align-items:center;gap:2mm;font-weight:700}
+.bw-stmt .st-box{display:inline-block;flex:0 0 auto;width:4mm;height:4mm;border:.75pt solid var(--ink);background:var(--paper,#fff)}
+.bw-stmt .st-seal{flex:0 0 auto;width:30mm;height:22mm;border:.75pt solid var(--rule-strong);background:var(--paper,#fff);padding:1.2mm 2mm;font-size:var(--t-micro);color:var(--muted)}
+.bw-idbox{flex:0 0 auto;min-width:44mm;max-width:70mm;border:1.2pt solid var(--primary);padding:2mm 3mm 2.4mm;background:var(--paper,#fff)}
+.bw-idbox .ib-l,.bw-badge .bg-l{display:block;font-size:var(--t-micro);margin-bottom:.8mm}
+.bw-idbox .ib-l{color:var(--muted)}
+.bw-idbox .ib-v{display:block;font-weight:700;font-size:13pt;line-height:1.2;color:var(--primary-deep,#001e3d);white-space:nowrap;unicode-bidi:isolate}
+.bw-badge{flex:0 0 auto;min-width:36mm;background:var(--primary);color:var(--paper,#fff);padding:2.2mm 4mm 2.6mm}
+.bw-badge .bg-l{color:var(--paper,#fff);opacity:.85}
+.bw-badge .bg-v{display:block;font-weight:700;font-size:24pt;line-height:1.1;white-space:nowrap;unicode-bidi:isolate}`;
 /** The stylesheet of the page-1 designs; '' for a document that asks for none. fam = the quoted display family. */
 export function coverCss(doc, theme, fam = {}) {
   const cv = coverOf(doc);
@@ -795,8 +845,34 @@ export function coverCss(doc, theme, fam = {}) {
   const px = 'inset-inline:34mm 16mm';
   const base = `/* 0.19.0 page 1: ${cv.family}${cv.type ? ' / ' + cv.type : ''} (no motif, no art) */
 .cover[data-cover]{print-color-adjust:exact;-webkit-print-color-adjust:exact}
-${FIELD_GRID_CSS}`;
+${FIELD_GRID_CSS}${['report', 'form', 'sheet'].includes(cv.family) ? `
+${FAMILY_PARTS_CSS}
+.bw-tiles .tl-v,.bw-badge .bg-v,.bw-idbox .ib-v{font-family:${display},system-ui,sans-serif}` : ''}`;
   const dense = COVER_DENSE.includes(cv.type) && !('th-fill' in vars) && !('zebra' in vars) ? ':root{--th-fill:var(--primary-100);--zebra:var(--primary-50)}\n' : '';
+  // 0.19.0 R2: the head families (a header on page 1) add an ID box or badge at the end of the title row, the field grid, the statement and the tiles
+  const head = cv.family === 'form' || cv.family === 'sheet' ? `
+.cover[data-cover=compact] .tb-row{align-items:flex-start}
+.cover[data-cover=compact] h1{font-size:${cv.family === 'sheet' ? 16 : 18}pt}
+.cover[data-cover=compact] .bw-fields,.cover[data-cover=compact] .bw-tiles,.cover[data-cover=compact] .bw-stmt{margin-top:4mm}
+${cv.family === 'sheet' ? '.cover[data-cover=compact] .tb-row{padding:4mm 0 3mm}\n.cover[data-cover=compact] .bw-tiles{gap:1.5mm}\n.cover[data-cover=compact] .bw-tiles .tl-v{font-size:16pt}\n' : ''}` : '';
+  if (cv.family === 'report') {
+    // report (spec §1): a title page; the logo row (20 to 40 mm), the band C1 (40 to 120 mm, gold cap at the reading start), then the tiles C4, the
+    // decision box C5 and the control block C3, the foot at 258 mm as on the spine page
+    return `${base}
+.cover[data-cover=spine][data-family=report]{display:block;position:relative}
+.cover[data-family=report] .lockup{position:absolute;top:20mm;${px};height:20mm;padding:0;min-height:0;justify-content:flex-start;gap:6mm}
+.cover[data-family=report] .lockup img{height:auto;max-height:20mm;max-width:50mm;margin:0}
+.cover[data-family=report] .rp-band{position:absolute;top:40mm;left:0;right:0;height:80mm;background:var(--primary-deep);color:var(--paper,#fff)}
+.cover[data-family=report] .rp-band .cap{position:absolute;top:0;bottom:0;inset-inline-start:0;width:20mm;background:var(--accent-bright)}
+.cover[data-family=report] .rp-in{position:absolute;${px};bottom:12mm}
+.cover[data-family=report] .rp-code{display:inline-block;background:var(--paper,#fff);color:var(--primary-deep);font-family:${display},system-ui,sans-serif;font-weight:700;font-size:var(--t-meta);letter-spacing:.12em;padding:.8mm 3mm;line-height:1.5;margin-inline-end:3mm}
+.cover[data-family=report] .kicker{display:inline-block;margin:0;font-size:var(--t-meta);color:var(--accent-bright)}
+.cover[data-family=report] h1{color:var(--paper,#fff);margin-top:5mm}
+.cover[data-family=report] .subtitle{color:var(--paper,#fff);opacity:.8;margin-top:3mm}
+.cover[data-family=report] .rp-body{position:absolute;top:128mm;${px};display:flex;flex-direction:column;gap:5mm}
+.cover[data-family=report] .cover-foot{position:absolute;top:258mm;${px};margin:0;padding:6mm 0 0;font-size:var(--t-meta);border-top:.75pt solid var(--rule);display:flex;justify-content:space-between;gap:6mm;color:var(--muted)}
+${dense}`;
+  }
   if (cv.design === 'compact') {
     const mg = marginsOf(doc);
     return `${base}
@@ -814,7 +890,7 @@ ${FIELD_GRID_CSS}`;
 .cover[data-cover=compact] .kicker{margin:0}
 .cover[data-cover=compact] .subtitle{margin-top:3mm}
 .cover[data-cover=compact] .tb-meta{display:flex;justify-content:space-between;gap:6mm;padding:2.5mm 0;border-top:.75pt solid var(--rule-strong);border-bottom:.75pt solid var(--rule);font-size:var(--t-meta);color:var(--muted)}
-.cover[data-cover=compact]+.wrap{padding-top:6mm}
+.cover[data-cover=compact]+.wrap{padding-top:6mm}${head}
 ${dense}`;
   }
   return `${base}
@@ -846,8 +922,23 @@ export const STATUS_WORDS = {
   idle: ['Not run', 'لم ينفذ'],
 };
 const STATUS_KIND = new Map(Object.entries(STATUS_WORDS).flatMap(([k, ws]) => ws.map((w) => [w, k])));
-/** The status kind (ok | bad | warn | idle) of a cell's text, or '' when it is no status word. */
-export const statusKind = (text) => STATUS_KIND.get(String(text ?? '').trim()) || '';
+/**
+ * 0.19.0 C9: more status and tag words, filled ONLY in a column headed by one of STATUS_HEADS (and in a `chip` field of page 1); the words above fill
+ * everywhere, as before. engine/docx/cover_design.py mirrors both lists (tests/cover-designs-0180 compares them).
+ */
+export const STATUS_WORDS_HEADED = {
+  ok: ['Done', 'Approved', 'Accepted', 'Fixed', 'Added', 'منجز', 'معتمد', 'مقبول', 'مصلح', 'مضاف'],
+  bad: ['Critical', 'Overdue', 'Rejected', 'Removed', 'Security', 'حرج', 'متأخر', 'مرفوض', 'محذوف', 'أمني'],
+  warn: ['High', 'Deferred', 'Changed', 'Deprecated', 'عال', 'مؤجل', 'معدل', 'مهمل'],
+  idle: ['Open', 'مفتوح'],
+};
+export const STATUS_HEADS = ['Status', 'Result', 'Severity', 'Priority', 'Type', 'Impact', 'Decision', 'الحالة', 'النتيجة', 'الخطورة', 'الأولوية', 'النوع', 'الأثر', 'القرار'];
+const HEADED_KIND = new Map(Object.entries(STATUS_WORDS_HEADED).flatMap(([k, ws]) => ws.map((w) => [w, k])));
+const HEAD_TOKENS = new Set(STATUS_HEADS.flatMap((h) => [h.toLowerCase(), ...(h.startsWith('ال') ? [h.slice(2)] : [])]));
+/** True when a column heading names a status column: one of its words (brackets dropped) is a head word («نتيجة الاختبار», "Test result"). */
+export const isStatusHead = (text) => String(text ?? '').replace(/\([^)]*\)/g, ' ').split(/[\s/،,]+/).some((w) => w && HEAD_TOKENS.has(w.toLowerCase()));
+/** The status kind (ok | bad | warn | idle) of a cell's text, or '' when it is no status word; `headed`: the cell is in a status column (C9). */
+export const statusKind = (text, headed = false) => { const t = String(text ?? '').trim(); return STATUS_KIND.get(t) || (headed ? HEADED_KIND.get(t) : '') || ''; };
 /** True for a document built from a document type (doc.docType): only these take the 0.18.0 polish; any other document prints as it always did. */
 export const isTyped = (doc) => typeof doc?.docType === 'string' && doc.docType !== '';
 /** 0.19.0 C7: a typed document prints its `approvals` rows on the control page (HTML and PDF too; Word always did). */
@@ -867,6 +958,7 @@ export function polishCss(doc) {
   if (!isTyped(doc)) return '';
   const land = doc.layout?.page ? pageSpec(doc.layout.page).orientation === 'landscape' : false;
   const compact = coverOf(doc)?.design === 'compact';
+  const headFam = ['form', 'sheet'].includes(coverOf(doc)?.family); // 0.19.0: a form or a sheet opens chapter 1 on page 1; its first group may break after itself
   const spine = coverOf(doc)?.design === 'spine';
   const hide = new Set(doc.layout?.hide || []);
   const frontShown = ['control', 'revisions', 'toc'].some((k) => !hide.has(k)) || approvalsShown(doc);
@@ -890,7 +982,7 @@ ${st('idle', 'neutral-100', 'neutral-700')}
 .bw-doc td[class*=st-]{print-color-adjust:exact;-webkit-print-color-adjust:exact}
 ${compact ? `.cover[data-cover=compact]+.wrap [data-part=control]{break-inside:avoid}
 .cover[data-cover=compact]+.wrap [data-part=control] table.control{break-inside:avoid}
-.cover[data-cover=compact]+.wrap section.chapter:first-of-type .keep{break-inside:avoid;break-after:avoid}
+.cover[data-cover=compact]+.wrap section.chapter:first-of-type .keep{break-inside:avoid;break-after:${headFam ? 'auto' : 'avoid'}}
 .cover[data-cover=compact]+.wrap section.chapter:first-of-type p.lead-in{break-inside:avoid}
 ${land ? `.cover[data-cover=compact]+.wrap [data-part=control] table.control{display:block}
 .cover[data-cover=compact]+.wrap [data-part=control] table.control colgroup{display:none}
@@ -898,6 +990,23 @@ ${land ? `.cover[data-cover=compact]+.wrap [data-part=control] table.control{dis
 .cover[data-cover=compact]+.wrap [data-part=control] table.control tr{display:grid;grid-template-columns:42% 58%;break-inside:avoid}
 .cover[data-cover=compact]+.wrap [data-part=control] table.control th{width:auto}
 ` : ''}` : ''}`;
+}
+/** 0.19.0 C8 and C13: true when a table block carries a style or a column key (style, numCols, nowrapCols, accentCol). */
+const tableKeyed = (b) => b?.kind === 'table' && (b.style !== undefined || b.numCols !== undefined || b.nowrapCols !== undefined || b.accentCol !== undefined);
+/** C8 (sheet, signoff) and C13 (number, no-wrap and accent columns): '' (no byte) for a document none of whose tables asks for them. */
+export function tableKeysCss(doc) {
+  if (!(doc?.chapters || []).some((ch) => (ch.sections || []).some((s) => (s.blocks || []).some(tableKeyed)))) return '';
+  return `/* 0.19.0 table styles (C8) and column keys (C13) */
+.bw-doc table.bw-t-sheet th{background:var(--primary-100);color:var(--primary-deep);print-color-adjust:exact;-webkit-print-color-adjust:exact}
+.bw-doc table.bw-t-sheet:not(.control) tbody tr.alt td{background:var(--primary-50);print-color-adjust:exact;-webkit-print-color-adjust:exact}
+.bw-doc table.bw-t-sheet td{padding-block:1.8mm}
+.bw-doc table.bw-t-signoff:not(.control):not(.toc) tbody tr:nth-child(n) td{background:transparent;vertical-align:middle;border-bottom:.75pt solid var(--rule-strong)}
+.bw-doc table.bw-t-signoff tbody tr{height:14mm}
+.bw-doc td.num,.bw-doc th.num{text-align:end;font-variant-numeric:tabular-nums}
+.bw-doc td.nw,.bw-doc th.nw{white-space:nowrap}
+.bw-doc table:not(.control) tbody tr td.acc{background:var(--primary-50);font-weight:700;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+.bw-doc th.acc{background:var(--primary);color:var(--paper,#fff);print-color-adjust:exact;-webkit-print-color-adjust:exact}
+`;
 }
 /** The user manual's own look (steps, screenshot frames, callouts), only for a user-manual document. */
 export function manualCss(doc) {
@@ -934,7 +1043,7 @@ ${modelCss(doc)}${sanitizeCss(doc.design?.css).css}
   const paper = safeToken(['paper', theme.vars.paper]) ? theme.vars.paper : '#fff';
   const PAGE_ART_MM = 140;
   // 0.18.0: the cover designs and the user manual's look; '' (and no byte) for a document that asks for neither
-  const designCss = [coverCss(doc, theme, { display }), manualCss(doc), polishCss(doc)].filter(Boolean).map((s) => (s.endsWith('\n') ? s : `${s}\n`)).join('');
+  const designCss = [coverCss(doc, theme, { display }), manualCss(doc), polishCss(doc), tableKeysCss(doc)].filter(Boolean).map((s) => (s.endsWith('\n') ? s : `${s}\n`)).join('');
   return `${doc ? uploadedFontCss(doc) : ''}
 *{box-sizing:border-box}
 :root{
@@ -1180,7 +1289,7 @@ ${parts.cover(logos || {})}
 <div class="wrap">
 ${parts.front}
 ${parts.body}
-${parts.questions}
+${parts.questions}${parts.back || ''}
 </div>
 ${parts.every || ''}
 </main>`;
@@ -1289,9 +1398,11 @@ export function renderParts(doc, o) {
     let attrs = isRich(c) ? leafAttrs(c, textOf(c).length > 200 ? 'long' : '') : String(c).length > 200 ? ' class="long"' : '';
     if (d.length) attrs = /style="/.test(attrs) ? attrs.replace('style="', `style="${d.join(';')};`) : attrs + ` style="${d.join(';')}"`;
     if (li) attrs = /class="/.test(attrs) ? attrs.replace('class="', 'class="bw-cell-list ') : attrs + ' class="bw-cell-list"';
-    const stk = !li && isTyped(doc) ? statusKind(textOf(c)) : ''; // a status word (Pass, Fail, Blocked, Not run, Covered, Partial, Gap) in a typed document takes its fill
+    const stk = !li && isTyped(doc) ? statusKind(textOf(c), !!t.headed?.has(ci)) : ''; // a status word (Pass, Fail, Blocked, Not run, Covered, Partial, Gap; 0.19.0 C9: more words in a status column) in a typed document takes its fill
     if (stk) attrs = /class="/.test(attrs) ? attrs.replace('class="', `class="st-${stk} `) : attrs + ` class="st-${stk}"`;
     else if (textOf(c).includes('\n')) attrs = /class="/.test(attrs) ? attrs.replace('class="', 'class="bw-nl ') : attrs + ' class="bw-nl"';
+    const kc = t.colClass?.(ci); // 0.19.0 C13: a number, no-wrap or accent column
+    if (kc) attrs = /class="/.test(attrs) ? attrs.replace('class="', `class="${kc} `) : attrs + ` class="${kc}"`;
     const sp = (span && span.cs > 1 ? ` colspan="${span.cs}"` : '') + (span && span.rs > 1 ? ` rowspan="${span.rs}"` : '');
     const f = st.formula ? ` data-f="${attr(st.formula)}"` : '';
     let body;
@@ -1315,7 +1426,21 @@ export function renderParts(doc, o) {
    * t = { columns, rows, colsPtr, rowsPtr, extra, caption, b (block ptr), alt }
    * Column sizing exactly as the source: square root of a typical-length measure.
    */
-  function table(t) {
+  function table(t0) {
+    // 0.19.0 C8: style sheet (washed header repeated on every page, zebra, status fills) and signoff (no zebra, rows of 14 mm or rowHeights, empty
+    // cells kept empty); C13: numCols (end-aligned figures), nowrapCols, accentCol; C9: the columns headed by a status word
+    const t = { ...t0 };
+    if (t.style === 'sheet') { t.alt = true; t.extra = `${t.extra || ''} bw-t-sheet`.trim(); }
+    if (t.style === 'signoff') {
+      t.extra = `${t.extra || ''} bw-t-signoff`.trim();
+      if (typeof t.blankCell !== 'string') t.blankCell = '';
+      t.keepAll = true;
+      t.rowHeights = (t.rows || []).map((_, i) => (Number.isFinite(+t.rowHeights?.[i]) && +t.rowHeights[i] >= 4 ? +t.rowHeights[i] : 14));
+    }
+    const colSet = (k) => new Set(Array.isArray(t[k]) ? t[k].filter(Number.isInteger) : []);
+    const numC = colSet('numCols'), nwC = colSet('nowrapCols');
+    if (numC.size || nwC.size || Number.isInteger(t.accentCol)) t.colClass = (ci) => [numC.has(ci) && 'num', nwC.has(ci) && 'nw', t.accentCol === ci && 'acc'].filter(Boolean).join(' ');
+    if (isTyped(doc) && (t.columns || []).length) { const h = new Set((t.columns || []).map((c, i) => (isStatusHead(textOf(c ?? '')) ? i : -1)).filter((i) => i >= 0)); if (h.size) t.headed = h; }
     const columnsIn = t.columns || [];
     const rowsIn = t.rows || [];
     const width = Math.max(columnsIn.length, ...rowsIn.map((r) => r.length), 0);
@@ -1365,7 +1490,7 @@ export function renderParts(doc, o) {
   ${
     columns.length
       ? `<thead><tr>${columns
-          .map((c, j) => `<th${dp(t.colPtrs ? t.colPtrs[idx[j]] : t.colsPtr && t.colsPtr + '/' + idx[j])} data-c="${idx[j]}">${bidi(c)}</th>`)
+          .map((c, j) => `<th${t.colClass?.(idx[j]) ? ` class="${t.colClass(idx[j])}"` : ''}${dp(t.colPtrs ? t.colPtrs[idx[j]] : t.colsPtr && t.colsPtr + '/' + idx[j])} data-c="${idx[j]}">${bidi(c)}</th>`)
           .join('')}</tr></thead>`
       : ''
   }
@@ -1485,6 +1610,7 @@ export function renderParts(doc, o) {
       colWidths: block.colWidths,
       rowHeights: block.rowHeights,
       blankCell: block.blankCell,
+      style: block.style, numCols: block.numCols, nowrapCols: block.nowrapCols, accentCol: block.accentCol, // 0.19.0 C8, C13
     });
 
   let figNo = 0;
@@ -1898,7 +2024,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
       const span = rest && i === fields.length - 1 ? ` style="grid-column:span ${n - rest + 1}"` : '';
       const kind = FIELD_KINDS.includes(f.kind) || f.kind === 'ltr' ? f.kind : 'text';
       const raw = f.value ?? '';
-      const sk = kind === 'chip' ? statusKind(textOf(raw)) : '';
+      const sk = kind === 'chip' ? statusKind(textOf(raw), true) : ''; // a chip is a status or tag field: the C9 words fill it too
       const v = kind === 'blank' ? `<span class="fg-v fg-blank"${dp(f.vp)}></span>`
         : kind === 'date' || kind === 'ltr' ? `<span class="fg-v"><bdi dir="ltr" class="fg-date"${dp(f.vp)}>${esc(textOf(raw))}</bdi></span>`
         : kind === 'chip' ? `<span class="fg-v"><span class="fg-chip${sk ? ' st-' + sk : ''}"${dp(f.vp)}>${bidi(raw)}</span></span>`
@@ -1915,6 +2041,44 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     kind: k === 'approvedBy' && !textOf(c[k] ?? '').trim() ? 'blank' : ['documentId', 'version', 'issuedOn'].includes(k) ? 'ltr' : 'text',
     lp: `/labels/control/${k}`, vp: `/control/${k}`,
   }));
+  // ---- 0.19.0 R2: the parts of the report, form and sheet families (spec §2 C4, C5, C6), all from the content key `cover` ----
+  const lang = locale === 'ar' ? 'ar' : 'en';
+  const famLb = (k) => lb(k, L[k] ?? FAMILY_LABELS[k][lang]);
+  const coverKey = doc.cover && typeof doc.cover === 'object' && !Array.isArray(doc.cover) ? doc.cover : {};
+  /** C4: one row of tiles; value Display 700, the fill of its kind (none = the wash). */
+  const tiles = (figs) => (figs.length ? `<div class="bw-tiles" style="--tl-n:${figs.length}"${figs[0].derived ? ' data-derived="1"' : ''}>${figs.map((f) => `<div class="tl${FIGURE_KINDS.includes(f.kind) && f.kind !== 'none' ? ' tl-' + f.kind : ''}"><span class="tl-l"${f.lp ? dp(f.lp) : ''}>${f.lw || bidi(f.label ?? '')}</span><span class="tl-v"${f.vp ? dp(f.vp) : ''}>${bidi(f.value ?? '')}</span></div>`).join('')}</div>` : '');
+  const coverFigures = () => (Array.isArray(coverKey.figures) ? coverKey.figures : []).filter((f) => f && typeof f === 'object')
+    .map((f, i) => ({ ...f, lp: `/cover/figures/${i}/label`, vp: `/cover/figures/${i}/value` }));
+  /** A sheet without `cover.figures`: the summary strip is counted from its first `style: sheet` table with a status column (a Status or Result
+   * column first): the total, then each status word found. No such table, no strip (a legend or a key table is never counted). */
+  const derivedFigures = () => {
+    const ch = (doc.chapters || []).find((x) => !x.hidden);
+    for (const s of ch?.sections || []) {
+      for (const b of s.blocks || []) {
+        if (b.kind !== 'table' || b.hidden || b.style !== 'sheet' || !Array.isArray(b.columns)) continue;
+        const heads = b.columns.map((x) => textOf(x ?? ''));
+        const main = heads.findIndex((x) => /\b(status|result)\b|الحالة|النتيجة|حالة|نتيجة/i.test(x) && isStatusHead(x));
+        const col = main >= 0 ? main : heads.findIndex((x) => isStatusHead(x));
+        if (col < 0) continue;
+        const rowsB = (b.rows || []).filter(Array.isArray);
+        const seen = new Map();
+        for (const r of rowsB) { const w = textOf(r[col] ?? '').trim(); const k = statusKind(w, true); if (k) { const e = seen.get(k) || { word: w, n: 0 }; e.n += 1; seen.set(k, e); } }
+        return [{ derived: true, lw: famLb('total'), value: String(rowsB.length), kind: 'none' }, ...['ok', 'bad', 'warn', 'idle'].filter((k) => seen.has(k)).map((k) => ({ derived: true, label: seen.get(k).word, value: String(seen.get(k).n), kind: k }))];
+      }
+    }
+    return [];
+  };
+  /** C5: the statement box: its text, up to 5 items (square markers), up to 4 choices as empty squares; `seal`: an empty box for the stamp. */
+  const statementBox = (st, seal) => {
+    if (!st || typeof st !== 'object' || typeof st.text !== 'string') return '';
+    const items = (Array.isArray(st.items) ? st.items : []).map((x, i) => `<li${dp(`/cover/statement/items/${i}`)}>${bidi(x)}</li>`).join('');
+    const choices = (Array.isArray(st.choices) ? st.choices : []).map((x, i) => `<span class="st-ch"><i class="st-box"></i><span${dp(`/cover/statement/choices/${i}`)}>${bidi(x)}</span></span>`).join('');
+    const sealBox = seal && choices ? `<div class="st-seal">${famLb('seal')}</div>` : '';
+    return `<div class="bw-stmt"><p class="st-t"${dp('/cover/statement/text')}>${bidi(st.text)}</p>${items ? `<ul class="st-items">${items}</ul>` : ''}${choices ? `<div class="st-foot"><div class="st-choices">${choices}</div>${sealBox}</div>` : ''}</div>`;
+  };
+  /** The form's ID box (the field with id:true; without one, the document id) and the C6 badge. */
+  const idBox = (f) => `<div class="bw-idbox"><span class="ib-l"${dp(f.lp)}>${bidi(f.label ?? '')}</span><bdi dir="ltr" class="ib-v"${dp(f.vp)}>${esc(textOf(f.value ?? ''))}</bdi></div>`;
+  const badgeBox = (b) => (b && typeof b === 'object' && typeof b.value === 'string' ? `<div class="bw-badge"><span class="bg-l"${dp('/cover/badge/label')}>${bidi(b.label ?? '')}</span><bdi dir="ltr" class="bg-v"${dp('/cover/badge/value')}>${esc(b.value)}</bdi></div>` : '');
   const coverDesigned = (logos) => {
     const code = COVER_CODES[cv.type] || '';
     const attrs = `data-part="cover" data-cover="${cv.design}"${cv.family !== cv.design ? ` data-family="${cv.family}"` : ''}${cv.type ? ` data-type="${cv.type}"` : ''}`;
@@ -1924,6 +2088,39 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     const lockup = `<div class="lockup">${slot(logos, 'start')}${slot(logos, 'center')}${slot(logos, 'end')}</div>`;
     const docId = `<bdi dir="ltr"${dp('/control/documentId')}>${esc(c.documentId)}</bdi>`;
     const tf = typeFields();
+    const cols = FIELD_COLS.includes(coverKey.cols) ? coverKey.cols : 0;
+    if (cv.family === 'form' || cv.family === 'sheet') {
+      const sheetFam = cv.family === 'sheet';
+      const idF = tf.find((f) => f.id === true);
+      const rest = tf.filter((f) => f !== idF);
+      const badge = badgeBox(coverKey.badge);
+      const end = sheetFam ? '' : idF ? idBox(idF) + badge : badge || idBox({ label: L.control?.documentId ?? 'Document ID', value: c.documentId ?? '', lp: '/labels/control/documentId', vp: '/control/documentId' });
+      const figs = coverFigures();
+      const metaLine = `<div class="tb-meta">${meta}<span>${docId}</span></div>`;
+      const grid = fieldGrid(rest, cols || (sheetFam ? 6 : 3), 'fg-type');
+      return `<div class="cover" ${attrs}>${overlaysFor((o) => o.mode === 'cover')}
+  <div class="tb-band"><i></i></div>
+  ${lockup}
+  <div class="tb-row">
+    <div class="tb-main">
+    <div class="tb-id">${code ? `<span class="tb-code"><bdi dir="ltr">${code}</bdi></span>` : ''}<div class="kicker">${lb('kicker')}</div></div>
+    ${title}
+    </div>${end}
+  </div>
+  ${sheetFam ? metaLine + grid + tiles(figs.length ? figs : derivedFigures()) : grid + metaLine + tiles(figs)}
+  ${statementBox(coverKey.statement, !sheetFam)}
+</div>`;
+    }
+    if (cv.family === 'report') {
+      const ctl = REPORT_CONTROL.map((k) => ({ label: L.control?.[k] ?? k, value: c[k] ?? '', kind: ['documentId', 'version', 'issuedOn'].includes(k) ? 'ltr' : 'text', lp: `/labels/control/${k}`, vp: `/control/${k}` }));
+      return `<div class="cover" ${attrs}>${overlaysFor((o) => o.mode === 'cover')}
+  ${lockup}
+  <div class="rp-band"><i class="cap"></i><div class="rp-in">${code ? `<span class="rp-code"><bdi dir="ltr">${code}</bdi></span>` : ''}<div class="kicker">${lb('kicker')}</div>
+    ${title}</div></div>
+  <div class="rp-body">${tiles(coverFigures())}${statementBox(coverKey.statement, false)}${fieldGrid(ctl, 3, 'fg-control')}${fieldGrid(tf, cols && cols <= 3 ? cols : 3, 'fg-type')}</div>
+  <div class="cover-foot">${meta}${c.owner ? `<span${dp('/control/owner')}>${bidi(c.owner)}</span>` : ''}</div>
+</div>`;
+    }
     if (cv.design === 'compact') {
       return `<div class="cover" ${attrs}>${overlaysFor((o) => o.mode === 'cover')}
   <div class="tb-band"><i></i></div>
@@ -2003,9 +2200,16 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     .map((row, r) => `<tr${o.editor ? ` data-r="${r}"` : ''}>${Array.from({ length: w }, (_, k) => cell(row[k], r, k)).join('')}</tr>`).join('')}</table></div>`;
   }
   const order = [...(doc.layout?.front || []).filter((k) => FRONT[k]), ...Object.keys(FRONT).filter((k) => !(doc.layout?.front || []).includes(k))];
-  const shown = order.filter((k) => !hide.has(k));
+  // 0.19.0 C10: the parts `layout.back` names (a form and a sheet: control and revisions by default; approvals go with control) print after the last
+  // chapter under «Document control»; a form and a sheet print no contents list
+  const back = backOf(doc);
+  const backSet = new Set(back.includes('control') && FRONT.approvals ? [...back, 'approvals'] : back);
+  const shown = order.filter((k) => !hide.has(k) && !backSet.has(k) && !(k === 'toc' && noContents(doc)));
   const front = shown.length ? `<h2>${lb('controlChapter')}</h2>
   ${shown.map((k) => FRONT[k]()).join(NL)}` : '';
+  const backKeys = order.filter((k) => backSet.has(k) && !hide.has(k));
+  const backPart = backKeys.length ? `<section class="chapter bw-back" data-part="back"${pageStyle(PM.segments.length - 1)}><h2>${lb('backMatter', L.backMatter ?? FAMILY_LABELS.backMatter[lang])}</h2>
+  ${backKeys.map((k) => FRONT[k]()).join(NL)}</section>` : '';
 
   const questions = (doc.openQuestions || []).length && !hide.has('questions')
     ? `<section class="chapter" data-part="questions"${pageStyle(PM.segments.length - 1)}><h2><span class="num">؟</span>${lb('openQuestions')}</h2>
@@ -2020,7 +2224,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
   const everyOv = overlaysFor((o) => o.mode === 'every');
   const runs = doc.chrome ? PM.segments.map((x) => ['header', 'footer'].map((part) => `<template class="bw-run" data-seg="${x.n}" data-part="${part === 'header' ? 'head' : 'foot'}">${runBand(doc, { ...o, locale, L, bidi }, part, x)}</template>`).join('')).join('') : '';
   const every = (everyOv ? `<div class="bw-every">${everyOv}</div>` : '') + runs;
-  return { cover, front, body, questions, every, sheet, tocRows: rows.length, segments: PM.segments };
+  return { cover, front, body, questions, back: backPart, every, sheet, tocRows: rows.length, segments: PM.segments };
 }
 
 /**

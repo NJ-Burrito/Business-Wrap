@@ -28,9 +28,9 @@ Test: `node tests/run.mjs doctypes-0180`.
 | `since` | optional, `0.18.0` |
 | `name`, `description`, `placeholder` | `{ar, en}`; at most 90 / 240 / 60 characters. `placeholder` is the title part after the colon: `control.title` ends with `: <placeholder>` |
 | `palette` | `navy`, `forest`, `gold`, `slate`, `rust` (decisions.md D2: requirements=navy, testing=forest, delivery=gold, governance=slate, training=rust, start=navy) |
-| `coverDesign` | the page-1 family (work/sdlc/design/0190-types.md §1): `spine` (title page with the control block), `compact` (title block on page 1, no cover page), and, from R2, `report`, `form`, `sheet` (until R2 lands they print as `spine`, `compact`, `compact`) |
+| `coverDesign` | the page-1 family (work/sdlc/design/0190-types.md §1): `spine` (title page with the control block), `compact` (title block on page 1, no cover page), `report` (a decision paper: band, key-figure tiles, decision box, control block), `form` (a header on page 1: ID box or badge, field grid, statement, then chapter 1 on the same page), `sheet` (landscape: fields in one row, a summary strip of tiles, then the sheet). The eight family types of §1 print in their family even while type.json still says `spine` or `compact` (`TYPE_FAMILY` in engine/doctypes.mjs; check.mjs warns until type.json names it) |
 | `motif` | optional and **ignored** since 0.19.0: page 1 carries no motif and no art, in HTML, PDF or Word (an old file's `motif` only names its type). When kept it equals the id |
-| `layout` | optional: `hide` (`cover control revisions toc questions`), `front`, `back` (`control revisions`, never also in `hide`; R2 prints them after the last chapter), `tocDepth` (`1` lists chapters only, `2` default), `page {size, orientation}` |
+| `layout` | optional: `hide` (`cover control revisions toc questions`), `front`, `back` (`control revisions`, never also in `hide`; printed after the last chapter under «Document control» / «ضبط الوثيقة», approvals with control; a `form` or `sheet` defaults to both and prints no contents list), `tocDepth` (`1` lists chapters only, `2` default), `page {size, orientation}` |
 | `source` | optional: `samples/<folder>`; the content is read from `<source>/document.<ed>.json` (used by `srs` = `samples/blank`, one copy only) |
 | `empty` | optional boolean (0.19.0): the starter prints nothing, one empty page (the Blank document). The content rules below are replaced by the **empty type** rules; see the section after `en.json / ar.json` |
 
@@ -44,10 +44,19 @@ A complete document JSON in the shape of `samples/blank/document.*.json`.
   at most one `id: true`), `figures` (at most 6 `{label, value, kind}`, kind `none|ok|warn|bad|idle`), `badge {label, value}`, `statement {text, items (at most 5), choices (at most 4)}`.
   The eight control fields of the title page (Document ID, Version, Status, Issue date, Owner, Prepared by, Approved by, Classification) come from `control` and are never copied into
   `cover`; `control.approvedBy` is optional (absent, its box prints empty). Every printed value edits in place (`/cover/fields/<i>/value`). The `spine` page prints `fields` under the control
-  block (2 or 3 columns); R2 prints `figures`, `badge` and `statement` for the report, form and sheet families.
+  block (2 or 3 columns). What each family prints (a key it does not print is a check.mjs warning):
+  - `form`: the field with `id: true` as the ID box at the end of the title row (none: the document id), `badge` beside it (release notes' version), the other `fields` in `cols`
+    (3 or 4, default 3), the meta line, `figures` as tiles, then `statement` (text, `items` with square markers, `choices` as empty 4 mm boxes and, with choices, an empty seal box).
+  - `sheet`: the meta line, `fields` in one row (`cols` default 6), `figures` as the summary strip (none: counted from the first chapter's `style: sheet` table, total then each
+    status word found), `statement`. Always landscape (compose sets `layout.page` when the type has none).
+  - `report`: the band with code, kicker and white title; `figures` (4 tiles), `statement` (the decision and its `choices`), the control block (ID, version, status, issue date,
+    owner, prepared by), then `fields` (e.g. sponsor) in up to 3 columns.
+  - C9: a status word fills its cell (and a `chip` field) as before; the words Done, Approved, Accepted, Fixed, Added, Critical, Overdue, Rejected, Removed, Security, High,
+    Deferred, Changed, Deprecated, Open (and «منجز، معتمد، مقبول، مصلح، مضاف، حرج، متأخر، مرفوض، محذوف، أمني، عال، مؤجل، معدل، مهمل، مفتوح») fill only in a column headed
+    Status, Result, Severity, Priority, Type, Impact or Decision («الحالة، النتيجة، الخطورة، الأولوية، النوع، الأثر، القرار»; one word of the heading is enough).
 - `approvals` (0.19.0, C7): rows of up to 5 strings in the house columns (Role, Name, Organisation, Date, Signature); in a starter the name, date and signature stay empty. They print on the
   control page in HTML, PDF and Word, 12 mm tall.
-- Tables may carry `style` (`sheet|signoff`), `numCols`, `nowrapCols` (column indexes), `accentCol` (an index); `colWidths` should sum to 100 (a warning). A `shots` block with `images: []`
+- Tables may carry `style` (`sheet`: washed header repeated on every page, zebra rows; `signoff`: rows of 14 mm or `rowHeights`, empty cells stay empty, no zebra), `numCols` (end-aligned figures), `nowrapCols` (column indexes), `accentCol` (an index: a washed, bold column under a filled heading); `colWidths` should sum to 100 (a warning). A `shots` block with `images: []`
   prints a screenshot frame (C12): `ratio` `16:10|4:3|9:16` (default 16:10) and `badge` 1 to 99 (default: its running number); an empty caption reads «Screenshot n» / «لقطة الشاشة n».
 - Forbidden: `design`, `coverDesign`, `docType`, `service`, `motif` (all composed from type.json), signed `approvals` rows (a name, date or signature in a starter),
   any block kind outside `prose subhead table figure diagram stories gap shots`, embedded `data:` images, e-mail addresses, phone or id shapes,
@@ -85,7 +94,7 @@ Language-neutral thumbnail, a portrait page `viewBox="0 0 W H"` (H > W; the ship
 hrefs and `url(#id)`), and `safeSvg()` must leave it unchanged. The start page mirrors it with CSS in right-to-left. The art is the type's identity on the start page only:
 since 0.19.0 nothing of it prints in the document.
 
-Layer contract (0.19.0 §5, S8; a **warning** in the pilot, an error for the 0.19.0 release): every direct child of the root `<svg>` is a `<g>` with exactly one class of
+Layer contract (0.19.0 §5, S8; an **error** for art that carries `bw-a-*` classes (redrawn), a warning for art not redrawn yet; `<title>`, `<desc>`, `<defs>` and `<metadata>` children are no layer): every direct child of the root `<svg>` is a `<g>` with exactly one class of
 `bw-a-page` (exactly one, first), `bw-a-sheet`, `bw-a-head` (exactly one), `bw-a-row`, `bw-a-node`, `bw-a-arrow`, `bw-a-seal` (at most one), `bw-a-mark` (exactly one, last), in that order;
 no `bw-a-*` group is nested in another. DOM order is the reveal order (the start page animates only these classes).
 

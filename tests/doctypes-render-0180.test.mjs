@@ -47,8 +47,8 @@ for (const t of types) {
     check(`${tag}: compose + render give a page, ${ed === 'ar' ? 'rtl' : 'ltr'}, titled with the document's own title`,
       html.startsWith('<!doctype html>') && html.includes(`<html lang="${ed}" dir="${ed === 'ar' ? 'rtl' : 'ltr'}">`) && plain(html.match(/<title>([\s\S]*?)<\/title>/)?.[1] || '') === plain(doc.control.title) && doc.control.title.length > 2, doc.control.title);
     const covers = html.match(/<div class="cover"[^>]*>/g) || [];
-    const want = DT.COVER_DESIGNS.includes(t.coverDesign) ? t.coverDesign : 'spine';
-    const layoutOf = coverOf(doc)?.design; // report, form and sheet print with the nearest built layout until lane R2 lands
+    const want = DT.familyOf(t); // 0.19.0 R2: type.json's report | form | sheet, else the spec family of the type (DT.TYPE_FAMILY), else its spine | compact
+    const layoutOf = coverOf(doc)?.design; // the page model: report is a title page (spine), form and sheet a header on page 1 (compact); data-family names the drawing
     const coverPart = covers.length ? html.slice(html.indexOf('<div class="cover"'), html.indexOf('<div class="wrap">')) : '';
     check(t.empty ? `${tag}: an empty type draws no cover (layout.hide has cover)` : `${tag}: one cover, data-cover=${layoutOf}, data-type=${t.id}, no motif and no svg`, t.empty ? covers.length === 0 && (doc.layout?.hide || []).includes('cover') : covers.length === 1 && covers[0].includes(`data-cover="${layoutOf}"`) && covers[0].includes(`data-type="${t.id}"`) && !/data-motif|cover-motif|<svg/.test(coverPart), covers.join(' '));
     check(`${tag}: the composed document carries its docType, page-1 family and the palette's primary, and no motif`, doc.docType === t.id && doc.service === t.id && doc.coverDesign === want && !('motif' in doc) && /^#[0-9a-f]{6}$/i.test(doc.design?.vars?.primary || ''), JSON.stringify([doc.docType, doc.service, doc.coverDesign, doc.motif, doc.design?.vars?.primary]));

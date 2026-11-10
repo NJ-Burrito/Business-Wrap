@@ -19,6 +19,21 @@ export const ROLES = ['primary', 'primary-deep', 'primary-50', 'primary-100', 'a
 export const EDITIONS = ['ar', 'en'];
 /** D3 (decisions.md) and the 0.19.0 page-1 families (work/sdlc/design/0190-types.md §1); absent in a document means today's cover. */
 export const COVER_DESIGNS = ['spine', 'compact', 'report', 'form', 'sheet'];
+/**
+ * 0.19.0 R2: the page-1 family of each non-pilot type (work/sdlc/design/0190-types.md §1). A type.json that already names report, form or sheet wins;
+ * one that still says spine or compact (written before the families existed) prints in its spec family, so a type gets its page 1 whether or not its
+ * content lane has updated type.json. `tools/doctypes/check.mjs` warns when type.json and this table differ.
+ */
+export const TYPE_FAMILY = {
+  'business-case': 'report',
+  'defect-report': 'form', 'change-request': 'form', minutes: 'form', 'uat-signoff': 'form', 'release-notes': 'form',
+  rtm: 'sheet', 'test-cases': 'sheet',
+};
+/** The family a type prints with: type.json's report | form | sheet, else TYPE_FAMILY, else type.json's spine | compact, else spine. */
+export function familyOf(t) {
+  if (['report', 'form', 'sheet'].includes(t?.coverDesign)) return t.coverDesign;
+  return TYPE_FAMILY[t?.id] || (COVER_DESIGNS.includes(t?.coverDesign) ? t.coverDesign : 'spine');
+}
 export const ID_RE = /^[a-z][a-z0-9-]*$/;
 /** The block kinds the renderers and the DOCX builder handle (architecture F2); a starter document uses nothing else. */
 export const BLOCK_KINDS = ['prose', 'subhead', 'table', 'figure', 'diagram', 'stories', 'gap', 'shots'];
@@ -112,10 +127,11 @@ export function compose(typeId, ed, o) {
     ...content,
     service: typeId,
     docType: typeId,
-    coverDesign: COVER_DESIGNS.includes(t.coverDesign) ? t.coverDesign : 'spine',
+    coverDesign: familyOf(t),
     design: { ...(content.design || {}), vars: { ...pal, ...(content.design?.vars || {}) } },
   };
   const layout = { ...(t.layout || {}), ...(content.layout || {}) };
+  if (doc.coverDesign === 'sheet' && !layout.page) layout.page = { size: 'A4', orientation: 'landscape' }; // 0.19.0 §1: a sheet is landscape
   if (Object.keys(layout).length) doc.layout = layout; else delete doc.layout;
   return doc;
 }
@@ -135,7 +151,7 @@ export function payload(o) {
     return {
       id: t.id, code: t.code, category: t.category, order: t.order ?? 999,
       name: t.name, description: t.description, placeholder: t.placeholder,
-      coverDesign: COVER_DESIGNS.includes(t.coverDesign) ? t.coverDesign : 'spine',
+      coverDesign: familyOf(t),
       palette: t.palette, accent: pals[t.palette].primary, art: full.art, docs,
     };
   });

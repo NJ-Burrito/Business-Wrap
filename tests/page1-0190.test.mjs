@@ -9,8 +9,10 @@
 //   5. killed mutants, so the detector bites: an injected motif fails rule 1; tests/fixtures/page1-0190/motif.en.pdf (page 1 of srs.en from 0.18,
 //      320 curves) fails rule 2; tests/fixtures/page1-0190/picture.docx (one picture in section 1) fails rule 3, and passes once named logo-*
 // Old files: a 0.18 document (coverDesign + motif) exports with no art on page 1 too. Exports run in BW_EXPORT_JOBS (default 3) worker processes of
-// this file, each with its own Chrome (tagged bw-1109, closed by the worker). BW_PAGE1_PNG=<dir> also saves page 1 of srs, test-plan and user-manual
-// (en, ar) as PNG there for a person to look at.
+// this file, each with its own Chrome (tagged bw-1109, closed by the worker). BW_PAGE1_PNG=<dir> also saves page 1 of PNG_TYPES (the pilot, minutes,
+// test-cases and business-case, and those three with the spec keys) (en, ar) as PNG there for a person to look at.
+// 0.19.0 R2: the report, form and sheet families too: every composed type, and five types with the spec §4 `cover` keys injected (keys-<type>.<ed>,
+// tests/fixtures/families-0190/cover-keys.json) so the tiles, statement boxes, ID box and badge are held to the same rules.
 //   node tests/run.mjs page1-0190
 import './_isolate.mjs';
 import fs from 'node:fs';
@@ -29,12 +31,19 @@ const SELF = fileURLToPath(import.meta.url);
 const REPO = path.resolve(path.dirname(SELF), '..');
 const FIX = path.join(REPO, 'tests', 'fixtures', 'page1-0190');
 const theme = loadTheme();
+/** 0.19.0 R2: the spec §4 page-1 keys (cover) of the family types, injected before the content lanes land (tests/fixtures/families-0190). */
+const KEYS = JSON.parse(fs.readFileSync(path.join(REPO, 'tests', 'fixtures', 'families-0190', 'cover-keys.json'), 'utf8'));
+/** One keyed type per family and the two form variants with a statement or a badge. */
+const KEYED = ['minutes', 'uat-signoff', 'release-notes', 'test-cases', 'business-case'];
+/** The page-1 PNGs BW_PAGE1_PNG saves: the pilot and one type per R2 family, as composed and with the spec keys. */
+const PNG_TYPES = ['srs', 'test-plan', 'user-manual', 'minutes', 'test-cases', 'business-case', 'keys-minutes', 'keys-test-cases', 'keys-business-case'];
 
 /** The documents this suite exports: every type x edition, plus two 0.18 files that still carry `motif` (a spine and a compact one). */
 function docOf(id) {
   const [base, ed] = id.split('.');
   if (base === 'old-srs') return { ...DT.compose('srs', ed), motif: 'srs' };
   if (base === 'old-minutes') return { ...DT.compose('minutes', ed), motif: 'minutes' };
+  if (base.startsWith('keys-')) { const t = base.slice(5); return { ...DT.compose(t, ed), cover: KEYS[t][ed] }; } // 0.19.0 R2: the family's full page 1 (spec §4 keys)
   return DT.compose(base, ed);
 }
 
@@ -121,7 +130,8 @@ import sys, json
 import pymupdf
 out = {}
 png = sys.argv[1]
-for f in sys.argv[2:]:
+PNG_TYPES = json.loads(sys.argv[2])
+for f in sys.argv[3:]:
     d = pymupdf.open(f)
     p = d[0]
     curves = diag = 0
@@ -137,13 +147,13 @@ for f in sys.argv[2:]:
     if png != '-':
         import os
         base = os.path.basename(f)[:-4]
-        if base.split('.')[0] in ('srs', 'test-plan', 'user-manual'):
+        if base.split('.')[0] in PNG_TYPES:
             p.get_pixmap(dpi=110).save(os.path.join(png, base + '.page1.png'))
 print(json.dumps(out))
 `;
 /** Rules 2 and 4 for many PDFs in one Python run: {file: {pages, images, curves, diag, text}}. */
 function pdfPage1(files, pngDir = '-') {
-  const [cmd, args] = py(['-c', PDF_PY, pngDir, ...files], ['pymupdf']);
+  const [cmd, args] = py(['-c', PDF_PY, pngDir, JSON.stringify(PNG_TYPES), ...files], ['pymupdf']);
   const r = spawnSync(cmd, args, { encoding: 'utf8', maxBuffer: 64 << 20, env: { ...process.env, PYTHONUTF8: '1' } });
   try { return JSON.parse(r.stdout); } catch { throw new Error(`pymupdf run failed: ${(r.stderr || '').slice(0, 300)}`); }
 }
@@ -159,7 +169,7 @@ process.on('exit', killAll);
 try {
   const types = DT.listTypes();
   check(`the registry lists 17 types (${types.length})`, types.length === 17);
-  const ids = [...types.flatMap((t) => DT.EDITIONS.map((ed) => `${t.id}.${ed}`)), 'old-srs.en', 'old-srs.ar', 'old-minutes.en'];
+  const ids = [...types.flatMap((t) => DT.EDITIONS.map((ed) => `${t.id}.${ed}`)), 'old-srs.en', 'old-srs.ar', 'old-minutes.en', ...KEYED.flatMap((t) => DT.EDITIONS.map((ed) => `keys-${t}.${ed}`))];
 
   // ── 1. HTML ──
   check('render.mjs no longer exports a motif drawing (coverMotifSvg, coverMotifShapes, MOTIF_ROLES gone)', !('coverMotifSvg' in R) && !('coverMotifShapes' in R) && !('MOTIF_ROLES' in R));
@@ -167,6 +177,7 @@ try {
   const htmlOf = (doc, ed) => R.renderDocument(doc, { locale: ed, labels: i18n().doc[ed], theme, fontCss: '', logos: theme.logos });
   const htmlBad = [];
   const spineBad = [];
+  const famBad = [];
   for (const id of ids) {
     const ed = id.split('.')[1];
     const doc = docOf(id);
@@ -174,13 +185,20 @@ try {
     const why = htmlArt(h);
     if (why.length) htmlBad.push(`${id}: ${why.join(', ')}`);
     const cv = R.coverOf(doc);
-    if (cv?.design === 'spine' && !(doc.layout?.hide || []).includes('cover')) {
+    // 0.19.0 R2: each family's page-1 head is there (report: band, control block; form: band, ID box or badge; sheet: band), with no art
+    if (cv && ['report', 'form', 'sheet'].includes(cv.family)) {
+      const cov = h.slice(h.indexOf('data-part="cover"'), h.indexOf('<div class="wrap">'));
+      const ok = cv.family === 'report' ? cov.includes('class="rp-band"') && cov.includes('class="bw-fields fg-control"') : cov.includes('class="tb-band"') && (cv.family === 'sheet' || /class="bw-(idbox|badge)"/.test(cov));
+      if (!ok || !cov.includes(`data-family="${cv.family}"`)) famBad.push(id);
+    }
+    if (cv?.family === 'spine' && !(doc.layout?.hide || []).includes('cover')) {
       const code = R.COVER_CODES[cv.type];
       if (!(h.includes('class="bw-fields fg-control"') && (h.match(/class="fg[ "]/g) || []).length >= 8 && (!code || h.includes(`<div class="type-code"><bdi dir="ltr">${code}</bdi>`)) && h.includes(`data-p="/control/documentId"`))) spineBad.push(id);
     }
   }
   check(`HTML: no svg, .cover-motif, data-motif or non-logo image in the cover part of ${ids.length} documents (17 types x ar/en + 3 old files)`, !htmlBad.length, htmlBad);
   check('HTML: every spine title page carries the control block (8 fields, C3), the type code (C2) and the editable document id', !spineBad.length, spineBad);
+  check(`HTML: the report, form and sheet page 1 carry their head (report: band and control block; form: ID box or badge; sheet: the band), composed and with the spec keys (${ids.filter((id) => ['report', 'form', 'sheet'].includes(R.coverOf(docOf(id))?.family)).length} documents)`, !famBad.length, famBad);
   check('C2: the code chip follows type.json code (defect report is DEF)', types.every((t) => t.id === 'blank' || R.COVER_CODES[t.id] === t.code), types.filter((t) => t.id !== 'blank' && R.COVER_CODES[t.id] !== t.code).map((t) => t.id));
   // mutant: a motif injected into a clean cover is caught
   const clean = htmlOf(docOf('srs.en'), 'en');
@@ -237,7 +255,7 @@ try {
   check(`PDF page 1: no image, no curve, no diagonal in ${ids.length} documents`, !pdfBad.length, pdfBad);
   check('PDF page 1 holds the document id, version and issue date (Latin tokens, every non-empty document)', !tokBad.length, tokBad);
   check(`DOCX section 1 (body, header, footer): no picture but a logo-* one in ${ids.length} documents`, !docxBad.length, docxBad);
-  if (pngDir !== '-') check(`page-1 PNGs of srs, test-plan and user-manual (en, ar) saved to ${pngDir}`, ['srs', 'test-plan', 'user-manual'].every((t) => ['en', 'ar'].every((ed) => fs.existsSync(path.join(pngDir, `${t}.${ed}.page1.png`)))));
+  if (pngDir !== '-') check(`page-1 PNGs of ${PNG_TYPES.join(', ')} (en, ar) saved to ${pngDir}`, PNG_TYPES.every((t) => ['en', 'ar'].every((ed) => fs.existsSync(path.join(pngDir, `${t}.${ed}.page1.png`)))));
 
   // ── 5. mutants: the 0.18 page 1 and a DOCX with a picture in section 1 must fail ──
   const m = P[path.join(FIX, 'motif.en.pdf')];
