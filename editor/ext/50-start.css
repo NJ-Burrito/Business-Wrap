@@ -162,6 +162,12 @@ dialog.bw-start ::selection { background: var(--bw-marker); color: var(--bw-on-m
   .bw-start :is(.st-chip, .st-keep)[aria-checked="true"], .bw-start .st-keep[aria-pressed="true"] { border: 2px solid Highlight; }
 }
 
+/* 0.18.2: the top bar's Home keeps one box in Arabic and English (the layout never flips: every control after it stays put when the UI language switches).
+   The label is centred in a fixed width in em, just wider than the longer word («الرئيسية», 3.18 em in Thmanyah Sans), so the bar is no wider than it was in Arabic and the label follows the bar's font size at 1024 / 1366 / 1920 px. */
+.island > .b.home { flex: none; }
+@media (max-width: 1520px) { .island > .b.home { padding-inline: 5px; gap: 4px; } } /* 6 px tighter than the other buttons: at 1024 px the English bar (the longest) fits on one row with Home at the Arabic width */
+.island > .b.home .w { inline-size: 3.25em; text-align: center; white-space: nowrap; }
+
 /* the File tool's own hover move (the 0.13 rule: every icon an extension adds moves; 40-icon-motion.css reads --icm) */
 [data-ic="startPage"] > :nth-child(3) { --s: 1.3; --icm: icm-pop var(--mvt); }
 [data-ic="startPage"] > :nth-child(2) { --x: 0px; --y: -1.2px; --icm: icm-nudge var(--mvt); }
