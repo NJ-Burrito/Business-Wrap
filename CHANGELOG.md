@@ -8,6 +8,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.19.0] - 2026-11-10
+
+📚 Every document type redesigned for its own job, a side panel on the start page, the host switch there too, and a truly empty Blank page. / 📚 كل نوع من الوثائق أعيد تصميمه لعمله، ولوحة جانبية في صفحة البداية، ومفتاح الخادم فيها أيضا، وصفحة فارغة حقا.
+
+### Added / أضيف
+- 🗂️ **Side panel on the start page**: click a type to read what it is for, when to use it, its sections and who uses it, then press Create. Its small picture plays a short move of its own (pages fan, rows fill, arrows draw); Calm shows it still. / **لوحة جانبية في صفحة البداية**: انقر نوعا لتقرأ ما الغرض منه ومتى يستخدم وأقسامه ومن يستخدمه، ثم اضغط «إنشاء». وتتحرك صورته الصغيرة حركة قصيرة خاصة بها (صفحات تنفتح، صفوف تمتلئ، أسهم ترسم)؛ و«هادئ» يعرضها ثابتة.
+- 🔌 **The local host switch on the start page**: the same switch and state as the top bar; turning it on or off keeps you on the start page. / **مفتاح الخادم المحلي في صفحة البداية**: المفتاح نفسه وحالته كما في الشريط العلوي؛ وتشغيله أو إيقافه يبقيك في صفحة البداية.
+
+### Changed / تغير
+- 📄 **Each type now looks like its own kind of document**, built on the practice professionals use (requirements specification, test documentation, business analysis, change and release records): a formal title page with document control for specifications, plans, guides and terms of reference; a form header for defect reports, change requests, minutes, UAT sign-off and release notes; a landscape sheet for test cases and the traceability matrix; a decision report for the business case. / **كل نوع يبدو الآن كوثيقة من صنفه**، مبنيا على ما يعمل به المحترفون (مواصفات المتطلبات، ووثائق الاختبار، وتحليل الأعمال، وسجلات التغيير والإصدار): صفحة عنوان رسمية مع ضبط الوثيقة للمواصفات والخطط والأدلة والشروط المرجعية؛ ورأس نموذج لتقارير العيوب وطلبات التغيير والمحاضر ومحضر القبول وملاحظات الإصدار؛ وجدول أفقي لحالات الاختبار ومصفوفة التتبع؛ وتقرير قرار لدراسة الجدوى.
+- 🖼️ **The first page never carries the start-page picture**: the drawing stays on the start page; the opened document starts with its real first page, in PDF and Word. / **الصفحة الأولى لا تحمل صورة صفحة البداية أبدا**: يبقى الرسم في صفحة البداية، وتبدأ الوثيقة المفتوحة بصفحتها الأولى الحقيقية، في PDF وWord.
+- ⬜ **Blank is one empty page**: no cover, headings or sample text; type straight away. / **المستند الفارغ صفحة واحدة فارغة**: بلا غلاف ولا عناوين ولا نص مثال؛ ابدأ الكتابة مباشرة.
+- ✍️ Approval tables keep all five columns in Word, revision history shows all four, and long dates and IDs no longer spill out of their cells. / جداول الاعتماد تحتفظ بأعمدتها الخمسة في Word، وسجل المراجعات يعرض أعمدته الأربعة، والتواريخ والرموز الطويلة لم تعد تخرج من خلاياها.
+
 ## [0.18.4] - 2026-11-10
 
 🛠️ A fix release: selecting something no longer makes the top bar jump. / 🛠️ إصدار إصلاحات: التحديد لم يعد يحرك الشريط العلوي.
