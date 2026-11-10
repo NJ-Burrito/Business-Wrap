@@ -17,11 +17,14 @@
     "en": "Module name"
   },
   "palette": "forest",
-  "coverDesign": "compact",
-  "motif": "test-cases",
+  "coverDesign": "sheet",
   "layout": {
     "hide": [
       "toc"
+    ],
+    "back": [
+      "control",
+      "revisions"
     ],
     "page": {
       "size": "A4",

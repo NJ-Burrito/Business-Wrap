@@ -3,10 +3,11 @@
   "control": {
     "documentId": "BW-UAT-NEW-001",
     "title": "UAT sign-off: Project name",
-    "preparedBy": "Name and job title",
+    "preparedBy": "[Name and job title]",
+    "approvedBy": "[Name and job title]",
     "documentType": "UAT sign-off",
     "classification": "Internal",
-    "owner": "Organisation name",
+    "owner": "[Organisation name]",
     "issuedOn": "YYYY-MM-DD",
     "version": "V0.1",
     "status": "Draft",
@@ -22,58 +23,158 @@
   ],
   "labels": {
     "kicker": "UAT SIGN-OFF",
-    "subtitle": "Project and release"
+    "subtitle": "Acceptance decision and sign-off"
+  },
+  "cover": {
+    "cols": 3,
+    "fields": [
+      {
+        "label": "Project",
+        "value": "[Project name]",
+        "kind": "text"
+      },
+      {
+        "label": "System",
+        "value": "[System name]",
+        "kind": "text"
+      },
+      {
+        "label": "Release",
+        "value": "1.0.0",
+        "kind": "text"
+      },
+      {
+        "label": "UAT window",
+        "value": "YYYY-MM-DD to YYYY-MM-DD",
+        "kind": "text"
+      },
+      {
+        "label": "Environment",
+        "value": "[Environment name]",
+        "kind": "text"
+      },
+      {
+        "label": "Business owner",
+        "value": "[Name]",
+        "kind": "text"
+      }
+    ],
+    "statement": {
+      "text": "We, the undersigned, confirm that user acceptance testing of [System] release [Release] was carried out between [date] and [date] against the agreed acceptance criteria, and record the decision below.",
+      "choices": [
+        "Accepted",
+        "Accepted with conditions",
+        "Not accepted"
+      ]
+    }
   },
   "chapters": [
     {
-      "title": "Purpose and scope",
+      "title": "Decision and sign-off",
       "sections": [
         {
-          "title": "Purpose and scope",
+          "title": "Decision and sign-off",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "What was tried in this cycle, what was not, and on which release."
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "title": "Participants",
-      "sections": [
-        {
-          "title": "Participants",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "Everyone who took part in acceptance, from the beneficiary and the supplier."
+                "Tick one decision in the box above. Each representative signs in their own row."
               ]
             },
             {
               "kind": "table",
               "columns": [
+                "Role",
                 "Name",
                 "Organisation",
-                "Role",
-                "Responsibility"
+                "Signature",
+                "Date"
               ],
               "rows": [
                 [
-                  "…",
-                  "…",
-                  "…",
-                  "…"
+                  "Business owner",
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
                 ],
                 [
-                  "…",
-                  "…",
-                  "…",
-                  "…"
+                  "Project manager",
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ],
+                [
+                  "Test lead",
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
+                ],
+                [
+                  "Supplier representative",
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
                 ]
+              ],
+              "style": "signoff",
+              "colWidths": [
+                22,
+                26,
+                18,
+                20,
+                14
               ]
             }
           ]
@@ -81,35 +182,17 @@
       ]
     },
     {
-      "title": "Environment and entry conditions",
+      "title": "Scope tested",
       "sections": [
         {
-          "title": "Environment and entry conditions",
+          "title": "Scope tested",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "The environment and data used, and which earlier testing was completed before acceptance began."
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Condition",
-                "Met",
-                "Evidence"
-              ],
-              "rows": [
-                [
-                  "System testing completed",
-                  "…",
-                  "…"
-                ],
-                [
-                  "Acceptance environment ready",
-                  "…",
-                  "…"
-                ]
+                "In scope: [the features, processes and user groups covered by this cycle].",
+                "Out of scope: [what was not tested, and why]. Anything not listed as in scope is not accepted.",
+                "Acceptance criteria: [the criteria agreed before the cycle, for example no open critical or high defects and every priority scenario passed]."
               ]
             }
           ]
@@ -117,15 +200,15 @@
       ]
     },
     {
-      "title": "Acceptance scenarios and results",
+      "title": "Results",
       "sections": [
         {
-          "title": "Acceptance scenarios and results",
+          "title": "Results",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "For each real business scenario a result: pass or fail, who ran it and when."
+                "One row for each scenario that the business users ran."
               ]
             },
             {
@@ -137,45 +220,41 @@
                 "Result",
                 "Tester",
                 "Date",
-                "Comments"
+                "Note"
               ],
               "rows": [
                 [
                   "UAT-001",
-                  "…",
-                  "…",
-                  "…",
+                  "[Business scenario]",
+                  "FR-01",
+                  "Not run",
                   "…",
                   "YYYY-MM-DD",
                   "…"
                 ],
                 [
                   "UAT-002",
-                  "…",
-                  "…",
-                  "…",
-                  "…",
-                  "YYYY-MM-DD",
-                  "…"
-                ],
-                [
-                  "UAT-003",
-                  "…",
-                  "…",
-                  "…",
+                  "[Business scenario]",
+                  "FR-02",
+                  "Not run",
                   "…",
                   "YYYY-MM-DD",
                   "…"
                 ]
               ],
+              "style": "sheet",
               "colWidths": [
-                13,
-                13,
+                8,
+                28,
                 14,
                 10,
-                9,
-                19,
-                22
+                14,
+                12,
+                14
+              ],
+              "nowrapCols": [
+                0,
+                5
               ]
             }
           ]
@@ -183,17 +262,11 @@
       ]
     },
     {
-      "title": "Open defects and issues",
+      "title": "Open defects and residual risks",
       "sections": [
         {
-          "title": "Open defects and issues",
+          "title": "Open defects",
           "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "Everything still open at sign-off, with its severity and what was agreed about it."
-              ]
-            },
             {
               "kind": "table",
               "columns": [
@@ -202,7 +275,7 @@
                 "Severity",
                 "Status",
                 "Agreed action",
-                "Target date"
+                "Due"
               ],
               "rows": [
                 [
@@ -223,39 +296,34 @@
                 ]
               ],
               "colWidths": [
-                13,
-                24,
-                11,
-                11,
+                10,
+                34,
+                12,
+                12,
                 22,
-                19
+                10
+              ],
+              "nowrapCols": [
+                0,
+                5
               ]
             }
           ]
-        }
-      ]
-    },
-    {
-      "title": "Acceptance criteria",
-      "sections": [
+        },
         {
-          "title": "Acceptance criteria",
+          "title": "Residual risks",
           "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "The criteria agreed before starting and whether each was met. Example: \"No open critical or high defects, and every priority-one scenario passed.\""
-              ]
-            },
             {
               "kind": "table",
               "columns": [
-                "Criterion",
-                "Met",
-                "Evidence"
+                "Risk",
+                "Impact",
+                "Mitigation",
+                "Owner"
               ],
               "rows": [
                 [
+                  "…",
                   "…",
                   "…",
                   "…"
@@ -263,155 +331,15 @@
                 [
                   "…",
                   "…",
+                  "…",
                   "…"
                 ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "title": "Decision and sign-off",
-      "sections": [
-        {
-          "title": "Decision and sign-off",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "Choose one decision: accepted, accepted with conditions or rejected. Then each representative signs in their own row."
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Decision",
-                "Choice"
               ],
-              "rows": [
-                [
-                  "Accepted",
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  }
-                ],
-                [
-                  "Accepted with conditions",
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  }
-                ],
-                [
-                  "Rejected",
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  }
-                ]
-              ]
-            },
-            {
-              "kind": "subhead",
-              "text": "Signatures"
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Name",
-                "Organisation",
-                "Job title",
-                "Decision",
-                "Signature",
-                "Date"
-              ],
-              "rows": [
-                [
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  }
-                ],
-                [
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  }
-                ],
-                [
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  }
-                ]
-              ],
-              "blankCell": "",
-              "rowHeights": [
-                20,
-                20,
-                20
+              "colWidths": [
+                40,
+                14,
+                30,
+                16
               ]
             }
           ]
@@ -427,36 +355,44 @@
             {
               "kind": "prose",
               "paragraphs": [
-                "If the decision is acceptance with conditions, list each condition, its date and who clears it."
+                "Fill this in only when the decision is Accepted with conditions. Each condition has an owner and a due date."
               ]
             },
             {
               "kind": "table",
               "columns": [
+                "No",
                 "Condition",
                 "Owner",
-                "Due date",
+                "Due",
                 "Status"
               ],
               "rows": [
                 [
+                  "1",
                   "…",
                   "…",
                   "YYYY-MM-DD",
-                  "…"
+                  "Open"
                 ],
                 [
+                  "2",
                   "…",
                   "…",
                   "YYYY-MM-DD",
-                  "…"
+                  "Open"
                 ]
               ],
               "colWidths": [
-                40,
-                20,
-                25,
-                15
+                6,
+                44,
+                18,
+                14,
+                18
+              ],
+              "nowrapCols": [
+                0,
+                3
               ]
             }
           ]

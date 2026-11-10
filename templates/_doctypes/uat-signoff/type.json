@@ -17,6 +17,14 @@
     "en": "Project name"
   },
   "palette": "gold",
-  "coverDesign": "spine",
-  "motif": "uat-signoff"
+  "coverDesign": "form",
+  "layout": {
+    "hide": [
+      "toc"
+    ],
+    "back": [
+      "control",
+      "revisions"
+    ]
+  }
 }
