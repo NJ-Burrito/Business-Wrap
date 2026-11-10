@@ -92,7 +92,8 @@ try {
         await page.locator(`${D} [data-st-a="create"]`).click();
         await waitClosed(page);
         await page.waitForFunction((id) => window.BW.EXT.library.isDoc(window.BW.S.svc) && window.BW.M[window.BW.S.svc][window.BW.S.ed]?.doc?.docType === id, t.id, { timeout: 15000 });
-        await page.waitForSelector('#bw-pair main.bw-doc .cover[data-cover]', { timeout: 10000 });
+        const noCover = (DT.compose(t.id, want).layout?.hide || []).includes('cover'); // 0.19.0: the Blank document hides its cover (one empty page: tests/blank-empty-0190)
+        await page.waitForSelector(noCover ? '#bw-pair main.bw-doc section.chapter' : '#bw-pair main.bw-doc .cover[data-cover]', { timeout: 10000 });
         const r = await read(page);
         const problems = [];
         if (!r.isDoc) problems.push('not a library document');
@@ -105,8 +106,12 @@ try {
           if (JSON.stringify(p.chapters) !== JSON.stringify(src.chapters.map((c) => c.title))) problems.push(`${ed}: chapters differ from the registry`);
           if (p.title !== src.control.title) problems.push(`${ed}: title «${p.title}»`);
         }
-        if (r.coverEl !== (t.coverDesign || 'spine') || r.motifEl !== (t.motif || t.id)) problems.push(`page cover ${r.coverEl}/${r.motifEl}`);
-        if (!r.h1 || /undefined|NaN|\[object/.test(r.h1) || r.headings < 1) problems.push(`h1 «${r.h1}», ${r.headings} headings`);
+        if (noCover) {
+          if (r.coverEl !== null || r.h1 !== '' || r.headings !== 0) problems.push(`an empty page shows cover ${r.coverEl}, h1 «${r.h1}», ${r.headings} headings`);
+        } else {
+          if (r.coverEl !== (t.coverDesign || 'spine') || r.motifEl !== (t.motif || t.id)) problems.push(`page cover ${r.coverEl}/${r.motifEl}`);
+          if (!r.h1 || /undefined|NaN|\[object/.test(r.h1) || r.headings < 1) problems.push(`h1 «${r.h1}», ${r.headings} headings`);
+        }
         if (problems.length) bad.push(`${t.id}(${want}): ${problems.join('; ')}`);
       } catch (e) { bad.push(`${t.id}(${want}): ${String(e.message).split('\n')[0]}`); }
     }

@@ -1881,7 +1881,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
       const cp = `/chapters/${ci}`;
       const hasFigure = ch.sections.some((sec) => sec.blocks.some((x) => x.kind === 'figure' || x.kind === 'diagram'));
       const single = ch.sections.length === 1;
-      const h2 = `<h2><span class="num"${dp(cp + '/number')}>${bidi(NUM.ch[ci])}</span><span${dp(cp + '/title')}>${bidi(ch.title)}</span></h2>`;
+      const h2 = ch.bare === true ? '' : `<h2><span class="num"${dp(cp + '/number')}>${bidi(NUM.ch[ci])}</span><span${dp(cp + '/title')}>${bidi(ch.title)}</span></h2>`; // 0.19.0: a `bare` chapter (the Blank document's one empty page) prints no heading
       const first = ch.sections[0];
       const opensLong = !!first?.blocks[0] && !['figure', 'diagram', 'stories', 'shots'].includes(first.blocks[0].kind);
       // page segments (A18 / A6): a container takes the segment of its first block; figure chapters keep their sheet

@@ -4,14 +4,15 @@
   "category": "start",
   "order": 10,
   "since": "0.18.0",
+  "empty": true,
   "name": { "ar": "وثيقة فارغة", "en": "Blank document" },
   "description": {
-    "ar": "وثيقة نظيفة: ترويسة بالعنوان وجدول ضبط وفصل واحد فارغ، تبدأ منها حين لا يناسبك نوع آخر.",
-    "en": "A clean document: a title block, a control table and one empty chapter, for work no other type fits."
+    "ar": "صفحة واحدة فارغة بنسق Business-Wrap، بلا غلاف ولا عناوين ولا نص جاهز: اكتب مباشرة.",
+    "en": "One empty page in the Business-Wrap theme: no cover, no headings, no sample text. Just start typing."
   },
-  "placeholder": { "ar": "عنوان الوثيقة", "en": "Document title" },
+  "placeholder": { "ar": "وثيقة فارغة", "en": "Blank document" },
   "palette": "navy",
   "coverDesign": "compact",
   "motif": "blank",
-  "layout": { "hide": ["revisions", "toc"] }
+  "layout": { "hide": ["cover", "control", "revisions", "toc", "questions"] }
 }

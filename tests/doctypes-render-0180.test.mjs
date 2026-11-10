@@ -2,6 +2,7 @@
 //   per type and edition (the type list is read from the registry, never typed here):
 //   1. compose + renderDocument return a full page: lang/dir right (ar = rtl, en = ltr), the document's own title in <title>
 //   2. exactly one `.cover` carrying data-cover = the type's coverDesign and data-motif = its motif (= the id), and the type's palette on the document
+//      (0.19.0: an `empty` type, the Blank document, hides its cover: none is drawn, its one skeleton chapter is `bare`, and tests/blank-empty-0190 holds the rest)
 //   3. every chapter heading of the model is in the markup (data-p="/chapters/N/title", the text equal)
 //   4. no "undefined" / "NaN" / "[object" anywhere in the markup (data attributes, text, CSS)
 //   5. no empty table: every table block has columns, every <table> in the markup has at least one cell; every table block is drawn
@@ -46,11 +47,12 @@ for (const t of types) {
       html.startsWith('<!doctype html>') && html.includes(`<html lang="${ed}" dir="${ed === 'ar' ? 'rtl' : 'ltr'}">`) && plain(html.match(/<title>([\s\S]*?)<\/title>/)?.[1] || '') === plain(doc.control.title) && doc.control.title.length > 2, doc.control.title);
     const covers = html.match(/<div class="cover"[^>]*>/g) || [];
     const want = DT.COVER_DESIGNS.includes(t.coverDesign) ? t.coverDesign : 'spine';
-    check(`${tag}: one cover, data-cover=${want}, data-motif=${t.motif || t.id}`, covers.length === 1 && covers[0].includes(`data-cover="${want}"`) && covers[0].includes(`data-motif="${t.motif || t.id}"`) && (t.motif || t.id) === t.id, covers.join(' '));
+    check(t.empty ? `${tag}: an empty type draws no cover (layout.hide has cover)` : `${tag}: one cover, data-cover=${want}, data-motif=${t.motif || t.id}`, t.empty ? covers.length === 0 && (doc.layout?.hide || []).includes('cover') : covers.length === 1 && covers[0].includes(`data-cover="${want}"`) && covers[0].includes(`data-motif="${t.motif || t.id}"`) && (t.motif || t.id) === t.id, covers.join(' '));
     check(`${tag}: the composed document carries its docType, cover design, motif and the palette's primary`, doc.docType === t.id && doc.service === t.id && doc.coverDesign === want && doc.motif === (t.motif || t.id) && /^#[0-9a-f]{6}$/i.test(doc.design?.vars?.primary || ''), JSON.stringify([doc.docType, doc.service, doc.coverDesign, doc.motif, doc.design?.vars?.primary]));
     const heads = new Map([...html.matchAll(/<span data-p="\/chapters\/(\d+)\/title">([\s\S]*?)<\/span>/g)].map((m) => [+m[1], plain(m[2])]));
-    const missing = doc.chapters.map((c, i) => [i, c.title]).filter(([i, ti]) => !ti || heads.get(i) !== plain(ti));
-    check(`${tag}: all ${doc.chapters.length} chapter headings are in the markup`, doc.chapters.length >= 1 && missing.length === 0, JSON.stringify(missing.slice(0, 3)));
+    const bare = (c) => t.empty && c.bare === true; // 0.19.0: the Blank document's skeleton chapter prints no heading (and has none)
+    const missing = doc.chapters.map((c, i) => [i, c.title]).filter(([i, ti]) => !bare(doc.chapters[i]) && (!ti || heads.get(i) !== plain(ti)));
+    check(`${tag}: all ${doc.chapters.filter((c) => !bare(c)).length} chapter headings are in the markup${t.empty ? ' (the bare skeleton chapter prints none)' : ''}`, doc.chapters.length >= 1 && missing.length === 0 && (!t.empty || heads.size === 0), JSON.stringify(missing.slice(0, 3)));
     const bad = html.match(/.{0,40}(undefined|NaN|\[object).{0,40}/g) || [];
     check(`${tag}: no "undefined", "NaN" or "[object" in the markup`, bad.length === 0, bad.slice(0, 2).join(' | '));
     const tables = blocksOf(doc).filter(({ b }) => b.kind === 'table');
@@ -59,8 +61,8 @@ for (const t of types) {
     const empty = (html.match(/<table[\s\S]*?<\/table>/g) || []).filter((x) => !/<t[dh][\s>]/.test(x));
     const drawn = (html.match(/<table[^>]*data-b="\/chapters\/\d+\/sections\/\d+\/blocks\/\d+"/g) || []).length;
     check(`${tag}: ${tables.length} table blocks, each with a header row, each drawn, none empty`, noHead.length === 0 && empty.length === 0 && drawn >= tables.length, JSON.stringify({ noHead: noHead.length, empty: empty.length, drawn, tables: tables.length }));
-    const titles = doc.chapters.map((c) => c.title).join(' ');
-    check(`${tag}: the chapter headings are in ${ed === 'ar' ? 'Arabic' : 'English'} script`, ed === 'ar' ? ARABIC.test(titles) : !ARABIC.test(titles) && /[A-Za-z]/.test(titles), titles.slice(0, 80));
+    const titles = t.empty ? doc.control.title : doc.chapters.map((c) => c.title).join(' '); // an empty type has no heading: its name (control.title) carries the language
+    check(`${tag}: the ${t.empty ? 'name' : 'chapter headings'} are in ${ed === 'ar' ? 'Arabic' : 'English'} script`, ed === 'ar' ? ARABIC.test(titles) : !ARABIC.test(titles) && /[A-Za-z]/.test(titles), titles.slice(0, 80));
   }
 }
 

@@ -56,6 +56,20 @@ function mutant(mut) {
 }
 const flagged = (name, rx, mut) => { const { r } = mutant(mut); check(`validator refuses: ${name}`, r.errors.some((e) => rx.test(e)), r.errors.join(' || ') || 'no error at all'); };
 const para = (doc) => doc.chapters[0].sections[0].blocks[0];
+/** 0.19.0: the real blank type is an `empty` type (it prints nothing, tests/blank-empty-0190 holds those rules). The CONTENT rules of every other type (a title that ends with the
+ *  placeholder, cover labels, positional numbers, the block kinds) are exercised here on the classic starter shape: one titled chapter, one section, one prose block. */
+const classic = (t, en, ar) => {
+  delete t.empty;
+  t.layout = { hide: ['revisions', 'toc'] };
+  t.placeholder = { ar: 'عنوان الوثيقة', en: 'Document title' };
+  for (const [d, ed] of [[en, 'en'], [ar, 'ar']]) {
+    d.control.title = ed === 'ar' ? 'وثيقة فارغة: عنوان الوثيقة' : 'Blank document: Document title';
+    d.revisions = [['V0.1', 'YYYY-MM-DD', ed === 'ar' ? 'المسودة الأولى' : 'First draft', '—']];
+    d.labels = ed === 'ar' ? { kicker: 'وثيقة فارغة', subtitle: 'العنوان الفرعي' } : { kicker: 'BLANK DOCUMENT', subtitle: 'Subtitle' };
+    d.chapters = [{ number: '1', title: ed === 'ar' ? 'الفصل الأول' : 'Chapter 1', sections: [{ number: '1.1', title: ed === 'ar' ? 'عنوان القسم' : 'Section title', blocks: [{ kind: 'prose', paragraphs: [ed === 'ar' ? 'اكتب هنا.' : 'Write here.'] }] }] }];
+    delete d.chrome;
+  }
+};
 // forbidden shapes are assembled here so this file itself stays clean for security/check.py
 const EMAIL = ['someone', '@', 'mail-host.io'].join('');
 const PHONE = ['07', '79', '000000'].join('');
@@ -169,12 +183,12 @@ check('the file format is untouched: FORMAT 1 and BUILT_KEYS as at 0.17.13, no d
 {
   const { o } = mutant((t, en) => { en.design = { vars: { primary: '#123456' } }; en.layout = { page: { size: 'A4', orientation: 'landscape' } }; });
   const d = DT.compose('blank', 'en', o);
-  check('compose: the content design.vars win over the palette; layout merges type and content (hide kept, page added)', d.design.vars.primary === '#123456' && d.design.vars['primary-deep'] === PAL.navy['primary-deep'] && j(d.layout.hide) === j(['revisions', 'toc']) && d.layout.page.orientation === 'landscape');
+  check('compose: the content design.vars win over the palette; layout merges type and content (hide kept, page added)', d.design.vars.primary === '#123456' && d.design.vars['primary-deep'] === PAL.navy['primary-deep'] && j(d.layout.hide) === j(blank.layout.hide) && d.layout.page.orientation === 'landscape');
 }
 
 // ───────── the validator refuses planted faults (real blank, one change each) ─────────
 check('the real blank type passes the validator with no error and no warning', (() => { const r = CHK.validateType('blank'); return r.errors.length === 0 && r.warnings.length === 0; })());
-flagged('a block kind outside the handled eight', /kind «chart»/, (t, en, ar) => { para(en).kind = 'chart'; para(ar).kind = 'chart'; });
+flagged('a block kind outside the handled eight', /kind «chart»/, (t, en, ar) => { classic(t, en, ar); para(en).kind = 'chart'; para(ar).kind = 'chart'; });
 flagged('an e-mail address', /bw-email/, (t, en) => { para(en).paragraphs = [`Write to ${EMAIL} please`]; });
 flagged('a phone number', /bw-jo-phone/, (t, en) => { para(en).paragraphs = [`Call ${PHONE}`]; });
 flagged('a local user path', /bw-local-path/, (t, en) => { para(en).paragraphs = [WINPATH]; });
@@ -186,9 +200,9 @@ flagged('a non-empty approvals list', /approvals/, (t, en) => { en.approvals = [
 flagged('an unknown top-level key', /unknown top-level key «extra»/, (t, en) => { en.extra = 1; });
 flagged('a missing control key', /control\.status/, (t, en) => { delete en.control.status; });
 flagged('a wrong document id', /documentId must be BW-DOC-NEW-001/, (t, en) => { en.control.documentId = 'BW-XYZ-NEW-001'; });
-flagged('a title that does not end with the placeholder', /control\.title must end with/, (t, en) => { en.control.title = 'Blank document: Something else'; });
-flagged('missing cover labels', /labels\.kicker/, (t, en) => { delete en.labels; });
-flagged('a chapter number that is not positional', /numbers are positional/, (t, en) => { en.chapters[0].number = '7'; });
+flagged('a title that does not end with the placeholder', /control\.title must end with/, (t, en, ar) => { classic(t, en, ar); en.control.title = 'Blank document: Something else'; });
+flagged('missing cover labels', /labels\.kicker/, (t, en, ar) => { classic(t, en, ar); delete en.labels; });
+flagged('a chapter number that is not positional', /numbers are positional/, (t, en, ar) => { classic(t, en, ar); en.chapters[0].number = '7'; });
 flagged('a motif that differs from the id', /motif must equal/, (t) => { t.motif = 'other'; });
 flagged('an unknown palette', /type\.json palette/, (t) => { t.palette = 'purple'; });
 flagged('an unknown category', /category/, (t) => { t.category = 'qa'; });
