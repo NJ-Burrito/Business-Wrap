@@ -141,6 +141,7 @@ export function payload(o) {
     };
   });
   const used = new Set(types.map((t) => t.category));
+  { const f = path.join(dirOf(o), '_info.json'); if (exists(f)) { const inf = readJson(f, o); for (const t of types) if (inf[t.id]?.purpose) t.info = inf[t.id]; } } // 0.19.0 N4: the start page panel's info {purpose, whenToUse, audience}{ar,en}; additive, absent without _info.json
   return { v: PAYLOAD_VERSION, categories: categories(o).filter((c) => used.has(c.id)), types };
 }
 
