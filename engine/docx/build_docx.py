@@ -159,6 +159,7 @@ def add_numbered_list_cell(cell, items: list[str], font: str, num_id: int) -> No
         p.paragraph_format.space_after = Pt(CRITERIA_AFTER_PT)
         add_script_runs(p, text, font)
 _THEME_ROLES: dict | None = None
+TYPED = False  # set in build(): the document has a docType (0.18.1 status cells)
 BLANK_CELLS = {'', '—', '-', '–', 'N/A', 'n/a'}
 
 def _keeps_empty(cell) -> bool:
@@ -243,6 +244,19 @@ def add_table(document, columns, rows, font, roles=None, spec=None):
             table.cell(r0, c0).merge(table.cell(r1, c1))
     if roles is not None:
         theme_mod.style_table_theme(table, roles, has_header=bool(header))
+    if TYPED:  # 0.18.1: a status word in a typed document takes the print's fill and ink (bold, so colour is never the only cue)
+        for r, row in enumerate(all_rows):
+            if header and r == 0:
+                continue
+            for c in range(ncols):
+                v = row[c] if c < len(row) else ''
+                col = CD.status_colors(MD.text_of(v), roles) if (r, c) not in covered else None
+                if col:
+                    cell = table.cell(r, c)
+                    theme_mod.set_cell_shading(cell, col[0])
+                    for run in (x for p in cell.paragraphs for x in p.runs):
+                        run.font.color.rgb = theme_mod.rgb(col[1])
+                        run.font.bold = True
     if header:
         keep_header_with_next(table)
     return table
@@ -952,6 +966,8 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     cv = CD.cover_of(data)  # 0.18.0: a cover design (spine | compact) and a motif; None = today's cover, byte for byte
     CD.apply_dense(roles, cv)
     manual = CD.is_manual(data)
+    global TYPED
+    TYPED = isinstance(data.get('docType'), str) and data.get('docType') != ''
     compact = bool(cv and cv['design'] == 'compact' and 'cover' not in hide)
     theme_mod.apply_style_scale(document, roles, font)
     thmanyah_only(document, F['body'])

@@ -463,3 +463,19 @@ def build_compact(document, control: dict, roles: dict, font: str, logos, cv: di
             r.font.size = Pt(theme_mod.SIZES['meta'])
             r.font.color.rgb = theme_mod.rgb(roles['muted'])
     spacer().paragraph_format.space_after = Pt(10)
+
+
+# 0.18.1: status cells of a typed document. MIRRORS engine/render.mjs STATUS_WORDS + polishCss (kind -> fill var, ink var); keep the two in step.
+_STATUS_WORDS = {'ok': ('Pass', 'Passed', 'Covered', 'ناجح', 'نجح', 'مغطى'), 'bad': ('Fail', 'Failed', 'Gap', 'فاشل', 'فشل', 'ثغرة', 'فجوة'),
+                 'warn': ('Blocked', 'Partial', 'محجوب', 'جزئي'), 'idle': ('Not run', 'لم ينفذ')}
+_STATUS_VARS = {'ok': ('success-100', 'success-700'), 'bad': ('signal-100', 'signal-600'), 'warn': ('accent-100', 'accent-800'), 'idle': ('neutral-100', 'neutral-700')}
+
+
+def status_colors(text, roles: dict):
+    """(fill, ink) hex for a cell whose whole text is a status word, else None (print: render.mjs statusKind)."""
+    t = str(text or '').strip()
+    for kind, words in _STATUS_WORDS.items():
+        if t in words:
+            fill, ink = (roles.get(v) for v in _STATUS_VARS[kind])
+            return (fill, ink) if fill and ink else None
+    return None
