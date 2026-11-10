@@ -104,7 +104,7 @@ try {
   const env = { ...process.env, BW_STATE_DIR: path.join(OUT, 'state'), BW_LEARNING_DIR: path.join(OUT, 'learning'), INIT_CWD: OUT, BW_NO_BROWSER: '1', PYTHONUTF8: '1' };
   const bw = (...a) => { const r = spawnSync(process.execPath, [path.join(REPO, 'update', 'cli.mjs'), ...a], { cwd: OUT, env, encoding: 'utf8', timeout: 240000 }); let json = null; try { json = JSON.parse(r.stdout); } catch { /* plain */ } return { code: r.status, out: r.stdout || '', err: r.stderr || '', json }; };
   const tj = bw('types', '--json');
-  check('`types --json` lists every registry type with id, code, category, cover design and names', tj.code === 0 && JSON.stringify(tj.json?.types?.map((t) => t.id)) === JSON.stringify(types.map((t) => t.id)) && tj.json.types.every((t) => t.code && t.category && ['spine', 'compact'].includes(t.coverDesign) && t.name?.ar && t.name?.en), tj.out + tj.err);
+  check('`types --json` lists every registry type with id, code, category, cover design and names', tj.code === 0 && JSON.stringify(tj.json?.types?.map((t) => t.id)) === JSON.stringify(types.map((t) => t.id)) && tj.json.types.every((t) => t.code && t.category && ['spine', 'compact', 'report', 'form', 'sheet'].includes(t.coverDesign) /* 0.19.0 R3: the page-1 families */ && t.name?.ar && t.name?.en), tj.out + tj.err);
   const tp = bw('types');
   check('`types` prints one line per type for a person', tp.code === 0 && types.every((t) => tp.out.includes(t.id)), tp.out + tp.err);
   const id = types.find((t) => t.id === 'blank') ? 'blank' : types[0].id;

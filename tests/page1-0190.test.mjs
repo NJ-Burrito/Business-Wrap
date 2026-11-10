@@ -236,6 +236,8 @@ try {
   const pdfBad = [];
   const tokBad = [];
   const docxBad = [];
+  const apprBad = [];
+  const kickBad = [];
   for (const id of ids) {
     const f = path.join(out, id + '.pdf');
     const r = P[f];
@@ -251,10 +253,26 @@ try {
     }
     const d = docxSection1(path.join(out, id + '.docx'));
     if (!docxClean(d)) docxBad.push(`${id}: ${d ? `${d.blips} blips, pictures ${JSON.stringify(d.pictures)}` : 'not read'}`);
+    const ed = id.split('.')[1];
+    // 0.19.0 R3 (pilot review #1, #2): the Word file keeps the five approvals columns, and its page 1 prints the document's own kicker
+    const z = unzip(path.join(out, id + '.docx'));
+    const xml = z?.['word/document.xml']?.toString('utf8') || '';
+    const flat = (x) => [...x.matchAll(/<w:t(?: [^>]*)?>([^<]*)<\/w:t>/g)].map((m) => m[1]).join('').replace(/\s+/g, '');
+    const cols = i18n().doc[ed].approvalCols;
+    if ((doc.approvals || []).some(Array.isArray)) {
+      const five = [...xml.matchAll(/<w:tbl>[\s\S]*?<\/w:tbl>/g)].map((m) => m[0]).find((t) => (t.match(/<w:gridCol\b/g) || []).length === 5 && cols.every((c) => flat(t).includes(c.replace(/\s+/g, ''))));
+      if (!five) apprBad.push(id);
+    }
+    const kicker = doc.labels?.kicker;
+    const body = xml.slice(xml.indexOf('<w:body'));
+    const s1 = body.slice(0, body.indexOf('<w:sectPr') >= 0 ? body.indexOf('<w:sectPr') : undefined);
+    if (kicker && !(doc.layout?.hide || []).includes('cover') && !flat(s1).includes(kicker.replace(/\s+/g, ''))) kickBad.push(`${id}: «${kicker}»`);
   }
   check(`PDF page 1: no image, no curve, no diagonal in ${ids.length} documents`, !pdfBad.length, pdfBad);
   check('PDF page 1 holds the document id, version and issue date (Latin tokens, every non-empty document)', !tokBad.length, tokBad);
   check(`DOCX section 1 (body, header, footer): no picture but a logo-* one in ${ids.length} documents`, !docxBad.length, docxBad);
+  check(`DOCX: every document with approvals keeps their five columns (5 w:gridCol, the five headings) (${ids.filter((id) => (docOf(id).approvals || []).length).length} documents)`, !apprBad.length, apprBad);
+  check('DOCX: section 1 prints the document own labels.kicker (never the house e-service kicker)', !kickBad.length, kickBad);
   if (pngDir !== '-') check(`page-1 PNGs of ${PNG_TYPES.join(', ')} (en, ar) saved to ${pngDir}`, PNG_TYPES.every((t) => ['en', 'ar'].every((ed) => fs.existsSync(path.join(pngDir, `${t}.${ed}.page1.png`)))));
 
   // ── 5. mutants: the 0.18 page 1 and a DOCX with a picture in section 1 must fail ──

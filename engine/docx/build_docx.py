@@ -281,7 +281,7 @@ def add_table(document, columns, rows, font, roles=None, spec=None):
                 if oc in num_set:
                     for p in cell.paragraphs:
                         CD._end_align(p, LOCALE == 'ar')
-                if oc in nw_set:
+                if oc in nw_set and not is_head:  # 0.19.0 R3: the heading may wrap
                     tcPr = cell._tc.get_or_add_tcPr()
                     if tcPr.find(qn('w:noWrap')) is None:
                         tcPr.insert_element_before(OxmlElement('w:noWrap'), 'w:tcMar', 'w:textDirection', 'w:tcFitText', 'w:vAlign', 'w:hideMark', 'w:tcPrChange')
@@ -667,7 +667,9 @@ def add_stories(document, block, font, counters, chapter_number, story_seq, fold
         cap.paragraph_format.space_after = Pt(0)
         # the print's story-head: the SECTION's number (gold) then «قصة مستخدم» in the primary colour, on the top band of the sand card
         sn = str(block.get('number') or f"{chapter_number}.{story_seq[0]}")
-        if item_no > 0:  # 0.16.3: a block of several cards numbers each card (6.1, 6.2, ...), as the print does
+        if TYPED and len(block.get('items', [])) > 1 and sn:  # 0.19.0 R3 (review #5): 3.6.1, 3.6.2 in a typed document (render.mjs storyNo)
+            sn = f"{sn}.{item_no + 1}"
+        elif item_no > 0:  # 0.16.3: a block of several cards numbers each card (6.1, 6.2, ...), as the print does
             _m = re.match(r'^(.*?)(\d+)$', sn)
             if _m:
                 # 0.16.4: card k counts on from the block's number, skipping a number another block already carries (engine/render.mjs storyNo)
@@ -802,14 +804,17 @@ def add_control_front_matter(document, data, font, counters, toc: bool=False, sp
         h2 = document.add_heading(level=2)
         set_para_bidi(h2)
         add_script_runs(h2, L['revisions'], _F['display'], bold=True)
-        add_table(document, REVISIONS_COLUMNS, [r[:len(REVISIONS_COLUMNS)] for r in revisions], font)
+        # 0.19.0 R3 (review #3): a typed document prints Version, Date, Description of change, Author (render.mjs revCols); an empty cell stays a cell
+        _n = min(4, max([2] + [len(r) for r in revisions if isinstance(r, list)])) if CD.cover_of(data) else 2
+        _rc = (REVISIONS_COLUMNS + [CD.family_label(data, 'revDesc', LOCALE == 'ar'), CD.family_label(data, 'revAuthor', LOCALE == 'ar')])[:_n]
+        add_table(document, _rc, [r[:_n] for r in revisions], font, spec={'blankCell': ''} if _n > 2 else None)
         document.add_paragraph()
         counters['revisions_table'] = 1
     if approvals:
         h2 = document.add_heading(level=2)
         set_para_bidi(h2)
         add_script_runs(h2, L['approvals'], _F['display'], bold=True)
-        _apt = add_table(document, APPROVALS_COLUMNS, approvals, font)
+        _apt = add_table(document, APPROVALS_COLUMNS, approvals, font, spec={'blankCell': '', **({'colWidths': [26, 24, 20, 12, 18]} if len(APPROVALS_COLUMNS) == 5 else {})})  # 0.19.0 R3 (review #1, #15): all five columns, empty cells kept to sign
         if TYPED:
             for _row in _apt.rows[1:]:
                 CD._min_height(_row, 12)
@@ -1174,6 +1179,10 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
             continue
         # as the print renderer: a chapter holding a figure is set on turned (landscape) sheets, heading included
         wide = any((b.get('kind') in ('figure', 'diagram') for sec in ch['sections'] for b in sec.get('blocks', [])))
+        # 0.19.0 R3 (review #6): in a typed document a chapter of several sections stays portrait; only the section that holds the figure turns (render.mjs)
+        sec_wide = bool(wide and TYPED and len(ch['sections']) > 1)
+        if sec_wide:
+            wide = False
         first_ptr = f'/chapters/{ci}/sections/0/blocks/0'
         if first_ptr in seg_starts:
             seg_sec = open_segment(seg_starts.pop(first_ptr))
@@ -1203,6 +1212,9 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
             if sec.get('hidden'):
                 continue
             counters['step'] = 0
+            sec_land = sec_wide and any(b.get('kind') in ('figure', 'diagram') for b in sec.get('blocks', []))
+            if sec_land:
+                open_landscape_section(document)
             # as the print renderer: a one-section chapter prints no section heading; otherwise «n.m title»
             sec_ptr = f'/chapters/{ci}/sections/{si}/blocks/0'
             if sec_ptr in seg_starts:
@@ -1273,7 +1285,8 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                     if manual:
                         # 0.18.0 (user manual): a subhead is a step: its number on a filled chip, counting from 1 in each section
                         counters['step'] = counters.get('step', 0) + 1
-                        CD.step_chip(p, counters['step'], F['display'], roles, theme_mod)
+                        if not (isinstance(block.get('text'), str) and re.match(r'^(?:Step|الخطوة)\s+\d+\s*[:：]', block['text'])):  # 0.19.0 R3 (review #9): the text carries its number: no second chip
+                            CD.step_chip(p, counters['step'], F['display'], roles, theme_mod)
                     MD.add_leaf(p, block.get('text', ''), F['subhead'], add_script_runs, bold=False)
                     counters['subhead_block'] += 1
                 elif kind == 'table':
@@ -1331,6 +1344,8 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                     add_shots_block(document, block, font, counters)
                 else:
                     raise ValueError(f"block kind {kind!r} has no handler in build_docx.py (section {sec['title']!r}); add one and list it in HANDLED_KINDS")
+            if sec_land:
+                close_landscape_section(document, body_geometry)
         if wide:
             close_landscape_section(document, body_geometry)
     add_control_front_matter(document, data, font, counters, toc=toc, back=True)  # 0.19.0 C10: layout.back (a form or a sheet: control and revisions)

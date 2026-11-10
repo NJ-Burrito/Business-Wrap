@@ -28,7 +28,8 @@ FIELD_COLS = (2, 3, 4, 6)
 # 0.19.0 R2 (render.mjs FIGURE_KINDS, REPORT_CONTROL, FAMILY_LABELS, backOf, noContents)
 FIGURE_KINDS = ('none', 'ok', 'warn', 'bad', 'idle')
 REPORT_CONTROL = ('documentId', 'version', 'status', 'issuedOn', 'owner', 'preparedBy')
-FAMILY_LABELS = {'backMatter': {'en': 'Document control', 'ar': 'ضبط الوثيقة'}, 'total': {'en': 'Total', 'ar': 'الإجمالي'}, 'seal': {'en': 'Seal', 'ar': 'الختم'}}
+FAMILY_LABELS = {'backMatter': {'en': 'Document control', 'ar': 'ضبط الوثيقة'}, 'total': {'en': 'Total', 'ar': 'الإجمالي'}, 'seal': {'en': 'Seal', 'ar': 'الختم'},
+                 'revDesc': {'en': 'Description of change', 'ar': 'وصف التغيير'}, 'revAuthor': {'en': 'Author', 'ar': 'المعد'}}
 
 
 def family_label(data: dict, key: str, rtl: bool) -> str:
@@ -372,7 +373,8 @@ def build_spine(document, control: dict, roles: dict, font: str, logos, cv: dict
     _logos(span('logo'), logos, 18)
     hair = span('hair')
     _tiny(hair)
-    theme_mod.set_cell_border(hair, 'bottom', roles['rule'], 6)
+    if any(l and Path(l).exists() for l in ([logos] if isinstance(logos, Path) else logos or [])):  # 0.19.0 R3 (review #10): no logo row, no floating hairline
+        theme_mod.set_cell_border(hair, 'bottom', roles['rule'], 6)
     # type code: Display Black, cap height 12 mm (48.6 pt on a 1.0 line), baseline at 106 mm
     code = CODES.get(cv['type'], '')
     cell = span('code')
