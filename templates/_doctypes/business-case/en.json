@@ -3,10 +3,11 @@
   "control": {
     "documentId": "BW-BC-NEW-001",
     "title": "Business case: Initiative name",
-    "preparedBy": "Name and job title",
+    "preparedBy": "[Name and job title]",
+    "approvedBy": "[Name and job title]",
     "documentType": "Business case",
     "classification": "Internal",
-    "owner": "Organisation name",
+    "owner": "[Organisation name]",
     "issuedOn": "YYYY-MM-DD",
     "version": "V0.1",
     "status": "Draft",
@@ -20,9 +21,75 @@
       "—"
     ]
   ],
+  "approvals": [
+    [
+      "Prepared by: Business analyst",
+      "",
+      "",
+      "",
+      ""
+    ],
+    [
+      "Reviewed by: Finance",
+      "",
+      "",
+      "",
+      ""
+    ],
+    [
+      "Approved by: Sponsor",
+      "",
+      "",
+      "",
+      ""
+    ]
+  ],
   "labels": {
     "kicker": "BUSINESS CASE",
     "subtitle": "Why to invest, in which option and at what return"
+  },
+  "cover": {
+    "cols": 3,
+    "fields": [
+      {
+        "label": "Sponsor",
+        "value": "[Name]",
+        "kind": "text"
+      }
+    ],
+    "figures": [
+      {
+        "label": "Investment",
+        "value": "[Amount]",
+        "kind": "none"
+      },
+      {
+        "label": "Annual benefit",
+        "value": "[Amount]",
+        "kind": "none"
+      },
+      {
+        "label": "Payback",
+        "value": "[Months]",
+        "kind": "none"
+      },
+      {
+        "label": "NPV",
+        "value": "[Amount]",
+        "kind": "none"
+      }
+    ],
+    "statement": {
+      "text": "Approve option [B] at a cost of [amount] to start on [date].",
+      "choices": [
+        "Approve",
+        "Defer",
+        "Reject"
+      ]
+    }
+  },
+  "layout": {
+    "tocDepth": 1
   },
   "chapters": [
     {
@@ -31,12 +98,13 @@
       "sections": [
         {
           "number": "1.1",
-          "title": "Summary",
+          "title": "The decision in one page",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "In one page: the problem, the recommended option, the cost, the return and the decision requested."
+                "Open with the decision you ask for: what, how much and by when.",
+                "Then give, in this order: the problem, the recommended option, the cost, the return and the main risk. Use only figures that appear later in this document."
               ]
             }
           ]
@@ -45,7 +113,7 @@
     },
     {
       "number": "2",
-      "title": "Problem and strategic fit",
+      "title": "Reasons and strategic fit",
       "sections": [
         {
           "number": "2.1",
@@ -54,7 +122,19 @@
             {
               "kind": "prose",
               "paragraphs": [
-                "Describe the problem or opportunity and the goal in the organisation's plan that the project serves."
+                "Describe the problem or opportunity, who is affected and what it costs today."
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.2",
+          "title": "Strategic fit",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Name the goal in the organisation's plan that this project serves, and who owns that goal."
               ]
             }
           ]
@@ -63,10 +143,94 @@
     },
     {
       "number": "3",
-      "title": "Objectives and expected benefits",
+      "title": "Options",
       "sections": [
         {
           "number": "3.1",
+          "title": "Options compared",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Compare at least three options. The first is \"do nothing\", the baseline. Judge every option against the same criteria."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Criterion",
+                "Do nothing",
+                "Option B",
+                "Option C"
+              ],
+              "rows": [
+                [
+                  "Description",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Cost over […] years",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Benefit over […] years",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Main risk",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Fit with strategy",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Time to first benefit",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ],
+              "colWidths": [
+                31,
+                23,
+                23,
+                23
+              ],
+              "accentCol": 2
+            }
+          ]
+        },
+        {
+          "number": "3.2",
+          "title": "Recommended option",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Name the chosen option, why it beat the others and how it will be delivered."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "4",
+      "title": "Expected benefits",
+      "sections": [
+        {
+          "number": "4.1",
           "title": "Benefits",
           "blocks": [
             {
@@ -90,66 +254,22 @@
                   "Financial",
                   "…",
                   "…",
-                  "YYYY-MM-DD"
+                  "Year 1"
                 ],
                 [
                   "…",
                   "Non-financial",
                   "…",
                   "…",
-                  "YYYY-MM-DD"
+                  "Year 2"
                 ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "number": "4",
-      "title": "Options analysis",
-      "sections": [
-        {
-          "number": "4.1",
-          "title": "Options compared",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "Compare at least three options. The first is \"do nothing\", the baseline."
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Option",
-                "Description",
-                "Cost",
-                "Benefits",
-                "Risks"
               ],
-              "rows": [
-                [
-                  "A: Do nothing",
-                  "…",
-                  "…",
-                  "…",
-                  "…"
-                ],
-                [
-                  "B: [Option]",
-                  "…",
-                  "…",
-                  "…",
-                  "…"
-                ],
-                [
-                  "C: [Option]",
-                  "…",
-                  "…",
-                  "…",
-                  "…"
-                ]
+              "colWidths": [
+                30,
+                14,
+                22,
+                14,
+                20
               ]
             }
           ]
@@ -158,16 +278,45 @@
     },
     {
       "number": "5",
-      "title": "Recommended option",
+      "title": "Dis-benefits",
       "sections": [
         {
           "number": "5.1",
-          "title": "Recommendation",
+          "title": "Dis-benefits",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "Name the chosen option, why it beat the others and how it will be delivered."
+                "A dis-benefit is a loss the change puts on someone, such as a service paused during migration. Show each one as carefully as the benefits."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Dis-benefit",
+                "Who bears it",
+                "Size",
+                "How it is reduced"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ],
+              "colWidths": [
+                30,
+                20,
+                20,
+                30
               ]
             }
           ]
@@ -176,143 +325,10 @@
     },
     {
       "number": "6",
-      "title": "Cost estimate",
+      "title": "Timescale",
       "sections": [
         {
           "number": "6.1",
-          "title": "Cost items",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "Give the one-off cost and the yearly running cost, item by item."
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Item",
-                "One-off",
-                "Annual",
-                "Notes"
-              ],
-              "rows": [
-                [
-                  "…",
-                  "…",
-                  "…",
-                  "…"
-                ],
-                [
-                  "…",
-                  "…",
-                  "…",
-                  "…"
-                ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "number": "7",
-      "title": "Financial analysis",
-      "sections": [
-        {
-          "number": "7.1",
-          "title": "Cost and benefit by year",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "Show the yearly flow of cost and benefit, then the return on investment and the payback period. State no figure that is not computed from this table."
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Year",
-                "Costs",
-                "Benefits",
-                "Net",
-                "Cumulative"
-              ],
-              "rows": [
-                [
-                  "Year 1",
-                  "…",
-                  "…",
-                  "…",
-                  "…"
-                ],
-                [
-                  "Year 2",
-                  "…",
-                  "…",
-                  "…",
-                  "…"
-                ],
-                [
-                  "Year 3",
-                  "…",
-                  "…",
-                  "…",
-                  "…"
-                ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "number": "8",
-      "title": "Risks and dependencies",
-      "sections": [
-        {
-          "number": "8.1",
-          "title": "Risk register",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "List what may reduce the benefit or raise the cost, and what depends on someone outside the project team."
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Risk",
-                "Likelihood",
-                "Impact",
-                "Mitigation"
-              ],
-              "rows": [
-                [
-                  "…",
-                  "1-5",
-                  "1-5",
-                  "…"
-                ],
-                [
-                  "…",
-                  "1-5",
-                  "1-5",
-                  "…"
-                ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "number": "9",
-      "title": "Timeline and milestones",
-      "sections": [
-        {
-          "number": "9.1",
           "title": "Phases",
           "blocks": [
             {
@@ -341,7 +357,205 @@
                   "YYYY-MM-DD",
                   "YYYY-MM-DD",
                   "…"
+                ],
+                [
+                  "Phase 3",
+                  "YYYY-MM-DD",
+                  "YYYY-MM-DD",
+                  "…"
                 ]
+              ],
+              "colWidths": [
+                32,
+                16,
+                16,
+                36
+              ],
+              "nowrapCols": [
+                1,
+                2
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "7",
+      "title": "Costs",
+      "sections": [
+        {
+          "number": "7.1",
+          "title": "Cost by year",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Year 0 is the year of spending before any benefit. State the currency and whether tax is included."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "Year 0",
+                "Year 1",
+                "Year 2",
+                "Year 3",
+                "Total"
+              ],
+              "rows": [
+                [
+                  "Build or purchase",
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Running and support",
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Total cost",
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ],
+              "colWidths": [
+                34,
+                11,
+                11,
+                11,
+                11,
+                22
+              ],
+              "numCols": [
+                1,
+                2,
+                3,
+                4,
+                5
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "8",
+      "title": "Investment appraisal",
+      "sections": [
+        {
+          "number": "8.1",
+          "title": "Return on the investment",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Compute every figure here from the cost and benefit tables, and copy the four key figures on the first page from it. State the discount rate and the period."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Measure",
+                "Value",
+                "How it is computed"
+              ],
+              "rows": [
+                [
+                  "Total cost",
+                  "…",
+                  "Sum of the cost table"
+                ],
+                [
+                  "Total benefit",
+                  "…",
+                  "Sum of the financial benefits"
+                ],
+                [
+                  "Return on investment",
+                  "…",
+                  "Net benefit divided by total cost"
+                ],
+                [
+                  "Payback period",
+                  "…",
+                  "Months until the cumulative benefit equals the cumulative cost"
+                ],
+                [
+                  "Net present value",
+                  "…",
+                  "Net flow of each year discounted at […]%"
+                ]
+              ],
+              "colWidths": [
+                30,
+                22,
+                48
+              ],
+              "numCols": [
+                1
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "9",
+      "title": "Major risks",
+      "sections": [
+        {
+          "number": "9.1",
+          "title": "Risk register",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "List what may cut the benefit or raise the cost, and what depends on someone outside the project team."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Risk",
+                "Likelihood",
+                "Impact",
+                "Mitigation"
+              ],
+              "rows": [
+                [
+                  "R-01",
+                  "Costs rise above the estimate.",
+                  "Medium",
+                  "High",
+                  "Agree a fixed price and keep a reserve of […]%."
+                ],
+                [
+                  "R-02",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ],
+              "colWidths": [
+                8,
+                34,
+                12,
+                12,
+                34
               ]
             }
           ]
@@ -350,16 +564,16 @@
     },
     {
       "number": "10",
-      "title": "Governance and resources",
+      "title": "Governance",
       "sections": [
         {
           "number": "10.1",
-          "title": "Roles",
+          "title": "Roles and decisions",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "Say who sponsors, who manages and who delivers, and how decisions are taken."
+                "Say who sponsors, who manages and who delivers, and how and when decisions are taken."
               ]
             },
             {
@@ -381,10 +595,20 @@
                   "…"
                 ],
                 [
+                  "Finance partner",
+                  "[Name]",
+                  "…"
+                ],
+                [
                   "Delivery lead",
                   "[Name]",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                24,
+                26,
+                50
               ]
             }
           ]
@@ -393,59 +617,42 @@
     },
     {
       "number": "11",
-      "title": "Decision requested and approval",
+      "title": "Decision",
       "sections": [
         {
           "number": "11.1",
-          "title": "Decision",
+          "title": "Decision requested",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "State the decision requested in one sentence, then the decision maker signs."
+                "Repeat the decision from the first page in one sentence and give the date by which it is needed."
               ]
             },
             {
               "kind": "table",
               "columns": [
-                "Role",
-                "Name",
-                "Signature",
-                "Date"
+                "Decision",
+                "What follows"
               ],
               "rows": [
                 [
-                  "Decision maker",
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  }
+                  "Approve",
+                  "Start phase 1 on the date in the statement and release the budget."
                 ],
                 [
-                  "Sponsor",
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  }
+                  "Defer",
+                  "Name what is missing, who brings the case back and by when."
+                ],
+                [
+                  "Reject",
+                  "Record the reason and close the case, or ask for a revised option."
                 ]
               ],
-              "blankCell": ""
+              "colWidths": [
+                22,
+                78
+              ]
             }
           ]
         }

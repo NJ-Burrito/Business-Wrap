@@ -3,14 +3,15 @@
   "control": {
     "documentId": "BW-TOT-NEW-001",
     "title": "Training of Trainers (TOT) guide: Programme name",
-    "preparedBy": "Name and job title",
+    "preparedBy": "[Name and job title]",
+    "approvedBy": "[Name and job title]",
     "documentType": "Training of Trainers (TOT) guide",
     "classification": "Internal",
     "owner": "[Organisation name]",
     "issuedOn": "YYYY-MM-DD",
     "version": "V0.1",
     "status": "Draft",
-    "reviewCycle": "After each delivery"
+    "reviewCycle": "After each programme run"
   },
   "revisions": [
     [
@@ -20,9 +21,65 @@
       "—"
     ]
   ],
+  "approvals": [
+    [
+      "Prepared by: Programme designer",
+      "",
+      "",
+      "",
+      ""
+    ],
+    [
+      "Reviewed by: Programme coordinator",
+      "",
+      "",
+      "",
+      ""
+    ],
+    [
+      "Approved by: Training manager",
+      "",
+      "",
+      "",
+      ""
+    ]
+  ],
   "labels": {
     "kicker": "TRAINER GUIDE",
-    "subtitle": "Training programme"
+    "subtitle": "Programme card, session plan, exercises and assessment"
+  },
+  "cover": {
+    "cols": 3,
+    "fields": [
+      {
+        "label": "Duration",
+        "value": "[Number] days",
+        "kind": "text"
+      },
+      {
+        "label": "Sessions",
+        "value": "[Number]",
+        "kind": "text"
+      },
+      {
+        "label": "Participants",
+        "value": "[Number], at most 20",
+        "kind": "text"
+      },
+      {
+        "label": "Delivery mode",
+        "value": "[In person | Online | Blended]",
+        "kind": "text"
+      },
+      {
+        "label": "Certificate",
+        "value": "[Yes | No]",
+        "kind": "text"
+      }
+    ]
+  },
+  "layout": {
+    "tocDepth": 1
   },
   "chapters": [
     {
@@ -41,6 +98,45 @@
               ]
             }
           ]
+        },
+        {
+          "number": "1.2",
+          "title": "Programme card",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "Detail"
+              ],
+              "rows": [
+                [
+                  "Topic",
+                  "[Topic the trainers will teach]"
+                ],
+                [
+                  "Target group",
+                  "[Group the trainers will teach]"
+                ],
+                [
+                  "Language of delivery",
+                  "[Arabic | English | both]"
+                ],
+                [
+                  "Trainers",
+                  "[Name]"
+                ],
+                [
+                  "Venue or platform",
+                  "[Venue or platform]"
+                ]
+              ],
+              "colWidths": [
+                24,
+                76
+              ]
+            }
+          ]
         }
       ]
     },
@@ -52,6 +148,12 @@
           "number": "2.1",
           "title": "Who may attend",
           "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "State who can join and what they must already know. Keep the group small enough for every participant to practise teaching."
+              ]
+            },
             {
               "kind": "table",
               "columns": [
@@ -75,6 +177,11 @@
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                30,
+                50,
+                20
               ]
             }
           ]
@@ -128,6 +235,12 @@
                   "Evaluate",
                   "Feedback analysis"
                 ]
+              ],
+              "colWidths": [
+                8,
+                46,
+                20,
+                26
               ]
             }
           ]
@@ -145,7 +258,7 @@
             {
               "kind": "prose",
               "paragraphs": [
-                "Each topic follows one cycle: a short input, then an exercise, then a discussion. The trainer facilitates rather than lectures, keeps time and collects feedback."
+                "Each topic follows one cycle: a short input, an exercise, then a discussion."
               ]
             },
             {
@@ -171,6 +284,23 @@
                   "To link it to real work.",
                   "15 minutes"
                 ]
+              ],
+              "colWidths": [
+                24,
+                50,
+                26
+              ]
+            }
+          ]
+        },
+        {
+          "number": "4.2",
+          "title": "The trainer's role",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "The trainer facilitates rather than lectures: sets the task, keeps time, asks questions and collects feedback. For a group above […], use two trainers."
               ]
             }
           ]
@@ -179,64 +309,128 @@
     },
     {
       "number": "5",
-      "title": "Programme schedule",
+      "title": "Session plan",
       "sections": [
         {
           "number": "5.1",
           "title": "Day by day",
           "blocks": [
             {
+              "kind": "prose",
+              "paragraphs": [
+                "Plan every session in one table per day. Tie each session to one objective from chapter 3."
+              ]
+            },
+            {
+              "kind": "subhead",
+              "text": "Day 1"
+            },
+            {
               "kind": "table",
               "columns": [
-                "Day",
                 "Time",
-                "Module",
-                "Method",
+                "Session",
+                "Objective",
+                "Activity and method",
+                "Materials",
                 "Trainer"
               ],
               "rows": [
                 [
-                  "1",
                   "09:00-10:30",
-                  "Module 1: […]",
+                  "Session 1: […]",
+                  "Explain how adults learn",
                   "Input and exercise",
+                  "Slides",
                   "[Name]"
                 ],
                 [
-                  "1",
                   "10:30-10:45",
                   "Break",
                   "—",
-                  "—"
-                ],
-                [
-                  "1",
-                  "10:45-12:15",
-                  "Module 2: […]",
-                  "Exercise and discussion",
-                  "[Name]"
-                ],
-                [
-                  "1",
-                  "12:15-13:15",
-                  "Lunch",
+                  "—",
                   "—",
                   "—"
                 ],
                 [
-                  "1",
-                  "13:15-14:45",
-                  "Module 3: […]",
-                  "Practice",
+                  "10:45-12:15",
+                  "Session 2: […]",
+                  "Plan a session",
+                  "Exercise and discussion",
+                  "Handout",
                   "[Name]"
                 ],
                 [
-                  "2",
-                  "09:00-10:30",
-                  "Module 4: […]",
-                  "…",
+                  "12:15-13:15",
+                  "Lunch",
+                  "—",
+                  "—",
+                  "—",
+                  "—"
+                ],
+                [
+                  "13:15-14:45",
+                  "Session 3: […]",
+                  "Facilitate an exercise",
+                  "Practice",
+                  "Flipchart",
                   "[Name]"
                 ]
+              ],
+              "colWidths": [
+                10,
+                18,
+                22,
+                22,
+                14,
+                14
+              ],
+              "nowrapCols": [
+                0
+              ]
+            },
+            {
+              "kind": "subhead",
+              "text": "Day 2"
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Time",
+                "Session",
+                "Objective",
+                "Activity and method",
+                "Materials",
+                "Trainer"
+              ],
+              "rows": [
+                [
+                  "09:00-10:30",
+                  "Session 4: […]",
+                  "…",
+                  "…",
+                  "…",
+                  "[Name]"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ],
+              "colWidths": [
+                10,
+                18,
+                22,
+                22,
+                14,
+                14
+              ],
+              "nowrapCols": [
+                0
               ]
             }
           ]
@@ -245,90 +439,61 @@
     },
     {
       "number": "6",
-      "title": "Training modules",
+      "title": "Module cards",
       "sections": [
         {
           "number": "6.1",
           "title": "Module card",
           "blocks": [
             {
+              "kind": "prose",
+              "paragraphs": [
+                "Copy this card for each module and keep one card to one page."
+              ]
+            },
+            {
               "kind": "subhead",
               "text": "Module 1: [Title]"
             },
             {
-              "kind": "prose",
-              "paragraphs": [
-                "Duration: […]",
-                "Objectives: […]",
-                "Key content: […]",
-                "Activities: […]",
-                "Materials: […]",
-                "Assessment: […]"
-              ]
-            },
-            {
-              "kind": "subhead",
-              "text": "Session plan"
-            },
-            {
               "kind": "table",
               "columns": [
-                "Time (min)",
-                "Topic",
-                "Method",
-                "Materials",
-                "Trainer notes"
+                "Item",
+                "Detail"
               ],
               "rows": [
                 [
-                  "10",
-                  "Opening and objectives",
-                  "Input",
-                  "Slides",
-                  "…"
+                  "Duration",
+                  "[…]"
                 ],
                 [
-                  "20",
-                  "[Topic]",
-                  "Exercise",
-                  "Handout",
-                  "…"
+                  "Objectives",
+                  "[…]"
                 ],
                 [
-                  "15",
-                  "Discussion",
-                  "Group work",
-                  "Flipchart",
-                  "…"
+                  "Key content",
+                  "[…]"
                 ],
                 [
-                  "5",
-                  "Summary",
-                  "Input",
-                  "—",
-                  "…"
+                  "Activities",
+                  "[…]"
                 ],
                 [
-                  "…",
-                  "…",
-                  "…",
-                  "…",
-                  "…"
+                  "Materials",
+                  "[…]"
+                ],
+                [
+                  "Assessment",
+                  "[…]"
+                ],
+                [
+                  "Trainer notes",
+                  "What to say, what to avoid and the questions to expect: […]"
                 ]
-              ]
-            }
-          ]
-        },
-        {
-          "number": "6.2",
-          "title": "Trainer notes",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "What to say: […]",
-                "What to avoid: […]",
-                "Common mistakes and questions to expect: […]"
+              ],
+              "colWidths": [
+                24,
+                76
               ]
             }
           ]
@@ -343,6 +508,12 @@
           "number": "7.1",
           "title": "Exercise list",
           "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Write each exercise so that another trainer can run it: the task, the groups, the time and what the groups hand in."
+              ]
+            },
             {
               "kind": "table",
               "columns": [
@@ -382,6 +553,18 @@
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                9,
+                15,
+                9,
+                14,
+                11,
+                26,
+                16
+              ],
+              "nowrapCols": [
+                0
               ]
             }
           ]
@@ -427,6 +610,13 @@
                   "[…]",
                   "1, 4"
                 ]
+              ],
+              "colWidths": [
+                20,
+                22,
+                24,
+                14,
+                20
               ]
             }
           ]
@@ -436,38 +626,50 @@
           "title": "Practice teaching rubric",
           "blocks": [
             {
+              "kind": "prose",
+              "paragraphs": [
+                "Score each criterion at one of three levels. Describe what the trainer sees at each level, so that two assessors score alike."
+              ]
+            },
+            {
               "kind": "table",
               "columns": [
                 "Criterion",
-                "Excellent",
-                "Satisfactory",
-                "Needs improvement"
+                "Developing",
+                "Competent",
+                "Advanced"
               ],
               "rows": [
                 [
                   "Objectives",
+                  "Stated but not met",
                   "Stated and met",
-                  "Stated",
-                  "Missing"
+                  "Stated, met and checked with the group"
                 ],
                 [
                   "Timing",
-                  "On time throughout",
-                  "Small overruns",
-                  "Session overran"
+                  "The session overruns",
+                  "The session ends on time",
+                  "Ends on time and adjusts the plan during the session"
                 ],
                 [
                   "Facilitation",
-                  "Everyone takes part",
-                  "Some take part",
-                  "Lecture only"
+                  "Mostly lecture",
+                  "Most participants take part",
+                  "Everyone takes part and the trainer builds on their answers"
                 ],
                 [
                   "Use of feedback",
-                  "Adjusts during the session",
-                  "Collects feedback",
-                  "Ignores feedback"
+                  "Collects feedback but does not use it",
+                  "Uses feedback after the session",
+                  "Adjusts during the session"
                 ]
+              ],
+              "colWidths": [
+                30,
+                23,
+                23,
+                24
               ]
             }
           ]
@@ -476,12 +678,77 @@
     },
     {
       "number": "9",
-      "title": "Materials and logistics",
+      "title": "Programme evaluation",
       "sections": [
         {
           "number": "9.1",
+          "title": "Four levels",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Judge the programme at four levels, from the participants' reaction to the result for the organisation."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Level",
+                "What is measured",
+                "How",
+                "When"
+              ],
+              "rows": [
+                [
+                  "1. Reaction",
+                  "How satisfied participants are with the programme",
+                  "Survey",
+                  "End of last day"
+                ],
+                [
+                  "2. Learning",
+                  "What participants can do against the objectives",
+                  "Pre-test, post-test and practice teaching",
+                  "Day 1 and last day"
+                ],
+                [
+                  "3. Behaviour",
+                  "What participants apply at work",
+                  "Short interview",
+                  "After 30 and 60 days"
+                ],
+                [
+                  "4. Results",
+                  "The effect on the organisation: […]",
+                  "[Indicator]",
+                  "After […] days"
+                ]
+              ],
+              "colWidths": [
+                20,
+                40,
+                25,
+                15
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "10",
+      "title": "Logistics",
+      "sections": [
+        {
+          "number": "10.1",
           "title": "Before day one",
           "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Check every item two days before the programme starts."
+              ]
+            },
             {
               "kind": "table",
               "columns": [
@@ -521,47 +788,12 @@
                   "[Name]",
                   "…"
                 ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "number": "10",
-      "title": "Programme evaluation and follow-up",
-      "sections": [
-        {
-          "number": "10.1",
-          "title": "Indicators",
-          "blocks": [
-            {
-              "kind": "table",
-              "columns": [
-                "Indicator",
-                "Instrument",
-                "Timing",
-                "Target"
               ],
-              "rows": [
-                [
-                  "Participant satisfaction",
-                  "Survey",
-                  "End of last day",
-                  "[…]"
-                ],
-                [
-                  "What was applied at work",
-                  "Short interview",
-                  "After 30 days",
-                  "[…]"
-                ],
-                [
-                  "What is still applied",
-                  "Short interview",
-                  "After 60 days",
-                  "[…]"
-                ]
+              "colWidths": [
+                34,
+                18,
+                22,
+                26
               ]
             }
           ]
@@ -613,7 +845,37 @@
                   "",
                   "",
                   ""
+                ],
+                [
+                  "",
+                  "",
+                  "",
+                  "",
+                  ""
+                ],
+                [
+                  "",
+                  "",
+                  "",
+                  "",
+                  ""
                 ]
+              ],
+              "colWidths": [
+                30,
+                24,
+                12,
+                12,
+                22
+              ],
+              "style": "signoff",
+              "rowHeights": [
+                10,
+                10,
+                10,
+                10,
+                10,
+                10
               ],
               "blankCell": ""
             }
@@ -630,90 +892,9 @@
               ]
             }
           ]
-        }
-      ]
-    },
-    {
-      "number": "12",
-      "title": "Approval, distribution and terms",
-      "sections": [
-        {
-          "number": "12.1",
-          "title": "Approval and sign-off",
-          "blocks": [
-            {
-              "kind": "table",
-              "columns": [
-                "Name",
-                "Job title",
-                "Action",
-                "Signature",
-                "Date"
-              ],
-              "rows": [
-                [
-                  "",
-                  "",
-                  "Prepared",
-                  "",
-                  ""
-                ],
-                [
-                  "",
-                  "",
-                  "Reviewed",
-                  "",
-                  ""
-                ],
-                [
-                  "",
-                  "",
-                  "Approved",
-                  "",
-                  ""
-                ]
-              ],
-              "blankCell": ""
-            }
-          ]
         },
         {
-          "number": "12.2",
-          "title": "Distribution list",
-          "blocks": [
-            {
-              "kind": "table",
-              "columns": [
-                "Recipient",
-                "Role",
-                "Delivery method",
-                "Date"
-              ],
-              "rows": [
-                [
-                  "[Name]",
-                  "Trainer",
-                  "…",
-                  "YYYY-MM-DD"
-                ],
-                [
-                  "[Name]",
-                  "Programme coordinator",
-                  "…",
-                  "YYYY-MM-DD"
-                ],
-                [
-                  "…",
-                  "…",
-                  "…",
-                  "…"
-                ]
-              ]
-            }
-          ]
-        },
-        {
-          "number": "12.3",
+          "number": "11.3",
           "title": "Terms and abbreviations",
           "blocks": [
             {
@@ -734,11 +915,11 @@
                 [
                   "…",
                   "…"
-                ],
-                [
-                  "…",
-                  "…"
                 ]
+              ],
+              "colWidths": [
+                24,
+                76
               ]
             }
           ]
