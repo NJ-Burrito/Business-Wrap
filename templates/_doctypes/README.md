@@ -32,6 +32,7 @@ Test: `node tests/run.mjs doctypes-0180`.
 | `motif` | equals the type id; the cover's signature shape (ux/covers.md §3) |
 | `layout` | optional: `hide` (`cover control revisions toc questions`), `front`, `page {size, orientation}` |
 | `source` | optional: `samples/<folder>`; the content is read from `<source>/document.<ed>.json` (used by `srs` = `samples/blank`, one copy only) |
+| `empty` | optional boolean (0.19.0): the starter prints nothing, one empty page (the Blank document). The content rules below are replaced by the **empty type** rules; see the section after `en.json / ar.json` |
 
 ## en.json / ar.json (content only)
 
@@ -46,6 +47,19 @@ A complete document JSON in the shape of `samples/blank/document.*.json`.
 - The AR/EN pair has the same shape: equal chapter and section counts, block kinds, table column and row counts, diagram node and edge ids, stories and shots counts, `layout`.
 - Size: at most 14 KB per edition once composed and minified; all types together (both editions plus art) at most 400 KB.
 - Placeholders are `…` or `[Name]`; sign-off cells print empty with `{"text":"","keepEmpty":true}` or a table `blankCell:""`.
+
+## An empty type (`empty: true`, 0.19.0)
+
+The Blank document is one empty page in the theme: no cover, no control table, no revisions, no contents, no heading, no placeholder or sample text (owner rule, 2026-11-10).
+The editor can only type into a leaf that exists, so the starter keeps ONE skeleton leaf and prints nothing else:
+
+- `type.json`: `empty: true`; `layout.hide` holds `cover control revisions toc questions`; `placeholder` equals the name (the library name has no `: <title>` part).
+- `en.json` / `ar.json`: `control.title` is the type's name (no colon); `revisions: []`; no `labels`; `chrome` is required: no header item and a footer of the page number only
+  (without `chrome` the page would print the document id, the date and the confidentiality line); `chapters` is exactly one **bare** chapter (`"bare": true`, `title: ""`) with one section
+  (`title: ""`) holding one `prose` block with one empty paragraph `[""]`. A `bare` chapter prints no heading (render.mjs `body`, one guarded line); the DOCX builder must skip its heading too.
+- `node tools/doctypes/check.mjs` exempts an empty type from the title, revisions, labels and chapter-content rules and adds the rule that the starter prints nothing (messages name the rule, never the text).
+  Every other rule (pair shape, forbidden keys, patterns, denylist, size) still applies. Tests: `node tests/run.mjs blank-empty-0190`.
+- A `bare` chapter still counts in the positional numbering: a chapter added later prints its own position.
 
 ## _palettes.json
 

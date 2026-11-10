@@ -2,30 +2,28 @@
   "composedAt": "",
   "control": {
     "documentId": "BW-DOC-NEW-001",
-    "title": "Blank document: Document title",
-    "preparedBy": "Name and job title",
+    "title": "Blank document",
+    "preparedBy": "",
     "documentType": "Blank document",
-    "classification": "Internal",
-    "owner": "Organisation name",
-    "issuedOn": "YYYY-MM-DD",
+    "classification": "",
+    "owner": "",
+    "issuedOn": "",
     "version": "V0.1",
     "status": "Draft",
-    "reviewCycle": "As needed"
+    "reviewCycle": ""
   },
-  "revisions": [["V0.1", "YYYY-MM-DD", "First draft", "—"]],
-  "labels": { "kicker": "BLANK DOCUMENT", "subtitle": "Subtitle" },
+  "revisions": [],
+  "chrome": {
+    "header": { "items": [] },
+    "footer": { "items": [{ "id": "f-page", "kind": "page", "value": "n", "align": "end", "scope": "all" }] }
+  },
   "chapters": [
     {
+      "bare": true,
       "number": "1",
-      "title": "Chapter 1",
+      "title": "",
       "sections": [
-        {
-          "number": "1.1",
-          "title": "Section title",
-          "blocks": [
-            { "kind": "prose", "paragraphs": ["Write here. Add chapters, sections, tables and diagrams from the ribbon, and reorder them by dragging."] }
-          ]
-        }
+        { "number": "1.1", "title": "", "blocks": [{ "kind": "prose", "paragraphs": [""] }] }
       ]
     }
   ],

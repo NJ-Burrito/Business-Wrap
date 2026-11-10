@@ -213,6 +213,37 @@ export function shapeDiff(a, b, at = '', out = [], max = 4) {
   return out;
 }
 
+/* ───────── an `empty: true` type (0.19.0): the starter prints nothing ───────── */
+const EMPTY_HIDE = ['cover', 'control', 'revisions', 'toc', 'questions'];
+/**
+ * The owner rule for the Blank document: ONE empty page in the theme. The starter keeps a single skeleton leaf the editor can type into
+ * (chapter 1 > section 1 > one prose paragraph "") and prints nothing else: all five front/back parts hidden, the one chapter `bare` (no heading),
+ * no text anywhere, no running band item but the page number. Messages name the rule, never the text.
+ */
+function emptyErrors(doc, ed, t) {
+  const e = [];
+  const hide = new Set([...(t.layout?.hide || []), ...(doc.layout?.hide || [])]);
+  for (const k of EMPTY_HIDE) if (!hide.has(k)) e.push(`${ed}: an empty type hides «${k}» (layout.hide)`);
+  const chs = doc.chapters;
+  if (!Array.isArray(chs) || chs.length !== 1) { e.push(`${ed}: an empty type has exactly one skeleton chapter, not ${Array.isArray(chs) ? chs.length : 'none'}`); return e; }
+  const c = chs[0];
+  if (c.bare !== true) e.push(`${ed}: the skeleton chapter must be bare: true (no heading prints)`);
+  if (c.title !== '') e.push(`${ed}: the skeleton chapter has no title`);
+  if (!Array.isArray(c.sections) || c.sections.length !== 1) { e.push(`${ed}: the skeleton chapter has exactly one section`); return e; }
+  const s = c.sections[0];
+  if (s.title !== '') e.push(`${ed}: the skeleton section has no title`);
+  if ((c.blocks || []).length) e.push(`${ed}: the skeleton chapter has no blocks of its own`);
+  const b = s.blocks;
+  if (!Array.isArray(b) || b.length !== 1 || b[0]?.kind !== 'prose' || !Array.isArray(b[0].paragraphs) || b[0].paragraphs.length !== 1 || b[0].paragraphs[0] !== '') e.push(`${ed}: the skeleton section holds one prose block with one empty paragraph`);
+  const band = (part) => (doc.chrome?.[part]?.items || []);
+  if (!doc.chrome) e.push(`${ed}: chrome is required (without it the page prints the document id, date and confidentiality)`);
+  if (band('header').length) e.push(`${ed}: the header band prints nothing`);
+  if (band('footer').some((it) => it.kind !== 'page')) e.push(`${ed}: the footer band holds only the page number`);
+  if ((doc.openQuestions || []).length) e.push(`${ed}: openQuestions is empty`);
+  if (doc.control?.title !== t.placeholder?.[ed]) e.push(`${ed}: control.title is the type's name (placeholder in type.json), with no «: …» part`);
+  return e;
+}
+
 /* ───────── one document edition ───────── */
 function docErrors(doc, ed, t, isSource) {
   const e = [];
@@ -225,6 +256,12 @@ function docErrors(doc, ed, t, isSource) {
   }
   for (const k of CONTROL_KEYS) if (typeof doc.control?.[k] !== 'string') e.push(`${ed}: control.${k} is missing`);
   if (doc.control?.documentId !== `BW-${t.code}-NEW-001`) e.push(`${ed}: control.documentId must be BW-${t.code}-NEW-001`);
+  if (t.empty === true) {
+    if (!Array.isArray(doc.revisions)) e.push(`${ed}: revisions must be an array`);
+    if (!Array.isArray(doc.openQuestions)) e.push(`${ed}: openQuestions must be an array`);
+    e.push(...emptyErrors(doc, ed, t));
+    return e;
+  }
   if (t.placeholder?.[ed] && !String(doc.control?.title || '').endsWith(`: ${t.placeholder[ed]}`)) e.push(`${ed}: control.title must end with «: ${t.placeholder[ed]}» (the placeholder of type.json)`);
   if (!Array.isArray(doc.revisions) || !doc.revisions.length || !doc.revisions.every(Array.isArray)) e.push(`${ed}: revisions needs at least one row`);
   if (!isSource && !(typeof doc.labels?.kicker === 'string' && typeof doc.labels?.subtitle === 'string')) e.push(`${ed}: labels.kicker and labels.subtitle are required (the cover wording)`);

@@ -2,30 +2,28 @@
   "composedAt": "",
   "control": {
     "documentId": "BW-DOC-NEW-001",
-    "title": "وثيقة فارغة: عنوان الوثيقة",
-    "preparedBy": "الاسم والمسمى الوظيفي",
+    "title": "وثيقة فارغة",
+    "preparedBy": "",
     "documentType": "وثيقة فارغة",
-    "classification": "داخلي",
-    "owner": "اسم الجهة",
-    "issuedOn": "YYYY-MM-DD",
+    "classification": "",
+    "owner": "",
+    "issuedOn": "",
     "version": "V0.1",
     "status": "مسودة",
-    "reviewCycle": "عند الحاجة"
+    "reviewCycle": ""
   },
-  "revisions": [["V0.1", "YYYY-MM-DD", "المسودة الأولى", "—"]],
-  "labels": { "kicker": "وثيقة فارغة", "subtitle": "العنوان الفرعي" },
+  "revisions": [],
+  "chrome": {
+    "header": { "items": [] },
+    "footer": { "items": [{ "id": "f-page", "kind": "page", "value": "n", "align": "end", "scope": "all" }] }
+  },
   "chapters": [
     {
+      "bare": true,
       "number": "1",
-      "title": "الفصل الأول",
+      "title": "",
       "sections": [
-        {
-          "number": "1.1",
-          "title": "عنوان القسم",
-          "blocks": [
-            { "kind": "prose", "paragraphs": ["اكتب هنا. أضف فصولا وأقساما وجداول ومخططات من الشريط، وأعد ترتيبها بالسحب."] }
-          ]
-        }
+        { "number": "1.1", "title": "", "blocks": [{ "kind": "prose", "paragraphs": [""] }] }
       ]
     }
   ],
