@@ -495,6 +495,17 @@ const SESS = (() => {
     }).catch(() => _download(name, text, type));
   };
 
+  /** 0.18.2: the same «continue where you left off» question on demand (the start page's button, 50-start). `lastCount()` = how many documents the last session had (0 when there is
+   *  no host to ask or nothing to resume); `ask()` opens the popup over whatever is on screen and answers true when it opened. */
+  const lastRun = () => (info ? fetch('/api/session/last').then((r) => r.json()).catch(() => null) : Promise.resolve(null));
+  const lastCount = async () => (await lastRun())?.tabs?.length || 0;
+  async function ask() {
+    if (!info || openDlg) return false;
+    const last = await lastRun();
+    if (!last?.tabs?.length) return false;
+    modal(last, () => {});
+    return true;
+  }
   /** 0.18.0: the session's resume check is over (no host to ask, nothing to resume, or the resume popup answered / dismissed): `bw:session-settled` (once) and
    *  <html data-bw-session-settled>. The start page (50-start) waits for it, so it never stacks on the resume dialog or over a document the host is bringing back. */
   let settledOnce = false, popup = false;
@@ -527,7 +538,12 @@ const SESS = (() => {
     else if (!AUTO) {
       const release = window.BW?.holdReady?.('resume'); // bw:ready / data-bw-ready wait until the resume question is settled (a tool's ?automation=1 tab never asks)
       const last = await fetch('/api/session/last').then((r) => r.json()).catch(() => null);
-      if (last?.tabs?.length) { popup = true; modal(last, () => { release?.(); settled(); }); } else release?.(); // the popup's own close settles the session (the finally in boot() skips it while the popup is up)
+      // 0.18.2: opening the tool lands on the start page (50-start), so the «continue where you left off» question is not put over it (one landing, not two views fighting for the screen).
+      // Nothing is lost: the start page lists the last documents in Recents AND carries a «Continue where you left off (N)» button that opens this very popup (ask()). The popup still opens by
+      // itself for a specific document, a test's browser, a tool's tab and when the start page is switched off in Settings.
+      const startLands = !!last?.tabs?.length && !!EXT.start?.landing?.();
+      if (startLands) document.documentElement.dataset.bwResume = 'start';
+      if (last?.tabs?.length && !startLands) { popup = true; modal(last, () => { release?.(); settled(); }); } else release?.(); // the popup's own close settles the session (the finally in boot() skips it while the popup is up)
     }
     push();
     seen();
@@ -581,7 +597,7 @@ const SESS = (() => {
       if (r.ok) draw(r); else now.textContent = t('brFailed');
     });
   };
-  return { boot, push, soon, flush, ensureFolder, card, mountCard, brCard, brMount, dismissResume, claim, on: hub.on, bye: hub.bye, again: hub.again, seen, get readonly() { const d = curDoc(); return d ? (follows(d) ? 'follower' : LS.stale[d] ? 'stale' : '') : ''; }, get transport() { return hub.mode; }, get silentMs() { return hub.silentMs; }, get rescuing() { return hub.rescuing; }, get automation() { return AUTO; }, get tab() { return tab; }, get info() { return info; } };
+  return { boot, push, soon, flush, ensureFolder, ask, lastCount, card, mountCard, brCard, brMount, dismissResume, claim, on: hub.on, bye: hub.bye, again: hub.again, seen, get readonly() { const d = curDoc(); return d ? (follows(d) ? 'follower' : LS.stale[d] ? 'stale' : '') : ''; }, get transport() { return hub.mode; }, get silentMs() { return hub.silentMs; }, get rescuing() { return hub.rescuing; }, get automation() { return AUTO; }, get tab() { return tab; }, get info() { return info; } };
 })();
 
 bwExt({

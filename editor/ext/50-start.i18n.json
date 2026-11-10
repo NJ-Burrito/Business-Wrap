@@ -1,6 +1,9 @@
 {
   "ar": {
     "startPage": "صفحة البداية",
+    "startHome": "الرئيسية",
+    "startHomeTip": "الرئيسية: صفحة البداية",
+    "startResume": "تابع من حيث توقفت ({n})",
     "startMain": "صفحة البداية",
     "startTitle": "ابدأ مستندا",
     "startLede": "اختر نوعا لتفتحه بتصميمه الخاص: غلاف وأقسام وجداول. كل نوع متوفر بالعربية والإنجليزية.",
@@ -51,6 +54,9 @@
   },
   "en": {
     "startPage": "Start page",
+    "startHome": "Home",
+    "startHomeTip": "Home: the start page",
+    "startResume": "Pick up where you left off ({n})",
     "startMain": "Start page",
     "startTitle": "Start a document",
     "startLede": "Pick a type to open it on its own design: cover, sections and tables. Every type exists in Arabic and English.",

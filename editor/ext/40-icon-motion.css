@@ -288,6 +288,9 @@
 [data-ic="redo"] > * { --r:28deg; --icm: icm-tilt var(--mvt); }
 [data-ic="secFile"] > * { --icm: icm-lift var(--mvt); }
 [data-ic="secInsert"] > * { --s:1.18; --icm: icm-pop var(--mvt); }
+/* 0.18.2: the top bar's Home: the house settles (pop) and the door (the gold part) lifts a little after it */
+[data-ic="homeBtn"] > path { --s:1.1; --icm: icm-pop var(--mvt); }
+[data-ic="homeBtn"] > .hl { --y:-1.5px; --d: 60ms; --icm: icm-nudge var(--mvt); }
 [data-ic="secDocument"] > * { --icm: icm-draw var(--mvt); }
 [data-ic="secView"] > * { --s:1.14; --icm: icm-pop var(--mvt); }
 [data-ic="secSel"] > * { --r:10deg; --icm: icm-tilt var(--mvt); }
