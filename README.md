@@ -33,35 +33,51 @@
 
 🏁 However you open Business-Wrap (the desktop shortcut, the local host, or a `business-wrap:` link), the **start page** is the first screen; opening a specific document still opens that document. It is a gallery of the 17 types, each drawn as a small page, with a search box, category chips and your recent documents beside it.
 
-<p align="center"><img src="https://raw.githubusercontent.com/NJ-Burrito/Business-Wrap/main/site/assets/media/start-en.png" alt="The Business-Wrap start page: a gallery of document types with category chips, a search box and recent documents" width="860"></p>
+🔌 The bar at the top carries the **local host switch**: a dot (green or red), the words «Online :4317» or «Offline», and a switch. It is the same control, with the same state, as the one in the editor's top bar, so you can start or stop the local host without leaving the start page. Stopping it saves your documents first and stops only the host.
 
-🖱️ Click a type to preview what is inside, then press **Create**. A double click (or Ctrl+Enter) creates it at once. The editor opens on that type's own design: its cover, sections and tables, not a renamed SRS.
+<p align="center"><img src="https://raw.githubusercontent.com/NJ-Burrito/Business-Wrap/main/site/assets/media/start-panel-en.png" alt="The Business-Wrap start page with the test plan selected: the gallery of document types on the left, and the side panel with a thumbnail, the language switch, Create, what the type is for, when to use it and its sections" width="860"></p>
+
+🖱️ **Click a type and a side panel opens** beside the gallery. It shows a small thumbnail of the type that plays once (the Calm button shows a still frame instead), what the type is for, when to use it, its sections, who uses it, a language switch and **Create**. Esc or the close button shuts the panel. A double click (or Ctrl+Enter) creates the document at once. The editor opens on that type's own design: its first page, sections and tables, not a renamed SRS.
+
+### 📄 The first page of each type
+
+Every type opens with a first page built for its purpose. The thumbnail on the start page is only a picture for choosing a type. **Page 1 of the document never carries it**, or any other drawing, in the editor, in PDF or in Word. It uses straight lines, boxes and text. Word gets the same pages as the PDF.
+
+| Family | What page 1 is | Types |
+|---|---|---|
+| **Title page** | Type code, title and subtitle, then the document control block (document ID, version, status, issue date, owner, prepared by, approved by, classification) and the type's own fields. Page 2 holds the revision history and the approvals grid, page 3 the contents (chapters only), and chapter 1 starts on a new page. | SRS, BRD, FRS, process flow, test plan, user manual, ToR, TOT |
+| **Form** | A header at the top of the page (code chip, title, an ID box or a version badge, a grid of fields), and the body continues on the same page. No contents list; document control and revisions move to the back. | defect report, change request, minutes, UAT sign-off, release notes |
+| **Sheet** | A landscape page: the fields in one row, a strip of status tiles, then the table itself. Later pages repeat a short running header and the table's header row. | RTM, test cases |
+| **Decision paper** | A band with the title, four key-figure tiles, a decision box with empty choices, then the control block. Page 2 holds control and approvals. | business case |
+| **Blank** | One empty page. No cover, no control table, no heading, no sample text. | blank |
+
+📚 Each type follows the outline of a named practice: the SRS follows the software requirements specification outline of ISO/IEC/IEEE 29148; the test plan, test cases, defect report and UAT sign-off follow ISO/IEC/IEEE 29119-3; the BRD, FRS, RTM and business case follow the BABOK Guide (IIBA); the process flow uses BPMN 2.0 notation and a SIPOC table; the rest follow common professional practice (ITIL 4 for the change request and release notes, PRINCE2 for the business case, ADDIE and Kirkpatrick for the TOT guide). They are starting structures written in Business-Wrap's own words, not certified templates and not a claim of compliance.
 
 ### 📚 The 17 types
 
-| Type | بالعربية | Category | What it is for | `id` |
-|---|---|---|---|---|
-| Blank document | وثيقة فارغة | Start | A clean title block, a control table and one empty chapter. | `blank` |
-| Software Requirements Specification (SRS) | وثيقة متطلبات البرمجيات (SRS) | Requirements | What an e-service or system must do: service card, requirements, rules, workflow, user stories with acceptance criteria. | `srs` |
-| Business Requirements Document (BRD) | وثيقة متطلبات العمل (BRD) | Requirements | What the organisation needs from a project: problem, objectives, stakeholders, success criteria. | `brd` |
-| Functional Requirements Specification (FRS) | مواصفات المتطلبات الوظيفية (FRS) | Requirements | What a system does, function by function, traced back to the BRD. | `frs` |
-| Requirements traceability matrix (RTM) | مصفوفة تتبع المتطلبات (RTM) | Requirements | A landscape matrix from each requirement to its design, test cases, results, defects and release. | `rtm` |
-| Process flow document (as-is and to-be) | وثيقة سير العملية (الحالي والمستهدف) | Requirements | A process as it runs today and as it should run: roles, two diagrams, pain points, gaps, metrics. | `process-flow` |
-| Test plan | خطة الاختبار | Testing | How the team will test: scope, approach, environment, schedule, exit criteria. | `test-plan` |
-| Test cases sheet | جدول حالات الاختبار | Testing | A landscape sheet of cases with steps, expected and actual result and status, plus a defect log. | `test-cases` |
-| Defect report | تقرير عيب | Testing | One defect, described so a developer can reproduce and fix it. | `defect-report` |
-| User manual | دليل المستخدم | Delivery | A task, step by step, with screenshot placeholders, numbered callouts and reference tables. | `user-manual` |
-| UAT sign-off | محضر قبول المستخدم (UAT) | Delivery | Scenarios and results, open defects, then a decision (accepted, with conditions or rejected) and signatures. | `uat-signoff` |
-| Release notes | ملاحظات الإصدار | Delivery | What is new, fixed and known, breaking changes and upgrade steps, in the user's words. | `release-notes` |
-| Terms of Reference (ToR) | الشروط المرجعية (ToR) | Governance | Scope, deliverables, timeline, responsibilities and evaluation criteria for a call for proposals or a contract. | `tor` |
-| Change request with impact analysis | طلب تغيير مع تحليل الأثر | Governance | The reason, an impact matrix over twelve areas, alternatives, risks, then the board's decision. | `change-request` |
-| Minutes of meeting | محضر اجتماع | Governance | Attendance, items, decisions and actions with owners and dates. | `minutes` |
-| Business case | دراسة الجدوى (حالة العمل) | Governance | Problem, benefits, options compared, recommendation, cost, risks and the decision requested. | `business-case` |
-| Training of Trainers (TOT) guide | دليل تدريب المدربين (TOT) | Training | Objectives, modules, sessions, exercises, assessment and a day-by-day schedule. | `tot` |
+| Type | بالعربية | Category | What it is for | Page 1 | `id` |
+|---|---|---|---|---|---|
+| Blank document | وثيقة فارغة | Start | One empty page in the Business-Wrap theme, to write on. | One empty page: no cover, no heading, no sample text. | `blank` |
+| Software Requirements Specification (SRS) | وثيقة متطلبات البرمجيات (SRS) | Requirements | What an e-service or system must do: overall description, functional and non-functional requirements, workflow, user stories with acceptance criteria and how each is verified. | Title page: system or service, service code. | `srs` |
+| Business Requirements Document (BRD) | وثيقة متطلبات العمل (BRD) | Requirements | What the organisation needs from a project: problem, objectives, stakeholders, success criteria. | Title page: business owner, sponsor, project. | `brd` |
+| Functional Requirements Specification (FRS) | مواصفات المتطلبات الوظيفية (FRS) | Requirements | What a system does, function by function, traced back to the BRD. | Title page: system, module, related BRD. | `frs` |
+| Requirements traceability matrix (RTM) | مصفوفة تتبع المتطلبات (RTM) | Requirements | A landscape matrix from each requirement to its design, test cases, results, defects and release. | Landscape sheet: six fields, five status tiles, then the matrix. | `rtm` |
+| Process flow document (as-is and to-be) | وثيقة سير العملية (الحالي والمستهدف) | Requirements | A process as it runs today and as it should run: roles, two diagrams, pain points, gaps, metrics. | Title page: process owner, scope, level. | `process-flow` |
+| Test plan | خطة الاختبار | Testing | How the team will test: what is and is not tested, approach, environment, schedule and what counts as success. | Title page: system under test, release, plan type, test window. | `test-plan` |
+| Test cases sheet | جدول حالات الاختبار | Testing | A landscape sheet of cases with preconditions, steps, expected and actual result and status, plus a defect log. | Landscape sheet: six fields, six result tiles, then the cases. | `test-cases` |
+| Defect report | تقرير عيب | Testing | One defect, described so a developer can reproduce and fix it. | Form: defect ID box, severity, priority and status chips, then the summary. | `defect-report` |
+| User manual | دليل المستخدم | Delivery | A task, step by step, with screenshot placeholders, numbered callouts and reference tables. | Title page: system or service, system version, document language, target users. | `user-manual` |
+| UAT sign-off | محضر قبول المستخدم (UAT) | Delivery | Scenarios and results, open defects, then a decision (accepted, with conditions or not accepted) and signatures. | Form: six fields, the acceptance statement with three empty choice boxes, then the decision and signatures. | `uat-signoff` |
+| Release notes | ملاحظات الإصدار | Delivery | What is new, fixed and known, breaking changes and upgrade steps, in the user's words. | Form: version badge, four fields, then the highlights. | `release-notes` |
+| Terms of Reference (ToR) | الشروط المرجعية (ToR) | Governance | Scope, deliverables, timeline, responsibilities and evaluation criteria for a call for proposals or a contract. | Title page: issuing organisation, reference number, proposals due. | `tor` |
+| Change request with impact analysis | طلب تغيير مع تحليل الأثر | Governance | The reason, impact and risk over six areas, effort and cost, alternatives, the back-out plan, then the change authority's decision. | Form: request number box, eight fields, then the description and reason. | `change-request` |
+| Minutes of meeting | محضر اجتماع | Governance | Attendance, agenda, decisions and actions with owners and due dates. | Form: meeting number box, six fields, then attendance. | `minutes` |
+| Business case | دراسة الجدوى (حالة العمل) | Governance | Problem, benefits, options compared, recommendation, cost, risks and the decision requested. | Decision paper: band, four key-figure tiles, a decision box (approve, defer, reject). | `business-case` |
+| Training of Trainers (TOT) guide | دليل تدريب المدربين (TOT) | Training | Objectives, modules, sessions, exercises, assessment and a day-by-day schedule. | Title page: duration, sessions, participants, delivery mode, certificate. | `tot` |
 
 ### ➕ Three ways to start one
 
-1️⃣ **The start page.** Pick a tile and press Create. Search with `/`, or filter with the category chips. The language switch in the preview chooses which edition opens first; the other edition is kept in step.
+1️⃣ **The start page.** Pick a tile, read the side panel and press Create. Search with `/`, or filter with the category chips. The language switch in the panel chooses which edition opens first; the other edition is kept in step.
 
 2️⃣ **Inside the editor.** Press **Home** at the start of the top bar, or File tab, then **Start page** (Ctrl+Alt+N). Your work is saved first and your open document stays open behind it.
 
@@ -73,7 +89,7 @@
 
 🎀 **The whole editor:** the ribbon, editable diagrams, your profile and work log, the watermark and the tools that explain themselves.
 
-🎨 **The Business-Wrap theme,** with a colour for each category and one of two cover designs (a full cover page, or a compact title block for short documents).
+🎨 **The Business-Wrap theme,** with a colour for each category and a first page built for the document's purpose (a title page, a form, a landscape sheet or a decision paper), never a decorative drawing.
 
 🧾 **Starter text, not client data.** Every type opens with placeholder content you replace. Nothing in it comes from a real client.
 

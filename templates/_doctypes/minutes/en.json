@@ -3,7 +3,8 @@
   "control": {
     "documentId": "BW-MOM-NEW-001",
     "title": "Minutes of meeting: Meeting subject",
-    "preparedBy": "Name and job title",
+    "preparedBy": "[Name and job title]",
+    "approvedBy": "[Name and job title]",
     "documentType": "Minutes of meeting",
     "classification": "Internal",
     "owner": "[Organisation name]",
@@ -11,50 +12,6 @@
     "version": "V0.1",
     "status": "Draft",
     "reviewCycle": "Per meeting"
-  },
-  "controlTable": {
-    "columns": [
-      "Item",
-      "Value"
-    ],
-    "rows": [
-      [
-        "Meeting title",
-        "[Meeting subject]"
-      ],
-      [
-        "Meeting number",
-        "1"
-      ],
-      [
-        "Date and time",
-        "YYYY-MM-DD HH:MM"
-      ],
-      [
-        "Venue or link",
-        "[Room or meeting link]"
-      ],
-      [
-        "Chair",
-        "[Name]"
-      ],
-      [
-        "Minute taker",
-        "[Name]"
-      ],
-      [
-        "Document code",
-        {
-          "bind": "documentId"
-        }
-      ],
-      [
-        "Status",
-        {
-          "bind": "status"
-        }
-      ]
-    ]
   },
   "revisions": [
     [
@@ -66,23 +23,65 @@
   ],
   "labels": {
     "kicker": "MINUTES OF MEETING",
-    "subtitle": "Meeting record",
-    "controlChapter": "Meeting details",
-    "controlData": "Key facts"
+    "subtitle": "Meeting record"
+  },
+  "cover": {
+    "cols": 3,
+    "fields": [
+      {
+        "label": "Meeting number",
+        "value": "001",
+        "kind": "text",
+        "id": true
+      },
+      {
+        "label": "Date and time",
+        "value": "YYYY-MM-DD HH:MM",
+        "kind": "date"
+      },
+      {
+        "label": "Venue or link",
+        "value": "[Room or meeting link]",
+        "kind": "text"
+      },
+      {
+        "label": "Chair",
+        "value": "[Name]",
+        "kind": "text"
+      },
+      {
+        "label": "Minute taker",
+        "value": "[Name]",
+        "kind": "text"
+      },
+      {
+        "label": "Next meeting",
+        "value": "YYYY-MM-DD HH:MM",
+        "kind": "date"
+      }
+    ]
+  },
+  "layout": {
+    "tocDepth": 1,
+    "back": [
+      "control",
+      "revisions"
+    ],
+    "hide": [
+      "toc"
+    ]
   },
   "chapters": [
     {
-      "number": "1",
       "title": "Attendance",
       "sections": [
         {
-          "number": "1.1",
           "title": "Attendees",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "Start time: HH:MM. End time: HH:MM."
+                "Mark each person Present, Online or Apologies."
               ]
             },
             {
@@ -101,19 +100,13 @@
                   "Present"
                 ],
                 [
-                  "[Name]",
                   "…",
                   "…",
-                  "Present"
+                  "…",
+                  "Online"
                 ],
                 [
-                  "[Name]",
                   "…",
-                  "…",
-                  "Remote"
-                ],
-                [
-                  "[Name]",
                   "…",
                   "…",
                   "Apologies"
@@ -123,13 +116,13 @@
                   "…",
                   "…",
                   "…"
-                ],
-                [
-                  "…",
-                  "…",
-                  "…",
-                  "…"
                 ]
+              ],
+              "colWidths": [
+                30,
+                26,
+                22,
+                22
               ]
             }
           ]
@@ -137,17 +130,63 @@
       ]
     },
     {
-      "number": "2",
+      "title": "Previous minutes and open actions",
+      "sections": [
+        {
+          "title": "Carried over",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Record whether the previous minutes were approved or amended, then the actions that are still open."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Action",
+                "Owner",
+                "Status"
+              ],
+              "rows": [
+                [
+                  "A-001",
+                  "…",
+                  "…",
+                  "Open"
+                ],
+                [
+                  "A-002",
+                  "…",
+                  "…",
+                  "Done"
+                ]
+              ],
+              "colWidths": [
+                10,
+                50,
+                20,
+                20
+              ],
+              "nowrapCols": [
+                0
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
       "title": "Agenda",
       "sections": [
         {
-          "number": "2.1",
           "title": "Items as sent",
           "blocks": [
             {
               "kind": "table",
               "columns": [
-                "#",
+                "No",
                 "Item",
                 "Presenter",
                 "Time (min)"
@@ -155,28 +194,34 @@
               "rows": [
                 [
                   "1",
-                  "Opening and previous actions",
-                  "[Name]",
-                  "5"
+                  "…",
+                  "…",
+                  "…"
                 ],
                 [
                   "2",
                   "…",
-                  "[Name]",
-                  "[…]"
+                  "…",
+                  "…"
                 ],
                 [
                   "3",
                   "…",
-                  "[Name]",
-                  "[…]"
-                ],
-                [
-                  "4",
-                  "Any other business",
-                  "[Name]",
-                  "5"
+                  "…",
+                  "…"
                 ]
+              ],
+              "colWidths": [
+                6,
+                54,
+                24,
+                16
+              ],
+              "numCols": [
+                3
+              ],
+              "nowrapCols": [
+                0
               ]
             }
           ]
@@ -184,17 +229,15 @@
       ]
     },
     {
-      "number": "3",
-      "title": "Discussion summary",
+      "title": "Discussion",
       "sections": [
         {
-          "number": "3.1",
           "title": "By item",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "Write a short paragraph per item on what was agreed or disputed. Do not keep a verbatim record."
+                "Summarise each item in a few lines: what was said, what was agreed, and what stays open."
               ]
             },
             {
@@ -219,12 +262,15 @@
                   "3",
                   "…",
                   "…"
-                ],
-                [
-                  "4",
-                  "…",
-                  "…"
                 ]
+              ],
+              "colWidths": [
+                8,
+                62,
+                30
+              ],
+              "nowrapCols": [
+                0
               ]
             }
           ]
@@ -232,11 +278,9 @@
       ]
     },
     {
-      "number": "4",
       "title": "Decisions",
       "sections": [
         {
-          "number": "4.1",
           "title": "Decision log",
           "blocks": [
             {
@@ -249,23 +293,26 @@
               ],
               "rows": [
                 [
-                  "DEC-01",
+                  "D-001",
                   "…",
-                  "[Name]",
+                  "…",
                   "…"
                 ],
                 [
-                  "DEC-02",
+                  "D-002",
                   "…",
-                  "[Name]",
-                  "…"
-                ],
-                [
-                  "DEC-03",
                   "…",
-                  "[Name]",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                10,
+                50,
+                20,
+                20
+              ],
+              "nowrapCols": [
+                0
               ]
             }
           ]
@@ -273,17 +320,15 @@
       ]
     },
     {
-      "number": "5",
-      "title": "Action items",
+      "title": "Actions",
       "sections": [
         {
-          "number": "5.1",
-          "title": "Actions",
+          "title": "Action log",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "Each action has one owner and a fixed date. An action without a name or a date will not be done."
+                "Every action has one owner and a due date."
               ]
             },
             {
@@ -292,45 +337,48 @@
                 "ID",
                 "Action",
                 "Owner",
-                "Due date",
-                "Status"
+                "Due",
+                "Status",
+                "Note"
               ],
               "rows": [
                 [
-                  "ACT-01",
-                  "Send the second draft of the requirements.",
-                  "[Name]",
+                  "A-003",
+                  "…",
+                  "…",
                   "YYYY-MM-DD",
-                  "Open"
+                  "Open",
+                  "…"
                 ],
                 [
-                  "ACT-02",
+                  "A-004",
                   "…",
-                  "[Name]",
+                  "…",
                   "YYYY-MM-DD",
-                  "Open"
+                  "Open",
+                  "…"
                 ],
                 [
-                  "ACT-03",
+                  "A-005",
                   "…",
-                  "[Name]",
-                  "YYYY-MM-DD",
-                  "Open"
-                ],
-                [
-                  "ACT-04",
                   "…",
-                  "[Name]",
                   "YYYY-MM-DD",
-                  "Open"
-                ],
-                [
-                  "ACT-05",
-                  "…",
-                  "[Name]",
-                  "YYYY-MM-DD",
-                  "Open"
+                  "Open",
+                  "…"
                 ]
+              ],
+              "colWidths": [
+                8,
+                40,
+                18,
+                14,
+                12,
+                8
+              ],
+              "style": "sheet",
+              "nowrapCols": [
+                0,
+                3
               ]
             }
           ]
@@ -338,12 +386,10 @@
       ]
     },
     {
-      "number": "6",
       "title": "Parking lot",
       "sections": [
         {
-          "number": "6.1",
-          "title": "Deferred points",
+          "title": "Points for later",
           "blocks": [
             {
               "kind": "table",
@@ -363,6 +409,11 @@
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                40,
+                30,
+                30
               ]
             }
           ]
@@ -370,90 +421,84 @@
       ]
     },
     {
-      "number": "7",
-      "title": "Next meeting",
-      "sections": [
-        {
-          "number": "7.1",
-          "title": "Date and likely items",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "Date and time: YYYY-MM-DD HH:MM. Place: […]. Likely items: […]"
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "number": "8",
       "title": "Approval of the minutes",
       "sections": [
         {
-          "number": "8.1",
           "title": "Approval",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "The chair approves the minutes once attendees have them and no objection comes within the agreed period."
+                "The chair and the minute taker sign to confirm that the minutes record the meeting correctly."
               ]
             },
             {
               "kind": "table",
               "columns": [
-                "Name",
                 "Role",
+                "Name",
                 "Signature",
                 "Date"
               ],
               "rows": [
                 [
-                  "",
                   "Chair",
-                  "",
-                  ""
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
                 ],
                 [
-                  "",
                   "Minute taker",
-                  "",
-                  ""
-                ],
-                [
-                  "",
-                  "",
-                  "",
-                  ""
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  },
+                  {
+                    "text": "",
+                    "keepEmpty": true
+                  }
                 ]
               ],
-              "blankCell": ""
+              "colWidths": [
+                22,
+                30,
+                28,
+                20
+              ],
+              "style": "signoff",
+              "blankCell": "",
+              "rowHeights": [
+                14,
+                14
+              ]
             }
           ]
         },
         {
-          "number": "8.2",
-          "title": "Distribution list",
+          "title": "Distribution",
           "blocks": [
             {
               "kind": "table",
               "columns": [
                 "Recipient",
                 "Role",
-                "Delivery method",
-                "Date"
+                "Date sent"
               ],
               "rows": [
                 [
-                  "[Name]",
-                  "…",
-                  "…",
-                  "YYYY-MM-DD"
-                ],
-                [
-                  "[Name]",
                   "…",
                   "…",
                   "YYYY-MM-DD"
@@ -461,9 +506,16 @@
                 [
                   "…",
                   "…",
-                  "…",
-                  "…"
+                  "YYYY-MM-DD"
                 ]
+              ],
+              "colWidths": [
+                40,
+                35,
+                25
+              ],
+              "nowrapCols": [
+                2
               ]
             }
           ]

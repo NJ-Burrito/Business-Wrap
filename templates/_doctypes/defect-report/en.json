@@ -3,10 +3,11 @@
   "control": {
     "documentId": "BW-DEF-NEW-001",
     "title": "Defect report: Defect summary",
-    "preparedBy": "Name and job title",
+    "preparedBy": "[Name and job title]",
+    "approvedBy": "[Name and job title]",
     "documentType": "Defect report",
     "classification": "Internal",
-    "owner": "Organisation name",
+    "owner": "[Organisation name]",
     "issuedOn": "YYYY-MM-DD",
     "version": "V0.1",
     "status": "Draft",
@@ -22,84 +23,76 @@
   ],
   "labels": {
     "kicker": "DEFECT REPORT",
-    "subtitle": "Defect ID"
+    "subtitle": "One defect, from report to closure"
+  },
+  "cover": {
+    "cols": 4,
+    "fields": [
+      {
+        "label": "Defect ID",
+        "value": "DEF-001",
+        "kind": "text",
+        "id": true
+      },
+      {
+        "label": "Severity",
+        "value": "High",
+        "kind": "chip"
+      },
+      {
+        "label": "Priority",
+        "value": "Medium",
+        "kind": "chip"
+      },
+      {
+        "label": "Status",
+        "value": "Open",
+        "kind": "chip"
+      },
+      {
+        "label": "Reported by",
+        "value": "[Name]",
+        "kind": "text"
+      },
+      {
+        "label": "Reported on",
+        "value": "YYYY-MM-DD",
+        "kind": "date"
+      },
+      {
+        "label": "Module",
+        "value": "[Module name]",
+        "kind": "text"
+      },
+      {
+        "label": "Build",
+        "value": "[Build number]",
+        "kind": "text"
+      },
+      {
+        "label": "Assigned to",
+        "value": "[Name]",
+        "kind": "text"
+      },
+      {
+        "label": "Linked test case",
+        "value": "TC-001",
+        "kind": "text"
+      }
+    ]
   },
   "chapters": [
     {
-      "title": "Defect summary",
+      "title": "Summary",
       "sections": [
         {
-          "title": "Defect summary",
+          "title": "Summary",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "A one-line title saying what happens and where. Example: \"The Send button stays disabled after the required fields are filled on the request page.\""
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Item",
-                "Value"
-              ],
-              "rows": [
-                [
-                  "Defect ID",
-                  "…"
-                ],
-                [
-                  "Title",
-                  "…"
-                ],
-                [
-                  "Module",
-                  "…"
-                ],
-                [
-                  "Severity",
-                  "…"
-                ],
-                [
-                  "Priority",
-                  "…"
-                ],
-                [
-                  "Reported by",
-                  "…"
-                ],
-                [
-                  "Reported on",
-                  "…"
-                ],
-                [
-                  "Status",
-                  "…"
-                ],
-                [
-                  "Assigned to",
-                  "…"
-                ],
-                [
-                  "Linked test case",
-                  "…"
-                ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "title": "Description",
-      "sections": [
-        {
-          "title": "Description",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "A short paragraph on what the tester saw and since when."
+                "[One line that says what happens and where. Example: “The Submit button stays disabled after all required fields are filled.”]",
+                "[A short paragraph: what the tester saw, when it started and how often it happens.]"
               ]
             }
           ]
@@ -115,13 +108,13 @@
             {
               "kind": "prose",
               "paragraphs": [
-                "Numbered steps, each a single action, starting from a known point. Add the test data used."
+                "Start from a known point. Write one action per step and name the data used."
               ]
             },
             {
               "kind": "table",
               "columns": [
-                "No.",
+                "No",
                 "Step",
                 "Data"
               ],
@@ -141,6 +134,14 @@
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                8,
+                62,
+                30
+              ],
+              "nowrapCols": [
+                0
               ]
             }
           ]
@@ -156,7 +157,7 @@
             {
               "kind": "prose",
               "paragraphs": [
-                "What should have happened and what did, in two separate items."
+                "Write two separate statements: what should have happened, and what happened."
               ]
             },
             {
@@ -170,6 +171,106 @@
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                50,
+                50
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Environment",
+      "sections": [
+        {
+          "title": "Environment",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "Detail"
+              ],
+              "rows": [
+                [
+                  "Operating system",
+                  "…"
+                ],
+                [
+                  "Browser and version",
+                  "…"
+                ],
+                [
+                  "Device",
+                  "…"
+                ],
+                [
+                  "Interface language and direction",
+                  "…"
+                ],
+                [
+                  "Test data set",
+                  "…"
+                ]
+              ],
+              "colWidths": [
+                30,
+                70
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Attempts to repeat",
+      "sections": [
+        {
+          "title": "Attempts to repeat",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Record each attempt to repeat the defect and whether it appeared."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Attempt",
+                "Date",
+                "Build",
+                "Reproduced",
+                "Note"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "YYYY-MM-DD",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "2",
+                  "YYYY-MM-DD",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ],
+              "colWidths": [
+                12,
+                18,
+                20,
+                20,
+                30
+              ],
+              "nowrapCols": [
+                0,
+                1
               ]
             }
           ]
@@ -185,13 +286,20 @@
             {
               "kind": "prose",
               "paragraphs": [
-                "Screenshots, logs and recordings, each with its type and location."
+                "Attach screenshots, logs and recordings. List each item with its type and where it is stored."
               ]
+            },
+            {
+              "kind": "shots",
+              "images": [],
+              "ratio": "16:10",
+              "badge": 1,
+              "caption": "Screenshot 1: [what the screenshot shows]"
             },
             {
               "kind": "table",
               "columns": [
-                "No.",
+                "No",
                 "Type",
                 "File or link",
                 "Note"
@@ -209,76 +317,54 @@
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                8,
+                20,
+                42,
+                30
+              ],
+              "nowrapCols": [
+                0
               ]
-            },
-            {
-              "kind": "shots",
-              "caption": "Screenshot placeholder",
-              "images": []
             }
           ]
         }
       ]
     },
     {
-      "title": "Environment",
+      "title": "Impact and risk",
       "sections": [
         {
-          "title": "Environment",
+          "title": "Impact and risk",
           "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "Operating system, browser, device, build version and the interface language and direction."
-              ]
-            },
             {
               "kind": "table",
               "columns": [
                 "Item",
-                "Value"
+                "Detail"
               ],
               "rows": [
                 [
-                  "Operating system",
+                  "Who is affected",
                   "…"
                 ],
                 [
-                  "Browser",
+                  "How many users, or how often",
                   "…"
                 ],
                 [
-                  "Device",
+                  "Workaround",
                   "…"
                 ],
                 [
-                  "Build version",
-                  "…"
-                ],
-                [
-                  "Interface language",
-                  "…"
-                ],
-                [
-                  "Text direction",
+                  "Risk if it is not fixed",
                   "…"
                 ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "title": "Impact and workaround",
-      "sections": [
-        {
-          "title": "Impact and workaround",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "Who is affected, how badly and whether there is a temporary workaround."
+              ],
+              "colWidths": [
+                30,
+                70
               ]
             }
           ]
@@ -294,14 +380,14 @@
             {
               "kind": "prose",
               "paragraphs": [
-                "Written by the developer: the root cause, the fix and the release that carries it."
+                "Written by the developer."
               ]
             },
             {
               "kind": "table",
               "columns": [
                 "Item",
-                "Value"
+                "Detail"
               ],
               "rows": [
                 [
@@ -313,13 +399,17 @@
                   "…"
                 ],
                 [
-                  "Release with the fix",
+                  "Build that carries the fix",
                   "…"
                 ],
                 [
-                  "Developer",
+                  "Change reference",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                30,
+                70
               ]
             }
           ]
@@ -335,14 +425,14 @@
             {
               "kind": "prose",
               "paragraphs": [
-                "Written by the tester after the retest: the result and date. The defect is not closed before this."
+                "Written by the tester after the retest. A defect is not closed before this."
               ]
             },
             {
               "kind": "table",
               "columns": [
                 "Item",
-                "Value"
+                "Detail"
               ],
               "rows": [
                 [
@@ -351,16 +441,24 @@
                 ],
                 [
                   "Retest date",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "Retested by",
                   "…"
                 ],
                 [
-                  "Tester",
+                  "Build retested",
                   "…"
                 ],
                 [
                   "Closure decision",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                30,
+                70
               ]
             }
           ]
@@ -376,30 +474,43 @@
             {
               "kind": "prose",
               "paragraphs": [
-                "Every move between statuses with its date and who made it."
+                "Record every change of status with its date and who made it."
               ]
             },
             {
               "kind": "table",
               "columns": [
                 "Date",
-                "Status",
-                "Changed by",
-                "Comment"
+                "From",
+                "To",
+                "By",
+                "Note"
               ],
               "rows": [
                 [
                   "YYYY-MM-DD",
+                  "—",
                   "New",
                   "…",
-                  "…"
+                  "Reported"
                 ],
                 [
                   "YYYY-MM-DD",
                   "…",
                   "…",
+                  "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                18,
+                16,
+                16,
+                20,
+                30
+              ],
+              "nowrapCols": [
+                0
               ]
             }
           ]

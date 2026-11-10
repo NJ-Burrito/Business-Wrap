@@ -185,7 +185,7 @@ try {
       const want2 = { docType: ty.id, cover: ty.coverDesign, title: mine.control.title, primary: mine.design.vars.primary };
       const ok = r.ed === want && r.isDoc && JSON.stringify(r.editions) === '["ar","en"]'
         && ['ar', 'en'].every((ed) => r.per[ed].docType === ty.id && r.per[ed].cover === ty.coverDesign && r.per[ed].title === JSON.parse(ty.docs[ed]).control.title && r.per[ed].primary === want2.primary)
-        && r.title === nameOf(mine.control) && r.coverEl === ty.coverDesign;
+        && r.title === nameOf(mine.control) && r.coverEl === ((mine.layout?.hide || []).includes('cover') ? null : ({ report: 'spine', form: 'compact', sheet: 'compact' }[ty.coverDesign] || ty.coverDesign)); // 0.19.0 R3: data-cover is the page model (report = a title page, form and sheet = a header on page 1); data-family names the family // 0.19.0: the Blank document hides its cover (one empty page), so its page draws none
       if (!ok) made.push(`${ty.id}/${want}: ${JSON.stringify(r)} wanted ${JSON.stringify(want2)} title «${nameOf(mine.control)}»`);
       // File > Start page returns; the recents list shows the new document; Back returns to it
       await startFromFile(page);

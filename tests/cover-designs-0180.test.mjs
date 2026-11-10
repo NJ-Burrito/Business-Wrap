@@ -1,12 +1,13 @@
-// 0.18.0 (document studio) · lane L2 covers: two cover designs (`spine`, `compact`), a category colour taken from the document's own design vars, and one flat
-// motif per document type, in the HTML/PDF print, the editor's markup and the Word file; the user manual's steps and callouts.
-//   1. the 17 motifs: flat shapes only, mirrored in Arabic (a check mark moves but is not flipped), the Python twin's constants equal the renderer's
-//   2. no coverDesign / motif = the markup and the stylesheet carry nothing new (the byte comparison against the old engine is doc-0160's)
-//   3. every type x ar/en renders `.cover[data-cover][data-motif]` with its svg (and, on a spine cover, the type code)
-//   4. headless Chrome (tagged bw-1109, closed in finally): the spine and motif boxes sit where covers.md puts them, mirrored in RTL, the spine takes the palette,
-//      dense tables take the wash and zebra, a compact cover is no page of its own
+// 0.18.0 (document studio) · lane L2 covers: page-1 designs (`spine`, `compact`), a category colour taken from the document's own design vars, in the
+// HTML/PDF print, the editor's markup and the Word file; the user manual's steps and callouts. 0.19.0 (lane R1): NO motif any more (work/sdlc/design/
+// 0190-types.md): the spine title page carries the control block (C3) where the motif was; tests/page1-0190 holds the page-1 drawing rule for every type.
+//   1. no motif drawing is exported; the Python twin's constants (designs, types, codes, dense types, control fields) equal the renderer's
+//   2. no coverDesign / motif = the markup and the stylesheet carry nothing new (the byte comparison against the old engine is doc-0160's); C7, C11, C12
+//   3. every type x ar/en renders `.cover[data-cover][data-type]` with no svg (and, on a spine cover, the type code and the control block)
+//   4. headless Chrome (tagged bw-1109, closed in finally): the spine and the control block sit where the spec puts them, mirrored in RTL, the spine takes
+//      the palette, dense tables take the wash and zebra, a compact cover is no page of its own
 //   5. the real exports: a PDF and a DOCX per cover design in each language (pdftotext -enc UTF-8 shows the title; the DOCX holds the title, the palette's
-//      colours and the motif picture and no colour off the palette)
+//      colours, no picture at all and no colour off the palette; approvals rows 12 mm)
 //   6. the user manual: numbered steps, callouts with a bold tag word, in the print and in Word
 //   node tests/cover-designs-0180.test.mjs
 import './_isolate.mjs';
@@ -17,7 +18,8 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright-core';
 import { REPO, exportPdf, exportDocx, loadTheme, launchOptions, i18n, printHtml } from '../engine/export.mjs';
-import { renderDocument, documentCss, designTheme, COVER_DESIGNS, COVER_MOTIFS, COVER_CODES, COVER_DENSE, MOTIF_ROLES, coverMotifSvg, coverMotifShapes, contrastOf, calloutOf } from '../engine/render.mjs';
+import * as RM from '../engine/render.mjs';
+import { renderDocument, documentCss, designTheme, COVER_DESIGNS, COVER_TYPES, COVER_CODES, COVER_DENSE, COVER_CONTROL, FIGURE_KINDS, REPORT_CONTROL, STATUS_WORDS, STATUS_WORDS_HEADED, STATUS_HEADS, contrastOf, calloutOf } from '../engine/render.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-1109-cover0180-'));
 const results = [];
@@ -40,11 +42,11 @@ const PALETTE = {
 };
 const COMPACT = new Set(['blank', 'minutes', 'test-cases', 'defect-report', 'rtm']);
 const CATEGORY = { srs: 'navy', brd: 'navy', frs: 'navy', rtm: 'navy', 'process-flow': 'navy', blank: 'navy', 'test-plan': 'forest', 'test-cases': 'forest', 'defect-report': 'forest', 'user-manual': 'gold', 'uat-signoff': 'gold', 'release-notes': 'gold', tor: 'slate', 'change-request': 'slate', minutes: 'slate', 'business-case': 'slate', tot: 'rust' };
-const make = (motif, locale, over = {}) => {
+const make = (type, locale, over = {}) => {
   const d = load(locale);
-  d.coverDesign = COMPACT.has(motif) ? 'compact' : 'spine';
-  d.motif = motif;
-  if (Object.keys(PALETTE[CATEGORY[motif]]).length) d.design = { vars: PALETTE[CATEGORY[motif]] };
+  d.coverDesign = COMPACT.has(type) ? 'compact' : 'spine';
+  d.docType = type;
+  if (Object.keys(PALETTE[CATEGORY[type]]).length) d.design = { vars: PALETTE[CATEGORY[type]] };
   return Object.assign(d, over);
 };
 const htmlOf = (doc, locale) => renderDocument(doc, { locale, labels: i18n().doc[locale], theme, fontCss: '', logos: theme.logos });
@@ -61,41 +63,23 @@ body = xml['word/document.xml']
 allx = ''.join(v for n, v in xml.items() if re.match(r'word/(document|header\d*|footer\d*)\.xml$', n))
 text = ''.join(re.findall(r'<w:t[^>]*>([^<]*)</w:t>', body))
 fills = sorted(set(m.upper() for m in re.findall(r'w:(?:fill|color)="([0-9A-Fa-f]{6})"', allx)))
-print(json.dumps({'text': text, 'fills': fills, 'media': [n for n in names if n.startswith('word/media/') and n.endswith('.png')], 'cairo': 'Cairo' in allx, 'tag_bold': bool(re.search(r'<w:b/>.{0,400}?<w:t[^>]*>(Note|ملاحظة)', body, re.S))}))
+print(json.dumps({'text': text, 'fills': fills, 'media': [n for n in names if n.startswith('word/media/')], 'cairo': 'Cairo' in allx, 'tag_bold': bool(re.search(r'<w:b/>.{0,400}?<w:t[^>]*>(Note|ملاحظة)', body, re.S)), 'h12': len(re.findall(r'<w:trHeight w:val="680" w:hRule="atLeast"/>', body)), 'breaks': body.count('w:type="page"')}))
 `;
 const docx = (f) => JSON.parse(spawnSync('python', ['-X', 'utf8', '-I', '-c', PY, f], { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } }).stdout || '{}');
 const rects = (svg) => [...svg.matchAll(/<rect[^>]*?\sx="([\d.]+)"[^>]*?\swidth="([\d.]+)"/g)].map((m) => [+m[1], +m[2]]);
 
 let ctx;
 try {
-  // ── 1. the motifs ──
-  check('17 motif ids, each with shapes', COVER_MOTIFS.length === 17 && COVER_MOTIFS.every((m) => coverMotifShapes(m).length >= 5), COVER_MOTIFS.filter((m) => coverMotifShapes(m).length < 5));
-  const bad = [];
-  for (const m of COVER_MOTIFS) {
-    const svg = coverMotifSvg(m);
-    const roles = new Set([...svg.matchAll(/class="([^"]*)"/g)].flatMap((x) => x[1].split(' ')).filter((c) => /^[fs]-/.test(c)).map((c) => c.slice(2)));
-    if (/NaN|undefined|<text|gradient|opacity|filter|<image|url\(/.test(svg) || ![...roles].every((r) => r in MOTIF_ROLES) || !/^<svg [^>]*viewBox="0 0 160 94"/.test(svg) || coverMotifShapes(m).length > 90) bad.push(m);
-  }
-  check('every motif is flat shapes in known colour roles (no text, gradient, opacity, filter, image)', !bad.length, bad);
-  const flipBad = [];
-  for (const m of COVER_MOTIFS) {
-    const a = rects(coverMotifSvg(m));
-    const b = rects(coverMotifSvg(m, { rtl: true }));
-    if (a.length !== b.length || a.some(([x, w], i) => Math.abs(160 - x - w - b[i][0]) > 0.011)) flipBad.push(m);
-  }
-  check('the Arabic motif is the mirror image of the English one, rect by rect', !flipBad.length, flipBad);
-  const tick = (svg) => (/<polyline[^>]*points="([^"]+)"/.exec(svg) || [])[1]?.split(' ').map((p) => p.split(',').map(Number));
-  const tEn = tick(coverMotifSvg('test-plan'));
-  const tAr = tick(coverMotifSvg('test-plan', { rtl: true }));
-  check('a check mark moves with the mirror but is not flipped', tEn && tAr && tEn[0][0] < tEn[1][0] && tAr[0][0] < tAr[1][0] && tAr[0][0] > 100 && tEn[0][0] < 20, JSON.stringify([tEn, tAr]));
-  const colored = coverMotifSvg('test-cases', { colors: Object.fromEntries(Object.keys(MOTIF_ROLES).map((k) => [k, '#123456'])) });
-  check('with colours given the paints are plain attributes (the DOCX route), no class', /fill="#123456"/.test(colored) && !/class="f-/.test(colored));
-  const cli = spawnSync('node', [path.join(REPO, 'engine', 'covers', 'motif-svg.mjs'), 'tot', 'rtl'], { encoding: 'utf8' });
-  check('engine/covers/motif-svg.mjs prints the renderer\'s own drawing (the DOCX builder reads it)', cli.status === 0 && cli.stdout.startsWith('<svg') && cli.stdout.includes('viewBox="0 0 160 94"') && rects(cli.stdout).length === rects(coverMotifSvg('tot', { rtl: true })).length, cli.stderr);
+  // ── 1. no motif any more; the Python twin ──
+  check('17 type ids; render.mjs exports no motif drawing (coverMotifSvg, coverMotifShapes, MOTIF_ROLES, COVER_MOTIFS gone)', COVER_TYPES.length === 17 && !['coverMotifSvg', 'coverMotifShapes', 'MOTIF_ROLES', 'COVER_MOTIFS'].some((k) => k in RM));
+  check('engine/covers/motif-svg.mjs is gone (the DOCX builder draws no motif)', !fs.existsSync(path.join(REPO, 'engine', 'covers', 'motif-svg.mjs')));
   const py = fs.readFileSync(path.join(REPO, 'engine', 'docx', 'cover_design.py'), 'utf8');
   const pyList = (name) => [...(new RegExp(`^${name} = \\(([^)]*)\\)`, 'm').exec(py)?.[1] || '').matchAll(/'([^']+)'/g)].map((m) => m[1]);
   const pyCodes = Object.fromEntries([...(/^CODES = \{([^}]*)\}/m.exec(py)?.[1] || '').matchAll(/'([^']+)': '([^']+)'/g)].map((m) => [m[1], m[2]]));
-  check('the DOCX builder\'s designs, motifs, codes and dense types are the renderer\'s', JSON.stringify(pyList('DESIGNS')) === JSON.stringify(COVER_DESIGNS) && JSON.stringify(pyList('MOTIFS')) === JSON.stringify(COVER_MOTIFS) && JSON.stringify(pyCodes) === JSON.stringify(COVER_CODES) && JSON.stringify(pyList('DENSE')) === JSON.stringify(COVER_DENSE), [pyList('DESIGNS'), pyList('DENSE')]);
+  // 0.19.0 R2: the families' constants and the status words (C9: also the words of a status column, and its head words) are the renderer's too
+  const pyWords = (name) => { const m = new RegExp(`^${name} = \\{([\\s\\S]*?)\\}\\n`, 'm').exec(py)?.[1] || ''; return Object.fromEntries([...m.matchAll(/'(ok|bad|warn|idle)': \(([^)]*)\)/g)].map((x) => [x[1], [...x[2].matchAll(/'([^']+)'/g)].map((y) => y[1])])); };
+  check('the DOCX builder\'s figure kinds, report control fields, status words, C9 words and status head words are the renderer\'s', JSON.stringify(pyList('FIGURE_KINDS')) === JSON.stringify(FIGURE_KINDS) && JSON.stringify(pyList('REPORT_CONTROL')) === JSON.stringify(REPORT_CONTROL) && JSON.stringify(pyList('STATUS_HEADS')) === JSON.stringify(STATUS_HEADS) && JSON.stringify(pyWords('_STATUS_WORDS')) === JSON.stringify(STATUS_WORDS) && JSON.stringify(pyWords('_STATUS_WORDS_HEADED')) === JSON.stringify(STATUS_WORDS_HEADED), JSON.stringify([pyList('FIGURE_KINDS'), pyList('STATUS_HEADS'), pyWords('_STATUS_WORDS'), pyWords('_STATUS_WORDS_HEADED')]).slice(0, 400));
+  check('the DOCX builder\'s designs, types, codes, dense types and control fields are the renderer\'s; no motif in it', JSON.stringify(pyList('DESIGNS')) === JSON.stringify(COVER_DESIGNS) && JSON.stringify(pyList('TYPES')) === JSON.stringify(COVER_TYPES) && JSON.stringify(pyCodes) === JSON.stringify(COVER_CODES) && JSON.stringify(pyList('DENSE')) === JSON.stringify(COVER_DENSE) && JSON.stringify(pyList('CONTROL')) === JSON.stringify(COVER_CONTROL) && !/motif_png|place_motif|MOTIF_SCRIPT/.test(py), [pyList('DESIGNS'), pyList('DENSE'), pyList('CONTROL')]);
 
   // ── 2. absent keys: nothing new ──
   const BASE = ['en', 'ar'].map((l) => { const d = load(l); return [l, d, htmlOf(d, l)]; });
@@ -109,25 +93,45 @@ try {
     const plainCh = clone(typed); delete plainCh.docType;
     const hT = htmlOf(typed, l); const hP = htmlOf(plainCh, l);
     check(`${l}: status cells (Pass, Fail, Blocked, Not run, Covered, Partial, Gap and the Arabic words) take their fill only with a docType, the word stays, a longer text is no status`, /<td class="st-ok"[^>]*>[^<]*Pass<\/td>|<td class="st-ok"/.test(hT) && /class="st-idle"/.test(hT) && !/class="st-[a-z]+"[^>]*>(<bdi[^>]*>)?Passing/.test(hT) && !/class="st-(ok|bad|warn|idle)/.test(hP.replace(/\.st-(ok|bad|warn|idle)\{[^}]*\}/g, '')));
-    check(`${l}: the polish CSS (subhead band padding, chapter heading row kept whole) is in a typed document and absent from any other`, /0\.18\.0 polish/.test(documentCss(theme, {}, typed)) && !/0\.18\.0 polish/.test(documentCss(theme, {}, plainCh)) && /h4\{padding-bottom:3mm\}/.test(documentCss(theme, {}, typed)) && /h2\{break-inside:avoid\}/.test(documentCss(theme, {}, typed)));
+    check(`${l}: the polish CSS (subhead band padding, chapter heading row kept whole: C15) is in a typed document and absent from any other`, /0\.18\.0 polish/.test(documentCss(theme, {}, typed)) && !/0\.18\.0 polish/.test(documentCss(theme, {}, plainCh)) && /h4\{padding-bottom:3mm\}/.test(documentCss(theme, {}, typed)) && /h2\{break-inside:avoid;break-after:avoid\}/.test(documentCss(theme, {}, typed)));
+    // 0.19.0 C7: approvals rows print on the control page of a typed document (empty cells kept, to be signed); never in an untyped one
+    const appr = [['Prepared by', '', '', '', ''], ['Approved by', '', '', '', '']];
+    const hA = htmlOf({ ...typed, approvals: appr }, l); const hA0 = htmlOf({ ...plainCh, approvals: appr }, l);
+    check(`${l}: C7 a typed document prints its approvals with the house columns and empty cells; an untyped one does not`, hA.includes('data-part="approvals"') && i18n().doc[l].approvalCols.every((c) => hA.includes(c)) && /<td[^>]*><\/td>/.test(hA.slice(hA.indexOf('data-part="approvals"'))) && !hA0.includes('data-part="approvals"'));
+    // C11: a title-page document starts the contents and chapter 1 on new pages; tocDepth 1 lists the chapters only
+    const sp = make('srs', l);
+    check(`${l}: C11 a spine document's contents and chapter 1 open on new pages (a compact one's do not)`, /\[data-part=toc\]:not\(h2\+\[data-part=toc\]\)\{break-before:page\}/.test(documentCss(theme, {}, sp)) && /section\.chapter:first-of-type\{break-before:page\}/.test(documentCss(theme, {}, sp)) && !/first-of-type\{break-before:page\}/.test(documentCss(theme, {}, make('minutes', l))));
+    const deep = htmlOf(sp, l); const flat = htmlOf({ ...sp, layout: { tocDepth: 1 } }, l);
+    const tocRows = (h) => (h.slice(h.indexOf('<table class="toc"'), h.indexOf('</table>', h.indexOf('<table class="toc"'))).match(/<tr/g) || []).length;
+    check(`${l}: C11 tocDepth 1 lists the ${sp.chapters.length} chapters only (depth 2: ${tocRows(deep)} rows)`, tocRows(flat) === sp.chapters.length && tocRows(deep) > tocRows(flat), [tocRows(flat), tocRows(deep)]);
+    // C12: a shots block with no image prints a frame at its ratio with a numbered badge; an untyped one without ratio or badge keeps its plain caption
+    const shotDoc = (t) => ({ ...t, chapters: [{ title: 'T', sections: [{ title: 'S', blocks: [{ kind: 'shots', images: [], caption: '' }, { kind: 'shots', images: [], caption: 'Form', ratio: '9:16', badge: 7 }] }] }] });
+    const hs = htmlOf(shotDoc(typed), l); const hs0 = htmlOf(shotDoc(plainCh), l);
+    check(`${l}: C12 screenshot frames: ratio, badge, «${l === 'ar' ? 'لقطة الشاشة' : 'Screenshot'} 1» for an empty caption; untyped, only the block with ratio and badge gets one`, count(hs, 'class="shot-frame"') === 2 && hs.includes('--sf-r:16/10') && hs.includes('--sf-r:9/16') && hs.includes('<bdi dir="ltr">7</bdi>') && hs.includes(l === 'ar' ? 'لقطة الشاشة <bdi dir="ltr">1</bdi>' : 'Screenshot 1') && count(hs0, 'class="shot-frame"') === 1, [count(hs, 'class="shot-frame"'), count(hs0, 'class="shot-frame"')]);
     check(`${l}: a typed document's contents list leaves the unnumbered sub-heads out; any other document keeps them`, !/toc-card/.test(hT.replace(/\.toc-card[^{]*\{[^}]*\}/g, '')) && /class="toc-card"/.test(hP));
   }
 
   // ── 3. markup for every type x language ──
   const markBad = [];
-  for (const m of COVER_MOTIFS) {
+  for (const m of COVER_TYPES) {
     for (const l of ['ar', 'en']) {
       const d = make(m, l);
       const h = htmlOf(d, l);
       const design = COMPACT.has(m) ? 'compact' : 'spine';
       const okCode = COMPACT.has(m) ? (COVER_CODES[m] ? h.includes(`<span class="tb-code"><bdi dir="ltr">${COVER_CODES[m]}</bdi>`) : !h.includes('<span class="tb-code">')) : (COVER_CODES[m] ? h.includes(`<div class="type-code"><bdi dir="ltr">${COVER_CODES[m]}</bdi>`) : !h.includes('<div class="type-code">'));
-      if (!(h.includes(`data-cover="${design}" data-motif="${m}"`) && count(h, '<svg class="cover-motif"') === 1 && okCode && h.includes(`dir="${l === 'ar' ? 'rtl' : 'ltr'}"`) && documentCss(designTheme(theme, d), {}, d).includes('/* 0.18.0 cover design: ' + design))) markBad.push(`${m}/${l}`);
+      const cov = h.slice(h.indexOf('<div class="cover"'), h.indexOf('<div class="wrap">'));
+      const ctl = design === 'spine' ? cov.includes('class="bw-fields fg-control"') && COVER_CONTROL.every((k) => cov.includes(`data-p="/control/${k}"`)) : !cov.includes('fg-control');
+      if (!(h.includes(`data-cover="${design}" data-type="${m}"`) && !/<svg|cover-motif|data-motif/.test(cov) && okCode && ctl && h.includes(`dir="${l === 'ar' ? 'rtl' : 'ltr'}"`) && documentCss(designTheme(theme, d), {}, d).includes('/* 0.19.0 page 1: ' + design))) markBad.push(`${m}/${l}`);
     }
   }
-  check('17 types x ar/en: .cover[data-cover][data-motif] + one motif svg + the type code, and the cover CSS', !markBad.length, markBad);
+  check('17 types x ar/en: .cover[data-cover][data-type], no svg, the type code, the control block on a spine page, and the page-1 CSS', !markBad.length, markBad);
   const spineAr = htmlOf(make('tot', 'ar'), 'ar');
   check('the spine cover keeps its logo slots, rule, kicker, title, subtitle and meta row', ['class="lockup"', 'cover-rule', 'class="kicker"', 'rule-short', '<h1', 'class="subtitle"', 'cover-foot'].every((s) => spineAr.includes(s)));
-  check('a motif alone means the spine design; a design alone has no motif', htmlOf({ ...load('en'), motif: 'tor' }, 'en').includes('data-cover="spine" data-motif="tor"') && !/data-motif|<svg class="cover-motif"/.test(htmlOf({ ...load('en'), coverDesign: 'spine' }, 'en')));
+  const oldFile = htmlOf({ ...load('en'), motif: 'tor' }, 'en');
+  check('an old file\'s motif alone still means the spine design and names the type (code TOR), and prints no art; a design alone names no type', oldFile.includes('data-cover="spine" data-type="tor"') && oldFile.includes('<div class="type-code"><bdi dir="ltr">TOR</bdi>') && !/data-motif|<svg class="cover-motif"/.test(oldFile) && !/data-type|<svg class="cover-motif"/.test(htmlOf({ ...load('en'), coverDesign: 'spine' }, 'en')));
+  const fam = (f, t) => htmlOf({ ...load('en'), coverDesign: f, docType: t }, 'en');
+  const [rep, frm, sht] = [fam('report', 'business-case'), fam('form', 'defect-report'), fam('sheet', 'rtm')];
+  check('0.19.0 R2: report is a title page (data-cover spine) with its band and control block; form and sheet are a header on page 1 (data-cover compact, the band), a form with its ID box', rep.includes('data-cover="spine" data-family="report"') && rep.includes('class="rp-band"') && rep.includes('class="bw-fields fg-control"') && frm.includes('data-cover="compact" data-family="form"') && frm.includes('class="bw-idbox"') && sht.includes('data-cover="compact" data-family="sheet"') && sht.includes('class="tb-band"'));
   check('the user manual keys its look on the motif', documentCss(theme, {}, { ...load('en'), motif: 'user-manual' }).includes('counter-increment:bw-step') && !documentCss(theme, {}, { ...load('en'), motif: 'srs' }).includes('counter-increment:bw-step'));
 
   // ── 4. layout in headless Chrome ──
@@ -136,7 +140,7 @@ try {
   const MM = 96 / 25.4;
   const measure = async (doc, locale, sels) => {
     const { html } = printHtml(doc, { locale, theme, embed: true });
-    const f = path.join(tmp, `probe-${doc.motif}-${locale}.html`);
+    const f = path.join(tmp, `probe-${doc.docType}-${locale}.html`);
     fs.writeFileSync(f, html, 'utf8');
     const page = await ctx.newPage();
     await page.setViewportSize({ width: 794, height: 1123 });
@@ -149,21 +153,21 @@ try {
     return { ready, ...out };
   };
   const near = (a, b, tol = 0.6) => Math.abs(a - b) <= tol;
-  const SELS = { cover: '.cover', spine: '.spine', id: '.spine .id', code: '.type-code', kicker: '.cover[data-cover=spine] .kicker', title: '.cover-title', motif: '.cover-motif', foot: '.cover-foot', h2: '.wrap h2' };
+  const SELS = { cover: '.cover', spine: '.spine', id: '.spine .id', code: '.type-code', kicker: '.cover[data-cover=spine] .kicker', title: '.cover-title', ctl: '.cover-ctl', art: '.cover svg', foot: '.cover-foot', h2: '.wrap h2' };
   for (const l of ['en', 'ar']) {
     const d = make('test-plan', l);
     const m = await measure(d, l, SELS);
     const pal = PALETTE.forest;
     const rtl = l === 'ar';
-    check(`spine ${l}: the page is read (cover and its svg exist)`, m.ready && m.cover && m.motif);
-    check(`spine ${l}: A4 cover, the motif is 152 x 89 mm at 163 mm down, ${rtl ? '176 mm from the left edge (mirrored)' : '34 mm in'}`, near(m.cover.h, 297, 0.3) && near(m.motif.w, 152) && near(m.motif.y, 163) && near(rtl ? m.motif.r : m.motif.x, rtl ? 176 : 34), JSON.stringify(m.motif));
+    check(`spine ${l}: the page is read (cover and its control block exist, no svg on it)`, m.ready && m.cover && m.ctl && m.art === null);
+    check(`spine ${l}: A4 cover, the control block is 152 mm wide, ends at 252 mm, ${rtl ? '176 mm from the left edge (mirrored)' : '34 mm in'}, below the title`, near(m.cover.h, 297, 0.3) && near(m.ctl.w, 152) && near(m.ctl.y + m.ctl.h, 252) && near(rtl ? m.ctl.r : m.ctl.x, rtl ? 176 : 34) && m.ctl.y > m.title.y + m.title.h, JSON.stringify([m.ctl, m.title.y + m.title.h]));
     check(`spine ${l}: title at 141 mm, type code at 91 mm, kicker at 119.5 mm, meta row at 258 mm`, near(m.title.y, 141) && near(m.code.y, 91) && near(m.kicker.y, 119.5) && near(m.foot.y, 258), JSON.stringify([m.title.y, m.code.y, m.kicker.y, m.foot.y]));
     check(`spine ${l}: the spine is on the ${rtl ? 'right' : 'left'} edge, in the palette's deep colour`, (rtl ? near(m.spine.x, 190, 1) : near(m.spine.r, 20)) && hex(m.spine.bg) === pal['primary-deep'].toLowerCase(), JSON.stringify([m.spine.x, m.spine.r, m.spine.bg]));
     check(`spine ${l}: the document code on the spine reads (4.5:1) and is centred about 141 mm`, contrastOf(hex(m.id.color), pal['primary-deep']) >= 4.5 && near(m.id.y + m.id.h / 2, 141, 1), JSON.stringify([m.id.color, m.id.y, m.id.h]));
     check(`spine ${l}: chapter headings take the palette's primary`, hex(m.h2.color) === pal.primary.toLowerCase(), m.h2.color);
   }
-  const cm = await measure(make('test-cases', 'en'), 'en', { cover: '.cover', motif: '.cover-motif', band: '.tb-band', th: '.wrap table:not(.control):not(.toc) th', code: '.tb-code', h1: '.cover h1' });
-  check('compact: no page of its own (a title block, not 297 mm), a small motif, a band, the type code chip', cm.cover.h < 80 && near(cm.motif.w, 46) && cm.band.h > 1 && cm.code && cm.h1.y < 60, JSON.stringify([cm.cover.h, cm.motif.w, cm.h1.y]));
+  const cm = await measure(make('test-cases', 'en'), 'en', { cover: '.cover', art: '.cover svg', band: '.tb-band', th: '.wrap table:not(.control):not(.toc) th', code: '.tb-code', h1: '.cover h1' });
+  check('compact: no page of its own (a title block, not 297 mm), no motif, a band, the type code chip', cm.cover.h < 80 && cm.art === null && cm.band.h > 1 && cm.code && cm.h1.y < 60, JSON.stringify([cm.cover.h, cm.h1.y]));
   check('a dense type (test cases) washes its table headers with the palette\'s wash', hex(cm.th.bg) === PALETTE.forest['primary-100'].toLowerCase(), cm.th.bg);
   const plain = await measure(make('srs', 'en'), 'en', { th: '.wrap table:not(.control):not(.toc) th' });
   check('a non-dense type (SRS) keeps plain table headers', /rgba\(0, 0, 0, 0\)|transparent/.test(plain.th.bg), plain.th.bg);
@@ -196,7 +200,7 @@ try {
   const EXPORTS = [['srs', 'en', 'spine'], ['tot', 'ar', 'spine'], ['test-cases', 'en', 'compact'], ['minutes', 'ar', 'compact']];
   const pages = {};
   for (const [m, l, design] of EXPORTS) {
-    const d = make(m, l);
+    const d = make(m, l, m === 'srs' ? { approvals: [['Prepared by', '', '', '', ''], ['Reviewed by', '', '', '', ''], ['Approved by', '', '', '', '']] } : {});
     const base = path.join(tmp, `${m}-${l}`);
     await exportPdf(d, { locale: l, theme, pdfPath: base + '.pdf' });
     const p1 = pdfText(base + '.pdf', 1);
@@ -213,7 +217,8 @@ try {
     const allowed = new Set(Object.values(pal).filter((v) => /^#[0-9a-f]{6}$/i.test(v)).map((v) => v.slice(1).toUpperCase()).concat(['FFFFFF', '000000', 'AUTO']));
     const deepHex = pal['primary-deep'].slice(1).toUpperCase();
     check(`DOCX ${design} ${m} ${l}: the title, the palette's deep colour and the gold are in the file`, !!w && (wd.text || '').includes(title) && (wd.fills || []).includes(deepHex) && (wd.fills || []).includes(pal['accent-bright'].slice(1).toUpperCase()), JSON.stringify([wd.fills, (wd.text || '').slice(0, 100)]));
-    check(`DOCX ${design} ${m} ${l}: the motif picture is in the file; no colour off the palette; no Cairo`, (wd.media || []).length >= 1 && !(wd.fills || []).some((f) => !allowed.has(f)) && !wd.cairo, JSON.stringify([wd.media, (wd.fills || []).filter((f) => !allowed.has(f))]));
+    check(`DOCX ${design} ${m} ${l}: no picture at all (0.19.0: no motif); no colour off the palette; no Cairo`, (wd.media || []).length === 0 && !(wd.fills || []).some((f) => !allowed.has(f)) && !wd.cairo, JSON.stringify([wd.media, (wd.fills || []).filter((f) => !allowed.has(f))]));
+    if (m === 'srs') check(`DOCX spine srs ${l}: C7 the three approval rows are 12 mm tall; C11 page breaks before the contents and chapter 1`, wd.h12 === 3 && wd.breaks >= 2, JSON.stringify([wd.h12, wd.breaks]));
     if (design === 'spine') check(`DOCX ${design} ${m} ${l}: the type code ${COVER_CODES[m]} is real text`, (wd.text || '').includes(COVER_CODES[m]));
     else check(`DOCX ${design} ${m} ${l}: the title block heads the first page (title before the control heading, one section)`, (wd.text || '').indexOf(title) >= 0 && (wd.text || '').indexOf(title) < (wd.text || '').indexOf(ctl), (wd.text || '').slice(0, 160));
   }
@@ -247,5 +252,5 @@ console.log(failed ? `\n${failed} FAILED` : `\ncover-designs-0180: all ${results
 process.exit(failed ? 1 : 0);
 
 function exportDocxChecked(doc, locale, docxPath) {
-  try { exportDocx(doc, { locale, theme, docxPath }); return fs.statSync(docxPath).size > 5000; } catch (e) { check(`DOCX export ${doc.motif} ${locale} did not throw`, false, e.message); return false; }
+  try { exportDocx(doc, { locale, theme, docxPath }); return fs.statSync(docxPath).size > 5000; } catch (e) { check(`DOCX export ${doc.docType} ${locale} did not throw`, false, e.message); return false; }
 }

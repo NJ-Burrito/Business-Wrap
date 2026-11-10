@@ -4,6 +4,8 @@
 //         Thmanyah (pdffonts); pdfinfo: the landscape types (registry layout.page.orientation) are landscape on every page, the others start portrait
 //   DOCX  a real zip with word/document.xml; every chapter heading and the cover title are in the text; the landscape types are landscape on every
 //         section; no colour outside the document's palette (the design vars of the composed document) and no Cairo
+// 0.19.0: an `empty` type (the Blank document) has no cover, no heading and no text, so its checks are: a real PDF (one portrait page, no letters, no fonts), a real DOCX (palette only);
+//   the exact emptiness rules (one page, no DOCX text, one section) are tests/blank-empty-0190.
 // Runtime: 34 exports of ~3 s (PDF) + ~5 s (DOCX, a Python process) is ~4.5 min in one process, so the suite runs BW_EXPORT_JOBS (default 3) worker
 // processes of itself (`--worker <jobs.json>`), each with its own Chrome (tagged bw-1109, closed by the worker) and its own scratch folder; the parent
 // reads every file the workers wrote and prints one line per check. Every type exports once in each language in this one suite.
@@ -125,21 +127,23 @@ try {
       // the title as the cover prints it (the renderer's own h1: the part after the colon when the document has no coverTitle), read from the real markup
       const h1 = renderDocument(doc, { locale: ed, labels: i18n().doc[ed], theme, fontCss: '', logos: theme.logos }).match(/<h1[^>]*>([\s\S]*?)<\/h1>/)?.[1] || '';
       const cover = norm(h1.replace(/<[^>]*>/g, '').replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n)).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&'));
-      check(`${tag}: the cover has a title to look for`, cover.length > 1, h1);
+      const empty = t.empty === true; // 0.19.0: the Blank document prints no cover, no heading and no text: one empty page (tests/blank-empty-0190 holds the exact rules)
+      if (!empty) check(`${tag}: the cover has a title to look for`, cover.length > 1, h1);
       const heads = doc.chapters.map((c) => norm(c.title));
       const base = path.join(out, `${t.id}.${ed}`);
 
       // ── PDF ──
-      const pdfOk = rec.pdf === true && fs.existsSync(base + '.pdf') && fs.statSync(base + '.pdf').size > 8000 && fs.readFileSync(base + '.pdf').subarray(0, 5).toString() === '%PDF-';
+      const pdfOk = rec.pdf === true && fs.existsSync(base + '.pdf') && fs.statSync(base + '.pdf').size > (empty ? 500 : 8000) && fs.readFileSync(base + '.pdf').subarray(0, 5).toString() === '%PDF-';
       check(`${tag}: PDF exported (a real %PDF file)`, pdfOk, rec.err);
       if (pdfOk) {
         const txt = norm(pdfText(base + '.pdf'));
-        check(`${tag}: PDF text (pdftotext) holds the cover title and the first and last chapter headings`, txt.includes(cover) && txt.includes(heads[0]) && txt.includes(heads[heads.length - 1]), JSON.stringify([cover, heads[0], heads[heads.length - 1], txt.slice(0, 60)]));
+        if (empty) check(`${tag}: PDF of the empty type holds no letters at all`, (txt.match(/\p{L}/gu) || []).length === 0, JSON.stringify(txt.slice(0, 60)));
+        else check(`${tag}: PDF text (pdftotext) holds the cover title and the first and last chapter headings`, txt.includes(cover) && txt.includes(heads[0]) && txt.includes(heads[heads.length - 1]), JSON.stringify([cover, heads[0], heads[heads.length - 1], txt.slice(0, 60)]));
         const letters = (txt.match(/\p{L}/gu) || []).length;
         const arLetters = (txt.match(ARABIC) || []).length;
-        check(`${tag}: PDF is in ${ed === 'ar' ? 'Arabic' : 'English'} (${arLetters} Arabic of ${letters} letters)`, letters > 200 && (ed === 'ar' ? arLetters / letters > 0.4 : arLetters / letters < 0.02), `${arLetters}/${letters}`);
+        if (!empty) check(`${tag}: PDF is in ${ed === 'ar' ? 'Arabic' : 'English'} (${arLetters} Arabic of ${letters} letters)`, letters > 200 && (ed === 'ar' ? arLetters / letters > 0.4 : arLetters / letters < 0.02), `${arLetters}/${letters}`);
         const fonts = run('pdffonts', [base + '.pdf']).stdout.split(/\r?\n/).slice(2).filter(Boolean).map((l) => ({ name: l.split(/\s{2,}/)[0].replace(/^[A-Z]{6}\+/, ''), type: (l.match(/\s(Type 3|Type 1C?|CID TrueType|CID Type 0C?|TrueType|OpenType|CID OpenType)\s/) || [])[1] || '?' }));
-        check(`${tag}: PDF fonts (${fonts.length}): no Type 3, only Thmanyah`, fonts.length > 0 && fonts.every((f) => f.type !== 'Type 3' && /^thmanyah/i.test(f.name)), JSON.stringify(fonts.filter((f) => f.type === 'Type 3' || !/^thmanyah/i.test(f.name))));
+        check(`${tag}: PDF fonts (${fonts.length}): no Type 3, only Thmanyah`, (empty || fonts.length > 0) && fonts.every((f) => f.type !== 'Type 3' && /^thmanyah/i.test(f.name)), JSON.stringify(fonts.filter((f) => f.type === 'Type 3' || !/^thmanyah/i.test(f.name))));
         const info = run('pdfinfo', ['-f', '1', '-l', '500', base + '.pdf']).stdout;
         const sizes = [...info.matchAll(/Page\s+(\d+)\s+size:\s+([\d.]+) x ([\d.]+) pts/g)].map((m) => [+m[1], +m[2], +m[3]]);
         const pages = +(info.match(/Pages:\s+(\d+)/)?.[1] || 0);
@@ -147,7 +151,7 @@ try {
       }
 
       // ── DOCX ──
-      const dxOk = rec.docx === true && fs.existsSync(base + '.docx') && fs.statSync(base + '.docx').size > 8000;
+      const dxOk = rec.docx === true && fs.existsSync(base + '.docx') && fs.statSync(base + '.docx').size > (empty ? 500 : 8000);
       check(`${tag}: DOCX exported`, dxOk, rec.err);
       if (dxOk) {
         const z = unzip(base + '.docx');
@@ -155,7 +159,7 @@ try {
         check(`${tag}: DOCX opens (zip with [Content_Types].xml and word/document.xml)`, !!z && !!z['[Content_Types].xml'] && body.startsWith('<?xml') && body.includes('<w:body'), Object.keys(z || {}).slice(0, 4).join());
         const text = xmlText(body);
         const miss = [cover, ...heads].filter((h) => !text.includes(h));
-        check(`${tag}: DOCX text holds the cover title and all ${heads.length} chapter headings`, !!body && miss.length === 0, JSON.stringify(miss.slice(0, 3)));
+        if (!empty) check(`${tag}: DOCX text holds the cover title and all ${heads.length} chapter headings`, !!body && miss.length === 0, JSON.stringify(miss.slice(0, 3)));
         const pg = [...body.matchAll(/<w:pgSz\s+([^>]*)\/>/g)].map((m) => ({ w: +/w:w="(\d+)"/.exec(m[1])[1], h: +/w:h="(\d+)"/.exec(m[1])[1], o: /w:orient="(\w+)"/.exec(m[1])?.[1] || 'portrait' }));
         check(`${tag}: DOCX ${pg.length} sections, ${land ? 'landscape on every one' : 'first one portrait'}`, pg.length >= 1 && (land ? pg.every((p) => p.w > p.h && p.o === 'landscape') : pg[0].w < pg[0].h), JSON.stringify(pg));
         const allowed = new Set(Object.values(designTheme(theme, doc).vars).filter((v) => /^#[0-9a-f]{6}$/i.test(String(v))).map((v) => v.slice(1).toUpperCase()).concat(['FFFFFF', '000000']));

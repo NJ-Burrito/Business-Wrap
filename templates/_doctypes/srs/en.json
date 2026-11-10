@@ -1,0 +1,879 @@
+{
+  "composedAt": "",
+  "control": {
+    "documentId": "BW-SRS-NEW-001",
+    "title": "Software requirements specification: New service",
+    "preparedBy": "[Name and job title]",
+    "approvedBy": "[Name and job title]",
+    "documentType": "Software requirements specification",
+    "classification": "Internal",
+    "owner": "[Organisation name]",
+    "issuedOn": "YYYY-MM-DD",
+    "version": "V0.1",
+    "status": "Draft",
+    "reviewCycle": "On every change to the service"
+  },
+  "revisions": [
+    [
+      "V0.1",
+      "YYYY-MM-DD",
+      "First draft",
+      "—"
+    ]
+  ],
+  "approvals": [
+    [
+      "Prepared by: Business analyst",
+      "",
+      "",
+      "",
+      ""
+    ],
+    [
+      "Reviewed by: Business owner",
+      "",
+      "",
+      "",
+      ""
+    ],
+    [
+      "Approved by: Approving authority",
+      "",
+      "",
+      "",
+      ""
+    ]
+  ],
+  "labels": {
+    "kicker": "SOFTWARE REQUIREMENTS SPECIFICATION",
+    "subtitle": "What the system or service must do"
+  },
+  "cover": {
+    "cols": 2,
+    "fields": [
+      {
+        "label": "System or service",
+        "value": "[System or service name]",
+        "kind": "text"
+      },
+      {
+        "label": "Service code",
+        "value": "[Service code]",
+        "kind": "text"
+      }
+    ]
+  },
+  "layout": {
+    "tocDepth": 1
+  },
+  "chapters": [
+    {
+      "number": "1",
+      "title": "Introduction",
+      "sections": [
+        {
+          "number": "1.1",
+          "title": "Purpose of the document",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "State why this document exists and who reads it: the development team, the testers and the service owner. Example: \"This document sets out what the [service name] service must do, so that it can be built, tested and accepted.\""
+              ]
+            }
+          ]
+        },
+        {
+          "number": "1.2",
+          "title": "Scope",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "State what the service covers and what it leaves out. Name each boundary: the users, the channels and the systems it connects to."
+              ]
+            }
+          ]
+        },
+        {
+          "number": "1.3",
+          "title": "Definitions and abbreviations",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Term",
+                "Definition"
+              ],
+              "rows": [
+                [
+                  "FR",
+                  "Functional requirement: something the service must do."
+                ],
+                [
+                  "NFR",
+                  "Non-functional requirement: how well the service must do it."
+                ],
+                [
+                  "BR",
+                  "Business rule: a rule of the organisation that the service enforces."
+                ],
+                [
+                  "…",
+                  "…"
+                ]
+              ],
+              "colWidths": [
+                24,
+                76
+              ]
+            }
+          ]
+        },
+        {
+          "number": "1.4",
+          "title": "References",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Code",
+                "Document",
+                "Version",
+                "Date"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "YYYY-MM-DD"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "1.5",
+          "title": "Overview of the document",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Say how the document is organised. «Overall description» gives the context, «Specific requirements» lists what the service must do, and the chapters after it cover quality, verification and outputs."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "2",
+      "title": "Overall description",
+      "sections": [
+        {
+          "number": "2.1",
+          "title": "Product perspective",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Say where the service sits: the portal it is used from, the back office that handles requests and the systems it exchanges data with."
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.2",
+          "title": "Product functions",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "List the main functions in five lines at most. The detail belongs in «Specific requirements»."
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.3",
+          "title": "User characteristics",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Describe each user group: what it does with the service, how experienced it is and how it signs in."
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.4",
+          "title": "Constraints",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "State what limits the design: legislation, fixed technology, hosting and deadlines."
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.5",
+          "title": "Assumptions and dependencies",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "State what you assume to be true and what the service depends on. If an assumption fails, say which requirement changes."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "3",
+      "title": "Specific requirements",
+      "sections": [
+        {
+          "number": "3.1",
+          "title": "Service card",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Item",
+                "Detail"
+              ],
+              "rows": [
+                [
+                  "Service name",
+                  "…"
+                ],
+                [
+                  "Service code",
+                  "…"
+                ],
+                [
+                  "Description",
+                  "…"
+                ],
+                [
+                  "Recipients",
+                  "…"
+                ],
+                [
+                  "Fees",
+                  "…"
+                ],
+                [
+                  "Documents required",
+                  "…"
+                ],
+                [
+                  "Output",
+                  "…"
+                ],
+                [
+                  "Governing legislation",
+                  "…"
+                ],
+                [
+                  "Languages",
+                  "Arabic and English"
+                ]
+              ],
+              "colWidths": [
+                28,
+                72
+              ]
+            }
+          ]
+        },
+        {
+          "number": "3.2",
+          "title": "Users and roles",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Code",
+                "Role",
+                "Function",
+                "How the role uses the system"
+              ],
+              "rows": [
+                [
+                  "R-01",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "R-02",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ],
+              "colWidths": [
+                10,
+                22,
+                24,
+                44
+              ]
+            }
+          ]
+        },
+        {
+          "number": "3.3",
+          "title": "Functional requirements",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Give each requirement an ID and one sentence a tester can check. Start with \"The service shall\"."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Requirement",
+                "Priority",
+                "Source",
+                "Verification"
+              ],
+              "rows": [
+                [
+                  "FR-01",
+                  "The service shall accept a request only when every required field and attachment is present.",
+                  "High",
+                  "BR-01",
+                  "Test"
+                ],
+                [
+                  "FR-02",
+                  "The service shall show the applicant the status of each request.",
+                  "Medium",
+                  "US-01",
+                  "Demonstration"
+                ],
+                [
+                  "FR-03",
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ],
+              "colWidths": [
+                10,
+                50,
+                12,
+                14,
+                14
+              ]
+            }
+          ]
+        },
+        {
+          "number": "3.4",
+          "title": "Service path and workflow",
+          "blocks": [
+            {
+              "kind": "diagram",
+              "caption": "Workflow: from submission to the result of the request",
+              "model": {
+                "kind": "bw-diagram",
+                "version": 1,
+                "flow": "ltr",
+                "nodes": [
+                  {
+                    "id": "n1",
+                    "kind": "start",
+                    "label": "Submit request",
+                    "w": 210,
+                    "h": 52,
+                    "y": 34,
+                    "x": 64
+                  },
+                  {
+                    "id": "n2",
+                    "kind": "staff",
+                    "label": "Review the request",
+                    "w": 218,
+                    "h": 52,
+                    "y": 187,
+                    "x": 64
+                  },
+                  {
+                    "id": "n3",
+                    "kind": "decision",
+                    "label": "Action",
+                    "w": 96,
+                    "h": 60,
+                    "y": 183,
+                    "x": 336
+                  },
+                  {
+                    "id": "n4",
+                    "kind": "ok",
+                    "label": "Approved",
+                    "w": 159,
+                    "h": 52,
+                    "y": 187,
+                    "x": 527
+                  },
+                  {
+                    "id": "n5",
+                    "kind": "stop",
+                    "label": "Refused",
+                    "w": 150,
+                    "h": 52,
+                    "y": 299,
+                    "x": 309
+                  }
+                ],
+                "edges": [
+                  {
+                    "id": "e1",
+                    "from": "n1",
+                    "to": "n2",
+                    "label": "",
+                    "kind": "main"
+                  },
+                  {
+                    "id": "e2",
+                    "from": "n2",
+                    "to": "n3",
+                    "label": "",
+                    "kind": "main"
+                  },
+                  {
+                    "id": "e3",
+                    "from": "n3",
+                    "to": "n4",
+                    "label": "Approve",
+                    "kind": "main"
+                  },
+                  {
+                    "id": "e4",
+                    "from": "n3",
+                    "to": "n5",
+                    "label": "Refuse",
+                    "kind": "stop"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "number": "3.5",
+          "title": "Business rules",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Write each rule as a statement of what is always, or never, allowed."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Code",
+                "Business rule"
+              ],
+              "rows": [
+                [
+                  "BR-01",
+                  "A request that lacks a required attachment is returned to the applicant."
+                ],
+                [
+                  "BR-02",
+                  "…"
+                ]
+              ],
+              "colWidths": [
+                12,
+                88
+              ]
+            }
+          ]
+        },
+        {
+          "number": "3.6",
+          "title": "User stories and acceptance criteria",
+          "blocks": [
+            {
+              "kind": "stories",
+              "lead": "Story cards",
+              "items": [
+                {
+                  "id": "US-01",
+                  "name": "Submit a request",
+                  "as": "an applicant",
+                  "want": "to send my request with its documents",
+                  "so": "it is reviewed without a visit",
+                  "acceptance": [
+                    "When every required field is filled, «Send» saves the request and shows its reference number.",
+                    "When a required field is empty, the service names it and does not send."
+                  ],
+                  "actions": {
+                    "columns": [
+                      "Action",
+                      "Effect on the request"
+                    ],
+                    "rows": [
+                      [
+                        "Send",
+                        "Saved and queued for review"
+                      ]
+                    ],
+                    "colWidths": [
+                      34,
+                      66
+                    ]
+                  },
+                  "dictionary": {
+                    "columns": [
+                      "Field",
+                      "Type",
+                      "Required",
+                      "Editable",
+                      "Constraints"
+                    ],
+                    "rows": [
+                      [
+                        "…",
+                        "…",
+                        "…",
+                        "…",
+                        "…"
+                      ]
+                    ],
+                    "colWidths": [
+                      24,
+                      16,
+                      16,
+                      18,
+                      26
+                    ]
+                  }
+                },
+                {
+                  "id": "US-02",
+                  "name": "Review a request",
+                  "as": "a reviewer",
+                  "want": "to approve or return a request",
+                  "so": "the applicant gets a clear result",
+                  "acceptance": [
+                    "A returned request carries the reason, and the applicant can correct it."
+                  ]
+                }
+              ],
+              "number": "3.6"
+            }
+          ]
+        },
+        {
+          "number": "3.7",
+          "title": "External interfaces and integrations",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "System",
+                "Direction",
+                "Data",
+                "Protocol"
+              ],
+              "rows": [
+                [
+                  "Identity service",
+                  "In",
+                  "User identity and role",
+                  "…"
+                ],
+                [
+                  "[Partner system]",
+                  "Both",
+                  "…",
+                  "…"
+                ]
+              ],
+              "colWidths": [
+                22,
+                12,
+                40,
+                26
+              ]
+            }
+          ]
+        },
+        {
+          "number": "3.8",
+          "title": "Data requirements",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "List the data the service creates, reads or changes. For each item give its source, how long it is kept and who may see it."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "4",
+      "title": "Non-functional requirements",
+      "sections": [
+        {
+          "number": "4.1",
+          "title": "Quality attributes",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Give each attribute a figure a tester can measure. Replace [n] before approval."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "ID",
+                "Attribute",
+                "Requirement",
+                "Measure"
+              ],
+              "rows": [
+                [
+                  "NFR-01",
+                  "Performance",
+                  "Pages open within [n] seconds under normal load.",
+                  "95th percentile response time"
+                ],
+                [
+                  "NFR-02",
+                  "Security",
+                  "Each role sees only the data its permissions allow.",
+                  "Permission tests passed"
+                ],
+                [
+                  "NFR-03",
+                  "Availability",
+                  "The service is available [n]% of the time.",
+                  "Monthly uptime"
+                ],
+                [
+                  "NFR-04",
+                  "Usability",
+                  "An applicant completes a request without help.",
+                  "Completion rate in user tests"
+                ],
+                [
+                  "NFR-05",
+                  "Languages",
+                  "Every screen works in Arabic and English, right to left and left to right.",
+                  "Screens checked in both languages"
+                ]
+              ],
+              "colWidths": [
+                10,
+                18,
+                46,
+                26
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "5",
+      "title": "Verification",
+      "sections": [
+        {
+          "number": "5.1",
+          "title": "Method per requirement",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Name one method for every requirement in the column «Verification» of its table."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Method",
+                "Use it when",
+                "Evidence"
+              ],
+              "rows": [
+                [
+                  "Test",
+                  "The behaviour can be run and the result compared.",
+                  "Test case and result"
+                ],
+                [
+                  "Inspection",
+                  "The requirement concerns a document, a setting or a screen.",
+                  "Reviewed item"
+                ],
+                [
+                  "Demonstration",
+                  "A walk-through shows that it works.",
+                  "Signed walk-through"
+                ],
+                [
+                  "Analysis",
+                  "A calculation or a study proves it.",
+                  "Calculation or report"
+                ]
+              ],
+              "colWidths": [
+                20,
+                46,
+                34
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "6",
+      "title": "Outputs",
+      "sections": [
+        {
+          "number": "6.1",
+          "title": "Types and cases",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Type or case",
+                "When issued",
+                "Who receives it",
+                "What differs"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "6.2",
+          "title": "The fixed part",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Section",
+                "Fixed sentence"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "6.3",
+          "title": "The changing part",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Field or sentence",
+                "What changes it",
+                "Source",
+                "Example"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "…"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "7",
+      "title": "Annex: open questions",
+      "sections": [
+        {
+          "number": "7.1",
+          "title": "Open questions",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "No.",
+                "Question",
+                "Owner",
+                "Status"
+              ],
+              "rows": [
+                [
+                  "OQ-01",
+                  "What is the service code? It is not assigned yet.",
+                  "…",
+                  "Open"
+                ],
+                [
+                  "OQ-02",
+                  "…",
+                  "…",
+                  "Open"
+                ]
+              ],
+              "colWidths": [
+                10,
+                56,
+                18,
+                16
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "openQuestions": []
+}

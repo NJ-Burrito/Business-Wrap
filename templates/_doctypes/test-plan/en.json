@@ -3,10 +3,11 @@
   "control": {
     "documentId": "BW-TP-NEW-001",
     "title": "Test plan: Plan title",
-    "preparedBy": "Name and job title",
+    "preparedBy": "[Name and job title]",
+    "approvedBy": "[Name and job title]",
     "documentType": "Test plan",
     "classification": "Internal",
-    "owner": "Organisation name",
+    "owner": "[Organisation name]",
     "issuedOn": "YYYY-MM-DD",
     "version": "V0.1",
     "status": "Draft",
@@ -20,21 +21,134 @@
       "—"
     ]
   ],
+  "approvals": [
+    [
+      "Prepared by: Test lead",
+      "",
+      "",
+      "",
+      ""
+    ],
+    [
+      "Reviewed by: Project manager",
+      "",
+      "",
+      "",
+      ""
+    ],
+    [
+      "Approved by: Business owner",
+      "",
+      "",
+      "",
+      ""
+    ]
+  ],
   "labels": {
     "kicker": "TEST PLAN",
-    "subtitle": "System under test"
+    "subtitle": "How the system will be tested"
+  },
+  "cover": {
+    "cols": 2,
+    "fields": [
+      {
+        "label": "System under test",
+        "value": "[System name]",
+        "kind": "text"
+      },
+      {
+        "label": "Release",
+        "value": "1.0.0",
+        "kind": "text"
+      },
+      {
+        "label": "Plan type",
+        "value": "Level: System",
+        "kind": "text"
+      },
+      {
+        "label": "Test window",
+        "value": "YYYY-MM-DD to YYYY-MM-DD",
+        "kind": "text"
+      }
+    ]
+  },
+  "layout": {
+    "tocDepth": 1
   },
   "chapters": [
     {
+      "number": "1",
       "title": "Introduction",
       "sections": [
         {
-          "title": "Introduction",
+          "number": "1.1",
+          "title": "Purpose and scope",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "The purpose and scope of the plan and the documents it relies on, such as requirements and design."
+                "State what this plan decides: how the system is tested, by whom and when. Name the system, the release and the test level."
+              ]
+            }
+          ]
+        },
+        {
+          "number": "1.2",
+          "title": "References",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Code",
+                "Document",
+                "Version",
+                "Date"
+              ],
+              "rows": [
+                [
+                  "…",
+                  "Software requirements specification",
+                  "…",
+                  "YYYY-MM-DD"
+                ],
+                [
+                  "…",
+                  "…",
+                  "…",
+                  "YYYY-MM-DD"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "number": "1.3",
+          "title": "Glossary",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Term",
+                "Definition"
+              ],
+              "rows": [
+                [
+                  "Test item",
+                  "A feature or build that is tested."
+                ],
+                [
+                  "Defect",
+                  "A difference between the expected and the actual result."
+                ],
+                [
+                  "…",
+                  "…"
+                ]
+              ],
+              "colWidths": [
+                24,
+                76
               ]
             }
           ]
@@ -42,10 +156,12 @@
       ]
     },
     {
-      "title": "Test items and features to be tested",
+      "number": "2",
+      "title": "Context",
       "sections": [
         {
-          "title": "Test items and features to be tested",
+          "number": "2.1",
+          "title": "Test items and features",
           "blocks": [
             {
               "kind": "prose",
@@ -64,9 +180,15 @@
               "rows": [
                 [
                   "…",
+                  "FR-01",
+                  "System",
+                  "High"
+                ],
+                [
                   "…",
-                  "…",
-                  "…"
+                  "FR-02",
+                  "System",
+                  "Medium"
                 ],
                 [
                   "…",
@@ -74,6 +196,49 @@
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                34,
+                22,
+                22,
+                22
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.2",
+          "title": "In scope and out of scope",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "In scope: what this cycle tests.",
+                "Out of scope: what it does not test, and why. Nobody should read an untested feature as a working one."
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.3",
+          "title": "Assumptions and constraints",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "State what the plan assumes, such as a stable build on the agreed date, and what limits it, such as staff, tools or time."
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.4",
+          "title": "Stakeholders",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Name who needs the test results and what decision each makes with them."
               ]
             }
           ]
@@ -81,35 +246,68 @@
       ]
     },
     {
-      "title": "Features not tested",
+      "number": "3",
+      "title": "Communication",
       "sections": [
         {
-          "title": "Features not tested",
+          "number": "3.1",
+          "title": "How testing is reported",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "What is not tested in this cycle and why, so that nobody reads its absence as proof it works."
+                "For each report or meeting, give the audience, the channel and how often it happens. Example: a daily status note to the project manager."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "4",
+      "title": "Risk register",
+      "sections": [
+        {
+          "number": "4.1",
+          "title": "Risks and mitigation",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "List what could disrupt testing and what you will do about each risk."
               ]
             },
             {
               "kind": "table",
               "columns": [
-                "Feature",
-                "Reason",
-                "Accepted risk"
+                "ID",
+                "Risk",
+                "Likelihood",
+                "Impact",
+                "Mitigation"
               ],
               "rows": [
                 [
-                  "…",
-                  "…",
-                  "…"
+                  "R-01",
+                  "The test environment is not ready on the handover date.",
+                  "Medium",
+                  "High",
+                  "Agree the handover date in writing and run a smoke test first."
                 ],
                 [
+                  "R-02",
+                  "…",
                   "…",
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                8,
+                34,
+                12,
+                12,
+                34
               ]
             }
           ]
@@ -117,17 +315,13 @@
       ]
     },
     {
-      "title": "Test approach",
+      "number": "5",
+      "title": "Test strategy",
       "sections": [
         {
-          "title": "Test approach",
+          "number": "5.1",
+          "title": "Test levels and types",
           "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "The test levels and types, design techniques and automation, including what concerns Arabic and English and right-to-left layout."
-              ]
-            },
             {
               "kind": "table",
               "columns": [
@@ -147,6 +341,13 @@
                 ],
                 [
                   "Arabic and English interface",
+                  "Text, direction and numbers in both languages",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Regression",
                   "…",
                   "…",
                   "…",
@@ -162,42 +363,39 @@
               ]
             }
           ]
-        }
-      ]
-    },
-    {
-      "title": "Entry, exit and suspension criteria",
-      "sections": [
+        },
         {
-          "title": "Entry, exit and suspension criteria",
+          "number": "5.2",
+          "title": "Design techniques",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "When testing starts, when it ends and when it is suspended. Make each condition a figure or state that can be checked. Example: \"No open critical defects and a case pass rate of at least 95%.\""
+                "Name the techniques used to design cases, such as equivalence classes, boundary values and decision tables."
               ]
-            },
+            }
+          ]
+        },
+        {
+          "number": "5.3",
+          "title": "Retesting and regression",
+          "blocks": [
             {
-              "kind": "table",
-              "columns": [
-                "Phase",
-                "Entry criteria",
-                "Exit criteria",
-                "Suspension criteria"
-              ],
-              "rows": [
-                [
-                  "…",
-                  "…",
-                  "…",
-                  "…"
-                ],
-                [
-                  "…",
-                  "…",
-                  "…",
-                  "…"
-                ]
+              "kind": "prose",
+              "paragraphs": [
+                "Say how a fixed defect is retested and which cases run again after each build."
+              ]
+            }
+          ]
+        },
+        {
+          "number": "5.4",
+          "title": "Deliverables",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "List what is handed over at the end: test cases, execution results, the defect report and a summary report."
               ]
             }
           ]
@@ -205,15 +403,70 @@
       ]
     },
     {
-      "title": "Test environment and data",
+      "number": "6",
+      "title": "Entry, exit, suspension and resumption criteria",
       "sections": [
         {
-          "title": "Test environment and data",
+          "number": "6.1",
+          "title": "Criteria",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "The environments, addresses, data used and who owns each. Do not use real personal data unless it has been anonymised."
+                "Make each criterion a figure or a state that can be checked."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Type",
+                "Criterion",
+                "Measure"
+              ],
+              "rows": [
+                [
+                  "Entry",
+                  "The build is deployed to the test environment and the smoke test passes.",
+                  "Smoke test 100%"
+                ],
+                [
+                  "Exit",
+                  "No critical or high defect is open, and the case pass rate is at least 95%.",
+                  "Open defects 0; pass rate 95% or more"
+                ],
+                [
+                  "Suspension",
+                  "A blocking defect or an unavailable environment stops testing.",
+                  "Blocked cases"
+                ],
+                [
+                  "Resumption",
+                  "The fix is delivered in a new build and the smoke test passes.",
+                  "Smoke test 100%"
+                ]
+              ],
+              "colWidths": [
+                16,
+                60,
+                24
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "7",
+      "title": "Environment and data",
+      "sections": [
+        {
+          "number": "7.1",
+          "title": "Environments and test data",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "List each environment, its purpose, its data and its owner. Do not use real personal data unless it has been anonymised."
               ]
             },
             {
@@ -244,17 +497,61 @@
       ]
     },
     {
-      "title": "Roles and responsibilities",
+      "number": "8",
+      "title": "Activities and estimates",
       "sections": [
         {
-          "title": "Roles and responsibilities",
+          "number": "8.1",
+          "title": "Estimates",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "Who writes the cases, who runs them, who triages defects and who decides on release."
+                "Estimate each activity in person-days and say how you reached the figure."
               ]
             },
+            {
+              "kind": "table",
+              "columns": [
+                "Activity",
+                "Estimate (person-days)",
+                "Basis"
+              ],
+              "rows": [
+                [
+                  "Test design",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Execution",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Retest and reporting",
+                  "…",
+                  "…"
+                ]
+              ],
+              "colWidths": [
+                40,
+                20,
+                40
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "9",
+      "title": "Staffing and roles",
+      "sections": [
+        {
+          "number": "9.1",
+          "title": "Roles and responsibilities",
+          "blocks": [
             {
               "kind": "table",
               "columns": [
@@ -265,14 +562,29 @@
               "rows": [
                 [
                   "Test lead",
-                  "…",
-                  "…"
+                  "[Name]",
+                  "Plans the cycle, reports results, decides on suspension."
                 ],
                 [
                   "Tester",
                   "…",
-                  "…"
+                  "Writes and runs cases, raises defects."
+                ],
+                [
+                  "Developer",
+                  "…",
+                  "Fixes defects and delivers builds."
+                ],
+                [
+                  "Business owner",
+                  "…",
+                  "Accepts the result and decides on release."
                 ]
+              ],
+              "colWidths": [
+                25,
+                25,
+                50
               ]
             }
           ]
@@ -280,17 +592,13 @@
       ]
     },
     {
+      "number": "10",
       "title": "Schedule",
       "sections": [
         {
-          "title": "Schedule",
+          "number": "10.1",
+          "title": "Activities and dates",
           "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "Activities with their dates and their dependence on the development handover."
-              ]
-            },
             {
               "kind": "table",
               "columns": [
@@ -298,23 +606,41 @@
                 "Start",
                 "End",
                 "Owner",
-                "Dependency"
+                "Status"
               ],
               "rows": [
                 [
-                  "…",
+                  "Test design",
                   "YYYY-MM-DD",
                   "YYYY-MM-DD",
                   "…",
-                  "…"
+                  "Planned"
                 ],
                 [
-                  "…",
+                  "Execution",
                   "YYYY-MM-DD",
                   "YYYY-MM-DD",
                   "…",
-                  "…"
+                  "Planned"
+                ],
+                [
+                  "Retest and closure",
+                  "YYYY-MM-DD",
+                  "YYYY-MM-DD",
+                  "…",
+                  "Planned"
                 ]
+              ],
+              "colWidths": [
+                34,
+                14,
+                14,
+                22,
+                16
+              ],
+              "nowrapCols": [
+                1,
+                2
               ]
             }
           ]
@@ -322,54 +648,17 @@
       ]
     },
     {
-      "title": "Test deliverables",
-      "sections": [
-        {
-          "title": "Test deliverables",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "What is handed over at the end of the cycle: test cases, execution results, defect report and a summary report."
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Deliverable",
-                "Format",
-                "When",
-                "Owner"
-              ],
-              "rows": [
-                [
-                  "…",
-                  "…",
-                  "…",
-                  "…"
-                ],
-                [
-                  "…",
-                  "…",
-                  "…",
-                  "…"
-                ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
+      "number": "11",
       "title": "Defect management",
       "sections": [
         {
-          "title": "Defect management",
+          "number": "11.1",
+          "title": "Lifecycle and severity",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "The defect lifecycle, the definition of severity and priority in a table, and who closes a defect."
+                "Show the states a defect passes through and who moves it from one to the next."
               ]
             },
             {
@@ -474,81 +763,33 @@
               }
             },
             {
-              "kind": "subhead",
-              "text": "Severity definitions"
-            },
-            {
               "kind": "table",
               "columns": [
                 "Severity",
                 "Definition",
-                "Example",
                 "Fix target"
               ],
               "rows": [
                 [
                   "Critical",
-                  "System down or data lost, no workaround",
-                  "…",
-                  "…"
+                  "The system is unusable or data is lost.",
+                  "Before the next build"
                 ],
                 [
                   "High",
-                  "A core function does not work",
-                  "…",
-                  "…"
+                  "A main function fails and there is no workaround.",
+                  "Before release"
                 ],
                 [
                   "Medium",
-                  "A fault with a workaround",
-                  "…",
-                  "…"
-                ],
-                [
-                  "Low",
-                  "A cosmetic fault",
-                  "…",
-                  "…"
+                  "A function fails but a workaround exists.",
+                  "Before release if time allows"
                 ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "title": "Risks and contingencies",
-      "sections": [
-        {
-          "title": "Risks and contingencies",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "What may disrupt testing and what is done then."
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Risk",
-                "Likelihood",
-                "Impact",
-                "Action"
               ],
-              "rows": [
-                [
-                  "…",
-                  "…",
-                  "…",
-                  "…"
-                ],
-                [
-                  "…",
-                  "…",
-                  "…",
-                  "…"
-                ]
+              "colWidths": [
+                16,
+                54,
+                30
               ]
             }
           ]
@@ -556,17 +797,13 @@
       ]
     },
     {
+      "number": "12",
       "title": "Metrics and reporting",
       "sections": [
         {
-          "title": "Metrics and reporting",
+          "number": "12.1",
+          "title": "Metrics",
           "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "What is measured, how it is computed, how often it is reported and to whom."
-              ]
-            },
             {
               "kind": "table",
               "columns": [
@@ -577,161 +814,23 @@
               ],
               "rows": [
                 [
-                  "Case pass rate",
-                  "…",
-                  "…",
-                  "…"
+                  "Pass rate",
+                  "Passed cases divided by executed cases",
+                  "95%",
+                  "Daily"
                 ],
                 [
                   "Open defects",
-                  "…",
-                  "…",
-                  "…"
-                ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "title": "Terms and references",
-      "sections": [
-        {
-          "title": "Terms and references",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "Define each term and abbreviation used in the plan and list the documents it relies on, with code and version."
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Term",
-                "Definition"
-              ],
-              "rows": [
-                [
-                  "…",
-                  "…"
+                  "Open defects by severity",
+                  "0 critical",
+                  "Daily"
                 ],
                 [
-                  "…",
-                  "…"
+                  "Requirement coverage",
+                  "Requirements with at least one executed case",
+                  "100%",
+                  "Per cycle"
                 ]
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Code",
-                "Document",
-                "Version"
-              ],
-              "rows": [
-                [
-                  "…",
-                  "…",
-                  "…"
-                ],
-                [
-                  "…",
-                  "…",
-                  "…"
-                ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "title": "Approval and sign-off",
-      "sections": [
-        {
-          "title": "Approval and sign-off",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "Each party signs in their own row before the plan is approved; a plan without these signatures is not approved."
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Name",
-                "Job title",
-                "Action",
-                "Signature",
-                "Date"
-              ],
-              "rows": [
-                [
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  "Prepared",
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  }
-                ],
-                [
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  "Reviewed",
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  }
-                ],
-                [
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  "Approved",
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  }
-                ]
-              ],
-              "blankCell": "",
-              "rowHeights": [
-                16,
-                16,
-                16
               ]
             }
           ]

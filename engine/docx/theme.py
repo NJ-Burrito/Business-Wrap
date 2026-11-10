@@ -406,7 +406,7 @@ def build_cover(document, control: dict, roles: dict, font: str, logos: list[Pat
         for i, l in enumerate(logo_list):
             if i:
                 run.add_text('     ')
-            run.add_picture(str(l), height=heights.get(str(l), MM(27)))
+            name_logo(run.add_picture(str(l), height=heights.get(str(l), MM(27))), l)
     top_rule_p = main_cell.add_paragraph()
     top_rule_p.paragraph_format.space_before = Pt(0)
     top_pPr = top_rule_p._p.get_or_add_pPr()
@@ -503,6 +503,12 @@ def style_table_theme(table, roles: dict[str, str], has_header: bool) -> None:
                 for run in p.runs:
                     run.font.size = Pt(SIZES['table'])
 
+def name_logo(shape, path) -> None:
+    """0.19.0: a logo picture is named `logo-<file stem>` (wp:docPr), never Word's `Picture n`: page 1 may hold only logos (tests/page1-0190)."""
+    stem = Path(str(path)).stem
+    shape._inline.docPr.set('name', stem if stem.startswith('logo-') else f'logo-{stem}')
+
+
 def add_header_footer(document, roles: dict, font: str, logo: Path | None, doc_id: str='', issued_on: str='', cover_section=None, body_section=None, single: bool=False) -> None:
     from docx.enum.text import WD_TAB_ALIGNMENT
     cover_section = cover_section or document.sections[0]
@@ -574,7 +580,7 @@ def add_header_footer(document, roles: dict, font: str, logo: Path | None, doc_i
     hp.paragraph_format.tab_stops.add_tab_stop(int(text_w // 2), WD_TAB_ALIGNMENT.CENTER)
     hp.paragraph_format.tab_stops.add_tab_stop(int(text_w), WD_TAB_ALIGNMENT.RIGHT)
     if logo and logo.exists():
-        hp.add_run().add_picture(str(logo), height=Inches(0.2))
+        name_logo(hp.add_run().add_picture(str(logo), height=Inches(0.2)), logo)
     hp.add_run('\t')
     r1 = hp.add_run(doc_id)
     r1.font.size = Pt(SIZES['micro'])

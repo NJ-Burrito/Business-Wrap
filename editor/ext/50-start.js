@@ -1,6 +1,7 @@
 /* 0.18.0 document studio · the start page (lane L3; spec work/sdlc/design/ux/start-page.md, contracts C2 and C3 of work/sdlc/design/architecture.md).
  * The first screen when the tool opens without a document, and File › Start page at any time: a gallery of the registry's document types (thumbnails
- * from each type's own `art`), category chips, search, the recent documents (open, pin) and a preview card with the document language and Create.
+ * from each type's own `art`), category chips, search, the recent documents (open, pin) and, on a click, the side panel (0.19.0: what the type is for, when to use it,
+ * its sections, who uses it, the document language and Create, with the type's own thumbnail move).
  * Create builds both editions from the payload's composed pair (LIB.newFromType: design, cover design and starter content are already in it) into a new
  * library document and opens the editor on it. It is a view of the shell, not a dialog: no scrim, no focus trap; Esc or «Back» returns.
  * Types come from the embedded JSON script #bw-doctypes (C2) and, served, from GET /api/doctypes when the page lacks the script.
@@ -185,26 +186,13 @@ const START = (() => {
     if (st.gone.has(r.id)) return `<li class="st-rec st-gone" data-recent="${esc(r.id)}"><span class="st-open" aria-disabled="true"><span class="st-rt" data-mirror="${lang() === 'ar'}">${art(ty)}</span><span class="st-rm"><span class="st-fn" dir="auto">${esc(r.file)}</span><span class="st-meta st-miss">${esc(t('startMissing'))}</span></span></span><button type="button" class="st-btn st-sm" data-st-rm="${esc(r.id)}">${esc(t('startRemove'))}</button></li>`;
     return `<li class="st-rec" data-recent="${esc(r.id)}"><button type="button" class="st-open" data-st-open="${esc(r.id)}"><span class="st-rt" data-mirror="${lang() === 'ar'}">${art(ty)}</span><span class="st-rm"><span class="st-fn" dir="auto" title="${esc(r.file)}">${esc(r.file)}</span><span class="st-meta">${esc(meta)} <span class="st-go">· ${esc(t('startOpen'))}</span></span></span></button><button type="button" class="st-ib st-keep" aria-pressed="${r.pinned}" aria-label="${esc(`${t(r.pinned ? 'startUnpin' : 'startPin')}: ${r.file}`)}" title="${esc(t(r.pinned ? 'startUnpin' : 'startPin'))}" data-st-keep="${esc(r.id)}">${KEEP_ICON}</button></li>`;
   }
+  /** The end column: Recent (0.19.0: always; a picked type opens the side panel over it instead of swapping it out). */
   function side() {
     const l = lang();
     const box = el.querySelector('[data-st-side]');
-    const kind = st.sel ? 'prev' : 'rec';
-    const cls = kind !== st.kind ? ' st-in' : '';
-    st.kind = kind;
+    const cls = st.kind !== 'rec' ? ' st-in' : '';
+    st.kind = 'rec';
     box.setAttribute('aria-label', t('startAside'));
-    if (st.sel) {
-      const ty = type(st.sel);
-      if (!ty) { st.sel = null; side(); return; }
-      const pl = st.pl;
-      box.innerHTML = `<div class="st-pane st-prev${cls}" role="region" aria-label="${esc(t('startPreview'))}"><div class="st-hd"><h2>${esc(t('startPreview'))}</h2><button type="button" class="st-ib" data-st-a="close" aria-label="${esc(t('startClosePrev'))}" title="${esc(t('startClosePrev'))}">${ic('close')}</button></div>
-<div class="st-cover"><span class="st-thumb" data-land="${land(ty)}" data-mirror="${pl === 'ar'}">${art(ty)}</span></div>
-<h3 lang="${pl}" dir="${pl === 'ar' ? 'rtl' : 'ltr'}">${esc(nm(ty, pl))}</h3><p lang="${pl}" dir="${pl === 'ar' ? 'rtl' : 'ltr'}">${esc(dsc(ty, pl))}</p>
-<span class="st-lab" id="st-pl-l">${esc(t('startLang'))}</span>
-<div class="st-seg st-seg-w" role="radiogroup" aria-labelledby="st-pl-l"><button type="button" role="radio" aria-checked="${pl === 'ar'}" data-st-pl="ar" lang="ar">${esc(t('startLangAr'))}</button><button type="button" role="radio" aria-checked="${pl === 'en'}" data-st-pl="en" lang="en">${esc(t('startLangEn'))}</button></div>
-${inside(ty, pl).length ? `<span class="st-lab">${esc(t('startInside'))}</span><ul lang="${pl}" dir="${pl === 'ar' ? 'rtl' : 'ltr'}">${inside(ty, pl).map((s) => `<li>${esc(s)}</li>`).join('')}</ul>` : ''}
-<button type="button" class="st-btn st-primary" data-st-a="create" data-bw-create="${esc(ty.id)}">${ic('add')}<span>${esc(t('startCreate'))}</span></button><p class="st-hint">${esc(t('startHint'))}</p></div>`;
-      return;
-    }
     const rows = st.rec;
     const pinned = rows.filter((r) => r.pinned), rest = rows.filter((r) => !r.pinned);
     box.innerHTML = `<div class="st-pane${cls}"><h2>${esc(t('startRecent'))}<span class="st-n">${rows.length || ''}</span></h2>${rows.length
@@ -212,9 +200,71 @@ ${inside(ty, pl).length ? `<span class="st-lab">${esc(t('startInside'))}</span><
       : `<div class="st-norec"><span class="st-art" data-mirror="${l === 'ar'}">${art(type('blank'))}</span><b>${esc(t('startNoRecT'))}</b><span>${esc(t('startNoRecP'))}</span></div>`}
 <div class="st-drop">${st.last ? `<button type="button" class="st-btn" data-st-a="resume">${ic('history')}<span>${esc(tf('startResume', { n: st.last }))}</span></button>` : ''}<button type="button" class="st-btn" data-st-a="file">${ic('rbt.file')}<span>${esc(t('startOpenFile'))}</span></button><small>${esc(t('startDrop'))}</small></div></div>`;
   }
-  async function refresh() { st.rec = await recents(); if (isOpen() && !st.sel) side(); }
+
+  /* ── the side panel (0.19.0 N4; treatment work/sdlc/design/0190-motion.md) ──
+   * A drawer on the inline-end edge: the type's thumbnail with its move, name, description, document language, Create, then what it is for,
+   * when to use it, its sections (the starter's chapter titles in the chosen language) and who uses it (payload `info`, templates/_doctypes/_info.json).
+   * Keyboard: Tab wraps inside it; Esc or X closes it and focus returns to the tile.
+   * The move (one grammar for every type, 50-start.css): only the art's layer groups move, transform and opacity only, once, at most 700 ms, nothing loops;
+   * a type differs only in WHICH layers its art has: bw-a-page, bw-a-sheet, bw-a-head, bw-a-row, bw-a-node, bw-a-arrow, bw-a-seal, bw-a-mark (DOM order is
+   * the stagger order). An art with none of them fades in. Keyframes hold only the `from` state, so Calm (animation: none) shows the end frame. */
+  const LAYERS = ['page', 'sheet', 'head', 'row', 'node', 'arrow', 'seal', 'mark'];
+  const layerCache = new Map();
+  /** The type's art: every _art/<id>.svg carries its bw-a-* layer groups natively (0.19.0; the N4 bridge that wrapped them is gone). */
+  function layered(ty) {
+    if (!layerCache.has(ty.id)) layerCache.set(ty.id, art(ty));
+    return layerCache.get(ty.id);
+  }
+  /** The panel's thumbnail: the layered art, mirrored with the DOCUMENT language. data-layers names the layers present (none: the whole page fades in). */
+  function stage(ty, pl) {
+    const svg = layered(ty);
+    const have = LAYERS.filter((l) => svg.includes(`bw-a-${l}`));
+    return `<div class="st-stage" aria-hidden="true" data-land="${land(ty)}" data-layers="${have.join(' ')}"><span class="st-sheet" data-mirror="${pl === 'ar'}"><span class="st-pg">${svg}</span></span></div>`;
+  }
+  /** The stagger: each layer's groups get --k in DOM order. */
+  function order(box) {
+    for (const l of LAYERS) box.querySelectorAll(`.st-stage .bw-a-${l}`).forEach((g, i) => g.style.setProperty('--k', String(i)));
+  }
+  const PANEL_FOCUS = 'button:not([disabled]), [href], input, [tabindex]:not([tabindex="-1"])';
+  /** Draws (or removes) the panel of st.sel. `swap`: the panel is already open (another type, the other language): no slide; the content cross-fades and the move replays. */
+  function panel(swap = false) {
+    let box = el.querySelector('[data-st-panel]');
+    const ty = st.sel ? type(st.sel) : null;
+    if (!ty) { box?.remove(); st.sel = null; return null; }
+    const pl = st.pl, dir = pl === 'ar' ? 'rtl' : 'ltr';
+    const was = !!box && swap;
+    if (!box) {
+      box = document.createElement('section');
+      box.className = 'st-panel st-prev'; box.dataset.stPanel = ''; box.tabIndex = -1;
+      box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-labelledby', 'st-pn');
+      el.appendChild(box);
+    }
+    el.style.setProperty('--st-sb', `${Math.max(0, el.offsetWidth - el.clientWidth)}px`); // clear of the page's own scrollbar (right in English, left in Arabic)
+    box.dataset.type = ty.id;
+    box.classList.toggle('st-in', !was);
+    const info = ty.info || {};
+    const LAB = { purpose: 'startPurpose', whenToUse: 'startWhen', audience: 'startAudience' };
+    const say = (k) => { const v = info[k]?.[pl] || info[k]?.en || ''; return v ? `<h4>${esc(t(LAB[k]))}</h4><p lang="${pl}" dir="${dir}" data-st-info="${k}">${esc(v)}</p>` : ''; };
+    let chapters = [];
+    let emptyDoc = false; // 0.19.0 R3: the Blank document (every chapter bare, no title) lists «One empty page» instead of an empty list
+    try { const chs = JSON.parse(ty.docs?.[pl] || '{}').chapters || []; emptyDoc = chs.length > 0 && chs.every((c) => c.bare === true); chapters = chs.map((c) => String(c.title || '').trim()).filter(Boolean); } catch { /* no starter */ }
+    let n = 0;
+    const ix = () => `style="--n:${n++}"`;
+    box.innerHTML = `<div class="st-pane${was ? ' st-swap' : ''}">
+<div class="st-hd" ${ix()}><h2>${esc(t('startAbout'))}${ty.code ? `<span class="st-code" lang="en" dir="ltr">${esc(ty.code)}</span>` : ''}</h2><button type="button" class="st-ib" data-st-a="close" aria-label="${esc(t('startClosePrev'))}" title="${esc(t('startClosePrev'))}">${ic('close')}</button></div>
+<div class="st-cover" ${ix()}>${stage(ty, pl)}</div>
+<h3 id="st-pn" lang="${pl}" dir="${dir}" ${ix()}>${esc(nm(ty, pl))}</h3><p class="st-pd" lang="${pl}" dir="${dir}" ${ix()}>${esc(dsc(ty, pl))}</p>
+<div class="st-plw" ${ix()}><span class="st-lab" id="st-pl-l">${esc(t('startLang'))}</span>
+<div class="st-seg st-seg-w" role="radiogroup" aria-labelledby="st-pl-l"><button type="button" role="radio" aria-checked="${pl === 'ar'}" data-st-pl="ar" lang="ar">${esc(t('startLangAr'))}</button><button type="button" role="radio" aria-checked="${pl === 'en'}" data-st-pl="en" lang="en">${esc(t('startLangEn'))}</button></div></div>
+<button type="button" class="st-btn st-primary" data-st-a="create" data-bw-create="${esc(ty.id)}" ${ix()}>${ic('add')}<span>${esc(t('startCreate'))}</span></button>
+<div class="st-info" ${ix()}>${say('purpose')}${say('whenToUse')}${chapters.length ? `<h4>${esc(t('startSections'))}</h4><ol lang="${pl}" dir="${dir}" data-st-sections>${chapters.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : emptyDoc ? `<h4>${esc(t('startSections'))}</h4><p lang="${pl}" dir="${dir}" data-st-sections-empty>${esc(pl === 'ar' ? 'صفحة فارغة واحدة' : 'One empty page')}</p>` : ''}${say('audience')}</div>
+<p class="st-hint" ${ix()}>${esc(t('startHint'))}</p></div>`;
+    order(box);
+    return box;
+  }
+  async function refresh() { st.rec = await recents(); if (isOpen()) side(); }
   /** How many documents the last session had (the «Continue where you left off» button): only a served page has a host session to ask. */
-  async function lastCount() { try { st.last = (await EXT.session?.lastCount?.()) || 0; } catch { st.last = 0; } if (isOpen() && !st.sel) side(); }
+  async function lastCount() { try { st.last = (await EXT.session?.lastCount?.()) || 0; } catch { st.last = 0; } if (isOpen()) side(); }
 
   /* ── actions ── */
   /** The tiles are patched in place, never rebuilt, when the pick changes: a double click is two clicks on the SAME element (a rebuilt tile would lose the second). */
@@ -228,15 +278,18 @@ ${inside(ty, pl).length ? `<span class="st-lab">${esc(t('startInside'))}</span><
     });
   }
   function pick(id, focusCreate) {
-    if (st.sel !== id) st.pl = lang(); // picking the tile that is already picked keeps the document language chosen in the card
+    const same = st.sel === id && !!el.querySelector('[data-st-panel]');
+    if (st.sel !== id) st.pl = lang(); // picking the tile that is already picked keeps the document language chosen in the panel
+    const swap = !!st.sel && !same;
     st.sel = id; st.first = false;
-    markTiles(); side();
+    markTiles();
+    const box = same ? el.querySelector('[data-st-panel]') : panel(swap); // the same tile again (a double click's second click) leaves the panel and its move alone
     if (focusCreate) el.querySelector('[data-st-a="create"]')?.focus();
-    else el.querySelector(`.st-tile[data-type="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
+    else box?.focus({ preventScroll: true });
   }
   function closePreview() {
     const id = st.sel; st.sel = null; st.first = false;
-    markTiles(); side(); refresh();
+    markTiles(); panel(); refresh();
     el.querySelector(`.st-tile[data-type="${CSS.escape(id || '')}"]`)?.focus();
   }
   async function create(id, ed) {
@@ -275,14 +328,14 @@ ${inside(ty, pl).length ? `<span class="st-lab">${esc(t('startInside'))}</span><
     const e = await LIBX().importAny(f);
     if (e) close(true);
   }
-  function setUi(l) { if (S.ui !== l) runAction('uiLang'); st.sel = null; st.first = false; st.kind = ''; chrome(); gallery(); side(); }
+  function setUi(l) { if (S.ui !== l) runAction('uiLang'); st.sel = null; st.first = false; st.kind = ''; chrome(); gallery(); side(); panel(); }
 
   /* ── events ── */
   function onClick(ev) {
     const g = (s) => ev.target.closest(s);
     let b;
     if ((b = g('[data-st-c]'))) { st.cat = b.dataset.stC; st.q = ''; el.querySelector('[data-st-q]').value = ''; st.first = false; chrome(); gallery(); return; }
-    if ((b = g('[data-st-pl]'))) { st.pl = b.dataset.stPl; markTiles(); side(); el.querySelector(`[data-st-pl="${st.pl}"]`)?.focus(); return; }
+    if ((b = g('[data-st-pl]'))) { st.pl = b.dataset.stPl; markTiles(); panel(true); el.querySelector(`[data-st-pl="${st.pl}"]`)?.focus(); return; }
     if ((b = g('[data-st-keep]'))) { const id = b.dataset.stKeep; const p = pins(); savePins(p.includes(id) ? p.filter((x) => x !== id) : [...p, id]); refresh().then(() => el?.querySelector(`[data-st-keep="${CSS.escape(id)}"]`)?.focus()); return; }
     if ((b = g('[data-st-open]'))) { openRecent(b.dataset.stOpen); return; }
     if ((b = g('[data-st-rm]'))) { const id = b.dataset.stRm; LIBX().remove(id).catch(() => {}); savePins(pins().filter((x) => x !== id)); st.gone.delete(id); refresh(); return; }
@@ -307,6 +360,14 @@ ${inside(ty, pl).length ? `<span class="st-lab">${esc(t('startInside'))}</span><
     const q = el.querySelector('[data-st-q]');
     const inField = ev.target === q;
     if (ev.key === '/' && !inField && !/^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName || '')) { ev.preventDefault(); q.focus(); return; }
+    if (ev.key === 'Tab') { // the side panel keeps keyboard focus: Tab and Shift+Tab wrap inside it
+      const p = ev.target.closest?.('[data-st-panel]');
+      if (p) {
+        const f = [...p.querySelectorAll(PANEL_FOCUS)].filter((x) => x.getClientRects().length);
+        if (f.length && (ev.shiftKey ? (ev.target === f[0] || ev.target === p) : ev.target === f[f.length - 1])) { ev.preventDefault(); f[ev.shiftKey ? f.length - 1 : 0].focus(); }
+        return;
+      }
+    }
     if (ev.key === 'Escape') {
       ev.preventDefault();
       if (inField && st.q) { st.q = ''; q.value = ''; chrome(); gallery(); }
@@ -361,7 +422,7 @@ ${inside(ty, pl).length ? `<span class="st-lab">${esc(t('startInside'))}</span><
     // 0.18.2: the NJ mark (z 41, in the page, above this view) stays on screen over the start page; 50-start.css leaves it a bottom-start safe area (0.18.0 hid it, which hid it on every open)
     chrome(); gallery(); side();
     st.rec = await recents();
-    if (isOpen() && !st.sel) side();
+    if (isOpen()) side();
     lastCount();
     if (!opts.auto || !st.opener) el.querySelector('[data-st-q]')?.focus({ preventScroll: true });
     setTimeout(() => { st.first = false; el?.querySelector('.st-grid')?.classList.remove('st-first'); }, 1400);

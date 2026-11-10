@@ -1,0 +1,244 @@
+{
+ "$note": {
+  "en": "Per type: what it is for, when to use it, who uses it (the start page side panel, 0.19.0). purpose and audience come from the BA catalogue work/sdlc/ba/doc-types.json.",
+  "ar": "لكل نوع: الغرض منه ومتى يستخدم ومن يستخدمه (اللوحة الجانبية في صفحة البداية)."
+ },
+ "blank": {
+  "purpose": {
+   "ar": "وثيقة بغلاف وسجل تغييرات وفصل واحد فارغ، تنطلق منها حين لا يناسبك نوع آخر.",
+   "en": "A document with a cover, a revision history and one empty chapter, for work no other type fits."
+  },
+  "whenToUse": {
+   "ar": "حين لا يناسبك أي نوع آخر، أو تريد أن تضع البنية بنفسك.",
+   "en": "When none of the other types fits, or you want to set the structure yourself."
+  },
+  "audience": {
+   "ar": "أي كاتب وثيقة.",
+   "en": "Any document author."
+  }
+ },
+ "srs": {
+  "purpose": {
+   "ar": "تحدد ما يجب أن يفعله النظام أو الخدمة الإلكترونية: بطاقة الخدمة والمتطلبات وقواعد العمل وسير العمل وقصص المستخدمين.",
+   "en": "Defines what the system or e-service must do: the service card, requirements, business rules, workflow and user stories."
+  },
+  "whenToUse": {
+   "ar": "قبل بدء التطوير، بعد الاتفاق على الخدمة وقواعدها، حين يحتاج الفريق مرجعا واحدا يبني ويختبر عليه.",
+   "en": "Before development starts, once the service and its rules are agreed and the team needs one reference to build and test against."
+  },
+  "audience": {
+   "ar": "فريق التطوير والاختبار، ومالك الخدمة، والمراجعون.",
+   "en": "Development and test teams, the service owner and reviewers."
+  }
+ },
+ "user-manual": {
+  "purpose": {
+   "ar": "يشرح للمستخدم خطوة بخطوة كيف ينجز مهمته في النظام أو الخدمة، بلقطات شاشة ومربعات ترقيم وجداول مرجعية.",
+   "en": "Walks a user through a task in the system or service step by step, with screenshots, numbered callouts and reference tables."
+  },
+  "whenToUse": {
+   "ar": "قبل الإطلاق أو التدريب، حين يحتاج المستخدمون إلى تعلم مهمة في النظام.",
+   "en": "Before go-live or training, when users need to learn a task in the system."
+  },
+  "audience": {
+   "ar": "المستخدم النهائي، وفريق الدعم، ومن يدرب المستخدمين.",
+   "en": "End users, the support team and those who train users."
+  }
+ },
+ "tot": {
+  "purpose": {
+   "ar": "يعد المدرب لتقديم برنامج تدريبي: أهداف البرنامج ووحداته وجلساته وتمارينه وتقييمه.",
+   "en": "Prepares a trainer to deliver a training programme: its objectives, modules, sessions, exercises and assessment."
+  },
+  "whenToUse": {
+   "ar": "حين تعد مدربين لتقديم برنامج تدريبي لغيرهم.",
+   "en": "When you prepare trainers to deliver a training programme to others."
+  },
+  "audience": {
+   "ar": "المدربون، ومنسق البرنامج، والجهة التي تعتمد التدريب.",
+   "en": "Trainers, the programme coordinator and the body that approves the training."
+  }
+ },
+ "tor": {
+  "purpose": {
+   "ar": "تحدد نطاق العمل المطلوب من جهة منفذة والمخرجات والجدول الزمني والمسؤوليات، وتصلح أساسا لطلب عروض أو عقد.",
+   "en": "Sets the scope of work expected of an implementer, the deliverables, the timeline and the responsibilities; a basis for a call for proposals or a contract."
+  },
+  "whenToUse": {
+   "ar": "قبل التعاقد مع منفذ أو طرح عطاء، لتحديد النطاق والمخرجات والجدول الزمني.",
+   "en": "Before engaging an implementer or issuing a tender, to fix the scope, the deliverables and the timeline."
+  },
+  "audience": {
+   "ar": "الجهة الراعية، والمنفذ أو المناقصون، ولجنة التقييم.",
+   "en": "The sponsor, the implementer or bidders and the evaluation committee."
+  }
+ },
+ "brd": {
+  "purpose": {
+   "ar": "تسجل ما تحتاجه الجهة من المشروع من منظور العمل: المشكلة والأهداف والأطراف والمتطلبات ومعايير النجاح، دون الدخول في تصميم الحل.",
+   "en": "Records what the organisation needs from the project from the business side: the problem, objectives, stakeholders, requirements and success criteria, without designing the solution."
+  },
+  "whenToUse": {
+   "ar": "في بداية المشروع، للاتفاق على حاجة العمل ونطاقه وأهدافه قبل وصف النظام.",
+   "en": "At the start of a project, to agree the business need, the scope and the goals before anyone specifies the system."
+  },
+  "audience": {
+   "ar": "الراعي وأصحاب المصلحة وإدارة المشروع، وكاتب وثيقة المتطلبات الوظيفية.",
+   "en": "The sponsor, stakeholders and project management, and the author of the functional specification."
+  }
+ },
+ "frs": {
+  "purpose": {
+   "ar": "تحول متطلبات العمل إلى سلوك محدد للنظام: ما يفعله كل مستخدم وما تعرضه كل شاشة وما تخزنه كل بيانات وما تتحقق منه كل قاعدة.",
+   "en": "Turns business requirements into specific system behaviour: what each user does, what each screen shows, what data is stored and what each rule checks."
+  },
+  "whenToUse": {
+   "ar": "بعد اعتماد متطلبات العمل، حين يحتاج الفريق إلى وصف سلوك النظام وظيفة بوظيفة.",
+   "en": "After the business requirements are approved, when the team needs the system behaviour spelled out function by function."
+  },
+  "audience": {
+   "ar": "فريق التطوير والاختبار والمصمم، ومالك المنتج.",
+   "en": "The development and test teams, the designer and the product owner."
+  }
+ },
+ "test-plan": {
+  "purpose": {
+   "ar": "تحدد كيف سيختبر الفريق النظام: ما يختبر وما لا يختبر، وبأي منهج وبيئة وجدول، وما يعد نجاحا.",
+   "en": "Sets out how the team will test the system: what is and is not tested, with which approach, environment and schedule, and what counts as success."
+  },
+  "whenToUse": {
+   "ar": "قبل بدء الاختبار، للاتفاق على ما سيختبر وكيف ومن يختبره ومتى.",
+   "en": "Before testing begins, to agree what will be tested, how, by whom and when."
+  },
+  "audience": {
+   "ar": "فريق الاختبار والتطوير، ومدير المشروع، والجهة المستفيدة.",
+   "en": "The test and development teams, the project manager and the beneficiary."
+  }
+ },
+ "test-cases": {
+  "purpose": {
+   "ar": "جدول حالات اختبار قابل للتنفيذ والمتابعة: لكل حالة خطوات ونتيجة متوقعة وفعلية وحالة تنفيذ.",
+   "en": "A runnable, trackable sheet of test cases: each with steps, an expected and an actual result and an execution status."
+  },
+  "whenToUse": {
+   "ar": "أثناء إعداد الاختبارات وتنفيذها، لتسجيل كل حالة وخطواتها ونتيجتها.",
+   "en": "While preparing and running tests, to record each case, its steps and its result."
+  },
+  "audience": {
+   "ar": "المختبرون ومطورو النظام ومدير الاختبار.",
+   "en": "Testers, developers and the test manager."
+  }
+ },
+ "uat-signoff": {
+  "purpose": {
+   "ar": "يثبت أن الجهة المستفيدة جربت النظام بسيناريوهاتها، وقرارها بقبوله أو رفضه أو قبوله بشروط، بتواقيع المعنيين.",
+   "en": "Records that the beneficiary tried the system with its own scenarios, and its decision to accept, reject or accept with conditions, signed by those concerned."
+  },
+  "whenToUse": {
+   "ar": "في نهاية اختبار القبول، لتوثيق قرار الجهة المستفيدة بالقبول أو الرفض.",
+   "en": "At the end of acceptance testing, to record the beneficiary's decision to accept or reject."
+  },
+  "audience": {
+   "ar": "الجهة المستفيدة، والراعي، ومدير المشروع، والمورد.",
+   "en": "The beneficiary, the sponsor, the project manager and the supplier."
+  }
+ },
+ "release-notes": {
+  "purpose": {
+   "ar": "تخبر المستخدمين والمشغلين بما تغير في هذا الإصدار: الجديد وما تحسن وما أصلح والمشكلات المعروفة وما يلزم عند الترقية.",
+   "en": "Tells users and operators what changed in this release: what is new, improved and fixed, the known issues and what an upgrade requires."
+  },
+  "whenToUse": {
+   "ar": "مع كل إصدار، لإبلاغ المستخدمين وفرق التشغيل بما تغير.",
+   "en": "With every release, to tell users and operators what changed."
+  },
+  "audience": {
+   "ar": "المستخدمون، وفريق الدعم والتشغيل، ومدير المنتج.",
+   "en": "Users, the support and operations teams and the product manager."
+  }
+ },
+ "change-request": {
+  "purpose": {
+   "ar": "يوثق تغييرا مطلوبا على نطاق معتمد أو متطلبات أو جدول، ويقدر أثره على النطاق والجدول والكلفة والجودة، ثم يسجل قرار لجنة التغيير.",
+   "en": "Documents a requested change to an approved scope, requirement or schedule, assesses its effect on scope, schedule, cost and quality, and records the change board's decision."
+  },
+  "whenToUse": {
+   "ar": "حين يطلب أحد تغيير نطاق أو متطلب أو جدول معتمد.",
+   "en": "When someone asks to change an approved scope, requirement or schedule."
+  },
+  "audience": {
+   "ar": "لجنة ضبط التغيير، ومدير المشروع، ومقدم الطلب.",
+   "en": "The change control board, the project manager and the requester."
+  }
+ },
+ "minutes": {
+  "purpose": {
+   "ar": "يسجل ما جرى في اجتماع: الحضور والبنود والقرارات والإجراءات ومن يتولاها ومتى، ليرجع إليها من حضر ومن غاب.",
+   "en": "Records what happened in a meeting: attendance, items, decisions and actions with owners and dates, for those who attended and those who did not."
+  },
+  "whenToUse": {
+   "ar": "بعد الاجتماع مباشرة، والقرارات والمهام حاضرة في الذهن.",
+   "en": "Right after a meeting, while the decisions and actions are fresh."
+  },
+  "audience": {
+   "ar": "الحاضرون والغائبون وأي معني بالقرارات.",
+   "en": "Attendees, absentees and anyone affected by the decisions."
+  }
+ },
+ "process-flow": {
+  "purpose": {
+   "ar": "توثق عملية عمل كما تجري اليوم وكما يراد لها أن تجري، بمخططات على نمط BPMN وجداول خطوات وتحليل للفجوات.",
+   "en": "Documents a business process as it runs today and as it should run, with BPMN-style diagrams, step tables and a gap analysis."
+  },
+  "whenToUse": {
+   "ar": "حين تحتاج إلى فهم إجراء أو تحسينه: ارسم كيف يجري اليوم، ثم كيف ينبغي أن يجري.",
+   "en": "When a process must be understood or improved: map how it runs today, then how it should run."
+  },
+  "audience": {
+   "ar": "محللو الأعمال، ومالكو العملية، وفريق التحسين والتطوير.",
+   "en": "Business analysts, process owners and the improvement and development teams."
+  }
+ },
+ "rtm": {
+  "purpose": {
+   "ar": "تربط كل متطلب عمل بمتطلباته الوظيفية والتصميم وحالات الاختبار والعيوب، لتظهر ما اختبر وما بقي دون تغطية.",
+   "en": "Links each business requirement to its functional requirements, design, test cases and defects, showing what is tested and what is left uncovered."
+  },
+  "whenToUse": {
+   "ar": "طوال المشروع، لإثبات أن كل متطلب صمم واختبر وأغلق، وقبل التدقيق أو القبول.",
+   "en": "Throughout the project, to show that every requirement is designed, tested and closed, and before an audit or acceptance."
+  },
+  "audience": {
+   "ar": "محللو الأعمال والمختبرون، ومدير المشروع، والمدقق.",
+   "en": "Business analysts, testers, the project manager and the auditor."
+  }
+ },
+ "defect-report": {
+  "purpose": {
+   "ar": "يصف عيبا واحدا بما يكفي ليعيد المطور إنتاجه ويصلحه ويتحقق منه دون سؤال المختبر.",
+   "en": "Describes one defect well enough for a developer to reproduce, fix and verify it without asking the tester."
+  },
+  "whenToUse": {
+   "ar": "فور اكتشاف خلل في اختبار أو لدى مستخدم، ليعاد إنتاجه ويصلح.",
+   "en": "As soon as a test or a user finds a fault, so that it can be reproduced and fixed."
+  },
+  "audience": {
+   "ar": "المطورون، وقائد الاختبار، ومدير المنتج.",
+   "en": "Developers, the test lead and the product manager."
+  }
+ },
+ "business-case": {
+  "purpose": {
+   "ar": "تقنع صاحب القرار بأن المشروع يستحق الاستثمار: المشكلة والخيارات والكلفة والفائدة والمخاطر والتوصية.",
+   "en": "Convinces the decision maker that the project is worth the investment: the problem, options, cost, benefit, risks and the recommendation."
+  },
+  "whenToUse": {
+   "ar": "قبل تمويل المشروع، حين يتعين على صاحب القرار أن يقرر الاستثمار فيه أو لا.",
+   "en": "Before a project is funded, when a decision maker must choose whether to invest in it."
+  },
+  "audience": {
+   "ar": "الراعي ولجنة الاستثمار والإدارة العليا.",
+   "en": "The sponsor, the investment committee and senior management."
+  }
+ }
+}

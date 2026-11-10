@@ -14,12 +14,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { REPO, ROLES, EDITIONS, BLOCK_KINDS, ID_RE, categories, palettes, compose } from '../../engine/doctypes.mjs';
+import { REPO, ROLES, EDITIONS, BLOCK_KINDS, ID_RE, TYPE_FAMILY, familyOf, categories, palettes, compose } from '../../engine/doctypes.mjs';
 import { safeSvg } from '../../engine/render.mjs';
 
 export const LIMITS = { editionBytes: 14 * 1024, totalBytes: 400 * 1024, svgBytes: 6 * 1024, svgViewBox: '0 0 120 170', contrast: 4.5, graphic: 3 };
 const CONTROL_KEYS = ['documentId', 'title', 'preparedBy', 'documentType', 'classification', 'owner', 'issuedOn', 'version', 'status', 'reviewCycle'];
-const TOP_KEYS = ['composedAt', 'control', 'revisions', 'chapters', 'labels', 'openQuestions', 'controlTable', 'chrome', 'layout'];
+const TOP_KEYS = ['composedAt', 'control', 'revisions', 'chapters', 'labels', 'openQuestions', 'controlTable', 'chrome', 'layout', 'cover'];
 const FORBIDDEN_TOP = ['design', 'coverDesign', 'docType', 'service', 'motif'];
 const dirOf = (o) => path.join(o?.root || REPO, 'templates', '_doctypes');
 const rootOf = (o) => o?.root || REPO;
@@ -183,10 +183,149 @@ export function checkSvg(svg) {
   return [...new Set(e)];
 }
 
-/* ───────── the shape of a starter document, for the AR/EN pair rule (architecture §1.3) ───────── */
+/* ───────── 0.19.0 page-1 content (work/sdlc/design/0190-types.md §2, §6 S2-S7): the `cover` key, layout.back / tocDepth, table and shots keys ───────── */
+export const COVER_RULES = { fields: 10, figures: 6, cols: [2, 3, 4, 6], fieldKinds: ['text', 'chip', 'date', 'blank'], figureKinds: ['none', 'ok', 'warn', 'bad', 'idle'], choices: 4, items: 5 };
+export const TABLE_STYLES = ['sheet', 'signoff'];
+export const SHOT_RATIOS = ['16:10', '4:3', '9:16'];
+const isStr = (v) => typeof v === 'string';
+const isPlain = (v) => v && typeof v === 'object' && !Array.isArray(v);
+/** S2: the content key `cover` of one edition → messages. The control fields come from `control`, never from here. */
+export function coverErrors(cover, ed) {
+  const e = [];
+  if (cover === undefined) return e;
+  if (!isPlain(cover)) return [`${ed}: cover must be an object`];
+  for (const k of Object.keys(cover)) if (!['cols', 'fields', 'figures', 'badge', 'statement'].includes(k)) e.push(`${ed}: cover has an unknown key «${k}»`);
+  if (cover.cols !== undefined && !COVER_RULES.cols.includes(cover.cols)) e.push(`${ed}: cover.cols must be one of ${COVER_RULES.cols.join(', ')}`);
+  if (cover.fields !== undefined) {
+    if (!Array.isArray(cover.fields)) e.push(`${ed}: cover.fields must be an array`);
+    else {
+      if (cover.fields.length > COVER_RULES.fields) e.push(`${ed}: cover.fields holds ${cover.fields.length}, at most ${COVER_RULES.fields}`);
+      cover.fields.forEach((f, i) => {
+        if (!isPlain(f)) { e.push(`${ed}: cover.fields[${i}] must be an object`); return; }
+        if (!isStr(f.label) || !f.label) e.push(`${ed}: cover.fields[${i}] needs a label`);
+        if (f.value !== undefined && !isStr(f.value)) e.push(`${ed}: cover.fields[${i}].value must be a string`);
+        if (f.kind !== undefined && !COVER_RULES.fieldKinds.includes(f.kind)) e.push(`${ed}: cover.fields[${i}].kind must be one of ${COVER_RULES.fieldKinds.join(' | ')}`);
+        if (f.id !== undefined && f.id !== true) e.push(`${ed}: cover.fields[${i}].id is true or absent`);
+        for (const k of Object.keys(f)) if (!['label', 'value', 'kind', 'id'].includes(k)) e.push(`${ed}: cover.fields[${i}] has an unknown key «${k}»`);
+      });
+      if (cover.fields.filter((f) => f?.id === true).length > 1) e.push(`${ed}: cover.fields has more than one id:true`);
+    }
+  }
+  if (cover.figures !== undefined) {
+    if (!Array.isArray(cover.figures)) e.push(`${ed}: cover.figures must be an array`);
+    else {
+      if (cover.figures.length > COVER_RULES.figures) e.push(`${ed}: cover.figures holds ${cover.figures.length}, at most ${COVER_RULES.figures}`);
+      cover.figures.forEach((f, i) => {
+        if (!isPlain(f) || !isStr(f.label) || !f.label) e.push(`${ed}: cover.figures[${i}] needs a label`);
+        else {
+          if (f.kind !== undefined && !COVER_RULES.figureKinds.includes(f.kind)) e.push(`${ed}: cover.figures[${i}].kind must be one of ${COVER_RULES.figureKinds.join(' | ')}`);
+          if (f.value !== undefined && !isStr(f.value)) e.push(`${ed}: cover.figures[${i}].value must be a string`);
+          for (const k of Object.keys(f)) if (!['label', 'value', 'kind'].includes(k)) e.push(`${ed}: cover.figures[${i}] has an unknown key «${k}»`);
+        }
+      });
+    }
+  }
+  if (cover.badge !== undefined && !(isPlain(cover.badge) && isStr(cover.badge.label) && isStr(cover.badge.value) && Object.keys(cover.badge).every((k) => ['label', 'value'].includes(k)))) e.push(`${ed}: cover.badge is {label, value}`);
+  if (isPlain(cover.statement)) for (const k of Object.keys(cover.statement)) if (!['text', 'items', 'choices'].includes(k)) e.push(`${ed}: cover.statement has an unknown key «${k}»`);
+  if (cover.statement !== undefined) {
+    const s = cover.statement;
+    if (!isPlain(s) || !isStr(s.text)) e.push(`${ed}: cover.statement is {text, items?, choices?}`);
+    else {
+      if (s.items !== undefined && (!Array.isArray(s.items) || s.items.length > COVER_RULES.items || !s.items.every(isStr))) e.push(`${ed}: cover.statement.items: at most ${COVER_RULES.items} strings`);
+      if (s.choices !== undefined && (!Array.isArray(s.choices) || s.choices.length > COVER_RULES.choices || !s.choices.every(isStr))) e.push(`${ed}: cover.statement.choices: at most ${COVER_RULES.choices} strings`);
+    }
+  }
+  return e;
+}
+/** 0.19.0 R2: the `cover` keys each page-1 family prints (render.mjs coverDesigned); a key the family does not print is a warning. */
+export const FAMILY_KEYS = { spine: ['cols', 'fields'], compact: ['cols', 'fields'], report: ['cols', 'fields', 'figures', 'statement'], form: ['cols', 'fields', 'figures', 'badge', 'statement'], sheet: ['cols', 'fields', 'figures', 'statement'] };
+export function familyWarnings(cover, family, ed) {
+  if (!isPlain(cover)) return [];
+  const keys = FAMILY_KEYS[family] || FAMILY_KEYS.spine;
+  const w = Object.keys(cover).filter((k) => !keys.includes(k)).map((k) => `${ed}: cover.${k} does not print on a ${family} page 1`);
+  if (family !== 'form' && Array.isArray(cover.fields) && cover.fields.some((f) => f?.id === true)) w.push(`${ed}: cover.fields id:true is the ID box of a form; a ${family} page 1 prints it as a plain field`);
+  return w;
+}
+/** S3: layout.back ⊂ [control, revisions] and disjoint from hide; tocDepth 1 | 2 (a type's or a content's layout). */
+export function layoutErrors(layout, where) {
+  const e = [];
+  if (!isPlain(layout)) return e;
+  if (layout.back !== undefined) {
+    if (!Array.isArray(layout.back) || !layout.back.every((k) => ['control', 'revisions'].includes(k)) || new Set(layout.back).size !== layout.back.length) e.push(`${where}: layout.back holds only control and revisions, once each`);
+    else for (const k of layout.back) if ((layout.hide || []).includes(k)) e.push(`${where}: layout.back and layout.hide both name «${k}»`);
+  }
+  if (layout.tocDepth !== undefined && ![1, 2].includes(layout.tocDepth)) e.push(`${where}: layout.tocDepth must be 1 or 2`);
+  return e;
+}
+/** S4 and S5: a table's style / numCols / nowrapCols / accentCol, its colWidths sum (a warning), a shots frame's ratio and badge. → {errors, warnings} */
+export function blockKeyErrors(b, where) {
+  const errors = [];
+  const warnings = [];
+  if (b?.kind === 'table') {
+    const n = Math.max((b.columns || []).length, ...(b.rows || []).map((r) => (Array.isArray(r) ? r.length : 0)), 0);
+    if (b.style !== undefined && !TABLE_STYLES.includes(b.style)) errors.push(`${where}: table style must be ${TABLE_STYLES.join(' | ')}`);
+    for (const k of ['numCols', 'nowrapCols']) if (b[k] !== undefined && (!Array.isArray(b[k]) || !b[k].every((i) => Number.isInteger(i) && i >= 0 && i < n))) errors.push(`${where}: table ${k} holds column indexes below ${n}`);
+    if (b.accentCol !== undefined && !(Number.isInteger(b.accentCol) && b.accentCol >= 0 && b.accentCol < n)) errors.push(`${where}: table accentCol is a column index below ${n}`);
+    if (Array.isArray(b.colWidths) && b.colWidths.length) { const sum = b.colWidths.reduce((a, x) => a + (+x || 0), 0); if (Math.abs(sum - 100) > 1) warnings.push(`${where}: table colWidths sum to ${sum}, not 100 ± 1`); }
+  }
+  if (b?.kind === 'shots') {
+    if (b.ratio !== undefined && !SHOT_RATIOS.includes(b.ratio)) errors.push(`${where}: shots ratio must be ${SHOT_RATIOS.join(' | ')}`);
+    if (b.badge !== undefined && !(Number.isInteger(b.badge) && b.badge >= 1 && b.badge <= 99)) errors.push(`${where}: shots badge is a whole number 1 to 99`);
+  }
+  return { errors, warnings };
+}
+/** S6: `approvals` rows (Role, Name, Organisation, Date, Signature) are allowed in typed content while name, date and signature are empty (C7). */
+export function approvalsErrors(rows, ed) {
+  if (!Array.isArray(rows)) return [`${ed}: approvals must be an array of rows`];
+  const e = [];
+  rows.forEach((r, i) => {
+    if (!Array.isArray(r) || r.length > 5 || !r.every(isStr)) e.push(`${ed}: approvals[${i}] is a row of up to 5 strings`);
+    else if ([1, 3, 4].some((k) => (r[k] || '').trim())) e.push(`${ed}: approvals[${i}]: name, date and signature stay empty in a starter (to be signed)`);
+  });
+  return e;
+}
+
+/* ───────── S8: the start-page art's layer contract (§5): one bw-a-page first, one bw-a-head, one bw-a-mark last, the table's order, no nesting ───────── */
+/** Children of <svg> that draw nothing and are no layer (an accessible name, definitions). */
+export const META_TAGS = ['title', 'desc', 'defs', 'metadata'];
+export const LAYERS = ['bw-a-page', 'bw-a-sheet', 'bw-a-head', 'bw-a-row', 'bw-a-node', 'bw-a-arrow', 'bw-a-seal', 'bw-a-mark'];
+/** → messages ([] = the contract holds). The pilot ships it as a WARNING; 0.19.0 makes it an error once lane A has redrawn all 17 files. */
+export function layerContract(svg) {
+  const e = [];
+  const body = String(svg).replace(/<!--[\s\S]*?-->/g, '');
+  const open = body.match(/^\s*<svg\b[^>]*>/);
+  if (!open) return ['not one <svg> element'];
+  let depth = 0;
+  const top = [];
+  const nested = [];
+  for (const m of body.slice(open[0].length).matchAll(/<(\/?)([a-zA-Z][\w:-]*)\b([^>]*?)(\/?)>/g)) {
+    const [, close, , attrs, self] = m;
+    if (close) { depth -= 1; continue; }
+    const cls = (attrs.match(/\bclass\s*=\s*["']([^"']*)["']/) || [])[1] || '';
+    const layer = cls.split(/\s+/).filter((c) => LAYERS.includes(c));
+    if (depth === 0 && META_TAGS.includes(m[2].toLowerCase())) { if (layer.length) nested.push(layer.join(' ')); if (!self) depth += 1; continue; } // <title>, <desc>, <defs>, <metadata> are no layer
+    if (depth === 0) top.push(layer);
+    else if (layer.length) nested.push(layer.join(' '));
+    if (!self) depth += 1;
+  }
+  if (nested.length) e.push(`a bw-a-* layer is nested inside another element (${nested.length})`);
+  if (top.some((l) => l.length > 1)) e.push('a layer carries more than one bw-a-* class');
+  const seq = top.map((l) => l[0] || '');
+  if (seq.some((x) => !x)) e.push('every direct child of <svg> is a <g> with one bw-a-* class');
+  const count = (c) => seq.filter((x) => x === c).length;
+  if (count('bw-a-page') !== 1 || seq[0] !== 'bw-a-page') e.push('exactly one bw-a-page, first');
+  if (count('bw-a-head') !== 1) e.push('exactly one bw-a-head');
+  if (count('bw-a-mark') !== 1 || seq[seq.length - 1] !== 'bw-a-mark') e.push('exactly one bw-a-mark, last');
+  if (count('bw-a-seal') > 1) e.push('at most one bw-a-seal');
+  const ranks = seq.filter(Boolean).map((x) => LAYERS.indexOf(x));
+  if (ranks.some((r, i) => i && r < ranks[i - 1])) e.push(`layers out of order (the order is ${LAYERS.join(', ')})`);
+  return e;
+}
+
+/* ───────── the shape of a starter document, for the AR/EN pair rule (architecture §1.3; 0.19.0 S7: cover, table style keys) ───────── */
 const blockShape = (b) => {
   const s = { k: b?.kind };
-  if (b?.kind === 'table') Object.assign(s, { cols: (b.columns || []).length, rows: (b.rows || []).length, widths: (b.rows || []).map((r) => (Array.isArray(r) ? r.length : -1)), merges: (b.merges || []).length });
+  if (b?.kind === 'table') Object.assign(s, { cols: (b.columns || []).length, rows: (b.rows || []).length, widths: (b.rows || []).map((r) => (Array.isArray(r) ? r.length : -1)), merges: (b.merges || []).length, style: b.style ?? null, numCols: b.numCols ?? null, nowrapCols: b.nowrapCols ?? null, accentCol: b.accentCol ?? null });
   if (b?.kind === 'diagram') Object.assign(s, { nodes: (b.model?.nodes || []).map((n) => n.id), edges: (b.model?.edges || []).map((x) => x.id) });
   if (b?.kind === 'stories') s.items = (b.items || []).length;
   if (b?.kind === 'shots') s.images = (b.images || []).length;
@@ -202,6 +341,14 @@ export function shapeOf(doc) {
     layout: doc.layout || null,
     chapters: (doc.chapters || []).map((c) => ({ blocks: (c.blocks || []).map(blockShape), sections: (c.sections || []).map((s) => (s.blocks || []).map(blockShape)) })),
     openQuestions: (doc.openQuestions || []).length,
+    cover: isPlain(doc.cover) ? {
+      cols: doc.cover.cols ?? null,
+      fields: Array.isArray(doc.cover.fields) ? doc.cover.fields.map((f) => f?.kind || 'text') : null,
+      id: Array.isArray(doc.cover.fields) ? doc.cover.fields.findIndex((f) => f?.id === true) : -1,
+      figures: Array.isArray(doc.cover.figures) ? doc.cover.figures.map((f) => f?.kind || 'none') : null,
+      badge: doc.cover.badge !== undefined,
+      statement: isPlain(doc.cover.statement) ? { items: (doc.cover.statement.items || []).length, choices: (doc.cover.statement.choices || []).length } : null,
+    } : null,
   };
 }
 /** Where two shapes differ: up to `max` readable paths. */
@@ -213,18 +360,56 @@ export function shapeDiff(a, b, at = '', out = [], max = 4) {
   return out;
 }
 
+/* ───────── an `empty: true` type (0.19.0): the starter prints nothing ───────── */
+const EMPTY_HIDE = ['cover', 'control', 'revisions', 'toc', 'questions'];
+/**
+ * The owner rule for the Blank document: ONE empty page in the theme. The starter keeps a single skeleton leaf the editor can type into
+ * (chapter 1 > section 1 > one prose paragraph "") and prints nothing else: all five front/back parts hidden, the one chapter `bare` (no heading),
+ * no text anywhere, no running band item but the page number. Messages name the rule, never the text.
+ */
+function emptyErrors(doc, ed, t) {
+  const e = [];
+  const hide = new Set([...(t.layout?.hide || []), ...(doc.layout?.hide || [])]);
+  for (const k of EMPTY_HIDE) if (!hide.has(k)) e.push(`${ed}: an empty type hides «${k}» (layout.hide)`);
+  const chs = doc.chapters;
+  if (!Array.isArray(chs) || chs.length !== 1) { e.push(`${ed}: an empty type has exactly one skeleton chapter, not ${Array.isArray(chs) ? chs.length : 'none'}`); return e; }
+  const c = chs[0];
+  if (c.bare !== true) e.push(`${ed}: the skeleton chapter must be bare: true (no heading prints)`);
+  if (c.title !== '') e.push(`${ed}: the skeleton chapter has no title`);
+  if (!Array.isArray(c.sections) || c.sections.length !== 1) { e.push(`${ed}: the skeleton chapter has exactly one section`); return e; }
+  const s = c.sections[0];
+  if (s.title !== '') e.push(`${ed}: the skeleton section has no title`);
+  if ((c.blocks || []).length) e.push(`${ed}: the skeleton chapter has no blocks of its own`);
+  const b = s.blocks;
+  if (!Array.isArray(b) || b.length !== 1 || b[0]?.kind !== 'prose' || !Array.isArray(b[0].paragraphs) || b[0].paragraphs.length !== 1 || b[0].paragraphs[0] !== '') e.push(`${ed}: the skeleton section holds one prose block with one empty paragraph`);
+  const band = (part) => (doc.chrome?.[part]?.items || []);
+  if (!doc.chrome) e.push(`${ed}: chrome is required (without it the page prints the document id, date and confidentiality)`);
+  if (band('header').length) e.push(`${ed}: the header band prints nothing`);
+  if (band('footer').some((it) => it.kind !== 'page')) e.push(`${ed}: the footer band holds only the page number`);
+  if ((doc.openQuestions || []).length) e.push(`${ed}: openQuestions is empty`);
+  if (doc.control?.title !== t.placeholder?.[ed]) e.push(`${ed}: control.title is the type's name (placeholder in type.json), with no «: …» part`);
+  return e;
+}
+
 /* ───────── one document edition ───────── */
-function docErrors(doc, ed, t, isSource) {
+function docErrors(doc, ed, t, isSource, warn = () => {}) {
   const e = [];
   const allowed = new Set([...TOP_KEYS, ...(isSource ? ['service', 'approvals'] : [])]);
   for (const k of Object.keys(doc)) {
     if (!isSource && FORBIDDEN_TOP.includes(k)) e.push(`${ed}: «${k}» is composed from type.json, never written in the content`);
-    else if (k === 'approvals' && Array.isArray(doc[k]) && !doc[k].length) continue;
-    else if (k === 'approvals') e.push(`${ed}: «approvals» prints in DOCX only; use a sign-off table block (architecture F7)`);
+    else if (k === 'approvals') e.push(...approvalsErrors(doc[k], ed)); // 0.19.0 S6 (C7): rows to be signed print on the control page
     else if (!allowed.has(k)) e.push(`${ed}: unknown top-level key «${k}»`);
   }
   for (const k of CONTROL_KEYS) if (typeof doc.control?.[k] !== 'string') e.push(`${ed}: control.${k} is missing`);
   if (doc.control?.documentId !== `BW-${t.code}-NEW-001`) e.push(`${ed}: control.documentId must be BW-${t.code}-NEW-001`);
+  e.push(...coverErrors(doc.cover, ed), ...layoutErrors(doc.layout, ed)); // 0.19.0 S2, S3
+  familyWarnings(doc.cover, familyOf(t), ed).forEach(warn); // 0.19.0 R2: a key the type's family does not print
+  if (t.empty === true) {
+    if (!Array.isArray(doc.revisions)) e.push(`${ed}: revisions must be an array`);
+    if (!Array.isArray(doc.openQuestions)) e.push(`${ed}: openQuestions must be an array`);
+    e.push(...emptyErrors(doc, ed, t));
+    return e;
+  }
   if (t.placeholder?.[ed] && !String(doc.control?.title || '').endsWith(`: ${t.placeholder[ed]}`)) e.push(`${ed}: control.title must end with «: ${t.placeholder[ed]}» (the placeholder of type.json)`);
   if (!Array.isArray(doc.revisions) || !doc.revisions.length || !doc.revisions.every(Array.isArray)) e.push(`${ed}: revisions needs at least one row`);
   if (!isSource && !(typeof doc.labels?.kicker === 'string' && typeof doc.labels?.subtitle === 'string')) e.push(`${ed}: labels.kicker and labels.subtitle are required (the cover wording)`);
@@ -241,15 +426,17 @@ function docErrors(doc, ed, t, isSource) {
     for (const [b, where] of all) {
       if (!BLOCK_KINDS.includes(b?.kind)) e.push(`${ed}: block of ${where} has kind «${b?.kind}»; allowed: ${BLOCK_KINDS.join(', ')}`);
       else if (b.kind === 'table' && !(Array.isArray(b.rows) && b.rows.length && b.rows.every(Array.isArray))) e.push(`${ed}: table of ${where} needs rows as arrays`);
+      else { const k = blockKeyErrors(b, `${ed}: ${b.kind} of ${where}`); e.push(...k.errors); k.warnings.forEach(warn); }
     }
   });
   return e;
 }
 
 /* ───────── one type ───────── */
-/** → { id, errors: [], warnings: [], sizes: {ar, en}, art: bytes } */
+/** → { id, errors: [], warnings: [], contract: [], sizes: {ar, en}, art: bytes }. `contract` = the art's layer-contract findings (S8): printed as
+ * warnings in the 0.19.0 pilot, kept apart from `warnings` so a type that is otherwise clean stays clean until lane A has redrawn the art. */
 export function validateType(id, o) {
-  const r = { id, errors: [], warnings: [], sizes: {}, art: 0 };
+  const r = { id, errors: [], warnings: [], contract: [], sizes: {}, art: 0 };
   const err = (m) => r.errors.push(m);
   const dir = path.join(dirOf(o), id);
   if (!ID_RE.test(id) || !fs.existsSync(dir)) { err(`no folder templates/_doctypes/${id}`); return r; }
@@ -260,7 +447,9 @@ export function validateType(id, o) {
   const schema = rdJson(path.join(dirOf(o), 'schema.json'));
   for (const m of validateSchema(schema, t)) err(`type.json ${m}`);
   if (t.id !== id) err(`type.json: id «${t.id}» differs from the folder «${id}»`);
-  if (t.motif !== t.id) err(`type.json: motif must equal the type id (decisions.md D3), not «${t.motif}»`);
+  if (TYPE_FAMILY[t.id] && t.coverDesign !== TYPE_FAMILY[t.id]) r.warnings.push(`type.json: coverDesign «${t.coverDesign}» prints as «${TYPE_FAMILY[t.id]}» (0190-types §1); set it to «${TYPE_FAMILY[t.id]}»`);
+  if (t.motif !== undefined && t.motif !== t.id) r.warnings.push(`type.json: motif is ignored since 0.19.0 (page 1 carries no art); when kept it equals the id, not «${t.motif}»`);
+  for (const m of layoutErrors(t.layout, 'type.json')) err(m);
   const cats = categories(o);
   if (!cats.some((c) => c.id === t.category)) err(`type.json: category «${t.category}» is not in _categories.json`);
   if (!palettes(o)[t.palette]) err(`type.json: palette «${t.palette}» is not in _palettes.json`);
@@ -277,7 +466,8 @@ export function validateType(id, o) {
     if (!fs.existsSync(f)) { err(`${ed}: ${path.relative(rootOf(o), f).split(path.sep).join('/')} is missing`); continue; }
     try { docs[ed] = rdJson(f); texts[path.relative(rootOf(o), f).split(path.sep).join('/')] = rd(f); } catch (x) { err(`${ed}: ${x.message}`); }
   }
-  for (const ed of EDITIONS) if (docs[ed]) docErrors(docs[ed], ed, t, !!t.source).forEach(err);
+  for (const ed of EDITIONS) if (docs[ed]) docErrors(docs[ed], ed, t, !!t.source, (m) => r.warnings.push(m)).forEach(err);
+  for (const ed of EDITIONS) if (docs[ed] && !t.source) for (const m of layoutErrors({ ...(t.layout || {}), ...(docs[ed].layout || {}) }, `${ed} (type + content)`)) if (!r.errors.includes(m)) err(m);
   if (docs.ar && docs.en) for (const d of shapeDiff(shapeOf(docs.ar), shapeOf(docs.en))) err(`pair shape differs at ${d}`);
   for (const ed of EDITIONS) {
     if (!docs[ed]) continue;
@@ -286,7 +476,13 @@ export function validateType(id, o) {
     if (r.sizes[ed] > LIMITS.editionBytes) err(`${ed}: ${kb(r.sizes[ed])} minified is over the ${kb(LIMITS.editionBytes)} budget`);
   }
   const artFile = path.join(dirOf(o), '_art', `${id}.svg`);
-  if (fs.existsSync(artFile)) { const svg = rd(artFile); r.art = bytes(svg); texts[`_art/${id}.svg`] = svg; for (const m of checkSvg(svg)) err(`_art/${id}.svg: ${m}`); }
+  if (fs.existsSync(artFile)) {
+    const svg = rd(artFile); r.art = bytes(svg); texts[`_art/${id}.svg`] = svg;
+    for (const m of checkSvg(svg)) err(`_art/${id}.svg: ${m}`);
+    // S8: an error for art already redrawn to the contract (it carries bw-a-* classes); a warning for art lane A2 has not redrawn yet
+    const redrawn = /\bbw-a-[a-z]+/.test(svg);
+    for (const m of layerContract(svg)) (redrawn ? err : (x) => r.contract.push(x))(`_art/${id}.svg: layer contract (S8${redrawn ? '' : ', a warning until the art is redrawn'}): ${m}`);
+  }
   for (const [name, text] of Object.entries(texts)) for (const f of scanText(text, o)) err(`${name}:${f.line} forbidden pattern ${f.rule}`);
   return r;
 }
@@ -361,7 +557,7 @@ export function run(argv, o, log = console.log) {
     for (const [code, who] of codes) if (who.length > 1 && who.includes(r.id)) r.errors.push(`code ${code} is also used by ${who.filter((x) => x !== r.id).join(', ')}`);
     if (r.errors.length) { fail += r.errors.length; log(`doctypes: FAIL  ${r.id}`); r.errors.forEach((m) => log(`    - ${m}`)); }
     else log(`doctypes: ok    ${r.id}  (ar ${kb(r.sizes.ar)}, en ${kb(r.sizes.en)}${r.art ? ', art ' + kb(r.art) : ''})`);
-    r.warnings.forEach((m) => log(`doctypes: WARN  ${r.id}: ${m}`));
+    [...r.warnings, ...r.contract].forEach((m) => log(`doctypes: WARN  ${r.id}: ${m}`));
   }
   // art that belongs to no type folder yet (L7 may land first): checked, and named
   const artDir = path.join(dirOf(o), '_art');

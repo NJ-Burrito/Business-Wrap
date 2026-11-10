@@ -1,0 +1,75 @@
+{
+  "$note": "0.19.0 R2 families test: the spec §4 page-1 content keys (cover) per type and edition, injected into the composed starters so each family's full page 1 is tested before the content lanes land. Placeholders only, never client data.",
+  "defect-report": {
+    "en": {"cols": 4, "fields": [
+      {"label": "Defect ID", "value": "DEF-001", "id": true}, {"label": "Severity", "value": "High", "kind": "chip"}, {"label": "Priority", "value": "High", "kind": "chip"},
+      {"label": "Status", "value": "Open", "kind": "chip"}, {"label": "Reported by", "value": "[Name]"}, {"label": "Reported on", "value": "YYYY-MM-DD", "kind": "date"},
+      {"label": "Module", "value": "…"}, {"label": "Build", "value": "…"}, {"label": "Assigned to", "value": "[Name]"}, {"label": "Linked test case", "value": "TC-001"}]},
+    "ar": {"cols": 4, "fields": [
+      {"label": "رقم العيب", "value": "DEF-001", "id": true}, {"label": "الخطورة", "value": "عال", "kind": "chip"}, {"label": "الأولوية", "value": "عال", "kind": "chip"},
+      {"label": "الحالة", "value": "مفتوح", "kind": "chip"}, {"label": "مقدم البلاغ", "value": "[الاسم]"}, {"label": "تاريخ البلاغ", "value": "YYYY-MM-DD", "kind": "date"},
+      {"label": "الوحدة", "value": "…"}, {"label": "رقم البناء", "value": "…"}, {"label": "المسند إليه", "value": "[الاسم]"}, {"label": "حالة الاختبار المرتبطة", "value": "TC-001"}]}
+  },
+  "change-request": {
+    "en": {"cols": 4, "fields": [
+      {"label": "CR number", "value": "CR-001", "id": true}, {"label": "Requested by", "value": "[Name]"}, {"label": "Request date", "value": "YYYY-MM-DD", "kind": "date"},
+      {"label": "Priority", "value": "High", "kind": "chip"}, {"label": "Change type", "value": "Normal"}, {"label": "Status", "value": "Open", "kind": "chip"},
+      {"label": "Affected item", "value": "…"}, {"label": "Project", "value": "…"}]},
+    "ar": {"cols": 4, "fields": [
+      {"label": "رقم طلب التغيير", "value": "CR-001", "id": true}, {"label": "مقدم الطلب", "value": "[الاسم]"}, {"label": "تاريخ الطلب", "value": "YYYY-MM-DD", "kind": "date"},
+      {"label": "الأولوية", "value": "عال", "kind": "chip"}, {"label": "نوع التغيير", "value": "عادي"}, {"label": "الحالة", "value": "مفتوح", "kind": "chip"},
+      {"label": "البند المتأثر", "value": "…"}, {"label": "المشروع", "value": "…"}]}
+  },
+  "minutes": {
+    "en": {"cols": 3, "fields": [
+      {"label": "Meeting number", "value": "MOM-001", "id": true}, {"label": "Date and time", "value": "YYYY-MM-DD 10:00", "kind": "date"}, {"label": "Venue or link", "value": "…"},
+      {"label": "Chair", "value": "[Name]"}, {"label": "Minute taker", "value": "[Name]"}, {"label": "Next meeting", "value": "YYYY-MM-DD", "kind": "date"}]},
+    "ar": {"cols": 3, "fields": [
+      {"label": "رقم الاجتماع", "value": "MOM-001", "id": true}, {"label": "التاريخ والوقت", "value": "YYYY-MM-DD 10:00", "kind": "date"}, {"label": "المكان أو الرابط", "value": "…"},
+      {"label": "رئيس الاجتماع", "value": "[الاسم]"}, {"label": "كاتب المحضر", "value": "[الاسم]"}, {"label": "الاجتماع القادم", "value": "YYYY-MM-DD", "kind": "date"}]}
+  },
+  "uat-signoff": {
+    "en": {"cols": 3, "fields": [
+      {"label": "Project", "value": "…"}, {"label": "System", "value": "[System]"}, {"label": "Release", "value": "[Release]"},
+      {"label": "UAT window", "value": "YYYY-MM-DD to YYYY-MM-DD", "kind": "date"}, {"label": "Environment", "value": "…"}, {"label": "Business owner", "value": "[Name]"}],
+      "statement": {"text": "We, the undersigned, confirm that user acceptance testing of [System] release [Release] was carried out between [date] and [date] against the agreed acceptance criteria, and record the decision below.",
+        "choices": ["Accepted", "Accepted with conditions", "Not accepted"]}},
+    "ar": {"cols": 3, "fields": [
+      {"label": "المشروع", "value": "…"}, {"label": "النظام", "value": "[اسم النظام]"}, {"label": "الإصدار", "value": "[رقم الإصدار]"},
+      {"label": "فترة اختبار القبول", "value": "YYYY-MM-DD to YYYY-MM-DD", "kind": "date"}, {"label": "البيئة", "value": "…"}, {"label": "مالك الأعمال", "value": "[الاسم]"}],
+      "statement": {"text": "نقر نحن الموقعين أدناه بأن اختبار قبول المستخدم للنظام [اسم النظام] الإصدار [رقم الإصدار] نفذ بين [تاريخ] و[تاريخ] وفق معايير القبول المتفق عليها، ونسجل القرار أدناه.",
+        "choices": ["مقبول", "مقبول بشروط", "غير مقبول"]}}
+  },
+  "release-notes": {
+    "en": {"cols": 4, "badge": {"label": "Version", "value": "1.0.0"}, "fields": [
+      {"label": "Release date", "value": "YYYY-MM-DD", "kind": "date"}, {"label": "Release type", "value": "Minor"}, {"label": "Environment", "value": "…"}, {"label": "Build", "value": "…"}],
+      "statement": {"text": "Highlights", "items": ["…", "…", "…"]}},
+    "ar": {"cols": 4, "badge": {"label": "الإصدار", "value": "1.0.0"}, "fields": [
+      {"label": "تاريخ الإصدار", "value": "YYYY-MM-DD", "kind": "date"}, {"label": "نوع الإصدار", "value": "فرعي"}, {"label": "البيئة", "value": "…"}, {"label": "رقم البناء", "value": "…"}],
+      "statement": {"text": "أبرز ما في الإصدار", "items": ["…", "…", "…"]}}
+  },
+  "rtm": {
+    "en": {"cols": 6, "fields": [
+      {"label": "Project", "value": "…"}, {"label": "Baseline", "value": "…"}, {"label": "Release", "value": "…"}, {"label": "Owner", "value": "[Name]"}, {"label": "Date", "value": "YYYY-MM-DD", "kind": "date"}, {"label": "Version", "value": "0.1"}],
+      "figures": [{"label": "Requirements", "value": "…"}, {"label": "Covered", "value": "…", "kind": "ok"}, {"label": "Partial", "value": "…", "kind": "warn"}, {"label": "Gap", "value": "…", "kind": "bad"}, {"label": "Coverage", "value": "…"}]},
+    "ar": {"cols": 6, "fields": [
+      {"label": "المشروع", "value": "…"}, {"label": "خط الأساس", "value": "…"}, {"label": "الإصدار", "value": "…"}, {"label": "المالك", "value": "[الاسم]"}, {"label": "التاريخ", "value": "YYYY-MM-DD", "kind": "date"}, {"label": "النسخة", "value": "0.1"}],
+      "figures": [{"label": "المتطلبات", "value": "…"}, {"label": "مغطى", "value": "…", "kind": "ok"}, {"label": "جزئي", "value": "…", "kind": "warn"}, {"label": "فجوة", "value": "…", "kind": "bad"}, {"label": "نسبة التغطية", "value": "…"}]}
+  },
+  "test-cases": {
+    "en": {"cols": 6, "fields": [
+      {"label": "Project", "value": "…"}, {"label": "Module", "value": "…"}, {"label": "Build", "value": "…"}, {"label": "Environment", "value": "…"}, {"label": "Tester", "value": "[Name]"}, {"label": "Execution date", "value": "YYYY-MM-DD", "kind": "date"}],
+      "figures": [{"label": "Total", "value": "…"}, {"label": "Passed", "value": "…", "kind": "ok"}, {"label": "Failed", "value": "…", "kind": "bad"}, {"label": "Blocked", "value": "…", "kind": "warn"}, {"label": "Not run", "value": "…", "kind": "idle"}, {"label": "Pass rate", "value": "…"}]},
+    "ar": {"cols": 6, "fields": [
+      {"label": "المشروع", "value": "…"}, {"label": "الوحدة", "value": "…"}, {"label": "رقم البناء", "value": "…"}, {"label": "البيئة", "value": "…"}, {"label": "المختبر", "value": "[الاسم]"}, {"label": "تاريخ التنفيذ", "value": "YYYY-MM-DD", "kind": "date"}],
+      "figures": [{"label": "الإجمالي", "value": "…"}, {"label": "ناجح", "value": "…", "kind": "ok"}, {"label": "فاشل", "value": "…", "kind": "bad"}, {"label": "محجوب", "value": "…", "kind": "warn"}, {"label": "لم ينفذ", "value": "…", "kind": "idle"}, {"label": "نسبة النجاح", "value": "…"}]}
+  },
+  "business-case": {
+    "en": {"cols": 3, "fields": [{"label": "Sponsor", "value": "[Name]"}],
+      "figures": [{"label": "Investment", "value": "…"}, {"label": "Annual benefit", "value": "…"}, {"label": "Payback", "value": "…"}, {"label": "NPV", "value": "…"}],
+      "statement": {"text": "Approve option [B] at a cost of [amount] to start on [date].", "choices": ["Approve", "Defer", "Reject"]}},
+    "ar": {"cols": 3, "fields": [{"label": "الراعي", "value": "[الاسم]"}],
+      "figures": [{"label": "الاستثمار", "value": "…"}, {"label": "العائد السنوي", "value": "…"}, {"label": "فترة الاسترداد", "value": "…"}, {"label": "صافي القيمة الحالية", "value": "…"}],
+      "statement": {"text": "الموافقة على الخيار [ب] بتكلفة [المبلغ] للبدء في [تاريخ].", "choices": ["موافقة", "تأجيل", "رفض"]}}
+  }
+}

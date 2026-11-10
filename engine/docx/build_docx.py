@@ -20,6 +20,9 @@ import os
 _I18N = json.loads((Path(__file__).resolve().parents[1] / 'i18n.json').read_text(encoding='utf-8'))
 LOCALE = os.environ.get('BW_LOCALE', 'ar')
 L = dict(_I18N['doc'][LOCALE])
+# 0.19.0 R2: run as a script, this module is `__main__`; cover_design.py and theme.py `import build_docx` and would get a SECOND copy whose L never saw
+# merge_labels (the cover printed the house kicker and labels, not the document's). One module object under both names.
+sys.modules.setdefault('build_docx', sys.modules[__name__])
 import theme as theme_mod
 import model_docx as MD
 import cover_design as CD
@@ -176,6 +179,33 @@ def apply_render_table_rules(columns, rows, blank_cell=None):
     out_rows = [[fill if _is_blank(r[i] if i < len(r) else '') else r[i] for i in range(width) if keep[i]] for r in rows]
     return (out_cols, out_rows)
 
+def fit_columns(pct, texts, nw, table_mm):
+    """0.19.0 R4: render.mjs fitColumns: each column at least its longest word wide, a no-wrap column its longest cell (10 pt, 6 mm padding); the
+    extra comes from the columns above their floor. A no-wrap column that still cannot fit is returned in `wrap`."""
+    em = 3.53 * 0.56
+    word = lambda x: max([0] + [len(w) for w in re.split(r'\s+', str(x))])
+    line = lambda x: max([0] + [len(l.strip()) for l in str(x).split('\n')])
+    floor = [min(100.0, (6 + em * max([1] + [(line(x) if nw[k] else word(x)) for x in col])) / table_mm * 100) for k, col in enumerate(texts)]
+    wrap = []
+    if sum(floor) > 100:
+        for k, on in enumerate(nw):
+            if on:
+                wrap.append(k)
+                floor[k] = min(floor[k], (6 + em * max([1] + [word(x) for x in texts[k]])) / table_mm * 100)
+    if sum(floor) > 100:
+        return pct, wrap
+    out = [max(w, f) for w, f in zip(pct, floor)]
+    for _ in range(4):
+        over = sum(out) - 100
+        if over <= 0.01:
+            break
+        slack = [max(0.0, w - f) for w, f in zip(out, floor)]
+        tot = sum(slack)
+        if tot <= 0:
+            break
+        out = [w - over * sl / tot for w, sl in zip(out, slack)]
+    return out, wrap
+
 def add_table(document, columns, rows, font, roles=None, spec=None):
     spec = spec or {}
     blank_cell = spec.get('blankCell') if isinstance(spec.get('blankCell'), str) else None
@@ -185,13 +215,24 @@ def add_table(document, columns, rows, font, roles=None, spec=None):
     width = max([len(columns)] + [len(r) for r in rows] + [0])
     cw = spec.get('colWidths') if isinstance(spec.get('colWidths'), list) and len(spec.get('colWidths')) == width else None
     fixed = bool(merges or cw)
+    # 0.19.0 C8, C13, C9 (render.mjs table()): the table style, the column keys and the status columns address the ORIGINAL column indexes
+    tstyle = spec.get('style') if spec.get('style') in ('sheet', 'signoff') else None
+    if tstyle == 'signoff' and blank_cell is None:
+        blank_cell = ''
+    num_set = {i for i in (spec.get('numCols') or []) if isinstance(i, int)} if isinstance(spec.get('numCols'), list) else set()
+    nw_set = {i for i in (spec.get('nowrapCols') or []) if isinstance(i, int)} if isinstance(spec.get('nowrapCols'), list) else set()
+    acc_col = spec.get('accentCol') if isinstance(spec.get('accentCol'), int) and not isinstance(spec.get('accentCol'), bool) else None
+    head_set = {i for i, c in enumerate(columns) if CD.is_status_head(MD.text_of(c if c is not None else ''))} if TYPED and columns else set()
+    kept = list(range(width))
     if columns and not fixed:
+        kept = [i for i in range(width) if blank_cell is not None or any((not _is_blank(r[i] if i < len(r) else '') for r in rows))]
         columns, rows = apply_render_table_rules(columns, rows, blank_cell)
     elif cw:
         keepc = [i for i in range(width) if float(cw[i] or 0) > 0]
         columns = [columns[i] for i in keepc if i < len(columns)]
         rows = [[(r[i] if i < len(r) else '') for i in keepc] for r in rows]
         cw = [cw[i] for i in keepc]
+        kept = keepc
     roles = roles if roles is not None else _THEME_ROLES
     ncols = len(columns) if columns else len(rows[0]) if rows else 1
     header = [columns] if columns else []
@@ -209,6 +250,12 @@ def add_table(document, columns, rows, font, roles=None, spec=None):
     col_w = Emu(int(TEXT_WIDTH) // max(ncols, 1))
     tot = sum(float(w) for w in cw) if cw else 0
     col_ws = [Emu(int(int(TEXT_WIDTH) * float(w) / tot)) for w in cw] if tot else [col_w] * ncols
+    if TYPED and ncols and header:  # 0.19.0 R4 (M2, M3): no column narrower than its longest word, a no-wrap column than its longest cell (render.mjs fitColumns)
+        _pct = [100.0 * int(w) / int(TEXT_WIDTH) for w in col_ws]
+        _texts = [[MD.text_of(r[c] if c < len(r) and r[c] is not None else '') for r in all_rows] for c in range(ncols)]
+        _pct, _wrap = fit_columns(_pct, _texts, [kept[c] in nw_set if c < len(kept) else False for c in range(ncols)], int(TEXT_WIDTH) / 36000)
+        col_ws = [Emu(int(int(TEXT_WIDTH) * w / 100)) for w in _pct]
+        nw_set = {i for i in nw_set if not any(kept[k] == i for k in _wrap if k < len(kept))}
     for column, w in zip(table.columns, col_ws):
         column.width = w
     covered = {(m['r'] + len(header), c) for m in merges for r in range(m['r'], m['r'] + int(m['rs'])) for c in range(m['c'], m['c'] + int(m['cs'])) if (r, c) != (m['r'], m['c'])}
@@ -244,13 +291,53 @@ def add_table(document, columns, rows, font, roles=None, spec=None):
             table.cell(r0, c0).merge(table.cell(r1, c1))
     if roles is not None:
         theme_mod.style_table_theme(table, roles, has_header=bool(header))
+    orig = lambda c: kept[c] if c < len(kept) else c
+    if roles is not None and (tstyle or num_set or nw_set or acc_col is not None):
+        for r in range(len(all_rows)):
+            is_head = bool(header) and r == 0
+            body_n = r - len(header)
+            for c in range(ncols):
+                if (r, c) in covered:
+                    continue
+                cell = table.cell(r, c)
+                oc = orig(c)
+                if tstyle == 'sheet':
+                    if is_head:
+                        theme_mod.set_cell_shading(cell, roles.get('primary-100', roles['navy-wash']))
+                    elif body_n % 2:
+                        theme_mod.set_cell_shading(cell, roles.get('primary-50', roles['navy-wash']))
+                if tstyle == 'signoff' and not is_head:
+                    theme_mod.set_cell_border(cell, 'bottom', roles['rule-strong'], 6)
+                    tcPr = cell._tc.get_or_add_tcPr()
+                    if tcPr.find(qn('w:vAlign')) is None:
+                        va = OxmlElement('w:vAlign'); va.set(qn('w:val'), 'center'); tcPr.append(va)
+                if oc in num_set:
+                    for p in cell.paragraphs:
+                        CD._end_align(p, LOCALE == 'ar')
+                if oc in nw_set and not is_head:  # 0.19.0 R3: the heading may wrap
+                    tcPr = cell._tc.get_or_add_tcPr()
+                    if tcPr.find(qn('w:noWrap')) is None:
+                        tcPr.insert_element_before(OxmlElement('w:noWrap'), 'w:tcMar', 'w:textDirection', 'w:tcFitText', 'w:vAlign', 'w:hideMark', 'w:tcPrChange')
+                if acc_col is not None and oc == acc_col:
+                    if is_head:
+                        theme_mod.set_cell_shading(cell, roles['navy'])
+                        for run in (x for p in cell.paragraphs for x in p.runs):
+                            run.font.color.rgb = theme_mod.rgb(roles.get('paper', '#ffffff'))
+                    else:
+                        theme_mod.set_cell_shading(cell, roles.get('primary-50', roles['navy-wash']))
+                        for run in (x for p in cell.paragraphs for x in p.runs):
+                            run.font.bold = True
+        if tstyle == 'signoff':
+            for r in range(len(header), len(all_rows)):
+                hs = heights[r - len(header)] if r - len(header) < len(heights) else None
+                CD._min_height(table.rows[r], hs if isinstance(hs, (int, float)) and hs >= 4 else 14)
     if TYPED:  # 0.18.1: a status word in a typed document takes the print's fill and ink (bold, so colour is never the only cue)
         for r, row in enumerate(all_rows):
             if header and r == 0:
                 continue
             for c in range(ncols):
                 v = row[c] if c < len(row) else ''
-                col = CD.status_colors(MD.text_of(v), roles) if (r, c) not in covered else None
+                col = CD.status_colors(MD.text_of(v), roles, orig(c) in head_set) if (r, c) not in covered else None
                 if col:
                     cell = table.cell(r, c)
                     theme_mod.set_cell_shading(cell, col[0])
@@ -352,8 +439,52 @@ def add_gap_block(document, block, font, counters):
         r.font.size = Pt(theme_mod.SIZES['meta'])
     counters['gap_block'] = counters.get('gap_block', 0) + 1
 
+SHOT_RATIOS = {'16:10': (16, 10), '4:3': (4, 3), '9:16': (9, 16)}  # render.mjs SHOT_RATIOS
+SHOT_LABEL = {'en': 'Screenshot', 'ar': 'لقطة الشاشة'}
+
+
+def add_shot_frame(document, block, font, counters):
+    """0.19.0 C12: a `shots` block with no image yet: a card frame at the block's ratio (at most 120 x 90 mm), a 1.4 pt signal outline and a numbered
+    signal badge (one fixed-height cell, the badge a shaded run), then the caption; an empty caption reads «Screenshot n» (render.mjs shotBox)."""
+    counters['shot_frame'] = counters.get('shot_frame', 0) + 1
+    badge = block.get('badge')
+    n = badge if isinstance(badge, int) and not isinstance(badge, bool) and 1 <= badge <= 99 else counters['shot_frame']
+    rw, rh = SHOT_RATIOS.get(block.get('ratio'), SHOT_RATIOS['16:10'])
+    w = min(120.0, 90.0 * rw / rh)
+    h = w * rh / rw
+    rtl = LOCALE == 'ar'
+    t = CD._fresh_table(document, 1, [w], rtl, theme_mod)
+    t.alignment = WD_TABLE_ALIGNMENT.CENTER
+    CD._borders(t, (_THEME_ROLES['signal'], 11), (_THEME_ROLES['signal'], 11))
+    CD._row_height(t.rows[0], h)
+    cell = t.cell(0, 0)
+    theme_mod.set_cell_shading(cell, _THEME_ROLES.get('card', _THEME_ROLES['paper']))
+    CD._cell_margins(cell, 3, 3, 0)
+    p = cell.paragraphs[0]
+    set_para_bidi(p)
+    p.paragraph_format.space_before = p.paragraph_format.space_after = Pt(0)
+    run = p.add_run(f' {n} ')
+    run.font.bold = True
+    run.font.size = Pt(theme_mod.SIZES['table'])
+    run.font.color.rgb = theme_mod.rgb(_THEME_ROLES['paper'])
+    shd = OxmlElement('w:shd')
+    shd.set(qn('w:val'), 'clear')
+    shd.set(qn('w:color'), 'auto')
+    shd.set(qn('w:fill'), _THEME_ROLES['signal'].lstrip('#').upper())
+    run._element.get_or_add_rPr().append(shd)
+    keep_header_with_next(t)
+    cap = document.add_paragraph()
+    set_para_bidi(cap)
+    text = MD.text_of(block.get('caption', '')) if block.get('caption') else ''
+    add_script_runs(cap, text.strip() or f"{SHOT_LABEL['ar' if rtl else 'en']} {n}", font, bold=True)
+
+
 def add_shots_block(document, block, font, counters):
     import base64, tempfile
+    if isinstance(block.get('images'), list) and not block['images'] and (TYPED or 'ratio' in block or 'badge' in block):
+        add_shot_frame(document, block, font, counters)
+        counters['shots_block'] = counters.get('shots_block', 0) + 1
+        return
     for k, rel in enumerate(block.get('images') or []):
         m = re.match('data:image/(png|jpeg);base64,(.+)$', str(rel))
         if m:
@@ -569,7 +700,9 @@ def add_stories(document, block, font, counters, chapter_number, story_seq, fold
         cap.paragraph_format.space_after = Pt(0)
         # the print's story-head: the SECTION's number (gold) then «قصة مستخدم» in the primary colour, on the top band of the sand card
         sn = str(block.get('number') or f"{chapter_number}.{story_seq[0]}")
-        if item_no > 0:  # 0.16.3: a block of several cards numbers each card (6.1, 6.2, ...), as the print does
+        if TYPED and len(block.get('items', [])) > 1 and sn:  # 0.19.0 R3 (review #5): 3.6.1, 3.6.2 in a typed document (render.mjs storyNo)
+            sn = f"{sn}.{item_no + 1}"
+        elif item_no > 0:  # 0.16.3: a block of several cards numbers each card (6.1, 6.2, ...), as the print does
             _m = re.match(r'^(.*?)(\d+)$', sn)
             if _m:
                 # 0.16.4: card k counts on from the block's number, skipping a number another block already carries (engine/render.mjs storyNo)
@@ -666,17 +799,31 @@ CONTROL_LABELS = [('documentId', L['control']['documentId']), ('title', L['contr
 REVISIONS_COLUMNS = [L['revVersion'], L['revDate']]
 APPROVALS_COLUMNS = L['approvalCols']
 
-def add_control_front_matter(document, data, font, counters, toc: bool=False):
+def add_control_front_matter(document, data, font, counters, toc: bool=False, spine: bool=False, back: bool=False):
+    """Document control, revisions, approvals and contents. 0.19.0 (C7, C11): a typed document's approval rows are 12 mm tall (room to sign); on a
+    title-page family (spine) the contents start their own page. 0.19.0 C10: the parts CD.back_of names (approvals go with control) print after the
+    last chapter instead (back=True prints them there, under «Document control»); a form or a sheet prints no contents list."""
     hide = set((data.get('layout') or {}).get('hide') or [])
-    control = (data.get('control') or {}) if 'control' not in hide else {}
-    revisions = (data.get('revisions') or []) if 'revisions' not in hide else []
-    approvals = data.get('approvals') or []
+    back_keys = set(CD.back_of(data))
+    if 'control' in back_keys:
+        back_keys.add('approvals')
+    take = (lambda k: k in back_keys) if back else (lambda k: k not in back_keys)
+    if not back and CD.no_contents(data):
+        hide = hide | {'toc'}
+    control = (data.get('control') or {}) if 'control' not in hide and take('control') else {}
+    revisions = (data.get('revisions') or []) if 'revisions' not in hide and take('revisions') else []
+    approvals = (data.get('approvals') or []) if take('approvals') else []
+    if back:
+        hide = hide | {'toc'}
     if not control and (not revisions) and (not approvals):
         return
     h1 = document.add_heading(level=1)
     set_para_bidi(h1)
     _F = theme_mod.faces(font)
-    add_script_runs(h1, L['controlChapter'], _F['display'], bold=True)
+    add_script_runs(h1, CD.family_label(data, 'backMatter', LOCALE == 'ar') if back else L['controlChapter'], _F['display'], bold=True)
+    if back:
+        h1.paragraph_format.keep_with_next = True
+        counters['back_matter'] = 1
     if control:
         h2 = document.add_heading(level=2)
         set_para_bidi(h2)
@@ -690,20 +837,29 @@ def add_control_front_matter(document, data, font, counters, toc: bool=False):
         h2 = document.add_heading(level=2)
         set_para_bidi(h2)
         add_script_runs(h2, L['revisions'], _F['display'], bold=True)
-        add_table(document, REVISIONS_COLUMNS, [r[:len(REVISIONS_COLUMNS)] for r in revisions], font)
+        # 0.19.0 R3 (review #3): a typed document prints Version, Date, Description of change, Author (render.mjs revCols); an empty cell stays a cell
+        _n = min(4, max([2] + [len(r) for r in revisions if isinstance(r, list)])) if CD.cover_of(data) else 2
+        _rc = (REVISIONS_COLUMNS + [CD.family_label(data, 'revDesc', LOCALE == 'ar'), CD.family_label(data, 'revAuthor', LOCALE == 'ar')])[:_n]
+        add_table(document, _rc, [r[:_n] for r in revisions], font, spec={'blankCell': ''} if _n > 2 else None)
         document.add_paragraph()
         counters['revisions_table'] = 1
     if approvals:
         h2 = document.add_heading(level=2)
         set_para_bidi(h2)
         add_script_runs(h2, L['approvals'], _F['display'], bold=True)
-        add_table(document, APPROVALS_COLUMNS, approvals, font)
+        _apt = add_table(document, APPROVALS_COLUMNS, approvals, font, spec={'blankCell': '', **({'colWidths': [26, 24, 20, 12, 18]} if len(APPROVALS_COLUMNS) == 5 else {})})  # 0.19.0 R3 (review #1, #15): all five columns, empty cells kept to sign
+        if TYPED:
+            for _row in _apt.rows[1:]:
+                CD._min_height(_row, 12)
         document.add_paragraph()
         counters['approvals_table'] = 1
+    if spine and 'toc' not in hide and (control or revisions or approvals):
+        MD.page_break(document)
+        counters['page_breaks'] = counters.get('page_breaks', 0) + 1
     if 'toc' in hide:
         pass
     elif toc:
-        add_toc_field(document, font)
+        add_toc_field(document, font, 1 if (data.get('layout') or {}).get('tocDepth') == 1 else 2)
         counters['toc_field'] = 1
     else:
         add_contents_table(document, data, font)
@@ -712,10 +868,13 @@ CONTENTS_TABLE_TAG = 'contents'
 
 def contents_rows(data: dict) -> list[tuple[str, str, str]]:
     rows: list[tuple[str, str, str]] = []
+    depth1 = (data.get('layout') or {}).get('tocDepth') == 1  # 0.19.0 C11: contents at depth 1 list the chapters only
     for ch in data.get('chapters', []):
         if ch.get('tocHidden'):
             continue
         rows.append((str(ch.get('number', '')), ch.get('title', ''), 'chapter'))
+        if depth1:
+            continue
         secs = ch.get('sections', [])
         if len(secs) == 1:
             if (secs[0].get('blocks') or [{}])[0].get('kind') == 'stories' and not secs[0].get('tocHidden'):
@@ -745,7 +904,7 @@ TOC_INSTR = 'TOC \\o "1-2" \\n 1-2 \\u'
 TOC_STYLE_IDS = (-266, -267, -268)
 TOC_ENTRY_PT, TOC_ENTRY_AFTER_PT = (12, 6.2)
 
-def add_toc_field(document, font: str) -> None:
+def add_toc_field(document, font: str, depth: int = 2) -> None:
     head = document.add_paragraph()
     set_para_bidi(head)
     head.paragraph_format.keep_with_next = True
@@ -761,7 +920,7 @@ def add_toc_field(document, font: str) -> None:
     begin.set(qn('w:dirty'), 'true')
     instr = OxmlElement('w:instrText')
     instr.set(qn('xml:space'), 'preserve')
-    instr.text = TOC_INSTR
+    instr.text = TOC_INSTR if depth != 1 else TOC_INSTR.replace('1-2', '1-1')
     sep = OxmlElement('w:fldChar')
     sep.set(qn('w:fldCharType'), 'separate')
     end = OxmlElement('w:fldChar')
@@ -963,12 +1122,13 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     style.font.size = Pt(12)
     roles = theme_mod.load_roles()
     _THEME_ROLES = roles
-    cv = CD.cover_of(data)  # 0.18.0: a cover design (spine | compact) and a motif; None = today's cover, byte for byte
+    cv = CD.cover_of(data)  # 0.18.0: a page-1 design (spine | compact; 0.19.0 report/form/sheet print as their nearest) and no motif; None = today's cover
     CD.apply_dense(roles, cv)
     manual = CD.is_manual(data)
     global TYPED
     TYPED = isinstance(data.get('docType'), str) and data.get('docType') != ''
     compact = bool(cv and cv['design'] == 'compact' and 'cover' not in hide)
+    one_section = compact or 'cover' in hide  # 0.19.0: no cover page (compact, or a hidden cover): the body starts in the first section, no empty leading page
     theme_mod.apply_style_scale(document, roles, font)
     thmanyah_only(document, F['body'])
     if toc:
@@ -979,11 +1139,11 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     if 'cover' in hide:
         pass
     elif cv and cv['design'] == 'spine':
-        CD.build_spine(document, data.get('control') or {}, roles, font, cover_logos, cv, theme_mod, LOCALE == 'ar')
+        CD.build_spine(document, data.get('control') or {}, roles, font, cover_logos, cv, theme_mod, LOCALE == 'ar', data)
     elif not compact:
         theme_mod.build_cover(document, data.get('control') or {}, roles, font, cover_logos)
     from docx.enum.section import WD_SECTION
-    body_section = document.sections[0] if compact else document.add_section(WD_SECTION.NEW_PAGE)  # a compact cover has no page of its own
+    body_section = document.sections[0] if one_section else document.add_section(WD_SECTION.NEW_PAGE)  # a compact cover has no page of its own
     from docx.enum.text import WD_LINE_SPACING
     if document.paragraphs and not compact:
         _break_pf = document.paragraphs[-1].paragraph_format
@@ -1006,7 +1166,7 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     body_section.footer_distance = Inches(8 / 25.4)
     ctrl = data.get('control') or {}
     cover_section = document.sections[0]
-    theme_mod.add_header_footer(document, roles, font, header_logo, ctrl.get('documentId', ''), ctrl.get('issuedOn', ''), cover_section=cover_section, body_section=body_section, single=compact)
+    theme_mod.add_header_footer(document, roles, font, header_logo, ctrl.get('documentId', ''), ctrl.get('issuedOn', ''), cover_section=cover_section, body_section=body_section, single=one_section)
     def bands(sec, seg=None, first=False):
         # doc.chrome (A5/A6): the section's header and footer from the items; first=True → this section's first page
         for part in ('header', 'footer'):
@@ -1018,13 +1178,16 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
         bands(body_section)
     seg_starts, block_ids = MD.page_model(data)
     cur_page = MD.page_spec(doc_page) if doc_page else None
-    if cv and 'cover' not in hide:
-        png = CD.motif_png(cv['motif'], LOCALE == 'ar', workdir, theme_mod.THEME_JSON)
+    if cv and 'cover' not in hide:  # 0.19.0: no motif picture on page 1 (tests/page1-0190)
         if compact:
-            CD.build_compact(document, ctrl, roles, font, cover_logos, cv, png, int(body_section.page_width - body_section.left_margin - body_section.right_margin), theme_mod, LOCALE == 'ar')
+            CD.build_compact(document, ctrl, roles, font, cover_logos, cv, int(body_section.page_width - body_section.left_margin - body_section.right_margin), theme_mod, LOCALE == 'ar', data)
         else:
-            CD.place_motif(cover_section, png, LOCALE == 'ar', cv)
-    add_control_front_matter(document, data, font, counters, toc=toc)
+            CD.tighten_cover_header(cover_section, cv)
+    spine_front = bool(cv and cv['design'] == 'spine' and 'cover' not in hide and TYPED)
+    add_control_front_matter(document, data, font, counters, toc=toc, spine=spine_front)
+    _front_shown = bool(set(('control', 'revisions', 'toc')) - hide) or bool(data.get('approvals'))
+    _first_ci = next((k for k, c in enumerate(data['chapters']) if not c.get('hidden')), -1)
+    _ch1_break = spine_front and _front_shown  # 0.19.0 C11: chapter 1 opens on a new page after the front matter
     body_geometry = {'page_width': body_section.page_width, 'page_height': body_section.page_height, 'top_margin': body_section.top_margin, 'bottom_margin': body_section.bottom_margin, 'left_margin': body_section.left_margin, 'right_margin': body_section.right_margin}
     first_page_secs = []
     def open_segment(seg):
@@ -1049,6 +1212,10 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
             continue
         # as the print renderer: a chapter holding a figure is set on turned (landscape) sheets, heading included
         wide = any((b.get('kind') in ('figure', 'diagram') for sec in ch['sections'] for b in sec.get('blocks', [])))
+        # 0.19.0 R3 (review #6): in a typed document a chapter of several sections stays portrait; only the section that holds the figure turns (render.mjs)
+        sec_wide = bool(wide and TYPED and len(ch['sections']) > 1)
+        if sec_wide:
+            wide = False
         first_ptr = f'/chapters/{ci}/sections/0/blocks/0'
         if first_ptr in seg_starts:
             seg_sec = open_segment(seg_starts.pop(first_ptr))
@@ -1059,22 +1226,28 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                 seg_sec.page_width, seg_sec.page_height = (Inches(11.69), Inches(8.27))
                 seg_sec.top_margin, seg_sec.bottom_margin = Inches(14 / 25.4), Inches(12 / 25.4)
                 wide = 'opened'
-        elif (ch.get('layout') or {}).get('breakBefore') or (((ch.get('sections') or [{}])[0].get('layout') or {}).get('breakBefore')) or ((((ch.get('sections') or [{}])[0].get('blocks') or [{}]) or [{}])[0].get('layout') or {}).get('breakBefore'):
+        elif (_ch1_break and ci == _first_ci) or (ch.get('layout') or {}).get('breakBefore') or (((ch.get('sections') or [{}])[0].get('layout') or {}).get('breakBefore')) or ((((ch.get('sections') or [{}])[0].get('blocks') or [{}]) or [{}])[0].get('layout') or {}).get('breakBefore'):
             MD.page_break(document)
             counters['page_breaks'] = counters.get('page_breaks', 0) + 1
         if wide is True:
             open_landscape_section(document)
-        h1 = document.add_heading(level=1)
-        set_para_bidi(h1)
-        theme_mod.add_chapter_chip(h1, ch['number'], F['display'], roles)
-        h1.runs[-1].text = '    '  # the chip's own gap is two spaces: in an RTL line the number box sat glued to the title (UAT H1)
-        add_script_runs(h1, ch['title'], F['display'], bold=True)
+        if not ch.get('bare'):  # 0.19.0: a bare chapter (the Blank document's one empty page) prints no heading, as the page does
+            h1 = document.add_heading(level=1)
+            set_para_bidi(h1)
+            theme_mod.add_chapter_chip(h1, ch['number'], F['display'], roles)
+            h1.paragraph_format.keep_with_next = True  # 0.19.0 C15: the chapter heading row (chip and title) moves whole, with what follows
+            h1.paragraph_format.keep_together = True
+            h1.runs[-1].text = '    '  # the chip's own gap is two spaces: in an RTL line the number box sat glued to the title (UAT H1)
+            add_script_runs(h1, ch['title'], F['display'], bold=True)
         story_seq = [0]
         counters['step'] = 0
         for si, sec in enumerate(ch['sections']):
             if sec.get('hidden'):
                 continue
             counters['step'] = 0
+            sec_land = sec_wide and any(b.get('kind') in ('figure', 'diagram') for b in sec.get('blocks', []))
+            if sec_land:
+                open_landscape_section(document)
             # as the print renderer: a one-section chapter prints no section heading; otherwise «n.m title»
             sec_ptr = f'/chapters/{ci}/sections/{si}/blocks/0'
             if sec_ptr in seg_starts:
@@ -1145,7 +1318,8 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                     if manual:
                         # 0.18.0 (user manual): a subhead is a step: its number on a filled chip, counting from 1 in each section
                         counters['step'] = counters.get('step', 0) + 1
-                        CD.step_chip(p, counters['step'], F['display'], roles, theme_mod)
+                        if not (isinstance(block.get('text'), str) and re.match(r'^(?:Step|الخطوة)\s+\d+\s*[:：]', block['text'])):  # 0.19.0 R3 (review #9): the text carries its number: no second chip
+                            CD.step_chip(p, counters['step'], F['display'], roles, theme_mod)
                     MD.add_leaf(p, block.get('text', ''), F['subhead'], add_script_runs, bold=False)
                     counters['subhead_block'] += 1
                 elif kind == 'table':
@@ -1203,8 +1377,11 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                     add_shots_block(document, block, font, counters)
                 else:
                     raise ValueError(f"block kind {kind!r} has no handler in build_docx.py (section {sec['title']!r}); add one and list it in HANDLED_KINDS")
+            if sec_land:
+                close_landscape_section(document, body_geometry)
         if wide:
             close_landscape_section(document, body_geometry)
+    add_control_front_matter(document, data, font, counters, toc=toc, back=True)  # 0.19.0 C10: layout.back (a form or a sheet: control and revisions)
     # a new Word section copies the one before it: only the body section restarts the folio at 1, and only a
     # "this page only" segment keeps a first-page header (0.13.0; before, every figure chapter restarted at 1)
     for _k, _s in enumerate(document.sections):
@@ -1218,7 +1395,8 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     from docx.text.paragraph import Paragraph
     _flow = [c for c in document.element.body.iterchildren() if c.tag in (qn('w:p'), qn('w:tbl'))]
     _last = Paragraph(_flow[-1], document._body) if _flow and _flow[-1].tag == qn('w:p') else None
-    final_p = _last if _last is not None and (not _last.text.strip()) else document.add_paragraph()
+    _only_bare = bool(data.get('chapters')) and all(c.get('bare') for c in data['chapters'])  # 0.19.0: the empty page keeps its own typing paragraph; the 1 pt spacer is a paragraph after it
+    final_p = _last if _last is not None and (not _last.text.strip()) and not _only_bare else document.add_paragraph()
     _fpf = final_p.paragraph_format
     _fpf.space_before = Pt(0)
     _fpf.space_after = Pt(0)

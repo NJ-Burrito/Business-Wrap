@@ -1,5 +1,5 @@
 /* 0.18.0 document studio · the start page (50-start.js; spec work/sdlc/design/ux/start-page.md).
- * A view of the shell on the shadow root (a dialog element, so it takes the shell's theme tokens like the resume popup): no scrim, no focus trap.
+ * A view of the shell on the shadow root (a dialog element, so it takes the shell's theme tokens like the resume popup): no scrim; only the side panel (0.19.0) keeps keyboard focus.
  * Brand v3 tokens only; logical properties throughout, so the page mirrors from `dir` alone. Thmanyah only (the tokens' font stacks).
  * Motion: only the Calm button removes it (owner rule). The tokens' prefers-reduced-motion block zeroes --bw-dur-* in the shell's copy, so the start page
  * keeps its own copies of the five durations it uses (--st-*, the token values) and never reads the OS setting. */
@@ -138,27 +138,80 @@ dialog.bw-start ::selection { background: var(--bw-marker); color: var(--bw-on-m
 .bw-start .st-norec b { color: var(--bw-ink); font-size: var(--bw-size-sm); }
 .bw-start .st-art { display: block; width: 64px; height: 86px; }
 
-/* the preview card */
-.bw-start .st-prev .st-hd { display: flex; align-items: center; justify-content: space-between; margin-block-end: var(--bw-space-3); }
-.bw-start .st-prev .st-hd h2 { margin: 0; }
+/* 0.19.0 N4: the side panel (treatment work/sdlc/design/0190-motion.md). A drawer on the inline-end edge under the top bar (right in English, left in Arabic),
+ * clear of the page's scrollbar (--st-sb, measured in 50-start.js): 360 px, 400 px from 1280 px, 440 px from 1680 px; at 1024 px it covers the Recent column only.
+ * In, 400 ms from 24 px (transitions.dev panel reveal, transform and opacity only); the content rises 12 px on a 40 ms stagger; out is instant. */
+.bw-start .st-panel { position: fixed; inset-block: var(--st-bar) 0; inset-inline-end: var(--st-sb, 0px); z-index: 6; width: 360px; max-width: calc(100vw - 48px); overflow: auto; overscroll-behavior: contain; padding: var(--bw-space-4) var(--bw-space-5) var(--bw-space-6); background: var(--bw-surface); border-inline-start: 1px solid var(--bw-line); box-shadow: var(--bw-shadow-3); scrollbar-width: thin; outline: none; }
+.bw-start[dir="rtl"] .st-panel { padding-block-end: var(--st-wm-safe, 136px); } /* the NJ mark lives bottom left: the panel's side in Arabic */
+@media (min-width: 1280px) { .bw-start .st-panel { width: 400px; } }
+@media (min-width: 1680px) { .bw-start .st-panel { width: 440px; } }
+.bw-start .st-panel.st-in { animation: st-panel 400ms var(--bw-ease-out) both; }
+.bw-start[dir="rtl"] .st-panel.st-in { animation-name: st-panel-rtl; }
+@keyframes st-panel { from { opacity: 0; transform: translateX(24px); } }
+@keyframes st-panel-rtl { from { opacity: 0; transform: translateX(-24px); } }
+.bw-start .st-panel.st-in .st-pane > * { animation: st-rise var(--st-slow) var(--bw-ease-out) both; animation-delay: calc(80ms + var(--n, 0) * var(--st-stagger)); }
+@keyframes st-rise { from { opacity: 0; transform: translateY(12px); } }
+.bw-start .st-pane.st-swap { animation: st-fade 150ms ease-in-out both; }
+@keyframes st-fade { from { opacity: 0; } }
+.bw-start .st-panel .st-hd { display: flex; align-items: center; justify-content: space-between; margin-block-end: var(--bw-space-3); }
+.bw-start .st-panel .st-hd h2 { margin: 0; font: 700 var(--bw-size-2xs)/1.3 var(--bw-font-ui); color: var(--bw-ink-muted); display: flex; align-items: center; gap: 8px; }
+.bw-start .st-code { padding: 2px 8px; border-radius: var(--bw-radius-pill); background: var(--bw-primary-soft); color: var(--bw-primary); font-weight: 700; }
 .bw-start .st-cover { display: grid; place-items: center; padding: var(--bw-space-4); border-radius: var(--bw-radius-lg); background: var(--bw-surface-2); margin-block-end: var(--bw-space-4); }
-.bw-start .st-cover .st-thumb { width: 168px; height: 224px; filter: drop-shadow(0 10px 14px rgba(0, 30, 61, .2)); }
-.bw-start[data-theme="dark"] .st-cover .st-thumb { filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .5)); }
-.bw-start .st-prev h3 { margin: 0; font: 700 var(--bw-size-md)/1.25 var(--bw-font-display); color: var(--bw-primary); text-wrap: balance; }
-.bw-start .st-prev p { margin: var(--bw-space-1) 0 var(--bw-space-3); color: var(--bw-ink-muted); text-wrap: pretty; }
-.bw-start .st-prev .st-hint { margin: var(--bw-space-2) 0 0; font-size: var(--bw-size-2xs); color: var(--bw-ink-muted); text-align: center; }
+.bw-start .st-panel h3 { margin: 0; font: 700 var(--bw-size-md)/1.25 var(--bw-font-display); color: var(--bw-primary); text-wrap: balance; }
+.bw-start .st-panel .st-pd { margin: var(--bw-space-1) 0 0; color: var(--bw-ink-muted); text-wrap: pretty; }
+.bw-start .st-panel .st-primary { margin-block-start: var(--bw-space-4); }
+.bw-start .st-panel .st-hint { margin: var(--bw-space-4) 0 0; font-size: var(--bw-size-2xs); color: var(--bw-ink-muted); text-align: center; }
 .bw-start .st-lab { display: block; font-size: var(--bw-size-2xs); font-weight: 700; color: var(--bw-ink-muted); margin: var(--bw-space-3) 0 var(--bw-space-2); }
-.bw-start .st-prev ul { margin: 0 0 var(--bw-space-4); padding: 0; list-style: none; display: grid; gap: 6px; }
-.bw-start .st-prev li { display: flex; gap: 8px; align-items: baseline; font-size: var(--bw-size-xs); }
-.bw-start .st-prev li::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 1px; background: var(--bw-accent-rule); transform: translateY(-1px); }
 .bw-start .st-seg-w { display: flex; }
 .bw-start .st-seg-w button { flex: 1; }
+.bw-start .st-info { margin-block-start: var(--bw-space-5); padding-block-start: var(--bw-space-2); border-block-start: 1px solid var(--bw-line); }
+.bw-start .st-info h4 { margin: var(--bw-space-4) 0 var(--bw-space-1); font: 700 var(--bw-size-2xs)/1.3 var(--bw-font-ui); color: var(--bw-ink-muted); }
+.bw-start .st-info p { margin: 0; font-size: var(--bw-size-xs); line-height: 1.5; text-wrap: pretty; }
+.bw-start .st-info [dir="rtl"] { line-height: var(--bw-leading-body-ar); }
+.bw-start .st-info ol { margin: 0; padding: 0; list-style: none; counter-reset: st-sec; display: grid; gap: 4px; }
+.bw-start .st-info li { counter-increment: st-sec; display: grid; grid-template-columns: 24px 1fr; font-size: var(--bw-size-xs); line-height: 1.45; }
+.bw-start .st-info li::before { content: counter(st-sec); font-variant-numeric: tabular-nums; font-weight: 700; color: var(--bw-primary); }
+
+/* the thumbnail: the type's art, mirrored with the DOCUMENT language (the svg flips, as on the tiles) */
+.bw-start .st-stage { position: relative; width: 132px; aspect-ratio: 3 / 4; filter: drop-shadow(0 10px 14px rgba(0, 30, 61, .2)); }
+.bw-start .st-stage[data-land="true"] { width: 200px; aspect-ratio: 4 / 3; }
+.bw-start[data-theme="dark"] .st-stage { filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .5)); }
+.bw-start .st-sheet, .bw-start .st-pg { position: absolute; inset: 0; display: block; }
+.bw-start .st-pg > svg { display: block; width: 100%; height: 100%; }
+.bw-start[data-theme="dark"] .st-pg > svg { filter: brightness(.92) saturate(.96); }
+.bw-start .st-sheet[data-mirror="true"] .st-pg > svg { transform: scaleX(-1); }
+
+/* ONE motion grammar for every type (owner rule via the Lead, 0.19.0): only the art's layer groups move, transform and opacity only, once when the panel
+ * opens, each move done by 700 ms, nothing loops. A type differs only in which layers its art has. --k (set in DOM order by 50-start.js) staggers a layer's
+ * groups, capped so the last one still ends by 700 ms. Keyframes hold only the `from` state: the group's own style is the end frame, so Calm shows it.
+ * Contract for the art (crew N3): a bw-a-* element is a <g> with no transform attribute of its own (the CSS transform would replace it). */
+.bw-start .st-stage [class*="bw-a-"] { transform-box: fill-box; transform-origin: center; }
+.bw-start .st-stage :is(.bw-a-row, .bw-a-mark) { transform-origin: 0 50%; }
+@keyframes bw-a-page { from { opacity: 0; transform: translateY(6px) scale(.98); } }
+@keyframes bw-a-sheet { from { opacity: 0; transform: translateX(-8px); } }
+@keyframes bw-a-head { from { opacity: 0; transform: translateY(-4px); } }
+@keyframes bw-a-row { from { opacity: 0; transform: scaleX(.7); } }
+@keyframes bw-a-node { from { opacity: 0; transform: scale(.5); } }
+@keyframes bw-a-arrow { from { opacity: 0; transform: translateX(-6px); } }
+@keyframes bw-a-seal { from { opacity: 0; transform: scale(1.6) rotate(-14deg); } }
+@keyframes bw-a-mark { from { opacity: 0; transform: scaleX(0); } }
+@keyframes bw-a-fade { from { opacity: 0; } }
+.bw-start .st-stage .bw-a-page { animation: bw-a-page 300ms var(--bw-ease-out) both; }
+.bw-start .st-stage .bw-a-sheet { animation: bw-a-sheet 360ms var(--bw-ease-out) calc(60ms + min(var(--k, 0), 2) * 60ms) both; }
+.bw-start .st-stage .bw-a-head { animation: bw-a-head 280ms var(--bw-ease-out) calc(40ms + min(var(--k, 0), 3) * 40ms) both; }
+.bw-start .st-stage .bw-a-row { animation: bw-a-row 280ms var(--bw-ease-out) calc(120ms + min(var(--k, 0), 6) * 45ms) both; }
+.bw-start .st-stage .bw-a-node { animation: bw-a-node 280ms cubic-bezier(.34, 1.36, .64, 1) calc(160ms + min(var(--k, 0), 5) * 50ms) both; }
+.bw-start .st-stage .bw-a-arrow { animation: bw-a-arrow 260ms var(--bw-ease-out) calc(240ms + min(var(--k, 0), 3) * 60ms) both; }
+.bw-start .st-stage .bw-a-seal { animation: bw-a-seal 340ms cubic-bezier(.34, 1.56, .64, 1) 340ms both; }
+.bw-start .st-stage .bw-a-mark { animation: bw-a-mark 300ms var(--bw-ease-out) calc(280ms + min(var(--k, 0), 1) * 60ms) both; }
+.bw-start .st-stage[data-layers=""] .st-pg > svg { animation: bw-a-fade 300ms var(--bw-ease-out) both; } /* an art with no layer groups: a plain fade */
 
 /* Calm is the only switch that removes motion; the OS reduced-motion setting is deliberately not consulted */
 .bw-start[data-calm="1"] *, .bw-start[data-calm="1"] *::before, .bw-start[data-calm="1"] *::after { animation: none !important; transition: none !important; }
 .bw-start[data-calm="1"] :is(.st-tile:hover .st-thumb, .st-tile:active .st-thumb, button:active) { transform: none !important; }
 @media (forced-colors: active) {
   .bw-start .st-tile[aria-selected="true"] .st-thumb { outline-color: Highlight; }
+  .bw-start .st-panel { border-inline-start: 2px solid CanvasText; }
   .bw-start :is(.st-chip, .st-keep)[aria-checked="true"], .bw-start .st-keep[aria-pressed="true"] { border: 2px solid Highlight; }
 }
 
