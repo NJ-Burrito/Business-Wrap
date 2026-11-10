@@ -1,5 +1,5 @@
 /* Business-Wrap editor — the Settings page (0.11.0; reworked 0.17.0 notes 8, 9, 10), concatenated after update.js.
- * A drawer («الإعدادات» / Settings), reached from the toolbar's View section and Ctrl+K. Cards, most used first (Preferences opens first; the others are the collapsible groups every drawer has):
+ * A drawer («الإعدادات» / Settings), reached from the toolbar's View section and Ctrl+K. Cards, most used first (every group starts collapsed; the person opens what they need):
  * Preferences (language, word direction, page view, reduced motion), Update (installed vs latest, last check, «تحقّق الآن»,
  * auto-check on launch), File icons, Local learning (mounted by learning-hook.js through BW_LEARNING.mount(el)) and
  * About (name, logo, version, release date, repository: only what a user needs; embedded at build time, so it shows from
@@ -74,7 +74,6 @@ function setAboutInner(A) {
 }
 function settingsPanel() {
   const A = DATA.about || { name: 'Business-Wrap', version: DATA.version };
-  try { if (sessionStorage.getItem('bw:grp:settings:0') == null) sessionStorage.setItem('bw:grp:settings:0', '1'); } catch { /* storage blocked: all collapsed */ } // Preferences (group 0) opens first; the others stay collapsed (0.13 F2 · 11) until the person opens them
   setTimeout(icoLoad, 0); // the drawer is in the page once this returns: ask the server where the file icons stand
   const prefs = `<div class="set-row"><span class="set-k">${esc(t('set.lang'))}</span>${setSeg('setLang', [['ar', 'ع العربية', S.ui === 'ar', 'ar'], ['en', 'E English', S.ui === 'en', 'en']], t('set.lang'))}</div>
 <div class="set-row"><span class="set-k">${esc(t('set.dir'))}</span>${setSeg('setDir', ['rtl', 'ltr'].map((d) => [d, t(d), uiDir() === d]), t('set.dir'))}</div>

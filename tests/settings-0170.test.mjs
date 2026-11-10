@@ -107,8 +107,18 @@ try {
   check('N8: About shows exactly two rows (release date, repository) under the name + version', s1.aboutRows.length === 2 && !!s1.aboutName && /\d+\.\d+\.\d+/.test(s1.aboutVer || ''), JSON.stringify(s1.aboutRows));
   check('N8: About carries no licence, no credits, no trust-limit note', !/الترخيص|شكر وتقدير|License|Credits/i.test(await shRoot(a, (r) => r.querySelector('.drawer .set-about').textContent)));
   check('N9: cards ordered by use: Preferences, Update, File icons, Learning, About', s1.cards.slice(0, 5).map((x) => x.split(' ')[0]).join(',') === 'set-prefs,set-upd,set-ico,set-lrn,set-about', JSON.stringify(s1.cards));
-  const stk = await shRoot(a, (r) => ({ prefsOpen: !!r.querySelector('.drawer .set-prefs details')?.open, othersShut: [...r.querySelectorAll('.drawer .set-upd details, .drawer .set-about details')].every((d) => !d.open), sw: r.querySelectorAll('.drawer .set-sw input[type="checkbox"]').length, pill: getComputedStyle(r.querySelector('.drawer .set-seg'), '::before').content, segs: r.querySelectorAll('.drawer .set-seg').length }));
-  check('N9: Preferences opens first, the rest are the drawer collapsible groups; two switches (reduced motion, auto-check), three segmented controls with a pill', stk.prefsOpen && stk.othersShut && stk.sw === 2 && stk.segs === 3 && stk.pill !== 'none', JSON.stringify(stk));
+  const grpOpen = (pg) => shRoot(pg, (r) => [...r.querySelectorAll('.drawer details')].map((d) => d.open));
+  const stk = await shRoot(a, (r) => ({ sw: r.querySelectorAll('.drawer .set-sw input[type="checkbox"]').length, pill: getComputedStyle(r.querySelector('.drawer .set-seg'), '::before').content, segs: r.querySelectorAll('.drawer .set-seg').length }));
+  check('N9: two switches (reduced motion, auto-check), three segmented controls with a pill', stk.sw === 2 && stk.segs === 3 && stk.pill !== 'none', JSON.stringify(stk));
+  // 0.18.2 (owner): every Settings group is collapsed when the panel opens, in both languages; one click opens Preferences
+  for (const [lang, pg] of [['ar', a], ['en', (await open(`http://127.0.0.1:${sp}/`, { ui: 'en', ports: [sp] })).page]]) {
+    if (lang === 'en') await openSettings(pg);
+    const g0 = await grpOpen(pg);
+    await shRoot(pg, (r) => r.querySelector('.drawer .set-prefs details summary').click());
+    await sleep(300);
+    const g1 = await shRoot(pg, (r) => ({ prefs: !!r.querySelector('.drawer .set-prefs details')?.open, open: [...r.querySelectorAll('.drawer details')].filter((d) => d.open).length }));
+    check(`0.18.2 (${lang}): Settings opens with every group collapsed (Preferences too); one click opens Preferences only`, g0.length >= 4 && g0.every((x) => x === false) && g1.prefs && g1.open === 1, JSON.stringify({ g0, g1 }));
+  }
   // the switch works through the real caller (data-set -> settingsChange) and the pill moves
   await shRoot(a, (r) => r.querySelector('.drawer .set-sw input[data-set="calm"]').click());
   await sleep(300);
