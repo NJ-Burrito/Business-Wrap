@@ -192,7 +192,7 @@ try {
     panels[k].closed = await R((r) => r.querySelector('.drawer').hidden || r.querySelector('.drawer').classList.contains('closing'));
   }
   check(12, 'a click outside Settings and Design closes the side panel', panels.settings.closed && panels.theme.closed, JSON.stringify(panels));
-  check(11, 'side panels open collapsed: Design every section closed; Settings (0.17.0 rework) only its first section, Preferences, open', panels.settings.n > 1 && panels.theme.n > 1 && panels.settings.open <= 1 && (!panels.settings.open || panels.settings.firstOpen) && !panels.theme.open, JSON.stringify(panels), true);
+  check(11, 'side panels open collapsed: Design every section closed; Settings (0.18.2) every section closed too, Preferences included', panels.settings.n > 1 && panels.theme.n > 1 && !panels.settings.open && !panels.theme.open, JSON.stringify(panels), true);
 
   // L7 the documents list: Save puts the document in the list under its own title; New; open here
   await clickDoc('[data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]');

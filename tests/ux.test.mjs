@@ -585,7 +585,7 @@ try {
     const allShut = (a) => a.length >= 2 && a.every((x) => x === false); // F2 · 11: every group collapsed on open (Design, Process)
     const first = (a) => a.length >= 2 && a[0] === true && a.slice(1).every((x) => x === false); // 0.17.0 (N9): Settings opens Preferences (group 0) first, the rest collapsed
     const g = await sh(page, (R) => [...R.querySelectorAll('.drawer details.pgrp')].map((d) => d.open));
-    check('F2 11: Settings opens with Preferences open and every other group collapsed (local learning too)', g.length >= 3 && first(g), JSON.stringify(g));
+    check('F2 11 (0.18.2): Settings opens with every group collapsed, Preferences too (local learning too)', g.length >= 3 && allShut(g), JSON.stringify(g));
     // the Design and Process panels follow the same rule (the owner asked for all side panels)
     await page.evaluate(() => window.BW.openDrawer('theme')); await page.waitForTimeout(300);
     const gd = await sh(page, (R) => [...R.querySelectorAll('.drawer details.dgrp')].map((d) => d.open));
