@@ -95,6 +95,8 @@ Settings has a **Local server** card with two buttons.
 
 On a served page the Start button is hidden and the card says "The server is running on port N".
 
+The same on/off switch is also in the top bar of the start page (see section 8), so the host can be started or stopped from there without opening the editor.
+
 #### The `business-wrap:` link
 
 The page uses a per-user URL protocol, registered for your account only (no administrator rights): on Windows under `HKCU\Software\Classes\business-wrap`, on Linux as `~/.local/share/applications/business-wrap-handler.desktop`. `business-wrap open` registers it when it is missing. Manage it yourself with:
@@ -113,9 +115,22 @@ If the Start button does nothing, register the handler once with `business-wrap 
 
 Business-Wrap ships 17 document types: blank, SRS, BRD, FRS, RTM, process flow, test plan, test cases, defect report, user manual, UAT sign-off, release notes, ToR, change request, minutes, business case and a TOT guide. Each opens on its own design (cover, sections, tables) and exports PDF and DOCX in Arabic and English. The full table is in the [README](../README.md#-the-17-types).
 
-1. **The start page.** Open the editor through `npm run serve` without a document of your own: the gallery is the first screen. Search with `/`, filter with the category chips, click a tile to preview what is inside, then press **Create** (a double click or Ctrl+Enter creates at once). The language switch in the preview chooses which edition opens first; the other edition is kept in step.
+1. **The start page.** Open the editor through `npm run serve` without a document of your own: the gallery is the first screen. Search with `/`, filter with the category chips, click a tile, then press **Create** (a double click or Ctrl+Enter creates at once).
+   - **The side panel.** Clicking a tile opens a panel on the right (on the left in Arabic): a small thumbnail of the type that plays once, then what the type is for, when to use it, its sections, who uses it, the language switch and **Create**. Clicking another tile swaps the panel's content. Esc or the close button shuts it and puts the focus back on the tile. The Calm button (top bar of the start page) stops all motion, and the thumbnail then shows a still frame.
+   - **The language switch** in the panel chooses which edition opens first; the other edition is kept in step.
+   - **The local host switch.** The start page's top bar has the same on/off switch as the editor's top bar: a dot, «Online :4317» or «Offline», and a switch. Both show one state, so pressing either moves both. Turning the host off saves your documents first and stops only the host; the page stays open.
 2. **Later, from the editor.** File tab, **Start page** (Ctrl+Alt+N). The document you have open stays open behind it, and a link takes you back to it.
 3. **The command line.** `npx business-wrap types` lists the types; `npx business-wrap new --type brd --title "Payments platform"` creates one and opens it. An unknown `--type` is refused with the list of valid ids. Without `--type`, `new` still makes the blank Arabic and English pair.
 4. **Turn the start page off.** Settings, Start page: untick «Show the start page when the tool opens». The File tab button still opens it.
+
+Every type opens with a first page built for its purpose, never a drawing:
+
+- **Title page** (SRS, BRD, FRS, process flow, test plan, user manual, ToR, TOT): the title, then a control block (document ID, version, status, issue date, owner, prepared by, approved by, classification) and the type's own fields. Page 2 is the revision history and the approvals grid; page 3 is the contents; chapter 1 starts a new page.
+- **Form** (defect report, change request, minutes, UAT sign-off, release notes): a header with an ID box or a version badge and a grid of fields, then the body on the same page. There is no contents list, and document control and revisions come last.
+- **Sheet** (RTM, test cases): a landscape page with the fields in one row, a strip of status tiles, then the table. Later pages repeat a short running header and the table's header row.
+- **Decision paper** (business case): a band with the title, four key-figure tiles, a decision box with empty choices, then the control block.
+- **Blank**: one empty page, with nothing printed on it. Start typing.
+
+The start-page thumbnail is a picture for choosing a type; page 1 of the document never carries it, in the editor, in PDF or in Word. Word gets the same pages as the PDF.
 
 Every type opens with placeholder text to replace, never client data. The ribbon, diagrams, profile, watermark and the tools that explain themselves work in every type. How a type is built and how to add one: [bible/14-document-types.md](../bible/14-document-types.md).
