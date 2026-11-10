@@ -103,7 +103,7 @@ for (const ed of DT.EDITIONS) {
   const text = body.replace(/<[^>]*>/g, '').replace(BIDI, '').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, '');
   check(`${ed}: composed, the document is the empty skeleton (one bare chapter, one section, one empty paragraph, no title text)`, doc.docType === 'blank' && doc.chapters.length === 1 && doc.chapters[0].bare === true && j(doc.chapters[0].sections[0].blocks) === j([{ kind: 'prose', paragraphs: [''] }]), j(doc.chapters));
   check(`${ed}: the control and the name are the type's own (no «: placeholder», no sample values)`, doc.control.title === t.name[ed] && doc.control.documentType === t.name[ed] && doc.control.preparedBy === '' && doc.control.owner === '', j(doc.control));
-  check(`${ed}: the page has no cover, no heading h1-h4, no table, none of the control / revisions / contents / questions parts`, !/class="cover"|data-part="cover"/.test(html) && !/<h[1-4][\s>]/.test(body) && !/<table/.test(body) && !/data-part="(control|revisions|toc|questions)"/.test(body), body.slice(0, 300));
+  check(`${ed}: the page has no cover, no heading h1-h4, no table, no image, none of the control / revisions / contents / questions parts`, !/class="cover"|data-part="cover"/.test(html) && !/<h[1-4][\s>]/.test(body) && !/<table/.test(body) && !/<(img|svg|figure|image|canvas)[\s>]/.test(body) && !/data-part="(control|revisions|toc|questions)"/.test(body), body.slice(0, 300));
   check(`${ed}: the body holds exactly one editable empty paragraph and no visible text at all`, (body.match(/<p /g) || []).length === 1 && /<p [^>]*data-p="\/chapters\/0\/sections\/0\/blocks\/0\/paragraphs\/0"[^>]*><br><\/p>/.test(body) && text === '', `${(body.match(/<p /g) || []).length} paragraphs; text «${text.slice(0, 60)}»`);
   check(`${ed}: the page prints no running header item and only the page number in the footer`, !/data-ci="header:/.test(html) && (html.match(/data-ci="footer:\d+"/g) || []).length === 1 && /data-bw-page/.test(html));
   check(`${ed}: the document stays in its own language and carries no Arabic in the English edition`, ed === 'ar' ? ARABIC.test(doc.control.title) : !ARABIC.test(j(doc)));
@@ -123,6 +123,8 @@ try {
     const info = pdfErr ? '' : run('pdfinfo', [base + '.pdf']).stdout;
     const txt = pdfErr ? '' : run('pdftotext', ['-enc', 'UTF-8', base + '.pdf', '-']).stdout.replace(BIDI, '');
     check(`${ed}: the PDF exports and has exactly one page`, !pdfErr && /Pages:\s+1\s*$/m.test(info), pdfErr || info.split('\n').filter((l) => /Pages/.test(l)).join());
+    const imgs = pdfErr ? '' : run('pdfimages', ['-list', base + '.pdf']).stdout;
+    check(`${ed}: the PDF has one page, no image and no body text (letters: none)`, !pdfErr && /Pages:\s+1\s*$/m.test(info) && imgs.split(/\r?\n/).filter((l) => /^\s*\d+\s/.test(l)).length === 0 && !/\p{L}/u.test(txt), imgs.slice(0, 120));
     check(`${ed}: the PDF carries no text but digits (the folio is the only theme chrome)`, !pdfErr && txt.replace(/[\s\f\d]/g, '') === '', JSON.stringify(txt.slice(0, 80)));
     const parts = docxErr ? null : unzip(base + '.docx');
     const xml = parts?.['word/document.xml']?.toString('utf8') || '';
@@ -132,6 +134,7 @@ try {
     const heads = (xml.match(/<w:pStyle w:val="Heading\d"/g) || []).length;
     const sects = (xml.match(/<w:sectPr[\s>]/g) || []).length;
     const bands = Object.entries(parts || {}).filter(([n]) => /^word\/(header|footer)\d*\.xml$/.test(n)).map(([, b]) => [...b.toString('utf8').matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)].map((m) => m[1]).join('')).join('');
+    check(`${ed}: the DOCX has no table and no image in the body`, !!xml && !/<w:tbl[\s>]/.test(xml) && !/<w:drawing[\s>]|<w:pict[\s>]|<pic:pic/.test(xml), j({ tbl: (xml.match(/<w:tbl[\s>]/g) || []).length, drawing: (xml.match(/<w:drawing/g) || []).length }));
     check(`${ed}: the DOCX has no heading paragraph, ONE section (no leading blank page) and no header or footer text`, !!xml && heads === 0 && sects === 1 && bands.replace(/\s/g, '') === '', j({ heads, sects, bands }));
   }
 
@@ -162,10 +165,10 @@ try {
         await page.waitForTimeout(400);
         const seen = await page.evaluate((p) => {
           const B = window.BW, m = document.querySelector(p);
-          return { ed: B.S.ed, name: B.EXT.library.titleOf(B.S.svc, B.S.ed), covers: m.querySelectorAll('.cover').length, heads: m.querySelectorAll('h1,h2,h3,h4').length, tables: m.querySelectorAll('table').length, paras: m.querySelectorAll('p[data-p]').length, text: m.innerText.replace(/\s+/g, ''), editions: Object.keys(B.M[B.S.svc]).sort().join() };
+          return { ed: B.S.ed, name: B.EXT.library.titleOf(B.S.svc, B.S.ed), covers: m.querySelectorAll('.cover').length, heads: m.querySelectorAll('h1,h2,h3,h4').length, tables: m.querySelectorAll('table').length, imgs: m.querySelectorAll('img,svg,figure,canvas').length, paras: m.querySelectorAll('p[data-p]').length, text: m.innerText.replace(/\s+/g, ''), editions: Object.keys(B.M[B.S.svc]).sort().join() };
         }, P);
         check(`${tag}: the new Blank document opens on the ${want} edition, both editions exist, and the library name is the type's name`, seen.ed === want && seen.editions === 'ar,en' && seen.name === t.name[want], j(seen));
-        check(`${tag}: the page shows no cover, no heading, no table, one empty paragraph and no text`, seen.covers === 0 && seen.heads === 0 && seen.tables === 0 && seen.paras === 1 && seen.text === '', j(seen));
+        check(`${tag}: the page shows no cover, no heading, no table, no image, one empty paragraph and no text`, seen.covers === 0 && seen.heads === 0 && seen.tables === 0 && seen.imgs === 0 && seen.paras === 1 && seen.text === '', j(seen));
 
         // click and type: the text lands on page 1 and in the document
         const first = page.locator(`${P} p[data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]`);

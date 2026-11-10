@@ -969,6 +969,7 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     global TYPED
     TYPED = isinstance(data.get('docType'), str) and data.get('docType') != ''
     compact = bool(cv and cv['design'] == 'compact' and 'cover' not in hide)
+    one_section = compact or 'cover' in hide  # 0.19.0: no cover page (compact, or a hidden cover): the body starts in the first section, no empty leading page
     theme_mod.apply_style_scale(document, roles, font)
     thmanyah_only(document, F['body'])
     if toc:
@@ -983,7 +984,7 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     elif not compact:
         theme_mod.build_cover(document, data.get('control') or {}, roles, font, cover_logos)
     from docx.enum.section import WD_SECTION
-    body_section = document.sections[0] if compact else document.add_section(WD_SECTION.NEW_PAGE)  # a compact cover has no page of its own
+    body_section = document.sections[0] if one_section else document.add_section(WD_SECTION.NEW_PAGE)  # a compact cover has no page of its own
     from docx.enum.text import WD_LINE_SPACING
     if document.paragraphs and not compact:
         _break_pf = document.paragraphs[-1].paragraph_format
@@ -1006,7 +1007,7 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     body_section.footer_distance = Inches(8 / 25.4)
     ctrl = data.get('control') or {}
     cover_section = document.sections[0]
-    theme_mod.add_header_footer(document, roles, font, header_logo, ctrl.get('documentId', ''), ctrl.get('issuedOn', ''), cover_section=cover_section, body_section=body_section, single=compact)
+    theme_mod.add_header_footer(document, roles, font, header_logo, ctrl.get('documentId', ''), ctrl.get('issuedOn', ''), cover_section=cover_section, body_section=body_section, single=one_section)
     def bands(sec, seg=None, first=False):
         # doc.chrome (A5/A6): the section's header and footer from the items; first=True → this section's first page
         for part in ('header', 'footer'):
@@ -1064,11 +1065,12 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
             counters['page_breaks'] = counters.get('page_breaks', 0) + 1
         if wide is True:
             open_landscape_section(document)
-        h1 = document.add_heading(level=1)
-        set_para_bidi(h1)
-        theme_mod.add_chapter_chip(h1, ch['number'], F['display'], roles)
-        h1.runs[-1].text = '    '  # the chip's own gap is two spaces: in an RTL line the number box sat glued to the title (UAT H1)
-        add_script_runs(h1, ch['title'], F['display'], bold=True)
+        if not ch.get('bare'):  # 0.19.0: a bare chapter (the Blank document's one empty page) prints no heading, as the page does
+            h1 = document.add_heading(level=1)
+            set_para_bidi(h1)
+            theme_mod.add_chapter_chip(h1, ch['number'], F['display'], roles)
+            h1.runs[-1].text = '    '  # the chip's own gap is two spaces: in an RTL line the number box sat glued to the title (UAT H1)
+            add_script_runs(h1, ch['title'], F['display'], bold=True)
         story_seq = [0]
         counters['step'] = 0
         for si, sec in enumerate(ch['sections']):
@@ -1218,7 +1220,8 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
     from docx.text.paragraph import Paragraph
     _flow = [c for c in document.element.body.iterchildren() if c.tag in (qn('w:p'), qn('w:tbl'))]
     _last = Paragraph(_flow[-1], document._body) if _flow and _flow[-1].tag == qn('w:p') else None
-    final_p = _last if _last is not None and (not _last.text.strip()) else document.add_paragraph()
+    _only_bare = bool(data.get('chapters')) and all(c.get('bare') for c in data['chapters'])  # 0.19.0: the empty page keeps its own typing paragraph; the 1 pt spacer is a paragraph after it
+    final_p = _last if _last is not None and (not _last.text.strip()) and not _only_bare else document.add_paragraph()
     _fpf = final_p.paragraph_format
     _fpf.space_before = Pt(0)
     _fpf.space_after = Pt(0)
