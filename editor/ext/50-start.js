@@ -386,7 +386,7 @@ bwExt({
   cmds: [{ id: 'startPage', group: 'file', key: 'Ctrl+Alt+N', edit: false }],
   actions: { startPage: () => { START.open(); } },
   expose: { start: START },
-  settings: [{ id: 'start', title: 'startSetTitle', icon: 'prefs', html: START.card, mount: START.mountCard }],
+  settings: [{ id: 'start', title: 'startSetTitle', icon: 'newdoc', html: START.card, mount: START.mountCard }],
   on: {
     boot: () => {
       document.documentElement.dataset.bwStart = 'closed';
