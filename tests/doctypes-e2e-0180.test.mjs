@@ -102,14 +102,14 @@ try {
         for (const ed of DT.EDITIONS) {
           const p = r.per[ed] || {};
           const src = DT.compose(t.id, ed);
-          if (p.docType !== t.id || p.cover !== (t.coverDesign || 'spine') || p.motif !== (t.motif || t.id)) problems.push(`${ed}: ${p.docType}/${p.cover}/${p.motif}`);
+          if (p.docType !== t.id || p.cover !== (t.coverDesign || 'spine') || p.motif !== undefined) problems.push(`${ed}: ${p.docType}/${p.cover}/${p.motif}`);
           if (JSON.stringify(p.chapters) !== JSON.stringify(src.chapters.map((c) => c.title))) problems.push(`${ed}: chapters differ from the registry`);
           if (p.title !== src.control.title) problems.push(`${ed}: title «${p.title}»`);
         }
         if (noCover) {
           if (r.coverEl !== null || r.h1 !== '' || r.headings !== 0) problems.push(`an empty page shows cover ${r.coverEl}, h1 «${r.h1}», ${r.headings} headings`);
         } else {
-          if (r.coverEl !== (t.coverDesign || 'spine') || r.motifEl !== (t.motif || t.id)) problems.push(`page cover ${r.coverEl}/${r.motifEl}`);
+          if (r.coverEl !== (t.coverDesign || 'spine') || r.motifEl !== null) problems.push(`page cover ${r.coverEl}/${r.motifEl}`);
           if (!r.h1 || /undefined|NaN|\[object/.test(r.h1) || r.headings < 1) problems.push(`h1 «${r.h1}», ${r.headings} headings`);
         }
         if (problems.length) bad.push(`${t.id}(${want}): ${problems.join('; ')}`);

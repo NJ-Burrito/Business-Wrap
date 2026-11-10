@@ -49,8 +49,8 @@ try {
   check('docTypes:true embeds one <script id="bw-doctypes"> that parses as JSON', !!m && count(withT, '<script type="application/json" id="bw-doctypes">') === 1 && got && got.v === 1, m ? m[1].slice(0, 80) : 'no script');
   check('it is exactly payloadJson() (the same string the route and the CLI use)', !!m && m[1] === DT.payloadJson(), m ? m[1].length + ' vs ' + DT.payloadJson().length : '');
   check('it holds every registry type, in registry order, with the colour, art and both composed editions', !!got && JSON.stringify(got.types.map((t) => t.id)) === JSON.stringify(types.map((t) => t.id)) && types.length >= 1 && got.types.every((t) => /^#[0-9a-f]{6}$/i.test(t.accent) && typeof t.art === 'string' && typeof t.docs.ar === 'string' && typeof t.docs.en === 'string'));
-  const docsOk = !!got && got.types.every((t) => ['ar', 'en'].every((ed) => { try { const d = JSON.parse(t.docs[ed]); return d.docType === t.id && d.coverDesign === t.coverDesign && d.motif === t.motif && !!d.control && Array.isArray(d.chapters); } catch { return false; } }));
-  check('each embedded document parses and carries docType, coverDesign and motif of its type (composed, self-contained)', docsOk);
+  const docsOk = !!got && got.types.every((t) => ['ar', 'en'].every((ed) => { try { const d = JSON.parse(t.docs[ed]); return d.docType === t.id && d.coverDesign === t.coverDesign && d.motif === undefined && !!d.control && Array.isArray(d.chapters); } catch { return false; } }));
+  check('each embedded document parses and carries docType and coverDesign of its type and no motif (0.19.0: page 1 carries no art; composed, self-contained)', docsOk);
   check('the payload equals payload() in structure (categories, ids, palette)', !!got && JSON.stringify(got) === JSON.stringify(JSON.parse(DT.payloadJson())) && JSON.stringify(got.categories) === JSON.stringify(want.categories));
   check('it cannot close the script early: no "</script" and no raw < inside it', !!m && !/</.test(m[1]));
   check('it sits before the app script and outside bw-data (no doctypes key; bw-data is identical with and without it)', withT.indexOf('<script type="application/json" id="bw-doctypes">') < withT.indexOf('id="bw-app"') && JSON.stringify(Object.keys(JSON.parse(DATA.exec(withT)[1]))) === JSON.stringify(Object.keys(JSON.parse(DATA.exec(plain)[1]))) && DATA.exec(withT)[1] === DATA.exec(plain)[1]);
@@ -90,7 +90,7 @@ try {
     for (const ed of ['en', 'ar']) {
       const one = await get(`/api/doctypes/${t0.id}/${ed}.json`);
       let d = null; try { d = JSON.parse(one.body); } catch { /* none */ }
-      check(`GET /api/doctypes/${t0.id}/${ed}.json is the composed document (docType, coverDesign, motif, design.vars)`, one.code === 200 && !!d && JSON.stringify(d) === JSON.stringify(DT.compose(t0.id, ed)) && d.docType === t0.id && !!d.design?.vars?.primary && !!d.motif, `${one.code} ${one.body.slice(0, 80)}`);
+      check(`GET /api/doctypes/${t0.id}/${ed}.json is the composed document (docType, coverDesign, design.vars, no motif)`, one.code === 200 && !!d && JSON.stringify(d) === JSON.stringify(DT.compose(t0.id, ed)) && d.docType === t0.id && !!d.design?.vars?.primary && d.motif === undefined, `${one.code} ${one.body.slice(0, 80)}`);
     }
     const bad = [await get('/api/doctypes/nope/en.json'), await get(`/api/doctypes/${t0.id}/fr.json`), await get('/api/doctypes/..%2f..%2fpackage/en.json'), await get('/api/doctypes/x'), await get('/api/doctypesx')];
     check('an unknown type, an unknown edition, a path trick and a stray path are 404 (nothing read outside the registry)', bad.every((r) => r.code === 404), bad.map((r) => r.code).join(','));
@@ -113,7 +113,7 @@ try {
   const docs = ['ar', 'en'].map((ed) => { try { return JSON.parse(fs.readFileSync(path.join(dir, `document.${ed}.json`), 'utf8')); } catch { return null; } });
   check(`new --type ${id} --out writes the pair of composed documents and builds the editor`, nw.code === 0 && docs.every(Boolean) && fs.existsSync(nw.json?.editor || ''), nw.out + nw.err);
   const ty = DT.listTypes().find((t) => t.id === id);
-  check('both documents carry docType, coverDesign and motif of the type and its palette in design.vars', docs.every((d, i) => d && d.docType === id && d.service === id && d.coverDesign === (ty.coverDesign || 'spine') && d.motif === (ty.motif || id) && JSON.stringify(d.design?.vars) === JSON.stringify(DT.compose(id, ['ar', 'en'][i]).design.vars)));
+  check('both documents carry docType and coverDesign of the type, no motif, and its palette in design.vars', docs.every((d, i) => d && d.docType === id && d.service === id && d.coverDesign === (ty.coverDesign || 'spine') && d.motif === undefined && JSON.stringify(d.design?.vars) === JSON.stringify(DT.compose(id, ['ar', 'en'][i]).design.vars)));
   const edHtml = nw.json?.editor && fs.existsSync(nw.json.editor) ? fs.readFileSync(nw.json.editor, 'utf8') : '';
   const sv = edHtml && JSON.parse(DATA.exec(edHtml)[1]).services;
   check('the new editor opens on that document in both editions and embeds the registry', !!sv && sv.length === 1 && sv[0].id === id && !!sv[0].editions.ar && !!sv[0].editions.en && JSON.parse(sv[0].editions.en.raw).docType === id && DTS.exec(edHtml)?.[1] === DT.payloadJson());

@@ -23,23 +23,23 @@
   ],
   "approvals": [
     [
+      "Prepared by: Test lead",
       "",
-      "Test lead",
-      "Prepared",
       "",
-      ""
-    ],
-    [
-      "",
-      "Project manager",
-      "Reviewed",
       "",
       ""
     ],
     [
+      "Reviewed by: Project manager",
       "",
-      "Business owner",
-      "Approved",
+      "",
+      "",
+      ""
+    ],
+    [
+      "Approved by: Business owner",
+      "",
+      "",
       "",
       ""
     ]

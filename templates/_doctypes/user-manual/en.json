@@ -23,23 +23,23 @@
   ],
   "approvals": [
     [
+      "Prepared by: Author",
       "",
-      "Author",
-      "Prepared",
       "",
-      ""
-    ],
-    [
-      "",
-      "Reviewer",
-      "Reviewed",
       "",
       ""
     ],
     [
+      "Reviewed by: Reviewer",
       "",
-      "System owner",
-      "Approved",
+      "",
+      "",
+      ""
+    ],
+    [
+      "Approved by: System owner",
+      "",
+      "",
       "",
       ""
     ]

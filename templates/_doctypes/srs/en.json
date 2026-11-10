@@ -23,23 +23,23 @@
   ],
   "approvals": [
     [
+      "Prepared by: Business analyst",
       "",
-      "Business analyst",
-      "Prepared",
       "",
-      ""
-    ],
-    [
-      "",
-      "Business owner",
-      "Reviewed",
       "",
       ""
     ],
     [
+      "Reviewed by: Business owner",
       "",
-      "Approving authority",
-      "Approved",
+      "",
+      "",
+      ""
+    ],
+    [
+      "Approved by: Approving authority",
+      "",
+      "",
       "",
       ""
     ]
