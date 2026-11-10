@@ -4,7 +4,7 @@
   "title": "Business-Wrap document type (templates/_doctypes/<id>/type.json)",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "code", "category", "order", "name", "description", "placeholder", "palette", "coverDesign", "motif"],
+  "required": ["id", "code", "category", "order", "name", "description", "placeholder", "palette", "coverDesign"],
   "properties": {
     "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "maxLength": 32 },
     "code": { "type": "string", "pattern": "^[A-Z]{2,4}$" },
@@ -16,7 +16,7 @@
     "description": { "$ref": "#/$defs/pair240" },
     "placeholder": { "$ref": "#/$defs/pair60" },
     "palette": { "enum": ["navy", "forest", "gold", "slate", "rust"] },
-    "coverDesign": { "enum": ["spine", "compact"] },
+    "coverDesign": { "enum": ["spine", "compact", "report", "form", "sheet"] },
     "motif": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "maxLength": 32 },
     "layout": {
       "type": "object",
@@ -24,6 +24,8 @@
       "properties": {
         "hide": { "type": "array", "uniqueItems": true, "items": { "enum": ["cover", "control", "revisions", "toc", "questions"] } },
         "front": { "type": "array", "uniqueItems": true, "items": { "enum": ["control", "revisions", "toc"] } },
+        "back": { "type": "array", "uniqueItems": true, "items": { "enum": ["control", "revisions"] } },
+        "tocDepth": { "enum": [1, 2] },
         "page": {
           "type": "object",
           "additionalProperties": false,
