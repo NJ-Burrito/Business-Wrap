@@ -140,15 +140,15 @@ dialog.bw-start ::selection { background: var(--bw-marker); color: var(--bw-on-m
 
 /* 0.19.0 N4: the side panel (treatment work/sdlc/design/0190-motion.md). A drawer on the inline-end edge under the top bar (right in English, left in Arabic),
  * clear of the page's scrollbar (--st-sb, measured in 50-start.js): 360 px, 400 px from 1280 px, 440 px from 1680 px; at 1024 px it covers the Recent column only.
- * In, 400 ms from 24 px with a 2 px blur clearing (transitions.dev panel reveal); the content rises 12 px on a 40 ms stagger; out is instant. */
+ * In, 400 ms from 24 px (transitions.dev panel reveal, transform and opacity only); the content rises 12 px on a 40 ms stagger; out is instant. */
 .bw-start .st-panel { position: fixed; inset-block: var(--st-bar) 0; inset-inline-end: var(--st-sb, 0px); z-index: 6; width: 360px; max-width: calc(100vw - 48px); overflow: auto; overscroll-behavior: contain; padding: var(--bw-space-4) var(--bw-space-5) var(--bw-space-6); background: var(--bw-surface); border-inline-start: 1px solid var(--bw-line); box-shadow: var(--bw-shadow-3); scrollbar-width: thin; outline: none; }
 .bw-start[dir="rtl"] .st-panel { padding-block-end: var(--st-wm-safe, 136px); } /* the NJ mark lives bottom left: the panel's side in Arabic */
 @media (min-width: 1280px) { .bw-start .st-panel { width: 400px; } }
 @media (min-width: 1680px) { .bw-start .st-panel { width: 440px; } }
 .bw-start .st-panel.st-in { animation: st-panel 400ms var(--bw-ease-out) both; }
 .bw-start[dir="rtl"] .st-panel.st-in { animation-name: st-panel-rtl; }
-@keyframes st-panel { from { opacity: 0; transform: translateX(24px); filter: blur(2px); } }
-@keyframes st-panel-rtl { from { opacity: 0; transform: translateX(-24px); filter: blur(2px); } }
+@keyframes st-panel { from { opacity: 0; transform: translateX(24px); } }
+@keyframes st-panel-rtl { from { opacity: 0; transform: translateX(-24px); } }
 .bw-start .st-panel.st-in .st-pane > * { animation: st-rise var(--st-slow) var(--bw-ease-out) both; animation-delay: calc(80ms + var(--n, 0) * var(--st-stagger)); }
 @keyframes st-rise { from { opacity: 0; transform: translateY(12px); } }
 .bw-start .st-pane.st-swap { animation: st-fade 150ms ease-in-out both; }
@@ -172,92 +172,39 @@ dialog.bw-start ::selection { background: var(--bw-marker); color: var(--bw-on-m
 .bw-start .st-info li { counter-increment: st-sec; display: grid; grid-template-columns: 24px 1fr; font-size: var(--bw-size-xs); line-height: 1.45; }
 .bw-start .st-info li::before { content: counter(st-sec); font-variant-numeric: tabular-nums; font-weight: 700; color: var(--bw-primary); }
 
-/* the stage: the page (N3's raster thumb, else the type's art) and the move layer over it; the sheet mirrors with the DOCUMENT language,
- * an <img> thumb never flips (it is already that edition), process-flow's arrows always run left to right */
-.bw-start .st-stage { position: relative; width: 132px; aspect-ratio: 3 / 4; filter: drop-shadow(0 10px 14px rgba(0, 30, 61, .2)); --fx-bounce: cubic-bezier(.34, 1.36, .64, 1); }
+/* the thumbnail: the type's art, mirrored with the DOCUMENT language (the svg flips, as on the tiles) */
+.bw-start .st-stage { position: relative; width: 132px; aspect-ratio: 3 / 4; filter: drop-shadow(0 10px 14px rgba(0, 30, 61, .2)); }
 .bw-start .st-stage[data-land="true"] { width: 200px; aspect-ratio: 4 / 3; }
 .bw-start[data-theme="dark"] .st-stage { filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .5)); }
 .bw-start .st-sheet, .bw-start .st-pg { position: absolute; inset: 0; display: block; }
-.bw-start .st-pg > :is(svg, img) { display: block; width: 100%; height: 100%; object-fit: contain; }
-.bw-start[data-theme="dark"] .st-pg > :is(svg, img) { filter: brightness(.92) saturate(.96); }
-.bw-start .st-sheet[data-mirror="true"] .st-pg > svg, .bw-start .st-sheet[data-mirror="true"] .st-fx:not([data-ltr]) { transform: scaleX(-1); }
-.bw-start .st-fx { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
-.bw-start .st-fx * { transform-box: fill-box; transform-origin: center; }
-.bw-start .st-fx .fx-a { fill: var(--acc); }
-.bw-start .st-fx .fx-g { fill: var(--bw-accent); }
-.bw-start .st-fx .fx-r { fill: #a81a1f; }
-.bw-start .st-fx .fx-ok { fill: #16644e; }
-.bw-start .st-fx .fx-w { fill: #fff; }
-.bw-start .st-fx .fx-tx { fill: #1b1813; opacity: .5; } /* the page is paper in both themes: ink and signal colours are the paper ones */
-.bw-start .st-fx :is(.fx-ln, .fx-ck, .fx-st, .fx-ring) { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 0; }
-.bw-start .st-fx .fx-ln { stroke: var(--acc); stroke-width: 1.6; }
-.bw-start .st-fx .fx-up { stroke: var(--bw-accent); stroke-width: 2; }
-.bw-start .st-fx .fx-ck { stroke: #16644e; stroke-width: 1.8; }
-.bw-start .st-fx .fx-box { fill: #fff; stroke: #8a8577; stroke-width: .8; }
-.bw-start .st-fx .fx-st { stroke: #a81a1f; stroke-width: 1.6; }
-.bw-start .st-fx .fx-ring { stroke: #a81a1f; stroke-width: 2.4; }
-.bw-start .st-fx .fx-mk { opacity: .5; mix-blend-mode: multiply; transform-origin: 0 50%; }
-.bw-start .st-fx .fx-sr { fill: none; stroke: var(--acc); stroke-width: 2.2; }
-.bw-start .st-fx .fx-sr.fx-thin { stroke-width: .9; }
-.bw-start .st-fx .fx-sk { fill: none; stroke: var(--acc); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.bw-start .st-fx .fx-seal { transform: rotate(-8deg); opacity: .9; }
-.bw-start .st-fx .fx-blk { opacity: .14; }
-.bw-start .st-fx .fx-br { fill: none; stroke: var(--bw-accent); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-.bw-start .st-fx .fx-wr { fill: #1b1813; opacity: .6; transform-origin: 0 50%; }
-.bw-start .st-fx .fx-base { stroke: #8a8577; stroke-width: .8; }
-.bw-start .st-fx .fx-bar { transform-origin: 50% 100%; opacity: .85; }
-.bw-start .st-fx .fx-cd { fill: #fff; stroke: #d5cfc3; stroke-width: .7; }
-.bw-start .st-fx .fx-row { opacity: .22; transform-origin: 0 50%; }
-.bw-start .st-pg.st-b1 { transform: translate(6%, 1%) rotate(4deg); opacity: .92; transform-origin: 50% 90%; }
-.bw-start .st-pg.st-b2 { transform: translate(-7%, 2%) rotate(-6deg); opacity: .82; transform-origin: 50% 90%; }
+.bw-start .st-pg > svg { display: block; width: 100%; height: 100%; }
+.bw-start[data-theme="dark"] .st-pg > svg { filter: brightness(.92) saturate(.96); }
+.bw-start .st-sheet[data-mirror="true"] .st-pg > svg { transform: scaleX(-1); }
 
-/* the 17 moves: keyframes carry only the `from` state, so the element's own style above is the end frame (Calm shows it; a finished move matches it) */
-@keyframes fx-pop { from { opacity: 0; transform: scale(.3); } }
-@keyframes fx-draw { from { stroke-dashoffset: 1; } }
-@keyframes fx-sx { from { transform: scaleX(0); } }
-@keyframes fx-sy { from { transform: scaleY(0); } }
-@keyframes fx-fade { from { opacity: 0; } }
-@keyframes fx-settle { from { opacity: 0; transform: translateY(8%) scale(.96); } }
-@keyframes fx-fan { from { transform: none; } }
-@keyframes fx-land { from { opacity: 0; transform: scale(1.6); } }
-@keyframes fx-stamp { from { opacity: 0; transform: scale(1.7) rotate(-18deg); } }
-@keyframes fx-slide { from { opacity: 0; transform: translateX(40px); } }
-@keyframes fx-up { from { opacity: 0; transform: translateY(18px); } }
-@keyframes fx-drop { from { opacity: 0; transform: translateY(-6px); } }
-@keyframes fx-br1 { from { opacity: 0; transform: translate(-10px, -10px); } }
-@keyframes fx-br2 { from { opacity: 0; transform: translate(10px, 10px); } }
-@keyframes fx-pen { from { transform: translateX(-42px); } }
-.bw-start [data-fx="settle"] .st-sheet { animation: fx-settle 440ms var(--bw-ease-out) var(--fx-d) both; }
-.bw-start [data-fx="settle"] .fx-caret { animation: fx-fade 160ms steps(1, end) calc(var(--fx-d) + 440ms) both; }
-.bw-start [data-fx="fan"] .st-b1 { animation: fx-fan 700ms var(--fx-bounce) var(--fx-d) both; }
-.bw-start [data-fx="fan"] .st-b2 { animation: fx-fan 700ms var(--fx-bounce) calc(var(--fx-d) + 60ms) both; }
-.bw-start [data-fx="mark"] .fx-mk { animation: fx-sx 520ms ease-in-out calc(var(--fx-d) + var(--k, 0) * 120ms) both; }
-.bw-start [data-fx="branch"] .fx-nd { animation: fx-pop 280ms var(--fx-bounce) calc(var(--fx-d) + var(--k, 0) * 100ms) both; }
-.bw-start [data-fx="branch"] .fx-ln { animation: fx-draw 380ms var(--bw-ease-out) calc(var(--fx-d) + 60ms + var(--k, 0) * 60ms) both; }
-.bw-start [data-fx="link"] .fx-nd { animation: fx-pop 240ms var(--fx-bounce) calc(var(--fx-d) + var(--k, 0) * 90ms) both; }
-.bw-start [data-fx="link"] .fx-nd.fx-end { animation-delay: calc(var(--fx-d) + 460ms + var(--k, 0) * 90ms); }
-.bw-start [data-fx="link"] .fx-ln { animation: fx-draw 480ms var(--bw-ease-out) calc(var(--fx-d) + 60ms + var(--k, 0) * 90ms) both; }
-.bw-start [data-fx="flow"] .fx-nd { animation: fx-pop 260ms var(--fx-bounce) calc(var(--fx-d) + var(--k, 0) * 260ms) both; }
-.bw-start [data-fx="flow"] .fx-ln { animation: fx-draw 300ms var(--bw-ease-out) calc(var(--fx-d) + 130ms + var(--k, 0) * 260ms) both; }
-.bw-start [data-fx="tick"] .fx-ck { animation: fx-draw 300ms var(--bw-ease-out) calc(var(--fx-d) + var(--k, 0) * 140ms) both; }
-.bw-start [data-fx="fill"] .fx-row { animation: fx-sx 420ms var(--bw-ease-out) calc(var(--fx-d) + var(--k, 0) * 60ms) both; }
-.bw-start [data-fx="fill"] .fx-dot { animation: fx-pop 240ms var(--fx-bounce) calc(var(--fx-d) + 560ms) both; }
-.bw-start [data-fx="flag"] .fx-ring { animation: fx-land 420ms var(--fx-bounce) var(--fx-d) both, fx-draw 560ms var(--bw-ease-out) calc(var(--fx-d) + 60ms) both; }
-.bw-start [data-fx="flag"] .fx-pin { animation: fx-pop 240ms var(--fx-bounce) calc(var(--fx-d) + 380ms) both; }
-.bw-start [data-fx="step"] .fx-bd { animation: fx-pop 300ms var(--fx-bounce) calc(var(--fx-d) + var(--k, 0) * 130ms) both; }
-.bw-start [data-fx="stamp"] .fx-seal { animation: fx-stamp 560ms cubic-bezier(.34, 1.56, .64, 1) var(--fx-d) both; }
-.bw-start [data-fx="tag"] .fx-tag { animation: fx-slide 420ms var(--bw-ease-out) var(--fx-d) both; }
-.bw-start [data-fx="tag"] .fx-dot { animation: fx-pop 240ms var(--fx-bounce) calc(var(--fx-d) + 400ms) both; }
-.bw-start [data-fx="scope"] .fx-br1 { animation: fx-br1 520ms var(--bw-ease-out) var(--fx-d) both; }
-.bw-start [data-fx="scope"] .fx-br2 { animation: fx-br2 520ms var(--bw-ease-out) var(--fx-d) both; }
-.bw-start [data-fx="scope"] .fx-blk { animation: fx-fade 520ms ease-in-out calc(var(--fx-d) + 160ms) both; }
-.bw-start [data-fx="swap"] .fx-st { animation: fx-draw 360ms ease-in-out var(--fx-d) both; }
-.bw-start [data-fx="swap"] .fx-new { animation: fx-drop 360ms var(--bw-ease-out) calc(var(--fx-d) + 400ms) both; }
-.bw-start [data-fx="write"] .fx-wr { animation: fx-sx 360ms ease-in-out calc(var(--fx-d) + var(--k, 0) * 150ms) both; }
-.bw-start [data-fx="write"] .fx-pen { animation: fx-pen 360ms ease-in-out calc(var(--fx-d) + 300ms) both; }
-.bw-start [data-fx="rise"] .fx-bar { animation: fx-sy 420ms var(--bw-ease-out) calc(var(--fx-d) + var(--k, 0) * 90ms) both; }
-.bw-start [data-fx="rise"] .fx-ln { animation: fx-draw 300ms var(--bw-ease-out) calc(var(--fx-d) + 540ms) both; }
-.bw-start [data-fx="stack"] .fx-card { animation: fx-up 440ms var(--bw-ease-out) calc(var(--fx-d) + var(--k, 0) * 110ms) both; }
+/* ONE motion grammar for every type (owner rule via the Lead, 0.19.0): only the art's layer groups move, transform and opacity only, once when the panel
+ * opens, each move done by 700 ms, nothing loops. A type differs only in which layers its art has. --k (set in DOM order by 50-start.js) staggers a layer's
+ * groups, capped so the last one still ends by 700 ms. Keyframes hold only the `from` state: the group's own style is the end frame, so Calm shows it.
+ * Contract for the art (crew N3): a bw-a-* element is a <g> with no transform attribute of its own (the CSS transform would replace it). */
+.bw-start .st-stage [class*="bw-a-"] { transform-box: fill-box; transform-origin: center; }
+.bw-start .st-stage :is(.bw-a-row, .bw-a-mark) { transform-origin: 0 50%; }
+@keyframes bw-a-page { from { opacity: 0; transform: translateY(6px) scale(.98); } }
+@keyframes bw-a-sheet { from { opacity: 0; transform: translateX(-8px); } }
+@keyframes bw-a-head { from { opacity: 0; transform: translateY(-4px); } }
+@keyframes bw-a-row { from { opacity: 0; transform: scaleX(.7); } }
+@keyframes bw-a-node { from { opacity: 0; transform: scale(.5); } }
+@keyframes bw-a-arrow { from { opacity: 0; transform: translateX(-6px); } }
+@keyframes bw-a-seal { from { opacity: 0; transform: scale(1.6) rotate(-14deg); } }
+@keyframes bw-a-mark { from { opacity: 0; transform: scaleX(0); } }
+@keyframes bw-a-fade { from { opacity: 0; } }
+.bw-start .st-stage .bw-a-page { animation: bw-a-page 300ms var(--bw-ease-out) both; }
+.bw-start .st-stage .bw-a-sheet { animation: bw-a-sheet 360ms var(--bw-ease-out) calc(60ms + min(var(--k, 0), 2) * 60ms) both; }
+.bw-start .st-stage .bw-a-head { animation: bw-a-head 280ms var(--bw-ease-out) calc(40ms + min(var(--k, 0), 3) * 40ms) both; }
+.bw-start .st-stage .bw-a-row { animation: bw-a-row 280ms var(--bw-ease-out) calc(120ms + min(var(--k, 0), 6) * 45ms) both; }
+.bw-start .st-stage .bw-a-node { animation: bw-a-node 280ms cubic-bezier(.34, 1.36, .64, 1) calc(160ms + min(var(--k, 0), 5) * 50ms) both; }
+.bw-start .st-stage .bw-a-arrow { animation: bw-a-arrow 260ms var(--bw-ease-out) calc(240ms + min(var(--k, 0), 3) * 60ms) both; }
+.bw-start .st-stage .bw-a-seal { animation: bw-a-seal 340ms cubic-bezier(.34, 1.56, .64, 1) 340ms both; }
+.bw-start .st-stage .bw-a-mark { animation: bw-a-mark 300ms var(--bw-ease-out) calc(280ms + min(var(--k, 0), 1) * 60ms) both; }
+.bw-start .st-stage[data-layers=""] .st-pg > svg { animation: bw-a-fade 300ms var(--bw-ease-out) both; } /* an art with no layer groups: a plain fade */
 
 /* Calm is the only switch that removes motion; the OS reduced-motion setting is deliberately not consulted */
 .bw-start[data-calm="1"] *, .bw-start[data-calm="1"] *::before, .bw-start[data-calm="1"] *::after { animation: none !important; transition: none !important; }

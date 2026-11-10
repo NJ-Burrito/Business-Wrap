@@ -3,10 +3,10 @@
 //   - clicking a tile opens the side panel on the inline-end side (right in English, left in Arabic) with the type's purpose, when to use it, its sections
 //     (= the chapter titles of its starter in that language) and who uses it (templates/_doctypes/_info.json through payload().info), and Create
 //   - Esc and the close button return focus to the tile; Tab and Shift+Tab stay inside the panel; Create from the panel creates that docType
-//   - each of the 17 types has its own move (17 distinct), an animation runs on its stage, ends within 900 ms of its start and lands on its end frame;
-//     under Calm no animation runs and that same end frame shows (compared property by property)
+//   - one motion grammar: on every type only the art's layer groups (bw-a-page/sheet/head/row/node/arrow/seal/mark) move, transform and opacity only,
+//     once (one iteration), ended by 700 ms, landing on the end frame; the 17 real arts get their layers from the bridge in 50-start.js, an art that
+//     carries the classes natively keeps them, an art with none fades in; under Calm no animation runs and that same end frame shows
 //   - 1024 px: the panel fits, Create is on screen, no sideways scroll, no tile centre under the panel; widths 360 / 400 / 440 at 1024 / 1366 / 1920
-//   - a raster thumbnail (N3's thumb.{ar,en}) shows as an image, not mirrored, and the move still plays over it
 //   node tests/start-panel-0190.test.mjs     (BW_PANEL_SHOTS=<dir> keeps the screenshots)
 import './_isolate.mjs';
 import fs from 'node:fs';
@@ -29,9 +29,12 @@ const check = (name, ok, detail = '') => { const line = `${ok ? 'PASS' : 'FAIL'}
 const { payload: REAL, real } = startPayload();
 check('the registry is the real one (17 types), each with its info block (purpose, whenToUse, audience in ar and en)', real && REAL.types.length === 17 && REAL.types.every((t) => ['purpose', 'whenToUse', 'audience'].every((k) => t.info?.[k]?.ar && t.info?.[k]?.en)), `real ${real}, ${REAL.types.length} types`);
 check('no visible tashkeel in the panel strings or the info file', !/[ً-ْٰ]/.test(fs.readFileSync(path.join(REPO, 'editor', 'ext', '50-start.i18n.json'), 'utf8') + fs.readFileSync(path.join(REPO, 'templates', '_doctypes', '_info.json'), 'utf8')));
-// a raster thumbnail on one type (N3 delivers thumb.{ar,en} as data URIs): a 3 x 4 PNG
-const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAMAAAAECAIAAADETxJQAAAAEUlEQVR4nGP49esnBDHgZQEAvoIjHRXv6TcAAAAASUVORK5CYII=';
-const PL = { ...REAL, types: REAL.types.map((t) => (t.id === 'minutes' ? { ...t, thumb: { ar: PNG, en: PNG } } : t)) };
+// two stand-in types beside the 17 real ones: an art with no layer groups (it must fade in) and one that carries the classes natively (N3's redraw)
+const BLANK = REAL.types.find((t) => t.id === 'blank');
+const PLAIN = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 320"><rect width="240" height="320" fill="#fafaf9"/></svg>';
+const NATIVE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 320"><rect width="240" height="320" fill="#fafaf9"/><g class="bw-a-head"><rect x="30" y="30" width="100" height="8" fill="#001e3d"/></g><g class="bw-a-seal"><circle cx="160" cy="240" r="20" fill="#be9a41"/></g></svg>';
+const PL = { ...REAL, types: [...REAL.types, { ...BLANK, id: 'zz-fade', code: 'ZF', art: PLAIN }, { ...BLANK, id: 'zz-native', code: 'ZN', art: NATIVE }] };
+const REAL_IDS = new Set(REAL.types.map((t) => t.id));
 const TYPES = PL.types;
 const json = (x) => JSON.stringify(x).replace(/</g, '\\u003c');
 const plain = path.join(tmp, 'plain.html');
@@ -66,21 +69,22 @@ const probe = (page, { wait = true } = {}) => page.evaluate(async (wait) => {
   if (!p) return null;
   const st = p.querySelector('.st-stage');
   const anims = st.getAnimations({ subtree: true });
-  const fxd = parseFloat(st.style.getPropertyValue('--fx-d')) || 0;
   const ends = anims.map((a) => a.effect.getComputedTiming().endTime);
+  const SKIP = new Set(['offset', 'computedOffset', 'easing', 'composite']);
+  const props = [...new Set(anims.flatMap((a) => a.effect.getKeyframes().flatMap((k) => Object.keys(k).filter((x) => !SKIP.has(x)))))];
+  const once = anims.every((a) => a.effect.getComputedTiming().iterations === 1);
   if (wait) await Promise.all(anims.map((a) => a.finished.catch(() => null)));
-  const frame = [...st.querySelectorAll('.st-sheet, .st-pg, .st-fx, .st-fx *')].map((e) => { const c = getComputedStyle(e); const m = new DOMMatrix(c.transform === 'none' ? undefined : c.transform); return [m.a, m.b, m.c, m.d, m.e, m.f, +c.opacity, parseFloat(c.strokeDashoffset) || 0].map((x) => Math.round(x * 100) / 100); });
+  const frame = [...st.querySelectorAll('.st-pg > svg, [class*="bw-a-"]')].map((e) => { const c = getComputedStyle(e); const m = new DOMMatrix(c.transform === 'none' ? undefined : c.transform); return [m.a, m.b, m.c, m.d, m.e, m.f, +c.opacity, parseFloat(c.strokeDashoffset) || 0].map((x) => Math.round(x * 100) / 100); });
   const r = p.getBoundingClientRect(), create = p.querySelector('[data-st-a="create"]').getBoundingClientRect();
   const txt = (s) => p.querySelector(s)?.textContent.trim() ?? null;
-  const img = st.querySelector('.st-pg > img');
   return {
-    id: p.dataset.type, fx: st.dataset.fx, role: p.getAttribute('role'), left: r.left, right: r.right, width: Math.round(r.width), vw: innerWidth, vh: innerHeight,
+    id: p.dataset.type, layers: st.dataset.layers, props, once, role: p.getAttribute('role'), left: r.left, right: r.right, width: Math.round(r.width), vw: innerWidth, vh: innerHeight,
     h3: txt('h3'), lang: p.querySelector('h3').lang, purpose: txt('[data-st-info="purpose"]'), when: txt('[data-st-info="whenToUse"]'), audience: txt('[data-st-info="audience"]'),
     sections: [...p.querySelectorAll('[data-st-sections] li')].map((li) => li.textContent.trim()), createBottom: create.bottom, createTop: create.top,
-    n: anims.length, played: anims.length > 0 && anims.every((a) => a.playState === 'finished'), longest: ends.length ? Math.max(...ends) - fxd : 0, frame,
-    mirror: st.querySelector('.st-sheet').dataset.mirror, fxFlip: (() => { const f = st.querySelector('.st-fx'); return f ? getComputedStyle(f).transform : 'none'; })(),
-    img: img ? { ok: img.complete && img.naturalWidth > 0, flip: getComputedStyle(img).transform } : null, svg: !!st.querySelector('.st-pg > svg'),
+    n: anims.length, played: anims.length > 0 && anims.every((a) => a.playState === 'finished'), longest: ends.length ? Math.max(...ends) : 0, frame,
+    mirror: st.querySelector('.st-sheet').dataset.mirror, flip: getComputedStyle(st.querySelector('.st-pg > svg')).transform,
     panelAnims: p.getAnimations({ subtree: true }).filter((a) => !st.contains(a.effect.target)).length,
+    panelProps: [...new Set(p.getAnimations({ subtree: true }).filter((a) => !st.contains(a.effect.target)).flatMap((a) => a.effect.getKeyframes().flatMap((k) => Object.keys(k).filter((x) => !SKIP.has(x)))))],
   };
 }, wait);
 const active = (page) => page.evaluate(() => { const a = document.getElementById('bw-ui-host').shadowRoot.activeElement; return { type: a?.dataset?.type || null, inPanel: !!a?.closest?.('[data-st-panel]'), create: !!a?.matches?.('[data-st-a="create"]') }; });
@@ -92,19 +96,20 @@ try {
     const { page, errors } = await open({ ui });
     const ends = {};
     const bad = { side: [], text: [], sections: [], anim: [], focus: [] };
-    const kinds = new Set();
+    const table = [];
     for (const ty of TYPES) {
       await page.locator(`${D} .st-tile[data-type="${ty.id}"]`).click();
       await page.waitForSelector(P);
       const x = await probe(page);
-      kinds.add(x.fx);
+      table.push(`${ty.id} | ${x.layers || '(fade)'} | ${Math.round(x.longest)} ms`);
       const sideOk = ui === 'en' ? x.right >= x.vw - 24 && x.left > x.vw / 2 : x.left <= 24 && x.right < x.vw / 2;
       if (!sideOk || x.role !== 'dialog') bad.side.push(`${ty.id} ${Math.round(x.left)}-${Math.round(x.right)} ${x.role}`);
       const inf = ty.info;
       if (x.id !== ty.id || x.h3 !== ty.name[ui] || x.lang !== ui || x.purpose !== inf.purpose[ui] || x.when !== inf.whenToUse[ui] || x.audience !== inf.audience[ui]) bad.text.push(`${ty.id} ${JSON.stringify({ h3: x.h3, p: x.purpose?.slice(0, 30) })}`);
       const chapters = (JSON.parse(ty.docs[ui]).chapters || []).map((c) => String(c.title || '').trim()).filter(Boolean);
       if (!chapters.length || JSON.stringify(x.sections) !== JSON.stringify(chapters)) bad.sections.push(`${ty.id}: ${x.sections.length} vs ${chapters.length}`);
-      if (!(x.n > 0 && x.played && x.longest > 0 && x.longest <= 900)) bad.anim.push(`${ty.id}/${x.fx}: ${x.n} anims, finished ${x.played}, ${Math.round(x.longest)} ms`);
+      const onlyTO = x.props.length > 0 && x.props.every((k) => k === 'transform' || k === 'opacity') && x.panelProps.every((k) => k === 'transform' || k === 'opacity');
+      if (!(x.n > 0 && x.played && x.once && onlyTO && x.longest > 0 && x.longest <= 700)) bad.anim.push(`${ty.id}/${x.layers}: ${x.n} anims, finished ${x.played}, once ${x.once}, props ${x.props}/${x.panelProps}, ${Math.round(x.longest)} ms`);
       ends[ty.id] = x;
       await page.keyboard.press('Escape');
       const a = await active(page);
@@ -112,15 +117,14 @@ try {
     }
     check(`${L}: every tile opens the side panel (a dialog) on the ${ui === 'en' ? 'right (inline end)' : 'left (inline end in Arabic)'}`, !bad.side.length, bad.side.slice(0, 3).join(' | '));
     check(`${L}: the panel shows the type's name, purpose, when to use it and who uses it in ${ui} (from _info.json via the payload)`, !bad.text.length, bad.text.slice(0, 3).join(' | '));
-    check(`${L}: the sections list is the type's chapter titles, in order, for all 17 types`, !bad.sections.length, bad.sections.slice(0, 3).join(' | '));
-    check(`${L}: each type is directed separately: 17 distinct moves`, kinds.size === TYPES.length, [...kinds].join());
-    check(`${L}: on every type an animation runs on the stage, finishes, and ends within 900 ms of its start`, !bad.anim.length, bad.anim.slice(0, 4).join(' | '));
+    check(`${L}: the sections list is the type's chapter titles, in order, for every type`, !bad.sections.length, bad.sections.slice(0, 3).join(' | '));
+    console.log(`${L} type | layers that move | ms (measured)`);
+    for (const row of table) console.log(`  ${row}`);
+    check(`${L}: one grammar on every type: the move animates transform and opacity only (the panel too), runs once, finishes, ends by 700 ms`, !bad.anim.length, bad.anim.slice(0, 4).join(' | '));
+    check(`${L}: the 17 real arts get their layer groups from the bridge (at least two layers each)`, [...REAL_IDS].every((id) => ends[id].layers.split(' ').filter(Boolean).length >= 2), [...REAL_IDS].filter((id) => ends[id].layers.split(' ').length < 2).join());
+    check(`${L}: an art with native bw-a-* classes keeps them (head seal); an art with none fades in (opacity only)`, ends['zz-native'].layers === 'head seal' && ends['zz-fade'].layers === '' && ends['zz-fade'].n === 1 && JSON.stringify(ends['zz-fade'].props) === '["opacity"]', JSON.stringify([ends['zz-native'].layers, ends['zz-fade'].layers, ends['zz-fade'].props]));
     check(`${L}: Esc closes the panel and focus returns to the tile`, !bad.focus.length, bad.focus.slice(0, 3).join(' | '));
-    const pf = ends['process-flow'], srs = ends.srs;
-    check(`${L}: the stage follows the document language (${ui === 'ar' ? 'mirrored' : 'not mirrored'}); process-flow's arrows always run left to right`, srs.mirror === String(ui === 'ar') && (ui === 'ar' ? ends.brd.fxFlip !== 'none' : ends.brd.fxFlip === 'none') && pf.fxFlip === 'none', JSON.stringify({ m: srs.mirror, brd: ends.brd.fxFlip, pf: pf.fxFlip }));
-    const mn = ends.minutes;
-    check(`${L}: a raster thumbnail (thumb.${ui}) shows as an image that loads, is never flipped, and the move plays over it`, !!mn.img && mn.img.ok && mn.img.flip === 'none' && !mn.svg && mn.n > 0, JSON.stringify(mn.img));
-    check(`${L}: the other types fall back to their art (inline svg)`, TYPES.filter((t) => t.id !== 'minutes').every((t) => ends[t.id].svg && !ends[t.id].img));
+    check(`${L}: the thumbnail follows the document language (${ui === 'ar' ? 'mirrored' : 'not mirrored'})`, [...REAL_IDS].every((id) => ends[id].mirror === String(ui === 'ar') && (ui === 'ar') === (ends[id].flip !== 'none')), JSON.stringify([ends.srs.mirror, ends.srs.flip]));
 
     // keyboard: Enter on a tile opens the panel with focus on Create; Tab and Shift+Tab stay inside; the close button returns focus to the tile
     await page.locator(`${D} .st-tile[data-type="test-plan"]`).focus();
@@ -169,7 +173,7 @@ try {
       if (x.n !== 0 || x.panelAnims !== 0 || !same(x.frame, ends[ty.id].frame)) calmBad.push(`${ty.id}: ${x.n} stage / ${x.panelAnims} panel anims, frame ${same(x.frame, ends[ty.id].frame) ? 'same' : 'differs'}`);
       await page.keyboard.press('Escape');
     }
-    check(`${L}: under Calm no animation runs and each of the 17 stages shows its end frame (equal to the finished move, property by property)`, !calmBad.length, calmBad.slice(0, 3).join(' | '));
+    check(`${L}: under Calm no animation runs and every stage shows its end frame (equal to the finished move, property by property)`, !calmBad.length, calmBad.slice(0, 3).join(' | '));
     await page.locator(`${D} [data-st-calm]`).click();
 
     // Create from the panel makes that docType, in the language chosen in the panel

@@ -202,47 +202,81 @@ const START = (() => {
   }
 
   /* ── the side panel (0.19.0 N4; treatment work/sdlc/design/0190-motion.md) ──
-   * A drawer on the inline-end edge: the type's stage (its page with its own move), name, description, document language, Create, then what it is for,
+   * A drawer on the inline-end edge: the type's thumbnail with its move, name, description, document language, Create, then what it is for,
    * when to use it, its sections (the starter's chapter titles in the chosen language) and who uses it (payload `info`, templates/_doctypes/_info.json).
-   * Keyboard: Tab wraps inside it; Esc or X closes it and focus returns to the tile. Each move's keyframes hold only the `from` state: the element's own
-   * style is the end frame, so Calm (animation: none) shows the end frame and a finished move looks the same. */
-  // id -> its move (the move layer the CSS animates, [data-fx]; durations live in 50-start.css and the test measures them); a type not listed settles
-  const MOVES = { blank: 'settle', srs: 'fan', brd: 'mark', frs: 'branch', rtm: 'link', 'process-flow': 'flow', 'test-plan': 'tick', 'test-cases': 'fill', 'defect-report': 'flag',
-    'user-manual': 'step', 'uat-signoff': 'stamp', 'release-notes': 'tag', tor: 'scope', 'change-request': 'swap', minutes: 'write', 'business-case': 'rise', tot: 'stack' };
-  const moveOf = (id) => MOVES[id] || 'settle';
-  /** The move layer's shapes, in a 120 x 160 box (160 x 120 for a landscape sheet); --k orders a stagger; pathLength 1 lets a stroke draw from dashoffset 1. */
-  function fx(kind, wide) {
-    const k = (i) => `style="--k:${i}"`;
-    const P = (d, c, i = 0) => `<path class="${c}" d="${d}" pathLength="1" ${k(i)}/>`;
-    const y3 = (i) => 60 + ((i + 1) % 3) * 16;
-    const body = {
-      settle: '<rect class="fx-caret fx-g" x="27" y="50" width="2.4" height="13" rx="1.2"/>',
-      fan: '',
-      mark: `<rect class="fx-mk fx-g" x="22" y="90" width="64" height="8" rx="1.5" ${k(0)}/><rect class="fx-mk fx-g" x="22" y="103" width="46" height="8" rx="1.5" ${k(1)}/>`,
-      branch: `<rect class="fx-nd fx-a" x="50" y="70" width="20" height="11" rx="2" ${k(0)}/>${P('M60 81V93L36 105', 'fx-ln', 1)}${P('M60 93L84 105', 'fx-ln', 2)}<rect class="fx-nd fx-a" x="24" y="105" width="24" height="11" rx="2" ${k(4)}/><rect class="fx-nd fx-a" x="72" y="105" width="24" height="11" rx="2" ${k(5)}/>`,
-      link: [0, 1, 2].map((i) => `<circle class="fx-nd fx-a" cx="24" cy="${52 + i * 16}" r="2.6" ${k(i)}/>${P(`M24 ${52 + i * 16}C60 ${52 + i * 16} 96 ${y3(i)} 136 ${y3(i)}`, 'fx-ln', i)}<circle class="fx-nd fx-end fx-a" cx="136" cy="${y3(i)}" r="2.6" ${k(i)}/>`).join(''),
-      flow: [0, 1, 2].map((i) => `<rect class="fx-nd fx-a" x="${18 + i * 34}" y="96" width="18" height="13" rx="3" ${k(i)}/>`).join('') + P('M38 102.5H50M46.5 99L50 102.5L46.5 106', 'fx-ln', 0) + P('M72 102.5H84M80.5 99L84 102.5L80.5 106', 'fx-ln', 1),
-      tick: [0, 1, 2].map((i) => `<rect class="fx-box" x="24" y="${84 + i * 15}" width="9" height="9" rx="1.6"/><rect class="fx-tx" x="38" y="${86.5 + i * 15}" width="${50 - i * 9}" height="4" rx="1"/>${P(`M25.8 ${88.6 + i * 15}L28.2 ${91 + i * 15}L32.2 ${85.6 + i * 15}`, 'fx-ck', i)}`).join(''),
-      fill: [0, 1, 2, 3, 4].map((i) => `<rect class="fx-row fx-a" x="16" y="${50 + i * 11}" width="118" height="6.5" rx="1" ${k(i)}/>`).join('') + '<circle class="fx-dot fx-ok" cx="143" cy="97.25" r="3.6"/>',
-      flag: '<circle class="fx-ring" cx="72" cy="100" r="14" pathLength="1"/><circle class="fx-pin fx-r" cx="72" cy="100" r="3"/>',
-      step: [0, 1, 2].map((i) => `<g class="fx-bd" ${k(i)}><circle class="fx-a" cx="27" cy="${80 + i * 22}" r="7"/><circle class="fx-w" cx="27" cy="${80 + i * 22}" r="2.2"/></g><rect class="fx-tx" x="40" y="${78 + i * 22}" width="${52 - i * 8}" height="4" rx="1"/>`).join(''),
-      stamp: '<g class="fx-seal"><circle class="fx-sr" cx="84" cy="116" r="17"/><circle class="fx-sr fx-thin" cx="84" cy="116" r="12.5"/><path class="fx-sk" d="M77.5 116.5L82 121L91 111"/></g>',
-      tag: '<g class="fx-tag"><path class="fx-a" d="M70 28H104V44H70L64 36Z"/><circle class="fx-w" cx="71" cy="36" r="1.8"/></g><circle class="fx-dot fx-g" cx="104" cy="60" r="4"/>',
-      scope: '<rect class="fx-blk fx-a" x="28" y="88" width="64" height="36" rx="2"/><path class="fx-br fx-br1" d="M24 96V84H36"/><path class="fx-br fx-br2" d="M96 116V128H84"/>',
-      swap: `<rect class="fx-tx" x="24" y="90" width="62" height="5" rx="1"/>${P('M21 92.5H89', 'fx-st', 0)}<rect class="fx-new fx-a" x="24" y="101" width="52" height="5" rx="1"/>`,
-      write: [0, 1, 2].map((i) => `<rect class="fx-wr" x="24" y="${88 + i * 11}" width="${66 - i * 12}" height="3.6" rx="1.2" ${k(i)}/>`).join('') + '<circle class="fx-pen fx-g" cx="68" cy="111.8" r="2.4"/>',
-      rise: `<path class="fx-base" d="M24 128.5H96"/>${[[30, 14], [48, 24], [66, 36]].map(([x, h], i) => `<rect class="fx-bar fx-a" x="${x}" y="${128 - h}" width="12" height="${h}" rx="1" ${k(i)}/>`).join('')}${P('M30 104L50 96L70 84L92 78', 'fx-ln fx-up', 3)}`,
-      stack: [0, 1, 2].map((i) => `<g class="fx-card" ${k(i)}><rect class="fx-cd" x="${28 + i * 5}" y="${82 + i * 16}" width="58" height="14" rx="2"/><rect class="fx-a" x="${28 + i * 5}" y="${82 + i * 16}" width="4" height="14" rx="1"/></g>`).join(''),
-    }[kind] ?? '';
-    return body ? `<svg class="st-fx" viewBox="${wide ? '0 0 160 120' : '0 0 120 160'}" preserveAspectRatio="none" aria-hidden="true" focusable="false"${kind === 'flow' ? ' data-ltr="true"' : ''}>${body}</svg>` : '';
+   * Keyboard: Tab wraps inside it; Esc or X closes it and focus returns to the tile.
+   * The move (one grammar for every type, 50-start.css): only the art's layer groups move, transform and opacity only, once, at most 700 ms, nothing loops;
+   * a type differs only in WHICH layers its art has: bw-a-page, bw-a-sheet, bw-a-head, bw-a-row, bw-a-node, bw-a-arrow, bw-a-seal, bw-a-mark (DOM order is
+   * the stagger order). An art with none of them fades in. Keyframes hold only the `from` state, so Calm (animation: none) shows the end frame. */
+  const LAYERS = ['page', 'sheet', 'head', 'row', 'node', 'arrow', 'seal', 'mark'];
+  /* TEMPORARY BRIDGE (0.19.0 N4) until crew N3's redrawn _art/*.svg carries the bw-a-* classes natively: per type, [layer, selector, n] wraps each match and
+   * its next n-1 siblings in <g class="bw-a-<layer>"> (a wrapper with no transform attribute, so the CSS transform never fights the art's own). «^» = the
+   * svg's own children, «P» = the page group's children, «M» = the motif group's children. An art that already has a bw-a-* class is left untouched.
+   * Remove this block when every art file carries the classes. */
+  const HEAD_SPINE = [['head', 'P rect[x="34"][y="92"]', 2], ['head', 'P rect[x="34"][y="141"]', 2]];
+  const HEAD_COMPACT = [['head', 'P rect[x="34"][y="60"]', 2]];
+  const HEAD_LAND = [['head', 'P rect[x="16"][y="31"]', 3]];
+  const BRIDGE = {
+    blank: [['row', 'P rect[x="34"][y="200"]', 1], ['row', 'P rect[x="34"][y="208"]', 1], ['row', 'P rect[x="34"][y="216"]', 1], ['page', '^ g', 1]],
+    srs: [...HEAD_SPINE, ['row', 'M rect[height="19"]', 4]],
+    brd: [...HEAD_SPINE, ['node', 'M circle[r="38"]', 4], ['arrow', 'M path', 2], ['row', 'M rect[height="4.2"]', 3]],
+    frs: [...HEAD_SPINE, ['node', 'M rect[height="24"]', 3], ['arrow', 'M path[stroke-width="1.1"]', 2], ['row', 'M rect[x="4"]', 3]],
+    rtm: [...HEAD_LAND, ['row', 'M path[stroke-width="0.7"]', 2], ['node', 'M circle', 1]],
+    'process-flow': [...HEAD_SPINE, ['row', 'M rect[height="44"]', 2], ['node', 'M circle', 1], ['node', 'M rect[x="38"][y="14"]', 1], ['node', 'M polygon[stroke-width]', 1],
+      ['node', 'M rect[x="92"][y="62"]', 1], ['arrow', 'M path', 2], ['node', 'M rect[x="42"][y="20"]', 1], ['node', 'M rect[x="97"]', 1]],
+    'test-plan': [...HEAD_SPINE, ['node', 'M rect[width="11"]', 1], ['mark', 'M polyline', 1], ['row', 'M rect[width="34"]', 2]],
+    'test-cases': [...HEAD_LAND, ['head', 'M rect[height="11"]', 1], ['row', 'M rect[height="13.6"]', 1], ['node', 'M rect[width="26"]', 2]],
+    'defect-report': [...HEAD_COMPACT, ['row', 'M rect[height="19"]', 4], ['node', 'M rect[x="126"]', 2]],
+    'uat-signoff': [...HEAD_SPINE, ['row', 'M circle[r="6"]', 6], ['mark', 'M path[d^="M0 90"]', 2], ['mark', 'M path[d^="M76 90"]', 2], ['seal', 'M circle[r="11"]', 3]],
+    'release-notes': [...HEAD_SPINE, ['node', 'M rect[width="58"]', 4], ['row', 'M rect[width="24"][height="9"]', 4]],
+    'user-manual': [...HEAD_SPINE, ['node', 'M rect[width="13"]', 2], ['sheet', 'M rect[height="56"]', 9], ['mark', 'M rect[width="85.5"]', 3], ['node', 'M rect[width="9"][height="9"]', 2]],
+    tot: [...HEAD_SPINE, ['node', 'M rect[width="32"]', 2], ['mark', 'M path', 2], ['node', 'M circle', 1]],
+    tor: [...HEAD_SPINE, ['sheet', 'M rect[height="58"]', 2], ['node', 'M rect[width="44"]', 3], ['mark', 'M rect[stroke-dasharray]', 2], ['arrow', 'M path[stroke-width="1.4"]', 1], ['node', 'M circle', 2]],
+    'business-case': [...HEAD_SPINE, ['node', 'M circle', 1], ['arrow', 'M path[stroke-width="2.2"]', 7], ['node', 'M rect[width="9"]', 1]],
+    'change-request': [...HEAD_SPINE, ['sheet', 'M rect[width="58"]', 5], ['mark', 'M path[stroke-width="1.1"]', 1], ['arrow', 'M path[stroke-width="1.8"]', 2], ['row', 'M circle[r="3"]', 4]],
+    minutes: [...HEAD_COMPACT, ['node', 'M circle[cy="6"]', 1], ['row', 'M circle[r="5"][cx="5"]', 4], ['mark', 'M rect[width="42"]', 2]],
+  };
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const layerCache = new Map();
+  /** The type's art with its layer groups (native classes, else the bridge above); the tiles keep the plain art(). */
+  function layered(ty) {
+    if (layerCache.has(ty.id)) return layerCache.get(ty.id);
+    const s = art(ty);
+    let out = s;
+    const map = BRIDGE[ty.id];
+    if (s !== frame && map && !/\bbw-a-(page|sheet|head|row|node|arrow|seal|mark)\b/.test(s)) {
+      try {
+        const tpl = document.createElement('template');
+        tpl.innerHTML = s;
+        const svg = tpl.content.firstElementChild;
+        const G = svg.querySelector(':scope > g'), M = G?.querySelector(':scope > g');
+        for (const [layer, sel, n] of map) {
+          const scope = sel[0] === '^' ? svg : sel[0] === 'P' ? G : M;
+          if (!scope) continue;
+          for (const first of scope.querySelectorAll(`:scope > ${sel.slice(2)}`)) {
+            if (first.parentNode !== scope) continue; // already inside an earlier group
+            const g = document.createElementNS(SVGNS, 'g');
+            g.setAttribute('class', `bw-a-${layer}`);
+            first.before(g);
+            let cur = first;
+            for (let i = 0; i < n && cur; i += 1) { const next = cur.nextElementSibling; g.appendChild(cur); cur = next; }
+          }
+        }
+        out = svg.outerHTML;
+      } catch { out = s; }
+    }
+    layerCache.set(ty.id, out);
+    return out;
   }
-  /** N3's raster thumbnail of the edition's real first page (thumb.{ar,en}, a data: image), else the type's own art. */
-  const thumbOf = (ty, pl) => { const s = ty.thumb?.[pl]; return typeof s === 'string' && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(s) ? s : ''; };
-  function stage(ty, pl, delay) {
-    const kind = moveOf(ty.id), raster = thumbOf(ty, pl), wide = land(ty);
-    const pg = raster ? `<img src="${raster}" alt="" draggable="false">` : art(ty);
-    const copies = kind === 'fan' ? `<span class="st-pg st-b2">${pg}</span><span class="st-pg st-b1">${pg}</span>` : '';
-    return `<div class="st-stage" aria-hidden="true" data-fx="${kind}" data-land="${wide}" data-raster="${!!raster}" style="--acc:${esc(ty.accent || 'var(--bw-primary)')};--fx-d:${delay}ms"><span class="st-sheet" data-mirror="${pl === 'ar'}">${copies}<span class="st-pg">${pg}</span>${fx(kind, wide)}</span></div>`;
+  /** The panel's thumbnail: the layered art, mirrored with the DOCUMENT language. data-layers names the layers present (none: the whole page fades in). */
+  function stage(ty, pl) {
+    const svg = layered(ty);
+    const have = LAYERS.filter((l) => svg.includes(`bw-a-${l}`));
+    return `<div class="st-stage" aria-hidden="true" data-land="${land(ty)}" data-layers="${have.join(' ')}"><span class="st-sheet" data-mirror="${pl === 'ar'}"><span class="st-pg">${svg}</span></span></div>`;
+  }
+  /** The stagger: each layer's groups get --k in DOM order. */
+  function order(box) {
+    for (const l of LAYERS) box.querySelectorAll(`.st-stage .bw-a-${l}`).forEach((g, i) => g.style.setProperty('--k', String(i)));
   }
   const PANEL_FOCUS = 'button:not([disabled]), [href], input, [tabindex]:not([tabindex="-1"])';
   /** Draws (or removes) the panel of st.sel. `swap`: the panel is already open (another type, the other language): no slide; the content cross-fades and the move replays. */
@@ -260,7 +294,6 @@ const START = (() => {
     }
     el.style.setProperty('--st-sb', `${Math.max(0, el.offsetWidth - el.clientWidth)}px`); // clear of the page's own scrollbar (right in English, left in Arabic)
     box.dataset.type = ty.id;
-    box.dataset.fx = moveOf(ty.id);
     box.classList.toggle('st-in', !was);
     const info = ty.info || {};
     const LAB = { purpose: 'startPurpose', whenToUse: 'startWhen', audience: 'startAudience' };
@@ -271,13 +304,14 @@ const START = (() => {
     const ix = () => `style="--n:${n++}"`;
     box.innerHTML = `<div class="st-pane${was ? ' st-swap' : ''}">
 <div class="st-hd" ${ix()}><h2>${esc(t('startAbout'))}${ty.code ? `<span class="st-code" lang="en" dir="ltr">${esc(ty.code)}</span>` : ''}</h2><button type="button" class="st-ib" data-st-a="close" aria-label="${esc(t('startClosePrev'))}" title="${esc(t('startClosePrev'))}">${ic('close')}</button></div>
-<div class="st-cover" ${ix()}>${stage(ty, pl, was ? 60 : 180)}</div>
+<div class="st-cover" ${ix()}>${stage(ty, pl)}</div>
 <h3 id="st-pn" lang="${pl}" dir="${dir}" ${ix()}>${esc(nm(ty, pl))}</h3><p class="st-pd" lang="${pl}" dir="${dir}" ${ix()}>${esc(dsc(ty, pl))}</p>
 <div class="st-plw" ${ix()}><span class="st-lab" id="st-pl-l">${esc(t('startLang'))}</span>
 <div class="st-seg st-seg-w" role="radiogroup" aria-labelledby="st-pl-l"><button type="button" role="radio" aria-checked="${pl === 'ar'}" data-st-pl="ar" lang="ar">${esc(t('startLangAr'))}</button><button type="button" role="radio" aria-checked="${pl === 'en'}" data-st-pl="en" lang="en">${esc(t('startLangEn'))}</button></div></div>
 <button type="button" class="st-btn st-primary" data-st-a="create" data-bw-create="${esc(ty.id)}" ${ix()}>${ic('add')}<span>${esc(t('startCreate'))}</span></button>
 <div class="st-info" ${ix()}>${say('purpose')}${say('whenToUse')}${chapters.length ? `<h4>${esc(t('startSections'))}</h4><ol lang="${pl}" dir="${dir}" data-st-sections>${chapters.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}${say('audience')}</div>
 <p class="st-hint" ${ix()}>${esc(t('startHint'))}</p></div>`;
+    order(box);
     return box;
   }
   async function refresh() { st.rec = await recents(); if (isOpen()) side(); }
