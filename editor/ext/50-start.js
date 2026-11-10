@@ -6,6 +6,11 @@
  * Types come from the embedded JSON script #bw-doctypes (C2) and, served, from GET /api/doctypes when the page lacks the script.
  * Shown at boot only when: types answered, no #doc= in the address, the open service is the untouched template, bw:start is not 'off', and (automation
  * guard, as 30-profile) not ?automation=1 and not navigator.webdriver unless ?start=1. Only the Calm button reduces motion (owner rule).
+ * 0.18.2: every way of opening the TOOL is that untouched template (the shortcut's file:// tool editor, the served blank editor of a plain business-wrap://start),
+ * so it lands here; a specific saved document (a `doc-` service, a #doc= link) opens as itself. The shortcut's page cannot read the save folder, so the launcher embeds the
+ * newest saved documents as #bw-recents and they are listed as Recents (a row opens that file); a served page has the host's mirror instead.
+ * The resume prompt (12-session) does not open over a start page that is about to show: one landing; the last documents are in Recents and a «Continue where you left off (N)» button opens the same prompt.
+ * Home (top bar, leading edge): saves through the editor's own autosave path (draft + library entry; there is no discard prompt, nothing is discarded), then opens this view. 
  * API (C3): EXT.start = { open, close, types, type, create, recents }; <html data-bw-start="open|closed">; tiles [data-type]; recents [data-recent];
  * events bw:start-open, bw:start-create {id, ed, doc}. */
 const START = (() => {
@@ -15,7 +20,7 @@ const START = (() => {
   let data = null; // the registry payload (C2)
   let loading = null;
   let el = null; // dialog.bw-start on the shadow root
-  const st = { cat: 'all', q: '', sel: null, pl: 'en', first: true, rec: [], gone: new Set(), busy: false, opener: null, kind: '' };
+  const st = { cat: 'all', q: '', sel: null, pl: 'en', first: true, rec: [], last: 0, gone: new Set(), busy: false, opener: null, kind: '' };
   const types = () => data?.types || [];
   const type = (id) => types().find((x) => x.id === id) || null;
   const lang = () => (S.ui === 'ar' ? 'ar' : 'en');
@@ -85,8 +90,20 @@ const START = (() => {
     const all = ((await L.all()) || []).filter((e) => L.isDoc(e.id) && !e.deletedAt && e.kind !== 'template');
     if (L.isDoc(S.svc) && M[S.svc] && !all.some((e) => e.id === S.svc)) { try { all.push({ ...L.entryOf(S.svc), pending: true }); } catch { /* not readable */ } } // a new document is unsaved until its first edit
     const pinned = pins();
-    return all.sort((a, b) => (pinned.includes(b.id) ? 1 : 0) - (pinned.includes(a.id) ? 1 : 0) || String(b.savedAt).localeCompare(String(a.savedAt))).slice(0, 20) // pinned first, then newest; the rest stay in the Documents drawer
+    const rows = all.sort((a, b) => (pinned.includes(b.id) ? 1 : 0) - (pinned.includes(a.id) ? 1 : 0) || String(b.savedAt).localeCompare(String(a.savedAt))).slice(0, 20) // pinned first, then newest; the rest stay in the Documents drawer
       .map((e) => ({ id: e.id, title: e.title, file: fileOf(e), type: typeOf(e), savedAt: e.savedAt, pinned: pinned.includes(e.id), now: e.id === S.svc, pending: !!e.pending }));
+    const have = new Set(all.flatMap((e) => Object.values(e.htmlFiles || {}).map(sameFile)));
+    for (const d of diskRows()) if (!have.has(sameFile(d.file))) rows.push({ id: `disk:${d.file}`, title: d.name, file: String(d.file).split(/[\\/]/).pop(), type: d.type || '', savedAt: d.savedAt, pinned: pinned.includes(`disk:${d.file}`), now: false, pending: false, url: d.url });
+    return rows.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || String(b.savedAt).localeCompare(String(a.savedAt))).slice(0, 20);
+  }
+  /** The saved documents the launcher embedded (#bw-recents) in the shortcut's file:// tool editor: [{name, file, url, savedAt, type}]. A served page has the library mirror instead: none here. */
+  const sameFile = (f) => String(f || '').replace(/\\/g, '/').toLowerCase();
+  function diskRows() {
+    if (location.protocol !== 'file:') return [];
+    try {
+      const j = JSON.parse(document.getElementById('bw-recents')?.textContent || 'null');
+      return j && j.v === 1 && Array.isArray(j.rows) ? j.rows.filter((r) => r && typeof r.file === 'string' && /^file:\/\/\//.test(String(r.url))).slice(0, 20) : [];
+    } catch { return []; }
   }
   const pad = (n) => String(n).padStart(2, '0');
   function whenText(iso) {
@@ -193,9 +210,11 @@ ${inside(ty, pl).length ? `<span class="st-lab">${esc(t('startInside'))}</span><
     box.innerHTML = `<div class="st-pane${cls}"><h2>${esc(t('startRecent'))}<span class="st-n">${rows.length || ''}</span></h2>${rows.length
       ? (pinned.length ? `<div class="st-sub">${esc(t('startPinned'))}</div><ul class="st-recs" aria-label="${esc(t('startPinned'))}">${pinned.map(rowHtml).join('')}</ul>` : '') + (rest.length ? `<div class="st-sub">${esc(t('startRecents'))}</div><ul class="st-recs" aria-label="${esc(t('startRecents'))}">${rest.map(rowHtml).join('')}</ul>` : '')
       : `<div class="st-norec"><span class="st-art" data-mirror="${l === 'ar'}">${art(type('blank'))}</span><b>${esc(t('startNoRecT'))}</b><span>${esc(t('startNoRecP'))}</span></div>`}
-<div class="st-drop"><button type="button" class="st-btn" data-st-a="file">${ic('rbt.file')}<span>${esc(t('startOpenFile'))}</span></button><small>${esc(t('startDrop'))}</small></div></div>`;
+<div class="st-drop">${st.last ? `<button type="button" class="st-btn" data-st-a="resume">${ic('history')}<span>${esc(tf('startResume', { n: st.last }))}</span></button>` : ''}<button type="button" class="st-btn" data-st-a="file">${ic('rbt.file')}<span>${esc(t('startOpenFile'))}</span></button><small>${esc(t('startDrop'))}</small></div></div>`;
   }
   async function refresh() { st.rec = await recents(); if (isOpen() && !st.sel) side(); }
+  /** How many documents the last session had (the «Continue where you left off» button): only a served page has a host session to ask. */
+  async function lastCount() { try { st.last = (await EXT.session?.lastCount?.()) || 0; } catch { st.last = 0; } if (isOpen() && !st.sel) side(); }
 
   /* ── actions ── */
   /** The tiles are patched in place, never rebuilt, when the pick changes: a double click is two clicks on the SAME element (a rebuilt tile would lose the second). */
@@ -234,6 +253,8 @@ ${inside(ty, pl).length ? `<span class="st-lab">${esc(t('startInside'))}</span><
     } finally { st.busy = false; }
   }
   async function openRecent(id) {
+    const disk = st.rec.find((r) => r.id === id && r.url); // 0.18.2: a saved document the launcher listed (the shortcut's file:// page): that file opens, as itself
+    if (disk) { location.assign(disk.url); return; }
     const L = LIBX();
     if (id === S.svc && L?.isDoc(id)) { close(true); return; }
     const ok = await L?.open(id);
@@ -272,6 +293,7 @@ ${inside(ty, pl).length ? `<span class="st-lab">${esc(t('startInside'))}</span><
       else if (k === 'clear') { st.q = ''; el.querySelector('[data-st-q]').value = ''; chrome(); gallery(); el.querySelector('[data-st-q]').focus(); }
       else if (k === 'blank') pick('blank');
       else if (k === 'file') openFile();
+      else if (k === 'resume') EXT.session?.ask?.();
       return;
     }
     if ((b = g('[data-st-l]'))) { setUi(b.dataset.stL); return; }
@@ -318,7 +340,7 @@ ${inside(ty, pl).length ? `<span class="st-lab">${esc(t('startInside'))}</span><
     if (isOpen()) { el.querySelector('[data-st-q]')?.focus(); return true; }
     if (!(await load())) { if (!opts.auto) toast(t('startNoTypes'), 'warn'); return false; }
     if (isOpen()) return true;
-    Object.assign(st, { cat: 'all', q: '', sel: null, first: true, rec: [], gone: new Set(), kind: '', pl: lang() });
+    Object.assign(st, { cat: 'all', q: '', sel: null, first: true, rec: [], last: 0, gone: new Set(), kind: '', pl: lang() });
     st.opener = root.activeElement || null;
     el = document.createElement('dialog');
     el.className = 'bw-start';
@@ -341,6 +363,7 @@ ${inside(ty, pl).length ? `<span class="st-lab">${esc(t('startInside'))}</span><
     chrome(); gallery(); side();
     st.rec = await recents();
     if (isOpen() && !st.sel) side();
+    lastCount();
     if (!opts.auto || !st.opener) el.querySelector('[data-st-q]')?.focus({ preventScroll: true });
     setTimeout(() => { st.first = false; el?.querySelector('.st-grid')?.classList.remove('st-first'); }, 1400);
     window.dispatchEvent(new CustomEvent('bw:start-open', { detail: { auto: !!opts.auto } }));
@@ -358,13 +381,20 @@ ${inside(ty, pl).length ? `<span class="st-lab">${esc(t('startInside'))}</span><
 
   /* ── when it shows by itself ── */
   const untouched = () => { const L = LIBX(); return !!M[S.svc] && !L?.isDoc(S.svc) && Object.values(M[S.svc]).every((e) => !(e.ops || []).length); };
+  /** The address-and-setting part of "shows by itself" (no waiting, no registry): bw:start off, a tool's tab, a test's browser without ?start=1, a #doc= link. */
+  function allowed() {
+    if (ls.get(OFF) === 'off') return false;
+    const P = new URLSearchParams(location.search);
+    if (P.get('automation') === '1' || document.documentElement.dataset.bwAutomation === '1') return false;
+    if (navigator.webdriver && P.get('start') !== '1') return false;
+    if (/[#&]doc=/.test(location.hash)) return false;
+    return true;
+  }
+  /** 0.18.2: true when this page opens the TOOL (not a specific document) and the start page will show by itself: 12-session then asks no «continue where you left off» question over it. */
+  const landing = () => allowed() && untouched();
   async function auto() {
     document.documentElement.dataset.bwStart = 'closed';
-    if (ls.get(OFF) === 'off') return;
-    const P = new URLSearchParams(location.search);
-    if (P.get('automation') === '1' || document.documentElement.dataset.bwAutomation === '1') return;
-    if (navigator.webdriver && P.get('start') !== '1') return;
-    if (/[#&]doc=/.test(location.hash)) return;
+    if (!allowed()) return;
     if (document.documentElement.dataset.bwSessionSettled !== '1') await new Promise((ok) => window.addEventListener('bw:session-settled', ok, { once: true }));
     try { await window.BW?.whenReady?.(20000); } catch { return; } // a first-launch card or another question is still open: not stacked on it
     if (!untouched()) return;
@@ -377,14 +407,32 @@ ${inside(ty, pl).length ? `<span class="st-lab">${esc(t('startInside'))}</span><
   const card = () => `<p class="hint">${esc(t('startSetHint'))}</p><label class="chk st-sw"><input type="checkbox" data-st-show ${ls.get(OFF) === 'off' ? '' : 'checked'}><span class="st-sw-t" aria-hidden="true"><i></i></span><span class="st-sw-w">${esc(t('startSetShow'))}</span></label>`;
   const mountCard = (c) => c?.querySelector('[data-st-show]')?.addEventListener('change', (ev) => { if (ev.target.checked) ls.del(OFF); else ls.set(OFF, 'off'); });
 
-  return { open, close, types: () => types(), type, create, recents, load, auto, card, mountCard, isOpen, get state() { return { ...st, rec: [...st.rec] }; } };
+  /** Home (top bar): the document in front is saved by the editor's own paths first (the draft and the library entry: the autosave a Save would also run), then the start page opens over it
+   *  («Back to <name>» returns). The editor has no discard prompt because nothing is discarded; opening this view never closes or replaces the document. */
+  async function home() {
+    try { writeDraft(); } catch { /* nothing to write */ }
+    try { await LIBX()?.persistNow?.(); } catch { /* not a library document */ }
+    return open();
+  }
+  return { open, close, home, landing, refresh, types: () => types(), type, create, recents, load, auto, card, mountCard, isOpen, get state() { return { ...st, rec: [...st.rec] }; } };
 })();
 
 /* the File tool: Lucide layout-template (ISC), one gold part; its own hover motion (the 0.13 rule: every icon an extension adds moves) */
 IC.startPage = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="7" rx="1.5"/><rect x="3" y="14" width="9" height="7" rx="1.5"/><rect class="hl" x="16" y="14" width="5" height="7" rx="1" stroke="none"/></svg>';
+/* the top bar's Home button: Lucide house (ISC), one gold part (the door); its own hover motion in 40-icon-motion.css */
+IC.homeBtn = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><rect class="hl" x="9.5" y="13.5" width="5" height="7.5" rx="1" stroke="none"/></svg>';
+/** The Home button: first in the top bar, before the document and language controls (the bar's own markup carries it, as the host switch, so syncUi keeps the very same node). */
+const homeHtml = () => `<button type="button" class="b home" data-a="home" data-k="home" title="${esc(t('startHomeTip'))}" aria-label="${esc(t('startHomeTip'))}"><span class="i">${ic('homeBtn')}</span><span class="w">${esc(t('startHome'))}</span></button>`;
+{
+  const baseUi = uiHtml;
+  uiHtml = function () {
+    const h = baseUi();
+    return /<div class="grp doc">/.test(h) ? h.replace(/<div class="grp doc">/, (m) => homeHtml() + m) : h;
+  };
+}
 bwExt({
   cmds: [{ id: 'startPage', group: 'file', key: 'Ctrl+Alt+N', edit: false }],
-  actions: { startPage: () => { START.open(); } },
+  actions: { startPage: () => { START.open(); }, home: () => START.home() },
   expose: { start: START },
   settings: [{ id: 'start', title: 'startSetTitle', icon: 'newdoc', html: START.card, mount: START.mountCard }],
   on: {
@@ -395,6 +443,8 @@ bwExt({
       if (prev) window.BW.dismissBlockers = (o) => { let n = prev(o); if (START.isOpen()) { START.close(); n += 1; } return n; };
       // the brand mark in the quick strip opens it too (a convention; no label)
       root.addEventListener('click', (e) => { if (e.target.closest?.('.island .brand') && !START.isOpen()) START.open(); });
+      // 0.18.2: the host's mirror comes in at boot, in parallel with this page: a document it brings (a new browser profile, the host's own tab) joins the open list at once
+      window.addEventListener('bw:library-ingested', () => { if (START.isOpen()) START.refresh(); });
       START.auto().catch((e) => console.error(e));
     },
     keydown: (e) => { if ((e.ctrlKey || e.metaKey) && e.altKey && !e.shiftKey && e.key.toLowerCase() === 'n') { e.preventDefault(); START.open(); return true; } return false; },

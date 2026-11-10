@@ -204,11 +204,13 @@ export async function handle(url, { grace = Number(process.env.BW_POWER_GRACE_MS
   if (a.action === 'start') {
     // 0.17.0: this install's host, no browser window (the page that asked is already open). With a host already up on the port, open() reuses it; a host of another install is refused (HOST_FOREIGN), never a second one.
     // 0.17.8: with ?file= the host serves that very editor file (the document the person has open). A file that fails the checks (outside the allowed places, not an editor) is
-    // not an error: the host still starts, on the newest document, and the answer says the file was ignored.
+    // not an error: the host still starts, on the blank tool editor (the start page, 0.18.2; it was the newest document), and the answer says the file was ignored.
     let file = null;
     let fileIgnored = null;
     if (a.file) { try { file = validateFile(a.file); } catch (e) { fileIgnored = String(e.message || e); } }
-    const r = await cli.open({ inputs: file ? [file] : [], browser: false, port: Number(process.env.BW_OPEN_PORT) || 4317 }); // BW_OPEN_PORT: tests only
+    // 0.18.2: no file (or one that was ignored) is a plain open of the TOOL: the host serves the blank editor, whose landing is the start page (it used to serve the newest saved document,
+    // which is a `doc-` service, so the start page never showed). A file named in the link is a specific document and is served as it is.
+    const r = await cli.open({ inputs: file ? [file] : [], blank: !file, browser: false, port: Number(process.env.BW_OPEN_PORT) || 4317 }); // BW_OPEN_PORT: tests only
     return { action: 'start', url: r.url, port: r.port, pid: r.pid, browser: false, ...(file ? { file } : {}), ...(fileIgnored ? { fileIgnored } : {}) };
   }
   const file = validateFile(a.file);

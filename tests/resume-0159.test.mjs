@@ -61,6 +61,8 @@ try {
   const booted = (c) => until(async () => (await c.ev('!!(window.BW && window.BW.ready && document.documentElement.dataset.bwSession)')) === true, 60000);
   const S = await attach((u) => u.includes('t=S'));
   check('Chrome started; the seed tab (a tool\'s automation tab) booted', !!(await booted(S)));
+  // 0.18.2: opening the tool lands on the start page and the popup is its button; every flow below tests the popup itself, so the start page is switched off in this profile (Settings > Start page) until R1b
+  await S.ev("localStorage.setItem('bw:start','off')");
   await S.ev('window.BW.EXT.library.newDocument().then(()=>1)');
   const entryStr = await until(async () => { const r = await S.ev('(async()=>{ const e = window.BW.EXT.library.entryOf(window.BW.S.svc); return e && e.editions ? JSON.stringify(e) : "" })()'); return r || false; }, 30000);
   const entry = entryStr ? JSON.parse(entryStr) : null;
@@ -96,6 +98,21 @@ try {
   const q = (c, js) => c.ev(`(()=>{ const d = document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-resume'); return ${js} })()`);
 
   // R1: the list
+  // R1b (0.18.2): with the start page on, a plain tool open lands on it, no popup over it; its "Pick up where you left off (N)" button opens the very same popup
+  await S.ev("localStorage.removeItem('bw:start'); localStorage.setItem('bw:profile', JSON.stringify({ name: 'T', role: 't', done: true }))"); // a profile: the first-launch card would hold the start page back
+  {
+    const L = await popup();
+    await booted(L);
+    const landed = await until(async () => (await L.ev("document.documentElement.dataset.bwStart === 'open' && document.documentElement.dataset.bwResume === 'start'")) === true, 60000);
+    check('R1b: a plain tool open lands on the start page, no popup over it (data-bw-resume=start)', !!landed && (await L.ev("!document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-resume')")) === true, await L.ev('JSON.stringify({s: document.documentElement.dataset.bwStart, r: document.documentElement.dataset.bwResume})'));
+    const btn = await until(async () => (await L.ev("(document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-start [data-st-a=\"resume\"]')?.textContent || '').includes('70')")) === true, 20000);
+    check('R1b: the start page offers the button with the count of the last session (70)', !!btn);
+    await L.ev("document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-start [data-st-a=\"resume\"]').click()");
+    check('R1b: that button opens the same popup, with all 70 documents', !!(await dlgReady(L)) && (await q(L, "d.querySelectorAll('.main li').length")) === N);
+    await q(L, "d.querySelector('[data-s=\"later\"]').click()");
+    L.close();
+  }
+  await S.ev("localStorage.setItem('bw:start','off'); localStorage.removeItem('bw:profile')");
   let P = await popup();
   { const okd = !!(await dlgReady(P)); check('R1: the popup opened on its own (ready state: data-bw-resume=asked and the dialog is open)', okd, okd ? '' : await P.ev('JSON.stringify({u: location.href, r: document.documentElement.dataset.bwResume, s: document.documentElement.dataset.bwSession, d: !!document.querySelector("dialog.bw-resume"), n: document.querySelectorAll("dialog").length, ready: !!(window.BW&&window.BW.ready)})')); }
   const rows = JSON.parse(await q(P, "JSON.stringify([...d.querySelectorAll('.main li')].slice(0,3).map(li=>({ti:li.querySelector('.ti').textContent, me:li.querySelector('.me').textContent, label:li.querySelector('input').getAttribute('aria-label'), one:li.querySelector('.one').getAttribute('aria-label')})))"));

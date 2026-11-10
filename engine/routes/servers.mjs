@@ -16,7 +16,7 @@ const GRACE = () => Number(process.env.BW_POWER_GRACE_MS || 1500);
 const flushTabs = (ctx) => { emit(ctx, 'flush'); }; // 0.15.0: ctx.session.live is gone (one stream per browser): emit() reaches every tab
 const LOCAL = /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/;
 
-/** The way back (0.17.8): the editor file the person came from (checked like any file a business-wrap: URL names), else the host's own editor file, else the launcher's choice (newest document). */
+/** The way back (0.17.8): the editor file the person came from (checked like any file a business-wrap: URL names), else the host's own editor file, else the launcher's choice (the tool editor: the start page, 0.18.2; it was the newest document). */
 async function reopenOnDisk(rt, ctx) {
   const geometry = { x: rt.x, y: rt.y, w: rt.w, h: rt.h };
   let file = null;
