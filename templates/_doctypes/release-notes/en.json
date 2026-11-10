@@ -3,10 +3,11 @@
   "control": {
     "documentId": "BW-RN-NEW-001",
     "title": "Release notes: Product and version",
-    "preparedBy": "Name and job title",
+    "preparedBy": "[Name and job title]",
+    "approvedBy": "[Name and job title]",
     "documentType": "Release notes",
     "classification": "Internal",
-    "owner": "Organisation name",
+    "owner": "[Organisation name]",
     "issuedOn": "YYYY-MM-DD",
     "version": "V0.1",
     "status": "Draft",
@@ -20,42 +21,84 @@
       "—"
     ]
   ],
+  "approvals": [
+    [
+      "Prepared by: Release manager",
+      "",
+      "",
+      "",
+      ""
+    ],
+    [
+      "Approved by: Product owner",
+      "",
+      "",
+      "",
+      ""
+    ]
+  ],
   "labels": {
     "kicker": "RELEASE NOTES",
-    "subtitle": "Product and release number"
+    "subtitle": "What changed in this release"
+  },
+  "cover": {
+    "cols": 2,
+    "badge": {
+      "label": "Version",
+      "value": "1.0.0"
+    },
+    "fields": [
+      {
+        "label": "Release date",
+        "value": "YYYY-MM-DD",
+        "kind": "date"
+      },
+      {
+        "label": "Release type",
+        "value": "[Major, minor or patch]",
+        "kind": "text"
+      },
+      {
+        "label": "Environment",
+        "value": "[Target environment]",
+        "kind": "text"
+      },
+      {
+        "label": "Build",
+        "value": "[Build number]",
+        "kind": "text"
+      }
+    ],
+    "statement": {
+      "text": "Highlights of this release",
+      "items": [
+        "[The main new capability, in the user's words]",
+        "[The main improvement users will notice]",
+        "[The main fix or change that needs attention]"
+      ]
+    }
+  },
+  "layout": {
+    "tocDepth": 1,
+    "back": [
+      "control",
+      "revisions"
+    ],
+    "hide": [
+      "toc"
+    ]
   },
   "chapters": [
     {
-      "title": "Release summary",
+      "title": "Highlights",
       "sections": [
         {
-          "title": "Release summary",
+          "title": "Summary",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "Three to five lines on the most important parts of the release, in the user's words and not the developer's. Example: \"You can now follow your request from the home page without opening the request list.\""
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Item",
-                "Value"
-              ],
-              "rows": [
-                [
-                  "Release number",
-                  "1.0.0"
-                ],
-                [
-                  "Release date",
-                  "YYYY-MM-DD"
-                ],
-                [
-                  "Release type",
-                  "Major, minor or patch"
-                ]
+                "Summarise the release in two or three sentences: who it is for, the main benefit, and anything users must do before they upgrade."
               ]
             }
           ]
@@ -63,119 +106,81 @@
       ]
     },
     {
-      "title": "What is new",
+      "title": "Changes in this release",
       "sections": [
         {
-          "title": "What is new",
+          "title": "Change list",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "Each new feature with a description that starts with what the user can now do."
+                "List each change once, under the type that fits it best. Start every description with what the user sees or can now do."
               ]
             },
             {
               "kind": "table",
               "columns": [
+                "Type",
                 "ID",
-                "Feature",
-                "Description",
-                "Who is affected",
+                "Change",
+                "Affects",
                 "Reference"
               ],
               "rows": [
                 [
-                  "N-001",
+                  "Added",
+                  "CH-001",
+                  "[What users can now do, in one sentence]",
                   "…",
+                  "…"
+                ],
+                [
+                  "Changed",
+                  "CH-002",
                   "…",
                   "…",
                   "…"
                 ],
                 [
-                  "N-002",
+                  "Fixed",
+                  "CH-003",
                   "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Security",
+                  "CH-004",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Deprecated",
+                  "CH-005",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
+                  "Removed",
+                  "CH-006",
                   "…",
                   "…",
                   "…"
                 ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "title": "Improvements",
-      "sections": [
-        {
-          "title": "Improvements",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "Changes to existing behaviour that make it faster, clearer or easier."
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "ID",
-                "Improvement",
-                "Description",
-                "Reference"
               ],
-              "rows": [
-                [
-                  "I-001",
-                  "…",
-                  "…",
-                  "…"
-                ],
-                [
-                  "I-002",
-                  "…",
-                  "…",
-                  "…"
-                ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "title": "Fixed defects",
-      "sections": [
-        {
-          "title": "Fixed defects",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "The defects that were fixed, with their severity and a short note on the fix."
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Defect ID",
-                "Summary",
-                "Severity",
-                "Fix"
+              "colWidths": [
+                12,
+                10,
+                43,
+                20,
+                15
               ],
-              "rows": [
-                [
-                  "DEF-001",
-                  "…",
-                  "…",
-                  "…"
-                ],
-                [
-                  "DEF-002",
-                  "…",
-                  "…",
-                  "…"
-                ]
+              "style": "sheet",
+              "nowrapCols": [
+                0,
+                1
               ]
             }
           ]
@@ -183,15 +188,15 @@
       ]
     },
     {
-      "title": "Known issues and workarounds",
+      "title": "Known issues",
       "sections": [
         {
-          "title": "Known issues and workarounds",
+          "title": "Open issues and workarounds",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "What is not fixed yet and what users do in the meantime. Do not drop a known issue because showing it is awkward."
+                "Name each problem that ships with this release, how to work around it, and when it is planned to be fixed."
               ]
             },
             {
@@ -199,25 +204,31 @@
               "columns": [
                 "ID",
                 "Issue",
-                "Impact",
                 "Workaround",
-                "Planned fix"
+                "Fix planned"
               ],
               "rows": [
                 [
-                  "K-001",
+                  "KI-001",
                   "…",
                   "…",
-                  "…",
-                  "…"
+                  "[Release or date]"
                 ],
                 [
-                  "K-002",
-                  "…",
+                  "KI-002",
                   "…",
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                10,
+                40,
+                35,
+                15
+              ],
+              "nowrapCols": [
+                0
               ]
             }
           ]
@@ -228,35 +239,37 @@
       "title": "Breaking changes and deprecations",
       "sections": [
         {
-          "title": "Breaking changes and deprecations",
+          "title": "What stops working as before",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "What stops working as before, what the user or team must do and the effective date."
+                "List anything that works differently or will be removed, who is affected, and what they should do."
               ]
             },
             {
               "kind": "table",
               "columns": [
                 "Change",
-                "Impact",
-                "Action required",
-                "Effective date"
+                "Who is affected",
+                "What to do"
               ],
               "rows": [
                 [
                   "…",
                   "…",
-                  "…",
-                  "YYYY-MM-DD"
+                  "…"
                 ],
                 [
                   "…",
                   "…",
-                  "…",
-                  "YYYY-MM-DD"
+                  "…"
                 ]
+              ],
+              "colWidths": [
+                35,
+                30,
+                35
               ]
             }
           ]
@@ -264,50 +277,55 @@
       ]
     },
     {
-      "title": "Upgrade and deployment notes",
+      "title": "Upgrade and deployment",
       "sections": [
         {
-          "title": "Upgrade and deployment notes",
+          "title": "Upgrade steps",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "Prerequisites, the upgrade steps in order and how the team rolls back if it fails."
+                "Give the steps in the order they are done, and say who does each one."
               ]
-            },
-            {
-              "kind": "subhead",
-              "text": "Upgrade steps"
             },
             {
               "kind": "table",
               "columns": [
-                "Step",
+                "No",
                 "Action",
                 "Owner"
               ],
               "rows": [
                 [
                   "1",
-                  "…",
+                  "Back up the data and the configuration.",
                   "…"
                 ],
                 [
                   "2",
-                  "…",
+                  "Apply the update in the target environment.",
                   "…"
                 ],
                 [
-                  "Rollback",
-                  "…",
+                  "3",
+                  "Check that the main flows work.",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                8,
+                62,
+                30
+              ],
+              "nowrapCols": [
+                0
               ]
-            },
-            {
-              "kind": "subhead",
-              "text": "Compatibility"
-            },
+            }
+          ]
+        },
+        {
+          "title": "Supported versions",
+          "blocks": [
             {
               "kind": "table",
               "columns": [
@@ -323,42 +341,10 @@
                   "…",
                   "…"
                 ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "title": "Documentation and training updates",
-      "sections": [
-        {
-          "title": "Documentation and training updates",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "The guides that changed and what users need to learn again."
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Document",
-                "What changed",
-                "Version"
               ],
-              "rows": [
-                [
-                  "…",
-                  "…",
-                  "…"
-                ],
-                [
-                  "…",
-                  "…",
-                  "…"
-                ]
+              "colWidths": [
+                40,
+                60
               ]
             }
           ]
@@ -369,14 +355,8 @@
       "title": "Support",
       "sections": [
         {
-          "title": "Support",
+          "title": "Where to get help",
           "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "How a user reports a problem in this release and to whom."
-              ]
-            },
             {
               "kind": "table",
               "columns": [
@@ -385,13 +365,21 @@
               ],
               "rows": [
                 [
-                  "Report",
-                  "…"
+                  "Service desk",
+                  "[How to reach it and its working hours]"
                 ],
                 [
-                  "Support hours",
-                  "…"
+                  "Documentation",
+                  "[Where the user guide is kept]"
+                ],
+                [
+                  "Report a problem",
+                  "[Where to raise a ticket, and what to include]"
                 ]
+              ],
+              "colWidths": [
+                30,
+                70
               ]
             }
           ]

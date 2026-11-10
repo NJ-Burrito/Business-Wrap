@@ -9,20 +9,13 @@
     "ar": "محضر اجتماع"
   },
   "description": {
-    "en": "Records what happened in a meeting: attendance, items, decisions and actions with owners and dates, for those who attended and those who did not.",
-    "ar": "يسجل ما جرى في الاجتماع: الحضور والبنود والقرارات والإجراءات بأصحابها ومواعيدها، لمن حضر ولمن لم يحضر."
+    "en": "Records a meeting: header with chair and venue, attendance, agenda, discussion, decisions and an action log with owners and due dates, then signatures.",
+    "ar": "يسجل الاجتماع: رأسية برئيس الاجتماع والمكان، والحضور وجدول الأعمال والنقاش والقرارات وسجل إجراءات بمسؤوليها ومواعيدها، ثم التوقيعات."
   },
   "placeholder": {
     "en": "Meeting subject",
     "ar": "موضوع الاجتماع"
   },
   "palette": "slate",
-  "coverDesign": "compact",
-  "motif": "minutes",
-  "layout": {
-    "hide": [
-      "revisions",
-      "toc"
-    ]
-  }
+  "coverDesign": "form"
 }

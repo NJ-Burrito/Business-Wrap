@@ -9,14 +9,13 @@
     "en": "Change request with impact analysis"
   },
   "description": {
-    "ar": "طلب تغيير على متطلب أو مخرج معتمد: السبب والوصف ومصفوفة أثر على اثني عشر مجالا والتقدير والبدائل والمخاطر وخطة التنفيذ، ثم قرار اللجنة وتواقيعها.",
-    "en": "A request to change an approved requirement or deliverable: reason, description, an impact matrix over twelve areas, estimate, alternatives, risks and rollout plan, then the board's decision and signatures."
+    "ar": "سجل طلب تغيير: السبب والأثر والمخاطر حسب المجال والجهد والتكلفة والبدائل والتنفيذ والتراجع والمراجعة، ثم قرار جهة الاعتماد وتواقيعها.",
+    "en": "A change request record: reason, impact and risk by area, effort and cost, alternatives, implementation and back-out, review, then the authority's decision and signatures."
   },
   "placeholder": {
     "ar": "عنوان التغيير",
     "en": "Change title"
   },
   "palette": "slate",
-  "coverDesign": "spine",
-  "motif": "change-request"
+  "coverDesign": "form"
 }
