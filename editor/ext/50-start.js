@@ -358,8 +358,7 @@ ${inside(ty, pl).length ? `<span class="st-lab">${esc(t('startInside'))}</span><
     el.show();
     document.documentElement.style.overflow = 'hidden'; // the page behind does not scroll under the view
     document.documentElement.dataset.bwStart = 'open';
-    // the NJ mark lives in the page (z 41), above this view (the toolbar host, z 40): it hides while the start page is open, or it covers the last tile row and the Create hint
-    if (!document.getElementById('bw-start-page-css')) { const sx = document.createElement('style'); sx.id = 'bw-start-page-css'; sx.textContent = 'html[data-bw-start="open"] #bw-watermark{visibility:hidden;pointer-events:none}'; document.head.appendChild(sx); }
+    // 0.18.2: the NJ mark (z 41, in the page, above this view) stays on screen over the start page; 50-start.css leaves it a bottom-start safe area (0.18.0 hid it, which hid it on every open)
     chrome(); gallery(); side();
     st.rec = await recents();
     if (isOpen() && !st.sel) side();
