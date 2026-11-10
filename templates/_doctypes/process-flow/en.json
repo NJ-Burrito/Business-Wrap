@@ -3,10 +3,11 @@
   "control": {
     "documentId": "BW-PF-NEW-001",
     "title": "Process flow document (as-is and to-be): Process name",
-    "preparedBy": "Name and job title",
+    "preparedBy": "[Name and job title]",
+    "approvedBy": "[Name and job title]",
     "documentType": "Process flow document (as-is and to-be)",
     "classification": "Internal",
-    "owner": "Organisation name",
+    "owner": "[Organisation name]",
     "issuedOn": "YYYY-MM-DD",
     "version": "V0.1",
     "status": "Draft",
@@ -20,23 +21,67 @@
       "—"
     ]
   ],
+  "approvals": [
+    [
+      "Prepared by: Business analyst",
+      "",
+      "",
+      "",
+      ""
+    ],
+    [
+      "Reviewed by: Process owner",
+      "",
+      "",
+      "",
+      ""
+    ],
+    [
+      "Approved by: Business owner",
+      "",
+      "",
+      "",
+      ""
+    ]
+  ],
   "labels": {
     "kicker": "PROCESS FLOW",
     "subtitle": "The process as it runs, and as it should run"
   },
+  "cover": {
+    "cols": 3,
+    "fields": [
+      {
+        "label": "Process owner",
+        "value": "[Process owner name]",
+        "kind": "text"
+      },
+      {
+        "label": "Process scope",
+        "value": "[First and last step]",
+        "kind": "text"
+      },
+      {
+        "label": "Process level",
+        "value": "Level 2: process",
+        "kind": "text"
+      }
+    ]
+  },
+  "layout": {
+    "tocDepth": 1
+  },
   "chapters": [
     {
-      "number": "1",
       "title": "Purpose and scope",
       "sections": [
         {
-          "number": "1.1",
           "title": "Process definition",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "Say what the process is, what starts it, what ends it and what is in and out of scope."
+                "Say what the process is, what starts it, what ends it, and what is in and out of its scope."
               ]
             },
             {
@@ -59,27 +104,35 @@
                   "…"
                 ],
                 [
+                  "In scope",
+                  "…"
+                ],
+                [
                   "Out of scope",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                24,
+                76
               ]
             }
-          ]
+          ],
+          "number": "1.1"
         }
-      ]
+      ],
+      "number": "1"
     },
     {
-      "number": "2",
       "title": "Overview (SIPOC)",
       "sections": [
         {
-          "number": "2.1",
           "title": "SIPOC table",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "Summarise the process from supplier to customer so its edges are known before it is drawn."
+                "Summarise the process from supplier to customer, so its edges are known before it is drawn."
               ]
             },
             {
@@ -106,24 +159,31 @@
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                20,
+                20,
+                20,
+                20,
+                20
               ]
             }
-          ]
+          ],
+          "number": "2.1"
         }
-      ]
+      ],
+      "number": "2"
     },
     {
-      "number": "3",
-      "title": "Roles and actors",
+      "title": "Roles",
       "sections": [
         {
-          "number": "3.1",
           "title": "Role list",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "List each role that appears in the diagram, its department and what it handles."
+                "List each role that appears in the diagrams, its department and what it handles."
               ]
             },
             {
@@ -147,24 +207,30 @@
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                22,
+                20,
+                38,
+                20
               ]
             }
-          ]
+          ],
+          "number": "3.1"
         }
-      ]
+      ],
+      "number": "3"
     },
     {
-      "number": "4",
       "title": "As-is process",
       "sections": [
         {
-          "number": "4.1",
-          "title": "As-is diagram and steps",
+          "title": "As-is steps and diagram",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "Draw the process as it really runs, not as the regulation says, after interviewing those who run it."
+                "Set down the steps as they really run, not as the regulation says, after talking to those who run them. Then draw them. The rows and the figure below are an example: replace them."
               ]
             },
             {
@@ -174,26 +240,44 @@
                 "Actor",
                 "Activity",
                 "System",
-                "Duration",
-                "Pain point"
+                "Output"
               ],
               "rows": [
                 [
                   "1",
-                  "[Role]",
-                  "…",
-                  "…",
-                  "…",
-                  "…"
+                  "Requester",
+                  "Submits the request on paper",
+                  "—",
+                  "Request form"
                 ],
                 [
                   "2",
-                  "[Role]",
-                  "…",
-                  "…",
-                  "…",
-                  "…"
+                  "Clerk",
+                  "Registers the request in a log",
+                  "Spreadsheet",
+                  "Reference number"
+                ],
+                [
+                  "3",
+                  "Clerk",
+                  "Checks the file against the list by hand",
+                  "—",
+                  "Completeness result"
+                ],
+                [
+                  "4",
+                  "Supervisor",
+                  "Approves the request",
+                  "—",
+                  "Signed decision"
                 ]
+              ],
+              "colWidths": [
+                8,
+                20,
+                44,
+                14,
+                14
               ]
             },
             {
@@ -207,17 +291,17 @@
                   {
                     "id": "n1",
                     "kind": "start",
-                    "label": "Process starts"
+                    "label": "Request received"
                   },
                   {
                     "id": "n2",
-                    "kind": "applicant",
-                    "label": "Prepare the input"
+                    "kind": "staff",
+                    "label": "Register the request"
                   },
                   {
                     "id": "n3",
                     "kind": "staff",
-                    "label": "Manual check"
+                    "label": "Check the file by hand"
                   },
                   {
                     "id": "n4",
@@ -227,12 +311,17 @@
                   {
                     "id": "n5",
                     "kind": "rework",
-                    "label": "Return for correction"
+                    "label": "Ask the requester to complete"
                   },
                   {
                     "id": "n6",
+                    "kind": "staff",
+                    "label": "Supervisor approves"
+                  },
+                  {
+                    "id": "n7",
                     "kind": "ok",
-                    "label": "Approved"
+                    "label": "Request closed"
                   }
                 ],
                 "edges": [
@@ -258,48 +347,56 @@
                     "id": "e4",
                     "from": "n4",
                     "to": "n6",
-                    "label": "Yes",
-                    "kind": "main"
+                    "kind": "main",
+                    "label": "Yes"
                   },
                   {
                     "id": "e5",
                     "from": "n4",
                     "to": "n5",
-                    "label": "No",
-                    "kind": "return"
+                    "kind": "return",
+                    "label": "No"
                   },
                   {
                     "id": "e6",
                     "from": "n5",
                     "to": "n2",
                     "kind": "return"
+                  },
+                  {
+                    "id": "e7",
+                    "from": "n6",
+                    "to": "n7",
+                    "kind": "main"
                   }
                 ],
                 "legend": {
-                  "applicant": "Role A step",
-                  "staff": "Role B step",
-                  "system": "Automatic step",
-                  "rework": "Returned for correction",
-                  "ok": "Ends approved"
+                  "applicant": "Start event",
+                  "staff": "Task",
+                  "system": "System task",
+                  "rework": "Rework",
+                  "ok": "End event",
+                  "wire-main": "Sequence flow",
+                  "wire-return": "Return flow"
                 }
               }
             }
-          ]
+          ],
+          "number": "4.1"
         }
-      ]
+      ],
+      "number": "4"
     },
     {
-      "number": "5",
       "title": "As-is pain points",
       "sections": [
         {
-          "number": "5.1",
           "title": "Pain point register",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "Give each pain point its cause, effect and a measure where there is one, for example: data re-keyed by hand between two systems, 15 minutes per request."
+                "Give each pain point its cause, its effect and a measure where there is one, for example: data re-keyed by hand between two systems, 15 minutes per request."
               ]
             },
             {
@@ -326,24 +423,31 @@
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                8,
+                30,
+                24,
+                22,
+                16
               ]
             }
-          ]
+          ],
+          "number": "5.1"
         }
-      ]
+      ],
+      "number": "5"
     },
     {
-      "number": "6",
       "title": "To-be process",
       "sections": [
         {
-          "number": "6.1",
-          "title": "To-be diagram and steps",
+          "title": "To-be steps and diagram",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "Draw the new process once the pain points are removed, and show in the table what changed in each step."
+                "Draw the new process with the pain points removed. The gap analysis that follows lists what changed in each step. The rows and the figure below are an example: replace them."
               ]
             },
             {
@@ -353,26 +457,44 @@
                 "Actor",
                 "Activity",
                 "System",
-                "Duration",
-                "Change from as-is"
+                "Output"
               ],
               "rows": [
                 [
                   "1",
-                  "[Role]",
-                  "…",
-                  "…",
-                  "…",
-                  "…"
+                  "Requester",
+                  "Submits the request online",
+                  "[System]",
+                  "Request record"
                 ],
                 [
                   "2",
-                  "[Role]",
-                  "…",
-                  "…",
-                  "…",
-                  "…"
+                  "System",
+                  "Validates the required fields and documents",
+                  "[System]",
+                  "Validation result"
+                ],
+                [
+                  "3",
+                  "Reviewer",
+                  "Reviews the request and decides",
+                  "[System]",
+                  "Decision"
+                ],
+                [
+                  "4",
+                  "System",
+                  "Notifies the requester",
+                  "[System]",
+                  "Notification"
                 ]
+              ],
+              "colWidths": [
+                8,
+                20,
+                44,
+                14,
+                14
               ]
             },
             {
@@ -386,32 +508,37 @@
                   {
                     "id": "n1",
                     "kind": "start",
-                    "label": "Process starts"
+                    "label": "Request submitted online"
                   },
                   {
                     "id": "n2",
-                    "kind": "applicant",
-                    "label": "Enter details"
+                    "kind": "system",
+                    "label": "Automatic validation"
                   },
                   {
                     "id": "n3",
-                    "kind": "system",
-                    "label": "Automatic check"
+                    "kind": "decision",
+                    "label": "Valid?"
                   },
                   {
                     "id": "n4",
-                    "kind": "decision",
-                    "label": "Complete?"
+                    "kind": "rework",
+                    "label": "Requester corrects"
                   },
                   {
                     "id": "n5",
                     "kind": "staff",
-                    "label": "Review"
+                    "label": "Review the request"
                   },
                   {
                     "id": "n6",
+                    "kind": "system",
+                    "label": "Notify the requester"
+                  },
+                  {
+                    "id": "n7",
                     "kind": "ok",
-                    "label": "Approved"
+                    "label": "Request closed"
                   }
                 ],
                 "edges": [
@@ -430,21 +557,21 @@
                   {
                     "id": "e3",
                     "from": "n3",
-                    "to": "n4",
-                    "kind": "main"
+                    "to": "n5",
+                    "kind": "main",
+                    "label": "Yes"
                   },
                   {
                     "id": "e4",
-                    "from": "n4",
-                    "to": "n5",
-                    "label": "Yes",
-                    "kind": "main"
+                    "from": "n3",
+                    "to": "n4",
+                    "kind": "return",
+                    "label": "No"
                   },
                   {
                     "id": "e5",
                     "from": "n4",
                     "to": "n2",
-                    "label": "No",
                     "kind": "return"
                   },
                   {
@@ -452,74 +579,92 @@
                     "from": "n5",
                     "to": "n6",
                     "kind": "main"
+                  },
+                  {
+                    "id": "e7",
+                    "from": "n6",
+                    "to": "n7",
+                    "kind": "main"
                   }
                 ],
                 "legend": {
-                  "applicant": "Role A step",
-                  "staff": "Role B step",
-                  "system": "Automatic step",
-                  "rework": "Returned for correction",
-                  "ok": "Ends approved"
+                  "applicant": "Start event",
+                  "staff": "Task",
+                  "system": "System task",
+                  "rework": "Rework",
+                  "ok": "End event",
+                  "wire-main": "Sequence flow",
+                  "wire-return": "Return flow"
                 }
               }
             }
-          ]
+          ],
+          "number": "6.1"
         }
-      ]
+      ],
+      "number": "6"
     },
     {
-      "number": "7",
       "title": "Gap analysis",
       "sections": [
         {
-          "number": "7.1",
           "title": "As-is against to-be",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "Set as-is and to-be side by side with the expected benefit of each change."
+                "Set the as-is and the to-be side by side for each step, name the gap and the action that closes it."
               ]
             },
             {
               "kind": "table",
               "columns": [
-                "Area",
+                "Step",
                 "As-is",
                 "To-be",
-                "Benefit"
+                "Gap",
+                "Action"
               ],
               "rows": [
                 [
-                  "…",
-                  "…",
-                  "…",
+                  "1",
+                  "Paper request",
+                  "Online request",
+                  "Channel",
                   "…"
                 ],
                 [
-                  "…",
-                  "…",
-                  "…",
+                  "2",
+                  "Manual check",
+                  "Automatic validation",
+                  "Manual effort",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                10,
+                30,
+                30,
+                18,
+                12
               ]
             }
-          ]
+          ],
+          "number": "7.1"
         }
-      ]
+      ],
+      "number": "7"
     },
     {
-      "number": "8",
-      "title": "Decision points and business rules",
+      "title": "Decision points and rules",
       "sections": [
         {
-          "number": "8.1",
           "title": "Decision gateways",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "List each decision gateway in the diagram with its condition and the result of each branch."
+                "A diamond in a figure is a gateway: a decision with labelled exits. List each gateway with its condition and the result of each exit."
               ]
             },
             {
@@ -543,19 +688,25 @@
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                8,
+                28,
+                36,
+                28
               ]
             }
-          ]
+          ],
+          "number": "8.1"
         }
-      ]
+      ],
+      "number": "8"
     },
     {
-      "number": "9",
-      "title": "Exceptions and alternative flows",
+      "title": "Exceptions",
       "sections": [
         {
-          "number": "9.1",
-          "title": "Exceptions",
+          "title": "Exceptions and alternative flows",
           "blocks": [
             {
               "kind": "prose",
@@ -584,65 +735,30 @@
                   "…",
                   "[Owner]"
                 ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "number": "10",
-      "title": "Inputs, outputs and systems",
-      "sections": [
-        {
-          "number": "10.1",
-          "title": "Documents and data",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "List the documents and data going in and out, and the systems they pass through."
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Name",
-                "Type",
-                "From",
-                "To"
               ],
-              "rows": [
-                [
-                  "…",
-                  "Input",
-                  "…",
-                  "…"
-                ],
-                [
-                  "…",
-                  "Output",
-                  "…",
-                  "…"
-                ]
+              "colWidths": [
+                8,
+                30,
+                46,
+                16
               ]
             }
-          ]
+          ],
+          "number": "9.1"
         }
-      ]
+      ],
+      "number": "9"
     },
     {
-      "number": "11",
       "title": "Process metrics",
       "sections": [
         {
-          "number": "11.1",
           "title": "Indicators",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "Compare as-is with to-be: cycle time, rework count and first-time completion rate."
+                "Compare the as-is with the to-be: cycle time, rework rate and the share completed first time."
               ]
             },
             {
@@ -661,63 +777,71 @@
                   "…"
                 ],
                 [
+                  "Rework rate",
+                  "…",
+                  "…",
+                  "…"
+                ],
+                [
                   "First-time completion",
                   "…",
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                34,
+                22,
+                22,
+                22
               ]
             }
-          ]
+          ],
+          "number": "10.1"
         }
-      ]
+      ],
+      "number": "10"
     },
     {
-      "number": "12",
-      "title": "Assumptions, risks and open questions",
+      "title": "Annex: open questions",
       "sections": [
         {
-          "number": "12.1",
-          "title": "Register",
+          "title": "Open questions",
           "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "List what we assumed, what we fear and what is not settled."
-              ]
-            },
             {
               "kind": "table",
               "columns": [
-                "ID",
-                "Type",
-                "Statement",
-                "Owner"
+                "No.",
+                "Question",
+                "Owner",
+                "Due"
               ],
               "rows": [
                 [
-                  "A-01",
-                  "Assumption",
+                  "1",
                   "…",
-                  "[Owner]"
+                  "[Owner]",
+                  "YYYY-MM-DD"
                 ],
                 [
-                  "R-01",
-                  "Risk",
+                  "2",
                   "…",
-                  "[Owner]"
-                ],
-                [
-                  "Q-01",
-                  "Question",
-                  "…",
-                  "[Owner]"
+                  "[Owner]",
+                  "YYYY-MM-DD"
                 ]
+              ],
+              "colWidths": [
+                8,
+                54,
+                20,
+                18
               ]
             }
-          ]
+          ],
+          "number": "11.1"
         }
-      ]
+      ],
+      "number": "11"
     }
   ],
   "openQuestions": []
