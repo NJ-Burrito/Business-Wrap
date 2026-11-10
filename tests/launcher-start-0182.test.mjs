@@ -84,6 +84,14 @@ async function landed(page) {
   });
 }
 
+/** 0.18.2 (ruling D11): when something can be resumed, the «continue where you left off» popup opens by itself first, as in 0.18.1; answering «later» leaves the start page. */
+async function dismissPopup(page) {
+  await page.waitForFunction(() => document.documentElement.dataset.bwResume !== 'asked' || !!(document.getElementById('bw-ui-host')?.shadowRoot?.querySelector('dialog.bw-resume') || document.querySelector('dialog.bw-resume')), null, { timeout: 15000 }).catch(() => {}); // asked = the popup is being put up: wait for the dialog itself
+  const had = await page.evaluate(() => { const d = document.getElementById('bw-ui-host')?.shadowRoot?.querySelector('dialog.bw-resume') || document.querySelector('dialog.bw-resume'); if (!d) return false; d.querySelector('[data-s="later"]')?.click(); return true; });
+  if (had) await page.waitForSelector('html[data-bw-start="open"]', { timeout: 20000, state: 'attached' }).catch(() => {});
+  return { had, ...(await landed(page)) };
+}
+
 try {
   browser = await chromium.launch({ ...launchOptions(), args: [...(launchOptions().args || []), '--bw-session=bw-1109'] });
 
@@ -162,9 +170,10 @@ try {
     check('host: it serves the TOOL (the blank editor with the document-type payload), not the newest saved document', /id="bw-doctypes"/.test(served) && !served.includes(saved.id), `types=${/id="bw-doctypes"/.test(served)}`);
     const last = { runId: 'r1', at: new Date().toISOString(), tabs: [{ tab: 't-old', title: 'Last time', at: new Date().toISOString(), ed: 'en', svc: saved.id }], older: [] };
     const a = await person(`http://127.0.0.1:${port}/`, { init: { last } });
-    const ra = await landed(a.page);
-    check('host: the served page lands on the start page', ra.start === 'open' && ra.dlg && !ra.isDoc, JSON.stringify(ra));
-    check('host: the «continue where you left off» question does NOT open over it (one landing; data-bw-resume=start)', !ra.resumeDlg && ra.resume === 'start', JSON.stringify({ r: ra.resume, d: ra.resumeDlg }));
+    const ra0 = await landed(a.page);
+    check('host: with something to resume, the «continue where you left off» popup opens by itself (as in 0.18.1)', ra0.resume === 'asked' && ra0.resumeDlg && !ra0.isDoc, JSON.stringify({ r: ra0.resume, d: ra0.resumeDlg }));
+    const ra = await dismissPopup(a.page);
+    check('host: closing the popup leaves the served page on the start page', ra.had && ra.start === 'open' && ra.dlg && !ra.isDoc, JSON.stringify(ra));
     check('host: the saved document is in Recents (the host\'s library mirror)', !!(await until(async () => (await a.page.evaluate(() => [...document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('dialog.bw-start [data-recent]')].length)) > 0, 15000)));
     await a.ctx.close();
     const b = await person(`http://127.0.0.1:${port}/`, { init: { last, off: true } });
@@ -177,7 +186,9 @@ try {
     const stop = await fetch(`http://127.0.0.1:${port}/api/servers/stop`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true, returnTo: { x: 11, y: 22, w: 900, h: 700, file: docFile } }) });
     const sj = await stop.json().catch(() => ({}));
     const rec = stub().slice(before).find((r) => r.launcher);
-    check('returnTo: a document named in it is reopened on disk, at the same geometry, as that file', stop.ok && rec?.args?.at(-1) === docUrl && rec.args.includes('--window-position=11,22') && sj.reopened?.file === docFile, JSON.stringify({ sj, rec }).slice(0, 300));
+    // the host reopens the REAL path (validateFile resolves 8.3 short names such as RUNNER~1 and junctions): compare the same file by realpath, not by the spelling the test built it with
+    const docReal = fs.realpathSync.native(docFile);
+    check('returnTo: a document named in it is reopened on disk, at the same geometry, as that file', stop.ok && rec?.args?.at(-1) === pathToFileURL(docReal).href && rec.args.includes('--window-position=11,22') && sj.reopened?.file === docReal, JSON.stringify({ sj, rec }).slice(0, 300));
     await until(async () => !(await up(port)), 15000);
   }
 
@@ -186,7 +197,7 @@ try {
     const { h, out } = handle(`business-wrap://start?file=${encodeURIComponent(fileUrlToPath(tool))}`);
     check('switch: `start?file=<tool editor>` starts the host on that file', h.status === 0 && out?.action === 'start' && out.file?.toLowerCase().endsWith('start.editor.html') && (await until(() => up(port))) === true, `${h.stdout} ${h.stderr}`.slice(0, 300));
     const a = await person(`http://127.0.0.1:${port}/?via=disk&from=${encodeURIComponent(fileUrlToPath(tool))}`);
-    const ra = await landed(a.page);
+    const ra = await dismissPopup(a.page); // the host holds earlier sessions: the popup is first, then the start page
     check('switch: the served page lands on the start page and keeps its way back (bw:disk = the tool editor file)', ra.start === 'open' && ra.dlg && !ra.isDoc && /start\.editor\.html/i.test(await a.page.evaluate(() => sessionStorage.getItem('bw:disk') || '')), JSON.stringify(ra));
     await a.ctx.close();
     // the way back for a plain tool open: the host switched off from that page reopens the tool editor on disk (the start page again)

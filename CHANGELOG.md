@@ -8,6 +8,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.18.3] - 2026-11-10
+
+🛠️ A fix release: the «pick up where you left off» window opens by itself again, over the start page. / 🛠️ إصدار إصلاحات: نافذة «أكمل من حيث توقفت» تفتح وحدها مجددا فوق صفحة البداية.
+
+### Fixed / أصلح
+- 🔁 **The resume window opens by itself again** when there is work to resume, on top of the start page (as in 0.18.1); close it and the start page is there. / **نافذة الاستئناف تفتح وحدها مجددا** حين يوجد عمل لاستئنافه، فوق صفحة البداية (كما في 0.18.1)؛ وحين تغلقها تجد صفحة البداية.
+- The Home button keeps an 8 px gap to the template selector. / يحافظ زر «الرئيسية» على مسافة 8 بكسل من محدد القوالب.
+
 ## [0.18.2] - 2026-11-10
 
 🏠 A fix release from the owner's notes: the tool always opens on the start page, a Home button in the top bar, the watermark is back, and Preferences starts closed. / 🏠 إصدار إصلاحات من ملاحظات المالك: الأداة تفتح دائما على صفحة البداية، وزر «الرئيسية» في الشريط العلوي، وعادت العلامة المائية، والتفضيلات تبدأ مطوية.

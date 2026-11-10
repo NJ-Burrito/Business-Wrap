@@ -538,12 +538,8 @@ const SESS = (() => {
     else if (!AUTO) {
       const release = window.BW?.holdReady?.('resume'); // bw:ready / data-bw-ready wait until the resume question is settled (a tool's ?automation=1 tab never asks)
       const last = await fetch('/api/session/last').then((r) => r.json()).catch(() => null);
-      // 0.18.2: opening the tool lands on the start page (50-start), so the «continue where you left off» question is not put over it (one landing, not two views fighting for the screen).
-      // Nothing is lost: the start page lists the last documents in Recents AND carries a «Continue where you left off (N)» button that opens this very popup (ask()). The popup still opens by
-      // itself for a specific document, a test's browser, a tool's tab and when the start page is switched off in Settings.
-      const startLands = !!last?.tabs?.length && !!EXT.start?.landing?.();
-      if (startLands) document.documentElement.dataset.bwResume = 'start';
-      if (last?.tabs?.length && !startLands) { popup = true; modal(last, () => { release?.(); settled(); }); } else release?.(); // the popup's own close settles the session (the finally in boot() skips it while the popup is up)
+      // 0.18.2 (ruling D11): the question opens by itself when there is something to resume, as in 0.18.1, ON TOP of the start page (the start page renders behind it; closing the popup leaves the start page).
+      if (last?.tabs?.length) { popup = true; modal(last, () => { release?.(); settled(); }); } else release?.(); // the popup's own close settles the session (the finally in boot() skips it while the popup is up)
     }
     push();
     seen();

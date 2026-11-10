@@ -49,7 +49,7 @@ async function open({ ui = 'ar', width = 1366, height = 768, dark = false, calm 
 const sh = (page, fn, arg) => page.evaluate(([f, a]) => new Function('r', 'a', `return (${f})(r, a)`)(document.getElementById('bw-ui-host').shadowRoot, a), [fn.toString(), arg]);
 const edges = (page) => sh(page, (r) => {
   const b = (s) => { const e = r.querySelector(s); if (!e || !e.offsetWidth) return null; const x = e.getBoundingClientRect(); return { l: x.left, r: x.right, t: x.top, b: x.bottom, w: x.width, h: x.height }; };
-  return { isl: b('.island'), brand: b('.island > .brand'), pick: b('.grp.doc select'), lang: b('.seg.lang'), dir: b('.seg.ui'), status: b('.island > .status .count'), ribbon: b('.island > .ribbon') };
+  return { isl: b('.island'), brand: b('.island > .brand'), home: b('.island > .b.home'), pick: b('.grp.doc select'), lang: b('.seg.lang'), dir: b('.seg.ui'), status: b('.island > .status .count'), ribbon: b('.island > .ribbon') };
 });
 // the gap between two boxes on the same row, whatever the reading direction: the distance between their nearest vertical edges
 const gap = (a, b) => Math.round(Math.max(a.l - b.r, b.l - a.r) * 10) / 10;
@@ -60,12 +60,12 @@ try {
     for (const width of [1280, 1366]) {
       const { ctx, page, errors } = await open({ ui, width });
       const e = await edges(page);
-      const seen = !!(e.isl && e.brand && e.pick && e.lang && e.dir && e.status && e.ribbon);
+      const seen = !!(e.isl && e.brand && e.home && e.pick && e.lang && e.dir && e.status && e.ribbon);
       check(`${ui} ${width} note 8: the bar, its controls and the ribbon were all found (the probe looked)`, seen, JSON.stringify(Object.keys(e).filter((k) => !e[k])));
       if (seen) {
         check(`${ui} ${width} note 8: the mark is 40 x 40`, Math.round(e.brand.w) === 40 && Math.round(e.brand.h) === 40, `${e.brand.w}x${e.brand.h}`);
-        const g = [gap(e.brand, e.pick), gap(e.pick, e.lang), gap(e.lang, e.dir), gap(e.dir, e.status)];
-        check(`${ui} ${width} note 8: gaps mark/selector/language/direction/history are 16 / 24 / 12 / 24 (+-1)`, [16, 24, 12, 24].every((v, i) => Math.abs(g[i] - v) <= 1), g.join(' / '));
+        const g = [gap(e.brand, e.home), gap(e.home, e.pick), gap(e.pick, e.lang), gap(e.lang, e.dir), gap(e.dir, e.status)];
+        check(`${ui} ${width} note 8: gaps mark, Home, selector, language, direction, history are 16 / 8 / 24 / 12 / 24 (+-1)`, [16, 8, 24, 12, 24].every((v, i) => Math.abs(g[i] - v) <= 1), g.join(' / '));
         check(`${ui} ${width} note 8: the language and direction pills do not overlap`, e.lang.r <= e.dir.l || e.dir.r <= e.lang.l);
         const rows = await sh(page, (r) => { const ys = ['.island > .brand', '.grp.doc select', '.seg.lang', '.seg.ui', '.island > .status .count'].map((s) => Math.round(r.querySelector(s).getBoundingClientRect().top / 40)); return new Set(ys).size; });
         check(`${ui} ${width} note 8: nothing wraps to a second row in the quick strip`, rows === 1, String(rows));

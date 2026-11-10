@@ -164,7 +164,7 @@ dialog.bw-start ::selection { background: var(--bw-marker); color: var(--bw-on-m
 
 /* 0.18.2: the top bar's Home keeps one box in Arabic and English (the layout never flips: every control after it stays put when the UI language switches).
    The label is centred in a fixed width in em, just wider than the longer word («الرئيسية», 3.18 em in Thmanyah Sans), so the bar is no wider than it was in Arabic and the label follows the bar's font size at 1024 / 1366 / 1920 px. */
-.island > .b.home { flex: none; }
+.island > .b.home { flex: none; margin-inline-end: 8px; } /* 0.18.2 G1: 8 px between Home and the document selector (the mark keeps 16 px to Home; the bar rhythm 16 / 8 / 24 / 12 / 24) */
 @media (max-width: 1520px) { .island > .b.home { padding-inline: 5px; gap: 4px; } } /* 6 px tighter than the other buttons: at 1024 px the English bar (the longest) fits on one row with Home at the Arabic width */
 .island > .b.home .w { inline-size: 3.25em; text-align: center; white-space: nowrap; }
 

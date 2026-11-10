@@ -9,7 +9,7 @@
  * 0.18.2: every way of opening the TOOL is that untouched template (the shortcut's file:// tool editor, the served blank editor of a plain business-wrap://start),
  * so it lands here; a specific saved document (a `doc-` service, a #doc= link) opens as itself. The shortcut's page cannot read the save folder, so the launcher embeds the
  * newest saved documents as #bw-recents and they are listed as Recents (a row opens that file); a served page has the host's mirror instead.
- * The resume prompt (12-session) does not open over a start page that is about to show: one landing; the last documents are in Recents and a «Continue where you left off (N)» button opens the same prompt.
+ * The resume prompt (12-session) opens by itself over the start page, as in 0.18.1 (ruling D11); the start page also carries a «Continue where you left off (N)» button that opens the same prompt.
  * Home (top bar, leading edge): saves through the editor's own autosave path (draft + library entry; there is no discard prompt, nothing is discarded), then opens this view. 
  * API (C3): EXT.start = { open, close, types, type, create, recents }; <html data-bw-start="open|closed">; tiles [data-type]; recents [data-recent];
  * events bw:start-open, bw:start-create {id, ed, doc}. */
