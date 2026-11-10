@@ -3,7 +3,8 @@
   "control": {
     "documentId": "BW-TOR-NEW-001",
     "title": "Terms of Reference (ToR): Project name",
-    "preparedBy": "Name and job title",
+    "preparedBy": "[Name and job title]",
+    "approvedBy": "[Name and job title]",
     "documentType": "Terms of Reference (ToR)",
     "classification": "Internal",
     "owner": "[Organisation name]",
@@ -20,9 +21,55 @@
       "—"
     ]
   ],
+  "approvals": [
+    [
+      "Prepared by: Project manager",
+      "",
+      "",
+      "",
+      ""
+    ],
+    [
+      "Reviewed by: Procurement lead",
+      "",
+      "",
+      "",
+      ""
+    ],
+    [
+      "Approved by: Sponsor",
+      "",
+      "",
+      "",
+      ""
+    ]
+  ],
   "labels": {
     "kicker": "TERMS OF REFERENCE",
-    "subtitle": "Scope of work"
+    "subtitle": "The work required, the deliverables and how proposals are judged"
+  },
+  "cover": {
+    "cols": 3,
+    "fields": [
+      {
+        "label": "Issuing organisation",
+        "value": "[Organisation name]",
+        "kind": "text"
+      },
+      {
+        "label": "Reference number",
+        "value": "[Reference number]",
+        "kind": "text"
+      },
+      {
+        "label": "Proposals due",
+        "value": "YYYY-MM-DD",
+        "kind": "date"
+      }
+    ]
+  },
+  "layout": {
+    "tocDepth": 1
   },
   "chapters": [
     {
@@ -37,6 +84,18 @@
               "kind": "prose",
               "paragraphs": [
                 "Describe the context the project arose from, the need it meets and what came before. Keep it to one page."
+              ]
+            }
+          ]
+        },
+        {
+          "number": "1.2",
+          "title": "Rationale",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Give each reason one line and name its source, such as a policy, a study or a decision."
               ]
             },
             {
@@ -62,6 +121,11 @@
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                8,
+                62,
+                30
               ]
             }
           ]
@@ -74,12 +138,25 @@
       "sections": [
         {
           "number": "2.1",
-          "title": "Overall and specific objectives",
+          "title": "Overall objective",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
+                "State the overall objective in one sentence: the change this work will bring about.",
                 "Overall objective: […]"
+              ]
+            }
+          ]
+        },
+        {
+          "number": "2.2",
+          "title": "Specific objectives",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Give each specific objective a measure and a target value, so that the result can be checked."
               ]
             },
             {
@@ -109,6 +186,12 @@
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                8,
+                46,
+                28,
+                18
               ]
             }
           ]
@@ -121,8 +204,14 @@
       "sections": [
         {
           "number": "3.1",
-          "title": "In and out of scope",
+          "title": "In scope and out of scope",
           "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "List what the implementer must do and, as clearly, what it must not do. Work outside this list needs a written change."
+              ]
+            },
             {
               "kind": "table",
               "columns": [
@@ -146,6 +235,22 @@
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                50,
+                50
+              ]
+            }
+          ]
+        },
+        {
+          "number": "3.2",
+          "title": "Place of work and language",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "State where the work is done, the language of the deliverables and any travel or site access the implementer needs."
               ]
             }
           ]
@@ -154,11 +259,11 @@
     },
     {
       "number": "4",
-      "title": "Deliverables",
+      "title": "Deliverables and milestones",
       "sections": [
         {
           "number": "4.1",
-          "title": "Deliverable list",
+          "title": "Deliverables",
           "blocks": [
             {
               "kind": "prose",
@@ -172,45 +277,96 @@
                 "ID",
                 "Deliverable",
                 "Description",
-                "Acceptance criterion",
-                "Due date"
+                "Acceptance criterion"
               ],
               "rows": [
                 [
                   "D-01",
                   "Inception report",
                   "…",
-                  "…",
-                  "YYYY-MM-DD"
+                  "…"
                 ],
                 [
                   "D-02",
                   "…",
                   "…",
-                  "…",
-                  "YYYY-MM-DD"
+                  "…"
                 ],
                 [
                   "D-03",
                   "…",
                   "…",
-                  "…",
-                  "YYYY-MM-DD"
+                  "…"
                 ],
                 [
                   "D-04",
+                  "Final report",
                   "…",
-                  "…",
-                  "…",
-                  "YYYY-MM-DD"
+                  "…"
+                ]
+              ],
+              "colWidths": [
+                10,
+                24,
+                32,
+                34
+              ]
+            }
+          ]
+        },
+        {
+          "number": "4.2",
+          "title": "Milestones and payments",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Count weeks from the date the contract is signed. The payment percentages add up to 100."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Milestone",
+                "Deliverable",
+                "Due week",
+                "Payment (%)"
+              ],
+              "rows": [
+                [
+                  "M1: Inception complete",
+                  "D-01",
+                  "[…]",
+                  "[…]"
                 ],
                 [
-                  "D-05",
+                  "M2: […]",
                   "…",
+                  "[…]",
+                  "[…]"
+                ],
+                [
+                  "M3: […]",
                   "…",
-                  "…",
-                  "YYYY-MM-DD"
+                  "[…]",
+                  "[…]"
+                ],
+                [
+                  "M4: Handover and acceptance",
+                  "D-04",
+                  "[…]",
+                  "[…]"
                 ]
+              ],
+              "colWidths": [
+                34,
+                30,
+                16,
+                20
+              ],
+              "numCols": [
+                2,
+                3
               ]
             }
           ]
@@ -219,75 +375,16 @@
     },
     {
       "number": "5",
-      "title": "Timeline and milestones",
-      "sections": [
-        {
-          "number": "5.1",
-          "title": "Phases",
-          "blocks": [
-            {
-              "kind": "table",
-              "columns": [
-                "Phase",
-                "Deliverables",
-                "Start",
-                "End",
-                "Dependency"
-              ],
-              "rows": [
-                [
-                  "1. Inception",
-                  "D-01",
-                  "YYYY-MM-DD",
-                  "YYYY-MM-DD",
-                  "—"
-                ],
-                [
-                  "2. […]",
-                  "…",
-                  "YYYY-MM-DD",
-                  "YYYY-MM-DD",
-                  "Phase 1"
-                ],
-                [
-                  "3. […]",
-                  "…",
-                  "YYYY-MM-DD",
-                  "YYYY-MM-DD",
-                  "Phase 2"
-                ],
-                [
-                  "4. Handover",
-                  "…",
-                  "YYYY-MM-DD",
-                  "YYYY-MM-DD",
-                  "Phase 3"
-                ],
-                [
-                  "…",
-                  "…",
-                  "…",
-                  "…",
-                  "…"
-                ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "number": "6",
       "title": "Roles and responsibilities",
       "sections": [
         {
-          "number": "6.1",
+          "number": "5.1",
           "title": "RACI matrix",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "R: responsible. A: accountable. C: consulted. I: informed."
+                "R: responsible. A: accountable. C: consulted. I: informed. Each activity has one A."
               ]
             },
             {
@@ -334,14 +431,14 @@
                   "…",
                   "…",
                   "…"
-                ],
-                [
-                  "…",
-                  "…",
-                  "…",
-                  "…",
-                  "…"
                 ]
+              ],
+              "colWidths": [
+                40,
+                15,
+                15,
+                15,
+                15
               ]
             }
           ]
@@ -349,11 +446,11 @@
       ]
     },
     {
-      "number": "7",
+      "number": "6",
       "title": "Team and qualifications",
       "sections": [
         {
-          "number": "7.1",
+          "number": "6.1",
           "title": "Required roles",
           "blocks": [
             {
@@ -382,13 +479,25 @@
                   "…",
                   "…",
                   "…"
-                ],
-                [
-                  "…",
-                  "…",
-                  "…",
-                  "…"
                 ]
+              ],
+              "colWidths": [
+                22,
+                38,
+                24,
+                16
+              ]
+            }
+          ]
+        },
+        {
+          "number": "6.2",
+          "title": "Changes to the team",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "If a named expert leaves, the implementer proposes an equal replacement within […] days and the sponsor approves it in writing."
               ]
             }
           ]
@@ -396,11 +505,11 @@
       ]
     },
     {
-      "number": "8",
+      "number": "7",
       "title": "Governance and reporting",
       "sections": [
         {
-          "number": "8.1",
+          "number": "7.1",
           "title": "Meetings and reports",
           "blocks": [
             {
@@ -430,6 +539,24 @@
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                26,
+                18,
+                22,
+                34
+              ]
+            }
+          ]
+        },
+        {
+          "number": "7.2",
+          "title": "Acceptance of deliverables",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "The sponsor reviews each deliverable within […] working days and either accepts it or returns it with written comments. The implementer corrects it and resubmits within […] working days."
               ]
             }
           ]
@@ -437,11 +564,11 @@
       ]
     },
     {
-      "number": "9",
+      "number": "8",
       "title": "Assumptions, constraints and dependencies",
       "sections": [
         {
-          "number": "9.1",
+          "number": "8.1",
           "title": "Register",
           "blocks": [
             {
@@ -477,6 +604,43 @@
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                10,
+                16,
+                56,
+                18
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "9",
+      "title": "Budget and payment terms",
+      "sections": [
+        {
+          "number": "9.1",
+          "title": "Budget",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Total budget: […]",
+                "State the currency and whether tax is included. Ask for a price for each deliverable, not one lump sum."
+              ]
+            }
+          ]
+        },
+        {
+          "number": "9.2",
+          "title": "Payment terms",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Payments follow the milestone table in chapter 4, each against the sponsor's written acceptance of the deliverable. State the payment period, for example […] days from a valid invoice."
               ]
             }
           ]
@@ -485,51 +649,66 @@
     },
     {
       "number": "10",
-      "title": "Budget and payment terms",
+      "title": "Proposal evaluation",
       "sections": [
         {
           "number": "10.1",
-          "title": "Payment schedule",
+          "title": "Criteria and weights",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "Total budget: […]"
+                "The weights add up to 100. Say how a proposal below the minimum technical score is treated."
               ]
             },
             {
               "kind": "table",
               "columns": [
-                "Payment",
-                "Percentage",
-                "Linked deliverable",
-                "Condition"
+                "Criterion",
+                "Weight (%)",
+                "Evidence"
               ],
               "rows": [
                 [
-                  "1",
-                  "[…]%",
-                  "D-01",
-                  "Written acceptance of the deliverable"
+                  "Technical approach",
+                  "[…]",
+                  "Method, work plan and handling of risks"
                 ],
                 [
-                  "2",
-                  "[…]%",
-                  "…",
-                  "…"
+                  "Team and experience",
+                  "[…]",
+                  "CVs and similar assignments"
                 ],
                 [
-                  "3",
-                  "[…]%",
-                  "…",
-                  "…"
+                  "Timeline",
+                  "[…]",
+                  "Work plan against the milestones"
                 ],
                 [
-                  "4",
-                  "[…]%",
-                  "…",
-                  "…"
+                  "Price",
+                  "[…]",
+                  "Total price and price by deliverable"
                 ]
+              ],
+              "colWidths": [
+                50,
+                15,
+                35
+              ],
+              "numCols": [
+                1
+              ]
+            }
+          ]
+        },
+        {
+          "number": "10.2",
+          "title": "Submission",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Proposals reach […] by the closing date on the first page. Questions go to […] at least […] days before that date."
               ]
             }
           ]
@@ -538,58 +717,10 @@
     },
     {
       "number": "11",
-      "title": "Proposal evaluation criteria",
-      "sections": [
-        {
-          "number": "11.1",
-          "title": "Criteria and weights",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "The weights add up to 100."
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Criterion",
-                "Weight",
-                "How it is scored"
-              ],
-              "rows": [
-                [
-                  "Technical approach",
-                  "[…]",
-                  "…"
-                ],
-                [
-                  "Team and experience",
-                  "[…]",
-                  "…"
-                ],
-                [
-                  "Timeline",
-                  "[…]",
-                  "…"
-                ],
-                [
-                  "Price",
-                  "[…]",
-                  "…"
-                ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "number": "12",
       "title": "Confidentiality and intellectual property",
       "sections": [
         {
-          "number": "12.1",
+          "number": "11.1",
           "title": "Confidentiality",
           "blocks": [
             {
@@ -601,7 +732,7 @@
           ]
         },
         {
-          "number": "12.2",
+          "number": "11.2",
           "title": "Ownership of deliverables",
           "blocks": [
             {
@@ -615,51 +746,11 @@
       ]
     },
     {
-      "number": "13",
-      "title": "Approval, distribution and terms",
+      "number": "12",
+      "title": "Distribution and terms",
       "sections": [
         {
-          "number": "13.1",
-          "title": "Approval and sign-off",
-          "blocks": [
-            {
-              "kind": "table",
-              "columns": [
-                "Name",
-                "Job title",
-                "Action",
-                "Signature",
-                "Date"
-              ],
-              "rows": [
-                [
-                  "",
-                  "",
-                  "Prepared",
-                  "",
-                  ""
-                ],
-                [
-                  "",
-                  "",
-                  "Reviewed",
-                  "",
-                  ""
-                ],
-                [
-                  "",
-                  "",
-                  "Approved",
-                  "",
-                  ""
-                ]
-              ],
-              "blankCell": ""
-            }
-          ]
-        },
-        {
-          "number": "13.2",
+          "number": "12.1",
           "title": "Distribution list",
           "blocks": [
             {
@@ -689,12 +780,18 @@
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                30,
+                25,
+                25,
+                20
               ]
             }
           ]
         },
         {
-          "number": "13.3",
+          "number": "12.2",
           "title": "Terms and abbreviations",
           "blocks": [
             {
@@ -715,11 +812,11 @@
                 [
                   "…",
                   "…"
-                ],
-                [
-                  "…",
-                  "…"
                 ]
+              ],
+              "colWidths": [
+                24,
+                76
               ]
             }
           ]
