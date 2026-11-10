@@ -8,6 +8,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.18.4] - 2026-11-10
+
+🛠️ A fix release: selecting something no longer makes the top bar jump. / 🛠️ إصدار إصلاحات: التحديد لم يعد يحرك الشريط العلوي.
+
+### Fixed / أصلح
+- 📏 **The top bar keeps one row when you select**: with the Home button the bar was a few pixels too wide at some window sizes and zoom levels, so it wrapped to two rows and jumped when a selection hid some tools. Home shows its icon only below 1800 px (the tooltip still says Home / «الرئيسية»). / **الشريط العلوي يبقى صفا واحدا عند التحديد**: مع زر «الرئيسية» كان الشريط أعرض ببضع بكسلات في بعض أحجام النوافذ والتكبير، فينقسم إلى صفين ويقفز حين يخفي التحديد بعض الأدوات. يظهر زر «الرئيسية» بأيقونته فقط تحت 1800 بكسل (ويبقى التلميح «الرئيسية»).
+- 🧰 **The selection tools fit with the host online**: on a wide screen at 150% zoom the More button no longer slips out of the selection strip; the palette button shows its icon only while something is selected. / **أدوات التحديد تتسع والخادم يعمل**: على شاشة عريضة بتكبير 150% لم يعد زر «المزيد» يخرج من شريط التحديد؛ ويظهر زر الألوان بأيقونته فقط أثناء التحديد.
+
 ## [0.18.3] - 2026-11-10
 
 🛠️ A fix release: the «pick up where you left off» window opens by itself again, over the start page. / 🛠️ إصدار إصلاحات: نافذة «أكمل من حيث توقفت» تفتح وحدها مجددا فوق صفحة البداية.
