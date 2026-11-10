@@ -80,7 +80,7 @@ const probe = (page, { wait = true } = {}) => page.evaluate(async (wait) => {
   return {
     id: p.dataset.type, layers: st.dataset.layers, props, once, role: p.getAttribute('role'), left: r.left, right: r.right, width: Math.round(r.width), vw: innerWidth, vh: innerHeight,
     h3: txt('h3'), lang: p.querySelector('h3').lang, purpose: txt('[data-st-info="purpose"]'), when: txt('[data-st-info="whenToUse"]'), audience: txt('[data-st-info="audience"]'),
-    sections: [...p.querySelectorAll('[data-st-sections] li')].map((li) => li.textContent.trim()), createBottom: create.bottom, createTop: create.top,
+    sections: [...p.querySelectorAll('[data-st-sections] li')].map((li) => li.textContent.trim()), emptyLine: p.querySelector('[data-st-sections-empty]')?.textContent.trim() || '', createBottom: create.bottom, createTop: create.top,
     n: anims.length, played: anims.length > 0 && anims.every((a) => a.playState === 'finished'), longest: ends.length ? Math.max(...ends) : 0, frame,
     mirror: st.querySelector('.st-sheet').dataset.mirror, flip: getComputedStyle(st.querySelector('.st-pg > svg')).transform,
     panelAnims: p.getAnimations({ subtree: true }).filter((a) => !st.contains(a.effect.target)).length,
@@ -106,8 +106,10 @@ try {
       if (!sideOk || x.role !== 'dialog') bad.side.push(`${ty.id} ${Math.round(x.left)}-${Math.round(x.right)} ${x.role}`);
       const inf = ty.info;
       if (x.id !== ty.id || x.h3 !== ty.name[ui] || x.lang !== ui || x.purpose !== inf.purpose[ui] || x.when !== inf.whenToUse[ui] || x.audience !== inf.audience[ui]) bad.text.push(`${ty.id} ${JSON.stringify({ h3: x.h3, p: x.purpose?.slice(0, 30) })}`);
-      const chapters = (JSON.parse(ty.docs[ui]).chapters || []).map((c) => String(c.title || '').trim()).filter(Boolean);
-      if (!chapters.length || JSON.stringify(x.sections) !== JSON.stringify(chapters)) bad.sections.push(`${ty.id}: ${x.sections.length} vs ${chapters.length}`);
+      const chs = JSON.parse(ty.docs[ui]).chapters || [];
+      const chapters = chs.map((c) => String(c.title || '').trim()).filter(Boolean);
+      const allBare = chs.length > 0 && chs.every((c) => c.bare === true); // 0.19.0 R3: the empty Blank lists no section, and says «One empty page»
+      if (allBare ? x.sections.length !== 0 || x.emptyLine !== (ui === 'ar' ? 'صفحة فارغة واحدة' : 'One empty page') : !chapters.length || JSON.stringify(x.sections) !== JSON.stringify(chapters)) bad.sections.push(`${ty.id}: ${x.sections.length} vs ${chapters.length} «${x.emptyLine}»`);
       const onlyTO = x.props.length > 0 && x.props.every((k) => k === 'transform' || k === 'opacity') && x.panelProps.every((k) => k === 'transform' || k === 'opacity');
       if (!(x.n > 0 && x.played && x.once && onlyTO && x.longest > 0 && x.longest <= 700)) bad.anim.push(`${ty.id}/${x.layers}: ${x.n} anims, finished ${x.played}, once ${x.once}, props ${x.props}/${x.panelProps}, ${Math.round(x.longest)} ms`);
       ends[ty.id] = x;

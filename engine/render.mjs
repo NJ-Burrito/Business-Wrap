@@ -327,14 +327,20 @@ export function figureRoom(doc, ptr, themeIn) {
   let chain = 0;
   let k = m ? +m[3] - 1 : -1;
   while (k >= 0 && blocks[k]?.kind === 'subhead') { chain += 9 + t3 * line + 4 + 1; k -= 1; } // h4: margin 9, text, padding 4, rule
+  // 0.19.0 R3 (review #7): in a typed document the prose that opens the section shares the sheet too (and then the chapter title above it)
+  const tb = cssMm(theme.sizes?.body, 4.23);
+  if (isTyped(doc)) while (k >= 0 && blocks[k]?.kind === 'prose') { for (const para of blocks[k].paragraphs || []) chain += lines(String(textOf(para ?? '')).length, tb) * tb * line + 3.5; k -= 1; }
   if (m && k < 0) {
     // a chapter with one section prints no section title; with several, every section has one (room for two lines)
     if ((doc.chapters?.[+m[1]]?.sections || []).length > 1) chain += 7 + 2 * cssMm(theme.sizes?.h2, 5.64) * line + 3;
     // the chapter title: 12 mm above it unless it is the first chapter, its line, 4 mm padding, the rule, 7 mm below
     if (+m[2] === 0) chain += (+m[1] > 0 ? 12 : 0) + Math.max(cssMm(theme.sizes?.h1, 6.35) * line, 11) + 4 + 7 + 1;
   }
+  // 0.19.0 R3 (review #7): in a typed document a short table (at most 6 rows) right after the figure keeps room on the same sheet, so it never lands alone
+  const nxt = m ? blocks[+m[3] + 1] : null;
+  const tail = isTyped(doc) && nxt?.kind === 'table' && (nxt.rows || []).length <= 6 ? ((nxt.rows || []).length + 1) * (tt * line + 5) + 7 : 0;
   const wMm = Math.floor((textW - 0.6) * 10) / 10;
-  const hMm = Math.max(40, Math.floor((sheet.heightMm - 14 - 12 - chain - capH - noteH - 2.7 - 0.6 - 5) * 10) / 10);
+  const hMm = Math.max(40, Math.floor((sheet.heightMm - 14 - 12 - chain - capH - noteH - tail - 2.7 - 0.6 - 5) * 10) / 10);
   return { wMm, hMm, sheetW: sheet.widthMm, sheetH: sheet.heightMm, sideMm: side, chainMm: Math.round(chain * 10) / 10, captionMm: Math.round(capH * 10) / 10, noteMm: Math.round(noteH * 10) / 10 };
 }
 /**
@@ -752,6 +758,11 @@ export const FIGURE_KINDS = ['none', 'ok', 'warn', 'bad', 'idle'];
 export const REPORT_CONTROL = ['documentId', 'version', 'status', 'issuedOn', 'owner', 'preparedBy'];
 /** Words the families print that are no house label (a document's labels.<key> wins): back matter heading (C10), the derived summary strip's total,
  * the seal box of a sign-off statement. */
+/** 0.19.0 R3 (pilot review #3): a document with a page-1 family (coverDesign) prints its revision history in Version, Date, Description of change, Author (as many as its rows carry). */
+export const REV_LABELS = { revDesc: { en: 'Description of change', ar: 'وصف التغيير' }, revAuthor: { en: 'Author', ar: 'المعد' } };
+export const revCols = (doc) => (coverOf(doc) ? Math.min(4, Math.max(2, ...(doc.revisions || []).filter(Array.isArray).map((r) => r.length))) : 2);
+/** 0.19.0 R3 (pilot review #15): the approvals columns Role, Name, Organisation, Date, Signature in % (room for a hand-written name and a signature). */
+export const APPROVAL_WIDTHS = [26, 24, 20, 12, 18];
 export const FAMILY_LABELS = {
   backMatter: { en: 'Document control', ar: 'ضبط الوثيقة' },
   total: { en: 'Total', ar: 'الإجمالي' },
@@ -796,6 +807,8 @@ export function calloutOf(text) {
   const kind = Object.keys(CALLOUT_TAGS).find((k) => CALLOUT_TAGS[k].includes(m[1]));
   return { kind, tag: m[1], len: m[0].length };
 }
+/** A manual step's own prefix: "Step 2:" / «الخطوة 2:» (render.mjs subhead, build_docx.py step chip). */
+export const STEP_PREFIX = /^(?:Step|الخطوة)\s+\d+\s*[:：]\s*/u;
 /** True for a user manual: its steps and callouts take the manual's look. */
 export const isManual = (doc) => doc?.motif === 'user-manual' || doc?.docType === 'user-manual';
 /** C3: the field grid's stylesheet (square corners, straight rules only: it may print on page 1). */
@@ -901,6 +914,7 @@ ${dense}`;
 .cover[data-cover=spine] .lockup{position:absolute;top:20mm;${px};height:20mm;padding:0;min-height:0;justify-content:flex-start;gap:6mm}
 .cover[data-cover=spine] .lockup img{height:auto;max-height:20mm;max-width:50mm;margin:0}
 .cover[data-cover=spine] .cover-rule{position:absolute;top:56mm;${px};margin:0;height:.75pt;background:var(--rule)}
+.cover[data-cover=spine] .lockup:empty+.cover-rule{display:none}
 .cover[data-cover=spine] .cover-body{display:contents}
 .cover[data-cover=spine] .type-code{position:absolute;top:91mm;inset-inline-start:34mm;font-family:${display},system-ui,sans-serif;font-weight:900;font-size:17.14mm;line-height:1;letter-spacing:.07em;color:var(--primary)}
 .cover[data-cover=spine] .kicker{position:absolute;top:119.5mm;inset-inline-start:34mm;margin:0;font-size:var(--t-meta);color:var(--accent)}
@@ -968,6 +982,7 @@ export function polishCss(doc) {
   return `/* 0.18.0 polish: bands, chapter heading rows, status cells${compact ? ', compact first page' : ''} */
 h4{padding-bottom:3mm}
 h2{break-inside:avoid;break-after:avoid}
+.bw-doc p{orphans:2;widows:2}
 .wrap>[data-part=approvals]{break-inside:avoid}
 .wrap>[data-part=approvals] table td{height:12mm;vertical-align:middle}
 .bw-doc .shot-frame{position:relative;width:var(--sf-w,120mm);max-width:100%;aspect-ratio:var(--sf-r,16/10);margin:0 auto 2mm;background:var(--card);border:1.4pt solid var(--signal);break-inside:avoid;print-color-adjust:exact;-webkit-print-color-adjust:exact}
@@ -1003,7 +1018,7 @@ export function tableKeysCss(doc) {
 .bw-doc table.bw-t-signoff:not(.control):not(.toc) tbody tr:nth-child(n) td{background:transparent;vertical-align:middle;border-bottom:.75pt solid var(--rule-strong)}
 .bw-doc table.bw-t-signoff tbody tr{height:14mm}
 .bw-doc td.num,.bw-doc th.num{text-align:end;font-variant-numeric:tabular-nums}
-.bw-doc td.nw,.bw-doc th.nw{white-space:nowrap}
+.bw-doc td.nw{white-space:nowrap} /* 0.19.0 R3: a heading may wrap; only the cells keep one line (an id, a date) */
 .bw-doc table:not(.control) tbody tr td.acc{background:var(--primary-50);font-weight:700;print-color-adjust:exact;-webkit-print-color-adjust:exact}
 .bw-doc th.acc{background:var(--primary);color:var(--paper,#fff);print-color-adjust:exact;-webkit-print-color-adjust:exact}
 `;
@@ -1016,6 +1031,8 @@ export function manualCss(doc) {
 section.chapter,section.sec{counter-reset:bw-step}
 .bw-doc h4{counter-increment:bw-step;display:flex;align-items:center;gap:3mm;margin:7mm 0 3mm;margin-inline:0;padding:0;border-top:0;background:none;color:var(--ink);font-size:var(--t-h3)}
 .bw-doc h4::before{content:counter(bw-step);flex:0 0 auto;width:8mm;height:8mm;display:flex;align-items:center;justify-content:center;background:var(--primary);color:var(--paper,#fff);font-size:var(--t-table);font-weight:700;line-height:1}
+.bw-doc h4.bw-step-own::before{display:none}
+.bw-doc h4.bw-step-own .bw-step-no{color:var(--primary);white-space:nowrap}
 /* 0.18.1: a step stays whole: its heading, its text and its screenshot frame print on one page (the heading already holds with its first line; every paragraph, list and callout that has a screenshot frame after it in the same section holds with what follows, so the step-3 frame no longer lands alone at the top of the next page) */
 .bw-doc :is(.keep,p,ul,ol):has(~ figure.fig){break-after:avoid}
 .bw-doc :is(.keep,p,ul,ol)+figure.fig{break-before:avoid}
@@ -1318,6 +1335,7 @@ export function renderParts(doc, o) {
     const base = String(m ? (NUM.story[+m[1]]?.[+m[2]]?.[+m[3]] || (NUM.manual ? (blk.number ?? '') : '')) : (blk.number ?? ''));
     // card k of a block counts on from the block's number, skipping a number another block (a later section's own one-card story) already carries,
     // so no number prints twice (0.16.4)
+    if (isTyped(doc) && (blk.items || []).length > 1 && base) return `${base}.${k + 1}`; // 0.19.0 R3 (review #5): a typed document numbers the cards of one block 3.6.1, 3.6.2, never into the next section's number
     let t = k > 0 ? /^(.*?)(\d+)$/.exec(base) : null;
     if (!t) return base;
     let n = +t[2];
@@ -1618,8 +1636,13 @@ export function renderParts(doc, o) {
     switch (block.kind) {
       case 'prose':
         return prose(paras(block, b), b);
-      case 'subhead':
+      case 'subhead': {
+        // 0.19.0 R3 (review #9): a manual step whose text already says «الخطوة 2:» / "Step 2:" prints that prefix as one run (the number stays on its
+        // colon, never isolated) and no counter chip, so the number shows once
+        const own = manual && typeof block.text === 'string' ? STEP_PREFIX.exec(block.text) : null;
+        if (own) return `<h4 class="bw-step-own" data-b="${attr(b)}"${dp(b + '/text')}><span class="bw-step-no">${esc(own[0].trimEnd())}</span> ${bidi(block.text.slice(own[0].length))}</h4>`;
         return `<h4 data-b="${attr(b)}"${dp(b + '/text')}${leafAttrs(block.text)}>${bidi(block.text)}</h4>`;
+      }
       case 'table':
         return tableOf(block, b);
       case 'figure':
@@ -1975,6 +1998,8 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     .map((ch, ci) => {
       const cp = `/chapters/${ci}`;
       const hasFigure = ch.sections.some((sec) => sec.blocks.some((x) => x.kind === 'figure' || x.kind === 'diagram'));
+      // 0.19.0 R3 (review #6): in a typed document a chapter of several sections stays portrait; only the section that holds the figure turns
+      const secWide = hasFigure && isTyped(doc) && ch.sections.length > 1;
       const single = ch.sections.length === 1;
       const h2 = ch.bare === true ? '' : `<h2><span class="num"${dp(cp + '/number')}>${bidi(NUM.ch[ci])}</span><span${dp(cp + '/title')}>${bidi(ch.title)}</span></h2>`; // 0.19.0: a `bare` chapter (the Blank document's one empty page) prints no heading
       const first = ch.sections[0];
@@ -1988,7 +2013,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
             .map((sec, i) => {
               const sp = `${cp}/sections/${i}`;
               const sSeg = sec.blocks.length ? segAt(i) : chSeg;
-              return `<section class="sec${sec.layout?.breakBefore ? ' bw-brk' : ''}" data-s="${attr(sp)}"${sSeg !== chSeg ? pageStyle(sSeg) : ''}>
+              return `<section class="sec${secWide && sec.blocks.some((x) => x.kind === 'figure' || x.kind === 'diagram') ? ' wide' : ''}${sec.layout?.breakBefore ? ' bw-brk' : ''}" data-s="${attr(sp)}"${sSeg !== chSeg ? pageStyle(sSeg) : ''}>
     ${groupForPaging(
       sec.blocks,
       `${sp}/blocks`,
@@ -1999,7 +2024,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
   </section>`;
             })
             .join(NL);
-      return `<section class="chapter${hasFigure ? ' wide' : ''}${ch.layout?.breakBefore ? ' bw-brk' : ''}" data-ch="${attr(cp)}"${pageStyle(chSeg)}>
+      return `<section class="chapter${hasFigure && !secWide ? ' wide' : ''}${ch.layout?.breakBefore ? ' bw-brk' : ''}" data-ch="${attr(cp)}"${pageStyle(chSeg)}>
   ${opensLong ? '' : h2}
   ${inner}
 </section>`;
@@ -2026,7 +2051,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
       const raw = f.value ?? '';
       const sk = kind === 'chip' ? statusKind(textOf(raw), true) : ''; // a chip is a status or tag field: the C9 words fill it too
       const v = kind === 'blank' ? `<span class="fg-v fg-blank"${dp(f.vp)}></span>`
-        : kind === 'date' || kind === 'ltr' ? `<span class="fg-v"><bdi dir="ltr" class="fg-date"${dp(f.vp)}>${esc(textOf(raw))}</bdi></span>`
+        : (kind === 'date' || kind === 'ltr') && !/[؀-ۿ]/.test(textOf(raw)) ? `<span class="fg-v"><bdi dir="ltr" class="fg-date"${dp(f.vp)}>${esc(textOf(raw))}</bdi></span>`
         : kind === 'chip' ? `<span class="fg-v"><span class="fg-chip${sk ? ' st-' + sk : ''}"${dp(f.vp)}>${bidi(raw)}</span></span>`
         : `<span class="fg-v"${dp(f.vp)}>${bidi(raw)}</span>`;
       return `<div class="fg${f.id === true ? ' fg-id' : ''}"${span}><span class="fg-l"${dp(f.lp)}>${bidi(f.label ?? '')}</span>${v}</div>`;
@@ -2046,7 +2071,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
   const famLb = (k) => lb(k, L[k] ?? FAMILY_LABELS[k][lang]);
   const coverKey = doc.cover && typeof doc.cover === 'object' && !Array.isArray(doc.cover) ? doc.cover : {};
   /** C4: one row of tiles; value Display 700, the fill of its kind (none = the wash). */
-  const tiles = (figs) => (figs.length ? `<div class="bw-tiles" style="--tl-n:${figs.length}"${figs[0].derived ? ' data-derived="1"' : ''}>${figs.map((f) => `<div class="tl${FIGURE_KINDS.includes(f.kind) && f.kind !== 'none' ? ' tl-' + f.kind : ''}"><span class="tl-l"${f.lp ? dp(f.lp) : ''}>${f.lw || bidi(f.label ?? '')}</span><span class="tl-v"${f.vp ? dp(f.vp) : ''}>${bidi(f.value ?? '')}</span></div>`).join('')}</div>` : '');
+  const tiles = (figs) => (figs.length ? `<div class="bw-tiles" style="--tl-n:${figs.length}"${figs[0].derived ? ' data-derived="1"' : ''}>${figs.map((f) => `<div class="tl${FIGURE_KINDS.includes(f.kind) && f.kind !== 'none' ? ' tl-' + f.kind : ''}"><span class="tl-l"${f.lp ? dp(f.lp) : ''}>${f.lw || bidi(f.label ?? '')}</span><span class="tl-v"${f.vp ? dp(f.vp) : ''}>${/^[ -~]+$/.test(textOf(f.value ?? '')) ? `<bdi dir="ltr">${esc(textOf(f.value))}</bdi>` : bidi(f.value ?? '')}</span></div>`).join('')}</div>` : '');
   const coverFigures = () => (Array.isArray(coverKey.figures) ? coverKey.figures : []).filter((f) => f && typeof f === 'object')
     .map((f, i) => ({ ...f, lp: `/cover/figures/${i}/label`, vp: `/cover/figures/${i}/value` }));
   /** A sheet without `cover.figures`: the summary strip is counted from its first `style: sheet` table with a status column (a Status or Result
@@ -2176,10 +2201,10 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
       : `<tr><th${dp('/labels/control/' + k)}>${bidi(L.control[k])}</th><td${dp('/control/' + k)}>${bidi(c[k])}</td></tr>`)
     .join('')}</table></div>`,
     revisions: () => `<div data-part="revisions"><h3>${lb('revisions')}</h3>
-  ${table({ columns: [L.revVersion, L.revDate], colPtrs: ['/labels/revVersion', '/labels/revDate'], rows: (doc.revisions || []).map((r) => r.slice(0, 2)), rowsPtr: '/revisions', keepAll: true /* UAT H3: a still-empty date stays a cell a person can type in */ })}</div>`,
+  ${(() => { const n = revCols(doc); const keys = ['revVersion', 'revDate', 'revDesc', 'revAuthor'].slice(0, n); return table({ columns: keys.map((k) => L[k] ?? REV_LABELS[k][lang]), colPtrs: keys.map((k) => '/labels/' + k), rows: (doc.revisions || []).map((r) => r.slice(0, n)), rowsPtr: '/revisions', ...(n > 2 ? { blankCell: '' } : {}), keepAll: true /* UAT H3: a still-empty date stays a cell a person can type in */ }); })()}</div>`,
     // 0.19.0 C7: a typed document's approvals print on the control page too (the DOCX's APPROVALS_COLUMNS); empty cells stay empty, to be signed
     ...(approvalsShown(doc) ? { approvals: () => `<div data-part="approvals"><h3>${lb('approvals')}</h3>
-  ${table({ columns: L.approvalCols || [], colsPtr: '/labels/approvalCols', rows: doc.approvals.filter(Array.isArray), rowsPtr: '/approvals', keepAll: true, blankCell: '', extra: 'approvals' })}</div>` } : {}),
+  ${table({ columns: L.approvalCols || [], colsPtr: '/labels/approvalCols', rows: doc.approvals.filter(Array.isArray), rowsPtr: '/approvals', keepAll: true, blankCell: '', extra: 'approvals', ...((L.approvalCols || []).length === 5 ? { colWidths: APPROVAL_WIDTHS } : {}) /* 0.19.0 R3 (review #15) */ })}</div>` } : {}),
     toc: () => `<div data-part="toc"><h3>${lb('contents')}</h3>
   ${toc}</div>`,
   };
@@ -2418,9 +2443,21 @@ export function chromeTemplates(doc, oIn, seg) {
   const stack = [o.theme.fonts.text, o.theme.fonts.display].map(safeFamily).filter(Boolean).map((f) => `'${f}'`).join(',');
   const wrap = (inner) =>
     `<style>${o.fontCss || ''}</style><div${o.locale === 'ar' ? ' dir="rtl"' : ''} style="width:100%;font-size:8pt;font-family:${stack},serif;color:${roles.muted};padding:0 16mm;display:flex;justify-content:space-between;align-items:center;">${inner}</div>`; // 0.18.1: dir=rtl mirrors the three slots in Arabic (English is byte-identical)
-  const header = wrap(
+  // 0.19.0 R3: a sheet's running header repeats its code chip, title and two fields on every page (spec §1: the sheet is read page by page)
+  const cvh = coverOf(doc);
+  const typedHead = isTyped(doc) && !o.logos?.header;
+  const sheetHead = typedHead && cvh?.family === 'sheet' ? (() => {
+    const code = COVER_CODES[cvh.type] || '';
+    const c = doc.control;
+    const title = c.coverTitle ?? (String(c.title || '').split(/\s*[:—]\s+/).slice(1).join(': ') || c.title);
+    const fs = (Array.isArray(doc.cover?.fields) ? doc.cover.fields : []).filter((f) => f && typeof f === 'object' && f.value).slice(0, 2);
+    const two = (fs.length ? fs.map((f) => [textOf(f.label ?? ''), textOf(f.value ?? '')]) : [[o.labels?.control?.version || 'Version', c.version], [o.labels?.control?.status || 'Status', c.status]]);
+    const chip = code ? `<span style="display:inline-block;background:${roles.primary};color:#fff;font-weight:700;letter-spacing:.1em;padding:0 1.6mm;margin-inline-end:2mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;" dir="ltr">${esc(code)}</span>` : '';
+    return `<span>${chip}<span style="color:${roles.ink};font-weight:700;">${esc(title)}</span></span><span>${two.map(([l, v]) => `${esc(l)}: <span style="color:${roles.ink};">${esc(v)}</span>`).join('&#160;&#160;·&#160;&#160;')}</span><span>${esc(doc.control.documentId)}&#160;&#160;${esc(doc.control.issuedOn)}</span>`;
+  })() : '';
+  const header = wrap(sheetHead || (
     (o.logos?.header ? `<img src="${attr(o.logos.header)}" style="height:5mm;" />` : '<span></span>') +
-      `<span>${esc(doc.control.documentId)}</span><span>${esc(doc.control.issuedOn)}</span>`
+      `<span>${esc(doc.control.documentId)}</span><span>${esc(doc.control.issuedOn)}</span>`)
   );
   const footer = wrap(
     `<span style="color:${roles.signal};font-weight:700;">${esc(confidentialText(doc, o.theme, o.labels, o.locale))}</span>` +

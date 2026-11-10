@@ -109,7 +109,7 @@ try {
         if (noCover) {
           if (r.coverEl !== null || r.h1 !== '' || r.headings !== 0) problems.push(`an empty page shows cover ${r.coverEl}, h1 «${r.h1}», ${r.headings} headings`);
         } else {
-          if (r.coverEl !== (t.coverDesign || 'spine') || r.motifEl !== null) problems.push(`page cover ${r.coverEl}/${r.motifEl}`);
+          if (r.coverEl !== ({ report: 'spine', form: 'compact', sheet: 'compact' }[t.coverDesign] || t.coverDesign || 'spine') || /* 0.19.0 R3: data-cover is the page model */ r.motifEl !== null) problems.push(`page cover ${r.coverEl}/${r.motifEl}`);
           if (!r.h1 || /undefined|NaN|\[object/.test(r.h1) || r.headings < 1) problems.push(`h1 «${r.h1}», ${r.headings} headings`);
         }
         if (problems.length) bad.push(`${t.id}(${want}): ${problems.join('; ')}`);

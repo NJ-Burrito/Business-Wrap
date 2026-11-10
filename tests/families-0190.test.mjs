@@ -115,6 +115,7 @@ try {
   // ── 3. tables (C8, C9, C10, C13) ──
   const tdoc = (ed) => {
     const d = DT.compose('test-cases', ed);
+    if (d.cover) delete d.cover.figures; // the strip is counted from the sheet table when the content gives no figures
     const s0 = d.chapters[0].sections[0];
     const t = s0.blocks.find((b) => b.kind === 'table');
     t.columns = [ed === 'ar' ? 'المعرف' : 'ID', ed === 'ar' ? 'الحالة' : 'Status', ed === 'ar' ? 'المبلغ' : 'Amount', ed === 'ar' ? 'ملاحظة' : 'Note'];
@@ -159,6 +160,7 @@ try {
   for (const f of ['schema.json', '_categories.json', '_palettes.json']) fs.copyFileSync(path.join(src, f), path.join(dst, f));
   fs.cpSync(path.join(src, 'srs'), path.join(dst, 'srs'), { recursive: true });
   fs.cpSync(path.join(src, 'minutes'), path.join(dst, 'minutes'), { recursive: true });
+  { const tf = path.join(dst, 'minutes', 'type.json'); const tj = JSON.parse(fs.readFileSync(tf, 'utf8')); tj.coverDesign = 'compact'; fs.writeFileSync(tf, JSON.stringify(tj, null, 2)); } // as before the content lane set «form»
   const art = fs.readFileSync(path.join(src, '_art', 'srs.svg'), 'utf8');
   fs.writeFileSync(path.join(dst, '_art', 'srs.svg'), art);
   const ok0 = validateType('srs', { root });

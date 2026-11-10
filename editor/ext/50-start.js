@@ -299,7 +299,8 @@ const START = (() => {
     const LAB = { purpose: 'startPurpose', whenToUse: 'startWhen', audience: 'startAudience' };
     const say = (k) => { const v = info[k]?.[pl] || info[k]?.en || ''; return v ? `<h4>${esc(t(LAB[k]))}</h4><p lang="${pl}" dir="${dir}" data-st-info="${k}">${esc(v)}</p>` : ''; };
     let chapters = [];
-    try { chapters = (JSON.parse(ty.docs?.[pl] || '{}').chapters || []).map((c) => String(c.title || '').trim()).filter(Boolean); } catch { /* no starter */ }
+    let emptyDoc = false; // 0.19.0 R3: the Blank document (every chapter bare, no title) lists «One empty page» instead of an empty list
+    try { const chs = JSON.parse(ty.docs?.[pl] || '{}').chapters || []; emptyDoc = chs.length > 0 && chs.every((c) => c.bare === true); chapters = chs.map((c) => String(c.title || '').trim()).filter(Boolean); } catch { /* no starter */ }
     let n = 0;
     const ix = () => `style="--n:${n++}"`;
     box.innerHTML = `<div class="st-pane${was ? ' st-swap' : ''}">
@@ -309,7 +310,7 @@ const START = (() => {
 <div class="st-plw" ${ix()}><span class="st-lab" id="st-pl-l">${esc(t('startLang'))}</span>
 <div class="st-seg st-seg-w" role="radiogroup" aria-labelledby="st-pl-l"><button type="button" role="radio" aria-checked="${pl === 'ar'}" data-st-pl="ar" lang="ar">${esc(t('startLangAr'))}</button><button type="button" role="radio" aria-checked="${pl === 'en'}" data-st-pl="en" lang="en">${esc(t('startLangEn'))}</button></div></div>
 <button type="button" class="st-btn st-primary" data-st-a="create" data-bw-create="${esc(ty.id)}" ${ix()}>${ic('add')}<span>${esc(t('startCreate'))}</span></button>
-<div class="st-info" ${ix()}>${say('purpose')}${say('whenToUse')}${chapters.length ? `<h4>${esc(t('startSections'))}</h4><ol lang="${pl}" dir="${dir}" data-st-sections>${chapters.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}${say('audience')}</div>
+<div class="st-info" ${ix()}>${say('purpose')}${say('whenToUse')}${chapters.length ? `<h4>${esc(t('startSections'))}</h4><ol lang="${pl}" dir="${dir}" data-st-sections>${chapters.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : emptyDoc ? `<h4>${esc(t('startSections'))}</h4><p lang="${pl}" dir="${dir}" data-st-sections-empty>${esc(pl === 'ar' ? 'صفحة فارغة واحدة' : 'One empty page')}</p>` : ''}${say('audience')}</div>
 <p class="st-hint" ${ix()}>${esc(t('startHint'))}</p></div>`;
     order(box);
     return box;
