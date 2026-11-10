@@ -568,7 +568,7 @@ pop:card storyCard@add
 pop:toc tocAdd@pages
 pop:tochide tocHide@hideBlock
 pop:newdoc newdoc@newdoc
-pop:start startPage@newdoc
+pop:start startPage@newdoc home@homeBtn
 pop:process process@process
 edit:dup duplicate@duplicate
 edit:del delete@delete
