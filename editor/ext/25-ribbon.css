@@ -29,6 +29,8 @@
 /* narrow windows: the changes counter keeps its number and drops its word so the strip keeps room for «More» */
 /* 0.17.9: the gold Save joined the top row, so with nothing selected the row is full: the palette button is the icon alone up to 1400 px and Save too up to 1000 px, as a selection already makes them (the bar must not change height on select: selection-strip S2) */
 @media (max-width: 1400px) { .island:has(> .ribbon) > .b.cmd .w { display: none; } }
+/* 0.18.4: while something is selected the palette button is the icon alone up to 1800 px (the width where Home is the icon alone), as it already was up to 1700 in ui.css. At 1707 px the strip had 234 px against the 246 its title, zoom keys and More need (Home's icon and a connected server's word «Connected :port» take the rest), so More sat 1.2 px outside it (selection-strip S1); the word gives it 86 px back. No height changes: the button's row is the same. */
+@media (max-width: 1800px) { .island:has(> .ribbon).has-sel > .b.cmd .w { display: none; } }
 @media (max-width: 1000px) { .island:has(> .ribbon) > .b.bar-save .w { display: none; } }
 @media (max-width: 1140px) { .island:has(> .ribbon) .status .count .w { display: none; } .island:has(> .ribbon) .status .count { padding-inline: 8px; } }
 .island:has(> .ribbon) > .ctx[hidden] { display: flex !important; visibility: hidden; position: absolute; inline-size: 0; min-inline-size: 0; flex: 0 0 0; } /* out of the flow, so the quick strip keeps its gaps (history sits 24 px from the direction pill) */
