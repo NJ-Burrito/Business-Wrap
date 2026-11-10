@@ -20,6 +20,9 @@ import os
 _I18N = json.loads((Path(__file__).resolve().parents[1] / 'i18n.json').read_text(encoding='utf-8'))
 LOCALE = os.environ.get('BW_LOCALE', 'ar')
 L = dict(_I18N['doc'][LOCALE])
+# 0.19.0 R2: run as a script, this module is `__main__`; cover_design.py and theme.py `import build_docx` and would get a SECOND copy whose L never saw
+# merge_labels (the cover printed the house kicker and labels, not the document's). One module object under both names.
+sys.modules.setdefault('build_docx', sys.modules[__name__])
 import theme as theme_mod
 import model_docx as MD
 import cover_design as CD
@@ -185,13 +188,24 @@ def add_table(document, columns, rows, font, roles=None, spec=None):
     width = max([len(columns)] + [len(r) for r in rows] + [0])
     cw = spec.get('colWidths') if isinstance(spec.get('colWidths'), list) and len(spec.get('colWidths')) == width else None
     fixed = bool(merges or cw)
+    # 0.19.0 C8, C13, C9 (render.mjs table()): the table style, the column keys and the status columns address the ORIGINAL column indexes
+    tstyle = spec.get('style') if spec.get('style') in ('sheet', 'signoff') else None
+    if tstyle == 'signoff' and blank_cell is None:
+        blank_cell = ''
+    num_set = {i for i in (spec.get('numCols') or []) if isinstance(i, int)} if isinstance(spec.get('numCols'), list) else set()
+    nw_set = {i for i in (spec.get('nowrapCols') or []) if isinstance(i, int)} if isinstance(spec.get('nowrapCols'), list) else set()
+    acc_col = spec.get('accentCol') if isinstance(spec.get('accentCol'), int) and not isinstance(spec.get('accentCol'), bool) else None
+    head_set = {i for i, c in enumerate(columns) if CD.is_status_head(MD.text_of(c if c is not None else ''))} if TYPED and columns else set()
+    kept = list(range(width))
     if columns and not fixed:
+        kept = [i for i in range(width) if blank_cell is not None or any((not _is_blank(r[i] if i < len(r) else '') for r in rows))]
         columns, rows = apply_render_table_rules(columns, rows, blank_cell)
     elif cw:
         keepc = [i for i in range(width) if float(cw[i] or 0) > 0]
         columns = [columns[i] for i in keepc if i < len(columns)]
         rows = [[(r[i] if i < len(r) else '') for i in keepc] for r in rows]
         cw = [cw[i] for i in keepc]
+        kept = keepc
     roles = roles if roles is not None else _THEME_ROLES
     ncols = len(columns) if columns else len(rows[0]) if rows else 1
     header = [columns] if columns else []
@@ -244,13 +258,53 @@ def add_table(document, columns, rows, font, roles=None, spec=None):
             table.cell(r0, c0).merge(table.cell(r1, c1))
     if roles is not None:
         theme_mod.style_table_theme(table, roles, has_header=bool(header))
+    orig = lambda c: kept[c] if c < len(kept) else c
+    if roles is not None and (tstyle or num_set or nw_set or acc_col is not None):
+        for r in range(len(all_rows)):
+            is_head = bool(header) and r == 0
+            body_n = r - len(header)
+            for c in range(ncols):
+                if (r, c) in covered:
+                    continue
+                cell = table.cell(r, c)
+                oc = orig(c)
+                if tstyle == 'sheet':
+                    if is_head:
+                        theme_mod.set_cell_shading(cell, roles.get('primary-100', roles['navy-wash']))
+                    elif body_n % 2:
+                        theme_mod.set_cell_shading(cell, roles.get('primary-50', roles['navy-wash']))
+                if tstyle == 'signoff' and not is_head:
+                    theme_mod.set_cell_border(cell, 'bottom', roles['rule-strong'], 6)
+                    tcPr = cell._tc.get_or_add_tcPr()
+                    if tcPr.find(qn('w:vAlign')) is None:
+                        va = OxmlElement('w:vAlign'); va.set(qn('w:val'), 'center'); tcPr.append(va)
+                if oc in num_set:
+                    for p in cell.paragraphs:
+                        CD._end_align(p, LOCALE == 'ar')
+                if oc in nw_set:
+                    tcPr = cell._tc.get_or_add_tcPr()
+                    if tcPr.find(qn('w:noWrap')) is None:
+                        tcPr.insert_element_before(OxmlElement('w:noWrap'), 'w:tcMar', 'w:textDirection', 'w:tcFitText', 'w:vAlign', 'w:hideMark', 'w:tcPrChange')
+                if acc_col is not None and oc == acc_col:
+                    if is_head:
+                        theme_mod.set_cell_shading(cell, roles['navy'])
+                        for run in (x for p in cell.paragraphs for x in p.runs):
+                            run.font.color.rgb = theme_mod.rgb(roles.get('paper', '#ffffff'))
+                    else:
+                        theme_mod.set_cell_shading(cell, roles.get('primary-50', roles['navy-wash']))
+                        for run in (x for p in cell.paragraphs for x in p.runs):
+                            run.font.bold = True
+        if tstyle == 'signoff':
+            for r in range(len(header), len(all_rows)):
+                hs = heights[r - len(header)] if r - len(header) < len(heights) else None
+                CD._min_height(table.rows[r], hs if isinstance(hs, (int, float)) and hs >= 4 else 14)
     if TYPED:  # 0.18.1: a status word in a typed document takes the print's fill and ink (bold, so colour is never the only cue)
         for r, row in enumerate(all_rows):
             if header and r == 0:
                 continue
             for c in range(ncols):
                 v = row[c] if c < len(row) else ''
-                col = CD.status_colors(MD.text_of(v), roles) if (r, c) not in covered else None
+                col = CD.status_colors(MD.text_of(v), roles, orig(c) in head_set) if (r, c) not in covered else None
                 if col:
                     cell = table.cell(r, c)
                     theme_mod.set_cell_shading(cell, col[0])
@@ -710,19 +764,31 @@ CONTROL_LABELS = [('documentId', L['control']['documentId']), ('title', L['contr
 REVISIONS_COLUMNS = [L['revVersion'], L['revDate']]
 APPROVALS_COLUMNS = L['approvalCols']
 
-def add_control_front_matter(document, data, font, counters, toc: bool=False, spine: bool=False):
+def add_control_front_matter(document, data, font, counters, toc: bool=False, spine: bool=False, back: bool=False):
     """Document control, revisions, approvals and contents. 0.19.0 (C7, C11): a typed document's approval rows are 12 mm tall (room to sign); on a
-    title-page family (spine) the contents start their own page."""
+    title-page family (spine) the contents start their own page. 0.19.0 C10: the parts CD.back_of names (approvals go with control) print after the
+    last chapter instead (back=True prints them there, under «Document control»); a form or a sheet prints no contents list."""
     hide = set((data.get('layout') or {}).get('hide') or [])
-    control = (data.get('control') or {}) if 'control' not in hide else {}
-    revisions = (data.get('revisions') or []) if 'revisions' not in hide else []
-    approvals = data.get('approvals') or []
+    back_keys = set(CD.back_of(data))
+    if 'control' in back_keys:
+        back_keys.add('approvals')
+    take = (lambda k: k in back_keys) if back else (lambda k: k not in back_keys)
+    if not back and CD.no_contents(data):
+        hide = hide | {'toc'}
+    control = (data.get('control') or {}) if 'control' not in hide and take('control') else {}
+    revisions = (data.get('revisions') or []) if 'revisions' not in hide and take('revisions') else []
+    approvals = (data.get('approvals') or []) if take('approvals') else []
+    if back:
+        hide = hide | {'toc'}
     if not control and (not revisions) and (not approvals):
         return
     h1 = document.add_heading(level=1)
     set_para_bidi(h1)
     _F = theme_mod.faces(font)
-    add_script_runs(h1, L['controlChapter'], _F['display'], bold=True)
+    add_script_runs(h1, CD.family_label(data, 'backMatter', LOCALE == 'ar') if back else L['controlChapter'], _F['display'], bold=True)
+    if back:
+        h1.paragraph_format.keep_with_next = True
+        counters['back_matter'] = 1
     if control:
         h2 = document.add_heading(level=2)
         set_para_bidi(h2)
@@ -1267,6 +1333,7 @@ def build(doc_json: Path, out_docx: Path, logo: Path | None, font: str, workdir:
                     raise ValueError(f"block kind {kind!r} has no handler in build_docx.py (section {sec['title']!r}); add one and list it in HANDLED_KINDS")
         if wide:
             close_landscape_section(document, body_geometry)
+    add_control_front_matter(document, data, font, counters, toc=toc, back=True)  # 0.19.0 C10: layout.back (a form or a sheet: control and revisions)
     # a new Word section copies the one before it: only the body section restarts the folio at 1, and only a
     # "this page only" segment keeps a first-page header (0.13.0; before, every figure chapter restarted at 1)
     for _k, _s in enumerate(document.sections):

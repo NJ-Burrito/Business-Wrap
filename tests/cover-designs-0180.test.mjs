@@ -19,7 +19,7 @@ import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright-core';
 import { REPO, exportPdf, exportDocx, loadTheme, launchOptions, i18n, printHtml } from '../engine/export.mjs';
 import * as RM from '../engine/render.mjs';
-import { renderDocument, documentCss, designTheme, COVER_DESIGNS, COVER_TYPES, COVER_CODES, COVER_DENSE, COVER_CONTROL, contrastOf, calloutOf } from '../engine/render.mjs';
+import { renderDocument, documentCss, designTheme, COVER_DESIGNS, COVER_TYPES, COVER_CODES, COVER_DENSE, COVER_CONTROL, FIGURE_KINDS, REPORT_CONTROL, STATUS_WORDS, STATUS_WORDS_HEADED, STATUS_HEADS, contrastOf, calloutOf } from '../engine/render.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-1109-cover0180-'));
 const results = [];
@@ -76,6 +76,9 @@ try {
   const py = fs.readFileSync(path.join(REPO, 'engine', 'docx', 'cover_design.py'), 'utf8');
   const pyList = (name) => [...(new RegExp(`^${name} = \\(([^)]*)\\)`, 'm').exec(py)?.[1] || '').matchAll(/'([^']+)'/g)].map((m) => m[1]);
   const pyCodes = Object.fromEntries([...(/^CODES = \{([^}]*)\}/m.exec(py)?.[1] || '').matchAll(/'([^']+)': '([^']+)'/g)].map((m) => [m[1], m[2]]));
+  // 0.19.0 R2: the families' constants and the status words (C9: also the words of a status column, and its head words) are the renderer's too
+  const pyWords = (name) => { const m = new RegExp(`^${name} = \\{([\\s\\S]*?)\\}\\n`, 'm').exec(py)?.[1] || ''; return Object.fromEntries([...m.matchAll(/'(ok|bad|warn|idle)': \(([^)]*)\)/g)].map((x) => [x[1], [...x[2].matchAll(/'([^']+)'/g)].map((y) => y[1])])); };
+  check('the DOCX builder\'s figure kinds, report control fields, status words, C9 words and status head words are the renderer\'s', JSON.stringify(pyList('FIGURE_KINDS')) === JSON.stringify(FIGURE_KINDS) && JSON.stringify(pyList('REPORT_CONTROL')) === JSON.stringify(REPORT_CONTROL) && JSON.stringify(pyList('STATUS_HEADS')) === JSON.stringify(STATUS_HEADS) && JSON.stringify(pyWords('_STATUS_WORDS')) === JSON.stringify(STATUS_WORDS) && JSON.stringify(pyWords('_STATUS_WORDS_HEADED')) === JSON.stringify(STATUS_WORDS_HEADED), JSON.stringify([pyList('FIGURE_KINDS'), pyList('STATUS_HEADS'), pyWords('_STATUS_WORDS'), pyWords('_STATUS_WORDS_HEADED')]).slice(0, 400));
   check('the DOCX builder\'s designs, types, codes, dense types and control fields are the renderer\'s; no motif in it', JSON.stringify(pyList('DESIGNS')) === JSON.stringify(COVER_DESIGNS) && JSON.stringify(pyList('TYPES')) === JSON.stringify(COVER_TYPES) && JSON.stringify(pyCodes) === JSON.stringify(COVER_CODES) && JSON.stringify(pyList('DENSE')) === JSON.stringify(COVER_DENSE) && JSON.stringify(pyList('CONTROL')) === JSON.stringify(COVER_CONTROL) && !/motif_png|place_motif|MOTIF_SCRIPT/.test(py), [pyList('DESIGNS'), pyList('DENSE'), pyList('CONTROL')]);
 
   // ── 2. absent keys: nothing new ──
@@ -126,7 +129,9 @@ try {
   check('the spine cover keeps its logo slots, rule, kicker, title, subtitle and meta row', ['class="lockup"', 'cover-rule', 'class="kicker"', 'rule-short', '<h1', 'class="subtitle"', 'cover-foot'].every((s) => spineAr.includes(s)));
   const oldFile = htmlOf({ ...load('en'), motif: 'tor' }, 'en');
   check('an old file\'s motif alone still means the spine design and names the type (code TOR), and prints no art; a design alone names no type', oldFile.includes('data-cover="spine" data-type="tor"') && oldFile.includes('<div class="type-code"><bdi dir="ltr">TOR</bdi>') && !/data-motif|<svg class="cover-motif"/.test(oldFile) && !/data-type|<svg class="cover-motif"/.test(htmlOf({ ...load('en'), coverDesign: 'spine' }, 'en')));
-  check('a family R2 has not built yet prints with the nearest built one (report as spine, form and sheet as compact)', htmlOf({ ...load('en'), coverDesign: 'report', docType: 'business-case' }, 'en').includes('data-cover="spine" data-family="report"') && htmlOf({ ...load('en'), coverDesign: 'form', docType: 'defect-report' }, 'en').includes('data-cover="compact" data-family="form"'));
+  const fam = (f, t) => htmlOf({ ...load('en'), coverDesign: f, docType: t }, 'en');
+  const [rep, frm, sht] = [fam('report', 'business-case'), fam('form', 'defect-report'), fam('sheet', 'rtm')];
+  check('0.19.0 R2: report is a title page (data-cover spine) with its band and control block; form and sheet are a header on page 1 (data-cover compact, the band), a form with its ID box', rep.includes('data-cover="spine" data-family="report"') && rep.includes('class="rp-band"') && rep.includes('class="bw-fields fg-control"') && frm.includes('data-cover="compact" data-family="form"') && frm.includes('class="bw-idbox"') && sht.includes('data-cover="compact" data-family="sheet"') && sht.includes('class="tb-band"'));
   check('the user manual keys its look on the motif', documentCss(theme, {}, { ...load('en'), motif: 'user-manual' }).includes('counter-increment:bw-step') && !documentCss(theme, {}, { ...load('en'), motif: 'srs' }).includes('counter-increment:bw-step'));
 
   // ── 4. layout in headless Chrome ──

@@ -14,7 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { REPO, ROLES, EDITIONS, BLOCK_KINDS, ID_RE, categories, palettes, compose } from '../../engine/doctypes.mjs';
+import { REPO, ROLES, EDITIONS, BLOCK_KINDS, ID_RE, TYPE_FAMILY, familyOf, categories, palettes, compose } from '../../engine/doctypes.mjs';
 import { safeSvg } from '../../engine/render.mjs';
 
 export const LIMITS = { editionBytes: 14 * 1024, totalBytes: 400 * 1024, svgBytes: 6 * 1024, svgViewBox: '0 0 120 170', contrast: 4.5, graphic: 3 };
@@ -217,11 +217,16 @@ export function coverErrors(cover, ed) {
       if (cover.figures.length > COVER_RULES.figures) e.push(`${ed}: cover.figures holds ${cover.figures.length}, at most ${COVER_RULES.figures}`);
       cover.figures.forEach((f, i) => {
         if (!isPlain(f) || !isStr(f.label) || !f.label) e.push(`${ed}: cover.figures[${i}] needs a label`);
-        else if (f.kind !== undefined && !COVER_RULES.figureKinds.includes(f.kind)) e.push(`${ed}: cover.figures[${i}].kind must be one of ${COVER_RULES.figureKinds.join(' | ')}`);
+        else {
+          if (f.kind !== undefined && !COVER_RULES.figureKinds.includes(f.kind)) e.push(`${ed}: cover.figures[${i}].kind must be one of ${COVER_RULES.figureKinds.join(' | ')}`);
+          if (f.value !== undefined && !isStr(f.value)) e.push(`${ed}: cover.figures[${i}].value must be a string`);
+          for (const k of Object.keys(f)) if (!['label', 'value', 'kind'].includes(k)) e.push(`${ed}: cover.figures[${i}] has an unknown key «${k}»`);
+        }
       });
     }
   }
-  if (cover.badge !== undefined && !(isPlain(cover.badge) && isStr(cover.badge.label) && isStr(cover.badge.value))) e.push(`${ed}: cover.badge is {label, value}`);
+  if (cover.badge !== undefined && !(isPlain(cover.badge) && isStr(cover.badge.label) && isStr(cover.badge.value) && Object.keys(cover.badge).every((k) => ['label', 'value'].includes(k)))) e.push(`${ed}: cover.badge is {label, value}`);
+  if (isPlain(cover.statement)) for (const k of Object.keys(cover.statement)) if (!['text', 'items', 'choices'].includes(k)) e.push(`${ed}: cover.statement has an unknown key «${k}»`);
   if (cover.statement !== undefined) {
     const s = cover.statement;
     if (!isPlain(s) || !isStr(s.text)) e.push(`${ed}: cover.statement is {text, items?, choices?}`);
@@ -231,6 +236,15 @@ export function coverErrors(cover, ed) {
     }
   }
   return e;
+}
+/** 0.19.0 R2: the `cover` keys each page-1 family prints (render.mjs coverDesigned); a key the family does not print is a warning. */
+export const FAMILY_KEYS = { spine: ['cols', 'fields'], compact: ['cols', 'fields'], report: ['cols', 'fields', 'figures', 'statement'], form: ['cols', 'fields', 'figures', 'badge', 'statement'], sheet: ['cols', 'fields', 'figures', 'statement'] };
+export function familyWarnings(cover, family, ed) {
+  if (!isPlain(cover)) return [];
+  const keys = FAMILY_KEYS[family] || FAMILY_KEYS.spine;
+  const w = Object.keys(cover).filter((k) => !keys.includes(k)).map((k) => `${ed}: cover.${k} does not print on a ${family} page 1`);
+  if (family !== 'form' && Array.isArray(cover.fields) && cover.fields.some((f) => f?.id === true)) w.push(`${ed}: cover.fields id:true is the ID box of a form; a ${family} page 1 prints it as a plain field`);
+  return w;
 }
 /** S3: layout.back ⊂ [control, revisions] and disjoint from hide; tocDepth 1 | 2 (a type's or a content's layout). */
 export function layoutErrors(layout, where) {
@@ -272,6 +286,8 @@ export function approvalsErrors(rows, ed) {
 }
 
 /* ───────── S8: the start-page art's layer contract (§5): one bw-a-page first, one bw-a-head, one bw-a-mark last, the table's order, no nesting ───────── */
+/** Children of <svg> that draw nothing and are no layer (an accessible name, definitions). */
+export const META_TAGS = ['title', 'desc', 'defs', 'metadata'];
 export const LAYERS = ['bw-a-page', 'bw-a-sheet', 'bw-a-head', 'bw-a-row', 'bw-a-node', 'bw-a-arrow', 'bw-a-seal', 'bw-a-mark'];
 /** → messages ([] = the contract holds). The pilot ships it as a WARNING; 0.19.0 makes it an error once lane A has redrawn all 17 files. */
 export function layerContract(svg) {
@@ -287,6 +303,7 @@ export function layerContract(svg) {
     if (close) { depth -= 1; continue; }
     const cls = (attrs.match(/\bclass\s*=\s*["']([^"']*)["']/) || [])[1] || '';
     const layer = cls.split(/\s+/).filter((c) => LAYERS.includes(c));
+    if (depth === 0 && META_TAGS.includes(m[2].toLowerCase())) { if (layer.length) nested.push(layer.join(' ')); if (!self) depth += 1; continue; } // <title>, <desc>, <defs>, <metadata> are no layer
     if (depth === 0) top.push(layer);
     else if (layer.length) nested.push(layer.join(' '));
     if (!self) depth += 1;
@@ -386,6 +403,7 @@ function docErrors(doc, ed, t, isSource, warn = () => {}) {
   for (const k of CONTROL_KEYS) if (typeof doc.control?.[k] !== 'string') e.push(`${ed}: control.${k} is missing`);
   if (doc.control?.documentId !== `BW-${t.code}-NEW-001`) e.push(`${ed}: control.documentId must be BW-${t.code}-NEW-001`);
   e.push(...coverErrors(doc.cover, ed), ...layoutErrors(doc.layout, ed)); // 0.19.0 S2, S3
+  familyWarnings(doc.cover, familyOf(t), ed).forEach(warn); // 0.19.0 R2: a key the type's family does not print
   if (t.empty === true) {
     if (!Array.isArray(doc.revisions)) e.push(`${ed}: revisions must be an array`);
     if (!Array.isArray(doc.openQuestions)) e.push(`${ed}: openQuestions must be an array`);
@@ -429,6 +447,7 @@ export function validateType(id, o) {
   const schema = rdJson(path.join(dirOf(o), 'schema.json'));
   for (const m of validateSchema(schema, t)) err(`type.json ${m}`);
   if (t.id !== id) err(`type.json: id «${t.id}» differs from the folder «${id}»`);
+  if (TYPE_FAMILY[t.id] && t.coverDesign !== TYPE_FAMILY[t.id]) r.warnings.push(`type.json: coverDesign «${t.coverDesign}» prints as «${TYPE_FAMILY[t.id]}» (0190-types §1); set it to «${TYPE_FAMILY[t.id]}»`);
   if (t.motif !== undefined && t.motif !== t.id) r.warnings.push(`type.json: motif is ignored since 0.19.0 (page 1 carries no art); when kept it equals the id, not «${t.motif}»`);
   for (const m of layoutErrors(t.layout, 'type.json')) err(m);
   const cats = categories(o);
@@ -460,7 +479,9 @@ export function validateType(id, o) {
   if (fs.existsSync(artFile)) {
     const svg = rd(artFile); r.art = bytes(svg); texts[`_art/${id}.svg`] = svg;
     for (const m of checkSvg(svg)) err(`_art/${id}.svg: ${m}`);
-    for (const m of layerContract(svg)) r.contract.push(`_art/${id}.svg: layer contract (S8, a warning in the pilot): ${m}`);
+    // S8: an error for art already redrawn to the contract (it carries bw-a-* classes); a warning for art lane A2 has not redrawn yet
+    const redrawn = /\bbw-a-[a-z]+/.test(svg);
+    for (const m of layerContract(svg)) (redrawn ? err : (x) => r.contract.push(x))(`_art/${id}.svg: layer contract (S8${redrawn ? '' : ', a warning until the art is redrawn'}): ${m}`);
   }
   for (const [name, text] of Object.entries(texts)) for (const f of scanText(text, o)) err(`${name}:${f.line} forbidden pattern ${f.rule}`);
   return r;
