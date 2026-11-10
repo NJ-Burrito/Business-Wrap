@@ -9,6 +9,7 @@ pipeline (render.ts clearCoverHeader + tools/srs/stamp-folios.py):
 3. (0.13.0) the page-segment markers (link annotations to bw.invalid) are removed.
 
     python engine/pdf_post.py <pdf> <folio-face.ttf> <anchor text> <rtl|ltr> [right:n|left:n/N|center:n|none]
+                                                           (no slot: right for ltr, left for rtl)
     python engine/pdf_post.py links <pdf>                 → {"<segment>": <0-based page>, "_pages": n}
     python engine/pdf_post.py splice <pdf> <part.pdf> <1-based pages, comma separated>
 """
@@ -107,7 +108,12 @@ def compact_first_page(doc):
     return False
 
 
-def main(pdf_path, fontfile, anchor_text, direction, folio="right:n"):
+def main(pdf_path, fontfile, anchor_text, direction, folio=None):
+    rtl = direction == "rtl"
+    explicit = folio is not None  # the caller names the folio's slot (a document with its own running items)
+    if folio is None:
+        # 0.18.1: no running items = the stock band, mirrored in Arabic: the confidentiality mark at the right, the folio at the left (English: right)
+        folio = "left:n" if rtl else "right:n"
     doc = pymupdf.open(pdf_path)
     compact = compact_first_page(doc)
     first = 0 if compact else 1  # the first sheet that gets a folio: a compact page 1 is a page like any other
@@ -131,7 +137,7 @@ def main(pdf_path, fontfile, anchor_text, direction, folio="right:n"):
         bottom = page.rect.height - 16 * 72 / 25.4
         # a fallback face can split the anchor into several runs: any footer run that is part of it will do
         anchor = next((r for r in runs if anchor_text and r[1][1] > bottom and (anchor_text in r[0] or r[0] in anchor_text)), None)
-        if not anchor and folio != "right:n":
+        if not anchor and explicit and folio != "right:n":
             # 0.13.0: the confidentiality item may be gone; any footer run, else the footer band's own line
             anchor = next((r for r in runs if r[1][1] > bottom), None) or ("", (16 * 72 / 25.4, page.rect.height - 8 * 72 / 25.4), 8.0, 0x544C3B)
         if not anchor:
@@ -140,6 +146,10 @@ def main(pdf_path, fontfile, anchor_text, direction, folio="right:n"):
         _, (_, baseline), size, colour = anchor
         same = [r for r in runs if abs(r[1][1] - baseline) < 1.0] or [anchor]
         margin = min(r[1][0] for r in same) if same[0][0] else 16 * 72 / 25.4
+        if rtl:
+            # 0.18.1: in a right-to-left band the first item sits at the right edge, so the leftmost run is not at the margin (it can be the
+            # centre item); the band's own padding is 16 mm on both sides (render.mjs chromeTemplates), so both slots start there
+            margin = 16 * 72 / 25.4
         rgb = ((colour >> 16) & 255, (colour >> 8) & 255, colour & 255)
         number, total = (i + 1, doc.page_count) if compact else (i, doc.page_count - 1)
         label = "%d / %d" % (number, total) if fmt == "n/N" else str(number)

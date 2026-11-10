@@ -386,17 +386,20 @@ export function blocksInOrder(doc) {
 export const CHROME_FIELDS = ['documentId', 'title', 'version', 'issuedOn', 'status', 'confidentiality', 'producer'];
 /** Today's running header/footer as items (what chromeTemplates prints with no doc.chrome). */
 export function chromeDefaults(locale = 'ar') {
-  const ar = locale === 'ar';
+  // 0.18.1 · start and end are logical: the band's direction (dir=rtl in Arabic) puts «start» on the right, so the same alignments
+  // mirror the whole band (the logo, «سري» and the document code at the right; the date and the folio at the left). They were flipped
+  // for Arabic before, which landed every item on the same physical side as English.
+  void locale;
   return {
     header: { items: [
-      { id: 'h-logo', kind: 'logo', value: 'header', align: ar ? 'end' : 'start', scope: 'all' },
+      { id: 'h-logo', kind: 'logo', value: 'header', align: 'start', scope: 'all' },
       { id: 'h-id', kind: 'field', value: 'documentId', align: 'center', scope: 'all' },
-      { id: 'h-date', kind: 'field', value: 'issuedOn', align: ar ? 'start' : 'end', scope: 'all' },
+      { id: 'h-date', kind: 'field', value: 'issuedOn', align: 'end', scope: 'all' },
     ] },
     footer: { items: [
-      { id: 'f-conf', kind: 'field', value: 'confidentiality', align: ar ? 'end' : 'start', scope: 'all' },
+      { id: 'f-conf', kind: 'field', value: 'confidentiality', align: 'start', scope: 'all' },
       { id: 'f-prod', kind: 'field', value: 'producer', align: 'center', scope: 'all' },
-      { id: 'f-page', kind: 'page', value: 'n', align: ar ? 'start' : 'end', scope: 'all' },
+      { id: 'f-page', kind: 'page', value: 'n', align: 'end', scope: 'all' },
     ] },
   };
 }
@@ -949,6 +952,9 @@ export function manualCss(doc) {
 section.chapter,section.sec{counter-reset:bw-step}
 .bw-doc h4{counter-increment:bw-step;display:flex;align-items:center;gap:3mm;margin:7mm 0 3mm;margin-inline:0;padding:0;border-top:0;background:none;color:var(--ink);font-size:var(--t-h3)}
 .bw-doc h4::before{content:counter(bw-step);flex:0 0 auto;width:8mm;height:8mm;display:flex;align-items:center;justify-content:center;background:var(--primary);color:var(--paper,#fff);font-size:var(--t-table);font-weight:700;line-height:1}
+/* 0.18.1: a step stays whole: its heading, its text and its screenshot frame print on one page (the heading already holds with its first line; every paragraph, list and callout that has a screenshot frame after it in the same section holds with what follows, so the step-3 frame no longer lands alone at the top of the next page) */
+.bw-doc :is(.keep,p,ul,ol):has(~ figure.fig){break-after:avoid}
+.bw-doc :is(.keep,p,ul,ol)+figure.fig{break-before:avoid}
 .bw-doc .fig.shots{background:var(--card);border:.75pt solid var(--rule-strong);padding:3mm;margin:3mm 0 6mm}
 .bw-doc .fig.shots .shot{max-width:none;margin:0 0 2mm;border:0}
 .bw-doc .fig.shots figcaption{font-size:var(--t-meta);color:var(--muted);margin:0}
@@ -2165,7 +2171,7 @@ export function chromeItems(doc, part, seg) {
 }
 /** The item that carries the folio (pdf_post stamps it): its slot and its format, or null. */
 export function folioOf(doc, locale) {
-  if (!doc.chrome) return { side: 'right', format: 'n' };
+  if (!doc.chrome) return { side: locale === 'ar' ? 'left' : 'right', format: 'n' }; // 0.18.1: the folio is the band's end slot: left in Arabic
   const it = chromeItems(doc, 'footer').concat(chromeItems(doc, 'header')).find((x) => x.kind === 'page');
   if (!it) return null;
   const rtl = locale === 'ar';
@@ -2208,7 +2214,7 @@ export function chromeTemplates(doc, oIn, seg) {
   const roles = o.theme.vars;
   const stack = [o.theme.fonts.text, o.theme.fonts.display].map(safeFamily).filter(Boolean).map((f) => `'${f}'`).join(',');
   const wrap = (inner) =>
-    `<style>${o.fontCss || ''}</style><div style="width:100%;font-size:8pt;font-family:${stack},serif;color:${roles.muted};padding:0 16mm;display:flex;justify-content:space-between;align-items:center;">${inner}</div>`;
+    `<style>${o.fontCss || ''}</style><div${o.locale === 'ar' ? ' dir="rtl"' : ''} style="width:100%;font-size:8pt;font-family:${stack},serif;color:${roles.muted};padding:0 16mm;display:flex;justify-content:space-between;align-items:center;">${inner}</div>`; // 0.18.1: dir=rtl mirrors the three slots in Arabic (English is byte-identical)
   const header = wrap(
     (o.logos?.header ? `<img src="${attr(o.logos.header)}" style="height:5mm;" />` : '<span></span>') +
       `<span>${esc(doc.control.documentId)}</span><span>${esc(doc.control.issuedOn)}</span>`
