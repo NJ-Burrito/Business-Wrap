@@ -1,0 +1,10 @@
+{
+  "ar": {
+    "sth.tipOn": "الخادم المحلي يعمل. اضغط لإيقافه؛ تُحفظ مستنداتك أولاً.",
+    "sth.tipOff": "الخادم المحلي متوقف. اضغط لتشغيله؛ تبقى صفحة البداية أمامك."
+  },
+  "en": {
+    "sth.tipOn": "The local server is running. Press to stop it; your documents are saved first.",
+    "sth.tipOff": "The local server is stopped. Press to start it; you stay on the start page."
+  }
+}

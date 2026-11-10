@@ -264,6 +264,7 @@ const XPL_SCENES = {
       case 'spell': return xaPage(40, 8, 80, 72, 4) + xaG('k-gone', xaP('no', 'M52 40 q2.5 -4 5 0 t5 0 t5 0 t5 0 t5 0', 'style="fill:none;stroke:var(--bw-danger);stroke-width:2"')) + xaWord(50, 33, 30, 'ln') + xaP('okS k-fade', 'M104 30 l4 4 l8 -9');
       case 'both': return xaPage(14, 14, 56, 70, 5) + xaPage(90, 14, 56, 70, 5, { right: true }) + xaR('hi k-grow', 20, 36, 42, 6, 3, xaSc(0, 1, 'left center')) + xaR('hi k-grow', 98, 36, 42, 6, 3, xaSc(0, 1, 'right center')) + xaP('acs', 'M74 46 h12 M78 42 l-4 4 l4 4 M82 42 l4 4 l-4 4');
       case 'lock': return xaPage(40, 8, 70, 80, 6) + xaR('pr', 60, 40, 30, 24, 5) + xaG('k-mv', xaP('prs', 'M66 40 v-8 a9 9 0 0 1 18 0 v8', 'style="stroke-width:3"'), xaMv(0, -9)) + xaShd(58, 64, 34) + xaC('wh', 75, 52, 3);
+      case 'host': return xaR('sheet', 20, 12, 120, 72, 8) + xaLn(30, 22, 40, 'ln hd') + xaR('track', 48, 42, 64, 28, 14) + xaG('k-mv', xaC('knob', 98, 56, 10), xaMv(-34, 0)) + xaC('ac', 34, 56, 4) + xaC('rng k-in2', 34, 56, 9);
       case 'power': return xaR('sheet', 30, 12, 100, 72, 10) + xaP('gh', 'M70 30 a20 20 0 1 0 20 0') + xaP('acs k-draw', 'M80 24 v22', 'style="stroke-width:4"') + xaG('k-blink', xaC('ac', 80, 48, 4)) + xaC('rng k-in2', 80, 38, 26);
       case 'read': return xaPage(48, 8, 64, 80, 5) + xaR('mk k-mv', 54, 38, 52, 6, 3, xaMv(0, -22)) + xaP('acs', 'M16 48 q10 -12 20 0 q-10 12 -20 0 M124 48 q10 -12 20 0 q-10 12 -20 0') + xaG('k-mv', xaC('ac', 26, 48, 3), xaMv(0, -6));
       default: return xaR('track', 48, 34, 64, 28, 14) + xaC('knob', 62, 48, 10);
@@ -626,6 +627,7 @@ mode:spell spell@spell
 mode:both both@both
 mode:lock lkToggle@close
 mode:power powerOff@close
+mode:host srvHost@link
 mode:read reading@view
 spell:next spellNext@spellNext
 spell:prev spellPrev@spellPrev
