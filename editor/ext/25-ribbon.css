@@ -30,7 +30,7 @@
 /* 0.17.9: the gold Save joined the top row, so with nothing selected the row is full: the palette button is the icon alone up to 1400 px and Save too up to 1000 px, as a selection already makes them (the bar must not change height on select: selection-strip S2) */
 @media (max-width: 1400px) { .island:has(> .ribbon) > .b.cmd .w { display: none; } }
 @media (max-width: 1000px) { .island:has(> .ribbon) > .b.bar-save .w { display: none; } }
-@media (max-width: 1100px) { .island:has(> .ribbon) .status .count .w { display: none; } .island:has(> .ribbon) .status .count { padding-inline: 8px; } }
+@media (max-width: 1140px) { .island:has(> .ribbon) .status .count .w { display: none; } .island:has(> .ribbon) .status .count { padding-inline: 8px; } }
 .island:has(> .ribbon) > .ctx[hidden] { display: flex !important; visibility: hidden; position: absolute; inline-size: 0; min-inline-size: 0; flex: 0 0 0; } /* out of the flow, so the quick strip keeps its gaps (history sits 24 px from the direction pill) */
 .island:has(> .ribbon) > .ctx[hidden] > * { display: none !important; } /* nothing in it can be hovered, focused or counted while no selection exists */
 .island:has(> .ribbon) > .ctx[hidden], .island:has(> .ribbon) > .ctx[hidden] * { animation: none !important; transition: none !important; }
