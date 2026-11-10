@@ -209,64 +209,11 @@ const START = (() => {
    * a type differs only in WHICH layers its art has: bw-a-page, bw-a-sheet, bw-a-head, bw-a-row, bw-a-node, bw-a-arrow, bw-a-seal, bw-a-mark (DOM order is
    * the stagger order). An art with none of them fades in. Keyframes hold only the `from` state, so Calm (animation: none) shows the end frame. */
   const LAYERS = ['page', 'sheet', 'head', 'row', 'node', 'arrow', 'seal', 'mark'];
-  /* TEMPORARY BRIDGE (0.19.0 N4) until crew N3's redrawn _art/*.svg carries the bw-a-* classes natively: per type, [layer, selector, n] wraps each match and
-   * its next n-1 siblings in <g class="bw-a-<layer>"> (a wrapper with no transform attribute, so the CSS transform never fights the art's own). «^» = the
-   * svg's own children, «P» = the page group's children, «M» = the motif group's children. An art that already has a bw-a-* class is left untouched.
-   * Remove this block when every art file carries the classes. */
-  const HEAD_SPINE = [['head', 'P rect[x="34"][y="92"]', 2], ['head', 'P rect[x="34"][y="141"]', 2]];
-  const HEAD_COMPACT = [['head', 'P rect[x="34"][y="60"]', 2]];
-  const HEAD_LAND = [['head', 'P rect[x="16"][y="31"]', 3]];
-  const BRIDGE = {
-    blank: [['row', 'P rect[x="34"][y="200"]', 1], ['row', 'P rect[x="34"][y="208"]', 1], ['row', 'P rect[x="34"][y="216"]', 1], ['page', '^ g', 1]],
-    srs: [...HEAD_SPINE, ['row', 'M rect[height="19"]', 4]],
-    brd: [...HEAD_SPINE, ['node', 'M circle[r="38"]', 4], ['arrow', 'M path', 2], ['row', 'M rect[height="4.2"]', 3]],
-    frs: [...HEAD_SPINE, ['node', 'M rect[height="24"]', 3], ['arrow', 'M path[stroke-width="1.1"]', 2], ['row', 'M rect[x="4"]', 3]],
-    rtm: [...HEAD_LAND, ['row', 'M path[stroke-width="0.7"]', 2], ['node', 'M circle', 1]],
-    'process-flow': [...HEAD_SPINE, ['row', 'M rect[height="44"]', 2], ['node', 'M circle', 1], ['node', 'M rect[x="38"][y="14"]', 1], ['node', 'M polygon[stroke-width]', 1],
-      ['node', 'M rect[x="92"][y="62"]', 1], ['arrow', 'M path', 2], ['node', 'M rect[x="42"][y="20"]', 1], ['node', 'M rect[x="97"]', 1]],
-    'test-plan': [...HEAD_SPINE, ['node', 'M rect[width="11"]', 1], ['mark', 'M polyline', 1], ['row', 'M rect[width="34"]', 2]],
-    'test-cases': [...HEAD_LAND, ['head', 'M rect[height="11"]', 1], ['row', 'M rect[height="13.6"]', 1], ['node', 'M rect[width="26"]', 2]],
-    'defect-report': [...HEAD_COMPACT, ['row', 'M rect[height="19"]', 4], ['node', 'M rect[x="126"]', 2]],
-    'uat-signoff': [...HEAD_SPINE, ['row', 'M circle[r="6"]', 6], ['mark', 'M path[d^="M0 90"]', 2], ['mark', 'M path[d^="M76 90"]', 2], ['seal', 'M circle[r="11"]', 3]],
-    'release-notes': [...HEAD_SPINE, ['node', 'M rect[width="58"]', 4], ['row', 'M rect[width="24"][height="9"]', 4]],
-    'user-manual': [...HEAD_SPINE, ['node', 'M rect[width="13"]', 2], ['sheet', 'M rect[height="56"]', 9], ['mark', 'M rect[width="85.5"]', 3], ['node', 'M rect[width="9"][height="9"]', 2]],
-    tot: [...HEAD_SPINE, ['node', 'M rect[width="32"]', 2], ['mark', 'M path', 2], ['node', 'M circle', 1]],
-    tor: [...HEAD_SPINE, ['sheet', 'M rect[height="58"]', 2], ['node', 'M rect[width="44"]', 3], ['mark', 'M rect[stroke-dasharray]', 2], ['arrow', 'M path[stroke-width="1.4"]', 1], ['node', 'M circle', 2]],
-    'business-case': [...HEAD_SPINE, ['node', 'M circle', 1], ['arrow', 'M path[stroke-width="2.2"]', 7], ['node', 'M rect[width="9"]', 1]],
-    'change-request': [...HEAD_SPINE, ['sheet', 'M rect[width="58"]', 5], ['mark', 'M path[stroke-width="1.1"]', 1], ['arrow', 'M path[stroke-width="1.8"]', 2], ['row', 'M circle[r="3"]', 4]],
-    minutes: [...HEAD_COMPACT, ['node', 'M circle[cy="6"]', 1], ['row', 'M circle[r="5"][cx="5"]', 4], ['mark', 'M rect[width="42"]', 2]],
-  };
-  const SVGNS = 'http://www.w3.org/2000/svg';
   const layerCache = new Map();
-  /** The type's art with its layer groups (native classes, else the bridge above); the tiles keep the plain art(). */
+  /** The type's art: every _art/<id>.svg carries its bw-a-* layer groups natively (0.19.0; the N4 bridge that wrapped them is gone). */
   function layered(ty) {
-    if (layerCache.has(ty.id)) return layerCache.get(ty.id);
-    const s = art(ty);
-    let out = s;
-    const map = BRIDGE[ty.id];
-    if (s !== frame && map && !/\bbw-a-(page|sheet|head|row|node|arrow|seal|mark)\b/.test(s)) {
-      try {
-        const tpl = document.createElement('template');
-        tpl.innerHTML = s;
-        const svg = tpl.content.firstElementChild;
-        const G = svg.querySelector(':scope > g'), M = G?.querySelector(':scope > g');
-        for (const [layer, sel, n] of map) {
-          const scope = sel[0] === '^' ? svg : sel[0] === 'P' ? G : M;
-          if (!scope) continue;
-          for (const first of scope.querySelectorAll(`:scope > ${sel.slice(2)}`)) {
-            if (first.parentNode !== scope) continue; // already inside an earlier group
-            const g = document.createElementNS(SVGNS, 'g');
-            g.setAttribute('class', `bw-a-${layer}`);
-            first.before(g);
-            let cur = first;
-            for (let i = 0; i < n && cur; i += 1) { const next = cur.nextElementSibling; g.appendChild(cur); cur = next; }
-          }
-        }
-        out = svg.outerHTML;
-      } catch { out = s; }
-    }
-    layerCache.set(ty.id, out);
-    return out;
+    if (!layerCache.has(ty.id)) layerCache.set(ty.id, art(ty));
+    return layerCache.get(ty.id);
   }
   /** The panel's thumbnail: the layered art, mirrored with the DOCUMENT language. data-layers names the layers present (none: the whole page fades in). */
   function stage(ty, pl) {
