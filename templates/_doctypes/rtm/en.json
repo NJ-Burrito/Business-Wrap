@@ -3,10 +3,10 @@
   "control": {
     "documentId": "BW-RTM-NEW-001",
     "title": "Requirements traceability matrix (RTM): Project name",
-    "preparedBy": "Name and job title",
+    "preparedBy": "[Name and job title]",
     "documentType": "Requirements traceability matrix (RTM)",
     "classification": "Internal",
-    "owner": "Organisation name",
+    "owner": "[Organisation name]",
     "issuedOn": "YYYY-MM-DD",
     "version": "V0.1",
     "status": "Draft",
@@ -24,64 +24,81 @@
     "kicker": "TRACEABILITY MATRIX",
     "subtitle": "From business requirement to test result"
   },
+  "cover": {
+    "cols": 6,
+    "fields": [
+      {
+        "label": "Project",
+        "value": "[Project name]",
+        "kind": "text"
+      },
+      {
+        "label": "Baseline",
+        "value": "[Baseline name]",
+        "kind": "text"
+      },
+      {
+        "label": "Release",
+        "value": "1.0.0",
+        "kind": "text"
+      },
+      {
+        "label": "Owner",
+        "value": "[Owner name]",
+        "kind": "text"
+      },
+      {
+        "label": "Date",
+        "value": "YYYY-MM-DD",
+        "kind": "date"
+      },
+      {
+        "label": "Version",
+        "value": "V0.1",
+        "kind": "text"
+      }
+    ],
+    "figures": [
+      {
+        "label": "Requirements",
+        "value": "…",
+        "kind": "none"
+      },
+      {
+        "label": "Covered",
+        "value": "…",
+        "kind": "ok"
+      },
+      {
+        "label": "Partial",
+        "value": "…",
+        "kind": "warn"
+      },
+      {
+        "label": "Gap",
+        "value": "…",
+        "kind": "bad"
+      },
+      {
+        "label": "Coverage",
+        "value": "…",
+        "kind": "none"
+      }
+    ]
+  },
+  "layout": {
+    "back": [
+      "control",
+      "revisions"
+    ]
+  },
   "chapters": [
     {
-      "number": "1",
-      "title": "How to read this matrix",
-      "sections": [
-        {
-          "number": "1.1",
-          "title": "Columns and coverage states",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "Tie each row to one requirement; never merge two requirements into one row. The states below say how far a requirement is covered."
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "State",
-                "Meaning"
-              ],
-              "rows": [
-                [
-                  "Covered",
-                  "Has a design, a test case and a passing result"
-                ],
-                [
-                  "Partial",
-                  "Has some links but not all"
-                ],
-                [
-                  "Gap",
-                  "No test case or no design yet"
-                ],
-                [
-                  "Out of scope",
-                  "Dropped by a change request"
-                ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "number": "2",
       "title": "The matrix",
       "sections": [
         {
-          "number": "2.1",
           "title": "Requirement to test",
           "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "One row per requirement, tracing forward from business to test."
-              ]
-            },
             {
               "kind": "table",
               "columns": [
@@ -93,7 +110,8 @@
                 "Test result",
                 "Defect IDs",
                 "Release",
-                "Status"
+                "Status",
+                "Note"
               ],
               "rows": [
                 [
@@ -102,10 +120,11 @@
                   "FR-01",
                   "…",
                   "TC-01",
-                  "Pass",
+                  "Passed",
                   "—",
-                  "V1.0",
-                  "Covered"
+                  "1.0.0",
+                  "Covered",
+                  "…"
                 ],
                 [
                   "BR-02",
@@ -113,10 +132,11 @@
                   "FR-02",
                   "…",
                   "TC-02",
-                  "Fail",
+                  "Failed",
                   "DEF-01",
-                  "V1.0",
-                  "Partial"
+                  "1.0.0",
+                  "Partial",
+                  "…"
                 ],
                 [
                   "BR-03",
@@ -127,68 +147,109 @@
                   "…",
                   "…",
                   "…",
-                  "Gap"
+                  "Gap",
+                  "…"
                 ]
+              ],
+              "colWidths": [
+                7,
+                21,
+                7,
+                9,
+                11,
+                8,
+                9,
+                7,
+                9,
+                12
+              ],
+              "style": "sheet",
+              "nowrapCols": [
+                0,
+                2,
+                6
               ]
             }
-          ]
+          ],
+          "number": "1.1"
         }
-      ]
+      ],
+      "number": "1"
     },
     {
-      "number": "3",
       "title": "Coverage summary",
       "sections": [
         {
-          "number": "3.1",
-          "title": "Counts",
+          "title": "Counts by module",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "Compute these from the matrix: how many requirements there are and how many have a design, a test case and a passing test."
+                "Compute these counts from the matrix. Coverage is the covered requirements divided by all requirements, as a percentage."
               ]
             },
             {
               "kind": "table",
               "columns": [
-                "Metric",
-                "Count",
-                "Percent"
+                "Module",
+                "Requirements",
+                "Covered",
+                "Partial",
+                "Gap",
+                "Coverage"
               ],
               "rows": [
                 [
-                  "Requirements",
+                  "[Module]",
+                  "…",
+                  "…",
+                  "…",
                   "…",
                   "…"
                 ],
                 [
-                  "With a design",
+                  "[Module]",
+                  "…",
+                  "…",
+                  "…",
                   "…",
                   "…"
                 ],
                 [
-                  "With a test case",
+                  "Total",
                   "…",
-                  "…"
-                ],
-                [
-                  "With a passing test",
+                  "…",
+                  "…",
                   "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                30,
+                14,
+                14,
+                14,
+                14,
+                14
+              ],
+              "numCols": [
+                1,
+                2,
+                3,
+                4,
+                5
               ]
             }
-          ]
+          ],
+          "number": "2.1"
         }
-      ]
+      ],
+      "number": "2"
     },
     {
-      "number": "4",
       "title": "Gaps and orphans",
       "sections": [
         {
-          "number": "4.1",
           "title": "Open gaps",
           "blocks": [
             {
@@ -218,11 +279,66 @@
                   "…",
                   "[Owner]"
                 ]
+              ],
+              "colWidths": [
+                18,
+                22,
+                44,
+                16
               ]
             }
-          ]
+          ],
+          "number": "3.1"
         }
-      ]
+      ],
+      "number": "3"
+    },
+    {
+      "title": "How to read the matrix",
+      "sections": [
+        {
+          "title": "Rows and coverage states",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "Each row is one requirement. Read it along the row, from the business need to the test result, and never merge two requirements into one row. The states below say how far a requirement is covered."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "State",
+                "Meaning"
+              ],
+              "rows": [
+                [
+                  "Covered",
+                  "Has a design, a test case and a passing result"
+                ],
+                [
+                  "Partial",
+                  "Has some of the links, not all"
+                ],
+                [
+                  "Gap",
+                  "Has no test case, or no design yet"
+                ],
+                [
+                  "Out of scope",
+                  "Dropped by a change request"
+                ]
+              ],
+              "colWidths": [
+                20,
+                80
+              ]
+            }
+          ],
+          "number": "4.1"
+        }
+      ],
+      "number": "4"
     }
   ],
   "openQuestions": []

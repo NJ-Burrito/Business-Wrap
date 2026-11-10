@@ -17,8 +17,7 @@
     "en": "Project name"
   },
   "palette": "navy",
-  "coverDesign": "compact",
-  "motif": "rtm",
+  "coverDesign": "sheet",
   "layout": {
     "hide": [
       "toc"
