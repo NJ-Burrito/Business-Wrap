@@ -8,6 +8,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.18.2] - 2026-11-10
+
+🏠 A fix release from the owner's notes: the tool always opens on the start page, a Home button in the top bar, the watermark is back, and Preferences starts closed. / 🏠 إصدار إصلاحات من ملاحظات المالك: الأداة تفتح دائما على صفحة البداية، وزر «الرئيسية» في الشريط العلوي، وعادت العلامة المائية، والتفضيلات تبدأ مطوية.
+
+### Fixed / أصلح
+- 🚪 **Every way of opening Business-Wrap lands on the start page**: the desktop shortcut, the local host and `business-wrap:` links used to reopen the newest saved document, so the start page never showed. Opening a specific document (a double click, or the same window after switching the host) still opens that document. Your recent documents are listed on the start page, with «Pick up where you left off». / **كل طريقة لفتح بزنس راب تبدأ من صفحة البداية**: كان اختصار سطح المكتب والخادم المحلي وروابط `business-wrap:` تعيد فتح آخر وثيقة محفوظة، فلا تظهر صفحة البداية. وفتح وثيقة بعينها (نقرة مزدوجة، أو النافذة نفسها بعد تبديل الخادم) يفتح تلك الوثيقة. وتظهر وثائقك الأخيرة في صفحة البداية مع «أكمل من حيث توقفت».
+- 🏠 **Home button** at the start of the top bar (Home / «الرئيسية»): it saves your work and opens the start page; «Back» returns to the document. / **زر «الرئيسية»** في بداية الشريط العلوي: يحفظ عملك ويفتح صفحة البداية، و«رجوع» يعيدك إلى الوثيقة.
+- 🔖 **The watermark is visible again at the bottom left**: the start page hid it while it was open, and since it now opens every time, the mark seemed gone. / **العلامة المائية ظاهرة مجددا أسفل اليسار**: كانت صفحة البداية تخفيها أثناء فتحها، ولأنها صارت تفتح كل مرة بدت العلامة مختفية.
+- ⚙️ **Settings: Preferences starts closed** like the other groups; open it with a click. / **الإعدادات: التفضيلات تبدأ مطوية** مثل بقية المجموعات، وتفتحها بنقرة.
+
 ## [0.18.1] - 2026-11-10
 
 🛠️ A fix release for the document studio: Arabic page bands mirror the English ones, manual steps stay with their screenshot, and Word shows status colours. / 🛠️ إصدار إصلاحات لاستوديو المستندات: ترويسة الصفحات العربية وتذييلها يعكسان الإنجليزية، وخطوات الدليل تبقى مع صورتها، وWord يعرض ألوان الحالة.

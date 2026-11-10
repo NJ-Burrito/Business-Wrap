@@ -91,12 +91,12 @@
     </figure>
     <ol class="flow" data-reveal-stagger data-l="en">
       <li><span class="step">2.1</span><div class="icons">{{icon:editor}}</div><div><h3>Start page</h3><p>Pick a tile, read what is inside, press Create. Search with <code>/</code> or filter by category. The editor opens on that type's own cover, sections and tables.</p></div></li>
-      <li><span class="step">2.2</span><div class="icons">{{icon:print-layout}}</div><div><h3>Inside the editor</h3><p>File tab, then Start page (Ctrl+Alt+N). The document you have open stays open behind it.</p></div></li>
+      <li><span class="step">2.2</span><div class="icons">{{icon:print-layout}}</div><div><h3>Inside the editor</h3><p>Press Home at the start of the top bar, or File tab, then Start page (Ctrl+Alt+N). Your work is saved first and stays open behind it. Every way of opening Business-Wrap lands here.</p></div></li>
       <li><span class="step">2.3</span><div class="icons">{{icon:plugin}}</div><div><h3>Command line</h3><p><code>npx business-wrap types</code> lists them. <code>npx business-wrap new --type brd</code> creates one and opens it.</p></div></li>
     </ol>
     <ol class="flow" data-reveal-stagger data-l="ar">
       <li><span class="step">2.1</span><div class="icons">{{icon:editor}}</div><div><h3>صفحة البداية</h3><p>اختر بطاقة، واقرأ ما فيها، ثم اضغط «إنشاء». ابحث بالمفتاح <code>/</code> أو اختر فئة. ويفتح المحرر على غلاف ذلك النوع وأقسامه وجداوله.</p></div></li>
-      <li><span class="step">2.2</span><div class="icons">{{icon:print-layout}}</div><div><h3>من داخل المحرر</h3><p>تبويب «ملف» ثم «صفحة البداية» (Ctrl+Alt+N). وتبقى وثيقتك المفتوحة مفتوحة خلفها.</p></div></li>
+      <li><span class="step">2.2</span><div class="icons">{{icon:print-layout}}</div><div><h3>من داخل المحرر</h3><p>اضغط «الرئيسية» في بداية الشريط العلوي، أو تبويب «ملف» ثم «صفحة البداية» (Ctrl+Alt+N). ويحفظ عملك أولا ويبقى مفتوحا خلفها. وكل طريقة لفتح بزنس راب تبدأ من هنا.</p></div></li>
       <li><span class="step">2.3</span><div class="icons">{{icon:plugin}}</div><div><h3>سطر الأوامر</h3><p>الأمر <code>npx business-wrap types</code> يسردها، والأمر <code>npx business-wrap new --type brd</code> ينشئ وثيقة ويفتحها.</p></div></li>
     </ol>
     <div class="table-wrap" data-reveal data-l="en">
@@ -190,8 +190,8 @@
         <div class="cmd"><pre><code>/plugin marketplace add NJ-Burrito/Business-Wrap
 /plugin install business-wrap@business-wrap</code></pre>{{copy}}</div>
         <p class="small">Then say "build the requirements document for …" or "open it in the editor".</p></div>
-      <div class="way">{{icon:mcp-server}}<span class="tag">Any MCP client</span><h3>MCP server</h3><p>One line: 0.18.1 from the GitHub tag (npm still serves 0.12.0). Needs Node 20+.</p>
-        <div class="cmd"><pre><code>claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.18.1 business-wrap-mcp</code></pre>{{copy}}</div>
+      <div class="way">{{icon:mcp-server}}<span class="tag">Any MCP client</span><h3>MCP server</h3><p>One line: 0.18.2 from the GitHub tag (npm still serves 0.12.0). Needs Node 20+.</p>
+        <div class="cmd"><pre><code>claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.18.2 business-wrap-mcp</code></pre>{{copy}}</div>
         <p class="small">From a clone (no <code>npm ci</code> needed): point your client at <code>node &lt;path&gt;/Business-Wrap/mcp/cli.mjs</code>.</p></div>
       <div class="way">{{icon:editor}}<span class="tag">No agent</span><h3>From source</h3><p>Build the sample and open it in the editor.</p>
         <div class="cmd"><pre><code>git clone https://github.com/NJ-Burrito/Business-Wrap
@@ -207,8 +207,8 @@ npm run serve</code></pre>{{copy}}</div>
         <div class="cmd"><pre><code>/plugin marketplace add NJ-Burrito/Business-Wrap
 /plugin install business-wrap@business-wrap</code></pre>{{copy}}</div>
         <p class="small">ثم قل: «ابن وثيقة متطلبات …» أو «افتحها في المحرر».</p></div>
-      <div class="way">{{icon:mcp-server}}<span class="tag">أي عميل MCP</span><h3>خادم MCP</h3><p>سطر واحد: الإصدار 0.18.1 من وسم GitHub، فسجل npm ما زال على 0.12.0. يحتاج Node 20 أو أحدث.</p>
-        <div class="cmd"><pre><code>claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.18.1 business-wrap-mcp</code></pre>{{copy}}</div>
+      <div class="way">{{icon:mcp-server}}<span class="tag">أي عميل MCP</span><h3>خادم MCP</h3><p>سطر واحد: الإصدار 0.18.2 من وسم GitHub، فسجل npm ما زال على 0.12.0. يحتاج Node 20 أو أحدث.</p>
+        <div class="cmd"><pre><code>claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.18.2 business-wrap-mcp</code></pre>{{copy}}</div>
         <p class="small">من نسخة المستودع (بلا <code>npm ci</code>): وجه العميل إلى <code>node &lt;path&gt;/Business-Wrap/mcp/cli.mjs</code>.</p></div>
       <div class="way">{{icon:editor}}<span class="tag">بلا وكيل</span><h3>من المصدر</h3><p>ابن الوثيقة النموذجية وافتحها في المحرر.</p>
         <div class="cmd"><pre><code>git clone https://github.com/NJ-Burrito/Business-Wrap
