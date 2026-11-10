@@ -9,8 +9,8 @@
     "en": "Software Requirements Specification (SRS)"
   },
   "description": {
-    "ar": "تحدد ما يجب أن تفعله الخدمة الإلكترونية أو النظام: بطاقة الخدمة والمتطلبات الوظيفية وقواعد العمل وسير العمل وقصص المستخدمين ومعايير القبول.",
-    "en": "Defines what an e-service or system must do: the service card, functional requirements, business rules, workflow and user stories with acceptance criteria."
+    "ar": "تحدد ما يجب أن تفعله الخدمة الإلكترونية أو النظام: الوصف العام والمتطلبات الوظيفية وغير الوظيفية وسير العمل وقصص المستخدمين وطريقة التحقق من كل متطلب.",
+    "en": "Defines what an e-service or system must do: the overall description, functional and non-functional requirements, workflow, user stories and how each requirement is verified."
   },
   "placeholder": {
     "ar": "خدمة جديدة",
@@ -18,6 +18,5 @@
   },
   "palette": "navy",
   "coverDesign": "spine",
-  "motif": "srs",
-  "source": "samples/blank"
+  "motif": "srs"
 }
