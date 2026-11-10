@@ -8,6 +8,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.18.1] - 2026-11-10
+
+🛠️ A fix release for the document studio: Arabic page bands mirror the English ones, manual steps stay with their screenshot, and Word shows status colours. / 🛠️ إصدار إصلاحات لاستوديو المستندات: ترويسة الصفحات العربية وتذييلها يعكسان الإنجليزية، وخطوات الدليل تبقى مع صورتها، وWord يعرض ألوان الحالة.
+
+### Fixed / أصلح
+- ↔️ **Arabic headers and footers are mirrored**: in every Arabic document «سري» and the logo sit on the right, the page number and date on the left, in print, PDF and the editor. English documents print exactly as before. / **ترويسة المستند العربي وتذييله معكوسان**: في كل مستند عربي يأتي «سري» والشعار يمينا، ورقم الصفحة والتاريخ يسارا، في الطباعة وPDF والمحرر. والمستندات الإنجليزية تطبع كما كانت تماما.
+- 🖼️ **User manual: each step stays on one page with its screenshot frame.** / **دليل المستخدم: كل خطوة تبقى في صفحة واحدة مع إطار صورتها.**
+- 🎨 **Word export colours status cells** (Pass, Fail, Blocked, Not run, Covered, Partial, Gap and the Arabic words) like the PDF, in documents made from a type. / **تصدير Word يلون خلايا الحالة** (ناجح، فاشل، محجوب، لم ينفذ، مغطى، جزئي، ثغرة) كما في PDF، في المستندات المنشأة من نوع.
+- ⚙️ The start page card in Settings has its own icon. / بطاقة صفحة البداية في الإعدادات لها أيقونتها الخاصة.
+
 ## [0.18.0] - 2026-11-10
 
 📚 Business-Wrap becomes a document studio for BAs and QAs: a start page like Word's and 17 designed document types, each in Arabic and English. / 📚 أصبح Business-Wrap استوديو مستندات لمحللي الأعمال ومختبري الجودة: صفحة بداية مثل Word و17 نوعا مصمما من المستندات، كل منها بالعربية والإنجليزية.
