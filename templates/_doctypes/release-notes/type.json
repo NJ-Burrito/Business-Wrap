@@ -9,14 +9,13 @@
     "en": "Release notes"
   },
   "description": {
-    "ar": "ملاحظات إصدار بلغة المستخدم: ملخص وجديد وتحسينات وعيوب مصلحة ومشكلات معروفة وتغييرات جذرية وخطوات الترقية وقنوات الدعم.",
-    "en": "Release notes in the user's words: summary, what is new, improvements, fixed defects, known issues, breaking changes, upgrade steps and support channels."
+    "ar": "ملاحظات إصدار للمستخدمين: شارة الإصدار وأبرز ما فيه وقائمة تغييرات مصنفة ومشكلات معروفة وتغييرات جذرية وخطوات ترقية ودعم.",
+    "en": "Release notes for users: version badge, highlights, a typed change list, known issues, breaking changes, upgrade steps and support."
   },
   "placeholder": {
     "ar": "اسم المنتج والإصدار",
     "en": "Product and version"
   },
   "palette": "gold",
-  "coverDesign": "spine",
-  "motif": "release-notes"
+  "coverDesign": "form"
 }
