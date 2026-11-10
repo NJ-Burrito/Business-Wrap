@@ -15,7 +15,8 @@
  * Turning it OFF in that tab asks the host (POST /api/servers/stop {returnTo:{x,y,w,h,file}}) to open the editor from disk as a new window at this window's
  * screenX / screenY / outerWidth / outerHeight before it ends (an http page cannot navigate to file://), then the served tab closes itself (window.close works
  * on a tab whose history holds one page, which location.replace keeps true). A served tab that did not come from disk behaves as before: «Offline», the page stays.
- * Contract for other lanes: window event `bw:server` {detail:{online}} on every change of the answer; `bw:wm` W07 (went online) / W08 (went offline)
+ * 0.19.0: the start page shows THIS control too (editor/ext/51-start-host.js mounts SB.html('start') in its bar; SB.draw() patches every .srv-toggle, so there is one state). A page that moves to another host page while the start page is open
+ * asks to land on it again (?bwstart=1, landQuery). Contract for other lanes: window event `bw:server` {detail:{online}} on every change of the answer; `bw:wm` W07 (went online) / W08 (went offline)
  * on a real transition only; <html data-bw-server="online|offline|starting|stopping|error|checking"> for tests. */
 const SB = (() => {
   const served = () => /^https?:$/.test(location.protocol);
@@ -32,6 +33,8 @@ const SB = (() => {
     } catch { return null; }
   })();
   const diskQuery = (file) => `?via=disk&from=${encodeURIComponent(file || '')}`;
+  /** 0.19.0: a page that was on the start page when it moved to another host page (the file:// page following the served host, a served page following a restarted host) asks to land on the start page again (51-start-host.js reads and drops it). */
+  const landQuery = (hasQuery) => (document.documentElement.dataset.bwStart === 'open' ? `${hasQuery ? '&' : '?'}bwstart=1` : '');
   const SPIN = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>'; // Lucide loader-circle (ISC)
   const st = { mode: served() ? 'online' : 'checking', port: served() ? Number(location.port) || 80 : 0, note: '', pulse: false, known: served(), answered: null };
   let pulsed = false;
@@ -43,9 +46,10 @@ const SB = (() => {
     const m = st.mode;
     const online = m === 'online';
     const refused = online && jobRunning();
-    const tip = refused ? t('sv.tipBusy') : st.note && (m === 'error' || m === 'offline') ? st.note : online ? t('sv.tipOn') : m === 'offline' || m === 'error' ? t('sv.tipOff') : word();
+    const tk = where === 'start' ? 'sth' : 'sv'; // 0.19.0: the start page (51-start-host.js) shows this same markup with its own two tooltips (what happens to the page)
+    const tip = refused ? t('sv.tipBusy') : st.note && (m === 'error' || m === 'offline') ? st.note : online ? t(`${tk}.tipOn`) : m === 'offline' || m === 'error' ? t(`${tk}.tipOff`) : word();
     const dot = isBusy() ? `<span class="srv-dot" aria-hidden="true">${SPIN}</span>` : '<span class="srv-dot" aria-hidden="true"></span>';
-    return `<button type="button" class="srv-toggle" data-k="srvToggle" data-where="${where}" data-st="${m}" data-pulse="${st.pulse ? '1' : '0'}" role="switch" aria-checked="${online ? 'true' : 'false'}"${isBusy() ? ' aria-busy="true" disabled' : ''}${refused ? ' aria-disabled="true"' : ''} title="${esc(tip)}" aria-label="${esc(`${t('sv.label')}: ${word()}`)}">${dot}<span class="srv-w">${esc(word())}</span><span class="srv-track" aria-hidden="true"><i class="srv-thumb"></i></span></button>`;
+    return `<button type="button" class="srv-toggle" data-k="srvToggle"${where === 'top' ? ' data-x="srvHost"' : ''} data-where="${where}" data-st="${m}" data-pulse="${st.pulse ? '1' : '0'}" role="switch" aria-checked="${online ? 'true' : 'false'}"${isBusy() ? ' aria-busy="true" disabled' : ''}${refused ? ' aria-disabled="true"' : ''} title="${esc(tip)}" aria-label="${esc(`${t('sv.label')}: ${word()}`)}">${dot}<span class="srv-w">${esc(word())}</span><span class="srv-track" aria-hidden="true"><i class="srv-thumb"></i></span></button>`;
   }
   function mark() { document.documentElement.dataset.bwServer = st.mode; }
   function draw() {
@@ -131,12 +135,12 @@ const SB = (() => {
   }
   /** A served page whose own host is gone and which found a host on another port (the restarted host did not get this port back): go to it, the same document from the host that is up now. */
   function reconnect() {
-    if (served() && st.port && st.port !== (Number(location.port) || 80)) location.href = `http://127.0.0.1:${st.port}/${disk ? diskQuery(disk.file) : ''}`;
+    if (served() && st.port && st.port !== (Number(location.port) || 80)) location.href = `http://127.0.0.1:${st.port}/${disk ? diskQuery(disk.file) + landQuery(true) : landQuery(false)}`;
     else if (!served() && st.port) follow();
   }
   /** The file:// page replaces ITSELF with the served editor: same window, same place, one window (history stays one page). */
   function follow() {
-    const url = `http://127.0.0.1:${Number(st.port)}/${diskQuery(srvDiskFile())}`;
+    const url = `http://127.0.0.1:${Number(st.port)}/${diskQuery(srvDiskFile())}${landQuery(true)}`;
     if (!window.dispatchEvent(new CustomEvent('bw:follow', { detail: { url }, cancelable: true }))) return;
     location.replace(url);
   }

@@ -1,0 +1,15 @@
+/* 0.19.0 N1 · the host switch on the start page (51-start-host.js). The SAME control as the top bar (markup and state from 18-server.js, styled by 18-server.css); this file only
+ * re-inks it for the start page's light and dark surfaces (the top bar's white-on-navy ink would vanish on a light page) and re-asserts what the dialog's `button { font: inherit; color: inherit }` resets.
+ * Colour roles: on the light page the dot and the on-track are the darker green and red (>= 3:1 on --bw-bg), on the dark page the glass colours of the top bar stay.
+ * Only the start page's Calm button (its own data-calm) stops the dot's pulse and the thumb's spring; the spinner keeps turning (the only sign that work is going on). */
+dialog.bw-start .srv-toggle[data-where="start"] { --srv-ink: var(--bw-ink); --srv-busy: var(--bw-accent-rule, var(--bw-accent)); font: 700 13px/1 var(--bw-font-ui); color: var(--srv-ink); margin-inline: 0; flex: none; }
+dialog.bw-start:not([data-theme="dark"]) .srv-toggle[data-where="start"] { --srv-on: #0f7a4a; --srv-off: #b3261e; }
+dialog.bw-start .srv-toggle[data-where="start"][aria-checked="true"] .srv-thumb { background: #fff; }
+dialog.bw-start .srv-toggle[data-where="start"]:focus-visible { outline: 3px solid var(--bw-focus); outline-offset: 2px; }
+dialog.bw-start[data-calm="1"] .srv-toggle[data-where="start"] { transition: none; }
+dialog.bw-start[data-calm="1"] .srv-toggle[data-where="start"][data-pulse="1"] { animation: none; }
+dialog.bw-start[data-calm="1"] .srv-toggle[data-where="start"] :is(.srv-dot, .srv-thumb, .srv-track) { animation: none !important; transition: none; }
+dialog.bw-start[data-calm="1"] .srv-toggle[data-where="start"] .srv-dot .ic { animation: srv-spin 1s linear infinite !important; }
+/* the polite spoken state: present for screen readers, never drawn */
+dialog.bw-start .st-host-live { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (forced-colors: active) { dialog.bw-start .srv-toggle[data-where="start"] { border: 1px solid ButtonText; } }
