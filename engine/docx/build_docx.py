@@ -179,6 +179,33 @@ def apply_render_table_rules(columns, rows, blank_cell=None):
     out_rows = [[fill if _is_blank(r[i] if i < len(r) else '') else r[i] for i in range(width) if keep[i]] for r in rows]
     return (out_cols, out_rows)
 
+def fit_columns(pct, texts, nw, table_mm):
+    """0.19.0 R4: render.mjs fitColumns: each column at least its longest word wide, a no-wrap column its longest cell (10 pt, 6 mm padding); the
+    extra comes from the columns above their floor. A no-wrap column that still cannot fit is returned in `wrap`."""
+    em = 3.53 * 0.56
+    word = lambda x: max([0] + [len(w) for w in re.split(r'\s+', str(x))])
+    line = lambda x: max([0] + [len(l.strip()) for l in str(x).split('\n')])
+    floor = [min(100.0, (6 + em * max([1] + [(line(x) if nw[k] else word(x)) for x in col])) / table_mm * 100) for k, col in enumerate(texts)]
+    wrap = []
+    if sum(floor) > 100:
+        for k, on in enumerate(nw):
+            if on:
+                wrap.append(k)
+                floor[k] = min(floor[k], (6 + em * max([1] + [word(x) for x in texts[k]])) / table_mm * 100)
+    if sum(floor) > 100:
+        return pct, wrap
+    out = [max(w, f) for w, f in zip(pct, floor)]
+    for _ in range(4):
+        over = sum(out) - 100
+        if over <= 0.01:
+            break
+        slack = [max(0.0, w - f) for w, f in zip(out, floor)]
+        tot = sum(slack)
+        if tot <= 0:
+            break
+        out = [w - over * sl / tot for w, sl in zip(out, slack)]
+    return out, wrap
+
 def add_table(document, columns, rows, font, roles=None, spec=None):
     spec = spec or {}
     blank_cell = spec.get('blankCell') if isinstance(spec.get('blankCell'), str) else None
@@ -223,6 +250,12 @@ def add_table(document, columns, rows, font, roles=None, spec=None):
     col_w = Emu(int(TEXT_WIDTH) // max(ncols, 1))
     tot = sum(float(w) for w in cw) if cw else 0
     col_ws = [Emu(int(int(TEXT_WIDTH) * float(w) / tot)) for w in cw] if tot else [col_w] * ncols
+    if TYPED and ncols and header:  # 0.19.0 R4 (M2, M3): no column narrower than its longest word, a no-wrap column than its longest cell (render.mjs fitColumns)
+        _pct = [100.0 * int(w) / int(TEXT_WIDTH) for w in col_ws]
+        _texts = [[MD.text_of(r[c] if c < len(r) and r[c] is not None else '') for r in all_rows] for c in range(ncols)]
+        _pct, _wrap = fit_columns(_pct, _texts, [kept[c] in nw_set if c < len(kept) else False for c in range(ncols)], int(TEXT_WIDTH) / 36000)
+        col_ws = [Emu(int(int(TEXT_WIDTH) * w / 100)) for w in _pct]
+        nw_set = {i for i in nw_set if not any(kept[k] == i for k in _wrap if k < len(kept))}
     for column, w in zip(table.columns, col_ws):
         column.width = w
     covered = {(m['r'] + len(header), c) for m in merges for r in range(m['r'], m['r'] + int(m['rs'])) for c in range(m['c'], m['c'] + int(m['cs'])) if (r, c) != (m['r'], m['c'])}

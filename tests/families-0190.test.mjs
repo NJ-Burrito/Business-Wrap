@@ -174,6 +174,27 @@ try {
   const mt = validateType('minutes', { root });
   check('S1: a family type whose type.json still names compact or spine gets a warning naming its spec family (not an error)', mt.errors.length === 0 && mt.warnings.some((m) => m.includes('coverDesign «compact» prints as «form»')), [mt.errors, mt.warnings]);
 
+  // ── B1 (0.19.0 final review): the Blank document exports through the CLI (`business-wrap export`, whose document gate now accepts a bare chapter)
+  // and through the functions the editor's Export calls (engine/serve.mjs: exportPdf + exportDocx) ──
+  const blankDir = path.join(tmp, 'blank');
+  fs.mkdirSync(blankDir, { recursive: true });
+  const { gateDocument } = await import('../engine/heal/gates.mjs');
+  const blankBad = [];
+  for (const ed of DT.EDITIONS) {
+    const doc = DT.compose('blank', ed);
+    if (gateDocument(doc).verdict === 'FAIL') blankBad.push(`${ed}: gate ${JSON.stringify(gateDocument(doc).problems)}`);
+    const f = path.join(blankDir, `document.${ed}.json`);
+    fs.writeFileSync(f, JSON.stringify(doc));
+    const cli = spawnSync(process.execPath, [path.join(REPO, 'engine', 'cli.mjs'), 'export', f, ed, '--out', path.join(blankDir, 'cli-' + ed)], { encoding: 'utf8', env: { ...process.env }, timeout: 180000 });
+    const made = fs.existsSync(path.join(blankDir, 'cli-' + ed)) ? fs.readdirSync(path.join(blankDir, 'cli-' + ed), { recursive: true }).map(String) : [];
+    if (cli.status !== 0 || !made.some((x) => x.endsWith('.pdf')) || !made.some((x) => x.endsWith('.docx'))) blankBad.push(`${ed}: cli exit ${cli.status} ${made.join(',')} ${(cli.stderr || cli.stdout || '').slice(0, 200)}`);
+    await exportPdf(doc, { locale: ed, theme, pdfPath: path.join(blankDir, `ed-${ed}.pdf`) });
+    exportDocx(doc, { locale: ed, theme, docxPath: path.join(blankDir, `ed-${ed}.docx`) });
+    if (!fs.existsSync(path.join(blankDir, `ed-${ed}.pdf`)) || !fs.existsSync(path.join(blankDir, `ed-${ed}.docx`))) blankBad.push(`${ed}: editor export`);
+  }
+  const g0 = gateDocument({ control: { documentId: 'X' }, chapters: [{ title: '', sections: [] }] });
+  check('B1: Blank (ar, en) passes the document gate and exports to PDF and DOCX through the CLI and through the editor\'s export functions; a titled-chapter-less ordinary chapter still fails the gate', !blankBad.length && g0.verdict === 'FAIL', blankBad);
+
   // ── 5. PDF and DOCX ──
   browser = await chromium.launch({ ...launchOptions(), args: [...(launchOptions().args || []), '--bw-session=bw-1109'] });
   const out = path.join(tmp, 'out');

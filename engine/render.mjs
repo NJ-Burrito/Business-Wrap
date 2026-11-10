@@ -867,7 +867,7 @@ ${FAMILY_PARTS_CSS}
 .cover[data-cover=compact] .tb-row{align-items:flex-start}
 .cover[data-cover=compact] h1{font-size:${cv.family === 'sheet' ? 16 : 18}pt}
 .cover[data-cover=compact] .bw-fields,.cover[data-cover=compact] .bw-tiles,.cover[data-cover=compact] .bw-stmt{margin-top:4mm}
-${cv.family === 'sheet' ? '.cover[data-cover=compact] .tb-row{padding:4mm 0 3mm}\n.cover[data-cover=compact] .bw-tiles{gap:1.5mm}\n.cover[data-cover=compact] .bw-tiles .tl-v{font-size:16pt}\n' : ''}` : '';
+${cv.family === 'sheet' ? '.cover[data-cover=compact] .tb-row{padding:4mm 0 3mm}\n.cover[data-cover=compact] .bw-tiles{gap:1.5mm}\n.cover[data-cover=compact] .bw-tiles .tl-v{font-size:14pt;line-height:1.1}\n.cover[data-cover=compact] .bw-tiles>.tl{padding:1.4mm 3mm 1.6mm}\n.cover[data-cover=compact] .bw-tiles .tl-l{margin-bottom:.4mm}\n.cover[data-cover=compact] .bw-fields>.fg{min-height:9mm;padding-block:1.2mm 1.4mm}\n.cover[data-cover=compact] .subtitle{margin-top:1.5mm}\n' : ''}` : '';
   if (cv.family === 'report') {
     // report (spec §1): a title page; the logo row (20 to 40 mm), the band C1 (40 to 120 mm, gold cap at the reading start), then the tiles C4, the
     // decision box C5 and the control block C3, the foot at 258 mm as on the spine page
@@ -999,12 +999,35 @@ ${compact ? `.cover[data-cover=compact]+.wrap [data-part=control]{break-inside:a
 .cover[data-cover=compact]+.wrap [data-part=control] table.control{break-inside:avoid}
 .cover[data-cover=compact]+.wrap section.chapter:first-of-type .keep{break-inside:avoid;break-after:${headFam ? 'auto' : 'avoid'}}
 .cover[data-cover=compact]+.wrap section.chapter:first-of-type p.lead-in{break-inside:avoid}
-${land ? `.cover[data-cover=compact]+.wrap [data-part=control] table.control{display:block}
+${coverOf(doc)?.family === 'sheet' ? '.cover[data-family=sheet]+.wrap section.chapter:first-of-type :is(.keep,tbody.hold){break-inside:auto} /* 0.19.0 R4 (M1): the sheet starts on page 1, row by row */\n' : ''}${land ? `.cover[data-cover=compact]+.wrap [data-part=control] table.control{display:block}
 .cover[data-cover=compact]+.wrap [data-part=control] table.control colgroup{display:none}
 .cover[data-cover=compact]+.wrap [data-part=control] table.control tbody{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(5,auto);grid-auto-flow:column;column-gap:12mm}
 .cover[data-cover=compact]+.wrap [data-part=control] table.control tr{display:grid;grid-template-columns:42% 58%;break-inside:avoid}
 .cover[data-cover=compact]+.wrap [data-part=control] table.control th{width:auto}
 ` : ''}` : ''}`;
+}
+/**
+ * 0.19.0 R4: column widths (in %) fitted to the text: each column at least as wide as its longest word, a no-wrap column (nw[k]) as wide as its
+ * longest cell, at the table font (10 pt) with 6 mm of cell padding; the extra comes from the columns above their floor, in proportion. A no-wrap
+ * column whose floor still does not fit is returned in `wrap` (it wraps). Mirrored by engine/docx/build_docx.py fit_columns.
+ */
+export function fitColumns(pct, texts, nw, tableMm) {
+  const em = 3.53 * 0.56;
+  const need = texts.map((col, k) => Math.min(100, ((6 + em * Math.max(1, ...col.map((x) => (nw[k] ? String(x).split('\n').reduce((a, l) => Math.max(a, l.trim().length), 0) : Math.max(0, ...String(x).split(/\s+/).map((w) => w.length)))))) / tableMm) * 100));
+  const wrap = [];
+  const floor = need.map((n, k) => n);
+  if (floor.reduce((a, b) => a + b, 0) > 100) nw.forEach((on, k) => { if (on) { wrap.push(k); floor[k] = Math.min(floor[k], (6 + em * Math.max(1, ...texts[k].map((x) => Math.max(0, ...String(x).split(/\s+/).map((w) => w.length))))) / tableMm * 100); } });
+  if (floor.reduce((a, b) => a + b, 0) > 100) return { pct, wrap };
+  let out = pct.map((w, k) => Math.max(w, floor[k]));
+  for (let i = 0; i < 4; i += 1) {
+    const over = out.reduce((a, b) => a + b, 0) - 100;
+    if (over <= 0.01) break;
+    const slack = out.map((w, k) => Math.max(0, w - floor[k]));
+    const tot = slack.reduce((a, b) => a + b, 0);
+    if (tot <= 0) break;
+    out = out.map((w, k) => w - (over * slack[k]) / tot);
+  }
+  return { pct: out, wrap };
 }
 /** 0.19.0 C8 and C13: true when a table block carries a style or a column key (style, numCols, nowrapCols, accentCol). */
 const tableKeyed = (b) => b?.kind === 'table' && (b.style !== undefined || b.numCols !== undefined || b.nowrapCols !== undefined || b.accentCol !== undefined);
@@ -1494,7 +1517,13 @@ export function renderParts(doc, o) {
       );
     });
     const total = measure.reduce((a, b) => a + b, 0) || 1;
-    const cols = measure.map((m, k) => `<col style="width:${(cw ? +cw[idx[k]] : (m / total) * 100).toFixed(2)}%" />`).join('');
+    let pct = measure.map((m, k) => (cw ? +cw[idx[k]] : (m / total) * 100));
+    // 0.19.0 R4 (final review M2, M3): in a typed document no column is narrower than its longest word, and a no-wrap column than its longest cell;
+    // the room comes from the other columns (never below their own floor); a no-wrap column that still cannot fit wraps instead of spilling out
+    let nwOff = new Set();
+    if (isTyped(doc)) { const fit = fitColumns(pct, idx.map((i) => [columnsIn[i] ?? '', ...rowsIn.map((r) => r[i] ?? '')].map((x) => textOf(x))), idx.map((i) => !!t.colClass?.(i)?.includes('nw')), measureMm); pct = fit.pct; nwOff = new Set(fit.wrap.map((k) => idx[k])); }
+    if (nwOff.size && t.colClass) { const cc = t.colClass; t.colClass = (ci) => (nwOff.has(ci) ? cc(ci).replace(/\bnw\b/, '').trim() : cc(ci)); }
+    const cols = pct.map((w) => `<col style="width:${w.toFixed(2)}%" />`).join('');
     let n = 0;
     const meta =
       (t.b ? ` data-b="${attr(t.b)}"` : '') +

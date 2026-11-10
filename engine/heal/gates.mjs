@@ -39,7 +39,7 @@ export function gateDocument(input) {
   if (!d?.control) p.push('no control block');
   if (!d?.control?.documentId) p.push('no document code (control.documentId)');
   if (!Array.isArray(d?.chapters) || !d.chapters.length) p.push('no chapters');
-  else d.chapters.forEach((c, i) => { if (!c.title) p.push(`chapter ${i + 1} has no title`); if (!Array.isArray(c.sections)) p.push(`chapter ${i + 1} has no sections array`); });
+  else d.chapters.forEach((c, i) => { if (!c.title && c.bare !== true) p.push(`chapter ${i + 1} has no title`); /* 0.19.0 R4 (B1): a bare chapter (the Blank document's one empty page) prints no heading and needs no title */ if (!Array.isArray(c.sections)) p.push(`chapter ${i + 1} has no sections array`); });
   return res('document', p);
 }
 
