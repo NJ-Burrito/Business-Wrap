@@ -3,10 +3,11 @@
   "control": {
     "documentId": "BW-TC-NEW-001",
     "title": "Test cases sheet: Module name",
-    "preparedBy": "Name and job title",
+    "preparedBy": "[Name and job title]",
+    "approvedBy": "[Name and job title]",
     "documentType": "Test cases sheet",
     "classification": "Internal",
-    "owner": "Organisation name",
+    "owner": "[Organisation name]",
     "issuedOn": "YYYY-MM-DD",
     "version": "V0.1",
     "status": "Draft",
@@ -22,75 +23,76 @@
   ],
   "labels": {
     "kicker": "TEST CASES",
-    "subtitle": "Module or feature"
+    "subtitle": "Test cases and execution results"
+  },
+  "cover": {
+    "cols": 6,
+    "fields": [
+      {
+        "label": "Project",
+        "value": "[Project name]",
+        "kind": "text"
+      },
+      {
+        "label": "Module",
+        "value": "[Module name]",
+        "kind": "text"
+      },
+      {
+        "label": "Build",
+        "value": "[Build number]",
+        "kind": "text"
+      },
+      {
+        "label": "Environment",
+        "value": "[Environment name]",
+        "kind": "text"
+      },
+      {
+        "label": "Tester",
+        "value": "[Name]",
+        "kind": "text"
+      },
+      {
+        "label": "Execution date",
+        "value": "YYYY-MM-DD",
+        "kind": "date"
+      }
+    ],
+    "figures": [
+      {
+        "label": "Total",
+        "value": "0",
+        "kind": "none"
+      },
+      {
+        "label": "Passed",
+        "value": "0",
+        "kind": "ok"
+      },
+      {
+        "label": "Failed",
+        "value": "0",
+        "kind": "bad"
+      },
+      {
+        "label": "Blocked",
+        "value": "0",
+        "kind": "warn"
+      },
+      {
+        "label": "Not run",
+        "value": "0",
+        "kind": "idle"
+      },
+      {
+        "label": "Pass rate",
+        "value": "0%",
+        "kind": "none"
+      }
+    ]
   },
   "chapters": [
-    {
-      "title": "How to use this sheet",
-      "sections": [
-        {
-          "title": "How to use this sheet",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "Explain the status and severity values used in the sheet. Write each case so that another tester can run it without asking."
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Value",
-                "Meaning"
-              ],
-              "rows": [
-                [
-                  "Passed",
-                  "The actual result matches the expected one"
-                ],
-                [
-                  "Failed",
-                  "The actual result differs from the expected one"
-                ],
-                [
-                  "Blocked",
-                  "Cannot run for a reason outside the case"
-                ],
-                [
-                  "Not run",
-                  "The case has not been run yet"
-                ]
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Severity",
-                "Meaning"
-              ],
-              "rows": [
-                [
-                  "Critical",
-                  "System down or data lost"
-                ],
-                [
-                  "High",
-                  "A core function does not work"
-                ],
-                [
-                  "Medium",
-                  "A fault with a workaround"
-                ],
-                [
-                  "Low",
-                  "A cosmetic fault"
-                ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
     {
       "title": "Test cases",
       "sections": [
@@ -100,7 +102,7 @@
             {
               "kind": "prose",
               "paragraphs": [
-                "One case per behaviour. Steps are numbered, each step is one action, and the expected result is written before the run, not after. Example steps: \"1. Open the sign-in page. 2. Enter a valid user name and a wrong password. 3. Press Sign in.\""
+                "One case per behaviour. Write each step as one action, and write the expected result before the run, not after it."
               ]
             },
             {
@@ -108,41 +110,45 @@
               "columns": [
                 "ID",
                 "Title",
+                "Requirement",
                 "Preconditions",
                 "Steps",
                 "Test data",
                 "Expected result",
                 "Actual result",
                 "Status",
-                "Severity"
+                "Priority"
               ],
               "rows": [
                 [
                   "TC-001",
-                  "…",
-                  "…",
-                  "1. …",
-                  "…",
-                  "…",
+                  "Sign in with valid credentials",
+                  "FR-01",
+                  "An active user account exists",
+                  "1. Open the sign-in page. 2. Enter the user name and the password. 3. Select Sign in.",
+                  "User: [test user]",
+                  "The home page opens and shows the user name",
                   "…",
                   "Not run",
-                  "…"
+                  "High"
                 ],
                 [
                   "TC-002",
-                  "…",
-                  "…",
-                  "1. …",
-                  "…",
-                  "…",
+                  "Sign in with a wrong password",
+                  "FR-01",
+                  "An active user account exists",
+                  "1. Open the sign-in page. 2. Enter the user name and a wrong password. 3. Select Sign in.",
+                  "User: [test user]",
+                  "An error message appears and no session starts",
                   "…",
                   "Not run",
-                  "…"
+                  "Medium"
                 ],
                 [
                   "TC-003",
                   "…",
                   "…",
+                  "…",
                   "1. …",
                   "…",
                   "…",
@@ -150,45 +156,23 @@
                   "Not run",
                   "…"
                 ]
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "title": "Execution summary",
-      "sections": [
-        {
-          "title": "Execution summary",
-          "blocks": [
-            {
-              "kind": "prose",
-              "paragraphs": [
-                "Computed from the cases above: the total passed, failed, blocked and not run, and the pass rate."
-              ]
-            },
-            {
-              "kind": "table",
-              "columns": [
-                "Module",
-                "Total",
-                "Passed",
-                "Failed",
-                "Blocked",
-                "Not run",
-                "Pass rate"
               ],
-              "rows": [
-                [
-                  "…",
-                  "0",
-                  "0",
-                  "0",
-                  "0",
-                  "0",
-                  "0%"
-                ]
+              "style": "sheet",
+              "nowrapCols": [
+                0,
+                2
+              ],
+              "colWidths": [
+                6,
+                12,
+                6,
+                10,
+                19,
+                9,
+                15,
+                11,
+                6,
+                6
               ]
             }
           ]
@@ -204,22 +188,24 @@
             {
               "kind": "prose",
               "paragraphs": [
-                "Link each failed case to its defect code in the tracker."
+                "Link every failed case to its defect. Severity and status follow the key in chapter 4."
               ]
             },
             {
               "kind": "table",
               "columns": [
                 "Defect ID",
-                "Linked case",
-                "Summary",
+                "Case ID",
+                "Title",
                 "Severity",
-                "Status"
+                "Status",
+                "Owner"
               ],
               "rows": [
                 [
                   "DEF-001",
                   "TC-001",
+                  "…",
                   "…",
                   "…",
                   "…"
@@ -229,8 +215,21 @@
                   "TC-002",
                   "…",
                   "…",
+                  "…",
                   "…"
                 ]
+              ],
+              "colWidths": [
+                10,
+                10,
+                40,
+                12,
+                12,
+                16
+              ],
+              "nowrapCols": [
+                0,
+                1
               ]
             }
           ]
@@ -238,37 +237,170 @@
       ]
     },
     {
-      "title": "Approval and sign-off",
+      "title": "Execution summary",
       "sections": [
         {
-          "title": "Approval and sign-off",
+          "title": "Execution summary",
           "blocks": [
             {
               "kind": "prose",
               "paragraphs": [
-                "The tester and the reviewer sign in their own rows once the run is complete."
+                "Count the cases above by status. The tiles on the first page repeat the totals."
               ]
             },
             {
               "kind": "table",
               "columns": [
+                "Module",
+                "Total",
+                "Passed",
+                "Failed",
+                "Blocked",
+                "Not run",
+                "Pass rate"
+              ],
+              "rows": [
+                [
+                  "[Module name]",
+                  "0",
+                  "0",
+                  "0",
+                  "0",
+                  "0",
+                  "0%"
+                ],
+                [
+                  "Total",
+                  "0",
+                  "0",
+                  "0",
+                  "0",
+                  "0",
+                  "0%"
+                ]
+              ],
+              "colWidths": [
+                28,
+                12,
+                12,
+                12,
+                12,
+                12,
+                12
+              ],
+              "numCols": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Status and severity key",
+      "sections": [
+        {
+          "title": "Status of a case",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Status",
+                "Meaning"
+              ],
+              "rows": [
+                [
+                  "Pass",
+                  "The actual result matches the expected result"
+                ],
+                [
+                  "Fail",
+                  "The actual result differs from the expected result"
+                ],
+                [
+                  "Blocked",
+                  "The case cannot run for a reason outside it"
+                ],
+                [
+                  "Not run",
+                  "The case has not been run yet"
+                ]
+              ],
+              "colWidths": [
+                20,
+                80
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Severity of a defect",
+          "blocks": [
+            {
+              "kind": "table",
+              "columns": [
+                "Severity",
+                "Meaning"
+              ],
+              "rows": [
+                [
+                  "Critical",
+                  "The system is down or data is lost"
+                ],
+                [
+                  "High",
+                  "A core function does not work"
+                ],
+                [
+                  "Medium",
+                  "A fault with a workaround"
+                ],
+                [
+                  "Low",
+                  "A cosmetic fault"
+                ]
+              ],
+              "colWidths": [
+                20,
+                80
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Approval",
+      "sections": [
+        {
+          "title": "Approval",
+          "blocks": [
+            {
+              "kind": "prose",
+              "paragraphs": [
+                "The tester and the test lead sign in their own rows when the run is complete."
+              ]
+            },
+            {
+              "kind": "table",
+              "columns": [
+                "Role",
                 "Name",
-                "Job title",
-                "Action",
                 "Signature",
                 "Date"
               ],
               "rows": [
                 [
+                  "Tester",
                   {
                     "text": "",
                     "keepEmpty": true
                   },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  "Executed",
                   {
                     "text": "",
                     "keepEmpty": true
@@ -279,15 +411,11 @@
                   }
                 ],
                 [
+                  "Test lead",
                   {
                     "text": "",
                     "keepEmpty": true
                   },
-                  {
-                    "text": "",
-                    "keepEmpty": true
-                  },
-                  "Reviewed",
                   {
                     "text": "",
                     "keepEmpty": true
@@ -298,10 +426,12 @@
                   }
                 ]
               ],
-              "blankCell": "",
-              "rowHeights": [
-                16,
-                16
+              "style": "signoff",
+              "colWidths": [
+                22,
+                28,
+                30,
+                20
               ]
             }
           ]

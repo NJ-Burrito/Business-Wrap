@@ -17,13 +17,14 @@
     "en": "Defect summary"
   },
   "palette": "forest",
-  "coverDesign": "compact",
-  "motif": "defect-report",
+  "coverDesign": "form",
   "layout": {
     "hide": [
-      "toc",
-      "revisions",
-      "control"
+      "toc"
+    ],
+    "back": [
+      "control",
+      "revisions"
     ]
   }
 }
