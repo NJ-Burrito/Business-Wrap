@@ -1,0 +1,87 @@
+// Knip config: node scripts, tests and browser scripts are entries (the editor and site load theirs by path, not import).
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "engine/**/cli.mjs",
+    "engine/export.mjs",
+    "engine/vendor-icons.mjs",
+    "engine/routes/*.mjs",
+    "update/*.mjs",
+    "launcher/*.mjs",
+    "tools/**/*.mjs",
+    "tests/**/*.test.mjs",
+    "tests/*.probe.mjs",
+    "tests/fidelity.mjs",
+    "tests/probe.mjs",
+    "mcp/test/*.mjs",
+    "editor/**/*.js",
+    "editor/dict/*.mjs",
+    "brand/**/*.mjs",
+    "assets/icons/*.mjs",
+    "site/assets/*.js",
+    "tests/fixtures/*.mjs"
+  ],
+  "project": [
+    "**/*.{mjs,js}"
+  ],
+  "ignoreDependencies": [
+    "dictionary-en",
+    "hunspell-asm",
+    "lucide-static",
+    "esbuild"
+  ],
+  "ignoreBinaries": [
+    "uv",
+    "gio",
+    "reg",
+    "reg.exe",
+    "xdg-settings",
+    "attrib",
+    "icacls",
+    "pdftotext",
+    "pdfinfo",
+    "esbuild",
+    "xdg-mime",
+    "pandoc"
+  ],
+  "ignoreExportsUsedInFile": true,
+  // engine files in ignoreIssues are inlined into the editor page by engine/build-editor.mjs (exports stripped); editor/*.js uses their exports as globals, which knip cannot see.
+  "ignoreIssues": {
+    "engine/bulk.mjs": [
+      "exports"
+    ],
+    "engine/cells.mjs": [
+      "exports"
+    ],
+    "engine/diagram.mjs": [
+      "exports"
+    ],
+    "engine/edits.mjs": [
+      "exports"
+    ],
+    "engine/fontinfo.mjs": [
+      "exports"
+    ],
+    "engine/ledger-v1.mjs": [
+      "exports"
+    ],
+    "engine/render.mjs": [
+      "exports"
+    ],
+    "engine/learning/core.mjs": [
+      "exports"
+    ],
+    "engine/harvest/xml.mjs": [
+      "exports"
+    ],
+    "engine/harvest/yaml.mjs": [
+      "exports"
+    ],
+    "engine/harvest/model.mjs": [
+      "exports"
+    ],
+    "engine/harvest/docs.mjs": [
+      "exports"
+    ]
+  }
+}

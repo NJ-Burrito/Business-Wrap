@@ -1,7 +1,7 @@
 // Shared test helper for the 0.14 ribbon (editor/ext/25-ribbon.js, BW.EXT.ribbon). The old toolbar sections are hidden;
 // a tool lives on one ribbon tab, so a click first opens that tab. The tab is read from the ribbon's own registry
 // (BW.EXT.ribbon.tabs() + the panel it draws), never typed into a test. A command that is on no tab goes through the palette (Ctrl+K).
-//   import { act, rbBtn, rbTabFor, rbTabs } from './_ribbon.mjs';
+//   import { act, rbBtn, rbTabFor } from './_ribbon.mjs';
 const HOST = '#bw-ui-host';
 // 0.17.8 (O7): Save lives in the top bar (gold, beside the palette), on no ribbon tab; every other tool is in the ribbon panel
 const selOf = (a, dd = null) => (a === 'save' ? '.island > .b.bar-save[data-a="save"]' : `.ribbon .rb-panel [data-a="${a}"]${dd ? `[data-d="${dd}"]` : ''}`);
@@ -20,7 +20,6 @@ export async function rbTabFor(page, action, d = null) {
   }, [action, d]);
 }
 /** The tab ids the ribbon draws now. */
-export const rbTabs = (page) => page.evaluate(() => window.BW.EXT.ribbon.tabs());
 
 /** A locator for the ribbon button of an action, after opening the tab that holds it (the first locator even if absent). */
 export async function rbBtn(page, action, d = null) {

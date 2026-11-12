@@ -4,9 +4,6 @@
 //   spawnSync(...py(['script.py', 'arg'], ['pymupdf']), opts)
 import { spawnSync } from 'node:child_process';
 
-/** Every third-party package the engine and tests import (engine/*.py, engine/docx/*.py, inline -c code). */
-export const PY_DEPS = ['pymupdf', 'python-docx', 'lxml', 'fonttools', 'brotli', 'jsonschema'];
-
 let uv;
 export function hasUv() {
   if (uv === undefined) uv = spawnSync('uv', ['--version'], { stdio: 'ignore' }).status === 0;

@@ -22,8 +22,6 @@ export function pageSizes(pdf) {
   const out = spawnSync(poppler('pdfinfo'), ['-f', '1', '-l', '999', pdf], { encoding: 'utf8' }).stdout;
   return [...out.matchAll(/Page\s+\d+ size:\s+([\d.]+) x ([\d.]+) pts/g)].map((m) => [Math.round((+m[1] / 72) * 25.4), Math.round((+m[2] / 72) * 25.4)]);
 }
-/** Word count of the whole PDF (letters only). */
-export const words = (pdf) => pageTexts(pdf).join(' ').split(/\s+/).filter((w) => /\p{L}/u.test(w)).length;
 /** Fonts of a PDF: [{name, type, emb}] (pdffonts). */
 export function pdfFonts(pdf) {
   const out = spawnSync(poppler('pdffonts'), [pdf], { encoding: 'utf8' }).stdout.split(/\r?\n/).slice(2).filter(Boolean);

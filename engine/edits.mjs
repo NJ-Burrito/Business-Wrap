@@ -436,7 +436,6 @@ export function shape(doc) {
 /** E1 · What a Delete can take, from the selection {p: leaf pointer, b: block pointer, ov: overlay index}. Each entry
  *  {scope, path}, smallest first: line · cell · row · column · part · element · block · section. `row`, `column`, `section` and an
  *  overlay `element` are done by the editor's own tools (they keep merges, widths, page sizes); the rest are plain ops here. */
-export const DELETE_SCOPES = ['line', 'cell', 'row', 'column', 'part', 'element', 'block', 'section'];
 const BLOCK_RE = /^(\/chapters\/\d+\/sections\/\d+\/blocks\/\d+)(?:\/|$)/;
 const SECTION_RE = /^(\/chapters\/\d+\/sections\/\d+)(?:\/|$)/;
 export function scopesAt(doc, sel = {}) {
