@@ -134,3 +134,30 @@ Every type opens with a first page built for its purpose, never a drawing:
 The start-page thumbnail is a picture for choosing a type; page 1 of the document never carries it, in the editor, in PDF or in Word. Word gets the same pages as the PDF.
 
 Every type opens with placeholder text to replace, never client data. The ribbon, diagrams, profile, watermark and the tools that explain themselves work in every type. How a type is built and how to add one: [bible/14-document-types.md](../bible/14-document-types.md).
+
+## 9. Sources: from a meeting, a document or a site to checked facts (0.20.0)
+
+On the start page, switch **Documents · Sources** to **Sources**. Add what you have:
+
+| Source | How | What Business-Wrap reads, on this machine |
+|---|---|---|
+| Meeting or screen recording (audio or video, minutes to hours, several tracks) | Add files, or drop them | Who said what and when: Whisper large-v3-turbo on the Intel graphics chip (OpenVINO), speakers by voice. About 45 minutes for 2 hours on a laptop with no graphics card |
+| Document (PDF, DOCX, HTML, TXT, MD) | Add files, or type its path | Its text, line by line |
+| Web page | Type its link | The page's text |
+| Image | Add files | Stored; Claude reads it on the Claude pass |
+| Android app (APK) | Add files | A static read of its manifest: name, version, permissions, screens. Nothing is installed or run |
+| Tool or skill folder | Type its path | Its SKILL.md, README and docs, and the file list. No code is run |
+
+Each source shows its stages as a strip that fills while it runs. **Pause**, **Resume** and **Stop** act on a recording between chunks; a stopped or interrupted recording resumes from its last finished stage. Several sources run at once; recordings take turns.
+
+**Review** opens the previews:
+
+- **Text**: fix a word or a speaker, or drop a noisy line. Lines outlined in the warning colour are low confidence (a decoding loop, or two voices in one chunk). **Save corrections** rebuilds the facts from your copy.
+- **Facts**: candidate statements, requirements, decisions and questions, each with its speaker, time and confidence, and how many times it was said again. Accept, reject, or edit and accept. Conflicts are shown, never settled for you.
+- **Speaker names** (recordings): one line per person, the name and the seconds of their self-introduction (`Rana 12-25`). The names stage runs again.
+
+**Terms** (optional): the English words the meeting uses (`Docker, sprint, payment gateway`). They keep those words in Latin script.
+
+**Meeting recording guide**: six steps that make a recording readable (the table setup, the opening, introductions, one speaker at a time, the client's summary after each stage, the closing). **Print** gives an Arabic and English one-pager.
+
+Everything stays in your save folder under `Sources\`. Nothing is sent anywhere, except fetching the web page you named. The clean-up and fact extraction beyond the script is Claude's, from `facts.jsonl`.

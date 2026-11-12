@@ -136,6 +136,8 @@ Every type opens with a first page built for its purpose. The thumbnail on the s
 
 🌾 **Harvest (collect the facts):** a process model gives roles, workflow, rules and statuses. A crawl (an automatic walk) of the live service gives the card, form, attachments and messages. The merge keeps both.
 
+🎧 **Sources:** add a meeting recording, a document, a web page, an image, an Android app or a tool folder on the start page. Each one runs in stages you can pause and review: a speaker-labelled transcript made on your own machine (Arabic dialects and English mixed in), then candidate facts you accept, reject or edit. See [the guide](docs/guide.md#9-sources-from-a-meeting-a-document-or-a-site-to-checked-facts-0200).
+
 📝 **Editor:** one HTML file. The page you edit is the page that prints. Every change is undoable and recorded.
 
 🎀 **Ribbon:** 12 tabs (File, Export, Home, Font, Paragraph, Insert, Layout, Header and footer, Design, Review, Spelling, View), plus 4 that appear when you select a table, a picture or a diagram. Every tool has its name under it. Nothing scrolls sideways.
@@ -281,9 +283,9 @@ Tested on Windows 11 with Node 24 and Chrome. It needs Node 20+, Google Chrome (
 ```
 💬 Then say **"build the requirements document for …"** or **"open it in the editor"**.
 
-🔌 **MCP server only** (any MCP client, stdio, local; 0.19.1 from the GitHub tag; npm still serves 0.12.0):
+🔌 **MCP server only** (any MCP client, stdio, local; 0.20.0 from the GitHub tag; npm still serves 0.12.0):
 ```
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.19.1 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.20.0 business-wrap-mcp
 ```
 
 💻 **From source:** `git clone https://github.com/NJ-Burrito/Business-Wrap`, then the [Start in 3 steps](#-start-in-3-steps).
