@@ -35,6 +35,37 @@ export function unzipEntry(buf, name) {
   return null;
 }
 
+/** Every entry name in a zip file's central directory. */
+export function zipNames(buf) {
+  let eocd = buf.length - 22;
+  while (eocd >= 0 && buf.readUInt32LE(eocd) !== 0x06054b50) eocd -= 1;
+  if (eocd < 0) throw new Error('not a zip file');
+  const names = [];
+  for (let p = buf.readUInt32LE(eocd + 16), n = buf.readUInt16LE(eocd + 10); n > 0; n -= 1) {
+    const nl = buf.readUInt16LE(p + 28);
+    names.push(buf.toString('utf8', p + 46, p + 46 + nl));
+    p += 46 + nl + buf.readUInt16LE(p + 30) + buf.readUInt16LE(p + 32);
+  }
+  return names;
+}
+const byNumber = (a, b) => Number(/(\d+)\.xml$/.exec(a)?.[1]) - Number(/(\d+)\.xml$/.exec(b)?.[1]);
+/** Lines of an XLSX: one per non-empty row, cells joined by " | ", prefixed with the sheet number. */
+export function xlsxLines(buf) {
+  const shared = [...(unzipEntry(buf, 'xl/sharedStrings.xml')?.toString('utf8') || '').matchAll(/<si>([^]*?)<\/si>/g)]
+    .map((m) => unescapeXml([...m[1].matchAll(/<t(?:\s[^>]*)?>([^<]*)<\/t>/g)].map((t) => t[1]).join('')));
+  return zipNames(buf).filter((n) => /^xl\/worksheets\/sheet\d+\.xml$/.test(n)).sort(byNumber).flatMap((n, si) => {
+    const xml = unzipEntry(buf, n).toString('utf8');
+    return [...xml.matchAll(/<row[^>]*>([^]*?)<\/row>/g)].map((r) => [...r[1].matchAll(/<c([^>]*?)(?:\/>|>([^]*?)<\/c>)/g)].map(([, attr, body = '']) => {
+      const v = /<v>([^<]*)<\/v>/.exec(body)?.[1] ?? [...body.matchAll(/<t(?:\s[^>]*)?>([^<]*)<\/t>/g)].map((t) => t[1]).join('');
+      return /t="s"/.test(attr) ? shared[Number(v)] ?? '' : unescapeXml(v);
+    }).map((c) => c.trim()).filter(Boolean).join(' | ')).filter(Boolean).map((l) => `[sheet ${si + 1}] ${l}`);
+  });
+}
+/** Lines of a PPTX: per slide, one line per paragraph (a:p), prefixed with the slide number. */
+export function pptxLines(buf) {
+  return zipNames(buf).filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n)).sort(byNumber).flatMap((n, si) => unzipEntry(buf, n).toString('utf8').split(/<\/a:p>/)
+    .map((p) => unescapeXml([...p.matchAll(/<a:t>([^<]*)<\/a:t>/g)].map((m) => m[1]).join('')).trim()).filter(Boolean).map((l) => `[slide ${si + 1}] ${l}`));
+}
 /** Lines of a DOCX: one per paragraph; a list paragraph (w:numPr) is prefixed "- ". */
 export function docxLines(buf) {
   const xml = unzipEntry(buf, 'word/document.xml')?.toString('utf8');
@@ -62,6 +93,8 @@ export function pdfLines(file) {
 export function textLines(file) {
   if (/\.pdf$/i.test(file)) return pdfLines(file);
   if (/\.docx$/i.test(file)) return docxLines(fs.readFileSync(file));
+  if (/\.xlsx$/i.test(file)) return xlsxLines(fs.readFileSync(file));
+  if (/\.pptx$/i.test(file)) return pptxLines(fs.readFileSync(file));
   const t = fs.readFileSync(file, 'utf8');
   return /\.html?$/i.test(file) ? htmlLines(t) : t.split(/\r?\n/).map((l) => l.replace(/^#+\s*/, '').trim()).filter(Boolean);
 }

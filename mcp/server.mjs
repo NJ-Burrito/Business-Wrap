@@ -18,6 +18,7 @@ import { harvestModel, harvestCrawl, harvestMerge } from '../engine/harvest/cli.
 import { DIAGRAM } from '../engine/diagram.mjs';
 import { modelIn } from '../engine/diagram-cli.mjs';
 import { registerLearningTools } from '../engine/learning/mcp-tools.mjs';
+import { registerSourcesTools } from '../engine/sources/mcp-tools.mjs';
 import { open as openEditor, close as closeEditors, library } from '../engine/cli.mjs';
 import { harvestSources } from '../engine/harvest/sources.mjs';
 
@@ -81,7 +82,8 @@ const BASE_INSTRUCTIONS = 'Business-Wrap: bilingual (AR RTL / EN LTR) requiremen
   + 'export_document prints PDF + DOCX. To edit the document the user has OPEN in the editor use editor_list_documents / editor_outline / editor_get / editor_ops (one undo step, signed as you), editor_action (renumber, check, saveHtml, share, exportPdf and the safe view actions zoomPct/zoomHeight/zoomWidth/theme/reading/find/save/outline/nextPage; destructive ones are REFUSED), not apply_edits. '
   + 'check_update reports a newer release; apply_update installs it only with confirm: true after the user agreed (a Claude Code plugin is updated by the client: /plugin update, then /reload-plugins). '
   + 'Errors from the editor tools carry a code: NO_HOST NO_DOC TAB_TIMEOUT CONFLICT BAD_OP UNKNOWN_ACTION NO_TAB REFUSED RESTART_REQUIRED. '
-  + 'Local learning: call learning_rules before harvesting, authoring or generating and apply the rules; call learning_distill after the user edits or exports; tell the user in one line which learned rules were applied.';
+  + 'Local learning: call learning_rules before harvesting, authoring or generating and apply the rules; call learning_distill after the user edits or exports; tell the user in one line which learned rules were applied. '
+  + 'Sources tab (the Claude pass): sources_list, sources_get (lines, facts, the image to look at), sources_frames (screen recording scenes), then sources_write the cleaned lines and facts; never invent a fact. sources_evidence hands the facts the user accepted to the document (editor_ops).';
 
 /** The notice an agent shows its user: version, three highlights, the update command; migration notes for the agent itself. */
 export function updateNotice(u) {
@@ -417,5 +419,6 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
 
   registerEditorTools(server, z, guard);
   registerLearningTools(server, z, guard);
+  registerSourcesTools(server, z, guard);
   return server;
 }

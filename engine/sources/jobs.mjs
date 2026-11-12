@@ -11,7 +11,7 @@
 //   <id>\facts.jsonl    candidate facts on the schema of docs/research/sources-tab/C-other-sources.md §9
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { ensure, workspace } from '../workspace.mjs';
 import { textLines, htmlLines } from '../harvest/sources.mjs';
@@ -23,13 +23,14 @@ const LISTEN_DEPS = ['openvino-genai', 'sherpa-onnx', 'soundfile', 'numpy', 'hug
 
 export const KINDS = {
   media: /\.(mp3|wav|m4a|ogg|opus|flac|aac|wma|amr|mp4|mkv|mov|webm|avi|m4v)$/i,
-  doc: /\.(pdf|docx|html?|txt|md)$/i,
+  doc: /\.(pdf|docx|xlsx|pptx|html?|txt|md)$/i,
   image: /\.(png|jpe?g|webp|bmp|gif)$/i,
   apk: /\.apk$/i,
+  transcript: /\.(vtt|srt)$/i,
 };
 export const PLAN = {
   media: ['probe', 'prep', 'sweep', 'transcribe', 'speakers', 'enroll', 'facts'],
-  doc: ['read', 'facts'], web: ['fetch', 'facts'], image: ['store', 'facts'], apk: ['read', 'facts'], folder: ['read', 'facts'],
+  doc: ['read', 'facts'], web: ['fetch', 'facts'], image: ['store', 'facts'], apk: ['read', 'facts'], folder: ['read', 'facts'], transcript: ['read', 'facts'],
 };
 
 /** What kind of source this is, from a file name, a URL or a folder; null when Business-Wrap cannot read it. */
@@ -121,8 +122,8 @@ export function setFact(id, fid, { status, text, note }) {
   const facts = previews(id).facts.map((f) => (f.id !== fid ? f : { ...f, status, ...(text != null ? { text: String(text) } : {}), ...(note != null ? { note: String(note) } : {}) }));
   fs.writeFileSync(path.join(dirOf(id), 'facts.jsonl'), facts.map((f) => JSON.stringify(f)).join('\n') + '\n');
 }
-const HOW = { media: 'local transcript (Whisper)', doc: 'document text', web: 'web page text', image: 'image (Claude reads it)', apk: 'app manifest', folder: 'tool or skill files' };
-const BASE = { media: 0.6, doc: 0.9, web: 0.8, image: 0.5, apk: 0.9, folder: 0.9 };
+const HOW = { media: 'local transcript (Whisper)', doc: 'document text', web: 'web page text', image: 'image (Claude reads it)', apk: 'app manifest', folder: 'tool or skill files', transcript: 'meeting transcript (captions)' };
+const BASE = { media: 0.6, doc: 0.9, web: 0.8, image: 0.5, apk: 0.9, folder: 0.9, transcript: 0.8 };
 function writeFacts(id, lines, job) {
   const facts = factsFrom(lines, { source: job.name, how: HOW[job.kind], base: BASE[job.kind] });
   fs.writeFileSync(path.join(dirOf(id), 'facts.jsonl'), facts.map((f) => JSON.stringify(f)).join('\n') + (facts.length ? '\n' : ''));
@@ -152,8 +153,11 @@ const waitingMedia = [];
 export function start(id) {
   const job = getJob(id);
   if (job.kind === 'media' && mediaBusy && mediaBusy !== id) { waitingMedia.includes(id) || waitingMedia.push(id); setJob(id, (j) => { j.state = 'queued'; }); return; }
+  if (job.kind !== 'media') running.set(id, null); // a quick job runs in this process: it is alive, not interrupted
   setJob(id, (j) => { j.state = 'running'; delete j.error; delete j.interrupted; });
-  (job.kind === 'media' ? runMedia : runQuick)(id, job).catch((e) => setJob(id, (j) => { j.state = 'error'; j.error = String(e.message || e).slice(0, 400); }));
+  (job.kind === 'media' ? runMedia : runQuick)(id, job)
+    .catch((e) => setJob(id, (j) => { j.state = 'error'; j.error = String(e.message || e).slice(0, 400); }))
+    .finally(() => { if (job.kind !== 'media') running.delete(id); });
 }
 const stage = (id, name, patch) => setJob(id, (j) => { Object.assign(j.stages[name], patch); j.stage = name; });
 
@@ -184,7 +188,7 @@ function runMedia(id, job) {
       const lines = res.segments.map((s) => ({ text: s.text, loc: `${clock(s.start)}–${clock(s.end)}`, who: s.speaker, ...(s.loop || s.mixed ? { low: true } : {}) }));
       writeJ(path.join(dir, 'lines.json'), lines);
       const n = writeFacts(id, readJ(path.join(dir, 'lines.edited.json')) || lines, job);
-      setJob(id, (j) => { for (const s of PLAN.media) if (j.stages[s].state !== 'done') j.stages[s].state = s === 'enroll' && !fs.existsSync(path.join(dir, 'enroll.json')) ? 'skipped' : 'done'; j.stages['facts'].msg = `${n} candidate facts`; j.state = 'done'; });
+      setJob(id, (j) => { for (const s of PLAN.media) if (j.stages[s].state !== 'done') j.stages[s].state = s === 'enroll' && !fs.existsSync(path.join(dir, 'enroll.json')) ? 'skipped' : 'done'; Object.assign(j.stages.facts, { msg: `${n} candidate facts`, done: n, total: n, unit: 'facts' }); j.state = 'done'; });
     } else setJob(id, (j) => { j.state = code === 3 ? 'stopped' : 'error'; if (code !== 3) j.error = err.trim().split('\n').slice(-3).join(' ') || `exit ${code}`; });
     const next = waitingMedia.shift(); if (next) start(next);
     ok();
@@ -205,10 +209,11 @@ async function runQuick(id, job) {
   } else if (job.kind === 'image') { lines = []; stage(id, first, { msg: 'stored; Claude reads the picture on the Claude pass' }); }
   else if (job.kind === 'apk') lines = await pyLines(['apk', file], ['androguard']);
   else if (job.kind === 'folder') lines = folderLines(file);
+  else if (job.kind === 'transcript') lines = cueLines(fs.readFileSync(file, 'utf8'));
   writeJ(path.join(dir, 'lines.json'), lines);
-  stage(id, first, { state: 'done', done: lines.length, total: lines.length, ...(lines.length ? { msg: `${lines.length} lines` } : {}) });
+  stage(id, first, { state: 'done', done: lines.length, total: lines.length, ...(lines.length ? { msg: `${lines.length} lines`, unit: 'lines' } : {}) });
   const n = writeFacts(id, readJ(path.join(dir, 'lines.edited.json')) || lines, job);
-  stage(id, 'facts', { state: 'done', msg: `${n} candidate facts` });
+  stage(id, 'facts', { state: 'done', msg: `${n} candidate facts`, done: n, total: n, unit: 'facts' });
   setJob(id, (j) => { j.state = 'done'; });
 }
 function pyLines(args, deps) {
@@ -231,3 +236,84 @@ export function folderLines(dir) {
     { text: `Files (${files.length}): ${files.slice(0, 200).join(', ')}`, loc: 'file list' },
   ];
 }
+
+/* ── the Claude pass (MCP sources_* tools): files to read, scene frames, cleaned lines and facts written back ─── */
+/** The source file itself (an uploaded copy or the path the person named); null for a web page or a folder. */
+export function sourceFile(id) {
+  const job = getJob(id);
+  if (job.kind === 'web' || job.kind === 'folder') return null;
+  if (fs.existsSync(job.input) && fs.statSync(job.input).isFile()) return job.input;
+  const f = fs.readdirSync(inputDir(id))[0];
+  return f ? path.join(inputDir(id), f) : null;
+}
+export const VIDEO = /\.(mp4|mkv|mov|webm|avi|m4v)$/i;
+/** A screen recording → one PNG per scene change (and the first frame), at most `max`, ≤ 1280 px wide, with their times. */
+export function sceneFrames(id, { threshold = 0.3, max = 40 } = {}) {
+  const file = sourceFile(id);
+  if (!file || !VIDEO.test(file)) throw new Error('scene frames need a video source');
+  const dir = path.join(dirOf(id), 'work', 'frames');
+  fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
+  const r = spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-i', file, '-vf', `select='eq(n\,0)+gt(scene\,${Number(threshold)})',scale='min(1280\,iw)':-2,showinfo`,
+    '-fps_mode', 'vfr', '-frames:v', String(Math.max(1, Math.min(200, max | 0))), path.join(dir, 'f%03d.png')], { encoding: 'utf8', windowsHide: true, maxBuffer: 64 << 20 });
+  if (r.error || r.status !== 0) throw new Error(`ffmpeg: ${r.error?.message || r.stderr.trim().split('\n').slice(-2).join(' ')}`);
+  const times = [...r.stderr.matchAll(/pts_time:([\d.]+)/g)].map((m) => Number(m[1]));
+  return fs.readdirSync(dir).sort().map((f, i) => ({ file: path.join(dir, f), at: clock(times[i] ?? 0) }));
+}
+const FACT_KINDS = ['requirement', 'decision', 'question', 'statement', 'rule', 'actor', 'step', 'field', 'term'];
+/** Claude's cleaned facts replace facts.jsonl: text and kind required, the rest kept from the candidate of the same id. */
+export function claudeFacts(id, facts) {
+  if (!Array.isArray(facts)) throw new Error('facts: an array');
+  const job = getJob(id), old = new Map(previews(id).facts.map((f) => [f.id, f]));
+  const out = facts.map((f, i) => {
+    if (!f || !String(f.text || '').trim()) throw new Error(`fact ${i + 1}: text is required`);
+    if (!FACT_KINDS.includes(f.kind)) throw new Error(`fact ${i + 1}: kind must be one of ${FACT_KINDS.join(', ')}`);
+    const was = old.get(f.id) || {};
+    const conf = Number.isFinite(f.confidence) ? Math.max(0, Math.min(1, f.confidence)) : was.confidence ?? BASE[job.kind];
+    return { ...was, id: was.id || `c${i + 1}`, kind: f.kind, text: String(f.text).trim(), text_orig: was.text_orig ?? f.text_orig ?? String(f.text),
+      lang: /[؀-ۿ]/.test(f.text) ? (/[A-Za-z]{3,}/.test(f.text) ? 'mixed' : 'ar') : 'en', source: job.name, loc: String(f.loc ?? was.loc ?? ''),
+      who: f.who ?? was.who ?? null, how: `${HOW[job.kind]}, Claude pass`, confidence: conf, confidence_basis: String(f.confidence_basis || 'Claude pass, not yet reviewed'),
+      corroborated_by: f.corroborated_by ?? was.corroborated_by ?? [], conflicts_with: f.conflicts_with ?? was.conflicts_with ?? [],
+      status: ['accepted', 'rejected', 'edited'].includes(was.status) ? was.status : 'candidate', note: String(f.note ?? was.note ?? '') };
+  });
+  fs.writeFileSync(path.join(dirOf(id), 'facts.jsonl'), out.map((f) => JSON.stringify(f)).join('\n') + (out.length ? '\n' : ''));
+  setJob(id, (j) => { j.claude = new Date().toISOString(); });
+  return out.length;
+}
+
+const secs = (t) => { const m = /(?:(\d+):)?(\d+):(\d+)[.,](\d+)/.exec(t) || []; return (+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + (+m[3] || 0) + Number(`0.${m[4] || 0}`); };
+/** A WebVTT or SRT transcript (Teams, Zoom, subtitles) → lines with their times, no speech-to-text needed.
+ *  A Teams <v Name> voice or a leading "Name:" becomes who; one speaker's consecutive cues join into one line. */
+export function cueLines(text) {
+  const out = [];
+  for (const block of String(text).replace(/^﻿/, '').replace(/\r/g, '').split(/\n{2,}/)) {
+    const rows = block.split('\n'), at = rows.findIndex((r) => r.includes('-->'));
+    if (at < 0) continue;
+    const [a, b] = rows[at].split('-->').map((t) => clock(secs(t)));
+    let body = rows.slice(at + 1).join(' ').trim(), who;
+    const v = /<v(?:\.[\w.-]+)?\s+([^>]+)>/.exec(body);
+    if (v) who = v[1].trim();
+    body = body.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    const named = !who && /^([^:：]{2,40})[:：]\s+(.+)$/.exec(body);
+    if (named) { who = named[1].trim(); body = named[2]; }
+    if (!body) continue;
+    const prev = out[out.length - 1];
+    if (who && prev?.who === who) { prev.text += ` ${body}`; prev.loc = `${prev.loc.split('–')[0]}–${b}`; continue; }
+    out.push({ text: body, loc: `${a}–${b}`, ...(who ? { who } : {}) });
+  }
+  return out;
+}
+
+/** Stage 6, the hand-off: every accepted or edited fact of the chosen sources (all when none named) as one evidence pack in
+ *  <workspace>\Sources\02-evidence.json. Claude puts it into the open document with the editor tools. */
+export function evidence(ids) {
+  const jobs = ids?.length ? ids.map((id) => getJob(id)).filter(Boolean) : listJobs();
+  const all = jobs.map((j) => [j, previews(j.id).facts]);
+  const facts = all.flatMap(([j, fs_]) => fs_.filter((f) => f.status === 'accepted' || f.status === 'edited').map((f) => ({ ...f, source_id: j.id, source_kind: j.kind })));
+  const counts = facts.reduce((m, f) => ((m[f.kind] = (m[f.kind] || 0) + 1), m), {});
+  const pending_review = all.reduce((n, [, fs_]) => n + fs_.filter((f) => f.status === 'candidate').length, 0);
+  const pack = { made: new Date().toISOString(), sources: jobs.map((j) => ({ id: j.id, kind: j.kind, name: j.name })), counts, pending_review, facts };
+  const file = path.join(sourcesRoot(), '02-evidence.json');
+  writeJ(file, pack);
+  return { file, ...pack };
+}
+

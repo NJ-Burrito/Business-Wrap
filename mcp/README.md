@@ -2,10 +2,10 @@
 
 ## ⚡ In 10 seconds
 
-🔌 One command (0.20.0 from the GitHub tag; npm still serves 0.12.0; or the Claude Code plugin, or a clone below):
+🔌 One command (0.21.0 from the GitHub tag; npm still serves 0.12.0; or the Claude Code plugin, or a clone below):
 
 ```bash
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.20.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.21.0 business-wrap-mcp
 ```
 
 ✅ Needs Node 20+, uv, and Google Chrome (or another Chromium browser) for the PDF.
@@ -32,6 +32,11 @@ A stdio MCP server over the Business-Wrap engine, with 23 tools (plus the local-
 | `harvest_merge` | crawl, model, out_dir, name?, roles? | a crawl harvest and a process model joined into one document, both editions |
 | `harvest_crawl` | config, out_dir, open? | walk a live service (headed Chrome, OTP pause, never submits) → both editions + the editor |
 | `harvest_sources` | sources[], out_dir, name?, roles?, open? | your own files or folders: BPMN, draw.io, YAML/JSON steps, PDF, DOCX, HTML, TXT, MD → documents; unreadable files listed as skipped |
+| `sources_list` | (none) | the sources added in the Sources tab: id, kind, name, state, and whether the Claude pass ran |
+| `sources_get` | id, offset?, limit? | one source for the Claude pass: a page of its lines, its candidate facts, and the picture to read for an image source |
+| `sources_frames` | id, threshold?, max? | one PNG per scene change of a screen recording (local ffmpeg), with its time |
+| `sources_write` | id, lines?, facts? | the corrected lines (the facts are rebuilt) and/or the cleaned facts; a fact the user accepted or rejected keeps that decision |
+| `sources_evidence` | ids? | the facts the user accepted, as one evidence pack (`Sources\02-evidence.json`), to put into the open document with `editor_ops` |
 | `open_in_editor` | documents[]? \| editor? \| doc_id? | starts the local host if needed and opens a browser tab on the editor; returns `{url, doc_id}`. No arguments = a blank tab (no document made). `doc_id` is looked up in the editor library first (the tab that holds it is named, else one is added). The same files give the same library id after a restart |
 | `close_editor` | (none) | stops every host and browser window this install started; a host another running MCP server (another agent) started is left alone and named under `skipped` |
 | `editor_list_documents` | project? | the documents in the editor library of the running host (starts the host if none runs) |
@@ -63,7 +68,7 @@ The `editor_*` tools act on the document the user has open, through the local ho
 ## ▶️ Run
 
 ```bash
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.20.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.21.0 business-wrap-mcp
 # or, from a clone (no npm ci needed: the MCP SDK is bundled in mcp/vendor/sdk.mjs):
 node mcp/cli.mjs
 ```

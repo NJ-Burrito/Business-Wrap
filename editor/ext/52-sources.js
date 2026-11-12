@@ -73,6 +73,7 @@ const SOURCES = (() => {
   const kindLabel = (k) => t(`src.kind.${k}`);
   const stateLabel = (s) => t(`src.state.${s}`);
   const pct = (s) => (s.total ? Math.round((100 * s.done) / s.total) : s.state === 'done' ? 100 : 0);
+  const msgOf = (s) => (s.unit ? t(`src.unit.${s.unit}`).replace('{n}', s.done) : s.msg || ''); // a count in the UI's language; free text as the engine wrote it
   function card(j) {
     const stages = Object.entries(j.stages || {});
     const btn = (verb, on) => (on ? `<button type="button" class="st-btn st-sm" data-src-do="${verb}" data-id="${esc(j.id)}">${esc(t(`src.${verb}`))}</button>` : '');
@@ -80,7 +81,7 @@ const SOURCES = (() => {
 <div class="src-top"><span class="src-kind">${esc(kindLabel(j.kind))}</span><b class="src-name" dir="auto" title="${esc(j.name)}">${esc(j.name)}</b><span class="src-badge">${esc(stateLabel(j.state))}</span><span class="st-grow"></span>
 ${btn('pause', j.state === 'running' && j.kind === 'media')}${btn('resume', /^(paused|stopped|error)$/.test(j.state))}${btn('stop', LIVE.test(j.state))}
 <button type="button" class="st-btn st-sm${st.open === j.id ? ' st-primary' : ''}" data-src-do="review" data-id="${esc(j.id)}" aria-expanded="${st.open === j.id}">${esc(t('src.review'))}</button></div>
-<ol class="src-stages" aria-label="${esc(t('src.stages'))}">${stages.map(([n, s]) => `<li data-s="${esc(s.state)}" title="${esc(s.msg || '')}"><span>${esc(t(`src.stage.${n}`))}</span><i style="--p:${pct(s)}%"></i>${s.msg ? `<small dir="auto">${esc(s.msg)}</small>` : ''}</li>`).join('')}</ol>
+<ol class="src-stages" aria-label="${esc(t('src.stages'))}">${stages.map(([n, s]) => `<li data-s="${esc(s.state)}" title="${esc(msgOf(s))}"><span>${esc(t(`src.stage.${n}`))}</span><i style="--p:${pct(s)}%"></i>${msgOf(s) ? `<small dir="auto">${esc(msgOf(s))}</small>` : ''}</li>`).join('')}</ol>
 ${j.error ? `<p class="src-err" dir="auto">${esc(j.error)}</p>` : ''}${j.interrupted ? `<p class="src-note">${esc(t('src.interrupted'))}</p>` : ''}
 ${st.open === j.id ? review(j) : ''}</li>`;
   }

@@ -4,10 +4,10 @@
 
 ## ⚡ في عشر ثوان
 
-🔌 أمر واحد (الإصدار 0.20.0 من وسم GitHub، فسجل npm ما زال على 0.12.0؛ أو إضافة Claude Code، أو نسخة محلية أدناه):
+🔌 أمر واحد (الإصدار 0.21.0 من وسم GitHub، فسجل npm ما زال على 0.12.0؛ أو إضافة Claude Code، أو نسخة محلية أدناه):
 
 ```bash
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.20.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.21.0 business-wrap-mcp
 ```
 
 ✅ يحتاج Node 20 فأحدث وuv، وGoogle Chrome (أو متصفحاً آخر مبنياً على Chromium) لملف PDF.
@@ -34,6 +34,11 @@ claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.20.
 | `harvest_merge` | crawl, model, out_dir, name?, roles? | دمج ما جمع من الخدمة الفعلية مع نموذج العملية في وثيقة واحدة بنسختيها |
 | `harvest_crawl` | config, out_dir, open? | المرور على خدمة فعلية (Chrome ظاهر وتوقف للرمز المؤقت، ولا يرسل طلباً أبداً) ← النسختان والمحرر |
 | `harvest_sources` | sources[], out_dir, name?, roles?, open? | ملفاتك أو مجلداتك: BPMN وdraw.io وخطوات YAML/JSON وPDF وDOCX وHTML وTXT وMD ← وثائق، وما لا يُقرأ يُذكر في المتروك |
+| `sources_list` | (لا شيء) | المصادر المضافة في تبويب المصادر: المعرف والنوع والاسم والحالة، وهل مرت بمرحلة Claude |
+| `sources_get` | id, offset?, limit? | مصدر واحد لمرحلة Claude: صفحة من أسطره وحقائقه المرشحة، والصورة التي تقرأ لمصدر الصورة |
+| `sources_frames` | id, threshold?, max? | صورة PNG لكل تغير مشهد في تسجيل الشاشة (ffmpeg المحلي) مع وقتها |
+| `sources_write` | id, lines?, facts? | الأسطر المصححة (فتعاد الحقائق) أو الحقائق المنقحة أو كلاهما؛ والحقيقة التي قبلها المستخدم أو رفضها تبقى على قراره |
+| `sources_evidence` | ids? | الحقائق التي قبلها المستخدم حزمة أدلة واحدة (`Sources\02-evidence.json`)، لتوضع في الوثيقة المفتوحة بـ `editor_ops` |
 | `open_in_editor` | documents[]? \| editor? \| doc_id? | يشغّل الخادم المحلي عند الحاجة ويفتح المحرر في المتصفح، ويعيد `{url, doc_id}`. بلا معاملات = تبويب فارغ (لا تُنشأ وثيقة). `doc_id` يُبحث عنه في مكتبة المحرر أولاً. الملفات نفسها تعطي معرّف المكتبة نفسه بعد إعادة التشغيل |
 | `close_editor` | (لا شيء) | يوقف كل خادم ونافذة متصفح شغّلها هذا التثبيت؛ والخادم الذي شغّله خادم MCP آخر (وكيل آخر) يُترك ويُذكر تحت `skipped` |
 | `editor_list_documents` | project? | الوثائق في مكتبة المحرر عند الخادم العامل (ويشغّل الخادم إن لم يكن يعمل) |
@@ -63,7 +68,7 @@ claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.20.
 ## ▶️ التشغيل
 
 ```bash
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.20.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.21.0 business-wrap-mcp
 # أو من نسخة محلية (دون npm ci: حزمة MCP مضمّنة في mcp/vendor/sdk.mjs):
 node mcp/cli.mjs
 ```
