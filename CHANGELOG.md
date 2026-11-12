@@ -8,6 +8,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.20.0] - 2026-11-12
+
+🎧 Sources: a meeting, a document or a site becomes checked facts, stage by stage, on your own machine. / 🎧 المصادر: يتحول الاجتماع أو الوثيقة أو الموقع إلى حقائق مراجعة، مرحلة بعد مرحلة، على جهازك.
+
+### Added / أضيف
+- 🎧 **Sources on the start page**: a «Documents · Sources» switch. Add meeting and screen recordings, documents, web pages, images, Android apps (static read) and tool or skill folders; several at once. / **المصادر في صفحة البداية**: مفتاح «المستندات · المصادر». أضف تسجيلات الاجتماعات والشاشة والوثائق وصفحات المواقع والصور وتطبيقات أندرويد (قراءة ثابتة) ومجلدات الأدوات والمهارات، عدة مصادر معا.
+- 🗣️ **Who said what, when, locally**: a recording becomes a timed, speaker-labelled transcript on this machine, built for Arabic dialects with English words mid-sentence (Whisper large-v3-turbo on the Intel graphics chip, sherpa-onnx speakers, names from self-introductions). 2 hours in about 45 minutes with no graphics card. / **من قال ماذا ومتى، محليا**: يصبح التسجيل نصا موقوتا باسم كل متحدث على هذا الجهاز، مبنيا للهجات العربية مع كلمات إنجليزية في وسط الجملة. ساعتان في نحو 45 دقيقة بلا بطاقة رسوميات.
+- ⏯️ **Stages you can pause, stop and resume**, each with its own preview: correct the text and the speakers, then accept, reject or edit each candidate fact (statement, requirement, decision, question) before it reaches a document. / **مراحل توقفها مؤقتا وتوقفها وتكملها**، لكل منها معاينتها: صحح النص والمتحدثين، ثم اقبل كل حقيقة مرشحة أو ارفضها أو عدّلها قبل أن تصل إلى الوثيقة.
+- 📋 **Meeting recording guide**: six steps on screen, and a printable Arabic and English one-pager. / **دليل تسجيل الاجتماع**: ست خطوات على الشاشة، وصفحة واحدة للطباعة بالعربية والإنجليزية.
+
 ## [0.19.1] - 2026-11-10
 
 🛠️ A fix release: a document whose revision history has no column labels opens again. / 🛠️ إصدار إصلاحات: الوثيقة التي ليس لسجل مراجعاتها عناوين أعمدة تفتح مجددا.
