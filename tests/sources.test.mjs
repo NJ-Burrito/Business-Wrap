@@ -47,6 +47,9 @@ await t('a document source end to end, and a person\'s edit', async () => {
   start(job.id);
   for (let i = 0; i < 50 && getJob(job.id).state !== 'done'; i += 1) await new Promise((r) => setTimeout(r, 50));
   assert.equal(getJob(job.id).state, 'done', JSON.stringify(getJob(job.id)));
+  assert.ok(!getJob(job.id).interrupted, 'a finished quick job is never marked interrupted (live UI check 2026-11-12)');
+  const sg = getJob(job.id)['stages'];
+  assert.deepEqual([sg.read.unit, sg.facts.unit, sg.facts.done], ['lines', 'facts', 2]);
   let p = previews(job.id);
   assert.equal(p.lines.length, 4);
   assert.deepEqual(p.facts.map((x) => x.kind), ['requirement', 'decision']); // a two-word heading is noise

@@ -153,8 +153,11 @@ const waitingMedia = [];
 export function start(id) {
   const job = getJob(id);
   if (job.kind === 'media' && mediaBusy && mediaBusy !== id) { waitingMedia.includes(id) || waitingMedia.push(id); setJob(id, (j) => { j.state = 'queued'; }); return; }
+  if (job.kind !== 'media') running.set(id, null); // a quick job runs in this process: it is alive, not interrupted
   setJob(id, (j) => { j.state = 'running'; delete j.error; delete j.interrupted; });
-  (job.kind === 'media' ? runMedia : runQuick)(id, job).catch((e) => setJob(id, (j) => { j.state = 'error'; j.error = String(e.message || e).slice(0, 400); }));
+  (job.kind === 'media' ? runMedia : runQuick)(id, job)
+    .catch((e) => setJob(id, (j) => { j.state = 'error'; j.error = String(e.message || e).slice(0, 400); }))
+    .finally(() => { if (job.kind !== 'media') running.delete(id); });
 }
 const stage = (id, name, patch) => setJob(id, (j) => { Object.assign(j.stages[name], patch); j.stage = name; });
 
@@ -185,7 +188,7 @@ function runMedia(id, job) {
       const lines = res.segments.map((s) => ({ text: s.text, loc: `${clock(s.start)}–${clock(s.end)}`, who: s.speaker, ...(s.loop || s.mixed ? { low: true } : {}) }));
       writeJ(path.join(dir, 'lines.json'), lines);
       const n = writeFacts(id, readJ(path.join(dir, 'lines.edited.json')) || lines, job);
-      setJob(id, (j) => { for (const s of PLAN.media) if (j.stages[s].state !== 'done') j.stages[s].state = s === 'enroll' && !fs.existsSync(path.join(dir, 'enroll.json')) ? 'skipped' : 'done'; j.stages['facts'].msg = `${n} candidate facts`; j.state = 'done'; });
+      setJob(id, (j) => { for (const s of PLAN.media) if (j.stages[s].state !== 'done') j.stages[s].state = s === 'enroll' && !fs.existsSync(path.join(dir, 'enroll.json')) ? 'skipped' : 'done'; Object.assign(j.stages.facts, { msg: `${n} candidate facts`, done: n, total: n, unit: 'facts' }); j.state = 'done'; });
     } else setJob(id, (j) => { j.state = code === 3 ? 'stopped' : 'error'; if (code !== 3) j.error = err.trim().split('\n').slice(-3).join(' ') || `exit ${code}`; });
     const next = waitingMedia.shift(); if (next) start(next);
     ok();
@@ -208,9 +211,9 @@ async function runQuick(id, job) {
   else if (job.kind === 'folder') lines = folderLines(file);
   else if (job.kind === 'transcript') lines = cueLines(fs.readFileSync(file, 'utf8'));
   writeJ(path.join(dir, 'lines.json'), lines);
-  stage(id, first, { state: 'done', done: lines.length, total: lines.length, ...(lines.length ? { msg: `${lines.length} lines` } : {}) });
+  stage(id, first, { state: 'done', done: lines.length, total: lines.length, ...(lines.length ? { msg: `${lines.length} lines`, unit: 'lines' } : {}) });
   const n = writeFacts(id, readJ(path.join(dir, 'lines.edited.json')) || lines, job);
-  stage(id, 'facts', { state: 'done', msg: `${n} candidate facts` });
+  stage(id, 'facts', { state: 'done', msg: `${n} candidate facts`, done: n, total: n, unit: 'facts' });
   setJob(id, (j) => { j.state = 'done'; });
 }
 function pyLines(args, deps) {

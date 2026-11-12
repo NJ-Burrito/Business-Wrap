@@ -46,7 +46,7 @@
 .bw-start .src-lines li:not(:has(.src-who)) { grid-template-columns: auto 1fr auto; }
 .bw-start .src-lines textarea { min-height: 36px; resize: vertical; field-sizing: content; }
 .bw-start .src-lines .src-who { width: 11ch; min-height: 36px; }
-.bw-start .src-loc { padding-block-start: 8px; color: var(--bw-ink-muted); font-size: var(--bw-size-2xs); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bw-start .src-loc { min-width: 16ch; padding-block-start: 8px; color: var(--bw-ink-muted); font-size: var(--bw-size-2xs); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .bw-start .src-lines li[data-low] textarea { border-color: var(--bw-warn, #b26a00); }
 .bw-start .src-lines li[data-del] :is(textarea, .src-who) { text-decoration: line-through; opacity: .5; }
 .bw-start .src-x[aria-pressed="true"] { color: var(--bw-danger, #b3261e); }

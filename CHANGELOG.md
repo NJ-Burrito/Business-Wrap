@@ -18,6 +18,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 - 📝 **Meeting transcripts as sources**: a Teams, Zoom or subtitle file (VTT, SRT) becomes timed lines with speaker names at once, with no speech-to-text. / **تفريغ الاجتماعات مصدرا**: ملف Teams أو Zoom أو ترجمة (VTT وSRT) يصبح أسطرا موقوتة بأسماء المتحدثين فورا، بلا تحويل كلام إلى نص.
 - 📦 **Facts reach the document**: `sources_evidence` hands only the facts you accepted to the open document, each with its source and place. / **الحقائق تصل إلى الوثيقة**: `sources_evidence` يسلم الوثيقة المفتوحة الحقائق التي قبلتها وحدها، كل منها بمصدره وموضعه.
 
+### Fixed / أصلح
+- 🩹 **A finished source no longer says the host stopped under it**: documents, pages, apps and folders were marked "interrupted" while they ran, and the note stayed after they finished. / **المصدر المنتهي لم يعد يقول إن المضيف توقف أثناء العمل**: كانت الوثائق والصفحات والتطبيقات والمجلدات توسم «متوقفة» وهي تعمل، وتبقى الملاحظة بعد انتهائها.
+- 🔤 **Stage counts in the interface's language** («الأسطر: 3» in Arabic, "3 lines" in English), and the time column of the transcript lines keeps one width. / **أعداد المراحل بلغة الواجهة**، وعمود الوقت في أسطر التفريغ بعرض واحد.
+
 ## [0.20.0] - 2026-11-12
 
 🎧 Sources: a meeting, a document or a site becomes checked facts, stage by stage, on your own machine. / 🎧 المصادر: يتحول الاجتماع أو الوثيقة أو الموقع إلى حقائق مراجعة، مرحلة بعد مرحلة، على جهازك.
