@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { kindOf, normKey, isNoise, kindOfFact, factsFrom, newJob, start, getJob, previews, saveLines, setFact, claudeFacts, sceneFrames } from '../engine/sources/jobs.mjs';
+import { kindOf, normKey, isNoise, kindOfFact, factsFrom, newJob, start, getJob, previews, saveLines, setFact, claudeFacts, sceneFrames, cueLines, evidence } from '../engine/sources/jobs.mjs';
 import { textLines } from '../engine/harvest/sources.mjs';
 import { writeZip } from '../engine/zip.mjs';
 
@@ -88,6 +88,27 @@ await t('the Claude pass: cleaned facts written back, a person\'s decision kept'
   assert.ok(getJob(job.id).claude);
   assert.throws(() => claudeFacts(job.id, [{ text: 'x', kind: 'guess' }]), /kind/);
   assert.throws(() => sceneFrames(job.id), /video/);
+});
+await t('a Teams / SRT transcript: no speech-to-text, speakers kept, then the evidence pack', async () => {
+  assert.equal(kindOf('meeting.vtt'), 'transcript'); assert.equal(kindOf('meeting.SRT'), 'transcript');
+  const rows = cueLines('﻿WEBVTT\r\n\r\n00:00:01.000 --> 00:00:04.500\r\n<v Rana Ali>لازم نضيف حقل الرخصة</v>\r\n\r\n00:00:05.000 --> 00:00:07.000\r\n<v Rana Ali>قبل الدفع</v>\r\n\r\n1\r\n01:01:02,000 --> 01:01:05,000\r\nOmar: we agreed on two approval stages\r\n\r\n2\r\n01:01:06,000 --> 01:01:08,000\r\nno speaker on this subtitle line\r\n');
+  assert.deepEqual(rows, [
+    { text: 'لازم نضيف حقل الرخصة قبل الدفع', loc: '0:00:01–0:00:07', who: 'Rana Ali' },
+    { text: 'we agreed on two approval stages', loc: '1:01:02–1:01:05', who: 'Omar' },
+    { text: 'no speaker on this subtitle line', loc: '1:01:06–1:01:08' },
+  ]);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-vtt-'));
+  const file = path.join(dir, 'teams.vtt');
+  fs.writeFileSync(file, 'WEBVTT\n\n00:00:01.000 --> 00:00:04.000\n<v Rana>لازم نضيف حقل رقم الرخصة\n\n00:00:05.000 --> 00:00:09.000\n<v Omar>we agreed on two approval stages\n');
+  const job = newJob({ input: file, kind: 'transcript' });
+  start(job.id);
+  for (let i = 0; i < 50 && getJob(job.id).state !== 'done'; i += 1) await new Promise((r) => setTimeout(r, 50));
+  const f = previews(job.id).facts;
+  assert.deepEqual(f.map((x) => [x.kind, x.who]), [['requirement', 'Rana'], ['decision', 'Omar']]);
+  setFact(job.id, f[0].id, { status: 'accepted' });
+  const ev = evidence([job.id]);
+  assert.equal(ev.facts.length, 1); assert.equal(ev.facts[0].source_id, job.id); assert.deepEqual(ev.counts, { requirement: 1 }); assert.equal(ev.pending_review, 1);
+  assert.ok(fs.existsSync(ev.file));
 });
 await t('scene frames of a screen recording (ffmpeg)', async () => {
   if (spawnSync('ffmpeg', ['-version'], { windowsHide: true }).status !== 0) { console.log('SKIP  sources: no ffmpeg on PATH'); return; }

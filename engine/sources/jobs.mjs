@@ -26,10 +26,11 @@ export const KINDS = {
   doc: /\.(pdf|docx|xlsx|pptx|html?|txt|md)$/i,
   image: /\.(png|jpe?g|webp|bmp|gif)$/i,
   apk: /\.apk$/i,
+  transcript: /\.(vtt|srt)$/i,
 };
 export const PLAN = {
   media: ['probe', 'prep', 'sweep', 'transcribe', 'speakers', 'enroll', 'facts'],
-  doc: ['read', 'facts'], web: ['fetch', 'facts'], image: ['store', 'facts'], apk: ['read', 'facts'], folder: ['read', 'facts'],
+  doc: ['read', 'facts'], web: ['fetch', 'facts'], image: ['store', 'facts'], apk: ['read', 'facts'], folder: ['read', 'facts'], transcript: ['read', 'facts'],
 };
 
 /** What kind of source this is, from a file name, a URL or a folder; null when Business-Wrap cannot read it. */
@@ -121,8 +122,8 @@ export function setFact(id, fid, { status, text, note }) {
   const facts = previews(id).facts.map((f) => (f.id !== fid ? f : { ...f, status, ...(text != null ? { text: String(text) } : {}), ...(note != null ? { note: String(note) } : {}) }));
   fs.writeFileSync(path.join(dirOf(id), 'facts.jsonl'), facts.map((f) => JSON.stringify(f)).join('\n') + '\n');
 }
-const HOW = { media: 'local transcript (Whisper)', doc: 'document text', web: 'web page text', image: 'image (Claude reads it)', apk: 'app manifest', folder: 'tool or skill files' };
-const BASE = { media: 0.6, doc: 0.9, web: 0.8, image: 0.5, apk: 0.9, folder: 0.9 };
+const HOW = { media: 'local transcript (Whisper)', doc: 'document text', web: 'web page text', image: 'image (Claude reads it)', apk: 'app manifest', folder: 'tool or skill files', transcript: 'meeting transcript (captions)' };
+const BASE = { media: 0.6, doc: 0.9, web: 0.8, image: 0.5, apk: 0.9, folder: 0.9, transcript: 0.8 };
 function writeFacts(id, lines, job) {
   const facts = factsFrom(lines, { source: job.name, how: HOW[job.kind], base: BASE[job.kind] });
   fs.writeFileSync(path.join(dirOf(id), 'facts.jsonl'), facts.map((f) => JSON.stringify(f)).join('\n') + (facts.length ? '\n' : ''));
@@ -205,6 +206,7 @@ async function runQuick(id, job) {
   } else if (job.kind === 'image') { lines = []; stage(id, first, { msg: 'stored; Claude reads the picture on the Claude pass' }); }
   else if (job.kind === 'apk') lines = await pyLines(['apk', file], ['androguard']);
   else if (job.kind === 'folder') lines = folderLines(file);
+  else if (job.kind === 'transcript') lines = cueLines(fs.readFileSync(file, 'utf8'));
   writeJ(path.join(dir, 'lines.json'), lines);
   stage(id, first, { state: 'done', done: lines.length, total: lines.length, ...(lines.length ? { msg: `${lines.length} lines` } : {}) });
   const n = writeFacts(id, readJ(path.join(dir, 'lines.edited.json')) || lines, job);
@@ -274,3 +276,41 @@ export function claudeFacts(id, facts) {
   setJob(id, (j) => { j.claude = new Date().toISOString(); });
   return out.length;
 }
+
+const secs = (t) => { const m = /(?:(\d+):)?(\d+):(\d+)[.,](\d+)/.exec(t) || []; return (+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + (+m[3] || 0) + Number(`0.${m[4] || 0}`); };
+/** A WebVTT or SRT transcript (Teams, Zoom, subtitles) → lines with their times, no speech-to-text needed.
+ *  A Teams <v Name> voice or a leading "Name:" becomes who; one speaker's consecutive cues join into one line. */
+export function cueLines(text) {
+  const out = [];
+  for (const block of String(text).replace(/^﻿/, '').replace(/\r/g, '').split(/\n{2,}/)) {
+    const rows = block.split('\n'), at = rows.findIndex((r) => r.includes('-->'));
+    if (at < 0) continue;
+    const [a, b] = rows[at].split('-->').map((t) => clock(secs(t)));
+    let body = rows.slice(at + 1).join(' ').trim(), who;
+    const v = /<v(?:\.[\w.-]+)?\s+([^>]+)>/.exec(body);
+    if (v) who = v[1].trim();
+    body = body.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    const named = !who && /^([^:：]{2,40})[:：]\s+(.+)$/.exec(body);
+    if (named) { who = named[1].trim(); body = named[2]; }
+    if (!body) continue;
+    const prev = out[out.length - 1];
+    if (who && prev?.who === who) { prev.text += ` ${body}`; prev.loc = `${prev.loc.split('–')[0]}–${b}`; continue; }
+    out.push({ text: body, loc: `${a}–${b}`, ...(who ? { who } : {}) });
+  }
+  return out;
+}
+
+/** Stage 6, the hand-off: every accepted or edited fact of the chosen sources (all when none named) as one evidence pack in
+ *  <workspace>\Sources\02-evidence.json. Claude puts it into the open document with the editor tools. */
+export function evidence(ids) {
+  const jobs = ids?.length ? ids.map((id) => getJob(id)).filter(Boolean) : listJobs();
+  const all = jobs.map((j) => [j, previews(j.id).facts]);
+  const facts = all.flatMap(([j, fs_]) => fs_.filter((f) => f.status === 'accepted' || f.status === 'edited').map((f) => ({ ...f, source_id: j.id, source_kind: j.kind })));
+  const counts = facts.reduce((m, f) => ((m[f.kind] = (m[f.kind] || 0) + 1), m), {});
+  const pending_review = all.reduce((n, [, fs_]) => n + fs_.filter((f) => f.status === 'candidate').length, 0);
+  const pack = { made: new Date().toISOString(), sources: jobs.map((j) => ({ id: j.id, kind: j.kind, name: j.name })), counts, pending_review, facts };
+  const file = path.join(sourcesRoot(), '02-evidence.json');
+  writeJ(file, pack);
+  return { file, ...pack };
+}
+

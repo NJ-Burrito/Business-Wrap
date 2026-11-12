@@ -83,7 +83,7 @@ const BASE_INSTRUCTIONS = 'Business-Wrap: bilingual (AR RTL / EN LTR) requiremen
   + 'check_update reports a newer release; apply_update installs it only with confirm: true after the user agreed (a Claude Code plugin is updated by the client: /plugin update, then /reload-plugins). '
   + 'Errors from the editor tools carry a code: NO_HOST NO_DOC TAB_TIMEOUT CONFLICT BAD_OP UNKNOWN_ACTION NO_TAB REFUSED RESTART_REQUIRED. '
   + 'Local learning: call learning_rules before harvesting, authoring or generating and apply the rules; call learning_distill after the user edits or exports; tell the user in one line which learned rules were applied. '
-  + 'Sources tab (the Claude pass): sources_list, sources_get (lines, facts, the image to look at), sources_frames (screen recording scenes), then sources_write the cleaned lines and facts; never invent a fact.';
+  + 'Sources tab (the Claude pass): sources_list, sources_get (lines, facts, the image to look at), sources_frames (screen recording scenes), then sources_write the cleaned lines and facts; never invent a fact. sources_evidence hands the facts the user accepted to the document (editor_ops).';
 
 /** The notice an agent shows its user: version, three highlights, the update command; migration notes for the agent itself. */
 export function updateNotice(u) {

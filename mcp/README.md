@@ -36,6 +36,7 @@ A stdio MCP server over the Business-Wrap engine, with 23 tools (plus the local-
 | `sources_get` | id, offset?, limit? | one source for the Claude pass: a page of its lines, its candidate facts, and the picture to read for an image source |
 | `sources_frames` | id, threshold?, max? | one PNG per scene change of a screen recording (local ffmpeg), with its time |
 | `sources_write` | id, lines?, facts? | the corrected lines (the facts are rebuilt) and/or the cleaned facts; a fact the user accepted or rejected keeps that decision |
+| `sources_evidence` | ids? | the facts the user accepted, as one evidence pack (`Sources\02-evidence.json`), to put into the open document with `editor_ops` |
 | `open_in_editor` | documents[]? \| editor? \| doc_id? | starts the local host if needed and opens a browser tab on the editor; returns `{url, doc_id}`. No arguments = a blank tab (no document made). `doc_id` is looked up in the editor library first (the tab that holds it is named, else one is added). The same files give the same library id after a restart |
 | `close_editor` | (none) | stops every host and browser window this install started; a host another running MCP server (another agent) started is left alone and named under `skipped` |
 | `editor_list_documents` | project? | the documents in the editor library of the running host (starts the host if none runs) |

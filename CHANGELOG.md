@@ -13,8 +13,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 🔎 Sources, the Claude pass: Claude reads every source, cleans it and writes the facts back for you to accept. / 🔎 المصادر، مرحلة Claude: يقرأ Claude كل مصدر وينقحه ويعيد كتابة الحقائق لتقبلها أنت.
 
 ### Added / أضيف
-- 🔎 **Four MCP tools for the Claude pass**: `sources_list`, `sources_get` (lines, candidate facts, the picture of an image source), `sources_frames` (one frame per scene of a screen recording, by the local ffmpeg) and `sources_write` (corrected lines and facts; a fact you already accepted or rejected keeps your decision). / **أربع أدوات MCP لمرحلة Claude**: قائمة المصادر، وقراءة المصدر (الأسطر والحقائق المرشحة وصورة مصدر الصورة)، وإطارات مشاهد تسجيل الشاشة (بـ ffmpeg المحلي)، وكتابة الأسطر والحقائق المصححة (قرارك السابق على أي حقيقة يبقى).
+- 🔎 **MCP tools for the Claude pass**: `sources_list`, `sources_get` (lines, candidate facts, the picture of an image source), `sources_frames` (one frame per scene of a screen recording, by the local ffmpeg) and `sources_write` (corrected lines and facts; a fact you already accepted or rejected keeps your decision). / **أدوات MCP لمرحلة Claude**: قائمة المصادر، وقراءة المصدر (الأسطر والحقائق المرشحة وصورة مصدر الصورة)، وإطارات مشاهد تسجيل الشاشة (بـ ffmpeg المحلي)، وكتابة الأسطر والحقائق المصححة (قرارك السابق على أي حقيقة يبقى).
 - 📊 **Spreadsheets and decks as sources**: XLSX row by row, PPTX slide by slide. / **الجداول والعروض مصادر**: XLSX صفا صفا، وPPTX شريحة شريحة.
+- 📝 **Meeting transcripts as sources**: a Teams, Zoom or subtitle file (VTT, SRT) becomes timed lines with speaker names at once, with no speech-to-text. / **تفريغ الاجتماعات مصدرا**: ملف Teams أو Zoom أو ترجمة (VTT وSRT) يصبح أسطرا موقوتة بأسماء المتحدثين فورا، بلا تحويل كلام إلى نص.
+- 📦 **Facts reach the document**: `sources_evidence` hands only the facts you accepted to the open document, each with its source and place. / **الحقائق تصل إلى الوثيقة**: `sources_evidence` يسلم الوثيقة المفتوحة الحقائق التي قبلتها وحدها، كل منها بمصدره وموضعه.
 
 ## [0.20.0] - 2026-11-12
 

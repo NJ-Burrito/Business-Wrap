@@ -1,7 +1,7 @@
 // The sources_* MCP tools (registered by mcp/server.mjs): the Claude pass over the Sources tab. Local files only.
 // Claude lists the sources, reads a source's lines and candidate facts (and, for a picture or a screen recording, the image
 // files to look at), then writes back cleaned lines and/or facts; a person still accepts or rejects each fact in the tab.
-import { listJobs, getJob, previews, saveLines, claudeFacts, sourceFile, sceneFrames, VIDEO } from './jobs.mjs';
+import { listJobs, getJob, previews, saveLines, claudeFacts, sourceFile, sceneFrames, VIDEO, evidence } from './jobs.mjs';
 
 const need = (id) => { const j = getJob(id); if (!j) throw new Error(`no such source: ${id}`); return j; };
 
@@ -59,4 +59,11 @@ export function registerSourcesTools(server, z, guard) {
     const n = facts ? claudeFacts(id, facts) : previews(id).facts.length;
     return { ok: true, lines: lines ? lines.length : undefined, facts: n };
   }));
+
+  server.registerTool('sources_evidence', {
+    title: 'Hand the accepted facts to the document',
+    description: 'Stage 6: every fact the user accepted or edited, from the named sources (all when none), as one evidence pack (also written to Sources\\02-evidence.json) with counts per kind and how many candidates still wait for review. Put the facts into the open document with editor_ops, each where it belongs (requirements, decisions, open questions …), and keep the source and location of each. Never add a fact the user has not accepted.',
+    inputSchema: { ids: z.array(z.string()).optional().describe('Source ids (default: every source)') },
+    annotations: W,
+  }, guard(({ ids }) => evidence(ids)));
 }
