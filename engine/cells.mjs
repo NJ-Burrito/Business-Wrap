@@ -24,7 +24,6 @@ export const fmtNum = (n) => (Number.isFinite(n) ? String(+n.toPrecision(12)) : 
 
 /* ── formula: tokenizer + recursive descent ──────────────────────────────── */
 const FUNCS = { SUM: (a) => a.reduce((x, y) => x + y, 0), AVERAGE: (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN), MIN: (a) => (a.length ? Math.min(...a) : 0), MAX: (a) => (a.length ? Math.max(...a) : 0), COUNT: (a) => a.length };
-export const FORMULA_FUNCS = Object.keys(FUNCS);
 function tokenize(src) {
   const out = [];
   const re = /\s*(?:(\d+(?:\.\d+)?|\.\d+)|(\$?[A-Za-z]{1,3}\$?\d+)|([A-Za-z]+)|([-+*/(),:]))/y;
@@ -219,9 +218,6 @@ export function clearFormat(leaf) {
   const f = leaf.style?.formula;
   return f ? { text: leaf.text, marks: [], style: { formula: f } } : leaf.text;
 }
-/** One mark/style applied to a whole cell. */
-export function markWhole(leaf, type, value, on = true) { return markLeaf(leaf, 0, textOf(leaf).length, type, value, on); }
-export const WHOLE_TYPES = MARK_TYPES;
 
 /* ── lists inside a cell: one item per line ──────────────────────────────── */
 /** A rich leaf cut into its lines ('\n'), marks sliced; a string gives strings. */

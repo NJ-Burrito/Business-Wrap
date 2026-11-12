@@ -17,5 +17,4 @@ export function kindOf(nameOrExt) {
   return EXT_KIND[e] || 'file';
 }
 export const icoPath = (kind, dir = ICON_DIR) => path.join(dir, `${kind}.ico`);
-export const svgPath = (kind, dir = ICON_DIR) => path.join(dir, `${kind}.svg`);
 export const LAUNCHER_ICO = path.join(ICON_DIR, 'launcher.ico');

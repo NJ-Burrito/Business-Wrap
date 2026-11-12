@@ -98,7 +98,6 @@ export function instanceCss(doc) {
   for (const [part, st] of Object.entries(doc?.layout?.style || {})) if (/^[a-z]+$/.test(part)) add(`[data-part="${part}"]`, { style: st });
   return rules.join('\n');
 }
-export const TEMPLATE_PARTS = ['cover', 'control', 'revisions', 'toc', 'questions'];
 /** Labels a document cannot print empty (validation flags them). */
 export function emptyLabels(L) {
   const out = [];

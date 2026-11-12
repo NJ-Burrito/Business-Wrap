@@ -17,9 +17,6 @@ export const FORMAT = 1;
 /** Keys editorHtml() makes itself; anything else in an older file's data block belongs to the user and is carried. */
 export const BUILT_KEYS = new Set(['icons', 'brand', 'setId', 'uiLang', 'services', 'theme', 'i18n', 'fontCss', 'fontFamilies', 'uiCss', 'csp', 'version', 'stateSchema', 'format', 'about', 'whatsNew']);
 
-/** Keys of the history itself: the log, its mark, contributors, the lock, and per edition the edits and what hangs on them. */
-export const HISTORY_KEYS = ['bwlog', 'prov', 'contrib', 'lock'];
-
 export const MIGRATIONS = {
   // 0 → 1: the first versioned format (0.13.x files carry none). Nothing changes shape; the number is stamped.
   0: (d) => ({ ...d, format: 1 }),

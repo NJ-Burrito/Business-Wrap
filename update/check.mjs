@@ -12,7 +12,6 @@ export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 const LOCAL = localBase(ROOT); // BW_LOCAL_DIR: tests and read-only installs
 export const STATE_FILE = path.join(LOCAL, 'update-state.json');
 export const SETTINGS_FILE = path.join(LOCAL, 'update.json');
-export const DAY_MS = 24 * 60 * 60 * 1000;
 /** A cached answer older than this is asked again (T9: a day was long enough to say "latest" while a newer tag existed). BW_UPDATE_REFRESH_H overrides (hours). */
 export const refreshMs = () => (Number(process.env.BW_UPDATE_REFRESH_H) > 0 ? Number(process.env.BW_UPDATE_REFRESH_H) : 6) * 60 * 60 * 1000;
 export const cacheAgeHours = (checkedAt, now = Date.now()) => (checkedAt ? Math.max(0, Math.round(((now - checkedAt) / 3600000) * 10) / 10) : null);
