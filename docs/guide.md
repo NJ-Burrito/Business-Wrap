@@ -142,7 +142,7 @@ On the start page, switch **Documents · Sources** to **Sources**. Add what you 
 | Source | How | What Business-Wrap reads, on this machine |
 |---|---|---|
 | Meeting or screen recording (audio or video, minutes to hours, several tracks) | Add files, or drop them | Who said what and when: Whisper large-v3-turbo on the Intel graphics chip (OpenVINO), speakers by voice. About 45 minutes for 2 hours on a laptop with no graphics card |
-| Document (PDF, DOCX, HTML, TXT, MD) | Add files, or type its path | Its text, line by line |
+| Document (PDF, DOCX, XLSX, PPTX, HTML, TXT, MD) | Add files, or type its path | Its text, line by line (a spreadsheet row by row, a deck slide by slide) |
 | Web page | Type its link | The page's text |
 | Image | Add files | Stored; Claude reads it on the Claude pass |
 | Android app (APK) | Add files | A static read of its manifest: name, version, permissions, screens. Nothing is installed or run |
@@ -160,4 +160,4 @@ Each source shows its stages as a strip that fills while it runs. **Pause**, **R
 
 **Meeting recording guide**: six steps that make a recording readable (the table setup, the opening, introductions, one speaker at a time, the client's summary after each stage, the closing). **Print** gives an Arabic and English one-pager.
 
-Everything stays in your save folder under `Sources\`. Nothing is sent anywhere, except fetching the web page you named. The clean-up and fact extraction beyond the script is Claude's, from `facts.jsonl`.
+Everything stays in your save folder under `Sources\`. Nothing is sent anywhere, except fetching the web page you named. The clean-up and fact extraction beyond the script is Claude's, through the MCP tools: `sources_list`, `sources_get` (the lines, the facts, and the picture of an image source), `sources_frames` (one frame per scene of a screen recording, made by ffmpeg on this machine) and `sources_write` (the corrected lines and facts). A decision you already took on a fact is kept; you still accept or reject what Claude wrote.

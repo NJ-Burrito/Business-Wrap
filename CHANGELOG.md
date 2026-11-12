@@ -8,6 +8,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [0.21.0] - 2026-11-12
+
+🔎 Sources, the Claude pass: Claude reads every source, cleans it and writes the facts back for you to accept. / 🔎 المصادر، مرحلة Claude: يقرأ Claude كل مصدر وينقحه ويعيد كتابة الحقائق لتقبلها أنت.
+
+### Added / أضيف
+- 🔎 **Four MCP tools for the Claude pass**: `sources_list`, `sources_get` (lines, candidate facts, the picture of an image source), `sources_frames` (one frame per scene of a screen recording, by the local ffmpeg) and `sources_write` (corrected lines and facts; a fact you already accepted or rejected keeps your decision). / **أربع أدوات MCP لمرحلة Claude**: قائمة المصادر، وقراءة المصدر (الأسطر والحقائق المرشحة وصورة مصدر الصورة)، وإطارات مشاهد تسجيل الشاشة (بـ ffmpeg المحلي)، وكتابة الأسطر والحقائق المصححة (قرارك السابق على أي حقيقة يبقى).
+- 📊 **Spreadsheets and decks as sources**: XLSX row by row, PPTX slide by slide. / **الجداول والعروض مصادر**: XLSX صفا صفا، وPPTX شريحة شريحة.
+
 ## [0.20.0] - 2026-11-12
 
 🎧 Sources: a meeting, a document or a site becomes checked facts, stage by stage, on your own machine. / 🎧 المصادر: يتحول الاجتماع أو الوثيقة أو الموقع إلى حقائق مراجعة، مرحلة بعد مرحلة، على جهازك.

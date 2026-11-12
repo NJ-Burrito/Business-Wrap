@@ -6,7 +6,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { kindOf, normKey, isNoise, kindOfFact, factsFrom, newJob, start, getJob, previews, saveLines, setFact } from '../engine/sources/jobs.mjs';
+import { spawnSync } from 'node:child_process';
+import { kindOf, normKey, isNoise, kindOfFact, factsFrom, newJob, start, getJob, previews, saveLines, setFact, claudeFacts, sceneFrames } from '../engine/sources/jobs.mjs';
+import { textLines } from '../engine/harvest/sources.mjs';
+import { writeZip } from '../engine/zip.mjs';
 
 let fail = 0;
 const t = async (name, f) => { try { await f(); console.log(`PASS  sources: ${name}`); } catch (e) { fail += 1; console.log(`FAIL  sources: ${name} — ${e.message}`); } };
@@ -52,5 +55,49 @@ await t('a document source end to end, and a person\'s edit', async () => {
   assert.ok(p.edited); assert.equal(p.facts.length, 1);
   setFact(job.id, p.facts[0].id, { status: 'accepted' });
   assert.equal(previews(job.id).facts[0].status, 'accepted');
+});
+await t('XLSX and PPTX readers', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-zip-'));
+  const x = path.join(dir, 'a.xlsx'), p = path.join(dir, 'b.pptx');
+  writeZip(x, [
+    { name: 'xl/sharedStrings.xml', data: '<sst><si><t>الحقل</t></si><si><r><t>رقم </t></r><r><t>الرخصة</t></r></si></sst>' },
+    { name: 'xl/worksheets/sheet2.xml', data: '<worksheet><sheetData><row><c t="inlineStr"><is><t>B &amp; C</t></is></c></row></sheetData></worksheet>' },
+    { name: 'xl/worksheets/sheet1.xml', data: '<worksheet><sheetData><row><c t="s"><v>0</v></c><c t="s"><v>1</v></c><c><v>12</v></c></row><row><c/></row></sheetData></worksheet>' },
+  ]);
+  writeZip(p, [
+    { name: 'ppt/slides/slide10.xml', data: '<p:sld><a:p><a:r><a:t>Last</a:t></a:r></a:p></p:sld>' },
+    { name: 'ppt/slides/slide2.xml', data: '<p:sld><a:p><a:r><a:t>Two </a:t></a:r><a:r><a:t>runs</a:t></a:r></a:p><a:p><a:r><a:t>Next</a:t></a:r></a:p></p:sld>' },
+  ]);
+  assert.deepEqual(textLines(x), ['[sheet 1] الحقل | رقم الرخصة | 12', '[sheet 2] B & C']);
+  assert.deepEqual(textLines(p), ['[slide 1] Two runs', '[slide 1] Next', '[slide 2] Last']);
+  assert.equal(kindOf('plan.xlsx'), 'doc'); assert.equal(kindOf('deck.pptx'), 'doc');
+});
+await t('the Claude pass: cleaned facts written back, a person\'s decision kept', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-src-'));
+  const file = path.join(dir, 'n.txt');
+  fs.writeFileSync(file, 'The applicant must upload the licnce\nAgreed: two approval stages\n');
+  const job = newJob({ input: file, kind: 'doc' });
+  start(job.id);
+  for (let i = 0; i < 50 && getJob(job.id).state !== 'done'; i += 1) await new Promise((r) => setTimeout(r, 50));
+  const [f1, f2] = previews(job.id).facts;
+  setFact(job.id, f2.id, { status: 'accepted' });
+  assert.equal(claudeFacts(job.id, [{ id: f1.id, text: 'The applicant must upload the licence', kind: 'requirement' }, { id: f2.id, text: f2.text, kind: 'decision' }, { text: 'Applicant', kind: 'actor', loc: 'line 1' }]), 3);
+  const p = previews(job.id).facts;
+  assert.equal(p[0].text, 'The applicant must upload the licence'); assert.equal(p[0].text_orig, f1.text); assert.equal(p[0].loc, 'line 1');
+  assert.equal(p[1].status, 'accepted'); assert.equal(p[2].id, 'c3'); assert.match(p[2].how, /Claude pass/);
+  assert.ok(getJob(job.id).claude);
+  assert.throws(() => claudeFacts(job.id, [{ text: 'x', kind: 'guess' }]), /kind/);
+  assert.throws(() => sceneFrames(job.id), /video/);
+});
+await t('scene frames of a screen recording (ffmpeg)', async () => {
+  if (spawnSync('ffmpeg', ['-version'], { windowsHide: true }).status !== 0) { console.log('SKIP  sources: no ffmpeg on PATH'); return; }
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-vid-'));
+  const v = path.join(dir, 'screen.mp4');
+  const r = spawnSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'color=red:s=320x240:d=1', '-f', 'lavfi', '-i', 'color=blue:s=320x240:d=1', '-filter_complex', '[0][1]concat=n=2:v=1', '-pix_fmt', 'yuv420p', v], { windowsHide: true });
+  assert.equal(r.status, 0);
+  const job = newJob({ input: v, kind: 'media' });
+  const fr = sceneFrames(job.id);
+  assert.equal(fr.length, 2, JSON.stringify(fr)); assert.equal(fr[0].at, '0:00:00'); assert.equal(fr[1].at, '0:00:01');
+  assert.ok(fs.statSync(fr[1].file).size > 0);
 });
 process.exit(fail ? 1 : 0);

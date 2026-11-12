@@ -11,7 +11,7 @@
 //   <id>\facts.jsonl    candidate facts on the schema of docs/research/sources-tab/C-other-sources.md §9
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { ensure, workspace } from '../workspace.mjs';
 import { textLines, htmlLines } from '../harvest/sources.mjs';
@@ -23,7 +23,7 @@ const LISTEN_DEPS = ['openvino-genai', 'sherpa-onnx', 'soundfile', 'numpy', 'hug
 
 export const KINDS = {
   media: /\.(mp3|wav|m4a|ogg|opus|flac|aac|wma|amr|mp4|mkv|mov|webm|avi|m4v)$/i,
-  doc: /\.(pdf|docx|html?|txt|md)$/i,
+  doc: /\.(pdf|docx|xlsx|pptx|html?|txt|md)$/i,
   image: /\.(png|jpe?g|webp|bmp|gif)$/i,
   apk: /\.apk$/i,
 };
@@ -230,4 +230,47 @@ export function folderLines(dir) {
     ...docs.flatMap((f) => textLines(path.join(dir, f)).map((text, i) => ({ text, loc: `${f}:${i + 1}` }))),
     { text: `Files (${files.length}): ${files.slice(0, 200).join(', ')}`, loc: 'file list' },
   ];
+}
+
+/* ── the Claude pass (MCP sources_* tools): files to read, scene frames, cleaned lines and facts written back ─── */
+/** The source file itself (an uploaded copy or the path the person named); null for a web page or a folder. */
+export function sourceFile(id) {
+  const job = getJob(id);
+  if (job.kind === 'web' || job.kind === 'folder') return null;
+  if (fs.existsSync(job.input) && fs.statSync(job.input).isFile()) return job.input;
+  const f = fs.readdirSync(inputDir(id))[0];
+  return f ? path.join(inputDir(id), f) : null;
+}
+export const VIDEO = /\.(mp4|mkv|mov|webm|avi|m4v)$/i;
+/** A screen recording → one PNG per scene change (and the first frame), at most `max`, ≤ 1280 px wide, with their times. */
+export function sceneFrames(id, { threshold = 0.3, max = 40 } = {}) {
+  const file = sourceFile(id);
+  if (!file || !VIDEO.test(file)) throw new Error('scene frames need a video source');
+  const dir = path.join(dirOf(id), 'work', 'frames');
+  fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
+  const r = spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-i', file, '-vf', `select='eq(n\,0)+gt(scene\,${Number(threshold)})',scale='min(1280\,iw)':-2,showinfo`,
+    '-fps_mode', 'vfr', '-frames:v', String(Math.max(1, Math.min(200, max | 0))), path.join(dir, 'f%03d.png')], { encoding: 'utf8', windowsHide: true, maxBuffer: 64 << 20 });
+  if (r.error || r.status !== 0) throw new Error(`ffmpeg: ${r.error?.message || r.stderr.trim().split('\n').slice(-2).join(' ')}`);
+  const times = [...r.stderr.matchAll(/pts_time:([\d.]+)/g)].map((m) => Number(m[1]));
+  return fs.readdirSync(dir).sort().map((f, i) => ({ file: path.join(dir, f), at: clock(times[i] ?? 0) }));
+}
+const FACT_KINDS = ['requirement', 'decision', 'question', 'statement', 'rule', 'actor', 'step', 'field', 'term'];
+/** Claude's cleaned facts replace facts.jsonl: text and kind required, the rest kept from the candidate of the same id. */
+export function claudeFacts(id, facts) {
+  if (!Array.isArray(facts)) throw new Error('facts: an array');
+  const job = getJob(id), old = new Map(previews(id).facts.map((f) => [f.id, f]));
+  const out = facts.map((f, i) => {
+    if (!f || !String(f.text || '').trim()) throw new Error(`fact ${i + 1}: text is required`);
+    if (!FACT_KINDS.includes(f.kind)) throw new Error(`fact ${i + 1}: kind must be one of ${FACT_KINDS.join(', ')}`);
+    const was = old.get(f.id) || {};
+    const conf = Number.isFinite(f.confidence) ? Math.max(0, Math.min(1, f.confidence)) : was.confidence ?? BASE[job.kind];
+    return { ...was, id: was.id || `c${i + 1}`, kind: f.kind, text: String(f.text).trim(), text_orig: was.text_orig ?? f.text_orig ?? String(f.text),
+      lang: /[؀-ۿ]/.test(f.text) ? (/[A-Za-z]{3,}/.test(f.text) ? 'mixed' : 'ar') : 'en', source: job.name, loc: String(f.loc ?? was.loc ?? ''),
+      who: f.who ?? was.who ?? null, how: `${HOW[job.kind]}, Claude pass`, confidence: conf, confidence_basis: String(f.confidence_basis || 'Claude pass, not yet reviewed'),
+      corroborated_by: f.corroborated_by ?? was.corroborated_by ?? [], conflicts_with: f.conflicts_with ?? was.conflicts_with ?? [],
+      status: ['accepted', 'rejected', 'edited'].includes(was.status) ? was.status : 'candidate', note: String(f.note ?? was.note ?? '') };
+  });
+  fs.writeFileSync(path.join(dirOf(id), 'facts.jsonl'), out.map((f) => JSON.stringify(f)).join('\n') + (out.length ? '\n' : ''));
+  setJob(id, (j) => { j.claude = new Date().toISOString(); });
+  return out.length;
 }

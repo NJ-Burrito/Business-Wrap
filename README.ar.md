@@ -292,12 +292,12 @@
 
 💬 ثم قل: **«ابن وثيقة متطلبات …»** أو **«افتحها في المحرر»**.
 
-🔌 **خادم MCP وحده** (أي عميل MCP، stdio محلي؛ الإصدار 0.20.0 من وسم GitHub، فسجل npm ما زال على 0.12.0):
+🔌 **خادم MCP وحده** (أي عميل MCP، stdio محلي؛ الإصدار 0.21.0 من وسم GitHub، فسجل npm ما زال على 0.12.0):
 
 <div dir="ltr">
 
 ```
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.20.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.21.0 business-wrap-mcp
 ```
 
 </div>
@@ -309,7 +309,7 @@ claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.20.
 
 - ملف الإصدار: `business-wrap-<version>.zip` مع `.sha256` من https://github.com/NJ-Burrito/Business-Wrap/releases/latest. وفي ذلك المجلد: `npm ci`.
 - خادم MCP من نسخة محلية: `claude mcp add business-wrap -- node <path-to>/Business-Wrap/mcp/cli.mjs` (دون `npm ci`)
-- الأدوات الأساسية (15): `build_editor` و`validate_edits` و`apply_edits` و`export_document` و`export_design_pack` و`check_fonts` و`harvest_model` و`harvest_crawl` و`harvest_merge` و`harvest_sources` و`open_in_editor` و`close_editor` و`diagram_mermaid` و`check_update` و`apply_update`، إضافة إلى أدوات `learning_*`. وأدوات المحرر الحي (`editor_list_documents` و`editor_get` و`editor_outline` و`editor_ops` و`editor_action` و`editor_new` و`editor_import`) و`host_health` تحتاج لسان محرر مفتوحا. وأداة الحصاد التي تعطى `open: true` تفتح نتيجتها في المحرر. التفاصيل في [mcp/README.ar.md](mcp/README.ar.md).
+- الأدوات الأساسية (15): `build_editor` و`validate_edits` و`apply_edits` و`export_document` و`export_design_pack` و`check_fonts` و`harvest_model` و`harvest_crawl` و`harvest_merge` و`harvest_sources` و`open_in_editor` و`close_editor` و`diagram_mermaid` و`check_update` و`apply_update`، إضافة إلى أدوات `learning_*` وأدوات `sources_*` (مرحلة Claude في تبويب المصادر). وأدوات المحرر الحي (`editor_list_documents` و`editor_get` و`editor_outline` و`editor_ops` و`editor_action` و`editor_new` و`editor_import`) و`host_health` تحتاج لسان محرر مفتوحا. وأداة الحصاد التي تعطى `open: true` تفتح نتيجتها في المحرر. التفاصيل في [mcp/README.ar.md](mcp/README.ar.md).
 
 </details>
 
