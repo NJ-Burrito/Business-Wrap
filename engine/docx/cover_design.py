@@ -275,6 +275,11 @@ def type_fields(data: dict) -> list:
     return [f for f in ((data.get('cover') or {}).get('fields') or []) if isinstance(f, dict)]
 
 
+def control_type_rows(data: dict) -> list:
+    """0.21.1: the type's own fields as [label, value] rows for the document-control section (render.mjs coverFieldRows); page 1 carries no grid."""
+    return [[str(f.get('label') or ''), '' if f.get('kind') == 'blank' else str(f.get('value') or '')] for f in type_fields(data)]
+
+
 def field_grid(document, host, fields: list, cols: int, width_mm: float, roles: dict, font: str, theme_mod, rtl: bool):
     """C3: a field grid as a native table (fixed widths): label 7 pt muted above value 9.5 pt; 0.75 pt rule-strong outer, rule inner; rows at least
     11 mm; a `chip` value takes the status fill (C9) or the wash; `date` and Latin ids stay left to right; `blank` is an empty box."""

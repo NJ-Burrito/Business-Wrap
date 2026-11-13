@@ -833,6 +833,11 @@ def add_control_front_matter(document, data, font, counters, toc: bool=False, sp
         theme_mod.style_control_table(control_tbl, _THEME_ROLES)
         document.add_paragraph()
         counters['control_table'] = 1
+        _tr = CD.control_type_rows(data)  # 0.21.1: the type's own fields (page 1 carries no grid)
+        if _tr:
+            _tt = add_table(document, [], _tr, font)
+            theme_mod.style_control_table(_tt, _THEME_ROLES)
+            document.add_paragraph()
     if revisions:
         h2 = document.add_heading(level=2)
         set_para_bidi(h2)
