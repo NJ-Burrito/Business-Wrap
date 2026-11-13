@@ -4,13 +4,18 @@
    Motion answers actions; calm mode and reduced motion make every change instant. */
 :host { all: initial; }
 [hidden] { display: none !important; }
+/* the roles every surface shares, defined once: the shell, a dialog on the shadow root, and the 30-profile modal and lock banner that sit beside .shell */
+.shell, dialog, .bw-modal, .lk-banner {
+  --navy: var(--bw-primary); --deep: var(--bw-band); --wash: var(--bw-primary-soft); --wash-2: var(--bw-surface-2); --on-primary: var(--bw-on-primary); --on-glass: var(--bw-on-glass);
+  --panel: var(--bw-surface); --panel-ink: var(--bw-ink); --panel-soft: var(--bw-ink-muted); --panel-line: var(--bw-line); --focus: var(--bw-focus);
+  --ic-hot: var(--bw-accent-rule); --press: var(--bw-scale-press); --scrim: color-mix(in srgb, var(--bw-band, #001e3d) 45%, transparent); --scrim-blur: blur(3px); --t-open: var(--bw-dur-base) var(--bw-ease-out); --t-close: var(--bw-dur-fast) var(--bw-ease-in);
+}
 /* a dialog opened on the shadow root (the relaunch prompt of 12-session.js) is outside .shell: the same roles (F2 · 38) */
 .shell, dialog {
-  --navy: var(--bw-primary); --deep: var(--bw-band); --gold: var(--bw-accent); --gold-deep: var(--bw-accent-strong); --paper: var(--bw-bg); --ink: var(--bw-ink);
-  --wash: var(--bw-primary-soft); --wash-2: var(--bw-surface-2); --muted: var(--bw-ink-muted); --ok: var(--bw-success); --signal: var(--bw-signal);
-  --on-primary: var(--bw-on-primary); --on-gold: var(--bw-on-accent); --focus: var(--bw-focus);
-  --glass: color-mix(in srgb, var(--bw-glass) calc(var(--bw-glass-alpha) * 100%), transparent); --on-glass: var(--bw-on-glass); --on-glass-soft: var(--bw-on-glass-soft); --hair: var(--bw-hair);
-  --panel: var(--bw-surface); --panel-ink: var(--bw-ink); --panel-soft: var(--bw-ink-muted); --panel-line: var(--bw-line);
+  --gold: var(--bw-accent); --gold-deep: var(--bw-accent-strong); --paper: var(--bw-bg); --ink: var(--bw-ink);
+  --muted: var(--bw-ink-muted); --ok: var(--bw-success); --signal: var(--bw-signal);
+  --on-gold: var(--bw-on-accent);
+  --glass: color-mix(in srgb, var(--bw-glass) calc(var(--bw-glass-alpha) * 100%), transparent); --on-glass-soft: var(--bw-on-glass-soft); --hair: var(--bw-hair);
   --e-out: var(--bw-ease-out); --e-move: var(--bw-ease-in-out);
   --e-spring: linear(0, .008, .031, .07 4.6%, .248 9.6%, .502 15.1%, .763 21.2%, .92 26.3%, 1.024 31.8%, 1.072 37.2%, 1.083 41.6%, 1.071 47.2%, 1.025 58.4%, .998 70.4%, .993 80.8%, 1);
   --r-island: var(--bw-radius-lg); --r-btn: var(--bw-radius-md);
@@ -20,8 +25,6 @@
 .island, .pop, .ctx, .more .menu, .focus-exit, .toast { --focus: var(--bw-accent); --ic-hot: var(--bw-accent); }
 /* 0.13.3 one system: the icon colour on hover, focus and press (gold on the navy glass, the 3:1 rule gold on the panels), one press scale,
    one scrim, one open and one close transition */
-.shell, dialog { --ic-hot: var(--bw-accent-rule); --press: var(--bw-scale-press); --scrim: color-mix(in srgb, var(--bw-band, #001e3d) 45%, transparent); --scrim-blur: blur(3px); --t-open: var(--bw-dur-base) var(--bw-ease-out); --t-close: var(--bw-dur-fast) var(--bw-ease-in); }
-.island, .pop, .ctx, .more .menu, .focus-exit, .toast { --ic-hot: var(--bw-accent); }
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* ── the toolbar: docked at the very top, labelled sections (File · Insert · Edit · Document · Design · Export · View);

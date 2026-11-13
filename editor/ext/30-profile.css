@@ -24,7 +24,7 @@
 .bw-modal-card .b.primary { background: var(--navy); color: var(--on-primary) !important; }
 .lk-banner .b { color: var(--on-glass); }
 /* the card and the lock banner sit beside .shell (a toolbar rebuild must not drop them): the same tokens as .shell */
-.bw-modal, .lk-banner { --scrim: color-mix(in srgb, var(--bw-band, #001e3d) 45%, transparent); --scrim-blur: blur(3px); --t-open: var(--bw-dur-base) var(--bw-ease-out); --t-close: var(--bw-dur-fast) var(--bw-ease-in); --press: var(--bw-scale-press); --focus: var(--bw-focus); --ic-hot: var(--bw-accent-rule); --navy: var(--bw-primary); --deep: var(--bw-band); --wash: var(--bw-primary-soft); --wash-2: var(--bw-surface-2); --on-primary: var(--bw-on-primary); --on-glass: var(--bw-on-glass); --panel: var(--bw-surface); --panel-ink: var(--bw-ink); --panel-soft: var(--bw-ink-muted); --panel-line: var(--bw-line); font-family: var(--bw-font-ui); } /* H3: the house face (inherit gave the browser's serif) */
+.bw-modal, .lk-banner { font-family: var(--bw-font-ui); } /* H3: the house face (inherit gave the browser's serif); the colour roles are in ui.css */
 .bw-modal button, .bw-modal input, .bw-modal textarea { font: inherit; }
 
 /* UIP-01/02: the Share dialog's buttons and fields have the house focus ring (not the browser's dark one), and the same press */
