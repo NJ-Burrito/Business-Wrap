@@ -22,6 +22,9 @@ import { serve } from '../engine/serve.mjs';
 const results = [];
 let failed = 0;
 const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  server-toggle: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+// A silent hang (Chrome or a page call that never answers, seen 1 in 10 on a loaded machine: no output at all, killed by the outer timeout) now ends with the progress so far,
+// so the next one names the step it stopped at instead of leaving an empty log. Cleared once the suite finishes.
+const watchdog = setTimeout(() => { console.log(results.join(String.fromCharCode(10))); console.log(`FAIL  server-toggle: HANG, no end after 170 s; ${results.length} checks done, the last: ${results.at(-1) || 'none'}`); process.exit(1); }, 170000);
 const tmp = tmpDir('bw-toggle-');
 process.env.BW_LOCAL_DIR = path.join(tmp, 'local');
 const AXE = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
@@ -38,7 +41,7 @@ function fake(port, { stopping = false } = {}) {
   return { up: () => new Promise((ok) => s.listen(port, '127.0.0.1', ok)), down: () => new Promise((ok) => { s.close(() => ok()); s.closeAllConnections?.(); }) };
 }
 const browser = await launch();
-const toggles = (page) => shRoot(page, (r) => [...r.querySelectorAll('.srv-toggle')].map((b) => ({ where: b.dataset.where, st: b.dataset.st, role: b.getAttribute('role'), checked: b.getAttribute('aria-checked'), busy: b.getAttribute('aria-busy'), disabled: b.disabled, ariaDisabled: b.getAttribute('aria-disabled'), word: b.querySelector('.srv-w')?.textContent, icon: !!b.querySelector('.srv-dot'), title: b.title, pulse: b.dataset.pulse, inBar: !!b.closest('.island'), label: b.getAttribute('aria-label'), fill: getComputedStyle(b).backgroundColor, h: Math.round(b.getBoundingClientRect().height) })));
+const toggles = (page) => shRoot(page, (r) => [...r.querySelectorAll('.srv-toggle')].map((b) => ({ where: b.dataset.where, st: b.dataset.st, role: b.getAttribute('role'), checked: b.getAttribute('aria-checked'), busy: b.getAttribute('aria-busy'), disabled: b.disabled, ariaDisabled: b.getAttribute('aria-disabled'), word: b.querySelector('.srv-w')?.textContent, icon: !!b.querySelector('.srv-dot'), title: b.title, pulse: b.dataset.pulse, inBar: !!b.closest('.island'), label: b.getAttribute('aria-label'), fill: getComputedStyle(b).backgroundColor, h: b.offsetHeight })));
 const press = (page, where = 'top') => shRoot(page, (r, w) => (w === 'settings' ? r.querySelector('.drawer .srv-toggle') : r.querySelector('.island .srv-toggle')).click(), where);
 const toastText = (page) => shRoot(page, (r) => [...r.querySelectorAll('.toasts .toast')].map((t) => t.textContent.trim()));
 async function open(url, { ui, calm, ports } = {}) {
@@ -92,7 +95,15 @@ try {
   const tb = (await toggles(a)).find((x) => x.where === 'top');
   check('while an export runs the toggle is aria-disabled and its tooltip gives the reason', tb.ariaDisabled === 'true' && /تصدير|export/i.test(tb.title) && tb.st === 'online', JSON.stringify(tb));
   let posts = 0;
-  await a.route('**/api/servers/stop', async (route) => { posts += 1; await route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true,"grace":300}' }); });
+  // The real server is NOT stopped here (only its stop route is answered by the test), so the page's own re-check (every 1.5 s for the first 15 s after a change)
+  // would find it still answering and flip the toggle back to online within a poll of the test's: «offline» was a window of 0..1.5 s that a 120 ms poll sometimes
+  // missed (measured: 1/20 at idle, 1/1 in a probe copy; POST-PRESS showed posts=1, the «stopped» toast, mode back to online). Once the stop POST has been answered the
+  // test makes the health probes fail like a host that is gone (connection refused), until the Undo press.
+  let hostGone = false;
+  const probeRoute = (route) => (hostGone ? route.abort('connectionrefused') : route.continue());
+  await a.route('**/api/health*', probeRoute);
+  await a.route('**/api/version*', probeRoute);
+  await a.route('**/api/servers/stop', async (route) => { posts += 1; hostGone = true; await route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true,"grace":300}' }); });
   await press(a);
   await sleep(500);
   check('pressing it then stops nothing (no POST /api/servers/stop) and a toast says why', posts === 0 && (await toggles(a))[0].st === 'online' && (await toastText(a)).some((x) => /تصدير|export/i.test(x)), `${posts} ${await toastText(a)}`);
@@ -102,15 +113,20 @@ try {
   await a.evaluate(() => { window.__ev.length = 0; });
   await press(a);
   check('online -> press: «جارٍ الإيقاف…» then offline, one POST /api/servers/stop (confirm), the other toggle follows', await until(async () => { const t = await toggles(a); return t.length === 1 && t.every((x) => x.st === 'offline'); }, 8000) && posts === 1, JSON.stringify(await toggles(a)));
-  const off = (await toggles(a))[0] || (await toggles(a))[1];
   const onFill = t1[0].fill;
+  // the fill is a .2 s background-color transition that starts when st flips to «offline»: read at once it is still the online value (measured: run 1 of 12 idle), so wait for it to settle
+  await until(async () => (await toggles(a)).every((x) => x.fill !== onFill), 2000, 50);
+  const off = (await toggles(a))[0] || (await toggles(a))[1];
   check('offline is not colour alone: another dot colour, another word «غير متصل», another fill', off.word === 'غير متصل' && off.checked === 'false' && off.fill !== onFill && off.icon, `${off.fill} vs ${onFill}`);
   const ev2 = await events(a);
   check('stop fires bw:server {online:false} and bw:wm W08 once', ev2.filter((x) => x === 'server:false').length === 1 && ev2.filter((x) => x === 'wm:W08').length === 1, JSON.stringify(ev2));
   check('an «تراجع» (Undo) toast is offered', (await toastText(a)).some((x) => /تراجع/.test(x)), JSON.stringify(await toastText(a)));
+  hostGone = false; // the stopped host «comes back» for the Undo
   await shRoot(a, (r) => [...r.querySelectorAll('.toasts .toast button')].find((b) => /تراجع/.test(b.textContent))?.click());
   check('Undo starts it again: online, W07 fired', await until(async () => (await toggles(a)).every((x) => x.st === 'online'), 12000) && (await events(a)).includes('wm:W07'), JSON.stringify(await events(a)));
   await a.unroute('**/api/servers/stop');
+  await a.unroute('**/api/health*');
+  await a.unroute('**/api/version*');
   check('no page errors (served)', a.errors.length === 0, a.errors.join(' | '));
   await c1.close();
   server.close();
@@ -227,6 +243,7 @@ try {
 } catch (e) {
   check('suite ran to the end', false, e.stack?.split('\n').slice(0, 5).join(' / '));
 } finally {
+  clearTimeout(watchdog);
   await browser.close();
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* temp */ }
 }
