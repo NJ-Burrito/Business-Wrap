@@ -2088,12 +2088,6 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
   /** The type's own fields (content key `cover`, spec §2 / S2); the control fields are never copied into it. */
   const typeFields = () => (Array.isArray(doc.cover?.fields) ? doc.cover.fields : []).filter((f) => f && typeof f === 'object')
     .map((f, i) => ({ ...f, lp: `/cover/fields/${i}/label`, vp: `/cover/fields/${i}/value` }));
-  const controlFields = () => COVER_CONTROL.map((k) => ({
-    label: L.control?.[k] ?? COVER_LABELS[k]?.[locale === 'ar' ? 'ar' : 'en'] ?? k,
-    value: c[k] ?? '',
-    kind: k === 'approvedBy' && !textOf(c[k] ?? '').trim() ? 'blank' : ['documentId', 'version', 'issuedOn'].includes(k) ? 'ltr' : 'text',
-    lp: `/labels/control/${k}`, vp: `/control/${k}`,
-  }));
   // ---- 0.19.0 R2: the parts of the report, form and sheet families (spec §2 C4, C5, C6), all from the content key `cover` ----
   const lang = locale === 'ar' ? 'ar' : 'en';
   const famLb = (k) => lb(k, L[k] ?? FAMILY_LABELS[k][lang]);
@@ -2165,12 +2159,11 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
 </div>`;
     }
     if (cv.family === 'report') {
-      const ctl = REPORT_CONTROL.map((k) => ({ label: L.control?.[k] ?? k, value: c[k] ?? '', kind: ['documentId', 'version', 'issuedOn'].includes(k) ? 'ltr' : 'text', lp: `/labels/control/${k}`, vp: `/control/${k}` }));
       return `<div class="cover" ${attrs}>${overlaysFor((o) => o.mode === 'cover')}
   ${lockup}
   <div class="rp-band"><i class="cap"></i><div class="rp-in">${code ? `<span class="rp-code"><bdi dir="ltr">${code}</bdi></span>` : ''}<div class="kicker">${lb('kicker')}</div>
     ${title}</div></div>
-  <div class="rp-body">${tiles(coverFigures())}${statementBox(coverKey.statement, false)}${fieldGrid(ctl, 3, 'fg-control')}${fieldGrid(tf, cols && cols <= 3 ? cols : 3, 'fg-type')}</div>
+  <div class="rp-body">${tiles(coverFigures())}${statementBox(coverKey.statement, false)}</div>
   <div class="cover-foot">${meta}${c.owner ? `<span${dp('/control/owner')}>${bidi(c.owner)}</span>` : ''}</div>
 </div>`;
     }
@@ -2199,7 +2192,6 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     <div class="rule-short"></div>
     <div class="cover-title">${title}</div>
   </div>
-  <div class="cover-ctl">${fieldGrid(controlFields(), 2, 'fg-control')}${fieldGrid(tf, FIELD_COLS.includes(doc.cover?.cols) && doc.cover.cols <= 3 ? doc.cover.cols : 2, 'fg-type')}</div>
   <div class="cover-foot">${meta}${c.owner ? `<span${dp('/control/owner')}>${bidi(c.owner)}</span>` : ''}</div>
   </div>
 </div>`;
@@ -2221,13 +2213,20 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
   </div>
 </div>`;
 
+  /** 0.21.1: the title page of a spine or report type carries no info table (the owner: the page is a cover, not a form). The type's own fields (content key
+   * `cover.fields`: system or service, service code, …) are printed here instead, under the control data, still editable at their own pointers. */
+  const coverFieldRows = () => {
+    const tf = cv && (cv.family === 'spine' || cv.family === 'report') ? typeFields() : [];
+    if (!tf.length) return '';
+    return `<table class="control control-type"><colgroup><col style="width:34%" /><col style="width:66%" /></colgroup>${tf.map((f) => `<tr><th${dp(f.lp)}>${bidi(f.label ?? '')}</th><td${dp(f.vp)}>${bidi(f.value ?? '')}</td></tr>`).join('')}</table>`;
+  };
   const FRONT = {
-    control: () => doc.controlTable ? controlTable() : `<div data-part="control"><h3>${lb('controlData')}</h3>
+    control: () => doc.controlTable ? controlTable(coverFieldRows()) : `<div data-part="control"><h3>${lb('controlData')}</h3>
   <table class="control"${o.editor ? ' data-rows="/controlTable/rows" data-cols="/controlTable/columns" data-virtual="control" data-w="2"' : ''}><colgroup><col style="width:34%" /><col style="width:66%" /></colgroup>${controlKeys
     .map((k, r) => o.editor
       ? `<tr data-r="${r}"><th${dp('/labels/control/' + k)} data-r="${r}" data-c="0">${bidi(L.control[k])}</th><td${dp('/control/' + k)} data-r="${r}" data-c="1">${bidi(c[k])}</td></tr>`
       : `<tr><th${dp('/labels/control/' + k)}>${bidi(L.control[k])}</th><td${dp('/control/' + k)}>${bidi(c[k])}</td></tr>`)
-    .join('')}</table></div>`,
+    .join('')}</table>${coverFieldRows()}</div>`,
     revisions: () => `<div data-part="revisions"><h3>${lb('revisions')}</h3>
   ${(() => { const n = revCols(doc); const keys = ['revVersion', 'revDate', 'revDesc', 'revAuthor'].slice(0, n); return table({ columns: keys.map((k) => L[k] ?? REV_LABELS[k]?.[lang]), colPtrs: keys.map((k) => '/labels/' + k), rows: (doc.revisions || []).map((r) => r.slice(0, n)), rowsPtr: '/revisions', ...(n > 2 ? { blankCell: '' } : {}), keepAll: true /* UAT H3: a still-empty date stays a cell a person can type in */ }); })()}</div>`,
     // 0.19.0 C7: a typed document's approvals print on the control page too (the DOCX's APPROVALS_COLUMNS); empty cells stay empty, to be signed
@@ -2237,7 +2236,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
   ${toc}</div>`,
   };
   /** The materialised control table (A25): rows of cells; a {bind: key} cell edits /control/<key> (cover and header read it). */
-  function controlTable() {
+  function controlTable(extra = '') {
     const T = doc.controlTable;
     const rowsC = (T.rows || []).filter(Array.isArray);
     const w = Math.max(2, Array.isArray(T.columns) ? T.columns.length : +T.columns || 0, ...rowsC.map((r) => r.length));
@@ -2250,7 +2249,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     };
     return `<div data-part="control"><h3>${lb('controlData')}</h3>
   <table class="control"${o.editor ? ` data-rows="/controlTable/rows" data-cols="/controlTable/columns" data-w="${w}"` : ''}><colgroup>${cols}</colgroup>${rowsC
-    .map((row, r) => `<tr${o.editor ? ` data-r="${r}"` : ''}>${Array.from({ length: w }, (_, k) => cell(row[k], r, k)).join('')}</tr>`).join('')}</table></div>`;
+    .map((row, r) => `<tr${o.editor ? ` data-r="${r}"` : ''}>${Array.from({ length: w }, (_, k) => cell(row[k], r, k)).join('')}</tr>`).join('')}</table>${extra}</div>`;
   }
   const order = [...(doc.layout?.front || []).filter((k) => FRONT[k]), ...Object.keys(FRONT).filter((k) => !(doc.layout?.front || []).includes(k))];
   // 0.19.0 C10: the parts `layout.back` names (a form and a sheet: control and revisions by default; approvals go with control) print after the last
