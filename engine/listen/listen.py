@@ -23,7 +23,9 @@ from pathlib import Path
 
 SR = 16000
 CHUNK_MAX, GAP_MERGE = 28.0, 0.6            # Whisper window; merge VAD gaps under this
-MIN_SIM, MARGIN, MIN_LEN = 0.53, 0.08, 1.0  # ERes2Net base: other-person max 0.45, same-person min 0.61 (labelled test)
+# ERes2Net base, open-set test 2026-11-13 (3 people, 157 genuine + 157 un-enrolled segments, leave-one-out):
+# an un-enrolled voice scored at most 0.57; at 0.53 4/157 got a name, at 0.58-0.62 none, with the same 118/157 named right.
+MIN_SIM, MARGIN, MIN_LEN = 0.60, 0.08, 1.0
 LOOP_SHARE = 0.35                            # a chunk whose most frequent word is > 35% of its words is a decoding loop
 ASR_REPO = 'OpenVINO/whisper-large-v3-turbo-int8-ov'
 SHERPA = 'https://github.com/k2-fsa/sherpa-onnx/releases/download'
@@ -69,10 +71,14 @@ def is_loop(text):
     return len(w) > 8 and max(w.count(x) for x in set(w)) / len(w) > LOOP_SHARE
 
 
+def untatweel(text):
+    """A stretched tatweel run (a decoding loop inside one word, «الـــــ») -> one tatweel. Applied to every chunk."""
+    return re.sub('ـ{3,}', 'ـ', text)
+
+
 def collapse(text):
     """Decoding loops: a word repeated 3+ times -> once; a stretched tatweel run -> one tatweel."""
-    text = re.sub(r'(\S+)(?:\s+\1){2,}', r'\1', text)
-    return re.sub('ـ{3,}', 'ـ', text)
+    return untatweel(re.sub(r'(\S+)(?:\s+\1){2,}', r'\1', text))
 
 
 def overlap_owner(start, end, spans):
@@ -97,10 +103,12 @@ def selftest():
     assert is_loop('على ' * 12) and not is_loop('هذا نص عادي فيه كلمات مختلفة كثيرة جدا بلا تكرار')
     assert collapse('تعمل على على على على') == 'تعمل على'
     assert collapse('الـــــــــــ') == 'الـ'
+    assert untatweel('قال الـــــــــمدير لا لا لا') == 'قال الـمدير لا لا لا'  # no word loop: only the tatweel run goes
     assert overlap_owner(0, 10, [(0, 3, 'a'), (3, 10, 'b')]) == ('b', ['a', 'b'])
     assert overlap_owner(0, 1, [(5, 6, 'a')]) == (None, [])
     assert pick_name([0.9, 0.3], ['x', 'y']) == 'x'
     assert pick_name([0.5, 0.3], ['x', 'y']) == 'Unknown'        # under MIN_SIM
+    assert pick_name([0.57, 0.2], ['x', 'y']) == 'Unknown'       # the highest un-enrolled score measured stays Unknown
     assert pick_name([0.70, 0.66], ['x', 'y']) == 'Unknown'      # margin too small
     print('listen selftest: PASS')
 
@@ -190,8 +198,8 @@ def transcribe(out, prompt='', device='GPU'):
             if (t['track'], x) in have: continue
             gate(out)
             text = str(pipe.generate(a[int(x * SR):int(b * SR)].tolist(), gc)).strip()
-            loop = is_loop(text)
-            if loop: text = collapse(text)
+            loop = is_loop(text) or bool(re.search('ـ{3,}', text))
+            text = collapse(text) if is_loop(text) else untatweel(text)
             if text: segs.append({'track': t['track'], 'start': x, 'end': b, 'text': text, 'loop': loop})
             if done % 5 == 0: part.write_text(json.dumps(segs, ensure_ascii=False), encoding='utf-8')
             say('transcribe', done, total)
