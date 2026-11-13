@@ -10,10 +10,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-11-13
+
+🎧 Meetings heard on your own GPU, pictures read, and a clean first page. / 🎧 الاجتماعات تُسمع على معالج الرسوميات لديك، والصور تُقرأ، والصفحة الأولى نظيفة.
+
 ### Added / أضيف
+- 🎧 **Meeting recordings on an NVIDIA GPU**: with an NVIDIA card, speech-to-text runs on it (Whisper large-v3-turbo through faster-whisper): 10 minutes of a talk show in about 1 minute. Without one, the Intel GPU or the CPU as before. / **تسجيلات الاجتماعات على معالج NVIDIA**: إذا وُجدت بطاقة NVIDIA يعمل تحويل الكلام إلى نص عليها: 10 دقائق من حوار في نحو دقيقة. ومن دونها معالج Intel أو المعالج المركزي كما كان.
+- 🔁 **Direction switch on the start page**: RTL | LTR next to the language buttons. Language and direction change the text only; the page layout stays where it is. / **مفتاح الاتجاه في صفحة البداية**: يمين لليسار | يسار لليمين بجانب أزرار اللغة. اللغة والاتجاه يغيران النص وحده، ويبقى تخطيط الصفحة في مكانه.
 - 🖼️ **Local OCR for images and screen-recording frames**: an image source now has a *Read text* stage that fills the preview with its Arabic and English text (RapidOCR PP-OCRv5, on this machine, free and open source; the first run downloads the models). A doubtful line is flagged low, and when the Arabic model may have dropped digits inside an Arabic line, a second English reading is kept as `alt`. `sources_frames` returns the OCR text of every frame. / **قراءة النص محليا من الصور وإطارات تسجيل الشاشة**: لمصدر الصورة الآن مرحلة «قراءة النص» تملأ المعاينة بنصه العربي والإنجليزي (RapidOCR على هذا الجهاز، مجاني ومفتوح المصدر، وأول تشغيل ينزل النماذج). السطر المشكوك فيه يوسم منخفض الثقة، وإذا احتمل أن النموذج العربي أسقط أرقاما داخل سطر عربي تحفظ قراءة إنجليزية ثانية في الحقل `alt`. وأداة `sources_frames` تعيد نص كل إطار.
 
+### Changed / تغيّر
+- 🗣️ **Whole sentences and the right speaker in transcripts**: short pauses no longer cut a sentence into fragments that came out as nonsense; Whisper's stock lines on music or silence («اشتركوا في القناة», "thanks for watching") are dropped; two voices on one microphone are kept apart (a host and a guest were one speaker before). A voice nobody enrolled stays «Unknown». / **جمل كاملة والمتحدث الصحيح في التفريغ**: لم تعد الوقفات القصيرة تقطع الجملة إلى أجزاء بلا معنى، وتُحذف عبارات Whisper الجاهزة عند الموسيقى أو الصمت، ويُفصل صوتان على ميكروفون واحد (كان المحاور والضيف متحدثا واحدا). والصوت غير المسجل يبقى «غير معروف».
+- 🎨 **Light theme contrast**: cards, chips, panels and inputs have visible edges on the page (borders at least 3:1). Dark theme unchanged. / **تباين المظهر الفاتح**: للبطاقات والأزرار واللوحات والحقول حواف ظاهرة على الصفحة (الحدود 3:1 على الأقل). المظهر الداكن كما هو.
+
 ### Fixed / أصلح
+- 🗂️ **A save folder from another computer no longer breaks the app**: a remembered folder that does not exist here falls back to the default instead of failing the library and sessions. / **مجلد حفظ من جهاز آخر لم يعد يعطل البرنامج**: المجلد المحفوظ غير الموجود على هذا الجهاز يُستبدل بالمجلد الافتراضي بدل أن تتعطل المكتبة والجلسات.
 - 📄 **A new document opens on its cover, not on an empty page**: with the ruler on in a page view, the ruler took 9 mm at the top of the first page, the full-page cover no longer fitted under it and moved to page 2 (page 1 empty, the cover's header and footer on the wrong page, one page too many). The ruler now lies on the top edge of the sheet and takes no room. / **الوثيقة الجديدة تفتح على غلافها لا على صفحة فارغة**: كانت المسطرة المفعلة في عرض الصفحات تأخذ 9 مم من أعلى الصفحة الأولى فلا يتسع الغلاف الكامل تحتها وينتقل إلى الصفحة 2 (صفحة أولى فارغة، ورأس الغلاف وتذييله في غير موضعهما، وصفحة زائدة). صارت المسطرة على الحافة العليا للورقة ولا تأخذ حيزا.
 - 🧾 **No info table on page 1 of any type**: the document control data and the type's own fields (system or service, service code, defect ID, severity, …) live in «ضبط الوثيقة والاعتمادات» (Document control and approvals; for forms and sheets, the control section at the end), editable in place. The Word cover matches. / **لا جدول بيانات في الصفحة الأولى لأي نوع**: بيانات ضبط الوثيقة وحقول النوع نفسه (النظام أو الخدمة، رمز الخدمة، رقم العيب، الخطورة، …) في «ضبط الوثيقة والاعتمادات» (وللنماذج والجداول في قسم الضبط في آخر الوثيقة)، وتعدل في مكانها. وغلاف Word مطابق.
 

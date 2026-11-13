@@ -285,7 +285,7 @@ Tested on Windows 11 with Node 24 and Chrome. It needs Node 20+, Google Chrome (
 
 🔌 **MCP server only** (any MCP client, stdio, local; 0.21.0 from the GitHub tag; npm still serves 0.12.0):
 ```
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.21.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.22.0 business-wrap-mcp
 ```
 
 💻 **From source:** `git clone https://github.com/NJ-Burrito/Business-Wrap`, then the [Start in 3 steps](#-start-in-3-steps).

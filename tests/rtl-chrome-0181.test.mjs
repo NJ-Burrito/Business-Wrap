@@ -141,7 +141,8 @@ try {
     check(`user manual ${ed}: five step headings and five screenshot frames found, each once`, nums.length === 5 && Object.keys(shots).length === 5 && [...Object.values(steps), ...Object.values(shots)].every((a) => a.length === 1), JSON.stringify({ steps, shots }));
     const apart = nums.filter((k) => steps[k]?.[0] !== shots[k]?.[0]);
     check(`user manual ${ed}: each step frame is on its step heading's page (apart: ${apart.join(',') || 'none'})`, nums.length === 5 && apart.length === 0, JSON.stringify({ steps, shots }));
-    check(`user manual ${ed}: keeping the steps whole costs at most two pages (12 before, now ${n})`, n <= 14, String(n));
+    // Base 13: 12 pages, plus the one page the document-control section gained when the type fields left page 1 (0.22.0).
+    check(`user manual ${ed}: keeping the steps whole costs at most two pages (13 before, now ${n})`, n <= 15, String(n));
   }
 } catch (e) {
   check('suite ran without an exception', false, (e && e.stack) || e);
