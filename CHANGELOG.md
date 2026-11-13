@@ -8,6 +8,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [Unreleased]
+
+### Added / أضيف
+- 🖼️ **Local OCR for images and screen-recording frames**: an image source now has a *Read text* stage that fills the preview with its Arabic and English text (RapidOCR PP-OCRv5, on this machine, free and open source; the first run downloads the models). A doubtful line is flagged low, and when the Arabic model may have dropped digits inside an Arabic line, a second English reading is kept as `alt`. `sources_frames` returns the OCR text of every frame. / **قراءة النص محليا من الصور وإطارات تسجيل الشاشة**: لمصدر الصورة الآن مرحلة «قراءة النص» تملأ المعاينة بنصه العربي والإنجليزي (RapidOCR على هذا الجهاز، مجاني ومفتوح المصدر، وأول تشغيل ينزل النماذج). السطر المشكوك فيه يوسم منخفض الثقة، وإذا احتمل أن النموذج العربي أسقط أرقاما داخل سطر عربي تحفظ قراءة إنجليزية ثانية في الحقل `alt`. وأداة `sources_frames` تعيد نص كل إطار.
+
 ## [0.21.0] - 2026-11-12
 
 🔎 Sources, the Claude pass: Claude reads every source, cleans it and writes the facts back for you to accept. / 🔎 المصادر، مرحلة Claude: يقرأ Claude كل مصدر وينقحه ويعيد كتابة الحقائق لتقبلها أنت.

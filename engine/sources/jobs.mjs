@@ -19,6 +19,8 @@ import { py } from '../py.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const LISTEN = path.join(HERE, '..', 'listen', 'listen.py');
+const OCR = path.join(HERE, 'ocr.py');
+const OCR_DEPS = ['rapidocr[rtl]', 'onnxruntime', 'pillow'];
 const LISTEN_DEPS = ['openvino-genai', 'sherpa-onnx', 'soundfile', 'numpy', 'huggingface_hub'];
 
 export const KINDS = {
@@ -30,7 +32,7 @@ export const KINDS = {
 };
 export const PLAN = {
   media: ['probe', 'prep', 'sweep', 'transcribe', 'speakers', 'enroll', 'facts'],
-  doc: ['read', 'facts'], web: ['fetch', 'facts'], image: ['store', 'facts'], apk: ['read', 'facts'], folder: ['read', 'facts'], transcript: ['read', 'facts'],
+  doc: ['read', 'facts'], web: ['fetch', 'facts'], image: ['ocr', 'facts'], apk: ['read', 'facts'], folder: ['read', 'facts'], transcript: ['read', 'facts'],
 };
 
 /** What kind of source this is, from a file name, a URL or a folder; null when Business-Wrap cannot read it. */
@@ -65,8 +67,8 @@ export function factsFrom(lines, { source, how, base = 0.8 }) {
       id: `f${out.length + 1}`, kind: kindOfFact(l.text), text: l.text, text_orig: l.orig ?? l.text,
       lang: /[؀-ۿ]/.test(l.text) ? (/[A-Za-z]{3,}/.test(l.text) ? 'mixed' : 'ar') : 'en',
       source, loc: l.loc, who: l.who || null, how, confidence: l.low ? Math.min(base, 0.3) : base,
-      confidence_basis: l.low ? 'low: decoding loop or two voices in one chunk' : `${how}, not yet reviewed`,
-      corroborated_by: [], conflicts_with: [], status: 'candidate', note: '',
+      confidence_basis: l.low ? (l.alt ? 'low: OCR may have lost digits, see the other reading' : 'low: decoding loop, two voices in one chunk, or a doubtful OCR read') : `${how}, not yet reviewed`,
+      corroborated_by: [], conflicts_with: [], status: 'candidate', note: l.alt ? `OCR second reading: ${l.alt}` : '',
     };
     seen.set(key, f); out.push(f);
   }
@@ -112,7 +114,7 @@ export function previews(id) {
 /** A person's correction of the lines (text, speaker, deleted) → lines.edited.json, and the facts are rebuilt from it. */
 export function saveLines(id, lines) {
   if (!Array.isArray(lines)) throw new Error('lines: an array');
-  const clean = lines.map((l) => ({ text: String(l.text ?? ''), loc: String(l.loc ?? ''), ...(l.who ? { who: String(l.who) } : {}), ...(l.low ? { low: true } : {}), ...(l.deleted ? { deleted: true } : {}), ...(l.orig != null ? { orig: String(l.orig) } : {}) }));
+  const clean = lines.map((l) => ({ text: String(l.text ?? ''), loc: String(l.loc ?? ''), ...(l.who ? { who: String(l.who) } : {}), ...(l.low ? { low: true } : {}), ...(l.alt ? { alt: String(l.alt) } : {}), ...(l.deleted ? { deleted: true } : {}), ...(l.orig != null ? { orig: String(l.orig) } : {}) }));
   writeJ(path.join(dirOf(id), 'lines.edited.json'), clean);
   writeFacts(id, clean, getJob(id));
 }
@@ -122,8 +124,8 @@ export function setFact(id, fid, { status, text, note }) {
   const facts = previews(id).facts.map((f) => (f.id !== fid ? f : { ...f, status, ...(text != null ? { text: String(text) } : {}), ...(note != null ? { note: String(note) } : {}) }));
   fs.writeFileSync(path.join(dirOf(id), 'facts.jsonl'), facts.map((f) => JSON.stringify(f)).join('\n') + '\n');
 }
-const HOW = { media: 'local transcript (Whisper)', doc: 'document text', web: 'web page text', image: 'image (Claude reads it)', apk: 'app manifest', folder: 'tool or skill files', transcript: 'meeting transcript (captions)' };
-const BASE = { media: 0.6, doc: 0.9, web: 0.8, image: 0.5, apk: 0.9, folder: 0.9, transcript: 0.8 };
+const HOW = { media: 'local transcript (Whisper)', doc: 'document text', web: 'web page text', image: 'image text (local OCR, Claude reads the picture)', apk: 'app manifest', folder: 'tool or skill files', transcript: 'meeting transcript (captions)' };
+const BASE = { media: 0.6, doc: 0.9, web: 0.8, image: 0.7, apk: 0.9, folder: 0.9, transcript: 0.8 };
 function writeFacts(id, lines, job) {
   const facts = factsFrom(lines, { source: job.name, how: HOW[job.kind], base: BASE[job.kind] });
   fs.writeFileSync(path.join(dirOf(id), 'facts.jsonl'), facts.map((f) => JSON.stringify(f)).join('\n') + (facts.length ? '\n' : ''));
@@ -206,7 +208,9 @@ async function runQuick(id, job) {
     const r = await fetch(job.input, { redirect: 'follow', signal: AbortSignal.timeout(30000) });
     if (!r.ok) throw new Error(`${job.input}: HTTP ${r.status}`);
     lines = htmlLines(await r.text()).map((text, i) => ({ text, loc: `line ${i + 1}` }));
-  } else if (job.kind === 'image') { lines = []; stage(id, first, { msg: 'stored; Claude reads the picture on the Claude pass' }); }
+  } else if (job.kind === 'image') {
+    try { lines = (await ocrFiles([file]))[file] || []; } catch (e) { lines = []; stage(id, first, { msg: `OCR unavailable (${String(e.message).slice(0, 120)}); Claude reads the picture on the Claude pass` }); }
+  }
   else if (job.kind === 'apk') lines = await pyLines(['apk', file], ['androguard']);
   else if (job.kind === 'folder') lines = folderLines(file);
   else if (job.kind === 'transcript') lines = cueLines(fs.readFileSync(file, 'utf8'));
@@ -216,8 +220,10 @@ async function runQuick(id, job) {
   stage(id, 'facts', { state: 'done', msg: `${n} candidate facts`, done: n, total: n, unit: 'facts' });
   setJob(id, (j) => { j.state = 'done'; });
 }
-function pyLines(args, deps) {
-  const [cmd, a] = py([path.join(HERE, 'read.py'), ...args], deps);
+/** Local OCR (RapidOCR, Arabic + English) of pictures: { file: [{text, loc, low?, alt?}] }. The first run downloads the models. */
+export const ocrFiles = (files) => pyLines(['read', ...files], OCR_DEPS, OCR);
+function pyLines(args, deps, script = path.join(HERE, 'read.py')) {
+  const [cmd, a] = py([script, ...args], deps);
   return new Promise((ok, no) => {
     const c = spawn(cmd, a, { windowsHide: true, env: { ...process.env, PYTHONUTF8: '1' } });
     let out = '', err = '';
@@ -258,6 +264,13 @@ export function sceneFrames(id, { threshold = 0.3, max = 40 } = {}) {
   if (r.error || r.status !== 0) throw new Error(`ffmpeg: ${r.error?.message || r.stderr.trim().split('\n').slice(-2).join(' ')}`);
   const times = [...r.stderr.matchAll(/pts_time:([\d.]+)/g)].map((m) => Number(m[1]));
   return fs.readdirSync(dir).sort().map((f, i) => ({ file: path.join(dir, f), at: clock(times[i] ?? 0) }));
+}
+/** sceneFrames + the OCR text of each frame (loc = the frame's time); frames whose OCR failed carry ocr_error. */
+export async function sceneFramesOcr(id, opts) {
+  const frames = sceneFrames(id, opts);
+  let read = {}, ocr_error;
+  try { read = await ocrFiles(frames.map((f) => f.file)); } catch (e) { ocr_error = String(e.message || e).slice(0, 200); }
+  return frames.map((f) => ({ ...f, ...(ocr_error ? { ocr_error } : { text: (read[f.file] || []).map(({ text, low, alt }) => ({ text, ...(low ? { low: true } : {}), ...(alt ? { alt } : {}) })) }) }));
 }
 const FACT_KINDS = ['requirement', 'decision', 'question', 'statement', 'rule', 'actor', 'step', 'field', 'term'];
 /** Claude's cleaned facts replace facts.jsonl: text and kind required, the rest kept from the candidate of the same id. */
