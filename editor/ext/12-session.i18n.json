@@ -1,9 +1,6 @@
 {
  "ar": {
   "sessTitle": "متابعة العمل",
-  "sessLead": "أُغلق آخر عمل وفيه {n} من التبويبات المحفوظة.",
-  "sessResume": "استأنف كل شيء ({n})",
-  "sessNew": "عمل جديد",
   "sessOpened": "فُتحت {n} من التبويبات.",
   "wsTitle": "مجلد الحفظ",
   "wsLead": "تُحفظ ملفات PDF وDOCX وHTML في مجلد Business-Wrap داخل هذا المجلد؛ مجلد HISTORY للجهاز فقط.",
@@ -52,9 +49,6 @@
  },
  "en": {
   "sessTitle": "Pick up where you left off",
-  "sessLead": "Your last session closed with {n} saved tabs.",
-  "sessResume": "Resume everything ({n})",
-  "sessNew": "New work",
   "sessOpened": "{n} tabs opened.",
   "wsTitle": "Save folder",
   "wsLead": "PDF, DOCX and HTML files go into a Business-Wrap folder inside this one; HISTORY is for the machine only.",
