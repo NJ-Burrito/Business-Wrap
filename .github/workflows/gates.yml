@@ -8,6 +8,7 @@ on:
   push:
     branches: ["**"]
   pull_request:
+  workflow_call: # release.yml runs the same gates on the tag before publishing
 
 permissions:
   contents: read
