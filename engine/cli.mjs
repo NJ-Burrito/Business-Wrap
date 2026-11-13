@@ -17,7 +17,7 @@
 //   business-wrap verify-history <file> [--history dir]    the trust ledger check, as strict as the editor's
 //   business-wrap library [list]                           documents in the save folder
 //   business-wrap tidy [--dry-run]                          moves an old save folder (PDF, DOCX, HTML, HISTORY) into the document tree
-//   business-wrap report <from> <to>                       the work report (WP4)
+//   business-wrap report <from> <to>                       the work report
 //   business-wrap update [--check|--apply --yes|--notes]   the updater (update/cli.mjs; a Claude Code plugin is updated by the client, never in place)
 //   business-wrap doctor                                   what is installed, where state lives, the last MCP server starts, version drift, EVERY known workspace / browser profile / plugin-data path
 //   business-wrap reset [--all] [--dry-run] [--yes]        send the machine state (browser profile, .system, local state; --all: whole workspaces + plugin data) to the Recycle Bin; --dry-run lists only
@@ -28,73 +28,46 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { buildEditor } from './build-editor.mjs';
 import * as DT from './doctypes.mjs';
-import { exportPdf, exportDocx, loadTheme, loadEdited, fontsFor, REPO, userCwd, fileStem, renderDiagramPng, localeOf } from './export.mjs';
+import { exportPdf, exportDocx, loadTheme, loadEdited, fontsFor, userCwd, fileStem, renderDiagramPng, localeOf } from './export.mjs';
+import { REPO } from './platform.mjs';
 import { modelIn } from './diagram-cli.mjs';
 import { systemFonts } from './fonts.mjs';
 import { registeredServers } from './server-registry.mjs';
 import { harvestModel, harvestCrawl } from './harvest/cli.mjs';
 import { harvestSources, MODEL_EXT, TEXT_EXT } from './harvest/sources.mjs';
-import { STATE_DIR, healPort, healStaleHosts, healWorkspace, healFont, readHealLog, alive } from './heal/index.mjs';
+import { STATE_DIR, healStaleHosts, healWorkspace, healFont, readHealLog } from './heal/index.mjs';
+import { alive, killTree, waitFor, DEFAULT_PORT } from './host-lifecycle.mjs';
 import { GATES } from './heal/gates.mjs';
 import { workspace, localDir, ensure, reportPath, sourcesDir, keepVersion, docTitle, exportTitle, outName, uniquePath, noteOutput, DOCS_NAME } from './workspace.mjs';
 import { tidy } from './tidy.mjs';
 import { migrateLocal, pluginData, realParent, isTestMode } from './testguard.mjs';
 import { doctor as doctorInfo } from '../mcp/startup.mjs';
-import { KEEP_AWAKE_ARGS } from './host.mjs';
+import * as hostMod from './host.mjs';
 import { chooseBrowser } from './export.mjs';
-import { autorun as ensureLauncher } from '../launcher/launcher.mjs'; // 0.17.0 (N15): the launcher + its Desktop copy, once per install and version
+import { autorun as ensureLauncher } from '../launcher/launcher.mjs'; // the launcher + its Desktop copy, once per install and version
 
 const pkg = () => JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8'));
 const HOSTS = () => path.join(STATE_DIR(), 'cli-hosts.json');
 const EDITORS = () => path.join(STATE_DIR(), 'editors');
-class Pending extends Error { constructor(m) { super(m); this.code = 3; } }
 const isDoc = (f) => { try { const d = JSON.parse(fs.readFileSync(f, 'utf8')); return !!(d.control && d.chapters); } catch { return false; } };
 const docsIn = (p) => (fs.statSync(p).isDirectory() ? fs.readdirSync(p).filter((f) => /\.json$/i.test(f)).map((f) => path.join(p, f)).filter(isDoc) : [p]);
 
-/* ── host: WP3's engine/host.mjs when it is built, else a local serve.mjs child this CLI records ── */
-async function hostModule() {
-  try { const m = await import('./host.mjs'); return m; } catch { return null; }
-}
 const record = (fn) => { const f = HOSTS(); const { hosts } = healStaleHosts(f); const next = fn(hosts); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, JSON.stringify({ hosts: next }, null, 1)); return next; };
-const answers = (url) => new Promise((ok) => { const r = http.get(url, (res) => { res.resume(); ok(res.statusCode === 200); }); r.on('error', () => ok(false)); r.setTimeout(1500, () => { r.destroy(); ok(false); }); });
-async function waitUp(url, ms = 15000) { for (const t0 = Date.now(); Date.now() - t0 < ms;) { if (await answers(url)) return true; await new Promise((r) => setTimeout(r, 200)); } return false; }
-const killTree = (pid) => { if (!alive(pid)) return false; if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true }); else { try { process.kill(-pid); } catch { try { process.kill(pid); } catch { /* gone */ } } } return true; };
 /** The editor's browser (Google Chrome first, then the system default, Edge, any Chromium: engine/export.mjs chooseBrowser); null when none is installed. */
 export function browserExe() {
   try { return chooseBrowser()?.exe ?? null; } catch { return null; }
 }
-/** The editor's browser in its own profile (so its pid is this window's and close can end it). Only the fallback host path below uses it. */
-function openBrowser(url) {
-  const exe = browserExe();
-  if (!exe) return null;
-  const c = spawn(exe, [`--user-data-dir=${path.join(STATE_DIR(), 'edge-profile')}`, '--no-first-run', ...KEEP_AWAKE_ARGS, '--new-window', url], { detached: true, stdio: 'ignore', windowsHide: true });
-  c.unref();
-  return c.pid;
+export async function startHost({ editor, port = DEFAULT_PORT, browser = true } = {}) {
+  const r = await hostMod.start({ editor, port, open: browser });
+  record((h) => (h.some((x) => x.pid === r.pid) ? h : [...h, { ...r, editor, by: 'host.mjs' }]));
+  return { ...r, editor };
 }
 
-export async function startHost({ editor, port = 4317, browser = true } = {}) {
-  const real = await hostModule();
-  if (real) {
-    try { const r = await real.start({ editor, port, open: browser }); record((h) => (h.some((x) => x.pid === r.pid) ? h : [...h, { ...r, editor, by: 'host.mjs' }])); return { ...r, editor }; } catch (e) { if (!/not built yet/.test(e.message)) throw e; }
-  }
-  const same = record((h) => h).find((h) => h.editor === editor);
-  if (same && (await answers(same.url))) return { ...same, reused: true };
-  const { port: p } = await healPort(port);
-  const child = spawn(process.execPath, [path.join(REPO, 'engine', 'serve.mjs'), editor, '--port', String(p)], { detached: true, stdio: 'ignore', env: { ...process.env, BW_SERVE_CHILD: '1' }, windowsHide: true });
-  child.unref();
-  const url = `http://127.0.0.1:${p}/`;
-  if (!(await waitUp(url))) { killTree(child.pid); throw new Error(`the host did not answer on ${url}`); }
-  const browserPid = browser ? openBrowser(url) : null;
-  const h = { pid: child.pid, port: p, url, editor, browserPid, by: 'cli', at: new Date().toISOString() };
-  record((hs) => [...hs, h]);
-  return h;
-}
-
-/** The library import of the host (WP3 POST /api/library/import); a host without it already serves the built editor. */
+/** The library import of the host (POST /api/library/import); a host without it already serves the built editor. */
 async function libraryImport(url, documents) {
   const body = JSON.stringify({ documents });
   return new Promise((ok) => {
@@ -111,7 +84,7 @@ export function libraryDocs() {
   const folders = fs.existsSync(dir) ? fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name) : [];
   return folders.map((f) => path.join(dir, f, `${f}.html`)).filter((f) => fs.existsSync(f)).map((file) => ({ name: path.basename(path.dirname(file)), file, modified: fs.statSync(file).mtime.toISOString() })).sort((a, b) => b.modified.localeCompare(a.modified));
 }
-/** T13: `open` with no file opens the last document of the library; a blank one is made only when the library is empty. */
+/** `open` with no file opens the last document of the library; a blank one is made only when the library is empty. */
 export const lastDocument = () => libraryDocs()[0] || null;
 
 /** Something that is a Business-Wrap host answers on this port (its health route carries a hostKey): {pid, version} or null. */
@@ -123,10 +96,10 @@ async function hostOn(port) {
   } catch { return null; }
 }
 
-export async function open({ inputs = [], port = 4317, browser = true, ui, blank = false } = {}) {
+export async function open({ inputs = [], port = DEFAULT_PORT, browser = true, ui, blank = false } = {}) {
   ensureLauncher(); // MCP, the protocol handler (an opened export) and the plugin all arrive here
   if (!inputs.length && !blank) { const last = lastDocument(); if (last) inputs = [last.file]; }
-  const implicitBlank = !inputs.length; // 0.16.0 (item 11): no document asked for, none in the library: the editor opens on its blank structure, and NO library document is made for it
+  const implicitBlank = !inputs.length; // no document asked for, none in the library: the editor opens on its blank structure, and NO library document is made for it
   let editor;
   let documents = [];
   if (inputs.length === 1 && /\.html?$/i.test(inputs[0])) editor = path.resolve(inputs[0]);
@@ -138,10 +111,10 @@ export async function open({ inputs = [], port = 4317, browser = true, ui, blank
     editor = path.join(EDITORS(), `${fileStem(first.service || first.control.documentId)}.editor.html`);
     buildEditor({ inputs: documents, out: editor, set: first.service, ui, docTypes: implicitBlank }); // the blank editor (no document asked for) carries the document types too (0.18.0)
   }
-  // 0.16.0 (item 10): this state folder has no host of its own, yet a Business-Wrap host already answers on the port (another install, another state folder): a second host is refused, not
+  // this state folder has no host of its own, yet a Business-Wrap host already answers on the port (another install, another state folder): a second host is refused, not
   // started on the next port (the second host on 4318 that the first could not see). Reuse that host from the install that owns it, or stop it there.
   if (!isTestMode()) {
-    const mine = (await hostModule())?.status?.();
+    const mine = hostMod.status();
     if (!mine?.running) {
       const other = await hostOn(port);
       if (other) throw Object.assign(new Error(`a Business-Wrap host (pid ${other.pid}, version ${other.version}) already runs on port ${port} but this install does not own it (a different state folder): refused to start a second one. Use that host from the install that started it, or stop it there.`), { code: 'HOST_FOREIGN', data: { pid: other.pid, port } });
@@ -150,7 +123,7 @@ export async function open({ inputs = [], port = 4317, browser = true, ui, blank
   const h = await startHost({ editor, port, browser: browser && !process.env.BW_NO_BROWSER });
   const lib = documents.length && !implicitBlank ? await libraryImport(h.url, documents) : null;
   const docId = documents.length && !implicitBlank ? JSON.parse(fs.readFileSync(documents[0], 'utf8')).control.documentId : null;
-  // 0.15.0: the host answers {library, queued, doc_id[], url:'/#doc=<id>', project}: the url is host-relative (made absolute here); doc_id stays the document's own id (what the editor_* tools take), library_id is the library's
+  // the host answers {library, queued, doc_id[], url:'/#doc=<id>', project}: the url is host-relative (made absolute here); doc_id stays the document's own id (what the editor_* tools take), library_id is the library's
   const libUrl = lib?.url ? new URL(lib.url, h.url).href : null;
   const libId = Array.isArray(lib?.doc_id) ? lib.doc_id[0] : lib?.doc_id;
   return { url: libUrl || h.url, doc_id: docId || libId, ...(libId ? { library_id: libId } : {}), editor, pid: h.pid, port: h.port, browser: !!h.browserPid, library: !!lib && lib.library !== false };
@@ -171,33 +144,31 @@ function ownServers() {
  *  started, any other serve.mjs of this install still running, and the browser on this install's profile. `keep`: pids left
  *  alone (the power route keeps its own server and supervisor, then exits by itself). */
 export async function close({ keep = [], caller = '', force = false } = {}) {
-  const real = await hostModule();
-  const pids = [];
+    const pids = [];
   let stopped = 0; // hosts and servers: the background host, each record this CLI kept, each stray server
-  const h = real?.hostState?.();
-  // 0.16.0 (item 10): an MCP server asked to stop, and the host was started by ANOTHER live MCP server (another agent's session): that is not its to stop. The reply names what was left alone.
+  const h = hostMod.hostState();
+  // an MCP server asked to stop, and the host was started by ANOTHER live MCP server (another agent's session): that is not its to stop. The reply names what was left alone.
   const by = String(h?.startedBy || '');
-  if (caller && !force && /^mcp:\d+$/.test(by) && by !== caller && real?.alive?.(Number(by.slice(4)))) return { stopped: 0, pids: [], skipped: [{ pid: h.pid, port: h.port, startedBy: by, why: 'started by another running MCP server (another agent); pass force to stop it anyway' }] };
-  if (real && !(h && keep.includes(h.pid))) { try { const r = await real.stop(); if (r.pids?.length) stopped++; pids.push(...(r.pids || [])); } catch { /* none */ } }
+  if (caller && !force && /^mcp:\d+$/.test(by) && by !== caller && alive(Number(by.slice(4)))) return { stopped: 0, pids: [], skipped: [{ pid: h.pid, port: h.port, startedBy: by, why: 'started by another running MCP server (another agent); pass force to stop it anyway' }] };
+  if (!(h && keep.includes(h.pid))) { try { const r = await hostMod.stop(); if (r.pids?.length) stopped++; pids.push(...(r.pids || [])); } catch { /* none */ } }
   const f = HOSTS();
   const hosts = (fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')).hosts || [] : []).filter((x) => !keep.includes(x.pid));
   for (const x of hosts) for (const pid of [x.browserPid, x.pid]) if (pid && killTree(pid)) pids.push(pid);
   stopped += hosts.length;
   if (fs.existsSync(f)) fs.writeFileSync(f, JSON.stringify({ hosts: [] }, null, 1));
   for (const pid of ownServers()) if (!keep.includes(pid) && killTree(pid)) { pids.push(pid); stopped++; }
-  try { pids.push(...(real?.closeBrowsers?.([]) || [])); } catch { /* none */ }
+  try { pids.push(...(hostMod.closeBrowsers([]) || [])); } catch { /* none */ }
   return { stopped, pids: [...new Set(pids)], ...(h ? { host: { pid: h.pid, port: h.port, startedBy: by || 'person' } } : {}) };
 }
 
-/** 0.17.0 (owner rule 0.15.2 note 4): turn the host OFF and nothing else. The host process (and any server of this install) ends; the editor page and every browser
+/** turn the host OFF and nothing else. The host process (and any server of this install) ends; the editor page and every browser
  *  window stay open. Not close(): that also closes the browsers the host opened (host.stop and the session route's finish() both do), and a kill with /T would take
  *  a browser the host launched with it (its parent link), so each pid is ended on its own. Tabs are flushed by the caller first (protocol handle). */
 export async function stopHostOnly() {
-  const real = await hostModule();
-  const pids = [];
-  const end = async (pid) => { if (!pid || !alive(pid)) return false; try { process.kill(pid); } catch { return false; } for (const t0 = Date.now(); alive(pid) && Date.now() - t0 < 4000;) await new Promise((r) => setTimeout(r, 100)); pids.push(pid); return !alive(pid); };
-  const h = real?.hostState?.();
-  if (h) { await end(h.pid); try { fs.rmSync(real.hostFile(), { force: true }); } catch { /* none */ } }
+    const pids = [];
+  const end = async (pid) => { if (!pid || !alive(pid)) return false; try { process.kill(pid); } catch { return false; } await waitFor(() => !alive(pid), 4000); pids.push(pid); return !alive(pid); };
+  const h = hostMod.hostState();
+  if (h) { await end(h.pid); try { fs.rmSync(hostMod.hostFile(), { force: true }); } catch { /* none */ } }
   const f = HOSTS();
   const hosts = fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')).hosts || [] : [];
   for (const x of hosts) await end(x.pid); // the browserPid of a record is left alone
@@ -208,14 +179,13 @@ export async function stopHostOnly() {
 
 export async function status() {
   const { hosts } = healStaleHosts(HOSTS());
-  const real = await hostModule();
-  let host = null;
-  try { host = real?.status?.() ?? null; } catch { host = null; }
+    let host = null;
+  try { host = hostMod.status() ?? null; } catch { host = null; }
   const d = await doctorInfo().catch(() => null); // the MCP side in one line: plugin or clone, where state lives, drift, last start
   return { version: pkg().version, hosts: hosts.map(({ pid, port, url, editor }) => ({ pid, port, url, editor })), host, healed: readHealLog().length, ai: false, mcp: d && { plugin: d.plugin, state: d.local, last_initialize_ms: d.last_initialize_ms, registered: d.registered?.registered ?? null, last_start: d.last_start, last_error: d.last_error, problems: d.problems } };
 }
 
-/** 0.18.0 (contract C6): the document types as the start page lists them, `business-wrap types`. */
+/** the document types as the start page lists them, `business-wrap types`. */
 export function types() {
   return { types: DT.listTypes().map((t) => ({ id: t.id, code: t.code, category: t.category, coverDesign: t.coverDesign || 'spine', palette: t.palette, name: t.name })) };
 }
@@ -304,7 +274,7 @@ export async function exportDoc({ document, locale, out, edits, docx = true }) {
   if (!document) throw Object.assign(new Error('export <doc.json> [ar|en]'), { code: 2 });
   const file = path.resolve(document);
   const doc = loadEdited(file, edits && path.resolve(edits));
-  const ed = localeOf(file, doc, locale); // 0.17.0: x.en.edited.json is English too
+  const ed = localeOf(file, doc, locale); // x.en.edited.json is English too
   const pre = GATES.document(doc);
   if (pre.verdict === 'FAIL') return { locale: ed, gates: [pre] };
   const th = loadTheme();
@@ -348,8 +318,7 @@ export async function library() {
 
 export async function report({ from, to }) {
   if (!from || !to) throw Object.assign(new Error('report <from YYYY-MM-DD> <to YYYY-MM-DD>'), { code: 2 });
-  let m;
-  try { m = await import('./report.mjs'); } catch { throw new Pending('engine/report.mjs is not in this build yet (WP4)'); }
+  const m = await import('./report.mjs');
   const d = (x) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(x)) throw Object.assign(new Error(`report: dates as YYYY-MM-DD, got "${x}"`), { code: 2 }); return x; };
   const ws = ensure(workspace());
   const logs = await m.readHistory(ws.dirs.history);
@@ -434,11 +403,12 @@ export function update(args) {
 const readJsonArg = (f) => JSON.parse(f === '-' ? fs.readFileSync(0, 'utf8') : fs.readFileSync(path.resolve(f), 'utf8'));
 /** business-wrap editor <verb>: the same verbs as the MCP editor_* tools, against the document OPEN in the editor (mcp/editor-tools.mjs). */
 async function editorCmd(pos, val, flags) {
-  const { callEditor: callAny, prepareOps, hostTarget, BwError, EDITOR_ACTIONS, newRequestId } = await import('../mcp/editor-tools.mjs');
+  const { callEditor: callAny, prepareOps, hostTarget, BwError, EDITOR_ACTIONS, newRequestId, setHostStarter } = await import('../mcp/editor-tools.mjs');
+  setHostStarter(open);
   const [verb] = pos;
   const doc = val('doc');
   const tab = val('tab');
-  // T11: --tab is honoured (the host routes the call to that tab; an unknown tab answers NO_TAB), never silently dropped
+  // --tab is honoured (the host routes the call to that tab; an unknown tab answers NO_TAB), never silently dropped
   const callEditor = async (tool, { doc: d, args = {} } = {}) => {
     if (!tab) return callAny(tool, { doc: d, args });
     const t = await hostTarget();
@@ -449,7 +419,7 @@ async function editorCmd(pos, val, flags) {
     throw new BwError(code || (res.status === 404 ? 'NO_TAB' : 'HOST_ERROR'), String(message || error || `host answered ${res.status}`), rest);
   };
   const need = (v, what) => { if (!v) throw new BwError('BAD_ARGS', `editor ${verb}: ${what} is required`); return v; };
-  /** T11: a read without --doc works only when exactly one document is open; with several it lists them and refuses (never "another doc"). */
+  /** a read without --doc works only when exactly one document is open; with several it lists them and refuses (never "another doc"). */
   const docOrSole = async () => {
     if (doc) return doc;
     const docs = (await callEditor('list', {})).documents || [];
@@ -466,7 +436,7 @@ async function editorCmd(pos, val, flags) {
     case 'get': { const p = pointerOf(); return callEditor('get', { doc: await docOrSole(), args: { ...(p ? { pointer: p } : {}), ...(val('locale') ? { locale: val('locale') } : {}) } }); }
     case 'outline': return callEditor('outline', { doc: await docOrSole(), args: val('locale') ? { locale: val('locale') } : {} });
     case 'render': {
-      // T14: a diagram block's PNG preview, through the same renderer as the PDF (render_diagram)
+      // a diagram block's PNG preview, through the same renderer as the PDF (render_diagram)
       const p = need(pointerOf(), '--pointer (or --pointer-file) of a diagram block');
       const out = need(val('out'), '--out x.png');
       const got = await callEditor('get', { doc: await docOrSole(), args: { pointer: p, ...(val('locale') ? { locale: val('locale') } : {}) } });
@@ -482,7 +452,7 @@ async function editorCmd(pos, val, flags) {
       const locale = need(val('locale') || raw.locale, '--locale ar|en');
       const resolved = prepareOps(ops, locale); // {"$file": path} values are read from disk; a data URI that does not decode is BAD_OP
       const r = await callEditor('ops', { doc: need(doc, '--doc'), args: { ops: resolved, locale, request_id: val('request-id') || newRequestId(), mirror: flags.has('--mirror'), ...(val('agent') ? { agent: val('agent') } : {}), ...(val('group') ? { group: val('group') } : {}) } });
-      // T14: opsLen is the length of the undo stack, not the batch: say how many ops were sent and applied
+      // opsLen is the length of the undo stack, not the batch: say how many ops were sent and applied
       return { ...r, batch: ops.length, applied: r.applied ?? ops.length, undo_depth: r.opsLen };
     }
     case 'action': {
@@ -509,7 +479,8 @@ async function editorCmd(pos, val, flags) {
 
 /** business-wrap picker <verb>: the save-folder picker on the host (mcp/editor-tools.mjs callPicker), the same state the editor panel and the MCP picker_* tools use. */
 async function pickerCmd(pos, val) {
-  const { callPicker, PICKER_VERBS, BwError } = await import('../mcp/editor-tools.mjs');
+  const { callPicker, PICKER_VERBS, BwError, setHostStarter } = await import('../mcp/editor-tools.mjs');
+  setHostStarter(open);
   const [verb = 'state'] = pos;
   if (!PICKER_VERBS.includes(verb) || verb === 'wait') throw Object.assign(new Error(`picker: unknown verb ${verb} (state|open|go|mkdir|choose|cancel)`), { code: 2 });
   const need = (v, what) => { if (v === undefined) throw new BwError('BAD_ARGS', `picker ${verb}: ${what} is required`); return v; };
@@ -539,7 +510,7 @@ const KNOWN_FLAGS = {
 /** Flags that take a value: whatever follows one is its value, even a lone - (stdin) or a dash-led name. */
 const VALUED = new Set(['--type', '--path', '--pointer-file', '--tab', '--scale', '--out', '--port', '--name', '--roles', '--edits', '--title', '--ui', '--history', '--doc', '--pointer', '--locale', '--ops-file', '--agent', '--group', '--id', '--args-file', '--project', '--file', '--request-id', '--destination']);
 const HELP = ['--help', '-h', 'help', '-?'];
-/** T11: an unknown flag is an error. A lone - and anything right after a valued flag is a VALUE (stdin, a dash-led name), never a flag. Exported for tests/cli-0154. */
+/** an unknown flag is an error. A lone - and anything right after a valued flag is a VALUE (stdin, a dash-led name), never a flag. Exported for tests/cli-0154. */
 export function checkFlags(verb, rest) {
   const known = KNOWN_FLAGS[verb];
   if (!known) return;
@@ -549,7 +520,7 @@ ${USAGE}`), { code: 2 });
 }
 export async function run(argv) {
   const [verb, ...rest] = argv;
-  // T13: --help of ANY verb prints usage and does nothing else: no host, no browser, no file (the check comes before every other step)
+  // --help of ANY verb prints usage and does nothing else: no host, no browser, no file (the check comes before every other step)
   if (rest.some((a) => HELP.includes(a)) && verb && !HELP.includes(verb)) return { usage: USAGE };
   checkFlags(verb, rest);
   const flags = new Set(rest.filter((a) => a.startsWith('--')));
@@ -557,7 +528,7 @@ export async function run(argv) {
   const pos = rest.filter((a, i) => !a.startsWith('--') && !VALUED.has(rest[i - 1]));
   const browser = !flags.has('--no-browser');
   switch (verb) {
-    case 'open': return open({ inputs: pos, port: val('port') ? Number(val('port')) : 4317, browser, ui: val('ui') });
+    case 'open': return open({ inputs: pos, port: val('port') ? Number(val('port')) : DEFAULT_PORT, browser, ui: val('ui') });
     case 'close': case 'stop': return close();
     case 'status': return status();
     case 'new': return newDoc({ title: val('title') || pos[0], out: val('out'), type: val('type'), browser, openIt: !flags.has('--no-open') });

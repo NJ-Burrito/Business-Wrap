@@ -436,7 +436,7 @@ export function compose(model, pack, profile = {}, { locale = 'ar', today = new 
       const title = pick(s.title, locale);
       const gen = GEN[s.gen];
       if (s.gen === 'questions' && profile.questionsInDocument !== true && pack.questionsInDocument !== true) continue;
-      if (s.gen === 'outputDesc') continue; // 0.16.2: an older pack still lists it; its wording lives in the output story now
+      if (s.gen === 'outputDesc') continue; // an older pack still lists it; its wording lives in the output story now
       if (['outputDesc', 'outputTypes', 'outputVariants'].includes(s.gen) && !hasOutput) continue; // no output, no chapter (the empty chapter is dropped)
       if (!gen) throw new Error(`pack ${pack.id}: section «${title}» names an unknown generator «${s.gen}»`);
       const r = gen(s, num);

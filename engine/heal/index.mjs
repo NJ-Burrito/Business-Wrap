@@ -5,7 +5,8 @@
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
-import { REPO } from '../export.mjs';
+import { REPO } from '../platform.mjs';
+import { alive } from '../host-lifecycle.mjs';
 import { localBase } from '../testguard.mjs';
 
 export const STATE_DIR = () => path.resolve(process.env.BW_STATE_DIR || localBase(REPO));
@@ -74,7 +75,6 @@ export async function healPort(port, { stage = 'host' } = {}) {
   for (let p = port + 1; p <= port + 20; p += 1) if (await portFree(p)) { logHeal(stage, 'port-busy', { from: port, to: p }); return { port: p, healed: true }; }
   throw new Error(`FAIL host: ports ${port}–${port + 20} are all busy`);
 }
-export const alive = (pid) => { if (!pid) return false; try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
 /** A host record whose process is gone is dropped (HEALED); the live ones are kept. */
 export function healStaleHosts(file, { stage = 'host' } = {}) {
   if (!fs.existsSync(file)) return { hosts: [], healed: false };

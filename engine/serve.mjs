@@ -14,7 +14,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fileURLToPath as toPath, pathToFileURL } from 'node:url';
 import { registerServer, unregisterServer } from './server-registry.mjs';
-import { exportPdf, exportDocx, pageThumbs, loadTheme, fontsFor, REPO, i18n, fileStem, userCwd } from './export.mjs';
+import { exportPdf, exportDocx, pageThumbs, loadTheme, fontsFor, i18n, fileStem, userCwd } from './export.mjs';
+import { REPO } from './platform.mjs';
+import { DEFAULT_PORT, hostToken } from './host-lifecycle.mjs';
 import { checkForUpdate, token, settings as updateSettings } from '../update/check.mjs';
 import { applyUpdate, STAGES, launchCleanup } from '../update/apply.mjs';
 import { rewrapEditorHtml, aboutInfo } from './build-editor.mjs';
@@ -60,7 +62,7 @@ const loadRoutes = (dir) => Promise.all((fs.existsSync(dir) ? fs.readdirSync(dir
  * @param {{out?: string, installDir?: string, onUpdated?: (r: object) => void}} o  `installDir`: the folder the
  *   updater replaces (default: this repository); `onUpdated`: called after a successful update (the CLI restarts).
  */
-export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdated = () => {}, routesDir = ROUTES_DIR, workspace = null, onIdle = null } = {}) {
+export function serve(editorFile, port = DEFAULT_PORT, { out, installDir = REPO, onUpdated = () => {}, routesDir = ROUTES_DIR, workspace = null, onIdle = null } = {}) {
   // workspace (A11): true = the chosen save folder (engine/workspace.mjs, read on each use), an object = that one; null = none
   const wsOf = () => (workspace === true ? liveWorkspace() : workspace);
   const OUT = path.resolve(out || wsOf()?.root || path.join(path.dirname(editorFile), 'exports'));
@@ -214,7 +216,7 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
         // the save folder (A11): PDF\ and DOCX\, "<title>-<date>-<AR|ENG>", a clash gets -2, -3 (never an overwrite)
         if (ws) ensureWorkspace(ws);
         const title = exportTitle(body.doc, body.folderTitle, body.service);
-        // 0.16.0 (field notes item 8): `name` (a file name without folder), `destination` (an absolute folder) and `docx: false` come from the editor's bridge (editor_action exportPdf args);
+        // `name` (a file name without folder), `destination` (an absolute folder) and `docx: false` come from the editor's bridge (editor_action exportPdf args);
         // the answer names the file AND its folder, so an agent never searches for it, and the PDF is written whole (exportPdf writes a temp file and renames it)
         const wantName = typeof body.name === 'string' ? body.name.replace(/\.(pdf|docx)$/i, '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, ' ').trim().slice(0, 150) : '';
         let toDir = null;
@@ -256,12 +258,12 @@ export function serve(editorFile, port = 4317, { out, installDir = REPO, onUpdat
 // run as the entry point, also when started through a junction or a symlink (compare real paths)
 const real = (f) => { try { return fs.realpathSync.native(path.resolve(f)); } catch { return path.resolve(f); } };
 if (process.argv[1] && real(process.argv[1]) === real(fileURLToPath(import.meta.url))) {
-  // 0.17.8: `npm run serve` (the README start) registers the business-wrap: link and the launcher too, so the top-bar host switch can start the host again later
+  // `npm run serve` (the README start) registers the business-wrap: link and the launcher too, so the top-bar host switch can start the host again later
   if (!process.env.BW_SERVE_CHILD) import('../launcher/launcher.mjs').then((m) => m.autorun(), () => {});
   const args = process.argv.slice(2);
   const opt = (k) => { const i = args.indexOf(`--${k}`); return i < 0 ? undefined : args[i + 1]; };
   let file = args.find((a, i) => !a.startsWith('--') && !['--port', '--out'].includes(args[i - 1]));
-  const port = opt('port') !== undefined ? Number(opt('port')) : 4317;
+  const port = opt('port') !== undefined ? Number(opt('port')) : DEFAULT_PORT;
   if (!file) {
     // `npm run serve` with no editor: serve the sample, building it first when out/ does not have it yet
     file = path.resolve(process.env.BW_SAMPLE_EDITOR || path.join(REPO, 'out', 'sample', 'event-permit.editor.html'));
@@ -281,7 +283,7 @@ usage: node engine/serve.mjs <editor.html> [--port 4317] [--out <exports folder>
     // the supervisor: runs the server as a child and starts it again (on the new code) after an in-editor update
     // started in the background by engine/host.mjs (no console of its own): the server gets no window either. An inherited
     // stdio handle makes Windows give the child a console of its own (a visible window), so it pipes into this log instead.
-    const hidden = !!process.env.BW_HOST_TOKEN;
+    const hidden = !!hostToken();
     const start = () => {
       const c = fork(fileURLToPath(import.meta.url), args, { cwd: process.cwd(), env: { ...process.env, BW_SERVE_CHILD: '1' }, stdio: hidden ? ['ignore', 'pipe', 'pipe', 'ipc'] : 'inherit', windowsHide: true });
       if (hidden) { c.stdout.pipe(process.stdout); c.stderr.pipe(process.stderr); }
@@ -289,14 +291,14 @@ usage: node engine/serve.mjs <editor.html> [--port 4317] [--out <exports folder>
     };
     start();
   } else {
-    // 0.15.7: every launch finishes or undoes an update a crash left, and a plugin install drops its older version folders
+    // every launch finishes or undoes an update a crash left, and a plugin install drops its older version folders
     launchCleanup(REPO);
     try {
-      const server = await serve(editor, Number.isFinite(port) ? port : 4317, {
+      const server = await serve(editor, Number.isFinite(port) ? port : DEFAULT_PORT, {
         out: opt('out') && path.resolve(userCwd(), opt('out')),
         workspace: !opt('out'), // no --out: the chosen save folder, never beside the editor (A11)
         // the background host (engine/host.mjs): the last tab closed → every tab already flushed → exit 0, nothing left
-        onIdle: process.env.BW_HOST_TOKEN ? () => { server.close(() => process.exit(0)); server.closeAllConnections?.(); setTimeout(() => process.exit(0), 1500).unref(); } : null,
+        onIdle: hostToken() ? () => { server.close(() => process.exit(0)); server.closeAllConnections?.(); setTimeout(() => process.exit(0), 1500).unref(); } : null,
         onUpdated: () => { server.close(() => process.exit(RESTART_CODE)); server.closeAllConnections?.(); setTimeout(() => process.exit(RESTART_CODE), 3000).unref(); },
       });
       console.log(`Business-Wrap editor on http://127.0.0.1:${server.address().port}/  (Ctrl+C to stop)`);

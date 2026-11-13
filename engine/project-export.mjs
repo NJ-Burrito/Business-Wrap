@@ -16,7 +16,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { applyOps, editionsOf } from './edits.mjs';
 import { hashOf } from './edits-base.mjs';
-import { exportDocx, exportPdf, launchOptions, loadPlaywright, loadTheme, printHtml, REPO } from './export.mjs';
+import { exportDocx, exportPdf, launchOptions, loadPlaywright, loadTheme, printHtml } from './export.mjs';
+import { REPO } from './platform.mjs';
 import { stamp, titleStem } from './workspace.mjs';
 import { ensureFolderIcon, refreshFolderIcon } from './brand-icons.mjs';
 import { writeZip } from './zip.mjs';
@@ -196,7 +197,7 @@ export async function exportProject({ project, docs, formats = ['pdf'], locales 
   fs.writeFileSync(path.join(root, 'index.json'), JSON.stringify(index, null, 1));
   fs.writeFileSync(path.join(root, '00 فهرس - Index.html'), indexHtml(index), 'utf8');
   progress({ state: 'index' });
-  // 0.17.4: the export tree carries its role icons, so the download folder is recognisable in Explorer: the root is «download», each document folder «document»,
+  // the export tree carries its role icons, so the download folder is recognisable in Explorer: the root is «download», each document folder «document»,
   // its icons live in the hidden .system beside them. In a zip the icon paths are written relative to each folder and the icons travel in the zip (the staged
   // tree is icon-ed on any platform), so an unpacked copy resolves them wherever it lands; the System attribute Explorer needs on a folder is set by
   // applyExportIcons() for a tree the host unpacks (and by the unpacker's own attribute handling otherwise).

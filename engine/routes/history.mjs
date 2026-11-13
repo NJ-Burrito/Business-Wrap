@@ -11,7 +11,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { sharePath, dirsOf as treeDirs, historyStem, noteOutput } from '../workspace.mjs';
 
 const MAX = 64 * 1024 * 1024;
-/** The workspace folders: ctx.workspace (tests, the server), else WP3's engine/workspace.mjs, else a stub under Documents. */
+/** The workspace folders: ctx.workspace (tests, the server), else engine/workspace.mjs, else a stub under Documents. */
 export async function dirsOf(ctx) {
   const w = typeof ctx.workspace === 'function' ? ctx.workspace() : ctx.workspace;
   if (w?.dirs) return w.dirs;

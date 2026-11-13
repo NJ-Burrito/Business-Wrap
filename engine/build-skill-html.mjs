@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { buildEditor } from './build-editor.mjs';
-import { REPO } from './export.mjs';
+import { REPO } from './platform.mjs';
 
 export const SKILL_HTML = path.join(REPO, 'assets', 'editor', 'business-wrap.html');
 
@@ -21,7 +21,7 @@ export function buildSkillHtml(out = SKILL_HTML) {
     localFonts: true,
     watermarkDir: path.join(REPO, 'editor', 'brand', 'watermark'),
     ui: 'ar',
-    docTypes: true, // 0.18.0: the start page's document types ride in <script id="bw-doctypes"> (contract C2), outside bw-data
+    docTypes: true, // the start page's document types ride in <script id="bw-doctypes"> (contract C2), outside bw-data
   });
 }
 

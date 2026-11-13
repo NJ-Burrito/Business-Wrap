@@ -17,6 +17,9 @@ import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { localDir, workspace, ensure } from './workspace.mjs';
 import { chooseBrowser, featureNames, noBrowserMessage } from './export.mjs';
+import { alive, sleep, killTree, waitFor, DEFAULT_PORT } from './host-lifecycle.mjs';
+
+export { alive }; // the host's public face keeps the name (tests and callers read it here)
 
 const SERVE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'serve.mjs');
 export const hostFile = () => path.join(localDir(), 'host.json');
@@ -29,7 +32,6 @@ const read = () => { try { return JSON.parse(fs.readFileSync(hostFile(), 'utf8')
 /** host.json as written by start() (null when there is none). */
 export const hostState = read;
 const write = (h) => { fs.mkdirSync(localDir(), { recursive: true }); fs.writeFileSync(hostFile(), JSON.stringify(h, null, 1)); };
-export const alive = (pid) => { if (!pid) return false; try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
 
 /** The server's own update of host.json (tab count, browsers it launched); a no-op when no host file is ours. */
 export function noteHost(patch) {
@@ -55,7 +57,7 @@ export async function health(timeoutMs = 2500) {
   try { const r = await fetch(`${st.url}api/host/health`, { signal: AbortSignal.timeout(timeoutMs) }); return r.ok ? await r.json() : null; } catch { return null; }
 }
 
-/** 0.15.3 T4: one host per state folder. `start` calls queue in this process and take an atomic lock file (host.lock, created with the
+/** one host per state folder. `start` calls queue in this process and take an atomic lock file (host.lock, created with the
  *  `wx` flag) across processes, so two `open`s in the same second can never spawn two servers: the second waits, then reuses the first's host. */
 export const lockFile = () => path.join(localDir(), 'host.lock');
 let chain = Promise.resolve();
@@ -68,7 +70,7 @@ async function acquire(ms = 40000) {
     try { age = Date.now() - fs.statSync(lockFile()).mtimeMs; } catch { continue; }
     if ((l ? !alive(l.pid) || Date.now() - l.at > 60000 : age > 5000)) { try { fs.rmSync(lockFile(), { force: true }); } catch { /* raced */ } continue; } // its owner is dead: stale
     if (Date.now() - t0 > ms) throw new Error('host.start: another start holds the host lock');
-    await new Promise((r) => setTimeout(r, 120));
+    await sleep(120);
   }
 }
 const release = () => { try { const l = JSON.parse(fs.readFileSync(lockFile(), 'utf8')); if (l.pid === process.pid) fs.rmSync(lockFile(), { force: true }); } catch { /* none */ } };
@@ -83,13 +85,13 @@ export function start(opts = {}) {
   return run;
 }
 
-async function startLocked({ editor, port = 4317, open = true } = {}) {
+async function startLocked({ editor, port = DEFAULT_PORT, open = true } = {}) {
   let now = status();
   if (now.running) {
     // reuse only a host that is really listening (a recorded pid with nothing on its port is not one)
     let up = await answers(now.url);
-    for (let i = 0; !up && i < 3; i++) { await new Promise((r) => setTimeout(r, 400)); up = await answers(now.url); }
-    // 0.16.0 (owner's host stopped twice with no cause): a live process whose port still ACCEPTS connections is busy, not dead (a PDF export, a big batch): it is reused, never asked to stop.
+    for (let i = 0; !up && i < 3; i++) { await sleep(400); up = await answers(now.url); }
+    // a live process whose port still ACCEPTS connections is busy, not dead (a PDF export, a big batch): it is reused, never asked to stop.
     // Only a recorded host whose port refuses every connection is replaced.
     if (!up && (await accepts(now.port))) up = true;
     if (up) { const b = open ? launchBrowser([now.url]) : null; return { pid: now.pid, port: now.port, url: now.url, browserPid: b?.pids[0] ?? null, browser: b?.browser ?? null, reused: true }; }
@@ -109,7 +111,7 @@ async function startLocked({ editor, port = 4317, open = true } = {}) {
   for (;;) { // the server's own answer is the trigger; 20 s is only the ceiling
     try { if ((await fetch(url + 'api/version', { signal: AbortSignal.timeout(1000) })).ok) break; } catch { /* not up yet */ }
     if (!alive(child.pid) || Date.now() - t0 > 20000) { await stop(); throw new Error('host.start: the server did not come up'); }
-    await new Promise((r) => setTimeout(r, 150));
+    await sleep(150);
   }
   // The recorded pid is the supervisor this start spawned (engine/serve.mjs forks the listening server); host.json also names the LISTENER, which answers with
   // its pid and a key derived from OUR token. A server on this port that does not carry our key (another checkout's host that took the port) is NEVER
@@ -127,19 +129,13 @@ async function startLocked({ editor, port = 4317, open = true } = {}) {
   return { pid, port: p, url, browserPid: b?.pids[0] ?? null, browser: b?.browser ?? null }; // the caller can say whether a browser opened, and which
 }
 
-function killTree(pid) {
-  if (!alive(pid)) return;
-  if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
-  else { try { process.kill(-pid, 'SIGTERM'); } catch { try { process.kill(pid, 'SIGTERM'); } catch { /* gone */ } } }
-}
-
 export async function stop() {
   const h = read();
   if (!h) return { stopped: false, pids: [] };
   const pids = [];
   if (alive(h.pid)) {
     try { await fetch(`http://127.0.0.1:${h.port}/api/host/stop`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: h.token }), signal: AbortSignal.timeout(3000) }); } catch { /* answered or gone */ }
-    for (const t0 = Date.now(); alive(h.pid) && Date.now() - t0 < 4000;) await new Promise((r) => setTimeout(r, 100));
+    await waitFor(() => !alive(h.pid), 4000);
     if (alive(h.pid)) killTree(h.pid);
     pids.push(h.pid);
   }
@@ -151,7 +147,7 @@ export async function stop() {
 /** The executable of the browser the editor opens in (null when none): the browser-neutral successor of 0.15.8's edgePath(). */
 export const browserPath = () => chooseBrowser()?.exe ?? null;
 
-/** 0.15.3 T2, 0.15.9 A1: the editor's browser must not put its tabs to sleep or throttle them: a frozen or throttled tab stops answering the host (TAB_STALE, TAB_ASLEEP).
+/** 0.15.9 A1: the editor's browser must not put its tabs to sleep or throttle them: a frozen or throttled tab stops answering the host (TAB_STALE, TAB_ASLEEP).
  *  The three throttling switches are Chromium's own; after --disable-features come Chromium's freezing / discarding / occlusion features and each vendor's own sleep or snooze feature
  *  (Chrome, Edge, Opera, Opera GX, Brave, Vivaldi). A name a build does not know is ignored, never an error. Flags only reach a browser THIS host starts: a tab opened in a
  *  browser the user already runs ignores them, which is why the page keeps itself awake too (editor/ext/12-session.js, editor/session-worker.js). */
@@ -188,7 +184,7 @@ export function launchBrowser(urls, { chunk = 30 } = {}) {
       for (const u of c) osOpen(u);
       continue;
     }
-    // 0.16.0: no "restore pages" bubble after a crash or a killed window, so a relaunch never brings 18 old pages back; a tab an agent opens (BW_AGENT_OPEN, set by the MCP server) is an automation tab: no blocking dialog
+    // no "restore pages" bubble after a crash or a killed window, so a relaunch never brings 18 old pages back; a tab an agent opens (BW_AGENT_OPEN, set by the MCP server) is an automation tab: no blocking dialog
     const urls = process.env.BW_AGENT_OPEN === '1' ? c.map((u) => (/[?&]automation=/.test(u) ? u : `${u}${u.includes('?') ? '&' : '?'}automation=1`)) : c;
     const args = [`--user-data-dir=${profileDir(id)}`, '--no-first-run', '--no-default-browser-check', '--disable-session-crashed-bubble', '--hide-crash-restore-bubble', ...keepAwakeArgs(), '--new-window', ...urls];
     if (process.env.BW_BROWSER_STUB) { fs.appendFileSync(process.env.BW_BROWSER_STUB, JSON.stringify({ args, exe: br?.exe ?? null, browser: id }) + '\n'); continue; }

@@ -137,7 +137,7 @@ export function planSources(sources) {
         chosenFiles.add(c.f);
       } else if (!chosenFiles.has(c.f)) { toRead.push(c.f); chosenFiles.add(c.f); }
     }
-    if (!keep.length) { for (const c of list) skip(c.f, 'not a document format this import reads', 'not-document', c.title); continue; } // 0.17.5: a type outside EXT_PREF (a stray .json, .ini) used to throw here
+    if (!keep.length) { for (const c of list) skip(c.f, 'not a document format this import reads', 'not-document', c.title); continue; } // a type outside EXT_PREF (a stray .json, .ini) used to throw here
     for (const c of list) if (!keep.includes(c) && !chosenFiles.has(c.f)) skip(c.f, `not needed: «${keep[0].title}» comes from ${label(keep[0])} (${keep[0].f.rel})`, 'not-needed', keep[0].title);
   }
   for (const f of sources) if (chosenFiles.has(f)) settled.delete(f);

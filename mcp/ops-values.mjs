@@ -1,4 +1,4 @@
-// 0.16.0 (field notes item 7): an op value may be `{"$file": "<absolute path>"}` instead of the value typed out. This process (on the machine of the
+// an op value may be `{"$file": "<absolute path>"}` instead of the value typed out. This process (on the machine of the
 // host) reads the file and puts its bytes in: an image becomes a base64 data URI (checked: a truncated or corrupt one is BAD_OP), a .json file its parsed
 // value, any other file its text. Options: `as` = "dataUri" | "json" | "text" (default by extension); `mime` overrides the image type.
 // A model never types 300 KB of base64 again, and a file that cannot be read or does not decode is refused here, before the batch costs a round trip.

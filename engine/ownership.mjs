@@ -9,7 +9,7 @@
 // Documented here (README unchanged: not in this lane's paths); tests: tests/launcher-owner-0174.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
-import { isTestMode } from '../engine/testguard.mjs';
+import { isTestMode } from './testguard.mjs';
 
 /** A run in its own state folder (a test, a trial). */
 export const sandboxed = () => isTestMode() || !!(process.env.BW_LOCAL_DIR || process.env.BW_STATE_DIR || process.env.BW_WORKSPACE);

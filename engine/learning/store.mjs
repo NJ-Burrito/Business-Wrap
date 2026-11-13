@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { REPO } from '../export.mjs';
+import { REPO } from '../platform.mjs';
 import { localBase } from '../testguard.mjs';
 import { redact, distil, rulesOf, rulesMarkdown, applyRules, LEARN_VERSION } from './core.mjs';
 

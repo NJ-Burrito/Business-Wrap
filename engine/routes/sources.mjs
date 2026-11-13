@@ -12,13 +12,13 @@ import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { readJson } from '../workspace.mjs';
 import { kindOf, newJob, start, getJob, listJobs, previews, control, saveLines, setFact, inputDir } from '../sources/jobs.mjs';
+import { tokenRefused } from '../host-lifecycle.mjs';
 
 const LOCAL = /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/;
 
 export default async (req, url, send) => {
   if (!url.pathname.startsWith('/api/sources')) return false;
-  const token = process.env.BW_HOST_TOKEN;
-  if (req.headers.origin ? !LOCAL.test(req.headers.origin) : token && req.method !== 'GET' && req.headers['x-bw-token'] !== token) { send(403, { error: 'origin' }); return true; }
+  if (req.headers.origin ? !LOCAL.test(req.headers.origin) : req.method !== 'GET' && tokenRefused(req)) { send(403, { error: 'origin' }); return true; }
   try {
     const p = url.pathname;
     if (p === '/api/sources' && req.method === 'GET') { send(200, { jobs: listJobs() }); return true; }

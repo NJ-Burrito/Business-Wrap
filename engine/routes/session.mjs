@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { ensure, readJson, localDir, subdir, systemDir } from '../workspace.mjs';
 import { launchBrowser, closeBrowsers, noteHost, hostState } from '../host.mjs';
 import { BROWSERS, installedBrowsers, osDefaultBrowser, classifyBrowser, isChromium, chooseBrowser, savedBrowser, saveBrowser } from '../export.mjs';
+import { hostToken } from '../host-lifecycle.mjs';
 
 /** editor/session-worker.js, next to the editor sources (installed copies keep the same layout). */
 const WORKER_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'editor', 'session-worker.js');
@@ -21,16 +22,16 @@ const pad = (n) => String(n).padStart(2, '0');
 const stamp = (d) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 const day = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-/** 0.15.0 L1: one live connection per BROWSER, not per tab. A client (the page's SharedWorker, or the Web Locks leader tab) holds the one
+/** one live connection per BROWSER, not per tab. A client (the page's SharedWorker, or the Web Locks leader tab) holds the one
  *  event stream and lists its tabs with POST /api/session/tabs; a tab is live while some connected client lists it. A page that connects
  *  directly (?tab=, an older page) is a client of one tab. clients: Map<clientId, {id, conns:Set<res>, tabs:Map<tab, info>, since, listedAt}>. */
 export function state(ctx) {
-  if (!ctx.session) { const t = setInterval(() => { try { reconcile(ctx); sweepAsleep(ctx); } catch { /* the next second */ } }, 1000); t.unref?.(); } // 0.16.0: leases are re-checked every second, not only when a list arrives
+  if (!ctx.session) { const t = setInterval(() => { try { reconcile(ctx); sweepAsleep(ctx); } catch { /* the next second */ } }, 1000); t.unref?.(); } // leases are re-checked every second, not only when a list arrives
   return (ctx.session ||= { runId: `${stamp(new Date())}-${crypto.randomBytes(3).toString('hex')}`, startedAt: new Date().toISOString(), clients: new Map(), timer: null, ended: false, inflight: 0, closing: new Map(), startedMs: Date.now(), leases: new Map(), revs: new Map(), beats: new Map(), asleepKey: '', lost: new Map(), direct: new Map(), closed: new Map() });
 }
-/** 0.15.3 T2: a tab not heard from for this long is ASLEEP (a browser's sleeping or snoozed tab, a frozen or discarded page): the bridge answers TAB_ASLEEP at once instead of waiting 15 s. The worker pings every 3 s. */
+/** a tab not heard from for this long is ASLEEP (a browser's sleeping or snoozed tab, a frozen or discarded page): the bridge answers TAB_ASLEEP at once instead of waiting 15 s. The worker pings every 3 s. */
 export const asleepMs = () => Number(process.env.BW_ASLEEP_MS) || 9000;
-/** 0.16.0 (field notes item 5): a lease is released when its owner has not answered for this long (asleep, discarded, closed, or a ghost its frozen worker client still lists). */
+/** a lease is released when its owner has not answered for this long (asleep, discarded, closed, or a ghost its frozen worker client still lists). */
 export const leaseReleaseMs = () => Number(process.env.BW_LEASE_RELEASE_MS) || 60000;
 /** How long ago this tab last proved it runs: the freshest of its own beat (/api/session/beat, a state push, a bridge reply) and any client's list. Infinity = never heard. */
 export function beatAge(s, tab, now = Date.now()) {
@@ -38,7 +39,7 @@ export function beatAge(s, tab, now = Date.now()) {
   for (const c of s.clients.values()) { if (!c.conns.size) continue; const o = c.tabs.get(tab); if (o) age = Math.min(age, (o.ago || 0) + (c.listedAt ? now - c.listedAt : 0)); }
   return age;
 }
-/** 0.15.9 A4: a tab that vanished without a goodbye (a browser discarded it, or its page was killed) is `lost`, not closed: its saved state stays in the run, a command to it gets
+/** a tab that vanished without a goodbye (a browser discarded it, or its page was killed) is `lost`, not closed: its saved state stays in the run, a command to it gets
  *  TAB_ASLEEP, and when the LAST connection goes without a goodbye the host waits this long before it exits (a discarded last tab can come back and reload). A clean close keeps the 4 s. */
 export const discardGraceMs = () => Number(process.env.BW_DISCARD_GRACE_MS) || (process.env.BW_IDLE_MS ? IDLE_MS : 60000);
 /** 0.16.0 (the owner's host stopped twice with no cause; item 11 «the host keeps its editor across a window close»): a host an agent has used within this long does not exit when its last
@@ -74,7 +75,7 @@ function settle(ctx, tabs) {
     s.closing.set(tab, setTimeout(() => { s.closing.delete(tab); const now = liveTabs(s); if (now.size && !now.has(tab)) dropTab(ctx, tab); }, IDLE_MS));
   }
 }
-/** 0.15.3 T1: one document = one owning tab. The first live tab that lists a document owns it (its lease); another tab on the same document is a
+/** one document = one owning tab. The first live tab that lists a document owns it (its lease); another tab on the same document is a
  *  follower (read-only, told so by the `lease` event). The lease passes to the next claimant when the owner leaves the list. `rev` counts the saves
  *  of a document the host accepted: a save whose base is older than it is refused (acceptWrite). */
 export const leaseInfo = (s) => ({ leases: Object.fromEntries([...s.leases].map(([d, l]) => [d, l.tab])), revs: Object.fromEntries([...s.revs].map(([d, r]) => [d, r.rev])) });
@@ -121,13 +122,13 @@ const tabsOf = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => 
 /** The profile (name, picture, actor id) kept with the host: .local/profile.json. A tab on another origin (a new port)
  *  or another browser profile has an empty localStorage; serve.mjs hands this to the page, so «من أنت؟» is not asked again. */
 export const profileFile = () => path.join(localDir(), 'profile.json');
-/** H3: a second copy in the save folder's \.system\profile.json.gz (machine state, like the library mirror): an update into a new install folder (a new, empty
+/** a second copy in the save folder's \.system\profile.json.gz (machine state, like the library mirror): an update into a new install folder (a new, empty
  *  .local) or a lost browser storage still finds the owner, so the first-launch card is never asked twice. */
 const historyProfile = (ctx) => (ctx?.workspace ? path.join(systemDir(ctx.workspace.dirs), 'profile.json.gz') : null);
 function keepProfile(p, ctx) {
   if (!p || typeof p !== 'object' || typeof p.profile !== 'string' || !p.profile || p.profile.length > 2e6) return false;
   try { JSON.parse(p.profile); } catch { return false; }
-  // 0.15.9 B8: the person's saved screen preferences (theme, direction, spelling dictionary, ...) travel with the host too, so a new browser profile (Chrome after Edge) starts as they left it.
+  // the person's saved screen preferences (theme, direction, spelling dictionary, ...) travel with the host too, so a new browser profile (Chrome after Edge) starts as they left it.
   // Only `bw:` keys of plain text, never the signing key; merged over what is kept, so a browser that knows fewer keys never wipes the others.
   let prefs = {};
   try { prefs = JSON.parse(fs.readFileSync(profileFile(), 'utf8')).prefs || {}; } catch { /* none yet */ }
@@ -161,7 +162,7 @@ function finish(ctx) {
   const dir = runDir(ctx, s.runId);
   const tabs = tabsOf(dir).map((x) => ({ tab: x.tab, title: x.title }));
   if (tabs.length) fs.writeFileSync(path.join(dir, 'run.json'), JSON.stringify({ runId: s.runId, startedAt: s.startedAt, endedAt: new Date().toISOString(), tabs }, null, 1));
-  if (process.env.BW_HOST_TOKEN) closeBrowsers(hostState()?.browserPids || [], { scan: false }); // the windows this host opened (a background browser left on its profile); no slow process scan here
+  if (hostToken()) closeBrowsers(hostState()?.browserPids || [], { scan: false }); // the windows this host opened (a background browser left on its profile); no slow process scan here
   ctx.onIdle?.();
 }
 function archive(ctx, id) {
@@ -220,7 +221,7 @@ function writeTab(ctx, b) {
   return true;
 }
 
-/** 0.15.9 R4: the older documents saved in the save folder («المستندات - Documents»): one folder per document, its .html inside (Versions, Exports and Sources are deeper and never listed).
+/** the older documents saved in the save folder («المستندات - Documents»): one folder per document, its .html inside (Versions, Exports and Sources are deeper and never listed).
  *  Newest first; `q` filters by name or folder (case-insensitive, Unicode-normalised). Read only: engine/workspace.mjs is not touched. */
 export function olderDocs(ctx, q = '', limit = 300) {
   const root = ensure(ctx.workspace).dirs.docs;
@@ -290,7 +291,7 @@ export function registry(ctx) {
     if (now - c.at > 600000) { s.closed.delete(tab); continue; }
     if (!tabs.some((x) => x.tab === tab)) tabs.push({ tab, svc: c.svc || null, docs: c.docs || [], automation: !!c.automation, live: false, closed: true, lastBeatMs: now - c.at, asleep: false, owns: [] });
   }
-  for (const t of tabs) t.state = t.closed ? 'closed' : t.discarded ? 'discarded' : t.asleep ? 'frozen' : 'awake'; // 0.16.0: host_health says it per tab
+  for (const t of tabs) t.state = t.closed ? 'closed' : t.discarded ? 'discarded' : t.asleep ? 'frozen' : 'awake'; // host_health says it per tab
   const warnings = [];
   for (const t of tabs) if (t.discarded) warnings.push({ code: 'TAB_ASLEEP', tab: t.tab, lastBeatMs: t.lastBeatMs, discarded: true, how: 'the browser discarded this tab to save memory (or its page was killed): click the tab to reload it (its work comes back), or reopen with business-wrap open' });
   for (const t of tabs) if (t.asleep && !t.discarded) warnings.push({ code: 'TAB_ASLEEP', tab: t.tab, lastBeatMs: t.lastBeatMs, how: 'the tab stopped answering (the browser put it to sleep, froze or discarded it): click the tab to wake it, or reopen with business-wrap open (the browser it starts has sleeping tabs off)' });
@@ -299,7 +300,7 @@ export function registry(ctx) {
   return { runId: s.runId, ...leaseInfo(s), clients: cl.map((c) => ({ client: c.id, conns: c.conns.size, tabs: [...c.tabs.keys()], since: new Date(c.since).toISOString() })), tabs, warnings };
 }
 
-/** 0.15.9 B4: the browsers Settings offers. `choices` = «default» + every Chromium browser found; `chosen` = what the next window will use and why (`via`). */
+/** the browsers Settings offers. `choices` = «default» + every Chromium browser found; `chosen` = what the next window will use and why (`via`). */
 export function browserInfo() {
   const installed = installedBrowsers();
   const def = osDefaultBrowser();
@@ -324,7 +325,7 @@ export default async (req, url, send, ctx, res) => {
     return false;
   }
   if (p === '/api/profile') {
-    // H3: the profile (name, picture, actor id) kept on this machine the moment it is set (not only with a tab's push)
+    // the profile (name, picture, actor id) kept on this machine the moment it is set (not only with a tab's push)
     try {
       if (req.method === 'GET') { send(200, readProfile(ctx) || { profile: null }); return true; }
       if (req.method === 'POST') { const ok = keepProfile(await readJson(req, 4e6), ctx); send(ok ? 200 : 400, { ok }); return true; }
@@ -346,7 +347,7 @@ export default async (req, url, send, ctx, res) => {
   }
   const s = state(ctx);
   try {
-    if (req.method === 'GET' && p === '/api/session/info') { send(200, { runId: s.runId, host: !!process.env.BW_HOST_TOKEN, workspace: { root: ctx.workspace.root, chosen: ctx.workspace.chosen !== false } }); return true; }
+    if (req.method === 'GET' && p === '/api/session/info') { send(200, { runId: s.runId, host: !!hostToken(), workspace: { root: ctx.workspace.root, chosen: ctx.workspace.chosen !== false } }); return true; }
     if (req.method === 'GET' && p === '/api/session/leases') { send(200, { ok: true, ...leaseInfo(s) }); return true; }
     if (req.method === 'GET' && p === '/api/session/live') {
       const tab = url.searchParams.get('tab');
@@ -370,7 +371,7 @@ export default async (req, url, send, ctx, res) => {
           // the last connection gone: every tab that closed in the last IDLE_MS went with it (a window closed, the browser quit) and stays
           for (const t of s.closing.values()) clearTimeout(t);
           s.closing.clear();
-          // 0.15.9 A4: connections gone while tabs were still listed = no goodbye (a discarded last tab, a killed browser): those tabs are lost, and the host waits before it exits
+          // connections gone while tabs were still listed = no goodbye (a discarded last tab, a killed browser): those tabs are lost, and the host waits before it exits
           const abrupt = [...c.tabs].filter(([t]) => !liveTabs(s).has(t));
           for (const [t, o] of abrupt) if (!s.lost.has(t)) s.lost.set(t, { at: Date.now(), svc: o.svc, docs: o.docs, automation: o.automation });
           clearTimeout(s.timer); s.timer = setTimeout(() => { if (!connected(s).length) finish(ctx); }, Math.max(abrupt.length ? discardGraceMs() : IDLE_MS, agentKeepMs(ctx)));
@@ -378,7 +379,7 @@ export default async (req, url, send, ctx, res) => {
       });
       return true;
     }
-    // 0.16.0 (item 5): a tab proves itself on its own, whatever its worker client does (one frozen SharedWorker client must not hold the other tabs)
+    // a tab proves itself on its own, whatever its worker client does (one frozen SharedWorker client must not hold the other tabs)
     if (req.method === 'POST' && p === '/api/session/beat') {
       const b = await readJson(req, 1e5);
       if (!TAB.test(String(b.tab))) { send(400, { error: 'tab' }); return true; }
@@ -463,7 +464,7 @@ export default async (req, url, send, ctx, res) => {
       // resume: the tabs move into this run, the old run is archived, the server opens every tab at once
       let tabs = tabsOf(runDir(ctx, runId));
       const everyone = tabs.length;
-      if (Array.isArray(pick)) { tabs = tabs.filter((x) => pick.includes(x.tab)); if (!tabs.length) { send(400, { error: 'tabs' }); return true; } } // 0.15.9 R1: only the ones the person picked
+      if (Array.isArray(pick)) { tabs = tabs.filter((x) => pick.includes(x.tab)); if (!tabs.length) { send(400, { error: 'tabs' }); return true; } } // only the ones the person picked
       const dir = runDir(ctx, s.runId);
       fs.mkdirSync(dir, { recursive: true });
       for (const x of tabs) fs.writeFileSync(path.join(dir, `${x.tab}.json`), JSON.stringify(x));
@@ -484,7 +485,7 @@ export default async (req, url, send, ctx, res) => {
     }
     if (req.method === 'POST' && p === '/api/host/stop') {
       const { token } = await readJson(req);
-      if (!process.env.BW_HOST_TOKEN || token !== process.env.BW_HOST_TOKEN) { send(403, { error: 'token' }); return true; }
+      if (!hostToken() || token !== hostToken()) { send(403, { error: 'token' }); return true; }
       emit(ctx, 'flush'); // every tab sends its state now
       send(200, { ok: true });
       setTimeout(() => finish(ctx), 800);
