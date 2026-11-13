@@ -152,7 +152,7 @@ try {
     }
   }
 } finally {
-  if (!process.env.BW_START_KEEP) spawnSync('python', [path.join(os.homedir(), '.claude', 'skills', 'safe-delete', 'scripts', 'trash.py'), tmp], { stdio: 'ignore', windowsHide: true, env: { ...process.env, PYTHONUTF8: '1' } });
+  if (!process.env.BW_START_KEEP) spawnSync('python', [path.join(os.homedir(), '.claude', 'skills', 'nj-safe-delete', 'scripts', 'trash.py'), tmp], { stdio: 'ignore', windowsHide: true, env: { ...process.env, PYTHONUTF8: '1' } });
 }
 console.log(results.join('\n'));
 console.log(`${failed ? 'FAIL' : 'PASS'}: start-http-0177 — ${results.length - failed}/${results.length}`);

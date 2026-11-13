@@ -102,7 +102,7 @@ try {
     check('protocol: a sandboxed run with no fake hive never writes the real registration (nothing written; the real key is byte-identical before and after)', !wrote && (e5.already === true || e5.skipped === 'sandbox') && regOf() === realBefore, JSON.stringify(e5));
   } else check('launcher/protocol take-over: Windows-only parts skipped on this platform', true);
 } finally {
-  spawnSync('python', [path.join(os.homedir(), '.claude', 'skills', 'safe-delete', 'scripts', 'trash.py'), tmp], { stdio: 'ignore', windowsHide: true, env: { ...process.env, PYTHONUTF8: '1' } });
+  spawnSync('python', [path.join(os.homedir(), '.claude', 'skills', 'nj-safe-delete', 'scripts', 'trash.py'), tmp], { stdio: 'ignore', windowsHide: true, env: { ...process.env, PYTHONUTF8: '1' } });
 }
 console.log(results.join('\n'));
 console.log(`${failed ? 'FAIL' : 'PASS'}: launcher-owner-0174 — ${results.length - failed}/${results.length}`);

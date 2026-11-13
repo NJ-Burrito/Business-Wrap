@@ -151,7 +151,7 @@ try {
   // leave nothing behind: a host this test started is stopped (the owner's host was not up: the test refused to run otherwise)
   if (await health()) spawnSync(process.execPath, [path.join(REPO, 'engine', 'cli.mjs'), 'stop', '--all'], { stdio: 'ignore', windowsHide: true });
 }
-if (!process.env.BW_START_KEEP) spawnSync('python', [path.join(os.homedir(), '.claude', 'skills', 'safe-delete', 'scripts', 'trash.py'), tmp], { stdio: 'ignore', windowsHide: true, env: { ...process.env, PYTHONUTF8: '1' } }); // the throwaway profile and files go to the recycle bin
+if (!process.env.BW_START_KEEP) spawnSync('python', [path.join(os.homedir(), '.claude', 'skills', 'nj-safe-delete', 'scripts', 'trash.py'), tmp], { stdio: 'ignore', windowsHide: true, env: { ...process.env, PYTHONUTF8: '1' } }); // the throwaway profile and files go to the recycle bin
 console.log(results.join('\n'));
 console.log(`${failed ? 'FAIL' : 'PASS'}: start-real-0174 — ${results.length - failed}/${results.length}`);
 process.exit(failed ? 1 : 0);
