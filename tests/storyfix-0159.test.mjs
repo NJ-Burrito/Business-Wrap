@@ -1,4 +1,4 @@
-// lane storyfix: the 21 faults of the story UAT (out/qa-0.15.8/uat-story/REPORT.md), each asserted here by its report id.
+// 0.15.9 lane storyfix: the 21 faults of the story UAT (out/qa-0.15.8/uat-story/REPORT.md), each asserted here by its report id.
 // Real Google Chrome (BW_CHROME) types, clicks and runs the real commands; the real exporters write the PDF and DOCX that are read back.
 //   node tests/storyfix-0159.test.mjs
 import './_isolate.mjs';
@@ -7,15 +7,17 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { REPO, exportPdf, exportDocx, loadTheme, i18n } from '../engine/export.mjs';
+import { launchOptions, REPO, exportPdf, exportDocx, loadTheme, i18n } from '../engine/export.mjs';
 import { renderDocument } from '../engine/render.mjs';
 import { config } from '../engine/config.mjs';
 import { docxParts } from './fixtures/doc-model/util.mjs';
-import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-storyfix159-'));
-const S = suite('storyfix-0159'); const { check } = S;
+let failed = 0;
+const results = [];
+const check = (name, ok, detail = '') => { const line = `${ok ? 'PASS' : 'FAIL'}  storyfix-0159: ${name}${detail && !ok ? '  — ' + detail : ''}`; results.push(line); console.log(line); if (!ok) failed += 1; };
 const theme = loadTheme();
 const LOCS = ['ar', 'en'];
 const j = (x) => JSON.stringify(x);
@@ -30,7 +32,7 @@ const editorFor = (name, sample) => {
   buildEditor({ inputs: [path.join(REPO, 'samples', sample)], out: file, set: `sf159${name}`, watermarkDir: null });
   return file;
 };
-const browser = await launchChrome();
+const browser = await chromium.launch(launchOptions());
 const errors = [];
 async function openPage(file, svc) {
   const ctx = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
@@ -343,4 +345,5 @@ try {
   await browser.close();
   fs.rmSync(tmp, { recursive: true, force: true });
 }
-S.finish();
+console.log(failed ? `\nFAILED: ${failed}/${results.length}` : `\nALL ${results.length} PASS`);
+process.exit(failed ? 1 : 0);

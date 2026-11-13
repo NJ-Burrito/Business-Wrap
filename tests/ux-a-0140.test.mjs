@@ -1,4 +1,4 @@
-// lane ux-a: A1 explainer side panel, A2 waiting popup, A3 toasts clear of the page controls, A4 reading mode.
+// 0.14.0 lane ux-a: A1 explainer side panel, A2 waiting popup, A3 toasts clear of the page controls, A4 reading mode.
 // Headless Chrome, temp profile via launchOptions, closed in finally.
 //
 //   node tests/ux-a-0140.test.mjs
@@ -6,9 +6,9 @@ import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { launchOptions, REPO } from '../engine/export.mjs';
-import { suite, launchChrome } from './_harness.mjs';
 
 const OUT = path.join(REPO, 'out', 'ux-a-0140-test');
 fs.mkdirSync(OUT, { recursive: true });
@@ -16,9 +16,10 @@ const file = path.join(OUT, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, watermarkDir: null });
 const URL = pathToFileURL(file).href;
 
-const S = suite("ux-a-0140");
-const { check, results } = S;
-const browser = await launchChrome();
+const results = [];
+let failed = 0;
+const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ux-a-0140: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const browser = await chromium.launch(launchOptions());
 const sh = (page, fn, arg) => page.evaluate(([f, a]) => new Function('r', 'a', `return (${f})(r, a)`)(document.getElementById('bw-ui-host').shadowRoot, a), [fn.toString(), arg]);
 async function open({ ui = 'ar', width = 1366, height = 860, store = {} } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height } });
@@ -44,14 +45,14 @@ const UX = { ar: {}, en: {} };
     for (const l of ['ar', 'en']) Object.assign(UX[l], e[l] || {});
   }
 }
-// ext/10-library.js re-words explain.save at runtime (overwrite-in-place); the shipped text wins over ux-i18n.json
+// 0.14.0: ext/10-library.js re-words explain.save at runtime (overwrite-in-place); the shipped text wins over ux-i18n.json
 {
   const lib = fs.readFileSync(path.join(REPO, 'editor', 'ext', '10-library.js'), 'utf8');
   const m = [...lib.matchAll(/'explain\.save': (?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"),/g)];
   ['ar', 'en'].forEach((l, i) => { if (m[i]) UX[l]['explain.save'] = (m[i][1] ?? m[i][2]).replace(/\\'/g, "'"); });
 }
 const toastRects = (page) => sh(page, (r) => [...r.querySelectorAll('.toast')].map((x) => { const b = x.getBoundingClientRect(); return { l: b.left, r: b.right, t: b.top, b: b.bottom }; }));
-// the tools live in the ribbon; Save is on its File tab
+// 0.14.0: the tools live in the ribbon; Save is on its File tab
 const saveXY = async (page) => { await page.evaluate(() => window.BW.EXT.ribbon.setTab('file')); await page.waitForTimeout(150); return sh(page, (r) => { const q = r.querySelector('.island > .b.bar-save[data-a="save"]').getBoundingClientRect(); return { x: q.left + q.width / 2, y: q.top + q.height / 2 }; }); };
 
 try {
@@ -214,4 +215,6 @@ try {
 } finally {
   await browser.close();
 }
-S.finish();
+console.log(results.join('\n'));
+console.log(failed ? `FAILED: ${failed}/${results.length}` : `ALL PASS: ${results.length}/${results.length}`);
+process.exit(failed ? 1 : 0);

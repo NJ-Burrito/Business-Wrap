@@ -1,4 +1,4 @@
-// (bw-0161 / fixa): the faults of the final real-use check (out/qa-0.16.0/uat-final/REPORT.md) that this lane owns: 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12.
+// 0.16.1 (bw-0161 / fixa): the faults of the final real-use check (out/qa-0.16.0/uat-final/REPORT.md) that this lane owns: 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12.
 // Real Google Chrome, the real editor build and (8, 11) a real host. Every probe first observes its ready state (R15): a positive sample proves the setup is the faulty one.
 //   A1 one-page view after a long scroll shows page 1   A2 Ctrl+wheel over a figure at page zoom 161 % zooms the page out   A7 20 in / 20 out ends where it began
 //   A4 the logo never lies over an open panel           A5 «both» has a word in AR and EN                                A6 the ribbon follows node / arrow / legend entry
@@ -14,11 +14,10 @@ import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { launchOptions, REPO } from '../engine/export.mjs';
-import { suite } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-uat0161-'));
-const S = suite("uat-fix-0161");
-const { check } = S;
+let failed = 0;
+const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  uat-fix-0161: ${name}${detail && !ok ? '  - ' + String(detail).slice(0, 500) : ''}`); if (!ok) failed += 1; };
 const freePort = () => new Promise((ok) => { const s = net.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => ok(p)); }); });
 const headed = process.env.BW_HEADED === '1';
 const launch = () => chromium.launch({ ...launchOptions(), ...(headed ? { headless: false, args: ['--window-position=-1900,20', '--window-size=1800,1000'] } : {}) });
@@ -218,4 +217,5 @@ try {
     await ctx.close();
   } finally { await b2.close(); try { await host.close?.(); } catch { /* closed */ } }
 }
-S.finish();
+console.log(failed ? `FAILED ${failed}` : 'ALL PASS');
+process.exit(failed ? 1 : 0);

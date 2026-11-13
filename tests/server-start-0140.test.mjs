@@ -1,4 +1,4 @@
-// S1 the server banner, 0.15.0 the server TOGGLE (editor/ext/18-server.js, lane spell, owner note 15): an editor opened with no Business-Wrap server
+// 0.14.0 S1 the server banner, 0.15.0 the server TOGGLE (editor/ext/18-server.js, lane spell, owner note 15): an editor opened with no Business-Wrap server
 // answering shows its toggle OFFLINE («غير متصل»); pressing it hands business-wrap://start to the real handler; the toggle turns ONLINE (0.17.0: no open link in Settings, the page stays),
 // The banner, its Dismiss button and its «Open» button are gone.
 //
@@ -12,12 +12,13 @@ import net from 'node:net';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { REPO } from '../engine/export.mjs';
+import { chromium } from 'playwright-core';
+import { launchOptions, REPO } from '../engine/export.mjs';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { suite, launchChrome } from './_harness.mjs';
 
-const S = suite("server-start");
-const { check, results } = S;
+const results = [];
+let failed = 0;
+const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  server-start: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
 // the long form of the folder: the server and Chrome report the account's real folder name, os.tmpdir() gives its 8.3 short name (RUNNER~1) on the CI runner
 const tmp = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'bw-srvstart-')));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -59,7 +60,7 @@ async function openPage(ctx, url, { ports, ui } = {}) {
     if (u) { try { localStorage.setItem('bw:ui', u); } catch { /* none */ } }
     // (0.15.0: no banner, nothing to switch on: an automated browser sees the toggle like anyone)
     window.__launched = [];
-    window.addEventListener('bw:follow', (e) => { e.preventDefault(); (window.__follow ||= []).push(e.detail.url); }); // the file:// page would replace itself with the served editor; the suite keeps its page
+    window.addEventListener('bw:follow', (e) => { e.preventDefault(); (window.__follow ||= []).push(e.detail.url); }); // 0.17.8: the file:// page would replace itself with the served editor; the suite keeps its page
     document.addEventListener('click', (e) => { const a = e.composedPath().find((n) => n.matches?.('a[href^="business-wrap:"]')); if (a) { window.__launched.push(a.getAttribute('href')); e.preventDefault(); } }, true);
   }, { ports, ui });
   await page.goto(url);
@@ -69,7 +70,7 @@ async function openPage(ctx, url, { ports, ui } = {}) {
   return page;
 }
 
-const browser = await launchChrome();
+const browser = await chromium.launch(launchOptions());
 try {
   // ── 1. no server, Arabic (the default): the banner is there at once, big, with Start; one GET per probe port, nothing else ──
   const p1 = await free();
@@ -148,4 +149,6 @@ try {
   spawnSync(process.execPath, [CLI, 'close'], { env, windowsHide: true, timeout: 60000 });
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* temp */ }
 }
-S.finish();
+console.log(results.join('\n'));
+console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: server-start ${results.length - failed}/${results.length}`);
+process.exit(failed ? 1 : 0);

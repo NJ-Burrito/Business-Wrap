@@ -1,4 +1,4 @@
-// lane page-lines · P1 click on the empty page and work by lines; P2 ruler + landscape on one page only.
+// 0.14.0 lane page-lines · P1 click on the empty page and work by lines; P2 ruler + landscape on one page only.
 // P1: a click on an empty place of the page puts a line caret at the nearest slot; Enter / Backspace / Delete add and remove empty
 // lines (both editions, one undo step each); a letter starts a paragraph; Insert (table, diagram, picture, logo, paragraph) lands AT
 // the caret; the empty line prints (PDF <br>, DOCX empty paragraph). P2: the ruler shows per sheet and follows a turned page;
@@ -10,16 +10,16 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { REPO, exportPdf, exportDocx, loadTheme, i18n } from '../engine/export.mjs';
+import { launchOptions, REPO, exportPdf, exportDocx, loadTheme, i18n } from '../engine/export.mjs';
 import { renderDocument } from '../engine/render.mjs';
 import { applyOps } from '../engine/edits.mjs';
 import { pageSizes, docxParts, sample, pngUri } from './fixtures/doc-model/util.mjs';
-import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-lines-'));
-const S = suite("page-lines");
-const { check } = S;
+let failed = 0;
+const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  page-lines: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
 const theme = loadTheme();
 const L = i18n();
 
@@ -53,7 +53,7 @@ for (const ed of ['ar', 'en']) {
 buildEditor({ inputs: [fx], out: file, set: 'lines-test', watermarkDir: null, ui: 'en' });
 const png = path.join(tmp, 'pic.png');
 fs.writeFileSync(png, Buffer.from(pngUri(40, 40).split(',')[1], 'base64'));
-const browser = await launchChrome();
+const browser = await chromium.launch(launchOptions());
 let secDoc, hereDoc;
 try {
   const page = await (await browser.newContext({ viewport: { width: 1600, height: 1000 } })).newPage();
@@ -70,7 +70,7 @@ try {
   const SEC = '/chapters/0/sections/0/blocks';
   // a real click on the empty margin of the page, level with the top edge of block `i`
   const clickMargin = async (ed, i, dy = 2) => {
-    // a slow runner re-laid the page (the real fonts arriving) between the measure and the click, so the click landed on the block below: scroll first,
+    // 0.16.3: a slow runner re-laid the page (the real fonts arriving) between the measure and the click, so the click landed on the block below: scroll first,
     // let the fonts and two frames settle, then measure, and click only when the same block top is still there
     await page.evaluate(([e, k]) => { const el = document.querySelector(`#bw-pair main.bw-doc[data-locale="${e}"] [data-b="/chapters/0/sections/0/blocks/${k}"]`); el.scrollIntoView({ block: 'center' }); }, [ed, i]);
     await page.evaluate(async () => { await document.fonts?.ready; await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))); });
@@ -268,4 +268,5 @@ try {
   check('PDF (Arabic): one stretch landscape, the rest portrait', (() => { const z = pageSizes(arPdf); return z.some(([w, h]) => w === 297 && h === 210) && z.some(([w, h]) => w === 210 && h === 297); })());
 }
 fs.rmSync(tmp, { recursive: true, force: true });
-S.finish();
+console.log(failed ? `\n${failed} FAILED` : '\nall passed');
+process.exit(failed ? 1 : 0);

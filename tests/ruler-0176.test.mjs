@@ -1,4 +1,4 @@
-// (bw176, ruler lane): the ruler is interactive, like Word's horizontal ruler.
+// 0.17.6 (bw176, ruler lane): the ruler is interactive, like Word's horizontal ruler.
 //  - the margin edges drag (EXT.margins.set live while dragging, once final on release; a stub stands in when the margins model is absent);
 //  - the first-line, start (hanging) and end markers drag per paragraph: ONE undoable edit each, stored in the document (style.indentStart,
 //    indentEnd, indentFirst in mm), surviving a reload, printed (PDF) and written to DOCX (w:ind start/end/firstLine/hanging);
@@ -11,15 +11,15 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { REPO, exportPdf, exportDocx, loadTheme, i18n } from '../engine/export.mjs';
+import { launchOptions, REPO, exportPdf, exportDocx, loadTheme, i18n } from '../engine/export.mjs';
 import { renderDocument } from '../engine/render.mjs';
 import { docxParts, poppler } from './fixtures/doc-model/util.mjs';
-import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-ruler0176-'));
-const S = suite("ruler-0176");
-const { check } = S;
+let failed = 0;
+const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  ruler-0176: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
 const theme = loadTheme();
 const near = (a, b, e = 0.06) => typeof a === 'number' && Math.abs(a - b) <= e;
 const blank = (loc) => JSON.parse(fs.readFileSync(path.join(REPO, 'samples', 'blank', `document.${loc}.json`), 'utf8'));
@@ -66,7 +66,7 @@ const dirOf = (loc) => (loc === 'ar' ? -1 : 1); // the screen direction of "into
 }
 
 // ── 2. the editor ──
-const browser = await launchChrome();
+const browser = await chromium.launch(launchOptions());
 let seq = 0;
 async function open(doc, loc, vp = [1500, 900]) {
   const dir = path.join(tmp, `d${(seq += 1)}`);
@@ -245,4 +245,5 @@ for (const loc of ['ar', 'en']) {
 }
 await browser.close();
 fs.rmSync(tmp, { recursive: true, force: true });
-S.finish();
+console.log(failed ? `\nFAILED: ${failed}` : '\nALL PASS');
+process.exit(failed ? 1 : 0);

@@ -6,16 +6,18 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { REPO } from '../engine/export.mjs';
-import { suite, launchChrome } from './_harness.mjs';
+import { launchOptions, REPO } from '../engine/export.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-ribbon-'));
-const S = suite('ux-ribbon'); const { check } = S;
+let failed = 0;
+const results = [];
+const check = (name, ok, detail = '') => { const line = `${ok ? 'PASS' : 'FAIL'}  ux-ribbon: ${name}${detail && !ok ? '  — ' + detail : ''}`; results.push(line); console.log(line); if (!ok) failed += 1; };
 
 const file = path.join(tmp, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, set: 'ribbon-test', watermarkDir: null });
-const browser = await launchChrome();
+const browser = await chromium.launch(launchOptions());
 try {
   const open = async (ui = 'ar', size = { width: 1600, height: 900 }) => {
     const ctx = await browser.newContext({ viewport: size });
@@ -142,7 +144,7 @@ try {
   // …and through a popup (a «more» menu entry: the export menu)
   await page.locator('#bw-ui-host').locator('#rb-tab-file').click();
   const para2 = await page.evaluate(() => { const p = document.querySelector(`#bw-pair main.bw-doc [data-p="${window.__para}"]`); p.focus(); const t = [...p.childNodes].find((n) => n.nodeType === 3 && n.length > 4); const r = document.createRange(); r.setStart(t, 0); r.setEnd(t, 3); const s = getSelection(); s.removeAllRanges(); s.addRange(r); return s.toString(); });
-  await page.locator('#bw-ui-host').locator('.island > .sec[data-cat="view"] [data-a="view"]').first().click(); // the ribbon has no folded menus; the View popover is the popup left
+  await page.locator('#bw-ui-host').locator('.island > .sec[data-cat="view"] [data-a="view"]').first().click(); // 0.15.0: the ribbon has no folded menus; the View popover is the popup left
   check('R2 edge (popup): opening a popup menu from the ribbon keeps the text selection', para2.length === 3 && (await page.evaluate(() => getSelection().toString())) === para2, para2);
   await page.keyboard.press('Escape');
   // R2 Arabic: the same on an Arabic word is what the above did (the sample is Arabic); an EN edition run follows below.
@@ -203,4 +205,6 @@ try {
   await browser.close();
   fs.rmSync(tmp, { recursive: true, force: true });
 }
-S.finish();
+console.log(results.join('\n'));
+console.log(failed ? `\nFAILED: ${failed}/${results.length}` : `\nALL ${results.length} PASS`);
+process.exit(failed ? 1 : 0);

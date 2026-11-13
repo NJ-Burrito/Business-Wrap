@@ -7,18 +7,19 @@ import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { REPO } from '../engine/export.mjs';
-import { suite, launchChrome } from './_harness.mjs';
+import { launchOptions, REPO } from '../engine/export.mjs';
 
 const OUT = path.join(REPO, 'out', 'toast-test');
 fs.mkdirSync(OUT, { recursive: true });
 const file = path.join(OUT, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, watermarkDir: null });
 
-const S = suite("toast");
-const { check, results } = S;
-const browser = await launchChrome();
+const results = [];
+let failed = 0;
+const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  toast: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const browser = await chromium.launch(launchOptions());
 try {
   const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
   const errors = [];
@@ -78,4 +79,6 @@ try {
 } finally {
   await browser.close();
 }
-S.finish();
+console.log(results.join('\n'));
+console.log(failed ? `FAILED: ${failed}/${results.length}` : `ALL PASS: ${results.length}/${results.length}`);
+process.exit(failed ? 1 : 0);

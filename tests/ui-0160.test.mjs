@@ -1,4 +1,4 @@
-// lane ui. One check per fixed item, each through the real editor in headless Chrome (closed in finally):
+// 0.16.0 lane ui. One check per fixed item, each through the real editor in headless Chrome (closed in finally):
 //   U1 a tool pressed in the strip keeps the keyboard when the strip refits (the node moves between strip and «More»)
 //   U6 (M4) the Explain panel waits as its edge tab in a narrow window nobody chose for, and steps aside for a diagram's canvas handles
 //   U7 (L7) a chapter heading selects with a strip (title, Move up/down, Comment) and moves the chapter
@@ -8,15 +8,15 @@ import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { REPO } from '../engine/export.mjs';
-import { suite, launchChrome } from './_harness.mjs';
+import { launchOptions, REPO } from '../engine/export.mjs';
 
 const OUT = path.join(REPO, 'out', 'ui-0160-test');
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
-const S = suite("ui-0160");
-const { check } = S;
+let failed = 0;
+const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  ui-0160: ${name}${detail && !ok ? '  — ' + String(detail).replace(/\s+/g, ' ').slice(0, 400) : ''}`); if (!ok) failed += 1; };
 const file = buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: path.join(OUT, 'editor.html'), set: 'ui-0160', watermarkDir: '' }).out;
 const read = (f) => JSON.parse(fs.readFileSync(path.join(REPO, 'editor', 'ext', f), 'utf8'));
 
@@ -27,7 +27,7 @@ const read = (f) => JSON.parse(fs.readFileSync(path.join(REPO, 'editor', 'ext', 
   check('U7 «chapter» has its word in Arabic and English', u.ar['ux.selChapter'] && u.en['ux.selChapter']);
 }
 
-const browser = await launchChrome();
+const browser = await chromium.launch(launchOptions());
 const errors = [];
 const open = async (vp, store = {}) => {
   const ctx = await browser.newContext({ viewport: vp });
@@ -156,4 +156,5 @@ try {
 } finally {
   await browser.close();
 }
-S.finish();
+console.log(failed ? `FAILED: ${failed}` : 'ui-0160: all passed');
+process.exit(failed ? 1 : 0);

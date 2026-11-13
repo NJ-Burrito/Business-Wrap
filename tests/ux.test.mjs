@@ -11,10 +11,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { REPO } from '../engine/export.mjs';
+import { launchOptions, REPO } from '../engine/export.mjs';
 import { py } from '../engine/py.mjs';
-import { suite, launchChrome } from './_harness.mjs';
 
 const OUT = path.join(REPO, 'out', 'ux');
 fs.mkdirSync(OUT, { recursive: true });
@@ -31,9 +31,13 @@ const PC = JSON.parse(fs.readFileSync(path.join(REPO, 'editor', 'print-i18n.json
 for (const l of ['ar', 'en']) Object.assign(UX[l], PC[l]);
 const PNG = path.join(REPO, 'brand', 'v3', 'favicon', 'icon-128.png');
 
-const S = suite("");
-const { check, results } = S;
-const browser = await launchChrome();
+const results = [];
+let failed = 0;
+const check = (name, ok, detail = '') => {
+  results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail && !ok ? '  — ' + detail : ''}`);
+  if (!ok) failed += 1;
+};
+const browser = await chromium.launch(launchOptions());
 async function open({ ui = 'ar', width = 1366, height = 860, reduced = false, store = {} } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height }, reducedMotion: reduced ? 'reduce' : 'no-preference' });
   await ctx.addInitScript(() => { window.__bwProbePorts = []; }); // test hook of editor/settings.js: never probe the real host on 4317 (a machine with the host running would show the server toggle animating)
@@ -128,7 +132,7 @@ try {
     }
     check(`A2 ${width}: the same controls, icons and names in Arabic and English`, JSON.stringify(got.ar.tools) === JSON.stringify(got.en.tools), JSON.stringify([got.ar.tools.filter((x) => !got.en.tools.includes(x)), got.en.tools.filter((x) => !got.ar.tools.includes(x))]));
     check(`A2 ${width}: the bar folds the same way (words shown/hidden per tool) in both languages`, JSON.stringify(got.ar.shown) === JSON.stringify(got.en.shown) && got.ar.fold === got.en.fold, `${got.ar.fold} vs ${got.en.fold} | ${got.ar.shown.filter((x, i) => x !== got.en.shown[i]).join(' ')}`);
-    // the strip folds by room, and English words are wider than Arabic ones, so a tool may sit in the strip in one language and in «More» in the other: the SET (with icon and name flags) must match, not the position
+    // 0.16.3: the strip folds by room, and English words are wider than Arabic ones, so a tool may sit in the strip in one language and in «More» in the other: the SET (with icon and name flags) must match, not the position
     check(`A2 ${width}: a table cell's tools match in both languages`, JSON.stringify([...got.ar.cell].sort()) === JSON.stringify([...got.en.cell].sort()) && got.ar.cell.length > 3, JSON.stringify([got.ar.cell, got.en.cell]));
   }
 
@@ -161,7 +165,7 @@ try {
     const mid = await sh(page, (r) => { const s = r.querySelector('.seg.lang'); const t = s.querySelector('.thumb').getBoundingClientRect().x; const on = s.querySelector('[aria-pressed="true"]').getBoundingClientRect().x; return Math.abs(t - on); });
     check('A3: the thumb slides (mid-flight it has not yet arrived)', mid > 2, `offset ${mid.toFixed(1)} px at 90 ms`);
     await ctx.close();
-    const rm = await open({ ui: 'ar', store: { 'bw:calm': '1' } }); // only the Calm button reduces motion
+    const rm = await open({ ui: 'ar', store: { 'bw:calm': '1' } }); // 0.17.0: only the Calm button reduces motion
     const tr = await sh(rm.page, (r) => getComputedStyle(r.querySelector('.seg.lang .thumb')).transitionDuration);
     check('A3: calm → no thumb motion', /^0s(, 0s)*$/.test(tr), tr);
     await rm.ctx.close();
@@ -299,9 +303,9 @@ try {
     }
     const missing = [...keys].filter((k) => !UX.ar[`explain.${k}`] || !UX.en[`explain.${k}`]);
     check(`A5: every toolbar, view and selection tool has an explainer in Arabic and English (${keys.size} tools)`, !missing.length, missing.join(' '));
-    // final pass #5: Save and Import say what they do since H3 (save in place; import opens the file as a document)
+    // 0.13.1 final pass #5: Save and Import say what they do since H3 (save in place; import opens the file as a document)
     check('A5: Save / Import hover help describe the 0.13.1 behaviour (save in place, import opens as a document), AR + EN', /في مكانها/.test(UX.ar['explain.save']) && /in place/.test(UX.en['explain.save']) && /وثيقةً في «المستندات»/.test(UX.ar['explain.import']) && /as a document/.test(UX.en['explain.import']), JSON.stringify([UX.ar['explain.save'], UX.en['explain.import']]));
-    const rm = await open({ ui: 'ar', store: { 'bw:calm': '1' } }); // only the Calm button reduces motion
+    const rm = await open({ ui: 'ar', store: { 'bw:calm': '1' } }); // 0.17.0: only the Calm button reduces motion
     await (await rbBtn(rm.page,'save')).hover();
     await rm.page.waitForTimeout(1200);
     const still = await sh(rm.page, (r) => { const c = r.querySelector('.xpl'); return c && !c.hidden ? [...c.querySelectorAll('svg *')].flatMap((e) => e.getAnimations()).length : -1; });
@@ -405,7 +409,7 @@ try {
         await probeMenu(cat);
       }
       // an outside click on the toolbar closes the menu and keeps the shape's tools.
-      // note 14 (CI run 41183106592, ar 1920 on Ubuntu only): the menu opens in the top layer and, with the Ubuntu fallback fonts, can reach over the
+      // 0.15.2 note 14 (CI run 41183106592, ar 1920 on Ubuntu only): the menu opens in the top layer and, with the Ubuntu fallback fonts, can reach over the
       // brand mark, so a click on the brand landed INSIDE the menu. The click point is now chosen OUTSIDE the open menu's rectangle (the brand when it is clear,
       // else another point of the toolbar, else the page below it), and the close / focus reads wait up to 2 s instead of reading at once (timing only: what is proved is unchanged).
       await page.locator('.ctx [data-a="more"]').click();
@@ -614,7 +618,7 @@ try {
       await page.mouse.click(760, 600); await page.waitForTimeout(300);
       const afterOut = await page.evaluate(() => window.BW.S.drawer);
       res.push(`${k}:${opened}/${afterIn}/${afterOut}`);
-      if (afterOut) await page.evaluate(() => { const d = window.BW.S.drawer; if (window.BW.hasAction(d)) window.BW.runAction(d); else document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer [data-k="close"]')?.click(); }); // runAction throws on an id that is not a command (the style drawer is not one)
+      if (afterOut) await page.evaluate(() => { const d = window.BW.S.drawer; if (window.BW.hasAction(d)) window.BW.runAction(d); else document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer [data-k="close"]')?.click(); }); // 0.15.0: runAction throws on an id that is not a command (the style drawer is not one)
       await page.locator('main.bw-doc [data-p="/chapters/1/sections/0/blocks/1/rows/0/1"]').click();
     }
     check('0.13 A8: every drawer closes on a page press, stays on an inside press', res.every((x) => { const [o, i, a] = x.split(':')[1].split('/'); return o !== 'null' && i === o && a === 'null'; }), res.join(' '));
@@ -867,4 +871,6 @@ try {
 } finally {
   await browser.close();
 }
-S.finish();
+console.log(results.join('\n'));
+console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: ${results.length - failed}/${results.length}`);
+process.exit(failed ? 1 : 0);

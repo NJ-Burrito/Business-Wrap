@@ -1,4 +1,4 @@
-// lane stories · T1 "make the user stories like tables too": the tables of a user story (actions, dictionary) get the full
+// 0.14.0 lane stories · T1 "make the user stories like tables too": the tables of a user story (actions, dictionary) get the full
 // cell toolset (add/delete rows and columns, merge/split, resize, select ranges, paste, wrap) while the stored shape stays the
 // same (rows/columns + optional merges/colWidths/rowHeights on the story's own table object); PDF html and DOCX print it too.
 // Headless Edge/Chrome, closed in finally.   node tests/stories-0140.test.mjs
@@ -7,14 +7,16 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { REPO, exportDocx, loadTheme, i18n } from '../engine/export.mjs';
+import { launchOptions, REPO, exportDocx, loadTheme, i18n } from '../engine/export.mjs';
 import { renderDocument } from '../engine/render.mjs';
 import { docxParts, sample } from './fixtures/doc-model/util.mjs';
-import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-stories-'));
-const S = suite('stories'); const { check } = S;
+let failed = 0;
+const results = [];
+const check = (name, ok, detail = '') => { const line = `${ok ? 'PASS' : 'FAIL'}  stories: ${name}${detail && !ok ? '  — ' + detail : ''}`; results.push(line); console.log(line); if (!ok) failed += 1; };
 const theme = loadTheme();
 
 // ── 1 · stored shape and print (PDF html, DOCX) ──────────────────────────
@@ -43,7 +45,7 @@ for (const loc of ['en', 'ar']) {
 // ── 2 · the editor ─────────────────────────────────────────────────────
 const file = path.join(tmp, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, set: 'stories-test', watermarkDir: null });
-const browser = await launchChrome();
+const browser = await chromium.launch(launchOptions());
 try {
   const ctx = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
   const page = await ctx.newPage();
@@ -126,4 +128,6 @@ try {
   await browser.close();
   fs.rmSync(tmp, { recursive: true, force: true });
 }
-S.finish();
+console.log(results.join('\n'));
+console.log(failed ? `\nFAILED: ${failed}/${results.length}` : `\nALL ${results.length} PASS`);
+process.exit(failed ? 1 : 0);

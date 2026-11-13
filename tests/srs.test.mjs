@@ -11,10 +11,10 @@ import { buildDocuments, buildToDir } from '../engine/srs/cli.mjs';
 import { loadPack, listPacks, coreText, TEMPLATES } from '../engine/srs/compose.mjs';
 import { validatePack, applyCorrections } from '../engine/srs/packs.mjs';
 import { py } from '../engine/py.mjs';
-import { suite } from './_harness.mjs';
 
-const T = suite("");
-const { check, results } = T;
+const results = [];
+let failed = 0;
+const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
 const S = (...p) => path.join(REPO, 'samples', ...p);
 const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
 const TODAY = '2026-10-28';
@@ -143,7 +143,7 @@ try {
   /* 9. domain neutrality */
   const BANNED = /حكوم|وزار|بوابة|متلقي الخدمة|التوقيع الرقمي|مخرج|\bgovernment|\bministr|\bportal\b|digital signature/i;
   const neutral = [path.join(TEMPLATES, '_core', 'text.json'), ...ids.filter((x) => x !== 'e-service').map((x) => path.join(TEMPLATES, x, 'pack.json'))];
-  // (spec O): the owner's own word «المخرجات» / Outputs is the title of the last chapter in every pack that has an output, and the wording of that chapter lives in _core `od`: both are set aside here, nothing else is
+  // 0.16.0 (spec O): the owner's own word «المخرجات» / Outputs is the title of the last chapter in every pack that has an output, and the wording of that chapter lives in _core `od`: both are set aside here, nothing else is
   const withoutOutputs = (j) => { const c = JSON.parse(JSON.stringify(j)); for (const lc of ['ar', 'en']) if (c[lc]) delete c[lc].od; if (c.chapters) c.chapters = c.chapters.filter((x) => !(x.sections || []).some((s) => /^output(Desc|Types|Variants)$/.test(s.gen))); return c; };
   const hits = neutral.flatMap((f) => strings(withoutOutputs(readJson(f))).filter((x) => BANNED.test(x)).map((x) => `${path.basename(path.dirname(f))}: ${x.slice(0, 40)}`));
   check('core text and non-e-service packs assume no government, portal, recipient, signature or official output', !hits.length, hits.slice(0, 3).join(' / '));
@@ -177,4 +177,6 @@ try {
 } catch (e) {
   check('srs run', false, e.stack?.split('\n').slice(0, 3).join(' / '));
 }
-T.finish();
+console.log(results.join('\n'));
+console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: ${results.length - failed}/${results.length}`);
+process.exit(failed ? 1 : 0);

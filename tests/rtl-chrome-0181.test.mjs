@@ -1,4 +1,4 @@
-// (lane P1) · the running header and footer mirror in Arabic, and a user-manual step stays whole.
+// 0.18.1 (lane P1) · the running header and footer mirror in Arabic, and a user-manual step stays whole.
 //   1. chrome, in the markup: the stock band (no doc.chrome) gets dir=rtl in Arabic only (English is byte-identical to before: no dir attribute);
 //      chromeDefaults has the same logical slots in both languages (start/end flip with the direction); folioOf puts the Arabic folio at the left.
 //   2. chrome, in the PDF: one PDF per language of a typed document (user manual) and of the legacy untyped SRS sample, read back with poppler's
@@ -12,15 +12,21 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { REPO, exportPdf, loadTheme, i18n } from '../engine/export.mjs';
-import { suite, launchChrome } from './_harness.mjs';
+import { chromium } from 'playwright-core';
+import { REPO, exportPdf, loadTheme, launchOptions, i18n } from '../engine/export.mjs';
 import { config } from '../engine/config.mjs';
 import { chromeTemplates, chromeDefaults, folioOf } from '../engine/render.mjs';
 import * as DT from '../engine/doctypes.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-1109-rtlchrome-'));
 process.env.BW_LOCAL_DIR = path.join(tmp, 'local');
-const S = suite('rtl-chrome-0181'); const { check } = S;
+const results = [];
+let failed = 0;
+const check = (name, ok, detail = '') => {
+  const line = `${ok ? 'PASS' : 'FAIL'}  rtl-chrome-0181: ${name}${detail && !ok ? '  | ' + String(detail).replace(/\s+/g, ' ').slice(0, 300) : ''}`;
+  results.push(line);
+  if (!ok) failed += 1;
+};
 const theme = loadTheme();
 const MM = 72 / 25.4;
 const MARGIN = 16 * MM; // the band's padding (engine/render.mjs chromeTemplates)
@@ -76,7 +82,7 @@ const SAMPLES = (ed) => ({
 }
 
 // ── 2 + 3. the PDFs ─────────────────────────────────────────────────────────
-const browser = await launchChrome(['--bw-session=bw-1109']);
+const browser = await chromium.launch({ ...launchOptions(), args: [...(launchOptions().args || []), '--bw-session=bw-1109'] });
 try {
   process.env.BW_FONT_NORM_DIR = path.join(tmp, 'norm');
   const pdfs = {};
@@ -143,4 +149,6 @@ try {
   await browser.close().catch(() => {});
   fs.rmSync(tmp, { recursive: true, force: true });
 }
-S.finish();
+console.log(results.join('\n'));
+console.log(failed ? `\n${failed} FAILED` : `\nrtl-chrome-0181: all ${results.length} checks passed`);
+process.exit(failed ? 1 : 0);

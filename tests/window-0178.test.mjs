@@ -1,4 +1,4 @@
-// note O2: the host switch keeps ONE window. Turning the host ON in the editor opened from disk (file://) replaces that page, in place, with the served
+// 0.17.8 note O2: the host switch keeps ONE window. Turning the host ON in the editor opened from disk (file://) replaces that page, in place, with the served
 // editor (the host serves that same file); turning it OFF in that served tab opens the editor from disk as a new window at the served window's geometry and
 // closes the served tab (an http page cannot navigate to file://). Sandbox only: temp state, a free port, BW_BROWSER_STUB (no browser is launched by the host),
 // no registry, no Desktop, never the real host on 4317.
@@ -11,10 +11,10 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { launch, tmpDir, shRoot, sleep, until, REPO } from './spell-helper.mjs';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { suite } from './_harness.mjs';
 
-const S = suite("window");
-const { check, results } = S;
+const results = [];
+let failed = 0;
+const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  window: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
 const tmp = tmpDir('bw-window-');
 const stub = path.join(tmp, 'browser.jsonl');
 const env = { ...process.env, BW_LOCAL_DIR: path.join(tmp, 'local'), BW_STATE_DIR: path.join(tmp, 'state'), BW_WORKSPACE: path.join(tmp, 'ws'), BW_POWER_GRACE_MS: '300', BW_NO_BROWSER: '1', BW_NO_PROTOCOL: '1', BW_BROWSER_STUB: stub };
@@ -107,4 +107,6 @@ try {
   handler('business-wrap://stop');
   await until(async () => !(await up(P)), 15000);
 }
-S.finish();
+console.log(results.join('\n'));
+console.log(failed ? `\nFAILED: ${failed}` : `\nwindow-0178: all ${results.length} checks passed`);
+process.exit(failed ? 1 : 0);

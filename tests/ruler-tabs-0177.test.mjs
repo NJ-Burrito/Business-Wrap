@@ -1,4 +1,4 @@
-// (bw177, tabs lane): Word-style TAB STOPS on the ruler.
+// 0.17.7 (bw177, tabs lane): Word-style TAB STOPS on the ruler.
 //  - a selector at the ruler's corner (start, center, end, decimal); a click on the ruler adds a stop, a drag moves it, a drag off the ruler removes it,
 //    the arrows move a focused stop and Delete removes it: each change is ONE undoable edit, stored as style.tabs [{pos mm, align}], mirrored in Arabic;
 //  - Word's default grid (every 1.27 cm) drawn faint past the last stop;
@@ -13,15 +13,15 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { REPO, exportPdf, exportDocx, loadTheme, i18n } from '../engine/export.mjs';
+import { launchOptions, REPO, exportPdf, exportDocx, loadTheme, i18n } from '../engine/export.mjs';
 import { renderDocument } from '../engine/render.mjs';
 import { docxParts, poppler } from './fixtures/doc-model/util.mjs';
-import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-tabs0177-'));
-const S = suite("ruler-tabs-0177");
-const { check } = S;
+let failed = 0;
+const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  ruler-tabs-0177: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
 const theme = loadTheme();
 const near = (a, b, e = 0.6) => typeof a === 'number' && Math.abs(a - b) <= e;
 const blank = (loc) => JSON.parse(fs.readFileSync(path.join(REPO, 'samples', 'blank', `document.${loc}.json`), 'utf8'));
@@ -90,7 +90,7 @@ const optsOf = (loc) => ({ locale: loc, labels: i18n().doc[loc], theme, fontCss:
 }
 
 // ── 2. the editor ──
-const browser = await launchChrome();
+const browser = await chromium.launch(launchOptions());
 let seq = 0;
 async function open(doc, loc, vp = [1500, 900]) {
   const dir = path.join(tmp, `d${(seq += 1)}`);
@@ -352,4 +352,5 @@ for (const loc of ['ar', 'en']) {
 }
 await browser.close();
 fs.rmSync(tmp, { recursive: true, force: true });
-S.finish();
+console.log(failed ? `\n${failed} FAILED` : '\nall passed');
+process.exit(failed ? 1 : 0);

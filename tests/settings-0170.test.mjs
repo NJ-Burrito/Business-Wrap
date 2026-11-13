@@ -1,4 +1,4 @@
-// lane settings, owner notes 8, 9, 10, 17, in real Chrome:
+// 0.17.0 lane settings, owner notes 8, 9, 10, 17, in real Chrome:
 //   N8  Settings > About shows only what a user needs: the name, the version, the release date and the repository (no licence, no credits, no trust-limit note)
 //   N9  Settings is reworked: cards open and ordered (Preferences first), switches and a sliding pill, both themes (light, dim-navy dark) readable
 //   N10 the host on/off control exists ONLY in the top bar, a green / red dot beside «Connected :port» / «Offline»; nothing of it in Settings (no toggle, no power-off button, no Local server card)
@@ -17,10 +17,10 @@ import { pathToFileURL } from 'node:url';
 import { launch, tmpDir, shRoot, sleep, until, REPO } from './spell-helper.mjs';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { serve } from '../engine/serve.mjs';
-import { suite } from './_harness.mjs';
 
-const S = suite("settings-0170");
-const { check, results } = S;
+const results = [];
+let failed = 0;
+const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  settings-0170: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
 const tmp = tmpDir('bw-set170-');
 process.env.BW_LOCAL_DIR = path.join(tmp, 'local');
 const free = () => new Promise((ok) => { const s = net.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => ok(p)); }); });
@@ -60,7 +60,7 @@ async function open(url, { ui = 'en', dark = false, calm = false, ports } = {}) 
     if (pp) window.__bwProbePorts = pp;
     try { localStorage.setItem('bw:ui', u); localStorage.setItem('bw:dark', d ? '1' : '0'); localStorage.setItem('bw:calm', c ? '1' : '0'); } catch { /* none */ }
     window.__launched = [];
-    window.addEventListener('bw:follow', (e) => { e.preventDefault(); (window.__follow ||= []).push(e.detail.url); }); // the file:// page would replace itself with the served editor; the suite keeps its page
+    window.addEventListener('bw:follow', (e) => { e.preventDefault(); (window.__follow ||= []).push(e.detail.url); }); // 0.17.8: the file:// page would replace itself with the served editor; the suite keeps its page
     document.addEventListener('click', (e) => { const a = e.composedPath().find((n) => n.matches?.('a[href^="business-wrap:"]')); if (a) { window.__launched.push(a.getAttribute('href')); e.preventDefault(); } }, true);
   }, { ui, dark, calm, ports });
   await page.goto(url);
@@ -110,7 +110,7 @@ try {
   const grpOpen = (pg) => shRoot(pg, (r) => [...r.querySelectorAll('.drawer details')].map((d) => d.open));
   const stk = await shRoot(a, (r) => ({ sw: r.querySelectorAll('.drawer .set-sw input[type="checkbox"]').length, pill: getComputedStyle(r.querySelector('.drawer .set-seg'), '::before').content, segs: r.querySelectorAll('.drawer .set-seg').length }));
   check('N9: two switches (reduced motion, auto-check), three segmented controls with a pill', stk.sw === 2 && stk.segs === 3 && stk.pill !== 'none', JSON.stringify(stk));
-  // (owner): every Settings group is collapsed when the panel opens, in both languages; one click opens Preferences
+  // 0.18.2 (owner): every Settings group is collapsed when the panel opens, in both languages; one click opens Preferences
   for (const [lang, pg] of [['ar', a], ['en', (await open(`http://127.0.0.1:${sp}/`, { ui: 'en', ports: [sp] })).page]]) {
     if (lang === 'en') await openSettings(pg);
     const g0 = await grpOpen(pg);
@@ -224,4 +224,6 @@ try {
   await browser.close();
   fs.rmSync(tmp, { recursive: true, force: true });
 }
-S.finish();
+console.log(results.join('\n'));
+console.log(failed ? `\n${failed} settings-0170 check(s) FAILED` : `\nAll ${results.length} settings-0170 checks passed`);
+process.exit(failed ? 1 : 0);

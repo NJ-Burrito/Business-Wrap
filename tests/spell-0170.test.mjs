@@ -1,4 +1,4 @@
-// lane spell (owner notes 2 and 12): spelling is ON for a new user (an explicit off stays off), and the Arabic and English checking is smarter.
+// 0.17.0 lane spell (owner notes 2 and 12): spelling is ON for a new user (an explicit off stays off), and the Arabic and English checking is smarter.
 // Real browser against the local server, through the real callers: the page's own scan (the marks the user sees) and the suggestion list the panel shows.
 //   - default: nothing stored -> on; bw:spell:on=0 -> off; old per-edition keys all 0 -> off, one 1 -> on
 //   - false flags: tests/fixtures/spell-0170/{ar,en}.json «correct» (affixed forms, loan words, British spellings, possessives, plurals, compounds, technical terms) put in the
@@ -15,10 +15,10 @@ import path from 'node:path';
 import { launch, tmpDir, sleep, until, REPO } from './spell-helper.mjs';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { serve } from '../engine/serve.mjs';
-import { suite } from './_harness.mjs';
 
-const S = suite("spell-0170");
-const { check, results } = S;
+const results = [];
+let failed = 0;
+const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  spell-0170: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
 const note = (s) => results.push(`INFO  spell-0170: ${s}`);
 const fx = (n) => JSON.parse(fs.readFileSync(path.join(REPO, 'tests', 'fixtures', 'spell-0170', `${n}.json`), 'utf8'));
 const FX = { ar: fx('ar'), en: fx('en') };
@@ -165,4 +165,6 @@ try {
   for (const h of opened) { try { await h.close(); } catch { /* closed */ } }
   await browser.close();
 }
-S.finish();
+console.log(results.join('\n'));
+console.log(`\n${results.filter((r) => r.startsWith('PASS') || r.startsWith('FAIL')).length - failed}/${results.filter((r) => r.startsWith('PASS') || r.startsWith('FAIL')).length} passed`);
+process.exit(failed ? 1 : 0);

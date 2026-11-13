@@ -10,14 +10,16 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { REPO, exportPdf, exportDocx, loadTheme, printHtml } from '../engine/export.mjs';
+import { launchOptions, REPO, exportPdf, exportDocx, loadTheme, printHtml } from '../engine/export.mjs';
 import { applyOps } from '../engine/edits.mjs';
 import { pageTexts, docxParts, pngUri, sample } from './fixtures/doc-model/util.mjs';
-import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-objects-'));
-const S = suite('objects'); const { check } = S;
+const results = [];
+let failed = 0;
+const check = (name, ok, detail = '') => { const line = `${ok ? 'PASS' : 'FAIL'}  objects: ${name}${detail && !ok ? '  — ' + detail : ''}`; results.push(line); console.log(line); if (!ok) failed += 1; };
 const theme = loadTheme();
 const IMG = pngUri(60, 60);
 const base = sample(REPO, 'en');
@@ -31,7 +33,7 @@ const withWrap = (mode) => (mode === 'inline'
   : applyOps(base, [{ op: 'replace', path: `${P}/id`, value: 'b-fix' }, { op: 'replace', path: '/overlays', value: [{ id: 'ov1', kind: 'image', src: IMG, mode: 'anchor', anchor: 'b-fix', wrap: mode, x: 0, y: 0, w: 30 }] }]));
 
 // ── A15: print layout per mode (one headless page over the print HTML) ──
-const browser = await launchChrome();
+const browser = await chromium.launch(launchOptions());
 try {
   const pg = await browser.newPage({ viewport: { width: 800, height: 1000 } });
   for (const mode of MODES) {
@@ -91,7 +93,7 @@ const fileA = path.join(tmp, 'a.html');
 const fileB = path.join(tmp, 'b.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: fileA, set: 'objects-a', watermarkDir: null });
 buildEditor({ inputs: [path.join(REPO, 'samples', 'blank')], out: fileB, set: 'objects-b', watermarkDir: null });
-const b2 = await launchChrome();
+const b2 = await chromium.launch(launchOptions());
 let tbDoc;
 try {
   const ctx = await b2.newContext({ viewport: { width: 1600, height: 900 } });
@@ -192,4 +194,6 @@ try {
   check('DOCX: a wps:txbx holds the box text, both font slots', txbx.includes('BOXWORDS') && /<w:rFonts w:ascii="[^"]+" w:hAnsi="[^"]+" w:cs="[^"]+"/.test(txbx));
 }
 fs.rmSync(tmp, { recursive: true, force: true });
-S.finish();
+console.log(results.join('\n'));
+console.log(failed ? `\nFAILED: ${failed}/${results.length}` : `\nALL ${results.length} PASS`);
+process.exit(failed ? 1 : 0);

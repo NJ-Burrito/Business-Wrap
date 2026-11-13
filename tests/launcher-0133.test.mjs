@@ -1,4 +1,4 @@
-// Settings › start / stop servers: the business-wrap: URL protocol and its handler. 0.15.0 (lane spell, owner note 15): the Start / Stop / Open
+// 0.13.3 Settings › start / stop servers: the business-wrap: URL protocol and its handler. 0.15.0 (lane spell, owner note 15): the Start / Stop / Open
 // buttons and the stop-confirm dialog are replaced by ONE toggle (editor/ext/18-server.js); this suite drives the toggle in Settings, the flows are the same.
 //
 //   node tests/launcher-0133.test.mjs
@@ -12,13 +12,14 @@ import net from 'node:net';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { REPO } from '../engine/export.mjs';
+import { chromium } from 'playwright-core';
+import { launchOptions, REPO } from '../engine/export.mjs';
 import { buildEditor } from '../engine/build-editor.mjs';
 import * as P from '../engine/protocol.mjs';
-import { suite, launchChrome } from './_harness.mjs';
 
-const S = suite("launcher");
-const { check, results } = S;
+const results = [];
+let failed = 0;
+const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  launcher: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-launcher-'));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const until = async (fn, ms = 20000) => { for (const t0 = Date.now(); Date.now() - t0 < ms; await sleep(150)) if (await fn()) return true; return false; };
@@ -55,7 +56,7 @@ const hostPort = () => { try { return JSON.parse(fs.readFileSync(path.join(env.B
 
 const realKey = () => (process.platform === 'win32' ? spawnSync('reg.exe', ['query', 'HKCU\\Software\\Classes\\business-wrap', '/s'], { encoding: 'utf8' }).stdout || 'absent' : 'n/a');
 const realBefore = realKey();
-const browser = await launchChrome();
+const browser = await chromium.launch(launchOptions());
 const pids = [];
 const shRoot = (page, fn, arg) => page.evaluate(([src, a]) => { const r = document.getElementById('bw-ui-host').shadowRoot; return new Function('r', 'a', `return (${src})(r, a)`)(r, a); }, [fn.toString(), arg]);
 async function openPage(ctx, url, ports) {
@@ -65,26 +66,26 @@ async function openPage(ctx, url, ports) {
   await page.addInitScript(({ ports: pp }) => {
     if (pp) window.__bwProbePorts = pp; // test hook of editor/settings.js
     window.__launched = [];
-    window.addEventListener('bw:follow', (e) => { e.preventDefault(); (window.__follow ||= []).push(e.detail.url); }); // the file:// page would replace itself with the served editor; the suite keeps its page
+    window.addEventListener('bw:follow', (e) => { e.preventDefault(); (window.__follow ||= []).push(e.detail.url); }); // 0.17.8: the file:// page would replace itself with the served editor; the suite keeps its page
     document.addEventListener('click', (e) => { const a = e.target.closest?.('a[href^="business-wrap:"]'); if (a) { window.__launched.push(a.getAttribute('href')); e.preventDefault(); } }, true); // a business-wrap: link is recorded, not followed
     window.__flushes = 0;
     const add = EventSource.prototype.addEventListener;
     EventSource.prototype.addEventListener = function (t, f, o) { return add.call(this, t, t === 'flush' ? (...a) => { window.__flushes++; return f(...a); } : f, o); };
-    // the event stream lives in a SharedWorker, so the page has no EventSource to hook; a flush event always ends in one beacon to /api/session/flush (12-session.js flush())
+    // 0.15.0: the event stream lives in a SharedWorker, so the page has no EventSource to hook; a flush event always ends in one beacon to /api/session/flush (12-session.js flush())
     const beacon = navigator.sendBeacon?.bind(navigator);
     if (beacon) navigator.sendBeacon = (u, d) => { if (/\/api\/session\/flush/.test(String(u))) window.__flushes++; return beacon(u, d); };
   }, { ports });
   try { await (await ctx.newCDPSession(page)).send('Emulation.setFocusEmulationEnabled', { enabled: true }); } catch { /* not Chromium */ } // several pages at once: each behaves as focused
   await page.goto(url);
   await page.waitForFunction(() => window.BW?.ready);
-  await page.evaluate(() => { try { window.BW.EXT.session?.on?.('flush', () => { window.__flushes++; }); } catch { /* no session module (file://) */ } }); // the event stream lives in a SharedWorker; the page sees a flush through the session hub
+  await page.evaluate(() => { try { window.BW.EXT.session?.on?.('flush', () => { window.__flushes++; }); } catch { /* no session module (file://) */ } }); // 0.15.0: the event stream lives in a SharedWorker; the page sees a flush through the session hub
   await sleep(500);
   await sleep(700);
   await page.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.querySelector('[data-s="new"]')?.click()); // a served tab of a host that has other tabs asks «resume?»: answer «start fresh», it is not what is tested here
-  await page.waitForFunction(() => /^(online|offline|error)$/.test(document.getElementById('bw-ui-host').shadowRoot.querySelector('.island .srv-toggle')?.dataset.st || ''), null, { timeout: 15000 }); // the top-bar switch is the only server control
+  await page.waitForFunction(() => /^(online|offline|error)$/.test(document.getElementById('bw-ui-host').shadowRoot.querySelector('.island .srv-toggle')?.dataset.st || ''), null, { timeout: 15000 }); // 0.17.0: the top-bar switch is the only server control
   return page;
 }
-const card = (page) => shRoot(page, (r) => { const tg = r.querySelector('.island .srv-toggle'); const st = tg?.dataset.st || ''; const word = tg?.querySelector('.srv-w')?.textContent || ''; return { status: word, st, start: st === 'offline' || st === 'error', stop: st === 'online', open: st === 'online' ? (/:(\d+)\s*$/.exec(word)?.[1] || null) : null, word }; }); // read from the top-bar switch; open = the port it names
+const card = (page) => shRoot(page, (r) => { const tg = r.querySelector('.island .srv-toggle'); const st = tg?.dataset.st || ''; const word = tg?.querySelector('.srv-w')?.textContent || ''; return { status: word, st, start: st === 'offline' || st === 'error', stop: st === 'online', open: st === 'online' ? (/:(\d+)\s*$/.exec(word)?.[1] || null) : null, word }; }); // 0.17.0: read from the top-bar switch; open = the port it names
 // the one toggle starts when it is offline and stops when it is online (srvStart / srvStop name the intent; srvOpen is the link beside it)
 const press = (page) => shRoot(page, (r) => r.querySelector('.island .srv-toggle').click()); // the top-bar switch starts when offline and stops when online
 const dlg = (page) => shRoot(page, (r) => { const d = r.querySelector('.dialog'); return { open: !d.hidden, text: d.textContent, focus: d.querySelector(':focus')?.dataset.k || r.activeElement?.dataset.k, hasFocus: document.hasFocus(), vis: document.visibilityState, ae: r.activeElement?.outerHTML?.slice(0, 160) }; });
@@ -149,6 +150,8 @@ try {
     const removed = P.unregister({ hive }).removed;
     spawnSync('reg.exe', ['delete', hive, '/f'], { windowsHide: true }); // the temp parent key too
     check('protocol: the temp key is gone and the real HKCU\\Software\\Classes\\business-wrap is exactly as it was', removed && spawnSync('reg.exe', ['query', hive], { encoding: 'utf8' }).status !== 0 && realKey() === realBefore, `${realBefore} / ${realKey()}`);
+  } else {
+    check('protocol: (Windows registry round trip is skipped on this platform)', true);
   }
   const lr = P.register({ platform: 'linux', dir, mime: false });
   const ls1 = P.status({ platform: 'linux', dir });
@@ -212,7 +215,7 @@ try {
   check('start/two servers: two browsers each find the servers on both ports on their own, launch nothing, and offer Open', okA && okB && !(await pa.evaluate(() => window.__launched.length)) && !(await pb.evaluate(() => window.__launched.length)), JSON.stringify([await card(pa), await card(pb)]));
 
   // ── STOP (served page) ──
-  // no confirm dialog; one press stops (the page saves first) and offers Undo
+  // 0.15.0: no confirm dialog; one press stops (the page saves first) and offers Undo
   const sb = await openPage(ctxB, `http://127.0.0.1:${B.port}/`, [A.port, B.port]);
   const sa = await openPage(ctxA, `http://127.0.0.1:${A.port}/`, [A.port, B.port]);
   await sa.waitForTimeout(500);
@@ -295,4 +298,6 @@ try {
   for (const p of pids) { try { process.kill(p); } catch { /* gone */ } }
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* temp */ }
 }
-S.finish();
+console.log(results.join('\n'));
+console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: launcher ${results.length - failed}/${results.length}`);
+process.exit(failed ? 1 : 0);
