@@ -135,7 +135,7 @@ const FOLDER_ICONS = {"root": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox
     } catch { /* the card refreshes on the next open */ }
   }
 
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const sleep = BWU.sleep;
   async function loop() {
     for (;;) {
       try {

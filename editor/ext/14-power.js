@@ -30,7 +30,7 @@ const PW = (() => {
   /** The server answers for a moment after the answer (the grace): once it is really gone the toggle shows «offline», so «Turn on» can start it. */
   async function waitDown() {
     for (const t0 = Date.now(); Date.now() - t0 < 15000;) {
-      await new Promise((r) => setTimeout(r, 400));
+      await BWU.sleep(400);
       try { await fetch('/api/version', { cache: 'no-store', signal: AbortSignal.timeout(1500) }); } catch { EXT.server?.markOff?.(); return; }
     }
   }

@@ -11,14 +11,7 @@ const LIB = (() => {
   const pending = {}; // unsaved entries (a new blank document, before its first Save): id → {origin, createdAt}
   const mem = new Map(); // IndexedDB unavailable (private window, blocked storage): this session only
   let dbp = null;
-  const idb = () => (dbp ||= new Promise((ok, no) => {
-    try {
-      const r = indexedDB.open('bw-library', 1);
-      r.onupgradeneeded = () => r.result.createObjectStore('docs', { keyPath: 'id' });
-      r.onsuccess = () => ok(r.result);
-      r.onerror = () => no(r.error);
-    } catch (e) { no(e); }
-  }).catch(() => null));
+  const idb = () => (dbp ||= BWU.idbOpen('bw-library', 'docs', { keyPath: 'id' }).catch(() => null));
   const req = async (mode, f) => {
     const db = await idb();
     if (!db) return f(null);
@@ -38,8 +31,7 @@ const LIB = (() => {
   const uuid = () => globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   const isDoc = (id) => /^doc-/.test(String(id || ''));
   async function hashOf(raw) {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
-    return `sha256:${[...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+    return `sha256:${await BWU.sha256(raw)}`;
   }
   /* One title (review 2 row 2): the cover title («عنوان الغلاف», /control/coverTitle) and the document title
    * («عنوان الوثيقة», /control/title = "<kind>: <service name>") say the same service name. Editing the cover
@@ -383,7 +375,7 @@ const LIB = (() => {
     const e = await get(id);
     if (!e) return null;
     const now = new Date().toISOString();
-    const copy = { ...JSON.parse(JSON.stringify(e)), id: `doc-${uuid()}`, origin: 'copy', createdAt: now, savedAt: now, from: id };
+    const copy = { ...BWU.clone(e), id: `doc-${uuid()}`, origin: 'copy', createdAt: now, savedAt: now, from: id };
     delete copy.deletedAt;
     delete copy.htmlFiles; // the copy gets its own file at its first Save, never the source's
     delete copy.prov; // the copy forks the source's live log (31-provenance follows copy.from), not the source's import-time log
@@ -397,7 +389,7 @@ const LIB = (() => {
   /* «نسخ كقالب»: a document's design, header/footer items, logos, page setup and chapter/section titles, with empty bodies */
   const isTpl = (e) => e?.kind === 'template';
   function emptied(doc) {
-    const x = JSON.parse(JSON.stringify(doc));
+    const x = BWU.clone(doc);
     for (const c of x.chapters || []) for (const s of c.sections || []) s.blocks = [{ kind: 'prose', paragraphs: [''] }];
     Object.assign(x, { revisions: [], approvals: [], openQuestions: [] });
     delete x.harvest; delete x.manual;
@@ -410,7 +402,7 @@ const LIB = (() => {
     const now = new Date().toISOString();
     const editions = {};
     for (const [ed, e] of Object.entries(M[id])) editions[ed] = { raw: JSON.stringify(emptied(e.doc), null, 1) };
-    const tpl = { id: `tpl-${uuid()}`, kind: 'template', title: titleOf(id), from: id, createdAt: now, savedAt: now, theme: JSON.parse(JSON.stringify(S.theme)), editions };
+    const tpl = { id: `tpl-${uuid()}`, kind: 'template', title: titleOf(id), from: id, createdAt: now, savedAt: now, theme: BWU.clone(S.theme), editions };
     await put(tpl);
     toast(t('libTplSaved', { name: tpl.title }), 'ok');
     return tpl;
@@ -418,7 +410,7 @@ const LIB = (() => {
   async function fromTemplate(id) {
     const tpl = await get(id);
     if (!isTpl(tpl)) return null;
-    if (tpl.theme) S.theme = JSON.parse(JSON.stringify(tpl.theme));
+    if (tpl.theme) S.theme = BWU.clone(tpl.theme);
     return fromDocs(Object.fromEntries(Object.entries(tpl.editions).map(([ed, x]) => [ed, x.raw])), 'template', false);
   }
 

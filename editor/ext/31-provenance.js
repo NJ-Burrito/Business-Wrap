@@ -8,7 +8,7 @@ PV.ready = new Promise((res) => { PV.readyRes = res; }); // resolved by boot onc
 const pvHttp = () => location.protocol.startsWith('http');
 
 function pvIdb(name, store) {
-  const open = () => new Promise((res, rej) => { const r = indexedDB.open(name, 1); r.onupgradeneeded = () => r.result.createObjectStore(store); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); r.onblocked = () => rej(new Error('idb blocked')); });
+  const open = () => BWU.idbOpen(name, store, { blocked: true });
   const run = async (mode, f) => { const db = await open(); try { return await new Promise((res, rej) => { const tx = db.transaction(store, mode); const r = f(tx.objectStore(store)); tx.oncomplete = () => res(r?.result); tx.onerror = () => rej(tx.error); }); } finally { db.close(); } };
   return { get: (k) => run('readonly', (s) => s.get(k)), put: (k, v) => run('readwrite', (s) => s.put(v, k)) };
 }
@@ -99,7 +99,7 @@ async function pvLoad(svc, snap = null) {
       if (ent?.from && !pool.some((x) => x.doc === ent.from)) { const m2 = await MIRROR.get(ent.from); if (m2.log) pool.push({ doc: ent.from, ...(await BWLOG1.unseal(m2.log, ent.from)) }); } // a copy names its source (10-library)
       let best = null;
       for (const x of pool) { const k = x.entries.findLastIndex((e) => e.docHash === dh); if (k >= 0 && (!best || k > best.k)) best = { x, k }; }
-      if (best) { L.entries = JSON.parse(JSON.stringify(best.x.entries.slice(0, best.k + 1))); L.src = 'fork'; L.from = best.x.doc; }
+      if (best) { L.entries = BWU.clone(best.x.entries.slice(0, best.k + 1)); L.src = 'fork'; L.from = best.x.doc; }
     }
   } catch { L.verdict = { ok: false, issues: [{ seq: 0, reason: 'unreadable' }] }; L.entries = []; return (PV.logs[svc] = L); }
   // an edited document that never had a Business-Wrap log: made before 0.13 (no `bwlog` mark, which every 0.13+ Save-HTML
@@ -142,7 +142,7 @@ async function pvSavedCheck(L, eds) {
   }
   for (const o of e.ops || []) {
     const a = logged.get(o.id);
-    if (!a || BWLOG1.canonical(await pvSlim(JSON.parse(JSON.stringify(a)))) !== BWLOG1.canonical(await pvSlim(JSON.parse(JSON.stringify(o))))) return { ok: false };
+    if (!a || BWLOG1.canonical(await pvSlim(BWU.clone(a))) !== BWLOG1.canonical(await pvSlim(BWU.clone(o)))) return { ok: false };
   }
   return { ok: true };
 }
@@ -154,7 +154,7 @@ const pvState = (svc) => BWLOG1.canonical(BWLOG1.stateOf(M[svc]));
 const pvHard = (L) => (L?.verdict?.issues || []).filter((i) => i.reason !== 'tofu');
 const pvTofuNames = (L) => [...new Set((L?.verdict?.issues || []).filter((i) => i.reason === 'tofu').map((i) => L.entries[i.seq]?.actor?.name || t('pfNoName')))];
 const pvBad = (L) => !!L && !L.verdict.ok && pvHard(L).length > 0;
-const pvDigest = async (s) => `sha256:${BWLOG1.hex(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))))}`;
+const pvDigest = async (s) => `sha256:${await BWU.sha256(s)}`;
 /** 0.16.0 (field notes item 7) · a large string in a NEW log entry (a 300 KB logo, typed once into an op) is kept by its hash and size, not copied: {$blob, bytes, head}.
  *  The document and its edition history still hold the value, so nothing is lost and the entry still proves what was written; older entries are never touched (additive, AGENTS.md
  *  «File format and history»). Strings of 8 KB or less stay as they were. */
@@ -199,7 +199,7 @@ async function pvMirror(svc) {
 }
 /** Typing merges into one op: its final text is logged after a pause, or before anything else is logged. */
 function pvFlushTyping() {
-  for (const [key, x] of Object.entries(PV.typing)) { clearTimeout(x.timer); delete PV.typing[key]; pvAppend('op', { ed: x.ed, op: JSON.parse(JSON.stringify(x.op)), typed: true }, x.svc); }
+  for (const [key, x] of Object.entries(PV.typing)) { clearTimeout(x.timer); delete PV.typing[key]; pvAppend('op', { ed: x.ed, op: BWU.clone(x.op), typed: true }, x.svc); }
 }
 function pvPings(svc = S.svc) { const p = EXT.profile?.takePings() || []; if (p.length) pvAppend('x-active', { pings: p }, svc); }
 /** Anything that changed the document outside a logged edit (an import merge, a recovered draft) is logged as a merge. */
@@ -217,7 +217,7 @@ function pvCatchUp(svc = S.svc) {
     const seen = new Set(L.entries.filter((e) => e.data?.op?.id).map((e) => e.data.op.id));
     const ops = Object.entries(M[svc]).flatMap(([ed, e]) => e.ops.filter((o) => !seen.has(o.id)).map((o) => ({ ed, op: o })));
     await pvRenamed(L, new Date().toISOString(), now);
-    await BWLOG1.append(L, { kind: 'merge', data: { ops: JSON.parse(JSON.stringify(ops)) }, actor: who, keys: PV.keys, docHash: now });
+    await BWLOG1.append(L, { kind: 'merge', data: { ops: BWU.clone(ops) }, actor: who, keys: PV.keys, docHash: now });
     await pvMirror(svc); // written before the queue moves on: a tab closed right after an edit keeps it
   }).catch((e) => console.error('bwlog', e));
   return PV.q;
@@ -238,7 +238,7 @@ if (PV_ON) saveHtml = async function pvSaveHtml(embedFonts) {
   if (!L) return pvSaveHtml0(embedFonts);
   // review2 #17: the 0.13 traces outside the data block (BWLOG1.traces): <html data-bw-ledger>, <meta name="bw-ledger">
   // (document id + the state hash the log vouches for) and a second hash source in the CSP script-src (matches no script)
-  const h = BWLOG1.b64(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`bwlog/v1/${L.doc}`))));
+  const h = BWLOG1.b64(await BWU.digest(`bwlog/v1/${L.doc}`));
   const meta = `<meta name="${BWLOG1.TRACE_META}" content="bwlog/v1 doc=${esc(L.doc)} state=${esc(pvLastDh(L) || '')}">`;
   const trace = (x) => (typeof x === 'string' && x.includes('id="bw-data"') ? x.replace(/<html /, `<html data-bw-ledger="${esc(L.doc)}" `).replace(/(<meta http-equiv="Content-Security-Policy" content="[^"]*?script-src )/, `$1'sha256-${h}' `).replace(/<meta charset="utf-8">/, `$&\n${meta}`) : x);
   const dl0 = download;
@@ -404,7 +404,7 @@ if (PV_ON) bwExt({
       if (kind === 'type') { const key = `${svc}|${ed}|${ops[0].id}`; clearTimeout(PV.typing[key]?.timer); PV.typing[key] = { svc, ed, op: ops[0], timer: setTimeout(pvFlushTyping, 1200) }; return; }
       pvFlushTyping();
       if (kind === 'undo' || kind === 'redo') { pvAppend('op', { ed, [kind]: ops.map((o) => o.id) }, svc); return; }
-      for (const op of ops) pvAppend('op', { ed, op: JSON.parse(JSON.stringify(op)) }, svc);
+      for (const op of ops) pvAppend('op', { ed, op: BWU.clone(op) }, svc);
     },
     // a path that switches the document without the open event (editor.js: load a JSON document, the New wizard)
     // still gets its log: the first render of a document nobody opened opens it

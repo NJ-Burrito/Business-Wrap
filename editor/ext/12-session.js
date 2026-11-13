@@ -556,7 +556,7 @@ const SESS = (() => {
     const L = () => EXT.library;
     let ingested = false;
     for (let i = 0; i < 12; i += 1) {
-      await new Promise((r) => setTimeout(r, i ? 1500 : 800));
+      await BWU.sleep(i ? 1500 : 800);
       if (!L() || !new RegExp(`[#&]doc=${encodeURIComponent(id).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(location.hash)) return;
       if (holdsDoc() && S.svc === id) return;
       if (holdsDoc()) return; // another document was opened meanwhile: leave it

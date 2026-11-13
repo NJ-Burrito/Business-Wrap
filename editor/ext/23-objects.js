@@ -102,7 +102,7 @@ const W2_OBJECTS = {
   copy(ptr = S.sel?.b) {
     const b = blockOf(ptr);
     if (!b) return false;
-    const block = JSON.parse(JSON.stringify(get(w2doc(), b.ptr)));
+    const block = BWU.clone(get(w2doc(), b.ptr));
     delete block.id; // a copy is a new block: anchors stay with the original
     ls.set(W2_CLIP, JSON.stringify({ kind: 'bw-block', v: 1, block }));
     toast(t('w2.copied'), 'ok');

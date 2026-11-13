@@ -196,7 +196,7 @@ const PJ = (() => {
     const ol = d?.querySelector('.lib ol.lib-docs');
     if (ol && !ol.dataset.pj) decorate(d);
   }).observe(root, { childList: true, subtree: true });
-  return { state: () => JSON.parse(JSON.stringify(st)), live, trashed, of, create, rename, remove, restore, purge, assign, members, newIn, importInto, onOpen, sync, watch, setFilter: (f) => { filter = f; repaint(); } };
+  return { state: () => BWU.clone(st), live, trashed, of, create, rename, remove, restore, purge, assign, members, newIn, importInto, onOpen, sync, watch, setFilter: (f) => { filter = f; repaint(); } };
 })();
 
 IC.pjNew = '<svg aria-hidden="true" focusable="false" class="ic" data-ic="pjNew" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><path d="M12 10v6"/><path d="M9 13h6"/></svg>';
@@ -214,7 +214,7 @@ const PX = (() => {
   const served = location.protocol.startsWith('http');
   const api = async (u, o) => { const r = await fetch(u, o); const b = await r.json().catch(() => ({})); if (!r.ok) throw Object.assign(new Error(b.error || `HTTP ${r.status}`), { body: b, status: r.status }); return b; };
   const post = (u, b) => api(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) });
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const sleep = BWU.sleep;
   const kb = (n) => (n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
   const safe = (s) => String(s || 'document').normalize('NFC').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 80) || 'document';
   /** One dialog whose body is rebuilt in place: ask(html, [[key, label, primary]]) resolves the pressed key ('cancel' when it is dismissed). */
@@ -280,7 +280,7 @@ const PX = (() => {
     e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cdLen, true); e.setUint32(16, pos, true);
     return new Blob([...parts, ...cd, new Uint8Array(e.buffer)], { type: 'application/zip' });
   }
-  const sha256 = async (s) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s).replace(/\r\n/g, '\n'))))].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const sha256 = (s) => BWU.sha256(String(s).replace(/\r\n/g, '\n'));
 
   /* ── export ── */
   const FMT = ['html', 'pdf', 'docx', 'edits'];

@@ -224,5 +224,5 @@ bwExt({
   cmds: [{ id: 'bulkEdit', group: 'document', edit: false }],
   actions: { bulkEdit: () => openDrawer('bulk') },
   drawers: { bulk: bkDrawer },
-  expose: { bulk: { preview: bkPreview, apply: bkApply, undo: bkUndo, spec: bkSpec, openFor: bkOpenFor, repaint: bkRepaint, last: () => JSON.parse(JSON.stringify(BK.last)), pick: (ids) => { BK.picked = new Set(ids); bkRepaint(); } } },
+  expose: { bulk: { preview: bkPreview, apply: bkApply, undo: bkUndo, spec: bkSpec, openFor: bkOpenFor, repaint: bkRepaint, last: () => BWU.clone(BK.last), pick: (ids) => { BK.picked = new Set(ids); bkRepaint(); } } },
 });

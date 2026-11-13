@@ -67,7 +67,7 @@ const W2_CHROME = {
     w2commit([...pre, ins], { group });
     if (item.kind === 'logo' && S.both && hasOther()) { // a logo has no language: both editions print it (DOCS-04); the second commit is the same undo step
       const o = other(S.ed), e = cur(o), n0 = e.ops.length;
-      commit([...(e.doc.chrome ? [] : [{ op: 'replace', path: '/chrome', value: chromeDefaults(o), old: undefined }]), JSON.parse(JSON.stringify(ins))], { ed: o, mirror: false, rerender: false, group });
+      commit([...(e.doc.chrome ? [] : [{ op: 'replace', path: '/chrome', value: chromeDefaults(o), old: undefined }]), BWU.clone(ins)], { ed: o, mirror: false, rerender: false, group });
       e.ops.slice(n0).forEach((op, k) => { op.id = `${group}.m${k}`; });
     }
     W2.sel = { part, i: n, pageB: S.sel?.b || w2pageBlock(null) }; // F2 · 28: "this page" = where it was added
