@@ -71,7 +71,8 @@ export function writeAll() {
     for (const s of Object.values(o.mcpServers || {})) s.args = (s.args || []).map((a) => a.replace(/^business-wrap@.+$/, `business-wrap@${v}`).replace(/^(github:NJ-Burrito\/Business-Wrap#v).+$/, `$1${v}`));
   });
   json('.claude-plugin/marketplace.json', (o) => { if (o.metadata) o.metadata.version = v; for (const p of o.plugins || []) p.version = v; });
-  json('mcp/server.json', (o) => { o.version = v; for (const p of o.packages || []) p.version = v; });
+  // server.json is hand-formatted (compact arrays): patch the version values in place, keep the layout.
+  { const prev = txt('mcp/server.json'); save('mcp/server.json', prev.replace(/("version"\s*:\s*")\d+\.\d+\.\d+(")/g, `$1${v}$2`), prev); }
   json('package-lock.json', (o) => { o.version = v; if (o.packages?.['']) o.packages[''].version = v; });
   for (const f of PIN_FILES) { const prev = txt(f); save(f, prev.replace(/(business-wrap@)\d+\.\d+\.\d+/g, `$1${v}`).replace(/(Business-Wrap#v)\d+\.\d+\.\d+/g, `$1${v}`), prev); }
   // The site is built from package.json ({{version}}), so rebuild it instead of patching html.
