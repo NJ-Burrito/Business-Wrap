@@ -2144,7 +2144,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
   <div class="rp-band"><i class="cap"></i><div class="rp-in">${code ? `<span class="rp-code"><bdi dir="ltr">${code}</bdi></span>` : ''}<div class="kicker">${lb('kicker')}</div>
     ${title}</div></div>
   <div class="rp-body">${tiles(coverFigures())}${statementBox(coverKey.statement, false)}</div>
-  <div class="cover-foot">${meta}${c.owner ? `<span${dp('/control/owner')}>${bidi(c.owner)}</span>` : ''}</div>
+  <div class="cover-foot">${meta}<span>${docId}</span>${c.owner ? `<span${dp('/control/owner')}>${bidi(c.owner)}</span>` : ''}</div>
 </div>`;
     }
     if (cv.design === 'compact') {
