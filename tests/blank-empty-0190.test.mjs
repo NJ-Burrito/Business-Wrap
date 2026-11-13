@@ -1,4 +1,4 @@
-// 0.19.0 (crew N2) · the Blank document is ONE EMPTY PAGE (owner rule 2026-11-10): no cover, no headings, no placeholder text, no sample sections,
+// (crew N2) · the Blank document is ONE EMPTY PAGE (owner rule 2026-11-10): no cover, no headings, no placeholder text, no sample sections,
 // in the Business-Wrap theme, ready to type on; Arabic and English editions. Design: work/sdlc/design/0190-n2.md.
 //   1. the contract: type.json `empty: true`, the validator accepts the real type and REFUSES an empty type that prints something (planted faults)
 //   2. compose + renderDocument (no browser): no cover, no h1-h4, no table, none of the five parts, one empty editable paragraph, no visible text

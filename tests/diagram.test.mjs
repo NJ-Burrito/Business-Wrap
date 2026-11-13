@@ -7,24 +7,23 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { DIAGRAM } from '../engine/diagram.mjs';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { exportPdf, exportDocx, loadTheme, launchOptions, fontsFor, REPO } from '../engine/export.mjs';
+import { exportPdf, exportDocx, loadTheme, fontsFor, REPO } from '../engine/export.mjs';
 import { applyOps } from '../engine/edits.mjs';
 import { config } from '../engine/config.mjs';
 import { py } from '../engine/py.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const OUT = path.join(REPO, 'out', 'diagram-test');
 const SHOTS = path.join(REPO, 'out', 'diagram-compare');
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
 fs.mkdirSync(SHOTS, { recursive: true });
-let failed = 0;
-const results = [];
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("");
+const { check, results } = S;
 const SAMPLE = path.join(REPO, 'samples', 'event-permit');
-// 0.16.1: the sample prints its workflow as two figures; this suite drives ONE whole drawing, so it reads the whole-drawing copy of the documents
+// the sample prints its workflow as two figures; this suite drives ONE whole drawing, so it reads the whole-drawing copy of the documents
 const WHOLE = path.join(REPO, 'tests', 'fixtures', 'permit-whole');
 const wf = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'workflow.json'), 'utf8'));
 const theme = loadTheme();
@@ -39,7 +38,7 @@ for (const loc of ['ar', 'en']) {
   check(`${loc}: node kinds kept (5 decisions, 4 staff, 1 start, 1 payment, 1 rework, 1 ok, 1 stop)`, kinds('decision') === 5 && kinds('staff') === 4 && kinds('start') === 1 && kinds('payment') === 1 && kinds('rework') === 1 && kinds('ok') === 1 && kinds('stop') === 1);
   const wires = r.items.filter((x) => x.t === 'line' && x.wire && x.id);
   check(`${loc}: one routed wire per edge, three line classes`, wires.length === m.edges.length && ['main', 'return', 'stop'].every((k) => wires.some((w) => w.wire === k)), `${wires.length}/${m.edges.length}`);
-  check(`${loc}: every wire is orthogonal`, wires.every((w) => w.route.every((p, i) => !i || Math.abs(p[0] - w.route[i - 1][0]) < 0.6 || Math.abs(p[1] - w.route[i - 1][1]) < 0.6))); // 0.16.0: the joints (route); the drawn points of a laid-out figure carry jump arcs
+  check(`${loc}: every wire is orthogonal`, wires.every((w) => w.route.every((p, i) => !i || Math.abs(p[0] - w.route[i - 1][0]) < 0.6 || Math.abs(p[1] - w.route[i - 1][1]) < 0.6))); // the joints (route); the drawn points of a laid-out figure carry jump arcs
   const legend = r.items.filter((x) => x.t === 'text' && x.legend);
   check(`${loc}: the legend names 6 shape kinds and 3 line kinds`, legend.length === 9, String(legend.length));
   check(`${loc}: real <text>, no stroke on type, no foreignObject`, (svg.match(/<text /g) || []).length > 30 && !/<text[^>]*stroke=/.test(svg) && !svg.includes('foreignObject'));
@@ -116,7 +115,7 @@ for (const loc of ['ar', 'en']) {
 
 // ── PDF: the diagram's words are real text; DOCX: native shapes, no picture ──
 const docAr = JSON.parse(fs.readFileSync(path.join(WHOLE, 'document.ar.json'), 'utf8'));
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 try {
   const pdf = path.join(OUT, 'sample.ar.pdf');
   await exportPdf(docAr, { locale: 'ar', theme, pdfPath: pdf, browser });
@@ -237,7 +236,7 @@ try {
   // ── bend points by hand: drag a segment handle, add a bend, auto route, undo, Save HTML ──
   const model = () => page.evaluate(() => window.BW.DIAGRAM.ensure(window.BW.M[window.BW.S.svc].ar.doc.chapters[2].sections[0].blocks[0].model));
   await page.locator('main.bw-doc [data-dg-edge="e8"] .dg-hit').first().dispatchEvent('pointerdown', { button: 0, bubbles: true });
-  const seg = page.locator('main.bw-doc figure[data-dg] circle.dg-ghost').first(); // 0.15.6: a ghost on a long segment (drag it to add a joint) replaced the square on the segment
+  const seg = page.locator('main.bw-doc figure[data-dg] circle.dg-ghost').first(); // a ghost on a long segment (drag it to add a joint) replaced the square on the segment
   check('bend: a selected arrow shows ghost and corner handles', (await page.locator('main.bw-doc figure[data-dg] circle.dg-ghost').count()) >= 1 && (await page.locator('main.bw-doc figure[data-dg] circle.dg-bend').count()) >= 1, String(await page.locator('main.bw-doc figure[data-dg] circle.dg-ghost').count()));
   await seg.evaluate((el) => el.scrollIntoView({ block: 'center' }));
   const sb = await seg.boundingBox();
@@ -342,7 +341,7 @@ try {
       const sh = document.getElementById('bw-ui-host').shadowRoot;
       const bar = sh.querySelector('.island');
       // 0.14 ribbon: the tab names and the labels of the open tab's groups stand where the old section titles did
-      // 0.15.0: the selected tab always shows its word; unselected tabs may drop to their icon (aria-label keeps the name) when 13 tabs do not fit 1366 px
+      // the selected tab always shows its word; unselected tabs may drop to their icon (aria-label keeps the name) when 13 tabs do not fit 1366 px
       const st = [...sh.querySelectorAll('.ribbon .rb-tab[aria-selected="true"] .rb-tl, .ribbon .rb-panel .rb-gl')];
       const unnamed = [...sh.querySelectorAll('.ribbon .rb-tab')].filter((x) => !x.getAttribute('aria-label')).length;
       return { n: st.length, hidden: st.filter((x) => { const r = x.getBoundingClientRect(); return !(r.width > 4 && r.height > 4 && r.left >= 0 && r.right <= innerWidth); }).map((x) => x.textContent), unnamed, overflow: bar.scrollWidth - bar.clientWidth, ctxTab: !!sh.querySelector('.ribbon .rb-tab.ctx') };
@@ -365,6 +364,4 @@ try {
   await browser.close();
 }
 void zlib;
-console.log(results.join('\n'));
-console.log(failed ? `\n${failed} FAILED` : `\nall ${results.length} PASS`);
-process.exit(failed ? 1 : 0);
+S.finish();

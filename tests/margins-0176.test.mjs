@@ -1,4 +1,4 @@
-// 0.17.6 (bw176, margins lane): per-document page margins (doc.layout.margins = {top, bottom, start, end} in mm).
+// (bw176, margins lane): per-document page margins (doc.layout.margins = {top, bottom, start, end} in mm).
 //  M1  The setting: limits, defaults, a document without it prints byte-identical (no margin CSS at all).
 //  M2  The editor: EXT.margins.get/set, live (no record) and recorded (one undoable edit), the 'bw:margins' event, undo, redo, the saved document reloads with it.
 //  M3  The PDF honours it: @page margins, and the editor's paged view starts every page on the same block as the PDF (custom margins, Arabic).

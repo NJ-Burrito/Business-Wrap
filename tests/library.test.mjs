@@ -117,7 +117,7 @@ try {
   const imp = L.find((e) => e.origin === 'import');
   check('import of a Save-HTML file creates an entry with its edits', L.length === 3 && imp && imp.ops === 2, JSON.stringify(L));
 
-  // 0.13.0 review line 7 (owner flows): «افتح هنا» → #doc=<id> + the drawer closes; an edit is autosaved INTO the list
+  // review line 7 (owner flows): «افتح هنا» → #doc=<id> + the drawer closes; an edit is autosaved INTO the list
   // entry (no «حُفظ تلقائياً» toast, the «آخر حفظ» stamp moves); reload → the same document with its edits, no banner;
   // reopening from the list after a reload loses nothing
   await page.evaluate(() => { localStorage.setItem('bw:profile', JSON.stringify({ name: 'Tester' })); window.BW.openDrawer('library'); });

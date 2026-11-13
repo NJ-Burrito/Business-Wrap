@@ -1,4 +1,4 @@
-// 0.16.0 · FIGURE lane, note 4: diagram arrows never overlap.
+// · FIGURE lane, note 4: diagram arrows never overlap.
 //   model.routing = 2: arrows that share a line are spaced apart (the upper one with a small shadow); where one arrow crosses another the upper one jumps over it
 //   by a small arc with a small shadow under it. Same primitives in the editor, the PDF, the DOCX (native shapes) and the HTML. Old stored drawings stay byte-identical.
 //
@@ -26,7 +26,7 @@ const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}
 const NLs = String.fromCharCode(10);
 process.on('uncaughtException', (e) => { console.log(results.join(NLs)); console.error('CRASH: ' + String(e.stack || e.message).split(NLs).slice(0, 4).join(' / ')); process.exit(1); });
 const SAMPLE = path.join(REPO, 'samples', 'event-permit');
-// 0.16.1: the sample prints its workflow as two figures; this suite drives ONE whole drawing, so it reads the whole-drawing copy of the documents
+// the sample prints its workflow as two figures; this suite drives ONE whole drawing, so it reads the whole-drawing copy of the documents
 const WHOLE = path.join(REPO, 'tests', 'fixtures', 'permit-whole');
 const theme = loadTheme();
 const wf = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'workflow.json'), 'utf8'));

@@ -1,4 +1,4 @@
-// 0.16.2 note J · Justify, Justify Low / Medium / High like Word. An Arabic paragraph can be justified with kashida at three levels; the
+// note J · Justify, Justify Low / Medium / High like Word. An Arabic paragraph can be justified with kashida at three levels; the
 // stretch is a DISPLAY layer (render.mjs kashidaPass: CSS-painted tatweels, never characters in the data). Proven here in the editor (real
 // Chrome, measured line widths), in the PDF (poppler word boxes), in the DOCX (Word's own w:jc values) and in the data (no U+0640).
 //
@@ -9,16 +9,16 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO, exportPdf, exportDocx, loadTheme, i18n } from '../engine/export.mjs';
+import { REPO, exportPdf, exportDocx, loadTheme, i18n } from '../engine/export.mjs';
 import { renderDocument } from '../engine/render.mjs';
 import { styleLeaf } from '../engine/edits.mjs';
 import { poppler, docxParts } from './fixtures/doc-model/util.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-justify-'));
-let failed = 0;
-const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  justify-0162: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("justify-0162");
+const { check } = S;
 const theme = loadTheme();
 const LEVELS = ['justify', 'justify-low', 'justify-medium', 'justify-high'];
 const AR1 = 'تصف هذه الوثيقة متطلبات خدمة إلكترونية تتيح لمقدم الطلب التقدم بطلب تصريح لإقامة فعالية عامة، ومتابعة حالته حتى صدور القرار، وتحدد مسؤوليات الجهات المشاركة في دراسة الطلب واعتماده وإبلاغ صاحبه بالنتيجة.';
@@ -107,7 +107,7 @@ fs.writeFileSync(path.join(dir, 'document.ar.json'), JSON.stringify(arDoc));
 fs.writeFileSync(path.join(dir, 'document.en.json'), JSON.stringify(enDoc));
 const file = path.join(tmp, 'editor.html');
 buildEditor({ inputs: [dir], out: file, set: 'justify-test', watermarkDir: null });
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 try {
   const page = await (await browser.newContext({ viewport: { width: 1600, height: 900 } })).newPage();
   const errors = [];
@@ -207,5 +207,4 @@ try {
   await browser.close();
   fs.rmSync(tmp, { recursive: true, force: true });
 }
-console.log(failed ? `\n${failed} FAILED` : '\njustify-0162: all passed');
-process.exit(failed ? 1 : 0);
+S.finish();

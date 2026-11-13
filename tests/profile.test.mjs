@@ -11,26 +11,25 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
 import { BWLOG1 as L } from '../engine/ledger-v1.mjs';
 import { reportData, reportHtml } from '../engine/report.mjs';
 import { serve } from '../engine/serve.mjs';
 import { config } from '../engine/config.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-profile-'));
 process.env.BW_LOCAL_DIR = path.join(tmp, '.local'); // the host's profile copy (H3) stays in the temp folder
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  profile: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("profile");
+const { check, results } = S;
 const file = path.join(tmp, 'p.editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, set: 'profile-test', watermarkDir: null });
 const sh = (page, fn) => page.evaluate((f) => new Function('r', `return (${f})(r)`)(document.getElementById('bw-ui-host').shadowRoot), String(fn));
 const pop = [config().poppler].find((d) => d && fs.existsSync(path.join(d, 'pdffonts.exe')));
 const tool = (n) => (pop ? path.join(pop, n) : n);
 
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 let server = null;
 try {
   const errors = [];
@@ -196,6 +195,4 @@ try {
   if (server) { server.closeAllConnections?.(); await new Promise((ok) => server.close(ok)); }
   fs.rmSync(tmp, { recursive: true, force: true });
 }
-console.log(results.join('\n'));
-console.log(`${failed ? 'FAIL' : 'PASS'}  profile: ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

@@ -1,4 +1,4 @@
-// 0.17.0 lane fixa · (1) page views repeat a table's header above the CONTINUATION of a row that Chrome cuts across two pages, as the PDF does
+// lane fixa · (1) page views repeat a table's header above the CONTINUATION of a row that Chrome cuts across two pages, as the PDF does
 // (viewsRepeat drew it only above a row that OPENS a column, so the editor's page was one header height roomier than the PDF's from that row on);
 // (2) Backspace / Delete on a clicked blank line removes that empty line, as in Word (both editions, one undo step; an other edition that holds words there keeps its line).
 //   BW_CHROME="C:\Program Files\Google\Chrome\Application\chrome.exe" node tests/fixa-0170.test.mjs

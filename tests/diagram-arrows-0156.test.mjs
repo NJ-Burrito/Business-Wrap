@@ -1,4 +1,4 @@
-// 0.15.6 · ARROWS lane: A1-A9 and Z1-Z6 in the real editor (headless Chrome/Edge, real pointer, key and wheel events).
+// · ARROWS lane: A1-A9 and Z1-Z6 in the real editor (headless Chrome/Edge, real pointer, key and wheel events).
 //
 //   node tests/diagram-arrows-0156.test.mjs        (the measured numbers go to out/diagram-arrows-0156/numbers.json)
 import './_isolate.mjs';
@@ -21,7 +21,7 @@ const numbers = {};
 const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  | ' + detail : ''}`); if (!ok) failed += 1; };
 process.on('uncaughtException', (e) => { console.log(results.join(String.fromCharCode(10))); console.error('CRASH: ' + String(e.message).split(String.fromCharCode(10)).slice(0, 3).join(' / ')); process.exit(2); });
 const near = (a, b, tol) => Math.abs(a - b) <= tol;
-// 0.16.1: the sample prints its workflow as two legible figures; these suites drive the editor and the exporters on ONE whole drawing
+// the sample prints its workflow as two legible figures; these suites drive the editor and the exporters on ONE whole drawing
 // (ids e1.. of the whole graph), so they read the whole-drawing copy of the sample; the real sample's own print is asserted in autolayout-0160
 const SAMPLE = path.join(REPO, 'tests', 'fixtures', 'permit-whole');
 const SAMPLE_REAL = path.join(REPO, 'samples', 'event-permit');
@@ -40,13 +40,13 @@ const wf = JSON.parse(fs.readFileSync(path.join(SAMPLE_REAL, 'workflow.json'), '
     const dir = path.join(REPO, 'samples', s);
     for (const f of fs.existsSync(dir) ? fs.readdirSync(dir) : []) {
       if (/^document\.(ar|en)\.json$/.test(f)) docs.push([s, f, JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')), f.includes('.ar.') ? 'ar' : 'en']);
-      if (f === 'workflow.json') { const w = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); for (const loc of ['ar', 'en']) if (w[loc]) docs.push([s, f, { chapters: [{ sections: [{ blocks: [{ kind: 'diagram', model: (() => { const x = DIAGRAM.layout(w[loc]); delete x.routing; return x; })() }] }] }] }, loc]); } // 0.16.0: stored before layout() set the key
+      if (f === 'workflow.json') { const w = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); for (const loc of ['ar', 'en']) if (w[loc]) docs.push([s, f, { chapters: [{ sections: [{ blocks: [{ kind: 'diagram', model: (() => { const x = DIAGRAM.layout(w[loc]); delete x.routing; return x; })() }] }] }] }, loc]); } // stored before layout() set the key
     }
   }
   const models = [];
   const walk = (x, loc) => { if (Array.isArray(x)) x.forEach((y) => walk(y, loc)); else if (x && typeof x === 'object') { if (x.kind === 'diagram' && x.model) models.push([x.model, loc]); for (const v of Object.values(x)) walk(v, loc); } };
   for (const [, , d, loc] of docs) walk(d, loc);
-  { const m1 = DIAGRAM.layout(wf.en); const au = DIAGRAM.resolve(m1, { theme, locale: 'en' }).items.find((x) => x.wire && x.id === 'e8'); const mm = au.route[Math.floor(au.route.length / 2)]; m1.edges.find((e) => e.id === 'e8').via = [[mm[0] + 37, mm[1] + 43], [mm[0] + 97, mm[1] + 43]]; delete m1.routing; models.push([m1, 'en']); } // 0.16.0: layout() now sets model.routing; this stands for a drawing stored before it, so the key is dropped
+  { const m1 = DIAGRAM.layout(wf.en); const au = DIAGRAM.resolve(m1, { theme, locale: 'en' }).items.find((x) => x.wire && x.id === 'e8'); const mm = au.route[Math.floor(au.route.length / 2)]; m1.edges.find((e) => e.id === 'e8').via = [[mm[0] + 37, mm[1] + 43], [mm[0] + 97, mm[1] + 43]]; delete m1.routing; models.push([m1, 'en']); } // layout() now sets model.routing; this stands for a drawing stored before it, so the key is dropped
   for (const [m, loc] of models) {
     compared += 1;
     const a = OLD.render(OLD.ensure(m), { theme, locale: loc });
@@ -109,7 +109,7 @@ const wf = JSON.parse(fs.readFileSync(path.join(SAMPLE_REAL, 'workflow.json'), '
 
   // PDF + DOCX once, with a styled diagram in the real exporters
   const docEn = JSON.parse(fs.readFileSync(path.join(SAMPLE, 'document.en.json'), 'utf8'));
-  // 0.16.1: the sample prints its workflow as two figures; the styled whole drawing stands in for all of them (found by kind, not by position)
+  // the sample prints its workflow as two figures; the styled whole drawing stands in for all of them (found by kind, not by position)
   const dgSec = docEn.chapters.flatMap((c) => c.sections).find((sec) => sec.blocks.some((x) => x.kind === 'diagram'));
   const blk = dgSec.blocks.find((x) => x.kind === 'diagram');
   dgSec.blocks = dgSec.blocks.filter((x) => x.kind !== 'diagram' || x === blk);
@@ -583,7 +583,7 @@ try {
     await page.evaluate(() => window.BW.runAction('dgZoomFit'));
   }
   for (const pz of [0.75, 1, 1.5]) {
-    // 0.15.9 (UAT C1): Z2 and Z3 hold at every page zoom, not only at 100 %: the page zoom is a CSS zoom on the page, the drawing's frame must not read it twice
+    // (UAT C1): Z2 and Z3 hold at every page zoom, not only at 100 %: the page zoom is a CSS zoom on the page, the drawing's frame must not read it twice
     await page.evaluate((z) => window.BW.setZoom(z), pz);
     await page.waitForTimeout(500);
     await fitView();
@@ -621,7 +621,7 @@ try {
     await page.evaluate(() => { for (let i = 0; i < 3; i += 1) window.BW.runAction('dgZoomIn'); });
     await page.waitForTimeout(60);
     const art = FIG + ' .fig-art';
-    // 0.16.0 (D3): scroll so that the shape «rev» is in the middle of the frame (the old fixed offset of 120/40 px showed only the empty slack around the drawing, so the drag below never ran)
+    // (D3): scroll so that the shape «rev» is in the middle of the frame (the old fixed offset of 120/40 px showed only the empty slack around the drawing, so the drag below never ran)
     await page.locator(art).evaluate((a) => { const n = a.querySelector('[data-dg-node="rev"]'); const fb = a.getBoundingClientRect(); const nbx = n.getBoundingClientRect(); a.scrollLeft += nbx.left + nbx.width / 2 - (fb.left + fb.width / 2); a.scrollTop += nbx.top + nbx.height / 2 - (fb.top + fb.height / 2); });
     await page.waitForTimeout(60);
     const z1 = await snap();
@@ -659,7 +659,7 @@ try {
     // Z5: selecting a shape, an arrow or the empty drawing never changes the ribbon's height or shifts the page
     await U.reveal();
     await page.keyboard.press('Escape');
-    // 0.17.12: not (5, 5): a press on the background folds the ribbon (owner rule 0.17.8), which would change the bar's height; deselect with a press on plain page paper
+    // not (5, 5): a press on the background folds the ribbon (owner rule 0.17.8), which would change the bar's height; deselect with a press on plain page paper
     const paper = await page.evaluate(() => { const m = document.querySelector('#bw-pair main.bw-doc'); const r = m.getBoundingClientRect(); const bar = document.getElementById('bw-ui-host').shadowRoot.querySelector('.island').getBoundingClientRect().bottom;
       for (let y = Math.max(bar + 6, 6); y < innerHeight - 4; y += 10) for (let x = Math.round(r.left + 2); x < r.right - 4; x += Math.max(6, Math.round(r.width / 40))) { const el = document.elementFromPoint(x, y); if (el && m.contains(el) && !el.closest('[data-b], [data-p], .bw-ov, figure[data-dg], #bw-overlay')) return { x, y }; }
       return null; });

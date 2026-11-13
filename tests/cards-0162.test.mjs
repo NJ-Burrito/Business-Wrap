@@ -1,4 +1,4 @@
-// 0.16.2 · cards lane: S (a printed user story looks like the reference's pages: sand rounded card, «المعرف» row set apart, pale blue header with
+// · cards lane: S (a printed user story looks like the reference's pages: sand rounded card, «المعرف» row set apart, pale blue header with
 // navy words, full grid with vertical rules, gold side-rule bands; DOCX shading and borders) and O (no «وصف المخرج» section; its wording lives in the
 // output story's acceptance criteria: blank placeholders and packs from the same evidence).
 import './_isolate.mjs';
@@ -6,16 +6,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
-import { exportDocx, loadTheme, launchOptions, printHtml, REPO } from '../engine/export.mjs';
+import { exportDocx, loadTheme, printHtml, REPO } from '../engine/export.mjs';
 import { py } from '../engine/py.mjs';
 import * as CLI from '../engine/srs/cli.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const OUT = path.join(REPO, 'out', 'cards-0162');
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
-let failed = 0;
-const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  cards-0162: ${name}${detail && !ok ? '  | ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("cards-0162");
+const { check } = S;
 const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
 const theme = loadTheme();
 const LOCS = ['ar', 'en'];
@@ -23,7 +23,7 @@ const doc = (l) => readJson(path.join(REPO, 'samples', 'event-permit', `document
 const blank = (l) => readJson(path.join(REPO, 'samples', 'blank', `document.${l}.json`));
 
 // ══ S · print HTML, computed in real Chrome ═══════════════════════════════════════════════════════════
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 try {
   for (const l of LOCS) {
     const { html } = printHtml(doc(l), { locale: l, theme, embed: false });
@@ -135,5 +135,4 @@ for (const id of ['e-service', 'generic']) {
     check(`${l} BUILT a stated description is an acceptance criterion of the output story, verbatim`, st.acceptance.includes(l === 'ar' ? 'وصف مذكور حرفيا' : 'A stated description'), JSON.stringify(st.acceptance).slice(0, 200));
   }
 }
-console.log(failed ? `\n${failed} FAILED` : '\nall checks passed');
-process.exit(failed ? 1 : 0);
+S.finish();

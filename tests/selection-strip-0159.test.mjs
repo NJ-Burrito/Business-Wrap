@@ -1,4 +1,4 @@
-// 0.15.9 · STRIP (bw-0159): the selection strip shows its tools whole and usable at every window size, and selecting never shifts the page.
+// · STRIP (bw-0159): the selection strip shows its tools whole and usable at every window size, and selecting never shifts the page.
 //   S1 every tool of the strip (and of its «More» menu) is fully visible, inside its clip parents, overlapping no other tool and not the page's selected object
 //      (windows 1024 / 1366 / 1920 / 2560, page zoom 75 / 100 / 150 %, AR + EN, light + dark, every selection kind)
 //   S2 selecting, changing the selection and deselecting move scrollY and scrollHeight (and the bar's height) by 1 px or less
@@ -105,7 +105,7 @@ async function select(page, kind, cssH) {
 const deselect = async (page, cssH) => {
   await page.evaluate(() => { const B = window.BW; B.S.selOv = null; });
   await page.keyboard.press('Escape');
-  // 0.17.8 (O1): a press on the background around the page folds the ribbon (it would change the bar's height, not the selection); deselect with a press on an empty spot of the page itself
+  // (O1): a press on the background around the page folds the ribbon (it would change the bar's height, not the selection); deselect with a press on an empty spot of the page itself
   // the page's left edge can carry a decorative strip (.w2-strip) outside main.bw-doc: search for a point whose hit is inside the page and is plain cover/page paper, never a block, a drawing or the editor UI
   const spot = await page.evaluate((h) => { const m = document.querySelector('#bw-pair main.bw-doc'); const r = m.getBoundingClientRect(); const x0 = Math.max(2, Math.round(r.left + 2)); const bar = document.getElementById('bw-ui-host').shadowRoot.querySelector('.island').getBoundingClientRect().bottom;
     for (let x = x0; x < r.right - 4; x += Math.max(6, Math.round(r.width / 40))) for (let y = Math.round(h * 0.6); y < h - 4; y += 12) { if (y < bar + 4) continue; const el = document.elementFromPoint(x, y); if (el && m.contains(el) && !el.closest('[data-b], [data-p], .bw-ov, figure[data-dg], #bw-overlay')) return { x, y }; }
@@ -161,7 +161,7 @@ async function runJob([win, zoom, ui, dark]) {
       check(`S2 ${tag} / ${kind}: selecting moves the bar by ≤ 1 px and scrollHeight by ≤ 1 px`, dH <= 1 && dSH <= 1, `bar ${before.islandH}→${m.islandH}, scrollH ${before.scrollH}→${m.scrollH}`);
       // S1
       const objOf = () => page.evaluate(() => {
-        const els = [...document.querySelectorAll('main.bw-doc .dg-lgsel, main.bw-doc [data-dg-node].sel, main.bw-doc [data-dg-node][aria-selected="true"], main.bw-doc .is-sel, main.bw-doc .sel, main.bw-doc [data-sel], main.bw-doc .dg-ui:not(.dg-cv)')]; // 0.16.0: .dg-cv is the canvas frame layer over the whole figure (handles), not the selected thing; a figure taller than the room under the bar must scroll under it
+        const els = [...document.querySelectorAll('main.bw-doc .dg-lgsel, main.bw-doc [data-dg-node].sel, main.bw-doc [data-dg-node][aria-selected="true"], main.bw-doc .is-sel, main.bw-doc .sel, main.bw-doc [data-sel], main.bw-doc .dg-ui:not(.dg-cv)')]; // .dg-cv is the canvas frame layer over the whole figure (handles), not the selected thing; a figure taller than the room under the bar must scroll under it
         return els.map((e) => { const b = e.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom }; }).filter((b) => b.r - b.l > 0 && b.b - b.t > 0);
       });
       const badOf = (m, obj) => { const bad = [];

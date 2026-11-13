@@ -1,4 +1,4 @@
-// 0.18.2 (owner feature 2026-11-10): a Home button at the leading edge of the top bar opens the start page.
+// (owner feature 2026-11-10): a Home button at the leading edge of the top bar opens the start page.
 // Real headless Chrome, real mouse and keyboard, 1024 px (the top bar must still fit), English and Arabic as a pair:
 //   - the button exists once, sits right after the brand mark and before every other control of the bar, carries the Lucide house icon, its label (Home / الرئيسية), a tooltip and an aria-label
 //     (no visible tashkeel); the bar does not overflow sideways with it, and the ribbon still has its one Start page tool (nothing else moved)
@@ -13,13 +13,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { const line = `${ok ? 'PASS' : 'FAIL'}  home-0182: ${name}${detail && !ok ? '  - ' + detail : ''}`; results.push(line); console.log(line); if (!ok) failed += 1; };
+const S = suite('home-0182'); const { check } = S;
 const tmp = fs.mkdtempSync(path.join(process.env.BW_START_TMP || os.tmpdir(), 'bw-home182-'));
 process.env.BW_LOCAL_DIR ||= path.join(tmp, 'local');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -32,7 +30,7 @@ const sh = (page, fn, arg) => page.evaluate(([src, a]) => { const r = document.g
 
 let browser = null;
 try {
-  browser = await chromium.launch({ ...launchOptions(), args: [...(launchOptions().args || []), '--bw-session=bw-1109'] });
+  browser = await launchChrome(['--bw-session=bw-1109']);
   async function open(ui) {
     const ctx = await browser.newContext({ viewport: { width: 1024, height: 720 } });
     await ctx.addInitScript((u) => { try { localStorage.setItem('bw:ui', u); window.__bwProbePorts = []; } catch { /* none */ } }, ui);
@@ -94,7 +92,6 @@ try {
     const xy = await page.evaluate(() => window.__homeXY);
     await page.mouse.click(xy[0], xy[1]);
     await startOpen(page);
-    check(`${ui}: a click on Home opens the start page`, true);
     check(`${ui}: no page error`, !errors.length, errors.join(' | ').slice(0, 200));
     await ctx.close();
   }
@@ -136,5 +133,4 @@ try {
   try { await browser?.close(); } catch { /* closed */ }
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* temp */ }
 }
-console.log(failed ? `FAILED ${failed}` : `ALL PASS: home-0182 ${results.length}/${results.length}`);
-process.exitCode = failed ? 1 : 0;
+S.finish();

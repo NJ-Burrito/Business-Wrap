@@ -210,7 +210,7 @@ try {
   await page.evaluate(() => window.BW.openDrawer('library')); await wait(300);
   const row = page.locator(`#bw-ui-host >> css=.drawer [data-id="${id1}"] [data-lib="open"], .drawer [data-lib="open"][data-id="${id1}"]`).first();
   if (await row.count()) await row.click(); else await page.evaluate((id) => window.BW.EXT.library.open(id), id1);
-  await page.waitForFunction((id) => window.BW.S.svc === id, id1, { timeout: 30000 }).catch(() => {}); // 0.16.1: 5 s lost the following edit when the open finished late on a loaded run (L13 saw 0 → 0)
+  await page.waitForFunction((id) => window.BW.S.svc === id, id1, { timeout: 30000 }).catch(() => {}); // 5 s lost the following edit when the open finished late on a loaded run (L13 saw 0 → 0)
   const opened = await page.evaluate(() => ({ svc: window.BW.S.svc, hash: location.hash, drawer: !document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer').hidden }));
   check(7, '«افتح هنا» opens the earlier document and puts #doc=<id> in the address (a reload keeps it)', opened.svc === id1 && opened.hash.includes(`doc=${id1}`), JSON.stringify(opened), true);
 
@@ -218,7 +218,7 @@ try {
   await page.evaluate(() => window.BW.setText('/chapters/0/title', 'مقدمة عدّلها المالك'));
   await page.waitForFunction(() => Number(document.getElementById('bw-ui-host').shadowRoot.querySelector('.count .n')?.textContent) >= 1, null, { timeout: 20000 }).catch(() => {}); // the counter repaints after the edit; a fixed 300 ms read 0 under load
   const c0 = await counter();
-  const htmlDir = W.workspace().dirs.docs; // 0.13.3: Documents\<title>\<title>.html, its Exports\ and Versions\
+  const htmlDir = W.workspace().dirs.docs; // Documents\<title>\<title>.html, its Exports\ and Versions\
   // every .html below the documents folder as «relative path|mtime»: a file written (new or overwritten) after a snapshot is what changed
   const treeHtml = () => { const o = new Map(); const w = (d) => { for (const e of fs.existsSync(d) ? fs.readdirSync(d, { withFileTypes: true }) : []) { const f = path.join(d, e.name); if (e.isDirectory()) w(f); else if (/\.html$/.test(e.name)) o.set(path.relative(htmlDir, f).split(path.sep).join('/'), fs.statSync(f).mtimeMs); } }; w(htmlDir); return o; };
   const changedSince = (before, re) => [...treeHtml()].filter(([n, m]) => before.get(n) !== m && (!re || re.test(n))).map(([n]) => n);

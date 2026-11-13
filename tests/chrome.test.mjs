@@ -53,8 +53,8 @@ try {
     const p2 = await (await browser.newContext({ viewport: { width: 1366, height: 768 } })).newPage();
     await p2.goto(pathToFileURL(file).href);
     await p2.waitForFunction(() => window.BW?.ready);
-    // 0.14.0: the sections moved into the ribbon (Layout tab → «الترويسة» / «التذييل» groups); the old section nodes stay hidden in the bar
-    await p2.evaluate(() => window.BW.EXT.ribbon.setTab('hf')); // 0.15.0: the header and footer groups have their own tab
+    // the sections moved into the ribbon (Layout tab → «الترويسة» / «التذييل» groups); the old section nodes stay hidden in the bar
+    await p2.evaluate(() => window.BW.EXT.ribbon.setTab('hf')); // the header and footer groups have their own tab
     await p2.waitForTimeout(100);
     const fit = await p2.evaluate(() => { const r = document.getElementById('bw-ui-host').shadowRoot; const bar = r.querySelector('.island'); const box = (c) => [...r.querySelectorAll('.ribbon .rb-g')].find((g) => g.querySelector(`[data-a="${c}"]`))?.getBoundingClientRect(); const h = box('hdrText'), f = box('ftrText'); return { over: bar.scrollWidth - bar.clientWidth, h: !!h && h.width > 0, f: !!f && f.width > 0 }; }); // the ribbon panel scrolls inside itself; the bar never does
     check('editor: at 1366 px both groups (header, footer) are in the ribbon Header & footer tab and the bar does not scroll sideways', fit.over <= 0 && fit.h && fit.f, JSON.stringify(fit));

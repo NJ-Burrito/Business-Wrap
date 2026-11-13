@@ -1,4 +1,4 @@
-// 0.17.0 (owner notes N15 and N16, plus the business-wrap://start link): the launcher, its Desktop copy, every file type's own icon, the start link.
+// (owner notes N15 and N16, plus the business-wrap://start link): the launcher, its Desktop copy, every file type's own icon, the start link.
 //   node tests/launch-0170.test.mjs
 // Safe by construction: a TEMP fake Desktop and a TEMP shortcut folder (BW_DESKTOP_DIR / lnkDir), own state folders, a free port, a browser stub
 // (BW_BROWSER_STUB: the browser command is written to a file, no browser starts), a fake registry for the icon apply. Never the real Desktop, the real
@@ -129,7 +129,7 @@ try {
     const url = cmd?.args?.[0] || '';
     check('launcher run (the shortcut command itself): the editor opens in the browser as a file:// page that exists and is a Business-Wrap editor', url.startsWith('file:///') && fs.existsSync(decodeURIComponent(new URL(url).pathname.slice(1))) && /id="bw-data"/.test(fs.readFileSync(decodeURIComponent(new URL(url).pathname.slice(1)), 'utf8')), line || 'no browser line');
     check('launcher run: NO host was started (no host.json, no cli-hosts.json, nothing answers on the port)', !fs.existsSync(path.join(lenv.BW_LOCAL_DIR, 'host.json')) && !fs.existsSync(path.join(lenv.BW_STATE_DIR, 'cli-hosts.json')) && !(await up(port + 1)));
-  } else check('launcher: Windows-only parts skipped on this platform', true);
+  }
   check('launcher: makeLauncher answers supported:false off Windows, never throws', win || makeLauncher().supported === false);
 
   // ═══ N16 every tree file type has its own icon ═══

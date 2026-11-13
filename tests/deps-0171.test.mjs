@@ -1,4 +1,4 @@
-// 0.17.13 (owner note 3): a copy without node_modules (zip, plugin folder) cannot export: «Cannot find package 'playwright-core' imported from …\engine\export.mjs».
+// (owner note 3): a copy without node_modules (zip, plugin folder) cannot export: «Cannot find package 'playwright-core' imported from …\engine\export.mjs».
 //   engine/deps.mjs      depsStatus() with a fake missing dependency (BW_DEPS_ROOT = an empty folder), the error pattern, installDeps() with a stand-in "npm"
 //   /api/health          reports deps {ok, missing}; /api/host/health too; the stdout line at host start is serve.mjs's (not run here)
 //   /api/deps/install    a foreign Origin is refused (403); GET /api/deps
@@ -11,10 +11,10 @@ import path from 'node:path';
 import { launch, tmpDir, shRoot, sleep, until, REPO } from './spell-helper.mjs';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { serve } from '../engine/serve.mjs';
+import { suite } from './_harness.mjs';
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  deps: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("deps");
+const { check, results } = S;
 const tmp = tmpDir('bw-deps-');
 process.env.BW_LOCAL_DIR = path.join(tmp, 'local');
 const bare = path.join(tmp, 'bare'); // a "copy" with nothing installed
@@ -113,6 +113,4 @@ try {
   server?.closeAllConnections?.();
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* temp */ }
 }
-console.log(results.join('\n'));
-console.log(`\n${results.length - failed}/${results.length} passed`);
-process.exit(failed ? 1 : 0);
+S.finish();

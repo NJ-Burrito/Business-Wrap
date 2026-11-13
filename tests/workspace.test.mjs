@@ -80,7 +80,7 @@ try {
   check('a foreign origin cannot change the save folder', foreign.status === 403);
   check('nothing was written beside the editor (no exports/ folder)', !fs.existsSync(path.join(tmp, 'exports')));
 
-  // 0.13.0 review line 15: every saved file obeys "<title>-<date>-<AR|ENG>.<ext>" (share and report included), the title's
+  // review line 15: every saved file obeys "<title>-<date>-<AR|ENG>.<ext>" (share and report included), the title's
   // spaces kept (as the pipeline outputs), and no machine file (manifest.json …) outside HISTORY\
   check('outName keeps the spaces between the title words', W.outName('تحديث بيانات منتج غذائي', new Date(2026, 9, 29, 8, 0), 'ar', 'pdf') === 'تحديث بيانات منتج غذائي/Exports/2026-10-29 08-00 تحديث بيانات منتج غذائي - العربية.pdf');
   const saveHtml = `<!doctype html><html lang="ar"><body><script type="application/json" id="bw-data">${JSON.stringify({ services: [{ id: 'doc-53a766e1-aaaa', editions: { ar: { raw: JSON.stringify(docs.ar) } } }] })}</script></body></html>`;

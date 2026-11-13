@@ -1,4 +1,4 @@
-// 0.16.0 (mcp-notes items 1 and 5, reproduced first): leases, sleeping and ghost tabs, the host's view of each tab, queued calls, an awake tab for editor_new.
+// (mcp-notes items 1 and 5, reproduced first): leases, sleeping and ghost tabs, the host's view of each tab, queued calls, an awake tab for editor_new.
 //   A REAL host (engine/serve.mjs) and synthetic tabs that speak the same HTTP the editor's session worker speaks (SSE stream + POST /api/session/tabs + POST /api/editor/reply):
 //   no browser, so every timing here is the host's own. Short limits through env (BW_ASLEEP_MS, BW_LEASE_RELEASE_MS, BW_QUEUE_MS).
 //   L1 a lease is released when its owner has been asleep for the release time, and a fresh tab for the document then owns it (it does not open read-only behind a dead one)

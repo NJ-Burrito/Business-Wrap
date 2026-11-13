@@ -133,7 +133,7 @@ let refused = '';
 try { migrate({ version: 2, ops: [] }); } catch (e) { refused = e.message; }
 ok('schema gate: a newer edits version is refused', /newer than this editor/.test(refused), refused);
 
-// 0.13.1: never a downgrade, and an npx copy (npm can lag behind GitHub: 0.12.0 under 0.13) never updates anything
+// never a downgrade, and an npx copy (npm can lag behind GitHub: 0.12.0 under 0.13) never updates anything
 {
   const { applyUpdate } = await import('../update/apply.mjs');
   const { oneLiner } = await import('../update/check.mjs');

@@ -1,4 +1,4 @@
-// 0.16.0 (mcp-notes item 3), in REAL Chrome with a REAL host: what a person sees while an agent edits.
+// (mcp-notes item 3), in REAL Chrome with a REAL host: what a person sees while an agent edits.
 //   V1 a 12-op batch arrives one op at a time, in order (many different intermediate states, not nothing-then-everything), and is still ONE undo step
 //   V2 the small «agent editing: <section>» chip shows during the batch with the time of the last edit, and says «last edited» after it; the block just edited is outlined
 //   V3 the person's scroll position is held through every op (no jump)

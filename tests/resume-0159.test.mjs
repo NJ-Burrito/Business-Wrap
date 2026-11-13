@@ -1,4 +1,4 @@
-// 0.15.9 R1-R6 (owner request, 2026-11-02): the «continue where you left off» popup. REAL Google Chrome (CDP, real keyboard events), a REAL host, the real MCP server.
+// R1-R6 (owner request, 2026-11-02): the «continue where you left off» popup. REAL Google Chrome (CDP, real keyboard events), a REAL host, the real MCP server.
 //   R1  the last session's documents as a list (title, last-edited time, language): tick several, or press one to open it alone; the others stay offered
 //   R2  70 documents: the list scrolls, a search box filters, select all / clear act on what is shown; opening 65 stays within the host's launch chunks (30 per command line)
 //   R3  «continue all»

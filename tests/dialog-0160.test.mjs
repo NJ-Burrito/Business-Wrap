@@ -1,4 +1,4 @@
-// 0.16.0 (mcp-notes items 1 and 5, reproduced first in REAL Chrome with a REAL host):
+// (mcp-notes items 1 and 5, reproduced first in REAL Chrome with a REAL host):
 //   D1 a tool's call to a tab that shows the «continue where you left off» popup is answered (the popup no longer blocks it: it is dismissed), not TAB_TIMEOUT
 //   D2 answering «new» in a tab that holds a document never replaces it with a blank one that owns nothing
 //   D3 resuming one document from a tab that holds a document opens it in a window of its own; the tab keeps its document

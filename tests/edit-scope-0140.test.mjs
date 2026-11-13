@@ -8,16 +8,16 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO, exportPdf, exportDocx, loadTheme, i18n } from '../engine/export.mjs';
+import { REPO, exportPdf, exportDocx, loadTheme, i18n } from '../engine/export.mjs';
 import { renderDocument } from '../engine/render.mjs';
 import { applyOps, scopesAt, deleteOps, renumberOps, validStart, docIdInstances, docIdOps, docIdFromEdit, replaceId, get } from '../engine/edits.mjs';
 import { pageTexts, docxParts, sample } from './fixtures/doc-model/util.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-escope-'));
-let failed = 0;
-const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  edit-scope: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("edit-scope");
+const { check } = S;
 const theme = loadTheme();
 const num = (text, extra = {}) => ({ text, marks: [], style: { list: 'number', ...extra } });
 const html = (doc, locale = 'en') => renderDocument(doc, { locale, labels: i18n().doc[locale], theme, fontCss: '', logos: theme.logos });
@@ -84,7 +84,7 @@ sec.blocks.push({ kind: 'table', columns: ['A', 'B'], rows: [[num('x\ny', { star
 /* ── the editor ──────────────────────────────────────────────────────────── */
 const file = path.join(tmp, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, set: 'escope-test', watermarkDir: null });
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 try {
   const ctx = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
   let page = await ctx.newPage();
@@ -258,5 +258,4 @@ try {
   await browser.close();
   fs.rmSync(tmp, { recursive: true, force: true });
 }
-console.log(failed ? `${failed} FAILED` : 'edit-scope-0140: all passed');
-process.exit(failed ? 1 : 0);
+S.finish();

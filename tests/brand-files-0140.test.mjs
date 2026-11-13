@@ -1,5 +1,5 @@
 import './_isolate.mjs';
-// 0.14.0 brand-files: every output carries the Business-Wrap badge it can carry.
+// brand-files: every output carries the Business-Wrap badge it can carry.
 //   HTML: the favicon (inline data URI, CSP-safe) in every editor HTML, AR and EN editions
 //   DOCX: docProps/thumbnail.png + content type + relationship;  PDF: Creator/Producer + page-1 /Thumb
 //   Folder: ensureFolderIcon writes desktop.ini + hidden/system attributes, idempotent, never throws

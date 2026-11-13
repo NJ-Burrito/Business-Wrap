@@ -1,4 +1,4 @@
-// 0.15.0 lane explain: every explanation has its own picture (editor/xpl-art.js), and every explain.* / xpl.* string lives in
+// lane explain: every explanation has its own picture (editor/xpl-art.js), and every explain.* / xpl.* string lives in
 // editor/ext/36-explain.i18n.json in both languages. Static (no browser): the drawing code runs against the real icons.json.
 //
 //   node tests/explain-art.test.mjs
@@ -6,11 +6,11 @@ import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { REPO } from '../engine/export.mjs';
+import { suite } from './_harness.mjs';
 
 const ED = path.join(REPO, 'editor');
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  explain-art: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("explain-art");
+const { check, results } = S;
 const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
 
 // every i18n file, and where each explain.* / xpl.* key lives
@@ -84,6 +84,4 @@ check('a scene for every family used by the map exists', [...new Set(Object.valu
 check('the old runtime fallback scenes are gone from explainers.js (xplScene / xplArt)', !/function xplScene|function xplArt\(/.test(fs.readFileSync(path.join(ED, 'explainers.js'), 'utf8')));
 check('the anti-spam memory is gone (no xplSeen, xplMark, bw:xpl-seen, once/always modes)', !/xplSeen|xplMark|xpl-seen|xplMode/.test(fs.readFileSync(path.join(ED, 'explainers.js'), 'utf8')));
 
-console.log(results.join('\n'));
-console.log(failed ? `\nexplain-art: ${failed} FAILED` : `\nexplain-art: all ${results.length} checks passed`);
-process.exit(failed ? 1 : 0);
+S.finish();

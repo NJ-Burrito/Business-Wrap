@@ -1,4 +1,4 @@
-// 0.16.3 (bw-0163, parity lane): the PDF and the editor's pages are the same list, and each story card has its own number.
+// (bw-0163, parity lane): the PDF and the editor's pages are the same list, and each story card has its own number.
 //  1. A table that follows another table (a rules table, then source notes with tall rows): the print used to carry the whole second table (title,
 //     header, first rows) to the next page by a blanket `table{break-before:avoid}`, leaving the page mostly empty where the editor's pages started it.
 //     The rule is gone; the title, header and first rows still stay together. Swept over the rules table's length, so some length leaves exactly the

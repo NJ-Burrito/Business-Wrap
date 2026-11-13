@@ -1,4 +1,4 @@
-// 0.15.7: after any successful update exactly ONE version of Business-Wrap is on the machine, with every setting,
+// after any successful update exactly ONE version of Business-Wrap is on the machine, with every setting,
 // history, project, document and piece of work intact. The rollback copy lives only for the update (removed after
 // verify, after a rollback, and by the next launch or update when a crash left one); a file the old release shipped
 // and the new one does not goes anywhere in the install (manifest); a file no release shipped never goes; the

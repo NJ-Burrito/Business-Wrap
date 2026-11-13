@@ -1,4 +1,4 @@
-// 0.16.2 note T: a Save-HTML made honestly by the tool (agent-built through the bridge, person-edited, or both) shows NO tamper warning when opened
+// note T: a Save-HTML made honestly by the tool (agent-built through the bridge, person-edited, or both) shows NO tamper warning when opened
 // by file:// in a fresh Chrome profile, in the same folder or moved to another; a truly cut file (log removed, edit history trimmed, the JSON edited by hand) still warns.
 // Real Chrome (BW_CHROME), a real host for the build and the save, then fresh contexts on file://.
 //   node tests/tamper-0162.test.mjs
@@ -103,7 +103,7 @@ try {
   let tofuFile = null;
   await ctx.close();
   if (!LEGACY_RUN && !single) {
-    // 0.16.3 tofu: the same contributor signs from another device (a second key for the same name), the chain otherwise whole: a calm note, no alarm.
+    // tofu: the same contributor signs from another device (a second key for the same name), the chain otherwise whole: a calm note, no alarm.
     // Built with the ledger engine itself: the saved file's log is unsealed, a Save-HTML entry is added under a new key for the same actor id, and sealed back.
     const { BWLOG1: LG } = await import('../engine/ledger-v1.mjs');
     const j = dataOf(html);

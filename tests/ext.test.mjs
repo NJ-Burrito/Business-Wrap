@@ -10,18 +10,17 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
 import { serve } from '../engine/serve.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-ext-'));
 const SAMPLE = path.join(REPO, 'samples', 'event-permit');
 const put = (rel, s) => { fs.mkdirSync(path.dirname(path.join(tmp, rel)), { recursive: true }); fs.writeFileSync(path.join(tmp, rel), s); };
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ext: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("ext");
+const { check, results } = S;
 
 // the fixture extension: everything it sees is counted in window.EXT_T
 put('ext/90-dummy.js', `
@@ -68,7 +67,7 @@ let clash = '';
 try { buildEditor({ inputs: [SAMPLE], out: path.join(tmp, 'clash.html'), watermarkDir: null, extDir: path.join(tmp, 'clash') }); } catch (e) { clash = e.message; }
 check('an i18n key clash fails the build', /i18n key "save"/.test(clash), clash || 'built');
 
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 let server = null;
 try {
   const page = await (await browser.newContext({ viewport: { width: 1600, height: 900 } })).newPage();
@@ -141,6 +140,4 @@ try {
   await browser.close();
   fs.rmSync(tmp, { recursive: true, force: true });
 }
-console.log(results.join('\n'));
-console.log(`${failed ? 'FAIL' : 'PASS'}  ext: ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

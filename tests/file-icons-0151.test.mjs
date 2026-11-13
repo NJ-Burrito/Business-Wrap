@@ -1,4 +1,4 @@
-// 0.15.1 lane icons: Settings > File icons ("Use Business-Wrap icons on this PC"). The registry layer is a FAKE (an in-memory
+// lane icons: Settings > File icons ("Use Business-Wrap icons on this PC"). The registry layer is a FAKE (an in-memory
 // registry with the same ops as engine/file-icons.mjs realReg): this suite never touches the real registry.
 //   node tests/file-icons-0151.test.mjs
 import './_isolate.mjs';
@@ -6,16 +6,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
 import { serve } from '../engine/serve.mjs';
 import { createFileIcons, EXTS, BACKUP_NAME } from '../engine/file-icons.mjs';
 import { makeRoute } from '../engine/routes/file-icons.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { const line = `${ok ? 'PASS' : 'FAIL'}  file-icons-0151: ${name}${detail && !ok ? '  - ' + detail : ''}`; results.push(line); console.log(line); if (!ok) failed += 1; };
+const S = suite('file-icons-0151'); const { check } = S;
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-fileicons-'));
 
 /** An in-memory registry. Keys are case-insensitive; HKCR\x reads HKCU\Software\Classes\x then HKLM\Software\Classes\x. */
@@ -176,7 +174,7 @@ try {
   } finally { await new Promise((r) => { server.close(r); server.closeAllConnections?.(); }); }
 
   // ── the Settings row renders in AR and EN, and the buttons work against a served editor ──
-  const browser = await chromium.launch(launchOptions());
+  const browser = await launchChrome();
   try {
     const reg2 = world();
     globalThis.__fiRoute = makeRoute({ reg: reg2, platform: 'win32', stateDir: path.join(tmp, 'served2'), refresh: async () => true });
@@ -227,5 +225,4 @@ try {
   check('run', false, e.stack?.split('\n').slice(0, 5).join(' / '));
 }
 try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* temp */ }
-console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

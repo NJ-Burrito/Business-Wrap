@@ -1,4 +1,4 @@
-// 0.17.4 (bw174, pages lane): the editor's page views and the PDF start every page on the same block, at every window size.
+// (bw174, pages lane): the editor's page views and the PDF start every page on the same block, at every window size.
 // Two causes, each reproduced here on a synthetic document (invented text), through the real editor (view.single) and the real exportPdf:
 //  1. The window's fit. The page views were laid out inside `zoom: pz` > `zoom: 1/pz`: the two cancel on paper, not in the float the layout multiplies
 //     (the product is not exactly 1 at most window sizes, and a layout unit of 1/64 px is lost on rows and lines). Which block sat at the foot of a page

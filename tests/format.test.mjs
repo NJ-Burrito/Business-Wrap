@@ -9,18 +9,16 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO, exportPdf, exportDocx, loadTheme, i18n } from '../engine/export.mjs';
+import { REPO, exportPdf, exportDocx, loadTheme, i18n } from '../engine/export.mjs';
 import { renderDocument } from '../engine/render.mjs';
 import { textOf, isRich, markLeaf, withText, hasMark, styleLeaf, applyOp, applyOps, textLeaves, replaceFolded } from '../engine/edits.mjs';
 import { goldenDiff } from './fixtures/doc-model/golden.mjs';
 import { pageTexts, docxParts, pdfFonts, sample } from './fixtures/doc-model/util.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-format-'));
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { const line = `${ok ? 'PASS' : 'FAIL'}  format: ${name}${detail && !ok ? '  — ' + detail : ''}`; results.push(line); console.log(line); if (!ok) failed += 1; };
+const S = suite('format'); const { check } = S;
 const theme = loadTheme();
 
 // ── 1. the rich leaf model ──────────────────────────────────────────────
@@ -108,7 +106,7 @@ exportDocx(doc, { locale: 'en', theme, docxPath: docx, embedFonts: false });
 // ── 5. the editor's format bar ───────────────────────────────────────────
 const file = path.join(tmp, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, set: 'fmt-test', watermarkDir: null });
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 try {
   const page = await (await browser.newContext({ viewport: { width: 1600, height: 900 } })).newPage();
   const errors = [];
@@ -180,6 +178,4 @@ try {
   await browser.close();
   fs.rmSync(tmp, { recursive: true, force: true });
 }
-console.log(results.join('\n'));
-console.log(failed ? `\nFAILED: ${failed}/${results.length}` : `\nALL ${results.length} PASS`);
-process.exit(failed ? 1 : 0);
+S.finish();

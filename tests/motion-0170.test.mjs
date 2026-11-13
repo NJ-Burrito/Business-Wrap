@@ -1,4 +1,4 @@
-// 0.17.0 icon and motion rework (owner notes N5, N6). Walks the real editor (the sample build) in Chrome:
+// icon and motion rework (owner notes N5, N6). Walks the real editor (the sample build) in Chrome:
 //   I1 the ribbon's category icons are the brand v3 drawings (brand/v3/tools/build_ribbon_icons.mjs --check)
 //   I2 every icon the editor carries (editor/icons.json + the ext files' Object.assign(IC, …)) plays a move on hover / press replay
 //   I3 a real hover on every ribbon tab plays its own scene; a real press squashes the icon (wide and low), the release springs it back
@@ -11,19 +11,18 @@ import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
 import { pathToFileURL } from 'node:url';
+import { suite, launchChrome } from './_harness.mjs';
 
 const OUT = path.join(REPO, 'out', 'motion-0170');
 fs.mkdirSync(OUT, { recursive: true });
 const file = path.join(OUT, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, watermarkDir: path.join(REPO, 'editor', 'brand', 'watermark') });
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("");
+const { check, results } = S;
 
 // I1: the drawings are the builder's
 {
@@ -83,7 +82,7 @@ window.__probeRead = async () => {
 };
 `;
 
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 async function open({ dark = false, calm = false, ui = 'ar' } = {}) {
   const ctx = await browser.newContext({ bypassCSP: true, viewport: { width: 1500, height: 900 } });
   await ctx.addInitScript(({ dark, calm, ui }) => { try { if (sessionStorage.getItem('mt-init')) return; sessionStorage.setItem('mt-init', '1'); localStorage.setItem('bw:ui', ui); localStorage.setItem('bw:dark', dark ? '1' : '0'); localStorage.setItem('bw:calm', calm ? '1' : '0'); localStorage.setItem('bw:wm-intro', '1'); localStorage.setItem('bw:rb:c', '0'); sessionStorage.setItem('bw:wm-welcome', '1'); } catch {} }, { dark, calm, ui });
@@ -249,6 +248,4 @@ try {
 } finally {
   await browser.close();
 }
-console.log(results.join('\n'));
-console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

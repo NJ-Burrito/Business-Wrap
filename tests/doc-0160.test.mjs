@@ -1,4 +1,4 @@
-// 0.16.0 lane doc: item 13 a table cell kept empty on purpose (`{"text":"","keepEmpty":true}` per cell, `blankCell` per table) in the
+// lane doc: item 13 a table cell kept empty on purpose (`{"text":"","keepEmpty":true}` per cell, `blankCell` per table) in the
 // HTML/PDF print, the editor view and the Word export, old samples byte-identical; item 14 the Check reads a story's nested acceptance
 // blocks. Pure render in node, the rest through the real editor (headless Chrome, closed in finally) and the real Word export.
 //   node tests/doc-0160.test.mjs
@@ -8,15 +8,15 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO, loadTheme, i18n, exportDocx } from '../engine/export.mjs';
+import { REPO, loadTheme, i18n, exportDocx } from '../engine/export.mjs';
 import { renderDocument } from '../engine/render.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
-const BASE = 'af44764'; // 0.17.1: moved after the intended 0.17.0 print changes (the PDF page takes the editor's exact width: printTrimCss; a subhead before a story card keeps its section heading). Earlier: eaee003, acceptance as the story card's last row (eaee003) after: 0.16.2 after the intended print changes since a276245 (story card ID row, field shape as a story card, a table's header kept with its first rows, Justify levels: 0c38351 adca1c7 8a5bca9 288f0a4), then the page-matching parity change fab0db0 (the editor draws a table's repeated header, a table starts where its head fits, cards number 6.1); a doc without keepEmpty must print as it did there. Move it again only when the print changes on purpose
+const BASE = 'af44764'; // moved after the intended 0.17.0 print changes (the PDF page takes the editor's exact width: printTrimCss; a subhead before a story card keeps its section heading). Earlier: eaee003, acceptance as the story card's last row (eaee003) after: 0.16.2 after the intended print changes since a276245 (story card ID row, field shape as a story card, a table's header kept with its first rows, Justify levels: 0c38351 adca1c7 8a5bca9 288f0a4), then the page-matching parity change fab0db0 (the editor draws a table's repeated header, a table starts where its head fits, cards number 6.1); a doc without keepEmpty must print as it did there. Move it again only when the print changes on purpose
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-doc0160-'));
-let failed = 0;
-const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  doc-0160: ${name}${detail && !ok ? '  — ' + String(detail).replace(/\s+/g, ' ').slice(0, 300) : ''}`); if (!ok) failed += 1; };
+const S = suite("doc-0160");
+const { check } = S;
 const theme = loadTheme();
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const SAMPLES = ['blank', 'event-permit'];
@@ -75,7 +75,7 @@ try {
   // ── 14 · the Check, through the real editor ──
   const file = path.join(tmp, 'editor.html');
   buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, set: 'doc-0160-test', watermarkDir: null });
-  const browser = await chromium.launch(launchOptions());
+  const browser = await launchChrome();
   try {
     const page = await (await browser.newContext({ viewport: { width: 1500, height: 1000 } })).newPage();
     const errors = [];
@@ -108,5 +108,4 @@ try {
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }
-console.log(failed ? `\ndoc-0160: ${failed} FAILED` : '\ndoc-0160: all passed');
-process.exit(failed ? 1 : 0);
+S.finish();

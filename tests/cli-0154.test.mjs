@@ -1,4 +1,4 @@
-// 0.15.4 hotfix: the per-verb flag check of 0.15.3 refused documented usage (`--ops-file -`, `stop --all`).
+// hotfix: the per-verb flag check of 0.15.3 refused documented usage (`--ops-file -`, `stop --all`).
 // Table-driven: every invocation the docs, the usage header, the commands and the MCP shells show must parse; unknown flags are still refused.
 // State is isolated (own BW_* folders), no host is started, port 4317 is never touched.
 //
@@ -9,13 +9,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { suite } from './_harness.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-cli0154-'));
 process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch { /* temp */ } });
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + String(detail).slice(0, 200) : ''}`); if (!ok) failed += 1; };
+const S = suite("");
+const { check, results } = S;
 const { checkFlags, VERBS } = await import('../engine/cli.mjs');
 const parses = (line) => { const [verb, ...rest] = line.split(' '); try { checkFlags(verb, rest); return true; } catch { return false; } };
 
@@ -69,6 +69,4 @@ check('binary: `stop --nope` exits 2 and changes nothing', r.status === 2 && /un
 r = cli(['editor', 'ops', '--doc', 'A', '--locale', 'ar', '--ops-file', '-'], JSON.stringify([{ op: 'explode', path: '/x' }]));
 check('binary: stdin ops get past the flag check (BAD_OP from the op check, not "unknown option -")', /BAD_OP/.test(r.stderr + r.stdout) && !/unknown option/.test(r.stderr + r.stdout), (r.stderr + r.stdout).slice(0, 160));
 
-console.log(results.join('\n'));
-console.log(failed ? `FAILED: ${failed}` : `cli-0154: ${results.length} checks`);
-process.exit(failed ? 1 : 0);
+S.finish();

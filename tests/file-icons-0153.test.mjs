@@ -1,4 +1,4 @@
-// 0.15.3 lane icons2: typed folder icons (folder-pdf / folder-docx / folder-html + the general folder), assigned automatically by
+// lane icons2: typed folder icons (folder-pdf / folder-docx / folder-html + the general folder), assigned automatically by
 // engine/brand-icons.mjs (ensureFolderIcon, folderKindOf, refreshFolderIcon) and engine/workspace.mjs (noteOutput).
 // Only temp folders are touched; the real Documents folder never is.   node tests/file-icons-0153.test.mjs
 import './_isolate.mjs';
@@ -9,10 +9,9 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { ensureFolderIcon, readIni, folderKindOf, refreshFolderIcon, FOLDER_KINDS } from '../engine/brand-icons.mjs';
 import { noteOutput, DOCS_NAME } from '../engine/workspace.mjs';
+import { suite } from './_harness.mjs';
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { const line = `${ok ? 'PASS' : 'FAIL'}  file-icons-0153: ${name}${detail && !ok ? '  - ' + detail : ''}`; results.push(line); console.log(line); if (!ok) failed += 1; };
+const S = suite('file-icons-0153'); const { check } = S;
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-foldericons-'));
 const ICONS = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'brand', 'v3', 'file-icons');
 const win = process.platform === 'win32';
@@ -83,8 +82,6 @@ try {
     check('noteOutput: a folder outside the documents folder is never touched', noteOutput(path.join(hand, 'x.pdf')) === false && !fs.existsSync(path.join(hand, 'desktop.ini')));
     const deep = touch(mkdir(DOCS_NAME, 'My Doc', 'Other'), 'x.pdf');
     check('noteOutput: nor an unknown sub-folder of a document, nor the documents folder itself, nor .system', noteOutput(path.join(deep, 'x.pdf')) === false && noteOutput(path.join(docs, 'x.pdf')) === false && noteOutput(path.join(docs, '.system', 'x.pdf')) === false && !fs.existsSync(path.join(deep, 'desktop.ini')));
-  } else {
-    check('non-Windows: ensureFolderIcon is skipped (Windows test body not applicable here)', true);
   }
 
   // ── non-Windows: a no-op, whatever the kind (the platform is faked for the call) ──
@@ -101,5 +98,4 @@ try {
 }
 try { spawnSync('attrib', ['-s', '-h', '/S', '/D', path.join(tmp, '*')], { stdio: 'ignore', shell: true }); } catch { /* */ }
 try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* temp */ }
-console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

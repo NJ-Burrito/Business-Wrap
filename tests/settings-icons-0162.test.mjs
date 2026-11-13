@@ -1,4 +1,4 @@
-// 0.16.2 bw-0162: Settings > file icons card collapses/expands like every other card (mouse + Enter), survives a redraw.
+// bw-0162: Settings > file icons card collapses/expands like every other card (mouse + Enter), survives a redraw.
 //   node tests/settings-icons-0162.test.mjs
 import './_isolate.mjs';
 import fs from 'node:fs';

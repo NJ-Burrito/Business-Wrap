@@ -1,4 +1,4 @@
-// 0.17.8 shell lane: O1 a click on the background outside the page collapses nothing (ribbon panel, side panel, open list/menu, selection tools);
+// shell lane: O1 a click on the background outside the page collapses nothing (ribbon panel, side panel, open list/menu, selection tools);
 // O4 the watermark sits at a fixed offset from the page edge (bottom LEFT, physical, in both languages; owner decision 2026-11-04) whatever the role word;
 // O7 the gold Save button lives in the top bar, not in the Files group. Real headless Chrome; closed in finally.
 //   node tests/shell-0178.test.mjs
@@ -7,16 +7,16 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-shell178-'));
-let failed = 0;
-const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  shell-0178: ${name}${detail && !ok ? '  - ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("shell-0178");
+const { check } = S;
 const file = path.join(tmp, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, set: 'shell-0178', watermarkDir: path.join(REPO, 'editor', 'brand', 'watermark') });
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 const SH = `document.getElementById('bw-ui-host').shadowRoot`;
 const sh = (page, fn) => page.evaluate(`(${fn})(${SH})`);
 
@@ -158,5 +158,4 @@ try {
   await browser.close();
   fs.rmSync(tmp, { recursive: true, force: true });
 }
-console.log(failed ? `FAILED: ${failed}` : 'all shell-0178 checks passed');
-process.exit(failed ? 1 : 0);
+S.finish();

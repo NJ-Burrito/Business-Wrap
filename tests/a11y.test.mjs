@@ -8,9 +8,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const require = createRequire(import.meta.url);
 const AXE = require.resolve('axe-core/axe.min.js');
@@ -19,14 +19,10 @@ fs.mkdirSync(OUT, { recursive: true });
 const file = path.join(OUT, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, watermarkDir: path.join(REPO, 'editor', 'brand', 'watermark') }); // the avatar is part of the UI under test
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => {
-  results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`);
-  if (!ok) failed += 1;
-};
+const S = suite("");
+const { check, results } = S;
 
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 const report = [];
 try {
   for (const ui of ['ar', 'en']) {
@@ -45,7 +41,7 @@ try {
         await act(page, st); // the ribbon tab that holds the tool, else the palette
       }
       await page.waitForTimeout(650); // let open/close motion settle: axe measures colours mid-fade otherwise
-      // 0.16.1: a fixed wait is not enough on a loaded machine (a full run saw the palette headers measured mid-fade, color-contrast x7): also wait until every finite animation of the page and of the UI shadow root has finished
+      // a fixed wait is not enough on a loaded machine (a full run saw the palette headers measured mid-fade, color-contrast x7): also wait until every finite animation of the page and of the UI shadow root has finished
       await page.evaluate(async () => { const root = document.getElementById('bw-ui-host')?.shadowRoot; const all = [...document.getAnimations(), ...(root ? root.getAnimations() : [])].filter((x) => Number.isFinite(x.effect?.getComputedTiming().endTime)); await Promise.allSettled(all.map((x) => x.finished)); });
       const v = await page.evaluate(async () => {
         const r = await window.axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'] });
@@ -89,6 +85,4 @@ try {
   await browser.close();
 }
 fs.writeFileSync(path.join(OUT, 'axe-report.json'), JSON.stringify(report, null, 1));
-console.log(results.join('\n'));
-console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

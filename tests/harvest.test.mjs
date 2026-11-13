@@ -11,22 +11,21 @@ import http from 'node:http';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { harvestModel, harvestCrawl } from '../engine/harvest/cli.mjs';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
 import { buildSite } from './fixtures/harvest/site.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const OUT = path.join(REPO, 'out', 'harvest-test');
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
 const FIX = path.join(REPO, 'tests', 'fixtures', 'harvest');
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("");
+const { check, results } = S;
 const read = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
 const table = (doc, ch) => doc.chapters[ch].sections.flatMap((s) => s.blocks).find((b) => b.kind === 'table');
 
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 async function opens(editor, label) {
   const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 } });
   const p = await ctx.newPage();
@@ -183,6 +182,4 @@ try {
 } finally {
   await browser.close();
 }
-console.log(results.join('\n'));
-console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

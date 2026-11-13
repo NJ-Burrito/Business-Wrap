@@ -1,4 +1,4 @@
-// 0.17.8 (O6): the Explain panel in the current theme with motion. Light and dark (dim) x AR (rtl) and EN (ltr), Calm off and on.
+// (O6): the Explain panel in the current theme with motion. Light and dark (dim) x AR (rtl) and EN (ltr), Calm off and on.
 //  - motion is present with Calm off (card parts animate, hover/focus transitions run) and absent with Calm on; the OS reduced-motion setting is NOT consulted
 //  - every text of the panel is >= 4.5:1 against what it sits on (composited from the real computed colours, light and dark)
 //  - AR is mirrored (dock and card rtl, the swap slides the other way); Thmanyah only
@@ -8,9 +8,9 @@ import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { launchOptions, REPO } from '../engine/export.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const OUT = path.join(REPO, 'out', 'explain-0178-test');
 const SHOTS = process.env.BW_QA_DIR || path.join(REPO, 'out', 'qa-0.17.8', 'explain');
@@ -20,16 +20,15 @@ const file = path.join(OUT, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, watermarkDir: null });
 const URL = pathToFileURL(file).href;
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  explain-0178: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("explain-0178");
+const { check, results } = S;
 
 const css = fs.readFileSync(path.join(REPO, 'editor', 'ext', '37-explain.css'), 'utf8');
 check('37-explain.css has no OS prefers-reduced-motion query (only Calm stops motion)', !/prefers-reduced-motion/.test(css));
 check('37-explain.css names no font but Thmanyah and no hard-coded Cairo', !/cairo/i.test(css) && !/font-family:\s*['"]?(?!var|Thmanyah)/.test(css.replace(/font-family:\s*var\([^;]*;/g, '').replace(/'Thmanyah Sans'[^;]*;/g, '')));
 check('the Calm rule of 37-explain.css exists', /\.shell\[data-calm="1"\] \.xpl-dock/.test(css));
 
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 const sh = (page, fn, arg) => page.evaluate(([f, a]) => new Function('r', 'a', `return (${f})(r, a)`)(document.getElementById('bw-ui-host').shadowRoot, a), [fn.toString(), arg]);
 async function open({ ui, dark, calm }) {
   const ctx = await browser.newContext({ viewport: { width: 1366, height: 860 }, reducedMotion: 'reduce' }); // OS says reduce: the panel must still move unless Calm is on
@@ -127,6 +126,4 @@ try {
 } finally {
   await browser.close();
 }
-console.log(results.join('\n'));
-console.log(failed ? `\nexplain-0178: ${failed} FAILED` : `\nexplain-0178: all ${results.length} checks passed`);
-process.exit(failed ? 1 : 0);
+S.finish();

@@ -1,4 +1,4 @@
-// 0.15.0 editor bridge (council finding 1): the editor_* tools reach a REAL tab. Real caller end to end: the official MCP client over stdio ->
+// editor bridge (council finding 1): the editor_* tools reach a REAL tab. Real caller end to end: the official MCP client over stdio ->
 // mcp/cli.mjs -> the real host (engine/serve.mjs, token, SSE) -> a real Edge tab (editor/ext/12-session.js -> BW.bridge) -> reply.
 //   1. open_in_editor (no browser) returns library:true and the library id the tools take
 //   2. no tab connected -> NO_TAB (a clear code, not a 404 guess)
@@ -52,7 +52,7 @@ try {
   check('no tab: a document call is NO_TAB too', r.isError === true && data(r).code === 'NO_TAB', text(r));
 
   // a real tab (tool's tab: ?automation=1)
-  const exe = H.browserPath(); // 0.15.9: the editor's browser (Google Chrome first)
+  const exe = H.browserPath(); // the editor's browser (Google Chrome first)
   const opts = process.env.BRIDGE_BROWSER === 'chromium' || !exe ? launchOptions() : { ...launchOptions(), executablePath: exe };
   browser = await chromium.launch(opts);
   ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });

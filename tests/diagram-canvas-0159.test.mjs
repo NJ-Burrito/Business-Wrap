@@ -1,4 +1,4 @@
-// 0.15.9 · CANVAS lane: C1-C9 for the resizable diagram canvas (block.frame = { wMm, hMm, mode }).
+// · CANVAS lane: C1-C9 for the resizable diagram canvas (block.frame = { wMm, hMm, mode }).
 // Real Google Chrome throughout (set BW_CHROME to its path; the exporter and the editor both use launchOptions()), real pointer drags,
 // the PDF read back with PyMuPDF (rects and word boxes) and poppler (page text), the DOCX opened in real Word and exported to PDF.
 //
@@ -24,7 +24,7 @@ const numbers = {};
 const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  | ' + detail : ''}`); if (!ok) failed += 1; };
 process.on('uncaughtException', (e) => { console.log(results.join('\n')); console.error('CRASH: ' + String(e.stack || e.message).split('\n').slice(0, 5).join(' / ')); process.exit(2); });
 const near = (a, b, tol) => Math.abs(a - b) <= tol;
-// 0.16.1: the sample prints its workflow as two legible figures; these suites drive the editor and the exporters on ONE whole drawing
+// the sample prints its workflow as two legible figures; these suites drive the editor and the exporters on ONE whole drawing
 // (ids e1.. of the whole graph), so they read the whole-drawing copy of the sample; the real sample's own print is asserted in autolayout-0160
 const SAMPLE = path.join(REPO, 'tests', 'fixtures', 'permit-whole');
 const SAMPLE_REAL = path.join(REPO, 'samples', 'event-permit');
@@ -43,7 +43,7 @@ const run = (code, args, deps = ['pymupdf']) => { const r = spawnSync(...py(['-c
   const { DIAGRAM: OLD } = await import(pathToFileURL(base).href);
   for (const loc of ['ar', 'en']) {
     const m = DIAGRAM.layout(wf[loc]);
-    delete m.routing; // 0.16.0: layout() now sets the key; this stands for a drawing stored before it
+    delete m.routing; // layout() now sets the key; this stands for a drawing stored before it
     for (const ed of [false, true]) {
       n += 1;
       const a = DIAGRAM.render(DIAGRAM.ensure(m), { theme, locale: loc, editor: ed });
@@ -332,7 +332,7 @@ try {
 
   // first drag: from the automatic size; the edge follows the pointer; snapped; readout and grid while dragging
   const a0 = await artBox();
-  // 0.16.0 (D2): the figure sits on its true landscape sheet, where the automatic canvas is already as wide as the room; the first drag is a small one outward, so it lands on a grid step inside the room and nothing is clamped
+  // (D2): the figure sits on its true landscape sheet, where the automatic canvas is already as wide as the room; the first drag is a small one outward, so it lands on a grid step inside the room and nothing is clamped
   const d1 = await dragH('e', Math.round((1.5 * a0.k * 96) / 25.4), 0, { hold: true }); // 1.5 mm outward on each side: the canvas (256.6 mm) grows to 260 mm, a grid step and inside the room (264.4 mm)
   const f1 = await blockFrame('ar');
   const a1 = await artBox();

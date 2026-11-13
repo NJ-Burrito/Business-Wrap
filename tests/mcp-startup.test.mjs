@@ -13,11 +13,11 @@ import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { testSandbox } from '../engine/testguard.mjs';
+import { suite } from './_harness.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + String(detail).replace(/\s+/g, ' ').slice(0, 140) : ''}`); if (!ok) failed += 1; };
+const S = suite("");
+const { check, results } = S;
 
 // ── the scratch plugin cache (under the OS temp folder = O:\Temp on this machine) ──
 const SIM = testSandbox('sim');
@@ -139,6 +139,4 @@ try {
 } catch (e) {
   check('mcp startup run', false, e.stack?.split('\n').slice(0, 3).join(' / '));
 }
-console.log(results.join('\n'));
-console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

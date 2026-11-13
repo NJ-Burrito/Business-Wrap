@@ -12,6 +12,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { py } from '../engine/py.mjs';
 import { VERBS } from '../engine/cli.mjs';
+import { suite } from './_harness.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(REPO, 'out', 'cli-test');
@@ -19,9 +20,8 @@ fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
 const FIX = path.join(REPO, 'tests', 'fixtures', 'harvest');
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("");
+const { check, results } = S;
 
 // no network: loopback only (the host on 127.0.0.1 is allowed, anything else throws)
 const BLOCK = `import net from 'node:net';
@@ -118,6 +118,4 @@ try {
 } finally {
   spawnSync(process.execPath, [path.join(REPO, 'engine', 'cli.mjs'), 'close'], { env, encoding: 'utf8' });
 }
-console.log(results.join('\n'));
-console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

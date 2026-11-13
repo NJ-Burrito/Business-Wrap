@@ -1,4 +1,4 @@
-// 0.13.3 one clear tree: every output of a document is inside its own folder with human names, machine state is in .system,
+// one clear tree: every output of a document is inside its own folder with human names, machine state is in .system,
 // nothing is written anywhere else, and an old 0.13.0-0.13.2 folder (PDF, DOCX, HTML, HISTORY, uuid names) is moved in whole.
 //
 //   node tests/tree-0133.test.mjs

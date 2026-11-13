@@ -1,4 +1,4 @@
-// 0.15.6 lane story · S1-S6: a new user story and a blank document carry the reference SRS's sections and tables, AR and EN.
+// lane story · S1-S6: a new user story and a blank document carry the reference SRS's sections and tables, AR and EN.
 // Real Edge/Chrome clicks the real commands (BW.runAction = the ribbon's own path) on the blank sample, asserts sections, column counts
 // and headers in both editions, one undo step per gesture, the normal table tools on the new tables, and the PDF + DOCX text.
 // Every column word is read from templates/e-service/pack.json (never typed here).   node tests/story-template-0156.test.mjs

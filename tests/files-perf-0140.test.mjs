@@ -1,4 +1,4 @@
-// 0.14.0 lane files-perf: D1 typing/hover performance (the toolbar fit no longer re-measures the whole bar on every key),
+// lane files-perf: D1 typing/hover performance (the toolbar fit no longer re-measures the whole bar on every key),
 // D2 «افتح المجلد / Open folder» after the performance report PDF, D3 the report without edits and with four more chart kinds,
 // D4 Save (in place) vs «حفظ نسخة جديدة / Save as new copy» (Versions\) vs Export HTML. Headless Edge, closed at the end.
 //
