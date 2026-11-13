@@ -5,7 +5,7 @@
   #bw-pair .bw-view { --pw: 210mm; --pg: 12mm; --ph: 297mm; width: calc(var(--vw, var(--pw)) * var(--bw-pz, .6)); height: calc(var(--vh, var(--ph)) * var(--bw-pz, .6)); overflow: clip; overflow-clip-margin: calc(3mm * var(--bw-pz, .6)); flex: none; position: relative; }
   #bw-pair[data-pages="spread"] .bw-view { width: calc(var(--vw, calc(var(--pw) * 2 + var(--pg))) * var(--bw-pz, .6)); }
   /* the edition flows into page-sized columns; the window slides along them */
-  /* 0.16.0 the pages are laid out at 100 percent and scaled by a transform, not by CSS zoom: borders and lines snap to the screen's pixels, so a zoomed
+  /* the pages are laid out at 100 percent and scaled by a transform, not by CSS zoom: borders and lines snap to the screen's pixels, so a zoomed
      layout parted from the printed one by a row here and there (the sample counted 8 pages at 50 percent, 7 as in the PDF at 100). The box's zoom is
      taken back inside it (zoom 1/pz: effective 1), the window scales it (scale pz), and every reader that divides a rect by the box's zoom still gets layout px. */
   #bw-pair .bw-view > main.bw-doc {
@@ -21,10 +21,10 @@
   /* a forced page break starts a new page here too; text pages keep the print margins */
   #bw-pair .bw-view main.bw-doc .cover { break-after: column; height: var(--ph); }
   #bw-pair .bw-view main.bw-doc :is(.chapter.wide, .chapter.wide + .chapter, table.toc-cont, .bw-break) { break-before: column; }
-  /* 0.16.2 a section or chapter that starts on a new page («صفحة جديدة قبل هذا القسم», .bw-brk) breaks to a new COLUMN here: `break-before: page` after a held empty slot made it share the column of the turned sheet's last slot */
+  /* a section or chapter that starts on a new page («صفحة جديدة قبل هذا القسم», .bw-brk) breaks to a new COLUMN here: `break-before: page` after a held empty slot made it share the column of the turned sheet's last slot */
   #bw-pair .bw-view main.bw-doc :is(section.chapter.bw-brk, section.sec.bw-brk) { break-before: column; }
   #bw-pair .bw-view main.bw-doc .wrap { box-decoration-break: clone; -webkit-box-decoration-break: clone; padding-block: var(--pm-top, 18mm) var(--pm-bottom, 16mm); }
-  /* 0.16.0 the print pass's verdicts on a long held table or list (views.js viewsRelax): its first rows and its last rows stay together */
+  /* the print pass's verdicts on a long held table or list (views.js viewsRelax): its first rows and its last rows stay together */
   #bw-pair .bw-view main.bw-doc [data-rlr="a"] { break-after: avoid; }
   #bw-pair .bw-view main.bw-doc [data-rlr="b"] { break-before: avoid; }
   /* paper: one sheet per column, painted behind the flow, each with its own shadow */
@@ -34,7 +34,7 @@
     background: repeating-linear-gradient(to right, var(--paper, #fafaf9) 0 var(--pw), transparent var(--pw) calc(var(--pw) + var(--pg))); /* doc-colour: the sheets are the document's paper */
     filter: drop-shadow(0 1px 1px color-mix(in srgb, var(--bw-band, #001e3d) 16%, transparent)) drop-shadow(0 4px 6px color-mix(in srgb, var(--bw-band, #001e3d) 12%, transparent));
   }
-  /* 0.16.0 a document that mixes sheet sizes: one sheet per page at its own size instead of the stripes */
+  /* a document that mixes sheet sizes: one sheet per page at its own size instead of the stripes */
   #bw-pair .bw-view > main.bw-doc[data-bwmix]::before { display: none; }
   #bw-pair .bw-view > main.bw-doc > .bw-sheets { position: absolute; inset-block: 0; inset-inline-start: 0; width: 0; height: var(--ph); z-index: -1; pointer-events: none; }
   #bw-pair .bw-sheets .bw-sheet { position: absolute; top: 0; display: block; background: var(--paper, #fafaf9); /* doc-colour */ filter: drop-shadow(0 1px 1px color-mix(in srgb, var(--bw-band, #001e3d) 16%, transparent)) drop-shadow(0 4px 6px color-mix(in srgb, var(--bw-band, #001e3d) 12%, transparent)); }
@@ -57,10 +57,10 @@
   #bw-pair .bw-runs img { height: 5mm; }
   #bw-pair .bw-view > main.bw-doc[dir="rtl"]::before { background: repeating-linear-gradient(to left, var(--paper, #fafaf9) 0 var(--pw), transparent var(--pw) calc(var(--pw) + var(--pg))); } /* doc-colour */
 }
-/* 0.16.4 the repeated table header of a continued table: room on the row that opens the column, the header drawn over it */
+/* the repeated table header of a continued table: room on the row that opens the column, the header drawn over it */
 @media screen {
   #bw-pair .bw-view > main.bw-doc tr[data-rpt] > td { padding-top: calc(2.5mm + var(--rpt, 0px)); }
-  /* 0.17.0 a row cut across columns: every fragment takes the header's room on top (box-decoration-break), the first one keeps its own top padding by the pull of the
+  /* a row cut across columns: every fragment takes the header's room on top (box-decoration-break), the first one keeps its own top padding by the pull of the
      ::before, and the bottom padding sits after the last fragment's content (::after) so a cloned fragment foot does not eat the room the lines had */
   #bw-pair .bw-view > main.bw-doc tr[data-rptc] > td { box-decoration-break: clone; padding-top: var(--rptc); padding-bottom: 0; orphans: 1; widows: 1; /* Chrome breaks a cell that has to lend its first fragment its cloned padding by the lines that fit, as the print did for the row */ }
   #bw-pair .bw-view > main.bw-doc tr[data-rptc] > td::before { content: ""; display: block; margin-bottom: calc(var(--rpt1) - var(--rptc)); }
@@ -81,7 +81,7 @@ html[data-bw-calm="1"] #bw-pair .bw-view > main.bw-doc { transition: none; }
 html[data-bw-calm="1"] main.bw-doc .bw-jump { animation: none; }
 @media (prefers-reduced-motion: reduce) { main.bw-doc .bw-jump { animation: none; } }
 
-/* 0.14.0 A4: reading mode — no editing affordance is drawn on the pages (the chrome is hidden in ext/16-reading.css) */
+/* reading mode — no editing affordance is drawn on the pages (the chrome is hidden in ext/16-reading.css) */
 @media screen {
   html[data-bw-reading="1"] main.bw-doc * { outline: none !important; caret-color: transparent; cursor: default; }
   html[data-bw-reading="1"] main.bw-doc a[href] { cursor: pointer; }

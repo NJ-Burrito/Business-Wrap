@@ -1,4 +1,4 @@
-/* 0.17.8 (O6) · the Explain panel (.xpl-dock, explainers.js) in the current theme: brand tokens only (--bw-*), navy glass, a gold accent, the dim dark set
+/* the Explain panel (.xpl-dock, explainers.js) in the current theme: brand tokens only (--bw-*), navy glass, a gold accent, the dim dark set
  * of 45-dark-dim.css (it follows the tokens, nothing here is a colour of its own), Thmanyah only. Loads after ux.css (ext/*.css come last), so it refines
  * that file's panel without touching it. Layout and words are unchanged; AR (rtl) and EN (ltr) use logical properties and mirror together.
  *

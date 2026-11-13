@@ -37,7 +37,7 @@ const LIB = (() => {
    * («عنوان الوثيقة», /control/title = "<kind>: <service name>") say the same service name. Editing the cover
    * updates «عنوان الوثيقة», and an edition still on the placeholder («خدمة جديدة» / "New service") takes the new name too,
    * so the list, the share file, the report, the PDF Title, an import and every saved file name follow it. */
-  /* 0.18.0: a document type's own placeholder title («عنوان المستند» / "Document title", type.json) is a placeholder too: LIB.addPlaceholders(list) (50-start reads them from the registry payload) */
+  /* a document type's own placeholder title («عنوان المستند» / "Document title", type.json) is a placeholder too: LIB.addPlaceholders(list) (50-start reads them from the registry payload) */
   const PLACEHOLDER = new Set(['خدمة جديدة', 'New service']);
   const addPlaceholders = (list) => { for (const x of list || []) if (x && typeof x === 'string') PLACEHOLDER.add(x.trim()); };
   const KIND = /^(.*?)\s*[:—]\s+/;
@@ -90,10 +90,10 @@ const LIB = (() => {
     const now = new Date().toISOString();
     const editions = {};
     for (const [ed, e] of Object.entries(M[id])) editions[ed] = snapEd(e);
-    // A16: the lock state travels with the entry (32-lock exposes EXT.lock), so a locked document opens locked
-    return { id, title: titleOf(id), service: id, origin: 'template', createdAt: now, savedAt: now, editions, words: Object.fromEntries(Object.entries(M[id]).map(([ed, e]) => [ed, wordCount(e.doc)])) /* 0.15.3: words per built edition, refreshed on every save */, theme: S.theme, lock: EXT.lock?.of(id) || null, bwlog: 1, ...docTypeOf(id), ...extra };
+    // the lock state travels with the entry (32-lock exposes EXT.lock), so a locked document opens locked
+    return { id, title: titleOf(id), service: id, origin: 'template', createdAt: now, savedAt: now, editions, words: Object.fromEntries(Object.entries(M[id]).map(([ed, e]) => [ed, wordCount(e.doc)])) /* words per built edition, refreshed on every save */, theme: S.theme, lock: EXT.lock?.of(id) || null, bwlog: 1, ...docTypeOf(id), ...extra };
   }
-  /** 0.18.0: the document type the open service was made from (doc.docType, written by engine/doctypes.mjs compose): an additive entry key, absent on every older entry. */
+  /** the document type the open service was made from (doc.docType, written by engine/doctypes.mjs compose): an additive entry key, absent on every older entry. */
   function docTypeOf(id) {
     const dt = Object.values(M[id] || {}).map((e) => e.doc?.docType).find((x) => typeof x === 'string' && x);
     return dt ? { docType: dt } : {};
@@ -128,7 +128,7 @@ const LIB = (() => {
     const h = isDoc(id) && !pending[id] ? `#doc=${encodeURIComponent(id)}` : '';
     if (location.hash !== h && (h || /[#&]doc=/.test(location.hash))) history.replaceState(history.state, '', location.pathname + location.search + h);
   }
-  /** 0.17.8 O5: opening a document from the store is a phase the loading screen covers (nothing shows when it is fast). */
+  /** opening a document from the store is a phase the loading screen covers (nothing shows when it is fast). */
   async function open(id, ed) {
     const end = EXT.busy?.begin('busy.open');
     try { return await openRun(id, ed); } finally { end?.(); }
@@ -215,9 +215,9 @@ const LIB = (() => {
   }
   let soonT = 0, soonId = null, seq = 0, soonSince = 0;
   const savedAt = {};
-  // 0.17.0 (P5): an edit reaches the list copy 250 ms after the last change (was 600), and never later than 1.5 s after the FIRST change of a burst
+  // an edit reaches the list copy 250 ms after the last change (was 600), and never later than 1.5 s after the FIRST change of a burst
   // (a long typing run used to wait for its first pause): a hard crash (the browser process killed) about a second after an edit keeps the edit.
-  // 0.17.2: 100 ms (was 250): a process kill 0.5 s after an edit still found the write unfinished on a slow runner (get + put are two IndexedDB steps)
+  // 100 ms (was 250): a process kill 0.5 s after an edit still found the write unfinished on a slow runner (get + put are two IndexedDB steps)
   const SOON_MS = 100, SOON_MAX_MS = 1500;
   const persistSoon = () => {
     if (!isDoc(S.svc)) { stamp(); return; }
@@ -243,7 +243,7 @@ const LIB = (() => {
     const doc = isDoc(S.svc) && !pending[S.svc];
     const list = doc ? savedAt[S.svc] : S.savedAt;
     // every key lands here (persistSoon): write only what changed, so the toolbar fit (a MutationObserver on the bar) is not woken per key
-    // 0.17.13: the bubble shows ONE time, the most recent of the list/draft save and the last Save HTML; the full detail (both times) stays in its tooltip
+    // the bubble shows ONE time, the most recent of the list/draft save and the last Save HTML; the full detail (both times) stays in its tooltip
     const ms = (d) => { const n = d ? new Date(d).getTime() : NaN; return Number.isFinite(n) ? n : 0; };
     const last = ms(list) >= ms(html) ? list : html;
     const txt = t('libStamp', { time: hhmm(last) });
@@ -271,7 +271,7 @@ const LIB = (() => {
     show(entry.id, ed);
     return entry;
   }
-  /** 0.18.0 document studio: a new document of registry type `id`, built from the payload's composed pair (docs.ar and docs.en: design, cover design, layout and
+  /** document studio: a new document of registry type `id`, built from the payload's composed pair (docs.ar and docs.en: design, cover design, layout and
    *  starter content already written by engine/doctypes.mjs compose). Both editions exist at once; `ed` is the one the editor opens on. Unsaved until the first
    *  edit, exactly like New (F8). Returns the entry, or null (toast) when the type is unknown. */
   async function newFromType(id, ed) {
@@ -291,11 +291,11 @@ const LIB = (() => {
   }
   /** The file types an import takes (the list's «استيراد» and File › Import alike). */
   const ACCEPT = '.html,.htm,.pdf,.docx,.json';
-  /** H3: one import for the documents list and the File category: a Business-Wrap Save-HTML or share (its editions,
+  /** one import for the documents list and the File category: a Business-Wrap Save-HTML or share (its editions,
    *  edits, log, lock and signatures kept), a document JSON, any other HTML / a DOCX / a PDF (read by the local server);
    *  an edits file or bundle still merges into the document it was made from. Progress, then the imported document
    *  opens with a result message; a failure says what to do in plain words. */
-  async function importAny(file) { // 0.17.8 O5: the loading screen covers every import path (JSON, Save-HTML, server-read HTML / DOCX / PDF / zip)
+  async function importAny(file) { // the loading screen covers every import path (JSON, Save-HTML, server-read HTML / DOCX / PDF / zip)
     const end = file ? EXT.busy?.begin('busy.import') : null;
     try { return await importAnyRun(file); } finally { end?.(); }
   }
@@ -640,7 +640,7 @@ bwExt({
       await LIB.ingestMirror({ mirrorToo: false }).catch(() => {}); await LIB.fromHash(); LIB.ingestMirror().catch(() => {}); },
     // Ctrl+O = «المستندات» (open a document); the toolbar tool sits in File
     keydown: (e) => { if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'o') { e.preventDefault(); openDrawer('library'); return true; } return false; },
-    // H3: Save = the document itself (its list entry + its own HTML file), never a download
+    // Save = the document itself (its list entry + its own HTML file), never a download
     save: () => { LIB.saveInPlace().then(() => { window.BW.libSaved = (window.BW.libSaved || 0) + 1; }); },
     // the autosave writes the list entry too (a library document): what the list reopens is what was on screen
     commit: (ops, ed) => { LIB.onCommit(ops, ed); LIB.persistSoon(); },
@@ -651,13 +651,13 @@ bwExt({
     pagehide: () => { LIB.persistNow(); },
   },
 });
-/* H3: Ctrl+S and the yellow Save (editor.js saveAll) on the local server save the document in place (the 'save' event
+/* Ctrl+S and the yellow Save (editor.js saveAll) on the local server save the document in place (the 'save' event
  * above) and download nothing: the edits file they used to download is Export › edits. Off the server: as before. */
 { const plain = saveAll; saveAll = function () { if (!EXT.session?.info) return plain(); writeDraft(); S.dirty = false; emitHook('save'); emit('save'); }; }
-/* H3: File › Import is the documents list's import (HTML incl. shares, DOCX, PDF, JSON); edits files still merge;
+/* File › Import is the documents list's import (HTML incl. shares, DOCX, PDF, JSON); edits files still merge;
  * File › Save HTML waits for a Save in place still capturing (LIB.queued) */
 { const plain = runAction; runAction = async function (a, ...rest) { if (a === 'import') { await LIB.importAny(await pickFile(LIB.ACCEPT)); return; } if (a === 'saveHtml') return LIB.queued(() => libSaveCopy(plain)); return plain(a, ...rest); }; window.BW.runAction = runAction; }
-/* 0.14.0 D4: three different saves, said plainly. Save (yellow, Ctrl+S) = in place: the document's own HTML file is overwritten
+/* three different saves, said plainly. Save (yellow, Ctrl+S) = in place: the document's own HTML file is overwritten
  * (the old one is kept in Versions\). «حفظ نسخة جديدة / Save as new copy» (File › Save HTML) = a NEW dated file in the document's
  * Versions\ folder; the document's own file is not touched. Export HTML = the clean copy in Exports\. Served: POST
  * /api/workspace/html { copy: true }. file:// has no folder: the browser downloads a new file, as it always did. */

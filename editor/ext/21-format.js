@@ -1,4 +1,4 @@
-/* WP2 · A26 — the selection format bar «تنسيق» (0.13.0).
+/* A26 — the selection format bar «تنسيق» (0.13.0).
  * Shown while there is a text range (or a caret) inside an editable leaf. Every tool is ONE op: the leaf is replaced
  * by its rich form ({text, marks, style}, engine/edits.mjs markLeaf / styleLeaf); typing keeps the marks (setText
  * rebases them). The range is remembered as character offsets of the leaf's words, so a toolbar click (which moves
@@ -183,7 +183,7 @@ const W2_FORMAT = {
     return w2put(styleLeaf(leaf, { level: Math.max(0, Math.min(8, (leaf.style.level || 0) + d)) }), leaf);
   },
 };
-/** 0.17.0 (note 13): the live preview of the font, size and colour dialogs. The text under the selection (else the dialog's sample) is drawn in the face, at the real
+/** the live preview of the font, size and colour dialogs. The text under the selection (else the dialog's sample) is drawn in the face, at the real
  *  point size and in the colour being chosen, with the marks it already carries (bold, italic, underline); `kind` is the one value the field changes. */
 function w2preview(kind, st) {
   const leaf = W2F.leaf();
@@ -217,7 +217,7 @@ async function w2formatAction(id) {
     case 'fmtSize': { const v = +(await ask(t('w2.sizePrompt'), String(st.size || 12), { type: 'number', min: 5, max: 72, step: 1, preview: w2preview('size', st) })); if (v >= 5 && v <= 72) W2_FORMAT.mark('size', v); return; }
     case 'fmtClear': return W2_FORMAT.clear();
     case 'fmtAlignStart': case 'fmtAlignCenter': case 'fmtAlignEnd': case 'fmtJustify': case 'fmtJustifyLow': case 'fmtJustifyMedium': case 'fmtJustifyHigh':
-      // 0.16.2 note J: Justify, then Word's three kashida levels as additive align values; Latin text is plain justify at every level (render, DOCX)
+      // note J: Justify, then Word's three kashida levels as additive align values; Latin text is plain justify at every level (render, DOCX)
       return W2_FORMAT.style({ align: { fmtAlignStart: 'start', fmtAlignCenter: 'center', fmtAlignEnd: 'end', fmtJustify: 'justify', fmtJustifyLow: 'justify-low', fmtJustifyMedium: 'justify-medium', fmtJustifyHigh: 'justify-high' }[id] });
     case 'fmtTop': case 'fmtMiddle': case 'fmtBottom': return W2_FORMAT.style({ valign: id.slice(3).toLowerCase() });
     case 'fmtLine': { const v = +(await ask(t('w2.linePrompt'), String(st.lineHeight || 1.8), { type: 'number', min: 0.8, max: 4, step: 0.1 })); if (v >= 0.8 && v <= 4) W2_FORMAT.style({ lineHeight: v }); return; }
@@ -231,7 +231,7 @@ async function w2formatAction(id) {
     default:
   }
 }
-/** 0.16.2 note J: the kashida levels are a DISPLAY layer (render.mjs kashidaPass): after each render, and when the width or the fonts change,
+/** note J: the kashida levels are a DISPLAY layer (render.mjs kashidaPass): after each render, and when the width or the fonts change,
  *  the full lines of every Justify Low / Medium / High Arabic paragraph get tatweels drawn by CSS (no characters: not stored, copied, found or checked). */
 let w2kTimer = 0;
 function w2kashida() {

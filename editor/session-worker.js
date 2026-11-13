@@ -6,7 +6,7 @@
  * A tab answers the worker's ping from its message handler (no page timer: a hidden tab's timers are throttled to once a minute). A tab that
  * stops answering stays listed (a sleeping tab is not a closed tab); /api/host/health shows its lastBeatMs and flags it TAB_STALE.
  *
- * 0.15.9 A2: the same file is also the page's DEDICATED heartbeat worker (editor/ext/12-session.js starts it with `new Worker`). A dedicated worker's timers are
+ * the same file is also the page's DEDICATED heartbeat worker (editor/ext/12-session.js starts it with `new Worker`). A dedicated worker's timers are
  * not throttled in a hidden tab (measured, tests/awake-0159.test.mjs), so its clock is the reference the page is compared with: every second it posts
  * {t:'hb', wall}; the page notes how late each one arrives (a frozen or throttled page reads them in a burst) and tells the host (awake.lagMs, awake.stalls).
  * A tab the browser discarded (no pagehide, its Web Lock gone) is reported as `lost`, not as closed: the host keeps its saved state and answers TAB_ASLEEP for it.
@@ -32,7 +32,7 @@ function post(force) {
   const key = JSON.stringify([list.map(({ ago, ...rest }) => rest), [...lost]]);
   if (!force && key === sentKey && Date.now() - sentAt < 4500) return Promise.resolve();
   sentKey = key; sentAt = Date.now();
-  return fetch('/api/session/tabs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ client, seq: ++listSeq, tabs: list, lost: [...lost] }) }).then((r) => r.arrayBuffer()).catch(() => {}); // 0.15.9: NO keepalive here, and the answer is read. A worker outlives the page, and Chrome counts the unread bodies of keepalive requests against a ~64 KB quota: after ~2 minutes of one list every 2 s every fetch failed at once ("Failed to fetch") and the host saw every tab asleep (measured, tests/awake-0159.test.mjs)
+  return fetch('/api/session/tabs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ client, seq: ++listSeq, tabs: list, lost: [...lost] }) }).then((r) => r.arrayBuffer()).catch(() => {}); // NO keepalive here, and the answer is read. A worker outlives the page, and Chrome counts the unread bodies of keepalive requests against a ~64 KB quota: after ~2 minutes of one list every 2 s every fetch failed at once ("Failed to fetch") and the host saw every tab asleep (measured, tests/awake-0159.test.mjs)
 }
 function route(event, raw) {
   let data = {};
@@ -47,7 +47,7 @@ function connect() {
 }
 function start() {
   connect();
-  if (!pingTimer) pingTimer = setInterval(() => { for (const port of ports.keys()) { try { port.postMessage({ t: 'ping' }); } catch { /* gone */ } } post(true); sweep(); }, 2000); // 0.15.3: every 2 s the pages are pinged and the list (with each tab's age) is re-sent, so a healthy tab reads < 5 s and BW_ASLEEP_MS can be short
+  if (!pingTimer) pingTimer = setInterval(() => { for (const port of ports.keys()) { try { port.postMessage({ t: 'ping' }); } catch { /* gone */ } } post(true); sweep(); }, 2000); // every 2 s the pages are pinged and the list (with each tab's age) is re-sent, so a healthy tab reads < 5 s and BW_ASLEEP_MS can be short
 }
 function stop() {
   clearInterval(pingTimer); pingTimer = 0;

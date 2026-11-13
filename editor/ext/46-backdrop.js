@@ -1,4 +1,4 @@
-/* 0.15.0 look lane (notes 11 and 13, perf booster 2). Three small, independent jobs that share one file because each is a few lines of
+/* look lane (notes 11 and 13, perf booster 2). Three small, independent jobs that share one file because each is a few lines of
  * DOM plumbing the stylesheets cannot do:
  *   1. #bw-backdrop (0.15.2 note 1: a static drafting-grid layer, look in editor/editor.css; here the element is built once).
  *   2. --bw-drawer-top on the host (note 11): the real bottom of the top bar + 8 px, kept in step by a ResizeObserver. editor.js measureBar
@@ -6,7 +6,7 @@
  *      and falls back to --bw-bar-h.
  *   3. The mark's idle nod (perf booster 2): one-shot animations set from a timer instead of `infinite` CSS loops (see chrome.css).
  * An extension's code runs in the editor's own scope: `root`, `S`, `isCalm` are in reach. */
-/* 0.15.2 note 1: the backdrop is a static CSS layer now (editor/editor.css, a drafting grid over a soft glow): no mask, no animation, nothing to
+/* the backdrop is a static CSS layer now (editor/editor.css, a drafting grid over a soft glow): no mask, no animation, nothing to
  * still or pause. Here: build the element once. */
 const lookState = { bd: null, ro: null, roEl: null, idleT: 0, idleN: 0 };
 
@@ -79,7 +79,7 @@ bwExt({
   on: {
     boot: () => {
       bdEnsure(); dtSync();
-      // 0.15.2 hover cost: while the pointer is on the toolbar the watermark's idle float pauses (root flag data-bw-hot, event bw:hot)
+      // hover cost: while the pointer is on the toolbar the watermark's idle float pauses (root flag data-bw-hot, event bw:hot)
       const hotSet = (on) => { const d = document.documentElement.dataset; if ((d.bwHot === '1') !== on) { d.bwHot = on ? '1' : '0'; window.dispatchEvent(new Event('bw:hot')); } };
       root.addEventListener('pointerover', (e) => { if (e.pointerType !== 'touch' && e.target?.closest?.('.island')) hotSet(true); });
       root.addEventListener('pointerout', (e) => { const isl = e.target?.closest?.('.island'); if (isl && !isl.contains(e.relatedTarget)) hotSet(false); });

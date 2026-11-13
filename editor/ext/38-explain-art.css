@@ -1,4 +1,4 @@
-/* 0.17.10 · the Explain illustrations (editor/xpl-art.js) in the current theme: navy glass window, gold accent, depth and a small story.
+/* the Explain illustrations (editor/xpl-art.js) in the current theme: navy glass window, gold accent, depth and a small story.
  * Brand tokens only (--bw-*), so light, dark and the dim set of 45-dark-dim.css follow; no colour of its own, no gradient or id inside the
  * SVG (a gradient in a hidden <svg> does not resolve), Thmanyah only (drawings carry no text). Loads after ux.css and 37-explain.css.
  *

@@ -227,7 +227,7 @@
  * to its edge tab (until the person taps the tab); above that both show (the drawer is where most controls to explain live). --rside is the drawer's width, still used by the toasts. ── */
 .shell { --xd-w: 304px; --rside: 0px; }
 .shell:has(.drawer:not([hidden])) { --rside: calc(min(420px, 92vw) + 60px); } /* 420 + its 2 × 18 padding + 2 × 12 margin */
-/* 0.15.2 note 15: SHARED OVERLAY PANEL. A side panel (explanation, spelling) takes .bw-sidepanel: it is fixed to the physical right edge, floats OVER the pages
+/* SHARED OVERLAY PANEL. A side panel (explanation, spelling) takes .bw-sidepanel: it is fixed to the physical right edge, floats OVER the pages
  * (the body is never padded, nothing moves, no zoom change) and slides in/out with a human ease (soft start, soft landing, 220 ms). JS: bwSidePanelOpen /
  * bwSidePanelClose (explainers.js) toggle data-slide="out" around the state change. Only the editor's calm button (.shell[data-calm]) makes it instant,
  * never the OS reduced-motion setting. Panel-specific size: --bw-sp-w. Contents: any. */
@@ -275,7 +275,7 @@
   .shell:has(.drawer:not([hidden])) .xpl-dock:not([data-force]) .xd-tab { display: flex; }
 }
 
-/* 0.16.0 (M4): the panel steps aside to its edge tab while a diagram's canvas handles are under it (explainers.js xplAside); the tab brings it back (data-force). */
+/* the panel steps aside to its edge tab while a diagram's canvas handles are under it (explainers.js xplAside); the tab brings it back (data-force). */
 .xpl-dock[data-aside]:not([data-force]) {
   inline-size: 40px; block-size: 96px; max-inline-size: none; max-block-size: none; inset-block-start: calc(var(--bw-bar-h, 72px) + 24px); right: 0; border-radius: 14px 0 0 14px; overflow: visible; box-shadow: var(--bw-shadow-2), 0 0 0 1px var(--panel-line);
 }

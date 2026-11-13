@@ -1,4 +1,4 @@
-/* 0.15.9 the folder picker panel (editor/ext/48-folder-picker.js). Brand tokens only; logical properties so RTL mirrors it. */
+/* the folder picker panel (editor/ext/48-folder-picker.js). Brand tokens only; logical properties so RTL mirrors it. */
 dialog.bw-fp { inline-size: min(780px, 94vw); max-block-size: 90vh; padding: 20px 22px; border: 1px solid var(--panel-line, currentColor); border-radius: 20px; background: var(--panel, Canvas); color: var(--panel-ink, CanvasText); box-shadow: var(--bw-shadow-3, 0 12px 40px rgba(0, 0, 0, .35)); overflow: auto; }
 dialog.bw-fp::backdrop { background: rgba(10, 16, 30, .5); }
 dialog.bw-fp[open] { display: grid; gap: 10px; }
@@ -22,7 +22,7 @@ dialog.bw-fp .fp-main { display: grid; gap: 8px; min-inline-size: 0; align-conte
 dialog.bw-fp .fp-tools { display: flex; flex-wrap: wrap; gap: 8px; }
 dialog.bw-fp .fp-list { list-style: none; margin: 0; padding: 4px; border: 1px solid var(--panel-line); border-radius: 12px; overflow: auto; max-block-size: 40vh; min-block-size: 140px; }
 dialog.bw-fp .fp-item { inline-size: 100%; }
-dialog.bw-fp .fp-item .w, dialog.bw-fp .fp-place .w { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; unicode-bidi: plaintext; text-align: start; } /* 0.16.1 (fault 11): a name reads in its own first strong letter's direction (".claude-plugin" stays left to right) */
+dialog.bw-fp .fp-item .w, dialog.bw-fp .fp-place .w { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; unicode-bidi: plaintext; text-align: start; } /* a name reads in its own first strong letter's direction (".claude-plugin" stays left to right) */
 dialog.bw-fp .fp-crumb:hover, dialog.bw-fp .fp-place:hover, dialog.bw-fp .fp-item:hover { background: var(--wash, rgba(127, 127, 127, .15)); }
 dialog.bw-fp :is(button, input, ul):focus-visible { outline: 2px solid var(--bw-accent, Highlight); outline-offset: 2px; }
 dialog.bw-fp .fp-empty { padding: 14px; color: var(--panel-soft, inherit); }
@@ -41,4 +41,4 @@ dialog.bw-fp .ic { inline-size: 20px; block-size: 20px; flex: none; }
   dialog.bw-fp .fp-place { inline-size: auto; }
 }
 dialog.bw-fp .fp-item .i.fp-role { inline-size: 24px; block-size: 24px; flex: none; }
-dialog.bw-fp .fp-item .i.fp-role svg { inline-size: 24px; block-size: 24px; display: block; flex: none; } /* 0.17.4: a Business-Wrap folder wears its own role icon (assets/icons/folders.json), the same as in Explorer */
+dialog.bw-fp .fp-item .i.fp-role svg { inline-size: 24px; block-size: 24px; display: block; flex: none; } /* a Business-Wrap folder wears its own role icon (assets/icons/folders.json), the same as in Explorer */

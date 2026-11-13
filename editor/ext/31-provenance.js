@@ -109,7 +109,7 @@ async function pvLoad(svc, snap = null) {
   // edition, the <meta name="bw-ledger">, the <html data-bw-ledger>, a second CSP hash); any one left means «stripped»
   const traced = live ? ent && BWLOG1.traces({ bwlog: ent.bwlog, services: [{ id: svc, editions: ent.editions }] }, svc).length : BWLOG1.traces(DATA, svc, pvHead()).length;
   if (edited && !L.entries.length && !mir.log && (live ? ent && !traced : !traced)) { L.src = 'legacy'; L.verdict = { ok: true, issues: [], legacy: true }; L.pins = {}; return (PV.logs[svc] = L); }
-  // 0.16.0 (session S1): a LIBRARY document (it lives in the browser, not in a file someone could have cut) whose log this machine's history folder does not hold
+  // (session S1): a LIBRARY document (it lives in the browser, not in a file someone could have cut) whose log this machine's history folder does not hold
   // (the save folder was switched, or the history folder is new or was reset) is not «stripped»: a calm neutral message says the history is in another folder.
   // Logged from this open on. A saved FILE that kept the mark and lost its log still warns: one opened as a file (!live) and one imported into the library (origin 'import').
   if (edited && !L.entries.length && !mir.log && live && ent && ent.origin !== 'import') { L.src = 'elsewhere'; L.verdict = { ok: true, issues: [], elsewhere: true }; L.pins = {}; return (PV.logs[svc] = L); }
@@ -121,7 +121,7 @@ async function pvLoad(svc, snap = null) {
   L.pins = L.verdict.pins;
   return (PV.logs[svc] = L);
 }
-/** 0.16.2 (note T) · the editor saves a single-edition document (control.editions: 'ar' | 'en') WITHOUT its other, empty edition, but the log's document hash covers every edition the
+/** the editor saves a single-edition document (control.editions: 'ar' | 'en') WITHOUT its other, empty edition, but the log's document hash covers every edition the
  *  session held, so an honest file read back (fresh profile, another computer) failed the «unlogged» check and showed the tamper warning. Two ways to vouch for such a file, both
  *  still catching a hand edit:
  *  · a file saved from 0.16.2 on: the signed «saveHtml» entry carries `savedDh`, the hash of exactly the editions the file holds → compared with the file's own state;
@@ -155,7 +155,7 @@ const pvHard = (L) => (L?.verdict?.issues || []).filter((i) => i.reason !== 'tof
 const pvTofuNames = (L) => [...new Set((L?.verdict?.issues || []).filter((i) => i.reason === 'tofu').map((i) => L.entries[i.seq]?.actor?.name || t('pfNoName')))];
 const pvBad = (L) => !!L && !L.verdict.ok && pvHard(L).length > 0;
 const pvDigest = async (s) => `sha256:${await BWU.sha256(s)}`;
-/** 0.16.0 (field notes item 7) · a large string in a NEW log entry (a 300 KB logo, typed once into an op) is kept by its hash and size, not copied: {$blob, bytes, head}.
+/** a large string in a NEW log entry (a 300 KB logo, typed once into an op) is kept by its hash and size, not copied: {$blob, bytes, head}.
  *  The document and its edition history still hold the value, so nothing is lost and the entry still proves what was written; older entries are never touched (additive, AGENTS.md
  *  «File format and history»). Strings of 8 KB or less stay as they were. */
 const PV_BLOB = 8192;

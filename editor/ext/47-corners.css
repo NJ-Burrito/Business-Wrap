@@ -1,6 +1,4 @@
-/* 0.15.2 notes 5, 6 and 16 (design lane).
- *
- * Corners (owner, 2026-10-31): the watermark is bottom LEFT (editor.css), toasts and pop-up notes are bottom RIGHT. Both are physical corners
+/* Corners (owner, 2026-10-31): the watermark is bottom LEFT (editor.css), toasts and pop-up notes are bottom RIGHT. Both are physical corners
  * (left / right), the same in Arabic and English: the shell is always dir=rtl, so inline-start would put them on the wrong side. The explain
  * dock keeps its bottom 96 px free for them. A list or menu may open over the watermark.
  * This file loads after ux.css, so a rule of equal weight here wins over the old bottom-centre toasts (0.14.0 A3). */

@@ -82,11 +82,11 @@ let XPL_FOLDED = false; // the panel is folded away for another side panel (spel
 function xplPanelOpen() {
   if (XPL_FOLDED) return false;
   if (ls.get('bw:xpl-panel') == null && ls.get('bw:explainers') === '0') ls.set('bw:xpl-panel', '0');
-  if (ls.get('bw:xpl-panel') == null && window.innerWidth < XPL_WIDE) return false; // 0.16.0 (M4): nobody chose yet and the window is narrow: the panel waits as its edge tab, the pages are not covered
+  if (ls.get('bw:xpl-panel') == null && window.innerWidth < XPL_WIDE) return false; // nobody chose yet and the window is narrow: the panel waits as its edge tab, the pages are not covered
   return ls.get('bw:xpl-panel') !== '0';
 }
 const XPL_WIDE = 1280; // css px: from here the panel may open by itself (the same line as the drawer rule in ux.css)
-/** 0.16.0 (M4): the open panel never sits on a control of the page. While a diagram's canvas handles are showing under the place the panel would take, the panel steps aside
+/** the open panel never sits on a control of the page. While a diagram's canvas handles are showing under the place the panel would take, the panel steps aside
  *  to its edge tab (data-aside, like an open drawer does); it returns when the handles go. Measured from the handles and the panel's own width, not from its current state, so it cannot flicker. */
 function xplAside() {
   const dock = root.querySelector('.xpl-dock');
@@ -146,7 +146,7 @@ function xplDock() {
   dock.querySelector('.xd-b').hidden = !open;
   return dock;
 }
-/** 0.17.8 (O6): the panel's own parts (header rule, picture, hint) arrive in a short stagger after the slide. Class only: the CSS is in ext/37-explain.css and
+/** the panel's own parts (header rule, picture, hint) arrive in a short stagger after the slide. Class only: the CSS is in ext/37-explain.css and
  *  stands still under the Calm button (.shell[data-calm="1"]), never under the OS reduced-motion setting. */
 function xplEnter(dock) {
   clearTimeout(dock.__enT);

@@ -1,4 +1,4 @@
-/* 0.14.0 · UX-RIBBON — a Word-style ribbon: tabs → groups → tools (R1), a selection that survives a tool press (R2).
+/* UX-RIBBON — a Word-style ribbon: tabs → groups → tools (R1), a selection that survives a tool press (R2).
  * The legacy sections stay in the toolbar's markup (hidden by 25-ribbon.css), so every older hook still finds them; the ribbon
  * is mounted inside the island, after it (`.ribbon`, kept out of syncUi's morph by UI_RUNTIME), and fed from the same CMDS
  * registry and the same buttons (`data-a`), so one click handler (onBar) runs every command. No command is invented here.
@@ -106,7 +106,7 @@ const rbTabWord = (tab) => t(`rb.tab.${tab}`);
 /** One tab's groups as markup; a group whose commands are all absent is left out. */
 function rbPanelInner(tab) {
   const def = rbDefs().find((x) => x[0] === tab);
-  // 0.16.1 (fault 6): the shape-and-arrow tab follows what is selected, as the floating bar does: a shape shows its own tools and arrangement, an arrow its tools
+  // the shape-and-arrow tab follows what is selected, as the floating bar does: a shape shows its own tools and arrangement, an arrow its tools
   const hide = tab === 'diagram2' ? (RB.dgKind === 'shape' ? ['arrow'] : RB.dgKind === 'arrow' ? ['shape', 'arrange'] : []) : [];
   return (def ? def[1] : []).filter((x) => !hide.includes(x[0])).map(([g, ids]) => ({ g, items: ids.map(rbItem).filter(Boolean) })).filter((x) => x.items.length)
     .map(({ g, items }) => `<div class="rb-g" role="group" aria-label="${esc(t(`rb.g.${g}`))}"><div class="rb-tools">${items.join('')}</div><span class="rb-gl" aria-hidden="true">${esc(t(`rb.g.${g}`))}</span></div>`).join('');
@@ -210,7 +210,7 @@ function ctxFit() {
     }
     if (!chosen) { ctx.dataset.fit = looks[2][0]; ctxPlace(sb, 0); }
   };
-  // 0.16.0: the same strip in the same room is not re-fitted: the loop below moves tools in and out of «More» to measure, which is hundreds of DOM changes per key
+  // the same strip in the same room is not re-fitted: the loop below moves tools in and out of «More» to measure, which is hundreds of DOM changes per key
   // (tests/files-perf D1). The room is the strip's width, its title's width, its tool count and language; any of them changing fits again.
   const sc0 = ctx.querySelector(':scope > .sc');
   const sig = [ctx.getBoundingClientRect().width.toFixed(1), sc0 ? sc0.getBoundingClientRect().width.toFixed(1) : 0, sb.getBoundingClientRect().left.toFixed(1), ctx.dataset.fit || '', sb.__fit ? sb.__fit.all.length : sb.children.length, ctx.dataset.key || '', document.documentElement.lang, document.fonts?.status || ''].join('|');
@@ -220,7 +220,7 @@ function ctxFit() {
   // every part of the row is watched, and a part that grew past the row fits it again even though the row's own width did not change
   if (ctxRo) { ctxRo.disconnect(); ctxRo.observe(ctx); for (const e of ctx.querySelectorAll(':scope > .sc, .sb > *')) ctxRo.observe(e); }
   RB.ctxBusy = true;
-  // 0.16.0 (U1): moving a node from the strip into «More» (or back) blurs it. A tool that held the keyboard keeps it: the same node is focused again after the fit,
+  // moving a node from the strip into «More» (or back) blurs it. A tool that held the keyboard keeps it: the same node is focused again after the fit,
   // and when it now sits in the closed menu, the «More» button takes the keyboard (never the page).
   const held = ctx.contains(root.activeElement) ? root.activeElement : null;
   try { run(); } finally { RB.ctxBusy = false; ctxMo?.takeRecords(); }
@@ -257,7 +257,7 @@ function rbPaint(el, html) {
   syncUndoState();
   rbFitTabs(el);
 }
-/** 0.15.0 perf (booster 6): when only the tab (or the collapsed state) changed, the panel's children are swapped from a markup cached per tab and language, direction,
+/** perf (booster 6): when only the tab (or the collapsed state) changed, the panel's children are swapped from a markup cached per tab and language, direction,
  *  selection and service: no morph, no per-node attribute copy, no second decorate pass. The cache is never live nodes, so a swapped-in panel carries no stale disabled state. */
 function rbSwap(el) {
   const pn = el.querySelector('.rb-panel');
@@ -284,14 +284,14 @@ function rbSync() {
     const was = RB.ctx;
     RB.ctx = now;
     // the contextual tab opens once, when the selection starts. 0.15.9: not under 1024 px, where its tools wrap onto a second band (360 px against 184) and selecting would push the page by 176 px: the tab still appears in the row, one press away, and the selection strip (.ctx) carries the tools
-    // 0.17.0 (note 1): the tab the person was on is remembered (RB.pre) and comes back when the selection ends (a press on the background), so the ribbon is not thrown to Home
+    // the tab the person was on is remembered (RB.pre) and comes back when the selection ends (a press on the background), so the ribbon is not thrown to Home
     if (now && !rbNarrow()) { if (!was) RB.pre = RB.tab; RB.tab = now; if (RB.collapsed) { RB.collapsed = false; ls.set('bw:rb:c', '0'); } }
     else if (RB.tab === was || RB.tab === 'diagram2') { RB.tab = RB.pre && RB.pre !== was && rbTabs().some((x) => x[0] === RB.pre) ? RB.pre : 'home'; RB.pre = null; }
     if (!now) RB.pre = null;
   }
-  // 0.15.9 (M3): inside a diagram the ribbon follows what is selected: an arrow or a shape opens the tab that holds its tools, the empty drawing the tab that adds shapes.
+  // inside a diagram the ribbon follows what is selected: an arrow or a shape opens the tab that holds its tools, the empty drawing the tab that adds shapes.
   // It moves only when the KIND of selection changes (never while the person is working in a tab of their own choosing), and never under 1024 px (the page must not move).
-  // 0.16.1 (fault 6): a legend entry is neither an arrow nor a shape: its tools (text, look, delete, reset) sit in the «diagram» tab, so the ribbon goes there
+  // a legend entry is neither an arrow nor a shape: its tools (text, look, delete, reset) sit in the «diagram» tab, so the ribbon goes there
   const dk = now === 'diagram' ? (S.dg?.edge || S.dg?.joint || S.dg?.end ? 'arrow' : S.dg?.legend ? 'legend' : S.dg?.nodes?.length ? 'shape' : 'empty') : '';
   if (dk !== RB.dgKind) {
     RB.dgKind = dk;
@@ -301,7 +301,7 @@ function rbSync() {
   if (!rbTabs().some((x) => x[0] === RB.tab)) RB.tab = 'home';
   const base = [S.ui, uiDir(), RB.ctx, CMDS.length, rbStamp()].join('|');
   const key = `${base}|${RB.tab}|${RB.collapsed}|${RB.dgKind || ''}`;
-  // 0.15.2 note 16: the panel is about to open or fold → measure first (one layout read, only on that transition), glide after the swap
+  // the panel is about to open or fold → measure first (one layout read, only on that transition), glide after the swap
   const pn0 = el.querySelector('.rb-panel');
   const turning = !S.focus && !!pn0 && (RB.glide ? RB.glide.target !== RB.collapsed : pn0.hidden !== RB.collapsed);
   if (turning && RB.glide) rbGlideEnd();
@@ -524,5 +524,5 @@ function rbShellWire() {
 }
 { const o = buildCtx; buildCtx = function (b, tb) { o(b, tb); rbShellWire(); rbSync(); }; } // refreshUi and every (re)build end in buildCtx
 
-// 0.15.6 (A6): the arrow's pickers (route, head, tail, line, weight) are commands of the arrow group; each opens a small list at its button
+// the arrow's pickers (route, head, tail, line, weight) are commands of the arrow group; each opens a small list at its button
 bwExt({ cmds: ['dgRoute', 'dgHead', 'dgTail', 'dgLine', 'dgWeight', 'dgLgText', 'dgLgLook', 'dgLgDel', 'dgLgReset'].map((id) => ({ id, group: 'arrow', edit: true })), on: { render: () => { if (RB.last) rbRestoreText(RB.last); } }, expose: { ribbon: { panelHtml: rbPanelInner, listed: () => [...RB_LISTED], tabs: () => rbTabs().map((x) => x[0]), budget: (raw = false) => (raw ? RB_TABS : rbDefs()).map((x) => ({ tab: x[0], tools: x[1].reduce((n, g) => n + g[1].length, 0), groups: x[1].length, ctx: x[2] })), max: { tools: RB_MAX_TOOLS, groups: RB_MAX_GROUPS }, state: RB, sync: rbSync, snap: rbSnap, restore: rbRestore, restoreText: rbRestoreText, setTab: rbSetTab, collapse: rbCollapse } } });

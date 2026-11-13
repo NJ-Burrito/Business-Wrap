@@ -23,7 +23,7 @@
 }
 /* the toolbar, popovers and menus are navy glass in both themes (the cover band): focus there is the gold ring */
 .island, .pop, .ctx, .more .menu, .focus-exit, .toast { --focus: var(--bw-accent); --ic-hot: var(--bw-accent); }
-/* 0.13.3 one system: the icon colour on hover, focus and press (gold on the navy glass, the 3:1 rule gold on the panels), one press scale,
+/* one system: the icon colour on hover, focus and press (gold on the navy glass, the 3:1 rule gold on the panels), one press scale,
    one scrim, one open and one close transition */
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
@@ -185,7 +185,7 @@ ins { background: var(--bw-success-wash); color: var(--bw-on-success-wash); text
 .dialog label { display: flex; flex-direction: column; gap: 8px; }
 .dialog input[type="number"], .dialog select { font: inherit; color: var(--panel-ink); background: var(--panel); border: 1px solid var(--panel-line); border-radius: 10px; padding: 8px 10px; }
 .dialog input[type="color"] { inline-size: 100%; block-size: 44px; padding: 2px; border: 1px solid var(--panel-line); border-radius: 10px; background: var(--panel); cursor: pointer; }
-/* 0.17.0 (note 13): the live preview of the font, size and colour dialogs: the sample on a sheet of paper at its real point size, size chips above it */
+/* the live preview of the font, size and colour dialogs: the sample on a sheet of paper at its real point size, size chips above it */
 .dialog .dlg-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-block-start: 10px; }
 .dialog .dlg-chips .b { min-inline-size: 40px; padding-inline: 10px; }
 .dialog .dlg-prev { margin-block-start: 12px; border: 1px solid var(--panel-line); border-radius: 12px; background: var(--paper); color: var(--ink); overflow: hidden; }
@@ -333,24 +333,24 @@ kbd { font: 600 11.5px/1 'Thmanyah Sans', system-ui, sans-serif; padding: 4px 7p
 .drawer :is(details.pgrp, details.palguide) > summary:active { transform: scale(var(--press, .96)); transition-duration: var(--bw-dur-instant); }
 .drawer :is(details.pgrp, details.palguide) > summary > :is(h3, h4) { margin: 10px 0 6px; }
 .drawer :is(details.pgrp, details.palguide) > summary::before { content: ""; inline-size: 7px; block-size: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .2s var(--e-out); color: var(--panel-soft); flex: none; }
-/* F2 · 38: one chevron convention in every panel, by the UI's reading direction (the shell itself is always rtl):
+/* one chevron convention in every panel, by the UI's reading direction (the shell itself is always rtl):
    physical right + bottom borders; collapsed points forward (› in English, ‹ in Arabic), open points down */
 .shell[data-tdir="rtl"] .drawer :is(details.pgrp, details.palguide) > summary::before, .shell[data-tdir="rtl"] .drawer .dgrp:not([open]) > summary::after { transform: rotate(135deg); }
 .shell .drawer :is(details.pgrp, details.palguide)[open] > summary::before, .shell .drawer .dgrp[open] > summary::after { transform: rotate(45deg); }
 .drawer :is(details.pgrp, details.palguide) > summary::-webkit-details-marker { display: none; }
 .drawer .list > li { padding-inline: 8px; background: var(--panel); }
 .drawer .list > li:nth-child(even), .drawer .set-row:nth-of-type(even) { background: var(--wash-2); }
-/* F2 · 11: a shade between the fields of every group too (Design, Settings, Process), not only between list rows */
+/* a shade between the fields of every group too (Design, Settings, Process), not only between list rows */
 .drawer :is(.vc, .cc, .fp, .set-row, label.chk) { padding-inline: 8px; border-radius: 8px; }
 .drawer :is(details.pgrp, .dgrp, .set, section.card) > :nth-child(even of :is(.vc, .cc, .fp, .set-row, label.chk)) { background: var(--wash-2); }
 .drawer header:has(.hact) { flex-wrap: wrap; }
 .drawer header .hact { order: 3; flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 6px; }
 .drawer .jump { font: inherit; font-size: 12px; color: var(--panel-ink); background: var(--wash); border: 1px solid var(--panel-line); border-radius: 8px; padding: 2px 8px; margin-inline-start: 6px; cursor: pointer; }
 .shell[data-calm="1"] .drawer :is(details.pgrp, details.palguide) > summary::before { transition: none; }
-/* F2 · 17: a check finding fixed in a Design group rings that group (as a body jump rings the element) */
+/* a check finding fixed in a Design group rings that group (as a body jump rings the element) */
 .drawer .bw-jump { outline: 3px solid var(--gold); outline-offset: 2px; border-radius: 8px; }
 
-/* F2 · 38: the relaunch prompt in the house design: the UI face, the panel surface, rows and the house buttons */
+/* the relaunch prompt in the house design: the UI face, the panel surface, rows and the house buttons */
 dialog.bw-resume[open] { font: 500 14px/1.45 var(--bw-font-ui); color: var(--panel-ink); background: var(--panel); border: 1px solid var(--panel-line); border-radius: var(--r-island, 16px); box-shadow: var(--bw-shadow-2); padding: 22px 24px; }
 dialog.bw-resume[open] h2 { font: 800 18px/1.25 var(--bw-font-display, var(--bw-font-ui)); color: var(--navy); margin: 0 0 8px; }
 dialog.bw-resume[open] .list { list-style: none; padding: 0; margin: 12px 0; border: 1px solid var(--panel-line); border-radius: 10px; overflow: auto; }
@@ -360,7 +360,7 @@ dialog.bw-resume[open] .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-
 dialog.bw-resume[open] .b { border: 1px solid var(--panel-line); color: var(--panel-ink); background: var(--wash-2); padding: 8px 14px; border-radius: var(--r-btn, 10px); font: inherit; font-weight: 700; cursor: pointer; }
 dialog.bw-resume[open] .b.primary { background: var(--gold); color: var(--on-gold); border-color: transparent; }
 dialog::backdrop { background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); }
-/* F2 · 38: themed scrollbars on the glass menus and the panels: no white strip beside a menu */
+/* themed scrollbars on the glass menus and the panels: no white strip beside a menu */
 .island, .pop, .ctx, .menu, [popover], .drawer, dialog, .drawer .list { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, currentColor 35%, transparent) transparent; }
 
 /* UIP-10: code and numbers in the house face (Thmanyah sans, tabular figures), never the browser's monospace */

@@ -1,4 +1,4 @@
-/* 0.14.0 A4 · Reading mode (View › Reading mode). The chrome (toolbar, selection tools, panels, explainer panel) and every
+/* Reading mode (View › Reading mode). The chrome (toolbar, selection tools, panels, explainer panel) and every
  * editing affordance (selection rings, hover outlines, logo/diagram handles, the caret) go away; the document is shown
  * page by page (the person's own single/spread choice, else single) and read with ← → / PageUp PageDown / Space / Home
  * End. Esc or the visible «خروج» button leaves it and puts the page mode and side-by-side view back as they were.

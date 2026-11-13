@@ -1,9 +1,9 @@
-/* 0.14.0 A2 · Waiting popup. Whenever an operation outlasts ~300 ms — busy(true) (export, new document, import, crawl …)
+/* Waiting popup. Whenever an operation outlasts ~300 ms — busy(true) (export, new document, import, crawl …)
  * or a heavy server call (export, import, print job, update, library write, harvest …) — a small card says what is
  * happening, in the UI language, with a spinner; it leaves the moment the work is done. It never blocks the page (no
  * scrim) and never waits for ever: after 25 s it says the work is taking long and offers «إخفاء»; after 120 s it hides
  * itself with a warning toast (the work itself is not cancelled — the card only stops claiming it is running).
- * 0.17.8 O5 · Loading screen: a phase still running after SCREEN ms (1.5 s) swaps the small card for a themed screen in the same
+ * Loading screen: a phase still running after SCREEN ms (1.5 s) swaps the small card for a themed screen in the same
  * words (title, what is happening, an animated bar); it never traps the page either (the scrim lets clicks through), shows Hide
  * after 25 s and gives up after 120 s. Quiet jobs (library autosaves) never get the screen. Only the Calm button holds it still.
  * Calm / reduced motion: the spinner holds still (the words still change). */

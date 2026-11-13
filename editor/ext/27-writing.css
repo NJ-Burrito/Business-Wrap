@@ -9,5 +9,5 @@
 .dialog .sh-path { display: block; max-inline-size: 100%; overflow-wrap: anywhere; word-break: break-all; white-space: normal; }
 .dialog .sh-acts { display: flex; flex-wrap: wrap; gap: 8px; }
 .dialog .sh-acts .b { flex: 1 1 12em; white-space: normal; text-align: center; }
-/* 0.16.0: the Outputs chapter command gets its own hover motion (as addOutputStory) */
+/* the Outputs chapter command gets its own hover motion (as addOutputStory) */
 [data-ic="addOutputsChapter"] > * { --s: 1.15; --r: -10deg; --icm: icm-pop var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }

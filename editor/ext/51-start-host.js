@@ -1,4 +1,4 @@
-/* 0.19.0 N1 · the local-host switch on the start page (owner note N1; design work/sdlc/design/0190-n1.md).
+/* the local-host switch on the start page (owner note N1; design work/sdlc/design/0190-n1.md).
  * The start page (50-start.js) covers the whole shell, so the top bar's switch (18-server.js) cannot be reached there. This file puts THE SAME control in the start page's own bar:
  * not a copy. The markup is SB.html('start') (EXT.server.html), the state is SB's one state object, and SB.draw() patches every .srv-toggle under the shadow root, so toggling either one
  * moves both (the dot, the word «Connected :4317» / «Offline», starting / stopping / error, the 1.5 s re-check, the bw:server and bw:wm events, html[data-bw-server]).

@@ -60,11 +60,11 @@ const PW = (() => {
       stopped();
     } catch (e) { toast(t('pwFailed', { e: e.message || e }), 'warn'); document.documentElement.dataset.bwPower = 'failed'; }
   }
-  /* 0.17.0 note 10: the host on/off control is ONLY the top-bar switch (18-server.js). No toolbar button, no command-palette entry and no Settings button: the `powerOff` action stays as a machine-only name (the bridge refuses it for agents). */
+  /* the host on/off control is ONLY the top-bar switch (18-server.js). No toolbar button, no command-palette entry and no Settings button: the `powerOff` action stays as a machine-only name (the bridge refuses it for agents). */
   return { off, confirmOff, stopped };
 })();
 
-/* 0.14.0 D2: once the performance report PDF is made (Settings › report, served), «افتح المجلد / Open folder» appears beside
+/* once the performance report PDF is made (Settings › report, served), «افتح المجلد / Open folder» appears beside
  * its result: POST /api/workspace/open { file } shows that PDF in the file manager. The report panel (30-profile.js) is not
  * touched: the one POST /api/report answer is watched here. file:// has no report (it reads the server's logs). */
 const RPT = (() => {

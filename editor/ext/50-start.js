@@ -1,4 +1,4 @@
-/* 0.18.0 document studio · the start page (lane L3; spec work/sdlc/design/ux/start-page.md, contracts C2 and C3 of work/sdlc/design/architecture.md).
+/* document studio · the start page (lane L3; spec work/sdlc/design/ux/start-page.md, contracts C2 and C3 of work/sdlc/design/architecture.md).
  * The first screen when the tool opens without a document, and File › Start page at any time: a gallery of the registry's document types (thumbnails
  * from each type's own `art`), category chips, search, the recent documents (open, pin) and, on a click, the side panel (0.19.0: what the type is for, when to use it,
  * its sections, who uses it, the document language and Create, with the type's own thumbnail move).
@@ -7,7 +7,7 @@
  * Types come from the embedded JSON script #bw-doctypes (C2) and, served, from GET /api/doctypes when the page lacks the script.
  * Shown at boot only when: types answered, no #doc= in the address, the open service is the untouched template, bw:start is not 'off', and (automation
  * guard, as 30-profile) not ?automation=1 and not navigator.webdriver unless ?start=1. Only the Calm button reduces motion (owner rule).
- * 0.18.2: every way of opening the TOOL is that untouched template (the shortcut's file:// tool editor, the served blank editor of a plain business-wrap://start),
+ * every way of opening the TOOL is that untouched template (the shortcut's file:// tool editor, the served blank editor of a plain business-wrap://start),
  * so it lands here; a specific saved document (a `doc-` service, a #doc= link) opens as itself. The shortcut's page cannot read the save folder, so the launcher embeds the
  * newest saved documents as #bw-recents and they are listed as Recents (a row opens that file); a served page has the host's mirror instead.
  * The resume prompt (12-session) opens by itself over the start page, as in 0.18.1 (ruling D11); the start page also carries a «Continue where you left off (N)» button that opens the same prompt.
@@ -252,7 +252,7 @@ const START = (() => {
     const LAB = { purpose: 'startPurpose', whenToUse: 'startWhen', audience: 'startAudience' };
     const say = (k) => { const v = info[k]?.[pl] || info[k]?.en || ''; return v ? `<h4>${esc(t(LAB[k]))}</h4><p lang="${pl}" dir="${dir}" data-st-info="${k}">${esc(v)}</p>` : ''; };
     let chapters = [];
-    let emptyDoc = false; // 0.19.0 R3: the Blank document (every chapter bare, no title) lists «One empty page» instead of an empty list
+    let emptyDoc = false; // the Blank document (every chapter bare, no title) lists «One empty page» instead of an empty list
     try { const chs = JSON.parse(ty.docs?.[pl] || '{}').chapters || []; emptyDoc = chs.length > 0 && chs.every((c) => c.bare === true); chapters = chs.map((c) => String(c.title || '').trim()).filter(Boolean); } catch { /* no starter */ }
     let n = 0;
     const ix = () => `style="--n:${n++}"`;
@@ -312,7 +312,7 @@ const START = (() => {
     } finally { st.busy = false; }
   }
   async function openRecent(id) {
-    const disk = st.rec.find((r) => r.id === id && r.url); // 0.18.2: a saved document the launcher listed (the shortcut's file:// page): that file opens, as itself
+    const disk = st.rec.find((r) => r.id === id && r.url); // a saved document the launcher listed (the shortcut's file:// page): that file opens, as itself
     if (disk) { location.assign(disk.url); return; }
     const L = LIBX();
     if (id === S.svc && L?.isDoc(id)) { close(true); return; }
@@ -426,7 +426,7 @@ const START = (() => {
     el.show();
     document.documentElement.style.overflow = 'hidden'; // the page behind does not scroll under the view
     document.documentElement.dataset.bwStart = 'open';
-    // 0.18.2: the NJ mark (z 41, in the page, above this view) stays on screen over the start page; 50-start.css leaves it a bottom-start safe area (0.18.0 hid it, which hid it on every open)
+    // the NJ mark (z 41, in the page, above this view) stays on screen over the start page; 50-start.css leaves it a bottom-start safe area (0.18.0 hid it, which hid it on every open)
     chrome(); gallery(); side();
     st.rec = await recents();
     if (isOpen()) side();
@@ -457,7 +457,7 @@ const START = (() => {
     if (/[#&]doc=/.test(location.hash)) return false;
     return true;
   }
-  /** 0.18.2: true when this page opens the TOOL (not a specific document) and the start page will show by itself: 12-session then asks no «continue where you left off» question over it. */
+  /** true when this page opens the TOOL (not a specific document) and the start page will show by itself: 12-session then asks no «continue where you left off» question over it. */
   const landing = () => allowed() && untouched();
   async function auto() {
     document.documentElement.dataset.bwStart = 'closed';
@@ -510,7 +510,7 @@ bwExt({
       if (prev) window.BW.dismissBlockers = (o) => { let n = prev(o); if (START.isOpen()) { START.close(); n += 1; } return n; };
       // the brand mark in the quick strip opens it too (a convention; no label)
       root.addEventListener('click', (e) => { if (e.target.closest?.('.island .brand') && !START.isOpen()) START.open(); });
-      // 0.18.2: the host's mirror comes in at boot, in parallel with this page: a document it brings (a new browser profile, the host's own tab) joins the open list at once
+      // the host's mirror comes in at boot, in parallel with this page: a document it brings (a new browser profile, the host's own tab) joins the open list at once
       window.addEventListener('bw:library-ingested', () => { if (START.isOpen()) START.refresh(); });
       START.auto().catch((e) => console.error(e));
     },

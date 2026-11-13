@@ -35,7 +35,7 @@
 /* preview: the eye blinks */
 [data-ic="bkPreview"] > :nth-child(2) { --pjm: pjm-blink var(--bw-dur-page) var(--bw-ease-out) 0s 1; }
 
-/* 0.15.0 note 18 · project export / import dialogs */
+/* project export / import dialogs */
 .px-modal .bw-modal-card { width: min(640px, 94vw); }
 .px-modal .px-body { display: grid; gap: 10px; margin-block-start: 8px; }
 .px-modal .px-fs { border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 12px; padding: 8px 12px; margin: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; }

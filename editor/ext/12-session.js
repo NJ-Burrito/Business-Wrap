@@ -9,7 +9,7 @@
  * HTML\ instead of the downloads; the first Save or export asks for the parent folder once; Settings «مجلد الحفظ».
  */
 // the host's copy of the profile, into an empty localStorage before any boot handler (30-profile asks at boot)
-// 0.15.9 B8: the saved screen preferences (theme, direction, spelling dictionary ...) are kept with the host as well (PREF_KEYS), so a browser profile that has none of them (Chrome after
+// the saved screen preferences (theme, direction, spelling dictionary ...) are kept with the host as well (PREF_KEYS), so a browser profile that has none of them (Chrome after
 // Edge, a wiped profile) starts as the person left it. The editor reads some of them while it loads, before this file runs, so a restore that set something reloads the page once.
 const PREF_KEYS = /^bw:(dark|ui|calm|dir:(ar|en)|spell:(on|ar|en|user|ign)|ruler|pages|snap|explainers|xpl-panel|rb:c|docx-fonts|exportFolder|wm-intro|seen-version)$/;
 const prefsNow = () => { const o = {}; try { for (const k of Object.keys(localStorage)) if (PREF_KEYS.test(k)) { const v = localStorage.getItem(k); if (typeof v === 'string' && v.length <= 4000) o[k] = v; } } catch { /* no storage */ } return o; };
@@ -42,7 +42,7 @@ const SESS = (() => {
     const lib = EXT.library;
     return { tab, seq: seq(), title: titleNow(), svc: S.svc, ed: S.ed, entry: lib?.isDoc(S.svc) ? lib.entryOf(S.svc) : null, snap: snapshotState(), profile: profile() };
   }
-  /* 0.15.0 L1 transport: ONE event stream per browser. Chromium browsers allow 6 HTTP/1.1 connections per origin and every tab used to hold one,
+  /* transport: ONE event stream per browser. Chromium browsers allow 6 HTTP/1.1 connections per origin and every tab used to hold one,
    * so the 7th tab never loaded. Primary: a SharedWorker (/api/session/worker.js) holds the stream for all tabs. Fallback (no SharedWorker, or
    * the worker failed): BroadcastChannel 'bw-live' + the Web Locks lock 'bw-live-leader', whose holder opens the one stream and relays; when it
    * closes another tab takes the lock. Both keep the server's tab registry (POST /api/session/tabs) and route flush/req/ingest/progress to
@@ -51,7 +51,7 @@ const SESS = (() => {
     const subs = {};
     let mode = 'none', port = null, ch = null, es = null, lead = false, client = '', beatTimer = 0, sentKey = '', sentAt = 0, listSeq = 0, lastLead = Date.now(), watchTimer = 0;
     const known = new Map(); // leader: tab → {info, at}
-    let lastPing = Date.now(); // 0.16.0: when the shared worker goes silent (frozen), the tabs move to the leader fallback
+    let lastPing = Date.now(); // when the shared worker goes silent (frozen), the tabs move to the leader fallback
     const lostTabs = new Set(); // leader: tabs that vanished without a bye (a discarded page)
     const me = () => ({ tab, svc: S.svc, docs: EXT.library?.isDoc(S.svc) ? [S.svc] : [], automation: AUTO, awake: AWK.state() });
     const deliver = (event, data) => {
@@ -97,7 +97,7 @@ const SESS = (() => {
       postList(true);
       beatTimer = setInterval(() => { ch.postMessage({ t: 'ping' }); sweep(); postList(true); }, 2000);
     }
-    /** 0.15.3 T2: the leader tab slept (a frozen or discarded page keeps its Web Lock, so no other tab could take over). The leader pings every 3 s; a follower that
+    /** the leader tab slept (a frozen or discarded page keeps its Web Lock, so no other tab could take over). The leader pings every 3 s; a follower that
      *  has heard nothing from it for 12 s takes the lock with {steal:true} (a little jitter, so followers do not all steal at once) and opens the one stream itself. A stolen
      *  holder that wakes later is told by an AbortError and steps down. */
     function demote() { if (!lead) return; lead = false; mode = 'follower'; clearInterval(beatTimer); try { es?.close(); } catch { /* closed */ } es = null; lastLead = Date.now(); }
@@ -157,7 +157,7 @@ const SESS = (() => {
       get rescuing() { return mode === 'leader' || (mode === 'follower' && !port); },
     };
   })();
-  /* 0.15.3 T1: one document = one owning tab. The host gives a document's lease to the first tab that lists it (engine/routes/session.mjs) and tells every tab
+  /* one document = one owning tab. The host gives a document's lease to the first tab that lists it (engine/routes/session.mjs) and tells every tab
    * (`lease`: who owns what; `rev`: a save was accepted). A tab on a document another tab owns is a FOLLOWER, and a tab whose copy is older than a save another tab
    * made is STALE: both are read-only (a guard refuses every edit, a banner says why in Arabic and English, with Reload), so a stale copy can never be saved over
    * the library. The host refuses such a save anyway (engine/routes/doc-lease.mjs: NOT_OWNER, STALE_BASE); this page adds the headers it checks. */
@@ -209,7 +209,7 @@ const SESS = (() => {
       if (r.ok) { const e = await r.json(); if (e?.id === doc) { await EXT.library.adopt(e); LS.mine[doc] = LS.revs[doc] ?? LS.mine[doc]; if (!follows(doc)) delete LS.stale[doc]; banners(); } }
     } catch { /* the host has no copy yet */ }
   }
-  /* 0.15.9 A2/A3 keep-awake, measured in real Chrome (tests/awake-0159.test.mjs): a hidden tab's main-thread timers run at 1/s after a few seconds and stop (one a minute) after
+  /* A2/A3 keep-awake, measured in real Chrome (tests/awake-0159.test.mjs): a hidden tab's main-thread timers run at 1/s after a few seconds and stop (one a minute) after
    * 5 minutes; a Web Lock does not change that; a dedicated worker's timers keep full rate; an open WebRTC data channel keeps the tab out of the intensive throttle. So every tab
    * opens (1) a loopback RTCPeerConnection with one data channel (no network, no permission prompt, no speaker icon), (2) a dedicated heartbeat worker whose clock the page is
    * compared with. The host is told the result in each tab beat (awake.rtc/tickMs/stalls/frozen/resumed). `?awake=0` switches both off (measurement only).
@@ -242,7 +242,7 @@ const SESS = (() => {
         wk.onmessage = (m) => {
           const lag = Date.now() - Number(m.data?.wall || Date.now());
           if (lag > 3000) { st.stalls += 1; st.lagMs = lag; }
-          // 0.16.0: the tab's own beat to the host every 4 s, from this worker's message (never a page timer), so it stays awake whatever the shared worker does
+          // the tab's own beat to the host every 4 s, from this worker's message (never a page timer), so it stays awake whatever the shared worker does
           if (tab && (n += 1) % 4 === 1) fetch('/api/session/beat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tab, svc: S.svc, docs: EXT.library?.isDoc(S.svc) ? [S.svc] : [], automation: AUTO }) }).then((r) => r.arrayBuffer()).catch(() => {});
           hub.rescue();
         };
@@ -289,7 +289,7 @@ const SESS = (() => {
     const m = /"id":"(doc-[A-Za-z0-9-]{4,64})"/.exec(o.body.slice(0, 400));
     if (!m) return _fetch(u, o);
     const doc = m[1];
-    // 0.15.5: one library write of a document at a time. Two writes sent back to back (a Trash move, then the purge) both carried the revision
+    // one library write of a document at a time. Two writes sent back to back (a Trash move, then the purge) both carried the revision
     // seen before either was answered, so the second looked stale and the host refused it (STALE_BASE): the delete never reached the library.
     // Each write now waits for the one before it and reads its base when it is sent.
     const send = () => {
@@ -357,7 +357,7 @@ const SESS = (() => {
     }
     document.documentElement.dataset.bwResumed = '1';
   }
-  /* 0.15.9 R1-R5: the resume popup. The documents of the last session as a list (title, last-edited time, language): tick several, or press one to open it alone; a search box,
+  /* R1-R5: the resume popup. The documents of the last session as a list (title, last-edited time, language): tick several, or press one to open it alone; a search box,
    * select all / clear (they act on what the search shows), «continue all»; «open an older document» lists the save folder's Documents (newest first, searchable); a new blank
    * document; «not now» or Esc closes it and changes nothing (the records stay for the next start). A tool's ?automation=1 tab never gets here (boot). */
   let openDlg = null;
@@ -379,7 +379,7 @@ const SESS = (() => {
     dlg.dataset.theme = S.dark ? 'dark' : 'light'; // the shell's theme tokens (build-editor brandCss) follow it here
     dlg.setAttribute('aria-labelledby', 'bw-resume-h');
     const loc = S.ui === 'ar' ? 'ar' : 'en';
-    // 0.16.1 (fault 10): in an Arabic line the date and the time came out in a jumbled order («00:31.2026/11/03»). The Arabic edition writes year/month/day and the 24 h time in Latin digits itself, and every date sits in its own left-to-right isolate.
+    // in an Arabic line the date and the time came out in a jumbled order («00:31.2026/11/03»). The Arabic edition writes year/month/day and the 24 h time in Latin digits itself, and every date sits in its own left-to-right isolate.
     const when = (iso) => {
       try {
         const d = new Date(iso);
@@ -408,7 +408,7 @@ const SESS = (() => {
     const picked = () => lis().filter((li) => li.querySelector('input').checked).map((li) => li.dataset.tab);
     function refresh() {
       const sel = picked().length;
-      $('.cnt').textContent = !shown().length && $('.q').value.trim() ? t('resNoMatch') : t('resCount', { shown: shown().length, n: last.tabs.length, sel }); // 0.16.1 (fault 9): a search with no match says so
+      $('.cnt').textContent = !shown().length && $('.q').value.trim() ? t('resNoMatch') : t('resCount', { shown: shown().length, n: last.tabs.length, sel }); // a search with no match says so
       const b = $('[data-s="sel"]');
       b.disabled = !sel;
       b.textContent = t('resOpenSel', { n: sel });
@@ -426,7 +426,7 @@ const SESS = (() => {
       try { docs = (await fetch(`/api/session/documents?q=${encodeURIComponent($('.oq').value)}&limit=200`).then((r) => r.json())).docs || []; } catch { /* none */ }
       if (seq !== olderSeq) return;
       $('.olist').innerHTML = docs.map((d) => `<li><button type="button" class="one" data-s="doc" data-id="${esc(d.id)}" data-name="${esc(d.name)}"><span class="ti">${esc(d.name)}</span><span class="me">${whenH(d.at)}</span></button></li>`).join('');
-      // 0.16.1 (fault 9): no search typed and nothing saved is «nothing saved yet», not «nothing matches your search»
+      // no search typed and nothing saved is «nothing saved yet», not «nothing matches your search»
       $('.ocnt').textContent = docs.length ? t('resOlderCount', { n: docs.length }) : $('.oq').value.trim() ? t('resOlderEmpty') : t('resOlderNone');
     }
     $('.oq').addEventListener('input', () => { clearTimeout(olderTimer); olderTimer = setTimeout(loadOlder, 180); });
@@ -479,7 +479,7 @@ const SESS = (() => {
     document.documentElement.dataset.bwResume = 'asked';
   }
 
-  /* A11: the save folder */
+  /* the save folder */
   async function ensureFolder() {
     if (!info || info.workspace.chosen) return true;
     const r = await json('/api/workspace/pick', {});
@@ -495,7 +495,7 @@ const SESS = (() => {
     }).catch(() => _download(name, text, type));
   };
 
-  /** 0.18.2: the same «continue where you left off» question on demand (the start page's button, 50-start). `lastCount()` = how many documents the last session had (0 when there is
+  /** the same «continue where you left off» question on demand (the start page's button, 50-start). `lastCount()` = how many documents the last session had (0 when there is
    *  no host to ask or nothing to resume); `ask()` opens the popup over whatever is on screen and answers true when it opened. */
   const lastRun = () => (info ? fetch('/api/session/last').then((r) => r.json()).catch(() => null) : Promise.resolve(null));
   const lastCount = async () => (await lastRun())?.tabs?.length || 0;
@@ -506,7 +506,7 @@ const SESS = (() => {
     modal(last, () => {});
     return true;
   }
-  /** 0.18.0: the session's resume check is over (no host to ask, nothing to resume, or the resume popup answered / dismissed): `bw:session-settled` (once) and
+  /** the session's resume check is over (no host to ask, nothing to resume, or the resume popup answered / dismissed): `bw:session-settled` (once) and
    *  <html data-bw-session-settled>. The start page (50-start) waits for it, so it never stacks on the resume dialog or over a document the host is bringing back. */
   let settledOnce = false, popup = false;
   const settled = () => { if (settledOnce) return; settledOnce = true; document.documentElement.dataset.bwSessionSettled = '1'; window.dispatchEvent(new Event('bw:session-settled')); };
@@ -524,7 +524,7 @@ const SESS = (() => {
     let stored = false;
     try { if (!tab) { tab = sessionStorage.getItem('bw:tab'); stored = !!tab; } } catch { /* no storage */ }
     tab ||= newId();
-    // 0.15.9 A4: a tab the browser discarded (or killed) and the user came back to is reloaded by the browser with the same tab id (sessionStorage survives). The host kept it as
+    // a tab the browser discarded (or killed) and the user came back to is reloaded by the browser with the same tab id (sessionStorage survives). The host kept it as
     // `lost` with its last state, and says so (x-bw-lost); the state is put back and one plain message says what happened. A plain reload of a live tab is left alone.
     let wasDiscarded = false;
     if (!resumed && stored) { try { const r = await fetch(`/api/session/tab?tab=${encodeURIComponent(tab)}`); if (r.ok && (r.headers.get('x-bw-lost') === '1' || document.wasDiscarded === true)) { resumed = await r.json(); wasDiscarded = true; } } catch { /* fresh */ } }
@@ -538,7 +538,7 @@ const SESS = (() => {
     else if (!AUTO) {
       const release = window.BW?.holdReady?.('resume'); // bw:ready / data-bw-ready wait until the resume question is settled (a tool's ?automation=1 tab never asks)
       const last = await fetch('/api/session/last').then((r) => r.json()).catch(() => null);
-      // 0.18.2 (ruling D11): the question opens by itself when there is something to resume, as in 0.18.1, ON TOP of the start page (the start page renders behind it; closing the popup leaves the start page).
+      // (ruling D11): the question opens by itself when there is something to resume, as in 0.18.1, ON TOP of the start page (the start page renders behind it; closing the popup leaves the start page).
       if (last?.tabs?.length) { popup = true; modal(last, () => { release?.(); settled(); }); } else release?.(); // the popup's own close settles the session (the finally in boot() skips it while the popup is up)
     }
     push();
@@ -571,7 +571,7 @@ const SESS = (() => {
     const r = await json('/api/workspace/pick', {});
     if (r.ok) { info.workspace = { root: r.root, chosen: true }; el.querySelector('.ws-root').textContent = r.root; }
   });
-  /* 0.15.9 B4: the browser picker (GET/POST /api/browser, engine/routes/session.mjs). It applies to the next window the host opens. */
+  /* the browser picker (GET/POST /api/browser, engine/routes/session.mjs). It applies to the next window the host opens. */
   const brCard = () => (info ? `<p class="hint">${esc(t('brLead'))}</p><p><select class="br-sel" aria-label="${esc(t('brTitle'))}"></select></p><p class="hint br-now" role="status"></p>` : `<p class="hint">${esc(t('brServerOnly'))}</p>`);
   const brMount = async (el) => {
     const sel = el?.querySelector('.br-sel');
@@ -613,7 +613,7 @@ window.addEventListener('pagehide', () => SESS.bye()); // not only through the e
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') SESS.flush(); });
 window.addEventListener('pageshow', (e) => { if (e.persisted) SESS.again(); }); // back from the back/forward cache: the hub is told this tab is here again
 
-/* 0.15.0 editor bridge, the tab half: the host's SSE `req {id, tool, doc, args}` (engine/routes/editor-bridge.mjs) is run through the core
+/* editor bridge, the tab half: the host's SSE `req {id, tool, doc, args}` (engine/routes/editor-bridge.mjs) is run through the core
  * (BW.bridge in editor.js: ops = one undo group, signed as the agent) and answered with POST /api/editor/reply. One request at a time per tab,
  * in arrival order: two agents on one tab never interleave their groups. */
 {
@@ -624,7 +624,7 @@ window.addEventListener('pageshow', (e) => { if (e.persisted) SESS.again(); }); 
     if (!d?.id || seenReq.has(d.id)) return;
     seenReq.add(d.id); document.documentElement.dataset.bwReqSeen = String(seenReq.size); if (seenReq.size > 200) seenReq.delete(seenReq.values().next().value);
     const asks = d.tool === 'action' && d.args?.id === 'dismissResume'; // that action answers for itself (dismissed: true/false)
-    if (!asks) SESS.dismissResume(); // 0.16.0: a tool is talking to this tab: a popup that waits for a person never blocks it
+    if (!asks) SESS.dismissResume(); // a tool is talking to this tab: a popup that waits for a person never blocks it
     window.BW.dismissBlockers?.({ keepResume: asks }); // nor does a first-launch or confirm card
     queue = queue.then(async () => {
       try {

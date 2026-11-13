@@ -26,7 +26,7 @@ function viewsSet(mode) {
   S.pageAt = first;
   S.view = false; // a page mode is a choice: the View menu closes and shows the pages
   buildUi();
-  // 0.16.1 (fault 1): a page view shows ONE sheet at the top of the stage. The scroll place of the long continuous page (render() would put it back) is
+  // a page view shows ONE sheet at the top of the stage. The scroll place of the long continuous page (render() would put it back) is
   // meaningless there: kept, it leaves the sheet above the window and the stage empty. The page the reader was on is kept through S.pageAt.
   render(mode === 'continuous');
   if (mode !== 'continuous') window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
@@ -39,7 +39,7 @@ function viewsFirstPage() {
 }
 
 /* geometry: one slot = one column of the document's own page + the gap (12 mm, as in views.css), in CSS px before the view's zoom.
- * 0.16.0: a document may mix sheet sizes (a landscape section, a figure chapter that prints on its own turned sheet). The columns stay
+ * a document may mix sheet sizes (a landscape section, a figure chapter that prints on its own turned sheet). The columns stay
  * the document's own page, so every free logo, image and text box sits exactly where it does in a plain document. A run of pages of
  * another size is one box of its own (.bw-frun) with its own columns, as wide and as high as that sheet: its pages are real pages of that
  * size (long text goes on to the next landscape page), and the slots it covers are held empty (.bw-slot). viewsTable lists every page
@@ -161,7 +161,7 @@ function viewsSheets(main, g) {
   lay.innerHTML = (S.pageTab || []).map((s, k) => `<i class="bw-sheet" data-page="${k}" style="inset-inline-start:${+s.x.toFixed(3)}mm;width:${s.w}mm;height:${s.h}mm"></i>`).join('');
   main.appendChild(lay);
 }
-/** 0.16.0 · The page count equals the PDF's. The cause of the old gap (10 pages here, 9 in the PDF, a chapter that fits pushed to the next
+/** The page count equals the PDF's. The cause of the old gap (10 pages here, 9 in the PDF, a chapter that fits pushed to the next
  *  column): the PDF is not printed from the plain markup. Before printing, engine/render.mjs `relaxTallGroups` turns each keep-together
  *  group into an atomic block (`.whole`), frees the ones taller than a page and splits a long held table into its first rows, a free
  *  middle and its last rows. The paged view laid the plain markup out, where a chain of `break-after: avoid` headings and lists pulled a
@@ -169,7 +169,7 @@ function viewsSheets(main, g) {
  *  frame of the print measure), and its verdicts are written back as classes and attributes only (the editable markup is never cloned or
  *  split). The markers (`data-rlx`, `data-rlr`) are screen-only and cleared on the next pass. */
 function viewsRelax(main) {
-  // 0.16.4: the verdicts are written by engine/render.mjs `relaxVerdicts`, the same function the PDF's page layout runs
+  // the verdicts are written by engine/render.mjs `relaxVerdicts`, the same function the PDF's page layout runs
   const pair = document.getElementById('bw-pair');
   const doc = cur().doc;
   const geo = hasPageGeom(doc) ? pageGeom(doc) : PAGE;
@@ -236,7 +236,7 @@ function viewsRuns(main) {
   // the page each segment starts on (its marker's column)
   const starts = [...main.querySelectorAll('a.bw-seg[data-seg]')].map((a) => [viewsPageOf(a), +a.dataset.seg]).sort((x, y) => x[0] - y[0]);
   const segOf = (k) => starts.reduce((s, [p, n2]) => (p <= k ? n2 : s), segs[0]?.n ?? 0);
-  const first = main.querySelector('.cover:not([data-cover="compact"])') ? 1 : 0; // 0.18.0: a compact cover is a title block on page 1, not a cover page: its page carries the running bands like any other
+  const first = main.querySelector('.cover:not([data-cover="compact"])') ? 1 : 0; // a compact cover is a title block on page 1, not a cover page: its page carries the running bands like any other
   const lay = document.createElement('div');
   lay.className = 'bw-runs';
   lay.setAttribute('contenteditable', 'false');
@@ -256,7 +256,7 @@ function viewsRuns(main) {
   lay.querySelectorAll('[data-p]').forEach((x) => { if (d.chrome) { x.dataset.w2p = x.dataset.p; x.tabIndex = 0; x.contentEditable = 'plaintext-only'; } x.removeAttribute('data-p'); });
   main.appendChild(lay);
 }
-/** 0.16.4 · A table's header repeats at the top of every column its rows continue on, as in the PDF (Chrome's print does it; its multicol does not, so the
+/** A table's header repeats at the top of every column its rows continue on, as in the PDF (Chrome's print does it; its multicol does not, so the
  *  page views were 13 mm per continued page roomier than the PDF and parted from it). A row that opens a column (not the table's first) gets room
  *  for the header (`data-rpt`, `--rpt`: top padding on its cells) and the header is drawn over that room in a layer of its own (`.bw-rpts`, not part of the
  *  document). A few passes: the room can push the row's last lines on. */
@@ -296,7 +296,7 @@ function viewsRepeat(main, g) {
       for (const r of rowsOf(t)) {
         const on = now.has(r);
         if (on && !r.dataset.rpt) { r.dataset.rpt = '1'; r.style.setProperty('--rpt', `${room.get(t).toFixed(2)}px`); changed = true; } else if (!on && r.dataset.rpt) { r.removeAttribute('data-rpt'); r.style.removeProperty('--rpt'); changed = true; }
-        // 0.17.0 · a row cut at the foot of a column: the PDF draws the header above the continuation too (a row that stays whole has no later fragment)
+        // a row cut at the foot of a column: the PDF draws the header above the continuation too (a row that stays whole has no later fragment)
         const c = cut.has(r) && pad.has(r);
         if (c) {
           if (!r.dataset.rptc) { r.dataset.rptc = '1'; r.style.setProperty('--rptc', `${room.get(t).toFixed(2)}px`); r.style.setProperty('--rptb', pad.get(r)[1]); changed = true; }
@@ -350,7 +350,7 @@ function viewsWindow(g, at, spread) {
   if (!spread) return { w: a.w, h: a.h, start: a.x };
   if (at === 0) return { w: 2 * g.Wmm + 12, h: a.h, start: 0 }; // the cover alone: an empty page beside it
   const b = t[at + 1];
-  // 0.17.0 (note 7): a turned sheet fills whole slots, so the sheet after it can lie further on than one gap. The book shows the two sheets 12 mm apart:
+  // a turned sheet fills whole slots, so the sheet after it can lie further on than one gap. The book shows the two sheets 12 mm apart:
   // the empty distance between them is `blank`, and viewsNudge slides the box of the first sheet across it (the window is that much shorter and starts that much later).
   const blank = b && a.bi != null ? Math.max(0, b.x - (a.x + a.w + 12)) : 0;
   return { w: b ? b.x + b.w - a.x - blank : a.w + 12 + g.Wmm, h: Math.max(a.h, b?.h || 0), start: a.x + g.Wmm + 12 + blank, blank };

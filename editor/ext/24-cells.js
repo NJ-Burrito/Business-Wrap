@@ -32,7 +32,7 @@ function ceClearSel() { if (!CE.sel.size) return; CE.head = null; CE.sel.clear()
 const ceRect = (cells) => ({ r0: Math.min(...cells.map((x) => x[0])), r1: Math.max(...cells.map((x) => x[0])), c0: Math.min(...cells.map((x) => x[1])), c1: Math.max(...cells.map((x) => x[1])) });
 const ceBlk = (ed, b) => get(cur(ed).doc, b);
 /** the cells a command acts on: the selected cells, else the cell being edited */
-/** 0.15.1: a story's ID card that is not stored yet (it prints the default) is stored before a cell command reads it */
+/** a story's ID card that is not stored yet (it prints the default) is stored before a cell command reads it */
 const ceReady = (ed, ptr) => /\/items\/\d+\/card$/.test(ptr || '') && get(cur(ed).doc, ptr) === undefined && !!EXT.actions.materialiseStoryCard?.(ptr);
 function ceTarget() {
   if (CE.sel.size && ceTableEl()) {
@@ -98,7 +98,7 @@ const CE_ACT = {
     if (!tg) return false;
     return cePut(tg, ceMap(tg, tg.cells, clearValue));
   },
-  /** 0.16.0 (U8): a cell empty on purpose, `{"text":"","keepEmpty":true}`: it prints empty and never «none». Pressed again on cells that are all kept empty, it gives them back as plain blank cells. */
+  /** a cell empty on purpose, `{"text":"","keepEmpty":true}`: it prints empty and never «none». Pressed again on cells that are all kept empty, it gives them back as plain blank cells. */
   keepEmpty() {
     const tg = ceTarget();
     if (!tg) return false;
@@ -218,7 +218,7 @@ const ceAsk = async (id) => {
 };
 const CE_IDS = ['cellMerge', 'cellSplit', 'cellWrap', 'cellFill', 'cellColW', 'cellRowH', 'cellClearValue', 'cellKeepEmpty', 'cellClearFormat'];
 const CE_RUN = { cellMerge: () => CE_ACT.merge(), cellSplit: () => CE_ACT.split(), cellWrap: () => CE_ACT.wrap(), cellClearValue: () => CE_ACT.clearValue(), cellKeepEmpty: () => CE_ACT.keepEmpty(), cellClearFormat: () => { CE_ACT.clearMarks(); CE_ACT.clearFormat(); }, cellFill: ceAsk, cellColW: ceAsk, cellRowH: ceAsk };
-/** 0.17.0 (fixb): the live preview of the cell font dialog, same shape as 21-format's w2preview: the first selected cell's text (else the dialog's sample) drawn in the face being chosen, at its real size. */
+/** (fixb): the live preview of the cell font dialog, same shape as 21-format's w2preview: the first selected cell's text (else the dialog's sample) drawn in the face being chosen, at its real size. */
 function ceFontPreview() {
   let text = '', size = 12;
   try {
