@@ -145,7 +145,7 @@ On the start page, switch **Documents · Sources** to **Sources**. Add what you 
 | Document (PDF, DOCX, XLSX, PPTX, HTML, TXT, MD) | Add files, or type its path | Its text, line by line (a spreadsheet row by row, a deck slide by slide) |
 | Meeting transcript (Teams, Zoom or subtitles: VTT, SRT) | Add files | Its lines with their times and speakers, at once: no speech-to-text runs |
 | Web page | Type its link | The page's text |
-| Image | Add files | Stored; Claude reads it on the Claude pass |
+| Image | Add files | Its text, read by OCR on this machine (Arabic and English; RapidOCR, free and open source). A line the reader doubts is outlined in the warning colour; when digits inside an Arabic line may have been lost, a second reading is kept beside it. Claude still reads the picture on the Claude pass |
 | Android app (APK) | Add files | A static read of its manifest: name, version, permissions, screens. Nothing is installed or run |
 | Tool or skill folder | Type its path | Its SKILL.md, README and docs, and the file list. No code is run |
 
@@ -161,4 +161,4 @@ Each source shows its stages as a strip that fills while it runs. **Pause**, **R
 
 **Meeting recording guide**: six steps that make a recording readable (the table setup, the opening, introductions, one speaker at a time, the client's summary after each stage, the closing). **Print** gives an Arabic and English one-pager.
 
-Everything stays in your save folder under `Sources\`. Nothing is sent anywhere, except fetching the web page you named. The clean-up and fact extraction beyond the script is Claude's, through the MCP tools: `sources_list`, `sources_get` (the lines, the facts, and the picture of an image source), `sources_frames` (one frame per scene of a screen recording, made by ffmpeg on this machine) `sources_write` (the corrected lines and facts) and `sources_evidence`, which hands only the facts you accepted to the open document, each with its source and place (also saved as `Sources\02-evidence.json`). A decision you already took on a fact is kept; you still accept or reject what Claude wrote.
+Everything stays in your save folder under `Sources\`. Nothing is sent anywhere, except fetching the web page you named. The clean-up and fact extraction beyond the script is Claude's, through the MCP tools: `sources_list`, `sources_get` (the lines, the facts, and the picture of an image source), `sources_frames` (one frame per scene of a screen recording, made by ffmpeg on this machine, each with the text the local OCR found in it) `sources_write` (the corrected lines and facts) and `sources_evidence`, which hands only the facts you accepted to the open document, each with its source and place (also saved as `Sources\02-evidence.json`). A decision you already took on a fact is kept; you still accept or reject what Claude wrote.

@@ -1,7 +1,7 @@
 // The sources_* MCP tools (registered by mcp/server.mjs): the Claude pass over the Sources tab. Local files only.
 // Claude lists the sources, reads a source's lines and candidate facts (and, for a picture or a screen recording, the image
 // files to look at), then writes back cleaned lines and/or facts; a person still accepts or rejects each fact in the tab.
-import { listJobs, getJob, previews, saveLines, claudeFacts, sourceFile, sceneFrames, VIDEO, evidence } from './jobs.mjs';
+import { listJobs, getJob, previews, saveLines, claudeFacts, sourceFile, sceneFramesOcr, VIDEO, evidence } from './jobs.mjs';
 
 const need = (id) => { const j = getJob(id); if (!j) throw new Error(`no such source: ${id}`); return j; };
 
@@ -32,21 +32,21 @@ export function registerSourcesTools(server, z, guard) {
 
   server.registerTool('sources_frames', {
     title: 'Scene frames of a screen recording',
-    description: 'Extract one PNG per scene change (plus the first frame) from a video source with the local ffmpeg; returns the files with their times. Read each picture and write what it shows (screens, fields, buttons, messages) as lines or facts with sources_write, loc = the time.',
+    description: 'Extract one PNG per scene change (plus the first frame) from a video source with the local ffmpeg; returns the files with their times and the text a local OCR found in each (text: [{text, low?, alt?}]; low = doubtful, alt = a second reading that kept digits the first lost). Read each picture and write what it shows (screens, fields, buttons, messages) as lines or facts with sources_write, loc = the time.',
     inputSchema: {
       id: z.string().describe('Source id (a video)'),
       threshold: z.number().min(0.05).max(0.9).optional().describe('Scene-change sensitivity, lower = more frames (default 0.3)'),
       max: z.number().int().min(1).max(200).optional().describe('At most this many frames (default 40)'),
     },
     annotations: W,
-  }, guard(({ id, threshold, max }) => { need(id); return { frames: sceneFrames(id, { threshold, max }) }; }));
+  }, guard(async ({ id, threshold, max }) => { need(id); return { frames: await sceneFramesOcr(id, { threshold, max }) }; }));
 
   server.registerTool('sources_write', {
     title: 'Write the Claude pass back',
     description: 'Write cleaned lines and/or facts for one source. lines (the whole list, same shape as sources_get: text, loc, who?, deleted?, orig? = the text before the correction) replace the preview and rebuild the candidate facts; facts (the whole list: text, kind, loc?, who?, confidence 0..1?, note?, id? = the candidate it refines) then replace the facts. A person\'s accepted / rejected decision on a fact id is kept. Never invent: every fact must come from the source.',
     inputSchema: {
       id: z.string().describe('Source id'),
-      lines: z.array(z.object({ text: z.string(), loc: z.string().optional(), who: z.string().optional(), deleted: z.boolean().optional(), orig: z.string().optional(), low: z.boolean().optional() })).optional(),
+      lines: z.array(z.object({ text: z.string(), loc: z.string().optional(), who: z.string().optional(), deleted: z.boolean().optional(), orig: z.string().optional(), low: z.boolean().optional(), alt: z.string().optional() })).optional(),
       facts: z.array(z.object({ id: z.string().optional(), text: z.string(), kind: z.enum(['requirement', 'decision', 'question', 'statement', 'rule', 'actor', 'step', 'field', 'term']),
         loc: z.string().optional(), who: z.string().optional(), confidence: z.number().optional(), confidence_basis: z.string().optional(), note: z.string().optional(),
         corroborated_by: z.array(z.string()).optional(), conflicts_with: z.array(z.string()).optional() })).optional(),

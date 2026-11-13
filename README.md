@@ -136,7 +136,7 @@ Every type opens with a first page built for its purpose. The thumbnail on the s
 
 🌾 **Harvest (collect the facts):** a process model gives roles, workflow, rules and statuses. A crawl (an automatic walk) of the live service gives the card, form, attachments and messages. The merge keeps both.
 
-🎧 **Sources:** add a meeting recording, a document, a web page, an image, an Android app or a tool folder on the start page. Each one runs in stages you can pause and review: a speaker-labelled transcript made on your own machine (Arabic dialects and English mixed in), then candidate facts you accept, reject or edit. See [the guide](docs/guide.md#9-sources-from-a-meeting-a-document-or-a-site-to-checked-facts-0200).
+🎧 **Sources:** add a meeting recording, a document, a web page, an image, an Android app or a tool folder on the start page. Each one runs in stages you can pause and review: a speaker-labelled transcript made on your own machine (Arabic dialects and English mixed in), the text of an image or a screen-recording frame read by local OCR (Arabic and English), then candidate facts you accept, reject or edit. See [the guide](docs/guide.md#9-sources-from-a-meeting-a-document-or-a-site-to-checked-facts-0200).
 
 📝 **Editor:** one HTML file. The page you edit is the page that prints. Every change is undoable and recorded.
 
