@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { ensure, readJson, localDir, subdir, systemDir } from '../workspace.mjs';
 import { launchBrowser, closeBrowsers, noteHost, hostState } from '../host.mjs';
 import { BROWSERS, installedBrowsers, osDefaultBrowser, classifyBrowser, isChromium, chooseBrowser, savedBrowser, saveBrowser } from '../export.mjs';
+import { hostToken } from '../host-lifecycle.mjs';
 
 /** editor/session-worker.js, next to the editor sources (installed copies keep the same layout). */
 const WORKER_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'editor', 'session-worker.js');
@@ -161,7 +162,7 @@ function finish(ctx) {
   const dir = runDir(ctx, s.runId);
   const tabs = tabsOf(dir).map((x) => ({ tab: x.tab, title: x.title }));
   if (tabs.length) fs.writeFileSync(path.join(dir, 'run.json'), JSON.stringify({ runId: s.runId, startedAt: s.startedAt, endedAt: new Date().toISOString(), tabs }, null, 1));
-  if (process.env.BW_HOST_TOKEN) closeBrowsers(hostState()?.browserPids || [], { scan: false }); // the windows this host opened (a background browser left on its profile); no slow process scan here
+  if (hostToken()) closeBrowsers(hostState()?.browserPids || [], { scan: false }); // the windows this host opened (a background browser left on its profile); no slow process scan here
   ctx.onIdle?.();
 }
 function archive(ctx, id) {
@@ -346,7 +347,7 @@ export default async (req, url, send, ctx, res) => {
   }
   const s = state(ctx);
   try {
-    if (req.method === 'GET' && p === '/api/session/info') { send(200, { runId: s.runId, host: !!process.env.BW_HOST_TOKEN, workspace: { root: ctx.workspace.root, chosen: ctx.workspace.chosen !== false } }); return true; }
+    if (req.method === 'GET' && p === '/api/session/info') { send(200, { runId: s.runId, host: !!hostToken(), workspace: { root: ctx.workspace.root, chosen: ctx.workspace.chosen !== false } }); return true; }
     if (req.method === 'GET' && p === '/api/session/leases') { send(200, { ok: true, ...leaseInfo(s) }); return true; }
     if (req.method === 'GET' && p === '/api/session/live') {
       const tab = url.searchParams.get('tab');
@@ -484,7 +485,7 @@ export default async (req, url, send, ctx, res) => {
     }
     if (req.method === 'POST' && p === '/api/host/stop') {
       const { token } = await readJson(req);
-      if (!process.env.BW_HOST_TOKEN || token !== process.env.BW_HOST_TOKEN) { send(403, { error: 'token' }); return true; }
+      if (!hostToken() || token !== hostToken()) { send(403, { error: 'token' }); return true; }
       emit(ctx, 'flush'); // every tab sends its state now
       send(200, { ok: true });
       setTimeout(() => finish(ctx), 800);

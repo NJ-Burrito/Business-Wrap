@@ -13,7 +13,7 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { localBase, isTestMode, isPluginInstall, pluginData } from '../engine/testguard.mjs';
-import { sandboxed, mayTakeOver, installOf } from './ownership.mjs';
+import { sandboxed, mayTakeOver, installOf } from '../engine/ownership.mjs';
 
 export const INSTALL = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const LNK_NAME = 'Business-Wrap.lnk';

@@ -4,9 +4,8 @@
 //   node engine/vendor-icons.mjs
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { REPO } from './platform.mjs';
 
-const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = path.join(REPO, 'node_modules', 'lucide-static', 'icons');
 const MAP = {
   undo: 'undo-2', redo: 'redo-2', duplicate: 'copy', delete: 'trash-2', moveUp: 'arrow-up', moveDown: 'arrow-down',

@@ -13,7 +13,7 @@ import { spawnSync } from 'node:child_process';
 import { REPO } from '../engine/export.mjs';
 import * as P from '../engine/protocol.mjs';
 import { ensureLauncher, readShortcut, desktopDir, LNK_NAME } from '../launcher/launcher.mjs';
-import { mayTakeOver, installOf, isWorktree } from '../launcher/ownership.mjs';
+import { mayTakeOver, installOf, isWorktree } from '../engine/ownership.mjs';
 
 const results = [];
 let failed = 0;

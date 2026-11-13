@@ -13,7 +13,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { applyOps } from './edits.mjs';
-import { REPO } from './export.mjs';
+import { REPO, inside as insidePath } from './platform.mjs';
 import { localBase, isTestMode, testSandbox, isRealRoot, realParent } from './testguard.mjs';
 import { ensureFolderIcon, refreshFolderIcon } from './brand-icons.mjs';
 import { tidyNow } from './tidy.mjs'; // a cycle by design: used only when ensure() meets an old layout
@@ -21,7 +21,7 @@ import { tidyNow } from './tidy.mjs'; // a cycle by design: used only when ensur
 /** .local/ (gitignored); BW_LOCAL_DIR moves it (tests). */
 export const localDir = () => localBase(REPO);
 const store = () => path.join(localDir(), 'workspace.json');
-const inside = (p, dir) => { const r = path.relative(dir, p); return !r || (!r.startsWith('..') && !path.isAbsolute(r)); };
+const inside = (p, dir) => insidePath(dir, p);
 
 export function defaultParent() {
   // under the test runner (tests/run.mjs sets BW_TEST_SLOT) a suite that names no BW_WORKSPACE gets a temp parent, never the real Documents
@@ -423,7 +423,7 @@ export function saveCopy(ws, { id, title, html }) {
 export function revealable(ws, file) {
   if (typeof file !== 'string' || !file) return null;
   const p = path.resolve(file);
-  const inside = [ws.dirs.docs, ws.dirs.pdf, ws.dirs.html].filter(Boolean).some((d) => { const rel = path.relative(path.resolve(d), p); return rel && !rel.startsWith('..') && !path.isAbsolute(rel) && !inHistory(d, p); });
+  const inside = [ws.dirs.docs, ws.dirs.pdf, ws.dirs.html].filter(Boolean).some((d) => { return insidePath(d, p, { self: false }) && !inHistory(d, p); });
   return inside && fs.existsSync(p) ? p : null;
 }
 

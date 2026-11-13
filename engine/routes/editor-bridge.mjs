@@ -18,6 +18,7 @@ import { emit, registry, beat } from './session.mjs';
 import { launchBrowser } from '../host.mjs';
 import { validateEdits } from '../edits.mjs';
 import { workspaceNote } from './health.mjs';
+import { tokenRefused } from '../host-lifecycle.mjs';
 
 export const TOOLS = ['list', 'get', 'outline', 'ops', 'action', 'new', 'import', 'assign', 'trash'];
 const STATUS = { NO_TAB: 404, NO_DOC: 404, CONFLICT: 409, BAD_OP: 422, BAD_ARGS: 400, UNKNOWN_ACTION: 400, REFUSED: 423, TAB_TIMEOUT: 504, TAB_ASLEEP: 503, NOT_OWNER: 409 };
@@ -75,8 +76,7 @@ export default async (req, url, send, ctx) => {
       send(200, { ok: true });
       return true;
     }
-    const tokenSet = process.env.BW_HOST_TOKEN;
-    if (tokenSet && req.headers['x-bw-token'] !== tokenSet) { send(403, { ok: false, code: 'AUTH', error: 'x-bw-token missing or wrong (read it from the host state file)' }); return true; }
+    if (tokenRefused(req)) { send(403, { ok: false, code: 'AUTH', error: 'x-bw-token missing or wrong (read it from the host state file)' }); return true; }
     const b = await readJson(req, 64e6);
     const tool = String(b.tool ?? b.op ?? '');
     const doc = b.doc ?? b.doc_id ?? undefined;

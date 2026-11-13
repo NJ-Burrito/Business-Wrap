@@ -13,7 +13,7 @@ import os from 'node:os';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import crypto from 'node:crypto';
-import { REPO } from '../export.mjs';
+import { REPO } from '../platform.mjs';
 import { entryWords } from '../edits.mjs';
 import { ensure, readJson, saveHtml, subdir, systemDir } from '../workspace.mjs';
 import { importFile } from '../import/import.mjs';

@@ -28,23 +28,25 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { buildEditor } from './build-editor.mjs';
 import * as DT from './doctypes.mjs';
-import { exportPdf, exportDocx, loadTheme, loadEdited, fontsFor, REPO, userCwd, fileStem, renderDiagramPng, localeOf } from './export.mjs';
+import { exportPdf, exportDocx, loadTheme, loadEdited, fontsFor, userCwd, fileStem, renderDiagramPng, localeOf } from './export.mjs';
+import { REPO } from './platform.mjs';
 import { modelIn } from './diagram-cli.mjs';
 import { systemFonts } from './fonts.mjs';
 import { registeredServers } from './server-registry.mjs';
 import { harvestModel, harvestCrawl } from './harvest/cli.mjs';
 import { harvestSources, MODEL_EXT, TEXT_EXT } from './harvest/sources.mjs';
-import { STATE_DIR, healPort, healStaleHosts, healWorkspace, healFont, readHealLog, alive } from './heal/index.mjs';
+import { STATE_DIR, healStaleHosts, healWorkspace, healFont, readHealLog } from './heal/index.mjs';
+import { alive, killTree, waitFor, DEFAULT_PORT } from './host-lifecycle.mjs';
 import { GATES } from './heal/gates.mjs';
 import { workspace, localDir, ensure, reportPath, sourcesDir, keepVersion, docTitle, exportTitle, outName, uniquePath, noteOutput, DOCS_NAME } from './workspace.mjs';
 import { tidy } from './tidy.mjs';
 import { migrateLocal, pluginData, realParent, isTestMode } from './testguard.mjs';
 import { doctor as doctorInfo } from '../mcp/startup.mjs';
-import { KEEP_AWAKE_ARGS } from './host.mjs';
+import * as hostMod from './host.mjs';
 import { chooseBrowser } from './export.mjs';
 import { autorun as ensureLauncher } from '../launcher/launcher.mjs'; // 0.17.0 (N15): the launcher + its Desktop copy, once per install and version
 
@@ -55,43 +57,15 @@ class Pending extends Error { constructor(m) { super(m); this.code = 3; } }
 const isDoc = (f) => { try { const d = JSON.parse(fs.readFileSync(f, 'utf8')); return !!(d.control && d.chapters); } catch { return false; } };
 const docsIn = (p) => (fs.statSync(p).isDirectory() ? fs.readdirSync(p).filter((f) => /\.json$/i.test(f)).map((f) => path.join(p, f)).filter(isDoc) : [p]);
 
-/* ── host: WP3's engine/host.mjs when it is built, else a local serve.mjs child this CLI records ── */
-async function hostModule() {
-  try { const m = await import('./host.mjs'); return m; } catch { return null; }
-}
 const record = (fn) => { const f = HOSTS(); const { hosts } = healStaleHosts(f); const next = fn(hosts); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, JSON.stringify({ hosts: next }, null, 1)); return next; };
-const answers = (url) => new Promise((ok) => { const r = http.get(url, (res) => { res.resume(); ok(res.statusCode === 200); }); r.on('error', () => ok(false)); r.setTimeout(1500, () => { r.destroy(); ok(false); }); });
-async function waitUp(url, ms = 15000) { for (const t0 = Date.now(); Date.now() - t0 < ms;) { if (await answers(url)) return true; await new Promise((r) => setTimeout(r, 200)); } return false; }
-const killTree = (pid) => { if (!alive(pid)) return false; if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true }); else { try { process.kill(-pid); } catch { try { process.kill(pid); } catch { /* gone */ } } } return true; };
 /** The editor's browser (Google Chrome first, then the system default, Edge, any Chromium: engine/export.mjs chooseBrowser); null when none is installed. */
 export function browserExe() {
   try { return chooseBrowser()?.exe ?? null; } catch { return null; }
 }
-/** The editor's browser in its own profile (so its pid is this window's and close can end it). Only the fallback host path below uses it. */
-function openBrowser(url) {
-  const exe = browserExe();
-  if (!exe) return null;
-  const c = spawn(exe, [`--user-data-dir=${path.join(STATE_DIR(), 'edge-profile')}`, '--no-first-run', ...KEEP_AWAKE_ARGS, '--new-window', url], { detached: true, stdio: 'ignore', windowsHide: true });
-  c.unref();
-  return c.pid;
-}
-
-export async function startHost({ editor, port = 4317, browser = true } = {}) {
-  const real = await hostModule();
-  if (real) {
-    try { const r = await real.start({ editor, port, open: browser }); record((h) => (h.some((x) => x.pid === r.pid) ? h : [...h, { ...r, editor, by: 'host.mjs' }])); return { ...r, editor }; } catch (e) { if (!/not built yet/.test(e.message)) throw e; }
-  }
-  const same = record((h) => h).find((h) => h.editor === editor);
-  if (same && (await answers(same.url))) return { ...same, reused: true };
-  const { port: p } = await healPort(port);
-  const child = spawn(process.execPath, [path.join(REPO, 'engine', 'serve.mjs'), editor, '--port', String(p)], { detached: true, stdio: 'ignore', env: { ...process.env, BW_SERVE_CHILD: '1' }, windowsHide: true });
-  child.unref();
-  const url = `http://127.0.0.1:${p}/`;
-  if (!(await waitUp(url))) { killTree(child.pid); throw new Error(`the host did not answer on ${url}`); }
-  const browserPid = browser ? openBrowser(url) : null;
-  const h = { pid: child.pid, port: p, url, editor, browserPid, by: 'cli', at: new Date().toISOString() };
-  record((hs) => [...hs, h]);
-  return h;
+export async function startHost({ editor, port = DEFAULT_PORT, browser = true } = {}) {
+  const r = await hostMod.start({ editor, port, open: browser });
+  record((h) => (h.some((x) => x.pid === r.pid) ? h : [...h, { ...r, editor, by: 'host.mjs' }]));
+  return { ...r, editor };
 }
 
 /** The library import of the host (WP3 POST /api/library/import); a host without it already serves the built editor. */
@@ -123,7 +97,7 @@ async function hostOn(port) {
   } catch { return null; }
 }
 
-export async function open({ inputs = [], port = 4317, browser = true, ui, blank = false } = {}) {
+export async function open({ inputs = [], port = DEFAULT_PORT, browser = true, ui, blank = false } = {}) {
   ensureLauncher(); // MCP, the protocol handler (an opened export) and the plugin all arrive here
   if (!inputs.length && !blank) { const last = lastDocument(); if (last) inputs = [last.file]; }
   const implicitBlank = !inputs.length; // 0.16.0 (item 11): no document asked for, none in the library: the editor opens on its blank structure, and NO library document is made for it
@@ -141,7 +115,7 @@ export async function open({ inputs = [], port = 4317, browser = true, ui, blank
   // 0.16.0 (item 10): this state folder has no host of its own, yet a Business-Wrap host already answers on the port (another install, another state folder): a second host is refused, not
   // started on the next port (the second host on 4318 that the first could not see). Reuse that host from the install that owns it, or stop it there.
   if (!isTestMode()) {
-    const mine = (await hostModule())?.status?.();
+    const mine = hostMod.status();
     if (!mine?.running) {
       const other = await hostOn(port);
       if (other) throw Object.assign(new Error(`a Business-Wrap host (pid ${other.pid}, version ${other.version}) already runs on port ${port} but this install does not own it (a different state folder): refused to start a second one. Use that host from the install that started it, or stop it there.`), { code: 'HOST_FOREIGN', data: { pid: other.pid, port } });
@@ -171,21 +145,20 @@ function ownServers() {
  *  started, any other serve.mjs of this install still running, and the browser on this install's profile. `keep`: pids left
  *  alone (the power route keeps its own server and supervisor, then exits by itself). */
 export async function close({ keep = [], caller = '', force = false } = {}) {
-  const real = await hostModule();
-  const pids = [];
+    const pids = [];
   let stopped = 0; // hosts and servers: the background host, each record this CLI kept, each stray server
-  const h = real?.hostState?.();
+  const h = hostMod.hostState();
   // 0.16.0 (item 10): an MCP server asked to stop, and the host was started by ANOTHER live MCP server (another agent's session): that is not its to stop. The reply names what was left alone.
   const by = String(h?.startedBy || '');
-  if (caller && !force && /^mcp:\d+$/.test(by) && by !== caller && real?.alive?.(Number(by.slice(4)))) return { stopped: 0, pids: [], skipped: [{ pid: h.pid, port: h.port, startedBy: by, why: 'started by another running MCP server (another agent); pass force to stop it anyway' }] };
-  if (real && !(h && keep.includes(h.pid))) { try { const r = await real.stop(); if (r.pids?.length) stopped++; pids.push(...(r.pids || [])); } catch { /* none */ } }
+  if (caller && !force && /^mcp:\d+$/.test(by) && by !== caller && alive(Number(by.slice(4)))) return { stopped: 0, pids: [], skipped: [{ pid: h.pid, port: h.port, startedBy: by, why: 'started by another running MCP server (another agent); pass force to stop it anyway' }] };
+  if (!(h && keep.includes(h.pid))) { try { const r = await hostMod.stop(); if (r.pids?.length) stopped++; pids.push(...(r.pids || [])); } catch { /* none */ } }
   const f = HOSTS();
   const hosts = (fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')).hosts || [] : []).filter((x) => !keep.includes(x.pid));
   for (const x of hosts) for (const pid of [x.browserPid, x.pid]) if (pid && killTree(pid)) pids.push(pid);
   stopped += hosts.length;
   if (fs.existsSync(f)) fs.writeFileSync(f, JSON.stringify({ hosts: [] }, null, 1));
   for (const pid of ownServers()) if (!keep.includes(pid) && killTree(pid)) { pids.push(pid); stopped++; }
-  try { pids.push(...(real?.closeBrowsers?.([]) || [])); } catch { /* none */ }
+  try { pids.push(...(hostMod.closeBrowsers([]) || [])); } catch { /* none */ }
   return { stopped, pids: [...new Set(pids)], ...(h ? { host: { pid: h.pid, port: h.port, startedBy: by || 'person' } } : {}) };
 }
 
@@ -193,11 +166,10 @@ export async function close({ keep = [], caller = '', force = false } = {}) {
  *  window stay open. Not close(): that also closes the browsers the host opened (host.stop and the session route's finish() both do), and a kill with /T would take
  *  a browser the host launched with it (its parent link), so each pid is ended on its own. Tabs are flushed by the caller first (protocol handle). */
 export async function stopHostOnly() {
-  const real = await hostModule();
-  const pids = [];
-  const end = async (pid) => { if (!pid || !alive(pid)) return false; try { process.kill(pid); } catch { return false; } for (const t0 = Date.now(); alive(pid) && Date.now() - t0 < 4000;) await new Promise((r) => setTimeout(r, 100)); pids.push(pid); return !alive(pid); };
-  const h = real?.hostState?.();
-  if (h) { await end(h.pid); try { fs.rmSync(real.hostFile(), { force: true }); } catch { /* none */ } }
+    const pids = [];
+  const end = async (pid) => { if (!pid || !alive(pid)) return false; try { process.kill(pid); } catch { return false; } await waitFor(() => !alive(pid), 4000); pids.push(pid); return !alive(pid); };
+  const h = hostMod.hostState();
+  if (h) { await end(h.pid); try { fs.rmSync(hostMod.hostFile(), { force: true }); } catch { /* none */ } }
   const f = HOSTS();
   const hosts = fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')).hosts || [] : [];
   for (const x of hosts) await end(x.pid); // the browserPid of a record is left alone
@@ -208,9 +180,8 @@ export async function stopHostOnly() {
 
 export async function status() {
   const { hosts } = healStaleHosts(HOSTS());
-  const real = await hostModule();
-  let host = null;
-  try { host = real?.status?.() ?? null; } catch { host = null; }
+    let host = null;
+  try { host = hostMod.status() ?? null; } catch { host = null; }
   const d = await doctorInfo().catch(() => null); // the MCP side in one line: plugin or clone, where state lives, drift, last start
   return { version: pkg().version, hosts: hosts.map(({ pid, port, url, editor }) => ({ pid, port, url, editor })), host, healed: readHealLog().length, ai: false, mcp: d && { plugin: d.plugin, state: d.local, last_initialize_ms: d.last_initialize_ms, registered: d.registered?.registered ?? null, last_start: d.last_start, last_error: d.last_error, problems: d.problems } };
 }
@@ -557,7 +528,7 @@ export async function run(argv) {
   const pos = rest.filter((a, i) => !a.startsWith('--') && !VALUED.has(rest[i - 1]));
   const browser = !flags.has('--no-browser');
   switch (verb) {
-    case 'open': return open({ inputs: pos, port: val('port') ? Number(val('port')) : 4317, browser, ui: val('ui') });
+    case 'open': return open({ inputs: pos, port: val('port') ? Number(val('port')) : DEFAULT_PORT, browser, ui: val('ui') });
     case 'close': case 'stop': return close();
     case 'status': return status();
     case 'new': return newDoc({ title: val('title') || pos[0], out: val('out'), type: val('type'), browser, openIt: !flags.has('--no-open') });

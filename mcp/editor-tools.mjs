@@ -41,7 +41,8 @@ export const callTimeoutMs = () => Number(process.env.BW_EDITOR_TIMEOUT_MS) || 4
  *  of this install; when no host is running one is started (no browser window: the host opens the tab it needs). */
 export async function hostTarget({ start = true } = {}) {
   if (process.env.BW_HOST_URL) return { url: process.env.BW_HOST_URL.replace(/\/$/, ''), token: process.env.BW_HOST_TOKEN || '' };
-  const { hostState, alive } = await import('../engine/host.mjs');
+  const { hostState } = await import('../engine/host.mjs');
+  const { alive } = await import('../engine/host-lifecycle.mjs');
   let h = hostState();
   if (!(h && alive(h.pid)) && start && process.env.BW_NO_AUTOSTART !== '1') {
     try { const { open } = await import('../engine/cli.mjs'); await open({ inputs: [], browser: false }); } catch (e) { throw new BwError('NO_HOST', `the Business-Wrap host could not be started: ${e?.message || e}`, { how: 'run the open_in_editor tool, or business-wrap open, and retry' }); }

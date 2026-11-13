@@ -2,6 +2,7 @@
 import path from 'node:path';
 import { reveal } from '../host.mjs';
 import { workspace, ensure, setParent, pickParent, pickerOpen, pickerState, pickerGo, pickerMkdir, pickerChoose, pickerCancel, pickerWait, saveHtml, saveCopy, revealable, readJson, README_NAME } from '../workspace.mjs';
+import { tokenRefused } from '../host-lifecycle.mjs';
 
 export default async (req, url, send, ctx) => {
   if (!url.pathname.startsWith('/api/workspace')) return false;
@@ -13,8 +14,7 @@ export default async (req, url, send, ctx) => {
     const pk = /^\/api\/workspace\/picker\/(state|open|go|mkdir|choose|cancel|wait)$/.exec(url.pathname);
     if (pk) {
       if (req.method !== 'POST') { send(405, { error: 'POST' }); return true; }
-      const tokenSet = process.env.BW_HOST_TOKEN;
-      if (tokenSet && req.headers['x-bw-token'] !== tokenSet && !req.headers.origin) { send(403, { ok: false, code: 'AUTH', error: 'x-bw-token missing or wrong (read it from the host state file)' }); return true; }
+      if (tokenRefused(req) && !req.headers.origin) { send(403, { ok: false, code: 'AUTH', error: 'x-bw-token missing or wrong (read it from the host state file)' }); return true; }
       const b = await readJson(req).catch(() => ({}));
       try {
         const v = { state: () => pickerState(), open: () => pickerOpen({ path: b.path, by: b.by || 'agent' }), go: () => pickerGo(b.path), mkdir: () => pickerMkdir(b.name), choose: () => pickerChoose(b.path), cancel: () => pickerCancel(), wait: () => pickerWait(b.since, b.ms) }[pk[1]];

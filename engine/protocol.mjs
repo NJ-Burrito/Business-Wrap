@@ -15,8 +15,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { REPO } from './export.mjs';
-import { mayTakeOver, installOf } from '../launcher/ownership.mjs';
+import { REPO, inside as insidePath } from './platform.mjs';
+import { mayTakeOver, installOf } from './ownership.mjs';
+import { alive, probePorts, DEFAULT_PORT } from './host-lifecycle.mjs';
 
 export const SCHEME = 'business-wrap';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -55,7 +56,7 @@ export function parseUrl(raw) {
 }
 
 const norm = (p) => (process.platform === 'win32' ? p.toLowerCase() : p);
-const inside = (root, f) => { const r = path.relative(norm(root), norm(f)); return r === '' || (!r.startsWith('..') && !path.isAbsolute(r)); };
+const inside = (root, f) => insidePath(root, f, { fold: true });
 export function allowedRoots() {
   const roots = [os.homedir(), os.tmpdir(), INSTALL, REPO, path.parse(INSTALL).root, ...String(process.env.BW_ALLOWED_ROOTS || '').split(path.delimiter)];
   try { roots.push(process.env.BW_WORKSPACE || '', process.env.BW_LOCAL_DIR || ''); } catch { /* none */ }
@@ -156,7 +157,7 @@ export function ensureRegistered(o = {}) {
 }
 
 /* ── servers: who answers, how many windows, the flush before a stop ── */
-export const defaultPorts = () => (process.env.BW_PROBE_PORTS ? process.env.BW_PROBE_PORTS.split(',').map(Number).filter(Boolean) : Array.from({ length: 11 }, (_, i) => 4317 + i));
+export const defaultPorts = () => (process.env.BW_PROBE_PORTS ? process.env.BW_PROBE_PORTS.split(',').map(Number).filter(Boolean) : probePorts());
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 /** The Business-Wrap servers answering on the probe ports (any install: it is a count of what a person would see). */
 export async function probeServers(ports = defaultPorts()) {
@@ -171,7 +172,6 @@ export async function probeServers(ports = defaultPorts()) {
 }
 /** Browsers the hosts of this install launched and that still run. */
 export async function countBrowsers() {
-  const { alive } = await import('./host.mjs');
   const pids = new Set();
   try { const { hostState } = await import('./host.mjs'); for (const p of hostState()?.browserPids || []) pids.add(p); } catch { /* none */ }
   try {
@@ -210,10 +210,10 @@ export async function handle(url, { grace = Number(process.env.BW_POWER_GRACE_MS
     if (a.file) { try { file = validateFile(a.file); } catch (e) { fileIgnored = String(e.message || e); } }
     // 0.18.2: no file (or one that was ignored) is a plain open of the TOOL: the host serves the blank editor, whose landing is the start page (it used to serve the newest saved document,
     // which is a `doc-` service, so the start page never showed). A file named in the link is a specific document and is served as it is.
-    const r = await cli.open({ inputs: file ? [file] : [], blank: !file, browser: false, port: Number(process.env.BW_OPEN_PORT) || 4317 }); // BW_OPEN_PORT: tests only
+    const r = await cli.open({ inputs: file ? [file] : [], blank: !file, browser: false, port: Number(process.env.BW_OPEN_PORT) || DEFAULT_PORT }); // BW_OPEN_PORT: tests only
     return { action: 'start', url: r.url, port: r.port, pid: r.pid, browser: false, ...(file ? { file } : {}), ...(fileIgnored ? { fileIgnored } : {}) };
   }
   const file = validateFile(a.file);
-  const r = await cli.open({ inputs: [file], browser: true, port: Number(process.env.BW_OPEN_PORT) || 4317 }); // BW_OPEN_PORT: tests only
+  const r = await cli.open({ inputs: [file], browser: true, port: Number(process.env.BW_OPEN_PORT) || DEFAULT_PORT }); // BW_OPEN_PORT: tests only
   return { action: 'open', file, url: r.url, port: r.port };
 }

@@ -13,12 +13,11 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { isTestMode, testSandbox, pluginData, isPluginInstall } from './testguard.mjs';
+import { REPO } from './platform.mjs';
 import { ICON_DIR as TREE_ICON_DIR, TREE_EXTS, kindOf } from '../assets/icons/kinds.mjs';
 
-const REPO = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const ICON_DIR = path.join(REPO, 'brand', 'v3', 'file-icons');
 export const EXTS = ['pdf', 'docx', 'html'];
 /** 0.17.0 (N16): every file type of the save and download tree, each with its own icon (assets/icons: 7 sizes, 16 to 256). Applying it changes the icon of

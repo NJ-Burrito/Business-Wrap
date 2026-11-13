@@ -6,10 +6,11 @@ import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { config } from './config.mjs';
+import { REPO, pyEnv } from './platform.mjs';
+import { py } from './py.mjs';
 import { sfntInfo, sfntFromBytes } from './fontinfo.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const REPO = path.resolve(HERE, '..');
 
 /** Agent A's manifest if present, else the stub in engine/defaults. */
 export function loadManifest(explicit) {
@@ -155,7 +156,8 @@ export function normaliseFont(bytes, index = 0, { embolden = false } = {}) {
     const stem = path.join(outTmp(), `${process.pid}-${key.slice(0, 12)}`);
     fs.writeFileSync(`${stem}.in`, buf);
     try {
-      const r = spawnSync('uv', ['run', '--no-project', '--with', 'fonttools', '--with', 'brotli', 'python', path.join(HERE, 'font_normalise.py'), `${stem}.in`, `${stem}.ttf`, '--index', String(index), ...(embolden ? ['--embolden'] : [])], { encoding: 'utf8', env: { ...process.env, PYTHONUTF8: '1' } });
+      const [cmd, args] = py([path.join(HERE, 'font_normalise.py'), `${stem}.in`, `${stem}.ttf`, '--index', String(index), ...(embolden ? ['--embolden'] : [])], ['fonttools', 'brotli']);
+      const r = spawnSync(cmd, args, { encoding: 'utf8', env: pyEnv() });
       if (r.status !== 0) throw new Error(`font normalise failed: ${(r.stderr || r.stdout || String(r.error)).slice(-400)}`);
       out = fs.readFileSync(`${stem}.ttf`);
     } finally {

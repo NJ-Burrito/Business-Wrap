@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { state, registry } from './session.mjs';
 import { parentChange } from '../workspace.mjs';
 import { depsStatus } from '../deps.mjs';
+import { hostToken } from '../host-lifecycle.mjs';
 
 /** The save folder as a tool should see it: its root, whether the person chose it, and (since this host started) any change of it. */
 export function workspaceNote(ws) {
@@ -43,7 +44,7 @@ export default async (req, url, send, ctx, res) => {
     version: version(),
     pid: process.pid,
     ppid: process.ppid, // the supervisor that forked this server (engine/serve.mjs)
-    hostKey: process.env.BW_HOST_TOKEN ? crypto.createHash('sha256').update(process.env.BW_HOST_TOKEN).digest('hex').slice(0, 16) : null, // proves which start spawned it, never the token
+    hostKey: hostToken() ? crypto.createHash('sha256').update(hostToken()).digest('hex').slice(0, 16) : null, // proves which start spawned it, never the token
     uptimeS: Math.round(process.uptime()),
     workspace: ws ? workspaceNote(ws) : null, // 0.16.0: {root, chosen, changed?:{from, to, at, by}}: a save-folder change is named here and in every editor reply
     deps: depsStatus(), // 0.17.13: {ok, missing:[…]} — playwright-core not installed (a copy without node_modules): exports fail until `npm ci`

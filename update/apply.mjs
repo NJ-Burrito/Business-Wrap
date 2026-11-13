@@ -12,6 +12,8 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { isReleaseZipUrl, isAssetApiUrl, isAllowedRedirect, isNewer } from './core.mjs';
 import { isPluginInstall, isTestMode } from '../engine/testguard.mjs';
+import { alive as hostAlive } from '../engine/host-lifecycle.mjs';
+import { inside as insidePath } from '../engine/platform.mjs';
 
 /** What to do instead of an in-place update when Business-Wrap runs as a Claude Code plugin (0.15.0). */
 export const PLUGIN_UPDATE_HOW = ['/plugin marketplace update business-wrap', '/plugin update business-wrap', '/reload-plugins (or restart the MCP client): the running server keeps the previous version folder until then'];
@@ -86,11 +88,11 @@ const rmTree = (p) => fs.rmSync(p, { recursive: true, force: true, maxRetries: 5
 const rmFile = (p) => fs.rmSync(p, { force: true, maxRetries: 5, retryDelay: 100 });
 const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } };
 function writeAtomic(p, text) { const t = `${p}.tmp-${process.pid}`; fs.writeFileSync(t, text); retry(() => fs.renameSync(t, p)); }
-const alive = (pid) => { if (!pid || pid === process.pid) return false; try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
+const alive = (pid) => pid !== process.pid && hostAlive(pid);
 const versionLike = (v) => /^\d+\.\d+\.\d+$/.test(String(v));
 const lower = (p) => (process.platform === 'win32' || process.platform === 'darwin' ? p.toLowerCase() : p);
 /** True when `p` resolves to a place strictly inside `root` (lexically). */
-export const inside = (root, p) => { const r = path.relative(path.resolve(root), path.resolve(p)); return !!r && r !== '..' && !r.startsWith(`..${path.sep}`) && !path.isAbsolute(r); };
+export const inside = (root, p) => insidePath(root, p, { self: false });
 /** True when `p` is inside `root` also after links are resolved (a folder that is a link to elsewhere does not count). */
 const insideReal = (root, p) => { try { return inside(fs.realpathSync(root), fs.realpathSync(p)); } catch { return false; } };
 /** Like `insideReal`, but the root itself counts (the parent folder of a file at the top of the install). */

@@ -12,6 +12,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { py } from '../py.mjs';
+import { pyEnv } from '../platform.mjs';
 import { onShortCopy } from './safe.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -107,7 +108,7 @@ export function pdfItems(text, { rtl = false } = {}) {
 /** DOCX → {items, meta} through python-docx (uv). */
 export function docxItems(file) {
   const [cmd, args] = py([path.join(HERE, 'docx_items.py'), file], ['python-docx']);
-  const r = spawnSync(cmd, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, windowsHide: true, env: { ...process.env, PYTHONUTF8: '1' } });
+  const r = spawnSync(cmd, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, windowsHide: true, env: pyEnv() });
   if (r.status !== 0) throw new Error(`docx import failed: ${(r.stderr || r.error?.message || '').slice(-300)}`);
   const j = JSON.parse(r.stdout);
   // a styled heading keeps its numbering apart ("1   المقدمة" → 1, المقدمة); a numbered plain paragraph is a heading too

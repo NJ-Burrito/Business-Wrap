@@ -10,7 +10,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { launchOptions, REPO, loadPlaywright } from '../export.mjs';
+import { launchOptions, loadPlaywright } from '../export.mjs';
+import { REPO } from '../platform.mjs';
 import { sourcesDir } from '../workspace.mjs';
 import { localBase } from '../testguard.mjs';
 

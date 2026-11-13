@@ -336,7 +336,8 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
 
   // 0.15.9 R6: the editor's «continue where you left off» list, readable and openable by an agent (the same host routes the popup uses)
   const hostCall = async (route, body) => {
-    const { hostState, alive } = await import('../engine/host.mjs');
+    const { hostState } = await import('../engine/host.mjs');
+    const { alive } = await import('../engine/host-lifecycle.mjs');
     const h = hostState();
     if (!h || !alive(h.pid)) throw Object.assign(new Error('no Business-Wrap host is running'), { bw: true, code: 'NO_HOST', data: { how: 'call open_in_editor first (it starts the host), then retry' } });
     const r = await fetch(`http://127.0.0.1:${h.port}/${route}`, { method: body ? 'POST' : 'GET', headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(20000) });

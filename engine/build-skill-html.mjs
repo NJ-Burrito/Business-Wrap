@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { buildEditor } from './build-editor.mjs';
-import { REPO } from './export.mjs';
+import { REPO } from './platform.mjs';
 
 export const SKILL_HTML = path.join(REPO, 'assets', 'editor', 'business-wrap.html');
 
