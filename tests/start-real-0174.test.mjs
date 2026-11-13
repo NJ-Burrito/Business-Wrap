@@ -77,6 +77,11 @@ async function run(label, file, port) {
     const ctx = browser.contexts()[0];
     const page = ctx.pages()[0] || await ctx.newPage();
     const url = pathToFileURL(file).href;
+    // Since 0.17.8 a file:// editor whose host comes up REPLACES ITSELF with the served editor (editor/ext/18-server.js follow(), location.replace);
+    // that navigation destroyed the execution context under this test's polling page.evaluate («Execution context was destroyed»). The page fires the
+    // cancelable window event `bw:follow` first: this suite cancels it (as server-toggle-0150 does) so it keeps testing the protocol start/stop on the
+    // page it opened, and records the URL the page would have followed to, which is asserted below.
+    await ctx.addInitScript(() => { window.addEventListener('bw:follow', (e) => { e.preventDefault(); (window.__follow ||= []).push(e.detail.url); }); });
     await page.goto(url);
     const ready = await until(async () => (await state(page)) === 'offline', 20000);
     check(`${label}: file:// page ready, no host -> Offline`, ready, `state=${await state(page)}`);
@@ -91,12 +96,14 @@ async function run(label, file, port) {
     await page.screenshot({ path: path.join(shots, `${label}-2-starting.png`) });
     const up = await until(async () => (await state(page)) === 'online', 40000, 250);
     check(`${label}: switch on -> Connected (the real protocol started the host)`, up, `state=${await state(page)}`);
-    const h = await health();
+    let h = null;
+    await until(async () => { h = await health(); return !!h; }, 8000, 300); // the 700 ms probe in health() can miss a host that is still binding on a loaded machine
     check(`${label}: /api/health answers with this install's version ${PKG_VERSION}`, !!h && h.version === PKG_VERSION, JSON.stringify(h));
+    await until(async () => isGreen((await ui(page))?.dot || ''), 3000, 100); // the dot fades in over .2 s once the state turns «online» (same wait as the red dot above)
     u = await ui(page);
     check(`${label}: word «Connected :${h?.port}», aria-checked, green dot`, !!u && u.st === 'online' && u.checked === 'true' && !!h && u.word.includes(`:${h.port}`) && isGreen(u.dot), JSON.stringify(u));
     await page.screenshot({ path: path.join(shots, `${label}-3-connected.png`) });
-    check(`${label}: the page is still the file:// page`, page.url() === url, page.url());
+    check(`${label}: the page is still the file:// page, and it asked to follow the host it started (bw:follow, once, to http://127.0.0.1:${h?.port}/)`, page.url() === url && await until(async () => { const f = await page.evaluate(() => window.__follow || []); return f.length === 1 && f[0].startsWith(`http://127.0.0.1:${h?.port}/`); }, 3000), `${page.url()} ${JSON.stringify(await page.evaluate(() => window.__follow || []))}`);
 
     // OFF
     await press(page);
