@@ -85,7 +85,7 @@ try {
     await waitOpen(page);
     const st0 = await page.evaluate(() => ({ svc: window.BW.S.svc, ui: window.BW.S.ui, dir: document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-start')?.dir, lang: document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-start')?.lang, role: document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-start')?.getAttribute('aria-modal') }));
     check(`${L}: the start page is the first screen on open (file://), over the untouched template «blank»`, st0.svc === 'blank' && st0.ui === ui, JSON.stringify(st0));
-    check(`${L}: it follows the language (dir ${ui === 'ar' ? 'rtl' : 'ltr'}) and is not modal`, st0.dir === (ui === 'ar' ? 'rtl' : 'ltr') && st0.lang === ui && st0.role === 'false', JSON.stringify(st0));
+    check(`${L}: it follows the language and is not modal (layout fixed: dir rtl, owner rule 2026-11-13)`, st0.dir === 'rtl' && st0.lang === ui && st0.role === 'false', JSON.stringify(st0));
 
     // every tile renders, with a thumbnail and its name
     const tiles = await page.evaluate(() => [...document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('dialog.bw-start .st-tile')].map((t) => ({ id: t.dataset.type, name: t.querySelector('.st-nm')?.textContent.trim(), desc: t.querySelector('.st-ds')?.textContent.trim(), art: !!t.querySelector('.st-thumb svg rect, .st-thumb svg path'), box: t.querySelector('.st-thumb').getBoundingClientRect().height })));
@@ -128,7 +128,7 @@ try {
     await page.keyboard.press('Escape');
     check(`${L}: Escape in the search clears it and keeps the page open`, (await page.locator(`${D} [data-st-q]`).inputValue()) === '' && (await page.locator(`${D} .st-tile`).count()) === TYPES.length && (await page.evaluate(() => document.documentElement.dataset.bwStart)) === 'open');
     await page.locator(`${D} .st-tile[data-type="blank"]`).focus();
-    await page.keyboard.press(ui === 'ar' ? 'ArrowLeft' : 'ArrowRight');
+    await page.keyboard.press('ArrowLeft'); // the layout never flips: the end side is always the left
     check(`${L}: the arrow towards the end side moves to the next tile (grid keys follow the direction)`, await page.evaluate((id) => document.getElementById('bw-ui-host').shadowRoot.activeElement?.dataset.type === id, tiles[1].id));
     await page.keyboard.press('Enter');
     check(`${L}: Enter previews the tile and moves focus to Create`, (await page.locator(`${D} .st-prev`).count()) === 1 && (await page.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.activeElement?.matches('[data-st-a="create"]'))));
@@ -215,7 +215,7 @@ try {
     await waitOpen(page);
     await page.locator(`${D} [data-st-l="ar"]`).click();
     const x = await page.evaluate(() => ({ ui: window.BW.S.ui, dir: document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-start').dir, h1: document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-start h1').textContent }));
-    check('the EN|عربي segment on the page switches the editor language and mirrors the page', x.ui === 'ar' && x.dir === 'rtl' && /ابدأ/.test(x.h1), JSON.stringify(x));
+    check('the EN|عربي segment on the page switches the editor language and never flips the layout', x.ui === 'ar' && x.dir === 'rtl' && /ابدأ/.test(x.h1), JSON.stringify(x));
     // the thumbnails mirror in RTL (the spine side follows the reading side)
     check('thumbnails are mirrored in RTL and not in LTR', await page.evaluate(() => { const s = document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-start .st-tile .st-thumb svg'); return getComputedStyle(s).transform !== 'none'; }));
     await page.context().close();

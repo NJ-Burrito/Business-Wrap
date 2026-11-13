@@ -102,7 +102,7 @@ try {
       await page.waitForSelector(P);
       const x = await probe(page);
       table.push(`${ty.id} | ${x.layers || '(fade)'} | ${Math.round(x.longest)} ms`);
-      const sideOk = ui === 'en' ? x.right >= x.vw - 24 && x.left > x.vw / 2 : x.left <= 24 && x.right < x.vw / 2;
+      const sideOk = x.left <= 24 && x.right < x.vw / 2; // the layout never flips (owner rule 2026-11-13): the inline-end drawer is on the left in both languages
       if (!sideOk || x.role !== 'dialog') bad.side.push(`${ty.id} ${Math.round(x.left)}-${Math.round(x.right)} ${x.role}`);
       const inf = ty.info;
       if (x.id !== ty.id || x.h3 !== ty.name[ui] || x.lang !== ui || x.purpose !== inf.purpose[ui] || x.when !== inf.whenToUse[ui] || x.audience !== inf.audience[ui]) bad.text.push(`${ty.id} ${JSON.stringify({ h3: x.h3, p: x.purpose?.slice(0, 30) })}`);
@@ -117,7 +117,7 @@ try {
       const a = await active(page);
       if ((await page.locator(P).count()) !== 0 || a.type !== ty.id) bad.focus.push(`${ty.id}: ${JSON.stringify(a)}`);
     }
-    check(`${L}: every tile opens the side panel (a dialog) on the ${ui === 'en' ? 'right (inline end)' : 'left (inline end in Arabic)'}`, !bad.side.length, bad.side.slice(0, 3).join(' | '));
+    check(`${L}: every tile opens the side panel (a dialog) on the left (inline end of the fixed right-to-left layout)`, !bad.side.length, bad.side.slice(0, 3).join(' | '));
     check(`${L}: the panel shows the type's name, purpose, when to use it and who uses it in ${ui} (from _info.json via the payload)`, !bad.text.length, bad.text.slice(0, 3).join(' | '));
     check(`${L}: the sections list is the type's chapter titles, in order, for every type`, !bad.sections.length, bad.sections.slice(0, 3).join(' | '));
     console.log(`${L} type | layers that move | ms (measured)`);

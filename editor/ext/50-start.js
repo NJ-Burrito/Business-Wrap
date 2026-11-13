@@ -25,6 +25,9 @@ const START = (() => {
   const types = () => data?.types || [];
   const type = (id) => types().find((x) => x.id === id) || null;
   const lang = () => (S.ui === 'ar' ? 'ar' : 'en');
+  /** The words' reading direction on this page: the choice remembered for the language (RTL | LTR switch), else the language's own. Never moves a box. */
+  const DIRK = (l) => `bw:start-dir:${l}`;
+  const tdir = () => { const v = ls.get(DIRK(lang())); return v === 'rtl' || v === 'ltr' ? v : (lang() === 'ar' ? 'rtl' : 'ltr'); };
   const nm = (x, l = lang()) => x.name?.[l] || x.name?.en || x.id;
   const dsc = (x, l = lang()) => x.description?.[l] || x.description?.en || '';
   const tf = (k, vars = {}) => { let s = t(k); for (const [a, b] of Object.entries(vars)) s = s.split(`{${a}}`).join(String(b)); return s; }; // t() with literal values ($ in a file name stays)
@@ -126,6 +129,7 @@ const START = (() => {
     return `<span class="st-spine" aria-hidden="true"></span>
 <header class="st-bar"><span class="st-brand" data-st-brand></span><span class="st-grow"></span>
   <div class="st-seg" role="group" data-st-ui><button type="button" data-st-l="en" lang="en">EN</button><button type="button" data-st-l="ar" lang="ar">عربي</button></div>
+  <div class="st-seg" role="group" data-st-dirs><button type="button" data-st-d="rtl" lang="en" dir="ltr">RTL</button><button type="button" data-st-d="ltr" lang="en" dir="ltr">LTR</button></div>
   <button type="button" class="st-ib" data-st-dark></button><button type="button" class="st-ib" data-st-calm></button></header>
 <div class="st-wrap">
   <main class="st-main" aria-labelledby="st-h1">
@@ -142,7 +146,7 @@ const START = (() => {
   }
   function chrome() {
     const l = lang();
-    el.lang = l; el.dir = l === 'ar' ? 'rtl' : 'ltr';
+    el.lang = l; el.dir = 'rtl'; el.dataset.tdir = tdir(); // 0.19.x owner rule: the layout never flips (as the editor shell, dir=rtl); only the words' direction (data-tdir) follows the language or the RTL | LTR choice
     el.dataset.theme = S.dark ? 'dark' : 'light'; el.dataset.calm = S.calm ? '1' : '0';
     el.setAttribute('aria-label', t('startMain'));
     const q = (s) => el.querySelector(s);
@@ -154,6 +158,8 @@ const START = (() => {
     q('[data-st-brand]').setAttribute('aria-label', 'Business-Wrap');
     const d = q('[data-st-dark]'); d.innerHTML = ic('dark'); d.setAttribute('aria-label', t('startDark')); d.title = t('startDark'); d.setAttribute('aria-pressed', String(!!S.dark));
     const c = q('[data-st-calm]'); c.innerHTML = ic('calm'); c.setAttribute('aria-label', t('startCalm')); c.title = t('startCalm'); c.setAttribute('aria-pressed', String(!!S.calm));
+    const dd = q('[data-st-dirs]'); dd.setAttribute('aria-label', t('startDir'));
+    dd.querySelectorAll('button').forEach((b) => { b.setAttribute('aria-pressed', String(b.dataset.stD === tdir())); b.title = t(b.dataset.stD === 'rtl' ? 'startDirRtl' : 'startDirLtr'); b.setAttribute('aria-label', `${b.dataset.stD.toUpperCase()}: ${t(b.dataset.stD === 'rtl' ? 'startDirRtl' : 'startDirLtr')}`); });
     const u = q('[data-st-ui]'); u.setAttribute('aria-label', t('startUi'));
     u.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.stL === l)));
     const back = q('[data-st-back]');
@@ -350,6 +356,7 @@ const START = (() => {
       return;
     }
     if ((b = g('[data-st-l]'))) { setUi(b.dataset.stL); return; }
+    if ((b = g('[data-st-d]'))) { ls.set(DIRK(lang()), b.dataset.stD); chrome(); gallery(); side(); return; }
     if (g('[data-st-dark]')) { runAction('dark'); chrome(); return; }
     if (g('[data-st-calm]')) { runAction('calm'); chrome(); return; }
     if (g('[data-st-back]')) { close(); return; }
@@ -377,13 +384,13 @@ const START = (() => {
     }
     const chip = ev.target.closest?.('.st-chip');
     if (chip) {
-      const chips = [...el.querySelectorAll('.st-chip')], i = chips.indexOf(chip), rtl = lang() === 'ar';
+      const chips = [...el.querySelectorAll('.st-chip')], i = chips.indexOf(chip), rtl = true; // the layout is always right to left (fixed)
       const step = ev.key === 'ArrowRight' ? (rtl ? -1 : 1) : ev.key === 'ArrowLeft' ? (rtl ? 1 : -1) : ev.key === 'ArrowDown' ? 1 : ev.key === 'ArrowUp' ? -1 : 0;
       if (step) { ev.preventDefault(); const n = chips[(i + step + chips.length) % chips.length]; st.cat = n.dataset.stC; st.q = ''; q.value = ''; st.first = false; chrome(); gallery(); el.querySelector(`.st-chip[data-st-c="${CSS.escape(st.cat)}"]`)?.focus(); return; }
     }
     const tile = ev.target.closest?.('.st-tile');
     if (tile) {
-      const tiles = [...el.querySelectorAll('.st-tile')], i = tiles.indexOf(tile), rtl = lang() === 'ar';
+      const tiles = [...el.querySelectorAll('.st-tile')], i = tiles.indexOf(tile), rtl = true; // the layout is always right to left (fixed)
       const cols = Math.max(1, tiles.filter((x) => x.offsetTop === tiles[0].offsetTop).length);
       let n = null;
       if (ev.key === 'ArrowRight') n = i + (rtl ? -1 : 1); else if (ev.key === 'ArrowLeft') n = i + (rtl ? 1 : -1);
