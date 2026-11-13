@@ -82,6 +82,7 @@
     "!linux"
   ],
   "scripts": {
+    "prepare": "node -e \"const fs=require('fs');try{if(fs.existsSync('.git')&&fs.existsSync('.githooks'))require('child_process').execFileSync('git',['config','core.hooksPath','.githooks'],{stdio:'ignore'})}catch(e){}\"",
     "test": "node engine/build-skill-html.mjs --check && node tests/run.mjs",
     "test:serial": "node engine/build-skill-html.mjs --check && node tests/run.mjs --serial",
     "test:changed": "node tests/run.mjs --changed",
@@ -95,7 +96,7 @@
     "serve": "node engine/serve.mjs",
     "skill-html": "node engine/build-skill-html.mjs",
     "update:check": "node update/cli.mjs --check",
-    "version:sync": "node update/version-sync.mjs",
+    "version:sync": "node update/version-sync.mjs --write",
     "harvest:model": "node engine/harvest/cli.mjs model",
     "harvest:crawl": "node engine/harvest/cli.mjs crawl",
     "harvest:merge": "node engine/harvest/cli.mjs merge",

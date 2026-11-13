@@ -8,7 +8,13 @@ on:
       - 'v*'
 permissions: {}
 jobs:
+  gates:
+    # The release publishes only when the same gates that guard every branch are green on the tagged commit.
+    permissions:
+      contents: read
+    uses: ./.github/workflows/gates.yml
   release:
+    needs: gates
     runs-on: ubuntu-latest
     permissions:
       contents: write # creates the release; nothing else is granted
