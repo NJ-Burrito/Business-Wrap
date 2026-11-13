@@ -2068,32 +2068,9 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
   // 0.18.0: a page-1 design (doc.coverDesign) per document type; none asked = the cover below, byte for byte. 0.19.0: no motif and no art, ever: the
   // spine title page carries the control block (C3) where the 0.18 motif was; the code chip (C2) comes from docType (an old file's `motif` names the type)
   const cv = coverOf(doc);
-  /** C3: a field grid. fields = [{label, value, kind, id, lp, vp}] (lp, vp: the label's and the value's pointers); cols 2 | 3 | 4 | 6. */
-  const fieldGrid = (fields, cols, cls) => {
-    if (!fields.length) return '';
-    const n = FIELD_COLS.includes(cols) ? cols : 2;
-    const rest = fields.length % n;
-    return `<div class="bw-fields ${cls}" style="--fg-cols:${n}">${fields.map((f, i) => {
-      const span = rest && i === fields.length - 1 ? ` style="grid-column:span ${n - rest + 1}"` : '';
-      const kind = FIELD_KINDS.includes(f.kind) || f.kind === 'ltr' ? f.kind : 'text';
-      const raw = f.value ?? '';
-      const sk = kind === 'chip' ? statusKind(textOf(raw), true) : ''; // a chip is a status or tag field: the C9 words fill it too
-      const v = kind === 'blank' ? `<span class="fg-v fg-blank"${dp(f.vp)}></span>`
-        : (kind === 'date' || kind === 'ltr') && !/[؀-ۿ]/.test(textOf(raw)) ? `<span class="fg-v"><bdi dir="ltr" class="fg-date"${dp(f.vp)}>${esc(textOf(raw))}</bdi></span>`
-        : kind === 'chip' ? `<span class="fg-v"><span class="fg-chip${sk ? ' st-' + sk : ''}"${dp(f.vp)}>${bidi(raw)}</span></span>`
-        : `<span class="fg-v"${dp(f.vp)}>${bidi(raw)}</span>`;
-      return `<div class="fg${f.id === true ? ' fg-id' : ''}"${span}><span class="fg-l"${dp(f.lp)}>${bidi(f.label ?? '')}</span>${v}</div>`;
-    }).join('')}</div>`;
-  };
   /** The type's own fields (content key `cover`, spec §2 / S2); the control fields are never copied into it. */
   const typeFields = () => (Array.isArray(doc.cover?.fields) ? doc.cover.fields : []).filter((f) => f && typeof f === 'object')
     .map((f, i) => ({ ...f, lp: `/cover/fields/${i}/label`, vp: `/cover/fields/${i}/value` }));
-  const controlFields = () => COVER_CONTROL.map((k) => ({
-    label: L.control?.[k] ?? COVER_LABELS[k]?.[locale === 'ar' ? 'ar' : 'en'] ?? k,
-    value: c[k] ?? '',
-    kind: k === 'approvedBy' && !textOf(c[k] ?? '').trim() ? 'blank' : ['documentId', 'version', 'issuedOn'].includes(k) ? 'ltr' : 'text',
-    lp: `/labels/control/${k}`, vp: `/control/${k}`,
-  }));
   // ---- 0.19.0 R2: the parts of the report, form and sheet families (spec §2 C4, C5, C6), all from the content key `cover` ----
   const lang = locale === 'ar' ? 'ar' : 'en';
   const famLb = (k) => lb(k, L[k] ?? FAMILY_LABELS[k][lang]);
@@ -2133,6 +2110,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
   const idBox = (f) => `<div class="bw-idbox"><span class="ib-l"${dp(f.lp)}>${bidi(f.label ?? '')}</span><bdi dir="ltr" class="ib-v"${dp(f.vp)}>${esc(textOf(f.value ?? ''))}</bdi></div>`;
   const badgeBox = (b) => (b && typeof b === 'object' && typeof b.value === 'string' ? `<div class="bw-badge"><span class="bg-l"${dp('/cover/badge/label')}>${bidi(b.label ?? '')}</span><bdi dir="ltr" class="bg-v"${dp('/cover/badge/value')}>${esc(b.value)}</bdi></div>` : '');
   const coverDesigned = (logos) => {
+    const tf = typeFields();
     const code = COVER_CODES[cv.type] || '';
     const attrs = `data-part="cover" data-cover="${cv.design}"${cv.family !== cv.design ? ` data-family="${cv.family}"` : ''}${cv.type ? ` data-type="${cv.type}"` : ''}`;
     const title = `<h1${dp(c.coverTitle != null || serviceName !== c.title ? '/control/coverTitle' : '/control/title')}>${bidi(serviceName)}</h1>
@@ -2140,17 +2118,13 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     const meta = `<span><bdi dir="ltr"${dp('/control/version')}>${esc(c.version)}</bdi>${L.comma}<span${dp('/control/status')}>${esc(c.status)}</span>${L.comma}<bdi dir="ltr"${dp('/control/issuedOn')}>${esc(c.issuedOn)}</bdi></span>`;
     const lockup = `<div class="lockup">${slot(logos, 'start')}${slot(logos, 'center')}${slot(logos, 'end')}</div>`;
     const docId = `<bdi dir="ltr"${dp('/control/documentId')}>${esc(c.documentId)}</bdi>`;
-    const tf = typeFields();
-    const cols = FIELD_COLS.includes(coverKey.cols) ? coverKey.cols : 0;
     if (cv.family === 'form' || cv.family === 'sheet') {
       const sheetFam = cv.family === 'sheet';
       const idF = tf.find((f) => f.id === true);
-      const rest = tf.filter((f) => f !== idF);
       const badge = badgeBox(coverKey.badge);
       const end = sheetFam ? '' : idF ? idBox(idF) + badge : badge || idBox({ label: L.control?.documentId ?? 'Document ID', value: c.documentId ?? '', lp: '/labels/control/documentId', vp: '/control/documentId' });
       const figs = coverFigures();
       const metaLine = `<div class="tb-meta">${meta}<span>${docId}</span></div>`;
-      const grid = fieldGrid(rest, cols || (sheetFam ? 6 : 3), 'fg-type');
       return `<div class="cover" ${attrs}>${overlaysFor((o) => o.mode === 'cover')}
   <div class="tb-band"><i></i></div>
   ${lockup}
@@ -2160,18 +2134,17 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     ${title}
     </div>${end}
   </div>
-  ${sheetFam ? metaLine + grid + tiles(figs.length ? figs : derivedFigures()) : grid + metaLine + tiles(figs)}
+  ${sheetFam ? metaLine + tiles(figs.length ? figs : derivedFigures()) : metaLine + tiles(figs)}
   ${statementBox(coverKey.statement, !sheetFam)}
 </div>`;
     }
     if (cv.family === 'report') {
-      const ctl = REPORT_CONTROL.map((k) => ({ label: L.control?.[k] ?? k, value: c[k] ?? '', kind: ['documentId', 'version', 'issuedOn'].includes(k) ? 'ltr' : 'text', lp: `/labels/control/${k}`, vp: `/control/${k}` }));
       return `<div class="cover" ${attrs}>${overlaysFor((o) => o.mode === 'cover')}
   ${lockup}
   <div class="rp-band"><i class="cap"></i><div class="rp-in">${code ? `<span class="rp-code"><bdi dir="ltr">${code}</bdi></span>` : ''}<div class="kicker">${lb('kicker')}</div>
     ${title}</div></div>
-  <div class="rp-body">${tiles(coverFigures())}${statementBox(coverKey.statement, false)}${fieldGrid(ctl, 3, 'fg-control')}${fieldGrid(tf, cols && cols <= 3 ? cols : 3, 'fg-type')}</div>
-  <div class="cover-foot">${meta}${c.owner ? `<span${dp('/control/owner')}>${bidi(c.owner)}</span>` : ''}</div>
+  <div class="rp-body">${tiles(coverFigures())}${statementBox(coverKey.statement, false)}</div>
+  <div class="cover-foot">${meta}<span>${docId}</span>${c.owner ? `<span${dp('/control/owner')}>${bidi(c.owner)}</span>` : ''}</div>
 </div>`;
     }
     if (cv.design === 'compact') {
@@ -2185,7 +2158,6 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     </div>
   </div>
   <div class="tb-meta">${meta}<span>${docId}</span></div>
-  ${fieldGrid(tf, doc.cover?.cols, 'fg-type')}
 </div>`;
     }
     return `<div class="cover" ${attrs}>${overlaysFor((o) => o.mode === 'cover')}
@@ -2199,7 +2171,6 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     <div class="rule-short"></div>
     <div class="cover-title">${title}</div>
   </div>
-  <div class="cover-ctl">${fieldGrid(controlFields(), 2, 'fg-control')}${fieldGrid(tf, FIELD_COLS.includes(doc.cover?.cols) && doc.cover.cols <= 3 ? doc.cover.cols : 2, 'fg-type')}</div>
   <div class="cover-foot">${meta}${c.owner ? `<span${dp('/control/owner')}>${bidi(c.owner)}</span>` : ''}</div>
   </div>
 </div>`;
@@ -2221,13 +2192,29 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
   </div>
 </div>`;
 
+  /** 0.21.1: page 1 of every type carries no info table (owner, 2026-11-13). The type's own fields (content key
+   * `cover.fields`: system or service, service code, …) are printed here instead, under the control data, still editable at their own pointers. */
+  const coverFieldRows = () => {
+    const tf = cv ? typeFields() : [];
+    if (!tf.length) return '';
+    return `<table class="control control-type"><colgroup><col style="width:34%" /><col style="width:66%" /></colgroup>${tf.map((f) => {
+      const raw = f.value ?? '';
+      const kind = FIELD_KINDS.includes(f.kind) || f.kind === 'ltr' ? f.kind : 'text';
+      const sk = kind === 'chip' ? statusKind(textOf(raw), true) : ''; // a chip is a status or tag field: the C9 words fill it too
+      const v = kind === 'blank' ? `<span class="fg-blank"${dp(f.vp)}></span>`
+        : (kind === 'date' || kind === 'ltr') && !/[؀-ۿ]/.test(textOf(raw)) ? `<bdi dir="ltr"${dp(f.vp)}>${esc(textOf(raw))}</bdi>`
+        : kind === 'chip' ? `<span class="fg-chip${sk ? ' st-' + sk : ''}"${dp(f.vp)}>${bidi(raw)}</span>`
+        : null;
+      return `<tr><th${dp(f.lp)}>${bidi(f.label ?? '')}</th><td${v === null ? dp(f.vp) : ''}>${v === null ? bidi(raw) : v}</td></tr>`;
+    }).join('')}</table>`;
+  };
   const FRONT = {
-    control: () => doc.controlTable ? controlTable() : `<div data-part="control"><h3>${lb('controlData')}</h3>
+    control: () => doc.controlTable ? controlTable(coverFieldRows()) : `<div data-part="control"><h3>${lb('controlData')}</h3>
   <table class="control"${o.editor ? ' data-rows="/controlTable/rows" data-cols="/controlTable/columns" data-virtual="control" data-w="2"' : ''}><colgroup><col style="width:34%" /><col style="width:66%" /></colgroup>${controlKeys
     .map((k, r) => o.editor
       ? `<tr data-r="${r}"><th${dp('/labels/control/' + k)} data-r="${r}" data-c="0">${bidi(L.control[k])}</th><td${dp('/control/' + k)} data-r="${r}" data-c="1">${bidi(c[k])}</td></tr>`
       : `<tr><th${dp('/labels/control/' + k)}>${bidi(L.control[k])}</th><td${dp('/control/' + k)}>${bidi(c[k])}</td></tr>`)
-    .join('')}</table></div>`,
+    .join('')}</table>${coverFieldRows()}</div>`,
     revisions: () => `<div data-part="revisions"><h3>${lb('revisions')}</h3>
   ${(() => { const n = revCols(doc); const keys = ['revVersion', 'revDate', 'revDesc', 'revAuthor'].slice(0, n); return table({ columns: keys.map((k) => L[k] ?? REV_LABELS[k]?.[lang]), colPtrs: keys.map((k) => '/labels/' + k), rows: (doc.revisions || []).map((r) => r.slice(0, n)), rowsPtr: '/revisions', ...(n > 2 ? { blankCell: '' } : {}), keepAll: true /* UAT H3: a still-empty date stays a cell a person can type in */ }); })()}</div>`,
     // 0.19.0 C7: a typed document's approvals print on the control page too (the DOCX's APPROVALS_COLUMNS); empty cells stay empty, to be signed
@@ -2237,7 +2224,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
   ${toc}</div>`,
   };
   /** The materialised control table (A25): rows of cells; a {bind: key} cell edits /control/<key> (cover and header read it). */
-  function controlTable() {
+  function controlTable(extra = '') {
     const T = doc.controlTable;
     const rowsC = (T.rows || []).filter(Array.isArray);
     const w = Math.max(2, Array.isArray(T.columns) ? T.columns.length : +T.columns || 0, ...rowsC.map((r) => r.length));
@@ -2250,7 +2237,7 @@ ${partsArr.map((part, k) => `<div class="${partClass(k)}" data-b="${attr(b)}" da
     };
     return `<div data-part="control"><h3>${lb('controlData')}</h3>
   <table class="control"${o.editor ? ` data-rows="/controlTable/rows" data-cols="/controlTable/columns" data-w="${w}"` : ''}><colgroup>${cols}</colgroup>${rowsC
-    .map((row, r) => `<tr${o.editor ? ` data-r="${r}"` : ''}>${Array.from({ length: w }, (_, k) => cell(row[k], r, k)).join('')}</tr>`).join('')}</table></div>`;
+    .map((row, r) => `<tr${o.editor ? ` data-r="${r}"` : ''}>${Array.from({ length: w }, (_, k) => cell(row[k], r, k)).join('')}</tr>`).join('')}</table>${extra}</div>`;
   }
   const order = [...(doc.layout?.front || []).filter((k) => FRONT[k]), ...Object.keys(FRONT).filter((k) => !(doc.layout?.front || []).includes(k))];
   // 0.19.0 C10: the parts `layout.back` names (a form and a sheet: control and revisions by default; approvals go with control) print after the last

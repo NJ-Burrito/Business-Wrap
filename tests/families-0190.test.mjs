@@ -76,7 +76,9 @@ try {
         const why = [];
         if (doc.coverDesign !== fam || R.coverOf(doc)?.family !== fam) why.push(`family ${doc.coverDesign}`);
         if (!cov.includes(`data-family="${fam}"`) || /<svg|<img|cover-motif|data-motif/.test(cov)) why.push('cover');
-        if (fam === 'report' && !(cov.includes('data-cover="spine"') && cov.includes('class="rp-band"') && count(cov, '<div class="fg"') >= 6 && R.REPORT_CONTROL.every((k) => cov.includes(`data-p="/control/${k}"`)))) why.push('report head');
+        if (fam === 'report' && !(cov.includes('data-cover="spine"') && cov.includes('class="rp-band"') && !cov.includes('class="bw-fields') && !/class="fg[ "]/.test(cov))) why.push('report head');
+        if (/class="bw-fields|class="fg[ "]/.test(cov)) why.push('an info grid is back on page 1'); // 0.21.1 (owner, 2026-11-13): page 1 of every type carries no info grid
+        { const ct = h.slice(Math.max(0, h.indexOf('class="control control-type"'))); const n = (doc.cover?.fields || []).length; if (n && !(h.includes('class="control control-type"') && count(ct, 'data-p="/cover/fields/') >= 2 * n)) why.push('cover fields are not in the control section'); }
         if (fam !== 'report' && !(cov.includes('data-cover="compact"') && cov.includes('class="tb-band"') && cov.includes(`data-p="/control/documentId"`))) why.push('head');
         if (fam === 'form' && !/class="bw-(idbox|badge)"/.test(cov)) why.push('ID box');
         if (fam === 'sheet' && R.pageSpec(doc.layout?.page).orientation !== 'landscape') why.push('not landscape');
@@ -89,26 +91,27 @@ try {
       }
     }
   }
-  check('8 family types x ar/en, composed: family, its head on page 1 (report: band + 6 control fields; form: band + ID box; sheet: landscape + band), no art, no contents list in a form or sheet, control and revisions after the last chapter', !bad1.length, bad1);
+  check('8 family types x ar/en, composed: family, its head on page 1 (report: band, no grid; form: band + ID box; sheet: landscape + band), no art, no contents list in a form or sheet, control and revisions after the last chapter', !bad1.length, bad1);
 
   // ── 2. with the spec §4 keys ──
   const bad2 = [];
   for (const ed of DT.EDITIONS) {
     const k = (id) => KEYS[id][ed];
     const mn = coverPart(htmlOf(keyed('minutes', ed), ed));
-    if (!(mn.includes('class="bw-idbox"') && mn.includes('data-p="/cover/fields/0/value">MOM-001</bdi>') && mn.includes('class="bw-fields fg-type" style="--fg-cols:3"') && !mn.includes('data-p="/cover/fields/0/label"></span>') && count(mn, '<div class="fg"') === 5)) bad2.push(`minutes.${ed}: ID box / grid`);
+    if (!(mn.includes('class="bw-idbox"') && mn.includes('data-p="/cover/fields/0/value">MOM-001</bdi>') && !mn.includes('class="bw-fields') && count(mn, '<div class="fg"') === 0)) bad2.push(`minutes.${ed}: ID box / no grid`);
     const ua = coverPart(htmlOf(keyed('uat-signoff', ed), ed));
     if (!(ua.includes('class="bw-stmt"') && ua.includes('data-p="/cover/statement/text"') && count(ua, 'class="st-box"') === 3 && ua.includes('class="st-seal"') && k('uat-signoff').statement.choices.every((c, i) => ua.includes(`data-p="/cover/statement/choices/${i}">${c}</span>`)))) bad2.push(`uat-signoff.${ed}: statement / choices / seal`);
     const rn = coverPart(htmlOf(keyed('release-notes', ed), ed));
     if (!(rn.includes('class="bw-badge"') && rn.includes('data-p="/cover/badge/value">1.0.0</bdi>') && !rn.includes('class="bw-idbox"') && count(rn, 'data-p="/cover/statement/items/') === 3 && !rn.includes('class="st-seal"'))) bad2.push(`release-notes.${ed}: badge / items`);
-    const df = coverPart(htmlOf(keyed('defect-report', ed), ed));
-    if (!(df.includes('data-p="/cover/fields/0/value">DEF-001</bdi>') && df.includes('style="--fg-cols:4"') && /class="fg-chip st-warn" data-p="\/cover\/fields\/1\/value"/.test(df) && /class="fg-chip st-idle" data-p="\/cover\/fields\/3\/value"/.test(df))) bad2.push(`defect-report.${ed}: ID / 4 cols / C9 chips (High warn, Open idle)`);
+    const dfAll = htmlOf(keyed('defect-report', ed), ed); // the C9 chips are in the control section now
+    const df = coverPart(dfAll);
+    if (!(df.includes('data-p="/cover/fields/0/value">DEF-001</bdi>') && !df.includes('class="bw-fields') && /class="fg-chip st-warn" data-p="\/cover\/fields\/1\/value"/.test(dfAll) && /class="fg-chip st-idle" data-p="\/cover\/fields\/3\/value"/.test(dfAll))) bad2.push(`defect-report.${ed}: ID / 4 cols / C9 chips (High warn, Open idle)`);
     const tc = coverPart(htmlOf(keyed('test-cases', ed), ed));
-    if (!(tc.includes('style="--fg-cols:6"') && tc.includes('class="bw-tiles" style="--tl-n:6"') && count(tc, 'class="tl ') + count(tc, 'class="tl"') === 6 && ['ok', 'bad', 'warn', 'idle'].every((x) => tc.includes(`class="tl tl-${x}"`)) && tc.includes('data-p="/cover/figures/5/value"') && tc.indexOf('bw-tiles') > tc.indexOf('fg-type'))) bad2.push(`test-cases.${ed}: fields row / summary strip`);
+    if (!(!tc.includes('class="bw-fields') && tc.includes('class="bw-tiles" style="--tl-n:6"') && count(tc, 'class="tl ') + count(tc, 'class="tl"') === 6 && ['ok', 'bad', 'warn', 'idle'].every((x) => tc.includes(`class="tl tl-${x}"`)) && tc.includes('data-p="/cover/figures/5/value"') )) bad2.push(`test-cases.${ed}: no fields row / summary strip`);
     const bc = coverPart(htmlOf(keyed('business-case', ed), ed));
-    if (!(bc.includes('class="bw-tiles" style="--tl-n:4"') && bc.includes('class="bw-stmt"') && count(bc, 'class="st-box"') === 3 && !bc.includes('st-seal') && bc.indexOf('bw-tiles') < bc.indexOf('bw-stmt') && bc.indexOf('bw-stmt') < bc.indexOf('fg-control') && bc.includes('data-p="/cover/fields/0/value"'))) bad2.push(`business-case.${ed}: tiles / decision box / control block`);
+    if (!(bc.includes('class="bw-tiles" style="--tl-n:4"') && bc.includes('class="bw-stmt"') && count(bc, 'class="st-box"') === 3 && !bc.includes('st-seal') && bc.indexOf('bw-tiles') < bc.indexOf('bw-stmt') && !bc.includes('class="bw-fields') && htmlOf(keyed('business-case', ed), ed).includes('data-p="/cover/fields/0/value"'))) bad2.push(`business-case.${ed}: tiles / decision box / no grid`);
   }
-  check('with the spec keys (ar, en): form ID box and grid (minutes), statement with 3 choice boxes and the seal (UAT), badge and items (release notes), C9 chips (defect), sheet fields row of 6 and a 6-tile summary strip (test cases), report tiles, decision box and control block in order (business case)', !bad2.length, bad2);
+  check('with the spec keys (ar, en): form ID box and grid (minutes), statement with 3 choice boxes and the seal (UAT), badge and items (release notes), C9 chips (defect), sheet 6-tile summary strip (test cases), report tiles and decision box in order (business case); no info grid on any of them', !bad2.length, bad2);
   const css = R.documentCss(theme, {}, keyed('business-case', 'en'));
   check('the families draw page 1 with square corners and straight rules only (no border-radius, no round marker in the page-1 CSS)', !/border-radius|list-style:disc|list-style-type:disc/.test(css.slice(css.indexOf('/* 0.19.0 page 1'), css.indexOf('/* 0.18.0 polish'))) && /\.st-items\{list-style:none/.test(css));
 

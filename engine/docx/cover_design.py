@@ -275,6 +275,11 @@ def type_fields(data: dict) -> list:
     return [f for f in ((data.get('cover') or {}).get('fields') or []) if isinstance(f, dict)]
 
 
+def control_type_rows(data: dict) -> list:
+    """0.21.1: the type's own fields as [label, value] rows for the document-control section (render.mjs coverFieldRows); page 1 carries no grid."""
+    return [[str(f.get('label') or ''), '' if f.get('kind') == 'blank' else str(f.get('value') or '')] for f in type_fields(data)]
+
+
 def field_grid(document, host, fields: list, cols: int, width_mm: float, roles: dict, font: str, theme_mod, rtl: bool):
     """C3: a field grid as a native table (fixed widths): label 7 pt muted above value 9.5 pt; 0.75 pt rule-strong outer, rule inner; rows at least
     11 mm; a `chip` value takes the status fill (C9) or the wash; `date` and Latin ids stay left to right; `blank` is an empty box."""
@@ -416,27 +421,8 @@ def build_spine(document, control: dict, roles: dict, font: str, logos, cv: dict
     for r in sp.runs:
         r.font.size = Pt(theme_mod.SIZES['table'])
         r.font.color.rgb = theme_mod.rgb(roles['muted'])
-    # 0.19.0: the control block where the 0.18 motif was (C3): the eight control fields, then the type's own fields; it ends at 252 mm
-    ctl = span('gapE')
-    tcPr = ctl._tc.get_or_add_tcPr()
-    va = OxmlElement('w:vAlign')
-    va.set(qn('w:val'), 'bottom')
-    tcPr.append(va)
-    first = ctl.paragraphs[0]
-    d = data or {'control': control}
-    tf = type_fields(d)
-    tcols = (d.get('cover') or {}).get('cols')
-    def after(space_after_pt):
-        # python-docx closes a nested table with an empty paragraph (Word needs one): it becomes a 1 pt spacer
-        p = ctl.paragraphs[-1]
-        _tight(p, 1, after=space_after_pt)
-        p.add_run().font.size = Pt(1)
-    field_grid(document, ctl, control_fields(d, _b.L, rtl), 2, 152, roles, font, theme_mod, rtl)
-    if tf:
-        after(10)
-        field_grid(document, ctl, tf, tcols if tcols in (2, 3) else 2, 152, roles, font, theme_mod, rtl)
-    after(16)  # about 6 mm under the block: it ends near 252 mm, as the print
-    first._p.getparent().remove(first._p)
+    # 0.21.1: page 1 carries no info table (owner, 2026-11-13): the control fields and the type's own fields are in the document-control section
+    span('gapE')
     # meta row (258 to 283 mm): a hairline over it, version / status / date at the start, the owner at the end
     start, end = C('meta', 2).merge(C('meta', 3)), C('meta', 4)
     for cell in (start, end):
@@ -542,14 +528,7 @@ def build_report(document, control: dict, roles: dict, font: str, logos, cv: dic
     if isinstance(ck.get('statement'), dict):
         statement_table(document, body, ck['statement'], 160, roles, font, theme_mod, rtl, '')
         after(14)
-    labels = _b.L.get('control') or {}
-    ctl = [{'label': labels.get(k, k), 'value': str(control.get(k) or ''), 'kind': 'ltr' if k in ('documentId', 'version', 'issuedOn') else 'text'} for k in REPORT_CONTROL]
-    field_grid(document, body, ctl, 3, 160, roles, font, theme_mod, rtl)
-    tf = type_fields(d)
-    if tf:
-        after(10)
-        cols = ck.get('cols')
-        field_grid(document, body, tf, cols if cols in (2, 3) else 3, 160, roles, font, theme_mod, rtl)
+    # 0.21.1: no control or field grid on the title page; the data is in the document-control section
     after(1)
     if not first.runs and first._p.getnext() is not None:
         first._p.getparent().remove(first._p)
@@ -751,9 +730,7 @@ def build_compact(document, control: dict, roles: dict, font: str, logos, cv: di
     rest = [f for f in tf_all if f is not id_f]
 
     def grid(default_cols):
-        if rest:
-            spacer().paragraph_format.space_after = Pt(4)
-            field_grid(document, None, rest, cols or default_cols, W, roles, font, theme_mod, rtl)
+        return None  # 0.21.1: page 1 carries no field grid; the fields are in the document-control section
 
     def strip(figs, value_pt):
         if figs:
