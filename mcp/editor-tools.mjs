@@ -26,7 +26,7 @@ export class BwError extends Error {
 // 0.15.2 note 12: the safe view actions follow the first five (zoomPct takes args {value: 25-400}; theme takes {mode: dark or light}; reading takes {on}); none edits the content
 export const EDITOR_ACTIONS = ['renumber', 'check', 'autoLayout', 'saveHtml', 'share', 'exportPdf',
   'zoomPct', 'zoomHeight', 'zoomWidth', 'zoomIn', 'zoomOut', 'zoomReset', 'theme', 'reading', 'find', 'save', 'outline', 'nextPage', 'prevPage',
-  // 0.16.0: dismissResume closes the «continue where you left off» popup of a tab; claim takes a document's lease for the tab that is asked (the owner is asleep or a ghost);
+  // dismissResume closes the «continue where you left off» popup of a tab; claim takes a document's lease for the tab that is asked (the owner is asleep or a ghost);
   // verifyHistory returns the issues list the tamper banner is based on (item 12)
   'dismissResume', 'claim', 'verifyHistory'];
 /** Destructive names are LOCKED: refused here (REFUSED) and again by the tab; they are never run through this tool. */
@@ -35,6 +35,9 @@ const TOOLS = ['list', 'get', 'outline', 'ops', 'action', 'new', 'import', 'assi
 const READS = new Set(['list', 'get', 'outline']);
 /** A request id the host and the tab remember: the same id twice is applied once (item 9). */
 export const newRequestId = () => `r-${crypto.randomUUID()}`;
+/** How a missing host is started: engine/cli.mjs `open`, registered by its caller (engine/cli.mjs, mcp/server.mjs) so this file does not import the CLI that imports it. */
+let hostStarter = null;
+export const setHostStarter = (fn) => { hostStarter = fn; };
 export const callTimeoutMs = () => Number(process.env.BW_EDITOR_TIMEOUT_MS) || 45000;
 
 /** Where the host is and the token that authorises a call: BW_HOST_URL + BW_HOST_TOKEN (tests, a remote debug host), else host.json
@@ -45,7 +48,7 @@ export async function hostTarget({ start = true } = {}) {
   const { alive } = await import('../engine/host-lifecycle.mjs');
   let h = hostState();
   if (!(h && alive(h.pid)) && start && process.env.BW_NO_AUTOSTART !== '1') {
-    try { const { open } = await import('../engine/cli.mjs'); await open({ inputs: [], browser: false }); } catch (e) { throw new BwError('NO_HOST', `the Business-Wrap host could not be started: ${e?.message || e}`, { how: 'run the open_in_editor tool, or business-wrap open, and retry' }); }
+    try { if (!hostStarter) throw new Error('no host starter is registered'); await hostStarter({ inputs: [], browser: false }); } catch (e) { throw new BwError('NO_HOST', `the Business-Wrap host could not be started: ${e?.message || e}`, { how: 'run the open_in_editor tool, or business-wrap open, and retry' }); }
     h = hostState();
   }
   if (!(h && alive(h.pid))) throw new BwError('NO_HOST', 'no Business-Wrap host is running', { how: 'run the open_in_editor tool (or business-wrap open) first' });
@@ -81,7 +84,7 @@ function failFrom(status, body) {
 const flat = (r) => (r && typeof r === 'object' && !Array.isArray(r) ? r : { result: r });
 
 /** Call one tab verb through the host. Returns the tab's result as an object (always with ok:true); throws BwError otherwise.
- *  0.16.0 (item 9, 15): a read that times out is asked once more (the tab may have been busy for a moment); a call that carries a request_id is retried once too, because the same
+ *  a read that times out is asked once more (the tab may have been busy for a moment); a call that carries a request_id is retried once too, because the same
  *  request_id is applied once however many times it arrives, so the retry can never double an insert or an export. */
 export async function callEditor(tool, { doc, args = {} } = {}, { target, retry = true } = {}) {
   if (!TOOLS.includes(tool)) throw new BwError('BAD_ARGS', `unknown editor tool ${tool}`);

@@ -35,7 +35,7 @@ export const editionKey = (raw, ops) => `${sha(raw)}:${opsKey(ops)}`;
 const BWDATA = /<script type="application\/json" id="bw-data">([\s\S]*?)<\/script>/;
 const MAX_FILES = 5000;
 const SKIP_NAMES = /^(index\.json|00 فهرس - Index\.html)$/i;
-const SYSTEM_FILE = /^(desktop\.ini|thumbs\.db|\.ds_store)$|\.ico$/i; // 0.16.3: not documents; listed, not hidden
+const SYSTEM_FILE = /^(desktop\.ini|thumbs\.db|\.ds_store)$|\.ico$/i; // not documents; listed, not hidden
 
 function walk(dir, out = [], rel = '') {
   for (const e of fs.readdirSync(lp(dir), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }))) {

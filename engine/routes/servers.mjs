@@ -13,7 +13,7 @@ import { stopSelf } from './power.mjs';
 import { probeServers, countBrowsers, flushPeers, validateFile } from '../protocol.mjs';
 
 const GRACE = () => Number(process.env.BW_POWER_GRACE_MS || 1500);
-const flushTabs = (ctx) => { emit(ctx, 'flush'); }; // 0.15.0: ctx.session.live is gone (one stream per browser): emit() reaches every tab
+const flushTabs = (ctx) => { emit(ctx, 'flush'); }; // ctx.session.live is gone (one stream per browser): emit() reaches every tab
 const LOCAL = /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/;
 
 /** The way back (0.17.8): the editor file the person came from (checked like any file a business-wrap: URL names), else the host's own editor file, else the launcher's choice (the tool editor: the start page, 0.18.2; it was the newest document). */
@@ -29,7 +29,7 @@ async function reopenOnDisk(rt, ctx) {
 }
 
 export default async (req, url, send, ctx) => {
-  if (url.pathname === '/api/servers/file') { // 0.14.0: the document this server serves; the page keeps it to start the same document again if the server dies (editor/ext/18-server.js)
+  if (url.pathname === '/api/servers/file') { // the document this server serves; the page keeps it to start the same document again if the server dies (editor/ext/18-server.js)
     if (req.method !== 'GET') { send(405, { error: 'GET' }); return true; }
     if (req.headers.origin && !LOCAL.test(req.headers.origin)) { send(403, { error: 'origin' }); return true; }
     send(200, { file: ctx.editorFile || '' });
@@ -55,7 +55,7 @@ export default async (req, url, send, ctx) => {
   let reopened = null;
   if (b.returnTo && typeof b.returnTo === 'object') reopened = await reopenOnDisk(b.returnTo, ctx);
   send(200, { ok: true, grace: GRACE(), servers: peers.length + 1, ...(reopened ? { reopened } : {}) });
-  ctx.stopping = true; // 0.17.13: /api/health and /api/version say so for the grace window, so the reopened file:// editor does not take this host for a live one
+  ctx.stopping = true; // /api/health and /api/version say so for the grace window, so the reopened file:// editor does not take this host for a live one
   setTimeout(() => stopSelf(ctx), GRACE());
   return true;
 };

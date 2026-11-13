@@ -1,6 +1,6 @@
 // The document library's server half (A2): import a DOCX/PDF/HTML as a new document, the blank placeholder SRS,
 // and the machine-only mirror of each saved library entry in <workspace>\.system\library\ (gzip, not for hand use).
-// 0.15.0 (lane projects): the library <-> disk ingest and the library import route.
+// the library <-> disk ingest and the library import route.
 //   GET  /api/library/list                 → [{id, title, savedAt, deletedAt?, project?, bytes}] from the mirror dir
 //   POST /api/library/import {documents:[{ar?, en?, name?, title?, ops?, project?}], project?}
 //        → {library: true, queued, doc_id: [...], url: '/#doc=<id>', project}   the SERVER mints doc-<uuid> ids, writes
@@ -57,7 +57,7 @@ export function makeEntry(d, { origin = 'import' } = {}) {
     try { doc = JSON.parse(raw); } catch { throw Object.assign(new Error(`${ed}: not JSON`), { code: 400 }); }
     if (!doc?.chapters || !doc?.control) throw Object.assign(new Error(`${ed}: not a Business-Wrap document (chapters and control are missing)`), { code: 400 });
     const ops = (d.ops?.[ed] || []).filter((o) => o && typeof o.op === 'string' && typeof o.path === 'string').map((o, i) => (o.id ? o : { ...o, id: `i${i.toString(36)}${Date.now().toString(36).slice(-4)}` }));
-    const k = d.keep?.[ed] || {}; // 0.16.3 (fix 0163, additive): the work an imported Save-HTML carried comes in whole, not only its edits
+    const k = d.keep?.[ed] || {}; // the work an imported Save-HTML carried comes in whole, not only its edits
     const arr = (v) => (Array.isArray(v) ? v : []);
     editions[ed] = { name: typeof k.name === 'string' ? k.name : '', raw, hash: sha(raw), ops, status: k.status && typeof k.status === 'object' && !Array.isArray(k.status) ? k.status : {}, stale: arr(k.stale), comments: arr(k.comments), versions: arr(k.versions), marks: arr(k.marks), epochIds: arr(k.epochIds) };
   }
@@ -88,7 +88,7 @@ export function normaliseDocuments(documents) {
     const key = m ? m[1] : f;
     const g = groups.get(key) || (out.push({}), groups.set(key, out.at(-1)), out.at(-1));
     g[ed] = raw;
-    g.srcKey = key; // 0.16.0 (item 9): where the document came from: the same files opened again are the same library document (stable id)
+    g.srcKey = key; // where the document came from: the same files opened again are the same library document (stable id)
   }
   for (const g of out) if (g.srcKey) g.srcHash = sha(`${g.ar || ''}\n${g.en || ''}`);
   return out;
@@ -100,7 +100,7 @@ export function queueDocuments(ctx, documents, { project, origin = 'import' } = 
   if (documents.length > 500) throw Object.assign(new Error('documents: at most 500 per request'), { code: 400 });
   documents = normaliseDocuments(documents);
   const entries = documents.map((d) => makeEntry(d, { origin }));
-  // 0.16.0 (field notes item 9): a document opened from files keeps ONE id across host restarts: the id is derived from where the files are. The same files again, unchanged, are the library
+  // a document opened from files keeps ONE id across host restarts: the id is derived from where the files are. The same files again, unchanged, are the library
   // document that is already there (its edits are never overwritten); changed files, or a purged id, get a fresh id as before, so nothing is ever overwritten.
   // The host keeps its own record of where each document came from (library/sources.json: {key: {id, hash}}): the browser may rewrite the entry it stores, this record it cannot lose.
   const tombs = new Set(readTombs(ctx));

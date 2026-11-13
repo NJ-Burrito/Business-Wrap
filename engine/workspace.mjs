@@ -4,10 +4,6 @@
 //   .system\{history\, backups\, sessions\, library\, cache\, index in history\index.json}      (machine state, hidden)
 // The parent is chosen once (pickParent: the in-editor folder picker, no native dialog) and kept in .local/workspace.json; the default is the
 // user's Documents folder (else home), never inside this repository.
-//
-//   workspace()                        → {parent, root, dirs: {docs, pdf=docs, docx=docs, html=docs, system, history, backups, sessions, library, cache}}
-//   outName(title, date, locale, ext)  → "<title>/Exports/<YYYY-MM-DD HH-MM> <title> - <العربية|English|both>.<ext>" (a path below the documents folder)
-//   pickParent()                       → the chosen folder (stored) or null when cancelled (the picker panel; pickerOpen/Go/Mkdir/Choose/Cancel below)
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -24,7 +20,6 @@ const store = () => path.join(localDir(), 'workspace.json');
 const inside = (p, dir) => insidePath(dir, p);
 
 export function defaultParent() {
-  // under the test runner (tests/run.mjs sets BW_TEST_SLOT) a suite that names no BW_WORKSPACE gets a temp parent, never the real Documents
   if (isTestMode()) return testSandbox('parent');
   const docs = realParent();
   return fs.existsSync(docs) ? docs : os.homedir();
@@ -71,7 +66,7 @@ export function setParent(p, { by = 'api' } = {}) {
   if (!abs) throw Object.assign(new Error('folder: an absolute path outside the Business-Wrap folder'), { code: 400 });
   const prev = workspace().parent;
   fs.mkdirSync(localDir(), { recursive: true });
-  // 0.16.0 (field notes item 8): the move is recorded (additive keys: prev, by) so every reply and host_health can say that the save folder changed, from where and who asked
+  // the move is recorded (additive keys: prev, by) so every reply and host_health can say that the save folder changed, from where and who asked
   fs.writeFileSync(store(), JSON.stringify({ parent: abs, at: new Date().toISOString(), ...(sameFolder(prev, abs) ? {} : { prev, by }) }, null, 1));
   return workspace();
 }
@@ -238,7 +233,7 @@ export function roleOfFolder(dir, root) {
   if (rel.startsWith('..') || path.isAbsolute(rel)) return null;
   const p = rel.split(path.sep);
   const low = (s) => s.toLowerCase();
-  if (p[0] === SYSTEM_NAME) return p.length === 1 ? 'system' : null; // 0.17.5: .system itself only; its sub-folders (history, backups, sessions, library, cache, icons, archive) are machine collections that code lists as entries, so they never get a desktop.ini
+  if (p[0] === SYSTEM_NAME) return p.length === 1 ? 'system' : null; // .system itself only; its sub-folders (history, backups, sessions, library, cache, icons, archive) are machine collections that code lists as entries, so they never get a desktop.ini
   if (p[0] !== DOCS_NAME) return null;
   if (p.length === 1) return 'documents';
   if (p[1] === UNSORTED_NAME) return p.length === 2 ? 'unsorted' : null;
@@ -247,7 +242,7 @@ export function roleOfFolder(dir, root) {
   if (p.length === 3 && ['exports', 'sources', 'versions'].includes(low(p[2]))) return low(p[2]);
   return null;
 }
-/** 0.17.4: every folder of the save tree that exists now gets its role icon: the save folder, المستندات - Documents, each document's folder with its
+/** every folder of the save tree that exists now gets its role icon: the save folder, المستندات - Documents, each document's folder with its
  *  Exports\ / Sources\ / Versions\, _غير مصنف - Unsorted, .system and its sub-folders. Idempotent, Windows only, never throws; a folder that is not ours
  *  (its desktop.ini is someone else's) is left alone. → the number of folders that now carry an icon. */
 export function applyTreeIcons(root, opts = {}) {
@@ -343,7 +338,7 @@ export function uniquePath(dir, name) {
     const { folder, dir: fdir } = docFolder(dir, { titles: [t] });
     let rest = parts.slice(1).join(path.sep);
     if (folder !== t) rest = rest.replace(` ${t} - `, ` ${folder} - `).replace(`${t}.html`, `${folder}.html`);
-    // T15: the folder keeps the whole name; the exported file's title part is cut (on a word boundary) only as far as the Windows path limit needs
+    // the folder keeps the whole name; the exported file's title part is cut (on a word boundary) only as far as the Windows path limit needs
     const over = path.join(fdir, rest).length - PATH_MAX;
     if (over > 0 && rest.includes(` ${folder} - `)) rest = rest.replace(` ${folder} - `, ` ${cutWords(folder, Math.max(12, folder.length - over))} - `);
     base = path.join(fdir, rest);
@@ -584,7 +579,7 @@ export function docTitle(doc, fallback = 'document') {
   const t = String(c.title || '');
   return String(c.coverTitle || t.split(/\s*[:—]\s+/).slice(1).join(': ') || t || fallback).trim() || fallback;
 }
-/** 0.17.0 (N11): the title that names a document's folder and its export files. A caller that knows the primary (Arabic) edition passes its title as `hint`, so the English
+/** the title that names a document's folder and its export files. A caller that knows the primary (Arabic) edition passes its title as `hint`, so the English
  *  export lands in the SAME document folder as the Arabic one (each file still carries its own language word); no hint = the edition's own title, as before. */
 export function exportTitle(doc, hint, fallback = 'document') {
   const h = typeof hint === 'string' ? hint.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 200) : '';

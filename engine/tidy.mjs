@@ -12,7 +12,7 @@ import {
 } from './workspace.mjs';
 
 export const MIGRATION_LOG = 'migration-0.13.3.json';
-const FOLDER_SETTING = /^(desktop\.ini|thumbs\.db)$/i; // 0.17.5: Explorer's folder settings are not a legacy file to move or count
+const FOLDER_SETTING = /^(desktop\.ini|thumbs\.db)$/i; // Explorer's folder settings are not a legacy file to move or count
 const list = (d) => (fs.existsSync(d) && isDirectory(d) ? fs.readdirSync(d, { withFileTypes: true }).filter((e) => !FOLDER_SETTING.test(e.name)) : []);
 const walk = (d) => list(d).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
 function isDirectory(d) { try { return fs.statSync(d).isDirectory(); } catch { return false; } }

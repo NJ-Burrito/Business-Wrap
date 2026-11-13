@@ -43,7 +43,7 @@ export function parseUrl(raw) {
     return { action: 'stop' };
   }
   if (u.hostname === 'start') {
-    // 0.17.8 (window switch): the file:// editor that asks for the host passes ITS OWN file, so the served editor opens that same document
+    // the file:// editor that asks for the host passes ITS OWN file, so the served editor opens that same document
     if (keys.length === 0) return { action: 'start' };
     if (keys.length !== 1 || keys[0] !== 'file' || u.searchParams.getAll('file').length !== 1) throw refuse('start takes no arguments, or exactly one file');
     return { action: 'start', file: u.searchParams.get('file') };
@@ -141,7 +141,7 @@ export function unregister({ hive = WIN_HIVE, dir, platform = process.platform }
   return { registered: false, removed: false, platform };
 }
 /** Register when missing, or when it points at an install that no longer exists (idempotent, no admin, never throws). BW_NO_PROTOCOL=1 skips.
- *  0.17.4: the registration is the person's, per user, so only the install they set up writes it on its own (launcher/ownership.mjs): a sandboxed run
+ *  the registration is the person's, per user, so only the install they set up writes it on its own (launcher/ownership.mjs): a sandboxed run
  *  (test mode, BW_LOCAL_DIR ...) never writes the real one (a test names its own `hive` / `dir`), a source checkout never takes over a live one,
  *  and no install replaces a handler that points at another install that still exists. `business-wrap protocol register` is the explicit take-over (register()). */
 export function ensureRegistered(o = {}) {
@@ -198,17 +198,17 @@ export async function handle(url, { grace = Number(process.env.BW_POWER_GRACE_MS
   const cli = await import('./cli.mjs');
   if (a.action === 'stop') {
     const peers = await flushPeers({ graceMs: grace });
-    const r = await cli.stopHostOnly(); // 0.17.0: the host only; the editor page and the browser stay open (`business-wrap close` still ends everything)
+    const r = await cli.stopHostOnly(); // the host only; the editor page and the browser stay open (`business-wrap close` still ends everything)
     return { action: 'stop', flushed: peers.length, ...r };
   }
   if (a.action === 'start') {
-    // 0.17.0: this install's host, no browser window (the page that asked is already open). With a host already up on the port, open() reuses it; a host of another install is refused (HOST_FOREIGN), never a second one.
-    // 0.17.8: with ?file= the host serves that very editor file (the document the person has open). A file that fails the checks (outside the allowed places, not an editor) is
+    // this install's host, no browser window (the page that asked is already open). With a host already up on the port, open() reuses it; a host of another install is refused (HOST_FOREIGN), never a second one.
+    // with ?file= the host serves that very editor file (the document the person has open). A file that fails the checks (outside the allowed places, not an editor) is
     // not an error: the host still starts, on the blank tool editor (the start page, 0.18.2; it was the newest document), and the answer says the file was ignored.
     let file = null;
     let fileIgnored = null;
     if (a.file) { try { file = validateFile(a.file); } catch (e) { fileIgnored = String(e.message || e); } }
-    // 0.18.2: no file (or one that was ignored) is a plain open of the TOOL: the host serves the blank editor, whose landing is the start page (it used to serve the newest saved document,
+    // no file (or one that was ignored) is a plain open of the TOOL: the host serves the blank editor, whose landing is the start page (it used to serve the newest saved document,
     // which is a `doc-` service, so the start page never showed). A file named in the link is a specific document and is served as it is.
     const r = await cli.open({ inputs: file ? [file] : [], blank: !file, browser: false, port: Number(process.env.BW_OPEN_PORT) || DEFAULT_PORT }); // BW_OPEN_PORT: tests only
     return { action: 'start', url: r.url, port: r.port, pid: r.pid, browser: false, ...(file ? { file } : {}), ...(fileIgnored ? { fileIgnored } : {}) };

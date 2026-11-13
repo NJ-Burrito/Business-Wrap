@@ -10,7 +10,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const INSTALL = path.resolve(HERE, '..');
 
-/** 0.18.2: the documents of the save folder, newest first, at most `limit`: what the start page lists as Recents when it is opened from the shortcut (a file:// page cannot read the folder
+/** the documents of the save folder, newest first, at most `limit`: what the start page lists as Recents when it is opened from the shortcut (a file:// page cannot read the folder
  *  and has no library of the host's documents). {name, file, url, savedAt, type}; the type is read from the document's own bw-data block (empty when it cannot be read). */
 export async function recentDocs(limit = 20) {
   const { workspace } = await import('../engine/workspace.mjs');
@@ -30,7 +30,7 @@ export async function recentDocs(limit = 20) {
   });
 }
 
-/** 0.18.2: the TOOL editor, the start page's file:// page. Opening Business-Wrap itself (the shortcut, no file named) lands on the start page; it never opens the newest saved document
+/** the TOOL editor, the start page's file:// page. Opening Business-Wrap itself (the shortcut, no file named) lands on the start page; it never opens the newest saved document
  *  (a saved document is a `doc-` service, so the start page's "untouched template" guard could never pass, and it carries no document-type payload either: owner bug 2026-11-10).
  *  Built once per version into the state folder WITH the document-type payload (the start page's gallery), then written as `start.editor.html` with the save folder's recent documents
  *  embedded (#bw-recents) on every launch. */
@@ -70,7 +70,7 @@ export async function editorFile(file) {
 }
 
 /** Open `url` in the browser the editor uses (Google Chrome first, then the default Chromium, Edge, any): the person's own profile, a new tab, no host. */
-/** 0.17.8 (window switch): geometry = {x, y, w, h} (a window's screenX, screenY, outerWidth, outerHeight): the editor opens as a NEW window there (the host switch's way back from the served tab). */
+/** geometry = {x, y, w, h} (a window's screenX, screenY, outerWidth, outerHeight): the editor opens as a NEW window there (the host switch's way back from the served tab). */
 export const geometryArgs = (g) => {
   const n = (v) => v !== null && v !== '' && Number.isFinite(Number(v));
   if (!g || !n(g.x) || !n(g.y) || !n(g.w) || !n(g.h)) return [];
@@ -98,7 +98,7 @@ export async function openEditor({ file, geometry } = {}) {
 
 const real = (f) => { try { return fs.realpathSync.native(path.resolve(f)); } catch { return path.resolve(f); } };
 if (process.argv[1] && real(process.argv[1]) === real(fileURLToPath(import.meta.url))) {
-  // 0.17.8: the Desktop launcher makes sure business-wrap: is registered (or repaired, e.g. node moved) before the editor's host switch needs it
+  // the Desktop launcher makes sure business-wrap: is registered (or repaired, e.g. node moved) before the editor's host switch needs it
   import('./launcher.mjs').then((m) => m.autorun(), () => {});
   openEditor({ file: process.argv[2] }).catch(async (e) => {
     // windowless: this file is the only place a failure can be read

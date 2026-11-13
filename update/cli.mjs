@@ -14,7 +14,7 @@ import { spawnSync } from 'node:child_process';
 import { checkForUpdate, oneLiner, settings, saveSettings, installedNotes, token, ROOT, currentVersion, fromNpx, localInstall, updateCommand, isNewer } from './check.mjs';
 import { applyUpdate } from './apply.mjs';
 
-// 0.17.0 (N15): every entry that reaches this file (terminal, the plugin's SessionStart hook, the protocol handler) makes sure the launcher and its Desktop copy exist (once per install and version; silent)
+// every entry that reaches this file (terminal, the plugin's SessionStart hook, the protocol handler) makes sure the launcher and its Desktop copy exist (once per install and version; silent)
 import('../launcher/launcher.mjs').then((m) => { if (!['--help', '-h', 'help'].some((h) => process.argv.includes(h))) m.autorun(); }).catch(() => {});
 
 const argv = process.argv.slice(2).filter((a) => a !== 'update');
@@ -88,7 +88,7 @@ async function main() {
 }
 
 // set the exit code and let the loop drain: process.exit() with a socket still closing trips a libuv assertion on Windows
-// 0.13.0 B1: every verb other than `update` is the script-first CLI (engine/cli.mjs: open, close, status, harvest …)
+// every verb other than `update` is the script-first CLI (engine/cli.mjs: open, close, status, harvest …)
 const FIRST = process.argv[2];
 // 0.13.3 Settings › start / stop servers: the business-wrap: URL protocol (engine/protocol.mjs). `protocol` registers the per-user
 // handler, `handle "<url>"` is what the registered handler runs (open <file> | stop; anything else is refused with exit 2).

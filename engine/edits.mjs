@@ -350,7 +350,7 @@ export function textLeaves(doc) {
     else if (v && typeof v === 'object')
       for (const [k, x] of Object.entries(v)) {
         if (['svg', 'images', 'kind', 'service', 'composedAt', 'layout'].includes(k)) continue;
-        if (p === '/control' && (k === 'editions' || k === 'numbering')) continue; // 0.15.3: settings, not words
+        if (p === '/control' && (k === 'editions' || k === 'numbering')) continue; // settings, not words
         if (k === 'id' && 'kind' in v) continue; // a block's stable id (anchors) is not text; a story's id is
         // a diagram's words are its labels; ids, kinds and geometry are not text
         if (k === 'model' && x && typeof x === 'object') {

@@ -46,13 +46,13 @@ export default async (req, url, send, ctx, res) => {
     ppid: process.ppid, // the supervisor that forked this server (engine/serve.mjs)
     hostKey: hostToken() ? crypto.createHash('sha256').update(hostToken()).digest('hex').slice(0, 16) : null, // proves which start spawned it, never the token
     uptimeS: Math.round(process.uptime()),
-    workspace: ws ? workspaceNote(ws) : null, // 0.16.0: {root, chosen, changed?:{from, to, at, by}}: a save-folder change is named here and in every editor reply
-    deps: depsStatus(), // 0.17.13: {ok, missing:[…]} — playwright-core not installed (a copy without node_modules): exports fail until `npm ci`
-    ...(ctx.stopping ? { stopping: true } : {}), // 0.17.13: the grace window of a power-off
+    workspace: ws ? workspaceNote(ws) : null, // {root, chosen, changed?:{from, to, at, by}}: a save-folder change is named here and in every editor reply
+    deps: depsStatus(), // {ok, missing:[…]} — playwright-core not installed (a copy without node_modules): exports fail until `npm ci`
+    ...(ctx.stopping ? { stopping: true } : {}), // the grace window of a power-off
     runId: s.runId,
     clients: r.clients,
     tabs: r.tabs,
-    leases: r.leases, // 0.15.3: document -> the one tab that owns it
+    leases: r.leases, // document -> the one tab that owns it
     revs: r.revs,
     pendingRequests: Number(ctx.pendingRequests?.() ?? 0) || 0, // the editor bridge (L2) sets ctx.pendingRequests
     warnings: r.warnings,

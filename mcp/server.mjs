@@ -13,7 +13,7 @@ import { assertBase } from '../engine/edits-base.mjs';
 import { checkForUpdate, oneLiner, token, currentVersion } from '../update/check.mjs';
 import { applyUpdate, PLUGIN_UPDATE_HOW, launchCleanup } from '../update/apply.mjs';
 import { isPluginInstall } from '../engine/testguard.mjs';
-import { BwError, registerEditorTools } from './editor-tools.mjs';
+import { BwError, registerEditorTools, setHostStarter } from './editor-tools.mjs';
 import { harvestModel, harvestCrawl, harvestMerge } from '../engine/harvest/cli.mjs';
 import { DIAGRAM } from '../engine/diagram.mjs';
 import { modelIn } from '../engine/diagram-cli.mjs';
@@ -34,7 +34,7 @@ const out = (p, ext) => {
   fs.mkdirSync(path.dirname(f), { recursive: true });
   return f;
 };
-/** 0.17.0 (N11): the edition from engine/export.mjs localeOf (x.en.edited.json is English). */
+/** the edition from engine/export.mjs localeOf (x.en.edited.json is English). */
 const localeOf = (file, doc, given) => engineLocaleOf(file, doc, given);
 /** The Arabic sibling's title for an English file (x.en.json -> x.ar.json), so both editions export into one document folder; null when there is none. */
 function pairHint(file, ed) {
@@ -92,8 +92,8 @@ export function updateNotice(u) {
 }
 
 export function createServer({ update = null, ready: startup = null } = {}) {
-  process.env.BW_AGENT_OPEN = '1'; // 0.16.0: every window this server opens for an agent is an automation tab (no resume popup, no blocking dialog)
-  setTimeout(() => launchCleanup(REPO), 2000).unref(); // 0.15.7: finish or undo an update a crash left; a plugin install drops its older version folders
+  process.env.BW_AGENT_OPEN = '1'; // every window this server opens for an agent is an automation tab (no resume popup, no blocking dialog)
+  setTimeout(() => launchCleanup(REPO), 2000).unref(); // finish or undo an update a crash left; a plugin install drops its older version folders
   ready = Promise.resolve(startup).catch(() => null);
   let notice = updateNotice(update);
   const instructions = notice
@@ -304,7 +304,7 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     if (documents?.length) return openEditor({ inputs: documents });
     if (editor) return openEditor({ inputs: [editor] });
     if (doc_id) {
-      // 0.16.0 (item 9, 15): the editor LIBRARY first (what editor_list_documents lists), then the save folder's files. A tab that already holds the document is "already open", not "not in the library".
+      // the editor LIBRARY first (what editor_list_documents lists), then the save folder's files. A tab that already holds the document is "already open", not "not in the library".
       const lib = await libraryHit(doc_id);
       if (lib) return lib;
       const hit = (await library()).documents.find((d) => d.name.includes(doc_id) || fs.readFileSync(d.file, 'utf8').includes(doc_id));
@@ -334,7 +334,7 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     return { url: `${base}/#doc=${docId}`, doc_id: docId, library: true, already_open: false, opened: 'new tab', ...(row?.deletedAt ? { deletedAt: row.deletedAt, note: 'this document is in the Trash' } : {}) };
   };
 
-  // 0.15.9 R6: the editor's «continue where you left off» list, readable and openable by an agent (the same host routes the popup uses)
+  // the editor's «continue where you left off» list, readable and openable by an agent (the same host routes the popup uses)
   const hostCall = async (route, body) => {
     const { hostState } = await import('../engine/host.mjs');
     const { alive } = await import('../engine/host-lifecycle.mjs');
@@ -418,6 +418,7 @@ UPDATE AVAILABLE: Business-Wrap ${notice.latest} (installed ${notice.current}). 
     return { applied: !!r.ok, ...r, migration_notes: u.migration || [], restart: 'restart the MCP server (or run /reload-plugins) to load the new version; until then every tool answers RESTART_REQUIRED' };
   }));
 
+  setHostStarter(openEditor);
   registerEditorTools(server, z, guard);
   registerLearningTools(server, z, guard);
   registerSourcesTools(server, z, guard);

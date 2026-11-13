@@ -20,7 +20,7 @@ import { ICON_DIR as TREE_ICON_DIR, TREE_EXTS, kindOf } from '../assets/icons/ki
 
 export const ICON_DIR = path.join(REPO, 'brand', 'v3', 'file-icons');
 export const EXTS = ['pdf', 'docx', 'html'];
-/** 0.17.0 (N16): every file type of the save and download tree, each with its own icon (assets/icons: 7 sizes, 16 to 256). Applying it changes the icon of
+/** every file type of the save and download tree, each with its own icon (assets/icons: 7 sizes, 16 to 256). Applying it changes the icon of
  *  those extensions for this Windows account (a ProgID's DefaultIcon in HKCU), so it is a separate, explicit scope: `scope: 'tree'`. */
 export { TREE_ICON_DIR, TREE_EXTS };
 export const scopeOf = (scope) => (scope === 'tree' ? { exts: TREE_EXTS, srcDir: TREE_ICON_DIR, kindOf } : { exts: EXTS, srcDir: ICON_DIR, kindOf: (e) => e });

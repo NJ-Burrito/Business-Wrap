@@ -216,7 +216,7 @@ export function serve(editorFile, port = DEFAULT_PORT, { out, installDir = REPO,
         // the save folder (A11): PDF\ and DOCX\, "<title>-<date>-<AR|ENG>", a clash gets -2, -3 (never an overwrite)
         if (ws) ensureWorkspace(ws);
         const title = exportTitle(body.doc, body.folderTitle, body.service);
-        // 0.16.0 (field notes item 8): `name` (a file name without folder), `destination` (an absolute folder) and `docx: false` come from the editor's bridge (editor_action exportPdf args);
+        // `name` (a file name without folder), `destination` (an absolute folder) and `docx: false` come from the editor's bridge (editor_action exportPdf args);
         // the answer names the file AND its folder, so an agent never searches for it, and the PDF is written whole (exportPdf writes a temp file and renames it)
         const wantName = typeof body.name === 'string' ? body.name.replace(/\.(pdf|docx)$/i, '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, ' ').trim().slice(0, 150) : '';
         let toDir = null;
@@ -258,7 +258,7 @@ export function serve(editorFile, port = DEFAULT_PORT, { out, installDir = REPO,
 // run as the entry point, also when started through a junction or a symlink (compare real paths)
 const real = (f) => { try { return fs.realpathSync.native(path.resolve(f)); } catch { return path.resolve(f); } };
 if (process.argv[1] && real(process.argv[1]) === real(fileURLToPath(import.meta.url))) {
-  // 0.17.8: `npm run serve` (the README start) registers the business-wrap: link and the launcher too, so the top-bar host switch can start the host again later
+  // `npm run serve` (the README start) registers the business-wrap: link and the launcher too, so the top-bar host switch can start the host again later
   if (!process.env.BW_SERVE_CHILD) import('../launcher/launcher.mjs').then((m) => m.autorun(), () => {});
   const args = process.argv.slice(2);
   const opt = (k) => { const i = args.indexOf(`--${k}`); return i < 0 ? undefined : args[i + 1]; };
@@ -291,7 +291,7 @@ usage: node engine/serve.mjs <editor.html> [--port 4317] [--out <exports folder>
     };
     start();
   } else {
-    // 0.15.7: every launch finishes or undoes an update a crash left, and a plugin install drops its older version folders
+    // every launch finishes or undoes an update a crash left, and a plugin install drops its older version folders
     launchCleanup(REPO);
     try {
       const server = await serve(editor, Number.isFinite(port) ? port : DEFAULT_PORT, {

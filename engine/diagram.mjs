@@ -200,7 +200,7 @@ export const DIAGRAM = (() => {
       const v2 = resolve(out).view;
       if (Math.abs(Math.log(v2.w / v2.h / aspect)) > Math.abs(Math.log(ratio / aspect))) out = best.m;
     } else out = layoutOnce(input, { force });
-    // 0.16.0: a drawing that is laid out (again) takes the arrows that never lie on each other; ensure() lays out for display only and leaves the key alone
+    // a drawing that is laid out (again) takes the arrows that never lie on each other; ensure() lays out for display only and leaves the key alone
     if (opts.routing !== false) out.routing = ROUTING;
     if (maxNodes > 0) {
       const sug = splitByPhase(out, { maxNodes, suggestOnly: true });
@@ -220,7 +220,7 @@ export const DIAGRAM = (() => {
     const byId = new Map(model.nodes.map((n) => [n.id, n]));
     const spine = spineOf(model).map((id) => byId.get(id));
     if (!spine.length) return model;
-    const f = 1; // 0.16.0: every drawing runs left to right (only its text follows the language); a stored flow:'rtl' is ignored
+    const f = 1; // every drawing runs left to right (only its text follows the language); a stored flow:'rtl' is ignored
     const edgeBetween = (a, b) => model.edges.find((e) => e.from === a.id && e.to === b.id);
     const gapAfter = spine.map((n, i) => {
       const e = spine[i + 1] && edgeBetween(n, spine[i + 1]);
@@ -360,7 +360,7 @@ export const DIAGRAM = (() => {
         cur.size += cost;
       });
       if (byRole && chunks.length > 1) {
-        // 0.15.3 (T7): a cut falls on a phase (after a gate) or role (swimlane: the kind of the stage changes) boundary, within the last third of a figure
+        // a cut falls on a phase (after a gate) or role (swimlane: the kind of the stage changes) boundary, within the last third of a figure
         const kindOf = (id) => byId.get(id)?.kind;
         for (let ci = 0; ci < chunks.length - 1; ci += 1) {
           const a = chunks[ci].spine, b = chunks[ci + 1].spine;
@@ -510,7 +510,7 @@ export const DIAGRAM = (() => {
    *  @returns {{scale: number, minPt: number, minPtPrinted: number, small: string[], overlaps: string[][], ok: boolean}}  scale = mm per drawing unit */
   function legibility(modelIn, { frameMm, frame, theme, locale = 'ar', minPt = 7 } = {}) {
     const r = resolve(modelIn, { theme, locale, stats: true });
-    // 0.16.0: ONE frame everywhere = what print gives: the block's own canvas (block.frame) when it has one, else the automatic figure's measured box
+    // ONE frame everywhere = what print gives: the block's own canvas (block.frame) when it has one, else the automatic figure's measured box
     const fr = frameNorm(frame);
     const box0 = frameMm || (fr ? [fr.wMm, fr.hMm] : [PRINT.wMm, PRINT.maxHmm]);
     const scale = Math.min(box0[0] / r.view.w, box0[1] / r.view.h, ...(fr && !frameMm ? [FRAME.cap] : []));
@@ -559,7 +559,7 @@ export const DIAGRAM = (() => {
   /* ── routing: orthogonal, ports spread along a face, corridors in lanes ── */
   const box = (n) => ({ l: n.x, t: n.y, r: n.x + n.w, b: n.y + n.h, cx: n.x + n.w / 2, cy: n.y + n.h / 2, n });
   function route(model) {
-    const f = 1; // 0.16.0: every drawing runs left to right (only its text follows the language); a stored flow:'rtl' is ignored
+    const f = 1; // every drawing runs left to right (only its text follows the language); a stored flow:'rtl' is ignored
     const byId = new Map(model.nodes.map((n) => [n.id, n]));
     const solids = model.nodes.filter((n) => !['group', 'text'].includes(n.kind)).map(box);
     const hSegs = [];
@@ -631,7 +631,7 @@ export const DIAGRAM = (() => {
     const spanSolids = (lo, hi) => solids.filter((o) => o.r > lo - 6 && o.l < hi + 6);
     // the long corridors first, so the short hops take the lanes nearest the boxes
     const orderOf = { wrap: 0, under: 1, over: 1, down: 2, up: 2, straight: 3 };
-    // 0.15.6 (A5): an end the person placed on the outline keeps that point and its face; the other end stays automatic
+    // an end the person placed on the outline keeps that point and its face; the other end stays automatic
     const aprec = routing2(model) ? 3 : 1;
     for (const p of plan) {
       const fa = validAnchor(p.e.fromAnchor);
@@ -1098,7 +1098,7 @@ export const DIAGRAM = (() => {
   const validAnchor = (a) => (a && SIDES.includes(a.side) && Number.isFinite(+a.at) ? { side: a.side, at: Math.min(1, Math.max(0, +a.at)) } : null);
   /** The point of a shape's outline at (side, at): `at` runs along the face, top to bottom or left to right. */
   function anchorPoint(n, side, at, prec = 1) {
-    const rp = prec === 1 ? r1 : (v) => Math.round(v * 10 ** prec) / 10 ** prec; // 0.16.0: a drawing with model.routing keeps three decimals, so a short dashed line has no kink
+    const rp = prec === 1 ? r1 : (v) => Math.round(v * 10 ** prec) / 10 ** prec; // a drawing with model.routing keeps three decimals, so a short dashed line has no kink
     const u = Math.min(1, Math.max(0, +at));
     const cx = n.x + n.w / 2;
     const cy = n.y + n.h / 2;
@@ -1238,7 +1238,7 @@ export const DIAGRAM = (() => {
       }
       if (Math.abs(prev[0] - q[0]) >= 0.5 || Math.abs(prev[1] - q[1]) >= 0.5 || i === pts.length - 1) out.push(q);
     }
-    // 0.15.0 (F5): a last leg that runs ALONG the face it enters (a via point level with a box top or bottom) hides the
+    // a last leg that runs ALONG the face it enters (a via point level with a box top or bottom) hides the
     // arrowhead on the outline; step out one lane and come in square, so the head always lands on the face
     if (out.length >= 2 && !(sb === 'l' || sb === 'r')) {
       const [q, e] = [out.at(-2), out.at(-1)];
@@ -1261,7 +1261,7 @@ export const DIAGRAM = (() => {
     let d = `M${r1(p[0][0])} ${r1(p[0][1])}`;
     for (let i = 1; i < p.length; i += 1) {
       const cur = p[i];
-      const hp = p[i - 1][2]; // 0.16.0: a jump arc between two marked points
+      const hp = p[i - 1][2]; // a jump arc between two marked points
       if (hp?.r) { d += `A${r1(hp.r)} ${r1(hp.r)} 0 0 ${hp.sw} ${r1(cur[0])} ${r1(cur[1])}`; continue; }
       if (i === p.length - 1 || cur[2]) { d += `L${r1(cur[0])} ${r1(cur[1])}`; continue; }
       const prev = p[i - 1];
@@ -1383,7 +1383,7 @@ export const DIAGRAM = (() => {
     // wires and their captions
     const plan = route(model);
     const solids = model.nodes.filter((n) => !['group', 'text'].includes(n.kind)).map(box);
-    // 0.16.0: model.routing = 2 spaces arrows that shared a line and makes the upper one jump over the one it crosses; absent = the drawing of 0.15.x
+    // model.routing = 2 spaces arrows that shared a line and makes the upper one jump over the one it crosses; absent = the drawing of 0.15.x
     const clear = routing2(model) ? clearWires(plan, solids) : null;
     const placed = [];
     const wireRects = plan.flatMap((p) => p.pts.slice(1).map((q, i) => { const a = p.pts[i]; return { l: Math.min(a[0], q[0]) - 1, r: Math.max(a[0], q[0]) + 1, t: Math.min(a[1], q[1]) - 1, b: Math.max(a[1], q[1]) + 1 }; }));
@@ -1478,7 +1478,7 @@ export const DIAGRAM = (() => {
     const legend = [];
     if (model.legend !== false) {
       const used = new Set(model.nodes.map((n) => (COLORS.includes(n.color) ? n.color : n.kind === 'start' ? 'applicant' : n.kind)));
-      // 0.15.6 (L1): an entry deleted by hand stays in model.legendHide (by its key), so it stays gone when shapes change
+      // an entry deleted by hand stays in model.legendHide (by its key), so it stays gone when shapes change
       const hide = new Set(Array.isArray(model.legendHide) ? model.legendHide : []);
       const keys = ['staff', 'applicant', 'rework', 'payment', 'system', 'stop', 'ok', 'note'].filter((k) => used.has(k) && !hide.has(k));
       const wireKeys = ['main', 'return', 'stop'].filter((k) => plan.some((p) => p.e.kind === k) && !hide.has(`wire-${k}`));
@@ -1513,7 +1513,7 @@ export const DIAGRAM = (() => {
           const chipX = rtl ? maxX - G.margin - pos - chipW : minX + G.margin + pos;
           const textX = rtl ? chipX - 7 : chipX + chipW + 7;
           const tw = keyW(it.text);
-          // 0.15.6 (L1): the swatch of an entry can be another shape skin, another wire look, or a symbol (model.legendLook[key] = 'skin:staff' | 'wire:return' | 'sym:clock')
+          // the swatch of an entry can be another shape skin, another wire look, or a symbol (model.legendLook[key] = 'skin:staff' | 'wire:return' | 'sym:clock')
           const lookRaw = model.legendLook && typeof model.legendLook === 'object' ? String(model.legendLook[it.k] || '') : '';
           const [lkKind, lkName] = lookRaw.split(':');
           const lk = (lkKind === 'skin' && P.skins[lkName]) || (lkKind === 'wire' && WIRE_KINDS.includes(lkName)) || (lkKind === 'sym' && GLYPHS[lkName]) ? { kind: lkKind, name: lkName } : null;
@@ -1556,7 +1556,7 @@ export const DIAGRAM = (() => {
     const route = p.pts.map(([x, y]) => [r1(x), r1(y)]);
     const color = P.wire[k];
     let pts = p.pts.map((q) => [...q]);
-    const vis = p.vis ? p.vis.map((q) => [...q]) : null; // 0.16.0: the same line with its jump arcs cut in
+    const vis = p.vis ? p.vis.map((q) => [...q]) : null; // the same line with its jump arcs cut in
     let bez = null;
     if (rt === 'curved' && p.bez) {
       bez = p.bez.map((sg) => sg.map((q) => [...q]));
@@ -1642,7 +1642,7 @@ export const DIAGRAM = (() => {
     const r = resolve(model, { theme, locale });
     const fam = [theme?.fonts?.text, 'serif'].filter(Boolean).map((x) => (x === 'serif' ? x : `'${String(x).replace(/[^\w\s-]/g, '')}'`)).join(', ');
     let tips = WIRE_KINDS.map((k) => `<marker id="bwdg-tip-${k}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.6" markerHeight="6.6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="${r.palette.wire[k]}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></marker>`).join('');
-    // 0.15.6: the other head shapes, only the ones this drawing uses (tip at the same place as the chevron's)
+    // the other head shapes, only the ones this drawing uses (tip at the same place as the chevron's)
     const HEAD_SHAPE = { triangle: 'M1 1L8 5L1 9Z', diamond: 'M0 5L4 1.2L8 5L4 8.8Z', circle: '' };
     const extra = new Set();
     for (const it of r.items) if (it.t === 'line' && it.wire && it.id) for (const h of [it.head, it.tail]) if (h && HEAD_SHAPE[h] !== undefined) extra.add(`${h}|${it.wire}`);
@@ -1752,7 +1752,7 @@ export const DIAGRAM = (() => {
     const src = String(code || '').replace(/%%.*$/gm, '');
     const head = /^\s*(flowchart|graph)\s+(\w+)?/im.exec(src);
     if (!head) throw new Error('not a Mermaid flowchart: the code must start with "flowchart" or "graph"');
-    const flow = 'ltr'; // 0.16.0: RL code is read left to right too
+    const flow = 'ltr'; // RL code is read left to right too
     const nodes = new Map();
     const edges = [];
     const unq = (s) => String(s).trim().replace(/^"(.*)"$/s, '$1').replace(/#quot;/g, '"').replace(/<br\s*\/?>/gi, ' ');

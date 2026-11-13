@@ -21,10 +21,10 @@ Run by an MCP client, which talks to it over stdin/stdout. Add it to the client'
   business-wrap-mcp --version    the installed version`;
   if (unknown.length) { console.error(`business-wrap-mcp: unknown option ${unknown.join(' ')}\n\n${usage}`); process.exitCode = 2; } else console.log(usage);
 } else {
-  // 0.15.0: connect FIRST. The client's handshake never waits for a network call, a migration or an update check.
+  // connect FIRST. The client's handshake never waits for a network call, a migration or an update check.
   const { logLine, startupFacts, sinceStart, cachedUpdate } = await import('./startup.mjs');
   logLine('start', startupFacts({ ms: sinceStart() }));
-  // 0.15.3 T10: one stray exception (a late callback, a lazily imported module) must not end the connection: the client would show "not connected" until the
+  // one stray exception (a late callback, a lazily imported module) must not end the connection: the client would show "not connected" until the
   // owner reloads. It is logged and the server goes on; only a storm (8 in a minute) or a client that is gone ends it.
   const crashes = [];
   process.on('uncaughtException', (e) => {

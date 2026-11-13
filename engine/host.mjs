@@ -57,7 +57,7 @@ export async function health(timeoutMs = 2500) {
   try { const r = await fetch(`${st.url}api/host/health`, { signal: AbortSignal.timeout(timeoutMs) }); return r.ok ? await r.json() : null; } catch { return null; }
 }
 
-/** 0.15.3 T4: one host per state folder. `start` calls queue in this process and take an atomic lock file (host.lock, created with the
+/** one host per state folder. `start` calls queue in this process and take an atomic lock file (host.lock, created with the
  *  `wx` flag) across processes, so two `open`s in the same second can never spawn two servers: the second waits, then reuses the first's host. */
 export const lockFile = () => path.join(localDir(), 'host.lock');
 let chain = Promise.resolve();
@@ -91,7 +91,7 @@ async function startLocked({ editor, port = DEFAULT_PORT, open = true } = {}) {
     // reuse only a host that is really listening (a recorded pid with nothing on its port is not one)
     let up = await answers(now.url);
     for (let i = 0; !up && i < 3; i++) { await sleep(400); up = await answers(now.url); }
-    // 0.16.0 (owner's host stopped twice with no cause): a live process whose port still ACCEPTS connections is busy, not dead (a PDF export, a big batch): it is reused, never asked to stop.
+    // a live process whose port still ACCEPTS connections is busy, not dead (a PDF export, a big batch): it is reused, never asked to stop.
     // Only a recorded host whose port refuses every connection is replaced.
     if (!up && (await accepts(now.port))) up = true;
     if (up) { const b = open ? launchBrowser([now.url]) : null; return { pid: now.pid, port: now.port, url: now.url, browserPid: b?.pids[0] ?? null, browser: b?.browser ?? null, reused: true }; }
@@ -147,7 +147,7 @@ export async function stop() {
 /** The executable of the browser the editor opens in (null when none): the browser-neutral successor of 0.15.8's edgePath(). */
 export const browserPath = () => chooseBrowser()?.exe ?? null;
 
-/** 0.15.3 T2, 0.15.9 A1: the editor's browser must not put its tabs to sleep or throttle them: a frozen or throttled tab stops answering the host (TAB_STALE, TAB_ASLEEP).
+/** 0.15.9 A1: the editor's browser must not put its tabs to sleep or throttle them: a frozen or throttled tab stops answering the host (TAB_STALE, TAB_ASLEEP).
  *  The three throttling switches are Chromium's own; after --disable-features come Chromium's freezing / discarding / occlusion features and each vendor's own sleep or snooze feature
  *  (Chrome, Edge, Opera, Opera GX, Brave, Vivaldi). A name a build does not know is ignored, never an error. Flags only reach a browser THIS host starts: a tab opened in a
  *  browser the user already runs ignores them, which is why the page keeps itself awake too (editor/ext/12-session.js, editor/session-worker.js). */
@@ -184,7 +184,7 @@ export function launchBrowser(urls, { chunk = 30 } = {}) {
       for (const u of c) osOpen(u);
       continue;
     }
-    // 0.16.0: no "restore pages" bubble after a crash or a killed window, so a relaunch never brings 18 old pages back; a tab an agent opens (BW_AGENT_OPEN, set by the MCP server) is an automation tab: no blocking dialog
+    // no "restore pages" bubble after a crash or a killed window, so a relaunch never brings 18 old pages back; a tab an agent opens (BW_AGENT_OPEN, set by the MCP server) is an automation tab: no blocking dialog
     const urls = process.env.BW_AGENT_OPEN === '1' ? c.map((u) => (/[?&]automation=/.test(u) ? u : `${u}${u.includes('?') ? '&' : '?'}automation=1`)) : c;
     const args = [`--user-data-dir=${profileDir(id)}`, '--no-first-run', '--no-default-browser-check', '--disable-session-crashed-bubble', '--hide-crash-restore-bubble', ...keepAwakeArgs(), '--new-window', ...urls];
     if (process.env.BW_BROWSER_STUB) { fs.appendFileSync(process.env.BW_BROWSER_STUB, JSON.stringify({ args, exe: br?.exe ?? null, browser: id }) + '\n'); continue; }

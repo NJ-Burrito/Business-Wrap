@@ -1,4 +1,4 @@
-// A8: the output preview as evidence. Opens the page that shows the service's output (a permit, a certificate),
+// the output preview as evidence. Opens the page that shows the service's output (a permit, a certificate),
 // masks its data in the DOM, checks nothing value-like is left legible in the frame, and takes ONE viewport
 // screenshot (never full page). Beside the PNG it writes `<name>.mask.json`, the record the `output-image`
 // healer reads before it lets `masked: true` print.

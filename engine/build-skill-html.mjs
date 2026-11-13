@@ -21,7 +21,7 @@ export function buildSkillHtml(out = SKILL_HTML) {
     localFonts: true,
     watermarkDir: path.join(REPO, 'editor', 'brand', 'watermark'),
     ui: 'ar',
-    docTypes: true, // 0.18.0: the start page's document types ride in <script id="bw-doctypes"> (contract C2), outside bw-data
+    docTypes: true, // the start page's document types ride in <script id="bw-doctypes"> (contract C2), outside bw-data
   });
 }
 

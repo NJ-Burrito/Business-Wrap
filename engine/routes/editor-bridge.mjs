@@ -23,18 +23,18 @@ import { tokenRefused } from '../host-lifecycle.mjs';
 export const TOOLS = ['list', 'get', 'outline', 'ops', 'action', 'new', 'import', 'assign', 'trash'];
 const STATUS = { NO_TAB: 404, NO_DOC: 404, CONFLICT: 409, BAD_OP: 422, BAD_ARGS: 400, UNKNOWN_ACTION: 400, REFUSED: 423, TAB_TIMEOUT: 504, TAB_ASLEEP: 503, NOT_OWNER: 409 };
 const timeoutMs = () => Number(process.env.BW_BRIDGE_TIMEOUT_MS) || 15000;
-/** 0.16.0 (item 8): an export, a share or a Save-HTML prints and post-processes for many seconds: they get their own, longer ceiling (BW_EXPORT_TIMEOUT_MS, default 120 s).
+/** an export, a share or a Save-HTML prints and post-processes for many seconds: they get their own, longer ceiling (BW_EXPORT_TIMEOUT_MS, default 120 s).
  *  A batch is applied one op at a time so the person can watch it (BW_OP_PACE_MS each): its ceiling grows with its length. */
 const callTimeoutMs = (tool, args) => {
   if (tool === 'action' && ['exportPdf', 'share', 'saveHtml'].includes(args?.id)) return Math.max(timeoutMs(), Number(process.env.BW_EXPORT_TIMEOUT_MS) || 120000);
   if (tool === 'ops' && Array.isArray(args?.ops)) return timeoutMs() + args.ops.length * (Number(process.env.BW_OP_PACE_MS ?? 120) + 40);
   return timeoutMs();
 };
-/** 0.16.0 (item 9): a call may carry request_id. The same id twice is ONE call: joined while it runs, answered from memory (replayed: true) after it succeeded, so a retry after
+/** a call may carry request_id. The same id twice is ONE call: joined while it runs, answered from memory (replayed: true) after it succeeded, so a retry after
  *  TAB_TIMEOUT never doubles an insert or an export. The tab keeps the same memory (editor.js BRIDGE), for a request the host gave up on that the tab then finished. */
 const REPLAY_MS = 10 * 60 * 1000;
 const repliesOf = (ctx) => (ctx.bridgeReplies ||= new Map());
-/** 0.16.0: a call to a sleeping tab waits this long for it to wake before TAB_ASLEEP (editor_ops queues instead of failing at once). */
+/** a call to a sleeping tab waits this long for it to wake before TAB_ASLEEP (editor_ops queues instead of failing at once). */
 const queueMs = () => Number(process.env.BW_QUEUE_MS ?? 5000);
 /** editor_new with no awake tab opens a window itself and waits this long for it. */
 const newTabWaitMs = () => Number(process.env.BW_NEW_TAB_WAIT_MS) || 25000;
@@ -53,7 +53,7 @@ export function pickTab(ctx, { doc, tab }) {
   const tabs = r.tabs.filter((t) => t.live);
   const owner = doc ? r.leases?.[doc] : null;
   if (owner && tab && tab !== owner && tabs.some((t) => t.tab === owner)) return { notOwner: owner };
-  if (tab) return tabs.find((t) => t.tab === tab) || r.tabs.find((t) => t.tab === tab && t.discarded) || null; // 0.15.9: a lost (discarded / killed) tab is asleep, not absent: TAB_ASLEEP says what to do
+  if (tab) return tabs.find((t) => t.tab === tab) || r.tabs.find((t) => t.tab === tab && t.discarded) || null; // a lost (discarded / killed) tab is asleep, not absent: TAB_ASLEEP says what to do
   if (owner) { const o = tabs.find((t) => t.tab === owner); if (o) return o; }
   const fresh = (a) => [...a].sort((x, y) => (x.asleep - y.asleep) || (x.lastBeatMs - y.lastBeatMs))[0] || null;
   if (doc) { const own = fresh(tabs.filter((t) => t.docs.includes(doc) || t.svc === doc)); if (own) return own; }

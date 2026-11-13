@@ -1,4 +1,4 @@
-// 0.17.13: is the one runtime dependency (playwright-core, which export.mjs drives for PDF and PNG) installed in THIS copy of Business-Wrap?
+// is the one runtime dependency (playwright-core, which export.mjs drives for PDF and PNG) installed in THIS copy of Business-Wrap?
 // A zip copy or a plugin folder arrives without node_modules until `npm ci` runs; the export then died with «Cannot find package 'playwright-core'».
 // depsStatus() uses the same lookup as export.mjs loadPlaywright(): <root>/node_modules/playwright-core, else normal resolution from <root>/engine.
 // BW_DEPS_ROOT replaces the root (tests: a folder with nothing installed).

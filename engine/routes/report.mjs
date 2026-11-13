@@ -1,4 +1,4 @@
-// A12: POST /api/report { from, to, people?, lang } → the performance report PDF from the HISTORY logs → { pdf, people, docs }
+// POST /api/report { from, to, people?, lang } → the performance report PDF from the HISTORY logs → { pdf, people, docs }
 import fs from 'node:fs';
 import { dirsOf, body } from './history.mjs';
 import { readHistory, exportReport } from '../report.mjs';

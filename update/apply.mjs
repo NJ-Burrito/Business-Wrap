@@ -122,7 +122,7 @@ export const STAGES = ['download', 'backup', 'replace', 'verify', 'done'];
 /** Leftovers beside the install from an older update or a crash: `<dir>.backup-*` (code copies) and `<dir>.backup-*-data` (the old data copy). */
 const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /**
- * 0.15.8: a leftover is removed only when proven to be Business-Wrap's own. The name is exactly `<dir>.backup-<semver>` or
+ * a leftover is removed only when proven to be Business-Wrap's own. The name is exactly `<dir>.backup-<semver>` or
  * `<dir>.backup-<semver>-data` (a real folder, not a link), AND it holds our marker file, or (older code copies) its package.json
  * is named business-wrap with that very version, or (the -data copy) its top level holds only .local, drafts or out. Anything
  * else beside the install is somebody's folder: it is never read as ours, never touched, never reported as a failure.
@@ -157,7 +157,7 @@ function restoreFromCopy(dir, backup, mark) {
   for (const rel of Array.isArray(mark.incoming) ? mark.incoming : []) if (usable(rel) && !had.has(rel)) rmRel(dir, rel);
   if (!had.has(MANIFEST)) rmFile(path.join(dir, MANIFEST));
   for (const rel of had) if ((usable(rel) || rel === MANIFEST) && inside(dir, path.join(dir, rel))) copyIn(backup, dir, rel);
-  // 0.15.8: the marker is data read from disk. Its data copy is used (and removed) only when it is one of OUR migration folders:
+  // the marker is data read from disk. Its data copy is used (and removed) only when it is one of OUR migration folders:
   // a real folder directly under <dir>/.local/backups/ whose name starts with the migration prefix. Anything else is ignored.
   const db = migrationCopyOf(dir, mark.dataBackup);
   if (db) {
@@ -280,7 +280,7 @@ function pruneRemovedFiles(dir, keep = '') {
 export async function swapInstall(dir, fresh, from = 'previous', { stage = () => {}, verify = async () => {}, failAt = '', oldShipped = null } = {}) {
   const rec = recoverUpdateLeftovers(dir);
   if (rec.failed.length) return { ok: false, rolledBack: false, rollbackFailed: true, backup: rec.failed[0], error: `an earlier update left a rollback copy that could not be restored or removed: ${rec.failed[0]}; nothing was changed` };
-  // 0.15.8: the copy goes to `<dir>.backup-<from>` only when nothing is there; whatever sits at that name and was not proven ours
+  // the copy goes to `<dir>.backup-<from>` only when nothing is there; whatever sits at that name and was not proven ours
   // by recoverUpdateLeftovers is somebody's folder: it is never written into and never removed. The copy then lives in a fresh temp folder.
   let backup = `${dir}.backup-${from}`;
   try { fs.lstatSync(backup); backup = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-rollback-')); } catch { /* the name is free */ }
@@ -560,7 +560,7 @@ export async function oldReleaseListing(release, from, repo, f, work) {
  */
 export async function applyUpdate(a) {
   const r = await applyUpdateCore(a);
-  // 0.17.0 (N15): after every update the NEW install makes its launcher and puts a fresh copy on the Desktop (own process: the new code; silent; skipped in test runs)
+  // after every update the NEW install makes its launcher and puts a fresh copy on the Desktop (own process: the new code; silent; skipped in test runs)
   if (r?.ok && r.applied !== false && !r.plugin) { try { (await import('../launcher/launcher.mjs')).afterUpdate(a.dir); } catch { /* the first run of the new version does it */ } }
   return r;
 }

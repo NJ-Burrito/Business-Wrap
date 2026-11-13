@@ -56,7 +56,7 @@ export function tailLog(n = 10) {
 
 const norm = (x) => path.resolve(String(x || '')).replace(/[\\/]+/g, '/').toLowerCase();
 const readJ = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; } };
-/** 0.15.3 T10: is the MCP server registered with Claude Code, and for which folder? Read-only look at Claude Code's own files:
+/** is the MCP server registered with Claude Code, and for which folder? Read-only look at Claude Code's own files:
  *  <claude>/plugins/installed_plugins.json (a business-wrap@<marketplace> entry), <claude>/settings.json enabledPlugins, and the user-scope
  *  mcpServers of <home>/.claude.json. {registered, plugin, enabled, installPath, version, pathExists, matchesThisInstall, userServer, checked}. */
 export function mcpRegistration({ claudeDir = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), home = os.homedir(), root = ROOT } = {}) {

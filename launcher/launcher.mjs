@@ -103,7 +103,7 @@ export function ensureLauncher({ installDir = INSTALL, lnkDir, desktop, force = 
     const ver = version(installDir);
     const stamp = readStamp(installDir);
     let due = force || !stamp || stamp.version !== ver || stamp.install !== installDir;
-    if (!due) { const w = stamp.desktop || stamp.watch; if (w && fs.existsSync(w) && deadCopy(w, installDir)) due = true; } // 0.17.4: a current stamp, but the Desktop copy points at a folder that is gone: repair it
+    if (!due) { const w = stamp.desktop || stamp.watch; if (w && fs.existsSync(w) && deadCopy(w, installDir)) due = true; } // a current stamp, but the Desktop copy points at a folder that is gone: repair it
     const dir = lnkDir || lnkDirFor(installDir);
     const have = path.join(dir, LNK_NAME);
     let launcher = { ok: true, lnk: have, replaced: false, kept: true };
@@ -111,7 +111,7 @@ export function ensureLauncher({ installDir = INSTALL, lnkDir, desktop, force = 
     if (!due) return { launcher, desktop: { skipped: 'already-copied' } };
     const where = desktop === undefined ? desktopDir() : desktop;
     if (!where) return { launcher, desktop: { skipped: 'no-desktop-folder' } };
-    // 0.17.4: only the install the person set up takes over a Desktop copy on its own (launcher/ownership.mjs); `make --force` is the explicit take-over
+    // only the install the person set up takes over a Desktop copy on its own (launcher/ownership.mjs); `make --force` is the explicit take-over
     const existing = path.join(where, LNK_NAME);
     const current = fs.existsSync(existing) ? installOf(readShortcut(existing)?.args) : null;
     const may = mayTakeOver({ installDir, current, explicit: force, realProfile: desktop === undefined && !process.env.BW_DESKTOP_DIR });
@@ -131,7 +131,7 @@ export function ensureLauncher({ installDir = INSTALL, lnkDir, desktop, force = 
 /** The hook every entry calls (terminal, MCP, Claude Code plugin hook, protocol handler, an opened export): idempotent, once per install and version, never throws,
  *  silent. BW_NO_LAUNCHER=1 skips; test mode skips unless a test names its own Desktop folder (BW_DESKTOP_DIR). */
 export function autorun() {
-  // 0.17.8: the business-wrap: link too. It used to be registered only by `business-wrap open`, so a PC set up with `npm run serve`, `npm run host`,
+  // the business-wrap: link too. It used to be registered only by `business-wrap open`, so a PC set up with `npm run serve`, `npm run host`,
   // MCP or the Desktop launcher had a top-bar host switch that handed business-wrap://start to nothing. ensureRegistered keeps its own guards
   // (BW_NO_PROTOCOL, sandbox, worktree, another live install) and never throws.
   if (process.platform === 'win32') import('../engine/protocol.mjs').then((m) => m.ensureRegistered(), () => {});
