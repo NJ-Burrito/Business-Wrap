@@ -45,10 +45,10 @@ Every type opens with a first page built for its purpose. The thumbnail on the s
 
 | Family | What page 1 is | Types |
 |---|---|---|
-| **Title page** | Type code, title and subtitle, then the document control block (document ID, version, status, issue date, owner, prepared by, approved by, classification) and the type's own fields. Page 2 holds the revision history and the approvals grid, page 3 the contents (chapters only), and chapter 1 starts on a new page. | SRS, BRD, FRS, process flow, test plan, user manual, ToR, TOT |
-| **Form** | A header at the top of the page (code chip, title, an ID box or a version badge, a grid of fields), and the body continues on the same page. No contents list; document control and revisions move to the back. | defect report, change request, minutes, UAT sign-off, release notes |
-| **Sheet** | A landscape page: the fields in one row, a strip of status tiles, then the table itself. Later pages repeat a short running header and the table's header row. | RTM, test cases |
-| **Decision paper** | A band with the title, four key-figure tiles, a decision box with empty choices, then the control block. Page 2 holds control and approvals. | business case |
+| **Title page** | Type code, title and subtitle, and nothing else: no table. The document control data (document ID, version, status, issue date, owner, prepared by, approved by, classification) and the type's own fields live in «Document control and approvals» on page 2, with the revision history and the approvals grid; then the contents (chapters only), and chapter 1 starts on a new page. | SRS, BRD, FRS, process flow, test plan, user manual, ToR, TOT |
+| **Form** | A header at the top of the page (code chip, title, an ID box or a version badge), and the body continues on the same page. No contents list; the form's fields, document control and revisions are in the control section at the back. | defect report, change request, minutes, UAT sign-off, release notes |
+| **Sheet** | A landscape page: a strip of status tiles, then the table itself; the fields are in the control section. Later pages repeat a short running header and the table's header row. | RTM, test cases |
+| **Decision paper** | A band with the title, four key-figure tiles and a decision box with empty choices; the document ID sits in the foot. Page 2 holds control (with the type's fields) and approvals. | business case |
 | **Blank** | One empty page. No cover, no control table, no heading, no sample text. | blank |
 
 📚 Each type follows the outline of a named practice: the SRS follows the software requirements specification outline of ISO/IEC/IEEE 29148; the test plan, test cases, defect report and UAT sign-off follow ISO/IEC/IEEE 29119-3; the BRD, FRS, RTM and business case follow the BABOK Guide (IIBA); the process flow uses BPMN 2.0 notation and a SIPOC table; the rest follow common professional practice (ITIL 4 for the change request and release notes, PRINCE2 for the business case, ADDIE and Kirkpatrick for the TOT guide). They are starting structures written in Business-Wrap's own words, not certified templates and not a claim of compliance.
@@ -136,7 +136,7 @@ Every type opens with a first page built for its purpose. The thumbnail on the s
 
 🌾 **Harvest (collect the facts):** a process model gives roles, workflow, rules and statuses. A crawl (an automatic walk) of the live service gives the card, form, attachments and messages. The merge keeps both.
 
-🎧 **Sources:** add a meeting recording, a document, a web page, an image, an Android app or a tool folder on the start page. Each one runs in stages you can pause and review: a speaker-labelled transcript made on your own machine (Arabic dialects and English mixed in), the text of an image or a screen-recording frame read by local OCR (Arabic and English), then candidate facts you accept, reject or edit. See [the guide](docs/guide.md#9-sources-from-a-meeting-a-document-or-a-site-to-checked-facts-0200).
+🎧 **Sources:** add a meeting recording, a document, a web page, an image, an Android app or a tool folder on the start page. Each one runs in stages you can pause and review: a speaker-labelled transcript made on your own machine (Arabic dialects and English mixed in; on an NVIDIA GPU, 10 minutes of a meeting in about one; voices on one microphone kept apart), the text of an image or a screen-recording frame read by local OCR (Arabic and English), then candidate facts you accept, reject or edit. See [the guide](docs/guide.md#9-sources-from-a-meeting-a-document-or-a-site-to-checked-facts-0200).
 
 📝 **Editor:** one HTML file. The page you edit is the page that prints. Every change is undoable and recorded.
 
@@ -150,9 +150,9 @@ Every type opens with a first page built for its purpose. The thumbnail on the s
 
 🔍 **Zoom:** 25% to 400%, with Fill width, Fill height and Ctrl plus the mouse wheel. 100% is true size.
 
-🌙 **Look:** a dim navy dark mode, a calm drafting-grid background behind the pages, and a watermark that reacts now and then without a sound.
+🌙 **Look:** a dim navy dark mode, a light mode whose cards, panels and fields have clear edges, a calm drafting-grid background behind the pages, and a watermark that reacts now and then without a sound.
 
-🔀 **Two languages, one layout:** «ع» / «E» switches language; RTL / LTR switches word direction. The toolbar and the page stay where they are.
+🔀 **Two languages, one layout:** «ع» / «E» switches language; RTL / LTR switches word direction, in the editor and on the start page. The toolbar, the start page and the page stay where they are.
 
 🧭 **Diagrams:** the workflow figure is editable on the page. Mermaid (a text language for diagrams) in and out.
 
@@ -283,7 +283,7 @@ Tested on Windows 11 with Node 24 and Chrome. It needs Node 20+, Google Chrome (
 ```
 💬 Then say **"build the requirements document for …"** or **"open it in the editor"**.
 
-🔌 **MCP server only** (any MCP client, stdio, local; 0.21.0 from the GitHub tag; npm still serves 0.12.0):
+🔌 **MCP server only** (any MCP client, stdio, local; 0.22.0 from the GitHub tag; npm still serves 0.12.0):
 ```
 claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.22.0 business-wrap-mcp
 ```

@@ -2,7 +2,7 @@
 
 ## ⚡ In 10 seconds
 
-🔌 One command (0.21.0 from the GitHub tag; npm still serves 0.12.0; or the Claude Code plugin, or a clone below):
+🔌 One command (0.22.0 from the GitHub tag; npm still serves 0.12.0; or the Claude Code plugin, or a clone below):
 
 ```bash
 claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.22.0 business-wrap-mcp

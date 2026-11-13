@@ -4,7 +4,7 @@
 
 ## ⚡ في عشر ثوان
 
-🔌 أمر واحد (الإصدار 0.21.0 من وسم GitHub، فسجل npm ما زال على 0.12.0؛ أو إضافة Claude Code، أو نسخة محلية أدناه):
+🔌 أمر واحد (الإصدار 0.22.0 من وسم GitHub، فسجل npm ما زال على 0.12.0؛ أو إضافة Claude Code، أو نسخة محلية أدناه):
 
 ```bash
 claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.22.0 business-wrap-mcp
