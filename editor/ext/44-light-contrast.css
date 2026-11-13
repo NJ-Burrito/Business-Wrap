@@ -1,0 +1,18 @@
+/* 0.19.x · light theme contrast (owner, 2026-11-13: «i cant distinguish the elements on it and that's everywhere»).
+ * The brand v3 light set (brand/v3/tokens-v3.css) puts white cards on #fafaf9 with #e8e4de borders (about 1.2:1): the cards, panels, inputs and chips vanish into the page.
+ * This file re-inks only the tool's own chrome light set, by token, for every surface that reads the tokens (start page, ribbon, side panels, settings, Sources tab, dialogs):
+ *   - the desk (--bw-bg) is a warm stone, the cards and fields stay white, so a surface is told from its background by value;
+ *   - every border token meets 3:1 against both the desk and a white card (WCAG 1.4.11 non-text contrast); text tokens meet 4.5:1 on every surface;
+ *   - navy and gold are untouched. The dark theme (45-dark-dim.css) and the document sheet are not changed.
+ * tests/contrast.test.mjs resolves these tokens in the real editor and recomputes the ratios from the shipped CSS. */
+:is(.shell, dialog):not([data-theme="dark"]) {
+  --bw-bg: #efede6;
+  --bw-surface: #ffffff;
+  --bw-surface-2: #e2ddd0;
+  --bw-surface-sunk: #e9e6de;
+  --bw-ink-faint: #5c523d;
+  --bw-line: #8f836a;
+  --bw-rule-strong: #a0957c;
+  --bw-line-strong: #7d7258;
+  --bw-primary-soft: #d6e3f2;
+}

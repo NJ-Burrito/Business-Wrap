@@ -44,12 +44,12 @@ dialog.bw-start ::selection { background: var(--bw-marker); color: var(--bw-on-m
  * (0.18.0 hid it). The bottom-start safe area: the page scrolls 136 px past its last row, so every tile, hint and button can be brought clear of the mark. */
 .bw-start .st-wrap { padding-block-end: max(var(--bw-space-8), var(--st-wm-safe, 136px)); }
 .bw-start h1 { margin: 0; font: 700 var(--bw-size-xl)/var(--bw-leading-snug) var(--bw-font-display); letter-spacing: var(--bw-tracking-display); color: var(--bw-primary); text-wrap: balance; }
-.bw-start[dir="rtl"] :is(h1, h2, h3, .st-wm) { letter-spacing: 0; }
+.bw-start[data-tdir="rtl"] :is(h1, h2, h3, .st-wm) { letter-spacing: 0; }
 .bw-start .st-rule { display: inline-block; padding-block-end: 6px; background: linear-gradient(var(--bw-accent-rule), var(--bw-accent-rule)) no-repeat; background-size: 100% var(--bw-rule-w); background-position: 0 100%; animation: st-rule var(--st-slow) var(--bw-ease-out) 200ms both; }
-.bw-start[dir="rtl"] .st-rule { background-position: 100% 100%; }
+.bw-start[data-tdir="rtl"] .st-rule { background-position: 100% 100%; }
 @keyframes st-rule { from { background-size: 0 var(--bw-rule-w); } to { background-size: 100% var(--bw-rule-w); } }
 .bw-start .st-lede { margin: var(--bw-space-1) 0 var(--bw-space-4); max-width: 62ch; color: var(--bw-ink-muted); text-wrap: pretty; }
-.bw-start[dir="rtl"] .st-lede { line-height: var(--bw-leading-body-ar); }
+.bw-start[data-tdir="rtl"] .st-lede { line-height: var(--bw-leading-body-ar); }
 .bw-start .st-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--bw-space-5); }
 .bw-start .st-hl { display: grid; justify-items: start; gap: 2px; min-width: 0; }
 .bw-start .st-back { justify-self: start; display: block; margin: calc(var(--bw-space-2) * -1) 0 var(--bw-space-4); max-width: 36ch; min-height: 28px; padding: 0; border: 0; background: transparent; color: var(--bw-ink-muted); font-size: var(--bw-size-2xs); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; text-align: start; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -236,3 +236,14 @@ dialog.bw-start ::selection { background: var(--bw-marker); color: var(--bw-on-m
 .st-sw input:focus-visible + .st-sw-t { outline: 3px solid var(--focus); outline-offset: 2px; }
 .st-sw-w { flex: 1; min-inline-size: 0; line-height: 1.5; }
 .shell[data-calm="1"] :is(.st-sw-t, .st-sw-t i) { transition: none !important; }
+
+/* Owner rule (2026-11-13): the layout of this page never flips. The root is always dir="rtl" (as the editor shell), so the spine, the columns, the panel and the bar keep their places;
+ * the language button and the RTL | LTR switch move only the WORDS: data-tdir sets the reading direction on the text-bearing elements, never on a container. */
+.bw-start[data-tdir="ltr"] :is(h1, h2, h3, h4, p, li, label, input, .st-nm, .st-ds, .st-fn, .st-meta, .st-back, .st-sub, .st-chip > span:last-child, .st-btn, .st-norec, .st-empty, .st-wm, .st-seg-d button) { direction: ltr; }
+.bw-start[data-tdir="rtl"] :is(h1, h2, h3, h4, p, li, label, input, .st-nm, .st-ds, .st-fn, .st-meta, .st-back, .st-sub, .st-chip > span:last-child, .st-btn, .st-norec, .st-empty, .st-wm, .st-seg-d button) { direction: rtl; }
+.bw-start[data-tdir="ltr"] :is(h1, h2, h3, p, .st-nm, .st-ds, .st-fn, .st-meta, .st-back, .st-sub, .st-norec, .st-empty) { text-align: left; }
+.bw-start[data-tdir="rtl"] :is(h1, h2, h3, p, .st-nm, .st-ds, .st-fn, .st-meta, .st-back, .st-sub, .st-norec, .st-empty) { text-align: right; }
+.bw-start .st-seg[data-st-dirs] button { direction: ltr; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+
+/* light theme: a template page is a white sheet on a stone desk; its edge gets the 3:1 border so it reads as an object (dark keeps its own dimmed sheet) */
+.bw-start:not([data-theme="dark"]) :is(.st-thumb, .st-rt, .st-art) svg { outline: 1px solid var(--bw-line); outline-offset: -1px; }
