@@ -5,11 +5,11 @@
    --icm; the trigger rule below plays it. Calm mode and reduced motion: nothing moves (also ui.css).
    0.13.3 (owner request 2026-10-30): ONE trigger for every icon (below); no icon is left with the shared scale alone, every one has its own
    --icm move, a theme colour on hover (ui.css .ic hover rule) and the same move on focus and press. */
-/* 0.15.0 perf booster 1 (measured, out/qa-0.15.0/perf/engineer.md section 2): a hover cost 70 ms of main-thread CPU (14.8 layouts) because three
+/* perf booster 1 (measured, out/qa-0.15.0/perf/engineer.md section 2): a hover cost 70 ms of main-thread CPU (14.8 layouts) because three
    or four animations ran at once for 360 to 520 ms and every frame in which anything animates costs ~6 ms. One icon move is now capped at 200 ms
    for every icon and every button family (the moves read --bw-dur-page / --bw-dur-slow; inside an icon those two tokens are 200 ms; the
    shell's own motion tokens are not touched). */
-/* 0.17.0 (owner notes N5, N6: "bland and simple, make it alive"): every house move below is rebuilt on the animation principles
+/* (owner notes N5, N6: "bland and simple, make it alive"): every house move below is rebuilt on the animation principles
    (out/qa-0.17.0/motion-detail.md section 2): ANTICIPATION (a small move the other way first), OVERSHOOT and FOLLOW-THROUGH (it passes
    its mark and settles back in a damped wobble), SQUASH AND STRETCH (a pop squashes before it grows, a lift stretches as it rises).
    The three states now differ: HOVER plays the part move (after the 120 ms rest, unchanged); PRESS squashes the whole icon and lets it
@@ -37,7 +37,7 @@
 :is(.island, .pop, .ctx, .more .menu, .ribbon) .ic:not(.bw-i) .hl.rl { fill: none; stroke: var(--bw-accent); }
 .ic:not(.bw-i) .on-hl { stroke: var(--bw-on-accent, #001e3d); }
 .ic:not(.bw-i) [pathLength="1"] { stroke-dasharray: 1 0; }
-/* 0.15.2 hover cost (out/qa-0.15.1/perf/after.md: every animated SVG part costs a layout per frame): a HOVER plays the part moves only once the pointer has RESTED
+/* hover cost (out/qa-0.15.1/perf/after.md: every animated SVG part costs a layout per frame): a HOVER plays the part moves only once the pointer has RESTED
    on the tool (class .ic-rest, set 120 ms after the pointer entered it by 42-button-icons.js), never while it sweeps across the ribbon. Focus, press and
    keyboard selection are intent already and play at once.
    the one trigger: hover, keyboard focus, press (:active, and .ic-go which icPress sets on a pressed .b), a palette row's hover and
@@ -95,7 +95,7 @@
 }
 
 @keyframes icm-flip { 0%, 100% { scale: 1 1; } 12% { scale: 1.08 .94; } 50% { scale: -1.06 1; } 74% { scale: -1 1; } 88% { scale: .96 1; } }
-/* 0.17.0 new moves for the ribbon's category icons */
+/* new moves for the ribbon's category icons */
 @keyframes icm-rise-through { 0%, 100% { translate: 0 0; opacity: 1; scale: 1; } 16% { translate: 0 1.6px; scale: 1.08 .84; } 40% { translate: 0 -7px; opacity: 0; scale: .9 1.15; } 41% { translate: 0 6px; opacity: 0; } 70% { translate: 0 -1.2px; opacity: 1; scale: 1; } 86% { translate: 0 .4px; } }
 @keyframes icm-flap { 0%, 100% { transform: none; } 18% { transform: scaleY(1.04); } 46% { transform: skewX(-9deg) scaleY(.74); } 72% { transform: skewX(2deg) scaleY(1.04); } 88% { transform: scaleY(.99); } }
 @keyframes icm-scribble { 0%, 100% { translate: 0 0; rotate: 0deg; } 15% { translate: -1px -1.5px; rotate: -6deg; } 32% { translate: 1px .5px; rotate: 5deg; } 50% { translate: -.5px -1px; rotate: -4deg; } 68% { translate: 1px .5px; rotate: 3deg; } 85% { translate: 0 0; rotate: -1deg; } }
@@ -256,7 +256,7 @@
 [data-ic="shShare"] > :nth-child(1) { --d: calc(var(--bw-stagger) * 3); }
 [data-ic="shShare"] > :nth-child(3) { --d: calc(var(--bw-stagger) * 4); }
 
-/* 0.13.2 icons (cells, writing, page gaps): one whole-icon move each, same trigger as above */
+/* icons (cells, writing, page gaps): one whole-icon move each, same trigger as above */
 [data-ic="cellMerge"] > * { --s: 1.15; --r: 10deg; --icm: icm-recede var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 [data-ic="cellSplit"] > * { --s: 1.15; --r: 10deg; --icm: icm-pop var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 [data-ic="cellWrap"] > * { --s: 1.15; --r: 10deg; --icm: icm-tilt var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
@@ -276,7 +276,7 @@
 [data-ic="secDel"] > * { --s: 1.15; --r: 10deg; --icm: icm-lift var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 [data-ic="pgEmpty"] > * { --s: 1.15; --r: 10deg; --icm: icm-blink var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 
-/* 0.13.3: the 121 toolbar, menu, popover, context-bar, panel and diagram icons that only had the shared scale. One whole-icon move each,
+/* the 121 toolbar, menu, popover, context-bar, panel and diagram icons that only had the shared scale. One whole-icon move each,
    chosen for what the icon is (undo tilts back, delete shakes, zoom pops, a check draws …); parts: --x --y --r --s */
 [data-ic="save"] > * { --y:2px; --icm: icm-nudge var(--mvt); }
 [data-ic="saveHtml"] > * { --y:-3px; --icm: icm-from var(--mvt); }
@@ -288,7 +288,7 @@
 [data-ic="redo"] > * { --r:28deg; --icm: icm-tilt var(--mvt); }
 [data-ic="secFile"] > * { --icm: icm-lift var(--mvt); }
 [data-ic="secInsert"] > * { --s:1.18; --icm: icm-pop var(--mvt); }
-/* 0.18.2: the top bar's Home: the house settles (pop) and the door (the gold part) lifts a little after it */
+/* the top bar's Home: the house settles (pop) and the door (the gold part) lifts a little after it */
 [data-ic="homeBtn"] > path { --s:1.1; --icm: icm-pop var(--mvt); }
 [data-ic="homeBtn"] > .hl { --y:-1.5px; --d: 60ms; --icm: icm-nudge var(--mvt); }
 [data-ic="secDocument"] > * { --icm: icm-draw var(--mvt); }
@@ -332,7 +332,7 @@
 [data-ic="calm"] > * { --s:.82; --icm: icm-recede var(--mvt); }
 [data-ic="focus"] > * { --s:1.16; --icm: icm-pop var(--mvt); }
 [data-ic="spell"] > * { --icm: icm-draw var(--mvt); }
-/* 0.15.3 Spelling bar «الإملاء» (0.15.2 added the 9 icons without a move): same house moves, same hover-intent trigger as the rules above */
+/* Spelling bar «الإملاء» (0.15.2 added the 9 icons without a move): same house moves, same hover-intent trigger as the rules above */
 [data-ic="spellNext"] > * { --x:2.5px; --icm: icm-nudge var(--mvt); }
 [data-ic="spellPrev"] > * { --x:-2.5px; --icm: icm-nudge var(--mvt); }
 [data-ic="spellFix"] > * { --s:1.18; --icm: icm-pop var(--mvt); }
@@ -514,14 +514,14 @@
 
 /* calm mode and reduced motion: drawn, never moving */
 .shell[data-calm="1"] .ic[data-ic] > * { animation: none !important; }
-/* 0.17.0: calm also stills the whole-icon moves (the press squash, the focus nod, the colour ease) and the brand mark's hop */
+/* calm also stills the whole-icon moves (the press squash, the focus nod, the colour ease) and the brand mark's hop */
 .shell[data-calm="1"] .ic[data-ic], :host-context(html[data-bw-calm="1"]) .ic[data-ic] { animation: none !important; transition: none !important; scale: none !important; }
 .shell[data-calm="1"] .brand svg, :host-context(html[data-bw-calm="1"]) .brand svg { animation: none !important; scale: none !important; }
 .shell[data-calm="1"] .brand svg :is(.cap, .rule) { animation: none !important; }
 
-/* 0.15.0: the "from this page on" button of the page-number dialog (42-button-icons.js biHere) */
+/* the "from this page on" button of the page-number dialog (42-button-icons.js biHere) */
 [data-ic="biHere"] > :first-child { --y: -2px; --icm: icm-nudge var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }
 
-/* 0.15.2 note 3 · Reading mode: the open book; the spine draws up from the foot, the pages breathe once */
+/* Reading mode: the open book; the spine draws up from the foot, the pages breathe once */
 [data-ic="reading"] > :nth-child(1) { transform-origin: 50% 100%; --icm: icm-grow-y var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1 backwards; }
 [data-ic="reading"] > :nth-child(2) { --s: 1.08; --icm: icm-pop var(--bw-dur-page) var(--bw-ease-out) var(--d, 0s) 1; }

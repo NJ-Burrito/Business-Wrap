@@ -12,7 +12,7 @@ Since 0.13.0 new editor features live here, one file set per feature, so they ne
 | `NN-name.css` | the toolbar's shadow-root CSS (`uiCss`), after `chrome.css` |
 | `NN-name.i18n.json` | `{ "ar": {…}, "en": {…} }` merged into the UI strings; a key that already exists, or that two extensions share, **fails the build** |
 
-The two-digit prefix sets the order (WP3 `10–19`, WP4 `30–39`, WP2 `20–29`). No files here = the editor is built exactly as without the seam. Tests can point `buildEditor({ extDir })` at another folder.
+The two-digit prefix sets the order (WP3 `10–19`, WP4 `30–39`, WP2 `20–29`). `00-util.js` loads first and holds `BWU`: `sha256`, `digest`, `clone`, `sleep`, `idbOpen`. Use it instead of a private copy. No files here = the editor is built exactly as without the seam. Tests can point `buildEditor({ extDir })` at another folder.
 
 An extension's code runs in the editor's own scope: `S`, `M`, `t`, `esc`, `ic`, `toast`, `commit`, `setText`, `openDrawer`, `buildUi`, `render`, `cur`, `CMDS` are all in reach. It runs **before** the editor boots: `engine/build-editor.mjs` calls `boot()` after the last extension, so the first mount already draws every extension's commands, sections and status counter (no second build; the recovery banner and the first-open motion stay), then fires `boot` and `open`. A `bwExt` call made later (after boot) with commands, sections or a status counter patches the bar in place.
 

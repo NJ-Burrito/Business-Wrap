@@ -4,7 +4,7 @@
  * symbols, layout, Mermaid). Drag to move (grid snap), drag the corner handle to resize, arrow keys
  * nudge, double-click (or Enter) edits a label in place; a selected arrow shows bend handles (drag a segment
  * across, drag a corner, add/remove a bend, auto route); Ctrl+wheel or the zoom tools zoom the drawing.
- * 0.15.6: a selected arrow shows ONE square at its start, ONE at its head and a circle at every bend (a faint ghost circle on each long
+ * a selected arrow shows ONE square at its start, ONE at its head and a circle at every bend (a faint ghost circle on each long
  * segment adds one: drag it, or double-click the line); the squares slide along the shape's outline or reconnect to another shape. Every change is ONE `replace` op on <block>/model, so undo/redo,
  * the edits JSON, Save HTML, the PDF and the DOCX all carry it.
  * Declarations only (hoisted): boot() in editor.js runs before this file's statements. */
@@ -33,7 +33,7 @@ function dgContext() {
   const opt = (v, cur0, label) => `<option value="${esc(v)}"${v === cur0 ? ' selected' : ''}>${esc(label)}</option>`;
   const pick = (name, label, opts) => `<label class="pick"><span class="vh">${esc(label)}</span><select data-dg="${name}" aria-label="${esc(label)}" title="${esc(label)}">${opts}</select></label>`;
   if (d.legend) {
-    // 0.15.6 (L1): one entry of the key under the drawing is selected
+    // one entry of the key under the drawing is selected
     const it = DIAGRAM.resolve(m, { theme: S.theme, locale: d.ed }).items.find((x) => x.t === 'text' && x.legend === d.legend);
     return { cat: 'diagram', label: t('selLegend', { x: it ? it.lines.join(' ') : '' }), groups: [['dgLgText', 'dgLgLook', 'dgLgDel', 'dgLgReset', 'dgLegend']], keep: zoomKeep() };
   }
@@ -48,13 +48,13 @@ function dgContext() {
     const icon = node.kind === 'symbol'
       ? pick('icon', t('dgIcon'), DIAGRAM.SYMBOLS.map((k) => opt(k, node.icon, t(`sym_${k}`))).join(''))
       : pick('badge', t('dgIcon'), [opt('', Array.isArray(node.icons) ? (node.icons[0] || '-') : '', t('dgAuto2')), opt('-', Array.isArray(node.icons) && !node.icons.length ? '-' : '', t('dgNone')), ...DIAGRAM.SYMBOLS.map((k) => opt(k, Array.isArray(node.icons) ? node.icons[0] : '', t(`sym_${k}`)))].join(''));
-    // 0.16.0 (D4): the type size of this one shape (node.fs, 8-40 drawing units; «by kind» removes it); a join point has no text
+    // the type size of this one shape (node.fs, 8-40 drawing units; «by kind» removes it); a join point has no text
     const FS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 28, 32, 36, 40];
     const curFs = Number.isFinite(+node.fs) && +node.fs >= 8 && +node.fs <= 40 ? +node.fs : 0;
     const sizes = node.kind === 'join' ? '' : pick('fs', t('dgFs'), [opt('', curFs ? '-' : '', t('dgAuto2')), ...(curFs && !FS.includes(curFs) ? [curFs] : []).concat(FS).sort((a, b) => a - b).map((k) => opt(String(k), String(curFs), String(k)))].join(''));
     return { cat: 'shape', label: t('selShape', { x: dgNodeName(node) }), groups: [['dgLabel', kinds, colours, 'dgConnect', 'dgDel'], [icon, ...(sizes ? [sizes] : []), 'dgSub', 'dgDup', 'dgFront', 'dgBack']], keep: zoomKeep() };
   }
-  const sym = btn('dgSymbol'); // 0.14.0 · O2: a gallery with the full names (the old select was squeezed to a sliver inside the «…» menu)
+  const sym = btn('dgSymbol'); // O2: a gallery with the full names (the old select was squeezed to a sliver inside the «…» menu)
   return { cat: 'diagram', label: t('selDiagram'), groups: [['dgStaff', 'dgDecision', 'dgStart', 'dgOk', 'dgStop', sym], ['dgApplicant', 'dgPayment', 'dgRework', 'dgSystem', 'dgNote', 'dgGroup', 'dgText', 'dgJoin', 'dgAuto', 'dgReset', 'dgLegend', 'dgLgReset', 'dgZoom100', 'dgMermaidIn', 'dgMermaidOut'], ['dgCvShapes', 'dgCvPage', 'dgCvAuto']], keep: zoomKeep() };
 }
 /* ── selection paint: outline + resize handle, editor DOM only (never exported) ── */
@@ -71,7 +71,7 @@ function dgPaint() {
   const ns = 'http://www.w3.org/2000/svg';
   const g = document.createElementNS(ns, 'g');
   g.setAttribute('class', 'dg-ui');
-  // 0.15.0 (F5): lettering that would print too small, or text that overlaps, is a warning on the sheet (editor only, never blocks)
+  // lettering that would print too small, or text that overlaps, is a warning on the sheet (editor only, never blocks)
   let legMsg = '';
   try {
     const fr0 = dgFrameNow();
@@ -79,7 +79,7 @@ function dgPaint() {
     if (!lg.ok) {
       const en = S.ed === 'en';
       const msg = en ? `Prints at ${lg.minPtPrinted} pt${lg.overlaps.length ? `, ${lg.overlaps.length} overlap(s)` : ''}: split the figure or enlarge the frame` : `يُطبع بحجم ${lg.minPtPrinted} نقطة${lg.overlaps.length ? `، ${lg.overlaps.length} تداخل` : ''}: قسّم الشكل أو كبّر الإطار`;
-      // 0.15.9 (L2): the note is a readable label on the canvas (HTML at screen size, set in dgCanvasPaint), not a bar drawn in the drawing's own units
+      // the note is a readable label on the canvas (HTML at screen size, set in dgCanvasPaint), not a bar drawn in the drawing's own units
       legMsg = msg;
     }
   } catch { /* a model the check cannot read is the Check panel's business */ }
@@ -135,7 +135,7 @@ function dgLegendBox(m, key) {
   }
   return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
 }
-/** 0.15.9 (M5): where a picker opens. The ribbon's flyout closes on the press, so the button's rectangle is read when the press starts (kept for 2 s);
+/** where a picker opens. The ribbon's flyout closes on the press, so the button's rectangle is read when the press starts (kept for 2 s);
  *  else the visible button; else the middle of the window, never the corner. */
 const dgBtnPress = { a: '', r: null, t: 0 };
 document.addEventListener('pointerdown', (ev) => {
@@ -167,7 +167,7 @@ function dgChoiceMenu(action, label, options, current, onPick) {
   el.style.left = `${bt ? Math.max(8, Math.min(innerWidth - w - 8, bt.left + bt.width / 2 - w / 2)) : Math.max(8, (innerWidth - w) / 2)}px`;
   el.style.top = `${Math.min(innerHeight - 120, (bt ? bt.bottom : innerHeight * 0.3) + 8)}px`;
   const close = () => { el.remove(); document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc2, true); };
-  const away = (ev) => { if (!ev.composedPath().includes(el)) close(); }; // 0.17.8 (O1, owner reversal): a press anywhere outside it, the background included, closes the popup
+  const away = (ev) => { if (!ev.composedPath().includes(el)) close(); }; // a press anywhere outside it, the background included, closes the popup
   const esc2 = (ev) => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(); } };
   document.addEventListener('pointerdown', away, true);
   document.addEventListener('keydown', esc2, true);
@@ -224,7 +224,7 @@ function dgJointRemove(P, k, type) {
   }
   return Q.slice(1, -1);
 }
-/** 0.16.1 (fault 12): the only joint of a short straight elbow arrow, pulled off the arrow's line. The two legs through it would run on the same vertical (or horizontal) and
+/** the only joint of a short straight elbow arrow, pulled off the arrow's line. The two legs through it would run on the same vertical (or horizontal) and
  *  double back, a spike with 3 bends. The path is a step instead: out of the start a short stub, across at the joint's level, and into the head, the joint on the top run.
  *  Returns the via, or null when the joint is not in that situation. */
 function dgStepVia(P, k, nx, ny) {
@@ -267,7 +267,7 @@ function dgSetVia(m, eid, via) {
   if (!e) return;
   if (via.length) e.via = via; else delete e.via;
 }
-/** 0.15.9 (M2): Esc cancels any drag in flight (joint, ghost, shape, canvas): `cancel` restores the drawing; the returned function ends the watch (call it on release).
+/** Esc cancels any drag in flight (joint, ghost, shape, canvas): `cancel` restores the drawing; the returned function ends the watch (call it on release).
  *  While a drag is held, Ctrl+wheel does nothing to the page (L4). */
 function dgDragEsc(cancel) {
   S.dgDragging = true;
@@ -399,7 +399,7 @@ function dgJointDelete() {
   let via = dgJointRemove(w.route, k, type);
   let anchors = {};
   if (type === 'elbow') {
-    // 0.15.9 (H1, H2): only the chosen joint goes, plus the corner points that are left collinear or doubled back; no neighbour slides
+    // only the chosen joint goes, plus the corner points that are left collinear or doubled back; no neighbour slides
     const plain = dgElbowDelete(m, edge.id, w, k);
     if (plain) via = plain;
     else ({ via, anchors } = dgCleanDelete(m, edge.id, w, via));
@@ -445,7 +445,7 @@ function dgElbowDelete(m, eid, w, k) {
   if (auto && auto.length === r.length && auto.every((q, i) => Math.abs(q[0] - r[i][0]) < 0.6 && Math.abs(q[1] - r[i][1]) < 0.6)) return [];
   return via;
 }
-/** E1: after a joint of an elbow arrow is deleted the path must stay clean: no jog and no extra joint where it meets a shape. When the end legs cannot both enter square,
+/** after a joint of an elbow arrow is deleted the path must stay clean: no jog and no extra joint where it meets a shape. When the end legs cannot both enter square,
  *  the end's anchor moves to the face the remaining leg points at (the leg stays where it is), so nothing extra appears. */
 function dgCleanDelete(m, eid, before, via) {
   const want = before.route.length - 3; // joints left on screen
@@ -592,7 +592,7 @@ function dgEdgeMenu(key) {
   el.style.left = `${bt ? Math.max(8, Math.min(innerWidth - w - 8, bt.left + bt.width / 2 - w / 2)) : Math.max(8, (innerWidth - w) / 2)}px`;
   el.style.top = `${Math.min(innerHeight - 120, (bt ? bt.bottom : innerHeight * 0.3) + 8)}px`;
   const close = () => { el.remove(); document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc2, true); };
-  const away = (ev) => { if (!ev.composedPath().includes(el)) close(); }; // 0.17.8 (O1, owner reversal): a press anywhere outside it, the background included, closes the popup
+  const away = (ev) => { if (!ev.composedPath().includes(el)) close(); }; // a press anywhere outside it, the background included, closes the popup
   const esc2 = (ev) => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(); } };
   document.addEventListener('pointerdown', away, true);
   document.addEventListener('keydown', esc2, true);
@@ -614,7 +614,7 @@ function dgInline(target) {
   const m = dgModel();
   const node = target.node ? m.nodes.find((n) => n.id === target.node) : null;
   const edge = target.edge ? m.edges.find((x) => x.id === target.edge) : null;
-  // 0.14.0 · O2: a legend entry (the key under the drawing) is edited in place too: model.legend[key]
+  // a legend entry (the key under the drawing) is edited in place too: model.legend[key]
   const legendKey = target.legend || null;
   const legendItem = legendKey ? DIAGRAM.resolve(m, { theme: S.theme, locale: S.dg.ed }).items.find((it) => it.t === 'text' && it.legend === legendKey) : null;
   const obj = node || edge || (legendItem ? { text: legendItem.lines.join(' ') } : null);
@@ -703,7 +703,7 @@ function dgInline(target) {
   el.addEventListener('pointerdown', (ev) => ev.stopPropagation());
 }
 /* ── zoom: the drawing only; view state, never in the model, the PDF or the DOCX ──
- * 0.15.6 (Z1-Z6). The frame (.fig-art) keeps the size it had when fitted; only the drawing inside it changes. The scale follows
+ * (Z1-Z6). The frame (.fig-art) keeps the size it had when fitted; only the drawing inside it changes. The scale follows
  * deltaY (a pinch or a precision wheel sends many small events), is coalesced to one update per frame, and keeps the point under the
  * pointer where it was. The view (scale, offsets, scroll) lives in S.dgZoom, so a live redraw, a save or a full render puts it back. */
 /** Screen px per layout px of a figure (the page zoom, the side-by-side shrink). Read as rect.width / offsetWidth; offsetWidth is an integer, so at no zoom that ratio is 0.9996 instead of 1,
@@ -755,10 +755,10 @@ function dgZoomFig(fig, mode, at) {
   let w;
   if (mode === 'fit') w = null;
   else if (mode === '100') w = natural;
-  else w = Math.min(natural * 4, Math.max(fitW, now * f)); // 0.16.1 (fault 7): the drawing never goes smaller than its fitted frame, so in x N and out x N ends where it began
+  else w = Math.min(natural * 4, Math.max(fitW, now * f)); // the drawing never goes smaller than its fitted frame, so in x N and out x N ends where it began
   const fr = art.getBoundingClientRect();
   // the drawing point under the pointer is pinned while the pointer stays put, so rounding never adds up over a run of steps.
-  // 0.16.0 (D3): the point is kept in the drawing's own coordinates through the SVG's screen matrix, not as a fraction of the SVG box: at «fit» the box is wider
+  // the point is kept in the drawing's own coordinates through the SVG's screen matrix, not as a fraction of the SVG box: at «fit» the box is wider
   // than the drawing (preserveAspectRatio centres it), so a fraction of the box is not the point the reader pointed at and every step drifted by the letterbox (9-15 px).
   const held = S.dgHold;
   const holding = !!(held && at && held.key === key && Math.abs(at.x - held.ax) < 2.5 && Math.abs(at.y - held.ay) < 2.5 && performance.now() - held.t < 1500);
@@ -812,7 +812,7 @@ document.addEventListener('scroll', (e) => {
   const z = fig && S.dgZoom?.[dgZoomKey(fig)];
   if (z) { z.sl = art.scrollLeft; z.st = art.scrollTop; }
 }, true);
-/** 0.16.1 (fault 2): who gets a Ctrl+wheel that lands on a figure. The drawing, as before, except one case: a gesture that STARTS going out while the drawing is
+/** who gets a Ctrl+wheel that lands on a figure. The drawing, as before, except one case: a gesture that STARTS going out while the drawing is
  *  at its fitted size has nothing left to shrink, so the page zooms out (at page zoom 161 % a figure covers most of the window and held the wheel for ever).
  *  A gesture is the run of events less than 450 ms apart: it keeps its owner, so zooming a drawing out all the way never rolls on into the page. */
 let dgWheelG = null;
@@ -903,7 +903,7 @@ function dgCanvasPaint(fig, legMsg = '') {
   if (live && S.snap && !S.dgFrameLive.alt) ui.insertAdjacentHTML('beforeend', `<i class="dg-cv-grid" style="background-size:${DG_CV_STEP}mm ${DG_CV_STEP}mm"></i>`);
   for (const h of Object.keys(names)) ui.insertAdjacentHTML('beforeend', `<b class="dg-cv-h" data-dg-cv="${h}" role="button" aria-label="${esc(`${t('dgCvSize')}: ${names[h]}`)}" title="${esc(`${t('dgCvSize')}: ${names[h]}`)}"></b>`);
   if (legMsg) ui.insertAdjacentHTML('beforeend', `<span class="dg-cv-note" role="note">${esc(legMsg)}</span>`);
-  // 0.16.0: a stored drawing without model.routing offers its one-click apply on the sheet, top right in both languages (the ribbon's diagram tab is full: 28 tools; the bottom holds the legend, the top left corner is where a press on the empty drawing lands)
+  // a stored drawing without model.routing offers its one-click apply on the sheet, top right in both languages (the ribbon's diagram tab is full: 28 tools; the bottom holds the legend, the top left corner is where a press on the empty drawing lands)
   if (+dgBlock(fig.dataset.dg, S.dg.ed)?.model?.routing !== 2) ui.insertAdjacentHTML('beforeend', `<button type="button" class="dg-cv-route" data-dg-cv-route title="${esc(t('dgCvRoute'))}" style="position:absolute;right:8px;top:${legMsg ? 34 : 8}px;padding:2px 9px;border-radius:6px;border:1px solid #14233a;background:#fff;color:#14233a;font-family:inherit;font-weight:600;font-size:12px;line-height:1.5;cursor:pointer;pointer-events:auto">${esc(t('dgCvRoute'))}</button>`);
   if (live) {
     const f = S.dgFrameLive.frame;
@@ -990,7 +990,7 @@ function dgCanvasAction(a) {
   const ptr = S.dg.b;
   const ed = S.dg.ed;
   if (a === 'dgCvAuto') { dgFrameSave(null, ptr, ed); return; }
-  // 0.16.0: one click puts a stored drawing on the arrows that never lie on each other (spaced, jump arcs, small shadows); no shape moves
+  // one click puts a stored drawing on the arrows that never lie on each other (spaced, jump arcs, small shadows); no shape moves
   if (a === 'dgCvRoute') { dgSave(DIAGRAM.applyRouting(dgBlock(ptr, ed).model), ptr, ed); return; }
   const room = dgRoom(ptr, ed);
   if (a === 'dgCvPage') { dgFrameSave({ wMm: room.wMm, hMm: room.hMm, mode: 2 }, ptr, ed); return; }
@@ -1000,7 +1000,7 @@ function dgCanvasAction(a) {
   }
 }
 bwExt({ cmds: ['dgCvShapes', 'dgCvPage', 'dgCvAuto', 'dgCvRoute', 'dgJoin'].map((id) => ({ id, group: 'diagram', edit: true })), on: { render: () => dgRibbonCanvas() }, expose: { diagram: { autoLayout: dgAutoLayoutAt, check: dgCheckAt } } });
-/** 0.16.0 · editor_action autoLayout {pointer, aspect, maxNodes, locale}: lays the diagram out for the frame it prints in (block.frame, else the automatic figure's measured box)
+/** editor_action autoLayout {pointer, aspect, maxNodes, locale}: lays the diagram out for the frame it prints in (block.frame, else the automatic figure's measured box)
  *  as ONE undoable replace, and returns the legibility result. A graph that no single sheet can hold is left as one drawing and reported (`figures` = how many legible figures
  *  it would take): the splitFigure action cuts it. */
 function dgAutoLayoutAt(ptr, args = {}, ed = S.ed) {
@@ -1023,7 +1023,7 @@ function dgRibbonCanvas() {
   dgRibbonCanvas.done = true;
   const tab = RB_TABS.find((x) => x[0] === 'diagram');
   const nodesGroup = tab?.[1].find((g) => g[0] === 'nodes');
-  if (nodesGroup && !nodesGroup[1].includes('dgJoin')) nodesGroup[1].push('dgJoin'); // 0.16.0 (D4): the join point sits with the shapes it joins
+  if (nodesGroup && !nodesGroup[1].includes('dgJoin')) nodesGroup[1].push('dgJoin'); // the join point sits with the shapes it joins
   RB_LISTED.add('dgJoin');
   if (!tab || tab[1].some((g) => g[0] === 'canvas')) return;
   tab[1].push(['canvas', ['dgCvShapes', 'dgCvPage']]);
@@ -1041,7 +1041,7 @@ function dgDraw(model) {
 const dgSnap = (v) => (S.snap ? Math.round(v / 10) * 10 : Math.round(v));
 function dgPoint(svg, ev) { const p = svg.createSVGPoint(); p.x = ev.clientX; p.y = ev.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); }
 function dgSelect(ptr, ed, patch) {
-  // 0.16.0 (D5): a paragraph that still holds the caret gets it back at every render (holdCaret) and its focus deselects the drawing, so the first edit made from the ribbon dropped the selection
+  // a paragraph that still holds the caret gets it back at every render (holdCaret) and its focus deselects the drawing, so the first edit made from the ribbon dropped the selection
   { const ae = document.activeElement; if (ae?.closest?.('#bw-pair [data-p]')) ae.blur(); }
   S.dg = { b: ptr, ed, nodes: [], edge: null, ...patch };
   S.sel = { p: null, b: ptr, ed };
@@ -1123,7 +1123,7 @@ document.addEventListener('dblclick', (e) => {
   const edEl = e.target.closest('[data-dg-edge]');
   const lgEl = e.target.closest('[data-dg-legend]');
   if (lgEl && !n) { dgInline({ legend: lgEl.dataset.dgLegend }); return; }
-  // 0.15.6: on a selected arrow, a double-click on a joint removes it; on the line (or a ghost) it adds one right there; on the arrow's caption it edits the words
+  // on a selected arrow, a double-click on a joint removes it; on the line (or a ghost) it adds one right there; on the arrow's caption it edits the words
   const capEl = e.target.closest('[data-dg-cap]');
   if (capEl && !n) { dgInline({ edge: capEl.dataset.dgCap }); return; }
   if (S.dg.edge && !n) {
@@ -1232,7 +1232,7 @@ function dgFinishPick(targetId) {
 }
 const ALIGN = { dgAlignL: ['x', 0], dgAlignC: ['x', 0.5], dgAlignR: ['x', 1], dgAlignT: ['y', 0], dgAlignM: ['y', 0.5], dgAlignB: ['y', 1] };
 const ADD = { dgStaff: 'staff', dgApplicant: 'applicant', dgStart: 'start', dgPayment: 'payment', dgRework: 'rework', dgSystem: 'system', dgDecision: 'decision', dgOk: 'ok', dgStop: 'stop', dgNote: 'note', dgGroup: 'group', dgText: 'text', dgJoin: 'join' };
-/** 0.14.0 · O2: every symbol by its full name, on a panel of its own (never inside the toolbar's «…» menu); a pick adds it, selected. */
+/** every symbol by its full name, on a panel of its own (never inside the toolbar's «…» menu); a pick adds it, selected. */
 function dgSymbolGallery() {
   document.querySelector('.bw-dg-gallery')?.remove();
   dgGalleryCss();
@@ -1262,7 +1262,7 @@ function dgGalleryOpen() {
   el.style.left = `${left}px`;
   el.style.top = `${Math.min(innerHeight - 120, (bt ? bt.bottom : innerHeight * 0.3) + 8)}px`;
   const close = () => { el.remove(); document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc2, true); };
-  const away = (ev) => { if (!ev.composedPath().includes(el)) close(); }; // 0.17.8 (O1, owner reversal): a press anywhere outside it, the background included, closes the popup
+  const away = (ev) => { if (!ev.composedPath().includes(el)) close(); }; // a press anywhere outside it, the background included, closes the popup
   const esc2 = (ev) => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(); } };
   document.addEventListener('pointerdown', away, true);
   document.addEventListener('keydown', esc2, true);

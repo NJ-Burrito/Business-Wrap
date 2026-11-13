@@ -12,7 +12,7 @@ function pcExportIds() {
 }
 function pcServer() { return location.protocol.startsWith('http'); }
 function pcServerOnly(id) { return ['export.docx.ar', 'export.docx.en', 'export.docx.both', 'export.printHtml', 'export.printHtml.ar', 'export.printHtml.en', 'export.printHtml.both'].includes(id); }
-// 0.17.0 (N11): the three print-HTML tools wear the print-HTML icon (the icon set has one for it)
+// the three print-HTML tools wear the print-HTML icon (the icon set has one for it)
 for (const l of ['ar', 'en', 'both']) if (IC['export.printHtml'] && !IC[`export.printHtml.${l}`]) IC[`export.printHtml.${l}`] = IC['export.printHtml'];
 function pcOpts() {
   if (!S.pc) { let f = ''; try { f = ls.get('bw:exportFolder') || ''; } catch { /* no storage */ } S.pc = { range: '', cover: true, folder: f }; }
@@ -59,7 +59,7 @@ function pcExportMenu() {
 }
 
 /** The editions an action covers: ar / en / both (the ones this service has). */
-/** 0.17.0 (N11): a named edition (ar / en) always exports when the editor has it, even in a document flagged for the other language; "both" leaves out
+/** a named edition (ar / en) always exports when the editor has it, even in a document flagged for the other language; "both" leaves out
  *  the empty edition of a single-edition document (control.editions), judged on the document as it is now (its ops applied). */
 function pcEds(l) {
   const only = editionsOf(cur().doc);
@@ -97,7 +97,7 @@ async function pcAction(a) {
     }
   } catch (err) { flash(String(err.message || err), true); } finally { busy(false); }
 }
-/** 0.17.0 (N11): both editions export into ONE document folder, named by the primary (Arabic) edition's title (same rule as engine/workspace.mjs docTitle). */
+/** both editions export into ONE document folder, named by the primary (Arabic) edition's title (same rule as engine/workspace.mjs docTitle). */
 function pcFolderTitle() {
   const name = (d) => { const c = d?.control || {}; const t = String(c.title || ''); return String(c.coverTitle || t.split(/\s*[:—]\s+/).slice(1).join(': ') || t).trim(); };
   const only = editionsOf(cur().doc);
@@ -164,7 +164,7 @@ function pcClose(d = root.querySelector('dialog.pc-dlg')) { if (d?.open) leaveEl
 function pcOpenPrint() {
   const shell = root.querySelector('.shell');
   if (!shell) return;
-  if (S.pp && M[S.svc]?.[S.ed]) S.pp.ed = S.ed; // 0.17.0 (N11): the print centre opens on the edition being edited, not on the one it was first opened with
+  if (S.pp && M[S.svc]?.[S.ed]) S.pp.ed = S.ed; // the print centre opens on the edition being edited, not on the one it was first opened with
   uxMenusOpen().forEach((m) => uxMenuClose(m));
   let d = root.querySelector('dialog.pc-dlg');
   if (!d) {

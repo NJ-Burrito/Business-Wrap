@@ -196,7 +196,7 @@ const PJ = (() => {
     const ol = d?.querySelector('.lib ol.lib-docs');
     if (ol && !ol.dataset.pj) decorate(d);
   }).observe(root, { childList: true, subtree: true });
-  return { state: () => JSON.parse(JSON.stringify(st)), live, trashed, of, create, rename, remove, restore, purge, assign, members, newIn, importInto, onOpen, sync, watch, setFilter: (f) => { filter = f; repaint(); } };
+  return { state: () => BWU.clone(st), live, trashed, of, create, rename, remove, restore, purge, assign, members, newIn, importInto, onOpen, sync, watch, setFilter: (f) => { filter = f; repaint(); } };
 })();
 
 IC.pjNew = '<svg aria-hidden="true" focusable="false" class="ic" data-ic="pjNew" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><path d="M12 10v6"/><path d="M9 13h6"/></svg>';
@@ -204,7 +204,7 @@ IC.pjRename = '<svg aria-hidden="true" focusable="false" class="ic" data-ic="pjR
 IC.pjDelete = '<svg aria-hidden="true" focusable="false" class="ic" data-ic="pjDelete" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><path d="m9.5 10.5 5 5"/><path d="m14.5 10.5-5 5"/></svg>';
 IC.pjExport = '<svg aria-hidden="true" focusable="false" class="ic" data-ic="pjExport" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><path d="M12 10v6"/><path d="m9 13 3-3 3 3"/></svg>';
 IC.pjImport = '<svg aria-hidden="true" focusable="false" class="ic" data-ic="pjImport" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><path d="M12 10v6"/><path d="m15 13-3 3-3-3"/></svg>';
-/* 0.15.0 note 18 · project export and import. Export: the project's documents as HTML / PDF / DOCX / JSON edits, in Arabic, English or both,
+/* project export and import. Export: the project's documents as HTML / PDF / DOCX / JSON edits, in Arabic, English or both,
  * one zip (the default) or one folder, with an index (engine/project-export.mjs, /api/project/export). Import: a zip, a folder or several
  * files at once become one project (engine/project-import.mjs, /api/project/upload + /import). Both show a determinate bar (n / total ·
  * document · format) with Stop, then a summary that stays until closed: done / failed / skipped, each failure with its reason, Retry failed
@@ -214,7 +214,7 @@ const PX = (() => {
   const served = location.protocol.startsWith('http');
   const api = async (u, o) => { const r = await fetch(u, o); const b = await r.json().catch(() => ({})); if (!r.ok) throw Object.assign(new Error(b.error || `HTTP ${r.status}`), { body: b, status: r.status }); return b; };
   const post = (u, b) => api(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) });
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const sleep = BWU.sleep;
   const kb = (n) => (n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
   const safe = (s) => String(s || 'document').normalize('NFC').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 80) || 'document';
   /** One dialog whose body is rebuilt in place: ask(html, [[key, label, primary]]) resolves the pressed key ('cancel' when it is dismissed). */
@@ -280,7 +280,7 @@ const PX = (() => {
     e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cdLen, true); e.setUint32(16, pos, true);
     return new Blob([...parts, ...cd, new Uint8Array(e.buffer)], { type: 'application/zip' });
   }
-  const sha256 = async (s) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s).replace(/\r\n/g, '\n'))))].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const sha256 = (s) => BWU.sha256(String(s).replace(/\r\n/g, '\n'));
 
   /* ── export ── */
   const FMT = ['html', 'pdf', 'docx', 'edits'];
@@ -378,7 +378,7 @@ const PX = (() => {
       for (;;) { const batch = await new Promise((res, rej) => r.readEntries(res, rej)); if (!batch.length) break; for (const c of batch) await walkEntry(c, `${prefix}${entry.name}/`, out); }
     }
   }
-  /** 0.16.3: the import report in plain words, counts first, Arabic then English (the engine writes both). */
+  /** the import report in plain words, counts first, Arabic then English (the engine writes both). */
   const planeReport = (r) => (r.report ? `<p class="px-plain" dir="rtl">${esc(r.report.ar)}</p><p class="px-plain" dir="ltr">${esc(r.report.en)}</p>` : '');
   const kindN = (r, k) => (r.skipped || []).filter((x) => x.kind === k).length;
   const skippedOf = (r, k) => (r.skipped || []).filter((x) => x.kind === k).map((x) => `<span dir="ltr">${esc(x.file)}</span>: ${esc(x.reason)}`);
@@ -473,9 +473,9 @@ ${picked.length ? `<table class="px-tbl"><thead><tr><th>${esc(t('pxFile'))}</th>
   }
   return { exportDialog, importDialog, zipStore };
 })();
-/* 0.13.3 the tree: a Settings card shows the save folder's root and opens it (the file manager) with «افتح المجلد / Open folder». */
+/* the tree: a Settings card shows the save folder's root and opens it (the file manager) with «افتح المجلد / Open folder». */
 const TREE_CARD = {
-  id: 'tree', get title() { return S.ui === 'ar' ? 'مجلد الملفات' : 'Files folder'; }, icon: 'prefs', // 0.16.1: each language shows only its own words
+  id: 'tree', get title() { return S.ui === 'ar' ? 'مجلد الملفات' : 'Files folder'; }, icon: 'prefs', // each language shows only its own words
   html: () => `<p class="hint">${S.ui === 'ar' ? 'المستندات · لكل مستند مجلده، وفيه: Exports · Sources · Versions' : 'Documents · one folder per document: Exports · Sources · Versions'}</p><p><code class="tree-root" dir="ltr">…</code></p><div class="btns"><button type="button" class="b" data-tree="open"><span class="i">${ic('secFile')}</span><span class="w">${S.ui === 'ar' ? 'افتح المجلد' : 'Open folder'}</span></button></div>`,
   mount: (el) => {
     if (!el || !location.protocol.startsWith('http')) { el?.querySelector('[data-tree]')?.setAttribute('hidden', ''); return; }

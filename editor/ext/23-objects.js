@@ -1,8 +1,8 @@
-/* WP2 · A15 A23 A24 — objects (0.13.0).
- * A15: the image picked on the page gets «التفاف النص» — Word's seven modes (inline, square, tight, through,
+/* A15 A23 A24 — objects (0.13.0).
+ * the image picked on the page gets «التفاف النص» — Word's seven modes (inline, square, tight, through,
  *      top and bottom, behind, in front); one op each, undoable. inline = back into the flow as a shots block.
- * A23: Insert → «مربع نص»: doc.overlays[] {kind: 'text', text (a leaf, rich allowed), w, h, anchor, wrap, style}.
- * A24: Insert → «جدول» (rows × columns, a header row), «قسم», «فصل»; Ctrl+C / Ctrl+V of a whole block through the
+ * Insert → «مربع نص»: doc.overlays[] {kind: 'text', text (a leaf, rich allowed), w, h, anchor, wrap, style}.
+ * Insert → «جدول» (rows × columns, a header row), «قسم», «فصل»; Ctrl+C / Ctrl+V of a whole block through the
  *      editor's own clipboard (localStorage bw:clip = {kind: 'bw-block', v: 1, block}), across documents and tabs. */
 const W2_CLIP = 'bw:clip';
 const w2ovEnsure = () => (w2doc().overlays ? [] : [{ op: 'replace', path: '/overlays', value: [], old: undefined }]);
@@ -15,7 +15,7 @@ const w2after = () => {
   return { arr: `${sec}/blocks`, at: 0, ptr: null };
 };
 const W2_OBJECTS = {
-  /** A24: rows × cols with a header row, after the selection (or first in the selected/empty section). */
+  /** rows × cols with a header row, after the selection (or first in the selected/empty section). */
   table(rows = 3, cols = 3, where = w2after()) {
     const mk = (ed) => ({ kind: 'table', columns: Array.from({ length: cols }, (_, i) => `${tIn('w2.col', ed)} ${i + 1}`), rows: Array.from({ length: Math.max(1, rows - 1) }, () => Array.from({ length: cols }, () => I18N.doc[ed].none || '—')) }); // each edition's own language (DOCS-02)
     commit([{ op: 'insert', path: `${where.arr}/${where.at}`, value: mk(S.ed), mirrorValue: mk(other(S.ed)) }], { mirror: true });
@@ -35,7 +35,7 @@ const W2_OBJECTS = {
     commit([{ op: 'insert', path: `/chapters/${at}`, value: mk(S.ed), mirrorValue: mk(other(S.ed)) }], { mirror: true });
     return true;
   },
-  /** A23: a text box anchored to the selected block (it gains an id), in front of the text by default. */
+  /** a text box anchored to the selected block (it gains an id), in front of the text by default. */
   textBox(text, opts = {}) {
     // item 6: at the caret (or the start of the highlighted words); else the selected block; else the first one
     const spot = w2caretSpot();
@@ -52,7 +52,7 @@ const W2_OBJECTS = {
     w2showSection('wrap', true); // the wrap tools are there at once, as after an inserted picture (DOCS-07)
     return S.selOv;
   },
-  /** A15: one op. inline turns the overlay into a shots block after its anchor (and back is "square"). */
+  /** one op. inline turns the overlay into a shots block after its anchor (and back is "square"). */
   wrap(i, mode) {
     const d = w2doc();
     const o = (d.overlays || [])[i];
@@ -71,7 +71,7 @@ const W2_OBJECTS = {
     commit([...pre, { op: 'replace', path: `/overlays/${i}`, value: { ...o, mode: 'anchor', anchor, wrap: mode, x: o.mode === 'anchor' ? o.x : 0, y: o.mode === 'anchor' ? o.y : 0 }, old: o }]);
     return true;
   },
-  /** 0.14.0 · O1: «يتحرك مع النص» (text) or «ثابت على الصفحة» (page); one op, undoable. DOCX: the anchor is locked (wp:anchor locked="1"). */
+  /** «يتحرك مع النص» (text) or «ثابت على الصفحة» (page); one op, undoable. DOCX: the anchor is locked (wp:anchor locked="1"). */
   position(i, pos) {
     const o = (w2doc().overlays || [])[i];
     if (!o || o.kind === 'logo' || !['text', 'page'].includes(pos) || (o.pos === 'page' ? 'page' : 'text') === pos) return false;
@@ -102,7 +102,7 @@ const W2_OBJECTS = {
   copy(ptr = S.sel?.b) {
     const b = blockOf(ptr);
     if (!b) return false;
-    const block = JSON.parse(JSON.stringify(get(w2doc(), b.ptr)));
+    const block = BWU.clone(get(w2doc(), b.ptr));
     delete block.id; // a copy is a new block: anchors stay with the original
     ls.set(W2_CLIP, JSON.stringify({ kind: 'bw-block', v: 1, block }));
     toast(t('w2.copied'), 'ok');
@@ -124,7 +124,7 @@ const w2inlinePic = () => { const b = blockOf(S.sel?.b); const blk = b && get(w2
 const w2wrapOn = () => (S.selOv != null && !!(w2doc().overlays || [])[S.selOv] && (w2doc().overlays || [])[S.selOv].kind !== 'logo') || w2inlinePic();
 const PM_anchor = (d, a) => pageModel(d).ids.get(String(a)) || a;
 const W2_WRAP_IDS = WRAPS.map((w) => 'wrap' + w[0].toUpperCase() + w.slice(1));
-/* 0.14.0 · O1: a visible «التفاف النص / Wrap» menu in the selection bar (the seven buttons sat behind «…»):
+/* a visible «التفاف النص / Wrap» menu in the selection bar (the seven buttons sat behind «…»):
  * Word's six modes in one list, plus the position (moves with the text / fixed on the page = `pos`). */
 const W2_PICK_MODES = ['inline', 'square', 'tight', 'topBottom', 'behind', 'front'];
 const W2_MODE_KEY = { inline: 'wrapInline', square: 'wrapSquare', tight: 'wrapTight', through: 'wrapThrough', topBottom: 'wrapTopBottom', behind: 'wrapBehind', front: 'wrapFront' };

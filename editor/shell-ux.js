@@ -89,12 +89,12 @@ function uxIsEmptySpace(el) {
   if (!el.closest?.('#bw-pair')) return false;
   return !el.closest('[data-b], [data-p], .bw-ov, figure[data-dg], .bw-dg-edit, #bw-overlay');
 }
-/** 0.17.8 (O1, owner reversal 2026-11-04): a press on the background around the page (not in the editor UI, not on a page) CLOSES everything open: the ribbon folds,
+/** (O1, owner reversal 2026-11-04): a press on the background around the page (not in the editor UI, not on a page) CLOSES everything open: the ribbon folds,
  *  the side panel, every menu, list, popover, scope menu and diagram pop-up closes (each of those listens to the press itself; this seam folds the ribbon). Takes the event, reads its composed path. */
 function uxBgPress(e) {
   const path = e.composedPath();
   if (path.includes(host)) return false;
-  if (path.some((x) => x.matches?.('main.bw-doc, dialog, [popover], #bw-watermark, #bw-overlay, .bw-ov, .bw-dg-gallery, .bw-dg-edit, #bw-agent-ind, .bw-ru-tip'))) return false; // 0.17.12: a press inside a diagram pop-up (gallery, label editor) is not a press on the background
+  if (path.some((x) => x.matches?.('main.bw-doc, dialog, [popover], #bw-watermark, #bw-overlay, .bw-ov, .bw-dg-gallery, .bw-dg-edit, #bw-agent-ind, .bw-ru-tip'))) return false; // a press inside a diagram pop-up (gallery, label editor) is not a press on the background
   return true;
 }
 window.addEventListener('pointerdown', (e) => { if (uxBgPress(e) && EXT.ribbon && !EXT.ribbon.state.collapsed) EXT.ribbon.collapse(true, { persist: false }); }, true);
@@ -164,7 +164,7 @@ window.addEventListener('resize', () => uxMenusOpen().forEach((m) => uxMenuPlace
 root.addEventListener('toggle', (e) => { const g = e.target; if (g.matches?.('details[data-grp]')) (S.grpOpen ||= {})[g.dataset.grp] = g.open; }, true);
 function uxDrawerGroups(d, kind) {
   if (kind !== 'theme') uxGroup(d, kind);
-  // F2 · 11: every group starts collapsed, so a primary action that needs nothing from its group moves up into the
+  // every group starts collapsed, so a primary action that needs nothing from its group moves up into the
   // header (Design: «شعار»; New document: pick a process model, merge). Actions that read their group's own fields
   // (the crawl's config, the update check + its status, the report's dates) stay beside them.
   const head = d.querySelector(':scope > header');
@@ -205,7 +205,7 @@ window.addEventListener('pointerdown', (e) => {
   closeDrawer();
 }, true);
 
-/* F2 · extra 10: deleting a document from the documents list (10-library.js) offers «تراجع» for 5 s: it comes back
+/* extra 10: deleting a document from the documents list (10-library.js) offers «تراجع» for 5 s: it comes back
  * out of the bin. Listened for here, so the library keeps its own code. */
 root.addEventListener('click', (e) => {
   const b = e.target.closest?.('.drawer [data-lib="del"]');

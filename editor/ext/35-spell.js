@@ -7,8 +7,8 @@
  * A word is checked against the dictionary of its own SCRIPT (Arabic letters -> Ayaspell, Latin -> SCOWL), after tashkeel and tatweel are stripped
  * (the owner rule: visible Arabic is unvowelled). Skipped, never flagged: numbers, ids and codes, URLs, e-mails, ALL-CAPS and camelCase words,
  * single letters, words in code/pre/svg, the technical list (editor/dict/tech.txt) and the user's own dictionary (bw:spell:user).
- * 0.15.2 (owner notes 7-9, 15): ONE switch (bw:spell:on) turns on both dictionaries; S.spell.ar/en stay equal to it (the old per-edition keys are migrated once and kept in step).
- * 0.17.0 (owner notes 2, 12): checking is ON for a new user (an explicit off stays off); the engine's verdict and suggestions are widened and re-ranked in the page (smartCheck, smartSuggest below)
+ * ONE switch (bw:spell:on) turns on both dictionaries; S.spell.ar/en stay equal to it (the old per-edition keys are migrated once and kept in step).
+ * checking is ON for a new user (an explicit off stays off); the engine's verdict and suggestions are widened and re-ranked in the page (smartCheck, smartSuggest below)
  * with the word lists editor/dict/tech.txt, tech.ar.txt (accepted) and common.ar.txt, common.en.txt (a ranking prior only). Seams: EXT.spell.{check,suggest,rawCheck,rawSuggest} for the tests.
  * A click on a misspelt word opens a side panel over the pages (position: fixed, never in the layout flow): the word, up to 6 suggestions, Ignore, Ignore all, Add to dictionary.
  * The Spelling ribbon tab (25-ribbon.js) drives the same functions through the commands spellNext, spellPrev, spellFix, spellFixAll, spellIgnore, spellIgnoreAll, spellAdd, spellCount, spellLang.
@@ -35,7 +35,7 @@ const SP = (() => {
   const setUserWords = (a) => ls.set('bw:spell:user', JSON.stringify([...new Set(a)].sort()));
   /* ONE switch. bw:spell:on wins; a user from 0.15.0/0.15.1 has only the per-edition keys: the switch is on when either was on (an old «Arabic off» never leaves Arabic off for good). */
   const legacy = eds.map((ed) => ls.get(`bw:spell:${ed}`));
-  // 0.17.0 (owner note 2): a new user starts with checking ON; only an explicit off (bw:spell:on = 0, or an old install whose per-edition keys are all 0) stays off.
+  // a new user starts with checking ON; only an explicit off (bw:spell:on = 0, or an old install whose per-edition keys are all 0) stays off.
   let master = ls.get('bw:spell:on') !== null ? ls.get('bw:spell:on') === '1' : legacy.some((v) => v !== null) ? legacy.includes('1') : true;
   const hasSaved = () => ls.get('bw:spell:on') !== null || eds.some((ed) => ls.get(`bw:spell:${ed}`) !== null);
   const enabled = () => master;
@@ -575,7 +575,7 @@ const SP = (() => {
     if (li) li.outerHTML = rowHtml(is);
   }
   function paintSettings() {
-    const c = root.querySelector('.drawer .set-x-spell .set-x-body'); // 0.17.4: the body only, so the card keeps its title and icon
+    const c = root.querySelector('.drawer .set-x-spell .set-x-body'); // the body only, so the card keeps its title and icon
     if (c) c.innerHTML = settingsHtml();
   }
   function loadInfo() {

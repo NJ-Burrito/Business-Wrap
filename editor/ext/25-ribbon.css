@@ -1,4 +1,4 @@
-/* 0.14.0 · UX-RIBBON — the Word-style ribbon (R1), the language + direction pair (R3), the changes button (R4).
+/* UX-RIBBON — the Word-style ribbon (R1), the language + direction pair (R3), the changes button (R4).
  * Colours are the toolbar's own variables only; motion is the toolbar's tokens (calm / reduced → static). */
 
 /* the island is two rows now: the quick strip (brand, document, language+direction, selection shortcuts, changes, palette) and the ribbon */
@@ -11,7 +11,7 @@
 .island:has(> .ribbon) > .brand { order: 0; }
 .island:has(> .ribbon) > .grp.doc { order: 1; border-inline-end: 0; padding-inline-end: 0; }
 .island:has(> .ribbon) > .ctx { order: 3; }
-/* 0.15.6 (Z5), rebuilt 0.15.9: the selection strip is ONE row, the height of the row it sits in, whether or not anything is selected, so picking a shape, an arrow or the
+/* (Z5), rebuilt 0.15.9: the selection strip is ONE row, the height of the row it sits in, whether or not anything is selected, so picking a shape, an arrow or the
  * empty drawing never changes the bar's height. 0.15.6 forced 42 px on a box that is a COLUMN (title above, tools below) and needs 62, so overflow cut the tools in half.
  * Now the title and the tools sit side by side in the 42 px (content box 40, no padding), the strip takes all the free room of its row, and 25-ribbon.js (ctxFit) decides
  * what fits: the title and the words shrink first, then tools move into «More» (a popover, so it is never clipped). Nothing is ever cut: what does not fit is in «More». */
@@ -27,9 +27,9 @@
 .island:has(> .ribbon) > .ctx[data-fit~="nowords"] .sb > .b:not(.ico) > .w { display: none; }
 .island:has(> .ribbon) > .ctx[data-fit~="nowords"] .sb > .b:not(.ico) { padding-inline: 8px; }
 /* narrow windows: the changes counter keeps its number and drops its word so the strip keeps room for «More» */
-/* 0.17.9: the gold Save joined the top row, so with nothing selected the row is full: the palette button is the icon alone up to 1400 px and Save too up to 1000 px, as a selection already makes them (the bar must not change height on select: selection-strip S2) */
+/* the gold Save joined the top row, so with nothing selected the row is full: the palette button is the icon alone up to 1400 px and Save too up to 1000 px, as a selection already makes them (the bar must not change height on select: selection-strip S2) */
 @media (max-width: 1400px) { .island:has(> .ribbon) > .b.cmd .w { display: none; } }
-/* 0.18.4: while something is selected the palette button is the icon alone up to 1800 px (the width where Home is the icon alone), as it already was up to 1700 in ui.css. At 1707 px the strip had 234 px against the 246 its title, zoom keys and More need (Home's icon and a connected server's word «Connected :port» take the rest), so More sat 1.2 px outside it (selection-strip S1); the word gives it 86 px back. No height changes: the button's row is the same. */
+/* while something is selected the palette button is the icon alone up to 1800 px (the width where Home is the icon alone), as it already was up to 1700 in ui.css. At 1707 px the strip had 234 px against the 246 its title, zoom keys and More need (Home's icon and a connected server's word «Connected :port» take the rest), so More sat 1.2 px outside it (selection-strip S1); the word gives it 86 px back. No height changes: the button's row is the same. */
 @media (max-width: 1800px) { .island:has(> .ribbon).has-sel > .b.cmd .w { display: none; } }
 @media (max-width: 1000px) { .island:has(> .ribbon) > .b.bar-save .w { display: none; } }
 @media (max-width: 1140px) { .island:has(> .ribbon) .status .count .w { display: none; } .island:has(> .ribbon) .status .count { padding-inline: 8px; } }
@@ -48,7 +48,7 @@
 .island:has(> .ribbon) > .spacer { order: 4; }
 .island:has(> .ribbon) > .status { order: 5; }
 .island:has(> .ribbon) > .srv-toggle { order: 7; block-size: 40px; box-sizing: border-box; align-self: center; } /* 0.15.0 integration: the server toggle sits at the far end beside the power button, not between the mark and the selector */
-.island:has(> .ribbon) > .b.bar-save { order: 7; } /* 0.17.8 (O7): the gold Save sits in the top bar beside the palette, no longer in the Files group */
+.island:has(> .ribbon) > .b.bar-save { order: 7; } /* the gold Save sits in the top bar beside the palette, no longer in the Files group */
 .island:has(> .ribbon) > .b.cmd { order: 8; }
 .island:has(> .ribbon) > .progress { order: 9; }
 .island:has(> .ribbon) > .ribbon { order: 10; }
@@ -60,7 +60,7 @@
 .island:has(> .ribbon) .seg.ui { margin-inline: 4px 18px; box-shadow: none; }
 .island:has(> .ribbon) > .grp.doc, .island:has(> .ribbon) .seg.ui { align-self: center; }
 
-/* R4 · the changes button: icon + word + count badge, a real button (border, hover lift, press) */
+/* the changes button: icon + word + count badge, a real button (border, hover lift, press) */
 .status .count {
   display: inline-flex; align-items: center; gap: 6px; padding-block: 5px; padding-inline: 11px 6px; min-height: 34px; border-radius: 999px; cursor: pointer;
   border: 1px solid var(--hair); background: color-mix(in srgb, var(--on-glass) 10%, transparent); color: var(--on-glass); font: inherit; font-size: 13px;
@@ -78,7 +78,7 @@
 .status .count:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 :host-context(html[data-bw-calm="1"]) .status .count, :host-context(html[data-bw-calm="1"]) .status .count:hover, :host-context(html[data-bw-calm="1"]) .status .count:active { transition: none; transform: none; }
 
-/* 0.15.0 · the ribbon: tabs centred with an icon and a colour each (note 1), a 64 x 72 grid on an 8 px unit (note 2), no horizontal scroll (note 3),
+/* the ribbon: tabs centred with an icon and a colour each (note 1), a 64 x 72 grid on an 8 px unit (note 2), no horizontal scroll (note 3),
  * a raised selected tab and shaded categories (note 4), a name under every tool (note 5), a re-press folds the ribbon (note 6). */
 .shell { --bw-sec-font: #8fdc8f; --bw-sec-para: #9aa8f5; --bw-sec-table: #d6a0f0; --bw-sec-diagram: #6fd0e0; }
 .ribbon {
@@ -90,7 +90,7 @@
   --rb-c3: color-mix(in srgb, var(--rb-base) 80%, var(--rb-hi) 20%);
   flex: 0 0 100%; min-width: 0; display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--hair); padding-top: 6px; position: relative;
 }
-.rb-bar { display: flex; align-items: flex-end; justify-content: center; block-size: 44px; padding-inline: 52px; /* 0.15.2: 12 general tabs; the same room on both sides keeps the strip centred and clear of the fold chevron (30 px at 16 px) */ box-sizing: border-box; position: relative; }
+.rb-bar { display: flex; align-items: flex-end; justify-content: center; block-size: 44px; padding-inline: 52px; /* 12 general tabs; the same room on both sides keeps the strip centred and clear of the fold chevron (30 px at 16 px) */ box-sizing: border-box; position: relative; }
 .rb-tabs { display: flex; align-items: flex-end; gap: 4px; min-width: 0; }
 .rb-tab {
   flex: none; display: inline-flex; align-items: center; gap: 8px; block-size: 36px; padding-inline: 14px; border: 0; border-radius: 10px 10px 0 0; background: transparent; cursor: pointer;
@@ -110,7 +110,7 @@
 .rb-tab:focus-visible, .rb-col:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
 .rb-tabs.icons .rb-tab:not([aria-selected="true"]) { padding-inline: 10px; }
 .rb-tabs.icons .rb-tab:not([aria-selected="true"]) .rb-tl { display: none; }
-/* 0.15.9: no viewport media query decides the words any more (it dropped them at 1280 px whatever the room); 25-ribbon.js rbFitTabs measures: «tight» first, «icons» only when the words really do not fit */
+/* no viewport media query decides the words any more (it dropped them at 1280 px whatever the room); 25-ribbon.js rbFitTabs measures: «tight» first, «icons» only when the words really do not fit */
 .rb-tabs.tight { gap: 2px; }
 .rb-tabs.icons { gap: 2px; }
 @media (max-width: 959px) { .rb-bar { padding-inline: 8px 48px; } .rb-tabs.icons .rb-tab:not([aria-selected="true"]) { padding-inline: 8px; } }
@@ -127,7 +127,7 @@
   background: linear-gradient(var(--rb-sel) 0 8px, var(--rb-ground) 8px); border-radius: 0 0 12px 12px;
 }
 .rb-panel[hidden] { display: none; }
-.rb-panel[hidden].rb-glide { display: flex !important; } /* 0.15.2: a folding panel stays on screen for the 240 ms glide (25-ribbon.js rbGlide); `hidden` is already true */
+.rb-panel[hidden].rb-glide { display: flex !important; } /* a folding panel stays on screen for the 240 ms glide (25-ribbon.js rbGlide); `hidden` is already true */
 .rb-g { display: flex; flex-direction: column; flex: none; min-width: 0; padding-inline: 8px; border-radius: 8px; background: var(--rb-c1); }
 .rb-g:nth-child(3n+2) { background: var(--rb-c2); }
 .rb-g:nth-child(3n+3) { background: var(--rb-c3); }

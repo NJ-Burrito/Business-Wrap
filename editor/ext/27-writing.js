@@ -63,7 +63,7 @@ function w2wSplit(leaf, n, e = n) {
     { ...leaf, text: leaf.text.slice(e), marks: m.map(([a, b, ...r]) => [Math.max(0, a - e), b - e, ...r]).filter(([a, b]) => b > a) },
   ];
 }
-/** 0.15.6: the house words of the story tables (editor/ext/27-writing.i18n.json; tests/story-template-0156 compares them with templates/e-service/pack.json). */
+/** the house words of the story tables (editor/ext/27-writing.i18n.json; tests/story-template-0156 compares them with templates/e-service/pack.json). */
 const w2sWords = (key, ed) => String(tIn(key, ed)).split('|');
 /** The first `actions` / `dictionary` table (with columns) that a story of this document carries: the design the document already has. */
 const w2sTables = (doc) => {
@@ -115,7 +115,7 @@ const W2_WRITE = {
     commit([{ op: 'replace', path, value: head, old: leaf }, { op: 'insert', path: next, value: tail }], { ed, mirror: false, group });
     return true;
   },
-  /** 0.15.6 (S1): a new user story is a numbered section of its own, in the user-stories chapter (the chapter that holds the document's
+  /** a new user story is a numbered section of its own, in the user-stories chapter (the chapter that holds the document's
    *  `stories` blocks; one is made at the end when there is none, whatever the selection). After the selected section when the selection
    *  is inside that chapter, else at its end (ahead of a closing output story). ONE op, both editions, each in its own language.
    *  @param build (ed, number, first) => {title, blocks}; @returns the pointer of the section's `stories` block. */
@@ -165,7 +165,7 @@ const W2_WRITE = {
     });
     return W2_WRITE.placeSection(build);
   },
-  /** S3: the OUTPUT story: ID card + acceptance, then an «item | value» table (output name, when issued, who receives it); no actions, no dictionary. */
+  /** the OUTPUT story: ID card + acceptance, then an «item | value» table (output name, when issued, who receives it); no actions, no dictionary. */
   addOutputStory() {
     const id = `US-${String(w2wNextId()).padStart(2, '0')}`;
     const build = (ed, num, first) => {
@@ -181,7 +181,7 @@ const W2_WRITE = {
     build.output = true;
     return W2_WRITE.placeSection(build);
   },
-  /** 0.16.0 (spec O): the «المخرجات» / Outputs chapter, added to an older document in ONE undo step (the insert, the renumbering of any annex after it, both
+  /** (spec O): the «المخرجات» / Outputs chapter, added to an older document in ONE undo step (the insert, the renumbering of any annex after it, both
    *  editions): the types and cases (one row), then the fixed and the changing part. Placeholders only; an existing chapter of that title is left alone.
    *  It goes last, ahead of a closing annex. */
   addOutputsChapter() {
@@ -215,7 +215,7 @@ const W2_WRITE = {
     toast(t('w2o.added'), 'ok');
     return `/chapters/${at}`;
   },
-  /** 0.15.1: a story's ID card is a table. One with no `card` yet prints the default (render.mjs storyCardDefault); before its first
+  /** a story's ID card is a table. One with no `card` yet prints the default (render.mjs storyCardDefault); before its first
    *  table edit it is stored: labels as plain text, `{bind}` cells that keep reading and editing the story's own fields. One op. */
   materialiseCard(ptr, ed = S.ed) {
     const sp = String(ptr).replace(/\/card(\/rows)?$/, '');
@@ -377,7 +377,7 @@ bwExt({
     // a typed line break shows in the page at once (the print path has <br>; the editor's leaf keeps its newline until its next render)
     boot: () => w2docCss('w2w-css', 'html.bw-ed #bw-pair :is(span, td, th, p, li, h1, h2, h3, h4, caption, bdi)[data-p] { white-space: pre-line !important; }'),
     keydown: (e) => {
-      // 0.17.0 · Backspace / Delete on a clicked blank line removes that line, as in Word: the line caret (26-lines) takes its place and deletes it,
+      // Backspace / Delete on a clicked blank line removes that line, as in Word: the line caret (26-lines) takes its place and deletes it,
       // so both editions and one undo step come from the same code as the line caret's own Backspace / Delete (an other edition with words there is kept)
       if ((e.key === 'Backspace' || e.key === 'Delete') && !e.isComposing && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && EXT.w2lines) {
         const el = w2leafEl(e.target);
@@ -448,7 +448,7 @@ bwExt({
   },
 });
 
-/* 0.15.3 (doc lane): the words of the Check panel's new findings and fixes (set at load: the base string files belong to other lanes) */
+/* (doc lane): the words of the Check panel's new findings and fixes (set at load: the base string files belong to other lanes) */
 Object.assign(I18N.ui.ar, {
   'doc153.fixRenumber': 'إعادة الترقيم',
   'doc153.vTashkeel': 'تشكيل ظاهر في {n} موضع من النص (لا تشكيل في النص المرئي)',

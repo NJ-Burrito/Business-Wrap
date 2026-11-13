@@ -1,4 +1,4 @@
-/* 0.13.1 final pass #4: an icon in house style (Lucide, as every other tool) on every toolbar and panel button that had
+/* final pass #4: an icon in house style (Lucide, as every other tool) on every toolbar and panel button that had
  * only words: the check panel's «انتقل إليه», the documents list (new, import, open, tab, copy, template, delete), the
  * Changes drawer (back, forward, checkpoint, compare), provenance (tabs, sign, lock, share), Settings (view, learning,
  * profile picture, report), the share result card (open the file location, copy the path), Design (palette import, example, design export/import, CSS apply), history, find, page setup.
@@ -35,13 +35,13 @@ IC.biCopy = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://
 // UI-CHROME-11 (0.13.3): commands that shared a glyph with another command get their own (the 27-writing.js aliases only fill a key nothing defined, so these win; they also survive a vendor-icons regeneration of icons.json)
 const BI_G = (inner) => '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + inner + '</svg>';
 const BI_DASH = '<path d="M3 17h3"/><path d="M10.5 17h3"/><path d="M18 17h3"/>';
-// 0.15.9: the canvas tools of a diagram (Lucide, ISC): fit to the shapes, fit to the page, back to the automatic size
+// the canvas tools of a diagram (Lucide, ISC): fit to the shapes, fit to the page, back to the automatic size
 IC.dgCvShapes = BI_G('<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="8" height="6" x="8" y="9" rx="1"/>');
 IC.dgCvPage = BI_G('<rect width="14" height="20" x="5" y="2" rx="2"/><path d="m9 8 3-3 3 3"/><path d="m9 16 3 3 3-3"/>');
 IC.dgCvAuto = BI_G('<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>');
-// 0.16.0 (D4): the join point (two arrows meeting in one dot); Lucide stroke, ISC house style
+// the join point (two arrows meeting in one dot); Lucide stroke, ISC house style
 IC.dgJoin = BI_G('<path d="M3 6h5a4 4 0 0 1 4 4v2"/><path d="M3 18h5a4 4 0 0 0 4-4v-2"/><path d="M15 12h6"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/>');
-// 0.15.2 note 3: Reading mode had no icon (the command id `reading` found nothing in IC). Lucide book-open (ISC), the house stroke (2 px, round caps) like every other icon; ic('reading') serves the ribbon, the menus, the palette and the exit chip
+// Reading mode had no icon (the command id `reading` found nothing in IC). Lucide book-open (ISC), the house stroke (2 px, round caps) like every other icon; ic('reading') serves the ribbon, the menus, the palette and the exit chip
 IC.reading = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>'; // lucide book-open (ISC)
 Object.assign(IC, {
   pgBreakAdd: BI_G(BI_DASH + '<path d="M12 3v7"/><path d="M8.5 6.5h7"/>'), // a page-break rule with a plus
@@ -58,7 +58,7 @@ Object.assign(IC, {
   biHere: BI_G('<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>'), // lucide map-pin (ISC): from this page on
   pfUser: BI_G('<path d="M18 20a6 6 0 0 0-12 0"/><circle cx="12" cy="10" r="4"/><circle cx="12" cy="12" r="10"/>'), // lucide circle-user-round (ISC): the profile card
   both: BI_G('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 3v18"/>'), // the two editions side by side (was the keep-with-next glyph)
-  // 0.15.6 (A6): the arrow pickers, house stroke; the route glyph is lucide spline (ISC), the rest are drawn here
+  // the arrow pickers, house stroke; the route glyph is lucide spline (ISC), the rest are drawn here
   dgRoute: BI_G('<circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><path d="M5 17A12 12 0 0 1 17 5"/>'),
   dgHead: BI_G('<path d="M4 12h15"/><path d="m13 6 6 6-6 6"/>'),
   dgTail: BI_G('<circle cx="5" cy="12" r="2.2"/><path d="M8 12h13"/>'),
@@ -81,7 +81,7 @@ const BI_MAP = [
   ['[data-palimp]', 'biPalette'], ['[data-palex]', 'biExport'], ['[data-k="texp"]', 'biExport'], ['[data-k="timp"]', 'biImport'], ['[data-k="dcssApply"]', 'biApply'],
   ['[data-k="snap"]', 'biSnap'], ['[data-k="log"]', 'biExport'], ['.drawer [data-k="next"]', 'biNext'], ['.drawer [data-k="all"]', 'biReplaceAll'],
   ['[data-sh="open"]', 'biOpen'], ['[data-sh="copy"]', 'biCopy'],
-  ['[data-fix="singleEdition"][data-fix-arg="both"]', 'both'], ['[data-fix="singleEdition"]', 'edOne'], ['[data-fix]', 'biApply'], // 0.15.3: the Check panel's fixes
+  ['[data-fix="singleEdition"][data-fix-arg="both"]', 'both'], ['[data-fix="singleEdition"]', 'edOne'], ['[data-fix]', 'biApply'], // the Check panel's fixes
   ['[data-w2a="all"]', 'biAllPages'], ['[data-w2a="section"]', 'biSection'], ['[data-w2a="here"]', 'biHere'],
 ];
 /** The buttons left as words on purpose (their label is the value they pick). */
@@ -102,7 +102,7 @@ function biDecorate(scope = root) {
     }
   }
 }
-/** 0.15.2 hover intent: `.ic-rest` goes on a tool 120 ms after the pointer entered it and comes off when it leaves; the icon part moves (40-icon-motion.css)
+/** hover intent: `.ic-rest` goes on a tool 120 ms after the pointer entered it and comes off when it leaves; the icon part moves (40-icon-motion.css)
  *  play on `.ic-rest:hover`, so sweeping across the ribbon starts no animation at all. */
 const IC_REST_MS = 120;
 const IC_REST_SEL = 'button, summary, [role="option"], .sc, label.chk, label.set-chk, a.b';
@@ -142,7 +142,7 @@ bwExt({
   },
   expose: { buttonIcons: { map: BI_MAP, words: BI_WORDS, decorate: biDecorate } },
 });
-/* 0.16.2 note J: Justify Low / Medium / High (three lines, the bottom bar is the stretch level) */
+/* note J: Justify Low / Medium / High (three lines, the bottom bar is the stretch level) */
 IC.fmtJustifyLow = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18"/><path d="M3 9h18"/><path d="M3 14h18"/><path d="M3 20h5"/></svg>';
 IC.fmtJustifyMedium = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18"/><path d="M3 9h18"/><path d="M3 14h18"/><path d="M3 20h10"/></svg>';
 IC.fmtJustifyHigh = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18"/><path d="M3 9h18"/><path d="M3 14h18"/><path d="M3 20h18"/></svg>';

@@ -58,7 +58,7 @@
 /* hierarchy: the one primary action on the glass is a gold fill with a navy label; everything else stays quiet */
 .island .b.primary { box-shadow: 0 0 0 1px color-mix(in srgb, var(--bw-accent) 45%, transparent); }
 .island .b.primary:hover:not(:disabled) { transform: translateY(-1px); }
-/* 0.17.13 (owner note): the top-bar Save. Resting fill is the accent deepened 8 % toward black (navy label 5.4:1 light, 7.4:1 dark); hover goes DEEPER (14 %, 4.7:1 light, 6.5:1 dark), never lighter, so there is no glare on a bright fill;
+/* the top-bar Save. Resting fill is the accent deepened 8 % toward black (navy label 5.4:1 light, 7.4:1 dark); hover goes DEEPER (14 %, 4.7:1 light, 6.5:1 dark), never lighter, so there is no glare on a bright fill;
  * the icon keeps the label colour on hover (the shared --ic-hot is the accent, which vanished on a gold fill); a ring in the glass text colour marks keyboard focus (the island's --focus is the accent, gold on gold) */
 .island .b.primary.bar-save { --ic-hot: var(--bw-on-accent); background: color-mix(in srgb, var(--bw-accent) 92%, black) !important; color: var(--bw-on-accent) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, black 14%, transparent); transition: background-color var(--bw-dur-fast, .18s) var(--bw-ease-out, ease-out), transform .42s var(--e-spring, ease-out); }
 .island .b.primary.bar-save:hover:not(:disabled) { background: color-mix(in srgb, var(--bw-accent) 86%, black) !important; transform: none; }
@@ -163,7 +163,7 @@
   .bw-i .hl { fill: CanvasText; }
 }
 
-/* 0.15.0 note 8 · top-bar spacing. Three clusters on one 8 px grid, inline-start to inline-end: the mark (40 x 40) · 16 · the document picker
+/* top-bar spacing. Three clusters on one 8 px grid, inline-start to inline-end: the mark (40 x 40) · 16 · the document picker
    · 24 · language pill · 12 · direction pill · 24 · changes (the server toggle follows it 16 px on, its own rule). The two pills are
    separate (no -6 px overlap, no inset line), 8 px between their buttons, a 1 x 24 hairline in the middle of each 24 / 12 px gap.
    These rules out-rank the 0.14 pair rules of ext/25-ribbon.css (R3) by specificity, whatever order the files load in. */
@@ -180,7 +180,7 @@
 .shell .island:has(> .ribbon) > .status { order: 3; margin-inline-start: 24px; position: relative; align-self: center; }
 .shell .island:has(> .ribbon) > .status::before { inset-inline-start: -12px; }
 
-/* 0.15.0 perf booster 1 (out/qa-0.15.0/perf/engineer.md section 2): a hover cost 70 to 95 ms of main-thread CPU because every colour, background,
+/* perf booster 1 (out/qa-0.15.0/perf/engineer.md section 2): a hover cost 70 to 95 ms of main-thread CPU because every colour, background,
    border and shadow change on a button ran as a transition on the main thread (each frame a style recalc and a repaint) next to the icon's move.
    Measured on this build: all button transitions off = 94 -> 55 ms per hover. State changes (hover, selected, pressed) are now instant; only the
    press scale keeps its spring (transform, released over 360 ms after a click, never on hover). The icon's own move is the one hover motion. */

@@ -1,4 +1,4 @@
-/* 0.15.0 note 14 · the dim navy dark mode (owner: "dark is too blue, it should be dark and dim").
+/* the dim navy dark mode (owner: "dark is too blue, it should be dark and dim").
    The brand v3 dark set (brand/v3/tokens-v3.css) is the cover navy #001e3d / #002d5c / #003c7a: saturated royal blue, relative luminance
    0.0127 for the desk. The editor's dark chrome now uses a desaturated, darker ramp (desk #0c1729 = 0.0078). Only the tool's own
    chrome moves: the generated brand tokens stay as they are (the release agent folds these values into palette/tokens.json later), the

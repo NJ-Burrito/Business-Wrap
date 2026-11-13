@@ -15,7 +15,7 @@
  * Turning it OFF in that tab asks the host (POST /api/servers/stop {returnTo:{x,y,w,h,file}}) to open the editor from disk as a new window at this window's
  * screenX / screenY / outerWidth / outerHeight before it ends (an http page cannot navigate to file://), then the served tab closes itself (window.close works
  * on a tab whose history holds one page, which location.replace keeps true). A served tab that did not come from disk behaves as before: «Offline», the page stays.
- * 0.19.0: the start page shows THIS control too (editor/ext/51-start-host.js mounts SB.html('start') in its bar; SB.draw() patches every .srv-toggle, so there is one state). A page that moves to another host page while the start page is open
+ * the start page shows THIS control too (editor/ext/51-start-host.js mounts SB.html('start') in its bar; SB.draw() patches every .srv-toggle, so there is one state). A page that moves to another host page while the start page is open
  * asks to land on it again (?bwstart=1, landQuery). Contract for other lanes: window event `bw:server` {detail:{online}} on every change of the answer; `bw:wm` W07 (went online) / W08 (went offline)
  * on a real transition only; <html data-bw-server="online|offline|starting|stopping|error|checking"> for tests. */
 const SB = (() => {
@@ -33,7 +33,7 @@ const SB = (() => {
     } catch { return null; }
   })();
   const diskQuery = (file) => `?via=disk&from=${encodeURIComponent(file || '')}`;
-  /** 0.19.0: a page that was on the start page when it moved to another host page (the file:// page following the served host, a served page following a restarted host) asks to land on the start page again (51-start-host.js reads and drops it). */
+  /** a page that was on the start page when it moved to another host page (the file:// page following the served host, a served page following a restarted host) asks to land on the start page again (51-start-host.js reads and drops it). */
   const landQuery = (hasQuery) => (document.documentElement.dataset.bwStart === 'open' ? `${hasQuery ? '&' : '?'}bwstart=1` : '');
   const SPIN = '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>'; // Lucide loader-circle (ISC)
   const st = { mode: served() ? 'online' : 'checking', port: served() ? Number(location.port) || 80 : 0, note: '', pulse: false, known: served(), answered: null };
@@ -46,7 +46,7 @@ const SB = (() => {
     const m = st.mode;
     const online = m === 'online';
     const refused = online && jobRunning();
-    const tk = where === 'start' ? 'sth' : 'sv'; // 0.19.0: the start page (51-start-host.js) shows this same markup with its own two tooltips (what happens to the page)
+    const tk = where === 'start' ? 'sth' : 'sv'; // the start page (51-start-host.js) shows this same markup with its own two tooltips (what happens to the page)
     const tip = refused ? t('sv.tipBusy') : st.note && (m === 'error' || m === 'offline') ? st.note : online ? t(`${tk}.tipOn`) : m === 'offline' || m === 'error' ? t(`${tk}.tipOff`) : word();
     const dot = isBusy() ? `<span class="srv-dot" aria-hidden="true">${SPIN}</span>` : '<span class="srv-dot" aria-hidden="true"></span>';
     return `<button type="button" class="srv-toggle" data-k="srvToggle"${where === 'top' ? ' data-x="srvHost"' : ''} data-where="${where}" data-st="${m}" data-pulse="${st.pulse ? '1' : '0'}" role="switch" aria-checked="${online ? 'true' : 'false'}"${isBusy() ? ' aria-busy="true" disabled' : ''}${refused ? ' aria-disabled="true"' : ''} title="${esc(tip)}" aria-label="${esc(`${t('sv.label')}: ${word()}`)}">${dot}<span class="srv-w">${esc(word())}</span><span class="srv-track" aria-hidden="true"><i class="srv-thumb"></i></span></button>`;
@@ -61,7 +61,7 @@ const SB = (() => {
     });
     measureBar(true);
   }
-  /** 0.17.13: after a state change, and after an «online» answer in the first 20 s of a page's life (a host that is stopping can still answer once), ask again every 1.5 s for 15 s before relaxing to the 10 s beat. */
+  /** after a state change, and after an «online» answer in the first 20 s of a page's life (a host that is stopping can still answer once), ask again every 1.5 s for 15 s before relaxing to the 10 s beat. */
   let fastUntil = 0, fastT = 0;
   function fast() {
     fastUntil = Date.now() + 15000;
@@ -92,9 +92,9 @@ const SB = (() => {
       try {
         const j = await (await fetch('/api/version', { cache: 'no-store', signal: AbortSignal.timeout(slow ? 2500 : 6000) })).json();
         slow = 0;
-        if (j) return j.stopping ? [] : [Number(location.port) || 80]; // 0.17.13: a host that says it is stopping is already gone
+        if (j) return j.stopping ? [] : [Number(location.port) || 80]; // a host that says it is stopping is already gone
       } catch (e) {
-        // 0.17.13: a refused connection means the host is gone (fall through at once to the other ports); a timeout is slow, not dead, once - the second in a row, with no export running, counts as gone
+        // a refused connection means the host is gone (fall through at once to the other ports); a timeout is slow, not dead, once - the second in a row, with no export running, counts as gone
         if (e?.name === 'TimeoutError' || e?.name === 'AbortError') { slow += 1; if (slow < 2 || jobRunning()) { fast(); return null; } }
       }
     }
@@ -119,7 +119,7 @@ const SB = (() => {
     if (isBusy() || SRV.busy) return;
     SRV.busy = true;
     set('starting');
-    // 0.17.7: a browser asks before it hands business-wrap: to another program, once per page ORIGIN (a file:// editor and the served http://127.0.0.1:<port> tab are two origins);
+    // a browser asks before it hands business-wrap: to another program, once per page ORIGIN (a file:// editor and the served http://127.0.0.1:<port> tab are two origins);
     // the box is easy to miss, so a host that has not answered after a few seconds gets one plain hint instead of a silent wait.
     const hint = setTimeout(() => { if (st.mode === 'starting') toast(t('sv.allowHint'), 'info', { ms: 12000 }); }, 3500);
     let r;

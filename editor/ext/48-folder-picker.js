@@ -1,4 +1,4 @@
-/* 0.15.9 P1/P3: the folder picker, an in-editor panel (no native dialog). Its whole state is HOST state (engine/workspace.mjs
+/* P1/P3: the folder picker, an in-editor panel (no native dialog). Its whole state is HOST state (engine/workspace.mjs
  * pickerOpen / pickerGo / pickerMkdir / pickerChoose / pickerCancel; routes POST /api/workspace/picker/<verb>), so this panel, the MCP
  * tools (picker_*) and the CLI (`picker`) see one picker and any of them can finish it. The panel only draws what the host says:
  *   - open: a long-poll (picker/wait, 20 s) returns the moment anyone changes it, so an agent's moves appear live;
@@ -135,7 +135,7 @@ const FOLDER_ICONS = {"root": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox
     } catch { /* the card refreshes on the next open */ }
   }
 
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const sleep = BWU.sleep;
   async function loop() {
     for (;;) {
       try {

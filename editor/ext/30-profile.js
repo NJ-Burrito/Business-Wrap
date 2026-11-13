@@ -8,7 +8,7 @@ const PF = {
   get() { try { return JSON.parse(ls.get(PF_KEY) || 'null'); } catch { return null; } },
   set(p) { ls.set(PF_KEY, JSON.stringify({ ...(PF.get() || {}), ...p })); PF.keep(); },
   id() { let id = ls.get('bw:actor'); if (!id) { id = crypto.randomUUID(); ls.set('bw:actor', id); PF.keep(); } return id; },
-  /** H3: the host keeps a copy at once (.local/profile.json + HISTORY\profile.json.gz): a relaunch on another port, a lost
+  /** the host keeps a copy at once (.local/profile.json + HISTORY\profile.json.gz): a relaunch on another port, a lost
    *  browser storage or an update into a new folder finds the owner there (GET /api/profile) instead of asking again. */
   keep() { if (location.protocol.startsWith('http') && ls.get(PF_KEY)) fetch('/api/profile', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ profile: ls.get(PF_KEY), actor: ls.get('bw:actor') || '' }) }).catch(() => {}); },
   /** The host's copy into an empty browser storage; true when there was one. */

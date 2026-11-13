@@ -1,4 +1,4 @@
-/* 0.13.1 final pass #4: the icons 42-button-icons.js gives the panel buttons that had only words. Same house style and
+/* final pass #4: the icons 42-button-icons.js gives the panel buttons that had only words. Same house style and
    timings as 40-icon-motion.css (its keyframes): one move, once, on hover, keyboard focus and press. Calm mode and
    reduced motion: nothing moves (the rules at the end of 40-icon-motion.css cover these icons too). */
 button > .bi-i { inline-size: 18px; block-size: 18px; margin-inline-end: 4px; vertical-align: -3px; }

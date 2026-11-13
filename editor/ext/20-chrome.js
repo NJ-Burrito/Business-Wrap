@@ -1,4 +1,4 @@
-/* WP2 · A5 A6 — the Header «الترويسة» and Footer «التذييل» toolbar sections (0.13.0).
+/* A5 A6 — the Header «الترويسة» and Footer «التذييل» toolbar sections (0.13.0).
  * doc.chrome = { header: {items}, footer: {items} }; Item = {id, kind: text|field|logo|page, value, align, scope, anchor?}.
  * No doc.chrome = the 0.12.0 band; the first edit materialises today's band as items (chromeDefaults), so nothing moves.
  * On screen: each document shows its bands as an editable strip above the body (the per-page frames are views.js's,
@@ -67,7 +67,7 @@ const W2_CHROME = {
     w2commit([...pre, ins], { group });
     if (item.kind === 'logo' && S.both && hasOther()) { // a logo has no language: both editions print it (DOCS-04); the second commit is the same undo step
       const o = other(S.ed), e = cur(o), n0 = e.ops.length;
-      commit([...(e.doc.chrome ? [] : [{ op: 'replace', path: '/chrome', value: chromeDefaults(o), old: undefined }]), JSON.parse(JSON.stringify(ins))], { ed: o, mirror: false, rerender: false, group });
+      commit([...(e.doc.chrome ? [] : [{ op: 'replace', path: '/chrome', value: chromeDefaults(o), old: undefined }]), BWU.clone(ins)], { ed: o, mirror: false, rerender: false, group });
       e.ops.slice(n0).forEach((op, k) => { op.id = `${group}.m${k}`; });
     }
     W2.sel = { part, i: n, pageB: S.sel?.b || w2pageBlock(null) }; // F2 · 28: "this page" = where it was added
@@ -90,7 +90,7 @@ const W2_CHROME = {
     W2.sel = null;
     undoToast(t('ux.deletedItem'), () => w2commit([{ op: 'insert', path: `/chrome/${part}/items/${i}`, value: old }]));
   },
-  /** A6: every page / this page only / from this page on — anchored to the selected block (it gains an id). */
+  /** every page / this page only / from this page on — anchored to the selected block (it gains an id). */
   scope(part, i, scope, blockPtr) {
     const pre = [];
     this.ensure(pre);
@@ -99,7 +99,7 @@ const W2_CHROME = {
     const next = { ...old, scope };
     if (scope === 'all') delete next.anchor;
     else {
-      // F2 · 28: the page the item was picked on (no block selection needed); a block pointer, when given, wins
+      // the page the item was picked on (no block selection needed); a block pointer, when given, wins
       const b = blockOf(blockPtr || W2.sel?.pageB || S.sel?.b || w2pageBlock(null));
       if (!b) { toast(t('w2.needBlock'), 'warn'); return false; }
       next.anchor = w2blockId(b.ptr, pre);
@@ -128,7 +128,7 @@ async function w2chromeAction(id) {
   }
 }
 const W2_ITEM_OPS = ['Start', 'Center', 'End', 'Delete', 'Scope'];
-// A5: two sections, as asked: «الترويسة» (header) and «التذييل» (footer); each carries its own item tools.
+// two sections, as asked: «الترويسة» (header) and «التذييل» (footer); each carries its own item tools.
 // The ch* ids stay as actions (scripts, older palettes): they work on the picked item, whichever band it is in.
 const W2_HDR_IDS = ['hdrText', 'hdrField', 'hdrLogo', ...W2_ITEM_OPS.map((o) => 'hdr' + o)];
 const W2_FTR_IDS = ['ftrText', 'ftrField', 'hdrConf', ...W2_ITEM_OPS.map((o) => 'ftr' + o)];
@@ -224,7 +224,7 @@ bwExt({
     render: () => w2strip(),
   },
 });
-/** F2 · 28: the block that stands for "this page": the first block of the page frame the item sits on (paged view),
+/** the block that stands for "this page": the first block of the page frame the item sits on (paged view),
  *  else the block selected last, else the first block in view. */
 function w2pageBlock(el) {
   const main = mainOf(S.ed);
@@ -251,5 +251,5 @@ document.addEventListener('input', (e) => {
 });
 document.addEventListener('focusout', (e) => { if (e.target.closest?.('#bw-pair :is(.w2-strip, .bw-runs) [data-w2p]')) render(); });
 
-// 0.17.0 (note 4): the top-bar «view» control (the display popover: page mode, zoom, compare, look) is a screen, not the ribbon View tab's eye. lucide monitor (ISC).
+// the top-bar «view» control (the display popover: page mode, zoom, compare, look) is a screen, not the ribbon View tab's eye. lucide monitor (ISC).
 Object.assign(IC, { view: '<svg aria-hidden="true" focusable="false" class="ic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>' });

@@ -1,4 +1,4 @@
-/* 0.14.0 A2 · waiting popup: top-centre under the toolbar, away from the page pill, the toasts and the side panels. */
+/* waiting popup: top-centre under the toolbar, away from the page pill, the toasts and the side panels. */
 .bw-busy {
   position: fixed; z-index: 55; inset-block-start: calc(var(--bw-bar-h, 72px) + 10px); inset-inline-start: 50%; translate: -50% 0; display: inline-flex; align-items: center; gap: 10px;
   max-inline-size: min(520px, 92vw); padding: 10px 16px; border-radius: 16px; background: var(--deep); color: var(--on-glass); box-shadow: var(--bw-shadow-3); animation: pop-in .3s var(--e-spring) both;
@@ -11,7 +11,7 @@
 @keyframes bz-spin { to { rotate: 360deg; } }
 :host([data-reading]) .bw-busy { inset-block-start: 12px; }
 html[data-bw-calm="1"] .bw-busy .bz-sp, .shell[data-calm="1"] .bw-busy .bz-sp { animation: none; }
-/* 0.17.8 O5 · loading screen: a long phase swaps the small card for this, in the tool's colours; the scrim lets clicks through (it never traps the page). */
+/* loading screen: a long phase swaps the small card for this, in the tool's colours; the scrim lets clicks through (it never traps the page). */
 .bw-load { position: fixed; z-index: 56; inset: 0; display: grid; place-items: center; background: color-mix(in srgb, var(--deep) 42%, transparent); backdrop-filter: blur(2px); pointer-events: none; animation: bl-in .25s ease both; }
 .bw-load[hidden] { display: none; }
 .bw-load .bl-box { pointer-events: auto; display: grid; justify-items: center; gap: 12px; min-inline-size: min(360px, 86vw); max-inline-size: min(480px, 92vw); padding: 28px 32px; border-radius: 22px; background: var(--deep); color: var(--on-glass); box-shadow: var(--bw-shadow-3); text-align: center; }

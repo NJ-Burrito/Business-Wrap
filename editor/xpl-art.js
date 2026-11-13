@@ -5,7 +5,7 @@
  * from "before" through "action" to "after" in 2.4 s, and calm / reduced motion simply stops on the end state.
  * Scenes are families with variants (save:copy, fmt:bold, dg:align.l…); XPL_MAP assigns every id to one. A tool that has an icon
  * in editor/icons.json shows it in the corner badge; a tool without one shows the recipe's fallback icon (never a blank).
- * 0.17.10 redraw: every drawing sits in a miniature of the real tool (navy top bar with tabs, a ribbon with one lit button, the canvas),
+ * redraw: every drawing sits in a miniature of the real tool (navy top bar with tabs, a ribbon with one lit button, the canvas),
  * a cursor glides to the lit button and presses it, then the scene plays before -> action -> after, and a small gold payoff (ring,
  * sparkles, badge pop) closes the loop. Depth comes from CSS (soft shadows, gloss lines, a light sweep), never from gradients or ids
  * (a gradient inside a hidden <svg> would not resolve), so the strings stay free of colours. Calm shows the end state: the CSS in
@@ -330,7 +330,7 @@ const XPL_SCENES = {
       case 'align': {
         const ws = [70, 84, 60, 78, 40];
         const p = xaEnd(a), jw = a[0] === 'j' ? ws.map((w, i) => (i === 4 ? 56 : 88)) : ws;
-        // 0.16.2 note J: jl / jm / jh = Justify Low / Medium / High: the stretch drawn as accent bars inside the full lines (1, 2, 3 per line)
+        // note J: jl / jm / jh = Justify Low / Medium / High: the stretch drawn as accent bars inside the full lines (1, 2, 3 per line)
         if (a.length === 2 && a[0] === 'j') {
           const nb = { l: 1, m: 2, h: 3 }[a[1]];
           return sheet + jw.map((w, i) => xaLn(36, 22 + i * 10, w)).join('') + jw.slice(0, 4).map((w, i) => [...Array(nb)].map((_, k) => xaR('ac k-grow', 46 + k * (w / (nb + 0.4)) * 0.9, 22.6 + i * 10, 10 + nb * 3, 2.8, 1.4, xaSc(0, 1, 'left center'))).join('')).join('');
