@@ -21,7 +21,11 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const LISTEN = path.join(HERE, '..', 'listen', 'listen.py');
 const OCR = path.join(HERE, 'ocr.py');
 const OCR_DEPS = ['rapidocr[rtl]', 'onnxruntime', 'pillow'];
-const LISTEN_DEPS = ['openvino-genai', 'sherpa-onnx', 'soundfile', 'numpy', 'huggingface_hub'];
+const LISTEN_BASE = ['openvino-genai', 'sherpa-onnx', 'soundfile', 'numpy', 'huggingface_hub'];
+// An NVIDIA card: Whisper runs through faster-whisper on CUDA (RTF 0.08 on an RTX 2060 vs ~4.5 on that machine's CPU).
+const CUDA_DEPS = ['faster-whisper', 'nvidia-cublas-cu12', 'nvidia-cudnn-cu12<10'];
+let nvidia;
+const listenDeps = () => { if (nvidia === undefined) nvidia = spawnSync('nvidia-smi', ['-L'], { stdio: 'ignore', windowsHide: true }).status === 0; return nvidia ? [...LISTEN_BASE, ...CUDA_DEPS] : LISTEN_BASE; };
 
 export const KINDS = {
   media: /\.(mp3|wav|m4a|ogg|opus|flac|aac|wma|amr|mp4|mkv|mov|webm|avi|m4v)$/i,
@@ -168,7 +172,7 @@ function runMedia(id, job) {
   const dir = dirOf(id), work = path.join(dir, 'work');
   const media = fs.existsSync(job.input) ? job.input : path.join(inputDir(id), fs.readdirSync(inputDir(id))[0] || '');
   const args = [LISTEN, 'run', media, work, ...(job.prompt ? ['--prompt', job.prompt] : []), ...(fs.existsSync(path.join(dir, 'enroll.json')) ? ['--enroll', path.join(dir, 'enroll.json')] : [])];
-  const [cmd, a] = py(args, LISTEN_DEPS);
+  const [cmd, a] = py(args, listenDeps());
   const child = spawn(cmd, a, { cwd: dir, windowsHide: true, env: { ...process.env, PYTHONUTF8: '1' } });
   running.set(id, child);
   let buf = '', err = '';

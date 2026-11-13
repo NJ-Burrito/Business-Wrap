@@ -1,10 +1,11 @@
 """Business-Wrap listen engine (nj-listen): meeting audio/video -> who said what, when.
 
 Local, free and open source: ffmpeg, Silero VAD + pyannote-segmentation-3.0 + CAM++ / ERes2Net (sherpa-onnx,
-Apache-2.0 / MIT), Whisper large-v3-turbo int8 on the Intel iGPU through OpenVINO GenAI (MIT / Apache-2.0).
+Apache-2.0 / MIT), Whisper large-v3-turbo on an NVIDIA GPU through faster-whisper (MIT), else int8 on the Intel iGPU or CPU through
+OpenVINO GenAI (MIT / Apache-2.0). Speakers: pyannote segments, regrouped on ERes2Net voiceprints.
 No cloud call. Claude reads the result (dialect clean-up, English terms, facts) in the session that drives Business-Wrap.
 
-  python listen.py run <media> <out_dir> [--prompt TEXT] [--enroll enroll.json] [--device GPU|CPU]
+  python listen.py run <media> <out_dir> [--prompt TEXT] [--enroll enroll.json] [--device auto|CUDA|GPU|CPU]
   python listen.py probe <media> <out_dir>          streams, tracks, duration         -> probe.json
   python listen.py prep <media> <out_dir>           16 kHz mono wav per track          -> track-<n>.wav
   python listen.py sweep <out_dir>                  speech regions + chunks (VAD)      -> sweep.json
@@ -16,18 +17,28 @@ No cloud call. Claude reads the result (dialect clean-up, English terms, facts) 
 Every stage writes its checkpoint into <out_dir>; `run` skips a stage whose checkpoint exists (resume after a stop).
 Progress: one JSON line per event on stdout, {"stage": ..., "done": n, "total": m, "msg": ...}.
 Stop: create <out_dir>/STOP; the running stage ends at the next chunk and exits 3. Pause: <out_dir>/PAUSE (waits).
+RTX 2060 (2026-11-13): 10 min of an Egyptian/Gulf talk show in 1.2 min end to end, two voices apart.
 Measured on an i5-1334U + Iris Xe (2026-11-12): 49.8 min of Jordanian-dialect audio in 18.8 min; 2 h ~ 45 min.
 """
 import json, os, re, subprocess, sys, time, urllib.request
 from pathlib import Path
 
 SR = 16000
-CHUNK_MAX, GAP_MERGE = 28.0, 0.6            # Whisper window; merge VAD gaps under this
+# Whisper window; merge VAD gaps under GAP_MERGE. 0.6 s left 1-3 s fragments that Whisper turned into nonsense
+# (a 2 h Egyptian/Gulf talk show, 10-min clip, 2026-11-13: 99 chunks, ~15 of them junk); 1.5 s gave 53 chunks of whole sentences.
+CHUNK_MAX, GAP_MERGE = 28.0, 1.5
+SHORT = 2.0                                  # a chunk shorter than this is doubtful on its own
+# Whisper's stock hallucinations on music or silence (normalised: no punctuation, no tashkeel); a chunk that is only this is dropped.
+HALLUCINATIONS = {'اشتركوا في القناة', 'لا تنسوا الاشتراك في القناة', 'ترجمة نانسي قنقر', 'شكرا للمشاهدة', 'شكرا لكم على المشاهدة',
+                  'thanks for watching', 'thank you for watching', 'subscribe to the channel', 'please subscribe'}
+NO_SPEECH, LOW_LOGPROB = 0.6, -1.0           # faster-whisper: a segment with both is silence read as words
 # ERes2Net base, open-set test 2026-11-13 (3 people, 157 genuine + 157 un-enrolled segments, leave-one-out):
 # an un-enrolled voice scored at most 0.57; at 0.53 4/157 got a name, at 0.58-0.62 none, with the same 118/157 named right.
 MIN_SIM, MARGIN, MIN_LEN = 0.60, 0.08, 1.0
 LOOP_SHARE = 0.35                            # a chunk whose most frequent word is > 35% of its words is a decoding loop
-ASR_REPO = 'OpenVINO/whisper-large-v3-turbo-int8-ov'
+ASR_REPO = 'OpenVINO/whisper-large-v3-turbo-int8-ov'   # Intel iGPU / CPU
+ASR_CUDA = 'large-v3-turbo'                              # the same model through faster-whisper (CTranslate2) on an NVIDIA GPU
+# Measured 2026-11-13, RTX 2060, float16: 8.0 min of speech in 38 s (RTF 0.078); OpenVINO on that machine's CPU: RTF ~4.5.
 SHERPA = 'https://github.com/k2-fsa/sherpa-onnx/releases/download'
 MODELS = {
     'vad': f'{SHERPA}/asr-models/silero_vad.onnx',
@@ -81,6 +92,19 @@ def collapse(text):
     return untatweel(re.sub(r'(\S+)(?:\s+\1){2,}', r'\1', text))
 
 
+def norm(text):
+    return ' '.join(re.sub(r'[ً-ْـ]', '', re.sub(r'[^\w\s]', ' ', text.lower())).split())
+
+
+def is_hallucination(text):
+    return norm(text) in HALLUCINATIONS
+
+
+def doubtful(text, dur):
+    """A short chunk, or a letter stretched 4+ times («اووووو»), is shown but not trusted."""
+    return dur < SHORT or bool(re.search(r'(\w)\1{3,}', text))
+
+
 def overlap_owner(start, end, spans):
     """spans: [(a, b, label)] -> (label with most overlap or None, labels with > 2 s overlap)."""
     ov = {}
@@ -104,6 +128,15 @@ def selftest():
     assert collapse('تعمل على على على على') == 'تعمل على'
     assert collapse('الـــــــــــ') == 'الـ'
     assert untatweel('قال الـــــــــمدير لا لا لا') == 'قال الـمدير لا لا لا'  # no word loop: only the tatweel run goes
+    assert is_hallucination('اشتركوا في القناة.') and is_hallucination('Thanks for watching!') and not is_hallucination('اشتركوا في القناة الثانية')
+    assert doubtful('اووووو', 5.0) and doubtful('يعني', 0.9) and not doubtful('يعني ما كانش الأسرة السعيدة', 5.0)
+    assert merge_regions([[0, 3], [4.2, 6]]) == [[0, 6]]                     # a 1.2 s pause no longer splits a sentence
+    try:
+        import numpy as np
+        u = lambda *v: np.array(v, float) / np.linalg.norm(v)
+        E = np.stack([u(1, 0, 0), u(0.95, 0.1, 0), u(0, 1, 0), u(0.1, 0.95, 0), u(0, 0, 1)])
+        assert regroup(E, np.array([20, 20, 15, 15, 3.0]))[:4] == [0, 0, 1, 1]   # two voices kept apart, the 3 s crumb joins one
+    except ImportError: pass
     assert overlap_owner(0, 10, [(0, 3, 'a'), (3, 10, 'b')]) == ('b', ['a', 'b'])
     assert overlap_owner(0, 1, [(5, 6, 'a')]) == (None, [])
     assert pick_name([0.9, 0.3], ['x', 'y']) == 'x'
@@ -176,34 +209,67 @@ def sweep(out):
     save(out, 'sweep.json', {'tracks': res})
 
 
-def transcribe(out, prompt='', device='GPU'):
+def cuda_ok():
+    """An NVIDIA GPU that CTranslate2 can use (the nvidia-* wheels keep their DLLs in nvidia/*/bin on Windows)."""
+    try:
+        import glob, site
+        for sp in set(sys.path + site.getsitepackages()):
+            for b in glob.glob(os.path.join(sp, 'nvidia', '*', 'bin')):
+                os.add_dll_directory(b); os.environ['PATH'] = b + os.pathsep + os.environ['PATH']
+        import ctranslate2
+        return ctranslate2.get_cuda_device_count() > 0
+    except Exception:
+        return False
+
+
+def asr_engine(device, prompt):
+    """-> (name, device, read(audio) -> (text, silent)). device: auto | CUDA | GPU (Intel, OpenVINO) | CPU."""
+    if device in ('auto', 'CUDA') and cuda_ok():
+        from faster_whisper import WhisperModel
+        m = WhisperModel(ASR_CUDA, device='cuda', compute_type='float16')
+
+        def read(audio):
+            parts, _ = m.transcribe(audio, language='ar', beam_size=5, vad_filter=False, condition_on_previous_text=False,
+                                    initial_prompt=prompt or None, no_repeat_ngram_size=4, repetition_penalty=1.1)
+            keep = [p for p in parts if not (p.no_speech_prob > NO_SPEECH and p.avg_logprob < LOW_LOGPROB)]
+            return ' '.join(p.text.strip() for p in keep), not keep
+        return f'faster-whisper {ASR_CUDA}', 'CUDA', read
+    if device == 'CUDA': say('transcribe', msg='no NVIDIA GPU, trying OpenVINO')
     import openvino_genai as og
     from huggingface_hub import snapshot_download
+    dev = 'CPU' if device == 'CPU' else 'GPU'
+    try: pipe = og.WhisperPipeline(snapshot_download(ASR_REPO), dev, CACHE_DIR=str(CACHE / 'ov-cache'))
+    except Exception:
+        if dev == 'CPU': raise
+        say('transcribe', msg='GPU not available, using CPU'); dev = 'CPU'; pipe = og.WhisperPipeline(snapshot_download(ASR_REPO), 'CPU')
+    gc = pipe.get_generation_config(); gc.language = '<|ar|>'; gc.task = 'transcribe'
+    gc.max_new_tokens = 220; gc.no_repeat_ngram_size = 4; gc.repetition_penalty = 1.1
+    if prompt: gc.initial_prompt = prompt
+    return ASR_REPO, dev, lambda audio: (str(pipe.generate(audio.tolist(), gc)).strip(), False)
+
+
+def transcribe(out, prompt='', device='auto'):
     sw = load(out, 'sweep.json'); total = sum(len(t['chunks']) for t in sw['tracks']); done = 0
     part = out / 'transcript.partial.json'
     segs = json.loads(part.read_text(encoding='utf-8')) if part.exists() else []  # resume
     have = {(s['track'], s['start']) for s in segs}
-    say('transcribe', 0, total, f'loading Whisper on {device}')
-    try: pipe = og.WhisperPipeline(snapshot_download(ASR_REPO), device, CACHE_DIR=str(CACHE / 'ov-cache'))
-    except Exception:
-        if device == 'CPU': raise
-        say('transcribe', msg='GPU not available, using CPU'); pipe = og.WhisperPipeline(snapshot_download(ASR_REPO), 'CPU')
-    gc = pipe.get_generation_config(); gc.language = '<|ar|>'; gc.task = 'transcribe'
-    gc.max_new_tokens = 220; gc.no_repeat_ngram_size = 4; gc.repetition_penalty = 1.1
-    if prompt: gc.initial_prompt = prompt
+    say('transcribe', 0, total, f'loading Whisper ({device})')
+    name, dev, read = asr_engine(device, prompt)
+    say('transcribe', 0, total, f'Whisper on {dev}')
     for t in sw['tracks']:
         a = audio_of(out, t['track'])
         for x, b in t['chunks']:
             done += 1
             if (t['track'], x) in have: continue
             gate(out)
-            text = str(pipe.generate(a[int(x * SR):int(b * SR)].tolist(), gc)).strip()
+            text, silent = read(a[int(x * SR):int(b * SR)])
             loop = is_loop(text) or bool(re.search('ـ{3,}', text))
             text = collapse(text) if is_loop(text) else untatweel(text)
-            if text: segs.append({'track': t['track'], 'start': x, 'end': b, 'text': text, 'loop': loop})
+            if text and not silent and not is_hallucination(text):
+                segs.append({'track': t['track'], 'start': x, 'end': b, 'text': text, 'loop': loop or doubtful(text, b - x)})
             if done % 5 == 0: part.write_text(json.dumps(segs, ensure_ascii=False), encoding='utf-8')
             say('transcribe', done, total)
-    save(out, 'transcript.json', {'engine': ASR_REPO, 'device': device, 'prompt': prompt, 'segments': segs})
+    save(out, 'transcript.json', {'engine': name, 'device': dev, 'prompt': prompt, 'segments': segs})
     part.unlink(missing_ok=True)
 
 
@@ -216,12 +282,57 @@ def speakers(out, threads=6):
         embedding=so.SpeakerEmbeddingExtractorConfig(model=model('cluster'), num_threads=threads),
         clustering=so.FastClusteringConfig(num_clusters=-1, threshold=0.8), min_duration_on=0.3, min_duration_off=0.5)
     sd = so.OfflineSpeakerDiarization(cfg)
+    ex = so.SpeakerEmbeddingExtractor(so.SpeakerEmbeddingExtractorConfig(model=model('name'), num_threads=threads))
     for n in range(len(p['tracks'])):
         gate(out)
-        segs = sd.process(audio_of(out, n)).sort_by_start_time()
-        res += [{'track': n, 'start': round(s.start, 2), 'end': round(s.end, 2), 'cluster': f't{n}s{s.speaker}'} for s in segs]
-        say('speakers', n + 1, len(p['tracks']))
+        a = audio_of(out, n)
+        segs = [(s.start, s.end) for s in sd.process(a).sort_by_start_time()]
+        lab = revoice(a, segs, ex)
+        res += [{'track': n, 'start': round(x, 2), 'end': round(b, 2), 'cluster': f't{n}s{k}'} for (x, b), k in zip(segs, lab)]
+        say('speakers', n + 1, len(p['tracks']), f'track {n}: {len(set(lab))} voice(s)')
     save(out, 'speakers.json', {'segments': res})
+
+
+# CAM++ clustering never kept a Gulf host apart from an Egyptian guest on one mix (thresholds 0.5-0.8, 10-min clip, 2026-11-13);
+# ERes2Net voiceprints per segment, merged by average linkage, did: at 0.4 two voices (5.1 and 0.7 min) plus crumbs of seconds.
+REVOICE_SIM, CRUMB_S = 0.4, 10.0
+
+
+def regroup(E, w, th=REVOICE_SIM, crumb=CRUMB_S):
+    """Unit voiceprints E (n x d) with weights w (seconds) -> a group per row, 0 = the most talk.
+    Average-linkage merging while two group centroids are more alike than th; a group with under `crumb` seconds joins the
+    nearest real group (when there is one)."""
+    import numpy as np
+    groups = [[i] for i in range(len(E))]
+    cent = lambda g: (lambda c: c / (np.linalg.norm(c) + 1e-9))(np.average(E[g], axis=0, weights=w[g]))
+    while len(groups) > 1:
+        C = np.stack([cent(g) for g in groups]); S = C @ C.T; np.fill_diagonal(S, -2)
+        x, y = np.unravel_index(np.argmax(S), S.shape)
+        if S[x, y] < th: break
+        groups[x] += groups[y]; del groups[y]
+    real = [g for g in groups if w[g].sum() >= crumb] or groups
+    for g in [g for g in groups if all(g is not r for r in real)]:
+        best = max(real, key=lambda r: float(cent(r) @ cent(g))); best += g
+    real.sort(key=lambda g: -w[g].sum())
+    lab = [0] * len(E)
+    for k, g in enumerate(real):
+        for i in g: lab[i] = k
+    return lab
+
+
+def revoice(audio, segs, ex):
+    """Diarization segments -> a voice per segment: ERes2Net voiceprints regrouped; a segment under MIN_LEN takes the
+    voice of the nearest longer segment in time."""
+    import numpy as np
+    E, w, idx = [], [], []
+    for i, (a, b) in enumerate(segs):
+        if b - a < MIN_LEN: continue
+        st = ex.create_stream(); st.accept_waveform(SR, audio[int(a * SR):int(min(b, a + 20) * SR)]); st.input_finished()
+        v = np.array(ex.compute(st)); E.append(v / (np.linalg.norm(v) + 1e-9)); w.append(min(20.0, b - a)); idx.append(i)
+    if not idx: return [0] * len(segs)
+    g = regroup(np.stack(E), np.array(w)); got = dict(zip(idx, g))
+    mid = lambda i: (segs[i][0] + segs[i][1]) / 2
+    return [got[i] if i in got else got[min(idx, key=lambda j: abs(mid(j) - mid(i)))] for i in range(len(segs))]
 
 
 def enroll(out, enroll_file):
@@ -267,7 +378,7 @@ def assemble(out):
     say('done', len(tr), len(tr), f"{len(tr)} segments, {sum(s['loop'] for s in tr)} loops, {sum(s['mixed'] for s in tr)} mixed")
 
 
-def run(media, out, prompt='', enroll_file=None, device='GPU'):
+def run(media, out, prompt='', enroll_file=None, device='auto'):
     t0 = time.time(); out.mkdir(parents=True, exist_ok=True)
     if not (out / 'probe.json').exists(): probe(media, out)
     prep(media, out)
@@ -286,12 +397,12 @@ def main(a):
     if a[:1] == ['--selftest']: return selftest()
     opt = lambda k, d=None: a[a.index(k) + 1] if k in a else d
     cmd = a[0]
-    if cmd == 'run': return run(a[1], Path(a[2]).resolve(), opt('--prompt', ''), opt('--enroll'), opt('--device', 'GPU'))
+    if cmd == 'run': return run(a[1], Path(a[2]).resolve(), opt('--prompt', ''), opt('--enroll'), opt('--device', 'auto'))
     out = Path(a[2] if cmd in ('probe', 'prep') else a[1]).resolve(); out.mkdir(parents=True, exist_ok=True)
     if cmd == 'probe': probe(a[1], out)
     elif cmd == 'prep': prep(a[1], out)
     elif cmd == 'sweep': sweep(out)
-    elif cmd == 'transcribe': transcribe(out, opt('--prompt', ''), opt('--device', 'GPU'))
+    elif cmd == 'transcribe': transcribe(out, opt('--prompt', ''), opt('--device', 'auto'))
     elif cmd == 'speakers': speakers(out)
     elif cmd == 'enroll': enroll(out, a[2]); assemble(out)
     else: sys.exit(__doc__)
