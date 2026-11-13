@@ -54,6 +54,8 @@ export function dirsOf(root) {
 export function workspace() {
   let saved = null;
   try { saved = JSON.parse(fs.readFileSync(store(), 'utf8')).parent; } catch { /* not chosen yet */ }
+  // A saved folder that is gone (another machine's path, an unplugged drive) falls back to the default instead of failing every call.
+  if (saved && !fs.existsSync(saved)) saved = null;
   const parent = validParent(process.env.BW_WORKSPACE) || validParent(saved) || defaultParent();
   const root = path.join(parent, 'Business-Wrap');
   return { parent, root, chosen: !!(validParent(process.env.BW_WORKSPACE) || validParent(saved)), dirs: dirsOf(root) };
