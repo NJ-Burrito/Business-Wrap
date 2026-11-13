@@ -120,18 +120,18 @@ try {
       const design = COMPACT.has(m) ? 'compact' : 'spine';
       const okCode = COMPACT.has(m) ? (COVER_CODES[m] ? h.includes(`<span class="tb-code"><bdi dir="ltr">${COVER_CODES[m]}</bdi>`) : !h.includes('<span class="tb-code">')) : (COVER_CODES[m] ? h.includes(`<div class="type-code"><bdi dir="ltr">${COVER_CODES[m]}</bdi>`) : !h.includes('<div class="type-code">'));
       const cov = h.slice(h.indexOf('<div class="cover"'), h.indexOf('<div class="wrap">'));
-      const ctl = design === 'spine' ? cov.includes('class="bw-fields fg-control"') && COVER_CONTROL.every((k) => cov.includes(`data-p="/control/${k}"`)) : !cov.includes('fg-control');
+      const ctl = !cov.includes('class="bw-fields') && !cov.includes('cover-ctl'); // 0.21.1: page 1 of every type carries no info grid (owner, 2026-11-13)
       if (!(h.includes(`data-cover="${design}" data-type="${m}"`) && !/<svg|cover-motif|data-motif/.test(cov) && okCode && ctl && h.includes(`dir="${l === 'ar' ? 'rtl' : 'ltr'}"`) && documentCss(designTheme(theme, d), {}, d).includes('/* 0.19.0 page 1: ' + design))) markBad.push(`${m}/${l}`);
     }
   }
-  check('17 types x ar/en: .cover[data-cover][data-type], no svg, the type code, the control block on a spine page, and the page-1 CSS', !markBad.length, markBad);
+  check('17 types x ar/en: .cover[data-cover][data-type], no svg, the type code, NO info grid on page 1, and the page-1 CSS', !markBad.length, markBad);
   const spineAr = htmlOf(make('tot', 'ar'), 'ar');
   check('the spine cover keeps its logo slots, rule, kicker, title, subtitle and meta row', ['class="lockup"', 'cover-rule', 'class="kicker"', 'rule-short', '<h1', 'class="subtitle"', 'cover-foot'].every((s) => spineAr.includes(s)));
   const oldFile = htmlOf({ ...load('en'), motif: 'tor' }, 'en');
   check('an old file\'s motif alone still means the spine design and names the type (code TOR), and prints no art; a design alone names no type', oldFile.includes('data-cover="spine" data-type="tor"') && oldFile.includes('<div class="type-code"><bdi dir="ltr">TOR</bdi>') && !/data-motif|<svg class="cover-motif"/.test(oldFile) && !/data-type|<svg class="cover-motif"/.test(htmlOf({ ...load('en'), coverDesign: 'spine' }, 'en')));
   const fam = (f, t) => htmlOf({ ...load('en'), coverDesign: f, docType: t }, 'en');
   const [rep, frm, sht] = [fam('report', 'business-case'), fam('form', 'defect-report'), fam('sheet', 'rtm')];
-  check('0.19.0 R2: report is a title page (data-cover spine) with its band and control block; form and sheet are a header on page 1 (data-cover compact, the band), a form with its ID box', rep.includes('data-cover="spine" data-family="report"') && rep.includes('class="rp-band"') && rep.includes('class="bw-fields fg-control"') && frm.includes('data-cover="compact" data-family="form"') && frm.includes('class="bw-idbox"') && sht.includes('data-cover="compact" data-family="sheet"') && sht.includes('class="tb-band"'));
+  check('0.19.0 R2: report is a title page (data-cover spine) with its band and no info grid; form and sheet are a header on page 1 (data-cover compact, the band), a form with its ID box', rep.includes('data-cover="spine" data-family="report"') && rep.includes('class="rp-band"') && !rep.slice(rep.indexOf('<div class="cover"'), rep.indexOf('<div class="wrap">')).includes('class="bw-fields') && frm.includes('data-cover="compact" data-family="form"') && frm.includes('class="bw-idbox"') && sht.includes('data-cover="compact" data-family="sheet"') && sht.includes('class="tb-band"'));
   check('the user manual keys its look on the motif', documentCss(theme, {}, { ...load('en'), motif: 'user-manual' }).includes('counter-increment:bw-step') && !documentCss(theme, {}, { ...load('en'), motif: 'srs' }).includes('counter-increment:bw-step'));
 
   // ── 4. layout in headless Chrome ──
@@ -153,14 +153,14 @@ try {
     return { ready, ...out };
   };
   const near = (a, b, tol = 0.6) => Math.abs(a - b) <= tol;
-  const SELS = { cover: '.cover', spine: '.spine', id: '.spine .id', code: '.type-code', kicker: '.cover[data-cover=spine] .kicker', title: '.cover-title', ctl: '.cover-ctl', art: '.cover svg', foot: '.cover-foot', h2: '.wrap h2' };
+  const SELS = { cover: '.cover', spine: '.spine', id: '.spine .id', code: '.type-code', kicker: '.cover[data-cover=spine] .kicker', title: '.cover-title', ctl: '.cover-ctl', grid: '.cover .bw-fields', art: '.cover svg', foot: '.cover-foot', h2: '.wrap h2' };
   for (const l of ['en', 'ar']) {
     const d = make('test-plan', l);
     const m = await measure(d, l, SELS);
     const pal = PALETTE.forest;
     const rtl = l === 'ar';
-    check(`spine ${l}: the page is read (cover and its control block exist, no svg on it)`, m.ready && m.cover && m.ctl && m.art === null);
-    check(`spine ${l}: A4 cover, the control block is 152 mm wide, ends at 252 mm, ${rtl ? '176 mm from the left edge (mirrored)' : '34 mm in'}, below the title`, near(m.cover.h, 297, 0.3) && near(m.ctl.w, 152) && near(m.ctl.y + m.ctl.h, 252) && near(rtl ? m.ctl.r : m.ctl.x, rtl ? 176 : 34) && m.ctl.y > m.title.y + m.title.h, JSON.stringify([m.ctl, m.title.y + m.title.h]));
+    check(`spine ${l}: the page is read (cover exists, no control block or info grid on it, no svg on it)`, m.ready && m.cover && m.ctl === null && m.grid === null && m.art === null);
+    check(`spine ${l}: A4 cover, nothing between the title and the meta row`, near(m.cover.h, 297, 0.3) && m.ctl === null && m.grid === null, JSON.stringify([m.cover.h]));
     check(`spine ${l}: title at 141 mm, type code at 91 mm, kicker at 119.5 mm, meta row at 258 mm`, near(m.title.y, 141) && near(m.code.y, 91) && near(m.kicker.y, 119.5) && near(m.foot.y, 258), JSON.stringify([m.title.y, m.code.y, m.kicker.y, m.foot.y]));
     check(`spine ${l}: the spine is on the ${rtl ? 'right' : 'left'} edge, in the palette's deep colour`, (rtl ? near(m.spine.x, 190, 1) : near(m.spine.r, 20)) && hex(m.spine.bg) === pal['primary-deep'].toLowerCase(), JSON.stringify([m.spine.x, m.spine.r, m.spine.bg]));
     check(`spine ${l}: the document code on the spine reads (4.5:1) and is centred about 141 mm`, contrastOf(hex(m.id.color), pal['primary-deep']) >= 4.5 && near(m.id.y + m.id.h / 2, 141, 1), JSON.stringify([m.id.color, m.id.y, m.id.h]));

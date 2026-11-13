@@ -188,27 +188,28 @@ try {
     // 0.19.0 R2: each family's page-1 head is there (report: band, control block; form: band, ID box or badge; sheet: band), with no art
     if (cv && ['report', 'form', 'sheet'].includes(cv.family)) {
       const cov = h.slice(h.indexOf('data-part="cover"'), h.indexOf('<div class="wrap">'));
-      const ok = cv.family === 'report' ? cov.includes('class="rp-band"') && cov.includes('class="bw-fields fg-control"') : cov.includes('class="tb-band"') && (cv.family === 'sheet' || /class="bw-(idbox|badge)"/.test(cov));
+      if (/class="bw-fields|class="fg[ "]/.test(cov)) famBad.push(`${id}: info grid on page 1`);
+      const ok = cv.family === 'report' ? cov.includes('class="rp-band"') && !cov.includes('class="bw-fields') : cov.includes('class="tb-band"') && (cv.family === 'sheet' || /class="bw-(idbox|badge)"/.test(cov));
       if (!ok || !cov.includes(`data-family="${cv.family}"`)) famBad.push(id);
     }
     if (cv?.family === 'spine' && !(doc.layout?.hide || []).includes('cover')) {
       const code = R.COVER_CODES[cv.type];
-      if (!(h.includes('class="bw-fields fg-control"') && (h.match(/class="fg[ "]/g) || []).length >= 8 && (!code || h.includes(`<div class="type-code"><bdi dir="ltr">${code}</bdi>`)) && h.includes(`data-p="/control/documentId"`))) spineBad.push(id);
+      if (!(!/class="bw-fields|class="fg[ "]/.test(h.slice(h.indexOf('data-part="cover"'), h.indexOf('<div class="wrap">'))) && (!code || h.includes(`<div class="type-code"><bdi dir="ltr">${code}</bdi>`)) && h.includes(`data-p="/control/documentId"`))) spineBad.push(id);
     }
   }
   check(`HTML: no svg, .cover-motif, data-motif or non-logo image in the cover part of ${ids.length} documents (17 types x ar/en + 3 old files)`, !htmlBad.length, htmlBad);
-  check('HTML: every spine title page carries the control block (8 fields, C3), the type code (C2) and the editable document id', !spineBad.length, spineBad);
-  check(`HTML: the report, form and sheet page 1 carry their head (report: band and control block; form: ID box or badge; sheet: the band), composed and with the spec keys (${ids.filter((id) => ['report', 'form', 'sheet'].includes(R.coverOf(docOf(id))?.family)).length} documents)`, !famBad.length, famBad);
+  check('HTML: every spine title page carries NO info grid (0.21.1), the type code (C2) and the editable document id', !spineBad.length, spineBad);
+  check(`HTML: the report, form and sheet page 1 carry their head (report: band, no grid; form: ID box or badge; sheet: the band), composed and with the spec keys (${ids.filter((id) => ['report', 'form', 'sheet'].includes(R.coverOf(docOf(id))?.family)).length} documents)`, !famBad.length, famBad);
   check('C2: the code chip follows type.json code (defect report is DEF)', types.every((t) => t.id === 'blank' || R.COVER_CODES[t.id] === t.code), types.filter((t) => t.id !== 'blank' && R.COVER_CODES[t.id] !== t.code).map((t) => t.id));
   // mutant: a motif injected into a clean cover is caught
   const clean = htmlOf(docOf('srs.en'), 'en');
-  const injected = clean.replace('<div class="cover-ctl">', '<svg class="cover-motif" viewBox="0 0 160 94"><circle cx="5" cy="5" r="4"/></svg><div class="cover-ctl">');
+  const injected = clean.replace('<div class="cover-body">', '<svg class="cover-motif" viewBox="0 0 160 94"><circle cx="5" cy="5" r="4"/></svg><div class="cover-body">');
   check('mutant: a motif svg injected into the srs cover fails rule 1', injected !== clean && htmlArt(injected).length >= 2, htmlArt(injected));
   check('mutant: a data-motif attribute alone fails rule 1', htmlArt(clean.replace('data-part="cover"', 'data-part="cover" data-motif="srs"')).includes('data-motif'));
   // C3 field grid: type fields from the `cover` key print with their pointers; kinds date (LTR) and blank (an empty box); a chip takes its status fill
   const withCover = { ...docOf('test-plan.en'), cover: { cols: 2, fields: [{ label: 'System under test', value: 'Portal' }, { label: 'Test window', value: '2026-11-01', kind: 'date' }, { label: 'Status', value: 'Passed', kind: 'chip' }, { label: 'Sign', kind: 'blank' }] } };
   const hc = htmlOf(withCover, 'en');
-  check('C3: cover.fields print in a second grid with /cover/fields/<i>/value pointers (date LTR, chip filled, blank empty)', hc.includes('class="bw-fields fg-type"') && hc.includes('data-p="/cover/fields/0/value"') && /<bdi dir="ltr" class="fg-date" data-p="\/cover\/fields\/1\/value">2026-11-01<\/bdi>/.test(hc) && hc.includes('class="fg-chip st-ok" data-p="/cover/fields/2/value"') && /class="fg-v fg-blank" data-p="\/cover\/fields\/3\/value"><\/span>/.test(hc) && !htmlArt(hc).length);
+  check('C3 (0.21.1): cover.fields print in the control section, not on page 1, with /cover/fields/<i>/value pointers (date LTR, chip filled, blank empty)', !hc.slice(hc.indexOf('data-part="cover"'), hc.indexOf('<div class="wrap">')).includes('class="bw-fields') && hc.includes('class="control control-type"') && hc.includes('data-p="/cover/fields/0/value"') && /<bdi dir="ltr" data-p="\/cover\/fields\/1\/value">2026-11-01<\/bdi>/.test(hc) && hc.includes('class="fg-chip st-ok" data-p="/cover/fields/2/value"') && /class="fg-blank" data-p="\/cover\/fields\/3\/value"><\/span>/.test(hc) && !htmlArt(hc).length);
 
   // ── 2-4. PDF and DOCX, exported for real ──
   const nWorkers = Math.max(1, Math.min(Number(process.env.BW_EXPORT_JOBS) || 3, ids.length));
@@ -248,7 +249,7 @@ try {
       const c = doc.control;
       const toks = [c.documentId, c.version, c.issuedOn].filter((t) => t && /^[\x20-\x7e]+$/.test(t));
       const text = (r?.text || '').replace(/\s+/g, ' ');
-      const miss = toks.filter((t) => !text.includes(t));
+      const miss = toks.filter((t) => !text.replace(/\s/g, '').includes(t.replace(/\s/g, '')));
       if (!toks.length || miss.length) tokBad.push(`${id}: ${miss.join(', ') || 'no Latin token'}`);
     }
     const d = docxSection1(path.join(out, id + '.docx'));
