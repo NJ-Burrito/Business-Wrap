@@ -1,4 +1,4 @@
-// 0.15.9 A1-A5 (bw-0159 browser lane): tabs the tool opens stay awake or recover losing nothing. REAL Google Chrome, a REAL host, the real editor, raw CDP.
+// A1-A5 (bw-0159 browser lane): tabs the tool opens stay awake or recover losing nothing. REAL Google Chrome, a REAL host, the real editor, raw CDP.
 //   Chrome is started WITHOUT the keep-awake flags: the hardest case, a tab opened in a browser the user already runs, where only the page can keep itself awake.
 //   Three editor tabs in one window: F (front, visible), A (hidden, the page's keeper on) and B (hidden, `?awake=0`: the keeper off, the "before" numbers).
 //   A2  hidden for AWAKE_MINUTES (default 6.5, past the 5-minute intensive throttle): the page timer rate of A and B per 30 s window, the dedicated worker's rate, the

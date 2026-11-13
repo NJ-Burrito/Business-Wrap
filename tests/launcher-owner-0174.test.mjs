@@ -1,4 +1,4 @@
-// 0.17.4: who may take over the person's Desktop shortcut and the business-wrap: registration (launcher/ownership.mjs).
+// who may take over the person's Desktop shortcut and the business-wrap: registration (launcher/ownership.mjs).
 // Found when a host started from a git worktree rewrote the owner's real Desktop Business-Wrap.lnk and the protocol (which already pointed at a deleted worktree).
 //   - a sandboxed run (test mode ...) never writes the real Desktop or HKCU
 //   - a source checkout never takes over a live real target on its own
@@ -14,10 +14,10 @@ import { REPO } from '../engine/export.mjs';
 import * as P from '../engine/protocol.mjs';
 import { ensureLauncher, readShortcut, desktopDir, LNK_NAME } from '../launcher/launcher.mjs';
 import { mayTakeOver, installOf, isWorktree } from '../launcher/ownership.mjs';
+import { suite } from './_harness.mjs';
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  launcher-owner: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("launcher-owner");
+const { check, results } = S;
 const win = process.platform === 'win32';
 const tmp = fs.mkdtempSync(path.join(process.env.BW_START_TMP || os.tmpdir(), 'bw-owner174-'));
 process.env.BW_LOCAL_DIR = path.join(tmp, 'local'); // the stamps of the fake installs go here, never the real state
@@ -100,10 +100,8 @@ try {
     const e5 = P.ensureRegistered();
     const wrote = !!e5.where || (e5.registered === true && !e5.already && !e5.skipped);
     check('protocol: a sandboxed run with no fake hive never writes the real registration (nothing written; the real key is byte-identical before and after)', !wrote && (e5.already === true || e5.skipped === 'sandbox') && regOf() === realBefore, JSON.stringify(e5));
-  } else check('launcher/protocol take-over: Windows-only parts skipped on this platform', true);
+  }
 } finally {
   spawnSync('python', [path.join(os.homedir(), '.claude', 'skills', 'nj-safe-delete', 'scripts', 'trash.py'), tmp], { stdio: 'ignore', windowsHide: true, env: { ...process.env, PYTHONUTF8: '1' } });
 }
-console.log(results.join('\n'));
-console.log(`${failed ? 'FAIL' : 'PASS'}: launcher-owner-0174 — ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

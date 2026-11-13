@@ -1,4 +1,4 @@
-// 0.17.4 lane about: Settings > About looks like the other Settings tabs. Owner (2026-11-04): "the odd colouring in the About, not like the other tabs."
+// lane about: Settings > About looks like the other Settings tabs. Owner (2026-11-04): "the odd colouring in the About, not like the other tabs."
 // About must use the same card surface (background, shadow ring), heading colour, label (dt) colour, value (dd) colour and type as another tab, in light and dark, AR and EN: no special band.
 // Set BW_SHOT_DIR to also write a screenshot of the Settings drawer per theme / language.
 //
@@ -9,10 +9,10 @@ import path from 'node:path';
 import { launch, tmpDir, shRoot, sleep, until, REPO } from './spell-helper.mjs';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { serve } from '../engine/serve.mjs';
+import { suite } from './_harness.mjs';
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  about-0174: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("about-0174");
+const { check, results } = S;
 const tmp = tmpDir('bw-about174-');
 process.env.BW_LOCAL_DIR = path.join(tmp, 'local');
 const editor = path.join(tmp, 'my docs', 'sample.editor.html');
@@ -75,6 +75,4 @@ try {
   await browser.close();
   fs.rmSync(tmp, { recursive: true, force: true });
 }
-console.log(results.join('\n'));
-console.log(failed ? `\n${failed} about-0174 check(s) FAILED` : `\nAll ${results.length} about-0174 checks passed`);
-process.exit(failed ? 1 : 0);
+S.finish();

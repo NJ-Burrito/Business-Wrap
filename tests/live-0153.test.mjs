@@ -1,4 +1,4 @@
-// 0.15.3 lane live (field report T1, T2, T4, T10). Isolated state and free ports only (tests/_isolate.mjs); kills only what it spawned.
+// lane live (field report T1, T2, T4, T10). Isolated state and free ports only (tests/_isolate.mjs); kills only what it spawned.
 //   T4  two `start`s in the same second (two processes) = ONE host; host.json names the pid that listens; a second start reuses it
 //   T1  two tabs on one document: ops go to the owner only, the follower is read-only (guard + banner AR/EN), its save is refused (NOT_OWNER),
 //       a stale base is refused (STALE_BASE), nothing is lost, and when the owner leaves the follower takes over from the host's last copy
@@ -123,7 +123,7 @@ try {
   const healed = await until(async () => (await ro(B)) === '' && (await title(B)).includes('OWNER EDIT'), 15000);
   check('T1: when the owner leaves, the follower takes over and holds the owner\'s edit (no loss)', took && healed, JSON.stringify({ took, ro: await ro(B), t: (await title(B)).slice(0, 60) }));
 
-  // 0.15.5: two library writes of one document sent back to back by the owner tab (a Trash move, then the purge) are both accepted: the page sends them in turn
+  // two library writes of one document sent back to back by the owner tab (a Trash move, then the purge) are both accepted: the page sends them in turn
   const twin = await B.evaluate(async () => {
     const doc = 'doc-twin0155'; // its own document, so the owner's real one stays as it is
     const w = (e) => fetch('/api/library/mirror', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ entry: e }) }).then((r) => r.status);

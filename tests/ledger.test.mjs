@@ -9,14 +9,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { BWLOG1 as L } from '../engine/ledger-v1.mjs';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const GOLD = path.join(REPO, 'tests', 'fixtures', 'bwlog-v1');
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ledger: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("ledger");
+const { check, results } = S;
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const reasons = (v) => [...new Set(v.issues.map((i) => i.reason))].sort().join(',');
 
@@ -119,7 +118,7 @@ check('metrics: 10 edits over 3 min = 10 edits, 3 min active', met.edits === 10 
 
 // 6. Node and the browser: same file, byte-identical hashes, and the browser verifies the golden vectors
 const src = fs.readFileSync(path.join(REPO, 'engine', 'ledger-v1.mjs'), 'utf8').replace(/^export /gm, '');
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 try {
   const page = await browser.newPage();
   const blank = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'bw-ledger-')), 'blank.html');
@@ -167,6 +166,4 @@ try {
   check('metrics: exports = PDF/DOCX/report exports + HTML saves; one key keeps every name, latest first shown', m.exports === 2 && m.signs === 1 && m.name === 'Sami' && m.names.join() === 'Mark,Sami' && (await L.verify(log)).ok, JSON.stringify(m));
 }
 
-console.log(results.join('\n'));
-console.log(`${failed ? 'FAIL' : 'PASS'}  ledger: ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

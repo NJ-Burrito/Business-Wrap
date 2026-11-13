@@ -1,4 +1,4 @@
-// 0.18.0 lane L3: the start page (editor/ext/50-start.*). Real headless Chrome, real mouse and keyboard, the editor bundle built here with the document-type payload
+// lane L3: the start page (editor/ext/50-start.*). Real headless Chrome, real mouse and keyboard, the editor bundle built here with the document-type payload
 // embedded as <script id="bw-doctypes"> (contract C2) and opened over file:// with ?start=1 (the page is hidden under automation otherwise: decisions D4), in
 // English and Arabic at 1024 px; then served, where the page has no embedded payload and asks GET /api/doctypes.
 //   - every type renders a tile with its thumbnail; categories, search and the empty state work; the page fits 1024 px with no sideways scroll
@@ -94,7 +94,7 @@ try {
     check(`${L}: no thumbnail carries its own title, size or role (the tile's text is the name)`, await page.evaluate(() => ![...document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('dialog.bw-start .st-thumb svg')].some((s) => s.querySelector('title') || s.hasAttribute('width') || s.hasAttribute('role') || s.getAttribute('aria-hidden') !== 'true')));
     const fit = await page.evaluate(() => { const d = document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-start'); const g = d.querySelector('.st-grid'); const cols = new Set([...d.querySelectorAll('.st-tile')].map((t) => t.offsetTop)).size; return { over: d.scrollWidth - d.clientWidth, cols: Math.round(g.getBoundingClientRect().width / d.querySelector('.st-tile').getBoundingClientRect().width), rows: cols }; });
     check(`${L}: 1024 px fits with no sideways scroll, 4 columns`, fit.over <= 0 && fit.cols === 4, JSON.stringify(fit));
-    // 0.18.0 polish (L10a): the landscape sheets show landscape thumbnails; the skip link is no kicker; the NJ mark stays visible (0.18.2); no visible tashkeel
+    // polish (L10a): the landscape sheets show landscape thumbnails; the skip link is no kicker; the NJ mark stays visible (0.18.2); no visible tashkeel
     const geo = await page.evaluate(() => { const d = document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-start'); return Object.fromEntries([...d.querySelectorAll('.st-tile')].map((t) => { const r = t.querySelector('.st-thumb svg').getBoundingClientRect(); return [t.dataset.type, { w: Math.round(r.width), h: Math.round(r.height), land: t.querySelector('.st-thumb').dataset.land }]; })); });
     if (real) check(`${L}: rtm and test-cases draw landscape thumbnails (wider than tall); every other tile stays portrait`, ['rtm', 'test-cases'].every((id) => geo[id] && geo[id].w > geo[id].h && geo[id].land === 'true') && Object.entries(geo).filter(([id]) => !['rtm', 'test-cases'].includes(id)).every(([, v]) => v.h > v.w && v.land === 'false'), JSON.stringify(geo));
     const ord = await page.evaluate(() => { const d = document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-start'); const top = (s) => Math.round(d.querySelector(s).getBoundingClientRect().top); return { h1: top('h1'), lede: top('.st-lede'), back: top('[data-st-back]') }; });
@@ -185,7 +185,7 @@ try {
       const want2 = { docType: ty.id, cover: ty.coverDesign, title: mine.control.title, primary: mine.design.vars.primary };
       const ok = r.ed === want && r.isDoc && JSON.stringify(r.editions) === '["ar","en"]'
         && ['ar', 'en'].every((ed) => r.per[ed].docType === ty.id && r.per[ed].cover === ty.coverDesign && r.per[ed].title === JSON.parse(ty.docs[ed]).control.title && r.per[ed].primary === want2.primary)
-        && r.title === nameOf(mine.control) && r.coverEl === ((mine.layout?.hide || []).includes('cover') ? null : ({ report: 'spine', form: 'compact', sheet: 'compact' }[ty.coverDesign] || ty.coverDesign)); // 0.19.0 R3: data-cover is the page model (report = a title page, form and sheet = a header on page 1); data-family names the family // 0.19.0: the Blank document hides its cover (one empty page), so its page draws none
+        && r.title === nameOf(mine.control) && r.coverEl === ((mine.layout?.hide || []).includes('cover') ? null : ({ report: 'spine', form: 'compact', sheet: 'compact' }[ty.coverDesign] || ty.coverDesign)); // 0.19.0 R3: data-cover is the page model (report = a title page, form and sheet = a header on page 1); data-family names the family // the Blank document hides its cover (one empty page), so its page draws none
       if (!ok) made.push(`${ty.id}/${want}: ${JSON.stringify(r)} wanted ${JSON.stringify(want2)} title «${nameOf(mine.control)}»`);
       // File > Start page returns; the recents list shows the new document; Back returns to it
       await startFromFile(page);

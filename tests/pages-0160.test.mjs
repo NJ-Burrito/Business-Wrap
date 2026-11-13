@@ -1,4 +1,4 @@
-// 0.16.0 (bw-0160, pages lane): the editor's page count equals the PDF's, at every window size, and the DOCX carries the document's own type scale.
+// (bw-0160, pages lane): the editor's page count equals the PDF's, at every window size, and the DOCX carries the document's own type scale.
 //
 //  P1  Real Chrome lays the sample documents out in the paged view (AR and EN, a plain sheet, a figure sheet turned landscape, a mixed
 //      fixture with a section turned through the editor's own page action, two window sizes and a zoom) and the same document is printed to PDF:

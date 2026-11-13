@@ -1,4 +1,4 @@
-// 0.15.9 P1-P6: the folder picker is an in-editor panel whose state lives on the host, so a person and an MCP agent see and finish the same picker.
+// P1-P6: the folder picker is an in-editor panel whose state lives on the host, so a person and an MCP agent see and finish the same picker.
 // Real callers end to end: the official MCP client over stdio (mcp/cli.mjs) -> the real host (engine/serve.mjs, token) -> a real Google Chrome tab
 // (editor/ext/48-folder-picker.js). Temp workspaces only (BW_LOCAL_DIR); the owner's .local/workspace.json is never touched.
 //   A. no tab open: a separate MCP client process reads, navigates, creates, refuses, cancels and chooses (P2, P3, P4, P6), Unicode and Arabic names

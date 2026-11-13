@@ -1,4 +1,4 @@
-// 0.17.0 (bw170 shell): six owner notes about the editor's shell, one group of checks per note, AR and EN, at 1366 and 1920 px.
+// (bw170 shell): six owner notes about the editor's shell, one group of checks per note, AR and EN, at 1366 and 1920 px.
 //   N1  a press on the background outside the page folds the open ribbon (0.17.8 owner rule: the background closes everything open); a contextual tab hands back to the tab the person was on
 //   N3  switching language or direction keeps the page being worked on (continuous: the same line stays where it was; one page / two pages: the same page)
 //   N4  the ribbon «View» tab and the top-bar display control differ in icon and in name
@@ -12,15 +12,15 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-shell0170-'));
-let failed = 0;
-const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  shell-0170: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("shell-0170");
+const { check } = S;
 const HOST = '#bw-ui-host';
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 const errors = [];
 
 async function session(ui, width) {
@@ -232,5 +232,4 @@ for (const width of [1366, 1920]) {
 await browser.close();
 check('no page error in any session', !errors.length, errors.slice(0, 2).join(' | '));
 fs.rmSync(tmp, { recursive: true, force: true });
-console.log(failed ? `\n${failed} FAILED` : '\nall passed');
-process.exit(failed ? 1 : 0);
+S.finish();

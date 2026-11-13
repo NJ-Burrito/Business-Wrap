@@ -1,4 +1,4 @@
-// 0.15.0 lane spell: the spell checkers (editor/ext/35-spell.js, engine/routes/spell.mjs, editor/spell-worker.js, editor/dict/**), in a real
+// lane spell: the spell checkers (editor/ext/35-spell.js, engine/routes/spell.mjs, editor/spell-worker.js, editor/dict/**), in a real
 // browser (Edge when installed) against the local server. Real misspellings, both editions, through the real caller (runAction('spell')):
 //   - 10 Arabic + 10 English misspellings flagged, each with the right first suggestion; 25 correct words per language NOT flagged
 //   - a mixed Arabic + English paragraph: each run against its own dictionary; JSON and API (the technical list) and ids are not flagged
@@ -15,10 +15,10 @@ import { pathToFileURL } from 'node:url';
 import { launch, browserName, tmpDir, shRoot, sleep, until, REPO } from './spell-helper.mjs';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { serve } from '../engine/serve.mjs';
+import { suite } from './_harness.mjs';
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  spell: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("spell");
+const { check, results } = S;
 const tmp = tmpDir('bw-spell-');
 process.env.BW_LOCAL_DIR = path.join(tmp, 'local');
 
@@ -52,7 +52,7 @@ async function open(file, { served = true } = {}) {
   page.on('request', (r) => page.reqs.push(r.url()));
   page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') page.cons.push(m.text()); });
   await page.addInitScript(() => {
-    try { if (!sessionStorage.getItem('bw-50-init')) { sessionStorage.setItem('bw-50-init', '1'); localStorage.setItem('bw:spell:on', '0'); } } catch { /* no storage */ } // 0.17.0: checking is on by default; these checks start from an explicit off
+    try { if (!sessionStorage.getItem('bw-50-init')) { sessionStorage.setItem('bw-50-init', '1'); localStorage.setItem('bw:spell:on', '0'); } } catch { /* no storage */ } // checking is on by default; these checks start from an explicit off
     window.__long = [];
     try { new PerformanceObserver((l) => l.getEntries().forEach((e) => window.__long.push(Math.round(e.duration)))).observe({ entryTypes: ['longtask'] }); } catch { /* no longtask support */ }
   });
@@ -137,7 +137,7 @@ try {
   check('AC1: the replacement is ONE operation in the history (as typing is), the checker re-marks only «requirment»', opsAfter === opsBefore + 1 && (await until(async () => (await issues(pa)).filter((i) => i.path === p1).map((i) => i.word).join() === 'requirment', 10000)), `${opsBefore} -> ${opsAfter}`);
   await pa.evaluate(() => BW.undo('en'));
   check('AC1: ONE undo brings «recieve requirment» back', await until(() => pa.evaluate((p) => document.querySelector(`main.bw-doc[data-locale="en"] [data-p="${p}"]`)?.textContent.trim() === 'recieve requirment', p1), 5000), '');
-  // 0.15.2: ONE switch for both dictionaries: off removes every mark (Arabic and English), on brings both back
+  // ONE switch for both dictionaries: off removes every mark (Arabic and English), on brings both back
   await switchEd(pa, 'ar');
   await pa.evaluate(() => { if (!BW.S.side) return BW.runAction('side'); }); // both editions on the page, so both can carry marks
   await setLeaves(pa, 'ar', ['وثيقةة المسنخدم', 'نص سليم']);
@@ -250,6 +250,4 @@ try {
   for (const h of opened) { try { await h.close(); } catch { /* closed */ } }
   await browser.close();
 }
-console.log(results.join('\n'));
-console.log(`\n${results.length - failed}/${results.length} passed`);
-process.exit(failed ? 1 : 0);
+S.finish();

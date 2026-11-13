@@ -1,4 +1,4 @@
-// 0.15.0 L1 transport: ONE server-sent-event connection per browser, however many tabs (Edge/Chrome allow 6 HTTP/1.1 connections per
+// L1 transport: ONE server-sent-event connection per browser, however many tabs (Edge/Chrome allow 6 HTTP/1.1 connections per
 // origin; the 7th tab used to hang on its first fetch, report B1). Real Edge (msedge), real host on loopback HTTP/1.1.
 //   1. 12 tabs open: all reach bwSession, GET /api/host/health lists 12 tabs and exactly 1 client (written red first: it failed at tab 7)
 //   2. the four SSE events reach the right tab (req by tab) or all tabs (ingest, progress); /api/host/stop delivers flush to every tab
@@ -36,7 +36,7 @@ const exe = H.browserPath();
 const opts = process.env.TRANSPORT_BROWSER === 'chromium' || !exe ? launchOptions() : { ...launchOptions(), executablePath: exe };
 check('browser under test is real Google Chrome (0.15.9 B9)', !!exe && /chrome/i.test(String(opts.executablePath)) && !/msedge|opera|brave/i.test(String(opts.executablePath)) || process.env.TRANSPORT_BROWSER === 'chromium', String(opts.executablePath));
 const browser = await chromium.launch(opts);
-// 0.16.0: health also names tabs that are gone (state closed / discarded, live:false); these checks count the tabs that are live
+// health also names tabs that are gone (state closed / discarded, live:false); these checks count the tabs that are live
 const health = async (h) => { const j = await (await fetch(h.url + 'api/host/health', { signal: AbortSignal.timeout(4000) })).json(); return { ...j, tabs: j.tabs.filter((t) => t.live !== false) }; };
 const emit = (h, body) => fetch(h.url + 'api/session/_emit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json());
 const INIT = () => { window.__srv = []; window.addEventListener('bw:srv', (e) => window.__srv.push({ event: e.detail.event, data: e.detail.data })); };

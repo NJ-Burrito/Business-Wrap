@@ -1,17 +1,17 @@
-// 0.15.1 perf lane: responsiveness budgets that fail on a regression (the 0.15.0 draft promoted, limits generous, never removed).
+// perf lane: responsiveness budgets that fail on a regression (the 0.15.0 draft promoted, limits generous, never removed).
 // Measured 2026-10-31 on the author's machine, quiet: typing keydown-to-second-frame p95 12 ms; 60-page undo 213 ms, duplicate 185 ms;
 // no long task during any of the 19 watermark reactions; hover 23 layouts per button (the icon part animations; 0.13.2 had 6).
 // Each limit is 2.5x or more of that; under a test slot (BW_TEST_SLOT) the time limits double, on CI they triple. Every probe asserts it saw the ready state (R15).
 import './_isolate.mjs';
 import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'; import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
-const LOOSE = process.env.CI ? 3 : (process.env.BW_TEST_SLOT !== undefined ? 2 : 1); // 0.15.3: a shared CI runner measured 101.8 ms against the doubled 100 ms; the limit is 3x on CI, the check still proves typing paints well inside a frame budget
+const LOOSE = process.env.CI ? 3 : (process.env.BW_TEST_SLOT !== undefined ? 2 : 1); // a shared CI runner measured 101.8 ms against the doubled 100 ms; the limit is 3x on CI, the check still proves typing paints well inside a frame budget
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-perf0151-'));
-let failed = 0;
-const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  perf-0151: ${name}${detail ? ' (' + detail + ')' : ''}`); if (!ok) failed += 1; };
+const S = suite("perf-0151");
+const { check } = S;
 const P = 'main.bw-doc [data-p="/chapters/0/sections/0/blocks/0/paragraphs/0"]';
 const SAMPLE = path.join(REPO, 'samples', 'event-permit');
 const file = path.join(tmp, 'perf.editor.html'); buildEditor({ inputs: [SAMPLE], out: file });
@@ -21,7 +21,7 @@ big.chapters.push(...extra); big.chapters.forEach((ch, i) => { ch.number = Strin
 const bigJson = path.join(tmp, 'big.ar.json'); fs.writeFileSync(bigJson, JSON.stringify(big)); const bigFile = path.join(tmp, 'big.editor.html'); buildEditor({ inputs: [bigJson], out: bigFile });
 const med = (a) => { const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
 
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 try {
   const ctx = await browser.newContext({ viewport: { width: 1600, height: 900 } });
   await ctx.addInitScript(() => { window.__lt = []; try { new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__lt.push(e.duration); }).observe({ entryTypes: ['longtask'] }); } catch (e) { /* none */ } });
@@ -84,5 +84,4 @@ try {
   check('60-page: undo + render median < 300 ms (0.15.1 target)', med(t.u) < 300 * LOOSE, med(t.u).toFixed(0) + ' ms');
   await cb.close();
 } finally { await browser.close(); fs.rmSync(tmp, { recursive: true, force: true }); }
-console.log(`${failed ? 'FAIL' : 'PASS'}  perf-0151: ${failed} failed`);
-process.exit(failed ? 1 : 0);
+S.finish();

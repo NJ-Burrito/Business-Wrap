@@ -1,4 +1,4 @@
-// 0.17.4: one icon per folder ROLE (assets/icons/folders.json, build_folder_icons.py). Checks: the icon set itself (10 roles, 7 frames each, all
+// one icon per folder ROLE (assets/icons/folders.json, build_folder_icons.py). Checks: the icon set itself (10 roles, 7 frames each, all
 // distinct, 16..256), the role of every folder of the save tree (roleOfFolder), the desktop.ini assigned to each (applyTreeIcons, noteOutput,
 // docFolder), a project export as a folder and as a zip (relative icon paths that travel), the picker's listing, and the editor's copies of the art.
 // Only temp folders are touched.   node tests/folder-icons-0174.test.mjs
@@ -13,9 +13,10 @@ import { roleOfFolder, applyTreeIcons, noteOutput, docFolder, listFolders, DOCS_
 import { exportProject } from '../engine/project-export.mjs';
 import { makeEntry } from '../engine/routes/library.mjs';
 import { readZip, extractZip } from '../engine/zip.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
-let failed = 0;
-const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  folder-icons-0174: ${name}${detail && !ok ? '  - ' + String(detail).slice(0, 300) : ''}`); if (!ok) failed += 1; };
+const S = suite("folder-icons-0174");
+const { check } = S;
 const REPO = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ICONS = path.join(REPO, 'assets', 'icons');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-fi174-'));
@@ -88,7 +89,7 @@ try {
     const ex = mkdir('Business-Wrap', DOCS_NAME, 'Fresh doc', 'Versions');
     fs.writeFileSync(path.join(ex, 'v.html'), 'x');
     check('noteOutput: a version written -> Versions icon', noteOutput(path.join(ex, 'v.html')) === true && readIni(path.join(ex, 'desktop.ini')).includes('business-wrap-folder-versions.ico,0'));
-  } else check('non-Windows: desktop.ini placement skipped (Windows-only part)', true);
+  }
 
   // ── the picker lists the role of a Business-Wrap folder ──
   mkdir('Business-Wrap', DOCS_NAME, 'My Doc', 'Exports');
@@ -143,7 +144,7 @@ try {
   const file = path.join(OUT, 'editor.html');
   buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file });
   const server = await serve(file, 0, { out: OUT });
-  const browser = await chromium.launch(launchOptions());
+  const browser = await launchChrome();
   try {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     await ctx.addInitScript(() => { try { localStorage.setItem('bw:ui', 'en'); localStorage.setItem('bw:wm-intro', '1'); sessionStorage.setItem('bw:wm-welcome', '1'); } catch { /* */ } });
@@ -166,5 +167,4 @@ try {
 } catch (e) { check('suite ran without throwing', false, e.stack || e); } finally {
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* temp */ }
 }
-console.log(failed ? `\nFAILED: ${failed}` : '\nALL PASS');
-process.exit(failed ? 1 : 0);
+S.finish();

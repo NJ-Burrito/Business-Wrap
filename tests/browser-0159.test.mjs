@@ -1,4 +1,4 @@
-// 0.15.9 B1-B7 (bw-0159 browser lane): Google Chrome is the standard browser, with a clean fallback chain and no part of the product requiring Edge.
+// B1-B7 (bw-0159 browser lane): Google Chrome is the standard browser, with a clean fallback chain and no part of the product requiring Edge.
 //   order of the editor's browser: BW_BROWSER, the saved Settings choice, Google Chrome, the OS default, Edge, any Chromium (Chrome absent, a non-Chromium default,
 //   an explicit path, Opera GX vs Opera, Brave, Vivaldi); the PDF engine walks the same chain after BW_CHROME; a non-Chromium default is opened with the OS opener and
 //   says it cannot be closed; no browser at all is a clear message in Arabic and English; BW_EDGE still names Edge; profile folders never mix vendors; the Settings

@@ -9,13 +9,12 @@ import os from 'node:os';
 import net from 'node:net';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
-import { chromium } from 'playwright-core';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
 import { ownsServe } from '../engine/cli.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("");
+const { check, results } = S;
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-power-'));
 const env = { ...process.env, BW_LOCAL_DIR: path.join(tmp, 'local'), BW_STATE_DIR: path.join(tmp, 'state'), BW_WORKSPACE: path.join(tmp, 'ws'), BW_POWER_GRACE_MS: '300', BW_NO_BROWSER: '1' };
 const CLI = path.join(REPO, 'engine', 'cli.mjs');
@@ -50,7 +49,7 @@ function otherInstall() {
   return c.pid;
 }
 
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 let other = 0;
 try {
   // ── the code: every background start is detached + hidden, and the supervisor gives its server no console ──
@@ -95,7 +94,7 @@ try {
   await page.goto(o.url);
   await page.waitForFunction(() => window.BW?.ready);
   await sleep(600);
-  // 0.17.0 note 10: the host on/off control is ONLY the top-bar switch (no power button in the top bar or in Settings); the `powerOff` action (confirm dialog) stays reachable through BW.runAction
+  // note 10: the host on/off control is ONLY the top-bar switch (no power button in the top bar or in Settings); the `powerOff` action (confirm dialog) stays reachable through BW.runAction
   const inBar = await page.locator('.island [data-a="powerOff"]').count();
   const inSet = await page.evaluate(async () => { window.BW.runAction('settings'); await new Promise((r) => setTimeout(r, 400)); return document.getElementById('bw-ui-host').shadowRoot.querySelectorAll('.drawer [data-k="srvPowerOff"]').length; });
   const btn = { click: async () => { await page.evaluate(() => { window.__pw = window.BW.runAction('powerOff'); }); } }; // not awaited: it resolves when the confirm dialog is answered
@@ -136,6 +135,4 @@ try {
   try { process.kill(other); } catch { /* gone */ }
   cli('stop', '--all');
 }
-console.log(results.join('\n'));
-console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

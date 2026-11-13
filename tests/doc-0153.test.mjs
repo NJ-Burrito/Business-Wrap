@@ -1,4 +1,4 @@
-// 0.15.3 lane doc (correctness): T5 numbers computed everywhere + renumber writes real numbers, T6 single-edition documents, T7 split a
+// lane doc (correctness): T5 numbers computed everywhere + renumber writes real numbers, T6 single-edition documents, T7 split a
 // large figure on phase / role boundaries (>= 7 pt, continue stubs), T8 library words per built edition, T12 visible tashkeel warning + fix,
 // T16 `columns: []` refused and a story number never by hand. Pure helpers in node, the rest through the real editor (headless Edge/Chrome,
 // closed in finally) and its bridge (the same entry the MCP tools use).   node tests/doc-0153.test.mjs
@@ -8,18 +8,18 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO, exportPdf, loadTheme, i18n } from '../engine/export.mjs';
+import { REPO, exportPdf, loadTheme, i18n } from '../engine/export.mjs';
 import { renderDocument } from '../engine/render.mjs';
 import { DIAGRAM } from '../engine/diagram.mjs';
 import { config } from '../engine/config.mjs';
 import { applyOps, docNumbers, numberingOps, validateEdits, opShapeErrors, editionsOf, isSingleEdition, singleEditionOps, exportEditions, tashkeelOps, tashkeelLeaves, stripTashkeel, wordCount, entryWords } from '../engine/edits.mjs';
 import { bigWorkflow } from './render-fixtures.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-doc0153-'));
-let failed = 0;
-const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  doc-0153: ${name}${detail && !ok ? '  — ' + String(detail).replace(/\s+/g, ' ').slice(0, 300) : ''}`); if (!ok) failed += 1; };
+const S = suite("doc-0153");
+const { check } = S;
 const theme = loadTheme();
 const SAMPLE = path.join(REPO, 'samples', 'event-permit');
 const load = (l) => JSON.parse(fs.readFileSync(path.join(SAMPLE, `document.${l}.json`), 'utf8'));
@@ -108,7 +108,7 @@ let splitRes = null;
 // ── editor: the real caller ──
 const file = path.join(tmp, 'editor.html');
 buildEditor({ inputs: [SAMPLE], out: file, set: 'doc-0153-test', watermarkDir: null });
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 try {
   const ctx = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
   const page = await ctx.newPage();
@@ -234,7 +234,7 @@ try {
 // ── T5 · the PDF prints the numbers too (EN edition, real exporter) ──
 {
   const en = applyOps(load('en'), [{ op: 'insert', path: '/chapters/1', value: newChapter('Inserted chapter') }]);
-  const b2 = await chromium.launch(launchOptions());
+  const b2 = await launchChrome();
   try {
     const pdf = path.join(tmp, 'n.en.pdf');
     await exportPdf(en, { locale: 'en', theme, pdfPath: pdf, browser: b2 });
@@ -246,5 +246,4 @@ try {
 }
 
 fs.rmSync(tmp, { recursive: true, force: true });
-console.log(failed ? `doc-0153: ${failed} FAILED` : 'doc-0153: all passed');
-process.exit(failed ? 1 : 0);
+S.finish();

@@ -1,4 +1,4 @@
-// 0.16.2 (bw-0162, view lane): owner notes V and P, on a long real-shaped placeholder SRS (no client data).
+// (bw-0162, view lane): owner notes V and P, on a long real-shaped placeholder SRS (no client data).
 //
 //  V  Every page view (single, spread, continuous) shows each page alone at its own orientation, opened by file://, at zoom 75 to 150 percent.
 //     The document is shaped like the owner's screenshot: chapters 1 to 7, a figure chapter 4 (a landscape sheet, no page setting of its own),

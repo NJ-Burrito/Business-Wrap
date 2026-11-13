@@ -1,4 +1,4 @@
-// 0.15.2 lane spell (owner notes 7, 8, 9, 15): ONE spelling switch for both dictionaries, a side panel over the pages when a misspelt word is clicked,
+// lane spell (owner notes 7, 8, 9, 15): ONE spelling switch for both dictionaries, a side panel over the pages when a misspelt word is clicked,
 // and a Spelling ribbon tab. Real browser (Edge when installed) against the local server, through the real callers (runAction('spell'), a mouse click on the word,
 // a click on the ribbon tool).
 //   - one switch turns on Arabic AND English (S.spell.ar/en follow it); Settings and the list drawer carry ONE switch and no per-dictionary switch
@@ -15,10 +15,10 @@ import { pathToFileURL } from 'node:url';
 import { launch, browserName, tmpDir, shRoot, sleep, until, REPO } from './spell-helper.mjs';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { serve } from '../engine/serve.mjs';
+import { suite } from './_harness.mjs';
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  spell-0152: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("spell-0152");
+const { check, results } = S;
 const tmp = tmpDir('bw-spell52-');
 process.env.BW_LOCAL_DIR = path.join(tmp, 'local');
 
@@ -30,7 +30,7 @@ const opened = [];
 async function open({ store = {}, width = 1366, bare = false } = {}) {
   const server = await serve(f, 0, { workspace: null });
   const ctx = await browser.newContext({ viewport: { width, height: 860 } });
-  await ctx.addInitScript((st) => { try { if (!sessionStorage.getItem('bw-52-init')) { sessionStorage.setItem('bw-52-init', '1'); localStorage.setItem('bw:ui', 'en'); for (const [k, v] of Object.entries(st)) localStorage.setItem(k, v); } } catch { /* no storage */ } }, { ...(bare ? {} : { 'bw:spell:on': '0' }), ...store }); // 0.17.0: checking is on by default; these checks start from an explicit off
+  await ctx.addInitScript((st) => { try { if (!sessionStorage.getItem('bw-52-init')) { sessionStorage.setItem('bw-52-init', '1'); localStorage.setItem('bw:ui', 'en'); for (const [k, v] of Object.entries(st)) localStorage.setItem(k, v); } } catch { /* no storage */ } }, { ...(bare ? {} : { 'bw:spell:on': '0' }), ...store }); // checking is on by default; these checks start from an explicit off
   const page = await ctx.newPage();
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
@@ -275,6 +275,4 @@ try {
   for (const h of opened) { try { await h.close(); } catch { /* closed */ } }
   await browser.close();
 }
-console.log(results.join('\n'));
-console.log(`\n${results.length - failed}/${results.length} passed`);
-process.exit(failed ? 1 : 0);
+S.finish();

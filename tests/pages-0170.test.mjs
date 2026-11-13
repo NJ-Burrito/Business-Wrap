@@ -1,4 +1,4 @@
-// 0.17.0 (bw-0170, pages lane): the editor's pages and the PDF start every page alike; a subhead before a story card keeps its section heading.
+// (bw-0170, pages lane): the editor's pages and the PDF start every page alike; a subhead before a story card keeps its section heading.
 //  1. P5: a section that opens with a subhead and then a story card, then the output table: the section heading stays in front of the subhead (it used to
 //     stay "pending" and land on the output table's caption).
 //  2. P1a: the PDF's page is 794 px wide (Chrome rounds A4's 793.7 px up), the editor's is 210 mm. A third of a pixel flips a line that fills its cell

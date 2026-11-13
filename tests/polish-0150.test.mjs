@@ -1,4 +1,4 @@
-// 0.15.0 wave 2 lane polish: W05 from a REAL ribbon click, a failed export fires no W02 (a good one does), W10 plays on a fresh
+// wave 2 lane polish: W05 from a REAL ribbon click, a failed export fires no W02 (a good one does), W10 plays on a fresh
 // profile (queued past the first intro), and the served top bar has exactly one server control (the host switch is the top bar only, 0.17.0).
 //   node tests/polish-0150.test.mjs
 import './_isolate.mjs';
@@ -6,19 +6,17 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const OUT = path.join(REPO, 'out', 'polish-0150-test');
 fs.mkdirSync(OUT, { recursive: true });
 const file = path.join(OUT, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file });
 const FILEURL = pathToFileURL(file).href;
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { const line = `${ok ? 'PASS' : 'FAIL'}  polish-0150: ${name}${detail && !ok ? '  - ' + detail : ''}`; results.push(line); console.log(line); if (!ok) failed += 1; };
-const browser = await chromium.launch(launchOptions());
+const S = suite('polish-0150'); const { check } = S;
+const browser = await launchChrome();
 const plays = (page) => page.evaluate(() => window.BW.EXT.watermark.stats().plays.map((p) => p.id));
 
 /** A tiny host: the built editor at /, /api/export answers per `mode.export`, everything else 404. */
@@ -100,5 +98,4 @@ try {
   }
 } finally { await browser.close(); srv.close(); }
 
-console.log(`polish-0150: ${results.length - failed}/${results.length} pass, ${failed} fail`);
-process.exit(failed ? 1 : 0);
+S.finish();

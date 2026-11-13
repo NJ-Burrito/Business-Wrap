@@ -1,4 +1,4 @@
-// 0.19.0 crew N1 (owner note N1): the local-host switch on the start page (editor/ext/51-start-host.*), in a real headless Chrome, real mouse and keyboard, EN and AR.
+// crew N1 (owner note N1): the local-host switch on the start page (editor/ext/51-start-host.*), in a real headless Chrome, real mouse and keyboard, EN and AR.
 // It is the SAME control as the top bar's (editor/ext/18-server.js): one state, one markup, one patch loop. What this drives, through the real callers (R14):
 //   1. a served tool editor on a free port (a real `serve()` in an isolated workspace): the switch is in the start page's bar, Online :port, role=switch, dot + word + position, the
 //      tooltip, the polite live text; it follows the top-bar switch and the top-bar switch follows it; the start page stays open through off and on again; the focus comes back to it;

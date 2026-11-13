@@ -1,4 +1,4 @@
-// 0.13.3 icon system: every rendered .ic has its own hover/press/focus motion (a named --icm move or a brand .mv move),
+// icon system: every rendered .ic has its own hover/press/focus motion (a named --icm move or a brand .mv move),
 // a theme colour on hover, and nothing moves in calm mode (and icons keep moving under the OS prefers-reduced-motion: only Calm reduces motion, owner 2026-10-31). Walks the real editor:
 // toolbar, every folded menu, the view popover, the context bars, the palette and the side panels.
 //
@@ -7,19 +7,18 @@ import './_isolate.mjs';
 import { act } from './_ribbon.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
 import { pathToFileURL } from 'node:url';
+import { suite, launchChrome } from './_harness.mjs';
 
 const OUT = path.join(REPO, 'out', 'ui-0133');
 fs.mkdirSync(OUT, { recursive: true });
 const file = path.join(OUT, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, watermarkDir: path.join(REPO, 'editor', 'brand', 'watermark') });
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("");
+const { check, results } = S;
 
 // the page-side helpers (run in the page; the shadow root is the editor's)
 const HELPERS = `
@@ -96,7 +95,7 @@ async function surfaceCheck(page, scope, name, allowEmpty = false) {
   check(`${name}: ${idx.length} icon controls each hover with a move and a visible state`, (allowEmpty || idx.length > 0) && bad.length === 0, bad.join(', '));
 }
 
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 const failedIcons = { hover: [], press: [], focus: [], colour: [], rows: [] };
 try {
   const { ctx, page } = await freshPage(browser);
@@ -284,6 +283,4 @@ try {
 } finally {
   await browser.close();
 }
-console.log(results.join('\n'));
-console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

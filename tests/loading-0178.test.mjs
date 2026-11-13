@@ -1,23 +1,22 @@
-// 0.17.8 O5: the loading screen. A long phase swaps the small waiting card for a themed screen (AR + EN), fast work never flashes,
+// O5: the loading screen. A long phase swaps the small waiting card for a themed screen (AR + EN), fast work never flashes,
 // quiet jobs never get the screen, the real callers (fetch kinds, library open / import, bulk) are hooked, Calm holds it still.
 //   node tests/loading-0178.test.mjs
 import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const OUT = path.join(REPO, 'out', 'loading-0178-test');
 fs.mkdirSync(OUT, { recursive: true });
 const file = path.join(OUT, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, watermarkDir: null });
 const URL = pathToFileURL(file).href;
-let failed = 0;
-const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  loading-0178: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite('loading-0178'); const { check } = S;
 const i18n = JSON.parse(fs.readFileSync(path.join(REPO, 'editor', 'ext', '17-busy.i18n.json'), 'utf8'));
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 const sh = (page, fn) => page.evaluate((f) => new Function('r', `return (${f})(r)`)(document.getElementById('bw-ui-host').shadowRoot), fn.toString());
 try {
   for (const ui of ['ar', 'en']) {
@@ -84,5 +83,5 @@ try {
   const bulk = fs.readFileSync(path.join(REPO, 'editor', 'ext', '15-bulk.js'), 'utf8');
   check('bulk apply begins and ends a busy job', /endBusy = EXT\.busy\?\.begin\('busy\.bulk'\)/.test(bulk) && /endBusy\?\.\(\)/.test(bulk));
 } finally { await browser.close(); }
-if (failed) { console.log(`${failed} FAILED`); process.exit(1); }
+S.finish();
 console.log('loading-0178: all passed');

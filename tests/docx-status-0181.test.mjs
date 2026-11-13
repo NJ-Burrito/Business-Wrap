@@ -1,4 +1,4 @@
-// 0.18.1 (lane P2) · the status cells of a typed document take print's fill and ink in the DOCX too (w:shd on the cell, ink on its runs); a document
+// (lane P2) · the status cells of a typed document take print's fill and ink in the DOCX too (w:shd on the cell, ink on its runs); a document
 // without a docType (SRS and the legacy samples) gets none. Colours are the design vars print uses (render.mjs polishCss): ok success-100/700,
 // bad signal-100/600, warn accent-100/800, idle neutral-100/neutral-700, read from the same theme.json.
 //   node tests/run.mjs docx-status-0181

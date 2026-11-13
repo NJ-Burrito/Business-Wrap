@@ -1,4 +1,4 @@
-// 0.17.0 · legacy lane (owner notes P2 to P5 of 2026-11-03).
+// · legacy lane (owner notes P2 to P5 of 2026-11-03).
 //   P2  zip project import: archives made by Windows PowerShell (Compress-Archive) and 7-Zip (default and UTF-8 names), with long Arabic
 //       paths (past 260 characters) and Unicode names; archives whose names carry NO UTF-8 flag (OEM 720, Windows-1256, OEM 437: the way
 //       older Windows and WinRAR write them) read back to the exact names. Explorer's own zip cannot be driven headless: not verified here.

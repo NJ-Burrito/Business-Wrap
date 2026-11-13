@@ -1,4 +1,4 @@
-// 0.15.2: the live-editor slash commands. Every commands/*.md has front-matter with a description and allowed-tools;
+// the live-editor slash commands. Every commands/*.md has front-matter with a description and allowed-tools;
 // each allowed tool is a Claude Code built-in, Bash(node:*), or an MCP tool the server really registers (parsed from
 // mcp/server.mjs and mcp/editor-tools.mjs, named as the plugin exposes it); every command is listed in both READMEs.
 //
@@ -7,11 +7,12 @@ import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { suite } from './_harness.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (...p) => fs.readFileSync(path.join(REPO, ...p), 'utf8').replace(/\r\n/g, '\n');
-const results = []; let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite('');
+const { check } = S;
 
 const tools = new Set([...read('mcp', 'server.mjs').matchAll(/registerTool\('([a-z_]+)'/g), ...read('mcp', 'editor-tools.mjs').matchAll(/registerTool\('([a-z_]+)'/g)].map((m) => m[1]));
 check('parsed the MCP tool list', tools.size >= 20 && tools.has('editor_ops') && tools.has('render_diagram'), `${tools.size} tools`);
@@ -42,6 +43,4 @@ for (const f of files) {
 for (const f of ['edit.md', 'proofread.md']) { const s = read('commands', f); check(`${f}: ONE editor_ops batch + agent + Ctrl+Z`, /ONE `editor_ops`/.test(s) && /agent:/.test(s) && /Ctrl\+Z/.test(s)); }
 check('action.md lists exactly the editor_action allow-list', (() => { const m = /EDITOR_ACTIONS = \[([^\]]+)\]/.exec(read('mcp', 'editor-tools.mjs')); const acts = m[1].match(/'(\w+)'/g).map((x) => x.slice(1, -1)); const s = read('commands', 'action.md'); return acts.every((a) => s.includes('`' + a + '`')); })());
 
-console.log(results.join('\n'));
-console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

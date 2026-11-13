@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { suite, launchChrome } from './_harness.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(REPO, 'out', 'heal-test');
@@ -18,9 +19,8 @@ const H = await import('../engine/heal/index.mjs');
 const G = await import('../engine/heal/gates.mjs');
 const { launchOptions, loadPlaywright } = await import('../engine/export.mjs');
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("");
+const { check, results } = S;
 const lines = () => H.readHealLog().length;
 /** run one healer: it must complete, log exactly one HEALED line, and its step verdict must be HEALED */
 async function healed(name, fn, okValue) {
@@ -43,7 +43,7 @@ let browser;
 try {
   // ── browser walk: locator and wait (a real page) ──
   const { chromium } = await loadPlaywright();
-  browser = await chromium.launch(launchOptions());
+  browser = await launchChrome();
   const page = await browser.newPage();
   await page.setContent('<main><button>Next</button><button>Back</button><label>Name <input></label><p>Two</p><p>Two</p></main>');
   await healed('crawl locator (selector gone → role+name)', () => H.healLocator(page, { selector: '#next-old', role: 'button', name: 'Next' }), async (v) => (await v.locator.innerText()) === 'Next');
@@ -108,6 +108,4 @@ try {
 } finally {
   await browser?.close();
 }
-console.log(results.join('\n'));
-console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

@@ -1,4 +1,4 @@
-// 0.16.0 · SPEC lane: F (every diagram flows left to right), T (the document type scale is 2 pt smaller, diagrams keep theirs),
+// · SPEC lane: F (every diagram flows left to right), T (the document type scale is 2 pt smaller, diagrams keep theirs),
 // O (the «المخرجات» / Outputs chapter: blank, every pack, one ribbon command for an older document).
 //
 //   node tests/spec-0160.test.mjs        (BW_CHROME names Google Chrome; numbers go to out/spec-0160/numbers.json)

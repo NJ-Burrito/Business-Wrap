@@ -1,4 +1,4 @@
-// 0.15.2 lane host (owner notes 4, 10, 11, 12, 13): real Edge/Chrome, real keyboard and wheel, a REAL host and the real MCP client.
+// lane host (owner notes 4, 10, 11, 12, 13): real Edge/Chrome, real keyboard and wheel, a REAL host and the real MCP client.
 //   11  zoom 100 % is true size: a page is A4 at 96 dpi (793.7 CSS px) in the continuous, single and spread views; the pill, the field (zoomPct),
 //       Ctrl+wheel, the preset buttons and Ctrl+Alt+... all read the same percentage
 //   10  Fill height: the page's top sits right under the ribbon, its bottom just above the pager (or the window bottom), the same gap on both sides (+-2 px),
@@ -74,7 +74,7 @@ try {
       await page.evaluate(() => window.BW.runAction('zoomReset'));
       await sleep(500);
       const g = await geo(page);
-      // 0.16.0: a document that mixes sheet sizes (the sample's figure chapter prints on a turned sheet) draws the book from outer edge to
+      // a document that mixes sheet sizes (the sample's figure chapter prints on a turned sheet) draws the book from outer edge to
       // outer edge of its sheets: the width comes from the window itself (--vw, in mm), the plain document keeps two A4 sheets and a gap
       const vwMm = await page.evaluate(() => (document.querySelector('#bw-pair .bw-sheets') ? parseFloat(document.querySelector('#bw-pair .bw-view')?.style.getPropertyValue('--vw')) : 0));
       const want = g.spread ? (vwMm ? vwMm / 25.4 * 96 : 2 * A4_W + 12 / 25.4 * 96) : A4_W;
@@ -225,7 +225,7 @@ try {
     check('check: diagramWarnings agrees with the editor\'s own Check panel (one finding per warning)', !r.err && r.d.diagramWarnings.length === r.d.findings.filter((f) => /\/blocks\/\d+$/.test(f.path || '') && f.level === 'warn' && /pt|نقطة/.test(f.message)).length, JSON.stringify({ w: r.d.diagramWarnings, dg }));
 
     // 4: turning the host off stops ONLY the host; the page stays open and can turn it on again
-    // 0.17.0 note 10: no power button in Settings; the confirm dialog is reached through the `powerOff` action (the top bar's switch stops without it)
+    // note 10: no power button in Settings; the confirm dialog is reached through the `powerOff` action (the top bar's switch stops without it)
     const hostPid = hs.pid;
     const closedWindows = []; // a page of the same context that would be closed by «close everything»
     const keep = await ctx.newPage();

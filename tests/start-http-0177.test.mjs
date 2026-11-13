@@ -1,4 +1,4 @@
-// 0.17.7 lane start: the top-bar host switch of an editor the HOST ITSELF served (http://127.0.0.1:<port>/), in a REAL headed Chrome.
+// lane start: the top-bar host switch of an editor the HOST ITSELF served (http://127.0.0.1:<port>/), in a REAL headed Chrome.
 //   Owner bug (2026-11-04): «starting the host is not working from the editor itself». After «off» stopped the host, «on» must do what a file:// page does:
 //   hand business-wrap://start to the browser, poll 127.0.0.1:4317-4327 /api/health, and show «متصل :port» with a green dot, reconnecting to the port that answers.
 // Part A (always runs): a served page, the launch link stubbed, a stand-in host that comes up on ANOTHER port -> the page asks business-wrap://start once
@@ -19,10 +19,10 @@ import { buildEditor } from '../engine/build-editor.mjs';
 import { serve } from '../engine/serve.mjs';
 import { chromePath } from '../engine/export.mjs';
 import { status as protoStatus } from '../engine/protocol.mjs';
+import { suite } from './_harness.mjs';
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  start-http: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("start-http");
+const { check, results } = S;
 const tmp = fs.mkdtempSync(path.join(process.env.BW_START_TMP || os.tmpdir(), 'bw-start177-'));
 const shots = process.env.BW_START_SHOTS || path.join(tmp, 'shots');
 fs.mkdirSync(shots, { recursive: true });
@@ -154,6 +154,4 @@ try {
 } finally {
   if (!process.env.BW_START_KEEP) spawnSync('python', [path.join(os.homedir(), '.claude', 'skills', 'nj-safe-delete', 'scripts', 'trash.py'), tmp], { stdio: 'ignore', windowsHide: true, env: { ...process.env, PYTHONUTF8: '1' } });
 }
-console.log(results.join('\n'));
-console.log(`${failed ? 'FAIL' : 'PASS'}: start-http-0177 — ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

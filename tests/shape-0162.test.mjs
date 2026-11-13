@@ -1,4 +1,4 @@
-// 0.16.3 · shape lane: a document built by agents in the field shape (a house-label subhead + a plain table, no `stories` actions/dictionary)
+// · shape lane: a document built by agents in the field shape (a house-label subhead + a plain table, no `stories` actions/dictionary)
 // prints like the story card: sand rounded card, pale blue header, navy words, full grid, label bands; DOCX shading and grid; stored data unchanged.
 // The document is a placeholder built here from the sample (no client words).
 import './_isolate.mjs';
@@ -6,15 +6,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
-import { exportDocx, loadTheme, launchOptions, printHtml, REPO } from '../engine/export.mjs';
+import { exportDocx, loadTheme, printHtml, REPO } from '../engine/export.mjs';
 import { py } from '../engine/py.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const OUT = path.join(REPO, 'out', 'shape-0162');
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
-let failed = 0;
-const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  shape-0162: ${name}${detail && !ok ? '  | ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("shape-0162");
+const { check } = S;
 const theme = loadTheme();
 const LAB = { ar: ['جدول الإجراءات', 'قاموس البيانات والمصطلحات'], en: ['Actions table', 'Data dictionary and terms'] };
 const rows = (n, w) => Array.from({ length: n }, (_, i) => Array.from({ length: w }, (_, c) => `x${i}-${c}`));
@@ -32,7 +32,7 @@ const fieldDoc = (l) => {
   ];
   return d;
 };
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 try {
   for (const l of ['ar', 'en']) {
     const d = fieldDoc(l);
@@ -105,5 +105,4 @@ for (const l of ['ar', 'en']) {
   check(`${l} DOCX both headers shaded the same (${act?.fill} / ${dic?.fill}) and unlike the untouched table (${oth?.fill})`, !!act?.fill && act.fill === dic?.fill && act.fill !== oth?.fill);
   check(`${l} DOCX header cells carry the grid: ${act?.sides}`, ['bottom', 'left', 'right', 'top'].every((s) => act?.sides.includes(s)));
 }
-console.log(failed ? `shape-0162: ${failed} FAILED` : 'shape-0162: all pass');
-process.exit(failed ? 1 : 0);
+S.finish();

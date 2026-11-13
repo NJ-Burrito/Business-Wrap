@@ -1,4 +1,4 @@
-// 0.18.2 lane W1: the NJ mark (#bw-watermark, editor/ext/34-watermark.js) must be on screen at the bottom LEFT in both languages, in an old SRS and in a typed document,
+// lane W1: the NJ mark (#bw-watermark, editor/ext/34-watermark.js) must be on screen at the bottom LEFT in both languages, in an old SRS and in a typed document,
 // also while the start page is open. Owner: «why can't I see my watermark at the bottom left?». Cause: the start page (since 0.18.2 it shows on EVERY open) hid the mark
 // with `html[data-bw-start="open"] #bw-watermark{visibility:hidden}`, so the mark was gone whenever the start page was up (0.18.0 review fix #10 hid it because it covered
 // the last tile row; the right fix is a bottom-start safe area on the start page, not hiding the mark).

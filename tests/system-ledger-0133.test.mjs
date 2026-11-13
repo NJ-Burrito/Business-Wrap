@@ -1,13 +1,13 @@
-// 0.13.3 TSYS-02: re-opening an unsaved file twice must not raise a tampering alarm, and a real truncation still must.
+// TSYS-02: re-opening an unsaved file twice must not raise a tampering alarm, and a real truncation still must.
 // Logic only (engine/ledger-v1.mjs + the history route's mirror merge); the served-editor path is scenario H5 of the QA runner.
 //
 //   node tests/system-ledger-0133.test.mjs
 import './_isolate.mjs';
 import { BWLOG1 as L } from '../engine/ledger-v1.mjs';
+import { suite } from './_harness.mjs';
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  system-ledger: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("system-ledger");
+const { check, results } = S;
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const reasons = (v) => [...new Set(v.issues.map((i) => i.reason))].sort().join(',');
 const actor = { id: '7d1f0c5e-0000-4000-8000-0000000000b1', name: 'Mark' };
@@ -78,6 +78,4 @@ try {
   check('the history route keeps head, hashes and kinds together', kept.mirror.head.seq === m1.head.seq && kept.mirror.kinds.length === m1.kinds.length, JSON.stringify(kept.mirror.kinds));
 } finally { fs.rmSync(hist, { recursive: true, force: true }); }
 
-console.log(results.join('\n'));
-console.log(`${failed ? 'FAIL' : 'PASS'}  system-ledger: ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

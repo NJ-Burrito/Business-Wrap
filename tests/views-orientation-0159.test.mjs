@@ -1,4 +1,4 @@
-// 0.16.0 (bw-0159): the page views of a document that mixes portrait and landscape pages.
+// (bw-0159): the page views of a document that mixes portrait and landscape pages.
 // Every page view shows each page whole, alone and at its own size: one page, two pages, continuous. Real Chrome steps through a
 // placeholder fixture (the sample event-permit, which already carries a figure chapter on its own turned sheet, plus landscape
 // sections set through the editor's own page action): portrait, landscape, portrait; first and last page landscape; AR and EN;
@@ -11,17 +11,17 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO, exportPdf, loadTheme, pageThumbs } from '../engine/export.mjs';
+import { REPO, exportPdf, loadTheme, pageThumbs } from '../engine/export.mjs';
 import { pageSizes } from './fixtures/doc-model/util.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-views0159-'));
-let failed = 0;
-const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  views-orientation: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("views-orientation");
+const { check } = S;
 const file = path.join(tmp, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, set: 'views-0159', watermarkDir: null, ui: 'en' });
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 try {
   const page = await (await browser.newContext({ viewport: { width: 1600, height: 900 } })).newPage();
   const errors = [];
@@ -162,7 +162,7 @@ try {
     await page.evaluate(() => window.BW.runAction('view.single'));
     await page.waitForFunction(() => window.BW.S.pageN > 1);
     const got = (await sizes()).map((s) => (s.w > s.h ? 'L' : 'P')).join('');
-    // 0.16.0: the page count is the PDF's too (tests/pages-0160.test.mjs measures it on every sample); the turned sheets come in the same order
+    // the page count is the PDF's too (tests/pages-0160.test.mjs measures it on every sample); the turned sheets come in the same order
     const runs = (x) => x.replace(/(.)\1+/g, '$1');
     check(`${label}: the PDF's turned sheets come in the view in the same order (pdf ${want} / view ${got})`, runs(want) === runs(got) && want.split('L').length === got.split('L').length, `pdf ${want} / view ${got}`);
     check(`${label}: the view has the PDF's page count and no note that they may differ (pdf ${want.length} / view ${got.length})`, want.length === got.length && !(await page.evaluate(() => window.BW.S.viewsNoted)), `pdf ${want} / view ${got}`);
@@ -243,5 +243,4 @@ try {
   await browser.close();
   fs.rmSync(tmp, { recursive: true, force: true });
 }
-console.log(failed ? `\n${failed} FAILED` : '\nviews-orientation: all passed');
-process.exit(failed ? 1 : 0);
+S.finish();

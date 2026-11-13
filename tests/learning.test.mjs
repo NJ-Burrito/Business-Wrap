@@ -12,6 +12,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { py } from '../engine/py.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-learn-'));
 process.env.BW_LEARNING_DIR = path.join(TMP, 'learning'); // before any learning module reads it
@@ -28,9 +29,8 @@ const L = await import('../engine/learning/store.mjs');
 const OUT = path.join(REPO, 'out', 'learning-test');
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  learning: ${name}${detail ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("learning");
+const { check, results } = S;
 const ev = (o) => ({ at: new Date(Date.now() + results.length).toISOString(), kind: 'edit', locale: 'en', origin: 'generated', ...o });
 let n = 0;
 const E = (o) => ev({ id: `t${n++}`, ref: `g${n}.0`, ...o });
@@ -129,7 +129,7 @@ const ed1 = buildEditor({ inputs: [SAMPLE], out: path.join(OUT, 'sample.editor.h
 const srv = await serve(ed1, 0, { out: path.join(OUT, 'exports') });
 const srv2 = await serve(H.editor, 0, { out: path.join(OUT, 'exports2') });
 const base = (s) => `http://127.0.0.1:${s.address().port}/`;
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 const errors = [];
 const open = async (url) => {
   const ctx = await browser.newContext({ acceptDownloads: true });
@@ -285,6 +285,4 @@ try {
 }
 
 fs.rmSync(TMP, { recursive: true, force: true });
-console.log(results.join('\n'));
-console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

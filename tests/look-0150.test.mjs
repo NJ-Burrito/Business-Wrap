@@ -1,4 +1,4 @@
-// 0.15.0 lane "look" (UI/UX lane B): note 8 top-bar spacing, note 11 drawers from the top, note 13 the backdrop, note 14 the dim navy dark
+// lane "look" (UI/UX lane B): note 8 top-bar spacing, note 11 drawers from the top, note 13 the backdrop, note 14 the dim navy dark
 // mode (every pair re-measured from the shipped CSS in the real editor, R16), and the perf boosters 1, 2 and 5 (hover motion, idle mark,
 // scoped button-icon decoration). Headless Chrome, closed at the end. Every probe first asserts that it looked (R15): the ribbon, the bar and
 // the elements it measures exist before a gate may pass.
@@ -8,9 +8,9 @@ import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const OUT = path.join(REPO, 'out', 'look');
 fs.mkdirSync(OUT, { recursive: true });
@@ -18,13 +18,9 @@ const file = path.join(OUT, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, watermarkDir: path.join(REPO, 'editor', 'brand', 'watermark') });
 const URL = pathToFileURL(file).href;
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => {
-  results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail && !ok ? '  — ' + detail : ''}`);
-  if (!ok) failed += 1;
-};
-const browser = await chromium.launch(launchOptions());
+const S = suite("");
+const { check, results } = S;
+const browser = await launchChrome();
 async function open({ ui = 'ar', width = 1366, height = 768, dark = false, calm = false, reduced = false, collapsed = false } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height }, reducedMotion: reduced ? 'reduce' : 'no-preference' });
   await ctx.addInitScript(([u, d, c, col]) => {
@@ -251,7 +247,7 @@ try {
     const btn = await sh(page, (r) => { const b = r.querySelector('.island .ribbon .rb-panel button[data-a]'); if (!b) return null; const x = b.getBoundingClientRect(); return { x: x.left + x.width / 2, y: x.top + x.height / 2 }; });
     check('perf 1: a ribbon button was found to hover (the probe looked)', !!btn);
     if (btn) {
-      await page.mouse.move(5, 700); await page.mouse.move(btn.x, btn.y, { steps: 2 }); await page.waitForTimeout(160); // 0.15.2: the part moves play once the pointer has rested (120 ms)
+      await page.mouse.move(5, 700); await page.mouse.move(btn.x, btn.y, { steps: 2 }); await page.waitForTimeout(160); // the part moves play once the pointer has rested (120 ms)
       const a = await sh(page, (r) => { const b = r.querySelector('.island .ribbon .rb-panel button[data-a]:hover'); if (!b) return null; return b.getAnimations({ subtree: true }).map((x) => ({ n: x.animationName || x.transitionProperty, end: x.effect.getComputedTiming().endTime })); });
       check('perf 1: hovering a tool plays something (the probe looked)', Array.isArray(a) && a.length > 0, JSON.stringify(a));
       const long = (a || []).filter((x) => x.end > 560 && !/^(background|border|box-shadow|outline)/.test(x.n));
@@ -310,6 +306,4 @@ try {
 } finally {
   await browser.close();
 }
-console.log(results.join('\n'));
-console.log(`\n${results.length - failed}/${results.length} passed`);
-process.exit(failed ? 1 : 0);
+S.finish();

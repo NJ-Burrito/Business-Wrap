@@ -1,4 +1,4 @@
-// 0.17.0 fixb: the cells' font dialog (editor/ext/24-cells.js fmtFont, a cell selection) carries the same live preview as the text one (21-format w2preview):
+// fixb: the cells' font dialog (editor/ext/24-cells.js fmtFont, a cell selection) carries the same live preview as the text one (21-format w2preview):
 // the first selected cell's text drawn in the face being chosen, each option row in its own face.
 //   node tests/fixb-0170.test.mjs
 import './_isolate.mjs';
@@ -6,14 +6,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-fixb0170-'));
-let failed = 0;
-const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  fixb-0170: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
-const browser = await chromium.launch(launchOptions());
+const S = suite("fixb-0170");
+const { check } = S;
+const browser = await launchChrome();
 const errors = [];
 try {
   const file = path.join(tmp, 'editor.html');
@@ -57,5 +57,4 @@ try {
   await browser.close();
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* temp */ }
 }
-console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: fixb-0170`);
-process.exit(failed ? 1 : 0);
+S.finish();

@@ -1,4 +1,4 @@
-// 0.16.5 · acc lane: in the field shape (a `stories` block whose card has no acceptance, then a «معايير القبول» subhead and a prose block of numbered
+// · acc lane: in the field shape (a `stories` block whose card has no acceptance, then a «معايير القبول» subhead and a prose block of numbered
 // criteria with nested bullets) the criteria print as the LAST ROW of the story's card table (as the reference), not as a separate part below it:
 // print (Chrome), DOCX read-back, stored data unchanged, in-place pointers kept. A story that already holds `acceptance` is unchanged.
 // The document is a placeholder built here from the sample (no client words).
@@ -7,15 +7,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
-import { exportDocx, loadTheme, launchOptions, printHtml, REPO } from '../engine/export.mjs';
+import { exportDocx, loadTheme, printHtml, REPO } from '../engine/export.mjs';
 import { py } from '../engine/py.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const OUT = path.join(REPO, 'out', 'acc-0165');
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
-let failed = 0;
-const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  acc-0165: ${name}${detail && !ok ? '  | ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("acc-0165");
+const { check } = S;
 const theme = loadTheme();
 const LAB = { ar: ['معايير القبول', 'جدول الإجراءات'], en: ['Acceptance criteria', 'Actions table'] };
 const fieldDoc = (l) => {
@@ -38,7 +38,7 @@ const fieldDoc = (l) => {
   ];
   return d;
 };
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 try {
   for (const l of ['ar', 'en']) {
     const d = fieldDoc(l);
@@ -96,5 +96,4 @@ for (const l of ['ar', 'en']) {
   check(`${l} DOCX card has 5 rows, the last = label + the criteria (${card?.length})`, card?.length === 5 && lastRow.includes(LAB[l][0]) && /ACC-GROUP-ONE.*ACC-NESTED-A.*ACC-NESTED-B.*ACC-GROUP-TWO/.test(lastRow), lastRow);
   check(`${l} DOCX the criteria are not printed a second time outside the card`, tabs.length >= 1 && !tabs.some((t) => t !== card && t.some((x) => x.includes('ACC-GROUP-ONE'))));
 }
-console.log(failed ? `acc-0165: ${failed} FAILED` : 'acc-0165: all pass');
-process.exit(failed ? 1 : 0);
+S.finish();

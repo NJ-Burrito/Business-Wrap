@@ -1,4 +1,4 @@
-// 0.15.3 lane "cli": T3 reset + doctor roots, T9 update check, T11 flags and get, T13 --help and open, T14 ops/render, T15 folder names.
+// lane "cli": T3 reset + doctor roots, T9 update check, T11 flags and get, T13 --help and open, T14 ops/render, T15 folder names.
 // Everything runs in temp folders (BW_HOME_DIR, BW_WORKSPACE, BW_LOCAL_DIR) and a fake host and releases feed; the owner's real
 // save folder and host are never touched.
 //
@@ -10,13 +10,13 @@ import path from 'node:path';
 import http from 'node:http';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { suite } from './_harness.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-cli0153-'));
 process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch { /* temp */ } });
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + String(detail).slice(0, 200) : ''}`); if (!ok) failed += 1; };
+const S = suite('');
+const { check } = S;
 const mk = (...p) => { const d = path.join(TMP, ...p); fs.mkdirSync(d, { recursive: true }); return d; };
 const ENV = { ...process.env, PYTHONUTF8: '1', BW_UPDATE_TOKEN: 'none', BW_NO_BROWSER: '1', BW_RESET_KEEP_HOSTS: '1', BW_TEST_MODE: '1' };
 const node = (file, args, env = {}, input) => spawnSync(process.execPath, [path.join(REPO, file), ...args], { encoding: 'utf8', env: { ...ENV, ...env }, input, timeout: 120000, windowsHide: true });
@@ -184,6 +184,4 @@ const cliAsync = (args, env) => new Promise((ok) => { const c = spawn(process.ex
   check('T15: the exported file lives in the document folder and the whole path stays under the Windows limit', pdf.startsWith(path.join(docsDir, e)) && pdf.length <= W.PATH_MAX && pdf.endsWith('.pdf'), `${pdf.length}`);
 }
 
-console.log(results.join('\n'));
-console.log(`\n${results.length - failed}/${results.length} passed`);
-process.exit(failed ? 1 : 0);
+S.finish();

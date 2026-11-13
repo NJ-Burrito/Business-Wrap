@@ -1,4 +1,4 @@
-// 0.15.2 lane "design": note 1 backdrop (static, both themes), note 3 reading-mode icon, notes 5/6 corners (watermark bottom-left, toasts bottom-right,
+// lane "design": note 1 backdrop (static, both themes), note 3 reading-mode icon, notes 5/6 corners (watermark bottom-left, toasts bottom-right,
 // physical in ar and en, light and dark), note 16 the ribbon panel glides (height + pages transform over time, back to the same page position, instant in
 // calm mode, not instant under the OS reduced-motion setting), hover intent (a hover plays no icon part animation until the pointer has rested).
 // Every probe first asserts that it looked (R15). Headless Chrome, closed at the end.
@@ -8,9 +8,9 @@ import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const OUT = path.join(REPO, 'out', 'design');
 fs.mkdirSync(OUT, { recursive: true });
@@ -18,9 +18,9 @@ const file = path.join(OUT, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, watermarkDir: path.join(REPO, 'editor', 'brand', 'watermark') });
 const URL = pathToFileURL(file).href;
 
-let failed = 0;
-const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
-const browser = await chromium.launch(launchOptions());
+const S = suite("");
+const { check } = S;
+const browser = await launchChrome();
 async function open({ ui = 'ar', dark = false, calm = false, reduced = false, width = 1366, height = 768 } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height }, reducedMotion: reduced ? 'reduce' : 'no-preference' });
   await ctx.addInitScript(([u, d, c]) => {
@@ -171,5 +171,4 @@ try {
     await ctx.close();
   }
 } finally { await browser.close(); }
-console.log(`${failed ? 'FAIL' : 'PASS'}  design-0152: ${failed} failed`);
-process.exit(failed ? 1 : 0);
+S.finish();

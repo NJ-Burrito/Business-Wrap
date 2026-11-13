@@ -1,4 +1,4 @@
-// 0.14.0 owner notes O1 + O2 (lane objects).
+// owner notes O1 + O2 (lane objects).
 //   O1  a visible «التفاف النص / Wrap» menu on pictures, in-line pictures and text boxes: Word's six modes + position;
 //       each prints the same in the editor, the PDF and the DOCX (wp:anchor wrapSquare / wrapTight / wrapTopAndBottom / behindDoc).
 //   O2  the diagram's «رمز / Symbol» list is readable, an added symbol can be picked, moved and deleted, the legend text is editable.
@@ -9,17 +9,15 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO, exportPdf, exportDocx, loadTheme, printHtml } from '../engine/export.mjs';
+import { REPO, exportPdf, exportDocx, loadTheme, printHtml } from '../engine/export.mjs';
 import { applyOps } from '../engine/edits.mjs';
 import { DIAGRAM } from '../engine/diagram.mjs';
 import { pageTexts, docxParts, pngUri, sample } from './fixtures/doc-model/util.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-objects0140-'));
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { const line = `${ok ? 'PASS' : 'FAIL'}  objects-0140: ${name}${detail && !ok ? '  — ' + detail : ''}`; results.push(line); console.log(line); if (!ok) failed += 1; };
+const S = suite('objects-0140'); const { check } = S;
 const ONLY = process.env.BW_ONLY || ''; // BW_ONLY=o2 runs the diagram half only (quick loop)
 const theme = loadTheme();
 const IMG = pngUri(60, 60);
@@ -64,7 +62,7 @@ for (const loc of ONLY === 'o2' ? [] : ['en', 'ar']) {
 // ── editor ──
 const file = path.join(tmp, 'a.html');
 buildEditor({ inputs: [path.join(REPO, 'tests', 'fixtures', 'permit-whole')], out: file, set: 'objects0140', watermarkDir: null });
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 try {
   for (const ui of ONLY === 'o2' ? [] : ['ar', 'en']) {
     const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 } });
@@ -241,5 +239,4 @@ try {
   check('en: the editor build marks each legend entry for in-place editing', /data-dg-legend="staff"/.test(ed) && /data-dg-legend="ok"/.test(ed));
 }
 fs.rmSync(tmp, { recursive: true, force: true });
-console.log(failed ? `\nFAILED: ${failed}/${results.length}` : `\nALL ${results.length} PASS`);
-process.exit(failed ? 1 : 0);
+S.finish();

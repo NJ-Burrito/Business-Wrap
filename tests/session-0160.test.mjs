@@ -1,4 +1,4 @@
-// 0.16.0 session lane, S1: a LIBRARY document whose host history folder lacks its log gets a calm neutral message (history is in another folder),
+// session lane, S1: a LIBRARY document whose host history folder lacks its log gets a calm neutral message (history is in another folder),
 // is not «stripped», and logs from this open on. A saved FILE that kept the mark and lost its log still warns (tests/provenance F5 2).
 // Real Chrome, a real host, the real library (IndexedDB), the history folder moved away like a switched save folder.
 //   node tests/session-0160.test.mjs

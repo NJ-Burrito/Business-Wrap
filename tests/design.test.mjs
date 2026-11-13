@@ -375,7 +375,7 @@ try {
 
   // ── A22 logo motion: idle loops + ≥ 3 hover animations on the mark's parts; none in calm mode or reduced motion ──
   {
-    const anims = (page) => shadow(page, (r) => r.querySelector('.brand svg').getAnimations({ subtree: true }).map((a) => a.id || a.animationName || a.transitionProperty || a.constructor.name)); // 0.15.0: the idle nod is one-shot Web Animations with ids bwm-idle-* (ext/46-backdrop.js)
+    const anims = (page) => shadow(page, (r) => r.querySelector('.brand svg').getAnimations({ subtree: true }).map((a) => a.id || a.animationName || a.transitionProperty || a.constructor.name)); // the idle nod is one-shot Web Animations with ids bwm-idle-* (ext/46-backdrop.js)
     const shot22 = async (name, opts, calm) => {
       const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 }, ...opts });
       if (calm) await ctx.addInitScript(() => { try { localStorage.setItem('bw:calm', '1'); } catch {} });

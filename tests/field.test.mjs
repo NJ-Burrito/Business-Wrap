@@ -75,7 +75,7 @@ try {
     check(`spa ${l}: dropdown, multiselect, calendar and radio options`, by('purpose')?.options?.length === 3 && by('guests')?.options?.length === 2 && by('eventDate')?.type === 'date' && by('kind')?.options?.length === 2, JSON.stringify([by('purpose')?.options, by('guests')?.options, by('kind')?.options]));
     check(`spa ${l}: conditional field, attachment, validation messages`, /=/.test((by('weeks')?.shownWhen || [])[0] || '') && by('plan')?.accept === '.pdf,image/*' && L.steps[0].validations.length >= 1, JSON.stringify([by('weeks')?.shownWhen, L.steps[0].validations]));
   }
-  // 0.8.1 (the live re-crawl): the header language switcher, the card, required from CSS and from the site's own message,
+  // (the live re-crawl): the header language switcher, the card, required from CSS and from the site's own message,
   // the attachment label inside a captioned panel, the captcha field
   for (const l of ['ar', 'en']) {
     const L = cr.raw.languages[l];
@@ -97,7 +97,7 @@ try {
     check(`spa ${l}: card fees, recipients and channels`, !!facts[T.fees] && (facts[T.rec] || '').includes('،') && !!facts[T.ch], JSON.stringify(L.card.facts));
     check(`spa ${l}: every starred field is required; the message only adds`, ['organiser', 'purpose', 'eventDate', 'kind', 'plan', 'ref'].every((k) => f.find((x) => x.key === k)?.required) && !f.find((x) => x.key === 'notes')?.required, JSON.stringify(f.map((x) => [x.key, x.required])));
   }
-  // 0.8.3: the card's lists reach the document (and the PDF), one attachment row per file + its name select,
+  // the card's lists reach the document (and the PDF), one attachment row per file + its name select,
   // inline messages read by blurring the fields (the dry run never presses Send)
   const [arD, enD] = cr.documents.map(read);
   for (const [l, d] of [['ar', arD], ['en', enD]]) {

@@ -7,17 +7,17 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { launchOptions, REPO } from '../engine/export.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-ribbon15-'));
-let failed = 0;
-const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  ribbon-0150: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("ribbon-0150");
+const { check } = S;
 
 const file = path.join(tmp, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, set: 'ribbon-0150', watermarkDir: null });
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 
 // the 12 general tabs (0.15.2: Spelling joins, before View) and the colour token each one carries (UI designer §1; the VALUES are read from the shipped CSS, never typed here)
 const GENERAL = [['file', '--bw-sec-file'], ['export', '--bw-sec-export'], ['home', '--bw-sec-edit'], ['font', '--bw-sec-font'], ['para', '--bw-sec-para'], ['insert', '--bw-sec-insert'],
@@ -217,7 +217,7 @@ try {
     const c1 = await inShell(page, `const b = r.querySelector('.rb-bar').getBoundingClientRect(), t = r.querySelector('.rb-tabs').getBoundingClientRect(); const tb = r.querySelector('#rb-tab-table'); return { has: !!tb, dx: Math.abs((b.left + b.right) / 2 - (t.left + t.right) / 2), sel: tb?.getAttribute('aria-selected'), gold: tb && getComputedStyle(tb).boxShadow.includes('inset'), icons: r.querySelector('.rb-tabs').classList.contains('icons'), n: r.querySelectorAll('.rb-tab').length, noScroll: (() => { const p = r.querySelector('.rb-panel'); return p.scrollWidth <= p.clientWidth + 1; })(), tight: r.querySelector('.rb-tabs').scrollWidth <= r.querySelector('.rb-tabs').clientWidth + 1 };`);
     check('contextual: a cell selection adds the Table tab, selected, centred with it (within 2 px), no scroll, the tab strip fits', c1.has && c1.sel === 'true' && c1.dx <= 2 && c1.noScroll && c1.tight && c1.n === 13, JSON.stringify(c1));
     check('contextual: the Table tab keeps the contextual gold top rule', c1.gold, '');
-    // 0.17.8 (O1): a click on the background around the page keeps the selection; an empty spot on the page itself clears it
+    // (O1): a click on the background around the page keeps the selection; an empty spot on the page itself clears it
     { const bm = await page.locator(`#bw-pair main.bw-doc[data-locale="${ed}"]`).boundingBox(); await page.mouse.click(bm.x + 3, 400); }
     await page.waitForTimeout(300);
     check('contextual: clearing the selection brings the previous tab back and removes the Table tab', await sh(page, (r) => !r.querySelector('#rb-tab-table') && r.querySelector('.rb-tab[aria-selected="true"]')?.dataset.tab === 'home'));
@@ -273,5 +273,4 @@ try {
   await browser.close();
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* temp is O: and cleaned later */ }
 }
-console.log(failed ? `\nFAILED: ${failed}` : '\nall ribbon-0150 checks passed');
-process.exit(failed ? 1 : 0);
+S.finish();

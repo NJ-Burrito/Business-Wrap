@@ -1,4 +1,4 @@
-// 0.15.9 mark lane (bw-0159): the owner's NJ mark (#bw-watermark, editor/ext/34-watermark.js) must always show at the bottom left of the editor and
+// mark lane (bw-0159): the owner's NJ mark (#bw-watermark, editor/ext/34-watermark.js) must always show at the bottom left of the editor and
 // every behaviour of its header comment must work, in REAL Chrome, on the built editor served over http (127.0.0.1, a free port) as the owner runs it.
 //   M1 visible: rect inside the viewport, opacity >= 0.85 after the intro, top of the stack at several points of it (elementFromPoint), not behind the
 //      panel, ribbon, backdrop or a toast; ar + en, light + dark, 1024 to 2560 wide, page zoom 75 to 150 % (= a narrower viewport at a higher device
@@ -14,10 +14,10 @@
 import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { serve } from '../engine/serve.mjs';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const OUT = path.join(REPO, 'out', 'watermark-0159');
 fs.mkdirSync(OUT, { recursive: true });
@@ -25,11 +25,11 @@ const WMDIR = path.join(REPO, 'editor', 'brand', 'watermark');
 const file = path.join(OUT, 'mark.editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, set: 'mark-0159', watermarkDir: WMDIR });
 
-let failed = 0;
-const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail && !ok ? '  - ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("");
+const { check } = S;
 const srv = await serve(file, 0);
 const URL = `http://127.0.0.1:${srv.address().port}/?session=s0159&tab=t0159`;
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 
 /** A page like the owner's: http, a seen intro (unless fresh), a fake offset clock for the rate rules, welcome already done (unless welcome). */
 async function open({ ui = 'ar', dark = false, calm = false, width = 1920, height = 1080, zoom = 1, fresh = false, welcome = false, clock = false, reducedMotion = 'no-preference' } = {}) {
@@ -390,5 +390,4 @@ try {
   await browser.close();
   srv.close();
 }
-console.log(failed ? `\n${failed} FAILED` : '\nall passed');
-process.exit(failed ? 1 : 0);
+S.finish();

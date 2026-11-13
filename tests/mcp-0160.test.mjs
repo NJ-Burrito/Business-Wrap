@@ -1,4 +1,4 @@
-// 0.16.0 (mcp-notes items 7, 8, 9, 10, 11, 12, 15; the tool half of 5): a REAL MCP client over stdio builds a document from a cold start, in REAL Chrome:
+// (mcp-notes items 7, 8, 9, 10, 11, 12, 15; the tool half of 5): a REAL MCP client over stdio builds a document from a cold start, in REAL Chrome:
 //   M1  cold start from MCP alone: no host, no tab, no library. open_in_editor with no arguments starts the host and makes NO document; editor_new then opens its own window and creates the one document
 //   M2  logos from files: {"$file": png} puts a checked data URI in; a corrupt PNG, a truncated typed data URI and a missing file are BAD_OP (also straight at the host); reply has revision and doc
 //   M3  retries are safe: the same request_id is applied once (replayed:true), the overlay count does not grow
@@ -32,8 +32,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const until = async (fn, ms = 20000, step = 200) => { for (const t0 = Date.now(); Date.now() - t0 < ms; await sleep(step)) { try { const v = await fn(); if (v) return v; } catch { /* not yet */ } } return false; };
 const out = [];
 let failed = 0;
-// 0.16.3: a stalled run says where (the last check that passed) and what it had, within 8 minutes, instead of being killed silently at 15 (CI run 41587032456 left no line at all)
-// 0.16.6: a stall is NO CHECK FINISHING for 240 s (every check re-arms the timer), not a fixed 480 s for the whole suite: it takes ~50 s on a free machine
+// a stalled run says where (the last check that passed) and what it had, within 8 minutes, instead of being killed silently at 15 (CI run 41587032456 left no line at all)
+// a stall is NO CHECK FINISHING for 240 s (every check re-arms the timer), not a fixed 480 s for the whole suite: it takes ~50 s on a free machine
 // but ~10 x that on a loaded 4-core runner that runs two suites at once (CI run of 2026-11-03: still working in the restart section when the 480 s ran out). A hard ceiling of 840 s stays under the 15-minute kill.
 const stall = (why) => { console.log(out.join('\n') + `\nFAIL  mcp-0160: ${why}; the last check before the stall: ${out.at(-1) || '(none)'}`); process.exit(1); };
 let idleTimer = null;

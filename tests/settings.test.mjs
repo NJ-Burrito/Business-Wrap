@@ -15,6 +15,7 @@ import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL, fileURLToPath } from 'node:url';
+import { suite, launchChrome } from './_harness.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CUR = JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8')).version;
@@ -32,9 +33,8 @@ const AXE = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 const SHOTS = path.join(REPO, 'out', 'settings', 'shots');
 fs.mkdirSync(SHOTS, { recursive: true });
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  settings: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("settings");
+const { check, results } = S;
 const p = parseVersion(CUR);
 const NEWER = `${p[0]}.${p[1] + 1}.0`;
 const sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
@@ -87,7 +87,7 @@ async function startServer({ file = editorFile, install = '' } = {}) {
   return { url: `http://127.0.0.1:${s.address().port}/`, dir };
 }
 
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 const sh = (page, fn, arg) => page.evaluate(([f, a]) => new Function('r', 'a', `return (${f})(r, a)`)(document.getElementById('bw-ui-host').shadowRoot, a), [fn.toString(), arg]);
 const uh = (page, fn, arg) => page.evaluate(([f, a]) => new Function('r', 'a', `return (${f})(r, a)`)(document.getElementById('bw-update').shadowRoot, a), [fn.toString(), arg]);
 async function open(url, { ui = 'ar', store = {}, width = 1366, height = 860 } = {}) {
@@ -104,7 +104,7 @@ async function open(url, { ui = 'ar', store = {}, width = 1366, height = 860 } =
   return { ctx, page, errors, reqs };
 }
 const popupOpen = (page) => page.evaluate(() => { const h = document.getElementById('bw-update'); const s = h?.shadowRoot.querySelector('.scrim'); return !!(s && !s.hidden) && h.dataset.open; });
-let bannerSeen = false; // 0.16.0: the automatic notice is a small banner; the popup opens when the person presses «what's new» in it (or from Settings → Check now)
+let bannerSeen = false; // the automatic notice is a small banner; the popup opens when the person presses «what's new» in it (or from Settings → Check now)
 const waitPopup = async (page, ms = 6000) => {
   const first = await page.waitForFunction(() => { const d = document.getElementById('bw-update')?.dataset.open; return d === 'banner' || d === 'popup' ? d : false; }, null, { timeout: ms }).then((h) => h.jsonValue(), () => false);
   if (first === 'banner') { bannerSeen = !(await page.evaluate(() => { const s = document.getElementById('bw-update').shadowRoot.querySelector('.scrim'); return !s.hidden; })); await page.evaluate(() => document.getElementById('bw-update').shadowRoot.querySelector('.bar button').click()); }
@@ -252,7 +252,7 @@ try {
     await sh(page, (r) => r.querySelector('.drawer [data-k="updCheck"]').click());
     await page.waitForTimeout(300);
     const st = await sh(page, (r) => r.querySelector('.drawer .set-status').textContent);
-    const net = reqs.filter((u) => /^https?:/.test(u) && !/^http:\/\/127\.0\.0\.1:43(1[7-9]|2[0-7])\/api\/version$/.test(u.split('?')[0])); // 0.14.0: the server banner's one GET /api/version probe of 127.0.0.1:4317-4327 is allowed, nothing else
+    const net = reqs.filter((u) => /^https?:/.test(u) && !/^http:\/\/127\.0\.0\.1:43(1[7-9]|2[0-7])\/api\/version$/.test(u.split('?')[0])); // the server banner's one GET /api/version probe of 127.0.0.1:4317-4327 is allowed, nothing else
     check('file://: Settings shows how to update (start the server, or the terminal command)', fb.file.includes('npm run serve') && fb.file.includes('npx business-wrap update'), fb.file.slice(0, 120));
     check('file://: «تحقّق الآن» says why it cannot check', /npm run serve/.test(st), st);
     check('file://: no request to GitHub and no network request at all from the page', !net.length && !reqs.some((u) => u.includes('github')), net.join(' '));
@@ -343,6 +343,4 @@ try {
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 if (process.env.BW_SHOTS_DIR) { fs.mkdirSync(process.env.BW_SHOTS_DIR, { recursive: true }); for (const f of fs.readdirSync(SHOTS)) fs.copyFileSync(path.join(SHOTS, f), path.join(process.env.BW_SHOTS_DIR, f)); }
-console.log(results.join('\n'));
-console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: settings ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

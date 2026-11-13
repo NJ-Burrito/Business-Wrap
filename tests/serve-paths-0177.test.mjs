@@ -1,4 +1,4 @@
-// 0.17.7 (lane notes, item 4): the paths fixb said lost their tests when Settings was rewritten in 0.17.0.
+// (lane notes, item 4): the paths fixb said lost their tests when Settings was rewritten in 0.17.0.
 //   - the Settings «open» link (data-k="srvOpen") NO LONGER EXISTS (0.17.0): asserted absent, not rebuilt.
 //   - what exists today and is tested here: each server serves ITS OWN document on ITS OWN port (/ , /files/ with no way out of the save
 //     folder, the null-origin /api/version probe naming the port), the served page's toggle names its own port, and the file page's
@@ -11,14 +11,13 @@ import os from 'node:os';
 import net from 'node:net';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
 import { buildEditor } from '../engine/build-editor.mjs';
 import { serve } from '../engine/serve.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  serve-paths: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("serve-paths");
+const { check, results } = S;
 const tmp = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'bw-servepaths-')));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const free = () => new Promise((ok) => { const s = net.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => ok(p)); }); });
@@ -58,7 +57,7 @@ try {
   const vb = JSON.parse((await get(pB, '/api/version', { Origin: 'null' })).body.toString());
   check('GET /api/version from a null origin names Business-Wrap, served, and THIS port (nothing more)', ra.cors === 'null' && va.name === 'Business-Wrap' && va.served === true && va.port === pA && vb.port === pB && Object.keys(va).sort().join() === 'name,port,served,version', JSON.stringify(va));
   // 4. in the browser
-  browser = await chromium.launch(launchOptions());
+  browser = await launchChrome();
   const ctx = await browser.newContext();
   const open = async (url, ports) => {
     const page = await ctx.newPage();
@@ -88,6 +87,4 @@ try {
   for (const s of [sA, sB]) { try { s.closeAllConnections?.(); await new Promise((r) => s.close(r)); } catch { /* closed */ } }
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* left to the OS temp */ }
 }
-console.log(results.join('\n'));
-console.log(failed ? `\nFAILED: ${failed}` : `\nOK: ${results.length} checks`);
-process.exit(failed ? 1 : 0);
+S.finish();

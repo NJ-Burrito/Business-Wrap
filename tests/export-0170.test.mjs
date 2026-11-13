@@ -1,4 +1,4 @@
-// 0.17.0 · owner note N11: the English edition exports and downloads (PDF, DOCX, HTML; alone and with "both") from the Export tab, the print centre,
+// · owner note N11: the English edition exports and downloads (PDF, DOCX, HTML; alone and with "both") from the Export tab, the print centre,
 // the CLI and the server, at the Arabic edition's quality; Arabic stays as it was.
 //   1. the server's /api/export/file: AR and EN × PDF, DOCX, print HTML are real, non-empty, in the right script and direction (pdftotext -enc UTF-8)
 //   2. the editor in headless Chrome, through the real dispatcher (BW.runAction): the three print-HTML tools, EN alone / both, a single-edition document,
@@ -14,21 +14,17 @@ import os from 'node:os';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { spawnSync } from 'node:child_process';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO, localeOf } from '../engine/export.mjs';
+import { REPO, localeOf } from '../engine/export.mjs';
 import { serve } from '../engine/serve.mjs';
 import { wantedEditions } from '../engine/project-export.mjs';
 import { exportDoc } from '../engine/cli.mjs';
 import { rbTabFor } from './_ribbon.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-export0170-'));
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => {
-  results.push(`${ok ? 'PASS' : 'FAIL'}  export-0170: ${name}${detail && !ok ? '  — ' + String(detail).slice(0, 300) : ''}`);
-  if (!ok) failed += 1;
-};
+const S = suite("export-0170");
+const { check, results } = S;
 const ARABIC = /[؀-ۿ]/g;
 const LATIN = /[A-Za-z]{3,}/g;
 const pdfText = (f) => spawnSync('pdftotext', ['-enc', 'UTF-8', f, '-'], { encoding: 'utf8' }).stdout || '';
@@ -87,7 +83,7 @@ buildEditor({ inputs: [flagDir], out: fileFlag, set: 'export-0170-flag', waterma
 const server = await serve(file, 0, { out: path.join(tmp, 'exports') });
 const base = `http://127.0.0.1:${server.address().port}`;
 const post = async (b) => { const r = await fetch(`${base}/api/export/file`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ service: 'blank', theme: undefined, ...b }) }); return { s: r.status, j: await r.json() }; };
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 try {
   const out = {};
   for (const [loc, doc] of [['ar', docAr], ['en', docEn]]) {
@@ -206,7 +202,7 @@ try {
     const viaCli = await exportDoc({ document: named, locale: 'en', out: dir, docx: true });
     const dx = viaCli.docx && fs.existsSync(viaCli.docx) ? docxText(viaCli.docx) : '';
     check('CLI/MCP path (exportDoc, locale en): English PDF and DOCX', viaCli.locale === 'en' && fs.existsSync(viaCli.pdf) && /Software Requirements Specification/.test(dx), JSON.stringify(viaCli).slice(0, 200));
-    // 0.17.0 (fixb): with no --out, the Arabic file x.ar.json and its English sibling x.en.json land in ONE document folder of the save folder
+    // (fixb): with no --out, the Arabic file x.ar.json and its English sibling x.en.json land in ONE document folder of the save folder
     {
       const wsDir = path.join(tmp, 'ws-cli');
       fs.mkdirSync(wsDir, { recursive: true });
@@ -227,6 +223,4 @@ try {
   await browser.close();
   server.close();
 }
-console.log(results.join('\n'));
-console.log(`\n${results.filter((r) => r.startsWith('PASS')).length} passed, ${failed} failed`);
-process.exit(failed ? 1 : 0);
+S.finish();

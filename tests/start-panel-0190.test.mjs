@@ -1,4 +1,4 @@
-// 0.19.0 N4: the start page side panel and its per-type thumbnail moves (editor/ext/50-start.*; treatment work/sdlc/design/0190-motion.md).
+// N4: the start page side panel and its per-type thumbnail moves (editor/ext/50-start.*; treatment work/sdlc/design/0190-motion.md).
 // Real headless Chrome, real mouse and keyboard, the editor bundle with the real registry payload embedded (contract C2), over file:// with ?start=1, English and Arabic:
 //   - clicking a tile opens the side panel on the inline-end side (right in English, left in Arabic) with the type's purpose, when to use it, its sections
 //     (= the chapter titles of its starter in that language) and who uses it (templates/_doctypes/_info.json through payload().info), and Create

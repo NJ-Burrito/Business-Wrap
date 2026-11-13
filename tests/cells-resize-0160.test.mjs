@@ -1,4 +1,4 @@
-// 0.16.0 lane cells (bw-0160): dragging a table row's edge never throws, on every kind of table. The crash: a story's ID card that is not
+// lane cells (bw-0160): dragging a table row's edge never throws, on every kind of table. The crash: a story's ID card that is not
 // stored yet (it prints the default, `data-t` points at a card that does not exist) made ceResizeStart read `blk.rows` of undefined.
 // Real pointer drags in the real editor, on a plain table, a story ID card, a story's actions table and its dictionary table, AR and EN;
 // the drag stores the new height in ONE undo step (the card is stored in the same step); the height prints in HTML and in the PDF.

@@ -1,4 +1,4 @@
-// 0.18.2 (owner bug 2026-11-10): opening Business-Wrap from the Desktop shortcut did not land on the start page, not even once the local host was up.
+// (owner bug 2026-11-10): opening Business-Wrap from the Desktop shortcut did not land on the start page, not even once the local host was up.
 //   Root cause (reproduced here first): the launcher with no file opened the NEWEST SAVED DOCUMENT's editor file. That file is a `doc-` service (so 50-start's «untouched template»
 //   guard can never pass) and carries no document-type payload (a file:// page has nothing to list), and the host started by a plain business-wrap://start served the same newest document.
 // What this drives, through the real callers (R14), in a real headless Chrome with navigator.webdriver masked (a person's browser, not an automation tab):
@@ -17,16 +17,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
 import { serve } from '../engine/serve.mjs';
 import { workspace } from '../engine/workspace.mjs';
 import { makeLauncher, readShortcut } from '../launcher/launcher.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { const line = `${ok ? 'PASS' : 'FAIL'}  launcher-start-0182: ${name}${detail && !ok ? '  - ' + detail : ''}`; results.push(line); console.log(line); if (!ok) failed += 1; };
+const S = suite('launcher-start-0182'); const { check } = S;
 const win = process.platform === 'win32';
 const tmp = fs.mkdtempSync(path.join(process.env.BW_START_TMP || os.tmpdir(), 'bw-lstart182-'));
 const mk = (...p) => { const d = path.join(tmp, ...p); fs.mkdirSync(d, { recursive: true }); return d; };
@@ -93,7 +91,7 @@ async function dismissPopup(page) {
 }
 
 try {
-  browser = await chromium.launch({ ...launchOptions(), args: [...(launchOptions().args || []), '--bw-session=bw-1109'] });
+  browser = await launchChrome(['--bw-session=bw-1109']);
 
   // ── a real saved document in the save folder: made the way the owner's are (a served editor, a library document, Save in place) ──
   const seed = path.join(tmp, 'seed.editor.html');
@@ -213,7 +211,6 @@ try {
   await closeAll();
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* temp */ }
 }
-console.log(failed ? `FAILED ${failed}` : `ALL PASS: launcher-start-0182 ${results.length}/${results.length}`);
-process.exitCode = failed ? 1 : 0;
+S.finish();
 
 function fileUrlToPath(u) { return decodeURIComponent(new URL(u).pathname).replace(/^\/([A-Za-z]:)/, '$1').replace(/\//g, path.sep); }

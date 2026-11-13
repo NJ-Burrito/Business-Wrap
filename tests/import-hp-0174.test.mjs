@@ -1,4 +1,4 @@
-// 0.17.4 · project import on a machine WITHOUT long-path support (another computer of the owner: LongPathsEnabled=0), through the real routes of a
+// · project import on a machine WITHOUT long-path support (another computer of the owner: LongPathsEnabled=0), through the real routes of a
 // served host: the zip upload and the folder upload of the same SYNTHETIC tree (invented titles, tests/fixtures/import-hp/shape.json).
 // The failure it guards: a file from a zip was handed on as a plain path of 260+ characters; reading it failed and the importer took the file
 // for a plain HTML, so the PDF of the same title won ("5 PDFs came in"), the share file was "not needed" and the editor's work was lost.

@@ -1,4 +1,4 @@
-// 0.16.0 lane wrap: P4 (a story's criteria in the prose or list right after it), P5 (a --out server names the export by title),
+// lane wrap: P4 (a story's criteria in the prose or list right after it), P5 (a --out server names the export by title),
 // and the first Save of a blank document marks data-bw-lib-saved. Real Chrome (BW_CHROME), the real server and the real page.
 //   node tests/wrap-0160.test.mjs
 import './_isolate.mjs';
@@ -8,17 +8,17 @@ import path from 'node:path';
 import net from 'node:net';
 import { spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO, fileStem } from '../engine/export.mjs';
+import { REPO, fileStem } from '../engine/export.mjs';
 import { docTitle } from '../engine/workspace.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-wrap160-'));
-let failed = 0;
-const check = (name, ok, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  wrap-0160: ${name}${detail && !ok ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("wrap-0160");
+const { check } = S;
 const file = path.join(tmp, 'blank.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'blank')], out: file, set: 'wrap160', watermarkDir: null });
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 const errors = [];
 try {
   // ── P4 · validate() on the real page ──────────────────────────────────────────────────────────────────────────
@@ -150,5 +150,4 @@ try {
   await browser.close();
   fs.rmSync(tmp, { recursive: true, force: true });
 }
-console.log(failed ? `FAILED ${failed}` : 'ALL PASS');
-process.exit(failed ? 1 : 0);
+S.finish();

@@ -1,4 +1,4 @@
-// 0.16.0 · D4: the UI controls for the per-node type size (node.fs) and the join point (kind 'join'), Arabic and English, in the real editor;
+// · D4: the UI controls for the per-node type size (node.fs) and the join point (kind 'join'), Arabic and English, in the real editor;
 // and the deselect rule: a click on a paragraph leaves no canvas handle behind.
 //
 //   node tests/diagram-controls-0160.test.mjs
@@ -6,23 +6,22 @@ import './_isolate.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO } from '../engine/export.mjs';
+import { REPO } from '../engine/export.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const OUT = path.join(REPO, 'out', 'diagram-controls-0160');
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
-let failed = 0;
-const results = [];
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  | ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("");
+const { check, results } = S;
 const NL = String.fromCharCode(10);
 process.on('uncaughtException', (e) => { console.log(results.join(NL)); console.error('CRASH: ' + String(e.message).split(NL).slice(0, 3).join(' / ')); process.exit(2); });
-// 0.16.1: the sample prints its workflow as two figures; this suite drives ONE whole drawing (the pre-split sample documents)
+// the sample prints its workflow as two figures; this suite drives ONE whole drawing (the pre-split sample documents)
 const SAMPLE = path.join(REPO, 'tests', 'fixtures', 'permit-whole');
 const file = path.join(OUT, 'editor.html');
 buildEditor({ inputs: [SAMPLE], out: file, set: 'controls-0160', watermarkDir: '' });
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 const errors = [];
 try {
   for (const ui of ['ar', 'en']) {
@@ -124,6 +123,4 @@ try {
 } finally {
   await browser.close();
 }
-console.log(results.join(NL));
-console.log(failed ? `FAILED: ${failed} of ${results.length}` : `all ${results.length} PASS`);
-process.exit(failed ? 1 : 0);
+S.finish();

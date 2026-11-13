@@ -1,4 +1,4 @@
-// 0.15.0 lane core: zoom 25-400 % and Fill height (note 9), the 20 watermark reactions and the easter egg (note 12, AC1-AC6),
+// lane core: zoom 25-400 % and Fill height (note 9), the 20 watermark reactions and the easter egg (note 12, AC1-AC6),
 // runAction throws on unknown ids, data-bw-dialog hooks, ?automation=1 and the settled bw:ready signal, the new command ids,
 // and the two typing-path boosters (validate's table check and fitBar's signature never run on a plain keystroke).
 // Headless Edge, a fresh context per scenario, closed in finally. Time-dependent rules run on Playwright's fake clock.
@@ -365,7 +365,7 @@ try {
 
   /* ── the spell seam (35-spell.js plugs into it): a 'spell' event, a remembered per-edition switch, native red lines unless the extension owns the edition ── */
   {
-    const { ctx, page } = await open({ store: { 'bw:spell:on': '0' } }); // 0.17.0: checking is on by default, so the seam starts from an explicit off
+    const { ctx, page } = await open({ store: { 'bw:spell:on': '0' } }); // checking is on by default, so the seam starts from an explicit off
     const r = await page.evaluate(async () => {
       const got = []; window.BW.EXT.on.spell.push((ed, on) => got.push([ed, on]));
       const attr = () => document.querySelector('#bw-pair main.bw-doc').getAttribute('spellcheck');

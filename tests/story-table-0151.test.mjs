@@ -1,4 +1,4 @@
-// 0.15.1 lane story: "make the user stories like tables too". The user-story ID card is a real table block: the same table model
+// lane story: "make the user stories like tables too". The user-story ID card is a real table block: the same table model
 // and cell toolset (rows, columns, merge/split, selection, ribbon table tab, undo) as every other table, not a second implementation.
 // A story with no `card` prints the default rows and stores nothing (old documents and old edits open unchanged); the first table
 // edit stores `card` (labels as text, {bind} cells that keep the story's own fields as the single source). PDF, DOCX, HTML, AR and EN.
@@ -8,17 +8,15 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO, exportDocx, exportPdf, loadTheme, i18n } from '../engine/export.mjs';
+import { REPO, exportDocx, exportPdf, loadTheme, i18n } from '../engine/export.mjs';
 import { renderDocument } from '../engine/render.mjs';
 import { applyOps, docIdOps } from '../engine/edits.mjs';
 import { docxParts, pageTexts, sample } from './fixtures/doc-model/util.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-storytbl-'));
-let failed = 0;
-const results = [];
-const check = (name, ok, detail = '') => { const line = `${ok ? 'PASS' : 'FAIL'}  story-table: ${name}${detail && !ok ? '  — ' + detail : ''}`; results.push(line); console.log(line); if (!ok) failed += 1; };
+const S = suite('story-table'); const { check } = S;
 const theme = loadTheme();
 const findStory = (doc) => { let ptr = null; (function walk(o, p) { if (ptr || !o || typeof o !== 'object') return; if (o.kind === 'stories' && o.items?.[0]) { ptr = p; return; } for (const k in o) walk(o[k], `${p}/${k}`); })(doc.chapters, '/chapters'); return ptr; };
 const at = (doc, p) => p.split('/').slice(1).reduce((o, k) => o[k], doc);
@@ -68,7 +66,7 @@ for (const loc of ['en', 'ar']) {
 // 3 · the editor: the same cell toolset on the ID card
 const file = path.join(tmp, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, set: 'story-table-test', watermarkDir: null });
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 try {
   const ctx = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
   const page = await ctx.newPage();
@@ -154,5 +152,4 @@ try {
   check("an old edits file (an op on the story's own field) applies unchanged and prints in the card", html(stable, 'en').includes('renamed') && !('card' in at(stable, sp).items[0]));
 }
 fs.rmSync(tmp, { recursive: true, force: true });
-console.log(failed ? `\nFAILED: ${failed}/${results.length}` : `\nALL ${results.length} PASS`);
-process.exit(failed ? 1 : 0);
+S.finish();

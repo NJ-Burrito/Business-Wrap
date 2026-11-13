@@ -11,17 +11,15 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { buildEditor } from '../engine/build-editor.mjs';
-import { launchOptions, REPO, exportPdf, exportDocx, loadTheme, i18n } from '../engine/export.mjs';
+import { REPO, exportPdf, exportDocx, loadTheme, i18n } from '../engine/export.mjs';
 import { renderDocument, PAPER, pageSpec } from '../engine/render.mjs';
 import { applyOps } from '../engine/edits.mjs';
 import { pageTexts, pageSizes, lostWords, docxParts, sample } from './fixtures/doc-model/util.mjs';
+import { suite, launchChrome } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-layout-'));
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { const line = `${ok ? 'PASS' : 'FAIL'}  layout: ${name}${detail && !ok ? '  — ' + detail : ''}`; results.push(line); console.log(line); if (!ok) failed += 1; };
+const S = suite('layout'); const { check } = S;
 const theme = loadTheme();
 const base = sample(REPO, 'en');
 const basePdf = path.join(tmp, 'base.pdf');
@@ -50,7 +48,7 @@ check('paper sizes A3 A4 A5 B5 Letter Legal Tabloid', ['A3', 'A4', 'A5', 'Letter
 // ── A18: chapter 2 only landscape (through the editor action) ──────────
 const file = path.join(tmp, 'editor.html');
 buildEditor({ inputs: [path.join(REPO, 'samples', 'event-permit')], out: file, set: 'layout-test', watermarkDir: null, ui: 'en' });
-const browser = await chromium.launch(launchOptions());
+const browser = await launchChrome();
 let ch2Doc, brkDoc, tocDoc, ctlDoc;
 try {
   const page = await (await browser.newContext({ viewport: { width: 1600, height: 900 } })).newPage();
@@ -67,7 +65,7 @@ try {
   await page.evaluate(() => window.BW.EXT.w2layout.page('A4', 'landscape', 'section', '/chapters/1/sections/0/blocks/0'));
   ch2Doc = await docNow();
   check('editor: "this section only" landscape is one undo group', (await opsN()) > n0 && ch2Doc.chapters[1].sections[0].blocks[0].layout.page.orientation === 'landscape');
-  // 0.13.1 final pass #2 (A18 on the canvas): the sheet on screen is as wide as the paper set, per section and for all
+  // final pass #2 (A18 on the canvas): the sheet on screen is as wide as the paper set, per section and for all
   const geo = () => page.evaluate(() => {
     const main = document.querySelector('#bw-pair main.bw-doc[data-locale="en"]');
     const seg = main.querySelector('[style^="page:bw-seg-"]');
@@ -227,6 +225,4 @@ try {
   check('DOCX: the control table has the new row and column, the bound code', cx.includes('Owning body') && cx.includes('Ministry X') && cx.includes('extra col') && cx.includes('BW-NEW-ID-7'));
 }
 fs.rmSync(tmp, { recursive: true, force: true });
-console.log(results.join('\n'));
-console.log(failed ? `\nFAILED: ${failed}/${results.length}` : `\nALL ${results.length} PASS`);
-process.exit(failed ? 1 : 0);
+S.finish();

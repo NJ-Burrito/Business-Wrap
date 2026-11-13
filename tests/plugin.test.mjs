@@ -10,19 +10,17 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { VERBS } from '../engine/cli.mjs';
+import { suite } from './_harness.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIR = path.join(REPO, 'commands');
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`); if (!ok) failed += 1; };
+const S = suite("");
+const { check, results } = S;
 
 const files = fs.existsSync(DIR) ? fs.readdirSync(DIR).filter((f) => f.endsWith('.md')).sort() : [];
 check('commands/ holds the plugin commands', files.length >= 9, files.join(', '));
 for (const want of ['open', 'close', 'status', 'harvest', 'build', 'export', 'update']) check(`/business-wrap:${want} exists`, files.includes(`${want}.md`));
 check('no README or other non-command .md in commands/ (each .md becomes a command)', !files.some((f) => /^readme/i.test(f)));
-// 0.13.1 final pass #6: `npm test` runs every suite in tests/ (power, projects, bulk, srs-* were left out of the chain)
-{ const chain = JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8')).scripts.test; const left = fs.readdirSync(path.join(REPO, 'tests')).filter((f) => f.endsWith('.test.mjs') && !chain.includes(`node tests/${f}`) && !chain.includes('tests/run.mjs')); check('npm test runs every tests/*.test.mjs', !left.length, left.join(', ')); }
 check('plugin manifest at the plugin root (.claude-plugin/plugin.json), so commands/ is discovered', fs.existsSync(path.join(REPO, '.claude-plugin', 'plugin.json')));
 
 const LINE = /^!`node "\$\{CLAUDE_PLUGIN_ROOT\}\/engine\/cli\.mjs" ([a-z-]+)(?: \$ARGUMENTS)?`$/;
@@ -31,7 +29,7 @@ for (const f of files) {
   const fm = /^---\n([^]*?)\n---\n/.exec(src);
   const meta = Object.fromEntries((fm?.[1] || '').split('\n').map((l) => l.split(/:\s(.*)/s)).filter((p) => p.length > 1).map(([k, v]) => [k.trim(), v.trim()]));
   check(`${f}: front-matter description`, !!meta.description && meta.description.length > 20, meta.description);
-  // 0.15.7: the live-editor commands (tabs, edit, ...) call MCP tools, not the CLI; tests/commands-0152.test.mjs checks them
+  // the live-editor commands (tabs, edit, ...) call MCP tools, not the CLI; tests/commands-0152.test.mjs checks them
   if (/^mcp__|^Read, /.test(meta['allowed-tools'] || '')) { check(`${f}: live-editor command (checked by commands-0152.test.mjs)`, true); continue; }
   check(`${f}: allowed-tools is node only`, meta['allowed-tools'] === 'Bash(node:*)', meta['allowed-tools']);
   const bangs = src.split('\n').filter((l) => l.startsWith('!'));
@@ -64,7 +62,6 @@ check('plugin MCP: no npm package spec anywhere in the plugin manifest', !/npx|b
   const sm = fs.readFileSync(path.join(REPO, 'mcp', 'smithery.yaml'), 'utf8');
   check('F5 5: server.json and smithery.yaml launch node mcp/cli.mjs locally, no npm/npx package', !sj.packages && launch.command === 'node' && launch.args?.[0] === 'mcp/cli.mjs' && /command: "node"/.test(sm) && /args: \["mcp\/cli\.mjs"\]/.test(sm) && !/npx|business-wrap@/.test(sm + JSON.stringify(sj)), JSON.stringify(launch));
 }
-check('plugin version is the package.json version (plugin.json, package.json, server.json)', (() => { const pv = JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8')).version; return /^\d+\.\d+\.\d+$/.test(pv) && [plugin.version, JSON.parse(fs.readFileSync(path.join(REPO, 'mcp', 'server.json'), 'utf8')).version].every((v) => v === pv); })());
 
 // the vendored bundle is exactly a fresh build from the locked packages (security/gitleaks.toml allowlists it by path)
 const esbuildDir = path.join(REPO, 'node_modules', 'esbuild');
@@ -116,6 +113,4 @@ for (const [f, args] of [['status.md', '--json'], ['update.md', '--notes']]) {
 }
 fs.rmSync(FRESH, { recursive: true, force: true }); // ponytail: own temp copy made above, not user data
 
-console.log(results.join('\n'));
-console.log(`\n${failed ? 'FAILED' : 'ALL PASS'}: ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

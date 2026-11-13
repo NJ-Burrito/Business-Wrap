@@ -1,4 +1,4 @@
-// 0.13.3 TSYS-04/05/06: `update --help` and `mcp --help` print usage (no network, no stdin wait), unknown flags error,
+// TSYS-04/05/06: `update --help` and `mcp --help` print usage (no network, no stdin wait), unknown flags error,
 // the DOCX carries the document title (both editions), and the edits base check refuses another document / edition.
 //
 //   node tests/system-cli-0133.test.mjs
@@ -10,10 +10,10 @@ import { spawnSync } from 'node:child_process';
 import { exportDocx, loadTheme, loadEdited, REPO } from '../engine/export.mjs';
 import { hashOf } from '../engine/edits-base.mjs';
 import { py } from '../engine/py.mjs';
+import { suite } from './_harness.mjs';
 
-const results = [];
-let failed = 0;
-const check = (name, ok, detail = '') => { results.push(`${ok ? 'PASS' : 'FAIL'}  system-cli: ${name}${detail && !ok ? '  — ' + String(detail).slice(0, 200) : ''}`); if (!ok) failed += 1; };
+const S = suite("system-cli");
+const { check, results } = S;
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-syscli-'));
 // no network can be reached: the feed points at a closed local port, so a stray version check would be visible as the "latest" line
 const env = { ...process.env, PYTHONUTF8: '1', BW_UPDATE_FEED: 'http://127.0.0.1:9/none', BW_LOCAL_DIR: path.join(tmp, 'local'), BW_UPDATE_TOKEN: 'none' };
@@ -63,6 +63,4 @@ try {
   check('loadEdited: an empty baseHash is not checked', refuses(AR, mk('nohash.json', { baseHash: '' })) === '');
 } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 
-console.log(results.join('\n'));
-console.log(`${failed ? 'FAIL' : 'PASS'}  system-cli: ${results.length - failed}/${results.length}`);
-process.exit(failed ? 1 : 0);
+S.finish();

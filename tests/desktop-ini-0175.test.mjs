@@ -1,4 +1,4 @@
-// 0.17.5: the folder-icon desktop.ini (0.17.4) sits in folders the tool makes. Code that lists a folder and takes every entry for a sub-folder
+// the folder-icon desktop.ini (0.17.4) sits in folders the tool makes. Code that lists a folder and takes every entry for a sub-folder
 // (the host test listed .system\sessions that way and crashed with ENOTDIR on CI) must meet it without a crash, and it must never be content:
 // not a library entry, not a session, not a document, not part of an export or an import. Here desktop.ini is put into EVERY folder of a save tree
 // (the role folders, every .system sub-folder, a session run, the folders of an export), on any OS (the file is just a file), and the real
@@ -18,12 +18,12 @@ import { planSources } from '../engine/import/plan.mjs';
 import { makeEntry } from '../engine/routes/library.mjs';
 import { readZip } from '../engine/zip.mjs';
 import { REPO } from '../engine/export.mjs';
+import { suite } from './_harness.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-ini175-'));
 process.env.BW_LOCAL_DIR = path.join(tmp, '.local');
-let failed = 0;
-const out = [];
-const check = (n, ok, d = '') => { out.push(`${ok ? 'PASS' : 'FAIL'}  desktop-ini-0175: ${n}${d && !ok ? '  - ' + String(d).slice(0, 400) : ''}`); if (!ok) failed += 1; };
+const S = suite('desktop-ini-0175');
+const { check } = S;
 const INI = '[.ShellClassInfo]\r\nIconResource=x.ico,0\r\n';
 const sample = (n, l) => fs.readFileSync(path.join(REPO, 'samples', n, `document.${l}.json`), 'utf8');
 const servers = [];
@@ -143,5 +143,4 @@ try {
   for (const s of servers) await new Promise((r) => s.close(r));
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* temp */ }
 }
-console.log(`${out.join('\n')}\n${failed ? `FAILED: ${failed}/${out.length}` : `desktop-ini-0175: ${out.length} checks passed`}`);
-process.exit(failed ? 1 : 0);
+S.finish();

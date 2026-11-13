@@ -1,4 +1,4 @@
-// 0.16.0 · FIGURE lane, note 6: autoLayout and one legibility frame.
+// · FIGURE lane, note 6: autoLayout and one legibility frame.
 //   DIAGRAM.autoLayout / editor_action autoLayout {aspect, maxNodes}: from any model to a drawing that prints at the legibility bar, or the fewest figures that each do.
 //   One frame everywhere (what print gives, measured here in a real PDF; block.frame honoured), per-node type size, a join node, a model by file path.
 //
