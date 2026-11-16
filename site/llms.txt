@@ -30,4 +30,4 @@ By Nader Alzghoul (also NJ-Burrito, نادر الزغول): portfolio https://nj
 
 ## More from NJ
 
-Portfolio https://nj-burrito.github.io/ · NJ-Kit https://nj-burrito.github.io/NJ-Kit/ · QA-Wrap https://nj-burrito.github.io/QA-Wrap/ · Profile-Wrap https://nj-burrito.github.io/Profile-Wrap/ · Story-Wrap https://nj-burrito.github.io/story-wrap/ · GitHub https://github.com/NJ-Burrito
+Portfolio https://nj-burrito.github.io/ · NJ-Kit https://nj-burrito.github.io/NJ-Kit/ · QA-Wrap https://nj-burrito.github.io/QA-Wrap/ · Profile-Wrap https://nj-burrito.github.io/Profile-Wrap/ · NJ-Whip https://nj-burrito.github.io/NJ-Whip/ · Story-Wrap https://nj-burrito.github.io/story-wrap/ · GitHub https://github.com/NJ-Burrito
