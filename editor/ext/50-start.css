@@ -247,3 +247,6 @@ dialog.bw-start ::selection { background: var(--bw-marker); color: var(--bw-on-m
 
 /* light theme: a template page is a white sheet on a stone desk; its edge gets the 3:1 border so it reads as an object (dark keeps its own dimmed sheet) */
 .bw-start:not([data-theme="dark"]) :is(.st-thumb, .st-rt, .st-art) svg { outline: 1px solid var(--bw-line); outline-offset: -1px; }
+
+/* Settings opened from the start page's own bar (2026-11-16) sits above it (the page is z 44, the drawer 39 by itself) */
+:host-context(html[data-bw-start="open"]) .drawer { z-index: 46; inset-block-start: 76px; } /* 64px bar (--st-bar, scoped to .bw-start) + 12px */

@@ -72,8 +72,29 @@ try {
   check('no sideways overflow in any state', !en.ovf && !enR.ovf && !arR.ovf && !arL.ovf);
   await press('[data-st-l="en"]');
   const enBack = await probe();
-  check('EN again: back to its own remembered direction, boxes unchanged from the start', enBack.tdir === 'rtl' && same(en.r, enBack.r), JSON.stringify([enBack.tdir]));
-  // remembered across a reload
+  // owner note 2026-11-16: Settings on the start page; its icons card previews the file icons beside the folder icons
+  await press('[data-st-set]');
+  await page.waitForFunction(() => document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer .set-ico-files li'), null, { timeout: 10000 }).catch(() => {});
+  const set = await page.evaluate(() => {
+    const sh = document.getElementById('bw-ui-host').shadowRoot;
+    const dr = sh.querySelector('.drawer');
+    if (!dr) return { open: false };
+    const b = dr.getBoundingClientRect();
+    const top = sh.elementFromPoint(b.left + b.width / 2, b.top + 20);
+    return { open: true, onTop: !!top && dr.contains(top), files: dr.querySelectorAll('.set-ico-files li svg').length, folders: dr.querySelectorAll('.set-ico-folders li svg').length };
+  });
+  check('start page: the Settings button opens the settings drawer above the page, with 13 file icons and 10 folder icons', set.open && set.onTop && set.files === 13 && set.folders === 10, JSON.stringify(set));
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer:not([hidden])'), null, { timeout: 5000 }).catch(() => {});
+  const esc = await page.evaluate(() => ({ drawer: !!document.getElementById('bw-ui-host').shadowRoot.querySelector('.drawer:not([hidden])'), start: document.documentElement.dataset.bwStart }));
+  check('Esc closes the drawer and the start page is still there', !esc.drawer && esc.start === 'open', JSON.stringify(esc));
+  // owner rule 2026-11-16: a language switch lands on the language's own direction; the earlier manual flip is gone
+  check('EN again: its own direction (LTR), boxes unchanged from the start', enBack.tdir === 'ltr' && same(en.r, enBack.r), JSON.stringify([enBack.tdir]));
+  await press('[data-st-l="ar"]');
+  check('AR again: RTL, the earlier LTR flip is not kept', (await probe()).tdir === 'rtl');
+  await press('[data-st-l="en"]');
+  await press('[data-st-d="rtl"]');
+  // a manual flip is remembered across a reload (no language switch in between)
   await page.reload();
   await page.waitForFunction(() => window.BW?.ready);
   await page.waitForSelector('html[data-bw-start="open"]', { timeout: 15000 });

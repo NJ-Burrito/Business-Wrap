@@ -69,11 +69,11 @@ def folder(role: str, v: dict, small: bool) -> str:
             f'<title>Business-Wrap folder: {v["en"]}</title>{back}{front}{mark}</svg>\n')
 
 
-def splice(file: Path, payload: str):
+def splice(file: Path, payload: str, tag: str = "FI"):
     t = file.read_text(encoding="utf-8")
-    pat = re.compile(r"/\*FI-BEGIN\*/.*?/\*FI-END\*/", re.S)
-    assert pat.search(t), f"{file}: no FI-BEGIN/FI-END markers"
-    file.write_text(pat.sub(lambda m: "/*FI-BEGIN*/" + payload + "/*FI-END*/", t, count=1), encoding="utf-8")
+    pat = re.compile(rf"/\*{tag}-BEGIN\*/.*?/\*{tag}-END\*/", re.S)
+    assert pat.search(t), f"{file}: no {tag}-BEGIN/{tag}-END markers"
+    file.write_text(pat.sub(lambda m: f"/*{tag}-BEGIN*/" + payload + f"/*{tag}-END*/", t, count=1), encoding="utf-8")
 
 
 def main():
@@ -104,7 +104,15 @@ def main():
         s = re.sub(r' aria-label="[^"]*"', "", s).replace(' width="64" height="64"', "").strip()
         ui[r] = s
     payload = "\nconst FOLDER_ICONS = " + json.dumps(ui, ensure_ascii=False, separators=(", ", ": ")) + ";\n"
+    # the file-type icons too (types.json order; drawn by build_icons.py, read back here): the settings card previews files beside folders
+    kinds = json.loads((HERE / "types.json").read_text(encoding="utf-8"))["kinds"]
+    files = {}
+    for k in kinds:
+        f = (HERE / f"{k}.svg").read_text(encoding="utf-8")
+        f = re.sub(r"<title>.*?</title>", "", f).replace(' role="img"', ' aria-hidden="true"')
+        files[k] = re.sub(r' aria-label="[^"]*"', "", f).replace(' width="64" height="64"', "").strip()
     splice(REPO / "editor" / "settings.js", payload)
+    splice(REPO / "editor" / "settings.js", "\nconst FILE_ICONS = " + json.dumps(files, ensure_ascii=False, separators=(", ", ": ")) + ";\n", "FT")
     splice(REPO / "editor" / "ext" / "48-folder-picker.js", payload)
     if a.preview:
         preview(png, Path(a.preview))

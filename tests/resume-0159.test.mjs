@@ -201,7 +201,7 @@ try {
   await dlgReady(P);
   await q(P, "d.querySelector('[data-s=new]').click()");
   const fresh = await until(async () => (await lastNow()).tabs?.length === 0, 15000);
-  check('R4: a new blank document stays available (the offer is put away, the dialog closes)', !!fresh && !!(await until(async () => (await P.ev("!document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-resume')")) === true, 15000)) && /^doc-/.test(String(await P.ev('window.BW.S.svc'))), JSON.stringify(await lastNow()) + ' ' + await P.ev("document.documentElement.dataset.bwResume + ' ' + !!document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-resume') + ' ' + window.BW.S.svc"));
+  check('R4: «new document» puts the offer away, closes the dialog and lands on the start page and creates no blank document (2026-11-16; a blank one only when that page is off)', !!fresh && !!(await until(async () => (await P.ev("!document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-resume')")) === true, 15000)) && !!(await until(async () => (await P.ev("document.documentElement.dataset.bwStart === 'open'")) === true, 30000)) && (await P.ev('!window.BW.EXT.library.isDoc(window.BW.S.svc)')) === true, JSON.stringify(await lastNow()) + ' ' + await P.ev("document.documentElement.dataset.bwResume + ' ' + !!document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-resume') + ' ' + window.BW.S.svc"));
 
   // R6: an automation tab never sees it; MCP reads and opens the same list
   seeds = seed('20261022-080000-abc003', 5, 'c');

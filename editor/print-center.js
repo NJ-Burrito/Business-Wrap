@@ -117,8 +117,8 @@ function pcFetchDownload(url, name) {
 function pcBrowserPdf(l) {
   const back = S.ed;
   toast(t('export.browserPdf'), 'info');
-  for (const ed of pcEds(l)) { if (ed !== S.ed) setLang(ed); window.print(); }
-  if (S.ed !== back) setLang(back);
+  for (const ed of pcEds(l)) { if (ed !== S.ed) setLang(ed, { keepDir: true }); window.print(); }
+  if (S.ed !== back) setLang(back, { keepDir: true });
 }
 /** The diagrams as Mermaid text, SVG or PNG (2×), drawn by the same renderer the page uses. */
 async function pcDiagram(kind) {

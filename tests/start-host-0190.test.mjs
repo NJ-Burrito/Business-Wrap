@@ -205,7 +205,7 @@ ${docHtml.slice(at)}`, 'utf8');
   await c.waitForSelector('[data-a="home"]', { state: 'attached', timeout: 20000 }).catch(() => {});
   await sleep(1500);
   const before = await c.evaluate(() => ({ s: document.documentElement.dataset.bwStart, isDoc: window.BW.EXT.library.isDoc(window.BW.S.svc) }));
-  check('a saved document on disk opens as itself, no start page by itself', before.isDoc && before.s === 'closed', JSON.stringify(before));
+  check('a saved document on disk opens with the start page over it (owner rule 2026-11-16: the tool always opens on the start page)', before.isDoc && before.s === 'open', JSON.stringify(before));
   await c.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.querySelector('.island [data-a="home"]').click()); // Home: the start page over the document
   await waitStart(c);
   check('Home: the start page opens over the document and carries the switch, offline', await until(async () => (await startSw(c))?.st === 'offline', 12000), JSON.stringify(await toggles(c)));
@@ -214,6 +214,12 @@ ${docHtml.slice(at)}`, 'utf8');
   await hostUp(docFile); // the host serves that same document
   check('the page followed the host with the start page flag (…?via=disk&from=<document>&bwstart=1)', await until(() => c.navs.some((u) => /^http:\/\/127\.0\.0\.1:\d+\/\?via=disk&from=[^&]+&bwstart=1$/.test(u)), 25000), JSON.stringify(c.navs));
   check('same tab, now served', await until(() => c.url().startsWith(`http://127.0.0.1:${port}/`), 25000), c.url());
+  // owner rule 2026-11-16: «not now» on the resume popup stays on the document in view (no start page); Home opens it
+  await c.waitForFunction(() => { const q = document.getElementById('bw-ui-host')?.shadowRoot?.querySelector('dialog.bw-resume'); if (q) q.querySelector('[data-s="later"]')?.click(); return document.documentElement.dataset.bwSessionSettled === '1'; }, null, { timeout: 30000, polling: 200 });
+  await sleep(2500);
+  const stay = await c.evaluate(() => ({ s: document.documentElement.dataset.bwStart, r: document.documentElement.dataset.bwResume, isDoc: window.BW.EXT.library.isDoc(window.BW.S.svc) }));
+  check('«not now» keeps the document in view: no start page over it', stay.r === 'asked' ? (stay.s === 'closed' && stay.isDoc) : stay.s === 'open', JSON.stringify(stay));
+  if (stay.s !== 'open') await c.evaluate(() => document.getElementById('bw-ui-host').shadowRoot.querySelector('.island [data-a="home"]').click());
   await waitStart(c);
   const landed3 = await c.evaluate(() => ({ s: document.documentElement.dataset.bwStart, q: location.search, isDoc: window.BW.EXT.library.isDoc(window.BW.S.svc), back: document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-start [data-st-back]')?.textContent || '' }));
   check('the served page opened the DOCUMENT and the start page is over it (Back to <name>), the flag is gone from the address', landed3.s === 'open' && landed3.isDoc && landed3.q === '' && landed3.back.includes(saved.title), JSON.stringify(landed3));

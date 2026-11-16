@@ -63,7 +63,7 @@ const STARTHOST = (() => {
   async function land() {
     if (html.dataset.bwSessionSettled !== '1') await new Promise((ok) => window.addEventListener('bw:session-settled', ok, { once: true }));
     try { await window.BW?.whenReady?.(20000); } catch { return; }
-    if (startOpen()) return;
+    if (startOpen() || EXT.start?.stays?.()) return;
     await EXT.start?.open?.({ auto: true });
   }
   function init() {

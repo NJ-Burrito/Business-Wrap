@@ -16,6 +16,9 @@
  * events bw:start-open, bw:start-create {id, ed, doc}. */
 const START = (() => {
   const OFF = 'bw:start';
+  const PICK = 'bwopen=1';
+  /** this page was opened from the start page's own Recents (openRecent adds the mark to the address): the document shows as itself. Read once, at load: the library rewrites the hash. */
+  const PICKED = new RegExp(`[#&]${PICK}(&|$)`).test(location.hash);
   const PINS = 'bw:start-pins';
   const LIBX = () => EXT.library;
   let data = null; // the registry payload (C2)
@@ -130,7 +133,7 @@ const START = (() => {
 <header class="st-bar"><span class="st-brand" data-st-brand></span><span class="st-grow"></span>
   <div class="st-seg" role="group" data-st-ui><button type="button" data-st-l="en" lang="en">EN</button><button type="button" data-st-l="ar" lang="ar">عربي</button></div>
   <div class="st-seg" role="group" data-st-dirs><button type="button" data-st-d="rtl" lang="en" dir="ltr">RTL</button><button type="button" data-st-d="ltr" lang="en" dir="ltr">LTR</button></div>
-  <button type="button" class="st-ib" data-st-dark></button><button type="button" class="st-ib" data-st-calm></button></header>
+  <button type="button" class="st-ib" data-st-set></button><button type="button" class="st-ib" data-st-dark></button><button type="button" class="st-ib" data-st-calm></button></header>
 <div class="st-wrap">
   <main class="st-main" aria-labelledby="st-h1">
     <div class="st-head"><div class="st-hl"><h1 id="st-h1"><span class="st-rule" data-st-title></span></h1></div>
@@ -156,6 +159,7 @@ const START = (() => {
     q('[data-st-find]').innerHTML = ic('find');
     q('[data-st-brand]').innerHTML = DATA.brand?.mark ? `<span class="st-mark" aria-hidden="true">${DATA.brand.mark}</span><b class="st-wm">Business-Wrap</b>` : '<b class="st-wm">Business-Wrap</b>';
     q('[data-st-brand]').setAttribute('aria-label', 'Business-Wrap');
+    const g = q('[data-st-set]'); g.innerHTML = ic('settings'); g.setAttribute('aria-label', t('settings')); g.title = t('settings');
     const d = q('[data-st-dark]'); d.innerHTML = ic('dark'); d.setAttribute('aria-label', t('startDark')); d.title = t('startDark'); d.setAttribute('aria-pressed', String(!!S.dark));
     const c = q('[data-st-calm]'); c.innerHTML = ic('calm'); c.setAttribute('aria-label', t('startCalm')); c.title = t('startCalm'); c.setAttribute('aria-pressed', String(!!S.calm));
     const dd = q('[data-st-dirs]'); dd.setAttribute('aria-label', t('startDir'));
@@ -313,7 +317,7 @@ const START = (() => {
   }
   async function openRecent(id) {
     const disk = st.rec.find((r) => r.id === id && r.url); // a saved document the launcher listed (the shortcut's file:// page): that file opens, as itself
-    if (disk) { location.assign(disk.url); return; }
+    if (disk) { location.assign(`${disk.url}${disk.url.includes('#') ? '&' : '#'}${PICK}`); return; }
     const L = LIBX();
     if (id === S.svc && L?.isDoc(id)) { close(true); return; }
     const ok = await L?.open(id);
@@ -334,6 +338,8 @@ const START = (() => {
     const e = await LIBX().importAny(f);
     if (e) close(true);
   }
+  /** the page drawn again as it is (the language, calm or theme changed from Settings over it); keeps the selection and an open preview */
+  const redraw = () => { if (isOpen()) { chrome(); gallery(); side(); panel(); } };
   function setUi(l) { if (S.ui !== l) runAction('uiLang'); st.sel = null; st.first = false; st.kind = ''; chrome(); gallery(); side(); panel(); }
 
   /* ── events ── */
@@ -357,12 +363,14 @@ const START = (() => {
     }
     if ((b = g('[data-st-l]'))) { setUi(b.dataset.stL); return; }
     if ((b = g('[data-st-d]'))) { ls.set(DIRK(lang()), b.dataset.stD); chrome(); gallery(); side(); return; }
+    if (g('[data-st-set]')) { runAction('settings'); return; }
     if (g('[data-st-dark]')) { runAction('dark'); chrome(); return; }
     if (g('[data-st-calm]')) { runAction('calm'); chrome(); return; }
     if (g('[data-st-back]')) { close(); return; }
     if ((b = g('.st-tile'))) pick(b.dataset.type);
   }
   function onKey(ev) {
+    if (S.drawer) return; // Settings is open over this page: the keys (Esc first) are the drawer's
     ev.stopPropagation(); // the editor's own shortcuts (F, Ctrl+S, Ctrl+F …) never run on the page behind
     const q = el.querySelector('[data-st-q]');
     const inField = ev.target === q;
@@ -408,6 +416,7 @@ const START = (() => {
     if (isOpen()) { el.querySelector('[data-st-q]')?.focus(); return true; }
     if (!(await load())) { if (!opts.auto) toast(t('startNoTypes'), 'warn'); return false; }
     if (isOpen()) return true;
+    if (S.drawer) closeDrawer(); // Find, Outline … of the document behind: hidden under this page, it would take the page's keys (onKey)
     Object.assign(st, { cat: 'all', q: '', sel: null, first: true, rec: [], last: 0, gone: new Set(), kind: '', pl: lang() });
     st.opener = root.activeElement || null;
     el = document.createElement('dialog');
@@ -459,14 +468,28 @@ const START = (() => {
   }
   /** true when this page opens the TOOL (not a specific document) and the start page will show by itself: 12-session then asks no «continue where you left off» question over it. */
   const landing = () => allowed() && untouched();
+  /** this page load is the same tab coming back (F5, back / forward, the updater's own reload), not the tool being opened */
+  const reloaded = () => { try { return /^(reload|back_forward)$/.test(document.documentElement.dataset.bwNav || performance.getEntriesByType('navigation')[0]?.type || ''); } catch { return false; } };
+  /** the start page does NOT show by itself: «not now» / Esc on the resume popup with a document in view ('asked'; 'failed' = a resume the host refused, then «not now»),
+   *  documents chosen there ('resumed' / 'older'), a tab the host put back (bwResumed), a reload of a tab that holds work, or a document picked on this very page (PICKED).
+   *  «Not now» with nothing behind it still lands here: there is nothing to stay on. */
+  const stays = () => {
+    const r = document.documentElement.dataset.bwResume;
+    if (PICKED || r === 'resumed' || r === 'older' || document.documentElement.dataset.bwResumed === '1') return true;
+    if (r === 'new') return false; // an explicit answer, not the page opening by itself
+    if (reloaded() && document.documentElement.dataset.bwDraft === '1') return true; // «An unsaved draft was found»: the work is one press away, not under this page
+    return !untouched() && (r === 'asked' || r === 'failed' || reloaded());
+  };
   async function auto() {
     document.documentElement.dataset.bwStart = 'closed';
     if (!allowed()) return;
     if (document.documentElement.dataset.bwSessionSettled !== '1') await new Promise((ok) => window.addEventListener('bw:session-settled', ok, { once: true }));
     try { await window.BW?.whenReady?.(20000); } catch { return; } // a first-launch card or another question is still open: not stacked on it
-    if (!untouched()) return;
+    // owner rule 2026-11-16: opening the tool or starting the host always lands here, whatever document is behind it. The resume popup decides otherwise only
+    // when it was closed with «not now» / Esc ('asked': stay on the document in view) or answered with documents to open ('resumed' / 'older'); a reloaded tab keeps its document.
+    if (stays()) return;
     if (!(await load())) return;
-    if (!untouched() || isOpen()) return;
+    if (isOpen()) return;
     await open({ auto: true });
   }
 
@@ -481,7 +504,7 @@ const START = (() => {
     try { await LIBX()?.persistNow?.(); } catch { /* not a library document */ }
     return open();
   }
-  return { open, close, home, landing, refresh, types: () => types(), type, create, recents, load, auto, card, mountCard, isOpen, get state() { return { ...st, rec: [...st.rec] }; } };
+  return { open, close, home, landing, allowed, stays, redraw, refresh, types: () => types(), type, create, recents, load, auto, card, mountCard, isOpen, get state() { return { ...st, rec: [...st.rec] }; } };
 })();
 
 /* the File tool: Lucide layout-template (ISC), one gold part; its own hover motion (the 0.13 rule: every icon an extension adds moves) */

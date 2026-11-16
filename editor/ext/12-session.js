@@ -12,14 +12,16 @@
 // the saved screen preferences (theme, direction, spelling dictionary ...) are kept with the host as well (PREF_KEYS), so a browser profile that has none of them (Chrome after
 // Edge, a wiped profile) starts as the person left it. The editor reads some of them while it loads, before this file runs, so a restore that set something reloads the page once.
 const PREF_KEYS = /^bw:(dark|ui|calm|dir:(ar|en)|spell:(on|ar|en|user|ign)|ruler|pages|snap|explainers|xpl-panel|rb:c|docx-fonts|exportFolder|wm-intro|seen-version)$/;
-const prefsNow = () => { const o = {}; try { for (const k of Object.keys(localStorage)) if (PREF_KEYS.test(k)) { const v = localStorage.getItem(k); if (typeof v === 'string' && v.length <= 4000) o[k] = v; } } catch { /* no storage */ } return o; };
+const prefsNow = () => { const o = {}; try { for (const k of Object.keys(localStorage)) if (PREF_KEYS.test(k)) { const v = localStorage.getItem(k); if (typeof v === 'string' && v.length <= 4000) o[k] = v; } } catch { /* no storage */ } for (const k of ['bw:dir:ar', 'bw:dir:en']) if (!(k in o)) o[k] = ''; return o; }; // '' = the flip was cleared (setLang): the host's kept copy goes too
 {
   let hp = null;
   try { hp = JSON.parse(document.getElementById('bw-host-profile')?.textContent || 'null'); } catch { /* no host profile */ }
   if (hp?.profile && !ls.get('bw:profile')) { ls.set('bw:profile', hp.profile); if (hp.actor && !ls.get('bw:actor')) ls.set('bw:actor', hp.actor); }
+  // the reload below is the tool's own: the page after it remembers what the first load was (opened, or a person's F5), for 50-start's reloaded(). Read before the write: the dying page runs on.
+  try { const was = sessionStorage.getItem('bw:nav-was'); if (was) { sessionStorage.removeItem('bw:nav-was'); document.documentElement.dataset.bwNav = was; } } catch { /* no storage */ }
   let restored = 0;
-  if (hp?.prefs) for (const [k, v] of Object.entries(hp.prefs)) if (PREF_KEYS.test(k) && typeof v === 'string' && localStorage.getItem(k) === null) { try { localStorage.setItem(k, v); restored += 1; } catch { /* full */ } }
-  try { if (restored && !sessionStorage.getItem('bw:prefs-restored')) { sessionStorage.setItem('bw:prefs-restored', '1'); location.reload(); } } catch { /* no storage */ }
+  if (hp?.prefs) for (const [k, v] of Object.entries(hp.prefs)) if (PREF_KEYS.test(k) && typeof v === 'string' && v !== '' && localStorage.getItem(k) === null) { try { localStorage.setItem(k, v); restored += 1; } catch { /* full */ } }
+  try { if (restored && !sessionStorage.getItem('bw:prefs-restored')) { sessionStorage.setItem('bw:prefs-restored', '1'); sessionStorage.setItem('bw:nav-was', document.documentElement.dataset.bwNav || performance.getEntriesByType('navigation')[0]?.type || 'navigate'); location.reload(); } } catch { /* no storage */ }
 }
 const SESS = (() => {
   const P = new URLSearchParams(location.search);
@@ -441,7 +443,8 @@ const SESS = (() => {
       if (r.here) { info = null; hub.bye(); setTimeout(() => location.replace(r.here), 600); }
       setTimeout(() => { dlg.close(); dlg.remove(); }, 1200);
     }
-    dlg.addEventListener('click', async (ev) => {
+    let pending = null; // the answer being carried out (a resume, an import, «new»)
+    const onClick = async (ev) => {
       const el = ev.target.closest('[data-s]');
       const k = el?.dataset.s;
       if (!k) return;
@@ -457,8 +460,9 @@ const SESS = (() => {
         el.disabled = true;
         try {
           const html = await fetch(`/api/session/document?id=${encodeURIComponent(el.dataset.id)}`).then((r) => { if (!r.ok) throw new Error('read'); return r.text(); });
-          await EXT.library?.importAny(new File([html], `${el.dataset.name}.html`, { type: 'text/html' }));
+          if (!(await EXT.library?.importAny(new File([html], `${el.dataset.name}.html`, { type: 'text/html' })))) throw new Error('import'); // importAny answers null when it could not open the file
           document.documentElement.dataset.bwResume = 'older';
+          EXT.start?.close?.(true); // asked from the start page's own button: the chosen document shows (a no-op when that page is closed)
           $('.out').textContent = t('resOlderOpened', { name: el.dataset.name });
           setTimeout(() => { dlg.close(); dlg.remove(); }, 600);
         } catch { el.disabled = false; $('.out').textContent = t('resFailed'); }
@@ -468,11 +472,13 @@ const SESS = (() => {
         dlg.querySelectorAll('button').forEach((x) => { x.disabled = true; });
         await json('/api/session/new', { runId: last.runId, tab });
         document.documentElement.dataset.bwResume = 'new';
-        if (!/[#&]doc=/.test(location.hash) && !holdsDoc()) await EXT.library?.newDocument(); // a tab that holds a document keeps it (0.15.0, and an agent's since 0.16.0): never a blank one that owns nothing
+        if (!/[#&]doc=/.test(location.hash) && !holdsDoc() && !(EXT.start?.allowed?.() && (await EXT.start.load().catch(() => null)))) await EXT.library?.newDocument(); // «new document» lands on the start page (50-start, 2026-11-16), which creates it from a type; a blank one only when that page is switched off // a tab that holds a document keeps it (0.15.0, and an agent's since 0.16.0): never a blank one that owns nothing
         dlg.close(); dlg.remove();
       }
-    });
-    dlg.addEventListener('close', () => { if (openDlg === dlg) openDlg = null; release?.(); }, { once: true }); // answered or dismissed (Esc, «not now»): the hold goes, nothing was changed
+    };
+    dlg.addEventListener('click', (ev) => { pending = Promise.allSettled([pending, onClick(ev)]); });
+    // Esc / an agent's dismissResume closes the popup at once, but the hold (and bw:session-settled) waits for the answer in flight: data-bw-resume is final when 50-start reads it
+    dlg.addEventListener('close', () => { if (openDlg === dlg) openDlg = null; Promise.resolve(pending).then(() => release?.()); }, { once: true }); // answered or dismissed (Esc, «not now»): the hold goes, nothing was changed
     refresh();
     dlg.showModal();
     $('.q').focus();

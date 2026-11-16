@@ -418,8 +418,9 @@ function offerRecovery() {
   const embedded = JSON.stringify(Object.values(M).flatMap((s) => Object.values(s).map((e) => e.ops)));
   const drafted = JSON.stringify(Object.entries(d.svc || {}).flatMap(([sid, s]) => Object.entries(s).filter(([ed]) => M[sid]?.[ed]).map(([, x]) => x.ops)));
   if (drafted === embedded) return;
+  document.documentElement.dataset.bwDraft = '1'; // 50-start: a reloaded tab with a draft on offer keeps the editor in view
   banner(t('restore'), [
-    [t('restoreYes'), () => { loadDraft(d); render(); }],
+    [t('restoreYes'), () => { loadDraft(d); render(); EXT.start?.close?.(true); }], // the banner sits above the start page: the restored draft shows
     [t('restoreNo'), () => ls.del(KEY)],
   ]);
 }
@@ -1359,7 +1360,7 @@ function btn(id, { label = t(id), tip = '', pressed, cls = '', extra = '' } = {}
 }
 const dirOf = (l) => (l === 'ar' ? 'rtl' : 'ltr');
 const langWord = (l) => (l === 'ar' ? 'ع' : 'E');
-const uiDir = () => S.dir || dirOf(S.ui);
+const uiDir = () => S.dir || S.dirs[S.ui] || dirOf(S.ui); // the edition in view first, then the flip stored for the interface language (a reload shows the first edition again)
 const LAYOUT_DIR = 'rtl'; // the default (Arabic) layout: toolbar, panels, page and watermark never move (0.10.0)
 
 /** R2/A4: the toolbar is mounted once; every later call patches the live nodes in place (syncUi), so a toggle
@@ -1943,12 +1944,15 @@ function placeHold() {
   };
 }
 // Language «ع» / «E»: the interface language and the document edition together.
-function setLang(l) {
+function setLang(l, opts = {}) {
   const edChange = !!M[S.svc][l] && l !== S.ed;
   if (l === S.ui && !edChange) return;
   const was = S.ui;
   S.ui = l;
   ls.set('bw:ui', S.ui);
+  // owner rule 2026-11-16: a language switch always lands on the language's own direction (ar RTL, en LTR); a manual flip lasts until the next switch
+  if (!opts.keepDir) for (const k of ['ar', 'en']) { S.dirs[k] = null; ls.del(`bw:dir:${k}`); ls.del(`bw:start-dir:${k}`); } // keepDir: a tool walking the editions (print-center), not a person's switch
+  if (!opts.keepDir) EXT.session?.push?.(); // the host forgets the flip now, not at the next edit
   const back = placeHold(); // the page being worked on stays (note 3)
   if (edChange) { S.ed = l; S.sel = null; S.selOv = null; }
   retranslateToasts(was, l);
@@ -1956,6 +1960,7 @@ function setLang(l) {
   render(!edChange);
   back();
   window.BW_WM?.relabel();
+  EXT.start?.redraw?.(); // Settings opened over the start page: the page behind follows the language
 }
 // Layout direction RTL / LTR: independent of the language; remembered per edition (AR keeps RTL when EN goes LTR).
 function setDir(d) {
@@ -2066,8 +2071,8 @@ async function runAction(a, arg) {
     case 'side': S.side = !S.side; buildUi(); render(false); break;
     case 'uiLang': setLang(S.ui === 'ar' ? 'en' : 'ar'); break;
     case 'dir': setDir(uiDir() === 'rtl' ? 'ltr' : 'rtl'); break;
-    case 'dark': S.dark = !S.dark; ls.set('bw:dark', S.dark ? '1' : '0'); buildUi(); break;
-    case 'calm': S.calm = !S.calm; ls.set('bw:calm', S.calm ? '1' : '0'); buildUi(); toast(t(S.calm ? 'calmOn' : 'calmOff'), 'info'); break;
+    case 'dark': S.dark = !S.dark; ls.set('bw:dark', S.dark ? '1' : '0'); buildUi(); EXT.start?.redraw?.(); break;
+    case 'calm': S.calm = !S.calm; ls.set('bw:calm', S.calm ? '1' : '0'); buildUi(); EXT.start?.redraw?.(); toast(t(S.calm ? 'calmOn' : 'calmOff'), 'info'); break;
     case 'focus': S.focus = !S.focus; S.view = false; buildUi(); toast(t(S.focus ? 'focusOn' : 'focusOff'), 'info'); break;
     case 'view': S.view = !S.view; buildUi(); break;
     case 'snap': S.snap = !S.snap; ls.set('bw:snap', S.snap ? '1' : '0'); buildUi(); break;
@@ -2145,6 +2150,7 @@ function closeDrawer() {
   S.drawer = null;
   const d = root.querySelector('.drawer');
   if (!d || d.hidden) return;
+  if (EXT.start?.isOpen?.() && d.contains(root.activeElement)) root.querySelector('dialog.bw-start [data-st-set]')?.focus({ preventScroll: true }); // the start page is under the drawer: Esc, / and the arrows are its own
   if (isCalm()) { d.hidden = true; return; }
   d.classList.add('closing');
   // 240 ms = --bw-dur-base, the close animation; a drawer reopened before it finishes stays open (openDrawer cancels the hide)

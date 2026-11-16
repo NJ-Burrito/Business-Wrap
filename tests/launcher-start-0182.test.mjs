@@ -136,7 +136,7 @@ try {
     check(`shortcut (${ui}): no page error`, !errors.length, errors.join(' | ').slice(0, 200));
     if (ui === 'en') {
       await page.evaluate(() => { const b = document.getElementById('bw-ui-host').shadowRoot.querySelector('dialog.bw-start [data-st-open]'); b.click(); });
-      const went = await until(() => page.url() === docUrl, 15000);
+      const went = await until(() => page.url().split('#')[0] === docUrl, 15000); // the address carries the start page's own mark (#bwopen=1), or the library's #doc=<id> after it
       check('shortcut: clicking the recent document opens THAT file (the same file:// URL)', !!went, page.url());
       await page.waitForFunction(() => window.BW?.ready, null, { timeout: 30000 });
       const d = await landed(page);
