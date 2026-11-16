@@ -8,15 +8,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
-## [Unreleased]
+## [0.23.0] - 2026-11-16
 
-### Changed / تغيّر
-- 🏁 **The tool always opens on the start page**: opening the tool or starting the local host lands on the start page, whatever document is behind it, and the «Back to» link returns to it. On the «continue where you left off» popup, «Not now» stays on the open document (with no document open, the start page shows), «New document» lands on the start page instead of creating a blank document, and picking documents to resume opens them. A reloaded tab or a `#doc=` link keeps its document. The setting «Show the start page when the tool opens» still switches this off. / **الأداة تفتح دائما على صفحة البداية**: فتح الأداة أو تشغيل الخادم المحلي يهبط على صفحة البداية أيا كانت الوثيقة خلفها، ويعيدك رابط «العودة إلى» إليها. وفي نافذة «متابعة العمل» يبقى «ليس الآن» على المستند المفتوح (وإن لم يكن مستند مفتوح ظهرت صفحة البداية)، و«مستند جديد» يهبط على صفحة البداية بدل إنشاء مستند فارغ، واختيار مستندات للمتابعة يفتحها. وإعادة تحميل التبويب أو الرابط `#doc=` يبقيان وثيقتهما. والإعداد «عرض صفحة البداية عند فتح الأداة» ما زال يلغي ذلك.
-- 🔀 **A language switch always lands on its own direction**: Arabic is RTL and English is LTR after every language switch. The RTL | LTR switch still flips it by hand, and the flip lasts until the next language switch (it used to be remembered per language). The layout itself never moves. / **تبديل اللغة يهبط دائما على اتجاهها**: العربية RTL والإنجليزية LTR بعد كل تبديل للغة. ومفتاح RTL | LTR ما زال يقلبه باليد، ويبقى القلب حتى تبديل اللغة التالي (وكان يحفظ لكل لغة). ويبقى التخطيط نفسه في مكانه.
+🏁 The start page comes first, with Settings on it, and a language switch always lands on its own direction. / 🏁 صفحة البداية أولاً وفيها الإعدادات، وتبديل اللغة يعود دائماً إلى اتجاهها.
 
 ### Added / أضيف
 - ⚙️ **Settings on the start page**: the top bar of the start page has a Settings button; the settings drawer opens above the page, and Esc closes the drawer. / **الإعدادات في صفحة البداية**: في الشريط العلوي لصفحة البداية زر إعدادات؛ يفتح درج الإعدادات فوق الصفحة، ويغلقه Esc.
 - 🗂️ **File-type icons in Settings**: the icons card now previews the 13 file-type icons beside the 10 folder icons. / **أيقونات أنواع الملفات في الإعدادات**: تعرض بطاقة الأيقونات الآن أيقونات أنواع الملفات الثلاث عشرة بجانب أيقونات المجلدات العشر.
+
+### Changed / تغيّر
+- 🏁 **The tool always opens on the start page**: opening the tool or starting the local host lands on the start page, whatever document is behind it, and the «Back to» link returns to it. On the «continue where you left off» popup, «Not now» stays on the open document (with no document open, the start page shows), «New document» lands on the start page instead of creating a blank document, and picking documents to resume opens them. A reloaded tab or a `#doc=` link keeps its document. The setting «Show the start page when the tool opens» still switches this off. / **الأداة تفتح دائما على صفحة البداية**: فتح الأداة أو تشغيل الخادم المحلي يهبط على صفحة البداية أيا كانت الوثيقة خلفها، ويعيدك رابط «العودة إلى» إليها. وفي نافذة «متابعة العمل» يبقى «ليس الآن» على المستند المفتوح (وإن لم يكن مستند مفتوح ظهرت صفحة البداية)، و«مستند جديد» يهبط على صفحة البداية بدل إنشاء مستند فارغ، واختيار مستندات للمتابعة يفتحها. وإعادة تحميل التبويب أو الرابط `#doc=` يبقيان وثيقتهما. والإعداد «عرض صفحة البداية عند فتح الأداة» ما زال يلغي ذلك.
+- 🔀 **A language switch always lands on its own direction**: Arabic is RTL and English is LTR after every language switch. The RTL | LTR switch still flips it by hand, and the flip lasts until the next language switch (it used to be remembered per language). The layout itself never moves. / **تبديل اللغة يهبط دائما على اتجاهها**: العربية RTL والإنجليزية LTR بعد كل تبديل للغة. ومفتاح RTL | LTR ما زال يقلبه باليد، ويبقى القلب حتى تبديل اللغة التالي (وكان يحفظ لكل لغة). ويبقى التخطيط نفسه في مكانه.
 
 ## [0.22.0] - 2026-11-13
 
