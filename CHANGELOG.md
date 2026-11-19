@@ -8,6 +8,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 </div>
 
+## [Unreleased]
+
+### Added / أضيف
+- 🧭 **Live back-office diagram as a read-only source** (Flowable method): a tracking page's process diagram and open tasks are a second source beside the modeler export, never a replacement; monitoring-graph JSON may carry `"source": "backoffice"` and the document's introduction then names that provenance; differences from the export (or between environments) are recorded, not merged. / **مخطط النظام الخلفي الحي مصدراً للقراءة فقط** (طريقة Flowable): مخطط صفحة المتابعة والمهام المفتوحة مصدر ثانٍ بجانب تصدير المحرّر لا بديل عنه؛ ويحمل JSON المراقبة `"source": "backoffice"` فيسمّي تمهيد الوثيقة المصدر؛ وتُسجَّل الفروق ولا تُدمج.
+
 ## [0.23.0] - 2026-11-16
 
 🏁 The start page comes first, with Settings on it, and a language switch always lands on its own direction. / 🏁 صفحة البداية أولاً وفيها الإعدادات، وتبديل اللغة يعود دائماً إلى اتجاهها.
