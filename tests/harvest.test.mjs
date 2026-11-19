@@ -73,6 +73,14 @@ try {
   const yRules = table(enY, 4).rows.map((r) => r[1]).join(' | ');
   check('yaml: a step list with a decision and a timer', /Payment received\?/.test(yRules) && /within 10 days/.test(yRules) && table(enY, 6).rows.length === 2, yRules);
 
+  // ── A. live back-office diagram: a graph marked source:backoffice names its provenance ──
+  const gj = read(path.join(FIX, 'monitoring-graph.json'));
+  const gFile = path.join(OUT, 'backoffice-graph.json');
+  fs.writeFileSync(gFile, JSON.stringify({ ...gj, source: 'backoffice' }));
+  const gb = await harvestModel(gFile, { out: path.join(OUT, 'bo'), editor: false });
+  const gIntro = JSON.stringify(read(gb.documents[1]).chapters[0]);
+  check('backoffice graph: the introduction names the live back-office diagram as the source', /live process diagram read from the back office/.test(gIntro) && read(gb.documents[0]).process.source === 'backoffice', gIntro.slice(0, 200));
+
   // ── B. crawl a local bilingual site ──
   const siteDir = path.join(OUT, 'site');
   buildSite(siteDir);

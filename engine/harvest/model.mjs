@@ -178,7 +178,8 @@ export function parseSteps(text) {
 
 
 /* ── Flowable monitoring graph JSON (back offices that show the process but do not export XML) ── */
-// Shape: { key?, name?, description?, graph: { nodes:[{id, kind, name, groups?, assignee?, timer?, attachedTo?}], edges:[{from, to, name?, condition?}] } }
+// `source: 'backoffice'` marks a graph read from a live back-office tracking page (the document then says so).
+// Shape: { key?, name?, description?, source?, graph: { nodes:[{id, kind, name, groups?, assignee?, timer?, attachedTo?}], edges:[{from, to, name?, condition?}] } }
 const G_HUMAN = new Set(['userTask', 'manualTask', 'task']);
 const G_SYSTEM = new Set(['serviceTask', 'scriptTask', 'sendTask', 'receiveTask', 'businessRuleTask', 'callActivity']);
 const G_GATE = new Set(['exclusiveGateway', 'inclusiveGateway', 'parallelGateway', 'eventBasedGateway', 'complexGateway']);
@@ -186,7 +187,7 @@ export function parseGraph(json) {
   const d = typeof json === 'string' ? JSON.parse(json) : json;
   const g = d.graph || d;
   if (!Array.isArray(g.nodes) || !Array.isArray(g.edges)) throw new Error('not a monitoring graph: no nodes/edges');
-  const ir = { kind: 'bw-process', version: 1, name: String(d.description || d.name || d.key || 'Process'), key: d.key || undefined, source: 'graph', actors: [], steps: [], flows: [] };
+  const ir = { kind: 'bw-process', version: 1, name: String(d.description || d.name || d.key || 'Process'), key: d.key || undefined, source: d.source === 'backoffice' ? 'backoffice' : 'graph', actors: [], steps: [], flows: [] };
   const actorIds = new Map();
   const actorOf = (n) => { if (!n) return undefined; if (!actorIds.has(n)) { const id = `a${actorIds.size + 1}`; actorIds.set(n, id); ir.actors.push({ id, name: n }); } return actorIds.get(n); };
   for (const n of g.nodes) {

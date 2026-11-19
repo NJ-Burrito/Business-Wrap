@@ -62,7 +62,7 @@ Two ways in, one result: `document.ar.json` + `document.en.json` and an editor.
 
 | You have | Run | Notes |
 |---|---|---|
-| A BPMN 2.0 export (Flowable, Camunda, Activiti), a draw.io diagram, or a YAML/JSON step list | `npm run harvest:model -- <file> [--out dir]` · MCP `harvest_model` · editor **New document → From a process model** | lanes/groups → actors, user tasks → stories, gateways/conditions/timers → rules, end events → statuses; the figure shows people's steps only |
+| A BPMN 2.0 export (Flowable, Camunda, Activiti), a draw.io diagram, or a YAML/JSON step list | `npm run harvest:model -- <file> [--out dir]` · MCP `harvest_model` · editor **New document → From a process model** | lanes/groups → actors, user tasks → stories, gateways/conditions/timers → rules, end events → statuses; the figure shows people's steps only. A live back-office tracking diagram is a read-only second source beside the export: graph JSON with `"source": "backoffice"`, differences recorded (`bible/08-harvest.md`) |
 | Both: a crawl and a model of the same service | `npm run harvest:merge -- <harvest.json> <process.json\|model>` · MCP `harvest_merge` · editor **New document → Merge two harvests** | the union with the source of each chapter and status row; disagreements listed as conflicts; a second harvest `--into` the same folder merges, never overwrites |
 | A live e-service | `npm run harvest:crawl -- <crawl.json>` · MCP `harvest_crawl` · editor **New document → Walk the live service** (needs `npm run serve`) | headed Chrome, one tab, keyboard first, robots respected, OTP/captcha pause waits for the human; credentials only as `$env:NAME` / `$secret:key` |
 
@@ -81,7 +81,7 @@ Rules that cost a rebuild if skipped:
 
 | لديك | شغّل | ملاحظات |
 |---|---|---|
-| تصدير BPMN 2.0 (Flowable أو Camunda أو Activiti)، أو مخطط draw.io، أو قائمة خطوات YAML أو JSON | `npm run harvest:model -- <file> [--out dir]` · أداة MCP `harvest_model` · في المحرر **وثيقة جديدة ← من نموذج إجراء** | المسارات والمجموعات ← الأطراف، ومهام المستخدم ← القصص، والبوابات والشروط والمهل ← القواعد، وأحداث النهاية ← الحالات؛ والمخطط يعرض خطوات الأشخاص فقط |
+| تصدير BPMN 2.0 (Flowable أو Camunda أو Activiti)، أو مخطط draw.io، أو قائمة خطوات YAML أو JSON | `npm run harvest:model -- <file> [--out dir]` · أداة MCP `harvest_model` · في المحرر **وثيقة جديدة ← من نموذج إجراء** | المسارات والمجموعات ← الأطراف، ومهام المستخدم ← القصص، والبوابات والشروط والمهل ← القواعد، وأحداث النهاية ← الحالات؛ والمخطط يعرض خطوات الأشخاص فقط. ومخطط التتبع الحي في النظام الخلفي مصدر ثانٍ للقراءة فقط بجانب التصدير: JSON مع `"source": "backoffice"` وتُسجَّل الفروق (`bible/08-harvest.md`) |
 | مرور ونموذج للخدمة نفسها | `npm run harvest:merge -- <harvest.json> <process.json\|model>` · أداة MCP `harvest_merge` · في المحرر **وثيقة جديدة ← دمج حصادين** | الاتحاد مع مصدر كل فصل وكل صف حالة؛ والاختلافات تُعرض تعارضات؛ والحصاد الثاني `--into` المجلد نفسه يُدمج ولا يحل محل الأول |
 | خدمة إلكترونية فعلية | `npm run harvest:crawl -- <crawl.json>` · أداة MCP `harvest_crawl` · في المحرر **وثيقة جديدة ← المرور على الخدمة الفعلية** (يحتاج `npm run serve`) | Chrome ظاهر، وتبويب واحد، ولوحة المفاتيح أولاً، واحترام robots، والتوقف للرمز المؤقت أو التحقق البشري حتى يتدخل الإنسان؛ وبيانات الدخول فقط بصيغة `$env:NAME` أو `$secret:key` |
 
