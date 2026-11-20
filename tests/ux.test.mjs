@@ -73,7 +73,9 @@ try {
     };
     await page.evaluate(() => window.BW.runAction('outline')); // a panel open in every state
     await settle(page, 500);
-    const base = await boxes();
+    // the page slides while the panel opens (baseline seen at 286, 475, 516 then 526 px): measure once two reads 200 ms apart agree
+    let base = await boxes();
+    for (let i = 0; i < 25; i++) { await page.waitForTimeout(200); const again = await boxes(); if (JSON.stringify(again) === JSON.stringify(base)) break; base = again; }
     const diffs = [];
     for (const [l, d] of [['en', null], ['en', 'rtl'], ['ar', 'ltr'], ['ar', 'rtl']]) {
       await sh(page, (r, l) => r.querySelector(`[data-a="ed"][data-ed="${l}"]`).click(), l);
