@@ -10,6 +10,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 ## [Unreleased]
 
+## [0.24.1] - 2026-11-20
+
+🔧 The command palette's search box keeps focus after a click, and «الخط» offers every font again: the project's, the ones uploaded into the document and the ones on this computer (PDF and DOCX keep them). / 🔧 مربع البحث في «الأوامر» يبقى نشطاً بعد النقر، و«الخط» يعرض كل الخطوط من جديد: خطوط المشروع، والمرفوعة إلى المستند، والمثبتة على الجهاز (وتحتفظ بها ملفات PDF وDOCX).
+
+### Fixed
+- Command palette (Ctrl+K): a click in the search box no longer hands focus back to the page on mouse release (the ribbon's selection restore now skips text fields).
+- Format bar and table cells «الخط»: the list is project + uploaded + machine fonts, not only the three Thmanyah faces; the renderer and the DOCX writer accept any font mark.
+
 ## [0.24.0] - 2026-11-20
 
 🏁 Fixes from a full NJ-QA test of 0.23.0 (5 retest rounds): Sources keep your decisions, damaged imports fail cleanly, a typed zoom, a cleaner start page and toasts, `BW_PORT` for a second install. / 🏁 إصلاحات من اختبار NJ-QA كامل للإصدار 0.23.0 (خمس جولات إعادة فحص): المصادر تحفظ قراراتك، والاستيراد التالف يفشل بوضوح، وكتابة نسبة التكبير، وصفحة بداية وإشعارات أنظف، و`BW_PORT` لتثبيت ثانٍ.

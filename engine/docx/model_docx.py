@@ -53,12 +53,13 @@ def _rpr_mark(run, marks):
         elif m[2] == 'size' and isinstance(v, (int, float)) and 5 <= v <= 72:
             for tag in ('w:sz', 'w:szCs'):
                 e = OxmlElement(tag); e.set(qn('w:val'), str(int(round(v * 2)))); rPr.append(e)
-        elif m[2] == 'font' and str(v) in FONT_FAMILIES:
+        elif m[2] == 'font' and re.sub(r'[^\w\s.-]', '', str(v or '')).strip():
+            fam = re.sub(r'[^\w\s.-]', '', str(v)).strip()
             rf = rPr.find(qn('w:rFonts'))
             if rf is None:
                 rf = OxmlElement('w:rFonts'); rPr.append(rf)
             for slot in ('w:ascii', 'w:hAnsi', 'w:cs'):
-                rf.set(qn(slot), str(v))
+                rf.set(qn(slot), fam)
         elif m[2] == 'code':
             shd = OxmlElement('w:shd'); shd.set(qn('w:val'), 'clear'); shd.set(qn('w:color'), 'auto'); shd.set(qn('w:fill'), 'F2EEE6'); rPr.append(shd)
 

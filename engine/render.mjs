@@ -183,7 +183,7 @@ const HEX = /^#[0-9a-fA-F]{6}$/;
 const HREF = /^(https?:\/\/|mailto:)[^\s"'<>]+$/i;
 const PT = (v) => (Number.isFinite(+v) && +v >= 5 && +v <= 72 ? +v : null);
 const safeFamilyName = (f) => String(f || '').replace(/[^\p{L}\p{N}\s._-]/gu, '').trim();
-/** Thmanyah families only (house rule): any other font mark is ignored. */
+/** The house families (the default faces). A font mark may name any family: project, uploaded or machine font. */
 export const FONT_FAMILIES = ['Thmanyah Serif Text', 'Thmanyah Serif Display', 'Thmanyah Sans'];
 const MARK_ORDER = ['link', 'span', 'b', 'i', 'u', 's', 'code'];
 function markOpen(type, ms) {
@@ -192,7 +192,7 @@ function markOpen(type, ms) {
     const d = [];
     for (const m of ms) {
       if (m[2] === 'color' && HEX.test(String(m[3]))) d.push(`color:${m[3]}`);
-      if (m[2] === 'font' && FONT_FAMILIES.includes(safeFamilyName(m[3]))) d.push(`font-family:'${safeFamilyName(m[3])}'`);
+      if (m[2] === 'font' && safeFamilyName(m[3])) d.push(`font-family:'${safeFamilyName(m[3])}'`);
       if (m[2] === 'size' && PT(m[3])) d.push(`font-size:${PT(m[3])}pt`);
     }
     return d.length ? [`<span style="${d.join(';')}">`, '</span>'] : null;

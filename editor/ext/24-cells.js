@@ -237,7 +237,7 @@ const CE_FMT = {
   fmtTop: () => CE_ACT.style({ valign: 'top' }), fmtMiddle: () => CE_ACT.style({ valign: 'middle' }), fmtBottom: () => CE_ACT.style({ valign: 'bottom' }),
   fmtBullets: () => CE_ACT.list('bullet'), fmtNumbers: () => CE_ACT.list('number'),
   fmtColor: async () => { const v = await ask(t('w2.colorPrompt'), '#000000', { type: 'color' }); if (/^#[0-9a-f]{6}$/i.test(v)) CE_ACT.mark('color', v); else if (v) toast(t('w2.badColor'), 'warn'); },
-  fmtFont: async () => { const v = await ask(t('w2.fontPrompt'), FONT_FAMILIES[0], { type: 'select', options: FONT_FAMILIES, preview: ceFontPreview() }); if (FONT_FAMILIES.includes(v)) CE_ACT.mark('font', v); },
+  fmtFont: async () => { const fams = await FONTS.families(); const v = await ask(t('w2.fontPrompt'), fams[0], { type: 'select', options: fams, preview: ceFontPreview() }); if (fams.includes(v)) CE_ACT.mark('font', v); },
   fmtSize: async () => { const v = +(await ask(t('w2.sizePrompt'), '12', { type: 'number', min: 5, max: 72, step: 1 })); if (v >= 5 && v <= 72) CE_ACT.mark('size', v); },
 };
 

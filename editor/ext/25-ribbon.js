@@ -510,7 +510,9 @@ function rbShellWire() {
   // a pointer or key on the page itself (not in the shell) is the person choosing a new selection: pending restores stand down
   for (const ev of ['mousedown', 'keydown']) document.addEventListener(ev, (e) => { if (!e.composedPath().includes(shell)) RB.gen = (RB.gen || 0) + 1; }, true);
   shell.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') RB.snap = rbSnap(); }, true);
-  shell.addEventListener('click', () => {
+  shell.addEventListener('click', (e) => {
+    // a click into a text field (the palette search, a font box) is the person typing there: never pull focus back to the page
+    if (e.target.closest?.(RB_TEXT)) { RB.snap = null; return; }
     const snap = RB.snap;
     RB.snap = null;
     rbRestore(snap);

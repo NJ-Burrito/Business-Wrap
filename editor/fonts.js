@@ -160,6 +160,13 @@ const FONTS = {
     }
     if (role && FONTS.open === role) { FONTS.fill(role); root.querySelector(`.drawer .fp[data-fp="${role}"] .fp-q`)?.focus(); }
   },
+  /** every font the person can use on a run: the project's, the ones uploaded into this document, then the machine's
+   *  (read on this press; a refusal just leaves them out). The format bar's «الخط» lists these. */
+  async families() {
+    if (!FONTS.local) await FONTS.loadLocal(null, true);
+    const up = FONTS.sort([...new Set(FONTS.uploaded().map((f) => f.family))]);
+    return [...new Set([...FONTS.project(), ...up, ...(FONTS.local || []).map((x) => x.family)])];
+  },
   /** the machine list loads by itself when the permission was given before (no prompt) */
   async autoLocal() {
     if (FONTS.local || !('queryLocalFonts' in window) || !navigator.permissions) return;
