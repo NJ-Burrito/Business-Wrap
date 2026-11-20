@@ -43,7 +43,7 @@ function ruRulerOf(tg) {
   const main = mainOf(tg.ed);
   const el = main?.querySelector(`[data-p="${CSS.escape(tg.path)}"]`);
   if (!main || !el) return null;
-  const seg = el.closest('[style^="page:bw-seg-"]');
+  const seg = el.closest('[style*="bw-seg-"]');
   return (seg && seg.querySelector(':scope > .bw-ruler')) || main.querySelector(':scope > .bw-ruler');
 }
 const RU_ICON = { fl: 'M0 0h10L5 6z', st: 'M5 0l5 5v5H0V5z', en: 'M5 0l5 5v5H0V5z' };

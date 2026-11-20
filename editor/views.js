@@ -63,7 +63,7 @@ function viewsGeo() {
  *  nearest container's, else the document's own page ('0'). */
 function viewsSegOf(el) {
   for (let x = el; x && x.nodeType === 1; x = x.parentElement) {
-    const m = /^page:bw-seg-(\d+)/.exec(x.getAttribute('style') || '');
+    const m = /(?:^|;)\s*page:\s*bw-seg-(\d+)/.exec(x.getAttribute('style') || '');
     if (m) return m[1];
     if (x.matches?.('.chapter.wide')) return 'w';
     if (x.matches?.('main.bw-doc')) break;
