@@ -72,7 +72,7 @@ Business-Wrap\
   المستندات - Documents\
     <Document title>\                 one folder per document (the Arabic title, else the English one)
       <Document title>.html           the editable file: Save HTML overwrites it
-      Exports\                        <YYYY-MM-DD HH-MM> <Document title> - العربية.pdf | - English.pdf | .docx | - both.pdf
+      Exports\                        <YYYY-MM-DD HH-MM> <Document title> - العربية.pdf | - English.pdf | .docx   (PDF + both = one file per language)
       Sources\                        what a harvest or an import collected for this document
       Versions\                       the previous saves (kept, never deleted)
     _غير مصنف - Unsorted\             old files whose document could not be told

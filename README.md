@@ -160,7 +160,7 @@ Every type opens with a first page built for its purpose. The thumbnail on the s
 
 📤 **Exports:** PDF, DOCX, edits JSON, design pack, Save HTML, webhooks (a message sent to an address you set).
 
-🔌 **Server switch:** one toggle in the top bar. Turn the server off and the editor stays open with a Turn on card.
+🔌 **Server switch:** one toggle in the top bar. Turn the server off and the editor stays open (your work saved first); the same switch turns it back on.
 
 🗂️ **File and folder icons (Windows):** in Settings, use Business-Wrap icons for your PDF, Word and web page files. Restore puts the Windows icons back.
 
@@ -483,7 +483,7 @@ Business-Wrap\
   المستندات - Documents\
     <Document title>\                 one folder per document (the Arabic title, else the English one)
       <Document title>.html           the editable file: Save HTML overwrites it
-      Exports\                        <YYYY-MM-DD HH-MM> <Document title> - العربية.pdf | - English.pdf | .docx | - both.pdf
+      Exports\                        <YYYY-MM-DD HH-MM> <Document title> - العربية.pdf | - English.pdf | .docx   (PDF + both = one file per language)
       Sources\                        what a harvest or an import collected for this document
       Versions\                       the previous saves (kept, never deleted)
     _غير مصنف - Unsorted\             old files whose document could not be told

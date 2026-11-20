@@ -89,7 +89,7 @@ cli(['--enable-hook'], envNew);
 r = cli(['--hook'], envNew);
 ok('hook prints one line once enabled', r.stdout.trim().split('\n').length === 1 && r.stdout.includes(NEWER));
 r = cli(['--apply'], envNew);
-ok('--apply without --yes changes nothing and asks', r.stdout.includes('--yes') && !fs.existsSync(`${REPO}.backup-${CUR}`));
+ok('--apply without --yes changes nothing, asks, and exits 2 (refused)', r.stdout.includes('--yes') && r.status === 2 && !fs.existsSync(`${REPO}.backup-${CUR}`));
 
 // MCP: initialize instructions + update_available on the first tool result only
 const transport = new StdioClientTransport({ command: process.execPath, args: [path.join(REPO, 'mcp', 'cli.mjs')], cwd: REPO, env: { ...process.env, ...envNew, BW_UPDATE_TOKEN: 'none' }, stderr: 'pipe' });

@@ -72,10 +72,12 @@ export function sanitizeCss(css) {
   drop(/<\/?\s*style|<!--|-->/gi, 'tag');
   drop(/@import[^;]*;?/gi, '@import');
   drop(/@charset[^;]*;?/gi, '@charset');
-  drop(/url\(\s*(?!['"]?data:image\/(png|jpeg|gif|webp);base64,)[^)]*\)/gi, 'remote url()');
-  drop(/expression\s*\(/gi, 'expression()');
-  drop(/javascript\s*:/gi, 'javascript:');
-  drop(/behavior\s*:|-moz-binding/gi, 'binding');
+  // the WHOLE declaration goes, not just the token: «color:expression(alert(1))» left «alert(1))» behind (QA N26)
+  const decl = (tok) => new RegExp(`[^{};]*(?:${tok})[^;}]*;?`, 'gi');
+  drop(decl(String.raw`url\(\s*(?!['"]?data:image\/(?:png|jpeg|gif|webp);base64,)`), 'remote url()');
+  drop(decl(String.raw`expression\s*\(`), 'expression()');
+  drop(decl(String.raw`javascript\s*:`), 'javascript:');
+  drop(decl(String.raw`behavior\s*:|-moz-binding`), 'binding');
   return { css: out.trim(), rejected: rejected.filter((r) => !r.startsWith('comment')) };
 }
 /** CSS for per-instance styles and hidden parts, keyed by the pointers the renderer prints. */

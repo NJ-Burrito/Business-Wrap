@@ -285,7 +285,7 @@
 /* ── 0.14.0 A3: toasts and undo prompts never cover the page controls ───────────────────────────────────────────
  * They stay bottom-centre, but centred on the room left of an open slide-over panel (its own page-range and preview
  * controls live there) and lifted clear of the page pill (pages · previous · next) whenever that is showing. */
-.shell[dir] .toasts { inset-inline-start: auto; left: calc((100% - var(--rside)) / 2); right: auto; transform: translateX(-50%); max-inline-size: calc(100vw - var(--rside) - 24px); }
+.shell[dir] .toasts { inset-inline-start: auto; left: calc((100% - var(--rside)) / 2); right: auto; transform: translateX(-50%); max-inline-size: max(280px, calc(100vw - var(--rside) - 344px)); } /* QA N35: centred, so 2×172 px keeps a long toast (a save path) clear of the watermark box at the bottom left (16 + 140 + 16) */
 .shell[dir="rtl"] .toasts { left: calc((100% + var(--rside)) / 2); } /* the slide-over panel is on the left in the right-to-left layout */
 .shell:has(.pager:not([hidden])) .toasts { inset-block-end: 78px; }
 .toasts .toast { max-inline-size: min(560px, 100%); }

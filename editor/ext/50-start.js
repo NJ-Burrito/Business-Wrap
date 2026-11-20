@@ -187,7 +187,7 @@ const START = (() => {
     }
     const rove = list.some((x) => x.id === st.sel) ? st.sel : list[0].id;
     g.innerHTML = `<ul class="st-grid${st.first ? ' st-first' : ''}" role="listbox" aria-label="${esc(t('startTitle'))}" aria-orientation="horizontal">${list.map((x, i) =>
-      `<li class="st-tile" role="option" tabindex="${x.id === rove ? 0 : -1}" aria-selected="${st.sel === x.id}" data-type="${esc(x.id)}" data-type-id="${esc(x.id)}" aria-labelledby="stn-${esc(x.id)} std-${esc(x.id)}" style="--i:${i}"><span class="st-thumb" data-land="${land(x)}" data-mirror="${st.sel === x.id ? st.pl === 'ar' : l === 'ar'}">${art(x)}</span><span class="st-nm" id="stn-${esc(x.id)}">${esc(nm(x))}</span><span class="st-ds" id="std-${esc(x.id)}">${esc(dsc(x))}</span></li>`).join('')}</ul>`;
+      `<li class="st-tile" role="option" tabindex="${x.id === rove ? 0 : -1}" aria-selected="${st.sel === x.id}" data-type="${esc(x.id)}" data-type-id="${esc(x.id)}" aria-labelledby="stn-${esc(x.id)} std-${esc(x.id)}" style="--i:${i}"><span class="st-thumb" data-land="${land(x)}" data-mirror="${st.sel === x.id ? st.pl === 'ar' : l === 'ar'}">${art(x)}</span><span class="st-nm" id="stn-${esc(x.id)}">${esc(nm(x))}</span> <span class="st-ds" id="std-${esc(x.id)}">${esc(dsc(x))}</span></li>`).join('')}</ul>`;
     live.textContent = tf('startResults', { n: list.length });
   }
   function rowHtml(r) {

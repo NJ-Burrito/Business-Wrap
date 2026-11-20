@@ -147,3 +147,11 @@ html[data-bw-calm="1"] *, html[data-bw-calm="1"] { animation: none !important; t
 /* local learning (editor/learning-hook.js): a value the engine wrote from a learned rule; never printed */
 main.bw-doc .bw-learned { text-decoration: underline dotted color-mix(in srgb, var(--bw-sel) 70%, transparent); text-underline-offset: 3px; }
 @media print { main.bw-doc .bw-learned { text-decoration: none !important; } }
+
+/* QA N27 (2026-11-20): RTL / LTR turns the words only; the cover's side band keeps the edition's own side (Arabic right, English left) */
+main.bw-doc[data-locale="ar"][dir="ltr"] .cover { direction: rtl; }
+main.bw-doc[data-locale="en"][dir="rtl"] .cover { direction: ltr; }
+main.bw-doc[data-locale="ar"][dir="ltr"] .cover > :not(.spine) { direction: ltr; }
+main.bw-doc[data-locale="en"][dir="rtl"] .cover > :not(.spine) { direction: rtl; }
+main.bw-doc[data-locale="ar"][dir="ltr"] .cover[data-cover=spine] .spine .id { left: auto; right: 0; transform: none; }
+main.bw-doc[data-locale="en"][dir="rtl"] .cover[data-cover=spine] .spine .id { left: 0; right: auto; transform: rotate(180deg); }

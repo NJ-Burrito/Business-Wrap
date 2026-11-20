@@ -1788,7 +1788,7 @@ export const DIAGRAM = (() => {
         const arrow = l[1];
         const label = unq(l[5] ?? l[2] ?? l[3] ?? l[4] ?? '');
         const kind = arrow.startsWith('-.') ? 'return' : arrow === '--x' ? 'stop' : undefined;
-        edges.push({ id: `e${edges.length + 1}`, from: cur.id, to: nxt.id, label, ...(kind ? { kind } : {}) });
+        edges.push({ id: `e${edges.length + 1}`, from: cur.id, to: nxt.id, label, ...(kind ? { kind } : { solid: true }) });
         cur = nxt;
         rest = nxt.rest;
       }
@@ -1802,6 +1802,8 @@ export const DIAGRAM = (() => {
       if (n.kind === 'symbol') { n.icon = SYMBOLS.includes(n.label) ? n.label : 'person'; n.label = ''; }
       delete n.shape;
     }
+    // a solid arrow stays solid even when it runs back (QA N24: the round trip turned «B -->|no| A» dashed); one into a refusal end is still a stop
+    for (const e of edges) if (e.solid) { delete e.solid; e.kind = nodes.get(e.to)?.kind === 'stop' ? 'stop' : 'main'; }
     void locale;
     return layout({ kind: 'bw-diagram', version: 1, flow, nodes: [...nodes.values()], edges });
   }
