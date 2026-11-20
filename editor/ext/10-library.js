@@ -134,7 +134,13 @@ const LIB = (() => {
     try { return await openRun(id, ed); } finally { end?.(); }
   }
   async function openRun(id, ed) {
-    if (!M[id] || !isDoc(id)) { const e = await get(id); if (!e) { toast(t('libMissing'), 'warn'); return false; } mount(e); }
+    if (!M[id] || !isDoc(id)) {
+      let e = await get(id);
+      // QA F6: a #doc= link or a harvest open:true lands before the host's copy reached this browser; fetch it once before saying «missing»
+      if (!e && served && isDoc(id)) { await ingestMirror().catch(() => null); e = await get(id); }
+      if (!e) { toast(t('libMissing'), 'warn'); return false; }
+      mount(e);
+    }
     show(id, ed);
     return true;
   }
@@ -193,7 +199,7 @@ const LIB = (() => {
     mirror(e);
     stamp();
     document.documentElement.dataset.bwSavedFile = r.file;
-    toast(t('libSavedInPlace', { file: r.file.split(/[\\/]/).pop() }), 'ok');
+    toast(t('libSavedInPlace', { file: r.file }), 'ok', { actions: [[t('rpOpenFolder'), () => { fetch('/api/workspace/open', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ file: r.file }) }).catch(() => {}); }]] }); // the real path, like every save toast (QA N35)
     return e;
   }
   /** The open document → its list entry (Save, and the autosave after every change): the list copy is always the latest. */
@@ -238,7 +244,7 @@ const LIB = (() => {
     // a sibling of the counter, not inside it: text inside a button is part of its visible label, and the stamp is not (axe label-content-name-mismatch)
     const host = c.parentElement;
     let el = host.querySelector(':scope > .bw-stamp');
-    if (!el) { el = document.createElement('span'); el.className = 'bw-stamp'; el.setAttribute('role', 'status'); host.appendChild(el); }
+    if (!el) { el = document.createElement('span'); el.className = 'bw-stamp'; el.setAttribute('role', 'status'); el.dir = 'auto'; host.appendChild(el); } // auto: the bar stays RTL, the English words read «Last saved: —» (QA T13)
     const html = Object.values(M[S.svc] || {}).flatMap((e) => (e.marks || []).filter((m) => m.kind === 'saveHtml')).map((m) => m.at).sort().at(-1);
     const doc = isDoc(S.svc) && !pending[S.svc];
     const list = doc ? savedAt[S.svc] : S.savedAt;

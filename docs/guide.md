@@ -72,7 +72,7 @@ Business-Wrap\
   المستندات - Documents\
     <Document title>\                 one folder per document (the Arabic title, else the English one)
       <Document title>.html           the editable file: Save HTML overwrites it
-      Exports\                        <YYYY-MM-DD HH-MM> <Document title> - العربية.pdf | - English.pdf | .docx | - both.pdf
+      Exports\                        <YYYY-MM-DD HH-MM> <Document title> - العربية.pdf | - English.pdf | .docx   (PDF + both = one file per language)
       Sources\                        what a harvest or an import collected for this document
       Versions\                       the previous saves (kept, never deleted)
     _غير مصنف - Unsorted\             old files whose document could not be told
@@ -131,7 +131,7 @@ Every type opens with a first page built for its purpose, never a drawing:
 - **Decision paper** (business case): a band with the title, four key-figure tiles, a decision box with empty choices, then the control block.
 - **Blank**: one empty page, with nothing printed on it. Start typing.
 
-The start-page thumbnail is a picture for choosing a type; page 1 of the document never carries it, in the editor, in PDF or in Word. Word gets the same pages as the PDF.
+The start-page thumbnail is a picture for choosing a type; page 1 of the document never carries it, in the editor, in PDF or in Word. Word gets the same first page and sections as the PDF; Word sets its own page breaks, so the page count can differ.
 
 Every type opens with placeholder text to replace, never client data. The ribbon, diagrams, profile, watermark and the tools that explain themselves work in every type. How a type is built and how to add one: [bible/14-document-types.md](../bible/14-document-types.md).
 

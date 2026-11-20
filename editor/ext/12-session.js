@@ -171,7 +171,7 @@ const SESS = (() => {
   const MSG = {
     get follower() { return both('leaseFollower'); },
     get stale() { return both('leaseStale'); },
-    asleep: (n) => both('leaseAsleep', { n }),
+    asleep: (n) => t('leaseAsleep', { n }), // information only: the reader's own language, no mixed-direction line
     get reload() { return both('leaseReload'); },
   };
   function bar(id, text, top, button) {
@@ -180,7 +180,7 @@ const SESS = (() => {
     if (!el) {
       el = document.createElement('div');
       el.id = id; el.setAttribute('role', 'status');
-      Object.assign(el.style, { position: 'fixed', insetInline: '0', top: top + 'px', zIndex: '2147483000', padding: '8px 16px', background: '#3b2a00', color: '#fff', font: '600 14px/1.5 inherit', textAlign: 'center', display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' });
+      Object.assign(el.style, { position: 'fixed', insetInline: '0', ...(top === 'bottom' ? { bottom: '0', pointerEvents: 'none' } : { top: top + 'px' }), zIndex: '2147483000', padding: '8px 16px', background: '#3b2a00', color: '#fff', font: '600 14px/1.5 inherit', textAlign: 'center', display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' });
       const sp = document.createElement('span'); sp.dir = 'auto'; el.appendChild(sp);
       if (button) { const b = document.createElement('button'); b.type = 'button'; b.textContent = MSG.reload; b.onclick = () => location.reload(); Object.assign(b.style, { font: 'inherit', padding: '2px 12px', cursor: 'pointer' }); el.appendChild(b); }
       document.body.appendChild(el);
@@ -192,7 +192,7 @@ const SESS = (() => {
     const why = !d ? '' : follows(d) ? MSG.follower : LS.stale[d] ? MSG.stale : '';
     document.documentElement.dataset.bwReadonly = why ? (follows(d) ? 'follower' : 'stale') : '';
     bar('bw-lease-banner', why, 0, true);
-    bar('bw-asleep-banner', LS.asleep.length ? MSG.asleep(LS.asleep.length) : '', why ? 44 : 0, false);
+    bar('bw-asleep-banner', LS.asleep.length ? MSG.asleep(LS.asleep.length) : '', 'bottom', false); // at the foot, click-through: never over the ribbon
   }
   function leaseIn(d) {
     if (d?.leases) LS.leases = d.leases;

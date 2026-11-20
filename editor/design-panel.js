@@ -123,6 +123,8 @@ function dpHexChange(el) {
   el.defaultValue = h; // what a later invalid code is put back to
   if (h) swatch.value = h;
   if (el.dataset.hexDv) DESIGN.set('design', prop, 'vars', h); else DESIGN.setStyle(prop, h);
+  // QA N26: an emptied code put the document back but left the old swatch; show the colour now in effect (the pack's)
+  if (!h) requestAnimationFrame(() => { const doc = document.querySelector('main.bw-doc'); const now = doc && dpHex(getComputedStyle(doc).getPropertyValue(el.dataset.hexDv ? `--${prop}` : prop).trim().replace(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/, (m, r, g, b) => '#' + [r, g, b].map((x) => (+x).toString(16).padStart(2, '0')).join(''))); swatch.value = now || '#ffffff'; });
   return true;
 }
 /** the swatch moves → its hex field follows */

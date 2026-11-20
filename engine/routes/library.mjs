@@ -179,7 +179,10 @@ export default async (req, url, send, ctx) => {
       const f = path.join(dir, `in${ext}`);
       try {
         fs.writeFileSync(f, Buffer.from(b.data, 'base64'));
-        send(200, importFile(f, { locale: b.locale, name: path.basename(String(b.name)) }));
+        let doc;
+        // QA T14: a damaged file is the sender's fault (400) and the reply never carries a reader's traceback or a local path
+        try { doc = importFile(f, { locale: b.locale, name: path.basename(String(b.name)) }); } catch (e) { console.error(`import ${path.basename(String(b.name))}: ${String(e?.message || e).slice(0, 2000)}`); send(400, { error: `«${path.basename(String(b.name))}» could not be read: the file is damaged or is not a valid ${ext.slice(1).toUpperCase()} file.`, code: 'BAD_FILE' }); return true; }
+        send(200, doc);
       } finally { fs.rmSync(dir, { recursive: true, force: true }); }
       return true;
     }

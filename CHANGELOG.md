@@ -10,8 +10,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-11-20
+
+🏁 Fixes from a full NJ-QA test of 0.23.0 (5 retest rounds): Sources keep your decisions, damaged imports fail cleanly, a typed zoom, a cleaner start page and toasts, `BW_PORT` for a second install. / 🏁 إصلاحات من اختبار NJ-QA كامل للإصدار 0.23.0 (خمس جولات إعادة فحص): المصادر تحفظ قراراتك، والاستيراد التالف يفشل بوضوح، وكتابة نسبة التكبير، وصفحة بداية وإشعارات أنظف، و`BW_PORT` لتثبيت ثانٍ.
+
+**Known / معروف:** the last toast fix (bottom-right corner, never under the NJ mark at 1024–1366 px) went in after the QA loop closed and was not retested by QA. The owner's live-host check (port 4317) was not run. / إصلاح موضع الإشعارات الأخير دخل بعد إغلاق جولات الفحص ولم يُعَد فحصه؛ وفحص الخادم الحي على 4317 لم يُجرَ.
+
 ### Added / أضيف
 - 🧭 **Live back-office diagram as a read-only source** (Flowable method): a tracking page's process diagram and open tasks are a second source beside the modeler export, never a replacement; monitoring-graph JSON may carry `"source": "backoffice"` and the document's introduction then names that provenance; differences from the export (or between environments) are recorded, not merged. / **مخطط النظام الخلفي الحي مصدراً للقراءة فقط** (طريقة Flowable): مخطط صفحة المتابعة والمهام المفتوحة مصدر ثانٍ بجانب تصدير المحرّر لا بديل عنه؛ ويحمل JSON المراقبة `"source": "backoffice"` فيسمّي تمهيد الوثيقة المصدر؛ وتُسجَّل الفروق ولا تُدمج.
+- 🔌 `BW_PORT` gives an isolated install its own host port, so `open_in_editor` and `harvest … open:true` work beside another install's host on 4317. / `BW_PORT` يعطي التثبيت المعزول منفذاً خاصاً به فيعمل `open_in_editor` والحصاد بخيار الفتح بجانب خادم تثبيت آخر على 4317.
+
+### Fixed / أُصلح (NJ-QA full test, 2026-11-19)
+- 📤 The command-line export to the save folder passes its own edition gate (the gate now reads «… - العربية.pdf» names). / التصدير إلى مجلد الحفظ ينجح في فحص النسخة.
+- 🗂️ Sources: accepting or rejecting a fact survives «Save corrections» and a Claude pass that renumbers; a web page's definition lists and table rows are read, not dropped. / المصادر: قرار القبول والرفض يبقى بعد حفظ التصحيحات وبعد مرور Claude، وقوائم التعريف وصفوف الجداول في صفحات الويب تُقرأ.
+- 🧯 A damaged DOCX or PDF import answers 400 with a short message, never a traceback or a local path. / استيراد ملف تالف يعطي 400 برسالة قصيرة بلا أثر ولا مسار.
+- 🧩 `editor_ops` with an unknown op answers `BAD_OP` (was a -32602 schema error). / العملية غير المعروفة تعطي `BAD_OP`.
+- 🏷️ Start page: each chip counts the tiles it shows (Blank included). The «tabs asleep» note is in the reader's language, at the foot and click-through. The share message points at the path shown. English «Last saved: —» reads in order. / صفحة البداية: العداد يطابق البطاقات؛ شريط التبويبات النائمة بلغة القارئ في الأسفل ولا يحجب النقر؛ رسالة المشاركة تطابق المسار؛ «Last saved» بترتيبها.
+- 📝 Docs: Word gets the same first page and sections as the PDF; Word sets its own page breaks, so the page count can differ. / الوثائق: Word يأخذ الصفحة الأولى والأقسام نفسها، وقد يختلف عدد الصفحات.
+- 🔢 Round 2: the zoom pill takes a typed percent (click, Enter or Space); a 2×2 cell selection is shaded on every row; a cleared colour code puts the swatch back; Advanced CSS drops the whole unsafe declaration (no `alert(1))` left); a solid Mermaid arrow stays solid through a round trip; the cover band keeps its side when only the word direction flips; a formula reads left to right while edited; a `#doc=` link fetches the host's copy before saying «missing»; Ctrl+S names the full path with «Open folder», and toasts stay clear of the watermark; `update --apply` without `--yes` exits 2; the start tiles' visible text matches their accessible name. / الجولة الثانية: كتابة نسبة التكبير، وتظليل كل صفوف التحديد، وعودة مربع اللون، وحذف التصريح غير الآمن كاملاً، وبقاء سهم Mermaid الصلب صلباً، وثبات شريط الغلاف، وقراءة المعادلة من اليسار، وجلب الوثيقة من الخادم قبل «غير موجودة»، ومسار الحفظ كاملاً، وخروج التحديث بلا موافقة بـ 2، وتطابق اسم البطاقة المقروء مع نصها.
+- 🔧 Round 3–5: toasts sit in the bottom-right corner (`justify-items: right`; «end» was the left edge in the rtl shell), never under the NJ mark; a section keeps its landscape sheet when another inline style sits beside its page style. / الجولة الثالثة: الإشعارات بين العلامة واللوحة؛ والقسم الأفقي يبقى أفقياً مع أي نمط مضمّن آخر.
+- 📝 Docs: the server switch turns the server back on itself (no «Turn on» card); «PDF + both» writes one file per language. / الوثائق: المفتاح نفسه يعيد التشغيل؛ وPDF للغتين ملف لكل لغة.
+- 🧪 Tests: `ux` A1 waits for the page to stop sliding before its baseline; `library` no longer races its import (an async `waitForFunction` returned early); `legacy-0170` falls back to PowerShell 7 when Windows long paths are off. / الاختبارات: إصلاح سباق اختبار المكتبة، واختبار legacy يستعمل PowerShell 7 حين تُعطَّل المسارات الطويلة.
 
 ## [0.23.0] - 2026-11-16
 

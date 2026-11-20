@@ -420,12 +420,14 @@ document.addEventListener('focusin', (e) => {
   const f = td.dataset.f;
   if (f && td.isContentEditable && !td.querySelector('li')) { // edit the formula, not its result
     td.textContent = f;
+    if (!td.hasAttribute('data-fdir')) { td.dataset.fdir = td.getAttribute('dir') ?? ''; td.dir = 'ltr'; } // a formula reads left to right, also in an RTL page (QA r2: «SUM(A1:A3)=»)
     const r = document.createRange(); r.selectNodeContents(td); r.collapse(false);
     getSelection().removeAllRanges(); getSelection().addRange(r);
   }
 });
 document.addEventListener('focusout', (e) => {
   const td = ceCellEl(e.target);
+  if (td && td.hasAttribute('data-fdir')) { const d = td.dataset.fdir; delete td.dataset.fdir; if (d) td.dir = d; else td.removeAttribute('dir'); }
   if (td) ceFinish(td);
 });
 /* a cell with lines (a list, or Alt+Enter) keeps its line breaks; everything else takes the core path */
@@ -725,6 +727,6 @@ bwExt({
     keydown: ceKey_,
     render: cePaint,
     open: () => { CE.sel.clear(); cePaint(); },
-    boot: () => w2docCss('ce-css', 'html.bw-ed td.bw-csel{outline:2px solid var(--accent,#c8a96a);outline-offset:-2px;background-image:linear-gradient(rgba(200,169,106,.22),rgba(200,169,106,.22))}td.bw-fillh{position:relative}html.bw-ed td.bw-fillh::after{content:"";position:absolute;right:-1px;bottom:-1px;width:7px;height:7px;background:var(--accent,#c8a96a);border:1px solid #fff;cursor:crosshair}html.bw-csel-drag{user-select:none}html.bw-rz-col #bw-pair td{cursor:col-resize}html.bw-rz-row #bw-pair td{cursor:row-resize}html.bw-ed td.bw-nl{white-space:pre-line}html.bw-ed td.bw-cell-list li{white-space:pre-wrap}'),
+    boot: () => w2docCss('ce-css', /* !important: the striped even rows' «background» shorthand outranks this rule and hid the shade (QA N20) */ 'html.bw-ed td.bw-csel{outline:2px solid var(--accent,#c8a96a);outline-offset:-2px;background-image:linear-gradient(rgba(200,169,106,.22),rgba(200,169,106,.22))!important}td.bw-fillh{position:relative}html.bw-ed td.bw-fillh::after{content:"";position:absolute;right:-1px;bottom:-1px;width:7px;height:7px;background:var(--accent,#c8a96a);border:1px solid #fff;cursor:crosshair}html.bw-csel-drag{user-select:none}html.bw-rz-col #bw-pair td{cursor:col-resize}html.bw-rz-row #bw-pair td{cursor:row-resize}html.bw-ed td.bw-nl{white-space:pre-line}html.bw-ed td.bw-cell-list li{white-space:pre-wrap}'),
   },
 });

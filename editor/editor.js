@@ -1389,7 +1389,7 @@ function uiHtml() {
     <span class="spacer"></span>
     <div class="status" role="status" aria-live="polite">
       <button type="button" class="count" data-a="history" title="${esc(t('history'))}" aria-label="${esc(changesName(opCount()))}"><span class="i">${ic('history')}</span><span class="w" data-alt="${esc(tAlt('changesWord'))}">${esc(t('changesWord'))}</span> <span class="n" aria-hidden="true">${opCount()}</span></button>
-      <span class="zpill" data-zoom-pill title="${esc(t('zoomPct'))}"${zoomEff() <= ZOOM_MIN + 1e-6 || zoomEff() >= ZOOM_MAX - 1e-6 ? ' data-limit="1"' : ''}>${zoomPctNow()}%</span>
+      <span class="zpill" data-zoom-pill role="button" tabindex="0" title="${esc(t('zoomPct'))}"${zoomEff() <= ZOOM_MIN + 1e-6 || zoomEff() >= ZOOM_MAX - 1e-6 ? ' data-limit="1"' : ''}>${zoomPctNow()}%</span>
       <span class="sel vh">${esc(selDesc())}</span><span class="flash vh"></span>
     </div>
     <div class="sec" data-cat="view" role="group" aria-label="${esc(t('secView'))}"><span class="sc" aria-hidden="true"><span class="i">${ic('secView')}</span><span class="st">${esc(t('secView'))}</span></span><div class="sb">
@@ -1569,7 +1569,7 @@ const opCount = () => EXT.status?.count() ?? liveOps(cur()).length;
 /** The zoom pill next to the status follows every zoom step; at 25 % and 400 % it carries data-limit (a gold rule). */
 function zoomPillSync() {
   const p = root.querySelector('[data-zoom-pill]');
-  if (!p) return;
+  if (!p || p.querySelector('input')) return; // typing a value: leave the field alone
   const txt = `${zoomPctNow()}%`;
   if (p.textContent !== txt) p.textContent = txt;
   p.toggleAttribute('data-limit', zoomEff() <= ZOOM_MIN + 1e-6 || zoomEff() >= ZOOM_MAX - 1e-6);
@@ -2051,6 +2051,23 @@ function zoomFromField(v) {
   const n = parseFloat(String(v ?? '').replace(/[^\d.]/g, ''));
   if (!Number.isFinite(n)) { viewPct(); return S.zoom; }
   return setZoom(n / 100);
+}
+// QA N28: the zoom pill takes a typed percent (README «type a number»): click, Enter or Space opens a field; Enter or leaving applies, Esc cancels
+{
+  const typeZoom = (p) => {
+    if (p.querySelector('input')) return;
+    const i = document.createElement('input');
+    Object.assign(i, { type: 'number', min: '25', max: '400', step: '5', value: String(zoomPctNow()) });
+    i.setAttribute('aria-label', t('zoomPct'));
+    i.style.cssText = 'inline-size:6ch;font:inherit;padding:0 2px;border:1px solid currentColor;border-radius:4px;background:transparent;color:inherit';
+    p.textContent = ''; p.appendChild(i); i.focus(); i.select();
+    let done = false;
+    const end = (apply) => { if (done) return; done = true; const v = i.value; i.remove(); if (apply) zoomFromField(v); zoomPillSync(); p.textContent ||= `${zoomPctNow()}%`; };
+    i.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); end(true); p.focus(); } else if (e.key === 'Escape') { e.preventDefault(); end(false); p.focus(); } });
+    i.addEventListener('blur', () => end(true));
+  };
+  root.addEventListener('click', (ev) => { const p = ev.target.closest?.('[data-zoom-pill]'); if (p && ev.target === p) typeZoom(p); });
+  root.addEventListener('keydown', (ev) => { const p = ev.target.closest?.('[data-zoom-pill]'); if (p && ev.target === p && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); typeZoom(p); } });
 }
 // Ctrl + wheel zooms the page by x1.1 per notch (a diagram figure keeps its own Ctrl+wheel); one render per frame however many notches arrive
 {

@@ -168,7 +168,7 @@ function w2pageCss() {
     }
     for (const x of segs.slice(1)) {
       if (x.page.w === base.w && x.page.h === base.h) continue;
-      const sel = `#bw-pair:not([data-pages="single"]):not([data-pages="spread"]) main.bw-doc[data-locale="${ed}"] [style="page:bw-seg-${x.n}"]`;
+      const sel = `#bw-pair:not([data-pages="single"]):not([data-pages="spread"]) main.bw-doc[data-locale="${ed}"] :is([style*="bw-seg-${x.n};"],[style$="bw-seg-${x.n}"])`; // QA F9: another inline style (an outline) beside it must not drop the sheet
       const name = `${x.page.size === 'custom' ? `${x.page.w}×${x.page.h} mm` : x.page.size} · ${t(x.page.orientation === 'landscape' ? 'w2.landscape' : 'w2.portrait')}`;
       rules.push(`${sel}{box-sizing:border-box;width:${x.page.w}mm;margin-inline:calc((100% - ${x.page.w}mm) / 2);padding-inline:var(--pm-start,var(--page-side,16mm)) var(--pm-end,var(--page-side,16mm));padding-block:6mm 4mm;background:var(--paper,#fff);box-shadow:0 0 0 1px var(--rule-strong),0 12px 30px -18px rgba(0,30,61,.45);position:relative}`,
         `${sel}::after{content:${JSON.stringify(name)};position:absolute;top:1mm;inset-inline-end:3mm;font-size:7.5pt;color:var(--muted)}`);
@@ -200,7 +200,7 @@ function w2rulers() {
 html.bw-ed .bw-ruler i{position:absolute;top:0;bottom:0;background:rgba(0,30,61,.08)} html.bw-ed .bw-ruler i.s{inset-inline-start:0} html.bw-ed .bw-ruler i.e{inset-inline-end:0}
 html.bw-ed .bw-ruler s{position:absolute;bottom:0;width:0;border-inline-start:1px solid currentColor;opacity:.55} html.bw-ed .bw-ruler s.c{height:3mm} html.bw-ed .bw-ruler s.h{height:1.6mm}
 html.bw-ed .bw-ruler b{position:absolute;top:.4mm;width:6mm;margin-inline-start:-3mm;text-align:center;font-weight:400}
-html.bw-ed [style^="page:bw-seg-"] > .bw-ruler{margin-inline:calc(0mm - var(--page-side,16mm));width:calc(100% + 2 * var(--page-side,16mm))}
+html.bw-ed [style*="bw-seg-"] > .bw-ruler{margin-inline:calc(0mm - var(--page-side,16mm));width:calc(100% + 2 * var(--page-side,16mm))}
 /* 0.21.1 (pages): in a page view the document's own ruler lies on the top edge of the first sheet and takes no room in the columns. In the flow it took 9 mm (6 + 3 margin): a full-height cover (297 mm, break-after) no longer fitted under it, moved to the next column and left page 1 empty, the cover's own header and footer on page 2 and the page count one too high (the PDF never has a ruler). */
 #bw-pair:not([data-pages="continuous"]) main.bw-doc > .bw-ruler{position:absolute;inset-block-start:0;inset-inline-start:0;width:var(--pw,100%);margin:0;z-index:3}}
 @media print{.bw-ruler{display:none!important}}`);
@@ -211,7 +211,7 @@ html.bw-ed [style^="page:bw-seg-"] > .bw-ruler{margin-inline:calc(0mm - var(--pa
     if (!main || !d) continue;
     const segs = pageModel(d).segments;
     main.prepend(w2rulerEl(segs[0].page));
-    for (const x of segs.slice(1)) main.querySelector(`[style="page:bw-seg-${x.n}"]`)?.prepend(w2rulerEl(x.page));
+    for (const x of segs.slice(1)) main.querySelector(`:is([style*="bw-seg-${x.n};"],[style$="bw-seg-${x.n}"])`)?.prepend(w2rulerEl(x.page));
   }
 }
 async function w2layoutAction(id) {

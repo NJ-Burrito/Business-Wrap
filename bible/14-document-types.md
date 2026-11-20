@@ -14,7 +14,7 @@
 | `GET /api/doctypes` (the local host) | The same list for the start page when the page was not built with the types inside it. |
 
 ## The first page: four families and the blank page
-Each type prints one of these page-1 families (`TYPE_FAMILY` and `familyOf` in `engine/doctypes.mjs`; `type.json` `coverDesign` names it). The same pages come out in the editor, in PDF and in Word.
+Each type prints one of these page-1 families (`TYPE_FAMILY` and `familyOf` in `engine/doctypes.mjs`; `type.json` `coverDesign` names it). The same first page comes out in the editor, in PDF and in Word.
 
 | Family | Page 1 | Front and back matter | Types |
 |---|---|---|---|

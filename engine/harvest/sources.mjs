@@ -77,8 +77,12 @@ export function docxLines(buf) {
 }
 /** Lines of an HTML page: the title/h1 first, list items as "- ", paragraphs and headings as lines. */
 export function htmlLines(html) {
-  const body = String(html).replace(/<(script|style|noscript)[^]*?<\/\1>/gi, '');
   const strip = (s) => unescapeXml(s.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
+  // QA T10: definition lists («term: value»), table rows («a | b») and quotes/captions/pre were dropped silently; fold them into <p> lines first
+  const body = String(html).replace(/<(script|style|noscript)[^]*?<\/\1>/gi, '')
+    .replace(/<dt[^>]*>([^]*?)<\/dt>\s*((?:<dd[^>]*>[^]*?<\/dd>\s*)+)/gi, (m, dt, dds) => `<p>${strip(dt)}: ${[...dds.matchAll(/<dd[^>]*>([^]*?)<\/dd>/gi)].map((d) => strip(d[1])).join('; ')}</p>`)
+    .replace(/<tr[^>]*>([^]*?)<\/tr>/gi, (m, row) => `<p>${[...row.matchAll(/<t[hd][^>]*>([^]*?)<\/t[hd]>/gi)].map((c) => strip(c[1])).filter(Boolean).join(' | ')}</p>`)
+    .replace(/<(blockquote|figcaption|caption|pre|dd|dt)[^>]*>([^]*?)<\/\1>/gi, '<p>$2</p>');
   const title = strip((/<h1[^>]*>([^]*?)<\/h1>/i.exec(body) || /<title[^>]*>([^]*?)<\/title>/i.exec(body) || [])[1] || '');
   const lines = [...body.matchAll(/<(li|p|h[2-6])[^>]*>([^]*?)<\/\1>/gi)].map((m) => (m[1].toLowerCase() === 'li' ? `- ${strip(m[2])}` : strip(m[2])));
   return [title, ...lines].filter((l) => l && l !== '-');

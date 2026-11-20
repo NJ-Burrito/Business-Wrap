@@ -71,7 +71,7 @@ async function main() {
     if (!isNewer(r.latest, currentVersion())) { console.log(`Business-Wrap ${currentVersion()} is the latest (never a downgrade).`); return 0; }
     if (!has('--yes')) {
       console.log(`${oneLiner(r, lang)}\nRun again with --yes to update (${updateCommand()}). The old version is replaced (no copy of it stays). Kept: .local, design/custom, logos, fonts/custom, drafts, out.`);
-      return 0;
+      return 2; // refused without consent: non-zero like `reset` (QA F1)
     }
     const res = await applyUpdate({ dir: ROOT, release: { version: r.latest, zip: r.zip, zipApi: r.zipApi, sha256: r.sha256 }, repo: JSON.parse(fs.readFileSync(path.join(ROOT, 'update', 'source.json'), 'utf8')).repo, token: token(), current: currentVersion() });
     console.log(JSON.stringify(res));

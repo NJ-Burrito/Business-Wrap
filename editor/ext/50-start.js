@@ -169,9 +169,9 @@ const START = (() => {
     const back = q('[data-st-back]');
     const cur = LIBX()?.isDoc(S.svc) ? LIBX().titleOf() : '';
     back.hidden = false; back.textContent = cur ? tf('startBack', { name: cur }) : t('startSkip'); back.dir = 'auto';
-    const total = types().filter((x) => x.id !== 'blank').length;
+    const total = types().length; // a chip's count = the tiles it shows; Blank shows under every chip, so it counts in each
     q('[data-st-chips]').setAttribute('aria-label', t('startCats'));
-    q('[data-st-chips]').innerHTML = [{ id: 'all', name: { [l]: t('startAll') }, n: total }, ...cats().map((x) => ({ ...x, n: types().filter((y) => y.category === x.id).length }))].map((x) => {
+    q('[data-st-chips]').innerHTML = [{ id: 'all', name: { [l]: t('startAll') }, n: total }, ...cats().map((x) => ({ ...x, n: types().filter((y) => y.id === 'blank' || y.category === x.id).length }))].map((x) => {
       const name = x.name?.[l] || x.name?.en || x.id;
       return `<button type="button" class="st-chip" role="radio" aria-checked="${st.cat === x.id && !st.q}" tabindex="${st.cat === x.id ? 0 : -1}" aria-label="${esc(tf('startCatCount', { name, n: x.n }))}" data-st-c="${esc(x.id)}">${x.id === 'all' ? '' : `<span class="st-ms" style="--c:${esc(catColor(x.id))}"></span>`}<span>${esc(name)}</span></button>`;
     }).join('');
@@ -187,7 +187,7 @@ const START = (() => {
     }
     const rove = list.some((x) => x.id === st.sel) ? st.sel : list[0].id;
     g.innerHTML = `<ul class="st-grid${st.first ? ' st-first' : ''}" role="listbox" aria-label="${esc(t('startTitle'))}" aria-orientation="horizontal">${list.map((x, i) =>
-      `<li class="st-tile" role="option" tabindex="${x.id === rove ? 0 : -1}" aria-selected="${st.sel === x.id}" data-type="${esc(x.id)}" data-type-id="${esc(x.id)}" aria-labelledby="stn-${esc(x.id)} std-${esc(x.id)}" style="--i:${i}"><span class="st-thumb" data-land="${land(x)}" data-mirror="${st.sel === x.id ? st.pl === 'ar' : l === 'ar'}">${art(x)}</span><span class="st-nm" id="stn-${esc(x.id)}">${esc(nm(x))}</span><span class="st-ds" id="std-${esc(x.id)}">${esc(dsc(x))}</span></li>`).join('')}</ul>`;
+      `<li class="st-tile" role="option" tabindex="${x.id === rove ? 0 : -1}" aria-selected="${st.sel === x.id}" data-type="${esc(x.id)}" data-type-id="${esc(x.id)}" aria-labelledby="stn-${esc(x.id)} std-${esc(x.id)}" style="--i:${i}"><span class="st-thumb" data-land="${land(x)}" data-mirror="${st.sel === x.id ? st.pl === 'ar' : l === 'ar'}">${art(x)}</span><span class="st-nm" id="stn-${esc(x.id)}">${esc(nm(x))}</span> <span class="st-ds" id="std-${esc(x.id)}">${esc(dsc(x))}</span></li>`).join('')}</ul>`;
     live.textContent = tf('startResults', { n: list.length });
   }
   function rowHtml(r) {

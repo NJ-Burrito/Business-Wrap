@@ -41,7 +41,7 @@
 
 ### 📄 The first page of each type
 
-Every type opens with a first page built for its purpose. The thumbnail on the start page is only a picture for choosing a type. **Page 1 of the document never carries it**, or any other drawing, in the editor, in PDF or in Word. It uses straight lines, boxes and text. Word gets the same pages as the PDF.
+Every type opens with a first page built for its purpose. The thumbnail on the start page is only a picture for choosing a type. **Page 1 of the document never carries it**, or any other drawing, in the editor, in PDF or in Word. It uses straight lines, boxes and text. Word gets the same first page and sections as the PDF; Word sets its own page breaks, so the page count can differ.
 
 | Family | What page 1 is | Types |
 |---|---|---|
@@ -160,7 +160,7 @@ Every type opens with a first page built for its purpose. The thumbnail on the s
 
 📤 **Exports:** PDF, DOCX, edits JSON, design pack, Save HTML, webhooks (a message sent to an address you set).
 
-🔌 **Server switch:** one toggle in the top bar. Turn the server off and the editor stays open with a Turn on card.
+🔌 **Server switch:** one toggle in the top bar. Turn the server off and the editor stays open (your work saved first); the same switch turns it back on.
 
 🗂️ **File and folder icons (Windows):** in Settings, use Business-Wrap icons for your PDF, Word and web page files. Restore puts the Windows icons back.
 
@@ -285,7 +285,7 @@ Tested on Windows 11 with Node 24 and Chrome. It needs Node 20+, Google Chrome (
 
 🔌 **MCP server only** (any MCP client, stdio, local; 0.22.0 from the GitHub tag; npm still serves 0.12.0):
 ```
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.23.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.24.0 business-wrap-mcp
 ```
 
 💻 **From source:** `git clone https://github.com/NJ-Burrito/Business-Wrap`, then the [Start in 3 steps](#-start-in-3-steps).
@@ -483,7 +483,7 @@ Business-Wrap\
   المستندات - Documents\
     <Document title>\                 one folder per document (the Arabic title, else the English one)
       <Document title>.html           the editable file: Save HTML overwrites it
-      Exports\                        <YYYY-MM-DD HH-MM> <Document title> - العربية.pdf | - English.pdf | .docx | - both.pdf
+      Exports\                        <YYYY-MM-DD HH-MM> <Document title> - العربية.pdf | - English.pdf | .docx   (PDF + both = one file per language)
       Sources\                        what a harvest or an import collected for this document
       Versions\                       the previous saves (kept, never deleted)
     _غير مصنف - Unsorted\             old files whose document could not be told
