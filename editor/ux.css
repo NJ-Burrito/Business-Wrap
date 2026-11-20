@@ -285,8 +285,7 @@
 /* ── 0.14.0 A3: toasts and undo prompts never cover the page controls ───────────────────────────────────────────
  * They stay bottom-centre, but centred on the room left of an open slide-over panel (its own page-range and preview
  * controls live there) and lifted clear of the page pill (pages · previous · next) whenever that is showing. */
-.shell[dir] .toasts { inset-inline-start: auto; left: 172px; right: calc(var(--rside, 0px) + 16px); transform: none; } /* QA N35 (r3): toasts are laid out in the band between the watermark box at the bottom left (16 + 140 + 16 = 172 px) and the side panel, centred in it, never under the NJ mark */
-.shell[dir="rtl"] .toasts { left: calc((100% + var(--rside)) / 2); } /* the slide-over panel is on the left in the right-to-left layout */
+.shell[dir] .toasts { inset-inline-start: auto; left: max(172px, calc(var(--rside, 0px) + 16px)); right: 172px; transform: none; } /* QA N35 (r4): one band, 172 px (16 + 140 px NJ box + 16) clear on BOTH sides (the mark moves to the right corner when a panel opens on the left, the slide-over side in this right-to-left layout), after the panel when one is open; replaces the older centred RTL rule that came after it and won */
 .shell:has(.pager:not([hidden])) .toasts { inset-block-end: 78px; }
 .toasts .toast { max-inline-size: min(560px, 100%); }
 .shell:has(.pager:not([hidden])) .pager { translate: -50% 0; }
