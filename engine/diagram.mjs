@@ -1738,7 +1738,7 @@ export const DIAGRAM = (() => {
       lines.push(`  ${ids.get(n.id)}${a}${mmQuote(n.label || (n.kind === 'symbol' ? n.icon : ''))}${b}:::${n.kind}`);
     }
     for (const e of model.edges) {
-      const arrow = e.kind === 'return' ? '-.->' : e.kind === 'stop' ? '--x' : '-->';
+      const arrow = e.kind === 'return' && e.line !== 'solid' ? '-.->' : e.kind === 'stop' ? '--x' : '-->';
       lines.push(`  ${ids.get(e.from)} ${arrow}${e.label ? `|${mmQuote(e.label)}|` : ''} ${ids.get(e.to)}`);
     }
     const P = palette(null);
@@ -1802,10 +1802,13 @@ export const DIAGRAM = (() => {
       if (n.kind === 'symbol') { n.icon = SYMBOLS.includes(n.label) ? n.label : 'person'; n.label = ''; }
       delete n.shape;
     }
-    // a solid arrow stays solid even when it runs back (QA N24: the round trip turned «B -->|no| A» dashed); one into a refusal end is still a stop
-    for (const e of edges) if (e.solid) { delete e.solid; e.kind = nodes.get(e.to)?.kind === 'stop' ? 'stop' : 'main'; }
+    // the layout still decides the kind (a back arrow is a return, laid out as one); a SOLID one keeps its solid line (QA N24: «B -->|no| A» came back dashed)
+    const solid = new Set(edges.filter((e) => e.solid).map((e) => e.id));
+    for (const e of edges) delete e.solid;
     void locale;
-    return layout({ kind: 'bw-diagram', version: 1, flow, nodes: [...nodes.values()], edges });
+    const out = layout({ kind: 'bw-diagram', version: 1, flow, nodes: [...nodes.values()], edges });
+    for (const e of out.edges) if (solid.has(e.id) && e.kind === 'return') e.line = 'solid';
+    return out;
   }
 
   /** A starter for «add a new diagram». */
