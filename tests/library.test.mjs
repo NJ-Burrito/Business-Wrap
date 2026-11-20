@@ -112,7 +112,8 @@ try {
   await sh('[data-lib="import"]').click();
   await (await fc).setFiles(htmlFile);
   // wait on the real completion: the imported entry is in the list WITH its edits (not just "3 entries": the count is true at the first write)
-  await page.waitForFunction(async () => { const all = await window.BW.EXT.library.all(); const i = all.find((e) => e.origin === 'import'); return all.length === 3 && !!i && Object.values(i.editions).reduce((a, x) => a + x.ops.length, 0) === 2; }, null, { timeout: 20000 }).catch(() => {});
+  // polled from here: waitForFunction took the async predicate's pending Promise as truthy and returned before the import landed (flake 2026-11-16..19)
+  for (const end = Date.now() + 20000; Date.now() < end; await page.waitForTimeout(200)) { L = await lib(); const i = L.find((e) => e.origin === 'import'); if (L.length === 3 && i && i.ops === 2) break; }
   L = await lib();
   const imp = L.find((e) => e.origin === 'import');
   check('import of a Save-HTML file creates an entry with its edits', L.length === 3 && imp && imp.ops === 2, JSON.stringify(L));

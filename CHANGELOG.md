@@ -12,6 +12,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 ### Added / أضيف
 - 🧭 **Live back-office diagram as a read-only source** (Flowable method): a tracking page's process diagram and open tasks are a second source beside the modeler export, never a replacement; monitoring-graph JSON may carry `"source": "backoffice"` and the document's introduction then names that provenance; differences from the export (or between environments) are recorded, not merged. / **مخطط النظام الخلفي الحي مصدراً للقراءة فقط** (طريقة Flowable): مخطط صفحة المتابعة والمهام المفتوحة مصدر ثانٍ بجانب تصدير المحرّر لا بديل عنه؛ ويحمل JSON المراقبة `"source": "backoffice"` فيسمّي تمهيد الوثيقة المصدر؛ وتُسجَّل الفروق ولا تُدمج.
+- 🔌 `BW_PORT` gives an isolated install its own host port, so `open_in_editor` and `harvest … open:true` work beside another install's host on 4317. / `BW_PORT` يعطي التثبيت المعزول منفذاً خاصاً به فيعمل `open_in_editor` والحصاد بخيار الفتح بجانب خادم تثبيت آخر على 4317.
+
+### Fixed / أُصلح (NJ-QA full test, 2026-11-19)
+- 📤 The command-line export to the save folder passes its own edition gate (the gate now reads «… - العربية.pdf» names). / التصدير إلى مجلد الحفظ ينجح في فحص النسخة.
+- 🗂️ Sources: accepting or rejecting a fact survives «Save corrections» and a Claude pass that renumbers; a web page's definition lists and table rows are read, not dropped. / المصادر: قرار القبول والرفض يبقى بعد حفظ التصحيحات وبعد مرور Claude، وقوائم التعريف وصفوف الجداول في صفحات الويب تُقرأ.
+- 🧯 A damaged DOCX or PDF import answers 400 with a short message, never a traceback or a local path. / استيراد ملف تالف يعطي 400 برسالة قصيرة بلا أثر ولا مسار.
+- 🧩 `editor_ops` with an unknown op answers `BAD_OP` (was a -32602 schema error). / العملية غير المعروفة تعطي `BAD_OP`.
+- 🏷️ Start page: each chip counts the tiles it shows (Blank included). The «tabs asleep» note is in the reader's language, at the foot and click-through. The share message points at the path shown. English «Last saved: —» reads in order. / صفحة البداية: العداد يطابق البطاقات؛ شريط التبويبات النائمة بلغة القارئ في الأسفل ولا يحجب النقر؛ رسالة المشاركة تطابق المسار؛ «Last saved» بترتيبها.
+- 📝 Docs: Word gets the same first page and sections as the PDF; Word sets its own page breaks, so the page count can differ. / الوثائق: Word يأخذ الصفحة الأولى والأقسام نفسها، وقد يختلف عدد الصفحات.
+- 🧪 Tests: `library` no longer races its import (an async `waitForFunction` returned early); `legacy-0170` falls back to PowerShell 7 when Windows long paths are off. / الاختبارات: إصلاح سباق اختبار المكتبة، واختبار legacy يستعمل PowerShell 7 حين تُعطَّل المسارات الطويلة.
 
 ## [0.23.0] - 2026-11-16
 

@@ -169,9 +169,9 @@ const START = (() => {
     const back = q('[data-st-back]');
     const cur = LIBX()?.isDoc(S.svc) ? LIBX().titleOf() : '';
     back.hidden = false; back.textContent = cur ? tf('startBack', { name: cur }) : t('startSkip'); back.dir = 'auto';
-    const total = types().filter((x) => x.id !== 'blank').length;
+    const total = types().length; // a chip's count = the tiles it shows; Blank shows under every chip, so it counts in each
     q('[data-st-chips]').setAttribute('aria-label', t('startCats'));
-    q('[data-st-chips]').innerHTML = [{ id: 'all', name: { [l]: t('startAll') }, n: total }, ...cats().map((x) => ({ ...x, n: types().filter((y) => y.category === x.id).length }))].map((x) => {
+    q('[data-st-chips]').innerHTML = [{ id: 'all', name: { [l]: t('startAll') }, n: total }, ...cats().map((x) => ({ ...x, n: types().filter((y) => y.id === 'blank' || y.category === x.id).length }))].map((x) => {
       const name = x.name?.[l] || x.name?.en || x.id;
       return `<button type="button" class="st-chip" role="radio" aria-checked="${st.cat === x.id && !st.q}" tabindex="${st.cat === x.id ? 0 : -1}" aria-label="${esc(tf('startCatCount', { name, n: x.n }))}" data-st-c="${esc(x.id)}">${x.id === 'all' ? '' : `<span class="st-ms" style="--c:${esc(catColor(x.id))}"></span>`}<span>${esc(name)}</span></button>`;
     }).join('');

@@ -41,7 +41,7 @@
 
 ### 📄 The first page of each type
 
-Every type opens with a first page built for its purpose. The thumbnail on the start page is only a picture for choosing a type. **Page 1 of the document never carries it**, or any other drawing, in the editor, in PDF or in Word. It uses straight lines, boxes and text. Word gets the same pages as the PDF.
+Every type opens with a first page built for its purpose. The thumbnail on the start page is only a picture for choosing a type. **Page 1 of the document never carries it**, or any other drawing, in the editor, in PDF or in Word. It uses straight lines, boxes and text. Word gets the same first page and sections as the PDF; Word sets its own page breaks, so the page count can differ.
 
 | Family | What page 1 is | Types |
 |---|---|---|

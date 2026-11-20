@@ -67,7 +67,9 @@ fs.writeFileSync(ps1, `$ErrorActionPreference='Stop'\nCompress-Archive -Path "$e
 const seven = ['C:\\Program Files\\7-Zip\\7z.exe', 'C:\\Program Files (x86)\\7-Zip\\7z.exe'].find((p) => fs.existsSync(p));
 const zips = [];
 if (isWin) {
-  const r = spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ps1], { env: { ...process.env, BWT: tmp }, encoding: 'utf8' });
+  let r = spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ps1], { env: { ...process.env, BWT: tmp }, encoding: 'utf8' });
+  // Windows PowerShell 5.1 cannot read past 260 characters unless LongPathsEnabled=1; PowerShell 7 writes the same Compress-Archive zip and can
+  if (r.status !== 0 && /part of the path|too long/i.test(r.stderr || '')) r = spawnSync('pwsh', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ps1], { env: { ...process.env, BWT: tmp }, encoding: 'utf8' });
   if (r.status === 0 && fs.existsSync(path.join(tmp, 'ps.zip'))) zips.push(['Compress-Archive (Windows PowerShell)', path.join(tmp, 'ps.zip')]);
   else check('Compress-Archive made the zip', false, `${r.status} ${r.stderr}`.slice(0, 300));
   if (seven) {

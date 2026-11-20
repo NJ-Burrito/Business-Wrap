@@ -238,7 +238,7 @@ const LIB = (() => {
     // a sibling of the counter, not inside it: text inside a button is part of its visible label, and the stamp is not (axe label-content-name-mismatch)
     const host = c.parentElement;
     let el = host.querySelector(':scope > .bw-stamp');
-    if (!el) { el = document.createElement('span'); el.className = 'bw-stamp'; el.setAttribute('role', 'status'); host.appendChild(el); }
+    if (!el) { el = document.createElement('span'); el.className = 'bw-stamp'; el.setAttribute('role', 'status'); el.dir = 'auto'; host.appendChild(el); } // auto: the bar stays RTL, the English words read «Last saved: —» (QA T13)
     const html = Object.values(M[S.svc] || {}).flatMap((e) => (e.marks || []).filter((m) => m.kind === 'saveHtml')).map((m) => m.at).sort().at(-1);
     const doc = isDoc(S.svc) && !pending[S.svc];
     const list = doc ? savedAt[S.svc] : S.savedAt;

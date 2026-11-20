@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { config } from '../config.mjs';
-import { headsFile } from '../workspace.mjs';
+import { headsFile, LANG_WORD } from '../workspace.mjs';
 
 const res = (stage, problems, extra = {}) => ({ stage, verdict: problems.length ? 'FAIL' : 'PASS', problems, ...extra });
 const readMaybe = (x) => (typeof x === 'string' ? JSON.parse(fs.readFileSync(x, 'utf8')) : x);
@@ -73,7 +73,9 @@ export function gateExport(files, { editions } = {}) {
     if (!fs.statSync(f).size) p.push(`empty: ${f}`);
     if (!/\.(pdf|docx|html)$/i.test(f)) p.push(`unexpected file type: ${f}`);
   }
-  if (editions) for (const ed of editions) if (!files.some((f) => new RegExp(`[.-](${ed}|${ed === 'en' ? 'eng' : ed})\\.(pdf|docx)$`, 'i').test(f))) p.push(`edition ${ed} missing`);
+  // «x.ar.pdf» / «x-eng.docx» (explicit folder) or «… - العربية.pdf» (the save folder's outName; « (2)» from uniquePath)
+  const tag = (ed) => new RegExp(`(?:[.-](?:${ed}|${ed === 'en' ? 'eng' : ed})| - ${LANG_WORD[ed] || ed}(?: \\(\\d+\\))?)\\.(pdf|docx)$`, 'i');
+  if (editions) for (const ed of editions) if (!files.some((f) => tag(ed).test(f))) p.push(`edition ${ed} missing`);
   return res('export', p);
 }
 

@@ -130,8 +130,22 @@ export function setFact(id, fid, { status, text, note }) {
 }
 const HOW = { media: 'local transcript (Whisper)', doc: 'document text', web: 'web page text', image: 'image text (local OCR, Claude reads the picture)', apk: 'app manifest', folder: 'tool or skill files', transcript: 'meeting transcript (captions)' };
 const BASE = { media: 0.6, doc: 0.9, web: 0.8, image: 0.7, apk: 0.9, folder: 0.9, transcript: 0.8 };
+/** The person's decisions survive a rebuild: a new fact whose text matches an old one (its text or its original) keeps that one's id, status, edited text and note. */
+function decided(old) {
+  const by = new Map();
+  for (const f of old) if (f.status && f.status !== 'candidate') for (const s of [f.text, f.text_orig]) if (s) by.set(normKey(s), f);
+  return (f) => { // each old decision is handed out once, so two new facts never share an id
+    const o = by.get(normKey(f.text)) || by.get(normKey(f.text_orig || ''));
+    if (o) for (const [k, v] of by) if (v === o) by.delete(k);
+    return o;
+  };
+}
 function writeFacts(id, lines, job) {
-  const facts = factsFrom(lines, { source: job.name, how: HOW[job.kind], base: BASE[job.kind] });
+  const was = decided(previews(id).facts);
+  const facts = factsFrom(lines, { source: job.name, how: HOW[job.kind], base: BASE[job.kind] }).map((f) => {
+    const o = was(f);
+    return o ? { ...f, id: o.id, status: o.status, ...(o.status === 'edited' ? { text: o.text } : {}), note: o.note || f.note } : f;
+  });
   fs.writeFileSync(path.join(dirOf(id), 'facts.jsonl'), facts.map((f) => JSON.stringify(f)).join('\n') + (facts.length ? '\n' : ''));
   return facts.length;
 }
@@ -280,11 +294,11 @@ const FACT_KINDS = ['requirement', 'decision', 'question', 'statement', 'rule', 
 /** Claude's cleaned facts replace facts.jsonl: text and kind required, the rest kept from the candidate of the same id. */
 export function claudeFacts(id, facts) {
   if (!Array.isArray(facts)) throw new Error('facts: an array');
-  const job = getJob(id), old = new Map(previews(id).facts.map((f) => [f.id, f]));
+  const prev = previews(id).facts, job = getJob(id), old = new Map(prev.map((f) => [f.id, f])), byText = decided(prev);
   const out = facts.map((f, i) => {
     if (!f || !String(f.text || '').trim()) throw new Error(`fact ${i + 1}: text is required`);
     if (!FACT_KINDS.includes(f.kind)) throw new Error(`fact ${i + 1}: kind must be one of ${FACT_KINDS.join(', ')}`);
-    const was = old.get(f.id) || {};
+    const was = old.get(f.id) || byText(f) || {}; // a pass that renumbers (or omits ids) still keeps the person's decision
     const conf = Number.isFinite(f.confidence) ? Math.max(0, Math.min(1, f.confidence)) : was.confidence ?? BASE[job.kind];
     return { ...was, id: was.id || `c${i + 1}`, kind: f.kind, text: String(f.text).trim(), text_orig: was.text_orig ?? f.text_orig ?? String(f.text),
       lang: /[؀-ۿ]/.test(f.text) ? (/[A-Za-z]{3,}/.test(f.text) ? 'mixed' : 'ar') : 'en', source: job.name, loc: String(f.loc ?? was.loc ?? ''),

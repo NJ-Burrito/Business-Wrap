@@ -58,6 +58,17 @@ await t('a document source end to end, and a person\'s edit', async () => {
   assert.ok(p.edited); assert.equal(p.facts.length, 1);
   setFact(job.id, p.facts[0].id, { status: 'accepted' });
   assert.equal(previews(job.id).facts[0].status, 'accepted');
+  // QA T9 (2026-11-19): saving the corrections with the same text, then a Claude pass with no ids, keeps the decision and the id
+  const fid = previews(job.id).facts[0].id;
+  saveLines(job.id, previews(job.id).lines);
+  assert.deepEqual([previews(job.id).facts[0].id, previews(job.id).facts[0].status], [fid, 'accepted']);
+  const keep = previews(job.id).facts[0];
+  claudeFacts(job.id, [{ text: keep.text, kind: keep.kind }]);
+  assert.deepEqual([previews(job.id).facts[0].id, previews(job.id).facts[0].status], [fid, 'accepted']);
+});
+await t('web page: definition lists and table rows are read, not dropped (QA T10)', async () => {
+  const { htmlLines } = await import('../engine/harvest/sources.mjs');
+  assert.deepEqual(htmlLines('<h1>S</h1><dl><dt>Fee</dt><dd>20 JD</dd></dl><table><tr><td>a</td><td>b</td></tr></table>'), ['S', 'Fee: 20 JD', 'a | b']);
 });
 await t('XLSX and PPTX readers', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-zip-'));

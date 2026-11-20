@@ -2,7 +2,8 @@
 // and who may call it (BW_HOST_TOKEN). engine/host.mjs, engine/cli.mjs, engine/heal, engine/protocol, the routes and update/apply all read from here.
 import { spawnSync } from 'node:child_process';
 
-export const DEFAULT_PORT = 4317;
+// BW_PORT moves an isolated install (its own state folder) off 4317, where another install's host may answer (QA N15/N44)
+export const DEFAULT_PORT = Number.isInteger(Number(process.env.BW_PORT)) && Number(process.env.BW_PORT) > 1023 && Number(process.env.BW_PORT) < 65536 ? Number(process.env.BW_PORT) : 4317;
 /** engine/protocol.mjs probes this many ports upward from DEFAULT_PORT for a running host. */
 export const PROBE_PORT_COUNT = 11;
 export const probePorts = () => Array.from({ length: PROBE_PORT_COUNT }, (_, i) => DEFAULT_PORT + i);
