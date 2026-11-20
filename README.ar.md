@@ -297,7 +297,7 @@
 <div dir="ltr">
 
 ```
-claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.23.0 business-wrap-mcp
+claude mcp add business-wrap -- npx -y -p github:NJ-Burrito/Business-Wrap#v0.24.0 business-wrap-mcp
 ```
 
 </div>

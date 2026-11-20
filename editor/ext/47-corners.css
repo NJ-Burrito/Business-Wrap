@@ -2,7 +2,7 @@
  * (left / right), the same in Arabic and English: the shell is always dir=rtl, so inline-start would put them on the wrong side. The explain
  * dock keeps its bottom 96 px free for them. A list or menu may open over the watermark.
  * This file loads after ux.css, so a rule of equal weight here wins over the old bottom-centre toasts (0.14.0 A3). */
-.shell[dir] .toasts, .shell[dir="rtl"] .toasts { inset-inline-start: auto; left: auto; right: 16px; transform: none; justify-items: end; max-inline-size: calc(100vw - 32px); }
+.shell[dir] .toasts, .shell[dir="rtl"] .toasts { inset-inline-start: auto; left: auto; right: 16px; transform: none; justify-items: right; max-inline-size: calc(100vw - 32px); } /* right, not end: in this rtl shell «end» is the LEFT edge, where a long toast (a save path) slid under the NJ mark (QA N35) */
 .shell:has(.pager:not([hidden])) .toasts { inset-block-end: max(16px, env(safe-area-inset-bottom)); }
 @media (max-width: 860px) { .shell:has(.pager:not([hidden])) .toasts { inset-block-end: 78px; } } /* a narrow window: the page pill (centred) would meet the toast */
 .toasts .toast { transform-origin: bottom right; }
