@@ -53,8 +53,10 @@ def allowed_hex() -> set[str]:
 
 def check_svg(p: Path, ok: set[str]):
     src = p.read_text(encoding="utf-8")
+    if "<!DOCTYPE" in src or "<!ENTITY" in src:  # no DTD/entities in a brand SVG (entity expansion, XXE)
+        return fail(f"{p.relative_to(V3)}: has a DOCTYPE or ENTITY declaration")
     try:
-        root = ET.fromstring(src)
+        root = ET.fromstring(src)  # nosemgrep: use-defused-xml -- DTD/entity input refused above
     except ET.ParseError as e:
         return fail(f"{p.relative_to(V3)}: does not parse ({e})")
     if any(True for _ in root.iter(f"{NS}text")):

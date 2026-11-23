@@ -10,6 +10,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 ## [Unreleased]
 
+## [0.24.2] - 2026-11-23
+
+### ⚡ In 10 seconds / في عشر ثوان
+- Security: the spell checker no longer bundles `nanoid` 2.1.11 (CVE-2024-55565 and three later advisories); a small crypto-random stand-in with the same call takes its place.
+- Security: dev dependencies `hono` 4.13.21 and `@hono/node-server` 2.1.11 (six advisories closed); `npm audit` reports 0.
+- The brand checker refuses an SVG with a DOCTYPE or ENTITY declaration before parsing it.
+
+<div dir="rtl">
+
+- أمان: لم يعد المدقق الإملائي يضم `nanoid` 2.1.11؛ حلّ محله بديل صغير بأرقام عشوائية آمنة وبالاستدعاء نفسه.
+- أمان: تحديث `hono` إلى 4.13.21 و`@hono/node-server` إلى 2.1.11؛ ولا ثغرات في `npm audit`.
+- يرفض فاحص الهوية أي ملف SVG فيه تعريف DOCTYPE أو ENTITY قبل قراءته.
+
+</div>
+
 ## [0.24.1] - 2026-11-20
 
 🔧 The command palette's search box keeps focus after a click, and «الخط» offers every font again: the project's, the ones uploaded into the document and the ones on this computer (PDF and DOCX keep them). / 🔧 مربع البحث في «الأوامر» يبقى نشطاً بعد النقر، و«الخط» يعرض كل الخطوط من جديد: خطوط المشروع، والمرفوعة إلى المستند، والمثبتة على الجهاز (وتحتفظ بها ملفات PDF وDOCX).

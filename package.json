@@ -1,6 +1,6 @@
 {
   "name": "business-wrap",
-  "version": "0.24.1",
+  "version": "0.24.2",
   "description": "Bilingual (Arabic RTL / English LTR) requirements documents from evidence: an interactive HTML editor that is the print layout, PDF + DOCX export, design packs and security gates.",
   "license": "MIT",
   "mcpName": "io.github.NJ-Burrito/business-wrap",
@@ -121,6 +121,10 @@
     "esbuild": "^0.25.10",
     "hunspell-asm": "4.0.2",
     "lucide-static": "^1.62.0",
+    "nanoid": "file:tools/nanoid-v2-shim",
     "zod": "^4.6.7"
+  },
+  "overrides": {
+    "nanoid": "$nanoid"
   }
 }
