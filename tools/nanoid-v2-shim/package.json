@@ -1,0 +1,7 @@
+{
+  "name": "nanoid",
+  "version": "2.1.11-bw.1",
+  "description": "Business-Wrap stand-in for nanoid 2 (hunspell-asm calls nanoid(size)): same call shape, crypto random, no known CVEs.",
+  "license": "MIT",
+  "main": "index.js"
+}
