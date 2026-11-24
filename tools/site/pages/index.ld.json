@@ -5,7 +5,9 @@
       "@type": "Person",
       "@id": "https://nj-burrito.github.io/#person",
       "name": "{{author}}",
-      "alternateName": ["NJ-Burrito", "{{author-ar}}"],
+      "alternateName": ["{{author-ar}}", "NJ-Burrito", "NJ Burrito", "NJBurrito", "NJ"],
+      "jobTitle": "QA Automation Engineer",
+      "address": { "@type": "PostalAddress", "addressLocality": "Amman", "addressCountry": "JO" },
       "url": "https://nj-burrito.github.io/",
       "sameAs": [
         "{{linkedin}}",
@@ -15,7 +17,9 @@
         "https://nj-burrito.github.io/QA-Wrap/",
         "https://nj-burrito.github.io/Profile-Wrap/",
         "https://nj-burrito.github.io/NJ-Kit/",
-        "https://nj-burrito.github.io/NJ-Whip/"
+        "https://nj-burrito.github.io/NJ-Whip/",
+        "https://nj-burrito.github.io/NJ-Flush/",
+        "https://github.com/NJ-Burrito/Story-Wrap"
       ]
     },
     {
@@ -32,7 +36,7 @@
       "@type": "SoftwareApplication",
       "@id": "https://nj-burrito.github.io/Business-Wrap/#app",
       "name": "Business-Wrap",
-      "alternateName": ["Business Wrap", "بزنس راب"],
+      "alternateName": ["Business Wrap", "business-wrap", "business wrap", "business_wrap", "Business_Wrap", "BusinessWrap", "بزنس راب"],
       "description": "Free, open-source bilingual document studio. 17 document types for business analysts and testers (SRS, BRD, FRS, test plan, test cases, user manual, UAT sign-off, release notes and more), plus a requirements document built from a process model or a live e-service, edited on the page that prints and exported to PDF and DOCX.",
       "applicationCategory": "BusinessApplication",
       "applicationSubCategory": "Document studio for business analysts and testers",
