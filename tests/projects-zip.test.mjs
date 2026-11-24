@@ -84,6 +84,32 @@ try {
   check('a header that lies about the size cannot expand past the declared size', /does not inflate to its declared size/.test(throws(() => extractZip(evil, lie)) || '') && (!fs.existsSync(path.join(lie, 'lie.bin'))));
   check('too many entries is refused', /entries, the limit is/.test(throws(() => { writeZip(path.join(tmp, 'many.zip'), Array.from({ length: 30 }, (_, i) => ({ name: `f${i}.txt`, data: String(i) }))); readZip(path.join(tmp, 'many.zip'), { entries: 20 }); }) || ''));
   check('a file that is not a zip is named as such', /not a zip file/.test(throws(() => readZip(path.join(tmp, 'ex', 'مشروع - Project', 'empty.json'))) || ''));
+
+  // mutation testing (Stryker, 2026-11-24): guards that the checks above never reached
+  const patched = (buf, fn) => { const b = Buffer.from(buf); fn(b); fs.writeFileSync(evil, b); return evil; };
+  const one = raw('a.txt', Buffer.from('hello hello hello'));
+  const eocd = one.length - 22, cdAt = one.readUInt32LE(eocd + 16);
+  check('a zip64 marker (count 0xffff) is refused', /zip64/.test(throws(() => readZip(patched(one, (b) => b.writeUInt16LE(0xffff, eocd + 10)))) || ''));
+  check('a zip64 marker (offset 0xffffffff) is refused', /zip64/.test(throws(() => readZip(patched(one, (b) => b.writeUInt32LE(0xffffffff, eocd + 16)))) || ''));
+  check('a central directory past the end of the file is refused', /out of range/.test(throws(() => readZip(patched(one, (b) => b.writeUInt32LE(cdAt + 23, eocd + 16)))) || ''));
+  check('a broken central-directory signature is refused', /bad central directory/.test(throws(() => readZip(patched(one, (b) => b.writeUInt32LE(0, cdAt)))) || ''));
+  check('an unknown compression method is refused', /compression method 12/.test(throws(() => readZip(patched(one, (b) => b.writeUInt16LE(12, cdAt + 10)))) || ''));
+  const okZip = patched(one, () => {});
+  check('a broken local header is refused when the entry is read', /bad local header/.test(throws(() => { const r2 = readZip(patched(one, (b) => b.writeUInt32LE(0, 0))); entryData(r2, r2[0]); }) || ''));
+  check('limits are inclusive: exactly `entries` entries and exactly `bytes` bytes pass',
+    readZip(path.join(tmp, 'many.zip'), { entries: 30 }).length === 30 && readZip(okZip, { bytes: 17 }).length === 1 && /declares more than/.test(throws(() => readZip(okZip, { bytes: 16 })) || ''));
+  fs.writeFileSync(evil, raw('dos-link', Buffer.from('x'), { attr: 0xa1ff0000, by: 0 }));
+  check('the symlink rule reads unix modes only (an MS-DOS-made entry with the same high bits is a file)', readZip(evil).length === 1);
+  const lx = (() => { const b = raw('x.txt', Buffer.from('extra field data'), { method: 0 }); const nl = b.readUInt16LE(26); const extra = Buffer.from([0xfe, 0xca, 4, 0, 1, 2, 3, 4]);
+    const lh = Buffer.concat([b.subarray(0, 30 + nl), extra, b.subarray(30 + nl)]); lh.writeUInt16LE(extra.length, 28);
+    const e2 = lh.length - 22; lh.writeUInt32LE(lh.readUInt32LE(e2 + 16) + extra.length, e2 + 16); return lh; })();
+  fs.writeFileSync(evil, lx);
+  check('a local header with an extra field: the data starts after it', (() => { const r2 = readZip(evil); return entryData(r2, r2[0]).toString() === 'extra field data'; })());
+  const dz = path.join(tmp, 'dirs.zip');
+  writeZip(dz, [{ name: 'empty-folder/', data: '' }, { name: 'a/b/c.txt', data: 'c' }]);
+  const dx = path.join(tmp, 'dirs');
+  const dout = extractZip(dz, dx);
+  check('a folder entry becomes a folder (even an empty one) and is not reported as a file', fs.statSync(path.join(dx, 'empty-folder')).isDirectory() && dout.length === 1 && dout[0].name === 'a/b/c.txt');
 } catch (e) { check('suite ran without an exception', false, e.stack); } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 console.log(out.join('\n'));
 console.log(failed ? `FAILED: ${failed}` : `ALL OK: ${out.length} checks`);
