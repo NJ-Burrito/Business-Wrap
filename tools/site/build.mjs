@@ -131,7 +131,7 @@ ${alt}<meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: l
 <meta name="theme-color" content="#001e3d" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Business-Wrap">
+<meta property="og:site_name" content="NJ-Burrito">
 <meta property="og:title" content="${esc(t)}">
 <meta property="og:description" content="${esc(d)}">
 <meta property="og:url" content="${self}">
@@ -139,8 +139,8 @@ ${alt}<meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: l
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="${esc(T[lang].ogAlt)}">
-<meta property="og:locale" content="${lang === 'ar' ? 'ar_AR' : 'en_US'}">
-<meta property="og:locale:alternate" content="${lang === 'ar' ? 'en_US' : 'ar_AR'}">
+<meta property="og:locale" content="${lang === 'ar' ? 'ar_JO' : 'en_US'}">
+<meta property="og:locale:alternate" content="${lang === 'ar' ? 'en_US' : 'ar_JO'}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(t)}">
 <meta name="twitter:description" content="${esc(d)}">
@@ -199,6 +199,7 @@ const FAMILY = [
   ['https://nj-burrito.github.io/QA-Wrap/', 'https://nj-burrito.github.io/QA-Wrap/', 'QA-Wrap', 'test the page, get the bug report', 'QA-Wrap', 'اختبر الصفحة، وخذ تقرير الخلل جاهزا'],
   ['https://nj-burrito.github.io/Profile-Wrap/', 'https://nj-burrito.github.io/Profile-Wrap/', 'Profile-Wrap', 'your LinkedIn on autopilot, you stay the boss', 'Profile-Wrap', 'لينكدإن على الطيار الآلي، وأنت صاحب القرار'],
   ['https://nj-burrito.github.io/NJ-Whip/', 'https://nj-burrito.github.io/NJ-Whip/ar/', 'NJ-Whip', 'an on-screen whip that steers Claude Code', 'NJ-Whip', 'سوط على الشاشة يوجه Claude Code'],
+  ['https://nj-burrito.github.io/NJ-Flush/', 'https://nj-burrito.github.io/NJ-Flush/', 'NJ-Flush', 'free Windows RAM with one double-click', 'NJ-Flush', 'حرر ذاكرة ويندوز بنقرة مزدوجة'],
   ['https://nj-burrito.github.io/story-wrap/', 'https://nj-burrito.github.io/story-wrap/ar/', 'Story-Wrap', 'the series <bdi lang="ar" dir="rtl">«مكتب المفقودات»</bdi>', 'Story-Wrap', 'سلسلة «مكتب المفقودات»'],
 ];
 
@@ -224,8 +225,9 @@ function footer(lang, pre) {
   <div class="wrap">
     <div class="foot-brand">${mark('is-dark')}<p><strong>${T[lang].name}</strong><span>${ar ? 'أدلة تدخل. وثيقة واحدة بلغتين.' : 'Evidence in. One document, two languages.'}</span></p></div>
     <nav class="foot-row" aria-label="${ar ? 'صفحات الموقع' : 'Site pages'}">${legal}</nav>
-    <nav class="foot-row foot-family" aria-label="${ar ? 'العائلة والروابط' : 'Family and links'}"><a href="https://nj-burrito.github.io/">${ar ? 'الموقع الشخصي' : 'Portfolio'}</a><a href="https://nj-burrito.github.io/NJ-Kit/">NJ-Kit</a><a href="https://nj-burrito.github.io/QA-Wrap/">QA-Wrap</a><a href="https://nj-burrito.github.io/Profile-Wrap/">Profile-Wrap</a><a href="${ar ? 'https://nj-burrito.github.io/NJ-Whip/ar/' : 'https://nj-burrito.github.io/NJ-Whip/'}">NJ-Whip</a><a href="${story}">Story-Wrap</a><a href="https://github.com/NJ-Burrito">GitHub</a><a href="https://www.linkedin.com/in/nader-alzghoul">LinkedIn</a><a href="${REPO}">${ar ? 'المصدر' : 'Source'}</a><a href="https://nj-burrito.github.io/#contact">${ar ? 'تواصل' : 'Contact'}</a></nav><!-- bw-allow:bw-denylist (Lead approved 2026-10-28: Nader's own profile link on his own tool site) -->
+    <nav class="foot-row foot-family" aria-label="${ar ? 'العائلة والروابط' : 'Family and links'}"><a href="https://nj-burrito.github.io/">${ar ? 'الموقع الشخصي' : 'Portfolio'}</a><a href="https://nj-burrito.github.io/NJ-Kit/">NJ-Kit</a><a href="https://nj-burrito.github.io/QA-Wrap/">QA-Wrap</a><a href="https://nj-burrito.github.io/Profile-Wrap/">Profile-Wrap</a><a href="${ar ? 'https://nj-burrito.github.io/NJ-Whip/ar/' : 'https://nj-burrito.github.io/NJ-Whip/'}">NJ-Whip</a><a href="https://nj-burrito.github.io/NJ-Flush/">NJ-Flush</a><a href="${story}">Story-Wrap</a><a href="https://github.com/NJ-Burrito">GitHub</a><a href="https://www.linkedin.com/in/nader-alzghoul">LinkedIn</a><a href="${REPO}">${ar ? 'المصدر' : 'Source'}</a><a href="https://nj-burrito.github.io/#contact">${ar ? 'تواصل' : 'Contact'}</a></nav><!-- bw-allow:bw-denylist (Lead approved 2026-10-28: Nader's own profile link on his own tool site) -->
     <p class="fine">${ar ? `من <a href="https://nj-burrito.github.io/">${AUTHOR_AR}</a> (NJ-Burrito)` : `By <a href="https://nj-burrito.github.io/">${AUTHOR}</a> (NJ-Burrito)`}</p>
+    <p class="fine">${ar ? `بزنس راب، ويكتب أيضا Business-Wrap أو Business Wrap أو business-wrap، من صنع ${AUTHOR_AR} (<span lang="en" dir="ltr">${AUTHOR}</span>)، واسمه على GitHub هو NJ-Burrito (NJ Burrito، NJ).` : `Business-Wrap, also written Business Wrap or business-wrap, is made by ${AUTHOR} (<span lang="ar" dir="rtl">${AUTHOR_AR}</span>), known on GitHub as NJ-Burrito (NJ Burrito, NJ).`}</p>
     <p class="fine">${ar ? `رخصة MIT. لا صلة له بأي جهة حكومية ولا بشركة Anthropic. الخطوط: انظر <a href="${REPO}/blob/main/NOTICE.md">NOTICE</a>.` : `MIT licence. Not affiliated with any government service or with Anthropic. Fonts: see <a href="${REPO}/blob/main/NOTICE.md">NOTICE</a>.`}</p>
   </div>
   <p class="sr-only" id="copy-status" role="status" data-done="${T[lang].copied}"></p>
@@ -288,7 +290,7 @@ function build(file, lang) {
 }
 
 function sitemap(pages) {
-  const day = '2026-11-04';
+  const day = '2026-11-24';
   const urls = pages.filter((f) => f !== '404.html').flatMap((f) => ['en', 'ar'].map((l) => `  <url><loc>${pageUrl(l, f)}</loc><lastmod>${day}</lastmod><xhtml:link rel="alternate" hreflang="en" href="${pageUrl('en', f)}"/><xhtml:link rel="alternate" hreflang="ar" href="${pageUrl('ar', f)}"/><xhtml:link rel="alternate" hreflang="x-default" href="${pageUrl('en', f)}"/></url>`));
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.join('\n')}\n</urlset>\n`;
 }
