@@ -555,6 +555,6 @@ every edit, save, export, sign, lock and unlock is an entry in a hash-chained, s
 ## 🌐 More from NJ
 👤 By Nader Alzghoul (NJ-Burrito): [Portfolio](https://nj-burrito.github.io/) · [LinkedIn](https://www.linkedin.com/in/nader-alzghoul) · [GitHub](https://github.com/NJ-Burrito) <!-- bw-allow:bw-denylist (author credit, SEO brief seo1104) -->
 
-[Portfolio](https://nj-burrito.github.io/) · [NJ-Kit](https://nj-burrito.github.io/NJ-Kit/) · [QA-Wrap](https://nj-burrito.github.io/QA-Wrap/) · [Profile-Wrap](https://nj-burrito.github.io/Profile-Wrap/) · [NJ-Whip](https://nj-burrito.github.io/NJ-Whip/) · [Story-Wrap](https://nj-burrito.github.io/story-wrap/) · [GitHub](https://github.com/NJ-Burrito)
+[Portfolio](https://nj-burrito.github.io/) · [NJ-Kit](https://nj-burrito.github.io/NJ-Kit/) · [QA-Wrap](https://nj-burrito.github.io/QA-Wrap/) · [Profile-Wrap](https://nj-burrito.github.io/Profile-Wrap/) · [NJ-Whip](https://nj-burrito.github.io/NJ-Whip/) · [NJ-Flush](https://nj-burrito.github.io/NJ-Flush/) (free Windows RAM cleaner) · [NJ-Sort](https://nj-burrito.github.io/NJ-Sort/) (keeps Windows desktop icons in place) · [Story-Wrap](https://nj-burrito.github.io/story-wrap/) · [GitHub](https://github.com/NJ-Burrito)
 
 ⚖️ [MIT](LICENSE) · [NOTICE.md](NOTICE.md) (fonts) · [fonts/README.md](fonts/README.md)
