@@ -3,7 +3,7 @@
     PYTHONUTF8=1 python brand/v3/motion/render_media.py [slug ...]
 
 Masters go to O:/Temp/bw012-wp2 (never the repo, never drive C). Outputs (frozen interface I6):
-  site/assets/media/hero.gif (17 fps), hero.mp4 (25 fps), hero-poster.webp (frame 0), hero-ar.gif, github-banner.gif
+  site/assets/media/hero.gif (12 fps, 960 px), hero.mp4 (25 fps), hero-poster.webp (frame 0), hero-ar.gif, github-banner.gif
   brand/v3/banner/github-banner-still.png (the 3.0 s frame), logo-loop.gif, logo-loop.mp4
 GIFs: one 256-colour palette per file, no dithering, written to a temp name and renamed (atomic).
 Run once; on a failure the failing command is printed and the script stops.
@@ -41,11 +41,11 @@ def master(slug: str) -> Path:
     return out
 
 
-def gif(src: Path, dst: Path, fps: int, width: int | None = None) -> None:
+def gif(src: Path, dst: Path, fps: int, width: int | None = None, colors: int = 256, stats: str = "full") -> None:
     scale = f",scale={width}:-1:flags=lanczos" if width else ""
     tmp = dst.with_name(dst.stem + ".part.gif")
     run(["ffmpeg", "-y", "-v", "error", "-i", str(src), "-vf",
-         f"fps={fps}{scale},split[a][b];[a]palettegen=max_colors=256:stats_mode=full[p];[b][p]paletteuse=dither=none",
+         f"fps={fps}{scale},split[a][b];[a]palettegen=max_colors={colors}:stats_mode={stats}[p];[b][p]paletteuse=dither=none",
          "-loop", "0", "-map_metadata", "-1", str(tmp)])
     tmp.replace(dst)
 
@@ -79,11 +79,11 @@ def main(slugs: list[str]) -> None:
     BANNER.mkdir(parents=True, exist_ok=True)
     if "hero" in slugs:
         m = master("hero")
-        gif(m, MEDIA / "hero.gif", 17)
+        gif(m, MEDIA / "hero.gif", 12, 960, 48, "diff")  # light: 0.6 MB, not 2.1
         web_mp4(m, MEDIA / "hero.mp4")
         still(m, 0, MEDIA / "hero-poster.webp", ["-c:v", "libwebp", "-lossless", "0", "-quality", "92"])
     if "hero-ar" in slugs:
-        gif(master("hero-ar"), MEDIA / "hero-ar.gif", 17)
+        gif(master("hero-ar"), MEDIA / "hero-ar.gif", 12, 960, 48, "diff")
     if "github-banner" in slugs:
         m = master("github-banner")
         gif(m, MEDIA / "github-banner.gif", 17)
