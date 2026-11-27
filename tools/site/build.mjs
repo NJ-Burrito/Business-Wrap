@@ -291,7 +291,7 @@ function build(file, lang) {
 }
 
 function sitemap(pages) {
-  const day = '2026-11-24';
+  const day = '2026-11-27';
   const urls = pages.filter((f) => f !== '404.html').flatMap((f) => ['en', 'ar'].map((l) => `  <url><loc>${pageUrl(l, f)}</loc><lastmod>${day}</lastmod><xhtml:link rel="alternate" hreflang="en" href="${pageUrl('en', f)}"/><xhtml:link rel="alternate" hreflang="ar" href="${pageUrl('ar', f)}"/><xhtml:link rel="alternate" hreflang="x-default" href="${pageUrl('en', f)}"/></url>`));
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.join('\n')}\n</urlset>\n`;
 }
