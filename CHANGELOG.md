@@ -10,6 +10,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-11-28
+
+### ⚡ In 10 seconds / في عشر ثوان
+- The start page's «Documents · Sources» switch now follows a change of interface language at once; before, it kept the first language until a reload.
+- New start-page screenshots in the README and on the site, English and Arabic, showing the current start page.
+- Inside: the longest editor and DOCX sources are split into smaller ordered parts. The built editor is byte for byte the same and every DOCX part is identical, so nothing you see or export changes.
+
+<div dir="rtl">
+
+- يتبع مفتاح «المستندات · المصادر» في صفحة البداية تغيير لغة الواجهة فوراً، وكان يبقى على اللغة الأولى حتى إعادة التحميل.
+- صور جديدة لصفحة البداية في الملف التعريفي وفي الموقع، بالعربية والإنجليزية، تعرض صفحة البداية الحالية.
+- في الداخل: قُسّمت أطول ملفات المحرر وبناء ملفات DOCX إلى أجزاء أصغر مرتبة. المحرر المبني مطابق بايتاً ببايت، وأجزاء ملفات DOCX كلها مطابقة، فلا يتغير شيء مما تراه أو تصدّره.
+
+</div>
+
 ## [0.24.2] - 2026-11-23
 
 ### ⚡ In 10 seconds / في عشر ثوان
