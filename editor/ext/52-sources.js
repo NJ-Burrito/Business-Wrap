@@ -31,7 +31,16 @@ const SOURCES = (() => {
     d.addEventListener('change', onChange);
     d.addEventListener('dragover', (e) => { if (st.view === 'sources' && e.target.closest?.('[data-src]')) e.preventDefault(); });
     d.addEventListener('drop', (e) => { if (st.view !== 'sources' || !e.target.closest?.('[data-src]')) return; e.preventDefault(); e.stopPropagation(); upload([...(e.dataTransfer?.files || [])]); }, true);
+    new MutationObserver(() => relabel(d)).observe(d, { attributes: true, attributeFilter: ['lang'] }); // 50-start sets the dialog's lang on every UI-language change
     show(st.view);
+  }
+  /** The switch is drawn once; on a UI-language change give it the new language's words. */
+  function relabel(d) {
+    const sw = d.querySelector('[data-src-switch]');
+    if (!sw) return;
+    sw.setAttribute('aria-label', t('src.switch'));
+    for (const b of sw.querySelectorAll('[data-src-v]')) b.textContent = t(b.dataset.srcV === 'docs' ? 'src.docs' : 'src.sources');
+    if (st.view === 'sources') refresh();
   }
   function show(v) {
     st.view = v; html.dataset.bwSources = v;
